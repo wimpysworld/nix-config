@@ -1,0 +1,40 @@
+{ pkgs, ... }: {
+
+  programs = {
+    firefox.enable = true;
+  };
+
+  environment.systemPackages = with pkgs; [
+    brave
+    discord
+    gimp-with-plugins
+    gitkraken
+    gnome.dconf-editor
+    inkscape
+    libreoffice
+    maestral-gui
+    meld
+    microsoft-edge
+    netflix
+    obs-studio
+    obs-studio-plugins.obs-vaapi
+    obs-studio-plugins.obs-nvfbc
+    obs-studio-plugins.obs-gstreamer
+    obs-studio-plugins.obs-source-record
+    obs-studio-plugins.obs-move-transition
+    obs-studio-plugins.obs-pipewire-audio-capture
+    opera
+    pavucontrol
+    tdesktop
+    shotcut
+    slack
+    spotify
+    ungoogled-chromium
+    unigine-heaven
+    unigine-superposition
+    vivaldi
+    vivaldi-ffmpeg-codecs
+    vscode-fhs
+    zoom-us
+  ];
+}
