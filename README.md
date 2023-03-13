@@ -111,3 +111,4 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Fix Magewell driver
   - `linuxKernel.packages.linux_6_2.mwprocapture`
     - `hardware.mwProCapture.enable = true;`
+- [ ] Migrate (*maybe*) to ZFS and [`zrepl`](https://zrepl.github.io/) for backups
