@@ -65,7 +65,7 @@ Nix is configured with [flake support](https://zero-to-nix.com/concepts/flakes) 
 [OpenSSH]: ./host/_mixins/services/openssh.nix
 [Tailscale]: ./host/_mixins/services/tailscale.nix
 [Docker]: ./host/_mixins/boxes/docker.nix
-[nano]: ./home/_mixins/console/nano.nix
+[nano]: ./host/_mixins/console/nano.nix
 
 ![neofetch on Designare](.github/screenshots/neofetch.png)
 
