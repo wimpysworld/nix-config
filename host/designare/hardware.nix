@@ -22,12 +22,12 @@
     fsType = "xfs";
   };
 
-  fileSystems."/boot" = { 
+  fileSystems."/boot" = {
     device = "/dev/disk/by-label/BOOT";
     fsType = "vfat";
   };
 
-  fileSystems."/home" = { 
+  fileSystems."/home" = {
     device = "/dev/disk/by-label/HOME";
     fsType = "xfs";
   };
@@ -50,7 +50,7 @@
     };
     #error: Package ‘mwprocapture-1.3.0.4236-6.2.3’ is marked as broken, refusing to evaluate.
     mwProCapture.enable = false;
-    nvidia = { 
+    nvidia = {
       prime = {
         amdgpuBusId = "PCI:3:0:0";
         nvidiaBusId = "PCI:4:0:0";
