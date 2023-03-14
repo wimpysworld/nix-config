@@ -10,7 +10,7 @@
 # SATA:        1TB SanDisk SSD Plus
 # SATA:        1TB SanDisk SSD Plus
 
-{ config, lib, pkgs, modulesPath, ... }:
+{ config, lib, pkgs, modulesPath, username, ... }:
 {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
