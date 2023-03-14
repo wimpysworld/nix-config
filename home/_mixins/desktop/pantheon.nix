@@ -1,7 +1,5 @@
 { config, lib, pkgs, ... }:
-
 with lib.hm.gvariant;
-
 {
   imports = [
     (./emote.nix)
@@ -207,7 +205,7 @@ with lib.hm.gvariant;
       name = "io.elementary.stylesheet.bubblegum";
       package = pkgs.pantheon.elementary-gtk-theme;
     };
-  };  
+  };
 
   home.pointerCursor = {
     package = pkgs.pantheon.elementary-icon-theme;
@@ -215,5 +213,5 @@ with lib.hm.gvariant;
     size = 32;
     gtk.enable = true;
     x11.enable = true;
-  };  
+  };
 }

@@ -1,7 +1,5 @@
 { config, lib, pkgs, ... }:
-
 with lib.hm.gvariant;
-
 {
   imports = [
     (./emote.nix)
@@ -168,7 +166,7 @@ with lib.hm.gvariant;
     "org/mate/panel/objects/workspace-switcher/prefs" = {
       display-workspace-names = true;
     };
-    
+
     "org/mate/marco/global-keybindings" = {
       run-command-1 = "<Mod4>l";
       run-command-2 = "<Shift>Print";
@@ -369,7 +367,7 @@ with lib.hm.gvariant;
       name = "Yaru-dark-magenta";
       package = pkgs.yaru-theme;
     };
-  };  
+  };
 
   home.pointerCursor = {
     package = pkgs.yaru-theme;
@@ -377,5 +375,5 @@ with lib.hm.gvariant;
     size = 32;
     gtk.enable = true;
     x11.enable = true;
-  };  
+  };
 }
