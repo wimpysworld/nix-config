@@ -1,8 +1,11 @@
-{ lib, ... }:
+{ config, lib, pkgs, ... }:
 
 with lib.hm.gvariant;
 
 {
+  imports = [
+    (./emote.nix)
+  ];
   dconf.settings = {
     "io/github/celluloid-player/celluloid" = {
       csd-enable = false;

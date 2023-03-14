@@ -3,6 +3,9 @@
 with lib.hm.gvariant;
 
 {
+  imports = [
+    (./emote.nix)
+  ];
   dconf.settings = {
     #"org/gnome/desktop/background" = {
     #  picture-uri = "file:///home/martin/.local/share/backgrounds/2023-02-09-20-47-36-DeterminateColorway-2560x1440.png";

@@ -125,7 +125,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 - [ ] Implement [Disko](https://github.com/nix-community/disko) partitioning
 - [x] Integrate Keybase
-- [ ] Integrate an emoji Picker
+- [x] Integrate an Emoji picker
 - [ ] Integrate AppCenter and Flathub
 - [ ] Integrate Steam
 - [ ] Integrate OpenRGB
