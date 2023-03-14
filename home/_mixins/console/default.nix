@@ -67,5 +67,10 @@
       enableSshSupport = true;
       pinentryFlavor = "curses";
     };
+    kbfs = {
+      enable = true;
+      mountPoint = "Keybase";
+    };
+    keybase.enable = true;
   };
 }
