@@ -1,7 +1,6 @@
-{ config, lib, pkgs, modulesPath, ... }:
+{ config, lib, pkgs, ... }:
 {
   imports = [
-    (modulesPath + "/installer/scan/not-detected.nix")
     ../_mixins/services/pipewire.nix
   ];
 

@@ -1,10 +1,6 @@
 # Intel Skull Canyon NUC6i7KYK
-{ config, lib, pkgs, modulesPath, ... }:
+{ config, lib, pkgs, ... }:
 {
-  imports = [
-    (modulesPath + "/installer/scan/not-detected.nix")
-  ];
-
   fileSystems."/" = {
     device = "/dev/disk/by-label/ROOT";
     fsType = "xfs";

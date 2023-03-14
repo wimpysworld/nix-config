@@ -10,10 +10,9 @@
 # SATA:        1TB SanDisk SSD Plus
 # SATA:        1TB SanDisk SSD Plus
 
-{ config, lib, pkgs, modulesPath, username, ... }:
+{ config, lib, pkgs, username, ... }:
 {
   imports = [
-    (modulesPath + "/installer/scan/not-detected.nix")
     ../_mixins/services/pipewire.nix
   ];
 
