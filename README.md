@@ -101,6 +101,10 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Integrate an emoji Picker
 - [ ] Integrate AppCenter and Flathub
 - [ ] Integrate Steam
+- [ ] Integrate OpenRGB
+- [ ] Integrate Polychromatic
+- [ ] Integrate Syncthing
+- [ ] Integrate dotfiles
 - [ ] Integrate .iso and VM builds via [nixos-generators](https://github.com/nix-community/nixos-generators)
 - [ ] Include image assets such as wallpapers and faces
 - [ ] Include Serif fonts and fallbacks for Work Sans and Fira Code.
