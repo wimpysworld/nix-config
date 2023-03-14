@@ -9,6 +9,8 @@
         ipb = "ip --color --brief";
         less = "bat";
         man = "env PAGER=most man";
+        # https://github.com/NixOS/nixpkgs/issues/191128#issuecomment-1246030417
+        nix-hash-sha256 = "nix-hash --flat --base32 --type sha256";
         open = "xdg-open";
         top = "btm --basic --tree";
         tree = "exa --tree";
