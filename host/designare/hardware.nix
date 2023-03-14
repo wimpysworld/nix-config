@@ -47,8 +47,7 @@
         Enable = "Source,Sink,Media,Socket";
       };
     };
-    #error: Package ‘mwprocapture-1.3.0.4236-6.2.3’ is marked as broken, refusing to evaluate.
-    mwProCapture.enable = false;
+    mwProCapture.enable = true;
     nvidia = {
       prime = {
         amdgpuBusId = "PCI:3:0:0";

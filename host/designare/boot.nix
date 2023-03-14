@@ -30,7 +30,11 @@
       "nvidia"
       "vhost_vsock"
     ];
-    kernelPackages = pkgs.linuxPackages_latest;
+
+    # Temporary workaround until mwprocapture 4328 patch is merged
+    # - https://github.com/NixOS/nixpkgs/pull/221209
+    kernelPackages = pkgs.linuxPackages_5_15;
+
     kernelParams = [ "quiet" "mitigations=off" ];
     kernel.sysctl = {
       "kernel.sysrq" = 1;
