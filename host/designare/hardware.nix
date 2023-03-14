@@ -54,10 +54,10 @@
       prime = {
         amdgpuBusId = "PCI:3:0:0";
         nvidiaBusId = "PCI:4:0:0";
-        # The NVIDIA T600 is for CUDA/NVENC only
+        # Make the Radeon RX6800 default. The NVIDIA T600 is on for CUDA/NVENC
         reverseSync.enable = true;
       };
-      nvidiaSettings = true;
+      nvidiaSettings = false;
     };
     opengl = {
       enable = true;
