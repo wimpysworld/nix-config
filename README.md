@@ -56,9 +56,36 @@ home-manager switch -b backup --flake $HOME/Zero/nix-config
 
 Nix is configured with [flake support](https://zero-to-nix.com/concepts/flakes) and the [unified CLI](https://zero-to-nix.com/concepts/nix#unified-cli) enabled.
 
+### Structure
+
+This is the directory structure I'm using.
+
+```
+.
+├── home
+│   ├── _mixins
+│   │   ├── console
+│   │   └── desktop
+│   └── default.nix
+├── host
+│   ├── _mixins
+│   │   ├── base
+│   │   ├── boxes
+│   │   ├── desktop
+│   │   ├── services
+│   │   └── users
+│   ├── designare
+│   ├── generic
+│   ├── skull
+│   ├── z13
+│   └── default.nix
+├── scripts
+└── flake.nix
+```
+
 ### The Shell 🐚
 
-[Fish shell] with powerline-go and a collection of tools that deliver a somewhat *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [Tailscale], [Docker] and, of course, a delightfully configured [nano]. (*Fight me!* 🥊)
+[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a somewhat *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [Tailscale], [Docker] and, of course, a delightfully configured [nano]. (*Fight me!* 🥊)
 
 [Fish shell]: ./home/_mixins/console/fish.nix
 [Modern Unix]: ./home/_mixins/console/default.nix
@@ -71,7 +98,7 @@ Nix is configured with [flake support](https://zero-to-nix.com/concepts/flakes) 
 
 ### The Desktop 🖥️
 
-MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. The [font configuration] is common with both desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code). The usual creature comforts you'd expect to have in a Linux Desktop are integrated such as [Pipewire], Bluetooth, [Avahi], [CUPS], [SANE] and [NetworkManager].
+MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. The [font configuration] is common with both desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code). The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as [Pipewire], Bluetooth, [Avahi], [CUPS], [SANE] and [NetworkManager].
 
 [font configuration]: ./host/_mixins/desktop/default.nix
 [Pipewire]: ./host/_mixins/services/pipewire.nix
