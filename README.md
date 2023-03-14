@@ -128,7 +128,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate an Emoji picker
 - [ ] Integrate AppCenter and Flathub
 - [ ] Integrate Steam
-- [ ] Integrate OpenRGB
+- [x] Integrate OpenRGB
 - [ ] Integrate Polychromatic
 - [ ] Integrate Syncthing
 - [ ] Integrate dotfiles
