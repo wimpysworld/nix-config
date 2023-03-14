@@ -37,6 +37,7 @@
       speedtest-rs    # Terminal speedtest
       tldr            # Modern Unix `man`
       tokei           # Modern Unix `wc` for code
+      yadm            # Terminal dot file manager
       zenith          # Modern Unix `top`
     ];
     sessionVariables = {
