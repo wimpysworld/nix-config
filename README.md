@@ -129,7 +129,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Integrate AppCenter and Flathub
 - [ ] Integrate Steam
 - [x] Integrate OpenRGB
-- [ ] Integrate Polychromatic
+- [x] Integrate OpenRazer
 - [ ] Integrate Syncthing
 - [ ] Integrate dotfiles
 - [ ] Integrate .iso and VM builds via [nixos-generators](https://github.com/nix-community/nixos-generators)

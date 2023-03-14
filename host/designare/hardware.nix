@@ -64,6 +64,14 @@
       driSupport = true;
       driSupport32Bit = true;
     };
+    openrazer = {
+      enable = true;
+      devicesOffOnScreensaver = false;
+      keyStatistics = true;
+      mouseBatteryNotifier = true;
+      syncEffectsEnabled = true;
+      users = [ "${username}" ];
+    };
   };
 
   services = {
