@@ -56,9 +56,7 @@
             hostname = "z13";
             username = "martin";
           };
-          modules = [
-            ./home
-          ];
+          modules = [ ./home ];
         };
       };
 
