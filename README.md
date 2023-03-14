@@ -143,3 +143,19 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
   - `linuxKernel.packages.linux_6_2.mwprocapture`
     - `hardware.mwProCapture.enable = true;`
 - [ ] Migrate (*maybe*) to ZFS and [`zrepl`](https://zrepl.github.io/) for backups
+
+## Inspirations
+
+Before preparing my NixOS and Home Manager configurations I took a look at what other Nix users are doing. My colleagues shared their configs and tips which included [nome from Luc Perkins], [nixos-config from Cole Helbling], [flake from Ana Hoverbear] and her [Declarative GNOME configuration with NixOS] blog post. A couple of friends also shared their configurations and here's [Jon Seager's nixos-config] and [Aaron Honeycutt's nix-configs]. While learning Nix I watched some talks/interviews with [Matthew Croughan](https://github.com/MatthewCroughan) and [Will Taylor's Nix tutorials on Youtube](https://www.youtube.com/playlist?list=PL-saUBvIJzOkjAw_vOac75v-x6EzNzZq-). [Will Taylor's dotfiles] are worth a look, as are his videos, and [Matthew Croughan's nixcfg] is also a useful reference.
+
+I really like the directory hierarchy in [Jon Seager's nixos-config] and the mixin pattern used in [Matthew Croughan's nixcfg], so my initial Nix configuration is heavily influenced by both of those. Ana's excellent [Declarative GNOME configuration with NixOS] blog post was essential to get a personalised desktop . That said, there's plenty to learn from browsing other peoples Nix configurations, not least for discovering cool software. I recommend a search of [GitHub nixos configuration] from time to time to see what interesting techniques you pickup and new tools you might discover.
+
+[nome from Luc Perkins]: https://github.com/the-nix-way/nome
+[nixos-config from Cole Helbling]: https://github.com/cole-h/nixos-config
+[flake from Ana Hoverbear]: https://github.com/Hoverbear-Consulting/flake
+[Declarative GNOME configuration with NixOS]: https://hoverbear.org/blog/declarative-gnome-configuration-in-nixos/
+[Jon Seager's nixos-config]: https://github.com/jnsgruk/nixos-config
+[Aaron Honeycutt's nix-configs]: https://gitlab.com/ahoneybun/nix-configs
+[Matthew Croughan's nixcfg]: https://github.com/MatthewCroughan/nixcfg
+[Will Taylor's dotfiles]: https://github.com/wiltaylor/dotfiles
+[GitHub nixos configuration]: https://github.com/search?q=nixos+configuration
