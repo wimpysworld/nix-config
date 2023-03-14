@@ -19,6 +19,10 @@
     size = 2048;
   }];
 
+  environment.systemPackages = with pkgs; [
+    nvtop-amd
+  ];
+
   hardware = {
     bluetooth.enable = true;
     bluetooth.settings = {
