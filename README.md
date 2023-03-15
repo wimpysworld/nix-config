@@ -131,6 +131,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate OpenRGB
 - [x] Integrate OpenRazer
 - [ ] Integrate Syncthing
+- [ ] Integrate fwupd
 - [ ] Integrate dotfiles
 - [ ] Integrate .iso and VM builds via [nixos-generators](https://github.com/nix-community/nixos-generators)
 - [ ] Include image assets such as wallpapers and faces
