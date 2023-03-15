@@ -2,7 +2,7 @@
   # Only import desktop configuragion if the host is desktop enabled
   imports = [
     ./_mixins/console
-  ] ++ lib.optional (desktop != null) ./_mixins/desktop;
+  ] ++ lib.optional (builtins.isString desktop) ./_mixins/desktop;
 
   home = {
     username = username;

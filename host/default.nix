@@ -10,7 +10,7 @@
     ./_mixins/boxes
     ./_mixins/users/root
     ./_mixins/users/${username}
-  ] ++ lib.optional (desktop != null) ./_mixins/desktop;
+  ] ++ lib.optional (builtins.isString desktop) ./_mixins/desktop;
 
   # Use passed in hostid and hostname to configure basic networking
   networking = {
