@@ -2,6 +2,7 @@
   imports = [
     ./locale.nix
     ./nano.nix
+    ../services/fwupd.nix
     ../services/openssh.nix
     ../services/tailscale.nix
   ];
