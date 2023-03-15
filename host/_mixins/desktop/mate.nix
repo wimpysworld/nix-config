@@ -35,7 +35,6 @@
   # Enable services to round out the desktop
   services = {
     blueman.enable = true;
-    fwupd.enable = true;
     gnome.gnome-keyring.enable = true;
     system-config-printer.enable = true;
     xserver = {
