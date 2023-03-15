@@ -92,7 +92,7 @@ This is the directory structure I'm using.
 [OpenSSH]: ./host/_mixins/services/openssh.nix
 [Tailscale]: ./host/_mixins/services/tailscale.nix
 [Docker]: ./host/_mixins/boxes/docker.nix
-[nano]: ./host/_mixins/console/nano.nix
+[nano]: ./host/_mixins/base/nano.nix
 
 ![neofetch on Designare](.github/screenshots/neofetch.png)
 
