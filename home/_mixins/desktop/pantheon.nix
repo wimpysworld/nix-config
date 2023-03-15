@@ -207,6 +207,19 @@ with lib.hm.gvariant;
     };
   };
 
+  home.file = {
+    "${config.xdg.configHome}/autostart/enable-appcenter.desktop".text = "
+[Desktop Entry]
+Name=Enable AppCenter
+Comment=Enable AppCenter
+Type=Application
+Exec=flatpak remote-add --user --if-not-exists appcenter https://flatpak.elementary.io/repo.flatpakrepo
+Categories=
+Terminal=false
+NoDisplay=true
+StartupNotify=false";
+  };
+
   home.pointerCursor = {
     package = pkgs.pantheon.elementary-icon-theme;
     name = "elementary";

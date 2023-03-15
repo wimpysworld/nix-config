@@ -110,4 +110,5 @@ clock-format=%H:%M
       layout = "gb";
     };
   };
+  xdg.portal.extraPortals = [ xdg-desktop-portal-gtk ];
 }

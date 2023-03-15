@@ -2,6 +2,7 @@
   #TODO: Validate the desktop .nix exists
   imports = [
     ../services/cups.nix
+    ../services/flatpak.nix
     ../services/sane.nix
     (./. + "/${desktop}.nix")
   ];
