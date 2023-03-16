@@ -13,5 +13,6 @@
       dockerCompat = true;
       enable = true;
       enableNvidia = lib.elem "nvidia" config.services.xserver.videoDrivers;
+    };
   };
 }
