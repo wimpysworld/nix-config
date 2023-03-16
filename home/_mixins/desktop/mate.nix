@@ -2,14 +2,10 @@
 with lib.hm.gvariant;
 {
   imports = [
+    (./celluloid.nix)
     (./emote.nix)
   ];
   dconf.settings = {
-    "io/github/celluloid-player/celluloid" = {
-      csd-enable = false;
-      dark-theme-enable = true;
-    };
-
     "org/gnome/charmap" = {
       font = "Work Sans 22";
     };

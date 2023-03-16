@@ -2,6 +2,7 @@
 with lib.hm.gvariant;
 {
   imports = [
+    (./celluloid.nix)
     (./emote.nix)
   ];
   dconf.settings = {
@@ -90,11 +91,6 @@ with lib.hm.gvariant;
 
     "org/gtk/gtk4/Settings/FileChooser" = {
       clock-format = "24h";
-    };
-
-    "io/github/celluloid-player/celluloid" = {
-      csd-enable = false;
-      dark-theme-enable = true;
     };
 
     "io/elementary/desktop/agent-geoclue2" = {
