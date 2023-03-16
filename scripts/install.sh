@@ -54,6 +54,7 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     nix run github:nix-community/disko --extra-experimental-features 'flakes nix-command' --no-write-lock-file -- --mode zap_create_mount "host/${HOST}/disks.nix"
     nixos-install --no-root-password --flake .#${HOST}
+    home-manager switch -b backup --flake .#${NAME}
 
     # Copy the nix-config to the new system
     mkdir -p /mnt/home/"${USER}"/Zero/nix-config
