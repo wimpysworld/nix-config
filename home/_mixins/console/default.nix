@@ -33,6 +33,7 @@
       most            # Modern Unix `less`
       nix-direnv      # Nix direnv
       nixpkgs-fmt     # Nix code formmater
+      nixpkgs-review  # Nix code review
       nyancat         # Terminal rainbow spewing feline
       procs           # Modern Unix `ps`
       ripgrep         # Modern Unix `grep`
