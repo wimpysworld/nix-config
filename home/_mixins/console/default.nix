@@ -18,11 +18,13 @@
       dconf2nix       # Nix code from Dconf files
       deadnix         # Nix dead code scanner
       diffr           # Modern Unix `diff`
+      dive            # Container analyzer
       dogdns          # Modern Unix `dig`
       duf             # Modern Unix `du`
       fd              # Modern Unix `find`
       glow            # Terminal Markdown renderer
       gping           # Modern Unix `ping`
+      gryft           # Container vulnerability scanner
       gtop            # Modern Unix `top`
       hexyl           # Modern Unix `hexedit`
       httpie          # Terminal HTTP client
@@ -35,6 +37,7 @@
       procs           # Modern Unix `ps`
       ripgrep         # Modern Unix `grep`
       speedtest-rs    # Terminal speedtest
+      syft            # Container SBOM generator
       tldr            # Modern Unix `man`
       tokei           # Modern Unix `wc` for code
       yadm            # Terminal dot file manager

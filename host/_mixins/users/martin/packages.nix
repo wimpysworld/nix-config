@@ -25,6 +25,7 @@
     obs-studio-plugins.obs-pipewire-audio-capture
     opera
     pavucontrol
+    pods
     tdesktop
     shotcut
     slack
