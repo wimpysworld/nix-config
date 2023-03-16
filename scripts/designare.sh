@@ -1,1 +1,1 @@
-disko.sh
+install.sh
