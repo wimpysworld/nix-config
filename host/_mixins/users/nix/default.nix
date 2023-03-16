@@ -8,7 +8,7 @@ in
   ];
 
   users.users.nix = {
-    description = "Default user account"
+    description = "Default user account";
     extraGroups = [
         "audio"
         "networkmanager"
