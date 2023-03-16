@@ -12,11 +12,12 @@ in
     extraGroups = [
         "audio"
         "networkmanager"
+        "users"
         "video"
         "wheel"
       ]
       ++ ifExists [
-        "docker"
+        "podman"
       ];
     # mkpasswd -m sha-512
     hashedPassword = "$6$UXNQ20Feu82wCFK9$dnJTeSqoECw1CGMSUdxKREtraO.Nllv3/fW9N3m7lPHYxFKA/Cf8YqYGDmiWNfaKeyx2DKdURo0rPYBrSZRL./";

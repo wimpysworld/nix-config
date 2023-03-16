@@ -13,7 +13,7 @@
     systemPackages = with pkgs; [
       appeditor
       monitor
-      nix-software-center
+      #nix-software-center
       pantheon.sideload
       #pantheon.elementary-tasks
       yaru-theme

@@ -18,17 +18,17 @@
 
   # TODO: Replace this with disko
   fileSystems."/" = {
-    device = "/dev/disk/by-label/root";
+    device = "/dev/disk/by-partlabel/root";
     fsType = "xfs";
   };
 
   fileSystems."/boot" = {
-    device = "/dev/disk/by-label/ESP";
+    device = "/dev/disk/by-partlabel/ESP";
     fsType = "vfat";
   };
 
   fileSystems."/home" = {
-    device = "/dev/disk/by-label/home";
+    device = "/dev/disk/by-partlabel/home";
     fsType = "xfs";
   };
 

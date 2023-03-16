@@ -28,7 +28,25 @@ The [host/_mixins] and [home/_mixins] are a collection of generic configurations
 [flake.nix]: ./flake.nix
 [scripts]: ./scripts
 
-## Applying Changes
+## Installing 💾
+
+This is a work in progress, I will be working towards making installation using my NixOS configuration way more automated. Start a `nix shell` with flakes enabled and provide `git`.
+
+```bash
+nix shell --extra-experimental-features 'flakes nix-command' nixpkgs#git
+```
+
+Clone my nix-config and run the install script, which uses [Disko] to automatically partition and format the disks and uses my flake with `nixos-install`.
+
+```bash
+git clone https://github.com/wimpysworld/nix-config.git
+cd nix-config
+scripts/nameofhost.sh
+```
+
+[Disko]: https://github.com/nix-community/disko
+
+## Applying Changes ✨
 
 I clone this repo to `~/Zero/nix-config`. Home Manager and NixOS changes can be applied separately because I am planning to add support for some non-NixOS hosts.
 
