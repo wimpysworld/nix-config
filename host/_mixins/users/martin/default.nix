@@ -1,11 +1,12 @@
-{ config, pkgs, ...}:
+{ config, desktop, pkgs, ...}:
 let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
 {
+   # Only include desktop components if one is supplied.
   imports = [
-    ./packages.nix
-  ];
+    ./packages-console.nix
+  ] ++ lib.optional (builtins.isString desktop) ./packages-desktop.nix;
 
   users.users.martin = {
     description = "Martin Wimpress";
