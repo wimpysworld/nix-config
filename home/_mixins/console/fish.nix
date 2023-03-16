@@ -15,7 +15,9 @@
         top = "btm --basic --tree";
         tree = "exa --tree";
         speedtest = "speedtest-rs";
-
+        moon = "curl -s wttr.in/Moon";
+        wttr = "curl -scurl -s wttr.in && curl -s v2.wttr.in";
+        wttr-bas = "curl -s wttr.in/basingstoke && curl -s v2.wttr.in/basingstoke";
         nix-gc = "sudo nix-collect-garbage --delete-older-than 14d";
         rebuild-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
         rebuild-host = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
