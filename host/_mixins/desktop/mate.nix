@@ -21,6 +21,7 @@
       gnome.gucharmap
       gnome-firmware
       networkmanagerapplet
+      nix-software-center
     ];
   };
 

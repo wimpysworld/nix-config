@@ -15,15 +15,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    nix-software-center.url = "github:vlinkz/nix-software-center";
   };
 
   outputs = {
     self,
     nixpkgs,
     disko,
+    home-manager,
     nixos-generators,
     nixos-hardware,
-    home-manager,
+    nix-software-center,
     ... } @ inputs:
     let
       inherit (self) outputs;
