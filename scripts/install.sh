@@ -12,7 +12,7 @@ else
 fi
 
 case "${HOST}" in
-  designare) true;;
+  designare*) true;;
   *)
     echo "ERROR! ${HOST} is not a supported host"
     exit 1
