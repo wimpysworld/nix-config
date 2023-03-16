@@ -6,10 +6,6 @@ with lib.hm.gvariant;
     #  picture-uri = "file:///home/martin/.local/share/backgrounds/2023-02-09-20-47-36-DeterminateColorway-2560x1440.png";
     #};
 
-    "ca/desrt/dconf-editor" = {
-      show-warning = false;
-    };
-
     "org/gnome/desktop/datetime" = {
       automatic-timezone = true;
     };

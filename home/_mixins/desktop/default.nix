@@ -1,6 +1,7 @@
 { config, desktop, pkgs, ... }: {
   imports = [
     (./celluloid.nix)
+    (./dconf-editor.nix)
     (./emote.nix)
     (./meld.nix)
     (./. + "/${desktop}.nix")
