@@ -127,6 +127,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
   - Chasing the ideas outlined in these blog posts:
   - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
   - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
+- [ ] Integrate .iso and VM builds via [nixos-generators](https://github.com/nix-community/nixos-generators)
 - [x] Integrate Keybase
 - [x] Integrate an Emoji picker
 - [x] Integrate AppCenter and Flathub
@@ -136,15 +137,16 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Integrate Syncthing
 - [x] Integrate fwupd
 - [ ] Integrate dotfiles
-- [ ] Integrate .iso and VM builds via [nixos-generators](https://github.com/nix-community/nixos-generators)
 - [ ] Include image assets such as wallpapers and faces
-- [ ] Include Serif fonts and fallbacks for Work Sans and Fira Code.
-- [ ] Move user-specific settings to Home Manager
-- [ ] Move application defaults out of the desktop defaults
+- [ ] Include Serif fonts
+- [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels
+- [ ] Move user-specific settings out of general user configuration
+- [x] Move application defaults out of the desktop defaults
 - [ ] Add all computers to the table
 - [ ] Fix [Unfree in Home Manager](https://nixos.wiki/wiki/Flakes#Enable_unfree_software)
 - [x] Fix Magewell driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
-- [ ] Migrate (*maybe*) to ZFS and [`zrepl`](https://zrepl.github.io/) for backups
+- [ ] Migrate (*maybe*) to ZFS
+  - With backups via [`zrepl`](https://zrepl.github.io/)
 
 ## Inspirations
 
