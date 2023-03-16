@@ -5,6 +5,7 @@
   };
 
   environment.systemPackages = with pkgs; [
+    authy
     brave
     discord
     gimp-with-plugins
