@@ -2,6 +2,7 @@
   imports = [
     (./celluloid.nix)
     (./emote.nix)
+    (./meld.nix)
     (./. + "/${desktop}.nix")
   ];
 

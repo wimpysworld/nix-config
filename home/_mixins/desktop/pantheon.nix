@@ -149,16 +149,6 @@ with lib.hm.gvariant;
     "io/elementary/files/preferences" = {
       singleclick-select = true;
     };
-
-    "org/gnome/meld" = {
-      indent-width = 4;
-      insert-spaces-instead-of-tabs = true;
-      highlight-current-line = true;
-      show-line-numbers = true;
-      prefer-dark-theme = true;
-      highlight-syntax = true;
-      style-scheme = "Yaru-dark";
-    };
   };
 
   gtk = {
