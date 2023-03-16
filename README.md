@@ -161,7 +161,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Move user-specific settings out of general user configuration
 - [x] Move application defaults out of the desktop defaults
 - [ ] Add all computers to the table
-- [ ] Fix [Unfree in Home Manager](https://nixos.wiki/wiki/Flakes#Enable_unfree_software)
+- [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31)
 - [x] Fix Magewell driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
 - [ ] Migrate (*maybe*) to ZFS
   - With backups via [`zrepl`](https://zrepl.github.io/)
