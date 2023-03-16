@@ -1,5 +1,4 @@
 { desktop, pkgs, ... }: {
-  #TODO: Validate the desktop .nix exists
   imports = [
     ../services/cups.nix
     ../services/flatpak.nix
