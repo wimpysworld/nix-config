@@ -28,7 +28,7 @@
       "vhost_vsock"
     ];
     kernelPackages = pkgs.linuxPackages_latest;
-    kernelParams = [ "quiet" "mitigations=off" ];
+    kernelParams = [ "mitigations=off" ];
     kernel.sysctl = {
       "kernel.sysrq" = 1;
       "kernel.printk" = "3 3 3 3";
@@ -43,6 +43,5 @@
       systemd-boot.memtest86.enable = true;
       timeout = 10;
     };
-    plymouth.enable = true;
   };
 }

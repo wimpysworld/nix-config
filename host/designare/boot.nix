@@ -35,7 +35,7 @@
     # - https://github.com/NixOS/nixpkgs/pull/221209
     kernelPackages = pkgs.linuxPackages_5_15;
 
-    kernelParams = [ "quiet" "mitigations=off" ];
+    kernelParams = [ "mitigations=off" ];
     kernel.sysctl = {
       "kernel.sysrq" = 1;
       "kernel.printk" = "3 3 3 3";
@@ -50,6 +50,5 @@
       systemd-boot.memtest86.enable = true;
       timeout = 10;
     };
-    plymouth.enable = true;
   };
 }

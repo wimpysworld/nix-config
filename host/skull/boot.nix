@@ -40,6 +40,5 @@
       systemd-boot.memtest86.enable = true;
       timeout = 10;
     };
-    plymouth.enable = false;
   };
 }
