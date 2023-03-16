@@ -2,6 +2,10 @@
   description = "Wimpy's NixOS and Home Manager Configuration";
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -16,6 +20,7 @@
   outputs = {
     self,
     nixpkgs,
+    disko,
     nixos-generators,
     nixos-hardware,
     home-manager,

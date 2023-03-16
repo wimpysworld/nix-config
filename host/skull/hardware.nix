@@ -1,18 +1,19 @@
 # Intel Skull Canyon NUC6i7KYK
 { config, lib, pkgs, ... }:
 {
+  # TODO: Replace this with disko
   fileSystems."/" = {
-    device = "/dev/disk/by-label/ROOT";
+    device = "/dev/disk/by-label/root";
     fsType = "xfs";
   };
 
   fileSystems."/boot" = {
-    device = "/dev/disk/by-label/BOOT";
+    device = "/dev/disk/by-label/ESP";
     fsType = "vfat";
   };
 
   fileSystems."/home" = {
-    device = "/dev/disk/by-label/HOME";
+    device = "/dev/disk/by-label/home";
     fsType = "xfs";
   };
 

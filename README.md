@@ -123,7 +123,10 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ## TODO 🗒️
 
-- [ ] Implement [Disko](https://github.com/nix-community/disko) partitioning
+- [ ] Implement [Disko](https://github.com/nix-community/disko) partitioning (*WIP*)
+  - Chasing the ideas outlined in these blog posts:
+  - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
+  - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
 - [x] Integrate Keybase
 - [x] Integrate an Emoji picker
 - [x] Integrate AppCenter and Flathub
