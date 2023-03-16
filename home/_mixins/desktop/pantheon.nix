@@ -185,6 +185,14 @@ with lib.hm.gvariant;
     };
   };
 
+  home.pointerCursor = {
+    package = pkgs.pantheon.elementary-icon-theme;
+    name = "elementary";
+    size = 32;
+    gtk.enable = true;
+    x11.enable = true;
+  };
+
   home.file = {
     "${config.xdg.configHome}/autostart/enable-appcenter.desktop".text = "
 [Desktop Entry]
@@ -196,13 +204,5 @@ Categories=
 Terminal=false
 NoDisplay=true
 StartupNotify=false";
-  };
-
-  home.pointerCursor = {
-    package = pkgs.pantheon.elementary-icon-theme;
-    name = "elementary";
-    size = 32;
-    gtk.enable = true;
-    x11.enable = true;
   };
 }
