@@ -40,6 +40,16 @@
           };
           modules = [ ./home ];
         };
+        "martin@designare-headless" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgs.legacyPackages.${system};
+          extraSpecialArgs = {
+            inherit inputs outputs;
+            desktop = null;
+            hostname = "designare";
+            username = "martin";
+          };
+          modules = [ ./home ];
+        };
         "martin@skull" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
@@ -71,6 +81,25 @@
             hostname = "designare";
             hostid = "8f03b646";
             desktop = "pantheon";
+            username = "martin";
+          };
+          modules = [
+            ./host
+            nixos-hardware.nixosModules.common-cpu-intel
+            nixos-hardware.nixosModules.common-gpu-amd
+            nixos-hardware.nixosModules.common-gpu-intel
+            nixos-hardware.nixosModules.common-gpu-nvidia
+            nixos-hardware.nixosModules.common-pc
+            nixos-hardware.nixosModules.common-pc-ssd
+          ];
+        };
+        designare-headless = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            inherit inputs outputs;
+            hostname = "designare";
+            hostid = "8f03b646";
+            desktop = null;
             username = "martin";
           };
           modules = [
