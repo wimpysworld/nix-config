@@ -53,9 +53,9 @@ read -p "Are you sure? [y/N]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     sudo true
-    sudo nix run github:nix-community/disko --extra-experimental-features 'flakes nix-command' --no-write-lock-file -- --mode zap_create_mount "host/${HOST}/disks.nix"
+    sudo nix run github:nix-community/disko --extra-experimental-features 'nix-command flakes' --no-write-lock-file -- --mode zap_create_mount "host/${HOST}/disks.nix"
     sudo nixos-install --no-root-password --flake .#${HOST}
-    env HOME=/mnt/home/"${NAME}" home-manager switch -b backup --flake .#${NAME}@${HOST}
+    env HOME=/mnt/home/"${NAME}" home-manager --extra-experimental-features 'nix-command flakes' switch -b backup --flake .#${NAME}@${HOST}
 
     # Copy the nix-config to the new system
     mkdir -p /mnt/home/"${NAME}"/Zero/nix-config

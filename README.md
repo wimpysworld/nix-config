@@ -33,7 +33,7 @@ The [host/_mixins] and [home/_mixins] are a collection of generic configurations
 This is a work in progress, I will be working towards making installation using my NixOS configuration way more automated. Start a `nix shell` with flakes enabled and provide `git`.
 
 ```bash
-nix shell --extra-experimental-features 'flakes nix-command' nixpkgs#git nixpkgs#home-manager
+nix shell --extra-experimental-features 'nix-command flakes' nixpkgs#git nixpkgs#home-manager
 ```
 
 Clone my nix-config and run the install script, which uses [Disko] to automatically partition and format the disks and uses my flake with `nixos-install`.
