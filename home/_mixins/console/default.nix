@@ -24,7 +24,7 @@
       fd              # Modern Unix `find`
       glow            # Terminal Markdown renderer
       gping           # Modern Unix `ping`
-      gryft           # Container vulnerability scanner
+      grype           # Container vulnerability scanner
       gtop            # Modern Unix `top`
       hexyl           # Modern Unix `hexedit`
       httpie          # Terminal HTTP client
