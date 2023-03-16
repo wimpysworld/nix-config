@@ -10,10 +10,6 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixos-generators = {
-      url = "github:nix-community/nixos-generators";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     nix-software-center.url = "github:vlinkz/nix-software-center";
   };
@@ -23,7 +19,6 @@
     nixpkgs,
     disko,
     home-manager,
-    nixos-generators,
     nixos-hardware,
     nix-software-center,
     ... } @ inputs:
@@ -69,18 +64,6 @@
 
       # hostids are generated using: `head -c4 /dev/urandom | od -A none -t x4`
       nixosConfigurations = {
-        iso = nixos-generators.nixosGenerate {
-          inherit system;
-          format = "iso";
-          specialArgs = {
-            inherit inputs outputs;
-            hostname = "generic";
-            hostid = "d5e8bae8";
-            desktop = "mate";
-            username = "nix";
-          };
-          modules = [ ./host ];
-        };
         designare = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
