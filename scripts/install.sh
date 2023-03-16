@@ -40,8 +40,8 @@ if [ ! -e "host/${HOST}/disks.nix" ]; then
   exit 1
 fi
 
-if [ "$(id -u)" -ne 0 ]; then
-  echo "ERROR! $(basename "${0}") requires root permissions"
+if [ "$(id -u)" -eq 0 ]; then
+  echo "ERROR! $(basename "${0}") should be run as a regular user"
   exit 1
 fi
 
@@ -52,12 +52,12 @@ echo
 read -p "Are you sure? [y/N]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    nix run github:nix-community/disko --extra-experimental-features 'flakes nix-command' --no-write-lock-file -- --mode zap_create_mount "host/${HOST}/disks.nix"
-    nixos-install --no-root-password --flake .#${HOST}
-    home-manager switch -b backup --flake .#${NAME}
+    sudo true
+    sudo nix run github:nix-community/disko --extra-experimental-features 'flakes nix-command' --no-write-lock-file -- --mode zap_create_mount "host/${HOST}/disks.nix"
+    sudo nixos-install --no-root-password --flake .#${HOST}
+    env HOME=/mnt/home/"${NAME}" home-manager switch -b backup --flake .#${NAME}@${HOST}
 
     # Copy the nix-config to the new system
-    mkdir -p /mnt/home/"${USER}"/Zero/nix-config
-    cp -a ./. /mnt/home/"${USER}"/Zero/nix-config/
-    chown -R 1000:100 /mnt/home/"${USER}"/Zero/nix-config
+    mkdir -p /mnt/home/"${NAME}"/Zero/nix-config
+    cp -a ./. /mnt/home/"${NAME}"/Zero/nix-config/
 fi
