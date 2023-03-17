@@ -27,8 +27,6 @@
       system = "x86_64-linux";
     in
     {
-      defaultPackage.x86_64-linux = home-manager.defaultPackage."x86_64-linux";
-
       homeConfigurations = {
         "martin@designare" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
