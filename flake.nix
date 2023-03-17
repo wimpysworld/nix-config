@@ -23,7 +23,6 @@
     nix-software-center,
     ... } @ inputs:
     let
-      inherit (self) outputs;
       system = "x86_64-linux";
     in
     {
@@ -31,7 +30,7 @@
         "martin@designare" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
-            inherit inputs outputs;
+            inherit inputs;
             desktop = "pantheon";
             hostname = "designare";
             username = "martin";
@@ -41,7 +40,7 @@
         "martin@designare-headless" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
-            inherit inputs outputs;
+            inherit inputs;
             desktop = null;
             hostname = "designare";
             username = "martin";
@@ -51,7 +50,7 @@
         "martin@skull" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
-            inherit inputs outputs;
+            inherit inputs;
             desktop = null;
             hostname = "skull";
             username = "martin";
@@ -61,7 +60,7 @@
         "martin@z13" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
-            inherit inputs outputs;
+            inherit inputs;
             desktop = "pantheon";
             hostname = "z13";
             username = "martin";
@@ -75,7 +74,7 @@
         designare = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs outputs;
+            inherit inputs;
             hostname = "designare";
             hostid = "8f03b646";
             desktop = "pantheon";
@@ -86,7 +85,7 @@
         designare-headless = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs outputs;
+            inherit inputs;
             hostname = "designare";
             hostid = "8f03b646";
             desktop = null;
@@ -97,7 +96,7 @@
         skull = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs outputs;
+            inherit inputs;
             hostname = "skull";
             hostid = "be4cb578";
             desktop = null;
@@ -108,7 +107,7 @@
         z13 = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs outputs;
+            inherit inputs;
             hostname = "z13";
             hostid = "b28460d8";
             desktop = "pantheon";
