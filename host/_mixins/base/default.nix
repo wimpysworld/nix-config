@@ -20,6 +20,7 @@
     desktop-file-utils
     file
     ffmpeg
+    git
     killall
     man-pages
     mergerfs
