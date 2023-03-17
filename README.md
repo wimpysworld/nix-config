@@ -161,7 +161,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ## TODO 🗒️
 
-- [ ] Implement [Disko](https://github.com/nix-community/disko) partitioning (*WIP*)
+- [ ] (***WIP***) Implement [Disko](https://github.com/nix-community/disko) partitioning
   - Chasing the ideas outlined in these blog posts:
   - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
   - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
@@ -175,7 +175,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Integrate Syncthing
 - [x] Integrate fwupd
 - [ ] Integrate dotfiles
-- [ ] Integrate best practice from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
+- [ ] (***WIP***) Integrate best practice from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
 - [ ] Include image assets such as wallpapers and faces
 - [ ] Include Serif fonts
 - [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels
