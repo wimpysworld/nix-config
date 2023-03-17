@@ -2,6 +2,51 @@
 with lib.hm.gvariant;
 {
   dconf.settings = {
+    "io/elementary/code/saved-state" = {
+      outline-visible = true;
+    };
+
+    "io/elementary/code/settings" = {
+      strip-trailing-on-save = true;
+      show-mini-map = true;
+      show-right-margin = true;
+      style-scheme = "Yaru-dark";
+      prefer-dark-style = true;
+    };
+
+    "io/elementary/desktop/agent-geoclue2" = {
+      location-enabled = true;
+    };
+
+    "io/elementary/desktop/wingpanel/datetime" = {
+      clock-format = "24h";
+    };
+
+    "io/elementary/desktop/wingpanel/sound" = {
+      max-volume = 100.0;
+    };
+
+    "io/elementary/files/preferences" = {
+      singleclick-select = true;
+    };
+
+    "io/elementary/notifications/applications/gala-other" = {
+      remember = false;
+      sounds = false;
+    };
+
+    "io/elementary/settings-daemon/datetime" = {
+      show-weeks = true;
+    };
+
+    "io/elementary/settings-daemon/housekeeping" = {
+      cleanup-downloads-folder = false;
+    };
+
+    "io/elementary/terminal/settings" = {
+      audible-bell = false;
+    };
+
     #"org/gnome/desktop/background" = {
     #  picture-uri = "file:///home/martin/.local/share/backgrounds/2023-02-09-20-47-36-DeterminateColorway-2560x1440.png";
     #};
@@ -41,6 +86,7 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/desktop/wm/preferences" = {
+      button-layout = ":minimize,maximize,close";
       audible-bell = false;
       titlebar-font = "Work Sans Semi-Bold 12";
     };
@@ -77,73 +123,24 @@ with lib.hm.gvariant;
       sleep-inactive-ac-type = "nothing";
     };
 
-    "org/gtk/Settings/FileChooser" = {
-      clock-format = "24h";
-    };
-
     "org/gtk/gtk4/Settings/FileChooser" = {
       clock-format = "24h";
     };
 
-    "io/elementary/desktop/agent-geoclue2" = {
-      location-enabled = true;
-    };
-
-    "io/elementary/desktop/wingpanel/datetime" = {
+    "org/gtk/Settings/FileChooser" = {
       clock-format = "24h";
-    };
-
-    "io/elementary/desktop/wingpanel/sound" = {
-      max-volume = 100.0;
-    };
-
-    "io/elementary/notifications/applications/gala-other" = {
-      remember = false;
-      sounds = false;
-    };
-
-    "io/elementary/settings-daemon/datetime" = {
-      show-weeks = true;
-    };
-
-    "io/elementary/settings-daemon/housekeeping" = {
-      cleanup-downloads-folder = false;
-    };
-
-    "io/elementary/terminal/settings" = {
-      audible-bell = false;
     };
 
     "org/pantheon/desktop/gala/appearance" = {
       button-layout = ":minimize,maximize,close";
     };
 
-    "org/gnome/desktop/wm/preferences" = {
-      button-layout = ":minimize,maximize,close";
-    };
-
     "org/gnome/settings-daemon/plugins/xsettings" = {
-      overrides = "{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/DecorationLayout': <':minimize,maximize,close,menu'>, 'Gtk/ShowUnicodeMenu': <0>}";
+      overrides = ''{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/DecorationLayout': <':minimize,maximize,close,menu'>, 'Gtk/ShowUnicodeMenu': <0>}'';
     };
 
     "org/pantheon/desktop/gala/behavior" = {
       overlay-action = "io.elementary.wingpanel --toggle-indicator=app-launcher";
-    };
-
-    "io/elementary/code/settings" = {
-      strip-trailing-on-save = true;
-      show-mini-map = true;
-      show-right-margin = true;
-      style-scheme = "Yaru-dark";
-      prefer-dark-style = true;
-    };
-
-    "io/elementary/code/saved-state" = {
-      outline-visible = true;
-    };
-
-    "io/elementary/files/preferences" = {
-      singleclick-select = true;
     };
   };
 
