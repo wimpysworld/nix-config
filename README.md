@@ -30,19 +30,27 @@ The [host/_mixins] and [home/_mixins] are a collection of generic configurations
 
 ## Installing 💾
 
-This is a work in progress, I will be working towards making installation using my NixOS configuration way more automated. Start a `nix shell` with flakes enabled and provide `git`.
+This is a work in progress 😅 I'm working towards making the installation entirely automated.
 
-```bash
-nix shell --extra-experimental-features 'nix-command flakes' nixpkgs#git nixpkgs#home-manager
-```
-
-Clone my nix-config and run the install script, which uses [Disko] to automatically partition and format the disks and uses my flake with `nixos-install`.
+- Boot off a .iso image created by this flake using `rebuild-iso` (*see below*).
+- Put the .iso image on a USB drive
+- Boot the target computer from the USB drive
+- Clone my nix-config
 
 ```bash
 git clone https://github.com/wimpysworld/nix-config.git
+```
+
+- Run the install script 📜
+ - The install script uses [Disko] to automatically partition and format the disks then uses my flake via `nixos-install` to complete a full system installation
+
+```bash
 cd nix-config
 scripts/install.sh <hostname> <username>
 ```
+
+- Make a cuppa 🫖
+- Reboot
 
 [Disko]: https://github.com/nix-community/disko
 
