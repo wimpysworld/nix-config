@@ -21,6 +21,7 @@
     file
     ffmpeg
     git
+    home-manager
     killall
     man-pages
     mergerfs
