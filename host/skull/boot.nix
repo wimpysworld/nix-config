@@ -1,4 +1,4 @@
-{ config, pkgs, ... }: {
+{ config, lib, pkgs, ... }: {
   boot = {
     blacklistedKernelModules = [ ];
     consoleLogLevel = 3;
