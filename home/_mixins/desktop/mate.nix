@@ -80,25 +80,16 @@ with lib.hm.gvariant;
       exec = "mate-terminal";
     };
 
-    "org/mate/desktop/peripherals/keyboard/kbd" = {
-      options = [ "terminate\tterminate:ctrl_alt_bksp" "caps\tcaps:none" ];
-    };
-
-    "org/mate/eom/view" = {
-      extrapolate = false;
-      interpolate = false;
+    "org/mate/desktop/background" = {
+      picture-filename = "";
+      primary-color = "rgb(192,97,203)";
+      secondary-color = "rgb(28,113,216)";
     };
 
     "org/mate/desktop/font-rendering" = {
       antialiasing = "rgba";
       hinting = "slight";
       rgba-order = "rgb";
-    };
-
-    "org/mate/desktop/background" = {
-      picture-filename = "";
-      primary-color = "rgb(192,97,203)";
-      secondary-color = "rgb(28,113,216)";
     };
 
     "org/mate/desktop/interface" = {
@@ -111,42 +102,50 @@ with lib.hm.gvariant;
       monospace-font-name = "FiraCode Nerd Font Medium 13";
     };
 
+    "org/mate/desktop/peripherals/keyboard/kbd" = {
+      options = [ "terminate\tterminate:ctrl_alt_bksp" "caps\tcaps:none" ];
+    };
+
+    "org/mate/desktop/peripherals/mouse" = {
+      cursor-size = 32;
+      cursor-theme = "Yaru";
+    };
+
+    "org/mate/desktop/peripherals/touchpad" = {
+      disable-while-typing = true;
+      tap-to-click = true;
+      three-finger-click = 0;
+      two-finger-click = 0;
+    };
+
+    "org/mate/desktop/session" = {
+      idle-delay = 30;
+    };
+
+    "org/mate/desktop/sound" = {
+      event-sounds = true;
+      input-feedback-sounds = true;
+      theme-name = "Yaru";
+    };
+
+    "org/mate/eom/view" = {
+      extrapolate = false;
+      interpolate = false;
+    };
+
+    "org/mate/notification-daemon" = {
+      theme = "slider";
+    };
+
     "org/mate/marco/general" = {
       alt-tab-expand-to-fit-title = true;
       button-layout = ":minimize,maximize,close";
       center-new-windows = false;
       compositing-manager = true;
+      num-workspaces = 8;
       show-tab-border = false;
       theme = "Yaru-dark";
       titlebar-font = "Work Sans Semi-Bold 12";
-    };
-
-    "org/mate/maximus" = {
-      no-maximize = true;
-      undecorate = false;
-    };
-
-    "org/mate/media-handling" = {
-      autorun-x-content-start-app = [ "x-content/software" "x-content/video-bluray.xml" "x-content/video-dvd.xml" "x-content/video-hddvd.xml" "x-content/video-svcd.xml" "x-content/video-vcd.xml" ];
-    };
-
-    "org/mate/marco/general" = {
-      num-workspaces = 8;
-    };
-
-    "org/mate/marco/workspace-names" = {
-      name-1 = " Web ";
-      name-2 = " Work ";
-      name-3 = " Chat ";
-      name-4 = " Code ";
-      name-5 = " Virt ";
-      name-6 = " Cast ";
-      name-7 = " Fun ";
-      name-8 = " Stuff ";
-    };
-
-    "org/mate/panel/objects/workspace-switcher/prefs" = {
-      display-workspace-names = true;
     };
 
     "org/mate/marco/global-keybindings" = {
@@ -198,8 +197,24 @@ with lib.hm.gvariant;
       unmaximize = "<Mod4>Down";
     };
 
-    "org/mate/notification-daemon" = {
-      theme = "slider";
+    "org/mate/marco/workspace-names" = {
+      name-1 = " Web ";
+      name-2 = " Work ";
+      name-3 = " Chat ";
+      name-4 = " Code ";
+      name-5 = " Virt ";
+      name-6 = " Cast ";
+      name-7 = " Fun ";
+      name-8 = " Stuff ";
+    };
+
+    "org/mate/maximus" = {
+      no-maximize = true;
+      undecorate = false;
+    };
+
+    "org/mate/media-handling" = {
+      autorun-x-content-start-app = [ "x-content/software" "x-content/video-bluray.xml" "x-content/video-dvd.xml" "x-content/video-hddvd.xml" "x-content/video-svcd.xml" "x-content/video-vcd.xml" ];
     };
 
     "org/mate/panel" = {
@@ -211,16 +226,8 @@ with lib.hm.gvariant;
       icon-name = "start-here-symbolic";
     };
 
-    "org/mate/desktop/peripherals/mouse" = {
-      cursor-size = 32;
-      cursor-theme = "Yaru";
-    };
-
-    "org/mate/desktop/peripherals/touchpad" = {
-      disable-while-typing = true;
-      tap-to-click = true;
-      three-finger-click = 0;
-      two-finger-click = 0;
+    "org/mate/panel/objects/workspace-switcher/prefs" = {
+      display-workspace-names = true;
     };
 
     "org/mate/pluma" = {
@@ -238,14 +245,16 @@ with lib.hm.gvariant;
       print-font-numbers-pango = "Work Sans 8";
     };
 
+    "org/mate/power-manager" = {
+      button-power = "interactive";
+      sleep-computer-ac = 0;
+      sleep-display-ac = 3600;
+    };
+
     "org/mate/screensaver" = {
       lock-delay = 1;
       mode = "single";
       themes = [ "screensavers-footlogo-floaters" ];
-    };
-
-    "org/mate/desktop/session" = {
-      idle-delay = 30;
     };
 
     "org/mate/settings-daemon/plugins/media-keys" = {
@@ -254,20 +263,8 @@ with lib.hm.gvariant;
       screenreader = "<Alt><Mod4>s";
     };
 
-    "org/mate/desktop/sound" = {
-      event-sounds = true;
-      input-feedback-sounds = true;
-      theme-name = "Yaru";
-    };
-
     "org/mate/stickynotes" = {
       default-font = "Work Sans Medium 10";
-    };
-
-    "org/mate/power-manager" = {
-      button-power = "interactive";
-      sleep-computer-ac = 0;
-      sleep-display-ac = 3600;
     };
 
     "org/mate/system-monitor" = {
