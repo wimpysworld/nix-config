@@ -60,6 +60,7 @@
 
   programs = {
     command-not-found.enable = false;
+    dconf.enable = true;
     nix-index.enable = true;
     nix-index.enableBashIntegration = true;
     nix-index.enableFishIntegration = true;
