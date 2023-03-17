@@ -75,4 +75,6 @@
     nix-index.enableBashIntegration = true;
     nix-index.enableFishIntegration = true;
   };
+
+  security.rtkit.enable = true;
 }
