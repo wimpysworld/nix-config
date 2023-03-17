@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ inputs, pkgs, ... }: {
   imports = [
     ../services/networkmanager.nix
   ];
@@ -12,8 +12,8 @@
     # Add some elementary additional apps and include Yaru for syntax highlighting
     systemPackages = with pkgs; [
       appeditor
+      inputs.nix-software-center.packages.${system}.nix-software-center
       monitor
-      #nix-software-center
       pantheon.sideload
       #pantheon.elementary-tasks
       yaru-theme

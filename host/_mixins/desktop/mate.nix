@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ inputs, pkgs, ... }: {
   imports = [
     ../services/networkmanager.nix
   ];
@@ -20,8 +20,8 @@
       celluloid
       gnome.gucharmap
       gnome-firmware
+      inputs.nix-software-center.packages.${system}.nix-software-center
       networkmanagerapplet
-      #nix-software-center
     ];
   };
 
