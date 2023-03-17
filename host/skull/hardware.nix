@@ -1,6 +1,12 @@
 # Intel Skull Canyon NUC6i7KYK
-{ config, lib, pkgs, ... }:
+{ config, inputs, lib, pkgs, ... }:
 {
+  imports = [
+    nixos-hardware.nixosModules.common-cpu-intel
+    nixos-hardware.nixosModules.common-pc
+    nixos-hardware.nixosModules.common-pc-ssd
+  ];
+
   # TODO: Replace this with disko
   fileSystems."/" = {
     device = "/dev/disk/by-label/root";

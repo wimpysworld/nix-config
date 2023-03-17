@@ -83,15 +83,7 @@
             desktop = "pantheon";
             username = "martin";
           };
-          modules = [
-            ./host
-            nixos-hardware.nixosModules.common-cpu-intel
-            nixos-hardware.nixosModules.common-gpu-amd
-            nixos-hardware.nixosModules.common-gpu-intel
-            nixos-hardware.nixosModules.common-gpu-nvidia
-            nixos-hardware.nixosModules.common-pc
-            nixos-hardware.nixosModules.common-pc-ssd
-          ];
+          modules = [ ./host ];
         };
         designare-headless = nixpkgs.lib.nixosSystem {
           inherit system;
@@ -102,15 +94,7 @@
             desktop = null;
             username = "martin";
           };
-          modules = [
-            ./host
-            nixos-hardware.nixosModules.common-cpu-intel
-            nixos-hardware.nixosModules.common-gpu-amd
-            nixos-hardware.nixosModules.common-gpu-intel
-            nixos-hardware.nixosModules.common-gpu-nvidia
-            nixos-hardware.nixosModules.common-pc
-            nixos-hardware.nixosModules.common-pc-ssd
-          ];
+          modules = [ ./host ];
         };
         skull = nixpkgs.lib.nixosSystem {
           inherit system;
@@ -121,12 +105,7 @@
             desktop = null;
             username = "martin";
           };
-          modules = [
-            ./host
-            nixos-hardware.nixosModules.common-cpu-intel
-            nixos-hardware.nixosModules.common-pc
-            nixos-hardware.nixosModules.common-pc-ssd
-          ];
+          modules = [ ./host ];
         };
         z13 = nixpkgs.lib.nixosSystem {
           inherit system;
@@ -137,10 +116,7 @@
             desktop = "pantheon";
             username = "martin";
           };
-          modules = [
-            ./host
-            nixos-hardware.nixosModules.lenovo-thinkpad-z13
-          ];
+          modules = [ ./host ];
         };
       };
     };

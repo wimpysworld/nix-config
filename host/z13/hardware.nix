@@ -1,6 +1,7 @@
-{ config, lib, pkgs, ... }:
+{ config, inputs, lib, pkgs, ... }:
 {
   imports = [
+    inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13
     ../_mixins/services/pipewire.nix
   ];
 
