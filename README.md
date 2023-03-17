@@ -70,6 +70,18 @@ A `rebuild-home` alias is provided, that does the following:
 home-manager switch -b backup --flake $HOME/Zero/nix-config
 ```
 
+### ISO 📀
+
+A `rebuild-iso` alias is provided, that does the following:
+
+```bash
+pushd $HOME/Zero/nix-config
+nix build .#nixosConfigurations.iso.config.system.build.isoImage
+popd
+```
+
+A live image will be left in `~/$HOME/Zero/nix-config/result/iso/`
+
 ## What's in the box? 🎁
 
 Nix is configured with [flake support](https://zero-to-nix.com/concepts/flakes) and the [unified CLI](https://zero-to-nix.com/concepts/nix#unified-cli) enabled.
@@ -145,7 +157,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
   - Chasing the ideas outlined in these blog posts:
   - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
   - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
-- [ ] Integrate .iso and VM builds via [nixos-generators](https://github.com/nix-community/nixos-generators)
+- [x] Integrate [.iso building](https://www.reddit.com/r/NixOS/comments/y1xo2u/comment/irzwe95/)
 - [x] Integrate Keybase
 - [x] Integrate an Emoji picker
 - [x] Integrate AppCenter and Flathub

@@ -71,6 +71,20 @@
 
       # hostids are generated using: `head -c4 /dev/urandom | od -A none -t x4`
       nixosConfigurations = {
+        iso = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            inherit inputs;
+            hostname = "live";
+            hostid = "09ac7fbb";
+            desktop = null;
+            username = "martin";
+          };
+          modules = [
+            (nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix")
+            ./host
+          ];
+        };
         designare = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
