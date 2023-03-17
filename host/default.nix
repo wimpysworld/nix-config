@@ -1,4 +1,4 @@
-{ desktop, hostid, hostname, lib, modulesPath, pkgs, username, ...}: {
+{ desktop, hostname, lib, modulesPath, username, ...}: {
   # Import host specific boot and hardware configurations.
   # Only include desktop components if one is supplied.
   # - https://nixos.wiki/wiki/Nix_Language:_Tips_%26_Tricks#Coercing_a_relative_path_with_interpolated_variables_to_an_absolute_path_.28for_imports.29
@@ -12,14 +12,5 @@
     ./_mixins/users/${username}
   ] ++ lib.optional (builtins.isString desktop) ./_mixins/desktop;
 
-  # Use passed in hostid and hostname to configure basic networking
-  networking = {
-    hostName = hostname;
-    hostId = hostid;
-    useDHCP = lib.mkDefault true;
-    firewall = {
-      enable = true;
-    };
-  };
   system.stateVersion = "22.11";
 }
