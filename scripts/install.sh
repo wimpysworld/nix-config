@@ -59,14 +59,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     # Coerce home-manager to deploy the user config
     if [ "${USER}" == "martin" ]; then
       home-manager --extra-experimental-features 'nix-command flakes' switch -b backup --flake .#${NAME}@${HOST}
-      rsync -a --delete "${HOME}/" "/mnt/${HOME}/"
+      rsync -a --delete "${HOME}/" "/mnt${HOME}/"
       mkdir -p "/mnt${HOME}/Zero"
       mv "/mnt${HOME}/nix-config" "/mnt${HOME}/Zero/"
-    else
-      env USER="${NAME}" HOME="/home/${NAME}" home-manager --extra-experimental-features 'nix-command flakes' switch -b backup --flake .#${NAME}@${HOST}
-      sudo ln -s "/mnt/nix/var/nix/profiles/per-user/${NAME}" "/mnt/nix/var/nix/profiles/per-user/${USER}"
-      rsync -a --delete "/mnt/home/${USER}/" "/mnt/${USER}/"
-      mkdir -p "/mnt/home/martin/Zero"
-      mv "/mnt/home/martin/nix-config" "/mnt/home/martin/Zero/"
     fi
 fi
