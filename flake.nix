@@ -69,10 +69,21 @@
           };
           modules = [ ./home ];
         };
+        "martin@vm" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgs.legacyPackages.${system};
+          extraSpecialArgs = {
+            inherit inputs stateVersion;
+            desktop = null;
+            hostname = "vm";
+            username = "martin";
+          };
+          modules = [ ./home ];
+        };
       };
 
       # hostids are generated using: `head -c4 /dev/urandom | od -A none -t x4`
       nixosConfigurations = {
+        # nix build .#nixosConfigurations.iso.config.system.build.isoImage
         iso = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
@@ -127,6 +138,17 @@
             hostname = "z13";
             hostid = "b28460d8";
             desktop = "pantheon";
+            username = "martin";
+          };
+          modules = [ ./host ];
+        };
+        vm = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            inherit inputs stateVersion;
+            hostname = "vm";
+            hostid = "37f0bf56";
+            desktop = null;
             username = "martin";
           };
           modules = [ ./host ];
