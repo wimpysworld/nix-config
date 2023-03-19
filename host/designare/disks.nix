@@ -11,7 +11,7 @@
           {
             name = "boot";
             type = "partition";
-            start = "0";
+            start = "0%";
             end = "1M";
             flags = [ "bios_grub" ];
           }
@@ -54,7 +54,7 @@
           {
             type = "partition";
             name = "home";
-            start = "0";
+            start = "0%";
             end = "100%";
             content = {
               type = "filesystem";
