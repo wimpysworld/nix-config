@@ -18,6 +18,7 @@ in
         "wheel"
       ]
       ++ ifExists [
+        "docker"
         "podman"
       ];
     # mkpasswd -m sha-512
