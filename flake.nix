@@ -80,7 +80,7 @@
             hostname = "live";
             hostid = "09ac7fbb";
             desktop = null;
-            username = "martin";
+            username = "nixos";
           };
           modules = [
             (nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix")
