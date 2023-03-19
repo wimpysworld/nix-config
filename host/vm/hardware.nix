@@ -16,11 +16,6 @@
     fsType = "vfat";
   };
 
-  fileSystems."/home" = {
-    device = "/dev/disk/by-partlabel/home";
-    fsType = "xfs";
-  };
-
   swapDevices = [{
     device = "/swap";
     size = 1024;
