@@ -12,6 +12,7 @@
     # Add some elementary additional apps and include Yaru for syntax highlighting
     systemPackages = with pkgs; [
       appeditor
+      gnome.simple-scan
       inputs.nix-software-center.packages.${system}.nix-software-center
       monitor
       pantheon.sideload
