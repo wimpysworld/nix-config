@@ -49,7 +49,7 @@
           };
           modules = [ ./home ];
         };
-        "martin@skull" = home-manager.lib.homeManagerConfiguration {
+          "martin@skull" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
             inherit inputs stateVersion;
