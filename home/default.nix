@@ -9,6 +9,7 @@
 
   home = {
     username = username;
+    # TODO: Make this macOS compatible
     homeDirectory = "/home/" + username;
     stateVersion = stateVersion;
   };
