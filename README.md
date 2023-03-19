@@ -179,7 +179,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Include image assets such as wallpapers and faces
 - [ ] Include Serif fonts
 - [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels
-- [ ] Move user-specific settings out of general user configuration
+- [x] Create common user settings and discrete user settings
 - [x] Move application defaults out of the desktop defaults
 - [ ] Add all computers to the table
 - [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31)
