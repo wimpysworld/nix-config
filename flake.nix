@@ -40,6 +40,7 @@
           };
           modules = [ ./home ];
         };
+
         "martin@designare-headless" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
@@ -50,7 +51,8 @@
           };
           modules = [ ./home ];
         };
-          "martin@skull" = home-manager.lib.homeManagerConfiguration {
+
+        "martin@skull" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
             inherit inputs stateVersion;
@@ -60,6 +62,7 @@
           };
           modules = [ ./home ];
         };
+
         "martin@z13" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
@@ -70,6 +73,7 @@
           };
           modules = [ ./home ];
         };
+
         "martin@vm" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
@@ -99,6 +103,7 @@
             ./host
           ];
         };
+
         designare = nixpkgs.lib.nixosSystem {
           # sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
           inherit system;
@@ -111,6 +116,7 @@
           };
           modules = [ ./host ];
         };
+
         designare-headless = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
@@ -122,6 +128,7 @@
           };
           modules = [ ./host ];
         };
+
         skull = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
@@ -133,6 +140,7 @@
           };
           modules = [ ./host ];
         };
+
         z13 = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
@@ -144,6 +152,7 @@
           };
           modules = [ ./host ];
         };
+
         vm = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
