@@ -53,8 +53,8 @@ read -p "Are you sure? [y/N]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     sudo true
-    #sudo nix run github:nix-community/disko --extra-experimental-features 'nix-command flakes' --no-write-lock-file -- --mode zap_create_mount "host/${TARGET_HOST}/disks.nix"
-    #sudo nixos-install --no-root-password --flake ".#${TARGET_HOST}"
+    sudo nix run github:nix-community/disko --extra-experimental-features 'nix-command flakes' --no-write-lock-file -- --mode zap_create_mount "host/${TARGET_HOST}/disks.nix"
+    sudo nixos-install --no-root-password --flake ".#${TARGET_HOST}"
 
     # Create directories required by Home Manager
     sudo mkdir -p "/nix/var/nix/profiles/per-user/${TARGET_USER}"
