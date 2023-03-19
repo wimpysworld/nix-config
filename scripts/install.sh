@@ -12,7 +12,7 @@ else
 fi
 
 case "${TARGET_HOST}" in
-  designare*) true;;
+  designare*|vm) true;;
   *)
     echo "ERROR! ${TARGET_HOST} is not a supported host"
     exit 1
