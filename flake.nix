@@ -79,11 +79,11 @@
             inherit inputs stateVersion;
             hostname = "live";
             hostid = "09ac7fbb";
-            desktop = null;
+            desktop = "pantheon";
             username = "nixos";
           };
           modules = [
-            (nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix")
+            (nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix")
             ./host
           ];
         };

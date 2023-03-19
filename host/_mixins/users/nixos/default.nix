@@ -1,4 +1,4 @@
-{ config, desktop, lib, pkgs, ...}:
+{ config, desktop, lib, pkgs, username, ...}:
 let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
@@ -27,4 +27,23 @@ in
     packages = [ pkgs.home-manager ];
     shell = pkgs.fish;
   };
+
+  system.activationScripts.installerDesktop = let
+    # Comes from documentation.nix when xserver and nixos.enable are true.
+    manualDesktopFile = "/run/current-system/sw/share/applications/nixos-manual.desktop";
+    homeDir = "/home/nixos/";
+    desktopDir = homeDir + "Desktop/";
+  in ''
+    mkdir -p ${desktopDir}
+    chown nixos ${homeDir} ${desktopDir}
+    ln -sfT ${manualDesktopFile} ${desktopDir + "nixos-manual.desktop"}
+    ln -sfT ${pkgs.gparted}/share/applications/gparted.desktop ${desktopDir + "gparted.desktop"}
+    ln -sfT ${pkgs.pantheon.elementary-terminal}/share/applications/io.elementary.terminal.desktop ${desktopDir + "io.elementary.terminal.desktop"}
+    ln -sfT ${pkgs.calamares-nixos}/share/applications/io.calamares.calamares.desktop ${desktopDir + "io.calamares.calamares.desktop"}
+  '';
+
+  isoImage.edition = lib.mkForce "${desktop}";
+  system.stateVersion = lib.mkForce lib.trivial.release;
+
+  config.services.xserver.displayManager.autoLogin.user = "${username}";
 }
