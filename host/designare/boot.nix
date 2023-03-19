@@ -11,12 +11,9 @@
       availableKernelModules = [
         "ahci"
         "nvme"
-        "rtsx_pci_sdmmc"
-        "sd_mod"
-        "sdhci_pci"
         "uas"
         "usbhid"
-        "usb_storage"
+        "sd_mod"
         "xhci_pci"
       ];
       kernelModules = [
