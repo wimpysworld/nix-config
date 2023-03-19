@@ -24,13 +24,15 @@
     ... } @ inputs:
     let
       system = "x86_64-linux";
+      # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
+      stateVersion = "22.11";
     in
     {
       homeConfigurations = {
         "martin@designare" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             desktop = "pantheon";
             hostname = "designare";
             username = "martin";
@@ -40,7 +42,7 @@
         "martin@designare-headless" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             desktop = null;
             hostname = "designare";
             username = "martin";
@@ -50,7 +52,7 @@
         "martin@skull" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             desktop = null;
             hostname = "skull";
             username = "martin";
@@ -60,7 +62,7 @@
         "martin@z13" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             desktop = "pantheon";
             hostname = "z13";
             username = "martin";
@@ -74,7 +76,7 @@
         iso = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             hostname = "live";
             hostid = "09ac7fbb";
             desktop = null;
@@ -88,7 +90,7 @@
         designare = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             hostname = "designare";
             hostid = "8f03b646";
             desktop = "pantheon";
@@ -99,7 +101,7 @@
         designare-headless = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             hostname = "designare";
             hostid = "8f03b646";
             desktop = null;
@@ -110,7 +112,7 @@
         skull = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             hostname = "skull";
             hostid = "be4cb578";
             desktop = null;
@@ -121,7 +123,7 @@
         z13 = nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
-            inherit inputs;
+            inherit inputs stateVersion;
             hostname = "z13";
             hostid = "b28460d8";
             desktop = "pantheon";

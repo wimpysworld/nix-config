@@ -1,4 +1,4 @@
-{ desktop, hostname, lib, modulesPath, username, ...}: {
+{ desktop, hostname, lib, modulesPath, stateVersion, username, ...}: {
   # Import host specific boot and hardware configurations.
   # Only include desktop components if one is supplied.
   # - https://nixos.wiki/wiki/Nix_Language:_Tips_%26_Tricks#Coercing_a_relative_path_with_interpolated_variables_to_an_absolute_path_.28for_imports.29
@@ -12,6 +12,5 @@
     ./_mixins/users/${username}
   ] ++ lib.optional (builtins.isString desktop) ./_mixins/desktop;
 
-  # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-  system.stateVersion = "22.11";
+  system.stateVersion = stateVersion;
 }

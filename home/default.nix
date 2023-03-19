@@ -1,4 +1,4 @@
-{ config, desktop, inputs, lib, pkgs, username, ... }: {
+{ config, desktop, inputs, lib, pkgs, stateVersion, username, ... }: {
   # Only import desktop configuragion if the host is desktop enabled
   imports = [
     ./_mixins/console
@@ -7,7 +7,6 @@
   home = {
     username = username;
     homeDirectory = "/home/" + username;
-    # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-    stateVersion = "22.11";
+    stateVersion = stateVersion;
   };
 }
