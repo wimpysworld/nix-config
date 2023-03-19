@@ -29,6 +29,7 @@
     in
     {
       homeConfigurations = {
+        # home-manager switch -b backup --flake $HOME/Zero/nix-config
         "martin@designare" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.${system};
           extraSpecialArgs = {
@@ -99,6 +100,7 @@
           ];
         };
         designare = nixpkgs.lib.nixosSystem {
+          # sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
           inherit system;
           specialArgs = {
             inherit inputs stateVersion;
