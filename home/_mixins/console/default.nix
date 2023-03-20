@@ -35,9 +35,9 @@
       nixpkgs-fmt     # Nix code formmater
       nixpkgs-review  # Nix code review
       nyancat         # Terminal rainbow spewing feline
+      ookla-speedtest # Terminal speedtest
       procs           # Modern Unix `ps`
       ripgrep         # Modern Unix `grep`
-      speedtest-rs    # Terminal speedtest
       syft            # Container SBOM generator
       tldr            # Modern Unix `man`
       tokei           # Modern Unix `wc` for code
