@@ -1,4 +1,7 @@
-{ config, desktop, inputs, lib, pkgs, stateVersion, username, ... }: {
+{ config, desktop, inputs, lib, pkgs, stateVersion, username, ... }:
+let
+  inherit (pkgs.stdenv) isDarwin isLinux;
+in {
   # Only import desktop configuration if the host is desktop enabled
   # Only import user specific configuration if they have bespoke settings
   imports = [
@@ -9,8 +12,7 @@
 
   home = {
     username = username;
-    # TODO: Make this macOS compatible
-    homeDirectory = "/home/" + username;
+    homeDirectory = if isDarwin then "/Users/${username}" else "/home/${username}";
     stateVersion = stateVersion;
   };
 }
