@@ -53,18 +53,36 @@ read -p "Are you sure? [y/N]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     sudo true
+
+    # Fudge the per-user profile directories so home-manager hacks later on work
+    #if [ ! -d "/nix/var/nix/profiles/per-user/${TARGET_USER}" ]; then
+    #  sudo mv /nix/var/nix/profiles/per-user/nixos "/nix/var/nix/profiles/per-user/${TARGET_USER}"
+    #  pushd /nix/var/nix/profiles/per-user
+    #  sudo ln -s "${TARGET_USER}" nixos
+    #  popd
+    #fi
+
     sudo nix run github:nix-community/disko --extra-experimental-features 'nix-command flakes' --no-write-lock-file -- --mode zap_create_mount "host/${TARGET_HOST}/disks.nix"
     sudo nixos-install --no-root-password --flake ".#${TARGET_HOST}"
 
     # Create directories required by Home Manager
-    sudo mkdir -p "/nix/var/nix/profiles/per-user/${TARGET_USER}"
-    sudo chown -R 1000:root "/nix/var/nix/profiles/per-user/${TARGET_USER}"
-    sudo mkdir -p "/home/${TARGET_USER}"
-    sudo chown -R 1000:1000 "/home/${TARGET_USER}"
+    #sudo mkdir -p "/nix/var/nix/profiles/per-user/${TARGET_USER}"
+    #sudo chown -R 1000:root "/nix/var/nix/profiles/per-user/${TARGET_USER}"
+    #sudo mkdir -p "/home/${TARGET_USER}"
+    #sudo chown -R 1000:1000 "/home/${TARGET_USER}"
     # Deploy home-manager config
-    env USER="${TARGET_USER}" HOME="/mnt/home/${TARGET_USER}" home-manager --extra-experimental-features 'nix-command flakes' switch -b backup --flake ".#${TARGET_USER}@${TARGET_HOST}"
+    #env USER="${TARGET_USER}" HOME="/mnt/home/${TARGET_USER}" home-manager --extra-experimental-features 'nix-command flakes' switch -b backup --flake ".#${TARGET_USER}@${TARGET_HOST}"
+    # Hacky McHack Face
+    #sudo rsync -a --delete "/nix/var/nix/profiles/per-user/${TARGET_USER}/" "/mnt/nix/var/nix/profiles/per-user/${TARGET_USER}/"
+    #sudo rsync -av "/nix/store/" "/mnt/nix/store/"
 
     # Rsync my nix-config to the target install
     mkdir -p "/mnt/home/${TARGET_USER}/Zero/nix-config"
     rsync -a --delete "${PWD}/" "/mnt/home/${TARGET_USER}/Zero/nix-config/"
+
+    # Re-point the per-user profile directory to the correct location
+    #pushd "/mnt/home/${TARGET_USER}"
+    #rm -f .nix-profile
+    #ln -s "/nix/var/nix/profiles/per-user/${TARGET_USER}/profile" .nix-profile
+    #popd
 fi
