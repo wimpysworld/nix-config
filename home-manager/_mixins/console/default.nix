@@ -31,7 +31,6 @@
       hyperfine       # Terminal benchmarking
       maestral        # Terminal Dropbox client
       most            # Modern Unix `less`
-      nix-direnv      # Nix direnv
       nixpkgs-fmt     # Nix code formmater
       nixpkgs-review  # Nix code review
       nyancat         # Terminal rainbow spewing feline
@@ -55,6 +54,19 @@
   programs = {
     atuin.enableFishIntegration = true;
     bat.enable = true;
+    command-not-found.enable = true;
+    dircolors = {
+      enable = true;
+      enableBashIntegration = true;
+      enableFishIntegration = true;
+    };
+    direnv = {
+      enable = true;
+      enableBashIntegration = true;
+      nix-direnv = {
+        enable = true;
+      };
+    };
     exa = {
       enable = true;
       enableAliases = true;
@@ -62,6 +74,7 @@
     };
     gpg.enable = true;
     home-manager.enable = true;
+    info.enable = true;
     jq.enable = true;
     powerline-go.enable = true;
   };
