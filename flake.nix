@@ -75,7 +75,7 @@
             hostname = "designare";
             username = "martin";
           };
-          modules = [ ./home ];
+          modules = [ ./home-manager ];
         };
 
         "martin@skull" = home-manager.lib.homeManagerConfiguration {
@@ -86,7 +86,7 @@
             hostname = "skull";
             username = "martin";
           };
-          modules = [ ./home ];
+          modules = [ ./home-manager ];
         };
 
         "martin@z13" = home-manager.lib.homeManagerConfiguration {
@@ -97,7 +97,7 @@
             hostname = "z13";
             username = "martin";
           };
-          modules = [ ./home ];
+          modules = [ ./home-manager ];
         };
 
         "martin@vm" = home-manager.lib.homeManagerConfiguration {
@@ -108,7 +108,7 @@
             hostname = "vm";
             username = "martin";
           };
-          modules = [ ./home ];
+          modules = [ ./home-manager ];
         };
       };
 
@@ -125,7 +125,7 @@
           };
           modules = [
             (nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix")
-            ./host
+            ./nixos
           ];
         };
 
@@ -138,7 +138,7 @@
             hostid = "8f03b646";
             username = "martin";
           };
-          modules = [ ./host ];
+          modules = [ ./nixos ];
         };
 
         designare-headless = nixpkgs.lib.nixosSystem {
@@ -149,7 +149,7 @@
             hostid = "8f03b646";
             username = "martin";
           };
-          modules = [ ./host ];
+          modules = [ ./nixos ];
         };
 
         skull = nixpkgs.lib.nixosSystem {
@@ -160,7 +160,7 @@
             hostid = "be4cb578";
             username = "martin";
           };
-          modules = [ ./host ];
+          modules = [ ./nixos ];
         };
 
         z13 = nixpkgs.lib.nixosSystem {
@@ -171,7 +171,7 @@
             hostid = "b28460d8";
             username = "martin";
           };
-          modules = [ ./host ];
+          modules = [ ./nixos ];
         };
 
         vm = nixpkgs.lib.nixosSystem {
@@ -182,7 +182,7 @@
             hostid = "37f0bf56";
             username = "martin";
           };
-          modules = [ ./host ];
+          modules = [ ./nixos ];
         };
       };
     };

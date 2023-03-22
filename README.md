@@ -13,18 +13,18 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 
 ## Structure
 
-- [home]: Home Manager configurations
+- [home-manager]: Home Manager configurations
   - Sane defaults for shell and desktop
-- [host]: NixOS configurations
+- [nixos]: NixOS configurations
   - Includes discrete hardware configurations which leverage the [NixOS Hardware modules](https://github.com/NixOS/nixos-hardware) via [flake.nix].
 - [scripts]: Helper scripts
 
-The [host/_mixins] and [home/_mixins] are a collection of generic configurations that are composited based on the arguments defined in [flake.nix].
+The [nixos/_mixins] and [home-manager/_mixins] are a collection of generic configurations that are composited based on the arguments defined in [flake.nix].
 
-[home]: ./home
-[host]: ./host
-[host/_mixins]: ./host/_mixins
-[home/_mixins]: ./home/_mixins
+[home]: ./home-manager
+[host]: ./nixos
+[host/_mixins]: ./nixos/_mixins
+[home/_mixins]: ./home-manager/_mixins
 [flake.nix]: ./flake.nix
 [scripts]: ./scripts
 
@@ -100,12 +100,12 @@ This is the directory structure I'm using.
 
 ```
 .
-├── home
+├── home-manager
 │   ├── _mixins
 │   │   ├── console
 │   │   └── desktop
 │   └── default.nix
-├── host
+├── nixos
 │   ├── _mixins
 │   │   ├── base
 │   │   ├── boxes
@@ -125,12 +125,12 @@ This is the directory structure I'm using.
 
 [Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a somewhat *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [Tailscale], [Podman & Distrobox] and, of course, a delightfully configured [nano]. (*Fight me!* 🥊)
 
-[Fish shell]: ./home/_mixins/console/fish.nix
-[Modern Unix]: ./home/_mixins/console/default.nix
-[OpenSSH]: ./host/_mixins/services/openssh.nix
-[Tailscale]: ./host/_mixins/services/tailscale.nix
-[Podman & Distrobox]: ./host/_mixins/boxes/podman.nix
-[nano]: ./host/_mixins/base/nano.nix
+[Fish shell]: ./home-manager/_mixins/console/fish.nix
+[Modern Unix]: ./home-manager/_mixins/console/default.nix
+[OpenSSH]: ./nixos/_mixins/services/openssh.nix
+[Tailscale]: ./nixos/_mixins/services/tailscale.nix
+[Podman & Distrobox]: ./nixos/_mixins/boxes/podman.nix
+[nano]: ./nixos/_mixins/base/nano.nix
 
 ![neofetch on Designare](.github/screenshots/neofetch.png)
 
@@ -138,22 +138,22 @@ This is the directory structure I'm using.
 
 MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. The [font configuration] is common with both desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code). The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as [Pipewire], Bluetooth, [Avahi], [CUPS], [SANE] and [NetworkManager].
 
-[font configuration]: ./host/_mixins/desktop/default.nix
-[Pipewire]: ./host/_mixins/services/pipewire.nix
-[Avahi]: ./host/_mixins/services/avahi.nix
-[CUPS]: ./host/_mixins/services/cups.nix
-[SANE]: ./host/_mixins/services/sane.nix
-[NetworkManager]: ./host/_mixins/services/networkmanager.nix
+[font configuration]: ./nixos/_mixins/desktop/default.nix
+[Pipewire]: ./nixos/_mixins/services/pipewire.nix
+[Avahi]: ./nixos/_mixins/services/avahi.nix
+[CUPS]: ./nixos/_mixins/services/cups.nix
+[SANE]: ./nixos/_mixins/services/sane.nix
+[NetworkManager]: ./nixos/_mixins/services/networkmanager.nix
 
 |  Desktop  |       System       |       Configuration       |             Theme            |
 | :-------: | :----------------: | :-----------------------: | :--------------------------: |
 | MATE      | [MATE Install]     | [MATE Configuration]      | Yaru Magenta (Dark)          |
 | Pantheon  | [Pantheon Install] | [Pantheon Configuration]  | elementary Bubble Gum (Dark) |
 
-[MATE Install]: ./host/_mixins/desktop/mate.nix
-[Pantheon Install]: ./host/_mixins/desktop/pantheon.nix
-[MATE Configuration]: ./home/_mixins/desktop/mate.nix
-[Pantheon Configuration]: ./home/_mixins/desktop/pantheon.nix
+[MATE Install]: ./nixos/_mixins/desktop/mate.nix
+[Pantheon Install]: ./nixos/_mixins/desktop/pantheon.nix
+[MATE Configuration]: ./home-manager/_mixins/desktop/mate.nix
+[Pantheon Configuration]: ./home-manager/_mixins/desktop/pantheon.nix
 
 ## Eye Candy 👀🍬
 
