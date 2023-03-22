@@ -117,6 +117,8 @@ This is the directory structure I'm using.
 │   ├── skull
 │   ├── z13
 │   └── default.nix
+├── overlays
+├── pkgs
 ├── scripts
 └── flake.nix
 ```
@@ -161,31 +163,43 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ## TODO 🗒️
 
+### Hardware
+
+- [ ] Add all computers to the table
 - [ ] (***WIP***) Implement [Disko](https://github.com/nix-community/disko) partitioning
   - Chasing the ideas outlined in these blog posts:
   - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
   - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
 - [x] Integrate [.iso building](https://www.reddit.com/r/NixOS/comments/y1xo2u/comment/irzwe95/)
-- [x] Integrate Keybase
+- [x] Integrate OpenRGB
+- [x] Integrate OpenRazer
+- [ ] Integrate StreamDeck
+- [ ] Migrate (*maybe*) to ZFS
+  - With backups via [`zrepl`](https://zrepl.github.io/)
+- [x] Fix Magewell driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
+
+### Applications
+
 - [x] Integrate an Emoji picker
 - [x] Integrate AppCenter and Flathub
 - [ ] Integrate Steam
-- [x] Integrate OpenRGB
-- [x] Integrate OpenRazer
-- [ ] Integrate Syncthing
+
+### Services
+
 - [x] Integrate fwupd
+- [x] Integrate Keybase
+- [ ] Integrate Syncthing
+
+### Configuration
+
 - [ ] Integrate dotfiles
-- [x] Integrate best practice from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
+- [x] Integrate capabilities from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
 - [ ] Include image assets such as wallpapers and faces
 - [ ] Include Serif fonts
 - [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels
 - [x] Create common user settings and discrete user settings
 - [x] Move application defaults out of the desktop defaults
-- [ ] Add all computers to the table
 - [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31)
-- [x] Fix Magewell driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
-- [ ] Migrate (*maybe*) to ZFS
-  - With backups via [`zrepl`](https://zrepl.github.io/)
 
 ## Inspirations 🧑‍🏫
 
