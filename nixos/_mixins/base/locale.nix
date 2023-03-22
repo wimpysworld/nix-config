@@ -1,6 +1,5 @@
 { ... }: {
-  time.timeZone = "Europe/London";
-
+  console.keyMap = "uk";
   i18n = {
     defaultLocale = "en_GB.utf8";
     extraLocaleSettings = {
@@ -15,4 +14,5 @@
       LC_TIME = "en_GB.utf8";
     };
   };
+  time.timeZone = "Europe/London";
 }
