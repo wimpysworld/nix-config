@@ -1,7 +1,11 @@
 {
   description = "Wimpy's NixOS and Home Manager Configuration";
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
+    # You can access packages and modules from different nixpkgs revs at the
+    # same time. See 'unstable-packages' overlay in 'overlays/default.nix'.
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -23,17 +27,39 @@
     nix-software-center,
     ... } @ inputs:
     let
-      system = "x86_64-linux";
+      inherit (self) outputs;
+      forAllSystems = nixpkgs.lib.genAttrs [
+        "aarch64-linux"
+        "i686-linux"
+        "x86_64-linux"
+        "aarch64-darwin"
+        "x86_64-darwin"
+      ];
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "22.11";
     in
-    {
+    rec {
+      # Custom packages; acessible via 'nix build', 'nix shell', etc
+      packages = forAllSystems (system:
+        let pkgs = nixpkgs.legacyPackages.${system};
+        in import ./pkgs { inherit pkgs; }
+      );
+
+      # Devshell for bootstrapping; acessible via 'nix develop' or 'nix-shell' (legacy)
+      devShells = forAllSystems (system:
+        let pkgs = nixpkgs.legacyPackages.${system};
+        in import ./shell.nix { inherit pkgs; }
+      );
+
+      # Custom packages and modifications, exported as overlays
+      overlays = import ./overlays { inherit inputs; };
+
       homeConfigurations = {
         # home-manager switch -b backup --flake $HOME/Zero/nix-config
         "martin@designare" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
           extraSpecialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
             desktop = "pantheon";
             hostname = "designare";
             username = "martin";
@@ -42,9 +68,9 @@
         };
 
         "martin@designare-headless" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
           extraSpecialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
             desktop = null;
             hostname = "designare";
             username = "martin";
@@ -53,9 +79,9 @@
         };
 
         "martin@skull" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
           extraSpecialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
             desktop = null;
             hostname = "skull";
             username = "martin";
@@ -64,9 +90,9 @@
         };
 
         "martin@z13" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
           extraSpecialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
             desktop = "pantheon";
             hostname = "z13";
             username = "martin";
@@ -75,10 +101,10 @@
         };
 
         "martin@vm" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
           extraSpecialArgs = {
-            inherit inputs stateVersion;
-            desktop = null;
+            inherit inputs outputs stateVersion;
+            desktop = "pantheon";
             hostname = "vm";
             username = "martin";
           };
@@ -90,12 +116,11 @@
       nixosConfigurations = {
         # nix build .#nixosConfigurations.iso.config.system.build.isoImage
         iso = nixpkgs.lib.nixosSystem {
-          inherit system;
           specialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
+            desktop = "pantheon";
             hostname = "live";
             hostid = "09ac7fbb";
-            desktop = "pantheon";
             username = "nixos";
           };
           modules = [
@@ -106,60 +131,55 @@
 
         designare = nixpkgs.lib.nixosSystem {
           # sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
-          inherit system;
           specialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
+            desktop = "pantheon";
             hostname = "designare";
             hostid = "8f03b646";
-            desktop = "pantheon";
             username = "martin";
           };
           modules = [ ./host ];
         };
 
         designare-headless = nixpkgs.lib.nixosSystem {
-          inherit system;
           specialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
+            desktop = null;
             hostname = "designare";
             hostid = "8f03b646";
-            desktop = null;
             username = "martin";
           };
           modules = [ ./host ];
         };
 
         skull = nixpkgs.lib.nixosSystem {
-          inherit system;
           specialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
+            desktop = null;
             hostname = "skull";
             hostid = "be4cb578";
-            desktop = null;
             username = "martin";
           };
           modules = [ ./host ];
         };
 
         z13 = nixpkgs.lib.nixosSystem {
-          inherit system;
           specialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
+            desktop = "pantheon";
             hostname = "z13";
             hostid = "b28460d8";
-            desktop = "pantheon";
             username = "martin";
           };
           modules = [ ./host ];
         };
 
         vm = nixpkgs.lib.nixosSystem {
-          inherit system;
           specialArgs = {
-            inherit inputs stateVersion;
+            inherit inputs outputs stateVersion;
+            desktop = "pantheon";
             hostname = "vm";
             hostid = "37f0bf56";
-            desktop = null;
             username = "martin";
           };
           modules = [ ./host ];

@@ -175,7 +175,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Integrate Syncthing
 - [x] Integrate fwupd
 - [ ] Integrate dotfiles
-- [ ] (***WIP***) Integrate best practice from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
+- [x] Integrate best practice from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
 - [ ] Include image assets such as wallpapers and faces
 - [ ] Include Serif fonts
 - [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels

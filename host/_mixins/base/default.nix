@@ -1,4 +1,4 @@
-{ config, hostid, hostname, inputs, lib, pkgs, ...}: {
+{ hostid, hostname, lib, pkgs, ...}: {
   imports = [
     ./locale.nix
     ./nano.nix
@@ -46,56 +46,12 @@
     };
   };
 
-  nix = {
-    gc = {
-      automatic = true;
-      options = "--delete-older-than 14d";
-    };
-
-    # This will add your inputs to the system's legacy channels
-    # Making legacy nix commands consistent as well, awesome!
-    nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
-
-    # This will add each flake input as a registry
-    # To make nix3 commands consistent with your flake
-    registry = lib.mapAttrs (_: value: { flake = value; }) inputs;
-
-    optimise.automatic = true;
-    settings = {
-      auto-optimise-store = true;
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-    };
-  };
-
-  nixpkgs = {
-    # You can add overlays here
-    overlays = [
-      # If you want to use overlays exported from other flakes:
-      # neovim-nightly-overlay.overlays.default
-
-      # Or define it inline, for example:
-      # (final: prev: {
-      #   hi = final.hello.overrideAttrs (oldAttrs: {
-      #     patches = [ ./change-hello-to-hi.patch ];
-      #   });
-      # })
-    ];
-    # Configure your nixpkgs instance
-    config = {
-      # Disable if you don't want unfree packages
-      allowUnfree = true;
-    };
-  };
-
   programs = {
     command-not-found.enable = false;
     dconf.enable = true;
-    nix-index.enable = true;
-    nix-index.enableBashIntegration = true;
-    nix-index.enableFishIntegration = true;
+    #nix-index.enable = true;
+    #nix-index.enableBashIntegration = true;
+    #nix-index.enableFishIntegration = true;
   };
 
   security.rtkit.enable = true;
