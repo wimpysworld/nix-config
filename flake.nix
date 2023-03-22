@@ -78,6 +78,17 @@
           modules = [ ./home-manager ];
         };
 
+        "martin@ripper" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          extraSpecialArgs = {
+            inherit inputs outputs stateVersion;
+            desktop = "pantheon";
+            hostname = "ripper";
+            username = "martin";
+          };
+          modules = [ ./home-manager ];
+        };
+
         "martin@skull" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.x86_64-linux;
           extraSpecialArgs = {
