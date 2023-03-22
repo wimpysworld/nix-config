@@ -86,7 +86,6 @@ clock-format = %a, %b %d  %H:%M
           ];
         };
       };
-      layout = "gb";
     };
   };
 }

@@ -85,7 +85,6 @@ clock-format = %a, %b %d  %H:%M
       desktopManager = {
         mate.enable = true;
       };
-      layout = "gb";
     };
   };
   xdg.portal.extraPortals = [ xdg-desktop-portal-gtk ];
