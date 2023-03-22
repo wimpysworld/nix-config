@@ -1,9 +1,9 @@
-{ ... }: {
+{ lib, ... }: {
   services.openssh = {
     enable = true;
     #settings = {
       passwordAuthentication = false;
-      permitRootLogin = "no";
+      permitRootLogin = lib.mkDefault "no";
     #};
   };
   programs.ssh.startAgent = true;

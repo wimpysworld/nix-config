@@ -123,6 +123,7 @@
             hostid = "09ac7fbb";
             username = "nixos";
           };
+          system = "x86_64-linux";
           modules = [
             (nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix")
             ./nixos
