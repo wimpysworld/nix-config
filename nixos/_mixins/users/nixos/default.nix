@@ -8,7 +8,7 @@ in
     ./packages-console.nix
   ] ++ lib.optional (builtins.isString desktop) ./packages-desktop.nix;
 
-  users.users.nixos = {
+  config.users.users.nixos = {
     description = "NixOS";
     extraGroups = [
         "audio"
