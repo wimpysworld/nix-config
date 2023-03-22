@@ -89,38 +89,38 @@
           modules = [ ./home-manager ];
         };
 
-        "martin@z13" = home-manager.lib.homeManagerConfiguration {
+        "martin@zed" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.x86_64-linux;
           extraSpecialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostname = "z13";
+            hostname = "zed";
             username = "martin";
           };
           modules = [ ./home-manager ];
         };
 
-        "martin@vm" = home-manager.lib.homeManagerConfiguration {
+        "martin@phony" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgs.legacyPackages.x86_64-linux;
           extraSpecialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostname = "vm";
+            hostname = "phony";
             username = "martin";
           };
           modules = [ ./home-manager ];
         };
       };
 
-      # hostids are generated using: `head -c4 /dev/urandom | od -A none -t x4`
+      # hostids are generated using `mkhostid` alias
       nixosConfigurations = {
         # nix build .#nixosConfigurations.iso.config.system.build.isoImage
         iso = nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostname = "live";
             hostid = "09ac7fbb";
+            hostname = "live";
             username = "nixos";
           };
           system = "x86_64-linux";
@@ -135,8 +135,8 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostname = "designare";
             hostid = "8f03b646";
+            hostname = "designare";
             username = "martin";
           };
           modules = [ ./nixos ];
@@ -146,8 +146,8 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = null;
-            hostname = "designare";
             hostid = "8f03b646";
+            hostname = "designare";
             username = "martin";
           };
           modules = [ ./nixos ];
@@ -157,30 +157,30 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = null;
-            hostname = "skull";
             hostid = "be4cb578";
+            hostname = "skull";
             username = "martin";
           };
           modules = [ ./nixos ];
         };
 
-        z13 = nixpkgs.lib.nixosSystem {
+        zed = nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostname = "z13";
             hostid = "b28460d8";
+            hostname = "zed";
             username = "martin";
           };
           modules = [ ./nixos ];
         };
 
-        vm = nixpkgs.lib.nixosSystem {
+        phony = nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostname = "vm";
             hostid = "37f0bf56";
+            hostname = "phony";
             username = "martin";
           };
           modules = [ ./nixos ];

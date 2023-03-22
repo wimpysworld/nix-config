@@ -5,11 +5,12 @@
 
 This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for configuring my computers and home environment. These are the computers this configuration currently manages:
 
-|  Hostname   |        Model        |  Role   |  Status  |
-| :---------: | :-----------------: | :-----: | :------- |
-| `designare` | DIY i9-9900K        | Desktop | Done     |
-| `z13`       | Lenono ThinkPad Z13 | Laptop  | WIP      |
-| `skull`     | Intel NUC6i7KYK     | Server  | WIP      |
+|  Hostname   |        Model        |   Role   |  Status  |
+| :---------: | :-----------------: | :------: | :------- |
+| `designare` | DIY i9-9900K        | Desktop  | Done     |
+| `phony`     | VM Guest            | Desktop  | WIP      |
+| `skull`     | Intel NUC6i7KYK     | Server   | WIP      |
+| `zed`       | Lenono ThinkPad Z13 | Laptop   | WIP      |
 
 ## Structure
 
