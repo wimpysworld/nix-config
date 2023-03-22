@@ -28,6 +28,8 @@
       gtop            # Modern Unix `top`
       hexyl           # Modern Unix `hexedit`
       httpie          # Terminal HTTP client
+      hueadm          # Terminal Philips Hue client
+      hugo            # Terminal static site generator
       hyperfine       # Terminal benchmarking
       maestral        # Terminal Dropbox client
       most            # Modern Unix `less`
