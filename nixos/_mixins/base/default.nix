@@ -7,13 +7,6 @@
     ../services/tailscale.nix
   ];
 
-  console = {
-    earlySetup = true;
-    font = "ter-powerline-v28n"; # Number indicates pixel size of the font
-    packages = [ pkgs.terminus_font pkgs.powerline-fonts ];
-    keyMap = "uk";
-  };
-
   environment.systemPackages = with pkgs; [
     binutils
     curl
