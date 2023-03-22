@@ -177,6 +177,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate OpenRGB
 - [x] Integrate OpenRazer
 - [ ] Integrate StreamDeck
+- [x] Integrate Xone
 - [ ] Migrate (*maybe*) to ZFS
   - With backups via [`zrepl`](https://zrepl.github.io/)
 - [x] Fix Magewell driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)

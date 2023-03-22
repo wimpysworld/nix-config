@@ -85,6 +85,7 @@
       syncEffectsEnabled = true;
       users = [ "${username}" ];
     };
+    xone.enable = true;
   };
 
   services = {
