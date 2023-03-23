@@ -312,6 +312,11 @@ with lib.hm.gvariant;
 
   gtk = {
     enable = true;
+    cursorTheme = {
+      name = "Yaru";
+      package = pkgs.yaru-theme;
+      size = 32;
+    };
 
     font = {
       name = "Work Sans 12";
@@ -349,8 +354,8 @@ with lib.hm.gvariant;
   };
 
   home.pointerCursor = {
-    package = pkgs.yaru-theme;
     name = "Yaru";
+    package = pkgs.yaru-theme;
     size = 32;
     gtk.enable = true;
     x11.enable = true;

@@ -146,6 +146,11 @@ with lib.hm.gvariant;
 
   gtk = {
     enable = true;
+    cursorTheme = {
+      name = "elementary";
+      package = pkgs.pantheon.elementary-icon-theme;
+      size = 32;
+    };
 
     font = {
       name = "Work Sans 12";

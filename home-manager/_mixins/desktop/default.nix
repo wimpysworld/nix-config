@@ -7,6 +7,16 @@
     (./. + "/${desktop}.nix")
   ];
 
+  fonts.fontconfig.enable = true;
+  home.packages = with pkgs; [
+    (nerdfonts.override { fonts = [ "FiraCode" "UbuntuMono"]; })
+    work-sans
+    joypixels
+    ubuntu_font_family
+  ];
+  # Accept the joypixels license
+  nixpkgs.config.joypixels.acceptLicense = true;
+
   home.file = {
     "${config.xdg.configHome}/autostart/enable-flathub.desktop".text = "
 [Desktop Entry]
