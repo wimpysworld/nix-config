@@ -192,7 +192,9 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 - [x] Integrate fwupd
 - [x] Integrate Keybase
+- [ ] Integrate nullmailer
 - [ ] Integrate Syncthing
+- [ ] Integrate sshgaurd
 
 ### Configuration
 
@@ -207,7 +209,11 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Shell
 
+- [ ] fzf
+- [ ] tmate or tmux
 - [ ] (***WIP***) micro
+- [ ] nnn or broot or felix or ranger
+
 ## Inspirations 🧑‍🏫
 
 Before preparing my NixOS and Home Manager configurations I took a look at what other Nix users are doing. My colleagues shared their configs and tips which included [nome from Luc Perkins], [nixos-config from Cole Helbling], [flake from Ana Hoverbear] and her [Declarative GNOME configuration with NixOS] blog post. A couple of friends also shared their configurations and here's [Jon Seager's nixos-config] and [Aaron Honeycutt's nix-configs].
