@@ -3,6 +3,7 @@
     fish = {
       enable = true;
       shellAbbrs = {
+        ip = "ip --color --brief";
         mkhostid = "head -c4 /dev/urandom | od -A none -t x4";
         # https://github.com/NixOS/nixpkgs/issues/191128#issuecomment-1246030417
         nix-hash-sha256 = "nix-hash --flat --base32 --type sha256";
@@ -15,14 +16,13 @@
       shellAliases = {
         cat = "bat";
         diff = "diffr";
-        ip = "ip --color";
-        ipb = "ip --color --brief";
+        htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         less = "bat";
         man = "env PAGER=most man";
         open = "xdg-open";
         pubip = "curl -s ifconfig.me/ip";
         #pubip = "curl -s https://api.ipify.org";
-        top = "btm --basic --tree";
+        top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "exa --tree";
         moon = "curl -s wttr.in/Moon";
         wttr = "curl -scurl -s wttr.in && curl -s v2.wttr.in";

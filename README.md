@@ -205,6 +205,9 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Move application defaults out of the desktop defaults
 - [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31)
 
+### Shell
+
+- [ ] (***WIP***) micro
 ## Inspirations 🧑‍🏫
 
 Before preparing my NixOS and Home Manager configurations I took a look at what other Nix users are doing. My colleagues shared their configs and tips which included [nome from Luc Perkins], [nixos-config from Cole Helbling], [flake from Ana Hoverbear] and her [Declarative GNOME configuration with NixOS] blog post. A couple of friends also shared their configurations and here's [Jon Seager's nixos-config] and [Aaron Honeycutt's nix-configs].
