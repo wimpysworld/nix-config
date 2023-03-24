@@ -16,9 +16,10 @@
       shellAliases = {
         cat = "bat";
         diff = "diffr";
+        glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
-        less = "bat";
-        man = "env PAGER=most man";
+        less = "moar";
+        more = "moar";
         open = "xdg-open";
         pubip = "curl -s ifconfig.me/ip";
         #pubip = "curl -s https://api.ipify.org";

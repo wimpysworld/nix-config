@@ -3,7 +3,6 @@
 
   environment.systemPackages = with pkgs; [
     buildah
-    distrobox
     podman-compose
     podman-tui
   ];

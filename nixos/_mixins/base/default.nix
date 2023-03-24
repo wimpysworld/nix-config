@@ -12,7 +12,6 @@
     curl
     desktop-file-utils
     file
-    ffmpeg
     git
     home-manager
     killall
