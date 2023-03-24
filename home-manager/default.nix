@@ -20,6 +20,7 @@ in {
   home = {
     username = username;
     homeDirectory = if isDarwin then "/Users/${username}" else "/home/${username}";
+    sessionPath = [ "$HOME/.local/bin" ];
     stateVersion = stateVersion;
   };
 
