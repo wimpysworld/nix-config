@@ -24,10 +24,10 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 
 The [nixos/_mixins] and [home-manager/_mixins] are a collection of generic configurations that are composited based on the arguments defined in [flake.nix].
 
-[home]: ./home-manager
-[host]: ./nixos
-[host/_mixins]: ./nixos/_mixins
-[home/_mixins]: ./home-manager/_mixins
+[home-manager]: ./home-manager
+[nixos]: ./nixos
+[nixos/_mixins]: ./nixos/_mixins
+[home-manager/_mixins]: ./home-manager/_mixins
 [flake.nix]: ./flake.nix
 [scripts]: ./scripts
 
