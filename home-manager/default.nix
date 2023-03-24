@@ -49,4 +49,12 @@ in {
       allowUnfreePredicate = (_: true);
     };
   };
+
+  nix = {
+    package = lib.mkDefault pkgs.unstable.nix;
+    settings = {
+      experimental-features = [ "nix-command" "flakes" ];
+      warn-dirty = false;
+    };
+  };
 }

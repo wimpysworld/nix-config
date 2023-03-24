@@ -1,4 +1,4 @@
-{ config, desktop, hostname, inputs, lib, modulesPath, outputs, stateVersion, username, ...}: {
+{ config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, stateVersion, username, ...}: {
   # Import host specific boot and hardware configurations.
   # Only include desktop components if one is supplied.
   # - https://nixos.wiki/wiki/Nix_Language:_Tips_%26_Tricks#Coercing_a_relative_path_with_interpolated_variables_to_an_absolute_path_.28for_imports.29
@@ -52,6 +52,7 @@
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
     optimise.automatic = true;
+    package = pkgs.unstable.nix;
     settings = {
       auto-optimise-store = true;
       experimental-features = [
