@@ -99,7 +99,13 @@
       enableBashIntegration = true;
       enableFishIntegration = true;
     };
-    bat.enable = true;
+    bat = {
+      enable = true;
+      extraPackages = with pkgs.bat-extras; [
+        batwatch
+        prettybat
+      ];
+    };
     bottom = {
       enable = true;
       settings = {
