@@ -70,10 +70,11 @@
       zsync           # Terminal file sync
     ];
     sessionVariables = {
-      EDITOR = "nano";
+      EDITOR = "micro";
       PAGER = "most";
       SYSTEMD_EDITOR = "nano";
-      VISUAL = "nano";
+      SYSTEMD_EDITOR = "micro";
+      VISUAL = "micro";
     };
   };
 
@@ -130,7 +131,17 @@
     home-manager.enable = true;
     info.enable = true;
     jq.enable = true;
-    micro.enable = true;
+    micro = {
+      enable = true;
+      settings = {
+        colorcolumn = 80;
+        diffgutter = true;
+        rmtrailingws = true;
+        savecursor = true;
+        saveundo = true;
+        scrollbar = true;
+      };
+    };
     powerline-go.enable = true;
     zoxide = {
       enable = true;
