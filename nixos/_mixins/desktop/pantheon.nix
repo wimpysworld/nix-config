@@ -11,12 +11,20 @@
 
     # Add some elementary additional apps and include Yaru for syntax highlighting
     systemPackages = with pkgs; [
-      appeditor
+      appeditor                   # elementary OS menu editor
+      cipher                      # elementary OS text encoding/decoding
+      #elementary-planner         # UNSTABLE: elementary OS planner with Todoist support
+      formatter                   # elementary OS filesystem formatter
       gnome.simple-scan
+      indicator-application-gtk3
       inputs.nix-software-center.packages.${system}.nix-software-center
-      monitor
-      pantheon.sideload
-      #pantheon.elementary-tasks
+      minder                      # elementary OS mind-mapping
+      monitor                     # elementary OS system monitor
+      #nasc                       # UNSTABLE: elementary OS maths notebook
+      notes-up                    # elementary OS Markdown editor
+      pantheon.sideload           # elementary OS Flatpak installer
+      tootle                      # elementary OS Mastodon client
+      torrential                  # elementary OS torrent client
       yaru-theme
     ];
   };
