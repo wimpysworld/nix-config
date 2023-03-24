@@ -1,9 +1,11 @@
-{ ... }: {
+{ pkgs, ... }: {
   programs = {
     gh = {
       enable = true;
+      extensions = with pkgs.unstable; [ gh-markdown-preview ];
       settings = {
         git_protocol = "ssh";
+        prompt = "enabled";
       };
     };
 
@@ -38,8 +40,9 @@
         "*.log"
         "*.out"
         ".DS_Store"
-        "dist/"
         "bin/"
+        "dist/"
+        "result"
       ];
     };
   };
