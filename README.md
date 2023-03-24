@@ -190,6 +190,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Services
 
+- [ ] Integrate cockpit
 - [x] Integrate fwupd
 - [x] Integrate Keybase
 - [ ] Integrate nullmailer
