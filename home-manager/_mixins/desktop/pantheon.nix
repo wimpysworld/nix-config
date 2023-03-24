@@ -67,6 +67,7 @@ with lib.hm.gvariant;
       document-font-name = "Work Sans 12";
       font-name = "Work Sans 12";
       gtk-theme = "io.elementary.stylesheet.bubblegum";
+      gtk-enable-primary-paste = true;
       icon-theme = "elementary";
       monospace-font-name = "FiraCode Nerd Font Medium 13";
       text-scaling-factor = 1.25;
@@ -136,7 +137,7 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/settings-daemon/plugins/xsettings" = {
-      overrides = ''{"Gtk/DialogsUseHeader": <0>, "Gtk/ShellShowsAppMenu": <0>, "Gtk/EnablePrimaryPaste": <0>, "Gtk/DecorationLayout": <":minimize,maximize,close,menu">, "Gtk/ShowUnicodeMenu": <0>}'';
+      overrides = "{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <1>, 'Gtk/DecorationLayout': <':minimize,maximize,close,menu'>, 'Gtk/ShowUnicodeMenu': <0>}";
     };
 
     "org/pantheon/desktop/gala/behavior" = {
