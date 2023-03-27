@@ -51,6 +51,11 @@ with lib.hm.gvariant;
     #  picture-uri = "file:///home/martin/.local/share/backgrounds/2023-02-09-20-47-36-DeterminateColorway-2560x1440.png";
     #};
 
+    "org/gnome/desktop/default/applications/terminal" = {
+      exec = "tilix";
+      exec-arg = "-e";
+    };
+
     "org/gnome/desktop/datetime" = {
       automatic-timezone = true;
     };
@@ -102,17 +107,23 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/settings-daemon/plugins/media-keys" = {
-      custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/" "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/" ];
-      terminal = [ "<Primary><Alt>t" ];
+      custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/" "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/" "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/" ];
+      terminal = [ "" ];
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       binding = "<Super>t";
-      command = "io.elementary.terminal -n";
-      name = "io.elementary.terminal -n";
+      command = "tilix";
+      name = "tilix";
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      binding = "<Primary><Alt>t";
+      command = "tilix";
+      name = "tilix";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
       binding = "<Super>e";
       command = "io.elementary.files -n ~/";
       name = "io.elementary.files -n ~/";
