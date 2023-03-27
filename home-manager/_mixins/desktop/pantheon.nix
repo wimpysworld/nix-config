@@ -155,6 +155,10 @@ with lib.hm.gvariant;
     "org/pantheon/desktop/gala/behavior" = {
       overlay-action = "io.elementary.wingpanel --toggle-indicator=app-launcher";
     };
+
+    "org/pantheon/desktop/gala/mask-corners" = {
+      enable = false;
+    };
   };
 
   gtk = {
