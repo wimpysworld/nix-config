@@ -208,4 +208,17 @@ Terminal=false
 NoDisplay=true
 StartupNotify=false";
   };
-}
+
+  home.file = {
+    "${config.xdg.configHome}/autostart/ibus-daemon.desktop".text = "
+[Desktop Entry]
+Name=IBus Daemon
+Comment=IBus Daemon
+Type=Application
+Exec=ibus-daemon --daemonize --desktop=pantheon
+Categories=
+Terminal=false
+NoDisplay=true
+StartupNotify=false";
+  };
+
