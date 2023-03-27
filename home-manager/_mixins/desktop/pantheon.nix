@@ -135,6 +135,10 @@ with lib.hm.gvariant;
       sleep-inactive-ac-type = "nothing";
     };
 
+    "org/gnome/settings-daemon/plugins/xsettings" = {
+      overrides = "{\'Gtk/DialogsUseHeader\': <0>, \'Gtk/ShellShowsAppMenu\': <0>, \'Gtk/EnablePrimaryPaste\': <1>, \'Gtk/DecorationLayout\': <\':minimize,maximize,close,menu\'>, \'Gtk/ShowUnicodeMenu\': <0>}";
+    };
+
     "org/gtk/gtk4/Settings/FileChooser" = {
       clock-format = "24h";
     };
@@ -145,10 +149,6 @@ with lib.hm.gvariant;
 
     "org/pantheon/desktop/gala/appearance" = {
       button-layout = ":minimize,maximize,close";
-    };
-
-    "org/gnome/settings-daemon/plugins/xsettings" = {
-      overrides = "{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <1>, 'Gtk/DecorationLayout': <':minimize,maximize,close,menu'>, 'Gtk/ShowUnicodeMenu': <0>}";
     };
 
     "org/pantheon/desktop/gala/behavior" = {
@@ -232,4 +232,4 @@ Terminal=false
 NoDisplay=true
 StartupNotify=false";
   };
-
+}
