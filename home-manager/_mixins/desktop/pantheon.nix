@@ -45,6 +45,7 @@ with lib.hm.gvariant;
 
     "io/elementary/terminal/settings" = {
       audible-bell = false;
+      unsafe-paste-alert = false;
     };
 
     #"org/gnome/desktop/background" = {
