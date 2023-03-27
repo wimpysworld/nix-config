@@ -76,7 +76,7 @@ with lib.hm.gvariant;
       gtk-enable-primary-paste = true;
       icon-theme = "elementary";
       monospace-font-name = "FiraCode Nerd Font Medium 13";
-      text-scaling-factor = 1.25;
+      text-scaling-factor = 1.0;
     };
 
     "org/gnome/desktop/session" = {
