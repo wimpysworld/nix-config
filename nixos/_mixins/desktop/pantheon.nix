@@ -23,6 +23,7 @@
       #nasc                       # UNSTABLE: elementary OS maths notebook
       notes-up                    # elementary OS Markdown editor
       pantheon.sideload           # elementary OS Flatpak installer
+      tilix                       # Tiling terminal emulator
       tootle                      # elementary OS Mastodon client
       torrential                  # elementary OS torrent client
       yaru-theme

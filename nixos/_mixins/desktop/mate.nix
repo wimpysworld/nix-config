@@ -23,6 +23,7 @@
       gnome.simple-scan
       inputs.nix-software-center.packages.${system}.nix-software-center
       networkmanagerapplet
+      tilix
     ];
   };
 

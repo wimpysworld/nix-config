@@ -45,11 +45,17 @@ with lib.hm.gvariant;
 
     "io/elementary/terminal/settings" = {
       audible-bell = false;
+      unsafe-paste-alert = false;
     };
 
     #"org/gnome/desktop/background" = {
     #  picture-uri = "file:///home/martin/.local/share/backgrounds/2023-02-09-20-47-36-DeterminateColorway-2560x1440.png";
     #};
+
+    "org/gnome/desktop/default/applications/terminal" = {
+      exec = "tilix";
+      exec-arg = "-e";
+    };
 
     "org/gnome/desktop/datetime" = {
       automatic-timezone = true;
@@ -70,11 +76,11 @@ with lib.hm.gvariant;
       gtk-enable-primary-paste = true;
       icon-theme = "elementary";
       monospace-font-name = "FiraCode Nerd Font Medium 13";
-      text-scaling-factor = 1.25;
+      text-scaling-factor = 1.0;
     };
 
     "org/gnome/desktop/session" = {
-      idle-delay = "uint32 7200";
+      idle-delay = lib.hm.gvariant.mkUint32 7200;
     };
 
     "org/gnome/desktop/sound" = {
@@ -102,17 +108,23 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/settings-daemon/plugins/media-keys" = {
-      custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/" "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/" ];
-      terminal = [ "<Primary><Alt>t" ];
+      custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/" "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/" "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/" ];
+      terminal = [ "" ];
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       binding = "<Super>t";
-      command = "io.elementary.terminal -n";
-      name = "io.elementary.terminal -n";
+      command = "tilix";
+      name = "tilix";
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      binding = "<Primary><Alt>t";
+      command = "tilix";
+      name = "tilix";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
       binding = "<Super>e";
       command = "io.elementary.files -n ~/";
       name = "io.elementary.files -n ~/";
@@ -122,6 +134,10 @@ with lib.hm.gvariant;
       power-button-action = "interactive";
       sleep-inactive-ac-timeout = 0;
       sleep-inactive-ac-type = "nothing";
+    };
+
+    "org/gnome/settings-daemon/plugins/xsettings" = {
+      overrides = "{\'Gtk/DialogsUseHeader\': <0>, \'Gtk/ShellShowsAppMenu\': <0>, \'Gtk/EnablePrimaryPaste\': <1>, \'Gtk/DecorationLayout\': <\':minimize,maximize,close,menu\'>, \'Gtk/ShowUnicodeMenu\': <0>}";
     };
 
     "org/gtk/gtk4/Settings/FileChooser" = {
@@ -136,12 +152,12 @@ with lib.hm.gvariant;
       button-layout = ":minimize,maximize,close";
     };
 
-    "org/gnome/settings-daemon/plugins/xsettings" = {
-      overrides = "{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <1>, 'Gtk/DecorationLayout': <':minimize,maximize,close,menu'>, 'Gtk/ShowUnicodeMenu': <0>}";
-    };
-
     "org/pantheon/desktop/gala/behavior" = {
       overlay-action = "io.elementary.wingpanel --toggle-indicator=app-launcher";
+    };
+
+    "org/pantheon/desktop/gala/mask-corners" = {
+      enable = false;
     };
   };
 
@@ -203,6 +219,19 @@ Name=Enable AppCenter
 Comment=Enable AppCenter
 Type=Application
 Exec=flatpak remote-add --user --if-not-exists appcenter https://flatpak.elementary.io/repo.flatpakrepo
+Categories=
+Terminal=false
+NoDisplay=true
+StartupNotify=false";
+  };
+
+  home.file = {
+    "${config.xdg.configHome}/autostart/ibus-daemon.desktop".text = "
+[Desktop Entry]
+Name=IBus Daemon
+Comment=IBus Daemon
+Type=Application
+Exec=ibus-daemon --daemonize --desktop=pantheon
 Categories=
 Terminal=false
 NoDisplay=true

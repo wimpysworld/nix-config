@@ -14,7 +14,7 @@
         rebuild-iso = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso.config.system.build.isoImage && popd";
       };
       shellAliases = {
-        cat = "bat";
+        cat = "bat --paging=never";
         diff = "diffr";
         glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
