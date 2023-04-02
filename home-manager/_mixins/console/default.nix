@@ -157,6 +157,7 @@
       enable = true;
       settings = {
         colorcolumn = 80;
+        colorscheme = "simple";
         diffgutter = true;
         rmtrailingws = true;
         savecursor = true;
