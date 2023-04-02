@@ -4,6 +4,7 @@
     ./dconf-editor.nix
     ./emote.nix
     ./meld.nix
+    ./tilix.nix
     (./. + "/${desktop}.nix")
   ];
 
