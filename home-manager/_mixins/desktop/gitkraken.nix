@@ -1,7 +1,7 @@
 { config, ... }:
 {
   home.file = {
-    ".gitkraken/themes/bearded-vivid-black.jsonc-new".text = ''
+    ".gitkraken/themes/bearded-vivid-black.jsonc".text = ''
 {
   "meta": {
     "name": "Bearded Vivid Black",

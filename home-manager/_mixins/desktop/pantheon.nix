@@ -189,7 +189,7 @@ with lib.hm.gvariant;
 
     font = {
       name = "Work Sans 12";
-      package = lib.mkDefault pkgs.work-sans;
+      package = pkgs.work-sans;
     };
 
     gtk2 = {
