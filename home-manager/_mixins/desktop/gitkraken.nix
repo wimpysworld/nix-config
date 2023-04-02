@@ -1,4 +1,4 @@
-{ config ... }:
+{ config, ... }:
 {
   home.file = {
     ".gitkraken/themes/bearded-vivid-black.jsonc-new".text = ''
