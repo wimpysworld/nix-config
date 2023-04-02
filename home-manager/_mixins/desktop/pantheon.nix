@@ -2,6 +2,16 @@
 with lib.hm.gvariant;
 {
   dconf.settings = {
+    "desktop/ibus/panel" = {
+      show-icon-on-systray = false;
+      use-custom-font = true;
+      custom-font = "Work Sans 10";
+    };
+
+    "desktop/ibus/panel/emoji" = {
+      font = "JoyPixels 16";
+    };
+
     "io/elementary/code/saved-state" = {
       outline-visible = true;
     };
