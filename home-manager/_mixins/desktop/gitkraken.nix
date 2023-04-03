@@ -16,7 +16,7 @@
       "green": "#42dd76",
       "teal": "#14e5d4",
       "blue": "#28a9ff",
-      "ltblue": "#28a9ff",
+      "ltblue": "#94D4FF",
       "purple": "#e66dff",
       "app__bg0": "#141417",
       "toolbar__bg0": "lighten(saturate(@app__bg0, 3%), 1%)",
@@ -32,15 +32,15 @@
       "subtle-border": "fade(#FFFFFF, 4%)",
       "modal-overlay-color": "rgba(0,0,0,.5)",
       // graph colors
-      "graph-color-0": "#15a0bf", //cyan
-      "graph-color-1": "#0669f7", //blue
-      "graph-color-2": "#8e00c2", //magenta dk
-      "graph-color-3": "#c517b6", //magenta lt
-      "graph-color-4": "#d90171", //magenta
-      "graph-color-5": "#cd0101", //red
-      "graph-color-6": "#f25d2e", //orange
-      "graph-color-7": "#f2ca33", //yellow
-      "graph-color-8": "#7bd938", //green
+      "graph-color-0": "#14E5D4", //cyan
+      "graph-color-1": "#28A9FF", //blue
+      "graph-color-2": "#8e00c2", //purle
+      "graph-color-3": "#E66DFF", //magenta
+      "graph-color-4": "#F3B6FF", //lt. magenta
+      "graph-color-5": "#D62C2C", //red
+      "graph-color-6": "#ff7135", //orange
+      "graph-color-7": "#FFB638", //yellow
+      "graph-color-8": "#42DD76", //green
       "graph-color-9": "#2ece9d", //teal
       // text colors
       // values starting with . aren't added to the CSS, they're just variables
@@ -50,7 +50,7 @@
       "text-secondary": "fade(@.text-color, 65%)",
       "text-disabled": "fade(@.text-color, 45%)",
       "text-accent": "#28a9ff", //blue
-      "text-inverse": "#222222",
+      "text-inverse": "#373737",
       "text-bright": "@.text-color",
       "text-dimmed": "fade(@text-normal, 20%)",
       "text-dimmed-selected": "fade(@text-dimmed, 50%)",
@@ -126,14 +126,14 @@
       "terminal__magenta": "#e66dff",
       "terminal__cyan": "#14e5d4",
       "terminal__white": "#c8c8c8",
-      "terminal__brightBlack": "lighten(@terminal__black, 5%)",
-      "terminal__brightRed": "lighten(@terminal__red, 5%)",
-      "terminal__brightGreen": "lighten(@terminal__green, 5%)",
-      "terminal__brightYellow": "lighten(@terminal__yellow, 5%)",
-      "terminal__brightBlue": "lighten(@terminal__blue, 5%)",
-      "terminal__brightMagenta": "lighten(@terminal__magenta, 5%)",
-      "terminal__brightCyan": "lighten(@terminal__cyan, 5%)",
-      "terminal__brightWhite": "lighten(@terminal__white, 5%)",
+      "terminal__brightBlack": "#434345",
+      "terminal__brightRed": "#DE5656",
+      "terminal__brightGreen": "#A1EEBB",
+      "terminal__brightYellow": "#FFC560",
+      "terminal__brightBlue": "#94D4FF",
+      "terminal__brightMagenta": "#F3B6FF",
+      "terminal__brightCyan": "#A1F5EE,
+      "terminal__brightWhite": "#E9E9E9,
       // code editor
       "code-bg": "@app__bg0",
       "code-foreground": "@text-normal",
