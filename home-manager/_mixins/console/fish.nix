@@ -18,8 +18,8 @@
         glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
-        less = "moar";
-        more = "moar";
+        less = "bat --paging=always";
+        more = "bat --paging=always";
         open = "xdg-open";
         pubip = "curl -s ifconfig.me/ip";
         #pubip = "curl -s https://api.ipify.org";
