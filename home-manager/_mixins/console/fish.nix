@@ -3,7 +3,6 @@
     fish = {
       enable = true;
       shellAbbrs = {
-        ip = "ip --color --brief";
         mkhostid = "head -c4 /dev/urandom | od -A none -t x4";
         # https://github.com/NixOS/nixpkgs/issues/191128#issuecomment-1246030417
         nix-hash-sha256 = "nix-hash --flat --base32 --type sha256";
@@ -18,6 +17,7 @@
         diff = "diffr";
         glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
+        ip = "ip --color --brief";
         less = "moar";
         more = "moar";
         open = "xdg-open";
