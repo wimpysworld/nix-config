@@ -122,7 +122,7 @@
           whole_word = false;
         };
         flags = {
-          dot_marker = true;
+          dot_marker = false;
           enable_gpu_memory = true;
           group_processes = true;
           hide_table_gap = true;
