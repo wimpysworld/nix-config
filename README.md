@@ -16,7 +16,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `brix`         | Gigabyte       | BRIX                | NixOS         | Server       | tbd      |
 | `trooper`      | DIY            | AMD 5950X           | elementary OS | Desktop      | tbd      |
 | `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | WIP      |
-| `p1`           | Lenovo         | ThinkPad P1 Gen     | NixOS         | Laptop       | WIP      |
+| `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | WIP      |
 | `pi4`          | Raspberry Pi   | Raspberry Pi 4      | NixOS         | Desktop      | tbd      |
 | `pinebook`     | Pine64         | Pinebook            | NixOS         | Laptop       | tbd      |
 | `pinebook-pro` | Pine64         | Pinebook Pro        | NixOS         | Laptop       | tbd      |
