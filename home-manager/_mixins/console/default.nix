@@ -70,6 +70,7 @@
       rclone                        # Terminal cloud storage client
       ripgrep                       # Modern Unix `grep`
       rustfmt                       # Code format Rust
+      s3cmd							# Terminal cloud storage client
       shellcheck                    # Code lint Shell
       shfmt                         # Code format Shell
       syft                          # Container SBOM generator
