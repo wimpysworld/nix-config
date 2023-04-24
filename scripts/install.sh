@@ -36,7 +36,7 @@ case "${TARGET_USER}" in
 esac
 
 if [ ! -e "nixos/${TARGET_HOST}/disks.nix" ]; then
-  echo "ERROR! $(basename "${0}") could not find the required host/${TARGET_HOST}/disks.nix"
+  echo "ERROR! $(basename "${0}") could not find the required nixos/${TARGET_HOST}/disks.nix"
   exit 1
 fi
 
@@ -62,7 +62,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     #  popd
     #fi
 
-    sudo nix run github:nix-community/disko --extra-experimental-features 'nix-command flakes' --no-write-lock-file -- --mode zap_create_mount "host/${TARGET_HOST}/disks.nix"
+    sudo nix run github:nix-community/disko --extra-experimental-features 'nix-command flakes' --no-write-lock-file -- --mode zap_create_mount "nixos/${TARGET_HOST}/disks.nix"
     sudo nixos-install --no-root-password --flake ".#${TARGET_HOST}"
 
     # Create directories required by Home Manager
