@@ -12,7 +12,7 @@ else
 fi
 
 case "${TARGET_HOST}" in
-  designare*|vm) true;;
+  designare*|phony) true;;
   *)
     echo "ERROR! ${TARGET_HOST} is not a supported host"
     exit 1
@@ -23,7 +23,7 @@ if [ -n "${2}" ]; then
   TARGET_USER="${2}"
 else
   echo "ERROR! $(basename "${0}") requires a user name"
-  ls -1 host/_mixins/users | grep -v root
+  ls -1 nixos/_mixins/users | grep -v root
   exit 1
 fi
 
@@ -35,7 +35,7 @@ case "${TARGET_USER}" in
     ;;
 esac
 
-if [ ! -e "host/${TARGET_HOST}/disks.nix" ]; then
+if [ ! -e "nixos/${TARGET_HOST}/disks.nix" ]; then
   echo "ERROR! $(basename "${0}") could not find the required host/${TARGET_HOST}/disks.nix"
   exit 1
 fi
