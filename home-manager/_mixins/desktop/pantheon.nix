@@ -154,9 +154,9 @@ with lib.hm.gvariant;
       sleep-inactive-ac-type = "nothing";
     };
 
-    "org/gnome/settings-daemon/plugins/xsettings" = {
-      overrides = "{\'Gtk/DialogsUseHeader\': <0>, \'Gtk/ShellShowsAppMenu\': <0>, \'Gtk/EnablePrimaryPaste\': <1>, \'Gtk/DecorationLayout\': <\':minimize,maximize,close,menu\'>, \'Gtk/ShowUnicodeMenu\': <0>}";
-    };
+    #"org/gnome/settings-daemon/plugins/xsettings" = {
+    #  overrides = "{\'Gtk/DialogsUseHeader\': <0>, \'Gtk/ShellShowsAppMenu\': <0>, \'Gtk/EnablePrimaryPaste\': <1>, \'Gtk/DecorationLayout\': <\':minimize,maximize,close,menu\'>, \'Gtk/ShowUnicodeMenu\': <0>}";
+    #};
 
     "org/gtk/gtk4/Settings/FileChooser" = {
       clock-format = "24h";
