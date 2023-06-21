@@ -2,8 +2,8 @@
   services.openssh = {
     enable = true;
     settings = {
-      passwordAuthentication = false;
-      permitRootLogin = lib.mkDefault "no";
+      PasswordAuthentication = false;
+      PermitRootLogin = lib.mkDefault "no";
     };
   };
   programs.ssh.startAgent = true;
