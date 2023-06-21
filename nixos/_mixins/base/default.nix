@@ -41,6 +41,7 @@
 
   programs = {
     dconf.enable = true;
+    fish.enable = true;
   };
 
   security.rtkit.enable = true;
