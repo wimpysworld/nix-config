@@ -63,7 +63,7 @@
         Enable = "Source,Sink,Media,Socket";
       };
     };
-
+    nvidia.prime.offload.enable = false;
     opengl = {
       enable = true;
       driSupport = true;
