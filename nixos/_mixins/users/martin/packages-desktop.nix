@@ -21,13 +21,6 @@
     meld
     microsoft-edge
     netflix
-    obs-studio
-    obs-studio-plugins.obs-vaapi
-    obs-studio-plugins.obs-nvfbc
-    obs-studio-plugins.obs-gstreamer
-    obs-studio-plugins.obs-source-record
-    obs-studio-plugins.obs-move-transition
-    obs-studio-plugins.obs-pipewire-audio-capture
     opera
     pavucontrol
     tdesktop
