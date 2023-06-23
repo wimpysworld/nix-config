@@ -40,6 +40,7 @@
     vivaldi
     vivaldi-ffmpeg-codecs
     vscode-fhs
+    wavebox
     zoom-us
   ];
 }
