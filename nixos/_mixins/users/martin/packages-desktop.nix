@@ -28,8 +28,8 @@
     slack
     spotify
     ungoogled-chromium
-    unigine-heaven
-    unigine-superposition
+    #unigine-heaven
+    #unigine-superposition
     vivaldi
     vivaldi-ffmpeg-codecs
     vscode-fhs
