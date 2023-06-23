@@ -23,7 +23,6 @@
     disko,
     home-manager,
     nixos-hardware,
-    nix-software-center,
     ... } @ inputs:
     let
       inherit (self) outputs;
