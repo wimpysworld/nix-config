@@ -17,7 +17,6 @@
       formatter                   # elementary OS filesystem formatter
       gnome.simple-scan
       indicator-application-gtk3
-      inputs.nix-software-center.packages.${system}.nix-software-center
       minder                      # elementary OS mind-mapping
       monitor                     # elementary OS system monitor
       #nasc                       # UNSTABLE: elementary OS maths notebook

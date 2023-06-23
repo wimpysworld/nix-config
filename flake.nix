@@ -15,7 +15,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
-    nix-software-center.url = "github:vlinkz/nix-software-center";
   };
 
   outputs = {
