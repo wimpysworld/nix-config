@@ -184,6 +184,17 @@
           modules = [ ./nixos ];
         };
 
+        trooper = nixpkgs.lib.nixosSystem {
+          specialArgs = {
+            inherit inputs outputs stateVersion;
+            desktop = "pantheon";
+            hostid = "d36bf9c3";
+            hostname = "trooper";
+            username = "martin";
+          };
+          modules = [ ./nixos ];
+        };
+
         zed = nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs outputs stateVersion;
