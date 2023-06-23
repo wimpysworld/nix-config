@@ -10,6 +10,7 @@
   environment.systemPackages = with pkgs.unstable; [
     authy
     brave
+    cider
     discord
     gimp-with-plugins
     gitkraken
