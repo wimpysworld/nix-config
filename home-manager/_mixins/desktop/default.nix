@@ -5,6 +5,7 @@
     ./emote.nix
     ./gitkraken.nix
     ./meld.nix
+    ./rhythmbox.nix
     ./tilix.nix
     (./. + "/${desktop}.nix")
   ];
