@@ -1,6 +1,7 @@
 { pkgs, ... }: {
   # https://nixos.wiki/wiki/OBS_Studio
   environment.systemPackages = [
+    pkgs.unstable.obs-studio
     (pkgs.wrapOBS {
       plugins = with pkgs.unstable.obs-studio-plugins; [
         obs-3d-effect
