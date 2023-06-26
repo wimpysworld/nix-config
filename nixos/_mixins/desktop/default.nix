@@ -9,10 +9,6 @@
   boot.kernelParams = [ "quiet" ];
   boot.plymouth.enable = true;
 
-  environment.systemPackages = with pkgs.unstable; [
-    chromium
-  ];
-
   fonts = {
     fontDir.enable = true;
     fonts = with pkgs; [
@@ -47,6 +43,10 @@
       };
     };
   };
+
+  environment.systemPackages = with pkgs; [
+    unstable.chromium
+  ];
 
   programs = {
     chromium = {
