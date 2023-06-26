@@ -9,6 +9,7 @@
     maestral-gui
     meld
     pavucontrol
+    rhythmbox
     shotcut
     slack
     # Fast moving apps use the unstable branch
