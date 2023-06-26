@@ -22,13 +22,11 @@
       appeditor                   # elementary OS menu editor
       celluloid                   # Video Player
       evolutionWithPlugins        # Email client
-      gthumb                      # Image Viewer
-      #cipher                     # elementary OS text encoding/decoding
       formatter                   # elementary OS filesystem formatter
+      gthumb                      # Image Viewer
       gnome.simple-scan           # Scanning
       indicator-application-gtk3  # App Indicator
-      monitor                     # elementary OS system monitor
-      #notes-up                   # elementary OS Markdown editor
+      libsForQt5.qtstyleplugins   # Qt5 style plugins
       pantheon.sideload           # elementary OS Flatpak installer
       tilix                       # Tiling terminal emulator
       torrential                  # elementary OS torrent client
