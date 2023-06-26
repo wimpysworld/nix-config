@@ -1,4 +1,4 @@
-{ inputs, pkgs, ... }: {
+{ inputs, lib, pkgs, ... }: {
   imports = [
     ../services/networkmanager.nix
   ];
@@ -32,6 +32,13 @@
       torrential                  # elementary OS torrent client
       yaru-theme
     ];
+    
+    # Required to coerce dark theme that works with Yaru
+    # TODO: Set this in the user-session
+    variables = lib.mkForce {
+      QT_QPA_PLATFORMTHEME = "gnome";
+      QT_STYLE_OVERRIDE = "Adwaita-Dark";
+    };
   };
 
   # Add GNOME Disks, Pantheon Tweaks and Seahorse
@@ -40,6 +47,10 @@
     gnome-disks.enable = true;
     pantheon-tweaks.enable = true;
     seahorse.enable = true;
+  };
+
+  qt = {
+    enable = true;
   };
 
   services = {
