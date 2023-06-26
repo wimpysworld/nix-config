@@ -19,6 +19,7 @@
     man-pages
     mergerfs
     mergerfs-tools
+    micro
     nano
     pciutils
     rsync
