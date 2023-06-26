@@ -6,17 +6,6 @@
     ../_mixins/services/pipewire.nix
   ];
 
-  # TODO: Replace this with disko
-  fileSystems."/" = {
-    device = "/dev/disk/by-partlabel/root";
-    fsType = "xfs";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-partlabel/ESP";
-    fsType = "vfat";
-  };
-
   swapDevices = [{
     device = "/swap";
     size = 1024;

@@ -25,22 +25,6 @@
     packages = [ pkgs.terminus_font pkgs.powerline-fonts ];
   };
 
-  # TODO: Replace this with disko
-  fileSystems."/" = {
-    device = "/dev/disk/by-partlabel/root";
-    fsType = "xfs";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-partlabel/ESP";
-    fsType = "vfat";
-  };
-
-  fileSystems."/home" = {
-    device = "/dev/disk/by-partlabel/home";
-    fsType = "xfs";
-  };
-
   # UUID=ac6a2f42-bf5b-42bf-bbb2-2bb83a6af615 /mnt/snapshot auto defaults,x-parent=0f904a98:9d3109df:867172aa:c68c98f0 0 0
   fileSystems."/mnt/snapshot" = {
     device = "/dev/disk/by-label/snapshot";

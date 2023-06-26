@@ -30,22 +30,6 @@
     packages = [ pkgs.terminus_font pkgs.powerline-fonts ];
   };
 
-  # TODO: Replace this with disko
-  fileSystems."/" = {
-    device = "/dev/disk/by-partlabel/root";
-    fsType = "xfs";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-partlabel/ESP";
-    fsType = "vfat";
-  };
-
-  fileSystems."/home" = {
-    device = "/dev/disk/by-partlabel/home";
-    fsType = "xfs";
-  };
-
   swapDevices = [{
     device = "/swap";
     size = 2048;
