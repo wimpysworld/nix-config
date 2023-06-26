@@ -21,6 +21,7 @@
     systemPackages = with pkgs; [
       appeditor                   # elementary OS menu editor
       celluloid                   # Video Player
+      evolutionWithPlugins        # Email client
       gthumb                      # Image Viewer
       #cipher                     # elementary OS text encoding/decoding
       formatter                   # elementary OS filesystem formatter
@@ -47,6 +48,7 @@
     flatpak = {
       enable = true;
     };
+    gnome.evolution-data-server.enable = true;
     pantheon.apps.enable = true;
 
     xserver = {
