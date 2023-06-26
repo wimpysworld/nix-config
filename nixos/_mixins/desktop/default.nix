@@ -9,6 +9,10 @@
   boot.kernelParams = [ "quiet" ];
   boot.plymouth.enable = true;
 
+  environment.systemPackages = with pkgs.unstable; [
+    chromium
+  ];
+
   fonts = {
     fontDir.enable = true;
     fonts = with pkgs; [
@@ -41,6 +45,32 @@
         rgba = "rgb";
         lcdfilter = "light";
       };
+    };
+  };
+
+  programs = {
+    chromium = {
+      enable = true;
+      extensions = [
+      	"hdokiejnpimakedhajhdlcegeplioahd" # LastPass
+      ];
+      extraOpts = {
+        "AutofillAddressEnabled" = false;
+        "AutofillCreditCardEnabled" = false;        
+        "BuiltInDnsClientEnabled" = false;
+        "​DeviceMetricsReportingEnabled" = true;
+        "​ReportDeviceCrashReportInfo" = false;
+        "PasswordManagerEnabled" = false;
+        "​SpellcheckEnabled" = true;
+        "SpellcheckLanguage" = [
+          "en-GB"
+          "en-US"
+        ];
+        "VoiceInteractionHotwordEnabled" = false;
+      };
+    };
+    firefox = {
+      enable = false;
     };
   };
 
