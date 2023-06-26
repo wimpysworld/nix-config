@@ -31,6 +31,7 @@
     evolution.enable = true;
     gnome-disks.enable = true;
     nm-applet.enable = true;
+    seahorse.enable = true;
     system-config-printer.enable = true;
   };
 

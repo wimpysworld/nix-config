@@ -31,10 +31,11 @@
     ];
   };
 
-  # Add GNOME Disks and Pantheon Tweaks
+  # Add GNOME Disks, Pantheon Tweaks and Seahorse
   programs = {
     gnome-disks.enable = true;
     pantheon-tweaks.enable = true;
+    seahorse.enable = true;
   };
 
   services = {
