@@ -3,10 +3,12 @@
     ../services/networkmanager.nix
   ];
 
-  # Exclude the Epiphany browser
+  # Exclude the elementary apps I don't use
   environment = {
     pantheon.excludePackages = with pkgs.pantheon; [
       epiphany
+      elementary-music
+      elementary-videos
     ];
 
     # Add some elementary additional apps and include Yaru for syntax highlighting
