@@ -1,7 +1,8 @@
 # Virtual machine configuration
-{ config, inputs, lib, pkgs, username, ... }:
+{ config, inputs, lib, modulesPath, pkgs, username, ... }:
 {
   imports = [
+    (modulesPath + "/profiles/qemu-guest.nix")
     ../_mixins/services/pipewire.nix
   ];
 
