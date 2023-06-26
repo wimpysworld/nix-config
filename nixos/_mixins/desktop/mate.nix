@@ -21,6 +21,7 @@
       gnome.gucharmap
       gnome-firmware
       gnome.simple-scan
+      gthumb
       networkmanagerapplet
       tilix
     ];

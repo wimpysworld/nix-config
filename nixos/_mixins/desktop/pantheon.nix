@@ -6,9 +6,10 @@
   # Exclude the elementary apps I don't use
   environment = {
     pantheon.excludePackages = with pkgs.pantheon; [
-      epiphany
       elementary-music
+      elementary-photos
       elementary-videos
+      epiphany      
     ];
 
     # App indicator
@@ -20,6 +21,7 @@
     systemPackages = with pkgs; [
       appeditor                   # elementary OS menu editor
       celluloid                   # Video Player
+      gthumb                      # Image Viewer
       #cipher                     # elementary OS text encoding/decoding
       formatter                   # elementary OS filesystem formatter
       gnome.simple-scan           # Scanning
