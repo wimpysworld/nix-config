@@ -53,6 +53,7 @@
 
   environment.systemPackages = with pkgs; [
     nvtop
+    polychromatic
   ];
 
   hardware = {

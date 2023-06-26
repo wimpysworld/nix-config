@@ -54,6 +54,7 @@
 
   environment.systemPackages = with pkgs; [
     nvtop-nvidia
+    polychromatic
   ];
 
   hardware = {
