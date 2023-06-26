@@ -5,8 +5,8 @@ in
 {
    # Only include desktop components if one is supplied.
   imports = [
-    ./packages-console.nix
-  ] ++ lib.optional (builtins.isString desktop) ./packages-desktop.nix;
+    ./console.nix
+  ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
 
   config.users.users.nixos = {
     description = "NixOS";
