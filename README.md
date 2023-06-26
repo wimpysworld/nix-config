@@ -14,7 +14,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `ripper`       | DIY            | AMD 3970X           | elementary OS | Desktop      | WIP      |
 | `skull`        | Intel          | NUC6i7KYK           | NixOS         | Server       | WIP      |
 | `brix`         | Gigabyte       | BRIX                | NixOS         | Server       | tbd      |
-| `trooper`      | DIY            | AMD 5950X           | elementary OS | Desktop      | tbd      |
+| `trooper`      | DIY            | AMD 5950X           | elementary OS | Desktop      | Done     |
 | `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | WIP      |
 | `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | WIP      |
 | `pi4`          | Raspberry Pi   | Raspberry Pi 4      | NixOS         | Desktop      | tbd      |
@@ -232,7 +232,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 - [ ] fzf
 - [ ] tmate or tmux
-- [ ] (***WIP***) micro
+- [x] micro
 - [ ] nnn or broot or felix or ranger
 
 ## Inspirations 🧑‍🏫
