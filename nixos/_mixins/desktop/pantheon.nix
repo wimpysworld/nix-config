@@ -37,6 +37,7 @@
 
   # Add GNOME Disks, Pantheon Tweaks and Seahorse
   programs = {
+    evolution.enable = true;
     gnome-disks.enable = true;
     pantheon-tweaks.enable = true;
     seahorse.enable = true;
