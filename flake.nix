@@ -158,8 +158,12 @@
             hostid = "8f03b646";
             hostname = "designare";
             username = "martin";
+            disks = [ "/dev/nvme0n1" "/dev/nvme1n1" ];
           };
-          modules = [ ./nixos ];
+          modules = [
+            disko.nixosModules.disko
+            ./nixos
+          ];
         };
 
         designare-headless = nixpkgs.lib.nixosSystem {
@@ -169,8 +173,12 @@
             hostid = "8f03b646";
             hostname = "designare";
             username = "martin";
+            disks = [ "/dev/nvme0n1" "/dev/nvme1n1" ];
           };
-          modules = [ ./nixos ];
+          modules = [
+            disko.nixosModules.disko
+            ./nixos
+          ];
         };
 
         skull = nixpkgs.lib.nixosSystem {
@@ -180,8 +188,12 @@
             hostid = "be4cb578";
             hostname = "skull";
             username = "martin";
+            disks = [ "/dev/nvme0n1" "/dev/nvme1n1" ];
           };
-          modules = [ ./nixos ];
+          modules = [
+            disko.nixosModules.disko
+            ./nixos
+          ];
         };
 
         trooper = nixpkgs.lib.nixosSystem {
@@ -191,8 +203,12 @@
             hostid = "d36bf9c3";
             hostname = "trooper";
             username = "martin";
+            disks = [ "/dev/nvme0n1" "/dev/nvme1n1" ];
           };
-          modules = [ ./nixos ];
+          modules = [
+            disko.nixosModules.disko
+            ./nixos
+          ];
         };
 
         zed = nixpkgs.lib.nixosSystem {
@@ -202,8 +218,12 @@
             hostid = "b28460d8";
             hostname = "zed";
             username = "martin";
+            disks = [ "/dev/nvme0n1" ];
           };
-          modules = [ ./nixos ];
+          modules = [
+            disko.nixosModules.disko
+            ./nixos
+          ];
         };
 
         phony = nixpkgs.lib.nixosSystem {
@@ -213,8 +233,12 @@
             hostid = "37f0bf56";
             hostname = "phony";
             username = "martin";
+            disks = [ "/dev/vda" ];
           };
-          modules = [ ./nixos ];
+          modules = [
+            disko.nixosModules.disko
+            ./nixos
+          ];
         };
       };
     };

@@ -4,6 +4,7 @@
   # - https://nixos.wiki/wiki/Nix_Language:_Tips_%26_Tricks#Coercing_a_relative_path_with_interpolated_variables_to_an_absolute_path_.28for_imports.29
   imports = [
     (./. + "/${hostname}/boot.nix")
+    (./. + "/${hostname}/disks.nix")
     (./. + "/${hostname}/hardware.nix")
     (modulesPath + "/installer/scan/not-detected.nix")
     ./_mixins/base
