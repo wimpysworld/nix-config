@@ -12,12 +12,14 @@
     ];
 
     # App indicator
+    # - https://discourse.nixos.org/t/anyone-with-pantheon-de/28422
     # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
     pathsToLink = [ "/libexec" ];
 
     # Add additional apps and include Yaru for syntax highlighting
     systemPackages = with pkgs; [
       appeditor                   # elementary OS menu editor
+      celluloid                   # Video Player
       #cipher                     # elementary OS text encoding/decoding
       formatter                   # elementary OS filesystem formatter
       gnome.simple-scan           # Scanning
