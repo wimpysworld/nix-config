@@ -189,10 +189,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 ### Hardware
 
 - [x] Add all computers to the table
-- [ ] (***WIP***) Implement [Disko](https://github.com/nix-community/disko) partitioning
-  - Chasing the ideas outlined in these blog posts:
-  - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
-  - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
+- [x] Implement [Disko](https://github.com/nix-community/disko) partitioning
 - [x] Integrate [.iso building](https://www.reddit.com/r/NixOS/comments/y1xo2u/comment/irzwe95/)
 - [x] Integrate OpenRGB
 - [x] Integrate OpenRazer
@@ -243,6 +240,10 @@ While learning Nix I watched some talks/interviews with [Matthew Croughan](https
 
 I like the directory hierarchy in [Jon Seager's nixos-config] and the mixin pattern used in [Matthew Croughan's nixcfg], so my initial Nix configuration is heavily influenced by both of those. Ana's excellent [Declarative GNOME configuration with NixOS] blog post was essential to get a personalised desktop. That said, there's plenty to learn from browsing other people's Nix configurations, not least for discovering cool software. I recommend a search of [GitHub nixos configuration] from time to time to see what interesting techniques you pick up and new tools you might discover.
 
+The [disko] implementation and automated installation is chasing the ideas outlined in these blog posts:
+  - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
+  - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
+
 [nome from Luc Perkins]: https://github.com/the-nix-way/nome
 [nixos-config from Cole Helbling]: https://github.com/cole-h/nixos-config
 [flake from Ana Hoverbear]: https://github.com/Hoverbear-Consulting/flake
@@ -252,3 +253,4 @@ I like the directory hierarchy in [Jon Seager's nixos-config] and the mixin patt
 [Matthew Croughan's nixcfg]: https://github.com/MatthewCroughan/nixcfg
 [Will Taylor's dotfiles]: https://github.com/wiltaylor/dotfiles
 [GitHub nixos configuration]: https://github.com/search?q=nixos+configuration
+[disko]: https://github.com/nix-community/disko
