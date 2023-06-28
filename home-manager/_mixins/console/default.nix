@@ -30,6 +30,7 @@
       distrobox                     # Terminal container manager
       dive                          # Container analyzer
       dogdns                        # Modern Unix `dig`
+      dua                           # Modern Unix `du`
       duf                           # Modern Unix `df`
       du-dust                       # Modern Unix `du`
       entr                          # Modern Unix `watch`
