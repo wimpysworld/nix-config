@@ -138,7 +138,7 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostname = "live";
+            hostname = "iso";
             username = "nixos";
           };
           system = "x86_64-linux";
