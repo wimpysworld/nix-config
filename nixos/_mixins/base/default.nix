@@ -1,4 +1,4 @@
-{ hostname, lib, pkgs, ...}: {
+{ hostname, lib, pkgs, username, ...}: {
   imports = [
     ./locale.nix
     ./nano.nix
@@ -58,4 +58,9 @@
   };
 
   security.rtkit.enable = true;
+
+  # Create dirs for home-manager
+  systemd.tmpfiles.rules = [
+    "d /nix/var/nix/profiles/per-user/${username} 755 ${username} root"
+  ];
 }
