@@ -61,6 +61,7 @@
       nixpkgs-fmt                   # Code format Nix
       nixpkgs-review                # Nix code review
       nodePackages.prettier         # Code format
+      nurl                          # Nix URL fetcher
       nyancat                       # Terminal rainbow spewing feline
       ookla-speedtest               # Terminal speedtest
       optipng                       # Terminal PNG optimizer
