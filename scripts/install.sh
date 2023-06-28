@@ -12,7 +12,7 @@ fi
 
 if [ ! -d "$HOME/Zero/nix-config/.git" ]; then
   git clone https://github.com/wimpysworld/nix-config.git "$HOME/Zero/nix-config"
-  git remote set-url origin git@github.com:wimpysworld/nix-config.git
+  git remote set-url origin git@github.com:wimpysworld/nix-config.git "$HOME/Zero/nix-config"
 fi
 
 cd "$HOME/Zero/nix-config"
