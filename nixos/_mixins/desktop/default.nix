@@ -1,5 +1,6 @@
 { desktop, pkgs, ... }: {
   imports = [
+    ../desktop/chromium.nix
     ../services/cups.nix
     ../services/flatpak.nix
     ../services/sane.nix
@@ -44,32 +45,9 @@
     };
   };
 
-  environment.systemPackages = with pkgs; [
-    unstable.chromium
-  ];
-
   programs = {
     dconf.enable = true;
-    chromium = {
-      enable = true;
-      extensions = [
-      	"hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-      ];
-      extraOpts = {
-        "AutofillAddressEnabled" = false;
-        "AutofillCreditCardEnabled" = false;
-        "BuiltInDnsClientEnabled" = false;
-        "​DeviceMetricsReportingEnabled" = true;
-        "​ReportDeviceCrashReportInfo" = false;
-        "PasswordManagerEnabled" = false;
-        "​SpellcheckEnabled" = true;
-        "SpellcheckLanguage" = [
-          "en-GB"
-          "en-US"
-        ];
-        "VoiceInteractionHotwordEnabled" = false;
-      };
-    };
+    # Chromium is enabled by default with sane defaults.
     firefox = {
       enable = false;
     };
