@@ -5,17 +5,17 @@
 
 This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for configuring my computers and home environment. These are the computers this configuration currently manages:
 
-|    Hostname    |       OEM      |        Model        |       OS      |   Role   |  Status  |
+|    Hostname    |       OEM      |        Model        |       OS      |     Role     |  Status  |
 | :------------: | :------------: | :-----------------: | :-----------: | :----------: | :------- |
 | `designare`    | DIY            | i9-9900K            | NixOS         | Desktop      | Done     |
 | `noname`       | DIY            | AMD 5900X, 6900 XT  | NixOS         | Gamestation  | Done     |
-| `node202`      | DIY            | AMD 5700G, 5700 XT  | ChimeraOS     | Gamestation  | Done     |
+| `node202`      | DIY            | AMD 5700G, 6700 XT  | ChimeraOS     | Gamestation  | Done     |
 | `phony`        | VM             | n/a                 | NixOS         | Desktop      | WIP      |
 | `ripper`       | DIY            | AMD 3970X           | elementary OS | Desktop      | WIP      |
 | `skull`        | Intel          | NUC6i7KYK           | NixOS         | Server       | WIP      |
 | `brix`         | Gigabyte       | BRIX                | NixOS         | Server       | tbd      |
-| `trooper`      | DIY            | AMD 5950X           | elementary OS | Desktop      | Done     |
-| `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | WIP      |
+| `trooper`      | DIY            | AMD 5950X, 3080Ti   | NixOS         | Desktop      | Done     |
+| `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | Done     |
 | `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | WIP      |
 | `pi4`          | Raspberry Pi   | Raspberry Pi 4      | NixOS         | Desktop      | tbd      |
 | `pinebook`     | Pine64         | Pinebook            | NixOS         | Laptop       | tbd      |
@@ -30,8 +30,8 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `win-max`      | GPD            | WIN Max             | NixOS         | Laptop       | tbd      |
 | `falcon`       | TopJoy         | Falcon              | NixOS         | Laptop       | tbd      |
 | `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbd      |
-| `xps`          | Dell           | XPS 13              | NixOS         | Laptop       | tbd      |
-| `spectre`      | HP             | Spectre             | NixOS         | Laptop       | tbd      |
+| `xps`          | Dell           | XPS 13              | Ubuntu MATE   | Laptop       | tbd      |
+| `spectre`      | HP             | Spectre             | Ubuntu MATE   | Laptop       | tbd      |
 | `?`            | Entroware      | ?                   | NixOS         | Laptop       | tbd      |
 
 ## Structure
@@ -188,7 +188,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Hardware
 
-- [ ] Add all computers to the table
+- [x] Add all computers to the table
 - [ ] (***WIP***) Implement [Disko](https://github.com/nix-community/disko) partitioning
   - Chasing the ideas outlined in these blog posts:
   - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
