@@ -8,7 +8,7 @@
     ../services/zerotier.nix
   ];
 
-  # don't install documentation i don't use
+  # Only install the docs I use
   documentation.enable = true; # documentation of packages
   documentation.nixos.enable = false; # nixos documentation
   documentation.man.enable = true; # manual pages and the man command
