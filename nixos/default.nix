@@ -4,14 +4,15 @@
   # - https://nixos.wiki/wiki/Nix_Language:_Tips_%26_Tricks#Coercing_a_relative_path_with_interpolated_variables_to_an_absolute_path_.28for_imports.29
   imports = [
     (./. + "/${hostname}/boot.nix")
-    (./. + "/${hostname}/disks.nix")
     (./. + "/${hostname}/hardware.nix")
     (modulesPath + "/installer/scan/not-detected.nix")
     ./_mixins/base
     ./_mixins/boxes
     ./_mixins/users/root
     ./_mixins/users/${username}
-  ] ++ lib.optional (builtins.isString desktop) ./_mixins/desktop;
+  ]
+  ++ lib.optional (builtins.pathExists (./. + "/${hostname}/disks.nix")) ./${hostname}/disks.nix
+  ++ lib.optional (builtins.isString desktop) ./_mixins/desktop;
 
   nixpkgs = {
     # You can add overlays here
