@@ -75,7 +75,6 @@ scripts/install.sh <hostname> <username>
 - Make a cuppa 🫖
 - Reboot
 
-[Disko]: https://github.com/nix-community/disko
 
 ## Applying Changes ✨
 
@@ -195,8 +194,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate OpenRazer
 - [ ] Integrate StreamDeck
 - [x] Integrate Xone
-- [ ] Migrate (*maybe*) to ZFS
-  - With backups via [`zrepl`](https://zrepl.github.io/)
+- [ ] Migrate (*maybe*) to ZFS, with backups via [`zrepl`](https://zrepl.github.io/)
 - [x] Fix Magewell driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
 
 ### Applications
@@ -212,7 +210,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate Keybase
 - [ ] Integrate nullmailer
 - [ ] Integrate Syncthing
-- [ ] Integrate sshgaurd
+- [ ] Integrate sshguard
 
 ### Configuration
 
@@ -241,7 +239,7 @@ While learning Nix I watched some talks/interviews with [Matthew Croughan](https
 
 I like the directory hierarchy in [Jon Seager's nixos-config] and the mixin pattern used in [Matthew Croughan's nixcfg], so my initial Nix configuration is heavily influenced by both of those. Ana's excellent [Declarative GNOME configuration with NixOS] blog post was essential to get a personalised desktop. That said, there's plenty to learn from browsing other people's Nix configurations, not least for discovering cool software. I recommend a search of [GitHub nixos configuration] from time to time to see what interesting techniques you pick up and new tools you might discover.
 
-The [disko] implementation and automated installation is chasing the ideas outlined in these blog posts:
+The [Disko] implementation and automated installation is chasing the ideas outlined in these blog posts:
   - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
   - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
 
@@ -254,4 +252,4 @@ The [disko] implementation and automated installation is chasing the ideas outli
 [Matthew Croughan's nixcfg]: https://github.com/MatthewCroughan/nixcfg
 [Will Taylor's dotfiles]: https://github.com/wiltaylor/dotfiles
 [GitHub nixos configuration]: https://github.com/search?q=nixos+configuration
-[disko]: https://github.com/nix-community/disko
+[Disko]: https://github.com/nix-community/disko
