@@ -57,7 +57,7 @@
       ];
       extraOpts = {
         "AutofillAddressEnabled" = false;
-        "AutofillCreditCardEnabled" = false;        
+        "AutofillCreditCardEnabled" = false;
         "BuiltInDnsClientEnabled" = false;
         "​DeviceMetricsReportingEnabled" = true;
         "​ReportDeviceCrashReportInfo" = false;
