@@ -189,21 +189,21 @@
           modules = [ ./nixos ];
         };
 
-        zed = nixpkgs.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "zed";
-            username = "martin";
-          };
-          modules = [ ./nixos ];
-        };
-
         vm = nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
             hostname = "vm";
+            username = "martin";
+          };
+          modules = [ ./nixos ];
+        };
+
+        zed = nixpkgs.lib.nixosSystem {
+          specialArgs = {
+            inherit inputs outputs stateVersion;
+            desktop = "pantheon";
+            hostname = "zed";
             username = "martin";
           };
           modules = [ ./nixos ];
