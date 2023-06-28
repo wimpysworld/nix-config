@@ -1,7 +1,8 @@
 { pkgs, ... }: {
   imports = [
-    ./browsers.nix
-    ./obs-studio.nix
+    ../../desktop/browsers.nix
+    ../../desktop/obs-studio.nix
+    ../../desktop/quickemu.nix
   ];
 
   environment.systemPackages = with pkgs; [
