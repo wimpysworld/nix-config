@@ -219,11 +219,11 @@
           ];
         };
 
-        phony = nixpkgs.lib.nixosSystem {
+        vm = nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostname = "phony";
+            hostname = "vm";
             username = "martin";
             disks = [ "/dev/vda" ];
           };
