@@ -53,32 +53,25 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of generic confi
 
 ## Installing 💾
 
-This is a work in progress 😅 I'm working towards making the installation entirely automated.
-
 - Boot off a .iso image created by this flake using `rebuild-iso` (*see below*).
 - Put the .iso image on a USB drive
 - Boot the target computer from the USB drive
-- Clone my nix-config
-
-```bash
-git clone https://github.com/wimpysworld/nix-config.git
-```
-
-- Run the install script 📜
+- Run `install-system <hostname> <username>` from a terminal.
  - The install script uses [Disko] to automatically partition and format the disks then uses my flake via `nixos-install` to complete a full system installation
-
-```bash
-cd nix-config
-scripts/install.sh <hostname> <username>
-```
-
+ - This flake is automatically copied to the target user's home directory as `~/Zero/nix-config`
 - Make a cuppa 🫖
 - Reboot
+- Login and run `rebuild-home` (*see below*) from a terminal to complete the Home Manager configuration.
 
+If the target system is booted from something other than the .iso image created by this flake, you can still install the system using the following:
+
+```bash
+curl -sL https://raw.githubusercontent.com/wimpysworld/nix-config/main/scripts/install.sh | bash -s <hostname> <username>
+```
 
 ## Applying Changes ✨
 
-I clone this repo to `~/Zero/nix-config`. Home Manager and NixOS changes can be applied separately because I am planning to add support for some non-NixOS hosts.
+I clone this repo to `~/Zero/nix-config`. NixOS and Home Manager changes are applied separately because have some non-NixOS hosts.
 
 ```bash
 gh repo clone wimpysworld/nix-config ~/Zero/nix-config
