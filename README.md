@@ -10,7 +10,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `designare`    | DIY            | i9-9900K            | NixOS         | Desktop      | Done     |
 | `noname`       | DIY            | AMD 5900X, 6900 XT  | NixOS         | Gamestation  | Done     |
 | `node202`      | DIY            | AMD 5700G, 6700 XT  | ChimeraOS     | Gamestation  | Done     |
-| `phony`        | VM             | n/a                 | NixOS         | Desktop      | WIP      |
+| `vm`           | VM             | n/a                 | NixOS         | Desktop      | Done     |
 | `ripper`       | DIY            | AMD 3970X           | elementary OS | Desktop      | WIP      |
 | `skull`        | Intel          | NUC6i7KYK           | NixOS         | Server       | WIP      |
 | `brix`         | Gigabyte       | BRIX                | NixOS         | Server       | tbd      |
