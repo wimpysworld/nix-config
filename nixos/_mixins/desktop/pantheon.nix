@@ -10,7 +10,7 @@
       elementary-music
       elementary-photos
       elementary-videos
-      epiphany      
+      epiphany
     ];
 
     # App indicator
