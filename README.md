@@ -128,8 +128,8 @@ This is the directory structure I'm using.
 │   │   ├── services
 │   │   └── users
 │   ├── designare
-│   ├── generic
 │   ├── skull
+│   ├── vm
 │   ├── z13
 │   └── default.nix
 ├── overlays
