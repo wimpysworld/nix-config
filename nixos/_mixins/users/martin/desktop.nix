@@ -26,6 +26,7 @@
     rhythmbox
     shotcut
     slack
+    zoom-us
 
     # Fast moving apps use the unstable branch
     unstable.discord
@@ -33,7 +34,6 @@
     unstable.tdesktop
     unstable.vscode-fhs
     unstable.wavebox
-    unstable.zoom-us
   ];
 
   programs = {
