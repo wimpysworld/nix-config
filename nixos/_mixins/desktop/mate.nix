@@ -25,7 +25,6 @@
       gnome.simple-scan
       gthumb
       networkmanagerapplet
-      tilix
     ];
   };
 

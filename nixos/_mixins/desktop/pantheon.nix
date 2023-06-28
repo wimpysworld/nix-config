@@ -27,7 +27,6 @@
       gnome.simple-scan           # Scanning
       indicator-application-gtk3  # App Indicator
       pantheon.sideload           # elementary OS Flatpak installer
-      tilix                       # Tiling terminal emulator
       torrential                  # elementary OS torrent client
       yaru-theme
     ];
