@@ -1,5 +1,6 @@
 { inputs, lib, pkgs, ... }: {
   imports = [
+    ./qt-style.nix
     ../services/networkmanager.nix
   ];
 
@@ -25,19 +26,11 @@
       gthumb                      # Image Viewer
       gnome.simple-scan           # Scanning
       indicator-application-gtk3  # App Indicator
-      libsForQt5.qtstyleplugins   # Qt5 style plugins
       pantheon.sideload           # elementary OS Flatpak installer
       tilix                       # Tiling terminal emulator
       torrential                  # elementary OS torrent client
       yaru-theme
     ];
-    
-    # Required to coerce dark theme that works with Yaru
-    # TODO: Set this in the user-session
-    variables = lib.mkForce {
-      QT_QPA_PLATFORMTHEME = "gnome";
-      QT_STYLE_OVERRIDE = "Adwaita-Dark";
-    };
   };
 
   # Add GNOME Disks, Pantheon Tweaks and Seahorse
@@ -45,10 +38,6 @@
     gnome-disks.enable = true;
     pantheon-tweaks.enable = true;
     seahorse.enable = true;
-  };
-
-  qt = {
-    enable = true;
   };
 
   services = {
