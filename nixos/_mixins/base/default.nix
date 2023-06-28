@@ -31,7 +31,6 @@
     rsync
     unzip
     usbutils
-    v4l-utils
     wget
     xdg-utils
   ];
