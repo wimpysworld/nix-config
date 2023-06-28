@@ -21,7 +21,6 @@
     systemPackages = with pkgs; [
       appeditor                   # elementary OS menu editor
       celluloid                   # Video Player
-      evolutionWithPlugins        # Email client
       formatter                   # elementary OS filesystem formatter
       gthumb                      # Image Viewer
       gnome.simple-scan           # Scanning
@@ -43,7 +42,6 @@
 
   # Add GNOME Disks, Pantheon Tweaks and Seahorse
   programs = {
-    evolution.enable = true;
     gnome-disks.enable = true;
     pantheon-tweaks.enable = true;
     seahorse.enable = true;
@@ -57,7 +55,6 @@
     flatpak = {
       enable = true;
     };
-    gnome.evolution-data-server.enable = true;
     pantheon.apps.enable = true;
 
     xserver = {

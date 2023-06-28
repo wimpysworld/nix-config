@@ -2,6 +2,7 @@
   imports = [
     ../../desktop/brave.nix
     #../../desktop/firefox.nix
+    #../../desktop/evolution.nix
     ../../desktop/google-chrome.nix
     ../../desktop/microsoft-edge.nix
     ../../desktop/obs-studio.nix
