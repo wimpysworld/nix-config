@@ -62,7 +62,7 @@
             hostname = "designare";
             username = "martin";
           };
-          modules = [ ./home ];
+          modules = [ ./home-manager ];
         };
 
         "martin@designare-headless" = home-manager.lib.homeManagerConfiguration {
