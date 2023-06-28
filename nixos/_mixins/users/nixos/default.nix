@@ -29,14 +29,11 @@ in
   };
 
   config.system.activationScripts.installerDesktop = let
-   # Comes from documentation.nix when xserver and nixos.enable are true.
-   manualDesktopFile = "/run/current-system/sw/share/applications/nixos-manual.desktop";
    homeDir = "/home/${username}/";
    desktopDir = homeDir + "Desktop/";
   in ''
    mkdir -p ${desktopDir}
    chown ${username} ${homeDir} ${desktopDir}
-   ln -sfT ${manualDesktopFile} ${desktopDir + "nixos-manual.desktop"}
    ln -sfT ${pkgs.gparted}/share/applications/gparted.desktop ${desktopDir + "gparted.desktop"}
    ln -sfT ${pkgs.pantheon.elementary-terminal}/share/applications/io.elementary.terminal.desktop ${desktopDir + "io.elementary.terminal.desktop"}
    ln -sfT ${pkgs.calamares-nixos}/share/applications/io.calamares.calamares.desktop ${desktopDir + "io.calamares.calamares.desktop"}
