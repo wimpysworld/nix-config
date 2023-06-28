@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+TARGET_HOST="${1:-}"
+TARGET_USER="${2:-martin}"
+
 if [ "$(id -u)" -eq 0 ]; then
   echo "ERROR! $(basename "$0") should be run as a regular user"
   exit 1
@@ -11,23 +14,19 @@ if [ ! -d "$HOME/Zero/nix-config/.git" ]; then
   git clone https://github.com/wimpysworld/nix-config.git "$HOME/Zero/nix-config"
 fi
 
-cd "$HOME/Zero/nix-config"
-git remote set-url origin git@github.com:wimpysworld/nix-config.git
+pushd "$HOME/Zero/nix-config"
 
-if [[ -z "$1" ]]; then
+if [[ -z "$TARGET_HOST" ]]; then
   echo "ERROR! $(basename "$0") requires a hostname as the first argument"
   ls -1 nixos/*/boot.nix | cut -d'/' -f2 | grep -v live
   exit 1
 fi
 
-if [[ -z "$2" ]]; then
+if [[ -z "$TARGET_USER" ]]; then
   echo "ERROR! $(basename "$0") requires a username as the second argument"
   ls -1 nixos/_mixins/users/ | grep -v -E "nixos|root"
   exit 1
 fi
-
-TARGET_HOST="$1"
-TARGET_USER="$2"
 
 if [ ! -e "nixos/$TARGET_HOST/disks.nix" ]; then
   echo "ERROR! $(basename "$0") could not find the required nixos/$TARGET_HOST/disks.nix"
@@ -63,8 +62,11 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   #        But it only works in the live iso, not an installed system.
   sudo mkdir -p "/mnt/nix/var/nix/profiles/per-user/$TARGET_USER"
 
-  # Rsync nix-config to the target install
+  # Rsync nix-config to the target install and set the remote origin to SSH.
   rsync -a --delete "$HOME/Zero/" "/mnt/home/$TARGET_USER/Zero/"
+  pushd "/mnt/home/$TARGET_USER/Zero/nix-config"
+  git remote set-url origin git@github.com:wimpysworld/nix-config.git
+  popd
 
   # If there is a keyfile for a data disk, put copy it to the root partition and
   # ensure the permissions are set appropriately.
