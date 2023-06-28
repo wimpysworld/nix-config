@@ -7,7 +7,14 @@
   ]
   ++ lib.optional (builtins.pathExists (./. + "/${desktop}.nix")) ./${desktop}.nix;
 
-  boot.kernelParams = [ "quiet" ];
+  boot.kernelParams = [
+    # The 'splash' arg is included by the plymouth option
+    "quiet"
+    "loglevel=3"
+    "rd.udev.log_priority=3"
+    "vt.global_cursor_default=0"
+    "mitigations=off"
+  ];
   boot.plymouth.enable = true;
 
   fonts = {

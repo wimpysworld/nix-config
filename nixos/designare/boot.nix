@@ -28,14 +28,8 @@
       "vhost_vsock"
     ];
 
-    # Temporary workaround until mwprocapture 4328 patch is merged
-    # - https://github.com/NixOS/nixpkgs/pull/221209
-    kernelPackages = pkgs.linuxPackages_5_15;
-
-    kernelParams = [ "mitigations=off" ];
+    kernelPackages = pkgs.linuxPackages_latest;
     kernel.sysctl = {
-      "kernel.sysrq" = 1;
-      "kernel.printk" = "3 3 3 3";
       "net.ipv4.ip_forward" = 1;
       "net.ipv6.conf.all.forwarding" = 1;
     };
