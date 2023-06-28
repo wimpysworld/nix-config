@@ -27,7 +27,6 @@
     mergerfs
     mergerfs-tools
     micro
-    nano
     pciutils
     rsync
     unzip
