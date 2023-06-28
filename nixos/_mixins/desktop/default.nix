@@ -49,6 +49,7 @@
   ];
 
   programs = {
+    dconf.enable = true;
     chromium = {
       enable = true;
       extensions = [
