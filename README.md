@@ -216,6 +216,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Configuration
 
+- [x] Embed [install script in the ISO](./nixos/_mixins/users/nixos/console.nix)
 - [x] Integrate capabilities from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
 - [ ] Integrate wallpapers
 - [x] Integrate faces
