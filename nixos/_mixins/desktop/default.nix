@@ -1,11 +1,11 @@
-{ desktop, pkgs, ... }: {
+{ desktop, lib, pkgs, ... }: {
   imports = [
-    ../desktop/chromium.nix
+    ./chromium.nix
     ../services/cups.nix
     ../services/flatpak.nix
     ../services/sane.nix
-    (./. + "/${desktop}.nix")
-  ];
+  ]
+  ++ lib.optional (builtins.pathExists (./. + "/${desktop}.nix")) ./${desktop}.nix;
 
   boot.kernelParams = [ "quiet" ];
   boot.plymouth.enable = true;
