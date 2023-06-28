@@ -132,14 +132,12 @@
         };
       };
 
-      # hostids are generated using `mkhostid` alias
       nixosConfigurations = {
         # nix build .#nixosConfigurations.iso.config.system.build.isoImage
         iso = nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostid = "09ac7fbb";
             hostname = "live";
             username = "nixos";
           };
@@ -155,7 +153,6 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostid = "8f03b646";
             hostname = "designare";
             username = "martin";
             disks = [ "/dev/nvme0n1" "/dev/nvme1n1" ];
@@ -170,7 +167,6 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = null;
-            hostid = "8f03b646";
             hostname = "designare";
             username = "martin";
             disks = [ "/dev/nvme0n1" "/dev/nvme1n1" ];
@@ -185,7 +181,6 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = null;
-            hostid = "be4cb578";
             hostname = "skull";
             username = "martin";
             disks = [ "/dev/nvme0n1" "/dev/nvme1n1" ];
@@ -200,7 +195,6 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostid = "d36bf9c3";
             hostname = "trooper";
             username = "martin";
             disks = [ "/dev/nvme0n1" "/dev/nvme1n1" ];
@@ -215,7 +209,6 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostid = "b28460d8";
             hostname = "zed";
             username = "martin";
             disks = [ "/dev/nvme0n1" ];
@@ -230,7 +223,6 @@
           specialArgs = {
             inherit inputs outputs stateVersion;
             desktop = "pantheon";
-            hostid = "37f0bf56";
             hostname = "phony";
             username = "martin";
             disks = [ "/dev/vda" ];

@@ -35,9 +35,7 @@
       set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
 
-
       shellAbbrs = {
-        mkhostid = "head -c4 /dev/urandom | od -A none -t x4";
         # https://github.com/NixOS/nixpkgs/issues/191128#issuecomment-1246030417
         nix-hash-sha256 = "nix-hash --flat --base32 --type sha256";
         nix-gc = "sudo nix-collect-garbage --delete-older-than 14d";
