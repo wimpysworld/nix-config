@@ -8,9 +8,10 @@
   # Don't install mate-netbook or caja-dropbox
   environment = {
     mate.excludePackages = with pkgs.mate; [
+      caja-dropbox
+      eom
       mate-themes
       mate-netbook
-      caja-dropbox
       mate-icon-theme
       mate-backgrounds
       mate-icon-theme-faenza
