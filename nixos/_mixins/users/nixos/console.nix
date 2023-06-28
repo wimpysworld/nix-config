@@ -5,9 +5,6 @@ let
 
 set -euo pipefail
 
-TARGET_HOST="$1"
-TARGET_USER="$2"
-
 if [ "$(id -u)" -eq 0 ]; then
   echo "ERROR! $(basename "$0") should be run as a regular user"
   exit 1
@@ -20,17 +17,20 @@ fi
 cd "$HOME/Zero/nix-config"
 git remote set-url origin git@github.com:wimpysworld/nix-config.git
 
-if [[ -z "$TARGET_HOST" ]]; then
+if [[ -z "$1" ]]; then
   echo "ERROR! $(basename "$0") requires a hostname as the first argument"
   ls -1 nixos/*/boot.nix | cut -d'/' -f2 | grep -v live
   exit 1
 fi
 
-if [[ -z "$TARGET_USER" ]]; then
+if [[ -z "$2" ]]; then
   echo "ERROR! $(basename "$0") requires a username as the second argument"
   ls -1 nixos/_mixins/users/ | grep -v -E "nixos|root"
   exit 1
 fi
+
+TARGET_HOST="$1"
+TARGET_USER="$2"
 
 if [ ! -e "nixos/$TARGET_HOST/disks.nix" ]; then
   echo "ERROR! $(basename "$0") could not find the required nixos/$TARGET_HOST/disks.nix"
