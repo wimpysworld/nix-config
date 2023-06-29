@@ -20,9 +20,8 @@ in
           {
             name = "ESP";
             start = "1M";
-            end = "1024M";
-            bootable = true;
-            fs-type = "fat32";
+            end = "550MiB";
+            type = "EF00";
             content = {
               type = "filesystem";
               format = "vfat";
@@ -31,8 +30,7 @@ in
           }
           {
             name = "root";
-            start = "1024M";
-            end = "100%";
+            size = "100%";
             content = {
               type = "filesystem";
               # Overwirte the existing filesystem
