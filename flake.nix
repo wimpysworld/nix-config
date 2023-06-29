@@ -32,29 +32,28 @@
     # home-manager switch -b backup --flake $HOME/Zero/nix-config
     # nix build .#homeConfigurations."martin@ripper".activationPackage
     homeConfigurations = {
+      # .iso images
+      "martin@iso"       = libx.mkHome { hostname = "iso";       username = "nixos";  desktop = "pantheon"; };
+      "martin@iso-mini"  = libx.mkHome { hostname = "iso-mini";  username = "nixos"; };
       # Workstations
       "martin@designare" = libx.mkHome { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
-      "martin@iso"       = libx.mkHome { hostname = "iso";       username = "nixos";  desktop = "pantheon"; };
       "martin@ripper"    = libx.mkHome { hostname = "ripper";    username = "martin"; desktop = "pantheon"; };
       "martin@trooper"   = libx.mkHome { hostname = "trooper";   username = "martin"; desktop = "pantheon"; };
       "martin@vm"        = libx.mkHome { hostname = "vm";        username = "martin"; desktop = "pantheon"; };
       "martin@zed"       = libx.mkHome { hostname = "zed";       username = "martin"; desktop = "pantheon"; };
       # Servers
-      "martin@iso-mini"  = libx.mkHome { hostname = "iso-mini";  username = "nixos"; };
       "martin@skull"     = libx.mkHome { hostname = "skull";     username = "martin"; };
       "martin@vm-mini"   = libx.mkHome { hostname = "vm-mini";   username = "martin"; };
     };
 
     nixosConfigurations = {
       # .iso images
-      # nix build .#nixosConfigurations.iso.config.system.build.isoImage
+      #  - nix build .#nixosConfigurations.{iso|iso-mini}.config.system.build.isoImage
       iso       = libx.mkHost { hostname = "iso";       username = "nixos";  desktop = "pantheon"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; };
-      # nix build .#nixosConfigurations.iso-mini.config.system.build.isoImage
       iso-mini  = libx.mkHost { hostname = "iso-mini";  username = "nixos";  installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"; };
-
-      # sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
-      # nix build .#nixosConfigurations.ripper.config.system.build.toplevel
       # Workstations
+      #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
+      #  - nix build .#nixosConfigurations.ripper.config.system.build.toplevel      
       designare = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
       ripper    = libx.mkHost { hostname = "ripper";    username = "martin"; desktop = "pantheon"; };
       trooper   = libx.mkHost { hostname = "trooper";   username = "martin"; desktop = "pantheon"; };
