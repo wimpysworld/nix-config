@@ -48,11 +48,12 @@
     fish = { 
       enable = true;
       shellAbbrs = {
-        nix-gc = "sudo nix-collect-garbage --delete-older-than 14d";
-        rebuild-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
-        rebuild-host = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
-        rebuild-lock = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
-        rebuild-iso = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso.config.system.build.isoImage && popd";
+        nix-gc           = "sudo nix-collect-garbage --delete-older-than 14d";
+        rebuild-home     = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        rebuild-host     = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
+        rebuild-lock     = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
+        rebuild-iso      = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso.config.system.build.isoImage && popd";
+        rebuild-iso-mini = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-mini.config.system.build.isoImage && popd";
       };
     };
   };
