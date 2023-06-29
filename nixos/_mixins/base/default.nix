@@ -2,6 +2,7 @@
   imports = [
     ./locale.nix
     ./nano.nix
+    ../services/firewall.nix
     ../services/fwupd.nix
     ../services/openssh.nix
   ];
@@ -37,9 +38,6 @@
   networking = {
     hostName = hostname;
     useDHCP = lib.mkDefault true;
-    firewall = {
-      enable = true;
-    };
   };
 
   programs = {
