@@ -53,7 +53,7 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of generic confi
 
 ## Installing 💾
 
-- Boot off a .iso image created by this flake using `rebuild-iso` (*see below*).
+- Boot off a .iso image created by this flake using `rebuild-iso` or `rebuild-mini-iso` (*see below*).
 - Put the .iso image on a USB drive
 - Boot the target computer from the USB drive
 - Run `install-system <hostname> <username>` from a terminal.
@@ -95,7 +95,7 @@ home-manager switch -b backup --flake $HOME/Zero/nix-config
 
 ### ISO 📀
 
-A `rebuild-iso` alias is provided, that does the following:
+Aliases for `rebuild-iso` (*desktop*) and `rebuild-mini-iso` (*headless*) are provided the create .iso images from this flake. They do the following:
 
 ```bash
 pushd $HOME/Zero/nix-config
