@@ -63,10 +63,6 @@
       };
       nvidiaSettings = false;
     };
-    opengl = {
-      enable = true;
-      driSupport = true;
-    };
     openrazer = {
       enable = true;
       devicesOffOnScreensaver = false;

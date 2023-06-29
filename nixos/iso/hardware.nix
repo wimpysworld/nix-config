@@ -14,13 +14,6 @@
 
   environment.systemPackages = with pkgs; [ ];
 
-  hardware = {
-    opengl = {
-      enable = true;
-      driSupport = true;
-    };
-  };
-
   services = {
     xserver.videoDrivers = [ ];
   };

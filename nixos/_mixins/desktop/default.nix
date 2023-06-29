@@ -51,6 +51,13 @@
     };
   };
 
+  hardware = {
+    opengl = {
+      enable = true;
+      driSupport = true;
+    };
+  };
+
   programs = {
     dconf.enable = true;
     # Chromium is enabled by default with sane defaults.
