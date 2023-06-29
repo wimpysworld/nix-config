@@ -15,7 +15,6 @@
       black                         # Code format Python
       bmon                          # Modern Unix `iftop`
       breezy                        # Terminal bzr client
-      btop                          # Modern Unix `top`
       butler                        # Terminal Itch.io API client
       chafa                         # Terminal image viewer
       chroma                        # Code syntax highlighter
@@ -36,7 +35,6 @@
       ffmpeg-headless               # Terminal video encoder
       glow                          # Terminal Markdown renderer
       gping                         # Modern Unix `ping`
-      gtop                          # Modern Unix `top`
       hexyl                         # Modern Unix `hexedit`
       httpie                        # Terminal HTTP client
       hueadm                        # Terminal Philips Hue client
@@ -156,7 +154,6 @@
     micro = {
       enable = true;
       settings = {
-        #colorcolumn = 80;
         colorscheme = "simple";
         diffgutter = true;
         rmtrailingws = true;
