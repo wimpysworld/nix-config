@@ -1,3 +1,3 @@
 { ... }: {
-  imports = [ ../../services/syncthing.nix ]
+  imports = [ ../../services/syncthing.nix ];
 }
