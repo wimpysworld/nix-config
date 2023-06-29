@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }: {
+{ lib, pkgs, ... }: {
   boot = {
     blacklistedKernelModules = lib.mkDefault [ ];
     consoleLogLevel = 3;
@@ -6,10 +6,7 @@
     extraModprobeConfig = lib.mkDefault ''
     '';
     initrd = {
-      availableKernelModules = [
-        "virtio_blk"
-        "virtio_pci"
-      ];
+      availableKernelModules = [ ];
       kernelModules = [ ];
       verbose = false;
     };

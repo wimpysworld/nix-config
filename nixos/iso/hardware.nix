@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, modulesPath, pkgs, ... }:
 {
   imports = [
     ../_mixins/services/pipewire.nix
@@ -18,7 +18,6 @@
     opengl = {
       enable = true;
       driSupport = true;
-      driSupport32Bit = true;
     };
   };
 
