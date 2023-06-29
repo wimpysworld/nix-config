@@ -27,8 +27,6 @@
       debootstrap                   # Terminal Debian installer
       diffr                         # Modern Unix `diff`
       difftastic                    # Modern Unix `diff`
-      distrobox                     # Terminal container manager
-      dive                          # Container analyzer
       dogdns                        # Modern Unix `dig`
       dua                           # Modern Unix `du`
       duf                           # Modern Unix `df`
@@ -38,7 +36,6 @@
       ffmpeg-headless               # Terminal video encoder
       glow                          # Terminal Markdown renderer
       gping                         # Modern Unix `ping`
-      grype                         # Container vulnerability scanner
       gtop                          # Modern Unix `top`
       hexyl                         # Modern Unix `hexedit`
       httpie                        # Terminal HTTP client
@@ -76,7 +73,6 @@
       s3cmd                         # Terminal cloud storage client
       shellcheck                    # Code lint Shell
       shfmt                         # Code format Shell
-      syft                          # Container SBOM generator
       tldr                          # Modern Unix `man`
       tokei                         # Modern Unix `wc` for code
       vdpauinfo                     # Terminal VDPAU info

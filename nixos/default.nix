@@ -8,7 +8,6 @@
     (./. + "/${hostname}/hardware.nix")
     (modulesPath + "/installer/scan/not-detected.nix")
     ./_mixins/base
-    ./_mixins/boxes
     ./_mixins/users/root
     ./_mixins/users/${username}
   ]
