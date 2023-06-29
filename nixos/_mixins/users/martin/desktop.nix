@@ -7,7 +7,6 @@
     ../../desktop/microsoft-edge.nix
     ../../desktop/obs-studio.nix
     ../../desktop/opera.nix
-    ../../desktop/quickemu.nix
     ../../desktop/tilix.nix
     ../../desktop/vivaldi.nix
   ];
