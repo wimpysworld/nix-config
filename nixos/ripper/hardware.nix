@@ -36,6 +36,11 @@
     packages = [ pkgs.terminus_font pkgs.powerline-fonts ];
   };
 
+  fileSystems."/mnt/archive" = {
+    device = "/dev/disk/by-label/archive";
+    fsType = "xfs";
+  };
+
   swapDevices = [{
     device = "/swap";
     size = 2048;
