@@ -22,6 +22,7 @@ in
             start = "1M";
             end = "550MiB";
             bootable = true;
+            flags = [ "esp" ];
             fs-type = "fat32";
             content = {
               type = "filesystem";
@@ -31,7 +32,8 @@ in
           }
           {
             name = "root";
-            size = "100%";
+            start = "550MiB";
+            end = "100%";
             content = {
               type = "filesystem";
               # Overwirte the existing filesystem
