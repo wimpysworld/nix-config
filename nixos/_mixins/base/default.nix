@@ -4,8 +4,6 @@
     ./nano.nix
     ../services/fwupd.nix
     ../services/openssh.nix
-    ../services/tailscale.nix
-    ../services/zerotier.nix
   ];
 
   # Only install the docs I use
