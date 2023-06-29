@@ -129,7 +129,6 @@
         };
       };
     };
-    command-not-found.enable = true;
     dircolors = {
       enable = true;
       enableBashIntegration = true;

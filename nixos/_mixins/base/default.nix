@@ -39,6 +39,7 @@
   };
 
   programs = {
+    command-not-found.enable = true;
     fish = { 
       enable = true;
       shellAbbrs = {
