@@ -18,7 +18,6 @@
   outputs = {
     self,
     nixpkgs,
-    nixpkgs-unstable,
     disko,
     home-manager,
     nixos-hardware,
