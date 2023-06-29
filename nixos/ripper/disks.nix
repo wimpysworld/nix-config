@@ -22,16 +22,11 @@ in
           type = "table";
           format = "gpt";
           partitions = [{
-            name = "boot";
-            start = "0%";
-            end = "1M";
-            flags = [ "bios_grub" ];
-          }
-          {
             name = "ESP";
-            start = "1M";
-            end = "1024M";
+            start = "0%";
+            end = "550MiB";
             bootable = true;
+            flags = [ "esp" ];
             fs-type = "fat32";
             content = {
               type = "filesystem";
@@ -41,7 +36,7 @@ in
           }
           {
             name = "root";
-            start = "1024M";
+            start = "550MiB";
             end = "100%";
             content = {
               type = "filesystem";
