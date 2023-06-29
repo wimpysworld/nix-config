@@ -14,17 +14,15 @@
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
   };
-
   outputs = {
     self,
-    nixpkgs,
     disko,
     home-manager,
     nixos-hardware,
+    nixpkgs,
     ... } @ inputs:
   let
     inherit (self) outputs;
-
     # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
     stateVersion = "23.05";
     libx = import ./lib { inherit inputs outputs stateVersion; };
@@ -45,7 +43,6 @@
       "martin@skull"     = libx.mkHome { hostname = "skull";     username = "martin"; };
       "martin@vm-mini"   = libx.mkHome { hostname = "vm-mini";   username = "martin"; };
     };
-
     nixosConfigurations = {
       # .iso images
       #  - nix build .#nixosConfigurations.{iso|iso-mini}.config.system.build.isoImage
