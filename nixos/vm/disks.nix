@@ -21,7 +21,8 @@ in
             name = "ESP";
             start = "1M";
             end = "550MiB";
-            type = "EF00";
+            bootable = true;
+            fs-type = "fat32";
             content = {
               type = "filesystem";
               format = "vfat";
