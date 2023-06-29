@@ -18,31 +18,27 @@
   outputs = {
     self,
     nixpkgs,
+    nixpkgs-unstable,
     disko,
     home-manager,
     nixos-hardware,
     ... } @ inputs:
     let
       inherit (self) outputs;
-      forAllSystems = nixpkgs.lib.genAttrs [
-        "aarch64-linux"
-        "i686-linux"
-        "x86_64-linux"
-        "aarch64-darwin"
-        "x86_64-darwin"
-      ];
+
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "23.05";
+      libx = import ./lib { inherit inputs outputs stateVersion; };
     in
-    rec {
+    {
       # Custom packages; acessible via 'nix build', 'nix shell', etc
-      packages = forAllSystems (system:
+      packages = libx.forAllSystems (system:
         let pkgs = nixpkgs.legacyPackages.${system};
         in import ./pkgs { inherit pkgs; }
       );
 
       # Devshell for bootstrapping; acessible via 'nix develop' or 'nix-shell' (legacy)
-      devShells = forAllSystems (system:
+      devShells = libx.forAllSystems (system:
         let pkgs = nixpkgs.legacyPackages.${system};
         in import ./shell.nix { inherit pkgs; }
       );
@@ -50,84 +46,18 @@
       # Custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };
 
+      # home-manager switch -b backup --flake $HOME/Zero/nix-config
+      # nix build .#homeConfigurations."martin@ripper".activationPackage
       homeConfigurations = {
-        # home-manager switch -b backup --flake $HOME/Zero/nix-config
-        "martin@designare" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-          extraSpecialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "designare";
-            username = "martin";
-          };
-          modules = [ ./home-manager ];
-        };
-
-        "martin@designare-headless" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-          extraSpecialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = null;
-            hostname = "designare";
-            username = "martin";
-          };
-          modules = [ ./home-manager ];
-        };
-
-        "martin@ripper" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-          extraSpecialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "ripper";
-            username = "martin";
-          };
-          modules = [ ./home-manager ];
-        };
-
-        "martin@trooper" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-          extraSpecialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "trooper";
-            username = "martin";
-          };
-          modules = [ ./home-manager ];
-        };
-
-        "martin@skull" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-          extraSpecialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = null;
-            hostname = "skull";
-            username = "martin";
-          };
-          modules = [ ./home-manager ];
-        };
-
-        "martin@zed" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-          extraSpecialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "zed";
-            username = "martin";
-          };
-          modules = [ ./home-manager ];
-        };
-
-        "martin@vm" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-          extraSpecialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "phony";
-            username = "martin";
-          };
-          modules = [ ./home-manager ];
-        };
+        # Workstations
+        "martin@designare" = libx.mkHome { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
+        "martin@ripper"    = libx.mkHome { hostname = "ripper";    username = "martin"; desktop = "pantheon"; };
+        "martin@trooper"   = libx.mkHome { hostname = "trooper";   username = "martin"; desktop = "pantheon"; };
+        "martin@vm"        = libx.mkHome { hostname = "vm";        username = "martin"; desktop = "pantheon"; };
+        "martin@zed"       = libx.mkHome { hostname = "zed";       username = "martin"; desktop = "pantheon"; };
+        # Servers
+        "martin@designare-headless" = libx.mkHome { hostname = "designare"; username = "martin"; };
+        "martin@skull"              = libx.mkHome { hostname = "skull";     username = "martin"; };
       };
 
       nixosConfigurations = {
@@ -135,77 +65,25 @@
         iso = nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "iso";
-            username = "nixos";
+            hostname = "iso"; username = "nixos"; desktop = "pantheon";
           };
-          system = "x86_64-linux";
           modules = [
             (nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix")
             ./nixos
           ];
         };
 
-        designare = nixpkgs.lib.nixosSystem {
-          # sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
-          specialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "designare";
-            username = "martin";
-          };
-          modules = [ ./nixos ];
-        };
-
-        designare-headless = nixpkgs.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = null;
-            hostname = "designare";
-            username = "martin";
-          };
-          modules = [ ./nixos ];
-        };
-
-        skull = nixpkgs.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = null;
-            hostname = "skull";
-            username = "martin";
-          };
-          modules = [ ./nixos ];
-        };
-
-        trooper = nixpkgs.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "trooper";
-            username = "martin";
-          };
-          modules = [ ./nixos ];
-        };
-
-        vm = nixpkgs.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "vm";
-            username = "martin";
-          };
-          modules = [ ./nixos ];
-        };
-
-        zed = nixpkgs.lib.nixosSystem {
-          specialArgs = {
-            inherit inputs outputs stateVersion;
-            desktop = "pantheon";
-            hostname = "zed";
-            username = "martin";
-          };
-          modules = [ ./nixos ];
-        };
+        # sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
+        # nix build .#nixosConfigurations.ripper.config.system.build.toplevel
+        # Workstations
+        designare = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
+        ripper    = libx.mkHost { hostname = "ripper";    username = "martin"; desktop = "pantheon"; };
+        trooper   = libx.mkHost { hostname = "trooper";   username = "martin"; desktop = "pantheon"; };
+        vm        = libx.mkHost { hostname = "vm";        username = "martin"; desktop = "pantheon"; };
+        zed       = libx.mkHost { hostname = "zed";       username = "martin"; desktop = "pantheon"; };
+        # Servers
+        designare-headless = libx.mkmkHost { hostname = "designare"; username = "martin"; };
+        skull              = libx.mkmkHost { hostname = "skull";     username = "martin"; };
       };
     };
 }
