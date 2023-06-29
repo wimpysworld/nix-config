@@ -26,7 +26,7 @@
     earlySetup = true;
     # Pixel sizes of the font: 12, 14, 16, 18, 20, 22, 24, 28, 32
     # Followed by 'n' (normal) or 'b' (bold)
-    font = "ter-powerline-v28n";
+    font = "ter-powerline-v18n";
     packages = [ pkgs.terminus_font pkgs.powerline-fonts ];
   };
 
@@ -52,7 +52,7 @@
       prime = {
         amdgpuBusId = "PCI:3:0:0";
         nvidiaBusId = "PCI:4:0:0";
-        # Make the Radeon RX6800 default. The NVIDIA T600 is on for CUDA/NVENC
+        # Make the Radeon RX6800 default. The NVIDIA T600 is for CUDA/NVENC
         reverseSync.enable = true;
       };
       nvidiaSettings = false;
