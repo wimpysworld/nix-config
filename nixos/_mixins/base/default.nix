@@ -9,11 +9,11 @@
   ];
 
   # Only install the docs I use
-  documentation.enable = true; # documentation of packages
+  documentation.enable = true;        # documentation of packages
   documentation.nixos.enable = false; # nixos documentation
-  documentation.man.enable = true; # manual pages and the man command
-  documentation.info.enable = false; # info pages and the info command
-  documentation.doc.enable = false; # documentation distributed in packages' /share/doc
+  documentation.man.enable = true;    # man pages and the man command
+  documentation.info.enable = false;  # info pages and the info command
+  documentation.doc.enable = false;   # documentation distributed in packages' /share/doc
 
   environment.systemPackages = with pkgs; [
     binutils
