@@ -1,5 +1,6 @@
 { ... }: {
-  home.file.".face".source = ./face;
+  imports = [ ]
+  home.file.".face".source = ./face.png;
   programs = {
     git = {
       userEmail = "martin@wimpress.org";
