@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }: {
+{ config, lib, pkgs, ... }: {
   boot = {
     blacklistedKernelModules = lib.mkDefault [ ];
     consoleLogLevel = 3;
@@ -15,7 +15,6 @@
       "vhost_vsock"
     ];
 
-    kernelPackages = pkgs.linuxPackages_latest;
     kernel.sysctl = {
       "net.ipv4.ip_forward" = 1;
       "net.ipv6.conf.all.forwarding" = 1;
