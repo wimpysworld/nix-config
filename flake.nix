@@ -53,7 +53,7 @@
       iso-mini  = libx.mkHost { hostname = "iso-mini";  username = "nixos";  installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"; };
       # Workstations
       #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
-      #  - nix build .#nixosConfigurations.ripper.config.system.build.toplevel      
+      #  - nix build .#nixosConfigurations.ripper.config.system.build.toplevel
       designare = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
       ripper    = libx.mkHost { hostname = "ripper";    username = "martin"; desktop = "pantheon"; };
       trooper   = libx.mkHost { hostname = "trooper";   username = "martin"; desktop = "pantheon"; };
