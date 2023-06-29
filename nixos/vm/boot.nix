@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }: {
+{ lib, pkgs, ... }: {
   boot = {
     blacklistedKernelModules = lib.mkDefault [ ];
     consoleLogLevel = 3;
@@ -12,8 +12,6 @@
         "ohci_pci"
         "sr_mod"
         "usbhid"
-        "virtio_blk"
-        "virtio_pci"
         "xhci_pci"
       ];
       kernelModules = [ ];

@@ -1,5 +1,4 @@
-# Virtual machine configuration
-{ config, inputs, lib, modulesPath, pkgs, username, ... }:
+{ lib, modulesPath, pkgs, ... }:
 {
   imports = [
     (modulesPath + "/profiles/qemu-guest.nix")
