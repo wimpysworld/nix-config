@@ -1,4 +1,8 @@
-{ disks ? [ "/dev/nvme0n1" "/dev/nvme1n1" ], ... }: {
+{ disks ? [ "/dev/nvme0n1" "/dev/nvme1n1" ], ... }:
+let
+  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
+in
+{
   disko.devices = {
     disk = {
       nvme1 = {
@@ -7,38 +11,37 @@
         content = {
           type = "table";
           format = "gpt";
-          partitions = [
-            {
-              name = "boot";
-              start = "0%";
-              end = "1M";
-              flags = [ "bios_grub" ];
-            }
-            {
-              name = "ESP";
-              start = "1M";
-              end = "1024M";
-              bootable = true;
-              fs-type = "fat32";
-              content = {
-                type = "filesystem";
-                format = "vfat";
-                mountpoint = "/boot";
-              };
-            }
-            {
-              name = "root";
-              start = "1024M";
-              end = "100%";
-              content = {
-                type = "filesystem";
-                # Overwirte the existing filesystem
-                extraArgs = [ "-f" ];
-                format = "xfs";
-                mountpoint = "/";
-              };
-            }
-          ];
+          partitions = [{
+            name = "boot";
+            start = "0%";
+            end = "1M";
+            flags = [ "bios_grub" ];
+          }
+          {
+            name = "ESP";
+            start = "1M";
+            end = "1024M";
+            bootable = true;
+            fs-type = "fat32";
+            content = {
+              type = "filesystem";
+              format = "vfat";
+              mountpoint = "/boot";
+            };
+          }
+          {
+            name = "root";
+            start = "1024M";
+            end = "100%";
+            content = {
+              type = "filesystem";
+              # Overwirte the existing filesystem
+              extraArgs = [ "-f" ];
+              format = "xfs";
+              mountpoint = "/";
+              mountOptions = defaultXfsOpts;
+            };
+          }];
         };
       };
       nvme0 = {
@@ -47,20 +50,19 @@
         content = {
           type = "table";
           format = "gpt";
-          partitions = [
-            {
-              name = "home";
-              start = "0%";
-              end = "100%";
-              content = {
-                type = "filesystem";
-                # Overwirte the existing filesystem
-                extraArgs = [ "-f" ];
-                format = "xfs";
-                mountpoint = "/home";
-              };
-            }
-          ];
+          partitions = [{
+            name = "home";
+            start = "0%";
+            end = "100%";
+            content = {
+              type = "filesystem";
+              # Overwirte the existing filesystem
+              extraArgs = [ "-f" ];
+              format = "xfs";
+              mountpoint = "/home";
+              mountOptions = defaultXfsOpts;
+            };
+          }];
         };
       };
     };
