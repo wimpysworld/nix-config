@@ -32,7 +32,6 @@
 
     fontconfig = {
       antialias = true;
-      cache32Bit = true;
       defaultFonts = {
         serif = [ "Work Sans" "Joypixels" ];
         sansSerif = [ "Work Sans" "Joypixels" ];
