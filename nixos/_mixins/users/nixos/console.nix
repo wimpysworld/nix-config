@@ -62,11 +62,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
   sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
 
-  # Create dirs for home-manager
-  # FIXME: This should be done via nixos/_mixins/base/default.nix
-  #        But it only works in the live iso, not an installed system.
-  sudo mkdir -p "/mnt/nix/var/nix/profiles/per-user/$TARGET_USER"
-
   # Rsync nix-config to the target install and set the remote origin to SSH.
   rsync -a --delete "$HOME/Zero/" "/mnt/home/$TARGET_USER/Zero/"
   pushd "/mnt/home/$TARGET_USER/Zero/nix-config"
