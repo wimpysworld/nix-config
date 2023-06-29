@@ -194,7 +194,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 - [x] Integrate an Emoji picker
 - [x] Integrate AppCenter and Flathub
-- [ ] Integrate Steam
+- [x] Integrate Steam
 - [ ] Add Ferdium, Rambox or Wavebox
 - [ ] Add Password Managers
 
