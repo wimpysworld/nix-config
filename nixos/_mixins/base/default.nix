@@ -23,8 +23,6 @@
     home-manager
     killall
     man-pages
-    mergerfs
-    mergerfs-tools
     micro
     pciutils
     rsync
