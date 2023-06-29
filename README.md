@@ -205,7 +205,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate Keybase
 - [ ] Integrate nullmailer
 - [x] Integrate Syncthing
-- [ ] Integrate sshguard
+- [x] Integrate sshguard
 
 ### Configuration
 
