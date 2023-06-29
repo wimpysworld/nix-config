@@ -21,12 +21,14 @@ pushd "$HOME/Zero/nix-config"
 
 if [[ -z "$TARGET_HOST" ]]; then
   echo "ERROR! $(basename "$0") requires a hostname as the first argument"
-  ls -1 nixos/*/boot.nix | cut -d'/' -f2 | grep -v live
+  echo "       The following hosts are available"
+  ls -1 nixos/*/boot.nix | cut -d'/' -f2 | grep -v iso
   exit 1
 fi
 
 if [[ -z "$TARGET_USER" ]]; then
   echo "ERROR! $(basename "$0") requires a username as the second argument"
+  echo "       The following users are available"
   ls -1 nixos/_mixins/users/ | grep -v -E "nixos|root"
   exit 1
 fi
