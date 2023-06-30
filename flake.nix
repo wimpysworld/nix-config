@@ -35,6 +35,7 @@
       "martin@iso-mini"  = libx.mkHome { hostname = "iso-mini";  username = "nixos"; };
       # Workstations
       "martin@designare" = libx.mkHome { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
+      "martin@p2-max"    = libx.mkHome { hostname = "p2-max";    username = "martin"; desktop = "pantheon"; };
       "martin@ripper"    = libx.mkHome { hostname = "ripper";    username = "martin"; desktop = "pantheon"; };
       "martin@trooper"   = libx.mkHome { hostname = "trooper";   username = "martin"; desktop = "pantheon"; };
       "martin@vm"        = libx.mkHome { hostname = "vm";        username = "martin"; desktop = "pantheon"; };
@@ -52,6 +53,7 @@
       #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
       #  - nix build .#nixosConfigurations.ripper.config.system.build.toplevel
       designare = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
+      p2-max    = libx.mkHost { hostname = "p2-max";    username = "martin"; desktop = "pantheon"; };
       ripper    = libx.mkHost { hostname = "ripper";    username = "martin"; desktop = "pantheon"; };
       trooper   = libx.mkHost { hostname = "trooper";   username = "martin"; desktop = "pantheon"; };
       vm        = libx.mkHost { hostname = "vm";        username = "martin"; desktop = "pantheon"; };
