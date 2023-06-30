@@ -47,7 +47,7 @@
   }];
 
   environment.systemPackages = with pkgs; [
-    nvtop-nvidia
+    nvtop
     polychromatic
   ];
 
