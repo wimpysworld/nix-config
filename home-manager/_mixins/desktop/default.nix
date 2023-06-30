@@ -4,6 +4,7 @@
     ./dconf-editor.nix
     ./emote.nix
     ./gitkraken.nix
+    ./gnome-sound-recorder.nix
     ./meld.nix
     ./rhythmbox.nix
     ./tilix.nix
