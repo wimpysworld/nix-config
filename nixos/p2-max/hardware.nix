@@ -1,7 +1,7 @@
 { config, inputs, lib, pkgs, ... }:
 {
   imports = [
-    inputs.nixos-hardware.nixosModules.gpd.p2-max
+    inputs.nixos-hardware.nixosModules.gpd-p2-max
     ../_mixins/services/pipewire.nix
   ];
 
