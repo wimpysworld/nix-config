@@ -2,13 +2,18 @@
   #https://nixos.wiki/wiki/Podman
 
   environment.systemPackages = with pkgs; [
-    buildah
-    dive                          # Container analyzer
-    grype                         # Container vulnerability scanner
+    #buildah          # Container build tool
+    #conmon           # Container monitoring
+    #dive             # Container analyzer
+    fuse-overlayfs    # Container overlay+shiftfs
+    #grype            # Container vulnerability scanner
     podman-compose
     podman-tui
-    syft                          # Container SBOM generator
+    #skopeo           # Container registry utility
+    #syft             # Container SBOM generator
   ];
+  # podman-desktop; only if desktop defined.
+
   virtualisation = {
     podman = {
       defaultNetwork.settings = {
