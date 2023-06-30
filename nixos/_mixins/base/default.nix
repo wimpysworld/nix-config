@@ -37,6 +37,7 @@
     extraHosts = ''
     192.168.192.59  trooper-zt
     192.168.192.220 ripper-zt
+    192.168.192.249 p2-max-zt
     '';
     hostName = hostname;
     useDHCP = lib.mkDefault true;

@@ -10,7 +10,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `designare`    | DIY            | i9-9900K            | NixOS         | Desktop      | Done     |
 | `noname`       | DIY            | AMD 5900X, 6900 XT  | NixOS         | Gamestation  | Done     |
 | `node202`      | DIY            | AMD 5700G, 6700 XT  | ChimeraOS     | Gamestation  | Done     |
-| `vm`           | VM             | n/a                 | NixOS         | Desktop      | Done     |
+| `vm`           | VM             | -                   | NixOS         | Desktop      | Done     |
 | `ripper`       | DIY            | AMD 3970X           | elementary OS | Desktop      | Done     |
 | `skull`        | Intel          | NUC6i7KYK           | NixOS         | Server       | WIP      |
 | `brix`         | Gigabyte       | BRIX                | NixOS         | Server       | tbd      |
@@ -24,7 +24,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `pocket`       | GPD            | Pocket              | NixOS         | Laptop       | tbd      |
 | `pocket2`      | GPD            | Pocket 2            | NixOS         | Laptop       | tbd      |
 | `pocket3`      | GPD            | Pocket 3            | NixOS         | Laptop       | tbd      |
-| `p2-max`       | GPD            | P2 Max              | NixOS         | Laptop       | WIP      |
+| `p2-max`       | GPD            | P2 Max              | NixOS         | Laptop       | Done     |
 | `micropc`      | GPD            | Micro PC            | NixOS         | Laptop       | tbd      |
 | `win`          | GPD            | WIN                 | NixOS         | Laptop       | tbd      |
 | `win-max`      | GPD            | WIN Max             | NixOS         | Laptop       | tbd      |

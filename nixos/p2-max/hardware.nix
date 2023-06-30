@@ -21,7 +21,7 @@
   };
 
   environment.systemPackages = with pkgs; [
-    nvtop
+    nvtop-amd
   ];
 
   hardware = {
