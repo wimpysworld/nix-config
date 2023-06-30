@@ -1,6 +1,6 @@
 { lib, hostname, ... }: {
   imports = [ ]
-  ++ lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
+  ++ lib.optional (builtins.pathExists (./. + "/hosts/${hostname}.nix")) ./hosts/${hostname}.nix;
 
   home.file.".face".source = ./face.png;
   programs = {
