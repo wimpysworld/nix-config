@@ -26,8 +26,6 @@
       "vhost_vsock"
     ];
     kernel.sysctl = {
-      #"kernel.sysrq" = 1;
-      #"kernel.printk" = "3 3 3 3";
       "net.ipv4.ip_forward" = 1;
       "net.ipv6.conf.all.forwarding" = 1;
     };
