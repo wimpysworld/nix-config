@@ -34,13 +34,17 @@
 
   # Use passed hostname to configure basic networking
   networking = {
+    extraHosts = ''
+    192.168.192.59  trooper-zt
+    192.168.192.220 ripper-zt
+    '';
     hostName = hostname;
     useDHCP = lib.mkDefault true;
   };
 
   programs = {
     command-not-found.enable = false;
-    fish = { 
+    fish = {
       enable = true;
       shellAbbrs = {
         nix-gc           = "sudo nix-collect-garbage --delete-older-than 14d";
