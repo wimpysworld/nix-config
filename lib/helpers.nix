@@ -13,7 +13,7 @@
     specialArgs = {
       inherit inputs outputs desktop hostname username stateVersion;
     };
-    modules = [ ../nixos ] ++ (if installer != null then [ (installer) ] else []);
+    modules = [ ../nixos ] ++ (inputs.nixpkgs.lib.optionals (installer != null) [ installer ]);
   };
 
   forAllSystems = inputs.nixpkgs.lib.genAttrs [
