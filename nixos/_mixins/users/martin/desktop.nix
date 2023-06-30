@@ -15,8 +15,11 @@
     authy
     cider
     gimp-with-plugins
+    gnome.gnome-clocks
     gnome.dconf-editor
+    gnome.gnome-sound-recorder
     inkscape
+    keybase-gui
     libreoffice
     maestral-gui
     meld
