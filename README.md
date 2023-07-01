@@ -200,6 +200,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Services
 
+- [ ] Integrate Borg Backups using [Pika](https://apps.gnome.org/en-GB/app/org.gnome.World.PikaBackup/) or [Vorta](https://vorta.borgbase.com/) for workstations and [borgmatic](https://torsion.org/borgmatic/) or [Embord](https://github.com/KenKundert/emborg) for servers
 - [ ] Integrate cockpit
 - [x] Integrate fwupd
 - [x] Integrate Keybase
@@ -210,6 +211,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 ### Configuration
 
 - [x] Embed [install script in the ISO](./nixos/_mixins/users/nixos/console.nix)
+- [ ] Integrate [agenix](https://github.com/ryantm/agenix) or [sops-nix](https://github.com/Mic92/sops-nix)
 - [x] Integrate capabilities from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
 - [ ] Integrate wallpapers
 - [x] Integrate faces
@@ -217,7 +219,15 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels
 - [x] Create common user settings and discrete user settings
 - [x] Move application defaults out of the desktop defaults
+- [ ] Create standard directories in `/home/martin` using `systemd.user.tmpfiles.rules`.
+- [ ] Create `.envrc` files in `/home/martin`.
+- [ ] Bind Syncthing GUI to ZeroTier.
+- [ ] Config Plank.
 - [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31)
+
+### Development
+
+- [ ] Defold
 
 ### Shell
 
