@@ -66,13 +66,13 @@ with lib.hm.gvariant;
       unsafe-paste-alert = false;
     };
 
-    #"org/gnome/desktop/background" = {
-    #  picture-uri = "file:///home/martin/.local/share/backgrounds/2023-02-09-20-47-36-DeterminateColorway-2560x1440.png";
-    #};
-
-    "org/gnome/desktop/default/applications/terminal" = {
-      exec = "tilix";
-      exec-arg = "-e";
+    "net/launchpad/plank/docks/dock1" = {
+      alignment = "center";
+      hide-mode = "window-dodge";
+      icon-size = 56;
+      pinned-only = false;
+      position = "left";
+      theme = "Transparent";
     };
 
     "org/gnome/desktop/datetime" = {
