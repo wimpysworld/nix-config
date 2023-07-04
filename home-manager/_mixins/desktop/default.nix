@@ -1,5 +1,6 @@
 { config, desktop, pkgs, ... }: {
   imports = [
+    ./audio-recorder.nix
     ./celluloid.nix
     ./dconf-editor.nix
     ./emote.nix

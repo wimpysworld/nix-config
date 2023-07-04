@@ -12,6 +12,7 @@
   ];
 
   environment.systemPackages = with pkgs; [
+    audio-recorder
     authy
     chatterino2
     cider
