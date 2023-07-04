@@ -3,5 +3,8 @@
     ./distrobox.nix
     ./podman.nix
   ]
-  ++ lib.optional (builtins.isString desktop) ./quickemu.nix;
+  ++ lib.optionals (builtins.isString desktop) [
+    ./distrobox-desktop.nix
+    ./quickemu.nix
+  ];
 }
