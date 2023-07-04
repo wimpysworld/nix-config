@@ -18,6 +18,7 @@
     gnome.gnome-clocks
     gnome.dconf-editor
     gnome.gnome-sound-recorder
+    irccloud
     inkscape
     keybase-gui
     libreoffice
@@ -32,6 +33,7 @@
 
     # Fast moving apps use the unstable branch
     unstable.discord
+    unstable.fluffychat
     unstable.gitkraken
     unstable.tdesktop
     unstable.vscode-fhs
