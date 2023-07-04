@@ -187,7 +187,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate OpenRazer
 - [ ] Integrate StreamDeck
 - [x] Integrate Xone
-- [ ] Migrate (*maybe*) to ZFS, with backups via [`zrepl`](https://zrepl.github.io/)
+- [ ] ~~Migrate (*maybe*) to ZFS, with backups via [`zrepl`](https://zrepl.github.io/)~~
 - [x] Fix Magewell driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
 
 ### Applications
@@ -200,11 +200,11 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Services
 
-- [ ] Integrate Borg Backups using [Pika](https://apps.gnome.org/en-GB/app/org.gnome.World.PikaBackup/) or [Vorta](https://vorta.borgbase.com/) for workstations and [borgmatic](https://torsion.org/borgmatic/) or [Embord](https://github.com/KenKundert/emborg) for servers
-- [ ] Integrate cockpit
+- [ ] Integrate Borg Backups using [Pika](https://apps.gnome.org/en-GB/app/org.gnome.World.PikaBackup/) or [Vorta](https://vorta.borgbase.com/) for workstations and [borgmatic](https://torsion.org/borgmatic/) or [Emborg](https://github.com/KenKundert/emborg) for servers
+- [ ] Integrate cockpit (*server*)
 - [x] Integrate fwupd
 - [x] Integrate Keybase
-- [ ] Integrate nullmailer
+- [ ] Integrate nullmailer (*server*)
 - [x] Integrate Syncthing
 - [x] Integrate sshguard
 
@@ -220,14 +220,16 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Create common user settings and discrete user settings
 - [x] Move application defaults out of the desktop defaults
 - [x] Create standard directories in `/home/martin` using `systemd.user.tmpfiles.rules`.
-- [ ] Create `.envrc` files in `/home/martin`.
+- [x] Create `.envrc` files in `/home/martin`.
 - [ ] Bind Syncthing GUI to ZeroTier.
 - [ ] Config Plank.
 - [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31)
 
-### Development
+### Game Development
 
 - [ ] Defold
+- [ ] Godot
+- [ ] PICO-8
 
 ### Shell
 
