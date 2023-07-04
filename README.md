@@ -222,7 +222,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Create standard directories in `/home/martin` using `systemd.user.tmpfiles.rules`.
 - [x] Create `.envrc` files in `/home/martin`.
 - [ ] Bind Syncthing GUI to ZeroTier.
-- [ ] Config Plank.
+- [ ] Configure Plank.
 - [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31)
 
 ### Game Development
