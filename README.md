@@ -219,7 +219,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels
 - [x] Create common user settings and discrete user settings
 - [x] Move application defaults out of the desktop defaults
-- [ ] Create standard directories in `/home/martin` using `systemd.user.tmpfiles.rules`.
+- [x] Create standard directories in `/home/martin` using `systemd.user.tmpfiles.rules`.
 - [ ] Create `.envrc` files in `/home/martin`.
 - [ ] Bind Syncthing GUI to ZeroTier.
 - [ ] Config Plank.
