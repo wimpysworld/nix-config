@@ -1,4 +1,4 @@
-{ hostname, username, ... }: {
+{ hostname, pkgs, username, ... }: {
   services.syncthing = {
     enable = true;
     extraOptions = [
@@ -8,6 +8,9 @@
       "--no-default-folder"
       "--no-browser"
     ];
-    tray.enable = true;
+    tray = {
+      enable = true;
+      package = pkgs.unstable.syncthingtray;
+    };
   };
 }
