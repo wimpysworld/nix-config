@@ -13,6 +13,7 @@
 
   environment.systemPackages = with pkgs; [
     authy
+    chatterino2
     cider
     gimp-with-plugins
     gnome.gnome-clocks
@@ -26,6 +27,7 @@
     meld
     netflix
     pavucontrol
+    pick-colour-picker
     rhythmbox
     shotcut
     slack
