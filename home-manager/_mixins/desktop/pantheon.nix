@@ -111,14 +111,22 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/desktop/wm/preferences" = {
-      button-layout = ":minimize,maximize,close";
       audible-bell = false;
+      button-layout = ":minimize,maximize,close";
+      num-workspaces = 8;
       titlebar-font = "Work Sans Semi-Bold 12";
+      workspace-names = ["Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff"];
     };
 
     "org/gnome/GWeather" = {
       temperature-unit = "centigrade";
     };
+
+    "org/gnome/mutter" = {
+      workspaces-only-on-primary = false;
+      dynamic-workspaces = false;
+    };
+
 
     "org/gnome/mutter/keybindings" = {
       toggle-tiled-left = [ "<Super>Left" ];
@@ -171,6 +179,7 @@ with lib.hm.gvariant;
     };
 
     "org/pantheon/desktop/gala/behavior" = {
+      dynamic-workspaces = false;
       overlay-action = "io.elementary.wingpanel --toggle-indicator=app-launcher";
     };
 
