@@ -91,9 +91,19 @@
       };
     };
   };
+
   systemd.user.tmpfiles.rules = [
     "d /home/${username}/Audio 0755 ${username} users - -"
-    "d /home/${username}/Development 0755 ${username} users - -"
+    "d /home/${username}/Development/debian 0755 ${username} users - -"
+    "d /home/${username}/Development/DeterminateSystems 0755 ${username} users - -"
+    "d /home/${username}/Development/flexiondotorg 0755 ${username} users - -"
+    "d /home/${username}/Development/mate-desktop 0755 ${username} users - -"
+    "d /home/${username}/Development/NixOS 0755 ${username} users - -"
+    "d /home/${username}/Development/quickemu-project 0755 ${username} users - -"
+    "d /home/${username}/Development/restfulmedia 0755 ${username} users - -"
+    "d /home/${username}/Development/ubuntu 0755 ${username} users - -"
+    "d /home/${username}/Development/ubuntu-mate 0755 ${username} users - -"
+    "d /home/${username}/Development/wimpysworld 0755 ${username} users - -"
     "d /home/${username}/Dropbox 0755 ${username} users - -"
     "d /home/${username}/Games 0755 ${username} users - -"
     "d /home/${username}/Quickemu 0755 ${username} users - -"
