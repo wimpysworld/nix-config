@@ -13,10 +13,10 @@
         "AutofillAddressEnabled" = false;
         "AutofillCreditCardEnabled" = false;
         "BuiltInDnsClientEnabled" = false;
-        "​DeviceMetricsReportingEnabled" = true;
-        "​ReportDeviceCrashReportInfo" = false;
+        "DeviceMetricsReportingEnabled" = true;
+        "ReportDeviceCrashReportInfo" = false;
         "PasswordManagerEnabled" = false;
-        "​SpellcheckEnabled" = true;
+        "SpellcheckEnabled" = true;
         "SpellcheckLanguage" = [
           "en-GB"
           "en-US"
