@@ -213,7 +213,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Embed [install script in the ISO](./nixos/_mixins/users/nixos/console.nix)
 - [ ] Integrate [agenix](https://github.com/ryantm/agenix) or [sops-nix](https://github.com/Mic92/sops-nix)
 - [x] Integrate capabilities from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
-- [ ] Integrate wallpapers
+- [x] Integrate wallpapers
 - [x] Integrate faces
 - [ ] Include Serif fonts
 - [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels
