@@ -9,6 +9,6 @@ with lib.hm.gvariant;
   };
 
   systemd.user.tmpfiles.rules = [
-    "L /home/${username}/.local/share/org.gnome.SoundRecorder/ - - - - /home/${username}/Audio"
+    "L+ /home/${username}/.local/share/org.gnome.SoundRecorder/ - - - - /home/${username}/Audio/"
   ];
 }
