@@ -2,6 +2,13 @@
 with lib.hm.gvariant;
 {
   dconf.settings = {
+    "com/github/stsdc/monitor/settings" = {
+      background-state = true;
+      indicator-state = true;
+      indicator-network-download-state = true;
+      indicator-network-upload-state = true;
+    };
+
     "desktop/ibus/panel" = {
       show-icon-on-systray = false;
       use-custom-font = true;
@@ -246,6 +253,20 @@ Name=IBus Daemon
 Comment=IBus Daemon
 Type=Application
 Exec=ibus-daemon --daemonize --desktop=pantheon
+Categories=
+Terminal=false
+NoDisplay=true
+StartupNotify=false";
+  };
+
+  home.file = {
+    "${config.xdg.configHome}/autostart/monitor-background.desktop".text = "
+[Desktop Entry]
+Name=Monitor Indicators
+Comment=Monitor Indicators
+Type=Application
+Exec=com.github.stsdc.monitor --start-in-background
+Icon=com.github.stsdc.monitor
 Categories=
 Terminal=false
 NoDisplay=true
