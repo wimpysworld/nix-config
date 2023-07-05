@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }: {
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
-    consoleLogLevel = 3;
     extraModulePackages = with config.boot.kernelPackages; [ v4l2loopback ];
     extraModprobeConfig = lib.mkDefault ''
     blacklist nouveau
@@ -22,7 +21,6 @@
       kernelModules = [
         "amdgpu"
       ];
-      verbose = false;
     };
 
     kernelModules = [
@@ -30,11 +28,8 @@
       "nvidia"
       "vhost_vsock"
     ];
+
     kernelPackages = pkgs.linuxPackages_6_3;
-    kernel.sysctl = {
-      "net.ipv4.ip_forward" = 1;
-      "net.ipv6.conf.all.forwarding" = 1;
-    };
 
     loader = {
       efi.canTouchEfiVariables = true;

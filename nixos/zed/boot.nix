@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }: {
   boot = {
     blacklistedKernelModules = [ ];
-    consoleLogLevel = 3;
     extraModulePackages = with config.boot.kernelPackages; [ v4l2loopback ];
     extraModprobeConfig = lib.mkDefault ''
     options v4l2loopback devices=1 video_nr=13 card_label="OBS Virtual Camera" exclusive_caps=1
@@ -27,11 +26,8 @@
       "kvm-amd"
       "vhost_vsock"
     ];
+
     kernelPackages = pkgs.linuxPackages_latest;
-    kernel.sysctl = {
-      "net.ipv4.ip_forward" = 1;
-      "net.ipv6.conf.all.forwarding" = 1;
-    };
 
     loader = {
       efi.canTouchEfiVariables = true;

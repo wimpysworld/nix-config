@@ -7,6 +7,24 @@
     ../services/openssh.nix
   ];
 
+  boot.consoleLogLevel = 0;
+  boot.initrd.verbose = false;
+  boot.kernelParams = [
+    "loglevel=3"
+    "rd.systemd.show_status=false"
+    "rd.udev.log_level=3"
+    "udev.log_priority=3"
+  ];
+  boot.kernel.sysctl = {
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
+  };
+
+  console = {
+    earlySetup = true;
+    packages = [ pkgs.terminus_font pkgs.powerline-fonts ];
+  };
+
   # Only install the docs I use
   documentation.enable = true;        # documentation of packages
   documentation.nixos.enable = false; # nixos documentation
@@ -97,6 +115,17 @@
   };
 
   security.rtkit.enable = true;
+
+  services = {
+    kmscon = {
+      enable = true;
+      hwRender = true;
+      extraConfig = ''
+        font-name=FiraCode Nerd Font Mono, SauceCodePro Nerd Font Mono
+        font-size=14
+      '';
+    };
+  };
 
   # Create dirs for home-manager
   systemd.tmpfiles.rules = [

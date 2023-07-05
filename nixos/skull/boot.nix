@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }: {
   boot = {
     blacklistedKernelModules = [ ];
-    consoleLogLevel = 3;
     extraModulePackages = with config.boot.kernelPackages; [ ];
     extraModprobeConfig = lib.mkDefault ''
     '';
@@ -18,17 +17,12 @@
         "xhci_pci"
       ];
       kernelModules = [ ];
-      verbose = false;
     };
 
     kernelModules = [
       "kvm-intel"
       "vhost_vsock"
     ];
-    kernel.sysctl = {
-      "net.ipv4.ip_forward" = 1;
-      "net.ipv6.conf.all.forwarding" = 1;
-    };
 
     loader = {
       efi.canTouchEfiVariables = true;
