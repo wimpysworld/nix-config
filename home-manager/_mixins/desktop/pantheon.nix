@@ -35,6 +35,10 @@ with lib.hm.gvariant;
       location-enabled = true;
     };
 
+    "io/elementary/desktop/wingpanel" = {
+      use-transparency = false;
+    };
+
     "io/elementary/desktop/wingpanel/datetime" = {
       clock-format = "24h";
     };
@@ -76,7 +80,7 @@ with lib.hm.gvariant;
     "net/launchpad/plank/docks/dock1" = {
       alignment = "center";
       hide-mode = "window-dodge";
-      icon-size = 56;
+      icon-size = 48;
       pinned-only = false;
       position = "left";
       theme = "Transparent";
