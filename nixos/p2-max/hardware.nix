@@ -2,6 +2,7 @@
 {
   imports = [
     inputs.nixos-hardware.nixosModules.gpd-p2-max
+    ../_mixins/services/bluetooth.nix
     ../_mixins/services/pipewire.nix
   ];
 
@@ -21,15 +22,6 @@
   environment.systemPackages = with pkgs; [
     nvtop-amd
   ];
-
-  hardware = {
-    bluetooth.enable = true;
-    bluetooth.settings = {
-      General = {
-        Enable = "Source,Sink,Media,Socket";
-      };
-    };
-  };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 

@@ -25,6 +25,7 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
+    ../_mixins/services/bluetooth.nix
     ../_mixins/services/pipewire.nix
   ];
 
@@ -57,12 +58,6 @@
   ];
 
   hardware = {
-    bluetooth.enable = true;
-    bluetooth.settings = {
-      General = {
-        Enable = "Source,Sink,Media,Socket";
-      };
-    };
     mwProCapture.enable = true;
     nvidia = {
       prime = {

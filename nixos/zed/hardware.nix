@@ -3,6 +3,7 @@
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13
     ../_mixins/services/pipewire.nix
+    ../_mixins/services/bluetooth.nix
   ];
 
   swapDevices = [{
@@ -19,15 +20,6 @@
   environment.systemPackages = with pkgs; [
     nvtop-amd
   ];
-
-  hardware = {
-    bluetooth.enable = true;
-    bluetooth.settings = {
-      General = {
-        Enable = "Source,Sink,Media,Socket";
-      };
-    };
-  };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }
