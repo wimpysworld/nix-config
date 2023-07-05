@@ -20,9 +20,13 @@
   fonts = {
     fontDir.enable = true;
     fonts = with pkgs; [
-      (nerdfonts.override { fonts = [ "FiraCode" "UbuntuMono"]; })
+      (nerdfonts.override { fonts = [ "FiraCode" "SourceCodePro" "UbuntuMono"]; })
+      fira
+      fira-go
       joypixels
       liberation_ttf
+      noto-fonts-emoji
+      source-serif
       ubuntu_font_family
       work-sans
     ];
@@ -33,10 +37,10 @@
     fontconfig = {
       antialias = true;
       defaultFonts = {
-        serif = [ "Work Sans" "Joypixels" ];
-        sansSerif = [ "Work Sans" "Joypixels" ];
-        monospace = [ "FiraCode Nerd Font Mono" ];
-        emoji = [ "Joypixels" ];
+        serif = [ "Source Serif" ];
+        sansSerif = [ "Work Sans" "Fira Sans" "FiraGO" ];
+        monospace = [ "FiraCode Nerd Font Mono" "SauceCodePro Nerd Font Mono" ];
+        emoji = [ "Joypixels" "Noto Color Emoji" ];
       };
       enable = true;
       hinting = {

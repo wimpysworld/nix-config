@@ -215,8 +215,8 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate capabilities from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
 - [x] Integrate wallpapers
 - [x] Integrate faces
-- [ ] Include Serif fonts
-- [ ] Include fallback fonts for Work Sans, Fira Code and Joypixels
+- [x] Include Serif fonts
+- [x] Include fallback fonts for Work Sans, Fira Code and Joypixels
 - [x] Create common user settings and discrete user settings
 - [x] Move application defaults out of the desktop defaults
 - [x] Create standard directories in `/home/martin` using `systemd.user.tmpfiles.rules`.
