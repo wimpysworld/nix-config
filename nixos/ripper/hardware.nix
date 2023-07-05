@@ -36,6 +36,18 @@
     packages = [ pkgs.terminus_font pkgs.powerline-fonts ];
   };
 
+  # disko does manage mounting or /and /boot, but I want to mount by-partlabel
+  fileSystems."/" = lib.mkForce {
+    device = "/dev/disk/by-partlabel/root";
+    fsType = "xfs";
+    options = [ "defaults" "relatime" "nodiratime" ];
+  };
+
+  fileSystems."/boot" = lib.mkForce {
+    device = "/dev/disk/by-partlabel/ESP";
+    fsType = "vfat";
+  };
+
   fileSystems."/mnt/archive" = {
     device = "/dev/disk/by-label/archive";
     fsType = "xfs";
