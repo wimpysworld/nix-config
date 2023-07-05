@@ -2,6 +2,7 @@
 with lib.hm.gvariant;
 {
   imports = [
+    ../../../services/mpris-proxy.nix
     ../../../services/syncthing.nix
   ];
   dconf.settings = {
