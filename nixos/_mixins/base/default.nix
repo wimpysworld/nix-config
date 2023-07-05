@@ -88,6 +88,9 @@
     };
   };
 
+  # Accept the joypixels license
+  nixpkgs.config.joypixels.acceptLicense = true;
+
   # Use passed hostname to configure basic networking
   networking = {
     extraHosts = ''
