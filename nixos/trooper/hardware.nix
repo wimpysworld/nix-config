@@ -18,12 +18,6 @@
     ../_mixins/services/pipewire.nix
   ];
 
-  console = {
-    # Pixel sizes of the font: 12, 14, 16, 18, 20, 22, 24, 28, 32
-    # Followed by 'n' (normal) or 'b' (bold)
-    font = "ter-powerline-v18n";
-  };
-
   # disko does manage mounting of / /boot /home, but I want to mount by-partlabel
   fileSystems."/" = lib.mkForce {
     device = "/dev/disk/by-partlabel/root";
