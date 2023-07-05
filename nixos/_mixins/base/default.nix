@@ -10,6 +10,7 @@
   boot.consoleLogLevel = 0;
   boot.initrd.verbose = false;
   boot.kernelParams = [
+    "boot.shell_on_fail"
     "loglevel=3"
     "rd.systemd.show_status=false"
     "rd.udev.log_level=3"
@@ -22,7 +23,7 @@
 
   console = {
     earlySetup = true;
-    packages = [ pkgs.terminus_font pkgs.powerline-fonts ];
+    packages = with pkgs; [ terminus_font powerline-fonts ];
   };
 
   # Only install the docs I use
@@ -126,6 +127,7 @@
       extraConfig = ''
         font-name=FiraCode Nerd Font Mono, SauceCodePro Nerd Font Mono
         font-size=14
+        xkb-layout=uk
       '';
     };
   };
