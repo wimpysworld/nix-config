@@ -33,5 +33,6 @@
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 
+  services.kmscon.extraOptions = lib.mkForce "--xkb-layout=us";
   services.xserver.layout = lib.mkForce "us";
 }

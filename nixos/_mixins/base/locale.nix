@@ -14,6 +14,7 @@
       LC_TIME = "en_GB.utf8";
     };
   };
+  services.kmscon.extraOptions = "--xkb-layout=uk";
   services.xserver.layout = "gb";
   time.timeZone = "Europe/London";
 }
