@@ -51,6 +51,7 @@
   fileSystems."/mnt/archive" = {
     device = "/dev/disk/by-label/archive";
     fsType = "xfs";
+    options = [ "defaults" "relatime" "nodiratime" ];
   };
 
   swapDevices = [{
