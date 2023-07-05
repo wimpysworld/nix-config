@@ -25,7 +25,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `pocket2`      | GPD            | Pocket 2            | NixOS         | Laptop       | tbd      |
 | `pocket3`      | GPD            | Pocket 3            | NixOS         | Laptop       | tbd      |
 | `p2-max`       | GPD            | P2 Max              | NixOS         | Laptop       | Done     |
-| `micropc`      | GPD            | Micro PC            | NixOS         | Laptop       | tbd      |
+| `micropc`      | GPD            | Micro PC            | NixOS         | Laptop       | WIP      |
 | `win`          | GPD            | WIN                 | NixOS         | Laptop       | tbd      |
 | `win-max`      | GPD            | WIN Max             | NixOS         | Laptop       | tbd      |
 | `falcon`       | TopJoy         | Falcon              | NixOS         | Laptop       | tbd      |

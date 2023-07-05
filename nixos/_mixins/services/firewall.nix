@@ -5,6 +5,7 @@ let
     hosts = [
       "designare"
       "trooper"
+      "micropc"
       "p2-max"
       "ripper"
       "vm"
