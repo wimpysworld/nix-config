@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }: {
   boot = {
     blacklistedKernelModules = lib.mkDefault [ ];
-    consoleLogLevel = 3;
+    consoleLogLevel = 0;
     extraModulePackages = with config.boot.kernelPackages; [ ];
     extraModprobeConfig = lib.mkDefault ''
     '';
@@ -20,6 +20,13 @@
 
     kernelModules = [
       "vhost_vsock"
+    ];
+
+    kernelParams = [
+      "loglevel=3"
+      "rd.systemd.show_status=false"
+      "rd.udev.log_level=3"
+      "udev.log_priority=3"
     ];
 
     kernelPackages = pkgs.linuxPackages_latest;
