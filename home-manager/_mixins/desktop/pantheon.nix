@@ -5,8 +5,12 @@ with lib.hm.gvariant;
     "com/github/stsdc/monitor/settings" = {
       background-state = true;
       indicator-state = true;
+      indicator-cpu-state = false;
+      indicator-gpu-state = false;
+      indicator-memory-state = false;
       indicator-network-download-state = true;
       indicator-network-upload-state = true;
+      indicator-temperature-state = true;
     };
 
     "desktop/ibus/panel" = {
@@ -243,37 +247,32 @@ with lib.hm.gvariant;
 Name=Enable AppCenter
 Comment=Enable AppCenter
 Type=Application
-Exec=flatpak remote-add --user --if-not-exists appcenter https://flatpak.elementary.io/repo.flatpakrepo
+Exec=${pkgs.flatpak}/bin/flatpak remote-add --user --if-not-exists appcenter https://flatpak.elementary.io/repo.flatpakrepo
 Categories=
 Terminal=false
 NoDisplay=true
 StartupNotify=false";
-  };
 
-  home.file = {
     "${config.xdg.configHome}/autostart/ibus-daemon.desktop".text = "
 [Desktop Entry]
 Name=IBus Daemon
 Comment=IBus Daemon
 Type=Application
-Exec=ibus-daemon --daemonize --desktop=pantheon
+Exec=${pkgs.ibus}/bin/ibus-daemon --daemonize --desktop=pantheon --replace --xim
 Categories=
 Terminal=false
 NoDisplay=true
 StartupNotify=false";
-  };
 
-  home.file = {
-    "${config.xdg.configHome}/autostart/monitor-background.desktop".text = "
+    "${config.xdg.configHome}/autostart/monitor.desktop".text = "
 [Desktop Entry]
 Name=Monitor Indicators
 Comment=Monitor Indicators
 Type=Application
-Exec=com.github.stsdc.monitor --start-in-background
+Exec=/run/current-system/sw/bin/com.github.stsdc.monitor --start-in-background
 Icon=com.github.stsdc.monitor
 Categories=
 Terminal=false
-NoDisplay=true
 StartupNotify=false";
   };
 }
