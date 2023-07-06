@@ -75,6 +75,7 @@
       tokei                         # Modern Unix `wc` for code
       vdpauinfo                     # Terminal VDPAU info
       wavemon                       # Terminal WiFi monitor
+      wget2                         # Terminal downloader
       wmctrl                        # Terminal X11 automation
       xdotool                       # Terminal X11 automation
       yadm                          # Terminal dot file manager

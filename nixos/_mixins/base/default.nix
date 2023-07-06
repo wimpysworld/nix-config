@@ -48,7 +48,6 @@
     rsync
     unzip
     usbutils
-    wget
     xdg-utils
   ];
 

@@ -49,6 +49,7 @@
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "exa --tree";
         moon = "curl -s wttr.in/Moon";
+        wget = "wget2";
         wttr = "curl -scurl -s wttr.in && curl -s v2.wttr.in";
         wttr-bas = "curl -s wttr.in/basingstoke && curl -s v2.wttr.in/basingstoke";
       };
