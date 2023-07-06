@@ -25,8 +25,6 @@
       formatter                   # elementary OS filesystem formatter
       gthumb                      # Image Viewer
       gnome.simple-scan           # Scanning
-      indicator-application-gtk3  # App Indicator
-      pantheon.sideload           # elementary OS Flatpak installer
       torrential                  # elementary OS torrent client
       yaru-theme
     ];
@@ -43,8 +41,6 @@
     flatpak = {
       enable = true;
     };
-    pantheon.apps.enable = true;
-
     xserver = {
       enable = true;
       displayManager = {
@@ -66,8 +62,8 @@
 
   # App indicator
   # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
-  systemd.user.services.indicatorapp = {
-    description = "indicator-application-gtk3";
+  systemd.user.services.indicator-application-service = {
+    description = "indicator-application-service";
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     serviceConfig = {
