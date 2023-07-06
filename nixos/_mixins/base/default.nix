@@ -1,7 +1,6 @@
 { hostname, lib, pkgs, username, ...}: {
   imports = [
     ./locale.nix
-    ./nano.nix
     ../services/firewall.nix
     ../services/fwupd.nix
     ../services/openssh.nix
