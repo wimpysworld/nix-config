@@ -1,12 +1,8 @@
-{ pkgs, ... }: {
-  imports = [
-    ./fish.nix
-    ./git.nix
-    ./neofetch.nix
-    ./xdg.nix
-  ];
-
+{ config, lib, pkgs, ... }: {
   home = {
+    file = {
+      "${config.xdg.configHome}/neofetch/config.conf".text = builtins.readFile ./neofetch.conf;
+    };
     # A Modern Unix experience
     # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages = with pkgs; [
@@ -51,6 +47,7 @@
       mktorrent                     # Terminal torrent creator
       moar                          # Modern Unix `less`
       mtr                           # Modern Unix `traceroute`
+      neofetch                      # Terminal system info
       netdiscover                   # Modern Unix `arp`
       nethogs                       # Modern Unix `iftop`
       nixpkgs-fmt                   # Code format Nix
@@ -147,6 +144,61 @@
       enableAliases = true;
       icons = true;
     };
+    fish = {
+      shellAliases = {
+        cat = "bat --paging=never --style=plain";
+        diff = "diffr";
+        glow = "glow --pager";
+        htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
+        ip = "ip --color --brief";
+        less = "bat --paging=always";
+        more = "bat --paging=always";
+        top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
+        tree = "exa --tree";
+        wget = "wget2";
+      };
+    };
+    gh = {
+      enable = true;
+      extensions = with pkgs; [ gh-markdown-preview ];
+      settings = {
+        git_protocol = "ssh";
+        prompt = "enabled";
+      };
+    };
+    git = {
+      enable = true;
+      delta = {
+        enable = true;
+        options = {
+          features = "decorations";
+          navigate = true;
+          side-by-side = true;
+        };
+      };
+      aliases = {
+        lg = "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
+      };
+      extraConfig = {
+        push = {
+          default = "matching";
+        };
+        pull = {
+          rebase = true;
+        };
+        init = {
+          defaultBranch = "main";
+        };
+      };
+      ignores = [
+        "*.log"
+        "*.out"
+        ".DS_Store"
+        "bin/"
+        "dist/"
+        "result"
+      ];
+    };
     gpg.enable = true;
     home-manager.enable = true;
     info.enable = true;
@@ -192,4 +244,15 @@
 
   # Nicely reload system units when changing configs
   systemd.user.startServices = "sd-switch";
+
+  xdg = {
+    enable = true;
+    userDirs = {
+      enable = true;
+      createDirectories = lib.mkDefault true;
+      extraConfig = {
+        XDG_SCREENSHOTS_DIR = "${config.home.homeDirectory}/Pictures/Screenshots";
+      };
+    };
+  };
 }
