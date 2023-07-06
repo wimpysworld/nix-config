@@ -224,11 +224,11 @@
         rebuild-iso-mini = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-mini.config.system.build.isoImage && popd";
       };
       shellAliases = {
+        moon = "curl -s wttr.in/Moon";
         nano = "micro";
         open = "xdg-open";
         pubip = "curl -s ifconfig.me/ip";
         #pubip = "curl -s https://api.ipify.org";
-        moon = "curl -s wttr.in/Moon";
         wttr = "curl -s wttr.in && curl -s v2.wttr.in";
         wttr-bas = "curl -s wttr.in/basingstoke && curl -s v2.wttr.in/basingstoke";
       };
