@@ -43,6 +43,7 @@
         ip = "ip --color --brief";
         less = "bat --paging=always";
         more = "bat --paging=always";
+        nano = "micro";
         open = "xdg-open";
         pubip = "curl -s ifconfig.me/ip";
         #pubip = "curl -s https://api.ipify.org";
