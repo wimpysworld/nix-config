@@ -1,6 +1,7 @@
 { pkgs, ... }: {
   imports = [
     ../../desktop/brave.nix
+    ../../desktop/chromium.nix
     #../../desktop/firefox.nix
     #../../desktop/evolution.nix
     ../../desktop/google-chrome.nix
