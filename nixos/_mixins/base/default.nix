@@ -9,6 +9,7 @@
 
   boot.consoleLogLevel = 0;
   boot.initrd.verbose = false;
+  boot.kernelModules = [ "vhost_vsock" ];
   boot.kernelParams = [
     "boot.shell_on_fail"
     "loglevel=3"

@@ -15,8 +15,14 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
+    ./disks.nix { }
+    ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
+    ../_mixins/services/openrazer.nix
     ../_mixins/services/pipewire.nix
+    ../_mixins/services/tailscale.nix
+    ../_mixins/services/zerotier.nix
+    ../_mixins/virt
   ];
 
   # disko does manage mounting of / /boot /home, but I want to mount by-partlabel
@@ -49,21 +55,19 @@
     size = 2048;
   }];
 
+  boot = {
+    blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
+    initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "sd_mod" ];
+    kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
+    kernelPackages = pkgs.linuxPackages_6_3;
+  };
+
   environment.systemPackages = with pkgs; [
     nvtop-nvidia
-    polychromatic
   ];
 
   hardware = {
     nvidia.prime.offload.enable = false;
-    openrazer = {
-      enable = true;
-      devicesOffOnScreensaver = false;
-      keyStatistics = true;
-      mouseBatteryNotifier = true;
-      syncEffectsEnabled = true;
-      users = [ "${username}" ];
-    };
     xone.enable = true;
   };
 

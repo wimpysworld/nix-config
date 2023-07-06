@@ -25,11 +25,17 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
+    ./disks.nix { }
+    ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
+    ../_mixins/services/openrazer.nix
     ../_mixins/services/pipewire.nix
+    ../_mixins/services/tailscale.nix
+    ../_mixins/services/zerotier.nix
+    ../_mixins/virt
   ];
 
-  # disko does manage mounting or /and /boot, but I want to mount by-partlabel
+  # disko does manage mounting / and /boot, but I want to mount by-partlabel
   fileSystems."/" = lib.mkForce {
     device = "/dev/disk/by-partlabel/root";
     fsType = "xfs";
@@ -52,9 +58,15 @@
     size = 2048;
   }];
 
+  boot = {
+    blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
+    initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
+    kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
+    kernelPackages = lib.mkDefault pkgs.linuxPackages_6_3;
+  };
+
   environment.systemPackages = with pkgs; [
     nvtop
-    polychromatic
   ];
 
   hardware = {
@@ -68,15 +80,6 @@
       };
       nvidiaSettings = false;
     };
-    openrazer = {
-      enable = true;
-      devicesOffOnScreensaver = false;
-      keyStatistics = true;
-      mouseBatteryNotifier = true;
-      syncEffectsEnabled = true;
-      users = [ "${username}" ];
-    };
-    xone.enable = false;
   };
 
   services = {

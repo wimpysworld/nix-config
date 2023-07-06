@@ -19,8 +19,14 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
+    ./disks.nix { }
+    ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
+    ../_mixins/services/openrazer.nix
     ../_mixins/services/pipewire.nix
+    ../_mixins/services/tailscale.nix
+    ../_mixins/services/zerotier.nix
+    ../_mixins/virt
   ];
 
   swapDevices = [{
@@ -28,9 +34,15 @@
     size = 2048;
   }];
 
+  boot = {
+    blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
+    initrd.availableKernelModules = [ "ahci" "nvme" "uas" "usbhid" "sd_mod" "xhci_pci" ];
+    kernelModules = [ "amdgpu" "kvm-intel" "nvidia" ];
+    kernelPackages = pkgs.linuxPackages_6_3;
+  };
+
   environment.systemPackages = with pkgs; [
     nvtop
-    polychromatic
   ];
 
   hardware = {
@@ -44,15 +56,6 @@
       };
       nvidiaSettings = false;
     };
-    openrazer = {
-      enable = true;
-      devicesOffOnScreensaver = false;
-      keyStatistics = true;
-      mouseBatteryNotifier = true;
-      syncEffectsEnabled = true;
-      users = [ "${username}" ];
-    };
-    xone.enable = true;
   };
 
   services = {
