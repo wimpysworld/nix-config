@@ -1,9 +1,10 @@
-{ config, lib, pkgs, ... }:
+{ lib, ... }:
 {
   hardware = {
     pulseaudio.enable = lib.mkForce false;
   };
-  services = {
+  security.rtkit.enable = true;
+  services = {  
     pipewire = {
       enable = true;
       alsa.enable = true;

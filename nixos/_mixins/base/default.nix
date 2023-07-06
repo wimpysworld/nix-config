@@ -121,8 +121,6 @@
     };
   };
 
-  security.rtkit.enable = true;
-
   services = {
     kmscon = {
       enable = true;
