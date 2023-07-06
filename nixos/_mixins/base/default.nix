@@ -34,22 +34,29 @@
   documentation.info.enable = false;  # info pages and the info command
   documentation.doc.enable = false;   # documentation distributed in packages' /share/doc
 
-  environment.systemPackages = with pkgs; [
-    binutils
-    curl
-    desktop-file-utils
-    file
-    git
-    home-manager
-    killall
-    man-pages
-    micro
-    pciutils
-    rsync
-    unzip
-    usbutils
-    xdg-utils
-  ];
+  environment = {
+    # Eject nano and perl from the system
+    defaultPackages = with pkgs; lib.mkForce [
+      gitMinimal
+      home-manager
+      micro
+      rsync
+    ];
+
+    systemPackages = with pkgs; [
+      man-pages
+      pciutils
+      psmisc
+      unzip
+      usbutils
+    ];
+
+    variables = {
+      EDITOR = "micro";
+      SYSTEMD_EDITOR = "micro";
+      VISUAL = "micro";
+    };
+  };
 
   fonts = {
     fontDir.enable = true;
