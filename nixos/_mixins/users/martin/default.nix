@@ -4,9 +4,7 @@ let
 in
 {
    # Only include desktop components if one is supplied.
-  imports = [
-    ./console.nix
-  ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
+  imports = [ ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
 
   users.users.martin = {
     description = "Martin Wimpress";
