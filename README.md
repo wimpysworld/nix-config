@@ -11,7 +11,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `noname`       | DIY            | AMD 5900X, 6900 XT  | NixOS         | Gamestation  | Done     |
 | `node202`      | DIY            | AMD 5700G, 6700 XT  | ChimeraOS     | Gamestation  | Done     |
 | `vm`           | VM             | -                   | NixOS         | Desktop      | Done     |
-| `ripper`       | DIY            | AMD 3970X           | elementary OS | Desktop      | Done     |
+| `ripper`       | DIY            | AMD 3970X           | NixOS         | Desktop      | Done     |
 | `skull`        | Intel          | NUC6i7KYK           | NixOS         | Server       | WIP      |
 | `brix`         | Gigabyte       | BRIX                | NixOS         | Server       | tbd      |
 | `trooper`      | DIY            | AMD 5950X, 3080Ti   | NixOS         | Desktop      | Done     |
@@ -30,7 +30,8 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `win-max`      | GPD            | WIN Max             | NixOS         | Laptop       | tbd      |
 | `falcon`       | TopJoy         | Falcon              | NixOS         | Laptop       | tbd      |
 | `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbd      |
-| `xps`          | Dell           | XPS 13              | Ubuntu MATE   | Laptop       | tbd      |
+| `xps-13`       | Dell           | XPS 13              | Ubuntu MATE   | Laptop       | tbd      |
+| `xps-15`       | Dell           | XPS 15              | NixOS         | Laptop       | tbd      |
 | `spectre`      | HP             | Spectre             | Ubuntu MATE   | Laptop       | tbd      |
 | `?`            | Entroware      | ?                   | NixOS         | Laptop       | tbd      |
 
