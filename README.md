@@ -43,7 +43,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
   - Includes discrete hardware configurations which leverage the [NixOS Hardware modules](https://github.com/NixOS/nixos-hardware) via [flake.nix].
 - [scripts]: Helper scripts
 
-The [nixos/_mixins] and [home-manager/_mixins] are a collection of generic configurations that are composited based on the arguments defined in [flake.nix].
+The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited configurations based on the arguments defined in [flake.nix].
 
 [home-manager]: ./home-manager
 [nixos]: ./nixos
@@ -119,16 +119,19 @@ This is the directory structure I'm using.
 ├── home-manager
 │   ├── _mixins
 │   │   ├── console
-│   │   └── desktop
-│   └── default.nix
-├── nixos
-│   ├── _mixins
-│   │   ├── base
-│   │   ├── boxes
 │   │   ├── desktop
 │   │   ├── services
 │   │   └── users
+│   └── default.nix
+├── nixos
+│   ├── _mixins
+│   │   ├── desktop
+│   │   ├── hardware
+│   │   ├── services
+│   │   ├── users
+│   │   └── virt
 │   ├── designare
+│   ├── iso
 │   ├── skull
 │   ├── vm
 │   ├── z13
@@ -141,13 +144,13 @@ This is the directory structure I'm using.
 
 ### The Shell 🐚
 
-[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a somewhat *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [Tailscale], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
+[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a somewhat *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [ZeroTier], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
 
-[Fish shell]: ./home-manager/_mixins/console/fish.nix
+[Fish shell]: ./nixos/default.nix
 [Modern Unix]: ./home-manager/_mixins/console/default.nix
 [OpenSSH]: ./nixos/_mixins/services/openssh.nix
-[Tailscale]: ./nixos/_mixins/services/tailscale.nix
-[Podman & Distrobox]: ./nixos/_mixins/boxes/podman.nix
+[ZeroTier]: ./nixos/_mixins/services/zerotier.nix
+[Podman & Distrobox]: ./nixos/_mixins/virt/podman.nix
 [micro]: [https://micro-editor.github.io/]
 
 ![neofetch on Designare](.github/screenshots/neofetch.png)
