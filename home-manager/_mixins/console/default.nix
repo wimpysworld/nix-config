@@ -145,6 +145,7 @@
       icons = true;
     };
     fish = {
+      enable = true;
       shellAliases = {
         cat = "bat --paging=never --style=plain";
         diff = "diffr";
