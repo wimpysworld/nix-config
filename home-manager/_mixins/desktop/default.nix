@@ -18,7 +18,7 @@
 Name=Enable Flathub
 Comment=Enable Flathub
 Type=Application
-Exec=flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+Exec=${pkgs.flatpak}/bin/flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 Categories=
 Terminal=false
 NoDisplay=true
