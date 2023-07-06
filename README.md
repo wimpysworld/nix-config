@@ -141,14 +141,14 @@ This is the directory structure I'm using.
 
 ### The Shell 🐚
 
-[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a somewhat *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [Tailscale], [Podman & Distrobox] and, of course, a delightfully configured [nano]. (*Fight me!* 🥊)
+[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a somewhat *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [Tailscale], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
 
 [Fish shell]: ./home-manager/_mixins/console/fish.nix
 [Modern Unix]: ./home-manager/_mixins/console/default.nix
 [OpenSSH]: ./nixos/_mixins/services/openssh.nix
 [Tailscale]: ./nixos/_mixins/services/tailscale.nix
 [Podman & Distrobox]: ./nixos/_mixins/boxes/podman.nix
-[nano]: ./nixos/_mixins/base/nano.nix
+[micro]: [https://micro-editor.github.io/]
 
 ![neofetch on Designare](.github/screenshots/neofetch.png)
 
