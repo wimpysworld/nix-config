@@ -31,7 +31,6 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `falcon`       | TopJoy         | Falcon              | NixOS         | Laptop       | tbd      |
 | `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbd      |
 | `xps-13`       | Dell           | XPS 13              | Ubuntu MATE   | Laptop       | tbd      |
-| `xps-15`       | Dell           | XPS 15              | NixOS         | Laptop       | tbd      |
 | `spectre`      | HP             | Spectre             | Ubuntu MATE   | Laptop       | tbd      |
 | `?`            | Entroware      | ?                   | NixOS         | Laptop       | tbd      |
 
