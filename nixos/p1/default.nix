@@ -44,7 +44,7 @@
     initrd.availableKernelModules = [ "xhci_pci" "nvme" "uas" "usb_storage" "sd_mod" ];
     kernelModules = [ "i915" "kvm-intel" "nvidia" ];
     kernelPackages = pkgs.linuxPackages_latest;
-    boot.loader.systemd-boot.consoleMode = "max";
+    loader.systemd-boot.consoleMode = "max";
   };
 
   environment.systemPackages = with pkgs; [
