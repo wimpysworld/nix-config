@@ -58,7 +58,7 @@
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "sd_mod" ];
-    kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
+    kernelModules = [ "kvm-amd" "nvidia" ];
     kernelPackages = pkgs.linuxPackages_6_3;
   };
 
@@ -77,9 +77,7 @@
       motherboard = "amd";
       package = pkgs.openrgb-with-all-plugins;
     };
-    xserver.videoDrivers = [
-      "nvidia"
-    ];
+    xserver.videoDrivers = [ "nvidia" ];
   };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
