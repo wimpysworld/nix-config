@@ -6,6 +6,7 @@ let
       "designare"
       "trooper"
       "micropc"
+      "p1"
       "p2-max"
       "ripper"
       "vm"
