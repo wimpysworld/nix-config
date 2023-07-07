@@ -23,7 +23,7 @@
 
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
-    initrd.availableKernelModules = [ "ahci" "nvme" "uas" "usbhid" "sd_mod" "xhci_pci" ];
+    initrd.availableKernelModules = [ "xhci_pci" "nvme" "uas" "usb_storage" "sd_mod" ];
     kernelModules = [ "i915" "kvm-intel" ];
     kernelPackages = pkgs.linuxPackages_latest;
   };
