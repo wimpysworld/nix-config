@@ -62,6 +62,19 @@
       nvidiaSettings = false;
     };
   };
-  services.fprintd.enable = true;
+  
+  # libfprint-2-tod1-vfs0090 in nixpkgs is from https://gitlab.freedesktop.org/3v1n0/libfprint-tod-vfs0090
+  # - Supports Validity Sensor 138a:0090 and 138a:0097
+  # The ThinkPad P1 Gen 1 has a Synaptics Sensor 06cb:009a; the project below supports it
+  # - https://gitlab.com/bingch/libfprint-tod-vfs0090
+  # - https://github.com/uunicorn/python-validity
+  # - https://github.com/tester1969/pam-validity
+  # TODO: Package the above project as libfprint-2-tod1-vfs009a
+  services.fprintd = {
+    enable = false;
+    #tod.enable = true;
+    #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
+  };
+  
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }
