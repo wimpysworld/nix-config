@@ -88,10 +88,7 @@
       motherboard = "amd";
       package = pkgs.openrgb-with-all-plugins;
     };
-    xserver.videoDrivers = [
-      "amdgpu"
-      "nvidia"
-    ];
+    xserver.videoDrivers = [ "amdgpu" "nvidia" ];
   };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
