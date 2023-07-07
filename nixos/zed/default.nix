@@ -2,7 +2,7 @@
 {
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13
-    ./disks.nix { }
+    (import ./disks.nix { })
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
     ../_mixins/services/pipewire.nix

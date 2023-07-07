@@ -2,7 +2,7 @@
 {
   imports = [
     (modulesPath + "/profiles/qemu-guest.nix")
-    ./disks.nix { }
+    (import ./disks.nix { })
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/pipewire.nix
   ];
