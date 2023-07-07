@@ -16,17 +16,7 @@
   }];
 
   boot = {
-    initrd.availableKernelModules = [
-        "ahci"
-        "nvme"
-        "rtsx_pci_sdmmc"
-        "sd_mod"
-        "sdhci_pci"
-        "uas"
-        "usbhid"
-        "usb_storage"
-        "xhci_pci"
-    ];
+    initrd.availableKernelModules = [ "xhci_pci" "nvme" "usbhid" "uas" "sd_mod" ];
     kernelModules = [ "kvm-intel" ];
     kernelPackages = pkgs.linuxPackages_latest;
   };
