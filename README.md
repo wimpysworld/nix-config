@@ -12,27 +12,33 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `node202`      | DIY            | AMD 5700G, 6700 XT  | ChimeraOS     | Gamestation  | Done     |
 | `vm`           | VM             | -                   | NixOS         | Desktop      | Done     |
 | `ripper`       | DIY            | AMD 3970X           | NixOS         | Desktop      | Done     |
-| `skull`        | Intel          | NUC6i7KYK           | NixOS         | Server       | WIP      |
-| `brix`         | Gigabyte       | BRIX                | NixOS         | Server       | tbd      |
+| `nuc`          | Intel          | [NUC5i7RYH]         | NixOS         | Server       | WIP      |
+| `skull`        | Intel          | [NUC6i7KYK]         | NixOS         | Server       | WIP      |
+| `brix`         | Gigabyte       | [GB-BXCEH-2955]     | NixOS         | Server       | WIP      |
 | `trooper`      | DIY            | AMD 5950X, 3080Ti   | NixOS         | Desktop      | Done     |
 | `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | Done     |
 | `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | Done     |
-| `pi4`          | Raspberry Pi   | Raspberry Pi 4      | NixOS         | Desktop      | tbd      |
-| `pinebook`     | Pine64         | Pinebook            | NixOS         | Laptop       | tbd      |
-| `pinebook-pro` | Pine64         | Pinebook Pro        | NixOS         | Laptop       | tbd      |
-| `c630`         | Lenovo         | Yoga C630           | NixOS         | Laptop       | tbd      |
-| `pocket`       | GPD            | Pocket              | NixOS         | Laptop       | tbd      |
-| `pocket2`      | GPD            | Pocket 2            | NixOS         | Laptop       | tbd      |
-| `pocket3`      | GPD            | Pocket 3            | NixOS         | Laptop       | tbd      |
+| `pi4`          | Raspberry Pi   | Raspberry Pi 4      | Ubuntu MATE   | Desktop      | tbd      |
+| `pinebook`     | Pine64         | Pinebook            | -             | Laptop       | tbd      |
+| `pinebook-pro` | Pine64         | Pinebook Pro        | -             | Laptop       | tbd      |
+| `c630`         | Lenovo         | Yoga C630           | Windows 10S   | Laptop       | tbd      |
+| `pocket`       | GPD            | Pocket              | Ubuntu MATE   | Laptop       | tbd      |
+| `pocket2`      | GPD            | Pocket 2            | Ubuntu MATE   | Laptop       | tbd      |
+| `pocket3`      | GPD            | Pocket 3            | Ubuntu MATE   | Laptop       | tbd      |
 | `p2-max`       | GPD            | P2 Max              | NixOS         | Laptop       | Done     |
 | `micropc`      | GPD            | Micro PC            | NixOS         | Laptop       | WIP      |
-| `win`          | GPD            | WIN                 | NixOS         | Laptop       | tbd      |
-| `win-max`      | GPD            | WIN Max             | NixOS         | Laptop       | tbd      |
-| `falcon`       | TopJoy         | Falcon              | NixOS         | Laptop       | tbd      |
+| `win`          | GPD            | WIN                 | Ubuntu MATE   | Laptop       | tbd      |
+| `win-max`      | GPD            | WIN Max             | Ubuntu MATE   | Laptop       | tbd      |
+| `falcon`       | TopJoy         | Falcon              | Ubuntu MATE   | Laptop       | tbd      |
 | `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbd      |
 | `xps-13`       | Dell           | XPS 13              | Ubuntu MATE   | Laptop       | tbd      |
 | `spectre`      | HP             | Spectre             | Ubuntu MATE   | Laptop       | tbd      |
-| `?`            | Entroware      | ?                   | NixOS         | Laptop       | tbd      |
+| `apollo`       | Entroware      | Apollo 2000         | Ubuntu MATE   | Laptop       | tbd      |
+
+[NUC5i7RYH]: https://www.intel.co.uk/content/www/uk/en/products/sku/87570/intel-nuc-kit-nuc5i7ryh/specifications.html
+[NUC6i7KYK]: https://ark.intel.com/content/www/us/en/ark/products/89187/intel-nuc-kit-nuc6i7kyk.html
+[GB-BXCEH-2955]: https://www.gigabyte.com/uk/Mini-PcBarebone/GB-BXCEH-2955-rev-10
+[GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
 
 ## Structure
 
@@ -53,12 +59,14 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
 
 ## Installing 💾
 
-- Boot off a .iso image created by this flake using `rebuild-iso` or `rebuild-mini-iso` (*see below*).
+- Boot off a .iso image created by this flake using `rebuild-iso` or `rebuild-mini-iso` (*see below*)
 - Put the .iso image on a USB drive
 - Boot the target computer from the USB drive
-- Run `install-system <hostname> <username>` from a terminal.
- - The install script uses [Disko] to automatically partition and format the disks then uses my flake via `nixos-install` to complete a full system installation
- - This flake is automatically copied to the target user's home directory as `~/Zero/nix-config`
+- Two installation options are available:
+  1 Use the graphical Calamares installer to install an adhoc system
+  2 Run `install-system <hostname> <username>` from a terminal
+   - The install script uses [Disko] to automatically partition and format the disks, then uses my flake via `nixos-install` to complete a full-system installation
+   - This flake is copied to the target user's home directory as `~/Zero/nix-config`
 - Make a cuppa 🫖
 - Reboot
 - Login and run `rebuild-home` (*see below*) from a terminal to complete the Home Manager configuration.
@@ -71,7 +79,7 @@ curl -sL https://raw.githubusercontent.com/wimpysworld/nix-config/main/scripts/i
 
 ## Applying Changes ✨
 
-I clone this repo to `~/Zero/nix-config`. NixOS and Home Manager changes are applied separately because have some non-NixOS hosts.
+I clone this repo to `~/Zero/nix-config`. NixOS and Home Manager changes are applied separately because I have some non-NixOS hosts.
 
 ```bash
 gh repo clone wimpysworld/nix-config ~/Zero/nix-config
@@ -79,7 +87,7 @@ gh repo clone wimpysworld/nix-config ~/Zero/nix-config
 
 ### NixOS ❄️
 
-A `rebuild-host` alias is provided, that does the following:
+A `rebuild-host` alias is provided that does the following:
 
 ```bash
 sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
@@ -87,7 +95,7 @@ sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
 
 ### Home Manager 🏠️
 
-A `rebuild-home` alias is provided, that does the following:
+A `rebuild-home` alias is provided that does the following:
 
 ```bash
 home-manager switch -b backup --flake $HOME/Zero/nix-config
@@ -95,7 +103,7 @@ home-manager switch -b backup --flake $HOME/Zero/nix-config
 
 ### ISO 📀
 
-Aliases for `rebuild-iso` (*desktop*) and `rebuild-mini-iso` (*headless*) are provided the create .iso images from this flake. They do the following:
+Aliases for `rebuild-iso` (*desktop*) and `rebuild-mini-iso` (*headless*) are provided that create .iso images from this flake. They do the following:
 
 ```bash
 pushd $HOME/Zero/nix-config
@@ -111,7 +119,7 @@ Nix is configured with [flake support](https://zero-to-nix.com/concepts/flakes) 
 
 ### Structure
 
-This is the directory structure I'm using.
+Here is the directory structure I'm using.
 
 ```
 .
