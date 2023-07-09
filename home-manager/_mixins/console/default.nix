@@ -45,9 +45,6 @@
       tldr                          # Modern Unix `man`
       tokei                         # Modern Unix `wc` for code
       wget2                         # Terminal downloader
-      wmctrl                        # Terminal X11 automation
-      xdotool                       # Terminal X11 automation
-      ydotool                       # Terminal *all-the-things* automation
       yq-go                         # Terminal `jq` for YAML
     ];
 
