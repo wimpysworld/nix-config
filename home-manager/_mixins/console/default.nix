@@ -13,7 +13,6 @@
       butler                        # Terminal Itch.io API client
       chafa                         # Terminal image viewer
       chroma                        # Code syntax highlighter
-      clinfo                        # Terminal OpenCL info
       croc                          # Terminal file transfer
       dconf2nix                     # Nix code from Dconf files
       deadnix                       # Code lint Nix
@@ -35,7 +34,6 @@
       jpegoptim                     # Terminal JPEG optimizer
       jiq                           # Modern Unix `jq`
       lazygit                       # Terminal Git client
-      libva-utils                   # Terminal VAAPI info
       lurk                          # Modern Unix `strace`
       maestral                      # Terminal Dropbox client
       mdp                           # Terminal Markdown presenter
@@ -51,7 +49,6 @@
       playerctl                     # Terminal media controller
       procs                         # Modern Unix `ps`
       pulsemixer                    # Terminal PulseAudio mixer
-      python310Packages.gpustat     # Terminal GPU info
       quilt                         # Terminal patch manager
       rclone                        # Terminal cloud storage client
       ripgrep                       # Modern Unix `grep`
@@ -61,7 +58,6 @@
       shfmt                         # Code format Shell
       tldr                          # Modern Unix `man`
       tokei                         # Modern Unix `wc` for code
-      vdpauinfo                     # Terminal VDPAU info
       wget2                         # Terminal downloader
       wmctrl                        # Terminal X11 automation
       xdotool                       # Terminal X11 automation
