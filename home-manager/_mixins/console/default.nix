@@ -41,9 +41,7 @@
       nurl                          # Nix URL fetcher
       nyancat                       # Terminal rainbow spewing feline
       optipng                       # Terminal PNG optimizer
-      playerctl                     # Terminal media controller
       procs                         # Modern Unix `ps`
-      pulsemixer                    # Terminal PulseAudio mixer
       quilt                         # Terminal patch manager
       ripgrep                       # Modern Unix `grep`
       tldr                          # Modern Unix `man`

@@ -1,5 +1,9 @@
 { lib, ... }:
 {
+  environment.systemPackages = with pkgs; [
+    pulsemixer                    # Terminal PulseAudio mixer
+    playerctl                     # Terminal media controller
+  ];
   hardware = {
     pulseaudio.enable = lib.mkForce false;
   };
