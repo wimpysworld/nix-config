@@ -64,7 +64,7 @@
       vm        = libx.mkHost { hostname = "vm";        username = "martin"; desktop = "pantheon"; };
       zed       = libx.mkHost { hostname = "zed";       username = "martin"; desktop = "pantheon"; };
       # Servers
-      brix      = libx.mkHost { hostname = "brix";      username = "brix"; };
+      brix      = libx.mkHost { hostname = "brix";      username = "martin"; };
       skull     = libx.mkHost { hostname = "skull";     username = "martin"; };
       vm-mini   = libx.mkHost { hostname = "vm-mini";   username = "martin"; };
     };
