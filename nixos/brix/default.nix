@@ -14,6 +14,24 @@
     ../_mixins/virt
   ];
 
+  # disko does manage mounting of / /boot /home, but I want to mount by-partlabel
+  fileSystems."/" = lib.mkForce {
+    device = "/dev/disk/by-partlabel/root";
+    fsType = "xfs";
+    options = [ "defaults" "relatime" "nodiratime" ];
+  };
+
+  fileSystems."/boot" = lib.mkForce {
+    device = "/dev/disk/by-partlabel/ESP";
+    fsType = "vfat";
+  };
+
+  fileSystems."/home" = lib.mkForce {
+    device = "/dev/disk/by-partlabel/home";
+    fsType = "xfs";
+    options = [ "defaults" "relatime" "nodiratime" ];
+  };
+
   swapDevices = [{
     device = "/swap";
     size = 2048;
