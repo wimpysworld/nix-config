@@ -31,7 +31,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `win-max`      | GPD            | WIN Max             | Ubuntu MATE   | Laptop       | tbd      |
 | `falcon`       | TopJoy         | Falcon              | Ubuntu MATE   | Laptop       | tbd      |
 | `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbd      |
-| `xps-13`       | Dell           | XPS 13              | Ubuntu MATE   | Laptop       | tbd      |
+| `xps-13`       | Dell           | XPS 13 9360         | Ubuntu MATE   | Laptop       | tbd      |
 | `spectre`      | HP             | Spectre             | Ubuntu MATE   | Laptop       | tbd      |
 | `apollo`       | Entroware      | Apollo 2000         | Ubuntu MATE   | Laptop       | tbd      |
 
