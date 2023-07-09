@@ -8,11 +8,9 @@
     packages = with pkgs; [
       alejandra                     # Code format Nix
       asciinema                     # Terminal recorder
-      black                         # Code format Python
       breezy                        # Terminal bzr client
       butler                        # Terminal Itch.io API client
       chafa                         # Terminal image viewer
-      chroma                        # Code syntax highlighter
       croc                          # Terminal file transfer
       dconf2nix                     # Nix code from Dconf files
       deadnix                       # Code lint Nix
@@ -36,13 +34,11 @@
       lazygit                       # Terminal Git client
       lurk                          # Modern Unix `strace`
       maestral                      # Terminal Dropbox client
-      mdp                           # Terminal Markdown presenter
       mktorrent                     # Terminal torrent creator
       moar                          # Modern Unix `less`
       neofetch                      # Terminal system info
       nixpkgs-fmt                   # Code format Nix
       nixpkgs-review                # Nix code review
-      nodePackages.prettier         # Code format
       nurl                          # Nix URL fetcher
       nyancat                       # Terminal rainbow spewing feline
       optipng                       # Terminal PNG optimizer
@@ -52,10 +48,7 @@
       quilt                         # Terminal patch manager
       rclone                        # Terminal cloud storage client
       ripgrep                       # Modern Unix `grep`
-      rustfmt                       # Code format Rust
       s3cmd                         # Terminal cloud storage client
-      shellcheck                    # Code lint Shell
-      shfmt                         # Code format Shell
       tldr                          # Modern Unix `man`
       tokei                         # Modern Unix `wc` for code
       wget2                         # Terminal downloader
