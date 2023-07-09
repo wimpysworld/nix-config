@@ -46,9 +46,7 @@
       procs                         # Modern Unix `ps`
       pulsemixer                    # Terminal PulseAudio mixer
       quilt                         # Terminal patch manager
-      rclone                        # Terminal cloud storage client
       ripgrep                       # Modern Unix `grep`
-      s3cmd                         # Terminal cloud storage client
       tldr                          # Modern Unix `man`
       tokei                         # Modern Unix `wc` for code
       wget2                         # Terminal downloader
@@ -57,7 +55,6 @@
       yadm                          # Terminal dot file manager
       ydotool                       # Terminal *all-the-things* automation
       yq-go                         # Terminal `jq` for YAML
-      zsync                         # Terminal file sync
     ];
 
     sessionVariables = {
