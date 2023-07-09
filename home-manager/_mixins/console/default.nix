@@ -49,7 +49,6 @@
       wget2                         # Terminal downloader
       wmctrl                        # Terminal X11 automation
       xdotool                       # Terminal X11 automation
-      yadm                          # Terminal dot file manager
       ydotool                       # Terminal *all-the-things* automation
       yq-go                         # Terminal `jq` for YAML
     ];

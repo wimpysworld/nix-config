@@ -72,6 +72,7 @@
       psmisc
       unzip
       usbutils
+      yadm                          # Terminal dot file manager
     ];
     variables = {
       EDITOR = "micro";
