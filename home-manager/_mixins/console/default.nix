@@ -11,7 +11,6 @@
       breezy                        # Terminal bzr client
       butler                        # Terminal Itch.io API client
       chafa                         # Terminal image viewer
-      croc                          # Terminal file transfer
       dconf2nix                     # Nix code from Dconf files
       deadnix                       # Code lint Nix
       debootstrap                   # Terminal Debian installer
@@ -33,7 +32,6 @@
       lazygit                       # Terminal Git client
       lurk                          # Modern Unix `strace`
       maestral                      # Terminal Dropbox client
-      mktorrent                     # Terminal torrent creator
       moar                          # Modern Unix `less`
       neofetch                      # Terminal system info
       nixpkgs-fmt                   # Code format Nix
