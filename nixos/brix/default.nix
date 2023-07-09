@@ -24,5 +24,16 @@
     kernelModules = [ "kvm-intel" ];
   };
 
+  # Use passed hostname to configure basic networking
+  networking = {
+    defaultGateway = "192.168.2.1";
+    interfaces.enp3s0.ipv4.addresses = [ {
+      address = "192.168.2.10";
+      prefixLength = 24;
+    } ];
+    nameservers = [ "192.168.2.1" ];
+    useDHCP = lib.mkForce false;
+  };
+
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }
