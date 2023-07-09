@@ -9,20 +9,17 @@
       alejandra                     # Code format Nix
       asciinema                     # Terminal recorder
       black                         # Code format Python
-      bmon                          # Modern Unix `iftop`
       breezy                        # Terminal bzr client
       butler                        # Terminal Itch.io API client
       chafa                         # Terminal image viewer
       chroma                        # Code syntax highlighter
       clinfo                        # Terminal OpenCL info
       croc                          # Terminal file transfer
-      curlie                        # Terminal HTTP client
       dconf2nix                     # Nix code from Dconf files
       deadnix                       # Code lint Nix
       debootstrap                   # Terminal Debian installer
       diffr                         # Modern Unix `diff`
       difftastic                    # Modern Unix `diff`
-      dogdns                        # Modern Unix `dig`
       dua                           # Modern Unix `du`
       duf                           # Modern Unix `df`
       du-dust                       # Modern Unix `du`
@@ -32,11 +29,9 @@
       glow                          # Terminal Markdown renderer
       gping                         # Modern Unix `ping`
       hexyl                         # Modern Unix `hexedit`
-      httpie                        # Terminal HTTP client
       hueadm                        # Terminal Philips Hue client
       hugo                          # Terminal static site generator
       hyperfine                     # Terminal benchmarking
-      iperf3                        # Terminal network benchmarking
       jpegoptim                     # Terminal JPEG optimizer
       jiq                           # Modern Unix `jq`
       lazygit                       # Terminal Git client
@@ -46,16 +41,12 @@
       mdp                           # Terminal Markdown presenter
       mktorrent                     # Terminal torrent creator
       moar                          # Modern Unix `less`
-      mtr                           # Modern Unix `traceroute`
       neofetch                      # Terminal system info
-      netdiscover                   # Modern Unix `arp`
-      nethogs                       # Modern Unix `iftop`
       nixpkgs-fmt                   # Code format Nix
       nixpkgs-review                # Nix code review
       nodePackages.prettier         # Code format
       nurl                          # Nix URL fetcher
       nyancat                       # Terminal rainbow spewing feline
-      ookla-speedtest               # Terminal speedtest
       optipng                       # Terminal PNG optimizer
       playerctl                     # Terminal media controller
       procs                         # Modern Unix `ps`
@@ -71,7 +62,6 @@
       tldr                          # Modern Unix `man`
       tokei                         # Modern Unix `wc` for code
       vdpauinfo                     # Terminal VDPAU info
-      wavemon                       # Terminal WiFi monitor
       wget2                         # Terminal downloader
       wmctrl                        # Terminal X11 automation
       xdotool                       # Terminal X11 automation
