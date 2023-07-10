@@ -5,6 +5,7 @@ on:
     branches:
       - main
   schedule:
+    # l33t o'clock
     - cron: '37 13 * * *'
   workflow_dispatch:
 
