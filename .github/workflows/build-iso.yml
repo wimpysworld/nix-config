@@ -37,6 +37,15 @@ jobs:
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
 
+    - name: Build Desktop ISO
+      run: |
+        nix build .#nixosConfigurations.iso.config.system.build.isoImage
+        mkdir iso || true
+        ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
+        sudo mv "result/iso/${ISO}" iso/desktop-${ISO}
+        sha256sum "iso/desktop-${ISO}" > "iso/desktop-${ISO}.sha256"
+        sed -i -r "s/ .*\/(.+)/  \1/g" "iso/desktop-${ISO}.sha256"
+
     - name: Upload ISOs
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
