@@ -10,7 +10,7 @@
     ../../desktop/opera.nix
     ../../desktop/tilix.nix
     ../../desktop/vivaldi.nix
-  ];
+  ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}-apps.nix")) ./${desktop}-apps.nix;
 
   environment.systemPackages = with pkgs; [
     audio-recorder

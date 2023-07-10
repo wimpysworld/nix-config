@@ -1,4 +1,6 @@
-{ inputs, lib, pkgs, ... }: {
+# NOTE: This is the minimum Pantheon, included in the live .iso image
+# For actuall installs pantheon-apps.nix is also included
+{ pkgs, ... }: {
   imports = [
     ./qt-style.nix
     ../services/networkmanager.nix
@@ -17,30 +19,9 @@
     # - https://discourse.nixos.org/t/anyone-with-pantheon-de/28422
     # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
     pathsToLink = [ "/libexec" ];
-
-    # Add additional apps and include Yaru for syntax highlighting
-    systemPackages = with pkgs; [
-      appeditor                   # elementary OS menu editor
-      celluloid                   # Video Player
-      formatter                   # elementary OS filesystem formatter
-      gthumb                      # Image Viewer
-      gnome.simple-scan           # Scanning
-      torrential                  # elementary OS torrent client
-      yaru-theme
-    ];
-  };
-
-  # Add GNOME Disks, Pantheon Tweaks and Seahorse
-  programs = {
-    gnome-disks.enable = true;
-    pantheon-tweaks.enable = true;
-    seahorse.enable = true;
   };
 
   services = {
-    flatpak = {
-      enable = true;
-    };
     xserver = {
       enable = true;
       displayManager = {
