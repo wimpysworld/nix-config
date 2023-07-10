@@ -25,11 +25,6 @@ jobs:
     - name: Checkout Flake
       uses: actions/checkout@v3
 
-    - name: Install xz
-      run: |
-        sudo apt-get -y update
-        sudo apt-get -y install xz-utils
-
     - name: Install nix
       uses: DeterminateSystems/nix-installer-action@v4
 
