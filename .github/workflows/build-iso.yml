@@ -34,9 +34,8 @@ jobs:
         mkdir iso
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
         mv "result/iso/${ISO}" iso/console-${ISO}
-        xz --compress --force --keep --no-warn --threads=0 iso/console-${ISO}
-        sha256sum "iso/console-${ISO}.xz" > "iso/console-${ISO}.xz.sha256"
-        sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.xz.sha256"
+        sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
+        sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
 
     - name: Upload ISOs
       env:
