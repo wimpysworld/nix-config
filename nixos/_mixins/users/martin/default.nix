@@ -6,6 +6,10 @@ in
    # Only include desktop components if one is supplied.
   imports = [ ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
 
+  environment.systemPackages = [
+    yadm                          # Terminal dot file manager
+  ];
+
   users.users.martin = {
     description = "Martin Wimpress";
     extraGroups = [
