@@ -218,12 +218,13 @@
       set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
       shellAbbrs = {
-        nix-gc           = "sudo nix-collect-garbage --delete-older-than 14d";
-        rebuild-home     = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
-        rebuild-host     = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
-        rebuild-lock     = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
-        rebuild-iso      = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso.config.system.build.isoImage && popd";
-        rebuild-iso-mini = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-mini.config.system.build.isoImage && popd";
+        nix-gc              = "sudo nix-collect-garbage --delete-older-than 14d";
+        rebuild-all         = "rebuild-host && rebuild-home";
+        rebuild-home        = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        rebuild-host        = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
+        rebuild-lock        = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
+        rebuild-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && popd";
+        rebuild-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && popd";
       };
       shellAliases = {
         moon = "curl -s wttr.in/Moon";

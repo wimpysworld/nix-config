@@ -30,7 +30,7 @@ jobs:
 
     - name: Build Console ISO
       run: |
-        nix build .#nixosConfigurations.iso-mini.config.system.build.isoImage
+        nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
         mkdir iso || true
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
@@ -39,7 +39,7 @@ jobs:
 
     - name: Build Desktop ISO
       run: |
-        nix build .#nixosConfigurations.iso.config.system.build.isoImage
+        nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage
         mkdir iso || true
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
         sudo mv "result/iso/${ISO}" iso/desktop-${ISO}
