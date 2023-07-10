@@ -31,9 +31,9 @@ jobs:
     - name: Build Console ISO
       run: |
         nix build .#nixosConfigurations.iso-mini.config.system.build.isoImage
-        mkdir iso
+        mkdir iso || true
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
-        mv "result/iso/${ISO}" iso/console-${ISO}
+        sudo mv "result/iso/${ISO}" iso/console-${ISO}
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
 
