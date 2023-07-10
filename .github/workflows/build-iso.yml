@@ -28,7 +28,7 @@ jobs:
     - name: Install nix
       uses: DeterminateSystems/nix-installer-action@v4
 
-    - name: Build Mini ISO
+    - name: Build Console ISO
       run: |
         nix build .#nixosConfigurations.iso-mini.config.system.build.isoImage
         mkdir iso
@@ -48,7 +48,7 @@ jobs:
   publish-release:
     name: Publish release
     needs: [create-release, build-isos]
-    runs-on: ubuntu-22.04    
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
     - name: Publish release ${{ github.ref }}
