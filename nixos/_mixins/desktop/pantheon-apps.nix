@@ -1,6 +1,7 @@
 { pkgs, ... }: {
   imports = [
     ../services/flatpak.nix
+    ../services/sane.nix
   ];
   
   # Add additional apps and include Yaru for syntax highlighting

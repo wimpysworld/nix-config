@@ -1,13 +1,16 @@
 { pkgs, ... }: {
-    # Add some packages to complete the MATE desktop
-    systemPackages = with pkgs; [
-      celluloid
-      gnome.gucharmap
-      gnome-firmware
-      gnome.simple-scan
-      gthumb
-    ];
-  };
+  imports = [
+    ../services/flatpak.nix
+    ../services/sane.nix
+  ];
+
+  # Add some packages to complete the MATE desktop
+  environment.systemPackages = with pkgs; [
+    celluloid
+    gnome.gucharmap
+    gnome-firmware
+    gthumb
+  ];
 
   # Enable some programs to provide a complete desktop
   programs = {
