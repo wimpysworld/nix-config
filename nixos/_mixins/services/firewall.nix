@@ -9,6 +9,7 @@ let
       "p1"
       "p2-max"
       "ripper"
+      "skull"
       "vm"
       "zed"
     ];
