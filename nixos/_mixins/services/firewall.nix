@@ -3,13 +3,15 @@ let
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
+      "brix"
       "designare"
-      "trooper"
       "micropc"
+      "nuc"
       "p1"
       "p2-max"
       "ripper"
       "skull"
+      "trooper"
       "vm"
       "zed"
     ];
