@@ -4,7 +4,7 @@
   ];
   
   # Add additional apps and include Yaru for syntax highlighting
-  systemPackages = with pkgs; [
+  environment.systemPackages = with pkgs; [
     appeditor                   # elementary OS menu editor
     celluloid                   # Video Player
     gthumb                      # Image Viewer
