@@ -2,5 +2,5 @@
   imports = [
     ../../../services/syncthing.nix
   ];
-  services.kbfs.enable = lib.mkForce false;
+  services.kbfs.enable = lib.mkForce true;
 }
