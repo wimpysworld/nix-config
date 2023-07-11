@@ -7,7 +7,7 @@ in
   imports = [ ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
 
   environment.systemPackages = [
-    yadm                          # Terminal dot file manager
+    pkgs.yadm                          # Terminal dot file manager
   ];
 
   users.users.martin = {
