@@ -1,5 +1,6 @@
-{ pkgs, ... }: {
+{ desktop, pkgs, lib, ... }: {
   imports = [
+    #../../desktop/${desktop}-apps.nix
     ../../desktop/brave.nix
     ../../desktop/chromium.nix
     #../../desktop/firefox.nix
@@ -10,7 +11,7 @@
     ../../desktop/opera.nix
     ../../desktop/tilix.nix
     ../../desktop/vivaldi.nix
-  ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}-apps.nix")) ./${desktop}-apps.nix;
+  ] ++ lib.optional (builtins.pathExists (../.. + "/desktop/${desktop}-apps.nix")) ../../desktop/${desktop}-apps.nix;
 
   environment.systemPackages = with pkgs; [
     audio-recorder
