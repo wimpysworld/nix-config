@@ -23,7 +23,10 @@
 
   # My GPD P2 Max has a US keyboard layout
   console.keyMap = lib.mkForce "us";
-  services.kmscon.extraOptions = lib.mkForce "--xkb-layout=us";
+  services.kmscon.extraConfig = lib.mkForce ''
+    font-size=18
+    xkb-layout=us
+  '';
   services.xserver.layout = lib.mkForce "us";
 
   environment.systemPackages = with pkgs; [

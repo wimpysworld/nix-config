@@ -34,6 +34,11 @@
     kernelPackages = pkgs.linuxPackages_latest;
   };
 
+  services.kmscon.extraConfig = lib.mkForce ''
+    font-size=18
+    xkb-layout=gb
+  '';
+
   environment.systemPackages = with pkgs; [
     nvtop-amd
   ];

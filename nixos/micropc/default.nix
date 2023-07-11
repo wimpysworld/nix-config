@@ -33,7 +33,10 @@
 
   # My GPD MicroPC has a US keyboard layout
   console.keyMap = lib.mkForce "us";
-  services.kmscon.extraOptions = lib.mkForce "--xkb-layout=us";
+  services.kmscon.extraConfig = lib.mkForce ''
+    font-size=14
+    xkb-layout=us
+  '';
   services.xserver.layout = lib.mkForce "us";
 
   environment.systemPackages = with pkgs; [
