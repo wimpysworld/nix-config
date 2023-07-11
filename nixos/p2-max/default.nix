@@ -22,9 +22,6 @@
   };
 
   # My GPD P2 Max has a US keyboard layout
-  # Pixel sizes of the font: 12, 14, 16, 18, 20, 22, 24, 28, 32
-    # Followed by 'n' (normal) or 'b' (bold)
-  console.font = lib.mkForce "ter-powerline-v28n";
   console.keyMap = lib.mkForce "us";
   services.kmscon.extraOptions = lib.mkForce "--xkb-layout=us";
   services.xserver.layout = lib.mkForce "us";

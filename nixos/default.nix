@@ -30,9 +30,9 @@
 
   console = {
     earlySetup = true;
-    font = "ter-powerline-v18n";
+    font = "${pkgs.tamzen}/share/consolefonts/TamzenForPowerline10x20.psf";
     keyMap = "uk";
-    packages = with pkgs; [ terminus_font powerline-fonts ];
+    packages = with pkgs; [ tamzen ];
   };
 
   i18n = {
