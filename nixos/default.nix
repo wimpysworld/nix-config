@@ -121,11 +121,15 @@
   # Use passed hostname to configure basic networking
   networking = {
     extraHosts = ''
+    192.168.192.40  skull-zt
     192.168.192.59  trooper-zt
     192.168.192.181 zed-zt
     192.168.192.220 ripper-zt
     192.168.192.162 p1-zt
     192.168.192.249 p2-max-zt
+    #192.168.192.0   brix-zt
+    #192.168.192.0   nuc-zt
+    
     '';
     hostName = hostname;
     useDHCP = lib.mkDefault true;
