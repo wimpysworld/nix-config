@@ -51,5 +51,7 @@
     useDHCP = lib.mkForce false;
   };
 
+  services.hardware.bolt.enable = true;
+
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }
