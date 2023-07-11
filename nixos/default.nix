@@ -30,9 +30,9 @@
 
   console = {
     earlySetup = true;
-    font = "ter-powerline-v18n";
+    font = "${pkgs.tamzen}/share/consolefonts/TamzenForPowerline10x20.psf";
     keyMap = "uk";
-    packages = with pkgs; [ terminus_font powerline-fonts ];
+    packages = with pkgs; [ tamzen ];
   };
 
   i18n = {
@@ -72,7 +72,6 @@
       psmisc
       unzip
       usbutils
-      yadm                          # Terminal dot file manager
     ];
     variables = {
       EDITOR = "micro";
@@ -218,12 +217,13 @@
       set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
       shellAbbrs = {
-        nix-gc           = "sudo nix-collect-garbage --delete-older-than 14d";
-        rebuild-home     = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
-        rebuild-host     = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
-        rebuild-lock     = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
-        rebuild-iso      = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso.config.system.build.isoImage && popd";
-        rebuild-iso-mini = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-mini.config.system.build.isoImage && popd";
+        nix-gc              = "sudo nix-collect-garbage --delete-older-than 14d";
+        rebuild-all         = "rebuild-host && rebuild-home";
+        rebuild-home        = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        rebuild-host        = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
+        rebuild-lock        = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
+        rebuild-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && popd";
+        rebuild-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && popd";
       };
       shellAliases = {
         moon = "curl -s wttr.in/Moon";
@@ -261,5 +261,11 @@
     "d /mnt/snapshot/${username} 0755 ${username} users"
   ];
 
+  system.activationScripts.diff = {
+    supportsDryActivation = true;
+    text = ''
+      ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.nix}/bin diff /run/current-system "$systemConfig"
+    '';
+  };
   system.stateVersion = stateVersion;
 }

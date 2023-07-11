@@ -34,9 +34,10 @@
     kernelPackages = pkgs.linuxPackages_latest;
   };
 
-  # Pixel sizes of the font: 12, 14, 16, 18, 20, 22, 24, 28, 32
-  # Followed by 'n' (normal) or 'b' (bold)
-  console.font = lib.mkForce "ter-powerline-v22n";
+  services.kmscon.extraConfig = lib.mkForce ''
+    font-size=18
+    xkb-layout=gb
+  '';
 
   environment.systemPackages = with pkgs; [
     nvtop-amd

@@ -1,0 +1,24 @@
+name: Flake ❄️ Lock 🔒️ Updater ✨
+
+on:
+  schedule:
+    # Pi o'clock
+    - cron: '3 14 * * 1,5'
+  workflow_dispatch:
+
+jobs:
+  lock-updater:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Flake
+        uses: actions/checkout@v3
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v4
+      - name: Update flake.lock
+        uses: DeterminateSystems/update-flake-lock@v19
+        with:
+          pr-title: "chore: update flake.lock"
+          # Labels to be set on the PR
+          pr-labels: |
+            dependencies
+            automated

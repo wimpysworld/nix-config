@@ -31,8 +31,8 @@
     # nix build .#homeConfigurations."martin@ripper".activationPackage
     homeConfigurations = {
       # .iso images
-      "martin@iso"       = libx.mkHome { hostname = "iso";       username = "nixos";  desktop = "pantheon"; };
-      "martin@iso-mini"  = libx.mkHome { hostname = "iso-mini";  username = "nixos"; };
+      "martin@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
+      "martin@iso-desktop" = libx.mkHome { hostname = "iso-desktop"; username = "nixos"; desktop = "pantheon"; };
       # Workstations
       "martin@designare" = libx.mkHome { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
       "martin@micropc"   = libx.mkHome { hostname = "micropc";   username = "martin"; desktop = "pantheon"; };
@@ -49,9 +49,9 @@
     };
     nixosConfigurations = {
       # .iso images
-      #  - nix build .#nixosConfigurations.{iso|iso-mini}.config.system.build.isoImage
-      iso       = libx.mkHost { hostname = "iso";       username = "nixos";  desktop = "pantheon"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; };
-      iso-mini  = libx.mkHost { hostname = "iso-mini";  username = "nixos";  installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"; };
+      #  - nix build .#nixosConfigurations.{iso-console|iso-desktop}.config.system.build.isoImage
+      iso-console = libx.mkHost { hostname = "iso-console"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"; };
+      iso-desktop = libx.mkHost { hostname = "iso-desktop"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
       # Workstations
       #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
       #  - nix build .#nixosConfigurations.ripper.config.system.build.toplevel

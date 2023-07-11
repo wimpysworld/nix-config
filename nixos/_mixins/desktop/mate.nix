@@ -1,4 +1,4 @@
-{ inputs, lib, pkgs, ... }: {
+{ pkgs, ... }: {
   imports = [
     ./qt-style.nix
     ../services/networkmanager.nix
@@ -19,20 +19,13 @@
 
     # Add some packages to complete the MATE desktop
     systemPackages = with pkgs; [
-      celluloid
-      gnome.gucharmap
-      gnome-firmware
-      gnome.simple-scan
-      gthumb
       networkmanagerapplet
     ];
   };
 
   # Enable some programs to provide a complete desktop
   programs = {
-    gnome-disks.enable = true;
     nm-applet.enable = true;
-    seahorse.enable = true;
     system-config-printer.enable = true;
   };
 

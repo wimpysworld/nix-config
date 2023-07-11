@@ -1,0 +1,70 @@
+name: Build 🏗️ and Publish 📀
+
+on:
+  push:
+    tags: ['*']
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    name: Create release
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Create release ${{ github.ref }} as a draft
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ github.ref }}" --draft --generate-notes
+
+  build-isos:
+    name: Build ISOs
+    runs-on: ubuntu-22.04
+    needs: [create-release]
+    steps:
+    - name: Checkout Flake
+      uses: actions/checkout@v3
+
+    - name: Install nix
+      uses: DeterminateSystems/nix-installer-action@v4
+
+    - name: Build Console ISO
+      run: |
+        nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
+        mkdir iso || true
+        ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
+        sudo mv "result/iso/${ISO}" iso/console-${ISO}
+        sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
+        sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
+
+    - name: Build Desktop ISO
+      run: |
+        nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage
+        mkdir iso || true
+        ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
+        sudo mv "result/iso/${ISO}" iso/desktop-${ISO}
+        sha256sum "iso/desktop-${ISO}" > "iso/desktop-${ISO}.sha256"
+        sed -i -r "s/ .*\/(.+)/  \1/g" "iso/desktop-${ISO}.sha256"
+
+    - name: Upload ISOs
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        for artefact in "iso/"*; do
+          gh release upload "${{ github.ref }}" "${artefact}" --clobber
+        done
+
+  publish-release:
+    name: Publish release
+    needs: [create-release, build-isos]
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Publish release ${{ github.ref }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if [ "$(gh release view "${{ github.ref }}" --json assets --template '{{len .assets}}')" -lt 0 ]; then
+          exit 1
+        fi
+        gh release edit "${{ github.ref }}" --draft=false

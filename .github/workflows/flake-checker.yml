@@ -1,0 +1,19 @@
+name: Flake ❄️ Checker ✅
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # l33t o'clock
+    - cron: '37 13 * * *'
+  workflow_dispatch:
+
+jobs:
+  flake-checker:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout flake
+        uses: actions/checkout@v3
+      - name: Check flake inputs
+        uses: DeterminateSystems/flake-checker-action@v5
