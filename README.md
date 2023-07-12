@@ -13,53 +13,69 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `vm`           | VM             | -                   | NixOS         | Desktop      | Done     |
 | `ripper`       | DIY            | AMD 3970X           | NixOS         | Desktop      | Done     |
 | `nuc`          | Intel          | [NUC5i7RYH]         | NixOS         | Server       | WIP      |
-| `skull`        | Intel          | [NUC6i7KYK]         | NixOS         | Server       | WIP      |
+| `skull`        | Intel          | [NUC6i7KYK]         | NixOS         | Server       | Done     |
 | `brix`         | Gigabyte       | [GB-BXCEH-2955]     | NixOS         | Server       | WIP      |
 | `trooper`      | DIY            | AMD 5950X, 3080Ti   | NixOS         | Desktop      | Done     |
 | `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | Done     |
 | `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | Done     |
-| `pi4`          | Raspberry Pi   | Raspberry Pi 4      | Ubuntu MATE   | Desktop      | tbd      |
-| `pinebook`     | Pine64         | Pinebook            | -             | Laptop       | tbd      |
-| `pinebook-pro` | Pine64         | Pinebook Pro        | -             | Laptop       | tbd      |
-| `c630`         | Lenovo         | Yoga C630           | Windows 10S   | Laptop       | tbd      |
-| `pocket`       | GPD            | Pocket              | Ubuntu MATE   | Laptop       | tbd      |
-| `pocket2`      | GPD            | Pocket 2            | Ubuntu MATE   | Laptop       | tbd      |
-| `pocket3`      | GPD            | Pocket 3            | Ubuntu MATE   | Laptop       | tbd      |
+| `pi4`          | Raspberry Pi   | Raspberry Pi 4      | Ubuntu MATE   | Desktop      | tbn      |
+| `pinebook`     | Pine64         | Pinebook            | -             | Laptop       | tbn      |
+| `pinebook-pro` | Pine64         | Pinebook Pro        | -             | Laptop       | tbn      |
+| `c630`         | Lenovo         | Yoga C630           | Windows 10S   | Laptop       | tbn      |
+| `pocket`       | GPD            | Pocket              | Ubuntu MATE   | Laptop       | tbn      |
+| `pocket2`      | GPD            | Pocket 2            | Ubuntu MATE   | Laptop       | tbn      |
+| `pocket3`      | GPD            | Pocket 3            | Ubuntu MATE   | Laptop       | tbn      |
 | `p2-max`       | GPD            | P2 Max              | NixOS         | Laptop       | Done     |
 | `micropc`      | GPD            | Micro PC            | NixOS         | Laptop       | WIP      |
-| `win`          | GPD            | WIN                 | Ubuntu MATE   | Laptop       | tbd      |
-| `win-max`      | GPD            | WIN Max             | Ubuntu MATE   | Laptop       | tbd      |
-| `falcon`       | TopJoy         | Falcon              | Ubuntu MATE   | Laptop       | tbd      |
-| `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbd      |
-| `xps-13`       | Dell           | XPS 13 9360         | Ubuntu MATE   | Laptop       | tbd      |
-| `spectre`      | HP             | Spectre             | Ubuntu MATE   | Laptop       | tbd      |
-| `apollo`       | Entroware      | Apollo 2000         | Ubuntu MATE   | Laptop       | tbd      |
+| `win`          | GPD            | WIN                 | Ubuntu MATE   | Laptop       | tbn      |
+| `win-max`      | GPD            | WIN Max             | Ubuntu MATE   | Laptop       | tbn      |
+| `falcon`       | TopJoy         | Falcon              | Ubuntu MATE   | Laptop       | tbn      |
+| `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbn      |
+| `xps-13`       | Dell           | XPS 13 9360         | Ubuntu MATE   | Laptop       | tbn      |
+| `spectre`      | HP             | Spectre             | Ubuntu MATE   | Laptop       | tbn      |
+| `apollo`       | Entroware      | Apollo 2000         | Ubuntu MATE   | Laptop       | tbn      |
 
 [NUC5i7RYH]: https://www.intel.co.uk/content/www/uk/en/products/sku/87570/intel-nuc-kit-nuc5i7ryh/specifications.html
 [NUC6i7KYK]: https://ark.intel.com/content/www/us/en/ark/products/89187/intel-nuc-kit-nuc6i7kyk.html
 [GB-BXCEH-2955]: https://www.gigabyte.com/uk/Mini-PcBarebone/GB-BXCEH-2955-rev-10
 [GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
 
+**As featured on [Linux Matters](https://linuxmatters.sh) podcast!** 🎙️ I am a presenter on Linux Matters and this configuration was featured in [Episode 7 - Immutable Desktop Linux for Anyone](https://linuxmatters.sh/7/).
+
+<div align="center">
+  <a href="https://linuxmatters.sh" target="_blank"><img src="https://linuxmatters.sh/img/episode/linuxmatters-banner-3000x750.webp" width="600" height="150" alt="Linux Matters Podcast"/></a>
+  <br />
+  <em>Linux Matters Podcast</em>
+</div>
+
 ## Structure
 
+- [.github]: GitHub CI/CD workflows Nix ❄️ supercharged ⚡️ by [**Determinate Systems**](https://determinate.systems) 
+  - [Nix Installer Action](https://github.com/marketplace/actions/the-determinate-nix-installer)
+  - [Magic Nix Cache Action](https://github.com/marketplace/actions/magic-nix-cache)
+  - [Flake Checker Action](https://github.com/marketplace/actions/nix-flake-checker)
+  - [Update Flake Lock Action](https://github.com/marketplace/actions/update-flake-lock)
 - [home-manager]: Home Manager configurations
   - Sane defaults for shell and desktop
 - [nixos]: NixOS configurations
   - Includes discrete hardware configurations which leverage the [NixOS Hardware modules](https://github.com/NixOS/nixos-hardware) via [flake.nix].
 - [scripts]: Helper scripts
+- [shells]: [Nix shell environments using direnv](https://determinate.systems/posts/nix-direnv) for infrequently used tools
 
 The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited configurations based on the arguments defined in [flake.nix].
 
+[.github]: ./github/workflows
 [home-manager]: ./home-manager
 [nixos]: ./nixos
 [nixos/_mixins]: ./nixos/_mixins
 [home-manager/_mixins]: ./home-manager/_mixins
 [flake.nix]: ./flake.nix
 [scripts]: ./scripts
+[shells]: ./shells
 
 ## Installing 💾
 
-- Boot off a .iso image created by this flake using `rebuild-iso` or `rebuild-mini-iso` (*see below*)
+- Boot off a .iso image created by this flake using `rebuild-iso-desktop` or `rebuild-iso-console` (*see below*)
 - Put the .iso image on a USB drive
 - Boot the target computer from the USB drive
 - Two installation options are available:
@@ -103,7 +119,7 @@ home-manager switch -b backup --flake $HOME/Zero/nix-config
 
 ### ISO 📀
 
-Aliases for `rebuild-iso` (*desktop*) and `rebuild-mini-iso` (*headless*) are provided that create .iso images from this flake. They do the following:
+Aliases for `rebuild-iso-desktop` (*desktop*) and `rebuild-iso-console` (*console only*) are provided that create .iso images from this flake. They do the following:
 
 ```bash
 pushd $HOME/Zero/nix-config
@@ -111,7 +127,7 @@ nix build .#nixosConfigurations.iso.config.system.build.isoImage
 popd
 ```
 
-A live image will be left in `~/$HOME/Zero/nix-config/result/iso/`
+A live image will be left in `~/$HOME/Zero/nix-config/result/iso/`. These .iso images are also periodically built and published via [GitHub Actions](./.github/workflows) and available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
 ## What's in the box? 🎁
 
