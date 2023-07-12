@@ -43,7 +43,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 **As featured on [Linux Matters](https://linuxmatters.sh) podcast!** 🎙️ I am a presenter on Linux Matters and this configuration was featured in [Episode 7 - Immutable Desktop Linux for Anyone](https://linuxmatters.sh/7/).
 
 <div align="center">
-  <a href="https://linuxmatters.sh" target="_blank"><img src="https://linuxmatters.sh/img/episode/linuxmatters-banner-3000x750.webp" width="600" height="150" alt="Linux Matters Podcast"/></a>
+  <a href="https://linuxmatters.sh" target="_blank"><img src="./.github/screenshots/linuxmatters.png" alt="Linux Matters Podcast"/></a>
   <br />
   <em>Linux Matters Podcast</em>
 </div>
