@@ -47,7 +47,7 @@ in
           format = "gpt";
           partitions = [{
             name = "home";
-            start = "0";
+            start = "0%";
             end = "100%";
             content = {
               type = "filesystem";
