@@ -28,6 +28,7 @@
       obs-vaapi
       obs-vintage-filter
       obs-websocket
+      waveform
     ];
   })
   ];
