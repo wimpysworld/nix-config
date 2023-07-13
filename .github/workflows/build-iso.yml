@@ -7,7 +7,7 @@ on:
 
 jobs:
   create-release:
-    name: Create release
+    name: Create Release
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
@@ -22,10 +22,9 @@ jobs:
     name: Console ISO
     runs-on: ubuntu-22.04
     steps:
-    - name: Checkout Flake
-      uses: actions/checkout@v3
-    - name: Install nix
-      uses: DeterminateSystems/nix-installer-action@v4
+    - uses: actions/checkout@v3
+    - uses: DeterminateSystems/nix-installer-action@v4
+    - uses: DeterminateSystems/magic-nix-cache-action@v2
     - name: Build Console ISO
       run: |
         nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
@@ -47,10 +46,9 @@ jobs:
     name: Desktop ISO
     runs-on: ubuntu-22.04
     steps:
-    - name: Checkout Flake
-      uses: actions/checkout@v3
-    - name: Install nix
-      uses: DeterminateSystems/nix-installer-action@v4
+    - uses: actions/checkout@v3
+    - uses: DeterminateSystems/nix-installer-action@v4
+    - uses: DeterminateSystems/magic-nix-cache-action@v2
     - name: Build Desktop ISO
       run: |
         nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage
@@ -68,7 +66,7 @@ jobs:
         done
 
   publish-release:
-    name: Publish release
+    name: Publish Release
     needs: [create-release, build-console-iso, build-desktop-iso]
     runs-on: ubuntu-22.04
     steps:
