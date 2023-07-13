@@ -17,17 +17,15 @@ jobs:
       run: |
         gh release create "${{ github.ref }}" --draft --generate-notes
 
-  build-isos:
-    name: Build ISOs
-    runs-on: ubuntu-22.04
+  build-console-iso:
     needs: [create-release]
+    name: Console ISO
+    runs-on: ubuntu-22.04
     steps:
     - name: Checkout Flake
       uses: actions/checkout@v3
-
     - name: Install nix
       uses: DeterminateSystems/nix-installer-action@v4
-
     - name: Build Console ISO
       run: |
         nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
@@ -36,7 +34,23 @@ jobs:
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
+    - name: Upload Console ISO
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        for artefact in "iso/"*; do
+          gh release upload "${{ github.ref }}" "${artefact}" --clobber
+        done
 
+  build-desktop-iso:
+    needs: [create-release]
+    name: Desktop ISO
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout Flake
+      uses: actions/checkout@v3
+    - name: Install nix
+      uses: DeterminateSystems/nix-installer-action@v4
     - name: Build Desktop ISO
       run: |
         nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage
@@ -45,8 +59,7 @@ jobs:
         sudo mv "result/iso/${ISO}" iso/desktop-${ISO}
         sha256sum "iso/desktop-${ISO}" > "iso/desktop-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/desktop-${ISO}.sha256"
-
-    - name: Upload ISOs
+    - name: Upload Desktop ISO
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -56,7 +69,7 @@ jobs:
 
   publish-release:
     name: Publish release
-    needs: [create-release, build-isos]
+    needs: [create-release, build-console-iso, build-desktop-iso]
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
