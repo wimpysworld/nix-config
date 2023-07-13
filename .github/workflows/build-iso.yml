@@ -3,7 +3,6 @@ name: Build 🏗️ and Publish 📀
 on:
   push:
     tags: ['*']
-  workflow_dispatch:
 
 jobs:
   create-release:
@@ -67,7 +66,7 @@ jobs:
 
   publish-release:
     name: Publish Release
-    needs: [create-release, build-console-iso, build-desktop-iso]
+    needs: [build-console-iso, build-desktop-iso]
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
