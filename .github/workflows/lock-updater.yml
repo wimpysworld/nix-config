@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
       - uses: DeterminateSystems/nix-installer-action@v4
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
       - uses: DeterminateSystems/update-flake-lock@v19
         with:
           pr-title: "chore: update flake.lock"
