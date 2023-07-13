@@ -11,9 +11,9 @@ on:
 
 jobs:
   flake-checker:
+    name: Flake Checker
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout flake
-        uses: actions/checkout@v3
-      - name: Check flake inputs
-        uses: DeterminateSystems/flake-checker-action@v5
+      - uses: actions/checkout@v3
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - uses: DeterminateSystems/flake-checker-action@v5
