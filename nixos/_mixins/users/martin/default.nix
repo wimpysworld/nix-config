@@ -14,6 +14,7 @@ in
     description = "Martin Wimpress";
     extraGroups = [
         "audio"
+        "input"
         "networkmanager"
         "users"
         "video"
