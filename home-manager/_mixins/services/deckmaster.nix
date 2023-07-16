@@ -3,6 +3,8 @@
   # https://github.com/muesli/deckmaster
   home.packages = with pkgs; [
     deckmaster
+    obs-cli
+    playerctl
   ];
 
   systemd.user.services = {
