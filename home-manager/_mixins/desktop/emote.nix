@@ -1,20 +1,22 @@
-{ config, pkgs, ... }: {
-  home = {
-    packages = with pkgs; [
-      emote
-    ];
-    file = {
-      "${config.xdg.configHome}/autostart/emote.desktop".text = "
-[Desktop Entry]
-Name=Emote
-Type=Application
-Comment=Modern popup emoji picker
-Exec=emote
-Categories=Utility;GTK;
-Keywords=emoji
-Icon=${pkgs.emote}/share/emote/static/logo.svg
-Terminal=false
-StartupNotify=false";
+{ pkgs, ... }:
+{
+  # https://github.com/tom-james-watson/emote
+  home.packages = with pkgs; [
+    emote
+  ];
+
+  systemd.user.services = {
+    emote = {
+      Unit = {
+        Description = "Emote";
+      };
+      Service = {
+        ExecStart = "${pkgs.emote}/bin/emote";
+        Restart = "on-failure";
+      };
+      Install = {
+        WantedBy = [ "default.target" ];
+      };
     };
   };
 }
