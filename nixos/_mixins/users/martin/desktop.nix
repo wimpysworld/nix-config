@@ -29,7 +29,6 @@
     maestral-gui
     meld
     netflix
-    pavucontrol
     pick-colour-picker
     rhythmbox
     shotcut

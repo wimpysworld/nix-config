@@ -1,8 +1,9 @@
-{ lib, pkgs, ... }:
+{ desktop, lib, pkgs, ... }:
 {
   environment.systemPackages = with pkgs; [
     pulsemixer                    # Terminal PulseAudio mixer
-    playerctl                     # Terminal media controller
+  ] ++ lib.optionals (desktop != null) [ 
+    pavucontrol
   ];
   hardware = {
     pulseaudio.enable = lib.mkForce false;
