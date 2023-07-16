@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   # https://github.com/tom-james-watson/emote
-  home.packages = with pkgs; [
+  home.packages = with pkgs.unstable; [
     emote
   ];
 
