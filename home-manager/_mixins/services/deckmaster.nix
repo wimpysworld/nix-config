@@ -3,7 +3,7 @@
   # https://github.com/muesli/deckmaster
   home.packages = with pkgs; [
     deckmaster
-    obs-cli
+    unstable.obs-cli
     playerctl
   ];
 
