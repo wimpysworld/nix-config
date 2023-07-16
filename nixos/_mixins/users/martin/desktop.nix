@@ -1,6 +1,5 @@
 { desktop, pkgs, lib, ... }: {
   imports = [
-    #../../desktop/${desktop}-apps.nix
     ../../desktop/brave.nix
     ../../desktop/chromium.nix
     #../../desktop/firefox.nix
