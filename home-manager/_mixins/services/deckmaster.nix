@@ -1,5 +1,9 @@
-{ hostname, pkgs, username, ... }: {
+{ hostname, pkgs, username, ... }:
+{
   # https://github.com/muesli/deckmaster
+  home.packages = with pkgs; [
+    deckmaster
+  ];
 
   systemd.user.services = {
     deckmaster-mini = {
