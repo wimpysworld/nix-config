@@ -7,6 +7,7 @@ with lib.hm.gvariant;
     ../../../services/maestral.nix
     ../../../services/mpris-proxy.nix
     ../../../services/syncthing.nix
+    ../../../desktop/vorta.nix
   ];
   dconf.settings = {
     "org/gnome/desktop/background" = {
