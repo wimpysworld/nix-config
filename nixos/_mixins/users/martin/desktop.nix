@@ -25,7 +25,6 @@
     inkscape
     keybase-gui
     libreoffice
-    maestral-gui
     meld
     netflix
     pick-colour-picker

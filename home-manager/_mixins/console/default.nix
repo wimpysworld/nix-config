@@ -28,7 +28,6 @@
       jiq # Modern Unix `jq`
       lazygit # Terminal Git client
       lurk # Modern Unix `strace`
-      maestral # Terminal Dropbox client
       moar # Modern Unix `less`
       neofetch # Terminal system info
       nixpkgs-review # Nix code review
