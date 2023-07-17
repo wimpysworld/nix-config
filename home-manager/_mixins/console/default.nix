@@ -23,7 +23,6 @@
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
       hexyl # Modern Unix `hexedit`
-      hueadm # Terminal Philips Hue client
       hyperfine # Terminal benchmarking
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`

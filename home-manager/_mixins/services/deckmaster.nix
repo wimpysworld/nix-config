@@ -3,6 +3,7 @@
   # https://github.com/muesli/deckmaster
   home.packages = with pkgs; [
     deckmaster
+    hueadm
     unstable.obs-cli
     playerctl
   ];
