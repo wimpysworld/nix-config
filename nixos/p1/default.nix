@@ -71,7 +71,7 @@
   # - https://github.com/tester1969/pam-validity
   # TODO: Package the above project as libfprint-2-tod1-vfs009a
   services.fprintd = {
-    enable = false;
+    enable = lib.mkDefault false;
     #tod.enable = true;
     #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
   };
