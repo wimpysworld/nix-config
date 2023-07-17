@@ -12,12 +12,16 @@
     home-manager.url = "github:nix-community/home-manager/release-23.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
+    nix-formatter-pack.url = "github:Gerschtli/nix-formatter-pack";
+    nix-formatter-pack.inputs.nixpkgs.follows = "nixpkgs";
+
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
   };
   outputs = {
     self,
     disko,
     home-manager,
+    nix-formatter-pack,
     nixos-hardware,
     nixpkgs,
     ... } @ inputs:
@@ -73,6 +77,18 @@
     devShells = libx.forAllSystems (system:
       let pkgs = nixpkgs.legacyPackages.${system};
       in import ./shell.nix { inherit pkgs; }
+    );
+
+    # nix fmt
+    formatter = libx.forAllSystems (system:
+      nix-formatter-pack.lib.mkFormatter {
+        pkgs = nixpkgs.legacyPackages.${system};
+        config.tools = {
+          deadnix.enable = true;
+          nixpkgs-fmt.enable = true;
+          statix.enable = true;
+        };
+      }
     );
 
     # Custom packages and modifications, exported as overlays
