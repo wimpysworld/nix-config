@@ -44,7 +44,7 @@
   networking = {
     defaultGateway = "192.168.2.1";
     interfaces.eno1.ipv4.addresses = [ {
-      address = "192.168.2.11";
+      address = "192.168.2.17";
       prefixLength = 24;
     } ];
     nameservers = [ "192.168.2.1" ];
