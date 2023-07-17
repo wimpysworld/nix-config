@@ -109,10 +109,11 @@
     "d /home/${username}/Quickemu/nixos-console 0755 ${username} users - -"
     "d /home/${username}/Quickemu/nixos-desktop 0755 ${username} users - -"
     "d /home/${username}/Scripts 0755 ${username} users - -"
-    "d /home/${username}/Studio 0755 ${username} users - -"
+    "d /home/${username}/Studio/OBS/config/obs-studio/ 0755 ${username} users - -"
     "d /home/${username}/Syncthing 0755 ${username} users - -"
     "d /home/${username}/Volatile 0755 ${username} users - -"
     "d /home/${username}/Websites 0755 ${username} users - -"
     "d /home/${username}/Zero 0755 ${username} users - -"
+    "L+ /home/${username}/.config/obs-studio/ - - - - /home/${username}/Studio/OBS/config/obs-studio/"
   ];
 }
