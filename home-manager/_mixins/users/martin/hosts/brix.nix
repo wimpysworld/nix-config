@@ -1,6 +1,6 @@
 { lib, ... }: {
   imports = [
+    ../../../services/keybase.nix
     ../../../services/syncthing.nix
   ];
-  services.kbfs.enable = lib.mkForce false;
 }

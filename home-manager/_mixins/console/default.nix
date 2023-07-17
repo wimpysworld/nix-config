@@ -199,11 +199,6 @@
       enableSshSupport = true;
       pinentryFlavor = "curses";
     };
-    kbfs = {
-      enable = true;
-      mountPoint = "Keybase";
-    };
-    keybase.enable = true;
   };
 
   # Nicely reload system units when changing configs

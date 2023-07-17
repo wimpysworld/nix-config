@@ -3,6 +3,7 @@ with lib.hm.gvariant;
 {
   imports = [
     ../../../services/deckmaster.nix
+    ../../../services/keybase.nix
     ../../../services/maestral.nix
     ../../../services/mpris-proxy.nix
     ../../../services/syncthing.nix

@@ -23,7 +23,6 @@
     gnome.gnome-sound-recorder
     irccloud
     inkscape
-    keybase-gui
     libreoffice
     meld
     netflix

@@ -2,6 +2,7 @@
 with lib.hm.gvariant;
 {
   imports = [
+    ../../../services/keybase.nix
     ../../../services/mpris-proxy.nix
     ../../../services/syncthing.nix
   ];
@@ -11,5 +12,4 @@ with lib.hm.gvariant;
       picture-uri = "file:///home/martin/Pictures/Determinate/DeterminateColorway-1280x720.png";
     };
   };
-  services.kbfs.enable = lib.mkForce false;
 }
