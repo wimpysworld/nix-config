@@ -6,13 +6,11 @@
     # A Modern Unix experience
     # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages = with pkgs; [
-      alejandra                     # Code format Nix
       asciinema                     # Terminal recorder
       breezy                        # Terminal bzr client
       butler                        # Terminal Itch.io API client
       chafa                         # Terminal image viewer
       dconf2nix                     # Nix code from Dconf files
-      deadnix                       # Code lint Nix
       debootstrap                   # Terminal Debian installer
       diffr                         # Modern Unix `diff`
       difftastic                    # Modern Unix `diff`
@@ -34,7 +32,6 @@
       maestral                      # Terminal Dropbox client
       moar                          # Modern Unix `less`
       neofetch                      # Terminal system info
-      nixpkgs-fmt                   # Code format Nix
       nixpkgs-review                # Nix code review
       nurl                          # Nix URL fetcher
       nyancat                       # Terminal rainbow spewing feline
