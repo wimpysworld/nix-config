@@ -83,6 +83,7 @@
         nix-formatter-pack.lib.mkFormatter {
           pkgs = nixpkgs.legacyPackages.${system};
           config.tools = {
+            alejandra.enable = false;
             deadnix.enable = true;
             nixpkgs-fmt.enable = true;
             statix.enable = true;
