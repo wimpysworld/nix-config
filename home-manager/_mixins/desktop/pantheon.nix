@@ -130,7 +130,7 @@ with lib.hm.gvariant;
       button-layout = ":minimize,maximize,close";
       num-workspaces = 8;
       titlebar-font = "Work Sans Semi-Bold 12";
-      workspace-names = ["Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff"];
+      workspace-names = [ "Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff" ];
     };
 
     "org/gnome/GWeather" = {
@@ -212,13 +212,13 @@ with lib.hm.gvariant;
 
     gtk3 = {
       extraConfig = {
-        gtk-application-prefer-dark-theme=1;
+        gtk-application-prefer-dark-theme = 1;
       };
     };
 
     gtk4 = {
       extraConfig = {
-        gtk-application-prefer-dark-theme=1;
+        gtk-application-prefer-dark-theme = 1;
       };
     };
 

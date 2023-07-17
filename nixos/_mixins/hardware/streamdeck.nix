@@ -1,4 +1,4 @@
-{ ... }: {
+_: {
   # Provides users with access to all Elgato StreamDecks.
   # https://github.com/muesli/deckmaster
   # https://gitlab.gnome.org/World/boatswain/-/blob/main/README.md#udev-rules

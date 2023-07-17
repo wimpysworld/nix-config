@@ -1,6 +1,6 @@
 # Gigabyte GB-BXCEH-2955 (Celeron 2955U: Haswell)
 
-{ config, inputs, lib, pkgs, ... }:
+{ inputs, lib, pkgs, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -46,10 +46,10 @@
   # Use passed hostname to configure basic networking
   networking = {
     defaultGateway = "192.168.2.1";
-    interfaces.enp3s0.ipv4.addresses = [ {
+    interfaces.enp3s0.ipv4.addresses = [{
       address = "192.168.2.10";
       prefixLength = 24;
-    } ];
+    }];
     nameservers = [ "192.168.2.1" ];
     useDHCP = lib.mkForce false;
   };

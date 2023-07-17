@@ -1,6 +1,6 @@
 # Lenovo ThinkPad P1 Gen 1
 
-{ config, inputs, lib, pkgs, username, ... }:
+{ inputs, lib, pkgs, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-p1
@@ -54,7 +54,7 @@
   hardware = {
     nvidia = {
       prime = {
-        intelBusId  = "PCI:0:2:0";
+        intelBusId = "PCI:0:2:0";
         nvidiaBusId = "PCI:1:0:0";
         # Make the Intel iGPP default. The NVIDIA Quadro is for CUDA/NVENC
         reverseSync.enable = true;
@@ -62,7 +62,7 @@
       nvidiaSettings = false;
     };
   };
-  
+
   # libfprint-2-tod1-vfs0090 in nixpkgs is from https://gitlab.freedesktop.org/3v1n0/libfprint-tod-vfs0090
   # - Supports Validity Sensor 138a:0090 and 138a:0097
   # The ThinkPad P1 Gen 1 has a Synaptics Sensor 06cb:009a; the project below supports it
@@ -75,6 +75,6 @@
     #tod.enable = true;
     #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
   };
-  
+
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }

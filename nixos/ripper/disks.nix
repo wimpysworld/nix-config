@@ -34,19 +34,19 @@ in
               mountpoint = "/boot";
             };
           }
-          {
-            name = "root";
-            start = "550MiB";
-            end = "100%";
-            content = {
-              type = "filesystem";
-              # Overwirte the existing filesystem
-              extraArgs = [ "-f" ];
-              format = "xfs";
-              mountpoint = "/";
-              mountOptions = defaultXfsOpts;
-            };
-          }];
+            {
+              name = "root";
+              start = "550MiB";
+              end = "100%";
+              content = {
+                type = "filesystem";
+                # Overwirte the existing filesystem
+                extraArgs = [ "-f" ];
+                format = "xfs";
+                mountpoint = "/";
+                mountOptions = defaultXfsOpts;
+              };
+            }];
         };
       };
       # Snapshot RAID-0

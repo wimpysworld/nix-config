@@ -50,7 +50,7 @@
 
     sessionVariables = {
       EDITOR = "micro";
-      MANPAGER="sh -c 'col --no-backspaces --spaces | bat --language man'";
+      MANPAGER = "sh -c 'col --no-backspaces --spaces | bat --language man'";
       PAGER = "moar";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
@@ -79,7 +79,7 @@
         };
         disk_filter = {
           is_list_ignored = true;
-          list = ["/dev/loop"];
+          list = [ "/dev/loop" ];
           regex = true;
           case_sensitive = false;
           whole_word = false;

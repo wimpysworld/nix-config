@@ -1,29 +1,29 @@
-{ config, desktop, lib, pkgs, ...}:
+{ config, desktop, lib, pkgs, ... }:
 let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
 {
-   # Only include desktop components if one is supplied.
+  # Only include desktop components if one is supplied.
   imports = [ ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
 
   environment.systemPackages = [
-    pkgs.yadm                          # Terminal dot file manager
+    pkgs.yadm # Terminal dot file manager
   ];
 
   users.users.martin = {
     description = "Martin Wimpress";
     extraGroups = [
-        "audio"
-        "input"
-        "networkmanager"
-        "users"
-        "video"
-        "wheel"
-      ]
-      ++ ifExists [
-        "docker"
-        "podman"
-      ];
+      "audio"
+      "input"
+      "networkmanager"
+      "users"
+      "video"
+      "wheel"
+    ]
+    ++ ifExists [
+      "docker"
+      "podman"
+    ];
     # mkpasswd -m sha-512
     hashedPassword = "$6$UXNQ20Feu82wCFK9$dnJTeSqoECw1CGMSUdxKREtraO.Nllv3/fW9N3m7lPHYxFKA/Cf8YqYGDmiWNfaKeyx2DKdURo0rPYBrSZRL./";
     homeMode = "0755";

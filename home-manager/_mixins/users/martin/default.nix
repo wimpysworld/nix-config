@@ -1,6 +1,6 @@
 { lib, hostname, username, ... }: {
   imports = [ ]
-  ++ lib.optional (builtins.pathExists (./. + "/hosts/${hostname}.nix")) ./hosts/${hostname}.nix;
+    ++ lib.optional (builtins.pathExists (./. + "/hosts/${hostname}.nix")) ./hosts/${hostname}.nix;
 
   home = {
     file.".bazaar/authentication.conf".text = "
@@ -75,10 +75,10 @@
       iso="nixos-mini/nixos.iso"
     '';
     sessionVariables = {
-      BZR_EMAIL="Martin Wimpress <code@wimpress.io>";
-      DEBFULLNAME="Martin Wimpress";
-      DEBEMAIL="code@wimpress.io";
-      DEBSIGN_KEYID="8F04688C17006782143279DA61DF940515E06DA3";
+      BZR_EMAIL = "Martin Wimpress <code@wimpress.io>";
+      DEBFULLNAME = "Martin Wimpress";
+      DEBEMAIL = "code@wimpress.io";
+      DEBSIGN_KEYID = "8F04688C17006782143279DA61DF940515E06DA3";
     };
   };
   programs = {

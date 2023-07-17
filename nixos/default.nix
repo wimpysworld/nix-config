@@ -1,4 +1,4 @@
-{ config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, stateVersion, username, ...}: {
+{ config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, stateVersion, username, ... }: {
   imports = [
     inputs.disko.nixosModules.disko
     (modulesPath + "/installer/scan/not-detected.nix")
@@ -83,7 +83,7 @@
   fonts = {
     fontDir.enable = true;
     fonts = with pkgs; [
-      (nerdfonts.override { fonts = [ "FiraCode" "SourceCodePro" "UbuntuMono"]; })
+      (nerdfonts.override { fonts = [ "FiraCode" "SourceCodePro" "UbuntuMono" ]; })
       fira
       fira-go
       joypixels
@@ -121,14 +121,14 @@
   # Use passed hostname to configure basic networking
   networking = {
     extraHosts = ''
-    192.168.192.40  skull-zt
-    192.168.192.59  trooper-zt
-    192.168.192.181 zed-zt
-    192.168.192.220 ripper-zt
-    192.168.192.162 p1-zt
-    192.168.192.249 p2-max-zt
-    #192.168.192.0   brix-zt
-    #192.168.192.0   nuc-zt
+      192.168.192.40  skull-zt
+      192.168.192.59  trooper-zt
+      192.168.192.181 zed-zt
+      192.168.192.220 ripper-zt
+      192.168.192.162 p1-zt
+      192.168.192.249 p2-max-zt
+      #192.168.192.0   brix-zt
+      #192.168.192.0   nuc-zt
     
     '';
     hostName = hostname;
@@ -189,36 +189,36 @@
     fish = {
       enable = true;
       interactiveShellInit = ''
-      set fish_cursor_default block blink
-      set fish_cursor_insert line blink
-      set fish_cursor_replace_one underscore blink
-      set fish_cursor_visual block
-      set -U fish_color_autosuggestion brblack
-      set -U fish_color_cancel -r
-      set -U fish_color_command green
-      set -U fish_color_comment brblack
-      set -U fish_color_cwd brgreen
-      set -U fish_color_cwd_root brred
-      set -U fish_color_end brmagenta
-      set -U fish_color_error red
-      set -U fish_color_escape brcyan
-      set -U fish_color_history_current --bold
-      set -U fish_color_host normal
-      set -U fish_color_match --background=brblue
-      set -U fish_color_normal normal
-      set -U fish_color_operator cyan
-      set -U fish_color_param blue
-      set -U fish_color_quote yellow
-      set -U fish_color_redirection magenta
-      set -U fish_color_search_match bryellow '--background=brblack'
-      set -U fish_color_selection white --bold '--background=brblack'
-      set -U fish_color_status red
-      set -U fish_color_user brwhite
-      set -U fish_color_valid_path --underline
-      set -U fish_pager_color_completion normal
-      set -U fish_pager_color_description yellow
-      set -U fish_pager_color_prefix white --bold --underline
-      set -U fish_pager_color_progress brwhite '--background=cyan'
+        set fish_cursor_default block blink
+        set fish_cursor_insert line blink
+        set fish_cursor_replace_one underscore blink
+        set fish_cursor_visual block
+        set -U fish_color_autosuggestion brblack
+        set -U fish_color_cancel -r
+        set -U fish_color_command green
+        set -U fish_color_comment brblack
+        set -U fish_color_cwd brgreen
+        set -U fish_color_cwd_root brred
+        set -U fish_color_end brmagenta
+        set -U fish_color_error red
+        set -U fish_color_escape brcyan
+        set -U fish_color_history_current --bold
+        set -U fish_color_host normal
+        set -U fish_color_match --background=brblue
+        set -U fish_color_normal normal
+        set -U fish_color_operator cyan
+        set -U fish_color_param blue
+        set -U fish_color_quote yellow
+        set -U fish_color_redirection magenta
+        set -U fish_color_search_match bryellow '--background=brblack'
+        set -U fish_color_selection white --bold '--background=brblack'
+        set -U fish_color_status red
+        set -U fish_color_user brwhite
+        set -U fish_color_valid_path --underline
+        set -U fish_pager_color_completion normal
+        set -U fish_pager_color_description yellow
+        set -U fish_pager_color_prefix white --bold --underline
+        set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
       shellAbbrs = {
         nix-gc              = "sudo nix-collect-garbage --delete-older-than 14d";

@@ -3,7 +3,7 @@
     ../services/flatpak.nix
     ../services/sane.nix
   ];
-  
+
   # Add additional apps and include Yaru for syntax highlighting
   environment.systemPackages = with pkgs; [
     appeditor                   # elementary OS menu editor

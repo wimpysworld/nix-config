@@ -1,7 +1,8 @@
-{ config, desktop, inputs, lib, outputs, pkgs, stateVersion, username, ... }:
+{ config, desktop, lib, outputs, pkgs, stateVersion, username, ... }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
-in {
+in
+{
   # Only import desktop configuration if the host is desktop enabled
   # Only import user specific configuration if they have bespoke settings
   imports = [
@@ -23,8 +24,8 @@ in {
     '';
     homeDirectory = if isDarwin then "/Users/${username}" else "/home/${username}";
     sessionPath = [ "$HOME/.local/bin" ];
-    stateVersion = stateVersion;
-    username = username;
+    inherit stateVersion;
+    inherit username;
   };
 
   nixpkgs = {
@@ -50,7 +51,7 @@ in {
       # Disable if you don't want unfree packages
       allowUnfree = true;
       # Workaround for https://github.com/nix-community/home-manager/issues/2942
-      allowUnfreePredicate = (_: true);
+      allowUnfreePredicate = _: true;
     };
   };
 

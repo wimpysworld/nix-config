@@ -5,7 +5,7 @@
       hwRender = true;
       fonts = [{
         name = "FiraCode Nerd Font Mono";
-        package = (pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; });
+        package = pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; };
       }];
       extraConfig = ''
         font-size=14

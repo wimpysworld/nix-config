@@ -1,5 +1,5 @@
 # Intel Skull Canyon NUC6i7KYK
-{ config, inputs, lib, pkgs, ... }:
+{ inputs, lib, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -43,10 +43,10 @@
   # Use passed hostname to configure basic networking
   networking = {
     defaultGateway = "192.168.2.1";
-    interfaces.eno1.ipv4.addresses = [ {
+    interfaces.eno1.ipv4.addresses = [{
       address = "192.168.2.17";
       prefixLength = 24;
-    } ];
+    }];
     nameservers = [ "192.168.2.1" ];
     useDHCP = lib.mkForce false;
   };

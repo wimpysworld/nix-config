@@ -7,7 +7,7 @@
     chromium = {
       enable = true;
       extensions = [
-      	"hdokiejnpimakedhajhdlcegeplioahd" # LastPass
+        "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
       ];
       extraOpts = {
         "AutofillAddressEnabled" = false;

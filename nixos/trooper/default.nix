@@ -7,7 +7,7 @@
 # SATA:        4TB Samsung 870 QVO
 # SATA:        4TB Samsung 870 QVO
 
-{ config, inputs, lib, pkgs, username, ... }:
+{ inputs, lib, pkgs, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd

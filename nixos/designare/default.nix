@@ -10,7 +10,7 @@
 # SATA:        1TB SanDisk SSD Plus
 # SATA:        1TB SanDisk SSD Plus
 
-{ config, inputs, lib, pkgs, username, ... }:
+{ inputs, lib, pkgs, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel

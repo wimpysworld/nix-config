@@ -16,7 +16,7 @@
 # NVME:        AORUS NVMe Gen4 SSD 2TB
 # NVME:        AORUS NVMe Gen4 SSD 2TB
 
-{ config, inputs, lib, pkgs, username, ... }:
+{ inputs, lib, pkgs, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd

@@ -2,7 +2,7 @@
 with lib.hm.gvariant;
 {
   dconf.settings = {
-     "org/gnome/meld" = {
+    "org/gnome/meld" = {
       indent-width = 4;
       insert-spaces-instead-of-tabs = true;
       highlight-current-line = true;

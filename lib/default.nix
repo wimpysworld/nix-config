@@ -3,7 +3,7 @@ let
   helpers = import ./helpers.nix { inherit inputs outputs stateVersion; };
 in
 {
-  mkHome = helpers.mkHome;
-  mkHost = helpers.mkHost;
-  forAllSystems = helpers.forAllSystems;
+  inherit (helpers) mkHome;
+  inherit (helpers) mkHost;
+  inherit (helpers) forAllSystems;
 }

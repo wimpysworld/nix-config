@@ -2,14 +2,14 @@
 {
   environment.systemPackages = with pkgs; [
     pulsemixer                    # Terminal PulseAudio mixer
-  ] ++ lib.optionals (desktop != null) [ 
+  ] ++ lib.optionals (desktop != null) [
     pavucontrol
   ];
   hardware = {
     pulseaudio.enable = lib.mkForce false;
   };
   security.rtkit.enable = true;
-  services = {  
+  services = {
     pipewire = {
       enable = true;
       alsa.enable = true;

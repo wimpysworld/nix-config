@@ -1,4 +1,4 @@
-{ ... }: {
+_: {
   # https://nixos.wiki/wiki/Steam
   fontconfig.cache32Bit = true;
   hardware.steam-hardware.enable = true;

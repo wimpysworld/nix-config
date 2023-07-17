@@ -1,4 +1,4 @@
-{ hostname, pkgs, username, ... }:
+{ pkgs, username, ... }:
 {
   # https://github.com/muesli/deckmaster
   home.packages = with pkgs; [
