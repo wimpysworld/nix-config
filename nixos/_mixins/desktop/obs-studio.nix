@@ -6,6 +6,9 @@
   '';
 
   environment.systemPackages = [
+    pkgs.bc
+    pkgs.google-fonts
+    pkgs.libnotify
     (pkgs.wrapOBS {
       plugins = with pkgs.unstable.obs-studio-plugins; [
         obs-3d-effect
