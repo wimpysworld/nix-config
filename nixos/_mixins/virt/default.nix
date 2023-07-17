@@ -3,16 +3,16 @@
 
   #https://nixos.wiki/wiki/Podman
   environment.systemPackages = with pkgs; [
-    #buildah          # Container build tool
-    #conmon           # Container monitoring
-    distrobox         # Terminal container manager
-    #dive             # Container analyzer
-    fuse-overlayfs    # Container overlay+shiftfs
-    #grype            # Container vulnerability scanner
+    #buildah
+    #conmon
+    distrobox
+    #dive
+    fuse-overlayfs
+    #grype
     podman-compose
     podman-tui
-    #skopeo           # Container registry utility
-    #syft             # Container SBOM generator
+    #skopeo
+    #syft
   ];
 
   virtualisation = {

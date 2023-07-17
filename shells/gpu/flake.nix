@@ -19,10 +19,10 @@
     {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
-          clinfo                        # Terminal OpenCL info
-          libva-utils                   # Terminal VAAPI info
-          python310Packages.gpustat     # Terminal GPU info
-          vdpauinfo                     # Terminal VDPAU info
+          clinfo # Terminal OpenCL info
+          libva-utils # Terminal VAAPI info
+          python310Packages.gpustat # Terminal GPU info
+          vdpauinfo # Terminal VDPAU info
         ];
       };
     });

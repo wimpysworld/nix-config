@@ -53,11 +53,11 @@
   time.timeZone = "Europe/London";
 
   # Only install the docs I use
-  documentation.enable = true;        # documentation of packages
-  documentation.nixos.enable = false; # nixos documentation
-  documentation.man.enable = true;    # man pages and the man command
-  documentation.info.enable = false;  # info pages and the info command
-  documentation.doc.enable = false;   # documentation distributed in packages' /share/doc
+  documentation.enable = true;
+  documentation.nixos.enable = false;
+  documentation.man.enable = true;
+  documentation.info.enable = false;
+  documentation.doc.enable = false;
 
   environment = {
     # Eject nano and perl from the system
@@ -221,11 +221,11 @@
         set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
       shellAbbrs = {
-        nix-gc              = "sudo nix-collect-garbage --delete-older-than 14d";
-        rebuild-all         = "sudo nix-collect-garbage --delete-older-than 14d && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config";
-        rebuild-home        = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
-        rebuild-host        = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
-        rebuild-lock        = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
+        nix-gc = "sudo nix-collect-garbage --delete-older-than 14d";
+        rebuild-all = "sudo nix-collect-garbage --delete-older-than 14d && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        rebuild-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        rebuild-host = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
+        rebuild-lock = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
         rebuild-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && popd";
         rebuild-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && popd";
       };

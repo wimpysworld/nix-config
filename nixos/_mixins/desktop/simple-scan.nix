@@ -1,5 +1,5 @@
 { pkgs, ... }: {
   environment.systemPackages = with pkgs; [
-    gnome.simple-scan           # Scanning
+    gnome.simple-scan
   ];
 }

@@ -6,12 +6,11 @@
 
   # Add additional apps and include Yaru for syntax highlighting
   environment.systemPackages = with pkgs; [
-    appeditor                   # elementary OS menu editor
-    celluloid                   # Video Player
-    gthumb                      # Image Viewer
-    formatter                   # elementary OS filesystem formatter
-    gnome.simple-scan           # Scanning
-    torrential                  # elementary OS torrent client
+    appeditor
+    celluloid
+    gthumb
+    formatter
+    torrential
     yaru-theme
   ];
 

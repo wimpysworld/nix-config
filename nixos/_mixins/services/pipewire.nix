@@ -1,7 +1,7 @@
 { desktop, lib, pkgs, ... }:
 {
   environment.systemPackages = with pkgs; [
-    pulsemixer                    # Terminal PulseAudio mixer
+    pulsemixer
   ] ++ lib.optionals (desktop != null) [
     pavucontrol
   ];
