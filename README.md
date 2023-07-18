@@ -32,7 +32,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `falcon`       | TopJoy         | Falcon              | Ubuntu MATE   | Laptop       | tbn      |
 | `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbn      |
 | `xps-13`       | Dell           | XPS 13 9360         | Ubuntu MATE   | Laptop       | tbn      |
-| `spectre`      | HP             | Spectre             | Ubuntu MATE   | Laptop       | tbn      |
+| `spectre`      | HP             | Spectre 13          | Ubuntu MATE   | Laptop       | tbn      |
 | `apollo`       | Entroware      | Apollo 2000         | Ubuntu MATE   | Laptop       | tbn      |
 
 [NUC5i7RYH]: https://www.intel.co.uk/content/www/uk/en/products/sku/87570/intel-nuc-kit-nuc5i7ryh/specifications.html
@@ -227,11 +227,15 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Services
 
-- [ ] Integrate Borg Backups using [Pika](https://apps.gnome.org/en-GB/app/org.gnome.World.PikaBackup/) or [Vorta](https://vorta.borgbase.com/) for workstations and [borgmatic](https://torsion.org/borgmatic/) or [Emborg](https://github.com/KenKundert/emborg) for servers
-- [ ] Integrate cockpit (*server*)
+- [ ] Integrate Borg Backups using [Pika](https://apps.gnome.org/en-GB/app/org.gnome.World.PikaBackup/)
+  - [x] [Vorta](https://vorta.borgbase.com/) for workstations
+  - [ ] [borgmatic](https://torsion.org/borgmatic/) for servers
+- [ ] ~~Integrate cockpit (*server*)~~
+- [ ] Integrate nullmailer (*server*)
+- [ ] Integrate Plex (*skull*)
+- [ ] Integrate homepage
 - [x] Integrate fwupd
 - [x] Integrate Keybase
-- [ ] Integrate nullmailer (*server*)
 - [x] Integrate Syncthing
 - [x] Integrate sshguard
 
