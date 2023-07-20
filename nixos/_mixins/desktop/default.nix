@@ -1,6 +1,7 @@
 { desktop, lib, pkgs, ... }: {
   imports = [
     ../services/cups.nix
+    ../services/xdg-portal.nix
   ]
   ++ lib.optional (builtins.pathExists (./. + "/${desktop}.nix")) ./${desktop}.nix;
 
