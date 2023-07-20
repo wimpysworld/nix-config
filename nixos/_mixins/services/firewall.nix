@@ -15,7 +15,7 @@ let
       "vm"
       "zed"
     ];
-    tcpPorts = [ 22000 8384 ];
+    tcpPorts = [ 22000 ];
     udpPorts = [ 22000 21027 ];
   };
 in
