@@ -1,4 +1,4 @@
-{ config, desktop, pkgs, ... }: {
+{ desktop, ... }: {
   imports = [
     ./audio-recorder.nix
     ./celluloid.nix
@@ -11,19 +11,6 @@
     ./tilix.nix
     (./. + "/${desktop}.nix")
   ];
-
-  home.file = {
-    "${config.xdg.configHome}/autostart/enable-flathub.desktop".text = "
-[Desktop Entry]
-Name=Enable Flathub
-Comment=Enable Flathub
-Type=Application
-Exec=${pkgs.flatpak}/bin/flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-Categories=
-Terminal=false
-NoDisplay=true
-StartupNotify=false";
-  };
 
   xresources.properties = {
     "XTerm*background" = "#121214";

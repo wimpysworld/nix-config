@@ -20,4 +20,12 @@
     pantheon-tweaks.enable = true;
     seahorse.enable = true;
   };
+
+  systemd.services.configure-appcenter-repo = {
+    wantedBy = ["multi-user.target"];
+    path = [ pkgs.flatpak ];
+    script = ''
+      flatpak remote-add --if-not-exists appcenter https://flatpak.elementary.io/repo.flatpakrepo
+    '';
+  };
 }
