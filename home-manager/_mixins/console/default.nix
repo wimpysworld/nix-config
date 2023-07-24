@@ -64,8 +64,8 @@
       settings = {
         auto_sync = true;
         dialect = "uk";
-        search_mode = "prefix";
         show_preview = true;
+        style = "compact";
         sync_frequency = "1h";
         sync_address = "https://api.atuin.sh";
         update_check = false;
