@@ -54,8 +54,22 @@
 
   programs = {
     atuin = {
+      enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
+      flags = [
+        "--disable-up-arrow"
+      ];
+      package = pkgs.unstable.atuin;
+      settings = {
+        auto_sync = true;
+        dialect = "uk";
+        search_mode = "prefix";
+        show_preview = true;
+        sync_frequency = "1h";
+        sync_address = "https://api.atuin.sh";
+        update_check = false;
+      };
     };
     bat = {
       enable = true;
