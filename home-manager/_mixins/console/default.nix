@@ -39,7 +39,7 @@
       ripgrep # Modern Unix `grep`
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
-      wget2 # Terminal downloader
+      wget # Terminal downloader
       yq-go # Terminal `jq` for YAML
     ];
 
@@ -118,7 +118,6 @@
         more = "bat --paging=always";
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "exa --tree";
-        wget = "wget2";
       };
     };
     gh = {
