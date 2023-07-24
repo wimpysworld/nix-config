@@ -1,6 +1,8 @@
 { inputs, lib, pkgs, ... }:
 {
   imports = [
+    inputs.nixos-hardware.nixosModules.common-cpu-intel
+    inputs.nixos-hardware.nixosModules.common-gpu-intel
     inputs.nixos-hardware.nixosModules.gpd-micropc
     (import ./disks.nix { })
     ../_mixins/hardware/systemd-boot.nix

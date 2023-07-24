@@ -59,6 +59,7 @@
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "sd_mod" ];
+    initrd.kernelModules = [ "nvidia" ];
     kernelModules = [ "kvm-amd" "nvidia" ];
     kernelPackages = pkgs.linuxPackages_6_3;
   };
