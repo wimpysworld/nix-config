@@ -44,6 +44,7 @@
         "martin@ripper" = libx.mkHome { hostname = "ripper"; username = "martin"; desktop = "pantheon"; };
         "martin@trooper" = libx.mkHome { hostname = "trooper"; username = "martin"; desktop = "pantheon"; };
         "martin@vm" = libx.mkHome { hostname = "vm"; username = "martin"; desktop = "pantheon"; };
+        "martin@win2" = libx.mkHome { hostname = "win2"; username = "martin"; desktop = "pantheon"; };
         "martin@zed" = libx.mkHome { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
         # Servers
         "martin@brix" = libx.mkHome { hostname = "brix"; username = "martin"; };
@@ -65,6 +66,7 @@
         ripper = libx.mkHost { hostname = "ripper"; username = "martin"; desktop = "pantheon"; };
         trooper = libx.mkHost { hostname = "trooper"; username = "martin"; desktop = "pantheon"; };
         vm = libx.mkHost { hostname = "vm"; username = "martin"; desktop = "pantheon"; };
+        win2 = libx.mkHost { hostname = "win2"; username = "martin"; desktop = "pantheon"; };
         zed = libx.mkHost { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
         # Servers
         brix = libx.mkHost { hostname = "brix"; username = "martin"; };

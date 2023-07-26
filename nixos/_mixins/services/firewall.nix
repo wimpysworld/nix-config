@@ -13,6 +13,7 @@ let
       "skull"
       "trooper"
       "vm"
+      "win2"
       "zed"
     ];
     tcpPorts = [ 22000 ];
