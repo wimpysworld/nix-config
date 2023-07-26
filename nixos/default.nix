@@ -130,7 +130,7 @@
       192.168.192.249 p2-max-zt
       #192.168.192.0   brix-zt
       #192.168.192.0   nuc-zt
-    
+      #192.168.192.0   win2-zt
     '';
     hostName = hostname;
     useDHCP = lib.mkDefault true;
