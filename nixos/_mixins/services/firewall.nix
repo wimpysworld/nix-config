@@ -14,6 +14,7 @@ let
       "trooper"
       "vm"
       "win2"
+      "win-max"
       "zed"
     ];
     tcpPorts = [ 22000 ];
