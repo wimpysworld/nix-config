@@ -10,6 +10,7 @@
     gnome.gucharmap
     gnome-firmware
     gthumb
+    usbimager
   ];
 
   # Enable some programs to provide a complete desktop
