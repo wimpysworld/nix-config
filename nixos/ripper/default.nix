@@ -88,6 +88,7 @@
       enable = true;
       systemCronJobs = [
         "*/30 * * * * martin /home/martin/Scripts/backup/sync-legoworlds.sh >> /home/martin/Games/Steam_Backups/legoworlds.log"
+        "42 * * * * martin /home/martin/Scripts/backup/sync-hotshotracing.sh >> /home/martin/Games/Steam_Backups/hotshotracing.log"
       ];
     };
     hardware.openrgb = {
