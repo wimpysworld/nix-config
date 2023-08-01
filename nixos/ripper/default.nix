@@ -84,6 +84,12 @@
   };
 
   services = {
+    cron = {
+      enable = true;
+      systemCronJobs = [
+        "*/30 * * * * martin /home/martin/Scripts/backup/sync-legoworlds.sh >> /home/martin/Games/Steam_Backups/legoworlds.log"
+      ];
+    };
     hardware.openrgb = {
       enable = true;
       motherboard = "amd";
