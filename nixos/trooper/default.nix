@@ -65,6 +65,7 @@
   };
 
   environment.systemPackages = with pkgs; [
+    gwe
     nvtop-nvidia
   ];
 
