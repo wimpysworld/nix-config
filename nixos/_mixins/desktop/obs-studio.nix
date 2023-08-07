@@ -9,7 +9,7 @@
     pkgs.bc
     pkgs.google-fonts
     pkgs.libnotify
-    (pkgs.wrapOBS {
+    (pkgs.unstable.wrapOBS {
       plugins = with pkgs.unstable.obs-studio-plugins; [
         obs-3d-effect
         obs-command-source
