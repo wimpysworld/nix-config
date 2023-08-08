@@ -63,7 +63,7 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
-    kernelPackages = lib.mkDefault pkgs.linuxPackages_6_3;
+    kernelPackages = lib.mkDefault pkgs.linuxPackages_6_1;
   };
 
   environment.systemPackages = with pkgs; [
