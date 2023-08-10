@@ -1,0 +1,16 @@
+name: Dead 😵 Nix ❄️ code analysis
+
+on:
+    push:
+      branches:
+        - main
+
+jobs:
+  deadnix:
+    name: Deadnix
+    runs-on: ubuntu-22.04
+    steps:
+        - uses: actions/checkout@v3
+        - uses: DeterminateSystems/nix-installer-action@v4
+        - uses: DeterminateSystems/magic-nix-cache-action@v2
+        - uses: astro/deadnix-action@v1
