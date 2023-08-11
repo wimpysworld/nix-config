@@ -18,7 +18,6 @@
     authy
     chatterino2
     cider
-    fluffychat
     gimp-with-plugins
     gnome.gnome-clocks
     gnome.dconf-editor
@@ -36,6 +35,7 @@
 
     # Fast moving apps use the unstable branch
     unstable.discord
+    unstable.fluffychat
     unstable.gitkraken
     unstable.tdesktop
     unstable.wavebox
