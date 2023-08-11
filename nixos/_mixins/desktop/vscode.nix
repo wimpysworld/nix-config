@@ -2,7 +2,7 @@
   environment.systemPackages = with pkgs; [
     (vscode-with-extensions.override {
       vscode = unstable.vscode;
-      vscodeExtensions = with vscode-extensions; [
+      vscodeExtensions = with unstable.vscode-extensions; [
         coolbear.systemd-unit-file
         dart-code.flutter
         dart-code.dart-code
@@ -25,7 +25,7 @@
         timonwong.shellcheck
         vscode-icons-team.vscode-icons
         yzhang.markdown-all-in-one
-      ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
+      ] ++ pkgs.unstable.vscode-utils.extensionsFromVscodeMarketplace [
         {
           name = "bash-debug";
           publisher = "rogalmic";
