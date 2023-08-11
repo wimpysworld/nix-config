@@ -5,6 +5,7 @@
     # You can access packages and modules from different nixpkgs revs at the
     # same time. See 'unstable-packages' overlay in 'overlays/default.nix'.
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-master.url = "github:nixos/nixpkgs/master";
 
     agenix.url = "github:ryantm/agenix";
     agenix.inputs.nixpkgs.follows = "nixpkgs";
