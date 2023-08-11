@@ -171,7 +171,7 @@
   nix = {
     gc = {
       automatic = true;
-      options = "--delete-older-than 14d";
+      options = "--delete-older-than 10d";
     };
 
     # This will add each flake input as a registry
