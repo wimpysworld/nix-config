@@ -23,7 +23,7 @@ pushd "$HOME/Zero/nix-config"
 if [[ -z "$TARGET_HOST" ]]; then
   echo "ERROR! $(basename "$0") requires a hostname as the first argument"
   echo "       The following hosts are available"
-  ls -1 nixos/*/boot.nix | cut -d'/' -f2 | grep -v iso
+  ls -1 nixos/*/default.nix | cut -d'/' -f2 | grep -v iso
   exit 1
 fi
 
