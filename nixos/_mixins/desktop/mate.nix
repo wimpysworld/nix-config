@@ -33,6 +33,7 @@
   services = {
     blueman.enable = true;
     gnome.gnome-keyring.enable = true;
+    gvfs.enable = true;
     system-config-printer.enable = true;
     xserver = {
       enable = true;

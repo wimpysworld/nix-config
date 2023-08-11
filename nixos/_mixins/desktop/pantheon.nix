@@ -22,6 +22,7 @@
   };
 
   services = {
+    gvfs.enable = true;
     xserver = {
       enable = true;
       displayManager = {
