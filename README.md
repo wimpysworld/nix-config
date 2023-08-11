@@ -215,7 +215,8 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate StreamDeck
 - [x] Integrate Xone
 - [ ] ~~Migrate (*maybe*) to ZFS, with backups via [`zrepl`](https://zrepl.github.io/)~~
-- [x] Fix Magewell driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
+- [x] Fix Magewell mwprocapture driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
+  - [ ] [And again](https://github.com/NixOS/nixpkgs/pull/247897)
 
 ### Applications
 
@@ -227,11 +228,11 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Services
 
-- [ ] Integrate Borg Backups using [Pika](https://apps.gnome.org/en-GB/app/org.gnome.World.PikaBackup/)
+- [ ] Integrate Borg Backups
   - [x] [Vorta](https://vorta.borgbase.com/) for workstations
   - [ ] [borgmatic](https://torsion.org/borgmatic/) for servers
 - [ ] ~~Integrate cockpit (*server*)~~
-- [ ] Integrate nullmailer (*server*)
+- [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
 - [ ] Integrate Plex (*skull*)
 - [ ] Integrate homepage
 - [x] Integrate fwupd
@@ -242,7 +243,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 ### Configuration
 
 - [x] Embed [install script in the ISO](./nixos/_mixins/users/nixos/console.nix)
-- [ ] Integrate [agenix](https://github.com/ryantm/agenix) or [sops-nix](https://github.com/Mic92/sops-nix)
+- [ ] Integrate [agenix](https://github.com/ryantm/agenix) ~~or [sops-nix](https://github.com/Mic92/sops-nix)~~
 - [x] Integrate capabilities from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
 - [x] Integrate wallpapers
 - [x] Integrate faces
@@ -254,7 +255,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Create `.envrc` files in `/home/martin`.
 - [ ] Bind Syncthing GUI to ZeroTier.
 - [ ] Configure Plank.
-- [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31)
+- [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31))
 
 ### Game Development
 
