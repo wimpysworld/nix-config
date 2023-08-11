@@ -10,6 +10,7 @@
     ../../desktop/opera.nix
     ../../desktop/tilix.nix
     ../../desktop/vivaldi.nix
+    ../../desktop/vscode.nix
   ] ++ lib.optional (builtins.pathExists (../.. + "/desktop/${desktop}-apps.nix")) ../../desktop/${desktop}-apps.nix;
 
   environment.systemPackages = with pkgs; [
@@ -37,7 +38,6 @@
     unstable.discord
     unstable.gitkraken
     unstable.tdesktop
-    unstable.vscode-fhs
     unstable.wavebox
   ];
 

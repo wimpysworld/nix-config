@@ -19,11 +19,15 @@
     nix-formatter-pack.inputs.nixpkgs.follows = "nixpkgs";
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    
+    vscode-server.url = "github:msteen/nixos-vscode-server";
+    vscode-server.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
     { self
     , nix-formatter-pack
     , nixpkgs
+    , vscode-server
     , ...
     } @ inputs:
     let
