@@ -38,7 +38,6 @@
     unstable.fluffychat
     unstable.gitkraken
     unstable.tdesktop
-    unstable.wavebox
   ];
 
   programs = {
