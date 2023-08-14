@@ -29,7 +29,6 @@
     netflix
     pick-colour-picker
     rhythmbox
-    shotcut
     slack
     zoom-us
 
