@@ -4,7 +4,7 @@
   ];
   
   home.packages = with pkgs; [
-    maestral
+    unstable.maestral
   ];
   
   systemd.user.services = {

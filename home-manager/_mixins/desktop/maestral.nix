@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   home.packages = with pkgs; [
-    maestral-gui
+    unstable.maestral-gui
   ];
 
   systemd.user.services = {
