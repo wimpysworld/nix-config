@@ -31,7 +31,6 @@
   };
 
   console = {
-    earlySetup = true;
     font = "${pkgs.tamzen}/share/consolefonts/TamzenForPowerline10x20.psf";
     keyMap = "uk";
     packages = with pkgs; [ tamzen ];
