@@ -9,6 +9,7 @@
         dotjoshjohnson.xml
         eamodio.gitlens
         editorconfig.editorconfig
+        esbenp.prettier-vscode
         github.copilot
         github.vscode-github-actions
         golang.go
