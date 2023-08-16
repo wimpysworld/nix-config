@@ -59,6 +59,8 @@
         "martin@brix" = libx.mkHome { hostname = "brix"; username = "martin"; };
         "martin@skull" = libx.mkHome { hostname = "skull"; username = "martin"; };
         "martin@vm-mini" = libx.mkHome { hostname = "vm-mini"; username = "martin"; };
+        # Steam Deck
+        "deck@steamdeck" = libx.mkHome { hostname = "steamdeck"; username = "deck"; };
       };
       nixosConfigurations = {
         # .iso images
