@@ -2,8 +2,8 @@
   description = "Wimpy's NixOS and Home Manager Configuration";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
-    # You can access packages and modules from different nixpkgs revs at the
-    # same time. See 'unstable-packages' overlay in 'overlays/default.nix'.
+    # You can access packages and modules from different nixpkgs revs at the same time.
+    # See 'unstable-packages' overlay in 'overlays/default.nix'.
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
 
     agenix.url = "github:ryantm/agenix";
