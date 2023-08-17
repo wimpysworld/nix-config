@@ -1,4 +1,4 @@
-{ config, desktop, lib, outputs, pkgs, stateVersion, username, ... }:
+{ config, desktop, inputs, lib, outputs, pkgs, stateVersion, username, ... }:
 let
   inherit (pkgs.stdenv) isDarwin;
 in
@@ -56,9 +56,17 @@ in
   };
 
   nix = {
-    package = lib.mkDefault pkgs.unstable.nix;
+    # This will add each flake input as a registry
+    # To make nix3 commands consistent with your flake
+    registry = lib.mapAttrs (_: value: { flake = value; }) inputs;
+
+    package = pkgs.unstable.nix;
     settings = {
+      auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
+      # Avoid unwanted garbage collection when using nix-direnv
+      keep-outputs = true;
+      keep-derivations = true;
       warn-dirty = false;
     };
   };
