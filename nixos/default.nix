@@ -236,8 +236,8 @@
         set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
       shellAbbrs = {
-        nix-gc = "sudo nix-collect-garbage --delete-older-than 14d";
-        rebuild-all = "sudo nix-collect-garbage --delete-older-than 14d && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        nix-gc = "sudo nix-collect-garbage --delete-older-than 10d";
+        rebuild-all = "sudo nix-collect-garbage --delete-older-than 10d && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config";
         rebuild-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
         rebuild-host = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
         rebuild-lock = "pushd $HOME/Zero/nix-config && nix flake lock --recreate-lock-file && popd";
