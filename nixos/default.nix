@@ -126,6 +126,8 @@
       192.168.192.40  skull-zt
       192.168.192.59  trooper-zt
       192.168.193.59  trooper-gaming
+      192.168.192.104 steamdeck-zt
+      192.168.193.104 steamdeck-gaming
       192.168.192.181 zed-zt
       192.168.192.220 ripper-zt
       192.168.193.220 ripper-gaming
