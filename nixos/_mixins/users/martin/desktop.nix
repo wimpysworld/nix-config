@@ -29,7 +29,6 @@
     netflix
     pick-colour-picker
     rhythmbox
-    slack
     zoom-us
 
     # Fast moving apps use the unstable branch
