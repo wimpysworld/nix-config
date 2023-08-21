@@ -1,13 +1,15 @@
 { desktop, hostname, lib, pkgs, ... }:
 {
   environment.systemPackages = with pkgs; [
+    aria2
     croc
     rclone
     wget2
+    wormhole-william
     zsync
   ] ++ lib.optionals (desktop != null) [
     localsend
-    persepolis
+    motrix
   ];
   services = {
     aria2 = {
