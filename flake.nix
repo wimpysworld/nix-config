@@ -20,7 +20,7 @@
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     
-    vscode-server.url = "github:msteen/nixos-vscode-server";
+    vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
