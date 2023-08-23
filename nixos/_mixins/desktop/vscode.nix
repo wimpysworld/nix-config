@@ -2,30 +2,30 @@
   environment.systemPackages = with pkgs; [
     (vscode-with-extensions.override {
       vscode = unstable.vscode;
-      vscodeExtensions = with unstable.vscode-extensions; [
-        coolbear.systemd-unit-file
-        dart-code.flutter
-        dart-code.dart-code
-        dotjoshjohnson.xml
-        eamodio.gitlens
-        editorconfig.editorconfig
-        esbenp.prettier-vscode
-        github.copilot
-        github.vscode-github-actions
-        golang.go
-        jnoortheen.nix-ide
-        mads-hartmann.bash-ide-vscode
-        ms-azuretools.vscode-docker
-        ms-python.python
-        ms-python.vscode-pylance
-        ms-vscode.cpptools
-        ms-vsliveshare.vsliveshare
-        redhat.vscode-yaml
-        ryu1kn.partial-diff
-        streetsidesoftware.code-spell-checker
-        timonwong.shellcheck
-        vscode-icons-team.vscode-icons
-        yzhang.markdown-all-in-one
+      vscodeExtensions = [
+        unstable.vscode-extensions.coolbear.systemd-unit-file
+        unstable.vscode-extensions.dart-code.flutter
+        unstable.vscode-extensions.dart-code.dart-code
+        unstable.vscode-extensions.dotjoshjohnson.xml
+        unstable.vscode-extensions.eamodio.gitlens
+        unstable.vscode-extensions.editorconfig.editorconfig
+        unstable.vscode-extensions.esbenp.prettier-vscode
+        unstable.vscode-extensions.github.copilot
+        unstable.vscode-extensions.github.vscode-github-actions
+        unstable.vscode-extensions.golang.go
+        unstable.vscode-extensions.jnoortheen.nix-ide
+        unstable.vscode-extensions.mads-hartmann.bash-ide-vscode
+        unstable.vscode-extensions.ms-azuretools.vscode-docker
+        vscode-extensions.ms-python.python
+        vscode-extensions.ms-python.vscode-pylance
+        unstable.vscode-extensions.ms-vscode.cpptools
+        unstable.vscode-extensions.ms-vsliveshare.vsliveshare
+        unstable.vscode-extensions.redhat.vscode-yaml
+        unstable.vscode-extensions.ryu1kn.partial-diff
+        unstable.vscode-extensions.streetsidesoftware.code-spell-checker
+        unstable.vscode-extensions.timonwong.shellcheck
+        unstable.vscode-extensions.vscode-icons-team.vscode-icons
+        unstable.vscode-extensions.yzhang.markdown-all-in-one
       ] ++ pkgs.unstable.vscode-utils.extensionsFromVscodeMarketplace [
         {
           name = "bash-debug";
