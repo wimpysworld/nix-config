@@ -5,7 +5,7 @@
   environment.systemPackages = with pkgs; [
     #buildah
     #conmon
-    distrobox
+    unstable.distrobox
     #dive
     fuse-overlayfs
     #grype
