@@ -124,6 +124,7 @@
   # Use passed hostname to configure basic networking
   networking = {
     extraHosts = ''
+      192.168.2.17    skull
       192.168.192.40  skull-zt
       192.168.192.59  trooper-zt
       192.168.193.59  trooper-gaming
