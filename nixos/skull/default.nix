@@ -47,6 +47,7 @@
     defaultGateway = "192.168.2.1";
     # ZeroTier routing
     # - https://chrisatech.wordpress.com/2021/02/22/routing-traffic-to-zerotiers-subnet-from-all-devices-on-the-lan/
+    # - https://harivemula.com/2021/09/18/routing-all-traffic-through-home-with-zerotier-on-travel/
     firewall.extraCommands = "
     iptables -t nat -A POSTROUTING -o eno1 -j MASQUERADE
     iptables -A FORWARD -i eno1 -o ztwfukvgqh -m state --state RELATED,ESTABLISHED -j ACCEPT
@@ -56,8 +57,19 @@
       address = "192.168.2.17";
       prefixLength = 24;
     }];
-    nameservers = [ "192.168.2.1" ];
+    nameservers = [ "127.0.0.1" ];
     useDHCP = lib.mkForce false;
+  };
+
+  # Home LAN DNS server
+  # - https://l33tsource.com/blog/2023/06/18/dnsmasq-on-NixOS-2305/
+  services.dnsmasq = {
+    enable = true;
+    alwaysKeepRunning = true;
+    # Use AdGuard Public DNS with family protection filters
+    # - https://adguard-dns.io/en/public-dns.html
+    settings.server = [ "94.140.14.15" "94.140.15.16"];
+    settings = { cache-size=500; };
   };
 
   services.hardware.bolt.enable = true;
