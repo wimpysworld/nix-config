@@ -58,6 +58,12 @@
     };
   };
 
+  # Adjust MTU for Virgin Fibre
+  networking.networkmanager.extraConfig = "
+    [connection]
+    ethernet.mtu=1462
+    wifi.mtu=1462
+  ";
   # Use AdGuard Public DNS with ad/tracker blocking
   #  - https://adguard-dns.io/en/public-dns.html
   networking.networkmanager.insertNameservers = [ "94.140.14.14" "94.140.15.15" ];

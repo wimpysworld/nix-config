@@ -53,6 +53,7 @@
     iptables -A FORWARD -i eno1 -o ztwfukvgqh -m state --state RELATED,ESTABLISHED -j ACCEPT
     iptables -A FORWARD -i ztwfukvgqh -o eno1 -j ACCEPT
     ";
+    interfaces.eno1.mtu = 1462;
     interfaces.eno1.ipv4.addresses = [{
       address = "192.168.2.17";
       prefixLength = 24;
