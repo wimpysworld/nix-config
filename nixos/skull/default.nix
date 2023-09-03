@@ -45,6 +45,13 @@
   # Use passed hostname to configure basic networking
   networking = {
     defaultGateway = "192.168.2.1";
+    # ZeroTier routing
+    # - https://chrisatech.wordpress.com/2021/02/22/routing-traffic-to-zerotiers-subnet-from-all-devices-on-the-lan/
+    firewall.extraCommands = "
+    iptables -t nat -A POSTROUTING -o eno1 -j MASQUERADE
+    iptables -A FORWARD -i eno1 -o ztwfukvgqh -m state --state RELATED,ESTABLISHED -j ACCEPT
+    iptables -A FORWARD -i ztwfukvgqh -o eno1 -j ACCEPT
+    ";
     interfaces.eno1.ipv4.addresses = [{
       address = "192.168.2.17";
       prefixLength = 24;
