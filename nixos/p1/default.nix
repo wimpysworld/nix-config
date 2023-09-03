@@ -67,6 +67,7 @@
   # Use AdGuard Public DNS with ad/tracker blocking
   #  - https://adguard-dns.io/en/public-dns.html
   networking.networkmanager.insertNameservers = [ "94.140.14.14" "94.140.15.15" ];
+  networking.networkmanager.wifi.powersave = false;
 
   # libfprint-2-tod1-vfs0090 in nixpkgs is from https://gitlab.freedesktop.org/3v1n0/libfprint-tod-vfs0090
   # - Supports Validity Sensor 138a:0090 and 138a:0097
