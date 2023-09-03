@@ -50,7 +50,7 @@
       address = "192.168.2.10";
       prefixLength = 24;
     }];
-    nameservers = [ "192.168.2.1" ];
+    nameservers = [ "192.168.2.17" ];
     useDHCP = lib.mkForce false;
   };
 
