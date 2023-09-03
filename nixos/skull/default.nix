@@ -14,6 +14,14 @@
     ../_mixins/virt
   ];
 
+  # Workaround WRITE FPDMA QUEUED errors
+  # - Set link_power_management_policy to max_performance
+  # - Set SATA link speed to 3.0Gbps
+  # - https://serverfault.com/questions/400338/how-to-reduce-the-sata-link-speed-of-drive-in-centos
+  boot.kernelParams = [ "ahci.mobile_lpm_policy=0" "libata.force=3.0G" ];
+  # The above seems to work, but other workaround include disabling NCQ and NCQ Trim via "libata.force=3.0G,noncq,noncqtrim"
+  # - https://bugzilla.kernel.org/show_bug.cgi?id=203475#c14
+
   # disko does manage mounting of / /boot /home, but I want to mount by-partlabel
   fileSystems."/" = lib.mkForce {
     device = "/dev/disk/by-partlabel/root";
