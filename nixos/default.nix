@@ -124,9 +124,24 @@
   # Use passed hostname to configure basic networking
   networking = {
     extraHosts = ''
+      192.168.2.1     router
+      192.168.2.8     ripper-wifi ripper
+      192.168.2.9     ripper-lan1
+      192.168.2.10    ripper-lan2
+      192.168.2.11    printer
+      192.168.2.15	  nuc
       192.168.2.17    skull
+	  192.168.2.20	  keylight-light key-left Elgato_Key_Light_Air_DAD4
+      192.168.2.21    keylight-right key-right Elgato_Key_Light_Air_EEE9
+      192.168.2.23    moodlamp
+      192.168.2.30    chimeraos-lan
+      192.168.2.31	  chimeraos-wifi chimeraos
+      192.168.2.58    vonage Vonage-HT801
+      192.168.2.184   lametric LaMetric-LM2144
+      192.168.2.250   hue-bridge
+
       192.168.192.40  skull-zt
-      192.168.192.59  trooper-zt
+      192.168.192.59  trooper trooper-zt
       192.168.193.59  trooper-gaming
       192.168.192.104 steamdeck-zt
       192.168.193.104 steamdeck-gaming
@@ -135,8 +150,6 @@
       192.168.193.220 ripper-gaming
       192.168.192.162 p1-zt
       192.168.192.249 p2-max-zt
-      #192.168.192.0   brix-zt
-      #192.168.192.0   nuc-zt
       #192.168.192.0   win2-zt
       #192.168.192.0   win-max-zt
     '';
@@ -190,7 +203,7 @@
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
-      
+
       # Avoid unwanted garbage collection when using nix-direnv
       keep-outputs = true;
       keep-derivations = true;
