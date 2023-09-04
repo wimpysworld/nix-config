@@ -75,8 +75,6 @@
     xone.enable = true;
   };
 
-  networking.networkmanager.wifi.powersave = false;
-
   services = {
     hardware.openrgb = {
       enable = true;

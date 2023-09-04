@@ -64,7 +64,6 @@
     "ethernet.mtu" = 1462;
     "wifi.mtu" = 1462;
   };
-  networking.networkmanager.wifi.powersave = false;
 
   services = {
     hardware.openrgb = {
