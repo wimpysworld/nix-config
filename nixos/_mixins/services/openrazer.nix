@@ -1,6 +1,6 @@
-{ pkgs, username, ... }:
+{ desktop, pkgs, username, ... }:
 {
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with pkgs; [ ] ++ lib.optionals (desktop != null) [
     polychromatic
   ];
 
