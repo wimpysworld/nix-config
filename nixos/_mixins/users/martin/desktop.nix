@@ -19,7 +19,6 @@
     cider
     gimp-with-plugins
     gnome.gnome-clocks
-    gnome.dconf-editor
     gnome.gnome-sound-recorder
     irccloud
     inkscape
