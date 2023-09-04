@@ -14,7 +14,14 @@ with lib.hm.gvariant;
     ../../desktop/sakura.nix
     ../../desktop/tilix.nix
   ];
-  
+
+  dconf.settings = {
+    "org/gnome/rhythmbox/rhythmdb" = {
+      locations = [ "file://${config.home.homeDirectory}/Studio/Music" ];
+      monitor-library = true;
+    };
+  };
+
   # For running X11 apps in Distrobox
   home = {
     file.".distroboxrc".text = "
@@ -23,12 +30,5 @@ with lib.hm.gvariant;
     packages = with pkgs; [
       xorg.xhost
     ];
-  };
-
-  dconf.settings = {
-    "org/gnome/rhythmbox/rhythmdb" = {
-      locations = [ "file://${config.home.homeDirectory}/Studio/Music" ];
-      monitor-library = true;
-    };
   };
 }
