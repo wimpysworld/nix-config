@@ -1,6 +1,6 @@
 { desktop, lib, ... }: {
   imports = [ ] ++ lib.optionals (desktop != null) [
-    ../desktop/keybase.nix
+    ./keybase-gui.nix
   ];
   
   services = {
