@@ -1,4 +1,4 @@
-{ lib, pkgs, username, ... }:
+{ config, lib, pkgs, username, ... }:
 with lib.hm.gvariant;
 {
   home.packages = with pkgs; [
@@ -13,6 +13,7 @@ with lib.hm.gvariant;
   };
 
   systemd.user.tmpfiles.rules = [
-    "L+ /home/${username}/.local/share/org.gnome.SoundRecorder/ - - - - /home/${username}/Audio/"
+    "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
+    "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
   ];
 }

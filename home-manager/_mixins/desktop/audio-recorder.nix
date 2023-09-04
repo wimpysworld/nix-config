@@ -1,4 +1,4 @@
-{ lib, pkgs, username, ... }:
+{ config, lib, pkgs, username, ... }:
 with lib.hm.gvariant;
 {
   home.packages = with pkgs; [
@@ -9,7 +9,7 @@ with lib.hm.gvariant;
     "apps/audio-recorder" = {
       append-to-file = false;
       filename-pattern = "LMP-${username}-%V-%H%M";
-      folder-name = "/home/${username}/Audio";
+      folder-name = "${config.home.homeDirectory}/Audio";
       keep-on-top = true;
       level-bar-value = 2;
       media-format = "Podcast Mono, Lossless 44KHz";
@@ -20,4 +20,8 @@ with lib.hm.gvariant;
       timer-text = "";
     };
   };
+  
+  systemd.user.tmpfiles.rules = [
+    "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
+  ];
 }
