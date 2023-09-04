@@ -21,7 +21,6 @@
     irccloud
     inkscape
     libreoffice
-    meld
     pick-colour-picker
     rhythmbox
     zoom-us
