@@ -21,7 +21,15 @@
   # Disable xterm
   services.xserver.excludePackages = [ pkgs.xterm ];
   services.xserver.desktopManager.xterm.enable = false;
-  
+
+  systemd.services.disable-wifi-powersave = {
+    wantedBy = ["multi-user.target"];
+    path = [ pkgs.wirelesstools ];
+    script = ''
+      iwconfig wlan0 power off
+    '';
+  };
+
   xdg.portal = {
     enable = true;
     xdgOpenUsePortal = true;
