@@ -1,4 +1,4 @@
-{ config, desktop, inputs, lib, outputs, pkgs, stateVersion, username, ... }:
+{ config, desktop, hostname, inputs, lib, outputs, pkgs, stateVersion, username, ... }:
 let
   inherit (pkgs.stdenv) isDarwin;
 in
@@ -15,8 +15,9 @@ in
     # You can also split up your configuration and import pieces of it here:
     ./_mixins/console
   ]
+  ++ lib.optional (builtins.isPath (./. + "/_mixins/users/${username}")) ./_mixins/users/${username}
   ++ lib.optional (builtins.isString desktop) ./_mixins/desktop
-  ++ lib.optional (builtins.isPath (./. + "/_mixins/users/${username}")) ./_mixins/users/${username};
+  ++ lib.optional (builtins.pathExists (./. + "/hosts/${hostname}.nix")) ./hosts/${hostname}.nix;
 
   home = {
     activation.report-changes = config.lib.dag.entryAnywhere ''

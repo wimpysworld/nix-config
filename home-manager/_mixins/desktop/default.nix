@@ -1,16 +1,7 @@
-{ desktop, ... }: {
+{ desktop, lib, username, ... }: {
   imports = [
-    ./audio-recorder.nix
-    ./celluloid.nix
-    ./dconf-editor.nix
-    ./emote.nix
-    ./gitkraken.nix
-    ./gnome-sound-recorder.nix
-    ./meld.nix
-    ./rhythmbox.nix
-    ./tilix.nix
     (./. + "/${desktop}.nix")
-  ];
+  ] ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
 
   xresources.properties = {
     "XTerm*background" = "#121214";
