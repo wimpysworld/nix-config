@@ -1,9 +1,11 @@
 # Generated via dconf2nix: https://github.com/gvolpe/dconf2nix
-{ lib, ... }:
-
+{ lib, pkgs, ... }:
 with lib.hm.gvariant;
-
 {
+  home.packages = with pkgs; [
+    tilix
+  ];
+  
   dconf.settings = {
     "com/gexperts/Tilix" = {
       app-title = "\${appName}: \${directory}";

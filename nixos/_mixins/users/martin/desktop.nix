@@ -8,7 +8,6 @@
     ../../desktop/microsoft-edge.nix
     ../../desktop/obs-studio.nix
     ../../desktop/opera.nix
-    ../../desktop/tilix.nix
     ../../desktop/vivaldi.nix
     ../../desktop/vscode.nix
   ] ++ lib.optional (builtins.pathExists (../.. + "/desktop/${desktop}-apps.nix")) ../../desktop/${desktop}-apps.nix;
