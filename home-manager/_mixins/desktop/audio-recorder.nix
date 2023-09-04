@@ -4,7 +4,7 @@ with lib.hm.gvariant;
   home.packages = with pkgs; [
     audio-recorder
   ];
-  
+
   dconf.settings = {
     "apps/audio-recorder" = {
       append-to-file = false;
