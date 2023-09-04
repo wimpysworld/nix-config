@@ -145,6 +145,7 @@
     fish = {
       shellAliases = {
         diff = "diffr";
+        fast = "fast -u";
         glow = "glow --pager";
         moon = "curl -s wttr.in/Moon";
         pubip = "curl -s ifconfig.me/ip";
