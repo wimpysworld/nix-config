@@ -22,7 +22,6 @@
     inkscape
     libreoffice
     pick-colour-picker
-    rhythmbox
     zoom-us
 
     # Fast moving apps use the unstable branch
