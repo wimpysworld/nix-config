@@ -1,9 +1,6 @@
 { lib, ... }:
 with lib.hm.gvariant;
 {
-  imports = [
-    ../../../services/keybase.nix
-  ];
   dconf.settings = {
     "org/gnome/desktop/background" = {
       picture-options = "zoom";

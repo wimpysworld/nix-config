@@ -2,7 +2,6 @@
 with lib.hm.gvariant;
 {
   imports = [
-    ../../../services/keybase.nix
     ../../../desktop/deckmaster-xl.nix
     ../../../desktop/vorta.nix
   ];

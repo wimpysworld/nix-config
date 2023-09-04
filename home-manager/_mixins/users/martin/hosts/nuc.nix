@@ -1,5 +1,2 @@
-{ lib, ... }: {
-  imports = [
-    ../../../services/keybase.nix
-  ];
+_: {
 }
