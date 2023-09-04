@@ -11,7 +11,7 @@
         Description = "Emote";
       };
       Service = {
-        ExecStart = "${pkgs.emote}/bin/emote";
+        ExecStart = "${pkgs.unstable.emote}/bin/emote";
         Restart = "on-failure";
       };
       Install = {
