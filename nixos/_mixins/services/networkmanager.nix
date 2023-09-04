@@ -1,4 +1,4 @@
-_:
+{ pkgs, ... }:
 {
   networking = {
     networkmanager = {
@@ -10,6 +10,7 @@ _:
         backend = "iwd";
       };
     };
+    wireless.iwd.package = pkgs.unstable.iwd;
   };
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175
   systemd.services.NetworkManager-wait-online.enable = false;
