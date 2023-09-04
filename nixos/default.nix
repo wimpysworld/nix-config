@@ -5,7 +5,6 @@
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
     ./_mixins/services/firewall.nix
-    ./_mixins/services/fwupd.nix
     ./_mixins/services/kmscon.nix
     ./_mixins/services/openssh.nix
     ./_mixins/services/smartmon.nix
@@ -264,6 +263,8 @@
       };
     };
   };
+
+  services.fwupd.enable = true;
 
   systemd.tmpfiles.rules = [
     "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
