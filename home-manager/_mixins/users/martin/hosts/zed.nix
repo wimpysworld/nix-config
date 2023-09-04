@@ -3,7 +3,6 @@ with lib.hm.gvariant;
 {
   imports = [
     ../../../services/keybase.nix
-    ../../../services/mpris-proxy.nix
     ../../../desktop/sakura.nix
   ];
   dconf.settings = {
