@@ -9,8 +9,9 @@
     ./_mixins/services/openssh.nix
     ./_mixins/services/smartmon.nix
     ./_mixins/users/root
-    ./_mixins/users/${username}
-  ] ++ lib.optional (builtins.isString desktop) ./_mixins/desktop;
+  ]
+  ++ lib.optional (builtins.pathExists (./. + "/_mixins/users/${username}")) ./_mixins/users/${username}
+  ++ lib.optional (desktop != null) ./_mixins/desktop;
 
   boot = {
     consoleLogLevel = 0;
