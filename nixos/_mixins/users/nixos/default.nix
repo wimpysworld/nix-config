@@ -80,7 +80,7 @@ fi
 in
 {
   # Only include desktop components if one is supplied.
-  imports = [ ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
+  imports = [ ] ++ lib.optional (desktop != null) ./desktop.nix;
 
   config.users.users.nixos = {
     description = "NixOS";

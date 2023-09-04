@@ -16,8 +16,8 @@ in
     ./_mixins/console
   ]
   ++ lib.optional (builtins.isPath (./. + "/_mixins/users/${username}")) ./_mixins/users/${username}
-  ++ lib.optional (builtins.isString desktop) ./_mixins/desktop
-  ++ lib.optional (builtins.pathExists (./. + "/_mixins/users/${username}/hosts/${hostname}.nix")) ./_mixins/users/${username}/hosts/${hostname}.nix;
+  ++ lib.optional (builtins.pathExists (./. + "/_mixins/users/${username}/hosts/${hostname}.nix")) ./_mixins/users/${username}/hosts/${hostname}.nix
+  ++ lib.optional (desktop != null) ./_mixins/desktop;
 
   home = {
     activation.report-changes = config.lib.dag.entryAnywhere ''
