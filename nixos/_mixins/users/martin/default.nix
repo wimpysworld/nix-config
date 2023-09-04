@@ -30,7 +30,6 @@ in
     irccloud
     inkscape
     libreoffice
-    localsend
     motrix
     pick-colour-picker
     wmctrl
