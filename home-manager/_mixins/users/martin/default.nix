@@ -104,6 +104,7 @@
       httpie # Terminal HTTP client
       hyperfine # Terminal benchmarking
       iperf3 # Terminal network benchmarking
+      iw # Terminal WiFi info
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
       lazygit # Terminal Git client

@@ -24,9 +24,9 @@
 
   systemd.services.disable-wifi-powersave = {
     wantedBy = ["multi-user.target"];
-    path = [ pkgs.wirelesstools ];
+    path = [ pkgs.iw ];
     script = ''
-      iwconfig wlan0 power off
+      iw dev wlan0 set power_save off
     '';
   };
 
