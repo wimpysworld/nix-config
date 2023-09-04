@@ -199,11 +199,6 @@
         max-width = 60;
       };
     };
-    zoxide = {
-      enable = true;
-      enableBashIntegration = true;
-      enableFishIntegration = true;
-    };
   };
 
   services = {
