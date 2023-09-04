@@ -1,14 +1,66 @@
-{ config, desktop, lib, pkgs, ... }:
+{ config, desktop, hostname, lib, pkgs, ... }:
 let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
 {
-  # Only include desktop components if one is supplied.
-  imports = [ ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
-
-  environment.systemPackages = [
-    pkgs.yadm # Terminal dot file manager
+  imports = [ ] ++ lib.optionals (desktop != null) [
+    ./desktop.nix
+    ../../desktop/chromium.nix
+    ../../desktop/chromium-extensions.nix
+    ../../desktop/obs-studio.nix
+    ../../desktop/vscode.nix
   ];
+
+  environment.systemPackages = with pkgs; [
+    aria2
+    croc
+    rclone
+    wget2
+    wormhole-william
+    yadm # Terminal dot file manager
+    zsync
+  ] ++ lib.optionals (desktop != null) [
+    appimage-run
+    authy
+    chatterino2
+    cider
+    gimp-with-plugins
+    gnome.gnome-clocks
+    irccloud
+    inkscape
+    libreoffice
+    localsend
+    motrix
+    pick-colour-picker
+    wmctrl
+    xdotool
+    ydotool
+    zoom-us
+
+    # Fast moving apps use the unstable branch
+    unstable.brave
+    unstable.discord
+    unstable.fluffychat
+    unstable.google-chrome
+    unstable.microsoft-edge
+    unstable.opera
+    unstable.tdesktop
+    unstable.vivaldi
+    unstable.vivaldi-ffmpeg-codecs
+  ];
+
+  services = {
+    aria2 = {
+      enable = true;
+      openPorts = true;
+      rpcSecret = "${hostname}";
+    };
+    croc = {
+      enable = true;
+      pass = "${hostname}";
+      openFirewall = true;
+    };
+  };
 
   users.users.martin = {
     description = "Martin Wimpress";

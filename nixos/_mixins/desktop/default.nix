@@ -10,14 +10,6 @@
     plymouth.enable = true;
   };
 
-  # AppImage support & X11 automation
-  environment.systemPackages = with pkgs; [
-    appimage-run
-    wmctrl
-    xdotool
-    ydotool
-  ];
-
   hardware = {
     opengl = {
       enable = true;
