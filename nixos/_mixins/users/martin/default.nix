@@ -3,8 +3,9 @@ let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
 {
-  imports = [ ] ++ lib.optionals (desktop != null) [
-    ./desktop.nix
+  imports = [ ]
+  ++ lib.optional (builtins.pathExists (../.. + "/desktop/${desktop}-apps.nix")) ../../desktop/${desktop}-apps.nix
+  ++ lib.optionals (desktop != null) [
     ../../desktop/chromium.nix
     ../../desktop/chromium-extensions.nix
     ../../desktop/obs-studio.nix
