@@ -75,6 +75,7 @@
       psmisc
       unzip
       usbutils
+      wget
     ];
     variables = {
       EDITOR = "micro";

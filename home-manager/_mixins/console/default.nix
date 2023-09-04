@@ -39,7 +39,6 @@
       ripgrep # Modern Unix `grep`
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
-      wget # Terminal downloader
       yq-go # Terminal `jq` for YAML
     ];
 
