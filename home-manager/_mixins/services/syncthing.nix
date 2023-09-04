@@ -1,4 +1,8 @@
-{ hostname, pkgs, username, ... }: {
+{ desktop, hostname, lib, pkgs, username, ... }: {
+  imports = [ ] ++ lib.optionals (desktop != null) [
+    ./syncthing-tray.nix
+  ];
+
   services.syncthing = {
     enable = true;
     extraOptions = [
@@ -8,9 +12,5 @@
       "--no-default-folder"
       "--no-browser"
     ];
-    tray = {
-      enable = true;
-      package = pkgs.unstable.syncthingtray;
-    };
   };
 }
