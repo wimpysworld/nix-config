@@ -1,6 +1,10 @@
-{ lib, username, ... }:
+{ lib, pkgs, username, ... }:
 with lib.hm.gvariant;
 {
+  home.packages = with pkgs; [
+    gnome.gnome-sound-recorder
+  ];
+  
   dconf.settings = {
     "org/gnome/SoundRecorder" = {
       audio-channel = "mono";

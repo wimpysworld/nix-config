@@ -18,7 +18,6 @@
     cider
     gimp-with-plugins
     gnome.gnome-clocks
-    gnome.gnome-sound-recorder
     irccloud
     inkscape
     libreoffice

@@ -5,6 +5,7 @@
     ../../desktop/dconf-editor.nix
     ../../desktop/emote.nix
     ../../desktop/gitkraken.nix
+    ../../desktop/gnome-sound-recorder.nix
     ../../desktop/tilix.nix
   ];
 }
