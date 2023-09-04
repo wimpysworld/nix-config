@@ -30,7 +30,6 @@
     # Fast moving apps use the unstable branch
     unstable.discord
     unstable.fluffychat
-    unstable.gitkraken
     unstable.tdesktop
   ];
 
