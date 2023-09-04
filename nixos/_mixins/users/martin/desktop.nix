@@ -24,7 +24,6 @@
     inkscape
     libreoffice
     meld
-    netflix
     pick-colour-picker
     rhythmbox
     zoom-us
