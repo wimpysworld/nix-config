@@ -261,13 +261,7 @@
         rebuild-iso-gpd-dsi = "sudo true && pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-gpd-dsi.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && sudo cp result/iso/$ISO ~/Quickemu/nixos-gpd-dsi.iso && popd";
       };
       shellAliases = {
-        moon = "curl -s wttr.in/Moon";
         nano = "micro";
-        open = "xdg-open";
-        pubip = "curl -s ifconfig.me/ip";
-        #pubip = "curl -s https://api.ipify.org";
-        wttr = "curl -s wttr.in && curl -s v2.wttr.in";
-        wttr-bas = "curl -s wttr.in/basingstoke && curl -s v2.wttr.in/basingstoke";
       };
     };
   };
