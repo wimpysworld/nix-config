@@ -96,7 +96,7 @@
       duf # Modern Unix `df`
       du-dust # Modern Unix `du`
       entr # Modern Unix `watch`
-      fast-cli # Terminal fast.com speedtest
+      fast-cli # Terminal fast.com
       fd # Modern Unix `find`
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
@@ -118,7 +118,7 @@
       nodePackages.prettier # Code format
       nurl # Nix URL fetcher
       nyancat # Terminal rainbow spewing feline
-      ookla-speedtest # Terminal speedtest
+      speedtest-go # Terminal speedtest.net 
       optipng # Terminal PNG optimizer
       procs # Modern Unix `ps`
       python310Packages.gpustat # Terminal GPU info
@@ -149,6 +149,7 @@
         moon = "curl -s wttr.in/Moon";
         pubip = "curl -s ifconfig.me/ip";
         #pubip = "curl -s https://api.ipify.org";
+        speedtest = "speedtest-go";
         wttr = "curl -s wttr.in && curl -s v2.wttr.in";
         wttr-bas = "curl -s wttr.in/basingstoke && curl -s v2.wttr.in/basingstoke";
       };
