@@ -6,7 +6,6 @@
 
   # Add some packages to complete the MATE desktop
   environment.systemPackages = with pkgs; [
-    celluloid
     gnome.gucharmap
     gnome-firmware
     gthumb
