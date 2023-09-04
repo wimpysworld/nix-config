@@ -10,6 +10,7 @@ with lib.hm.gvariant;
     ../../desktop/gnome-sound-recorder.nix
     ../../desktop/meld.nix
     ../../desktop/rhythmbox.nix
+    ../../desktop/sakura.nix
     ../../desktop/tilix.nix
   ];
   

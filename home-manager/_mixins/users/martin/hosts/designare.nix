@@ -3,7 +3,6 @@ with lib.hm.gvariant;
 {
   imports = [
     ../../../services/keybase.nix
-    ../../../desktop/sakura.nix
     ../../../desktop/vorta.nix
   ];
   dconf.settings = {
