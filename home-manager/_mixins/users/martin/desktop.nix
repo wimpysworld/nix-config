@@ -1,4 +1,4 @@
-{ lib, username, ... }:
+{ lib, pkgs, username, ... }:
 with lib.hm.gvariant;
 {
   imports = [
