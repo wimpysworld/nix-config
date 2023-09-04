@@ -173,7 +173,7 @@ Here is the directory structure I'm using.
 [Modern Unix]: ./home-manager/_mixins/console/default.nix
 [OpenSSH]: ./nixos/_mixins/services/openssh.nix
 [ZeroTier]: ./nixos/_mixins/services/zerotier.nix
-[Podman & Distrobox]: ./nixos/_mixins/virt/podman.nix
+[Podman & Distrobox]: ./nixos/_mixins/virt/default.nix
 [micro]: [https://micro-editor.github.io/]
 
 ![neofetch on Designare](.github/screenshots/neofetch.png)
@@ -223,7 +223,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate an Emoji picker
 - [x] Integrate AppCenter and Flathub
 - [x] Integrate Steam
-- [ ] Add Ferdium, Rambox or Wavebox
+- [ ] ~~Add Ferdium, Rambox or Wavebox~~
 - [ ] Add Password Managers
 
 ### Services
