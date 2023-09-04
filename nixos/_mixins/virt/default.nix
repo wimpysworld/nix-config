@@ -1,11 +1,12 @@
 { config, desktop, lib, pkgs, ... }: {
-  imports = [ ] ++ lib.optional (builtins.isString desktop) ./desktop.nix;
-
   #https://nixos.wiki/wiki/Podman
   environment.systemPackages = with pkgs; [
     unstable.distrobox
     fuse-overlayfs
     podman-compose
+  ] ++ lib.optionals (desktop != null) [
+    unstable.pods
+    unstable.quickemu
   ];
 
   virtualisation = {
