@@ -1,4 +1,7 @@
 { lib, hostname, username, ... }: {
+  imports = [
+    ../../services/syncthing.nix
+  ];
   home = {
     file.".bazaar/authentication.conf".text = "
       [Launchpad]
