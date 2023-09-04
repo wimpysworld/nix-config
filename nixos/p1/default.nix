@@ -57,7 +57,7 @@
       prime = {
         intelBusId = "PCI:0:2:0";
         nvidiaBusId = "PCI:1:0:0";
-        # Make the Intel iGPP default. The NVIDIA Quadro is for CUDA/NVENC
+        # Make the Intel iGP default. The NVIDIA Quadro is for CUDA/NVENC
         reverseSync.enable = true;
       };
       nvidiaSettings = false;
