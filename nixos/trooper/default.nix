@@ -75,9 +75,6 @@
     xone.enable = true;
   };
 
-  # Use AdGuard Public DNS with ad/tracker blocking
-  #  - https://adguard-dns.io/en/public-dns.html
-  networking.networkmanager.insertNameservers = [ "94.140.14.14" "94.140.15.15" ];
   networking.networkmanager.wifi.powersave = false;
 
   services = {
