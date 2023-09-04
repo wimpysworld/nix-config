@@ -1,5 +1,7 @@
 { desktop, lib, pkgs, ... }: {
-  imports = [ ] ++ lib.optional (builtins.isString desktop) ../desktop/simple-scan.nix;
+  environment.systemPackages = with pkgs; [ ] ++ lib.optionals (desktop != null) [
+    gnome.simple-scan
+  ];
 
   hardware = {
     sane = {
