@@ -14,7 +14,6 @@
   ] ++ lib.optional (builtins.pathExists (../.. + "/desktop/${desktop}-apps.nix")) ../../desktop/${desktop}-apps.nix;
 
   environment.systemPackages = with pkgs; [
-    audio-recorder
     authy
     chatterino2
     cider

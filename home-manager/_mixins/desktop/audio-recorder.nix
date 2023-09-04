@@ -1,11 +1,15 @@
-{ lib, ... }:
+{ lib, pkgs, username, ... }:
 with lib.hm.gvariant;
 {
+  home.packages = with pkgs; [
+    audio-recorder
+  ];
+  
   dconf.settings = {
     "apps/audio-recorder" = {
       append-to-file = false;
-      filename-pattern = "LMP-martin-%V-%H%M";
-      folder-name = "/home/martin/Audio";
+      filename-pattern = "LMP-${username}-%V-%H%M";
+      folder-name = "/home/${username}/Audio";
       keep-on-top = true;
       level-bar-value = 2;
       media-format = "Podcast Mono, Lossless 44KHz";
