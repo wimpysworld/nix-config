@@ -1,7 +1,6 @@
 { pkgs, ... }: {
   environment.systemPackages = with pkgs; [
+    unstable.pods
     unstable.quickemu
-    # for running X11 apps in distrobox
-    xorg.xhost
   ];
 }

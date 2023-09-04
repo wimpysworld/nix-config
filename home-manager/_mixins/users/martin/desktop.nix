@@ -14,6 +14,16 @@ with lib.hm.gvariant;
     ../../desktop/tilix.nix
   ];
   
+  # For running X11 apps in Distrobox
+  home = {
+    file.".distroboxrc".text = "
+      xhost +si:localuser:$USER
+    ";
+    packages = with pkgs; [
+      xorg.xhost
+    ];
+  };
+
   dconf.settings = {
     "org/gnome/rhythmbox/rhythmdb" = {
       locations = [ "file:///home/${username}/Studio/Music" ];

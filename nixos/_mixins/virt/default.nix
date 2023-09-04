@@ -3,16 +3,9 @@
 
   #https://nixos.wiki/wiki/Podman
   environment.systemPackages = with pkgs; [
-    #buildah
-    #conmon
     unstable.distrobox
-    #dive
     fuse-overlayfs
-    #grype
     podman-compose
-    podman-tui
-    #skopeo
-    #syft
   ];
 
   virtualisation = {
