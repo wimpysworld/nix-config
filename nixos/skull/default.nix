@@ -15,21 +15,6 @@
     ../_mixins/virt
   ];
 
-  # Workaround WRITE FPDMA QUEUED errors
-  # - Set link_power_management_policy to max_performance
-  # - Set SATA link speed to 3.0Gbps
-  # - https://serverfault.com/questions/400338/how-to-reduce-the-sata-link-speed-of-drive-in-centos
-  # - https://jp.marvell.com/content/dam/marvell/en/public-collateral/storage/marvell-storage-88se9230-datasheet-2018-08.pdf
-  # - https://pipci.jeffgeerling.com/cards_storage/marvell-88se9230-host-controller.html
-  # - https://github.com/stegm/marvell_msu_docker
-  boot.kernelParams = [ "ahci.mobile_lpm_policy=0" "libata.force=3.0Gbps" ];
-  # Reports that the Marvell 88SE9230 in not compatible with VT-d  and IOMMU on Linux. Disabling VT-d is recommended.
-  # The above seems to work, but other workarounds include disabling NCQ and NCQ Trim via "libata.force=3.0Gbps,noncq,noncqtrim"
-  # Perhaps preventing link speed resets will help via "libata.force=3.0Gbps,norst"
-  # Reposts that dropping the UDMA speed to 66Mhz may help via "libata.force=3.0Gbps,udma/66"
-  # - https://bugzilla.kernel.org/show_bug.cgi?id=203475#c14
-  # - https://bugzilla.kernel.org/show_bug.cgi?id=42679
-
   # disko does manage mounting of / /boot /home, but I want to mount by-partlabel
   fileSystems."/" = lib.mkForce {
     device = "/dev/disk/by-partlabel/root";
