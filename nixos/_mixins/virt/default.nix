@@ -7,6 +7,7 @@
   ] ++ lib.optionals (desktop != null) [
     unstable.pods
     unstable.quickemu
+    xorg.xhost
   ];
 
   virtualisation = {

@@ -21,14 +21,4 @@ with lib.hm.gvariant;
       monitor-library = true;
     };
   };
-
-  # For running X11 apps in Distrobox
-  home = {
-    file.".distroboxrc".text = "
-      xhost +si:localuser:$USER
-    ";
-    packages = with pkgs; [
-      xorg.xhost
-    ];
-  };
 }
