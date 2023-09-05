@@ -4,12 +4,12 @@ let
 in
 {
   imports = [ ]
-  ++ lib.optional (builtins.pathExists (../.. + "/desktop/${desktop}-apps.nix")) ../../desktop/${desktop}-apps.nix
   ++ lib.optionals (desktop != null) [
     ../../desktop/chromium.nix
     ../../desktop/chromium-extensions.nix
     ../../desktop/obs-studio.nix
     ../../desktop/vscode.nix
+    ../../desktop/${desktop}-apps.nix
   ];
 
   environment.systemPackages = with pkgs; [
