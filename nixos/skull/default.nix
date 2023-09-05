@@ -48,17 +48,17 @@
     options = [ "defaults" "relatime" "nodiratime" ];
   };
 
-  fileSystems."/mnt/fours" = lib.mkForce {
-    device = "/dev/md/fours1";
-    fsType = "xfs";
-    options = [ "defaults" "relatime" "nodiratime" ];
-  };
+  #fileSystems."/mnt/fours" = lib.mkForce {
+  #  device = "/dev/md/fours1";
+  #  fsType = "xfs";
+  #  options = [ "defaults" "relatime" "nodiratime" ];
+  #};
 
-  fileSystems."/mnt/twos" = lib.mkForce {
-    device = "/dev/md/twos1";
-    fsType = "xfs";
-    options = [ "defaults" "relatime" "nodiratime" ];
-  };
+  #fileSystems."/mnt/twos" = lib.mkForce {
+  #  device = "/dev/md/twos1";
+  #  fsType = "xfs";
+  #  options = [ "defaults" "relatime" "nodiratime" ];
+  #};
 
   swapDevices = [{
     device = "/swap";
