@@ -21,4 +21,9 @@ with lib.hm.gvariant;
       monitor-library = true;
     };
   };
+
+  # Authrorize X11 access in Distrobox
+  home.file.".distroboxrc".text = "
+    xhost +si:localuser:$USER
+  ";
 }
