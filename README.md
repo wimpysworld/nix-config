@@ -50,7 +50,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 
 ## Structure
 
-- [.github]: GitHub CI/CD workflows Nix ❄️ supercharged ⚡️ by [**Determinate Systems**](https://determinate.systems) 
+- [.github]: GitHub CI/CD workflows Nix ❄️ supercharged ⚡️ by [**Determinate Systems**](https://determinate.systems)
   - [Nix Installer Action](https://github.com/marketplace/actions/the-determinate-nix-installer)
   - [Magic Nix Cache Action](https://github.com/marketplace/actions/magic-nix-cache)
   - [Flake Checker Action](https://github.com/marketplace/actions/nix-flake-checker)
@@ -265,6 +265,8 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ### Shell
 
+- [ ] [sd](https://github.com/chmln/sd)
+- [ ] [skin](https://github.com/lotabout/skim)
 - [ ] fzf
 - [ ] tmate or tmux
 - [x] micro
