@@ -23,7 +23,7 @@ with lib.hm.gvariant;
   };
 
   # Authrorize X11 access in Distrobox
-  home.file.".distroboxrc".text = "
+  home.file.".distroboxrc".text = ''
     xhost +si:localuser:$USER
-  ";
+  '';
 }
