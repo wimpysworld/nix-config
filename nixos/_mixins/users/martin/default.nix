@@ -24,13 +24,11 @@ in
     appimage-run
     authy
     chatterino2
-    cider
     gimp-with-plugins
     gnome.gnome-clocks
     irccloud
     inkscape
     libreoffice
-    motrix
     pick-colour-picker
     wmctrl
     xdotool
