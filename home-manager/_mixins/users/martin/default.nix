@@ -149,6 +149,7 @@
         pubip = "curl -s ifconfig.me/ip";
         #pubip = "curl -s https://api.ipify.org";
         speedtest = "speedtest-go";
+        wormhole = "wormhole-william";
         wttr = "curl -s wttr.in && curl -s v2.wttr.in";
         wttr-bas = "curl -s wttr.in/basingstoke && curl -s v2.wttr.in/basingstoke";
       };
