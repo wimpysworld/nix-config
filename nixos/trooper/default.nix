@@ -62,7 +62,22 @@
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "sd_mod" ];
     initrd.kernelModules = [ "nvidia" ];
     kernelModules = [ "kvm-amd" "nvidia" ];
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.linuxPackages_6_4;
+  };
+
+  # https://nixos.wiki/wiki/PipeWire
+  # Debugging
+  #  - pw-top                              # see live stats
+  #  - journalctl -b0 --user -u pipewire   # see logs (spa resync in "bad")
+  environment.etc = {
+    "pipewire/pipewire.conf.d/92-fix-resync.conf".text = ''
+      context.properties = {
+        default.clock.rate = 48000
+        default.clock.quantum = 2048
+        default.clock.min-quantum = 2048
+        default.clock.max-quantum = 2048
+      }
+    '';
   };
 
   environment.systemPackages = with pkgs; [
