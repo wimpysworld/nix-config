@@ -1,6 +1,6 @@
 # Intel Skull Canyon NUC6i7KYK
 # - https://github.com/rm-hull/skull-canyon
-{ inputs, lib, ... }:
+{ hostname, inputs, lib, username, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -11,7 +11,6 @@
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
     ../_mixins/services/maestral.nix
-    ../_mixins/services/plex.nix
     ../_mixins/services/zerotier.nix
     ../_mixins/virt
   ];
@@ -73,18 +72,70 @@
     useDHCP = lib.mkForce false;
   };
 
-  # Home LAN DNS server
-  # - https://l33tsource.com/blog/2023/06/18/dnsmasq-on-NixOS-2305/
-  services.dnsmasq = {
-    enable = true;
-    alwaysKeepRunning = true;
-    # Use AdGuard Public DNS with family protection filters
-    # - https://adguard-dns.io/en/public-dns.html
-    settings.server = [ "94.140.14.15" "94.140.15.16"];
-    settings = { cache-size=500; };
+  services = {
+    # Home LAN DNS server
+    # - https://l33tsource.com/blog/2023/06/18/dnsmasq-on-NixOS-2305/
+    dnsmasq = {
+      enable = true;
+      alwaysKeepRunning = true;
+      # Use AdGuard Public DNS with family protection filters
+      # - https://adguard-dns.io/en/public-dns.html
+      settings.server = [ "94.140.14.15" "94.140.15.16"];
+      settings = { cache-size=500; };
+    };
+    hardware {
+      bolt.enable = true;
+    };
+    plex = {
+      enable = true;
+      dataDir = "/mnt/sonnet/State/plex";
+      openFirewall = true;
+    };
+    tautulli = {
+      enable = true;
+      dataDir = "/mnt/sonnet/State/tautulli";
+      openFirewall = true;
+    };
+    samba = {
+      enable = true;
+      securityType = "user";
+      extraConfig = ''
+        workgroup = WIMPRESS.IO
+        server string = ${hostname}
+        netbios name = ${hostname}
+        security = user
+        #use sendfile = yes
+        #max protocol = smb2
+        # note: localhost is the ipv6 localhost ::1
+        hosts allow = 192.168.2. 192.168.192. 127.0.0.1 localhost
+        hosts deny = 0.0.0.0/0
+        guest account = nobody
+        map to guest = bad user
+      '';
+      shares = {
+        Films = {
+          path = "/mnt/sonnet/Films";
+          browseable = "yes";
+          "read only" = "no";
+          "guest ok" = "yes";
+          "create mask" = "0644";
+          "directory mask" = "0755";
+          "force user" = ${username};
+          "force group" = ${username};
+        };
+        Films_Kids = {
+          path = "/mnt/sonnet/Films_Kids";
+          browseable = "yes";
+          "read only" = "no";
+          "guest ok" = "yes";
+          "create mask" = "0644";
+          "directory mask" = "0755";
+          "force user" = ${username};
+          "force group" = ${username};
+        };
+      };
+    };
   };
-
-  services.hardware.bolt.enable = true;
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }
