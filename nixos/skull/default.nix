@@ -83,7 +83,7 @@
       settings.server = [ "94.140.14.15" "94.140.15.16"];
       settings = { cache-size=500; };
     };
-    hardware {
+    hardware = {
       bolt.enable = true;
     };
     plex = {
