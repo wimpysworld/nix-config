@@ -110,8 +110,8 @@
       securityType = "user";
       extraConfig = ''
         workgroup = WIMPRESS.IO
-        server string = ${hostname}
-        netbios name = ${hostname}
+        server string = Skull
+        netbios name = Skull
         security = user
         #use sendfile = yes
         #max protocol = smb2
@@ -129,8 +129,8 @@
           "guest ok" = "yes";
           "create mask" = "0644";
           "directory mask" = "0755";
-          "force user" = ${username};
-          "force group" = ${username};
+          "force user" = "$username";
+          "force group" = "$username";
         };
         Films_Kids = {
           path = "/mnt/sonnet/Films_Kids";
@@ -139,8 +139,8 @@
           "guest ok" = "yes";
           "create mask" = "0644";
           "directory mask" = "0755";
-          "force user" = ${username};
-          "force group" = ${username};
+          "force user" = "$username";
+          "force group" = "$username";
         };
       };
     };
