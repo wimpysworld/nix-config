@@ -91,9 +91,18 @@
       dataDir = "/mnt/sonnet/State/plex";
       openFirewall = true;
     };
-    tautulli = {
+    prowlarr = {
       enable = true;
-      dataDir = "/mnt/sonnet/State/tautulli";
+      openFirewall = true;
+    };
+    radarr = {
+      enable = true;
+      dataDir = "/mnt/sonnet/State/radarr";
+      openFirewall = true;
+    };
+    sonaar = {
+      enable = true;
+      dataDir = "/mnt/sonnet/State/sonarr";
       openFirewall = true;
     };
     samba = {
@@ -134,6 +143,11 @@
           "force group" = ${username};
         };
       };
+    };
+    tautulli = {
+      enable = true;
+      dataDir = "/mnt/sonnet/State/tautulli";
+      openFirewall = true;
     };
   };
 
