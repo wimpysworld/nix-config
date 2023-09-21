@@ -100,7 +100,7 @@
       dataDir = "/mnt/sonnet/State/radarr";
       openFirewall = true;
     };
-    sonaar = {
+    sonarr = {
       enable = true;
       dataDir = "/mnt/sonnet/State/sonarr";
       openFirewall = true;
