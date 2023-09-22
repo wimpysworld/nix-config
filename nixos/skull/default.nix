@@ -86,6 +86,9 @@
     hardware = {
       bolt.enable = true;
     };
+    netdata = {
+      enable = true;
+    };
     plex = {
       enable = true;
       dataDir = "/mnt/sonnet/State/plex";
