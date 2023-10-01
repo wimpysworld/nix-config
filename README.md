@@ -203,6 +203,8 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ![Pantheon on Designare](.github/screenshots/pantheon.png)
 
+![Alt](https://repobeats.axiom.co/api/embed/a82d5acf21276546e716d36dca41be774e6a5b74.svg "Repobeats analytics image")
+
 ## TODO 🗒️
 
 ### Hardware
