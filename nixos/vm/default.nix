@@ -1,4 +1,4 @@
-{ lib, modulesPath, pkgs, ... }:
+{ lib, modulesPath, pkgs, platform, ... }:
 {
   imports = [
     (modulesPath + "/profiles/qemu-guest.nix")
@@ -16,5 +16,5 @@
     initrd.availableKernelModules = [ "xhci_pci" "ohci_pci" "ehci_pci" "virtio_pci" "ahci" "usbhid" "sr_mod" "virtio_blk" ];
     kernelPackages = pkgs.linuxPackages_latest;
   };
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

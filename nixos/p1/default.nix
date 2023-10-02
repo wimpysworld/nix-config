@@ -1,6 +1,6 @@
 # Lenovo ThinkPad P1 Gen 1
 
-{ inputs, lib, pkgs, ... }:
+{ inputs, lib, pkgs, platform, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-p1
@@ -76,6 +76,5 @@
     #tod.enable = true;
     #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
   };
-
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

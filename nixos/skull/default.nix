@@ -1,6 +1,6 @@
 # Intel Skull Canyon NUC6i7KYK
 # - https://github.com/rm-hull/skull-canyon
-{ hostname, inputs, lib, username, ... }:
+{ hostname, inputs, lib, platform, username, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -153,6 +153,5 @@
       openFirewall = true;
     };
   };
-
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

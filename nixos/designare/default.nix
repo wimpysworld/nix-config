@@ -10,7 +10,7 @@
 # SATA:        1TB SanDisk SSD Plus
 # SATA:        1TB SanDisk SSD Plus
 
-{ inputs, lib, pkgs, ... }:
+{ inputs, lib, pkgs, platform, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -73,6 +73,5 @@
     };
     xserver.videoDrivers = [ "amdgpu" "nvidia" ];
   };
-
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

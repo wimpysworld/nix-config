@@ -1,9 +1,8 @@
-{ lib, ... }:
+{ lib, platform, ... }:
 {
   imports = [
     ../_mixins/services/bluetooth.nix
     ../_mixins/services/pipewire.nix
   ];
-
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }
