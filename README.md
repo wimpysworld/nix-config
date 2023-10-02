@@ -214,7 +214,7 @@ Things I should do or improve
   - [x] [Vorta](https://vorta.borgbase.com/) for workstations
   - [ ] [borgmatic](https://torsion.org/borgmatic/) for servers
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
-- [ ] Integrate homepage
+- [ ] Integrate [homepage](https://github.com/benphelps/homepage)
 - [ ] Integrate [agenix](https://github.com/ryantm/agenix) ~~or [sops-nix](https://github.com/Mic92/sops-nix)~~
 - [ ] Bind Syncthing GUI to ZeroTier.
 - [ ] Configure Plank.
@@ -232,6 +232,10 @@ Things I should do or improve
 - [ ] `fzf`
 - [ ] `tmate` or `tmux`
 - [ ] `nnn` or `broot` or `felix` or `ranger`
+
+### Servers
+
+- [ ] Forgejo or Gitea
 
 ## Inspirations 🧑‍🏫
 
