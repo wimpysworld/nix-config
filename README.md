@@ -207,57 +207,17 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ## TODO 🗒️
 
-### Hardware
+Things I should do or improve
 
-- [x] Add all computers to the table
-- [x] Implement [Disko](https://github.com/nix-community/disko) partitioning
-- [x] Integrate [.iso building](https://www.reddit.com/r/NixOS/comments/y1xo2u/comment/irzwe95/)
-- [x] Integrate OpenRGB
-- [x] Integrate OpenRazer
-- [x] Integrate StreamDeck
-- [x] Integrate Xone
-- [ ] ~~Migrate (*maybe*) to ZFS, with backups via [`zrepl`](https://zrepl.github.io/)~~
-- [x] Fix Magewell mwprocapture driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
-  - [x] [And again](https://github.com/NixOS/nixpkgs/pull/247897)
-
-### Applications
-
-- [x] Integrate an Emoji picker
-- [x] Integrate AppCenter and Flathub
-- [x] Integrate Steam
-- [ ] ~~Add Ferdium, Rambox or Wavebox~~
 - [ ] Add Password Managers
-
-### Services
-
 - [ ] Integrate Borg Backups
   - [x] [Vorta](https://vorta.borgbase.com/) for workstations
   - [ ] [borgmatic](https://torsion.org/borgmatic/) for servers
-- [ ] ~~Integrate cockpit (*server*)~~
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
-- [x] Integrate Plex (*skull*)
 - [ ] Integrate homepage
-- [x] Integrate fwupd
-- [x] Integrate Keybase
-- [x] Integrate Syncthing
-- [x] Integrate sshguard
-
-### Configuration
-
-- [x] Embed [install script in the ISO](./nixos/_mixins/users/nixos/console.nix)
 - [ ] Integrate [agenix](https://github.com/ryantm/agenix) ~~or [sops-nix](https://github.com/Mic92/sops-nix)~~
-- [x] Integrate capabilities from [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)
-- [x] Integrate wallpapers
-- [x] Integrate faces
-- [x] Include Serif fonts
-- [x] Include fallback fonts for Work Sans, Fira Code and Joypixels
-- [x] Create common user settings and discrete user settings
-- [x] Move application defaults out of the desktop defaults
-- [x] Create standard directories in `/home/martin` using `systemd.user.tmpfiles.rules`.
-- [x] Create `.envrc` files in `/home/martin`.
 - [ ] Bind Syncthing GUI to ZeroTier.
 - [ ] Configure Plank.
-- [x] Fix [Unfree in Home Manager](https://github.com/Misterio77/nix-starter-configs/blob/main/minimal/home-manager/home.nix#L31))
 
 ### Game Development
 
@@ -269,10 +229,9 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 - [ ] [sd](https://github.com/chmln/sd)
 - [ ] [skim](https://github.com/lotabout/skim)
-- [ ] fzf
-- [ ] tmate or tmux
-- [x] micro
-- [ ] nnn or broot or felix or ranger
+- [ ] `fzf`
+- [ ] `tmate` or `tmux`
+- [ ] `nnn` or `broot` or `felix` or `ranger`
 
 ## Inspirations 🧑‍🏫
 
