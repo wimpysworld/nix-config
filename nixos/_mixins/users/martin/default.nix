@@ -29,6 +29,7 @@ in
     irccloud
     inkscape
     libreoffice
+    nheko
     pick-colour-picker
     wmctrl
     xdotool
@@ -38,7 +39,6 @@ in
     # Fast moving apps use the unstable branch
     unstable.brave
     unstable.discord
-    unstable.fluffychat
     unstable.google-chrome
     unstable.microsoft-edge
     unstable.opera
