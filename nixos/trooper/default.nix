@@ -20,7 +20,7 @@
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/hardware/streamdeck.nix
     ../_mixins/services/bluetooth.nix
-    ../_mixins/services/maestral.nix
+    ../_mixins/services/filesync.nix
     ../_mixins/services/openrazer.nix
     ../_mixins/services/pipewire.nix
     ../_mixins/services/tailscale.nix

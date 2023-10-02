@@ -11,7 +11,7 @@
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
-    ../_mixins/services/maestral.nix
+    ../_mixins/services/filesync.nix
     ../_mixins/services/zerotier.nix
     ../_mixins/virt
   ];

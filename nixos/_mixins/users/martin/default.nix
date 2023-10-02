@@ -1,4 +1,4 @@
-{ config, desktop, hostname, lib, pkgs, ... }:
+{ config, desktop, lib, pkgs, ... }:
 let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
@@ -13,13 +13,7 @@ in
   ];
 
   environment.systemPackages = with pkgs; [
-    aria2
-    croc
-    rclone
-    wget2
-    wormhole-william
     yadm # Terminal dot file manager
-    zsync
   ] ++ lib.optionals (desktop != null) [
     appimage-run
     authy
@@ -46,19 +40,6 @@ in
     unstable.vivaldi
     unstable.vivaldi-ffmpeg-codecs
   ];
-
-  services = {
-    aria2 = {
-      enable = true;
-      openPorts = true;
-      rpcSecret = "${hostname}";
-    };
-    croc = {
-      enable = true;
-      pass = "${hostname}";
-      openFirewall = true;
-    };
-  };
 
   users.users.martin = {
     description = "Martin Wimpress";
