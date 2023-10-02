@@ -1,4 +1,4 @@
-{ config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, stateVersion, username, ... }: {
+{ config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }: {
   imports = [
     inputs.disko.nixosModules.disko
     inputs.vscode-server.nixosModules.default
@@ -68,13 +68,14 @@
       micro
       rsync
     ];
-    systemPackages = with pkgs; [
-      agenix
-      pciutils
-      psmisc
-      unzip
-      usbutils
-      wget
+    systemPackages = [
+      pkgs.agenix
+      pkgs.pciutils
+      pkgs.psmisc
+      pkgs.unzip
+      pkgs.usbutils
+      pkgs.wget
+      inputs.fh.packages.${platform}.default
     ];
     variables = {
       EDITOR = "micro";
