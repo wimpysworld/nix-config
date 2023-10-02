@@ -16,7 +16,6 @@ in
     yadm # Terminal dot file manager
   ] ++ lib.optionals (desktop != null) [
     appimage-run
-    authy
     chatterino2
     gimp-with-plugins
     gnome.gnome-clocks
@@ -31,6 +30,7 @@ in
     zoom-us
 
     # Fast moving apps use the unstable branch
+    unstable.authy
     unstable.brave
     unstable.discord
     unstable.google-chrome
