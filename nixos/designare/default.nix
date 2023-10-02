@@ -19,6 +19,7 @@
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     (import ./disks.nix { })
+    ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
     ../_mixins/services/maestral.nix
@@ -40,10 +41,6 @@
     kernelModules = [ "amdgpu" "kvm-intel" "nvidia" ];
     kernelPackages = pkgs.linuxPackages_6_3;
   };
-
-  environment.systemPackages = with pkgs; [
-    nvtop
-  ];
 
   hardware = {
     mwProCapture.enable = true;

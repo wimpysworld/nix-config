@@ -16,6 +16,7 @@
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     (import ./disks.nix { })
+    ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/hardware/streamdeck.nix
     ../_mixins/services/bluetooth.nix
@@ -79,11 +80,6 @@
       }
     '';
   };
-
-  environment.systemPackages = with pkgs; [
-    gwe
-    nvtop-nvidia
-  ];
 
   hardware = {
     nvidia.prime.offload.enable = false;

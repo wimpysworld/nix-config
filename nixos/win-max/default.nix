@@ -7,6 +7,7 @@
     inputs.nixos-hardware.nixosModules.common-pc-laptop-ssd
     (import ./disks.nix { })
     ../_mixins/hardware/gpd-win-max.nix
+    ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
     ../_mixins/services/pipewire.nix
@@ -24,9 +25,5 @@
     kernelModules = [ "kvm-intel" ];
     kernelPackages = pkgs.linuxPackages_latest;
   };
-
-  environment.systemPackages = with pkgs; [
-    nvtop-amd
-  ];
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

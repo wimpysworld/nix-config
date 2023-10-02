@@ -5,6 +5,7 @@
     inputs.nixos-hardware.nixosModules.common-gpu-intel
     inputs.nixos-hardware.nixosModules.gpd-win-2
     (import ./disks.nix { })
+    ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
     ../_mixins/services/pipewire.nix
@@ -30,9 +31,5 @@
     xkb-layout=us
   '';
   services.xserver.layout = lib.mkForce "us";
-
-  environment.systemPackages = with pkgs; [
-    nvtop-amd
-  ];
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }
