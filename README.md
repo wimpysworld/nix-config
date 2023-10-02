@@ -218,7 +218,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 - [x] Integrate Xone
 - [ ] ~~Migrate (*maybe*) to ZFS, with backups via [`zrepl`](https://zrepl.github.io/)~~
 - [x] Fix Magewell mwprocapture driver: [nixpkgs#221209](https://github.com/NixOS/nixpkgs/pull/221209)
-  - [ ] [And again](https://github.com/NixOS/nixpkgs/pull/247897)
+  - [x] [And again](https://github.com/NixOS/nixpkgs/pull/247897)
 
 ### Applications
 
@@ -235,7 +235,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
   - [ ] [borgmatic](https://torsion.org/borgmatic/) for servers
 - [ ] ~~Integrate cockpit (*server*)~~
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
-- [ ] Integrate Plex (*skull*)
+- [x] Integrate Plex (*skull*)
 - [ ] Integrate homepage
 - [x] Integrate fwupd
 - [x] Integrate Keybase
@@ -268,7 +268,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 ### Shell
 
 - [ ] [sd](https://github.com/chmln/sd)
-- [ ] [skin](https://github.com/lotabout/skim)
+- [ ] [skim](https://github.com/lotabout/skim)
 - [ ] fzf
 - [ ] tmate or tmux
 - [x] micro
