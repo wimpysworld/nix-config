@@ -4,6 +4,7 @@
     inputs.vscode-server.nixosModules.default
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
+    ./_mixins/console
     ./_mixins/services/firewall.nix
     ./_mixins/services/kmscon.nix
     ./_mixins/services/openssh.nix
