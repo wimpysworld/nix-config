@@ -68,14 +68,13 @@
       micro
       rsync
     ];
-    systemPackages = [
-      pkgs.agenix
-      pkgs.pciutils
-      pkgs.psmisc
-      pkgs.unzip
-      pkgs.usbutils
-      pkgs.wget
-      inputs.fh.packages.${platform}.default
+    systemPackages = with pkgs; [
+      agenix
+      pciutils
+      psmisc
+      unzip
+      usbutils
+      wget
     ];
     variables = {
       EDITOR = "micro";
