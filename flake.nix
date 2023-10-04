@@ -24,6 +24,9 @@
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
     
     # FlakeHub
+    antsy-alien-attack-pico.url = "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/*.tar.gz";
+    antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";
+
     eza.url = "https://flakehub.com/f/eza-community/eza/0.14.0.tar.gz";
     eza.inputs.nixpkgs.follows = "nixpkgs";
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";

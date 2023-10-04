@@ -9,6 +9,7 @@
       tree = "${inputs.eza.packages.${platform}.default}/bin/eza --tree";
     };
     systemPackages = with inputs; [
+      antsy-alien-attack-pico.packages.${platform}.default
       fh.packages.${platform}.default
       eza.packages.${platform}.default
     ];

@@ -22,6 +22,24 @@
         "type": "github"
       }
     },
+    "antsy-alien-attack-pico": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "narHash": "sha256-PkU4WXrt/9eJOohFU36mI4PNhDs+nnpkaLRZoEJq6ak=",
+        "rev": "6d2b9c418d232fe37277829695a5a65bd84ae586",
+        "revCount": 582,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/wimpysworld/antsy-alien-attack-pico/1.23.23418/018a1e81-66ff-7a64-ae49-1f6a3634b494/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/%2A.tar.gz"
+      }
+    },
     "darwin": {
       "inputs": {
         "nixpkgs": [
@@ -428,6 +446,7 @@
     "root": {
       "inputs": {
         "agenix": "agenix",
+        "antsy-alien-attack-pico": "antsy-alien-attack-pico",
         "disko": "disko",
         "eza": "eza",
         "fh": "fh",
