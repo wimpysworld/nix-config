@@ -11,6 +11,6 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v4
+      - uses: DeterminateSystems/nix-installer-action@v5
       - uses: DeterminateSystems/magic-nix-cache-action@v2
       - uses: astro/deadnix-action@v1
