@@ -7,7 +7,7 @@
 # SATA:        4TB Samsung 870 QVO
 # SATA:        4TB Samsung 870 QVO
 
-{ inputs, lib, pkgs, platform, ... }:
+{ config, inputs, lib, pkgs, platform, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
@@ -63,7 +63,7 @@
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "sd_mod" ];
     initrd.kernelModules = [ "nvidia" ];
     kernelModules = [ "kvm-amd" "nvidia" ];
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.unstable.linuxPackages_latest;
   };
 
   # https://nixos.wiki/wiki/PipeWire
@@ -82,7 +82,10 @@
   };
 
   hardware = {
-    nvidia.prime.offload.enable = false;
+    nvidia = { 
+      package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
+      prime.offload.enable = false;
+    };
     xone.enable = true;
   };
 

@@ -10,7 +10,7 @@
 # SATA:        1TB SanDisk SSD Plus
 # SATA:        1TB SanDisk SSD Plus
 
-{ inputs, lib, pkgs, platform, ... }:
+{ config, inputs, lib, pkgs, platform, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -39,12 +39,13 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "ahci" "nvme" "uas" "usbhid" "sd_mod" "xhci_pci" ];
     kernelModules = [ "amdgpu" "kvm-intel" "nvidia" ];
-    kernelPackages = pkgs.linuxPackages_6_3;
+    kernelPackages = lib.mkDefault pkgs.unstable.linuxPackages_latest;
   };
 
   hardware = {
     mwProCapture.enable = true;
     nvidia = {
+      package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
       prime = {
         amdgpuBusId = "PCI:3:0:0";
         nvidiaBusId = "PCI:4:0:0";

@@ -16,7 +16,7 @@
 # NVME:        AORUS NVMe Gen4 SSD 2TB
 # NVME:        AORUS NVMe Gen4 SSD 2TB
 
-{ inputs, lib, pkgs, platform, ... }:
+{ config, inputs, lib, pkgs, platform, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
@@ -65,7 +65,7 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
-    kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
+    kernelPackages = lib.mkDefault pkgs.unstable.linuxPackages_latest;
   };
 
   # https://nixos.wiki/wiki/PipeWire
@@ -85,6 +85,7 @@
   hardware = {
     mwProCapture.enable = true;
     nvidia = {
+      package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
       prime = {
         amdgpuBusId = "PCI:23:0:0";
         nvidiaBusId = "PCI:3:0:0";
