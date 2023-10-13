@@ -5,6 +5,7 @@
     fuse-overlayfs
     podman-compose
     podman-tui
+    unstable.podman
   ] ++ lib.optionals (desktop != null) [
     unstable.pods
     unstable.quickemu
