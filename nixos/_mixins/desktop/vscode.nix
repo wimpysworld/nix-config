@@ -16,8 +16,10 @@
         unstable.vscode-extensions.jnoortheen.nix-ide
         unstable.vscode-extensions.mads-hartmann.bash-ide-vscode
         unstable.vscode-extensions.ms-azuretools.vscode-docker
+        unstable.vscode-extensions.ms-vscode.cpptools
         vscode-extensions.ms-python.python
         vscode-extensions.ms-python.vscode-pylance
+        unstable.vscode-extensions.ms-vscode.cmake-tools
         unstable.vscode-extensions.ms-vscode.cpptools
         unstable.vscode-extensions.ms-vsliveshare.vsliveshare
         unstable.vscode-extensions.redhat.vscode-yaml
