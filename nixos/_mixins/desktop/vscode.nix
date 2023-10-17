@@ -26,6 +26,7 @@
         unstable.vscode-extensions.ryu1kn.partial-diff
         unstable.vscode-extensions.streetsidesoftware.code-spell-checker
         unstable.vscode-extensions.timonwong.shellcheck
+        unstable.vscode-extensions.twxs.cmake
         unstable.vscode-extensions.vscode-icons-team.vscode-icons
         unstable.vscode-extensions.yzhang.markdown-all-in-one
       ] ++ pkgs.unstable.vscode-utils.extensionsFromVscodeMarketplace [
