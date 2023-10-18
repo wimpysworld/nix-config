@@ -29,7 +29,6 @@
         ]
       },
       "locked": {
-        "lastModified": 1,
         "narHash": "sha256-PkU4WXrt/9eJOohFU36mI4PNhDs+nnpkaLRZoEJq6ak=",
         "rev": "6d2b9c418d232fe37277829695a5a65bd84ae586",
         "revCount": 582,
@@ -94,7 +93,6 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1697098100,
         "narHash": "sha256-eST70KMdGgbTo4FNL3K5YGn9lwIGroG4y4ExKDb30hU=",
         "rev": "7b743992578a9cb1f666f118d8b4edc218d60577",
         "revCount": 2644,
@@ -136,12 +134,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1696527796,
-        "narHash": "sha256-Pbw1yggqIzmY23DuxrmSSf9IbOy5olAqVWectq97j20=",
-        "rev": "4cd8c02f1fdafceee67602203d9672ae1b256946",
-        "revCount": 287,
+        "narHash": "sha256-gyxlVSraZIVAyOaJk90fub4b8g1w4KXwqa1ecNAC7xA=",
+        "rev": "d72db6283e6b6bef7216c8586c16d9f648652400",
+        "revCount": 353,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/fh/0.1.6/018b00f0-e7c5-7bc1-9eff-4921edc6e8c6/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/fh/0.1.7/018b3a46-fd61-77fb-9a59-239ed49dfff1/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -149,19 +146,16 @@
       }
     },
     "flake-compat": {
-      "flake": false,
       "locked": {
-        "lastModified": 1696426674,
         "narHash": "sha256-kvjfFW7WAETZlt09AgDn1MrtKzP7t90Vf7vypd3OL1U=",
-        "owner": "edolstra",
-        "repo": "flake-compat",
         "rev": "0f9255e01c2351cc7d116c072cb317785dd33b33",
-        "type": "github"
+        "revCount": 57,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/edolstra/flake-compat/1.0.1/018afb31-abd1-7bff-a5e4-cff7e18efb7a/source.tar.gz"
       },
       "original": {
-        "owner": "edolstra",
-        "repo": "flake-compat",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/edolstra/flake-compat/1.0.1.tar.gz"
       }
     },
     "flake-utils": {
@@ -352,11 +346,11 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1697059129,
-        "narHash": "sha256-9NJcFF9CEYPvHJ5ckE8kvINvI84SZZ87PvqMbH6pro0=",
+        "lastModified": 1697456312,
+        "narHash": "sha256-roiSnrqb5r+ehnKCauPLugoU8S36KgmWraHgRqVYndo=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "5e4c2ada4fcd54b99d56d7bd62f384511a7e2593",
+        "rev": "ca012a02bf8327be9e488546faecae5e05d7d749",
         "type": "github"
       },
       "original": {
