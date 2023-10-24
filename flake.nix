@@ -27,6 +27,8 @@
     antsy-alien-attack-pico.url = "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/*.tar.gz";
     antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";
 
+    crafts-flake.url = "https://flakehub.com/f/jnsgruk/crafts-flake/0.2.0.tar.gz";
+
     eza.url = "https://flakehub.com/f/eza-community/eza/0.14.0.tar.gz";
     eza.inputs.nixpkgs.follows = "nixpkgs";
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";

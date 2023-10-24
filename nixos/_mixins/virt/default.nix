@@ -13,6 +13,9 @@
   ];
 
   virtualisation = {
+    lxd = {
+      enable = true;
+    };
     podman = {
       defaultNetwork.settings = {
         dns_enabled = true;
@@ -21,6 +24,12 @@
       dockerSocket.enable = true;
       enable = true;
       enableNvidia = lib.elem "nvidia" config.services.xserver.videoDrivers;
+    };
+  };
+  
+  networking = {
+    firewall = {
+      trustedInterfaces = [ "lxdbr0" ];
     };
   };
 }

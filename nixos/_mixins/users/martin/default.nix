@@ -53,6 +53,7 @@ in
     ]
     ++ ifExists [
       "docker"
+      "lxd"
       "podman"
     ];
     # mkpasswd -m sha-512
