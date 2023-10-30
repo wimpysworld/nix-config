@@ -15,6 +15,7 @@
         unstable.vscode-extensions.golang.go
         unstable.vscode-extensions.jnoortheen.nix-ide
         unstable.vscode-extensions.mads-hartmann.bash-ide-vscode
+        unstable.vscode-extensions.mechatroner.rainbow-csv
         unstable.vscode-extensions.ms-azuretools.vscode-docker
         unstable.vscode-extensions.ms-vscode.cpptools
         vscode-extensions.ms-python.python
