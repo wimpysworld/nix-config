@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   home.packages = with pkgs; [
-    unstable.gitkraken
+    gitkraken
   ];
   
   home.file = {
