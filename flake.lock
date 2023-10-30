@@ -41,6 +41,24 @@
         "url": "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/%2A.tar.gz"
       }
     },
+    "crafts-flake": {
+      "inputs": {
+        "nix-formatter-pack": "nix-formatter-pack",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1696665815,
+        "narHash": "sha256-Ii3WmDuDSa+ZkYgFsD0OIXKrm9lGmetz4q1VwfQIrzQ=",
+        "rev": "011b796752ed1db6c440c6a07a86e26022e3f03b",
+        "revCount": 54,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/jnsgruk/crafts-flake/0.2.0/018b092d-bf2d-7724-9995-2ad6762b64cf/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/jnsgruk/crafts-flake/0.2.0.tar.gz"
+      }
+    },
     "darwin": {
       "inputs": {
         "nixpkgs": [
@@ -259,7 +277,7 @@
     },
     "naersk": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs_2"
       },
       "locked": {
         "lastModified": 1694081375,
@@ -299,10 +317,33 @@
     "nix-formatter-pack": {
       "inputs": {
         "nixpkgs": [
+          "crafts-flake",
           "nixpkgs"
         ],
         "nmd": "nmd",
         "nmt": "nmt"
+      },
+      "locked": {
+        "lastModified": 1689022371,
+        "narHash": "sha256-+jxvMYzmzKaGFh7VDgKBmdP1ZBaGhdzL5WZaspdKpTA=",
+        "owner": "Gerschtli",
+        "repo": "nix-formatter-pack",
+        "rev": "d974547b3d7c7ce2975dc120ef3bc53f9dd61127",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Gerschtli",
+        "repo": "nix-formatter-pack",
+        "type": "github"
+      }
+    },
+    "nix-formatter-pack_2": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "nmd": "nmd_2",
+        "nmt": "nmt_2"
       },
       "locked": {
         "lastModified": 1694984852,
@@ -336,15 +377,18 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1688231357,
-        "narHash": "sha256-ZOn16X5jZ6X5ror58gOJAxPfFLAQhZJ6nOUeS4tfFwo=",
-        "path": "/nix/store/aw6kmwd8a02n2c1wysrfk2q31brlmqdz-source",
-        "rev": "645ff62e09d294a30de823cb568e9c6d68e92606",
-        "type": "path"
+        "lastModified": 1693355128,
+        "narHash": "sha256-+ZoAny3ZxLcfMaUoLVgL9Ywb/57wP+EtsdNGuXUJrwg=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "a63a64b593dcf2fe05f7c5d666eb395950f36bc9",
+        "type": "github"
       },
       "original": {
-        "id": "nixpkgs",
-        "type": "indirect"
+        "owner": "nixos",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "nixpkgs-unstable": {
@@ -365,6 +409,19 @@
     },
     "nixpkgs_2": {
       "locked": {
+        "lastModified": 1688231357,
+        "narHash": "sha256-ZOn16X5jZ6X5ror58gOJAxPfFLAQhZJ6nOUeS4tfFwo=",
+        "path": "/nix/store/aw6kmwd8a02n2c1wysrfk2q31brlmqdz-source",
+        "rev": "645ff62e09d294a30de823cb568e9c6d68e92606",
+        "type": "path"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "type": "indirect"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
         "lastModified": 1681358109,
         "narHash": "sha256-eKyxW4OohHQx9Urxi7TQlFBTDWII+F+x2hklDOQPB50=",
         "owner": "NixOS",
@@ -379,7 +436,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
+    "nixpkgs_4": {
       "locked": {
         "lastModified": 1691654369,
         "narHash": "sha256-gSILTEx1jRaJjwZxRlnu3ZwMn1FVNk80qlwiCX8kmpo=",
@@ -395,13 +452,13 @@
         "type": "github"
       }
     },
-    "nixpkgs_4": {
+    "nixpkgs_5": {
       "locked": {
-        "lastModified": 1698288402,
-        "narHash": "sha256-jIIjApPdm+4yt8PglX8pUOexAdEiAax/DXW3S/Mb21E=",
+        "lastModified": 1698434055,
+        "narHash": "sha256-Phxi5mUKSoL7A0IYUiYtkI9e8NcGaaV5PJEaJApU1Ko=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "60b9db998f71ea49e1a9c41824d09aa274be1344",
+        "rev": "1a3c95e3b23b3cdb26750621c08cc2f1560cb883",
         "type": "github"
       },
       "original": {
@@ -412,6 +469,22 @@
       }
     },
     "nmd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1666190571,
+        "narHash": "sha256-Z1hc7M9X6L+H83o9vOprijpzhTfOBjd0KmUTnpHAVjA=",
+        "owner": "rycee",
+        "repo": "nmd",
+        "rev": "b75d312b4f33bd3294cd8ae5c2ca8c6da2afc169",
+        "type": "gitlab"
+      },
+      "original": {
+        "owner": "rycee",
+        "repo": "nmd",
+        "type": "gitlab"
+      }
+    },
+    "nmd_2": {
       "flake": false,
       "locked": {
         "lastModified": 1666190571,
@@ -443,17 +516,34 @@
         "type": "gitlab"
       }
     },
+    "nmt_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1648075362,
+        "narHash": "sha256-u36WgzoA84dMVsGXzml4wZ5ckGgfnvS0ryzo/3zn/Pc=",
+        "owner": "rycee",
+        "repo": "nmt",
+        "rev": "d83601002c99b78c89ea80e5e6ba21addcfe12ae",
+        "type": "gitlab"
+      },
+      "original": {
+        "owner": "rycee",
+        "repo": "nmt",
+        "type": "gitlab"
+      }
+    },
     "root": {
       "inputs": {
         "agenix": "agenix",
         "antsy-alien-attack-pico": "antsy-alien-attack-pico",
+        "crafts-flake": "crafts-flake",
         "disko": "disko",
         "eza": "eza",
         "fh": "fh",
         "home-manager": "home-manager_2",
-        "nix-formatter-pack": "nix-formatter-pack",
+        "nix-formatter-pack": "nix-formatter-pack_2",
         "nixos-hardware": "nixos-hardware",
-        "nixpkgs": "nixpkgs_4",
+        "nixpkgs": "nixpkgs_5",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "vscode-server": "vscode-server"
       }
@@ -478,7 +568,7 @@
     "rust-overlay": {
       "inputs": {
         "flake-utils": "flake-utils_2",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_3"
       },
       "locked": {
         "lastModified": 1694484610,
@@ -541,7 +631,7 @@
     },
     "treefmt-nix": {
       "inputs": {
-        "nixpkgs": "nixpkgs_3"
+        "nixpkgs": "nixpkgs_4"
       },
       "locked": {
         "lastModified": 1693817438,
