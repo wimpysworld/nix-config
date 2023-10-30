@@ -109,8 +109,8 @@
         {
           name = "vscode-front-matter";
           publisher = "eliostruyf";
-          version = "8.4.0";
-          sha256 = "sha256-L0PbZ4HxJAlxkwVcZe+kBGS87yzg0pZl89PU0aUVYzY=";
+          version = "9.3.1";
+          sha256 = "sha256-75nnO+JbIXCkEQT8x+F41yn01lRLqsgl+eZ92kJxeZU=";
         }
         {
           name = "vscode-lldb";
