@@ -31,6 +31,7 @@
         unstable.vscode-extensions.tamasfe.even-better-toml
         unstable.vscode-extensions.timonwong.shellcheck
         unstable.vscode-extensions.twxs.cmake
+        unstable.vscode-extensions.vadimcn.vscode-lldb
         unstable.vscode-extensions.vscode-icons-team.vscode-icons
         unstable.vscode-extensions.yzhang.markdown-all-in-one
       ] ++ pkgs.unstable.vscode-utils.extensionsFromVscodeMarketplace [
@@ -111,12 +112,6 @@
           publisher = "eliostruyf";
           version = "9.3.1";
           sha256 = "sha256-75nnO+JbIXCkEQT8x+F41yn01lRLqsgl+eZ92kJxeZU=";
-        }
-        {
-          name = "vscode-lldb";
-          publisher = "vadimcn";
-          version = "1.10.0";
-          sha256 = "sha256-RAKv7ESw0HG/avBOPE1CTr0THsB7UWx0haJVd/Dm9Gg=";
         }
         {
           name = "vscode-mdx";
