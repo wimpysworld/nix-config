@@ -97,8 +97,8 @@
         {
           name = "simple-rst";
           publisher = "trond-snekvik";
-          version = "1.5.3";
-          sha256 = "sha256-0gPqckwzDptpzzg1tP4I9WQfrXlflO+G0KcAK5pEie8=";
+          version = "1.5.4";
+          sha256 = "sha256-W3LydBsc7rEHIcjE/0jESFS87uc1DfjuZt6lZhMiQcs=";
         }
         {
           name = "vala";
