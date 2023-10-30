@@ -103,8 +103,8 @@
         {
           name = "vala";
           publisher = "prince781";
-          version = "1.0.8";
-          sha256 = "sha256-IuIb7vLNiE3rzVHOsjInaYLzNYORbwabQq0bfaPLlqc=";
+          version = "1.1.0";
+          sha256 = "sha256-LJJDKhwzbGznyiXeB8SYir3LOM7/quYhGae1m4X/s3M=";
         }
         {
           name = "vscode-front-matter";
