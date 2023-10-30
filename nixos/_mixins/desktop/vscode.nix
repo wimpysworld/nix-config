@@ -24,8 +24,11 @@
         unstable.vscode-extensions.ms-vscode.cpptools
         unstable.vscode-extensions.ms-vsliveshare.vsliveshare
         unstable.vscode-extensions.redhat.vscode-yaml
+        unstable.vscode-extensions.rust-lang.rust-analyzer
         unstable.vscode-extensions.ryu1kn.partial-diff
+        unstable.vscode-extensions.serayuzgur.crates
         unstable.vscode-extensions.streetsidesoftware.code-spell-checker
+        unstable.vscode-extensions.tamasfe.even-better-toml
         unstable.vscode-extensions.timonwong.shellcheck
         unstable.vscode-extensions.twxs.cmake
         unstable.vscode-extensions.vscode-icons-team.vscode-icons
@@ -108,6 +111,12 @@
           publisher = "eliostruyf";
           version = "8.4.0";
           sha256 = "sha256-L0PbZ4HxJAlxkwVcZe+kBGS87yzg0pZl89PU0aUVYzY=";
+        }
+        {
+          name = "vscode-lldb";
+          publisher = "vadimcn";
+          version = "1.10.0";
+          sha256 = "sha256-RAKv7ESw0HG/avBOPE1CTr0THsB7UWx0haJVd/Dm9Gg=";
         }
         {
           name = "vscode-mdx";
