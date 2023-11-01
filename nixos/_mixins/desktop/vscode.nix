@@ -84,6 +84,12 @@
           sha256 = "sha256-4qy+2Tg9g0/9D+MNvLSgWUE8sc5itsC/pJ9hcfxyVzQ=";
         }
         {
+          name = "nelua";
+          publisher = "alexgb";
+          version = "0.1.0";
+          sha256 = "sha256-6r0l6p6rDBeCTPLqFRHD3/hQJxb8me08C0Zqti8Hr18=";
+        }
+        {
           name = "non-breaking-space-highlighter";
           publisher = "viktorzetterstrom";
           version = "0.0.3";
