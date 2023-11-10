@@ -116,7 +116,6 @@
       nodePackages.prettier # Code format
       nurl # Nix URL fetcher
       nyancat # Terminal rainbow spewing feline
-      speedtest-go # Terminal speedtest.net 
       optipng # Terminal PNG optimizer
       procs # Modern Unix `ps`
       python310Packages.gpustat # Terminal GPU info
@@ -125,6 +124,7 @@
       rustfmt # Code format Rust
       shellcheck # Code lint Shell
       shfmt # Code format Shell
+      speedtest-go # Terminal speedtest.net 
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
       vdpauinfo # Terminal VDPAU info
