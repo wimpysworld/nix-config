@@ -29,6 +29,7 @@
         ]
       },
       "locked": {
+        "lastModified": 1,
         "narHash": "sha256-PkU4WXrt/9eJOohFU36mI4PNhDs+nnpkaLRZoEJq6ak=",
         "rev": "6d2b9c418d232fe37277829695a5a65bd84ae586",
         "revCount": 582,
@@ -46,6 +47,7 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
+        "lastModified": 1696665815,
         "narHash": "sha256-Ii3WmDuDSa+ZkYgFsD0OIXKrm9lGmetz4q1VwfQIrzQ=",
         "rev": "011b796752ed1db6c440c6a07a86e26022e3f03b",
         "revCount": 54,
@@ -110,6 +112,7 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
+        "lastModified": 1697098100,
         "narHash": "sha256-eST70KMdGgbTo4FNL3K5YGn9lwIGroG4y4ExKDb30hU=",
         "rev": "7b743992578a9cb1f666f118d8b4edc218d60577",
         "revCount": 2644,
@@ -151,6 +154,7 @@
         ]
       },
       "locked": {
+        "lastModified": 1697489714,
         "narHash": "sha256-gyxlVSraZIVAyOaJk90fub4b8g1w4KXwqa1ecNAC7xA=",
         "rev": "d72db6283e6b6bef7216c8586c16d9f648652400",
         "revCount": 353,
