@@ -12,6 +12,8 @@ in
     ../../desktop/${desktop}-apps.nix
   ];
 
+  environment.localBinInPath = true;
+
   environment.systemPackages = with pkgs; [
     yadm # Terminal dot file manager
   ] ++ lib.optionals (desktop != null) [
