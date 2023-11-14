@@ -104,7 +104,6 @@
       iw # Terminal WiFi info
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
-      lazygit # Terminal Git client
       libva-utils # Terminal VAAPI info
       lurk # Modern Unix `strace`
       mdp # Terminal Markdown presenter
