@@ -12,7 +12,7 @@
     unstable.celeste
     unstable.maestral-gui
   ];
-  
+
   services = {
     aria2 = {
       enable = true;
@@ -23,6 +23,17 @@
       enable = true;
       pass = "${hostname}";
       openFirewall = true;
+    };
+  };
+
+  systemd.user.services.maestral = {
+    description = "Maestral";
+    wantedBy = [ "default.target" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.unstable.maestral}/bin/maestral start";
+      ExecReload = "/run/current-system/sw/bin/kill $MAINPID";
+      KillMode = "process";
+      Restart = "on-failure";
     };
   };
 }
