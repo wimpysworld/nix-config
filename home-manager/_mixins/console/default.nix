@@ -86,7 +86,6 @@
         less = "bat --paging=always";
         more = "bat --paging=always";
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
-        tree = "exa --tree";
       };
     };
     gh = {
