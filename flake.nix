@@ -68,6 +68,7 @@
         "martin@win-max" = libx.mkHome { hostname = "win-max"; username = "martin"; desktop = "pantheon"; };
         "martin@zed" = libx.mkHome { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
         # Servers
+        "martin@builder" = libx.mkHome { hostname = "builder"; username = "martin"; };
         "martin@brix" = libx.mkHome { hostname = "brix"; username = "martin"; };
         "martin@skull" = libx.mkHome { hostname = "skull"; username = "martin"; };
         "martin@vm-mini" = libx.mkHome { hostname = "vm-mini"; username = "martin"; };
