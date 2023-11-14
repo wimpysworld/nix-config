@@ -115,7 +115,7 @@
           default = "matching";
         };
         pull = {
-          rebase = true;
+          rebase = false;
         };
         init = {
           defaultBranch = "main";
