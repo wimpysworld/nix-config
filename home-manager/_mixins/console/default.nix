@@ -165,12 +165,17 @@
     micro = {
       enable = true;
       settings = {
+        autosu = true;
         colorscheme = "simple";
         diffgutter = true;
+        paste = true;
         rmtrailingws = true;
         savecursor = true;
         saveundo = true;
         scrollbar = true;
+        scrollbarchar = "•";
+        scrollmargin = 4;
+        scrollspeed = 1;
       };
     };
     powerline-go = {
