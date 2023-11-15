@@ -124,7 +124,7 @@
       rustfmt # Code format Rust
       shellcheck # Code lint Shell
       shfmt # Code format Shell
-      speedtest-go # Terminal speedtest.net 
+      speedtest-go # Terminal speedtest.net
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
       vdpauinfo # Terminal VDPAU info
