@@ -103,6 +103,12 @@
           sha256 = "sha256-+Mkcbeq7b+vkuf2/LYT10mj46sULixLNKGpCEk1Eu/0=";
         }
         {
+          name = "shell-format";
+          publisher = "foxundermoon";
+          version = "7.2.5";
+          sha256 = "sha256-kfpRByJDcGY3W9+ELBzDOUMl06D/vyPlN//wPgQhByk=";
+        }
+        {
           name = "simple-rst";
           publisher = "trond-snekvik";
           version = "1.5.4";
