@@ -1,15 +1,15 @@
 { config, desktop, lib, pkgs, ... }: {
   #https://nixos.wiki/wiki/Podman
   environment.systemPackages = with pkgs; [
-    unstable.distrobox
-    unstable.flyctl
+    distrobox
+    flyctl
     fuse-overlayfs
     podman-compose
     podman-tui
-    unstable.podman
+    podman
   ] ++ lib.optionals (desktop != null) [
-    unstable.pods
-    unstable.quickemu
+    pods
+    quickemu
     xorg.xhost
   ];
 

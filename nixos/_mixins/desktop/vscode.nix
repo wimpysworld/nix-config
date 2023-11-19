@@ -3,39 +3,39 @@
     (vscode-with-extensions.override {
       vscode = unstable.vscode;
       vscodeExtensions = [
-        unstable.vscode-extensions.coolbear.systemd-unit-file
-        unstable.vscode-extensions.dart-code.flutter
-        unstable.vscode-extensions.dart-code.dart-code
-        unstable.vscode-extensions.dotjoshjohnson.xml
-        unstable.vscode-extensions.eamodio.gitlens
-        unstable.vscode-extensions.editorconfig.editorconfig
-        unstable.vscode-extensions.esbenp.prettier-vscode
-        unstable.vscode-extensions.github.copilot
-        unstable.vscode-extensions.github.vscode-github-actions
-        unstable.vscode-extensions.golang.go
-        unstable.vscode-extensions.jnoortheen.nix-ide
-        unstable.vscode-extensions.mads-hartmann.bash-ide-vscode
-        unstable.vscode-extensions.mechatroner.rainbow-csv
-        unstable.vscode-extensions.mkhl.direnv
-        unstable.vscode-extensions.ms-azuretools.vscode-docker
-        unstable.vscode-extensions.ms-vscode.cpptools
+        vscode-extensions.coolbear.systemd-unit-file
+        vscode-extensions.dart-code.flutter
+        vscode-extensions.dart-code.dart-code
+        vscode-extensions.dotjoshjohnson.xml
+        vscode-extensions.eamodio.gitlens
+        vscode-extensions.editorconfig.editorconfig
+        vscode-extensions.esbenp.prettier-vscode
+        vscode-extensions.github.copilot
+        vscode-extensions.github.vscode-github-actions
+        vscode-extensions.golang.go
+        vscode-extensions.jnoortheen.nix-ide
+        vscode-extensions.mads-hartmann.bash-ide-vscode
+        vscode-extensions.mechatroner.rainbow-csv
+        vscode-extensions.mkhl.direnv
+        vscode-extensions.ms-azuretools.vscode-docker
+        vscode-extensions.ms-vscode.cpptools
         vscode-extensions.ms-python.python
         vscode-extensions.ms-python.vscode-pylance
-        unstable.vscode-extensions.ms-vscode.cmake-tools
-        unstable.vscode-extensions.ms-vscode.cpptools
-        unstable.vscode-extensions.ms-vsliveshare.vsliveshare
-        unstable.vscode-extensions.redhat.vscode-yaml
-        unstable.vscode-extensions.rust-lang.rust-analyzer
-        unstable.vscode-extensions.ryu1kn.partial-diff
-        unstable.vscode-extensions.serayuzgur.crates
-        unstable.vscode-extensions.streetsidesoftware.code-spell-checker
-        unstable.vscode-extensions.tamasfe.even-better-toml
-        unstable.vscode-extensions.timonwong.shellcheck
-        unstable.vscode-extensions.twxs.cmake
-        unstable.vscode-extensions.vadimcn.vscode-lldb
-        unstable.vscode-extensions.vscode-icons-team.vscode-icons
-        unstable.vscode-extensions.yzhang.markdown-all-in-one
-      ] ++ pkgs.unstable.vscode-utils.extensionsFromVscodeMarketplace [
+        vscode-extensions.ms-vscode.cmake-tools
+        vscode-extensions.ms-vscode.cpptools
+        vscode-extensions.ms-vsliveshare.vsliveshare
+        vscode-extensions.redhat.vscode-yaml
+        vscode-extensions.rust-lang.rust-analyzer
+        vscode-extensions.ryu1kn.partial-diff
+        vscode-extensions.serayuzgur.crates
+        vscode-extensions.streetsidesoftware.code-spell-checker
+        vscode-extensions.tamasfe.even-better-toml
+        vscode-extensions.timonwong.shellcheck
+        vscode-extensions.twxs.cmake
+        vscode-extensions.vadimcn.vscode-lldb
+        vscode-extensions.vscode-icons-team.vscode-icons
+        vscode-extensions.yzhang.markdown-all-in-one
+      ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
         {
           name = "bash-debug";
           publisher = "rogalmic";

@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   # https://github.com/tom-james-watson/emote
-  home.packages = with pkgs.unstable; [
+  home.packages = with pkgs; [
     emote
   ];
 
@@ -11,7 +11,7 @@
         Description = "Emote";
       };
       Service = {
-        ExecStart = "${pkgs.unstable.emote}/bin/emote";
+        ExecStart = "${pkgs.emote}/bin/emote";
         Restart = "on-failure";
       };
       Install = {

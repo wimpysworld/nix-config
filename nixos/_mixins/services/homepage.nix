@@ -1,4 +1,4 @@
-{ inputs, pkgs, ... }:
+{ pkgs, ... }:
 let
     homepage-bookmarks = pkgs.writeTextFile {
     name = "bookmarks.yaml";
@@ -27,11 +27,9 @@ let
   };
 in
 {
-  imports = [ "${inputs.nixpkgs-unstable}/nixos/modules/services/misc/homepage-dashboard.nix" ];
-
   services.homepage-dashboard = {
     enable = true;
-    package = pkgs.unstable.homepage-dashboard;
+    package = pkgs.homepage-dashboard;
     openFirewall = true;
   };
   
