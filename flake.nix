@@ -1,7 +1,7 @@
 {
   description = "Wimpy's NixOS and Home Manager Configuration";
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
+    nixpkgs.url = "github:nixos/nixpkgs/staging-23.11";
     # You can access packages and modules from different nixpkgs revs at the same time.
     # See 'unstable-packages' overlay in 'overlays/default.nix'.
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -12,7 +12,7 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
-    home-manager.url = "github:nix-community/home-manager/release-23.05";
+    home-manager.url = "github:nix-community/home-manager/master";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-formatter-pack.url = "github:Gerschtli/nix-formatter-pack";
@@ -46,7 +46,7 @@
     let
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-      stateVersion = "23.05";
+      stateVersion = "23.11";
       libx = import ./lib { inherit inputs outputs stateVersion; };
     in
     {
