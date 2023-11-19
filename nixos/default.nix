@@ -85,8 +85,10 @@
   };
 
   fonts = {
+    # Enable a basic set of fonts providing several font styles and families and reasonable coverage of Unicode.
+    enableDefaultPackages = false;
     fontDir.enable = true;
-    fonts = with pkgs; [
+    packages = with pkgs; [
       (nerdfonts.override { fonts = [ "FiraCode" "SourceCodePro" "UbuntuMono" ]; })
       fira
       fira-go
@@ -97,9 +99,6 @@
       ubuntu_font_family
       work-sans
     ];
-
-    # Enable a basic set of fonts providing several font styles and families and reasonable coverage of Unicode.
-    enableDefaultFonts = false;
 
     fontconfig = {
       antialias = true;
@@ -113,7 +112,7 @@
       hinting = {
         autohint = false;
         enable = true;
-        style = "hintslight";
+        style = "slight";
       };
       subpixel = {
         rgba = "rgb";
