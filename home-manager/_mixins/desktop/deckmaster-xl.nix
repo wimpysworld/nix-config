@@ -20,7 +20,7 @@
       deckmaster
       hueadm
       libnotify
-      unstable.obs-cli
+      obs-cli
       playerctl
     ];
   };

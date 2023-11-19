@@ -22,7 +22,7 @@
       flags = [
         "--disable-up-arrow"
       ];
-      package = pkgs.unstable.atuin;
+      package = pkgs.atuin;
       settings = {
         auto_sync = true;
         dialect = "uk";

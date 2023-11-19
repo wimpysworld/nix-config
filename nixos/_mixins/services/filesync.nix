@@ -3,14 +3,14 @@
   environment.systemPackages = with pkgs; [
     aria2
     croc
-    unstable.maestral
+    maestral
     rclone
     wget2
     wormhole-william
     zsync
   ] ++ lib.optionals (desktop != null) [
-    unstable.celeste
-    unstable.maestral-gui
+    celeste
+    maestral-gui
   ];
 
   services = {
@@ -30,7 +30,7 @@
     description = "Maestral";
     wantedBy = [ "default.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.unstable.maestral}/bin/maestral start";
+      ExecStart = "${pkgs.maestral}/bin/maestral start";
       ExecReload = "/run/current-system/sw/bin/kill $MAINPID";
       KillMode = "process";
       Restart = "on-failure";
