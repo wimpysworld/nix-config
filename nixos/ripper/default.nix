@@ -66,6 +66,7 @@
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
     kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
+    swraid.enable = true;
   };
 
   # https://nixos.wiki/wiki/PipeWire
