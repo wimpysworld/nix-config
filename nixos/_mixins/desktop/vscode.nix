@@ -10,7 +10,6 @@
         vscode-extensions.dart-code.dart-code
         vscode-extensions.donjayamanne.githistory
         vscode-extensions.dotjoshjohnson.xml
-        vscode-extensions.eamodio.gitlens
         vscode-extensions.editorconfig.editorconfig
         vscode-extensions.esbenp.prettier-vscode
         vscode-extensions.github.copilot
