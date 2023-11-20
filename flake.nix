@@ -32,14 +32,11 @@
     nix-snapd.url = "https://flakehub.com/f/io12/nix-snapd/0.1.29.tar.gz";
     nix-snapd.inputs.nixpkgs.follows = "nixpkgs";
 
-    eza.url = "https://flakehub.com/f/eza-community/eza/0.14.0.tar.gz";
-    eza.inputs.nixpkgs.follows = "nixpkgs";
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
     fh.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
     { self
-    , eza
     , fh
     , nix-formatter-pack
     , nixpkgs
