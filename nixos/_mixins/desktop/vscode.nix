@@ -14,6 +14,7 @@
         vscode-extensions.esbenp.prettier-vscode
         vscode-extensions.github.copilot
         vscode-extensions.github.vscode-github-actions
+        vscode-extensions.github.vscode-pull-request-github
         vscode-extensions.golang.go
         vscode-extensions.jnoortheen.nix-ide
         vscode-extensions.mads-hartmann.bash-ide-vscode
