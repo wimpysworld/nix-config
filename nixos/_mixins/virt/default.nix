@@ -1,4 +1,8 @@
-{ config, desktop, lib, pkgs, ... }: {
+{ config, desktop, inputs, lib, pkgs, platform, ... }: {
+  imports = [
+    inputs.nix-snapd.nixosModules.default
+  ];
+
   #https://nixos.wiki/wiki/Podman
   environment.systemPackages = with pkgs; [
     distrobox
@@ -7,11 +11,15 @@
     podman-compose
     podman-tui
     podman
+  ] ++ [
+    inputs.crafts-flake.packages.${platform}.snapcraft
   ] ++ lib.optionals (desktop != null) [
     pods
     quickemu
     xorg.xhost
   ];
+
+  services.snap.enable = true;
 
   virtualisation = {
     lxd = {
