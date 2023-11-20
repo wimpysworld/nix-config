@@ -3,6 +3,7 @@
     (vscode-with-extensions.override {
       vscode = vscode;
       vscodeExtensions = [
+        vscode-extensions.alefragnani.project-manager
         vscode-extensions.codezombiech.gitignore
         vscode-extensions.coolbear.systemd-unit-file
         vscode-extensions.dart-code.flutter
