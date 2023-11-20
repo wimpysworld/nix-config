@@ -75,6 +75,8 @@
       unzip
       usbutils
       wget
+    ] ++ [
+      inputs.fh.packages.${platform}.default
     ];
     variables = {
       EDITOR = "micro";

@@ -37,10 +37,8 @@
   };
   outputs =
     { self
-    , fh
     , nix-formatter-pack
     , nixpkgs
-    , vscode-server
     , ...
     } @ inputs:
     let
