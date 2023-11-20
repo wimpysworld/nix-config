@@ -1,7 +1,7 @@
 { pkgs, ... }: {
   environment.systemPackages = with pkgs; [
     (vscode-with-extensions.override {
-      vscode = unstable.vscode;
+      vscode = vscode;
       vscodeExtensions = [
         vscode-extensions.coolbear.systemd-unit-file
         vscode-extensions.dart-code.flutter
