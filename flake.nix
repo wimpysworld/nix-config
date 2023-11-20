@@ -28,6 +28,9 @@
     antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";
 
     crafts-flake.url = "https://flakehub.com/f/jnsgruk/crafts-flake/0.2.0.tar.gz";
+    crafts-flake.inputs.nixpkgs.follows = "nixpkgs";
+    nix-snapd.url = "https://flakehub.com/f/io12/nix-snapd/0.1.29.tar.gz";
+    nix-snapd.inputs.nixpkgs.follows = "nixpkgs";
 
     eza.url = "https://flakehub.com/f/eza-community/eza/0.14.0.tar.gz";
     eza.inputs.nixpkgs.follows = "nixpkgs";
