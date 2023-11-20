@@ -30,6 +30,7 @@ let
     tdesktop
     vivaldi
     vivaldi-ffmpeg-codecs
+    wavebox
   ];
 in
 {
