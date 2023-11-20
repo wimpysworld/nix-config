@@ -1,4 +1,7 @@
-{ pkgs, ... }: {
+{ inputs, pkgs, ... }: {
+  imports = [
+    inputs.vscode-server.nixosModules.default
+  ];
   environment.systemPackages = with pkgs; [
     (vscode-with-extensions.override {
       vscode = vscode;

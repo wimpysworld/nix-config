@@ -1,7 +1,6 @@
 { config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }: {
   imports = [
     inputs.disko.nixosModules.disko
-    inputs.vscode-server.nixosModules.default
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
     ./_mixins/console
