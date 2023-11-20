@@ -77,6 +77,16 @@
         enable = true;
       };
     };
+    eza = {
+      enable = true;
+      enableAliases = true;
+      extraOptions = [
+        "--group-directories-first"
+        "--header"
+      ];
+      git = true;
+      icons = true;
+    };
     fish = {
       enable = true;
       shellAliases = {
@@ -86,6 +96,7 @@
         less = "bat --paging=always";
         more = "bat --paging=always";
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
+        tree = "eza --tree";
       };
     };
     gh = {
