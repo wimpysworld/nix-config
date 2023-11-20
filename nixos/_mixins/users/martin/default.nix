@@ -1,20 +1,7 @@
 { config, desktop, lib, pkgs, ... }:
 let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
-in
-{
-  imports = [ ]
-  ++ lib.optionals (desktop != null) [
-    ../../desktop/chromium.nix
-    ../../desktop/chromium-extensions.nix
-    ../../desktop/obs-studio.nix
-    ../../desktop/vscode.nix
-    ../../desktop/${desktop}-apps.nix
-  ];
-
-  environment.localBinInPath = true;
-
-  environment.systemPackages = with pkgs; [
+  stable-packages = with pkgs;  [
     yadm # Terminal dot file manager
   ] ++ lib.optionals (desktop != null) [
     appimage-run
@@ -31,17 +18,32 @@ in
     xdotool
     ydotool
     zoom-us
-
-    # Fast moving apps use the unstable branch
-    unstable.brave
-    unstable.discord
-    unstable.google-chrome
-    unstable.microsoft-edge
-    unstable.opera
-    unstable.tdesktop
-    unstable.vivaldi
-    unstable.vivaldi-ffmpeg-codecs
   ];
+
+  # For fast moving apps; use the unstable branch
+  unstable-packages = with pkgs.unstable; [
+    brave
+    discord
+    google-chrome
+    microsoft-edge
+    opera
+    tdesktop
+    vivaldi
+    vivaldi-ffmpeg-codecs
+  ];
+in
+{
+  imports = [ ]
+  ++ lib.optionals (desktop != null) [
+    ../../desktop/chromium.nix
+    ../../desktop/chromium-extensions.nix
+    ../../desktop/obs-studio.nix
+    ../../desktop/vscode.nix
+    ../../desktop/${desktop}-apps.nix
+  ];
+
+  environment.localBinInPath = true;
+  environment.systemPackages = stable-packages ++ unstable-packages;
 
   users.users.martin = {
     description = "Martin Wimpress";
