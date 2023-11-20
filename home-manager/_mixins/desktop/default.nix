@@ -5,6 +5,7 @@
 
   # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
   services.mpris-proxy.enable = true;
+  services.gpg-agent.pinentryFlavor = lib.mkForce "gnome3";
 
   xresources.properties = {
     "XTerm*background" = "#121214";
