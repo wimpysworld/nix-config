@@ -227,11 +227,8 @@ Things I should do or improve
 
 ### Shell
 
-- [ ] [sd](https://github.com/chmln/sd)
-- [ ] [skim](https://github.com/lotabout/skim)
 - [ ] `fzf`
 - [ ] `tmate` or `tmux`
-- [ ] `nnn` or `broot` or `felix` or `ranger`
 
 ### Servers
 
