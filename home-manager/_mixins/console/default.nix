@@ -309,6 +309,11 @@
         sub-langs = "all";
       };
     };
+    zoxide = {
+      enable = true;
+      enableBashIntegration = true;
+      enableFishIntegration = true;
+    };
   };
 
   services = {
