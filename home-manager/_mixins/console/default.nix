@@ -5,6 +5,7 @@
     };
     packages = with pkgs; [
       neofetch
+      ueberzugpp
     ];
     sessionVariables = {
       EDITOR = "micro";
@@ -195,6 +196,21 @@
         cwd-max-depth = 5;
         cwd-max-dir-size = 12;
         max-width = 60;
+      };
+    };
+    yazi = {
+      enable = true;
+      enableBashIntegration = true;
+      enableFishIntegration = true;
+      settings = {
+        manager = {
+          show_hidden = false;
+          show_symlink = true;
+          sort_by = "natural";
+          sort_dir_first = true;
+          sort_sensitive = false;
+          sort_reverse = false;
+        };
       };
     };
     yt-dlp = {
