@@ -3,13 +3,72 @@
     file = {
       "${config.xdg.configHome}/neofetch/config.conf".text = builtins.readFile ./neofetch.conf;
     };
+    # A Modern Unix experience
+    # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages = with pkgs; [
-      neofetch
-      ueberzugpp
+      asciinema # Terminal recorder
+      black # Code format Python
+      bmon # Modern Unix `iftop`
+      breezy # Terminal bzr client
+      butler # Terminal Itch.io API client
+      chafa # Terminal image viewer
+      chroma # Code syntax highlighter
+      clinfo # Terminal OpenCL info
+      curlie # Terminal HTTP client
+      dconf2nix # Nix code from Dconf files
+      debootstrap # Terminal Debian installer
+      diffr # Modern Unix `diff`
+      difftastic # Modern Unix `diff`
+      dogdns # Modern Unix `dig`
+      dua # Modern Unix `du`
+      duf # Modern Unix `df`
+      du-dust # Modern Unix `du`
+      editorconfig-core-c # EditorConfig Core
+      entr # Modern Unix `watch`
+      fast-cli # Terminal fast.com
+      fd # Modern Unix `find`
+      glow # Terminal Markdown renderer
+      gping # Modern Unix `ping`
+      hexyl # Modern Unix `hexedit`
+      httpie # Terminal HTTP client
+      hyperfine # Terminal benchmarking
+      iperf3 # Terminal network benchmarking
+      iw # Terminal WiFi info
+      jpegoptim # Terminal JPEG optimizer
+      jiq # Modern Unix `jq`
+      libva-utils # Terminal VAAPI info
+      lurk # Modern Unix `strace`
+      mdp # Terminal Markdown presenter
+      moar # Modern Unix `less`
+      mtr # Modern Unix `traceroute`
+      neofetch # Terminal system info
+      netdiscover # Modern Unix `arp`
+      nethogs # Modern Unix `iftop`
+      nixpkgs-review # Nix code review
+      nodePackages.prettier # Code format
+      nurl # Nix URL fetcher
+      nyancat # Terminal rainbow spewing feline
+      optipng # Terminal PNG optimizer
+      procs # Modern Unix `ps`
+      python310Packages.gpustat # Terminal GPU info
+      quilt # Terminal patch manager
+      ripgrep # Modern Unix `grep`
+      rustfmt # Code format Rust
+      sd # Modern Unix `sed`
+      shellcheck # Code lint Shell
+      shfmt # Code format Shell
+      speedtest-go # Terminal speedtest.net
+      tldr # Modern Unix `man`
+      tokei # Modern Unix `wc` for code
+      ueberzugpp # Terminal image viewer integration
+      vdpauinfo # Terminal VDPAU info
+      wavemon # Terminal WiFi monitor
+      yq-go # Terminal `jq` for YAML
     ];
     sessionVariables = {
       EDITOR = "micro";
       MANPAGER = "sh -c 'col --no-backspaces --spaces | bat --language man'";
+      PAGER = "moar";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
     };
@@ -92,12 +151,22 @@
       enable = true;
       shellAliases = {
         cat = "bat --paging=never --style=plain";
+        diff = "diffr";
+        fast = "fast -u";
+        glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
         less = "bat --paging=always";
+        moon = "curl -s wttr.in/Moon";
         more = "bat --paging=always";
+        pubip = "curl -s ifconfig.me/ip";
+        #pubip = "curl -s https://api.ipify.org";
+        speedtest = "speedtest-go";
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "eza --tree";
+        wormhole = "wormhole-william";
+        wttr = "curl -s wttr.in && curl -s v2.wttr.in";
+        wttr-bas = "curl -s wttr.in/basingstoke && curl -s v2.wttr.in/basingstoke";
       };
     };
     gh = {
