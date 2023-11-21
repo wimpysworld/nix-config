@@ -7,6 +7,9 @@
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./yazi-keymap.toml;
     };
     file = {
+      "${config.xdg.configHome}/yazi/theme.toml".text = builtins.readFile ./yazi-theme.toml;
+    };
+    file = {
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./h.fish;
     };
     file = {
