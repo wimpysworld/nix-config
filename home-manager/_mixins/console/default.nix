@@ -6,6 +6,9 @@
     file = {
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./yazi-keymap.toml;
     };
+    file = {
+      "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./h.fish;
+    };
     # A Modern Unix experience
     # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages = with pkgs; [
@@ -32,6 +35,7 @@
       fd # Modern Unix `find`
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
+      h # Modern Unix autojump for git projects
       hexyl # Modern Unix `hexedit`
       httpie # Terminal HTTP client
       hyperfine # Terminal benchmarking

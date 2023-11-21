@@ -91,16 +91,7 @@
   };
 
   systemd.user.tmpfiles.rules = [
-    "d ${config.home.homeDirectory}/Development/debian 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/DeterminateSystems 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/flexiondotorg 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/mate-desktop 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/NixOS 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/quickemu-project 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/restfulmedia 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/ubuntu 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/ubuntu-mate 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Development/wimpysworld 0755 ${username} users - -"
+    "d ${config.home.homeDirectory}/Development 0755 ${username} users - -"
     "d ${config.home.homeDirectory}/Dropbox 0755 ${username} users - -"
     "d ${config.home.homeDirectory}/Games 0755 ${username} users - -"
     "d ${config.home.homeDirectory}/Quickemu/nixos-console 0755 ${username} users - -"
