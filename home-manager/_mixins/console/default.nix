@@ -65,7 +65,6 @@
       procs # Modern Unix `ps`
       python310Packages.gpustat # Terminal GPU info
       quilt # Terminal patch manager
-      ripgrep # Modern Unix `grep`
       rustfmt # Code format Rust
       sd # Modern Unix `sed`
       shellcheck # Code lint Shell
@@ -279,6 +278,14 @@
         cwd-max-dir-size = 12;
         max-width = 60;
       };
+    };
+    ripgrep = {
+      arguments = [
+        "--colors=line:style:bold"
+        "--max-columns-preview"
+        "--smart-case"
+      ];
+      enable = true;
     };
     yazi = {
       enable = true;
