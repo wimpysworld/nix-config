@@ -29,6 +29,10 @@ in
     inherit username;
   };
 
+  # Workaround home-manager bug with flakes
+  # - https://github.com/nix-community/home-manager/issues/2033
+  news.display = "silent";
+
   nixpkgs = {
     # You can add overlays here
     overlays = [
