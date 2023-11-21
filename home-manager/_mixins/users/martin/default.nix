@@ -122,6 +122,7 @@
       quilt # Terminal patch manager
       ripgrep # Modern Unix `grep`
       rustfmt # Code format Rust
+      sd # Modern Unix `sed`
       shellcheck # Code lint Shell
       shfmt # Code format Shell
       speedtest-go # Terminal speedtest.net
