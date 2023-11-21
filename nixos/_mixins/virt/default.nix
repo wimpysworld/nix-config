@@ -24,6 +24,9 @@
     lxd = {
       enable = true;
     };
+    multipass = {
+      enable = true;
+    };
     podman = {
       defaultNetwork.settings = {
         dns_enabled = true;
