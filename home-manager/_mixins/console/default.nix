@@ -55,7 +55,6 @@
       libva-utils # Terminal VAAPI info
       lurk # Modern Unix `strace`
       mdp # Terminal Markdown presenter
-      moar # Modern Unix `less`
       mtr # Modern Unix `traceroute`
       neofetch # Terminal system info
       netdiscover # Modern Unix `arp`
@@ -83,7 +82,7 @@
     sessionVariables = {
       EDITOR = "micro";
       MANPAGER = "sh -c 'col --no-backspaces --spaces | bat --language man'";
-      PAGER = "moar";
+      PAGER = "bat";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
     };
@@ -114,6 +113,9 @@
         batwatch
         prettybat
       ];
+      config = {
+        style = "plain";
+      };
     };
     bottom = {
       enable = true;
@@ -171,9 +173,9 @@
         glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
-        less = "bat --paging=always";
+        less = "bat";
         moon = "curl -s wttr.in/Moon";
-        more = "bat --paging=always";
+        more = "bat";
         pubip = "curl -s ifconfig.me/ip";
         #pubip = "curl -s https://api.ipify.org";
         speedtest = "speedtest-go";
