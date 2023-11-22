@@ -93,17 +93,18 @@
   };
 
   systemd.user.tmpfiles.rules = [
-    "d ${config.home.homeDirectory}/Development 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Dropbox 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Games 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Quickemu/nixos-console 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Quickemu/nixos-desktop 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Scripts 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/ 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Syncthing 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Volatile/Vorta 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Websites 0755 ${username} users - -"
-    "d ${config.home.homeDirectory}/Zero 0755 ${username} users - -"
-    "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
-  ];
+  #systemd.user.tmpfiles.rules = [
+  #  "d ${config.home.homeDirectory}/Development 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Dropbox 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Games 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Quickemu/nixos-console 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Quickemu/nixos-desktop 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Scripts 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/ 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Syncthing 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Volatile/Vorta 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Websites 0755 ${username} users - -"
+  #  "d ${config.home.homeDirectory}/Zero 0755 ${username} users - -"
+  #  "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
+  #];
 }
