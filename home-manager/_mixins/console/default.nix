@@ -1,4 +1,8 @@
-{ config, lib, pkgs, ... }: {
+{ config, lib, pkgs, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
+{
   home = {
     file = {
       "${config.xdg.configHome}/neofetch/config.conf".text = builtins.readFile ./neofetch.conf;
@@ -31,7 +35,6 @@
       clinfo # Terminal OpenCL info
       curlie # Terminal HTTP client
       dconf2nix # Nix code from Dconf files
-      debootstrap # Terminal Debian installer
       diffr # Modern Unix `diff`
       difftastic # Modern Unix `diff`
       dogdns # Modern Unix `dig`
@@ -48,23 +51,18 @@
       httpie # Terminal HTTP client
       hyperfine # Terminal benchmarking
       iperf3 # Terminal network benchmarking
-      iw # Terminal WiFi info
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
-      libva-utils # Terminal VAAPI info
-      lurk # Modern Unix `strace`
       mdp # Terminal Markdown presenter
       mtr # Modern Unix `traceroute`
       neofetch # Terminal system info
       netdiscover # Modern Unix `arp`
-      nethogs # Modern Unix `iftop`
       nixpkgs-review # Nix code review
       nodePackages.prettier # Code format
       nurl # Nix URL fetcher
       nyancat # Terminal rainbow spewing feline
       optipng # Terminal PNG optimizer
       procs # Modern Unix `ps`
-      python310Packages.gpustat # Terminal GPU info
       quilt # Terminal patch manager
       rustfmt # Code format Rust
       sd # Modern Unix `sed`
@@ -74,9 +72,16 @@
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
       ueberzugpp # Terminal image viewer integration
+      yq-go # Terminal `jq` for YAML
+    ] ++ lib.optionals isLinux [
+      debootstrap # Terminal Debian installer
+      iw # Terminal WiFi info
+      libva-utils # Terminal VAAPI info
+      lurk # Modern Unix `strace`
+      nethogs # Modern Unix `iftop`
+      python310Packages.gpustat # Terminal GPU info
       vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
-      yq-go # Terminal `jq` for YAML
     ];
     sessionVariables = {
       EDITOR = "micro";
@@ -334,19 +339,19 @@
 
   services = {
     gpg-agent = {
-      enable = true;
+      enable = isLinux;
       enableSshSupport = true;
       pinentryFlavor = "curses";
     };
   };
 
   # Nicely reload system units when changing configs
-  systemd.user.startServices = "sd-switch";
+  #systemd.user.startServices = "sd-switch";
 
   xdg = {
-    enable = true;
+    enable = isLinux;
     userDirs = {
-      enable = true;
+      enable = isLinux;
       createDirectories = lib.mkDefault true;
       extraConfig = {
         XDG_SCREENSHOTS_DIR = "${config.home.homeDirectory}/Pictures/Screenshots";
