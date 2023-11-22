@@ -168,7 +168,7 @@
     fish = {
       enable = true;
       shellAliases = {
-        cat = "bat --paging=never --style=plain";
+        cat = "bat --paging=never";
         diff = "diffr";
         fast = "fast -u";
         glow = "glow --pager";
