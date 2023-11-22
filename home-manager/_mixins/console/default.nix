@@ -3,6 +3,7 @@ let
   inherit (pkgs.stdenv) isLinux;
 in
 {
+  fonts.fontconfig.enable = true;
   home = {
     file = {
       "${config.xdg.configHome}/neofetch/config.conf".text = builtins.readFile ./neofetch.conf;
@@ -25,6 +26,11 @@ in
     # A Modern Unix experience
     # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages = with pkgs; [
+      (nerdfonts.override { fonts = [ "FiraCode" "SourceCodePro" "UbuntuMono" ]; })
+      fira
+      fira-go
+      ubuntu_font_family
+      work-sans
       asciinema # Terminal recorder
       black # Code format Python
       bmon # Modern Unix `iftop`
