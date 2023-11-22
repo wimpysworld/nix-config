@@ -10,6 +10,9 @@
       "${config.xdg.configHome}/yazi/theme.toml".text = builtins.readFile ./yazi-theme.toml;
     };
     file = {
+      "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./help.fish;
+    };
+    file = {
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./h.fish;
     };
     file = {
