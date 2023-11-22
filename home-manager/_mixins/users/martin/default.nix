@@ -1,6 +1,5 @@
 { config, lib, hostname, pkgs, username, ... }: {
   imports = [
-    ../../services/keybase.nix
     ../../services/syncthing.nix
   ];
   home = {
