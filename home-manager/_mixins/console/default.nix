@@ -77,7 +77,6 @@ in
       wget2 # Terminal HTTP client
       wormhole-william # Terminal file transfer
       yq-go # Terminal `jq` for YAML
-      zsync # Terminal file sync
     ] ++ lib.optionals isLinux [
       debootstrap # Terminal Debian installer
       iw # Terminal WiFi info
@@ -87,6 +86,7 @@ in
       python310Packages.gpustat # Terminal GPU info
       vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
+      zsync # Terminal file sync; FTBFS on aarch64-darwin
     ];
     sessionVariables = {
       EDITOR = "micro";
