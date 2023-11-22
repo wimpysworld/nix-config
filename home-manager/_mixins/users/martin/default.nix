@@ -19,8 +19,10 @@
       [ALIASES]
     ";
     file.".face".source = ./face.png;
-    #file."Development/debian/.envrc".text = "export DEB_VENDOR=Debian";
-    #file."Development/ubuntu/.envrc".text = "export DEB_VENDOR=Ubuntu";
+    file."Development/salsa.debian.org/.envrc".text = "export DEB_VENDOR=Debian";
+    file."Development/git.launchpad.net/.envrc".text = "export DEB_VENDOR=Ubuntu";
+    file."Development/github.com/ubuntu/.envrc".text = "export DEB_VENDOR=Ubuntu";
+    file."Development/github.com/ubuntu-mate/.envrc".text = "export DEB_VENDOR=Ubuntu";
     file.".ssh/config".text = "
       Host github.com
         HostName github.com
