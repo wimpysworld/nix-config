@@ -111,6 +111,7 @@
     bat = {
       enable = true;
       extraPackages = with pkgs.bat-extras; [
+        batgrep
         batwatch
         prettybat
       ];
@@ -168,6 +169,7 @@
     fish = {
       enable = true;
       shellAliases = {
+        brg = "batgrep";
         cat = "bat --paging=never";
         diff = "diffr";
         fast = "fast -u";
