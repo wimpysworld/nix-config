@@ -92,7 +92,7 @@
     };
   };
 
-  systemd.user.tmpfiles.rules = [
+  # TODO: Ignore on Darwin
   #systemd.user.tmpfiles.rules = [
   #  "d ${config.home.homeDirectory}/Development 0755 ${username} users - -"
   #  "d ${config.home.homeDirectory}/Dropbox 0755 ${username} users - -"
