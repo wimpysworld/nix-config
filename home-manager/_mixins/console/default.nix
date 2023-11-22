@@ -351,6 +351,13 @@ in
       enableSshSupport = true;
       pinentryFlavor = "curses";
     };
+    kbfs = {
+      enable = isLinux;
+      mountPoint = "Keybase";
+    };
+    keybase = {
+      enable = isLinux;
+    };
   };
 
   # TODO: Ignore on Darwin
