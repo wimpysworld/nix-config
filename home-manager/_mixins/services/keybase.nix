@@ -1,8 +1,8 @@
 { desktop, lib, ... }: {
-  imports = [ ] ++ lib.optionals (desktop != null) [
-    ./keybase-gui.nix
-  ];
-  
+  #imports = [ ] ++ lib.optionals (desktop != null) [
+  #  ./keybase-gui.nix
+  #];
+
   services = {
     kbfs = {
       enable = true;
