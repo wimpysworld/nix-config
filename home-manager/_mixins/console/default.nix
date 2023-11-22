@@ -40,7 +40,6 @@
       du-dust # Modern Unix `du`
       editorconfig-core-c # EditorConfig Core
       entr # Modern Unix `watch`
-      fast-cli # Terminal fast.com
       fd # Modern Unix `find`
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
@@ -172,7 +171,6 @@
         brg = "batgrep";
         cat = "bat --paging=never";
         diff = "diffr";
-        fast = "fast -u";
         glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
