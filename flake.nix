@@ -72,6 +72,7 @@
         "martin@vm-mini" = libx.mkHome { hostname = "vm-mini"; username = "martin"; };
         # Steam Deck
         "deck@steamdeck" = libx.mkHome { hostname = "steamdeck"; username = "deck"; };
+        "martin@air" = libx.mkHome { hostname = "air"; username = "martin"; platform = "aarch64-darwin"; desktop = null; };
       };
       nixosConfigurations = {
         # .iso images
