@@ -360,7 +360,7 @@ in
     };
   };
 
-  # TODO: Ignore on Darwin
+  # TODO: Only do this on Linux
   # Nicely reload system units when changing configs
   #systemd.user.startServices = "sd-switch";
 
