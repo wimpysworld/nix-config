@@ -1,5 +1,5 @@
 { desktop, lib, ... }: {
-  # TODO: Ignore on Darwin
+  # TODO: Only do this on Linux
   #imports = [ ] ++ lib.optionals (desktop != null) [
   #  ./keybase-gui.nix
   #];
