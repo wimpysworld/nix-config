@@ -73,6 +73,18 @@
       disk_size="96G"
       iso="nixos-desktop/nixos.iso"
     '';
+    file."/Development/.keep".text = "";
+    file."/Dropbox/.keep".text = "";
+    file."/Games/.keep".text = "";
+    file."/Quickemu/nixos-console/.keep".text = "";
+    file."/Quickemu/nixos-desktop/.keep".text = "";
+    file."/Scripts/.keep".text = "";
+    file."/Studio/OBS/config/obs-studio/.keep".text = "";
+    file."/Syncthing/.keep".text = "";
+    file."/Volatile/Vorta/.keep".text = "";
+    file."/Websites/.keep".text = "";
+    file."/Zero/.keep".text = "";
+
     sessionVariables = {
       BZR_EMAIL = "Martin Wimpress <code@wimpress.io>";
       DEBFULLNAME = "Martin Wimpress";
