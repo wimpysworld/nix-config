@@ -33,6 +33,7 @@ in
       chafa # Terminal image viewer
       chroma # Code syntax highlighter
       clinfo # Terminal OpenCL info
+      croc # Terminal file transfer
       curlie # Terminal HTTP client
       dconf2nix # Nix code from Dconf files
       diffr # Modern Unix `diff`
@@ -64,6 +65,7 @@ in
       optipng # Terminal PNG optimizer
       procs # Modern Unix `ps`
       quilt # Terminal patch manager
+      rclone # Modern Unix `rsync`
       rustfmt # Code format Rust
       sd # Modern Unix `sed`
       shellcheck # Code lint Shell
@@ -72,7 +74,10 @@ in
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
       ueberzugpp # Terminal image viewer integration
+      wget2 # Terminal HTTP client
+      wormhole-william # Terminal file transfer
       yq-go # Terminal `jq` for YAML
+      zsync # Terminal file sync
     ] ++ lib.optionals isLinux [
       debootstrap # Terminal Debian installer
       iw # Terminal WiFi info
@@ -94,6 +99,9 @@ in
   };
 
   programs = {
+    aria2 = {
+      enable = true;
+    };
     atuin = {
       enable = true;
       enableBashIntegration = true;
