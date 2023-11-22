@@ -200,18 +200,21 @@
     };
     git = {
       enable = true;
-      delta = {
-        enable = true;
-        options = {
-          features = "decorations";
-          navigate = true;
-          side-by-side = true;
-        };
-      };
       aliases = {
-        lg = "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
+        graph = "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
       };
       extraConfig = {
+        color = {
+          #branch = false;
+          #diff = false;
+          #interactive = false;
+          #log = false;
+          status = true;
+          ui = false;
+        };
+        core = {
+          pager = "bat";
+        };
         push = {
           default = "matching";
         };
