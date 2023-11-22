@@ -82,6 +82,7 @@
     sessionVariables = {
       EDITOR = "micro";
       MANPAGER = "sh -c 'col --no-backspaces --spaces | bat --language man'";
+      MANROFFOPT = "-c";
       PAGER = "bat";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
