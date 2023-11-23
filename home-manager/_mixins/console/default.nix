@@ -246,6 +246,10 @@ in
         fucked = "reset --hard";
         graph  = "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
       };
+      difftastic = {
+        display = "side-by-side-show-both";
+        enable = true;
+      };
       extraConfig = {
         color = {
           #branch = false;
