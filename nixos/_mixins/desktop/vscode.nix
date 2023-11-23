@@ -76,8 +76,8 @@
         {
           name = "grammarly";
           publisher = "znck";
-          version = "0.23.15";
-          sha256 = "sha256-/LjLL8IQwQ0ghh5YoDWQxcPM33FCjPeg3cFb1Qa/cb0=";
+          version = "0.25.0";
+          sha256 = "sha256-/wiUkAivEPYpPFF4X+d9PCrRHPRTlhW+NnEoqBxUCxE=";
         }
         {
           name = "language-hugo-vscode";
