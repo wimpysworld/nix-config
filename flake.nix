@@ -55,6 +55,9 @@
         "martin@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
         "martin@iso-desktop" = libx.mkHome { hostname = "iso-desktop"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
+        "martin@airmac" = libx.mkHome { hostname = "air"; username = "martin"; platform = "aarch64-darwin"; };
+        "martin@airnix" = libx.mkHome { hostname = "air"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
+
         "martin@designare" = libx.mkHome { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
         "martin@micropc" = libx.mkHome { hostname = "micropc"; username = "martin"; desktop = "pantheon"; };
         "martin@p1" = libx.mkHome { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
@@ -72,7 +75,6 @@
         "martin@vm-mini" = libx.mkHome { hostname = "vm-mini"; username = "martin"; };
         # Steam Deck
         "deck@steamdeck" = libx.mkHome { hostname = "steamdeck"; username = "deck"; };
-        "martin@air" = libx.mkHome { hostname = "air"; username = "martin"; platform = "aarch64-darwin"; desktop = null; };
       };
       nixosConfigurations = {
         # .iso images
@@ -85,6 +87,7 @@
         # Workstations
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
         #  - nix build .#nixosConfigurations.ripper.config.system.build.toplevel
+        airnix = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux";};
         designare = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
         p1 = libx.mkHost { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
         p2-max = libx.mkHost { hostname = "p2-max"; username = "martin"; desktop = "pantheon"; };
