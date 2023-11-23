@@ -6,14 +6,11 @@ let
   ] ++ lib.optionals (desktop != null) [
     appimage-run
     authy
-    chatterino2
     gimp-with-plugins
     gnome.gnome-clocks
     irccloud
     inkscape
     libreoffice
-    nheko
-    pick-colour-picker
     wmctrl
     xdotool
     ydotool
@@ -23,11 +20,10 @@ let
   # For fast moving apps; use the unstable branch
   unstable-packages = with pkgs.unstable; [
     brave
-    discord
     google-chrome
     microsoft-edge
     opera
-    tdesktop
+    telegram-desktop
     vivaldi
     vivaldi-ffmpeg-codecs
     wavebox
