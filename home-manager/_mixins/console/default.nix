@@ -69,6 +69,7 @@ in
       nodePackages.prettier # Code format
       nurl # Nix URL fetcher
       nyancat # Terminal rainbow spewing feline
+      onefetch # Terminal git project info
       optipng # Terminal PNG optimizer
       procs # Modern Unix `ps`
       quilt # Terminal patch manager
