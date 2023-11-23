@@ -14,6 +14,7 @@ with lib.hm.gvariant;
     ../../desktop/iterm2.nix
     ../../desktop/localsend.nix
     ../../desktop/meld.nix
+    ../../desktop/pika.nix
     ../../desktop/rhythmbox.nix
     ../../desktop/sakura.nix
     ../../desktop/tilix.nix
