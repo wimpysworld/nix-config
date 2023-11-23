@@ -1,4 +1,9 @@
-{ config, lib, hostname, pkgs, username, ... }: {
+{ config, lib, hostname, pkgs, username, ... }:
+let
+  inherit (pkgs.stdenv) isDarwin;
+  inherit (pkgs.stdenv) isLinux;
+in
+{
   imports = [
     ../../services/syncthing.nix
   ];
@@ -103,8 +108,12 @@
     };
   };
 
-  # TODO: Only do this on Linux
-  #systemd.user.tmpfiles.rules = [
-  #  "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
-  #];
+  # Linux specific configuration
+  systemd.user.tmpfiles.rules = lib.mkIf isLinux [
+    "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
+  ];
+
+  targets.darwin.defaults = lib.mkIf isDarwin {
+    "com.googlecode.iterm2".CopySelection = true;
+  };
 }

@@ -1,5 +1,6 @@
 { config, lib, pkgs, ... }:
 let
+  inherit (pkgs.stdenv) isDarwin;
   inherit (pkgs.stdenv) isLinux;
 in
 {
@@ -370,9 +371,8 @@ in
     };
   };
 
-  # TODO: Only do this on Linux
   # Nicely reload system units when changing configs
-  #systemd.user.startServices = "sd-switch";
+  systemd.user.startServices = lib.mkIf isLinux "sd-switch";
 
   xdg = {
     enable = isLinux;
