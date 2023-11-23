@@ -112,8 +112,4 @@ in
   systemd.user.tmpfiles.rules = lib.mkIf isLinux [
     "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
   ];
-
-  targets.darwin.defaults = lib.mkIf isDarwin {
-    "com.googlecode.iterm2".CopySelection = true;
-  };
 }
