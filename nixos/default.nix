@@ -252,14 +252,14 @@
       shellAbbrs = {
         captive-portal = "xdg-open http://$(ip --oneline route get 1.1.1.1 | awk '{print $3}'";
         nix-gc = "sudo nix-collect-garbage --delete-older-than 10d && nix-collect-garbage --delete-older-than 10d";
-        rebuild-all = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config";
-        rebuild-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
-        rebuild-host = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
-        rebuild-lock = "pushd $HOME/Zero/nix-config && nix flake update && popd";
-        rebuild-iso-console = "sudo true && pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && sudo cp result/iso/$ISO ~/Quickemu/nixos-console/nixos.iso && popd";
-        rebuild-iso-desktop = "sudo true && pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && sudo cp result/iso/$ISO ~/Quickemu/nixos-desktop/nixos.iso && popd";
-        rebuild-iso-gpd-edp = "sudo true && pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-gpd-edp.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && sudo cp result/iso/$ISO ~/Quickemu/nixos-gpd-edp.iso && popd";
-        rebuild-iso-gpd-dsi = "sudo true && pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-gpd-dsi.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && sudo cp result/iso/$ISO ~/Quickemu/nixos-gpd-dsi.iso && popd";
+        build-home = "home-manager build -b backup --flake $HOME/Zero/nix-config";
+        build-host = "nixos-rebuild build --flake $HOME/Zero/nix-config";
+        build-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-console/nixos.iso && popd";
+        build-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-desktop/nixos.iso && popd";
+        switch-all  = "switch-home && switch-host";
+        switch-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        switch-host = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
+        update-lock = "pushd $HOME/Zero/nix-config && nix flake update && popd";
       };
       shellAliases = {
         nano = "micro";
