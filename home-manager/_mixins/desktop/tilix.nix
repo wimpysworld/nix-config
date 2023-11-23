@@ -1,7 +1,10 @@
 # Generated via dconf2nix: https://github.com/gvolpe/dconf2nix
 { lib, pkgs, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
 with lib.hm.gvariant;
-{
+lib.mkIf isLinux {
   home.packages = with pkgs; [
     tilix
   ];

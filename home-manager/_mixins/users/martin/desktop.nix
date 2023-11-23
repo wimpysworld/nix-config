@@ -1,4 +1,7 @@
 { config, lib, pkgs, username, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
 with lib.hm.gvariant;
 {
   imports = [
@@ -24,7 +27,9 @@ with lib.hm.gvariant;
   };
 
   # Authrorize X11 access in Distrobox
-  home.file.".distroboxrc".text = ''
-    xhost +si:localuser:$USER
-  '';
+  home.file.".distroboxrc" = lib.mkIf isLinux {
+    text = ''
+      xhost +si:localuser:$USER
+    '';
+  };
 }

@@ -1,5 +1,8 @@
-{ pkgs, ... }:
-{
+{ lib, pkgs, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
+lib.mkIf isLinux {
   # https://github.com/tom-james-watson/emote
   home.packages = with pkgs; [
     emote
