@@ -1,7 +1,11 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
+{
   services.syncthing = {
     tray = {
-      enable = true;
+      enable = isLinux;
       package = pkgs.syncthingtray;
     };
   };
