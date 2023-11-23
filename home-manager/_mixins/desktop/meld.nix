@@ -7,7 +7,7 @@ with lib.hm.gvariant;
   home.packages = with pkgs; [
     meld
   ];
-  
+
   dconf.settings = lib.mkIf isLinux {
     "org/gnome/meld" = {
       indent-width = 4;

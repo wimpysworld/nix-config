@@ -7,7 +7,7 @@ lib.mkIf isLinux {
   home.packages = with pkgs; [
     rhythmbox
   ];
-  
+
   dconf.settings = {
     "org/gnome/rhythmbox/plugins" = {
       active-plugins = [ "rb" "power-manager" "mpris" "iradio" "generic-player" "audiocd" "android" ];

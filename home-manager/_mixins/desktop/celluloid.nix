@@ -7,7 +7,7 @@ lib.mkIf isLinux {
   home.packages = with pkgs; [
     celluloid
   ];
-  
+
   dconf.settings = {
     "io/github/celluloid-player/celluloid" = {
       csd-enable = false;
