@@ -1,5 +1,8 @@
-{ config, pkgs, username, ... }:
-{
+{ config, lib, pkgs, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
+lib.mkIf isLinux {
   # https://github.com/muesli/deckmaster
   home = {
     file = {

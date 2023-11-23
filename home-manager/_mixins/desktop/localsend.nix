@@ -1,11 +1,14 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
 {
   # https://localsend.org/
   home.packages = with pkgs; [
     localsend
   ];
 
-  systemd.user.services = {
+  systemd.user.services = lib.mkIf isLinux {
     localsend = {
       Unit = {
         Description = "LocalSend";

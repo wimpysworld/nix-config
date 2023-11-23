@@ -1,11 +1,17 @@
-{ desktop, lib, username, ... }: {
+{ desktop, lib, pkgs, username, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
+{
   imports = [
     (./. + "/${desktop}.nix")
   ] ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
 
   # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
-  services.mpris-proxy.enable = true;
-  services.gpg-agent.pinentryFlavor = lib.mkForce "gnome3";
+  services.mpris-proxy.enable = isLinux;
+  services.gpg-agent = lib.mkIf isLinux {
+    pinentryFlavor = lib.mkForce "gnome3";
+  };
 
   xresources.properties = {
     "XTerm*background" = "#121214";
