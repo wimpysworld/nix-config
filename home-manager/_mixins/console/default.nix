@@ -1,5 +1,6 @@
 { config, lib, pkgs, ... }:
 let
+  inherit (pkgs.stdenv) isDarwin;
   inherit (pkgs.stdenv) isLinux;
 in
 {
@@ -95,6 +96,8 @@ in
       vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
       zsync # Terminal file sync; FTBFS on aarch64-darwin
+    ] ++ lib.optionals isDarwin [
+      m-cli # Terminal Swiss Army Knife for macOS
     ];
     sessionVariables = {
       EDITOR = "micro";
