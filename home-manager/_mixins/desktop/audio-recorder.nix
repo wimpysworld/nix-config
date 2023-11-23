@@ -23,7 +23,7 @@ lib.mkIf isLinux {
       timer-text = "";
     };
   };
-  
+
   systemd.user.tmpfiles.rules = [
     "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
   ];

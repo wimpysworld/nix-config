@@ -8,7 +8,7 @@ lib.mkIf isLinux {
   home.packages = with pkgs; [
     tilix
   ];
-  
+
   dconf.settings = {
     "com/gexperts/Tilix" = {
       app-title = "\${appName}: \${directory}";

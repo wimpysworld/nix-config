@@ -57,7 +57,6 @@
         # Workstations
         "martin@airmac" = libx.mkHome { hostname = "air"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
         "martin@airnix" = libx.mkHome { hostname = "air"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
-
         "martin@designare" = libx.mkHome { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
         "martin@micropc" = libx.mkHome { hostname = "micropc"; username = "martin"; desktop = "pantheon"; };
         "martin@p1" = libx.mkHome { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
