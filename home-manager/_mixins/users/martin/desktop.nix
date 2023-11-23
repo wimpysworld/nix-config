@@ -18,6 +18,7 @@ with lib.hm.gvariant;
     ../../desktop/rhythmbox.nix
     ../../desktop/sakura.nix
     ../../desktop/tilix.nix
+    ../../desktop/utm.nix
   ];
 
   # Authrorize X11 access in Distrobox
