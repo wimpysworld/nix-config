@@ -74,6 +74,7 @@ in
       optipng # Terminal PNG optimizer
       procs # Modern Unix `ps`
       quilt # Terminal patch manager
+      ramfetch # Terminal system info
       rclone # Modern Unix `rsync`
       rustfmt # Code format Rust
       sd # Modern Unix `sed`
