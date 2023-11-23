@@ -19,13 +19,6 @@ with lib.hm.gvariant;
     ../../desktop/tilix.nix
   ];
 
-  dconf.settings = {
-    "org/gnome/rhythmbox/rhythmdb" = {
-      locations = [ "file://${config.home.homeDirectory}/Studio/Music" ];
-      monitor-library = true;
-    };
-  };
-
   # Authrorize X11 access in Distrobox
   home.file.".distroboxrc" = lib.mkIf isLinux {
     text = ''
