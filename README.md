@@ -209,6 +209,9 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 Things I should do or improve
 
+- [ ] `isLinux` and `isDarwin` conditionals
+  - https://stackoverflow.com/questions/77527439/error-when-using-lib-mkif-and-lib-mkmerge-to-set-configuration-based-on-hostname
+  - https://www.reddit.com/r/NixOS/comments/knq819/how_to_check_for_nixosdarwin/
 - [ ] Add Password Managers
 - [ ] Integrate Borg Backups
   - [x] [Vorta](https://vorta.borgbase.com/) for workstations
