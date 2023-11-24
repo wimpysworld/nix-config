@@ -1,6 +1,5 @@
 { config, lib, hostname, pkgs, username, ... }:
 let
-  inherit (pkgs.stdenv) isDarwin;
   inherit (pkgs.stdenv) isLinux;
 in
 {
