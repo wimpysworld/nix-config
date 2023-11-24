@@ -57,7 +57,6 @@ in
       entr # Modern Unix `watch`
       fastfetch # Terminal system info
       fd # Modern Unix `find`
-      figlet # Terminal ASCII banners
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
       h # Modern Unix autojump for git projects
@@ -95,6 +94,7 @@ in
       yq-go # Terminal `jq` for YAML
     ] ++ lib.optionals isLinux [
       debootstrap # Terminal Debian installer
+      figlet # Terminal ASCII banners
       iw # Terminal WiFi info
       libva-utils # Terminal VAAPI info
       lurk # Modern Unix `strace`
