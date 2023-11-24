@@ -7,6 +7,9 @@ in
   fonts.fontconfig.enable = true;
   home = {
     file = {
+      "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./fastfetch.jsonc;
+    };
+    file = {
       "${config.xdg.configHome}/neofetch/config.conf".text = builtins.readFile ./neofetch.conf;
     };
     file = {
@@ -20,9 +23,6 @@ in
     };
     file = {
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./h.fish;
-    };
-    file = {
-      "${config.xdg.configHome}/fish/functions/sysfetch.fish".text = builtins.readFile ./sysfetch.fish;
     };
     file = {
       ".hidden".text = ''snap'';
