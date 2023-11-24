@@ -78,7 +78,6 @@ in
       optipng # Terminal PNG optimizer
       procs # Modern Unix `ps`
       quilt # Terminal patch manager
-      ramfetch # Terminal system info
       rclone # Modern Unix `rsync`
       rustfmt # Code format Rust
       sd # Modern Unix `sed`
@@ -98,6 +97,7 @@ in
       libva-utils # Terminal VAAPI info
       lurk # Modern Unix `strace`
       python310Packages.gpustat # Terminal GPU info
+      ramfetch # Terminal system info
       vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
       zsync # Terminal file sync; FTBFS on aarch64-darwin
