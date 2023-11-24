@@ -225,8 +225,7 @@ in
         less = "bat";
         moon = "curl -s wttr.in/Moon";
         more = "bat";
-        pubip = "curl -s ifconfig.me/ip";
-        #pubip = "curl -s https://api.ipify.org";
+        checkip = "curl -s ifconfig.me/ip";
         speedtest = "speedtest-go";
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "eza --tree";
