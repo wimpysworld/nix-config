@@ -173,7 +173,7 @@ in
       };
     };
     cava = {
-      enable = true;
+      enable = isLinux;
       settings = {
         color = {
           gradient = 1;
