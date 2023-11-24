@@ -47,6 +47,7 @@ in
       dconf2nix # Nix code from Dconf files
       difftastic # Modern Unix `diff`
       dogdns # Modern Unix `dig`
+      dotacat # Modern Unix lolcat
       dua # Modern Unix `du`
       duf # Modern Unix `df`
       du-dust # Modern Unix `du`
@@ -63,7 +64,6 @@ in
       iperf3 # Terminal network benchmarking
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
-      lolcat # Terminal rainbow spewing filter
       mdp # Terminal Markdown presenter
       mtr # Modern Unix `traceroute`
       netdiscover # Modern Unix `arp`
