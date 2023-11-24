@@ -66,6 +66,7 @@ in
       jiq # Modern Unix `jq`
       mdp # Terminal Markdown presenter
       mtr # Modern Unix `traceroute`
+      neo-cowsay # Terminal ASCII cows
       netdiscover # Modern Unix `arp`
       nixpkgs-review # Nix code review
       nodePackages.prettier # Code format
