@@ -52,6 +52,7 @@ in
       du-dust # Modern Unix `du`
       editorconfig-core-c # EditorConfig Core
       entr # Modern Unix `watch`
+      fastfetch # Terminal system info
       fd # Modern Unix `find`
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
