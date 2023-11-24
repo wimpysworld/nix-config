@@ -214,7 +214,7 @@ in
     fish = {
       enable = true;
       shellAliases = {
-        build-home = "home-manager build -b backup --flake $HOME/Zero/nix-config";
+        build-home = "home-manager build --flake $HOME/Zero/nix-config";
         switch-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
         brg = "batgrep";
         cat = "bat --paging=never";
