@@ -30,6 +30,8 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 | `win2`         | GPD            | WIN 2               | NixOS         | Laptop       | WIP      |
 | `win-max`      | GPD            | WIN Max             | NixOS         | Laptop       | WIP      |
 | `falcon`       | TopJoy         | Falcon              | Ubuntu MATE   | Laptop       | tbn      |
+| `macair`       | Apple          | Macbook Air M2 15"  | macOS         | Laptop       | Done     |
+| `nixair`       | Apple          | Macbook Air M2 15"  | NixOS         | Laptop       | WIP      |
 | `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbn      |
 | `xps-13`       | Dell           | XPS 13 9360         | Ubuntu MATE   | Laptop       | tbn      |
 | `spectre`      | HP             | Spectre 13          | Ubuntu MATE   | Laptop       | tbn      |
