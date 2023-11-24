@@ -48,7 +48,6 @@ in
       croc # Terminal file transfer
       curlie # Terminal HTTP client
       dconf2nix # Nix code from Dconf files
-      diffr # Modern Unix `diff`
       difftastic # Modern Unix `diff`
       dogdns # Modern Unix `dig`
       dua # Modern Unix `du`
@@ -218,7 +217,7 @@ in
         switch-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
         brg = "batgrep";
         cat = "bat --paging=never";
-        diff = "diffr";
+        diff = "difft";
         glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
