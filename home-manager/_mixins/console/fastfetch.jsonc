@@ -126,12 +126,12 @@
     "wmtheme",
     {
       "type": "theme",
-      "key": "├─",
+      "key": "├─󰉼",
       "keyColor": "33"
     },
     {
       "type": "icons",
-      "key": "├─󰋩",
+      "key": "├─",
       "keyColor": "33"
     },
     {
