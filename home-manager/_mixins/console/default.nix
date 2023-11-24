@@ -57,6 +57,7 @@ in
       entr # Modern Unix `watch`
       fastfetch # Terminal system info
       fd # Modern Unix `find`
+      figlet # Terminal ASCII banners
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
       h # Modern Unix autojump for git projects
@@ -66,6 +67,7 @@ in
       iperf3 # Terminal network benchmarking
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
+      lolcat # Terminal rainbow spewing filter
       mdp # Terminal Markdown presenter
       mtr # Modern Unix `traceroute`
       neofetch # Terminal system info
@@ -216,6 +218,8 @@ in
       shellAliases = {
         build-home = "home-manager build --flake $HOME/Zero/nix-config";
         switch-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        banner = "figlet";
+        banner-color = "figlet $argv | lolcat";
         brg = "batgrep";
         cat = "bat --paging=never";
         diff = "difft";
