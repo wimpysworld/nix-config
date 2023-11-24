@@ -10,9 +10,6 @@ in
       "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./fastfetch.jsonc;
     };
     file = {
-      "${config.xdg.configHome}/neofetch/config.conf".text = builtins.readFile ./neofetch.conf;
-    };
-    file = {
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./yazi-keymap.toml;
     };
     file = {
@@ -55,7 +52,7 @@ in
       du-dust # Modern Unix `du`
       editorconfig-core-c # EditorConfig Core
       entr # Modern Unix `watch`
-      fastfetch # Terminal system info
+      fastfetch # Modern Unix system info
       fd # Modern Unix `find`
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
@@ -69,7 +66,6 @@ in
       lolcat # Terminal rainbow spewing filter
       mdp # Terminal Markdown presenter
       mtr # Modern Unix `traceroute`
-      neofetch # Terminal system info
       netdiscover # Modern Unix `arp`
       nixpkgs-review # Nix code review
       nodePackages.prettier # Code format
@@ -223,6 +219,7 @@ in
         brg = "batgrep";
         cat = "bat --paging=never";
         diff = "difft";
+        neofetch = "fastfetch";
         glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
@@ -230,6 +227,7 @@ in
         moon = "curl -s wttr.in/Moon";
         more = "bat";
         checkip = "curl -s ifconfig.me/ip";
+        screenfetch = "fastfetch";
         speedtest = "speedtest-go";
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "eza --tree";

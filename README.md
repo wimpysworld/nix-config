@@ -167,7 +167,7 @@ Here is the directory structure I'm using.
 
 ### The Shell 🐚
 
-[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a somewhat *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [ZeroTier], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
+[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [ZeroTier], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
 
 [Fish shell]: ./nixos/default.nix
 [Modern Unix]: ./home-manager/_mixins/console/default.nix
@@ -176,7 +176,7 @@ Here is the directory structure I'm using.
 [Podman & Distrobox]: ./nixos/_mixins/virt/default.nix
 [micro]: [https://micro-editor.github.io/]
 
-![neofetch on Designare](.github/screenshots/neofetch.png)
+![fastfetch on Trooper](.github/screenshots/fastfetch.png)
 
 ### The Desktop 🖥️
 
