@@ -22,6 +22,9 @@ in
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./h.fish;
     };
     file = {
+      "${config.xdg.configHome}/fish/functions/sysfetch.fish".text = builtins.readFile ./sysfetch.fish;
+    };
+    file = {
       ".hidden".text = ''snap'';
     };
     # A Modern Unix experience
