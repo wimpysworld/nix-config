@@ -9,6 +9,7 @@
   },
   "display": {
     "separator": "",
+    "binaryPrefix": "si",
     "size": {
       "ndigits": 0
     },
@@ -37,6 +38,11 @@
       "keyColor": "32"
     },
     {
+      "type": "host",
+      "key": "├─󰟀",
+      "keyColor": "32"
+    },
+    {
       "type": "kernel",
       "key": "├─",
       "format": "{1} {2}",
@@ -60,14 +66,14 @@
     },
     "break",
     {
-      "type": "board",
-      "key": "╭─󰟀",
-      "format": "{1}",
-      "keyColor": "34"
+      "type": "cpu",
+      "key": "╭─",
+      "keyColor": "34",
+      "freqNdigits": 1
     },
     {
-      "type": "cpu",
-      "key": "├─",
+      "type": "board",
+      "key": "├─󰟀",
       "keyColor": "34"
     },
     {
@@ -80,6 +86,11 @@
       "type": "sound",
       "key": "├─󰗅",
       "format": "{2}",
+      "keyColor": "34"
+    },
+    {
+      "type": "battery",
+      "key": "├─󰁹",
       "keyColor": "34"
     },
     {
@@ -111,7 +122,6 @@
       "keyColor": "33",
       "compactType": "original"
     },
-    "monitor",
     {
       "type": "de",
       "key": "├─󰧨",
@@ -120,10 +130,8 @@
     {
       "type": "wm",
       "key": "├─󱂬",
-      "format": "{1} on {3}",
       "keyColor": "33"
     },
-    "wmtheme",
     {
       "type": "theme",
       "key": "├─󰉼",
@@ -152,6 +160,7 @@
       "keyColor": "33"
     },
     "break",
-    "colors"
+    "colors",
+    "break"
   ]
 }
