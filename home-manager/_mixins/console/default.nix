@@ -89,6 +89,7 @@ in
       tokei # Modern Unix `wc` for code
       ueberzugpp # Terminal image viewer integration
       wget2 # Terminal HTTP client
+      wthrr # Modern Unix weather
       wormhole-william # Terminal file transfer
       yq-go # Terminal `jq` for YAML
     ] ++ lib.optionals isLinux [
@@ -230,8 +231,8 @@ in
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "eza --tree";
         wormhole = "wormhole-william";
-        wttr = "curl -s wttr.in && curl -s v2.wttr.in";
-        wttr-bas = "curl -s wttr.in/basingstoke && curl -s v2.wttr.in/basingstoke";
+        wthrr = "wthrr auto -u f,24h,c,mph -f d,w";
+        wthrr-home = "wthrr basingstoke -u f,24h,c,mph -f d,w";
       };
     };
     gh = {
