@@ -36,6 +36,7 @@ in
       ubuntu_font_family
       work-sans
       asciinema # Terminal recorder
+      bandwhich # Modern Unix `iftop`
       black # Code format Python
       bmon # Modern Unix `iftop`
       breezy # Terminal bzr client
@@ -96,7 +97,6 @@ in
       iw # Terminal WiFi info
       libva-utils # Terminal VAAPI info
       lurk # Modern Unix `strace`
-      nethogs # Modern Unix `iftop`
       python310Packages.gpustat # Terminal GPU info
       vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
