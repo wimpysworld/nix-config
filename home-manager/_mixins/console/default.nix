@@ -224,6 +224,7 @@ in
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
         less = "bat";
+        lolcat = "dotacat";
         moon = "curl -s wttr.in/Moon";
         more = "bat";
         checkip = "curl -s ifconfig.me/ip";
