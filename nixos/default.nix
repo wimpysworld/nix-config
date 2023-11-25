@@ -284,7 +284,7 @@
     };
     autoUpgrade = {
       allowReboot = false;
-      enable = false;
+      enable = true;
       dates = "04:42";
       flake = "github:wimpysworld/nix-config";
     };
