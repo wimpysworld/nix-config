@@ -216,7 +216,7 @@ in
         build-home = "home-manager build --flake $HOME/Zero/nix-config";
         switch-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
         banner = "figlet";
-        banner-color = "figlet $argv | lolcat";
+        banner-color = "figlet $argv | dotacat";
         brg = "batgrep";
         cat = "bat --paging=never";
         diff = "difft";
