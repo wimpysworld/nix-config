@@ -47,13 +47,13 @@
     },
     {
       "type": "kernel",
-      "key": "├─",
+      "key": "├─󰒔",
       "format": "{1} {2}",
       "keyColor": "32"
     },
     {
       "type": "shell",
-      "key": "├─",
+      "key": "├─$",
       "format": "{1} {4}",
       "keyColor": "32"
     },
@@ -87,7 +87,7 @@
     },
     {
       "type": "sound",
-      "key": "├─󰗅",
+      "key": "├─󰓃",
       "format": "{2}",
       "keyColor": "34"
     },
