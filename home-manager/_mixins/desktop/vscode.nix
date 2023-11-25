@@ -8,6 +8,9 @@
     shfmt                 # Code format Shell
   ];
 
+  # NOTE! I avoid using home-manager to configure settings.json because it
+  #       makes it settings.json immutable. I prefer to use the Code settings
+  #       sync extension to sync across machines.
   programs = {
     vscode = {
       enable = true;
