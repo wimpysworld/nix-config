@@ -31,7 +31,6 @@
         vscode-extensions.mhutchie.git-graph
         vscode-extensions.mkhl.direnv
         vscode-extensions.ms-azuretools.vscode-docker
-        vscode-extensions.ms-vscode.cpptools
         vscode-extensions.ms-python.python
         vscode-extensions.ms-python.vscode-pylance
         vscode-extensions.ms-vscode.cmake-tools
