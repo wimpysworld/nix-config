@@ -121,6 +121,7 @@ in
       enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
+      enableZshIntegration = true;
       flags = [
         "--disable-up-arrow"
       ];
@@ -192,10 +193,12 @@ in
       enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
+      enableZshIntegration = true;
     };
     direnv = {
       enable = true;
       enableBashIntegration = true;
+      enableZshIntegration = true;
       nix-direnv = {
         enable = true;
       };
@@ -356,6 +359,7 @@ in
       enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
+      enableZshIntegration = true;
       settings = {
         manager = {
           show_hidden = false;
@@ -385,6 +389,7 @@ in
       enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
+      enableZshIntegration = true;
     };
   };
 
