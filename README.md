@@ -60,7 +60,7 @@ This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for confi
 - [home-manager]: Home Manager configurations
   - Sane defaults for shell and desktop
 - [nixos]: NixOS configurations
-  - Includes discrete hardware configurations which leverage the [NixOS Hardware modules](https://github.com/NixOS/nixos-hardware) via [flake.nix].
+  - Includes discrete hardware configurations that leverage the [NixOS](https://github.com/NixOS/nixos-hardware) Hardware modules](https://github.com/NixOS/nixos-hardware) via [flake.nix].
 - [scripts]: Helper scripts
 - [shells]: [Nix shell environments using direnv](https://determinate.systems/posts/nix-direnv) for infrequently used tools
 
@@ -77,17 +77,17 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
 
 ## Installing 💾
 
-- Boot off a .iso image created by this flake using `rebuild-iso-desktop` or `rebuild-iso-console` (*see below*)
+- Boot off a .iso image created by this flake using `build-iso-desktop` or `build-iso-console` (*see below*)
 - Put the .iso image on a USB drive
 - Boot the target computer from the USB drive
 - Two installation options are available:
-  1 Use the graphical Calamares installer to install an adhoc system
+  1 Use the graphical Calamares installer to install an ad-hoc system
   2 Run `install-system <hostname> <username>` from a terminal
    - The install script uses [Disko] to automatically partition and format the disks, then uses my flake via `nixos-install` to complete a full-system installation
    - This flake is copied to the target user's home directory as `~/Zero/nix-config`
 - Make a cuppa 🫖
 - Reboot
-- Login and run `rebuild-home` (*see below*) from a terminal to complete the Home Manager configuration.
+- Login and run `switch-home` (*see below*) from a terminal to complete the Home Manager configuration.
 
 If the target system is booted from something other than the .iso image created by this flake, you can still install the system using the following:
 
@@ -105,23 +105,27 @@ gh repo clone wimpysworld/nix-config ~/Zero/nix-config
 
 ### NixOS ❄️
 
-A `rebuild-host` alias is provided that does the following:
+A `switch-host` alias is provided that does the following:
 
 ```bash
+pushd $HOME/Zero/nix-config
 sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
+popd
 ```
 
 ### Home Manager 🏠️
 
-A `rebuild-home` alias is provided that does the following:
+A `switch-home` alias is provided that does the following:
 
 ```bash
+pushd $HOME/Zero/nix-config
 home-manager switch -b backup --flake $HOME/Zero/nix-config
+popd
 ```
 
 ### ISO 📀
 
-Aliases for `rebuild-iso-desktop` (*desktop*) and `rebuild-iso-console` (*console only*) are provided that create .iso images from this flake. They do the following:
+`build-iso-desktop` (*desktop*) and `build-iso-console` (*console only*) aliases are provided that create .iso images from this flake. They do the following:
 
 ```bash
 pushd $HOME/Zero/nix-config
@@ -129,7 +133,7 @@ nix build .#nixosConfigurations.iso.config.system.build.isoImage
 popd
 ```
 
-A live image will be left in `~/$HOME/Zero/nix-config/result/iso/`. These .iso images are also periodically built and published via [GitHub Actions](./.github/workflows) and available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
+A live image will be left in `~/$HOME/Zero/nix-config/result/iso/`. These .iso images are also periodically built and published via [GitHub [Actions](./.github/workflows) and are available in [this](https://github.com/wimpysworld/nix-config/releases) project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
 ## What's in the box? 🎁
 
@@ -248,7 +252,7 @@ While learning Nix I watched some talks/interviews with [Matthew Croughan](https
 
 I like the directory hierarchy in [Jon Seager's nixos-config] and the mixin pattern used in [Matthew Croughan's nixcfg], so my initial Nix configuration is heavily influenced by both of those. Ana's excellent [Declarative GNOME configuration with NixOS] blog post was essential to get a personalised desktop. That said, there's plenty to learn from browsing other people's Nix configurations, not least for discovering cool software. I recommend a search of [GitHub nixos configuration] from time to time to see what interesting techniques you pick up and new tools you might discover.
 
-The [Disko] implementation and automated installation is chasing the ideas outlined in these blog posts:
+The [Disko] implementation and automated installation are chasing the ideas outlined in these blog posts:
 - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
 - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
 
