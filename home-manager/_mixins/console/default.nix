@@ -217,6 +217,7 @@ in
         banner-color = "figlet $argv | dotacat";
         brg = "batgrep";
         cat = "bat --paging=never";
+        dadjoke = ''curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
         diff = "difft";
         neofetch = "fastfetch";
         glow = "glow --pager";
