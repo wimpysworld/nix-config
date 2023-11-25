@@ -373,6 +373,7 @@ in
     };
     yt-dlp = {
       enable = true;
+      package = pkgs.unstable.yt-dlp;
       settings ={
         audio-format = "best";
         audio-quality = 0;
