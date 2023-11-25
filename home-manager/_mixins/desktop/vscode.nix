@@ -35,6 +35,7 @@
         vscode-extensions.ms-python.vscode-pylance
         vscode-extensions.ms-vscode.cmake-tools
         vscode-extensions.ms-vscode.cpptools
+        vscode-extensions.ms-vscode.hexeditor
         vscode-extensions.ms-vsliveshare.vsliveshare
         vscode-extensions.redhat.vscode-yaml
         vscode-extensions.rust-lang.rust-analyzer
