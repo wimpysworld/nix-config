@@ -20,9 +20,6 @@
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
-    vscode-server.url = "github:nix-community/nixos-vscode-server";
-    vscode-server.inputs.nixpkgs.follows = "nixpkgs";
-
     # FlakeHub
     antsy-alien-attack-pico.url = "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/*.tar.gz";
     antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";

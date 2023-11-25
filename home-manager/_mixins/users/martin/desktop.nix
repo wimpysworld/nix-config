@@ -23,6 +23,7 @@ with lib.hm.gvariant;
     ../../desktop/sakura.nix
     ../../desktop/tilix.nix
     ../../desktop/utm.nix
+    ../../desktop/vscode.nix
   ];
 
   # Authrorize X11 access in Distrobox
