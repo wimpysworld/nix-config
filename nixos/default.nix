@@ -255,7 +255,7 @@
         build-host = "pushd $HOME/Zero/nix-config && nixos-rebuild build --flake $HOME/Zero/nix-config && popd";
         build-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-console/nixos.iso && popd";
         build-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-desktop/nixos.iso && popd";
-        switch-all  = "pushd $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && popd";
+        switch-all  = "sudo true && pushd $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && popd";
         switch-host = "pushd $HOME/Zero/nix-config && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && popd";
         update-lock = "pushd $HOME/Zero/nix-config && nix flake update && popd";
       };
