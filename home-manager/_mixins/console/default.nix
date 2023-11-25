@@ -259,10 +259,10 @@ in
       };
       extraConfig = {
         color = {
-          #branch = false;
-          #diff = false;
-          #interactive = false;
-          #log = false;
+          branch = false;
+          diff = false;
+          interactive = true;
+          log = false;
           status = true;
           ui = false;
         };
