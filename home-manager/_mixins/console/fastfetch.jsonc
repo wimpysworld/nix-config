@@ -30,7 +30,10 @@
         "host": "36"
       }
     },
-    "separator",
+    {
+      "type": "separator",
+      "string": "▔"
+    },
     {
       "type": "os",
       "key": "╭─",
@@ -73,7 +76,7 @@
     },
     {
       "type": "board",
-      "key": "├─󰟀",
+      "key": "├─",
       "keyColor": "34"
     },
     {
@@ -160,7 +163,10 @@
       "keyColor": "33"
     },
     "break",
-    "colors",
+    {
+      "type": "colors",
+      "symbol": "block"
+    },
     "break"
   ]
 }
