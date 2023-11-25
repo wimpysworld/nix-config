@@ -265,6 +265,7 @@
         nano = "micro";
       };
     };
+    nix-ld.enable = true;
   };
 
   services.fwupd.enable = true;
