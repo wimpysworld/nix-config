@@ -234,8 +234,8 @@ in
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "eza --tree";
         wormhole = "wormhole-william";
-        wthrr = "wthrr auto -u f,24h,c,mph -f d,w";
-        wthrr-home = "wthrr basingstoke -u f,24h,c,mph -f d,w";
+        weather = "wthrr auto -u f,24h,c,mph -f d,w";
+        weather-home = "wthrr basingstoke -u f,24h,c,mph -f d,w";
       };
     };
     gh = {
