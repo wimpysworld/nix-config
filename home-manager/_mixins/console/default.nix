@@ -211,8 +211,8 @@ in
     fish = {
       enable = true;
       shellAliases = {
-        build-home = "home-manager build --flake $HOME/Zero/nix-config";
-        switch-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
+        build-home = "pushd $HOME/Zero/nix-config && home-manager build --flake $HOME/Zero/nix-config && popd";
+        switch-home = "pushd $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config && popd";
         banner = "figlet";
         banner-color = "figlet $argv | dotacat";
         brg = "batgrep";

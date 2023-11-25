@@ -252,13 +252,11 @@
       shellAbbrs = {
         captive-portal = "xdg-open http://$(ip --oneline route get 1.1.1.1 | awk '{print $3}'";
         nix-gc = "sudo nix-collect-garbage --delete-older-than 10d && nix-collect-garbage --delete-older-than 10d";
-        build-home = "home-manager build --flake $HOME/Zero/nix-config";
-        build-host = "nixos-rebuild build --flake $HOME/Zero/nix-config";
+        build-host = "pushd $HOME/Zero/nix-config && nixos-rebuild build --flake $HOME/Zero/nix-config && popd";
         build-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-console/nixos.iso && popd";
         build-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-desktop/nixos.iso && popd";
-        switch-all  = "switch-home && switch-host";
-        switch-home = "home-manager switch -b backup --flake $HOME/Zero/nix-config";
-        switch-host = "sudo nixos-rebuild switch --flake $HOME/Zero/nix-config";
+        switch-all  = "pushd $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && popd";
+        switch-host = "pushd $HOME/Zero/nix-config && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && popd";
         update-lock = "pushd $HOME/Zero/nix-config && nix flake update && popd";
       };
       shellAliases = {
