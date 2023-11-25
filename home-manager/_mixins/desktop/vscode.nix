@@ -1,11 +1,17 @@
-{ inputs, pkgs, ... }: {
-  imports = [
-    inputs.vscode-server.nixosModules.default
+{ pkgs, ... }:
+{
+  home.packages = with pkgs; [
+    black                 # Code format Python
+    nodePackages.prettier # Code format
+    rustfmt               # Code format Rust
+    shellcheck            # Code lint Shell
+    shfmt                 # Code format Shell
   ];
-  environment.systemPackages = with pkgs; [
-    (vscode-with-extensions.override {
-      vscode = vscode;
-      vscodeExtensions = [
+
+  programs = {
+    vscode = {
+      enable = true;
+      extensions = with pkgs; [
         vscode-extensions.alefragnani.project-manager
         vscode-extensions.codezombiech.gitignore
         vscode-extensions.coolbear.systemd-unit-file
@@ -152,10 +158,8 @@
           sha256 = "sha256-ZE+Dlq0mwyzr4nWL9v+JG00Gllj2dYwL2r9jUPQ8umQ=";
         }
       ];
-    })
-  ];
-
-  services.vscode-server.enable = true;
-  # May require the service to be enable/started for the user
-  # - systemctl --user enable auto-fix-vscode-server.service --now
+      mutableExtensionsDir = true;
+      package = pkgs.vscode;
+    };
+  };
 }

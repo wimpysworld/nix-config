@@ -35,7 +35,6 @@ in
     ../../desktop/chromium.nix
     ../../desktop/chromium-extensions.nix
     ../../desktop/obs-studio.nix
-    ../../desktop/vscode.nix
     ../../desktop/${desktop}-apps.nix
   ];
 

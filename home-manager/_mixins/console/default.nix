@@ -34,7 +34,6 @@ in
       work-sans
       asciinema # Terminal recorder
       bandwhich # Modern Unix `iftop`
-      black # Code format Python
       bmon # Modern Unix `iftop`
       breezy # Terminal bzr client
       butler # Terminal Itch.io API client
@@ -69,7 +68,6 @@ in
       neo-cowsay # Terminal ASCII cows
       netdiscover # Modern Unix `arp`
       nixpkgs-review # Nix code review
-      nodePackages.prettier # Code format
       nurl # Nix URL fetcher
       nyancat # Terminal rainbow spewing feline
       onefetch # Terminal git project info
@@ -77,10 +75,7 @@ in
       procs # Modern Unix `ps`
       quilt # Terminal patch manager
       rclone # Modern Unix `rsync`
-      rustfmt # Code format Rust
       sd # Modern Unix `sed`
-      shellcheck # Code lint Shell
-      shfmt # Code format Shell
       speedtest-go # Terminal speedtest.net
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
