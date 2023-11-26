@@ -219,6 +219,7 @@ in
         cat = "bat --paging=never";
         dadjoke = ''curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
         diff = "difft";
+        dmesg = "dmesg --human --color=always";
         neofetch = "fastfetch";
         glow = "glow --pager";
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
