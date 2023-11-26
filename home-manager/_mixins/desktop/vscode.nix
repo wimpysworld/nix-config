@@ -50,7 +50,6 @@
         vscode-extensions.tamasfe.even-better-toml
         vscode-extensions.timonwong.shellcheck
         vscode-extensions.twxs.cmake
-        vscode-extensions.vadimcn.vscode-lldb
         vscode-extensions.vscode-icons-team.vscode-icons
         vscode-extensions.yzhang.markdown-all-in-one
       ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
