@@ -16,6 +16,7 @@
       enable = true;
       extensions = with pkgs; [
         vscode-extensions.alefragnani.project-manager
+        vscode-extensions.bmalehorn.vscode-fish
         vscode-extensions.codezombiech.gitignore
         vscode-extensions.coolbear.systemd-unit-file
         vscode-extensions.dart-code.flutter
