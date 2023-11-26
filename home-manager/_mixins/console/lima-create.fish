@@ -22,7 +22,7 @@ echo "DlMaxRetries: 32"       | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
 echo "PassThroughPattern: .*" | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
 sudo systemctl restart apt-cacher-ng
 
-# Install nix and home-manager
+# Install Nix
 sudo mkdir -p "/nix/var/nix/profiles/per-user/${USER}"
 export NIX_INSTALLER_NO_CONFIRM="true"
 curl --proto "=https" --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
