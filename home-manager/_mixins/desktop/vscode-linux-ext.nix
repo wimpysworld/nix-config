@@ -8,6 +8,7 @@ lib.mkIf isLinux {
       extensions = with pkgs; [
         vscode-extensions.ms-vscode.cpptools
         vscode-extensions.ms-vsliveshare.vsliveshare
+        vscode-extensions.vadimcn.vscode-lldb
       ];
     };
   };
