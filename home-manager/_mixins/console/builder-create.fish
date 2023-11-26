@@ -1,13 +1,13 @@
-function lima-create
-  if test -f "$HOME/.lima/default/lima.yaml"
-      echo "lima-default already exists."
+function builder-create
+  if test -d "$HOME/.lima/builder"
+      echo "builder already exists."
       return 1
   end
 
-  limactl create --arch=x86_64 --cpus=(math (nproc) / 2) --memory 16 --disk 128 --name=default --containerd none --tty=false template://ubuntu-lts
+  limactl create --arch=x86_64 --cpus=(math (nproc) / 2) --memory 16 --disk 128 --name=builder --containerd none --tty=false template://ubuntu-lts
   # Remove home directory mount
-  sed -i '/- location: "~"/d' $HOME/.lima/default/lima.yaml
-  limactl start default
+  sed -i '/- location: "~"/d' $HOME/.lima/builder/lima.yaml
+  limactl start builder
 
   # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
   printf '#!/usr/bin/env bash
@@ -25,7 +25,6 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y install apt-cacher-ng devscripts
 echo "DlMaxRetries: 32"       | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
 echo "PassThroughPattern: .*" | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
-sudo systemctl restart apt-cacher-ng
 
 # Install Nix
 sudo mkdir -p "/nix/var/nix/profiles/per-user/${USER}"
@@ -45,9 +44,10 @@ nix shell nixpkgs#home-manager --command sh -c "home-manager switch -b backup --
 echo "fish --login" >> "/home/${USER}/.bashrc"
 echo "exit"         >> "/home/${USER}/.bashrc"
 echo -e "\n${HOSTNAME} is now configured and rebooting\n"
-sudo reboot' > /tmp/lima/lima-default.sh
+sudo reboot' > /tmp/lima/builder.sh
 
-  chmod 755 /tmp/lima/lima-default.sh
-  limactl shell --workdir "/home/$USER.linux" default /tmp/lima/lima-default.sh
+  chmod 755 /tmp/lima/builder.sh
+  limactl shell --workdir "/home/$USER.linux" builder /tmp/lima/builder.sh
+  rm /tmp/lima/builder.sh
   limactl list
 end

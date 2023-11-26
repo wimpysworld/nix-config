@@ -66,7 +66,7 @@
         "martin@zed" = libx.mkHome { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
         # Servers
         "martin@brix" = libx.mkHome { hostname = "brix"; username = "martin"; };
-        "martin@lima-default" = libx.mkHome { hostname = "lima-default"; username = "martin"; };
+        "martin@lima-builder" = libx.mkHome { hostname = "lima-builder"; username = "martin"; };
         "martin@skull" = libx.mkHome { hostname = "skull"; username = "martin"; };
         "martin@vm-mini" = libx.mkHome { hostname = "vm-mini"; username = "martin"; };
         # Steam Deck

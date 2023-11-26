@@ -22,7 +22,7 @@ in
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./h.fish;
     };
     file = {
-      "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./lima-create.fish;
+      "${config.xdg.configHome}/fish/functions/builder-create.fish".text = builtins.readFile ./builder-create.fish;
     };
     file = {
       ".hidden".text = ''snap'';
@@ -220,6 +220,11 @@ in
         banner = "figlet";
         banner-color = "figlet $argv | dotacat";
         brg = "batgrep";
+        builder-destroy = "limactl stop builder; limactl delete builder; rm -rf $HOME/.lima/builder";
+        builder-enter = "test -f $HOME/.lima/builder/lima.yaml; and limactl shell builder; or echo builder does not exist";
+        builder-shell = "builder-enter";
+        builder-start = "test -d $HOME/.lima/builder/lima.yaml; and limactl start builder; or echo builder does not exist";
+        builder-stop = "limactl stop builder";
         cat = "bat --paging=never";
         dadjoke = ''curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
         diff = "difft";
