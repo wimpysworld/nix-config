@@ -34,7 +34,7 @@
       enableNvidia = lib.elem "nvidia" config.services.xserver.videoDrivers;
     };
   };
-  
+
   networking = {
     firewall = {
       trustedInterfaces = [ "lxdbr0" ];
