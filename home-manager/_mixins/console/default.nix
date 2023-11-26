@@ -267,6 +267,9 @@ in
         enable = true;
       };
       extraConfig = {
+        advice = {
+          statusHints = false;
+        };
         color = {
           branch = false;
           diff = false;
