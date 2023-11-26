@@ -22,6 +22,9 @@ in
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./h.fish;
     };
     file = {
+      "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./lima-create.fish;
+    };
+    file = {
       ".hidden".text = ''snap'';
     };
     # A Modern Unix experience
@@ -63,6 +66,7 @@ in
       iperf3 # Terminal network benchmarking
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
+      lima # Terminal VM manager
       mdp # Terminal Markdown presenter
       mtr # Modern Unix `traceroute`
       neo-cowsay # Terminal ASCII cows
