@@ -4,7 +4,7 @@ function lima-create
   sed -i '/- location: "~"/d' $HOME/.lima/default/lima.yaml
   limactl start default
 
-  # Slightly mangled bash script so it can be delivered as a faux heredoc payload
+  # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
   printf '#!/usr/bin/env bash
 
 # Hack the home directory; usermod will not work because the user is logged in
@@ -36,7 +36,7 @@ pushd "${HOME}/Zero/nix-config"
 home-manager switch -b backup --flake "${HOME}/Zero/nix-config"
 git clone https://github.com/wimpysworld/obs-studio-portable "${HOME}/Development/github.com/wimpysworld/obs-studio-portable"
 
-# Fake a login shell to ensure fish is used
+# Fake a fish login shell
 echo "fish --login" >> "/home/${USER}/.bashrc"
 echo "exit"         >> "/home/${USER}/.bashrc"
 echo "${HOSTNAME} is now configured and rebooting"
