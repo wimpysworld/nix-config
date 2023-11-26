@@ -38,7 +38,7 @@ git clone https://github.com/wimpysworld/obs-studio-portable "${HOME}/Developmen
 # Fake a fish login shell
 echo "fish --login" >> "/home/${USER}/.bashrc"
 echo "exit"         >> "/home/${USER}/.bashrc"
-echo "${HOSTNAME} is now configured and rebooting"
+echo -e "\n${HOSTNAME} is now configured and rebooting\n"
 sudo reboot' > /tmp/lima/lima-default.sh
 
   chmod 755 /tmp/lima/lima-default.sh
