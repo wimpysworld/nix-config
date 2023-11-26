@@ -4,6 +4,10 @@ function builder-create
       return 1
   end
 
+  # Set defaults
+  set CORES 2
+  set TWEAKS ""
+
   # Detect Operating System
   set KERNEL (uname -s)
 
@@ -11,10 +15,10 @@ function builder-create
   switch $KERNEL
     case Linux
       set CORES (nproc)
+      set TWEAKS "--vm-type qemu"
     case Darwin
       set CORES (sysctl -n hw.ncpu)
-    case '*'
-      set CORES 2
+      set TWEAKS "--vm-type vz --mount-type virtiofs --rosetta --network vzNAT"
   end
 
   # Appropriately limit the number of cores
@@ -24,7 +28,7 @@ function builder-create
     set CORES (math $CORES / 2)
   end
 
-  limactl create --arch=x86_64 --cpus=$CORES --memory 16 --disk 64 --name=builder --containerd none --tty=false template://ubuntu-lts
+  limactl create --arch=x86_64 --cpus=$CORES --memory 16 --disk 64 --name=builder --containerd none --tty=false $TWEAKS template://ubuntu-lts
   # Remove home directory mount
   sed -i '/- location: "~"/d' $HOME/.lima/builder/lima.yaml
   limactl start builder
