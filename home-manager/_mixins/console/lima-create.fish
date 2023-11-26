@@ -28,11 +28,13 @@ export NIX_INSTALLER_NO_CONFIRM="true"
 curl --proto "=https" --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
-# Apply my nix-config
-git clone https://github.com/wimpysworld/nix-config "${HOME}/Zero/nix-config"
+# Clone my repos
+git clone --quiet https://github.com/wimpysworld/nix-config "${HOME}/Zero/nix-config"
+git clone --quiet https://github.com/wimpysworld/obs-studio-portable "${HOME}/Development/github.com/wimpysworld/obs-studio-portable"
+
+# Activate home-manager configuration
 pushd "${HOME}/Zero/nix-config"
 nix shell nixpkgs#home-manager --command sh -c "home-manager switch -b backup --flake ${HOME}/Zero/nix-config"
-git clone https://github.com/wimpysworld/obs-studio-portable "${HOME}/Development/github.com/wimpysworld/obs-studio-portable"
 
 # Fake a fish login shell
 echo "fish --login" >> "/home/${USER}/.bashrc"
