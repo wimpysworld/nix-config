@@ -1,5 +1,8 @@
 { pkgs, ... }:
 {
+  imports = [
+    ./vscode-linux-ext.nix
+  ];
   home.packages = with pkgs; [
     black                 # Code format Python
     nodePackages.prettier # Code format
@@ -38,9 +41,7 @@
         vscode-extensions.ms-python.python
         vscode-extensions.ms-python.vscode-pylance
         vscode-extensions.ms-vscode.cmake-tools
-        vscode-extensions.ms-vscode.cpptools
         vscode-extensions.ms-vscode.hexeditor
-        vscode-extensions.ms-vsliveshare.vsliveshare
         vscode-extensions.redhat.vscode-yaml
         vscode-extensions.rust-lang.rust-analyzer
         vscode-extensions.ryu1kn.partial-diff
