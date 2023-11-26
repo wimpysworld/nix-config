@@ -1,5 +1,10 @@
 function lima-create
-  limactl create --arch=x86_64 --cpus=(math (nproc) / 2) --memory 16 --disk 128 --name=default --tty=false template://ubuntu-lts
+  if test -f "$HOME/.lima/default/lima.yaml"
+      echo "lima-default already exists."
+      return 1
+  end
+
+  limactl create --arch=x86_64 --cpus=(math (nproc) / 2) --memory 16 --disk 128 --name=default --containerd none --tty=false template://ubuntu-lts
   # Remove home directory mount
   sed -i '/- location: "~"/d' $HOME/.lima/default/lima.yaml
   limactl start default
