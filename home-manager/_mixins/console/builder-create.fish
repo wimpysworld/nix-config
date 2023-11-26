@@ -4,7 +4,27 @@ function builder-create
       return 1
   end
 
-  limactl create --arch=x86_64 --cpus=(math (nproc) / 2) --memory 16 --disk 64 --name=builder --containerd none --tty=false template://ubuntu-lts
+  # Detect Operating System
+  set KERNEL (uname -s)
+
+  # Get the number of cores
+  switch $KERNEL
+    case Linux
+      set CORES (nproc)
+    case Darwin
+      set CORES (sysctl -n hw.ncpu)
+    case '*'
+      set CORES 2
+  end
+
+  # Appropriately limit the number of cores
+  if test $CORES -ge 32
+    set CORES (math $CORES / 4)
+  else if test $CORES -ge 4
+    set CORES (math $CORES / 2)
+  end
+
+  limactl create --arch=x86_64 --cpus=$CORES --memory 16 --disk 64 --name=builder --containerd none --tty=false template://ubuntu-lts
   # Remove home directory mount
   sed -i '/- location: "~"/d' $HOME/.lima/builder/lima.yaml
   limactl start builder
