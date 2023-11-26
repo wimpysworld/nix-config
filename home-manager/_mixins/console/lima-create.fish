@@ -30,7 +30,6 @@ curl --proto "=https" --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 nix profile install nixpkgs#home-manager
 
 # Apply my nix-config
-mkdir -p "${HOME}/Zero"
 git clone https://github.com/wimpysworld/nix-config "${HOME}/Zero/nix-config"
 pushd "${HOME}/Zero/nix-config"
 home-manager switch -b backup --flake "${HOME}/Zero/nix-config"
