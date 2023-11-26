@@ -4,7 +4,7 @@ function builder-create
       return 1
   end
 
-  limactl create --arch=x86_64 --cpus=(math (nproc) / 2) --memory 16 --disk 128 --name=builder --containerd none --tty=false template://ubuntu-lts
+  limactl create --arch=x86_64 --cpus=(math (nproc) / 2) --memory 16 --disk 64 --name=builder --containerd none --tty=false template://ubuntu-lts
   # Remove home directory mount
   sed -i '/- location: "~"/d' $HOME/.lima/builder/lima.yaml
   limactl start builder
