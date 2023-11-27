@@ -30,7 +30,6 @@ function builder-create
 
   # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
   printf '#!/usr/bin/env bash
-export HOME="/home/${USER}.linux"
 
 # Upgrade, install apt-cacher-ng and devscripts
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y update
@@ -57,11 +56,12 @@ nix shell nixpkgs#home-manager --command sh -c "home-manager switch -b backup --
 # Fake a fish login shell
 echo "fish --login" >> "${HOME}/.bashrc"
 echo "exit"         >> "${HOME}/.bashrc"
-echo -e "\n${HOSTNAME} is now configured and rebooting\n"
-sudo reboot' > /tmp/lima/builder.sh
+echo -e "\n${HOSTNAME} is now configured\nRestarting...\n"' > /tmp/lima/builder.sh
 
   chmod 755 /tmp/lima/builder.sh
   limactl shell --workdir "/home/$USER" builder /tmp/lima/builder.sh
   rm /tmp/lima/builder.sh
+  limactl stop builder
+  limactl start builder
   limactl list
 end
