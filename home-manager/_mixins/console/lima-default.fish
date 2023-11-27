@@ -58,7 +58,7 @@ echo "exit"         >> "${HOME}/.bashrc"
 echo -e "\n${HOSTNAME} is now configured\nRestarting...\n"' > /tmp/lima/lima-default.sh
 
   chmod 755 /tmp/lima/lima-default.sh
-  limactl shell --workdir "/home/$USER" default /tmp/lima/lima-default.sh
+  limactl shell --workdir "/home/$USER.linux" default /tmp/lima/lima-default.sh
   rm /tmp/lima/lima-default.sh
   limactl stop default
   limactl start default
