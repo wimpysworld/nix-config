@@ -55,8 +55,8 @@ git checkout darwin-fixes
 nix shell nixpkgs#home-manager --command sh -c "home-manager switch -b backup --flake ${HOME}/Zero/nix-config"
 
 # Fake a fish login shell
-echo "fish --login" >> "/home/${USER}/.bashrc"
-echo "exit"         >> "/home/${USER}/.bashrc"
+echo "fish --login" >> "${HOME}/.bashrc"
+echo "exit"         >> "${HOME}/.bashrc"
 echo -e "\n${HOSTNAME} is now configured and rebooting\n"
 sudo reboot' > /tmp/lima/builder.sh
 
