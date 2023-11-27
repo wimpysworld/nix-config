@@ -6,7 +6,7 @@ function lima-default
 
   # Set defaults
   set CORES 2
-  set TWEAKS ""
+  set VM "qemu"
 
   # Detect Operating System
   set KERNEL (uname -s)
@@ -15,10 +15,9 @@ function lima-default
   switch $KERNEL
     case Linux
       set CORES (nproc)
-      set TWEAKS "--vm-type qemu"
     case Darwin
       set CORES (sysctl -n hw.ncpu)
-      set TWEAKS "--vm-type=vz --mount-type=virtiofs --rosetta --network=vzNAT"
+      set VM "vz"
   end
 
   # Appropriately limit the number of cores
@@ -28,7 +27,7 @@ function lima-default
     set CORES (math $CORES / 2)
   end
 
-  limactl create --cpus=$CORES --memory=4 --disk=32 --name=default --containerd=none --tty=false $TWEAKS template://default
+  limactl create --vm-type=$VM --cpus=$CORES --memory=4 --disk=32 --name=default --containerd=none --tty=false template://ubuntu
   limactl start default
 
   # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
