@@ -64,4 +64,5 @@ echo -e "\n${HOSTNAME} is now configured\nRestarting...\n"' > /tmp/lima/builder.
   limactl stop builder
   limactl start builder
   limactl list
+  limactl shell builder
 end
