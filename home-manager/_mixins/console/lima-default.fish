@@ -63,4 +63,5 @@ echo -e "\n${HOSTNAME} is now configured\nRestarting...\n"' > /tmp/lima/lima-def
   limactl stop default
   limactl start default
   limactl list
+  limactl shell default
 end
