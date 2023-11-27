@@ -66,7 +66,6 @@ in
       iperf3 # Terminal network benchmarking
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
-      lima # Terminal VM manager
       mdp # Terminal Markdown presenter
       mtr # Modern Unix `traceroute`
       neo-cowsay # Terminal ASCII cows
@@ -93,6 +92,7 @@ in
       figlet # Terminal ASCII banners
       iw # Terminal WiFi info
       libva-utils # Terminal VAAPI info
+      lima # Terminal VM manager
       lurk # Modern Unix `strace`
       python310Packages.gpustat # Terminal GPU info
       ramfetch # Terminal system info
@@ -100,6 +100,7 @@ in
       wavemon # Terminal WiFi monitor
       zsync # Terminal file sync; FTBFS on aarch64-darwin
     ] ++ lib.optionals isDarwin [
+      lima-bin # Terminal VM manager
       m-cli # Terminal Swiss Army Knife for macOS
     ];
     sessionVariables = {
