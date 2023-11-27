@@ -26,19 +26,10 @@ function builder-create
   end
 
   limactl create --arch=x86_64 --cpus=$CORES --memory 16 --disk 64 --name=builder --containerd none --tty=false template://ubuntu-lts
-  # Remove home directory mount
-  sed -i '/- location: "~"/d' $HOME/.lima/builder/lima.yaml
   limactl start builder
 
   # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
   printf '#!/usr/bin/env bash
-
-# Hack the home directory; usermod will not work because the user is logged in
-sudo mv "/home/${USER}.linux" "/home/${USER}"
-sudo sed -i "s/${USER}\.linux/${USER}/g" /etc/passwd
-sudo sed -i "s/${USER}\.linux/${USER}/g" /etc/passwd-
-export HOME="/home/${USER}"
-cd "${HOME}"
 
 # Upgrade, install apt-cacher-ng and devscripts
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y update
@@ -59,6 +50,7 @@ git clone --quiet https://github.com/wimpysworld/obs-studio-portable "${HOME}/De
 
 # Activate home-manager configuration
 pushd "${HOME}/Zero/nix-config"
+git checkout darwin-fixes
 nix shell nixpkgs#home-manager --command sh -c "home-manager switch -b backup --flake ${HOME}/Zero/nix-config"
 
 # Fake a fish login shell
@@ -68,7 +60,7 @@ echo -e "\n${HOSTNAME} is now configured and rebooting\n"
 sudo reboot' > /tmp/lima/builder.sh
 
   chmod 755 /tmp/lima/builder.sh
-  limactl shell --workdir "/home/$USER.linux" builder /tmp/lima/builder.sh
+  limactl shell builder /tmp/lima/builder.sh
   rm /tmp/lima/builder.sh
   limactl list
 end
