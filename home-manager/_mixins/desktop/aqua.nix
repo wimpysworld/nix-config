@@ -5,7 +5,7 @@ in
 lib.mkIf isDarwin {
   # Darwin specific configuration
   targets.darwin = {
-    defaults = {
+    currentHostDefaults = {
       NSGlobalDomain = {
         AppleLanguages = [ "en-GB" ];
         AppleLocale = "en_GB";
