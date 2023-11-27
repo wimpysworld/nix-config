@@ -61,7 +61,7 @@ echo -e "\n${HOSTNAME} is now configured and rebooting\n"
 sudo reboot' > /tmp/lima/builder.sh
 
   chmod 755 /tmp/lima/builder.sh
-  limactl shell builder /tmp/lima/builder.sh
+  limactl shell --workdir "/home/$USER" builder /tmp/lima/builder.sh
   rm /tmp/lima/builder.sh
   limactl list
 end
