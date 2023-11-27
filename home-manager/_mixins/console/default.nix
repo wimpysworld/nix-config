@@ -25,6 +25,9 @@ in
       "${config.xdg.configHome}/fish/functions/builder-create.fish".text = builtins.readFile ./builder-create.fish;
     };
     file = {
+      "${config.xdg.configHome}/fish/functions/lima-default.fish".text = builtins.readFile ./lima-default.fish;
+    };
+    file = {
       ".hidden".text = ''snap'';
     };
     # A Modern Unix experience
