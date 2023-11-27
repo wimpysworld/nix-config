@@ -25,7 +25,7 @@ function builder-create
     set CORES (math $CORES / 2)
   end
 
-  limactl create --arch=x86_64 --cpus=$CORES --memory 16 --disk 64 --name=builder --containerd none --tty=false template://ubuntu-lts
+  limactl create --arch=x86_64 --cpus=$CORES --memory=16 --disk=64 --name=builder --containerd=none --tty=false template://ubuntu-lts
   limactl start builder
 
   # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
