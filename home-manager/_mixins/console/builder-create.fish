@@ -30,6 +30,7 @@ function builder-create
 
   # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
   printf '#!/usr/bin/env bash
+export HOME="/home/${USER}.linux"
 
 # Upgrade, install apt-cacher-ng and devscripts
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y update
