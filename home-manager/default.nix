@@ -1,6 +1,7 @@
 { config, desktop, hostname, inputs, lib, outputs, pkgs, stateVersion, username, ... }:
 let
   inherit (pkgs.stdenv) isDarwin;
+  isLima = builtins.substring 0 5 hostname == "lima-";
 in
 {
   # Only import desktop configuration if the host is desktop enabled
@@ -23,7 +24,7 @@ in
     activation.report-changes = config.lib.dag.entryAnywhere ''
       ${pkgs.nvd}/bin/nvd diff $oldGenPath $newGenPath
     '';
-    homeDirectory = if isDarwin then "/Users/${username}" else "/home/${username}";
+    homeDirectory = if isDarwin then "/Users/${username}" else if isLima then "/home/${username}.linux" else "/home/${username}";
     sessionPath = [ "$HOME/.local/bin" ];
     inherit stateVersion;
     inherit username;
