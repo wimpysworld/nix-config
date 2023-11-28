@@ -85,7 +85,6 @@ fi
 
 # Activate home-manager configuration
 pushd "${HOME}/Zero/nix-config"
-git checkout darwin-fixes
 nix shell nixpkgs#home-manager --command sh -c "home-manager switch -b backup --flake ${HOME}/Zero/nix-config"
 
 # Fake a fish login shell
