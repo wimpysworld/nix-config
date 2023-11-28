@@ -24,9 +24,9 @@ function lima-create
       set CPUS (sysctl -n hw.ncpu)
       set MEMORY (math (sysctl -n hw.memsize) / 1024 / 1024 / 1024)
       if test "$VM_NAME" = "builder"
-        set LIMA_OPTS --arch=x86_64 --vm-type=qemu --mount-type=9p
+        set LIMA_OPTS --arch=x86_64
       else
-        set LIMA_OPTS --vm-type=vz --rosetta --mount-type=virtiofs --network=vzNAT
+        set LIMA_OPTS --vm-type=qemu
       end
   end
 
