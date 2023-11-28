@@ -5,29 +5,38 @@ function lima-default
   end
 
   # Set defaults
-  set CORES 2
-  set VM "qemu"
-
-  # Detect Operating System
-  set KERNEL (uname -s)
+  set CPUS 2
 
   # Get the number of cores
-  switch $KERNEL
+  switch (uname -s)
     case Linux
-      set CORES (nproc)
+      set CPUS (nproc)
+      set MEMORY (free --giga -h | awk '/^Mem:/ {print $2}' | sed s'/[A-Z]//g')
+      set LIMA_OPTS --vm-type=qemu --mount-type=9p
     case Darwin
-      set CORES (sysctl -n hw.ncpu)
-      set VM "vz"
+      set CPUS (sysctl -n hw.ncpu)
+      set MEMORY (math (sysctl -n hw.memsize) / 1024 / 1024 / 1024)
+      set LIMA_OPTS --vm-type=vz --rosetta --mount-type=virtiofs --network=vzNAT
   end
 
-  # Appropriately limit the number of cores
-  if test $CORES -ge 32
-    set CORES (math $CORES / 4)
+  # Appropriately limit the number of VM CPUs
+  if test $CPUS -ge 32
+    set VM_CPUS (math $CPUS / 4)
   else if test $CORES -ge 4
-    set CORES (math $CORES / 2)
+    set VM_CPUS (math $CPUS / 2)
   end
 
-  limactl create --vm-type=$VM --cpus=$CORES --memory=4 --disk=32 --name=default --containerd=none --tty=false template://ubuntu
+  # Appropriately limit the VM memory
+  if test $MEMORY -ge 256
+    set VM_MEMORY (math $MEMORY / 8)
+  else if test $MEMORY -ge 64
+    set VM_MEMORY (math $MEMORY / 4)
+  else
+    set VM_MEMORY (math $MEMORY / 2)
+  end
+
+  limactl create $LIMA_OPTS --cpus=$VM_CPUS --memory=$VM_MEMORY --disk=32 --name=default --containerd=none --tty=false template://ubuntu
+  return
   limactl start default
 
   # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
