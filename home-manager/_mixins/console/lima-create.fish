@@ -10,7 +10,7 @@ function lima-create
       return 1
   end
 
-  # Get the number of cores
+  # Get platform specific values
   switch (uname -s)
     case Linux
       set CPUS (nproc)
