@@ -22,10 +22,7 @@ in
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./h.fish;
     };
     file = {
-      "${config.xdg.configHome}/fish/functions/builder-create.fish".text = builtins.readFile ./builder-create.fish;
-    };
-    file = {
-      "${config.xdg.configHome}/fish/functions/lima-default.fish".text = builtins.readFile ./lima-default.fish;
+      "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./lima-create.fish;
     };
     file = {
       ".hidden".text = ''snap'';
@@ -239,6 +236,8 @@ in
         ip = "ip --color --brief";
         less = "bat";
         lolcat = "dotacat";
+        make-lima-builder = "lima-create builder";
+        make-lima-default = "lima-create default";
         moon = "curl -s wttr.in/Moon";
         more = "bat";
         checkip = "curl -s ifconfig.me/ip";
