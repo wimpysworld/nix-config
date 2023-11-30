@@ -86,6 +86,7 @@ in
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
       ueberzugpp # Terminal image viewer integration
+      upterm # Terminal sharing
       wget2 # Terminal HTTP client
       wthrr # Modern Unix weather
       wormhole-william # Terminal file transfer
