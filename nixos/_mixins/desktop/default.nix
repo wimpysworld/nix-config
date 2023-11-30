@@ -31,6 +31,22 @@
   };
 
   xdg.portal = {
+    config = {
+      common = {
+        default = [
+          "gtk"
+        ];
+      };
+      pantheon = {
+        default = [
+          "pantheon"
+          "gtk"
+        ];
+        "org.freedesktop.impl.portal.Secret" = [
+          "gnome-keyring"
+        ];
+      };
+    };
     enable = true;
     xdgOpenUsePortal = true;
   };
