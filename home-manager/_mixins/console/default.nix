@@ -62,6 +62,7 @@ in
       gping # Modern Unix `ping`
       h # Modern Unix autojump for git projects
       hexyl # Modern Unix `hexedit`
+      hr # Terminal horizontal rule
       httpie # Terminal HTTP client
       hyperfine # Terminal benchmarking
       iperf3 # Terminal network benchmarking
@@ -228,6 +229,7 @@ in
         dmesg = "dmesg --human --color=always";
         neofetch = "fastfetch";
         glow = "glow --pager";
+        hr = 'hr "─━"';
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
         less = "bat";
@@ -237,6 +239,7 @@ in
         moon = "curl -s wttr.in/Moon";
         more = "bat";
         checkip = "curl -s ifconfig.me/ip";
+        ruler = 'hr "╭─³⁴⁵⁶⁷⁸─╮"';
         screenfetch = "fastfetch";
         speedtest = "speedtest-go";
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
