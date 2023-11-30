@@ -24,6 +24,9 @@ in
       "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./lima-create.fish;
     };
     file = {
+      "${config.xdg.configHome}/fish/functions/get-nix-hash.fish".text = builtins.readFile ./get-nix-hash.fish;
+    };
+    file = {
       ".hidden".text = ''snap'';
     };
     # A Modern Unix experience
@@ -73,6 +76,7 @@ in
       neo-cowsay # Terminal ASCII cows
       netdiscover # Modern Unix `arp`
       nixpkgs-review # Nix code review
+      nix-prefetch-scripts # Nix code fetcher
       nurl # Nix URL fetcher
       nyancat # Terminal rainbow spewing feline
       onefetch # Terminal git project info
