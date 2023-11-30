@@ -34,6 +34,7 @@ in
       fira-go
       ubuntu_font_family
       work-sans
+      asciicam # Terminal webcam
       asciinema # Terminal recorder
       bandwhich # Modern Unix `iftop`
       bmon # Modern Unix `iftop`
