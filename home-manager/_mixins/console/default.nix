@@ -231,7 +231,7 @@ in
         dmesg = "dmesg --human --color=always";
         neofetch = "fastfetch";
         glow = "glow --pager";
-        hr = 'hr "─━"';
+        hr = ''hr "─━"'';
         htop = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = "ip --color --brief";
         less = "bat";
@@ -241,8 +241,8 @@ in
         moon = "curl -s wttr.in/Moon";
         more = "bat";
         checkip = "curl -s ifconfig.me/ip";
-        parrot "terminal-parrot -delay 50 -loop 7";
-        ruler = 'hr "╭─³⁴⁵⁶⁷⁸─╮"';
+        parrot = "terminal-parrot -delay 50 -loops 7";
+        ruler = ''hr "╭─³⁴⁵⁶⁷⁸─╮"'';
         screenfetch = "fastfetch";
         speedtest = "speedtest-go";
         top = "btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
