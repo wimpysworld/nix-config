@@ -2,5 +2,5 @@
 # Build them using 'nix build .#example' or (legacy) 'nix-build -A example'
 
 { pkgs ? (import ../nixpkgs.nix) { } }: {
-  # example = pkgs.callPackage ./example { };
+  gitkraken = pkgs.callPackage ./gitkraken.nix { };
 }
