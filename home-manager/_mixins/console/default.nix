@@ -57,6 +57,7 @@ in
       entr # Modern Unix `watch`
       fastfetch # Modern Unix system info
       fd # Modern Unix `find`
+      frogmouth # Terminal mardown viewer
       glow # Terminal Markdown renderer
       gping # Modern Unix `ping`
       h # Modern Unix autojump for git projects
