@@ -27,14 +27,6 @@ with lib.hm.gvariant;
       outline-visible = true;
     };
 
-    "io/elementary/code/settings" = {
-      strip-trailing-on-save = true;
-      show-mini-map = true;
-      show-right-margin = true;
-      style-scheme = "Yaru-dark";
-      prefer-dark-style = true;
-    };
-
     "io/elementary/desktop/agent-geoclue2" = {
       location-enabled = true;
     };

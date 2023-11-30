@@ -10,6 +10,7 @@
   environment = {
     pantheon.excludePackages = with pkgs.pantheon; [
       elementary-camera
+      elementary-code
       elementary-music
       elementary-photos
       elementary-videos

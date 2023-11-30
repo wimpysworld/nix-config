@@ -13,6 +13,7 @@ with lib.hm.gvariant;
     ../../desktop/emote.nix
     ../../desktop/gitkraken.nix
     ../../desktop/gnome-sound-recorder.nix
+    ../../desktop/gnome-text-editor.nix
     ../../desktop/iterm2.nix
     ../../desktop/localsend.nix
     ../../desktop/meld.nix
