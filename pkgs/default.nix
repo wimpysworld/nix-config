@@ -3,4 +3,5 @@
 
 { pkgs ? (import ../nixpkgs.nix) { } }: {
   gitkraken = pkgs.callPackage ./gitkraken.nix { };
+  lima-bin = pkgs.callPackage ./lima-bin.nix { };
 }
