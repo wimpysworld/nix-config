@@ -82,6 +82,7 @@ in
       rclone # Modern Unix `rsync`
       sd # Modern Unix `sed`
       speedtest-go # Terminal speedtest.net
+      terminal-parrot # Terminal ASCII parrot
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
       ueberzugpp # Terminal image viewer integration
@@ -239,6 +240,7 @@ in
         moon = "curl -s wttr.in/Moon";
         more = "bat";
         checkip = "curl -s ifconfig.me/ip";
+        parrot "terminal-parrot -delay 50 -loop 7";
         ruler = 'hr "╭─³⁴⁵⁶⁷⁸─╮"';
         screenfetch = "fastfetch";
         speedtest = "speedtest-go";
