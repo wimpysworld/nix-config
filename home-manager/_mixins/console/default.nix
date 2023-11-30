@@ -97,7 +97,6 @@ in
       wormhole-william # Terminal file transfer
       yq-go # Terminal `jq` for YAML
     ] ++ lib.optionals isLinux [
-      debootstrap # Terminal Debian installer
       figlet # Terminal ASCII banners
       iw # Terminal WiFi info
       libva-utils # Terminal VAAPI info
