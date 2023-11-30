@@ -264,6 +264,7 @@
         nano = "micro";
       };
     };
+    nano.enable = lib.mkDefault false;
     nix-ld.enable = true;
   };
 
