@@ -9,6 +9,7 @@
   # Exclude the elementary apps I don't use
   environment = {
     pantheon.excludePackages = with pkgs.pantheon; [
+      elementary-camera
       elementary-music
       elementary-photos
       elementary-videos

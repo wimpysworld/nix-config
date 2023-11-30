@@ -9,6 +9,7 @@
     appeditor
     formatter
     loupe
+    snapshot
     usbimager
     yaru-theme
   ];
