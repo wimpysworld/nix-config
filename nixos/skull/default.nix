@@ -90,6 +90,7 @@
     };
     netdata = {
       enable = true;
+      package = pkgs.netdataCloud;
     };
     plex = {
       enable = true;
