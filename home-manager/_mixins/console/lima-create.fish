@@ -73,8 +73,7 @@ fi
 
 # Install Nix
 sudo mkdir -p "/nix/var/nix/profiles/per-user/${USER}"
-export NIX_INSTALLER_NO_CONFIRM="true"
-curl --proto "=https" --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+curl -sSfL https://install.determinate.systems/nix | sh -s -- install --no-confirm
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
 # Clone my repos
@@ -85,7 +84,7 @@ fi
 
 # Activate home-manager configuration
 pushd "${HOME}/Zero/nix-config"
-nix shell nixpkgs#home-manager --command sh -c "home-manager switch -b backup --flake ${HOME}/Zero/nix-config"
+nix run nixpkgs#home-manager -- switch --flake ${HOME}/Zero/nix-config"
 
 # Fake a fish login shell
 echo "fish --login" >> "${HOME}/.bashrc"
