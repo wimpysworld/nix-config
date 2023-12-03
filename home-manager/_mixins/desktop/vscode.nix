@@ -88,6 +88,13 @@
           version = "1.0.7";
           sha256 = "sha256-vqfhUIjFBf9JvmxB4QFrZH4KMhxamuYjs5n9VyW/BiI=";
         }
+        {
+          name = "better-shellscript-syntax";
+          publisher = "jeff-hykin";
+          version = "1.6.3";
+          sha256 = "sha256-51QuDTxMTPEtEYKWX0dbNTMjTfikD6ZK59Tvxfkh9X8=";
+        }
+        {
           name = "debian-vscode";
           publisher = "dawidd6";
           version = "0.1.2";
