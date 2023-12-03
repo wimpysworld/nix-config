@@ -179,6 +179,12 @@
           sha256 = "sha256-W3LydBsc7rEHIcjE/0jESFS87uc1DfjuZt6lZhMiQcs=";
         }
         {
+          name = "unfoldai";
+          publisher = "TalDennis-UnfoldAI-ChatGPT-Copilot";
+          version = "0.2.6";
+          sha256 = "sha256-W+glLyrRtdoxRnHRKIQftJBTT6GJZ1SemAYTgqgSXt4=";
+        }
+        {
           name = "vala";
           publisher = "prince781";
           version = "1.1.0";
