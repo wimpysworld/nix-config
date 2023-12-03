@@ -155,6 +155,12 @@
           sha256 = "sha256-kfpRByJDcGY3W9+ELBzDOUMl06D/vyPlN//wPgQhByk=";
         }
         {
+          name = "shell-syntax";
+          publisher = "bmalehorn";
+          version = "1.0.5";
+          sha256 = "sha256-83WWzHP6R18r8xX3vrLpqj1uScYeE5N1Z4up3o2EB8c=";
+        }
+        {
           name = "simple-rst";
           publisher = "trond-snekvik";
           version = "1.5.4";
