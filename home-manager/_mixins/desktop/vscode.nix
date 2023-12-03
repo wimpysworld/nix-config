@@ -19,7 +19,6 @@
       enable = true;
       extensions = with pkgs; [
         vscode-extensions.alefragnani.project-manager
-        vscode-extensions.bmalehorn.vscode-fish
         vscode-extensions.codezombiech.gitignore
         vscode-extensions.coolbear.systemd-unit-file
         vscode-extensions.dart-code.flutter
@@ -153,6 +152,12 @@
           publisher = "prince781";
           version = "1.1.0";
           sha256 = "sha256-LJJDKhwzbGznyiXeB8SYir3LOM7/quYhGae1m4X/s3M=";
+        }
+        {
+          name = "vscode-fish";
+          publisher = "bmalehorn";
+          version = "1.0.37";
+          sha256 = "sha256-zcX0hNzS36wd5K/niEqSMt5wbgLS9jI36ygmHZBQ1pc=";
         }
         {
           name = "vscode-front-matter";
