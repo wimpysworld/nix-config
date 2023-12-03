@@ -24,18 +24,15 @@
         vscode-extensions.coolbear.systemd-unit-file
         vscode-extensions.dart-code.flutter
         vscode-extensions.dart-code.dart-code
-        vscode-extensions.donjayamanne.githistory
         vscode-extensions.dotjoshjohnson.xml
         vscode-extensions.editorconfig.editorconfig
         vscode-extensions.esbenp.prettier-vscode
         vscode-extensions.github.copilot
         vscode-extensions.github.vscode-github-actions
-        vscode-extensions.github.vscode-pull-request-github
         vscode-extensions.golang.go
         vscode-extensions.jnoortheen.nix-ide
         vscode-extensions.mads-hartmann.bash-ide-vscode
         vscode-extensions.mechatroner.rainbow-csv
-        vscode-extensions.mhutchie.git-graph
         vscode-extensions.mkhl.direnv
         vscode-extensions.ms-azuretools.vscode-docker
         vscode-extensions.ms-python.python
