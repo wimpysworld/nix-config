@@ -143,6 +143,12 @@
           sha256 = "sha256-t+iRBVN/Cw/eeakRzATCsV8noC2Wb6rnbZj7tcZJ/ew=";
         }
         {
+          name = "openwithkraken";
+          publisher = "s3anmorrow";
+          version = "1.0.0";
+          sha256 = "sha256-zsJjHKHycgT305TVq0SdhZp7zY9ejhSF2SCOPktloGc=";
+        }
+        {
           name = "pubspec-assist";
           publisher = "jeroen-meijer";
           version = "2.3.2";
