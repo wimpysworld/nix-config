@@ -45,7 +45,6 @@
         vscode-extensions.tamasfe.even-better-toml
         vscode-extensions.timonwong.shellcheck
         vscode-extensions.twxs.cmake
-        vscode-extensions.vscode-icons-team.vscode-icons
         vscode-extensions.yzhang.markdown-all-in-one
       ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
         {
@@ -112,6 +111,12 @@
           publisher = "nico-castell";
           version = "0.0.21";
           sha256 = "sha256-4qy+2Tg9g0/9D+MNvLSgWUE8sc5itsC/pJ9hcfxyVzQ=";
+        }
+        {
+          name = "material-product-icons";
+          publisher = "PKief";
+          version = "1.7.0";
+          sha256 = "sha256-F6sukBQ61pHoKTxx88aa8QMLDOm9ozPF9nonIH34C7Q=";
         }
         {
           name = "nelua";
