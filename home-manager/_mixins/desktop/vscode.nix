@@ -32,7 +32,6 @@
         vscode-extensions.golang.go
         vscode-extensions.jnoortheen.nix-ide
         vscode-extensions.mads-hartmann.bash-ide-vscode
-        vscode-extensions.mechatroner.rainbow-csv
         vscode-extensions.mkhl.direnv
         vscode-extensions.ms-python.python
         vscode-extensions.ms-python.vscode-pylance
@@ -66,6 +65,12 @@
           publisher = "beardedbear";
           version = "8.3.2";
           sha256 = "sha256-TwHuoXme0o6EeciA1lxhs5vmhGlDvaWlH8tjVmuSQH8";
+        }
+        {
+          name = "better-csv-syntax";
+          publisher = "jeff-hykin";
+          version = "0.0.2";
+          sha256 = "sha256-lNOESQgMwtjM7eTD8KQLWATktF2wjZzdpTng45i05LI=";
         }
         {
           name = "better-dockerfile-syntax";
