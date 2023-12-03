@@ -82,6 +82,12 @@
           version = "1.0.2";
           sha256 = "sha256-FaF+rhtAoWslmBoxet8rINyQlMxNl8kX1EE89ymnCcQ=";
         }
+        {
+          name = "better-nix-syntax";
+          publisher = "jeff-hykin";
+          version = "1.0.7";
+          sha256 = "sha256-vqfhUIjFBf9JvmxB4QFrZH4KMhxamuYjs5n9VyW/BiI=";
+        }
           name = "debian-vscode";
           publisher = "dawidd6";
           version = "0.1.2";
