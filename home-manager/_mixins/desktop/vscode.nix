@@ -149,6 +149,12 @@
           sha256 = "sha256-zsJjHKHycgT305TVq0SdhZp7zY9ejhSF2SCOPktloGc=";
         }
         {
+          name = "polacode-2019";
+          publisher = "jeff-hykin";
+          version = "0.6.1";
+          sha256 = "sha256-SbfsD28gaVHAmJskUuc1Q8kA47jrVa3OO5Ur7ULk3jI=";
+        }
+        {
           name = "pubspec-assist";
           publisher = "jeroen-meijer";
           version = "2.3.2";
