@@ -34,7 +34,6 @@
         vscode-extensions.mads-hartmann.bash-ide-vscode
         vscode-extensions.mechatroner.rainbow-csv
         vscode-extensions.mkhl.direnv
-        vscode-extensions.ms-azuretools.vscode-docker
         vscode-extensions.ms-python.python
         vscode-extensions.ms-python.vscode-pylance
         vscode-extensions.ms-vscode.cmake-tools
@@ -69,6 +68,11 @@
           sha256 = "sha256-TwHuoXme0o6EeciA1lxhs5vmhGlDvaWlH8tjVmuSQH8";
         }
         {
+          name = "better-dockerfile-syntax";
+          publisher = "jeff-hykin";
+          version = "1.0.2";
+          sha256 = "sha256-FaF+rhtAoWslmBoxet8rINyQlMxNl8kX1EE89ymnCcQ=";
+        }
           name = "debian-vscode";
           publisher = "dawidd6";
           version = "0.1.2";
