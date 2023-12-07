@@ -3,7 +3,8 @@
 , libX11, libXi, libxcb, libXext, libXcursor, glib, libXScrnSaver, libxkbfile, libXtst
 , nss, nspr, cups, fetchzip, expat, gdk-pixbuf, libXdamage, libXrandr, dbus
 , makeDesktopItem, openssl, wrapGAppsHook, at-spi2-atk, at-spi2-core, libuuid
-, e2fsprogs, krb5, libdrm, mesa, unzip, copyDesktopItems, libxshmfence, libxkbcommon, libGL
+, e2fsprogs, krb5, libdrm, mesa, unzip, copyDesktopItems, libxshmfence, libxkbcommon, git
+, libGL, zlib
 }:
 
 with lib;
@@ -92,6 +93,7 @@ let
       libxshmfence
       libxkbcommon
       libGL
+      zlib
     ];
 
     desktopItems = [ (makeDesktopItem {
@@ -128,10 +130,13 @@ let
         patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $file
       done
 
-      for file in $(find . -type f \( -name \*.node -o -name ${pname} -o -name \*.so\* \) ); do
+      for file in $(find . -type f \( -name \*.node -o -name ${pname} -o -name git -o -name git-\* -o -name scalar -o -name \*.so\* \) ); do
         patchelf --set-rpath ${libPath}:$out/share/${pname} $file || true
       done
       popd
+      rm -rf $out/share/${pname}/resources/app.asar.unpacked/git
+      ln -s ${git} $out/share/${pname}/resources/app.asar.unpacked/git
+      chmod 755 $out/share/gitkraken/resources/app.asar.unpacked/node_modules/@axosoft/nodegit/build/Release/*.node
     '';
   };
 
