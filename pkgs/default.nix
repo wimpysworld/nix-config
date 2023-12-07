@@ -2,6 +2,7 @@
 # Build them using 'nix build .#example' or (legacy) 'nix-build -A example'
 
 { pkgs ? (import ../nixpkgs.nix) { } }: {
+  distrobox = pkgs.callPackage ./distrobox.nix { };
   gitkraken = pkgs.callPackage ./gitkraken.nix { };
   lima-bin = pkgs.callPackage ./lima-bin.nix { };
   wavebox = pkgs.callPackage ./wavebox.nix { };
