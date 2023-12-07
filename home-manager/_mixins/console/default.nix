@@ -38,6 +38,7 @@ in
       ubuntu_font_family
       work-sans
       asciicam # Terminal webcam
+      asciinema-agg # Convert asciinema to .gif
       asciinema # Terminal recorder
       bandwhich # Modern Unix `iftop`
       bmon # Modern Unix `iftop`
