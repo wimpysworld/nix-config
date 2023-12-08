@@ -136,7 +136,12 @@ let
       popd
       rm -rf $out/share/${pname}/resources/app.asar.unpacked/git
       ln -s ${git} $out/share/${pname}/resources/app.asar.unpacked/git
-      chmod 755 $out/share/gitkraken/resources/app.asar.unpacked/node_modules/@axosoft/nodegit/build/Release/*.node
+
+      pushd $out/share/${pname}/resources/app.asar.unpacked/node_modules/@axosoft/nodegit/build/Release
+      mv nodegit-ubuntu-18.node nodegit-ubuntu-18-ssl-1.1.1.node
+      mv nodegit-ubuntu-18-ssl-static.node nodegit-ubuntu-18.node
+      chmod 755 nodegit-ubuntu-18.node
+      popd
     '';
   };
 
