@@ -139,8 +139,8 @@ let
 
       pushd $out/share/${pname}/resources/app.asar.unpacked/node_modules/@axosoft/nodegit/build/Release
       mv nodegit-ubuntu-18.node nodegit-ubuntu-18-ssl-1.1.1.node
-      mv nodegit-ubuntu-18-ssl-static.node nodegit-ubuntu-18.node
-      chmod 755 nodegit-ubuntu-18.node
+      ln -s nodegit-ubuntu-18-ssl-static.node nodegit-ubuntu-18.node
+      chmod 755 nodegit-ubuntu-18-ssl-static.node
       popd
     '';
   };
