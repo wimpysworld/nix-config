@@ -3,7 +3,7 @@
 , libX11, libXi, libxcb, libXext, libXcursor, glib, libXScrnSaver, libxkbfile, libXtst
 , nss, nspr, cups, fetchzip, expat, gdk-pixbuf, libXdamage, libXrandr, dbus
 , makeDesktopItem, openssl, wrapGAppsHook, at-spi2-atk, at-spi2-core, libuuid
-, e2fsprogs, krb5, libdrm, mesa, unzip, copyDesktopItems, libxshmfence, libxkbcommon, git
+, e2fsprogs, krb5, libdrm, mesa, unzip, copyDesktopItems, libxshmfence, libxkbcommon
 , libGL, zlib
 }:
 
@@ -134,8 +134,6 @@ let
         patchelf --set-rpath ${libPath}:$out/share/${pname} $file || true
       done
       popd
-      rm -rf $out/share/${pname}/resources/app.asar.unpacked/git
-      ln -s ${git} $out/share/${pname}/resources/app.asar.unpacked/git
 
       pushd $out/share/${pname}/resources/app.asar.unpacked/node_modules/@axosoft/nodegit/build/Release
       mv nodegit-ubuntu-18.node nodegit-ubuntu-18-ssl-1.1.1.node
