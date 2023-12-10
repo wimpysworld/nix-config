@@ -4,7 +4,7 @@
 , nss, nspr, cups, fetchzip, expat, gdk-pixbuf, libXdamage, libXrandr, dbus
 , makeDesktopItem, openssl, wrapGAppsHook, at-spi2-atk, at-spi2-core, libuuid
 , e2fsprogs, krb5, libdrm, mesa, unzip, copyDesktopItems, libxshmfence, libxkbcommon
-, libGL, zlib
+, libGL, zlib, git, cacert
 }:
 
 with lib;
@@ -106,8 +106,10 @@ let
       comment = "Graphical Git client from Axosoft";
     }) ];
 
-    nativeBuildInputs = [ copyDesktopItems makeWrapper wrapGAppsHook ];
+    nativeBuildInputs = [ copyDesktopItems makeWrapper wrapGAppsHook cacert ];
     buildInputs = [ gtk3 gnome.adwaita-icon-theme ];
+
+    env.GIT_SSL_CAINFO = "${cacert}/etc/ssl/certs/ca-bundle.crt";
 
     installPhase = ''
       runHook preInstall
@@ -140,6 +142,9 @@ let
       ln -s nodegit-ubuntu-18-ssl-static.node nodegit-ubuntu-18.node
       chmod 555 nodegit-ubuntu-18-ssl-static.node
       popd
+
+      rm -rf $out/share/${pname}/resources/app.asar.unpacked/git
+      ln -s ${git} $out/share/${pname}/resources/app.asar.unpacked/git
     '';
   };
 
