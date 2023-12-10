@@ -1,14 +1,17 @@
 { stdenvNoCC, lib, fetchFromGitHub, makeWrapper, wget }:
 
+# https://github.com/NixOS/nixpkgs/pull/268800
+# https://github.com/89luca89/distrobox/pull/1080
+
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "distrobox";
   version = "1.6.0.1";
 
   src = fetchFromGitHub {
-    owner = "89luca89";
+    owner = "pschmitt";
     repo = finalAttrs.pname;
-    rev = finalAttrs.version;
-    hash = "sha256-UWrXpb20IHcwadPpwbhSjvOP1MBXic5ay+nP+OEVQE4=";
+    rev = "11a23ccfe2c8ae9e68c8f3fcf721a084d95d5066";
+    hash = "sha256-UvhvkzlDu+HWhc7fwl79BiqR9DisLsv/agV/46ga0zc=";
   };
 
   dontConfigure = true;
