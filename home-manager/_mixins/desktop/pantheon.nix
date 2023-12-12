@@ -105,7 +105,7 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/desktop/session" = {
-      idle-delay = lib.hm.gvariant.mkUint32 7200;
+      idle-delay = lib.hm.gvariant.mkUint32 900;
     };
 
     "org/gnome/desktop/sound" = {
