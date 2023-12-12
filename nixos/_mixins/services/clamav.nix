@@ -4,13 +4,13 @@ let
   sus-user-dirs = [
     "Downloads"
   ];
-  all-normal-users = attrsets.filterAttrs (username: config: config.isNormalUser) config.users.users;
+  all-normal-users = attrsets.filterAttrs (_username: config: config.isNormalUser) config.users.users;
   all-sus-dirs = builtins.concatMap (dir:
     attrsets.mapAttrsToList
-      (username: config: config.home + "/" + dir)
+      (_username: config: config.home + "/" + dir)
       all-normal-users
   ) sus-user-dirs;
-  all-user-folders = attrsets.mapAttrsToList(username: config: config.home) all-normal-users;
+  all-user-folders = attrsets.mapAttrsToList(_username: config: config.home) all-normal-users;
   all-system-folders = [
     "/boot"
     "/etc"
