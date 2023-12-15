@@ -12,7 +12,7 @@
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
     inputs.nixos-hardware.nixosModules.common-cpu-amd-pstate
-    inputs.nixos-hardware.nixosModules.common-gpu-nvidia
+    inputs.nixos-hardware.nixosModules.common-gpu-amd
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     (import ./disks.nix { })
@@ -59,10 +59,10 @@
   }];
 
   boot = {
-    blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
+    #blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "sd_mod" ];
-    initrd.kernelModules = [ "nvidia" ];
-    kernelModules = [ "kvm-amd" "nvidia" ];
+    #initrd.kernelModules = [ "nvidia" ];
+    kernelModules = [ "amdgpu" "kvm-amd" ];
     kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
     swraid.enable = true;
   };
@@ -84,10 +84,10 @@
   };
 
   hardware = {
-    nvidia = {
-      package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
-      prime.offload.enable = false;
-    };
+    #nvidia = {
+    #  package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
+    #  prime.offload.enable = false;
+    #};
     xone.enable = true;
   };
 
@@ -97,6 +97,7 @@
       motherboard = "amd";
       package = pkgs.openrgb-with-all-plugins;
     };
+    xserver.videoDrivers = [ "amdgpu" ];
   };
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }
