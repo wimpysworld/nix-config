@@ -5,7 +5,6 @@ in
 with lib.hm.gvariant;
 {
   imports = [
-    ../../desktop/audio-recorder.nix
     ../../desktop/celluloid.nix
     ../../desktop/chatterino2.nix
     ../../desktop/dconf-editor.nix
