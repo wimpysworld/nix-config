@@ -11,6 +11,7 @@ let
     irccloud
     inkscape
     onlyoffice-bin_7_5
+    wavebox
     wmctrl
     xdotool
     ydotool
@@ -26,7 +27,6 @@ let
     telegram-desktop
     vivaldi
     vivaldi-ffmpeg-codecs
-    wavebox
   ];
 in
 {
