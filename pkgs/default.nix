@@ -3,7 +3,7 @@
 
 { pkgs ? (import ../nixpkgs.nix) { } }: {
   distrobox = pkgs.callPackage ./distrobox { };
-  gitkraken = pkgs.callPackage ./gitkraken.nix { };
-  lima-bin = pkgs.callPackage ./lima-bin.nix { };
-  wavebox = pkgs.callPackage ./wavebox.nix { };
+  gitkraken = pkgs.callPackage ./gitkraken { };
+  lima-bin = pkgs.callPackage ./lima-bin { };
+  wavebox = pkgs.callPackage ./wavebox { };
 }
