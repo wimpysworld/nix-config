@@ -1,23 +1,24 @@
 { stdenvNoCC, lib, fetchFromGitHub, makeWrapper, wget }:
 
-# https://github.com/NixOS/nixpkgs/pull/268800
-# https://github.com/89luca89/distrobox/pull/1080
-
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "distrobox";
   version = "1.6.0.1";
 
   src = fetchFromGitHub {
-    owner = "pschmitt";
+    owner = "89luca89";
     repo = finalAttrs.pname;
-    rev = "11a23ccfe2c8ae9e68c8f3fcf721a084d95d5066";
-    hash = "sha256-UvhvkzlDu+HWhc7fwl79BiqR9DisLsv/agV/46ga0zc=";
+    rev = finalAttrs.version;
+    hash = "sha256-UWrXpb20IHcwadPpwbhSjvOP1MBXic5ay+nP+OEVQE4=";
   };
 
   dontConfigure = true;
   dontBuild = true;
 
   nativeBuildInputs = [ makeWrapper ];
+
+  # https://github.com/89luca89/distrobox/pull/1080
+  patches = [ ./always-mount-nix.patch ];
+
   installPhase = ''
     runHook preInstall
 
@@ -33,6 +34,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   postFixup = ''
     wrapProgram "$out/bin/distrobox-generate-entry" \
       --prefix PATH ":" ${lib.makeBinPath [ wget ]}
+
+    mkdir -p $out/share/distrobox
+    echo 'container_additional_volumes="/nix:/nix"' > $out/share/distrobox/distrobox.conf
   '';
 
   meta = with lib; {
@@ -42,7 +46,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       forward compatibility with software and freedom to use whatever distribution
       you’re more comfortable with
     '';
-    homepage = "https://distrobox.privatedns.org/";
+    homepage = "https://distrobox.it/";
     license = licenses.gpl3Only;
     platforms = platforms.linux;
     maintainers = with maintainers; [ atila ];

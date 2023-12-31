@@ -52,7 +52,6 @@ in
       curlie # Terminal HTTP client
       dconf2nix # Nix code from Dconf files
       difftastic # Modern Unix `diff`
-      distrobox
       dogdns # Modern Unix `dig`
       dotacat # Modern Unix lolcat
       dua # Modern Unix `du`
