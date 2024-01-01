@@ -221,9 +221,7 @@ Things I should do or improve
   - https://stackoverflow.com/questions/77527439/error-when-using-lib-mkif-and-lib-mkmerge-to-set-configuration-based-on-hostname
   - https://www.reddit.com/r/NixOS/comments/knq819/how_to_check_for_nixosdarwin/
 - [ ] Add Password Managers
-- [ ] Integrate Borg Backups
-  - [x] [Vorta](https://vorta.borgbase.com/) for workstations
-  - [ ] [borgmatic](https://torsion.org/borgmatic/) for servers
+- [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
 - [ ] Integrate [homepage](https://github.com/benphelps/homepage)
 - [ ] Integrate [agenix](https://github.com/ryantm/agenix) ~~or [sops-nix](https://github.com/Mic92/sops-nix)~~
@@ -240,6 +238,7 @@ Things I should do or improve
 
 - [ ] `fzf`
 - [ ] `tmate` or `tmux`
+- [ ] `git-graph` and/or `git-igitt` integration
 
 ### Servers
 
