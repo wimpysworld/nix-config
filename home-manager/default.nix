@@ -25,7 +25,6 @@ in
       ${pkgs.nvd}/bin/nvd diff $oldGenPath $newGenPath
     '';
     homeDirectory = if isDarwin then "/Users/${username}" else if isLima then "/home/${username}.linux" else "/home/${username}";
-    sessionPath = [ "$HOME/.local/bin" ];
     inherit stateVersion;
     inherit username;
   };
