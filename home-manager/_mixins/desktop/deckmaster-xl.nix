@@ -19,12 +19,14 @@ lib.mkIf isLinux {
     };
     # Deckmaster and the utilities I bind to the Stream Deck
     packages = with pkgs; [
+      alsa-utils
       bc
       deckmaster
       hueadm
       obs-cli
       piper-tts
       playerctl
+      pulsemixer
     ];
   };
 }
