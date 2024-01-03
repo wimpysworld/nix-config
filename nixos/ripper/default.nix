@@ -74,13 +74,13 @@
   # Debugging
   #  - pw-top                              # see live stats
   #  - journalctl -b0 --user -u pipewire   # see logs (spa resync in "bad")
+  # default.clock.quantum = 512
+  # default.clock.max-quantum = 2048
   environment.etc = {
     "pipewire/pipewire.conf.d/92-fix-resync.conf".text = ''
       context.properties = {
         default.clock.rate = 48000
-        default.clock.quantum = 512
         default.clock.min-quantum = 64
-        default.clock.max-quantum = 2048
       }
     '';
   };
