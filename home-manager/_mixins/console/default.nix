@@ -267,6 +267,10 @@ in
     git = {
       enable = true;
       aliases = {
+        ci = "commit";
+        cl = "clone";
+        co = "checkout";
+        purr = "pull --rebase";
         dlog = "!f() { GIT_EXTERNAL_DIFF=difft git log -p --ext-diff $@; }; f";
         dshow = "!f() { GIT_EXTERNAL_DIFF=difft git show --ext-diff $@; }; f";
         fucked = "reset --hard";
