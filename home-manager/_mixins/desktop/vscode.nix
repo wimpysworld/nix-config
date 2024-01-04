@@ -181,8 +181,8 @@
         {
           name = "unfoldai";
           publisher = "TalDennis-UnfoldAI-ChatGPT-Copilot";
-          version = "0.2.6";
-          sha256 = "sha256-W+glLyrRtdoxRnHRKIQftJBTT6GJZ1SemAYTgqgSXt4=";
+          version = "0.3.3";
+          sha256 = "sha256-QCc1IdUkdK8BxokXd2M/dYNCfcINolfLLkZdv7cVwBE=";
         }
         {
           name = "vala";
