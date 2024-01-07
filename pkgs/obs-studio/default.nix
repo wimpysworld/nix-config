@@ -137,6 +137,7 @@ stdenv.mkDerivation (finalAttrs: {
     "-DBUILD_BROWSER=ON"
     "-DCEF_ROOT_DIR=../../cef"
     "-DENABLE_JACK=ON"
+    "-DENABLE_LIBFDK=ON"
   ];
 
   dontWrapGApps = true;
