@@ -6,8 +6,8 @@
   '';
 
   environment.systemPackages = with pkgs; [
-    (unstable.wrapOBS {
-      plugins = with unstable.obs-studio-plugins; [
+    (wrapOBS {
+      plugins = with obs-studio-plugins; [
         advanced-scene-switcher
         obs-3d-effect
         obs-command-source
