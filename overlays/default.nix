@@ -20,7 +20,7 @@
       };
     });
 
-	keybase-gui = prev.keybase-gui.overrideAttrs ( old: rec {
+    keybase-gui = prev.keybase-gui.overrideAttrs ( old: rec {
       pname = "keybase-gui";
       version = "6.2.4";
       versionSuffix = "20240101011938.ae7e4a1c15";
