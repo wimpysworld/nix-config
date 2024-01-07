@@ -45,6 +45,7 @@
 , decklinkSupport ? false
 , blackmagic-desktop-video
 , libdatachannel
+, cjson
 , pkgs
 }:
 
@@ -112,6 +113,7 @@ stdenv.mkDerivation (finalAttrs: {
     libdatachannel
     libvpl
     qrcodegencpp
+    cjson
   ]
   ++ optionals scriptingSupport [ luajit python3 ]
   ++ optional alsaSupport alsa-lib
