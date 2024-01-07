@@ -2,14 +2,14 @@
 { inputs, ... }:
 {
   # This one brings our custom packages from the 'pkgs' directory
-  additions = final: prev: import ../pkgs { pkgs = final; };
+  additions = final: _prev: import ../pkgs { pkgs = final; };
 
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
   modifications = _final: prev: {
     # https://github.com/NixOS/nixpkgs/issues/278277#issuecomment-1878292158
-    keybase = prev.keybase.overrideAttrs ( old: rec {
+    keybase = prev.keybase.overrideAttrs ( _old: rec {
       pname = "keybase";
       version = "6.2.4";
       src = prev.fetchFromGitHub {
@@ -20,7 +20,7 @@
       };
     });
 
-    keybase-gui = prev.keybase-gui.overrideAttrs ( old: rec {
+    keybase-gui = prev.keybase-gui.overrideAttrs ( _old: rec {
       pname = "keybase-gui";
       version = "6.2.4";
       versionSuffix = "20240101011938.ae7e4a1c15";
@@ -54,7 +54,7 @@
       };
     });
 
-    wavebox = prev.wavebox.overrideAttrs ( old: rec {
+    wavebox = prev.wavebox.overrideAttrs ( _old: rec {
       pname = "wavebox";
       version = "10.120.20-2";
       src = prev.fetchurl {
@@ -66,7 +66,7 @@
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
   # be accessible through 'pkgs.unstable'
-  unstable-packages = final: prev: {
+  unstable-packages = final: _prev: {
     unstable = import inputs.nixpkgs-unstable {
       inherit (final) system;
       config.allowUnfree = true;
