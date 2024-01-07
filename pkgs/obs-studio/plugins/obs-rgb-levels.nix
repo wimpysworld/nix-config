@@ -6,26 +6,22 @@
 }:
 
 stdenv.mkDerivation rec {
-  pname = "obs-rgb-levels-filter";
-  version = "1.0.0";
+  pname = "obs-rgb-levels";
+  version = "1.0.2";
 
   src = fetchFromGitHub {
     owner = "wimpysworld";
-    repo = "obs-rgb-levels-filter";
+    repo = "obs-rgb-levels";
     rev = version;
-    sha256 = "sha256-QREwK9nBhjCBFslXUj9bGUGPgfEns8QqlgP5e2O/0oU=";
+    sha256 = "sha256-W79KUUUodlARlIMg/DaN+fxq/NEkp4k8MuEOHrJTbCk=";
   };
 
   nativeBuildInputs = [ cmake ];
   buildInputs = [ obs-studio ];
 
-  cmakeFlags = [
-    "-DOBS_SRC_DIR=${obs-studio.src}"
-  ];
-
   meta = with lib; {
     description = "A simple OBS Studio filter to adjust RGB levels.";
-    homepage = "https://github.com/wimpysworld/obs-rgb-levels-filter";
+    homepage = "https://github.com/wimpysworld/obs-rgb-levels";
     maintainers = with maintainers; [ flexiondotorg ];
     license = licenses.gpl2Plus;
     platforms = [ "x86_64-linux" "i686-linux" ];

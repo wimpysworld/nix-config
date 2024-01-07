@@ -16,7 +16,7 @@
         obs-move-transition
         obs-mute-filter
         obs-pipewire-audio-capture
-        obs-rgb-levels-filter
+        obs-rgb-levels
         obs-scale-to-sound
         obs-shaderfilter
         obs-source-clone
