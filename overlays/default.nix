@@ -29,6 +29,17 @@
         hash = "sha256-XyGb9F83z8+OSjxOaO5k+h2qIY78ofS/ZfTXki54E5Q=";
       };
     });
+
+    nelua = prev.nelua.overrideAttrs ( old: rec {
+      pname = "nelua";
+      version = "unstable-2023-11-19";
+      src = prev.fetchFromGitHub {
+        owner = "edubart";
+        repo = "nelua-lang";
+        rev = "e82695abf0a68a30a593cefb0bf1143cf9e14b6b";
+        hash = "sha256-Srgoq07JQirxmZcDvw4UdfoYZ5HFT0PbYPoHY99BW/c=";
+      };
+    });
   };
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
