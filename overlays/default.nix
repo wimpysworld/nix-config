@@ -40,6 +40,15 @@
         hash = "sha256-Srgoq07JQirxmZcDvw4UdfoYZ5HFT0PbYPoHY99BW/c=";
       };
     });
+
+    wavebox = prev.wavebox.overrideAttrs ( old: rec {
+      pname = "wavebox";
+      version = "10.120.20-2";
+      src = prev.fetchurl {
+        url = "https://download.wavebox.app/stable/linux/tar/Wavebox_${version}.tar.gz";
+        sha256 = "sha256-ICi/0sWze7+oYEnhsU9ZnlDSRmnG3QgD0tQ3FRRgjeQ=";
+      };
+    });
   };
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will

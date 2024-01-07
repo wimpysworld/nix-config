@@ -5,5 +5,4 @@
   distrobox = pkgs.callPackage ./distrobox { };
   gitkraken = pkgs.callPackage ./gitkraken { };
   lima-bin = pkgs.callPackage ./lima-bin { };
-  wavebox = pkgs.callPackage ./wavebox { };
 }
