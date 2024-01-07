@@ -6,4 +6,5 @@
   gitkraken = pkgs.callPackage ./gitkraken { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   obs-studio = pkgs.callPackage ./obs-studio { };
+  obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
 }
