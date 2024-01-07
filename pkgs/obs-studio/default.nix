@@ -11,8 +11,7 @@
 , libxkbcommon
 , libpthreadstubs
 , libXdmcp
-, qtbase
-, qtsvg
+, qt6
 , speex
 , libv4l
 , x264
@@ -41,8 +40,6 @@
 , librist
 , libva
 , srt
-, qtwayland
-, wrapQtAppsHook
 , nlohmann_json
 , websocketpp
 , asio
@@ -81,7 +78,7 @@ stdenv.mkDerivation (finalAttrs: {
     cmake
     pkg-config
     wrapGAppsHook
-    wrapQtAppsHook
+    qt6.wrapQtAppsHook
   ]
   ++ optional scriptingSupport swig4;
 
@@ -96,8 +93,8 @@ stdenv.mkDerivation (finalAttrs: {
     libxkbcommon
     libpthreadstubs
     libXdmcp
-    qtbase
-    qtsvg
+    qt6.qtbase
+    qt6.qtsvg
     speex
     wayland
     x264
@@ -108,7 +105,7 @@ stdenv.mkDerivation (finalAttrs: {
     librist
     libva
     srt
-    qtwayland
+    qt6.qtwayland
     nlohmann_json
     websocketpp
     asio
