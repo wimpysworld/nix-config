@@ -31,7 +31,6 @@
 , alsa-lib
 , pulseaudioSupport ? config.pulseaudio or stdenv.isLinux
 , libpulseaudio
-, libcef
 , pciutils
 , pipewireSupport ? stdenv.isLinux
 , pipewire
@@ -51,6 +50,7 @@
 
 let
   inherit (lib) optional optionals;
+  libcef = pkgs.callPackage ../libcef { };
   libvpl = pkgs.callPackage ../libvpl { };
   qrcodegencpp = pkgs.callPackage ../qrcodegencpp { };
 in
