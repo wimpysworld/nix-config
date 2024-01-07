@@ -49,12 +49,13 @@
 , decklinkSupport ? false
 , blackmagic-desktop-video
 , libdatachannel
-, libvpl
-, qrcodegencpp
+, pkgs
 }:
 
 let
   inherit (lib) optional optionals;
+  libvpl = pkgs.callPackage ../libvpl { };
+  qrcodegencpp = pkgs.callPackage ../qrcodegencpp { };
 in
 
 stdenv.mkDerivation (finalAttrs: {
