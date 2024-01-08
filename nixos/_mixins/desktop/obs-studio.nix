@@ -12,6 +12,7 @@
         obs-3d-effect
         obs-advanced-masks
         obs-command-source
+        obs-composite-blur
         obs-dvd-screensaver
         obs-gradient-source
         obs-gstreamer
