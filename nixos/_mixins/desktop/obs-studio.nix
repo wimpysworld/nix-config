@@ -10,6 +10,7 @@
       plugins = with obs-studio-plugins; [
         advanced-scene-switcher
         obs-3d-effect
+        obs-advanced-masks
         obs-command-source
         obs-dvd-screensaver
         obs-gradient-source
