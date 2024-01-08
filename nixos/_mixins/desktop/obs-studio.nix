@@ -25,6 +25,7 @@
         obs-source-clone
         obs-source-record
         obs-source-switcher
+        obs-stroke-glow-shadow
         obs-teleport
         obs-text-pthread
         obs-transition-table
