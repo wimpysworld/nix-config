@@ -11,6 +11,7 @@
         advanced-scene-switcher
         obs-3d-effect
         obs-command-source
+        obs-dvd-screensaver
         obs-gradient-source
         obs-gstreamer
         obs-move-transition
