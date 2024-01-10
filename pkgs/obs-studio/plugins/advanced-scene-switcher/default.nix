@@ -1,9 +1,7 @@
 { lib
 , fetchFromGitHub
-
 , cmake
 , ninja
-
 , alsa-lib
 , asio
 , curl
@@ -16,7 +14,6 @@
 , tesseract
 , websocketpp
 , xorg
-
 , httplib
 , libremidi
 }:
