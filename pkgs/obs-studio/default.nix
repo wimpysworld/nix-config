@@ -46,6 +46,7 @@
 , blackmagic-desktop-video
 , libdatachannel
 , cjson
+, vulkan-loader
 , pkgs
 }:
 
@@ -114,6 +115,7 @@ stdenv.mkDerivation (finalAttrs: {
     libvpl
     qrcodegencpp
     cjson
+    vulkan-loader
   ]
   ++ optionals scriptingSupport [ luajit python3 ]
   ++ optional alsaSupport alsa-lib
