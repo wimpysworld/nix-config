@@ -14,6 +14,7 @@
         obs-command-source
         obs-composite-blur
         obs-dvd-screensaver
+        obs-freeze-filter
         obs-gradient-source
         obs-gstreamer
         obs-markdown
