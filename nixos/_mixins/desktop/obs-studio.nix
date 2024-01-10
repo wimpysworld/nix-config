@@ -31,6 +31,7 @@
         obs-teleport
         obs-text-pthread
         obs-transition-table
+        obs-urlsource
         obs-vaapi
         obs-vertical-canvas
         obs-vintage-filter
