@@ -138,6 +138,7 @@ stdenv.mkDerivation (finalAttrs: {
     # Add support for browser source
     "-DBUILD_BROWSER=ON"
     "-DCEF_ROOT_DIR=../../cef"
+    "-DENABLE_ALSA=OFF"
     "-DENABLE_JACK=ON"
     "-DENABLE_LIBFDK=ON"
   ];
