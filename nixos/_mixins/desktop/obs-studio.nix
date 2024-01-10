@@ -16,6 +16,7 @@
         obs-dvd-screensaver
         obs-gradient-source
         obs-gstreamer
+        obs-markdown
         obs-move-transition
         obs-multi-rtmp
         obs-pipewire-audio-capture
