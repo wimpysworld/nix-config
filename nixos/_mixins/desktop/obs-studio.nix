@@ -17,7 +17,7 @@
         obs-gradient-source
         obs-gstreamer
         obs-move-transition
-        obs-mute-filter
+        obs-multi-rtmp
         obs-pipewire-audio-capture
         obs-rgb-levels
         obs-scale-to-sound
