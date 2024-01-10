@@ -23,6 +23,7 @@
         obs-pipewire-audio-capture
         obs-rgb-levels
         obs-scale-to-sound
+        obs-scene-as-transition
         obs-shaderfilter
         obs-source-clone
         obs-source-record
