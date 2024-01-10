@@ -30,6 +30,19 @@
       };
     });
 
+    librist = prev.librist.overrideAttrs ( old: rec {
+      pname = "librist";
+      version = "0.2.10";
+      src = prev.fetchFromGitLab {
+        domain = "code.videolan.org";
+        owner = "rist";
+        repo = "librist";
+        rev = "v${version}";
+        hash = "sha256-8N4wQXxjNZuNGx/c7WVAV5QS48Bff5G3t11UkihT+K0=";
+      };
+      patches = [ ./darwin.patch ];
+    });
+
     nelua = prev.nelua.overrideAttrs ( old: rec {
       pname = "nelua";
       version = "unstable-2023-11-19";
