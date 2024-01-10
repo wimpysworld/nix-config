@@ -33,6 +33,7 @@
         obs-vertical-canvas
         obs-vintage-filter
         obs-websocket
+        pixel-art
         waveform
       ];
     })
