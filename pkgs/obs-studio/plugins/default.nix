@@ -38,6 +38,8 @@
 
   obs-markdown = callPackage ./obs-markdown.nix { };
 
+  obs-media-controls = callPackage ./obs-media-controls.nix { };
+
   obs-move-transition = callPackage ./obs-move-transition.nix { };
 
   obs-multi-rtmp = qt6Packages.callPackage ./obs-multi-rtmp { };
