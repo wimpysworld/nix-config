@@ -62,6 +62,7 @@ stdenv.mkDerivation rec {
     mkdir $out/lib $out/share
     mv $out/obs-plugins/64bit $out/lib/obs-plugins
     mv $out/data $out/share/obs
+    rm -rf $out/obs-plugins
   '';
 
   meta = with lib; {
