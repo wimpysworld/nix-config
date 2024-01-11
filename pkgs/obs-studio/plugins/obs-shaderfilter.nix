@@ -8,27 +8,25 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-shaderfilter";
-  version = "2.2.0";
+  version = "2.2.1";
 
   src = fetchFromGitHub {
     owner = "exeldro";
     repo = "obs-shaderfilter";
     rev = version;
-    sha256 = "sha256-kjch0O9wzbxGXr8J6tUosqZe1QWQJ0LCD5+lqevq2vQ=";
+    sha256 = "sha256-EGM3WXE0mjaiBysij5/qY5N8ZFhbfySjq6fu3Udw77g=";
   };
 
   nativeBuildInputs = [ cmake ];
   buildInputs = [ obs-studio qtbase ];
 
-  cmakeFlags = [
-    "-DBUILD_OUT_OF_TREE=On"
-  ];
-
   dontWrapQtApps = true;
 
   postInstall = ''
     rm -rf $out/obs-plugins
-    mv $out/data $out/share/obs
+    rm -rf $out/share/obs/obs-plugins/*
+    mv $out/data/obs-plugins/obs-shaderfilter $out/share/obs/obs-plugins/
+    rm -rfv $out/data
   '';
 
   meta = with lib; {
