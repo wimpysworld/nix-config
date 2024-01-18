@@ -21,10 +21,6 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ cmake ];
   buildInputs = [ curl obs-studio qtbase ];
 
-  cmakeFlags = [
-    "-DBUILD_OUT_OF_TREE=On"
-  ];
-
   dontWrapQtApps = true;
 
   postInstall = ''
