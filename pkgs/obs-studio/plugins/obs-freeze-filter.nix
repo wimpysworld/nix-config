@@ -5,7 +5,7 @@
 , obs-studio
 }:
 
-stdenv.mkDerivation (finalAttrs: {
+stdenv.mkDerivation (_finalAttrs: {
   pname = "obs-freeze-filter";
   version = "0.3.3";
 
