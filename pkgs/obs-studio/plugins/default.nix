@@ -20,6 +20,8 @@
 
   obs-backgroundremoval = callPackage ./obs-backgroundremoval { };
 
+  obs-browser-transition = callPackage ./obs-browser-transition.nix { };
+
   obs-command-source = callPackage ./obs-command-source.nix { };
 
   obs-composite-blur = callPackage ./obs-composite-blur.nix { };
