@@ -11,24 +11,10 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-H65uQ9HnKmHs52v3spG92ayeYH/TvmwcMoePMmBMqN8=";
   };
 
-  patches = [
-    # fix obs 29.1 compatibility
-    (fetchpatch {
-      url = "https://patch-diff.githubusercontent.com/raw/exeldro/obs-source-record/pull/83.diff";
-      hash = "sha256-eWOjHHfoXZeoPtqvVyexSi/UQqHm8nu4FEEjma64Ly4=";
-    })
-  ];
-
   nativeBuildInputs = [ cmake ];
-  buildInputs = [
-    obs-studio
-  ];
+  buildInputs = [ obs-studio ];
 
   NIX_CFLAGS_COMPILE = [ "-Wno-error=deprecated-declarations" ];
-
-  cmakeFlags = [
-    "-DBUILD_OUT_OF_TREE=On"
-  ];
 
   postInstall = ''
     rm -rf $out/{data,obs-plugins}
@@ -39,6 +25,6 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/exeldro/obs-source-record";
     maintainers = with maintainers; [ robbins ];
     license = licenses.gpl2Only;
-    platforms = [ "x86_64-linux" ];
+    platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }
