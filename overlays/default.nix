@@ -30,7 +30,7 @@
       };
     });
 
-    librist = prev.librist.overrideAttrs ( old: rec {
+    librist = prev.librist.overrideAttrs ( _old: rec {
       pname = "librist";
       version = "0.2.10";
       src = prev.fetchFromGitLab {
@@ -43,7 +43,7 @@
       patches = [ ./darwin.patch ];
     });
 
-    nelua = prev.nelua.overrideAttrs ( old: rec {
+    nelua = prev.nelua.overrideAttrs ( _old: rec {
       pname = "nelua";
       version = "unstable-2023-11-19";
       src = prev.fetchFromGitHub {
