@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-noise";
-  version = "0.0.3a";
+  version = "0.0.4a";
 
   src = fetchFromGitHub {
     owner = "FiniteSingularity";
     repo = "obs-noise";
     rev = "v${version}";
-    sha256 = "sha256-+fH44DYXujA2caNPsLdtCB4T1dNlZH91vEOOaLGCqz0=";
+    sha256 = "sha256-LWmxe7/1GZ1S8tkdPpCsLVSYdeNyzhYD/sKrSR2OjPg=";
   };
 
   nativeBuildInputs = [ cmake ];
