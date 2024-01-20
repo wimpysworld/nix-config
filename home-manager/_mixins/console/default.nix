@@ -79,6 +79,7 @@ in
       netdiscover # Modern Unix `arp`
       nixpkgs-review # Nix code review
       nix-prefetch-scripts # Nix code fetcher
+      notify-desktop # Terminal notification sender
       nurl # Nix URL fetcher
       nyancat # Terminal rainbow spewing feline
       onefetch # Terminal git project info
