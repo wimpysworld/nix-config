@@ -3,7 +3,6 @@ with lib.hm.gvariant;
 {
   imports = [
     ../../../desktop/deckmaster-xl.nix
-    ../../../desktop/vorta.nix
   ];
 
   # Disable unused audio devices

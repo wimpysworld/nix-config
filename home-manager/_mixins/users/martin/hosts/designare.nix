@@ -1,9 +1,6 @@
 { config, lib, ... }:
 with lib.hm.gvariant;
 {
-  imports = [
-    ../../../desktop/vorta.nix
-  ];
   dconf.settings = {
     "org/gnome/desktop/background" = {
       picture-options = "zoom";
