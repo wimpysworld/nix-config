@@ -22,6 +22,20 @@
   services.xserver.excludePackages = [ pkgs.xterm ];
   services.xserver.desktopManager.xterm.enable = false;
 
+  # Disable autoSuspend - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
+  services.xserver.displayManager.gdm.autoSuspend = false;
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+        if (action.id == "org.freedesktop.login1.suspend" ||
+            action.id == "org.freedesktop.login1.suspend-multiple-sessions" ||
+            action.id == "org.freedesktop.login1.hibernate" ||
+            action.id == "org.freedesktop.login1.hibernate-multiple-sessions")
+        {
+            return polkit.Result.NO;
+        }
+    });
+  '';
+
   systemd.services.disable-wifi-powersave = {
     wantedBy = ["multi-user.target"];
     path = [ pkgs.iw ];
