@@ -3,39 +3,22 @@
 [NixOS]: https://nixos.org/
 [Home Manager]: https://github.com/nix-community/home-manager
 
-This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for configuring my computers and home environment. These are the computers this configuration currently manages:
+This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for configuring my computers and home environment.
+These are the computers this configuration currently manages:
 
 |    Hostname    |       OEM      |        Model        |       OS      |     Role     |  Status  |
 | :------------: | :------------: | :-----------------: | :-----------: | :----------: | :------- |
 | `designare`    | DIY            | i9-9900K            | NixOS         | Desktop      | Done     |
-| `noname`       | DIY            | AMD 5900X, 6900 XT  | NixOS         | Gamestation  | Done     |
-| `node202`      | DIY            | AMD 5700G, 6700 XT  | ChimeraOS     | Gamestation  | Done     |
-| `vm`           | VM             | -                   | NixOS         | Desktop      | Done     |
 | `ripper`       | DIY            | AMD 3970X           | NixOS         | Desktop      | Done     |
+| `trooper`      | DIY            | AMD 5950X, 3080Ti   | NixOS         | Desktop      | Done     |
+| `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | Done     |
+| `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | Done     |
+| `macair`       | Apple          | Macbook Air M2 15"  | macOS         | Laptop       | Done     |
+| `nixair`       | Apple          | Macbook Air M2 15"  | NixOS         | Laptop       | WIP      |
 | `nuc`          | Intel          | [NUC5i7RYH]         | NixOS         | Server       | WIP      |
 | `skull`        | Intel          | [NUC6i7KYK]         | NixOS         | Server       | Done     |
 | `brix`         | Gigabyte       | [GB-BXCEH-2955]     | NixOS         | Server       | WIP      |
-| `trooper`      | DIY            | AMD 5950X, 3080Ti   | NixOS         | Desktop      | Done     |
-| `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | Done     |
-| `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | Done     |
-| `pi4`          | Raspberry Pi   | Raspberry Pi 4      | Ubuntu MATE   | Desktop      | tbn      |
-| `pinebook`     | Pine64         | Pinebook            | -             | Laptop       | tbn      |
-| `pinebook-pro` | Pine64         | Pinebook Pro        | -             | Laptop       | tbn      |
-| `c630`         | Lenovo         | Yoga C630           | Windows 10S   | Laptop       | tbn      |
-| `pocket`       | GPD            | Pocket              | Ubuntu MATE   | Laptop       | tbn      |
-| `pocket2`      | GPD            | Pocket 2            | Ubuntu MATE   | Laptop       | tbn      |
-| `pocket3`      | GPD            | Pocket 3            | Ubuntu MATE   | Laptop       | tbn      |
-| `p2-max`       | GPD            | P2 Max              | NixOS         | Laptop       | Done     |
-| `micropc`      | GPD            | Micro PC            | NixOS         | Laptop       | WIP      |
-| `win2`         | GPD            | WIN 2               | NixOS         | Laptop       | WIP      |
-| `win-max`      | GPD            | WIN Max             | NixOS         | Laptop       | WIP      |
-| `falcon`       | TopJoy         | Falcon              | Ubuntu MATE   | Laptop       | tbn      |
-| `macair`       | Apple          | Macbook Air M2 15"  | macOS         | Laptop       | Done     |
-| `nixair`       | Apple          | Macbook Air M2 15"  | NixOS         | Laptop       | WIP      |
-| `macbookpro`   | Apple          | Macbook Pro 2015    | macOS         | Laptop       | tbn      |
-| `xps-13`       | Dell           | XPS 13 9360         | Ubuntu MATE   | Laptop       | tbn      |
-| `spectre`      | HP             | Spectre 13          | Ubuntu MATE   | Laptop       | tbn      |
-| `apollo`       | Entroware      | Apollo 2000         | Ubuntu MATE   | Laptop       | tbn      |
+| `vm`           | n/a            | -                   | NixOS         | Desktop      | Done     |
 
 [NUC5i7RYH]: https://www.intel.co.uk/content/www/uk/en/products/sku/87570/intel-nuc-kit-nuc5i7ryh/specifications.html
 [NUC6i7KYK]: https://ark.intel.com/content/www/us/en/ark/products/89187/intel-nuc-kit-nuc6i7kyk.html

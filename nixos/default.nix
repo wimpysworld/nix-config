@@ -150,9 +150,6 @@
       192.168.192.220 ripper-zt
       192.168.193.220 ripper-gaming
       192.168.192.162 p1-zt
-      192.168.192.249 p2-max-zt
-      #192.168.192.0   win2-zt
-      #192.168.192.0   win-max-zt
     '';
     hostName = hostname;
     useDHCP = lib.mkDefault true;

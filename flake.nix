@@ -55,14 +55,10 @@
         "martin@airmac" = libx.mkHome { hostname = "airmac"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
         "martin@airnix" = libx.mkHome { hostname = "airnix"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
         "martin@designare" = libx.mkHome { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
-        "martin@micropc" = libx.mkHome { hostname = "micropc"; username = "martin"; desktop = "pantheon"; };
         "martin@p1" = libx.mkHome { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
-        "martin@p2-max" = libx.mkHome { hostname = "p2-max"; username = "martin"; desktop = "pantheon"; };
         "martin@ripper" = libx.mkHome { hostname = "ripper"; username = "martin"; desktop = "pantheon"; };
         "martin@trooper" = libx.mkHome { hostname = "trooper"; username = "martin"; desktop = "pantheon"; };
         "martin@vm" = libx.mkHome { hostname = "vm"; username = "martin"; desktop = "pantheon"; };
-        "martin@win2" = libx.mkHome { hostname = "win2"; username = "martin"; desktop = "pantheon"; };
-        "martin@win-max" = libx.mkHome { hostname = "win-max"; username = "martin"; desktop = "pantheon"; };
         "martin@zed" = libx.mkHome { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
         # Servers
         "martin@brix" = libx.mkHome { hostname = "brix"; username = "martin"; };
@@ -78,22 +74,15 @@
         #  - nix build .#nixosConfigurations.{iso-console|iso-desktop}.config.system.build.isoImage
         iso-console = libx.mkHost { hostname = "iso-console"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"; };
         iso-desktop = libx.mkHost { hostname = "iso-desktop"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
-        iso-micropc = libx.mkHost { hostname = "micropc"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
-        iso-win2 = libx.mkHost { hostname = "win2"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
-        iso-win-max = libx.mkHost { hostname = "iso-win-max"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
         # Workstations
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
         #  - nix build .#nixosConfigurations.ripper.config.system.build.toplevel
         airnix = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux";};
         designare = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
         p1 = libx.mkHost { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
-        p2-max = libx.mkHost { hostname = "p2-max"; username = "martin"; desktop = "pantheon"; };
-        micropc = libx.mkHost { hostname = "micropc"; username = "martin"; desktop = "pantheon"; };
         ripper = libx.mkHost { hostname = "ripper"; username = "martin"; desktop = "pantheon"; };
         trooper = libx.mkHost { hostname = "trooper"; username = "martin"; desktop = "pantheon"; };
         vm = libx.mkHost { hostname = "vm"; username = "martin"; desktop = "pantheon"; };
-        win2 = libx.mkHost { hostname = "win2"; username = "martin"; desktop = "pantheon"; };
-        win-max = libx.mkHost { hostname = "win-max"; username = "martin"; desktop = "pantheon"; };
         zed = libx.mkHost { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
         # Servers
         brix = libx.mkHost { hostname = "brix"; username = "martin"; };
