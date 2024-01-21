@@ -23,6 +23,7 @@ lib.mkIf isLinux {
       bc
       deckmaster
       hueadm
+      notify-desktop
       obs-cli
       piper-tts
       playerctl
