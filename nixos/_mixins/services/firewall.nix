@@ -4,14 +4,10 @@ let
   syncthing = {
     hosts = [
       "designare"
-      "micropc"
       "p1"
-      "p2-max"
       "ripper"
       "trooper"
       "vm"
-      "win2"
-      "win-max"
       "zed"
     ];
     tcpPorts = [ 22000 ];
