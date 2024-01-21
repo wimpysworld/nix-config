@@ -1,8 +1,13 @@
 { config, desktop, hostname, lib, pkgs, username, ... }: {
+  home.packages = with pkgs; [
+    stc-cli
+  ];
   imports = [ ] ++ lib.optionals (desktop != null) [
     ./syncthing-tray.nix
   ];
-
+  programs.fish.shellAliases = {
+    stc = "${pkgs.stc-cli}/bin/stc -homedir \"${config.home.homeDirectory}/Syncthing/Devices/${hostname}\"";
+  };
   services.syncthing = {
     enable = true;
     extraOptions = [
