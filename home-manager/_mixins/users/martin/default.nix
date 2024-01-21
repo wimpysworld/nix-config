@@ -4,6 +4,7 @@ let
 in
 {
   imports = [
+    ../../services/keybase.nix
     ../../services/syncthing.nix
   ];
   home = {
