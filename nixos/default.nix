@@ -279,12 +279,6 @@
         ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.nix}/bin diff /run/current-system "$systemConfig"
       '';
     };
-    #autoUpgrade = {
-    #  allowReboot = false;
-    #  enable = false;
-    #  dates = "04:42";
-    #  flake = "github:wimpysworld/nix-config";
-    ##};
     stateVersion = stateVersion;
   };
 }
