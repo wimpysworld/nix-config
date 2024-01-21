@@ -155,27 +155,27 @@ in
       };
     };
     mdadm = {
-      snapshot = {
-        type = "mdadm";
-        level = 0;
-        content = {
-          type = "table";
-          format = "gpt";
-          partitions = [{
-            name = "primary";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "filesystem";
-              # Overwirte the existing filesystem
-              extraArgs = [ "-f" ];
-              format = "xfs";
-              mountpoint = "/mnt/snapshot";
-              mountOptions = defaultXfsOpts;
-            };
-          }];
-        };
-      };
+    #  snapshot = {
+    #    type = "mdadm";
+    #    level = 0;
+    #    content = {
+    #      type = "table";
+    #      format = "gpt";
+    #      partitions = [{
+    #        name = "primary";
+    #        start = "0%";
+    #        end = "100%";
+    #        content = {
+    #          type = "filesystem";
+    #          # Overwirte the existing filesystem
+    #          extraArgs = [ "-f" ];
+    #          format = "xfs";
+    #          mountpoint = "/mnt/snapshot";
+    #          mountOptions = defaultXfsOpts;
+    #        };
+    #      }];
+    #    };
+    #  };
       home = {
         type = "mdadm";
         level = 5;
