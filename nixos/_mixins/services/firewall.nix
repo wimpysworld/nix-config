@@ -6,6 +6,7 @@ let
       "designare"
       "p1"
       "ripper"
+      "sith"
       "trooper"
       "vm"
       "zed"

@@ -142,7 +142,9 @@
       192.168.2.250   hue-bridge
 
       192.168.192.40  skull-zt
+      #192.168.192.x  sith-zt
       192.168.192.59  trooper trooper-zt
+      #192.168.193.x  sith-gaming
       192.168.193.59  trooper-gaming
       192.168.192.104 steamdeck-zt
       192.168.193.104 steamdeck-gaming

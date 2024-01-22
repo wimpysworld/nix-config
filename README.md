@@ -10,7 +10,8 @@ These are the computers this configuration currently manages:
 | :------------: | :------------: | :-----------------: | :-----------: | :----------: | :------- |
 | `designare`    | DIY            | i9-9900K            | NixOS         | Desktop      | Done     |
 | `ripper`       | DIY            | AMD 3970X           | NixOS         | Desktop      | Done     |
-| `trooper`      | DIY            | AMD 5950X, 3080Ti   | NixOS         | Desktop      | Done     |
+| `sith`         | DIY            | AMD 5900X           | NixOS         | Desktop      | Done     |
+| `trooper`      | DIY            | AMD 5950X           | NixOS         | Desktop      | Done     |
 | `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | Done     |
 | `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | Done     |
 | `macair`       | Apple          | Macbook Air M2 15"  | macOS         | Laptop       | Done     |
