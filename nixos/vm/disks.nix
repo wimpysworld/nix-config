@@ -1,6 +1,6 @@
 { disks ? [ "/dev/vda" ], ... }:
 let
-  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
+  defaultBcachefsOpts = [ "defaults" "relatime" "nodiratime" ];
 in
 {
   disko.devices = {
@@ -11,12 +11,13 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "boot";
-            start = "0%";
-            end = "1M";
-            flags = [ "bios_grub" ];
-          }
+          partitions = [
+            {
+              name = "boot";
+              start = "0%";
+              end = "1M";
+              flags = [ "bios_grub" ];
+            }
             {
               name = "ESP";
               start = "1M";
@@ -37,10 +38,10 @@ in
               content = {
                 type = "filesystem";
                 # Overwirte the existing filesystem
-                extraArgs = [ "-f" ];
-                format = "xfs";
+                extraArgs = [ "-f" "--compression=lz4:0" "--fs_label=nixos" ];
+                format = "bcachefs";
                 mountpoint = "/";
-                mountOptions = defaultXfsOpts;
+                mountOptions = defaultBcachefsOpts;
               };
             }];
         };

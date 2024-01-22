@@ -26,6 +26,7 @@
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     (import ./disks.nix { })
+    ../_mixins/linux/latest.nix
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/hardware/streamdeck.nix
@@ -66,7 +67,6 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
-    kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
     swraid.enable = true;
   };
 
