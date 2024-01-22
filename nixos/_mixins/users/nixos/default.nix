@@ -8,6 +8,7 @@ let
 
 TARGET_HOST="''${1:-}"
 TARGET_USER="''${2:-martin}"
+TARGET_BRANCH="''${3:-}"
 
 if [ "$(id -u)" -eq 0 ]; then
   echo "ERROR! $(basename "$0") should be run as a regular user"
@@ -19,6 +20,10 @@ if [ ! -d "$HOME/Zero/nix-config/.git" ]; then
 fi
 
 pushd "$HOME/Zero/nix-config"
+
+if [[ -n "$TARGET_BRANCH" ]]; then
+  git checkout "$TARGET_BRANCH"
+fi
 
 if [[ -z "$TARGET_HOST" ]]; then
   echo "ERROR! $(basename "$0") requires a hostname as the first argument"
