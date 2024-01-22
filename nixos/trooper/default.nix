@@ -64,7 +64,10 @@
     #initrd.kernelModules = [ "nvidia" ];
     kernelModules = [ "amdgpu" "kvm-amd" ];
     kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
-    swraid.enable = true;
+    swraid = {
+      enable = true;
+      mdadmConf = "PROGRAM=true";
+    };
   };
 
   # https://nixos.wiki/wiki/PipeWire

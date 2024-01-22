@@ -67,7 +67,10 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
-    swraid.enable = true;
+    swraid = {
+      enable = true;
+      mdadmConf = "PROGRAM=true";
+    };
   };
 
   # https://nixos.wiki/wiki/PipeWire
