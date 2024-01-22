@@ -242,8 +242,8 @@
       shellAbbrs = {
         build-all = "pushd $HOME/Zero/nix-config && home-manager build --flake $HOME/Zero/nix-config && nixos-rebuild build --flake $HOME/Zero/nix-config && popd";
         build-host = "pushd $HOME/Zero/nix-config && nixos-rebuild build --flake $HOME/Zero/nix-config && popd";
-        build-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-console/nixos.iso && popd";
-        build-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-desktop/nixos.iso && popd";
+        build-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-console/nixos.iso && chown $USER: $HOME/Quickemu/nixos-console/nixos.iso && chmod 644 $HOME/Quickemu/nixos-console/nixos.iso && popd";
+        build-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-desktop/nixos.iso && chown $USER: $HOME/Quickemu/nixos-desktop/nixos.iso && chmod 644 $HOME/Quickemu/nixos-console/nixos.iso && popd";
         captive-portal = "xdg-open http://$(ip --oneline route get 1.1.1.1 | awk '{print $3}'";
         nix-gc = "sudo nix-collect-garbage --delete-older-than 10d && nix-collect-garbage --delete-older-than 10d";
         switch-all  = "sudo true && pushd $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && popd";
