@@ -48,7 +48,10 @@
   boot = {
     initrd.availableKernelModules = [ "xhci_pci" "nvme" "usbhid" "uas" "sd_mod" ];
     kernelModules = [ "kvm-intel" ];
-    swraid.enable = true;
+    swraid = {
+      enable = true;
+      mdadmConf = "PROGRAM=true";
+    };
   };
 
   # Use passed hostname to configure basic networking
