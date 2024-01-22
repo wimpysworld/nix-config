@@ -1,7 +1,9 @@
-{ disks ? [ "/dev/vda" ], ... }: {
+# nvme0n1 2TB:   NixOS
+
+{ disks ? [ "/dev/disk/by-id/nvme-Corsair_MP600_CORE_212479080001303710B4" ], ... }:{
   disko.devices = {
     disk = {
-      nixos = {
+      nixos1 = {
         type = "disk";
         device = builtins.elemAt disks 0;
         content = {
@@ -9,14 +11,8 @@
           format = "gpt";
           partitions = [
             {
-              name = "boot";
-              start = "0%";
-              end = "1M";
-              flags = [ "bios_grub" ];
-            }
-            {
               name = "ESP";
-              start = "1M";
+              start = "0%";
               end = "550MiB";
               bootable = true;
               flags = [ "esp" ];
@@ -29,16 +25,16 @@
               };
             }
             {
-              name = "root";
+              name = "nixos";
               start = "550MiB";
               end = "100%";
               content = {
                 type = "filesystem";
                 # Overwirte the existing filesystem
-                extraArgs = [ "-f" "--compression=lz4:0" "--fs_label=nixos" ];
+                extraArgs = [ "-f" "--compression=lz4:1" "background_compression=lz4:0" "--fs_label=nixos" "--label=nixos" "--discard" ];
                 format = "bcachefs";
                 mountpoint = "/";
-                mountOptions = [ "defaults" "relatime" "compression=lz4:0" ];
+                mountOptions = [ "defaults" "relatime" "compression=lz4:1" "background_compression=lz4:0" "discard" ];
               };
             }
           ];
