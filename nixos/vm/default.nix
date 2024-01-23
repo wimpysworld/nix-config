@@ -8,9 +8,20 @@
     ../_mixins/services/pipewire.nix
   ];
 
-  swapDevices = [{
-    device = "/swap";
-    size = 1024;
+  # disko does manage mounting, but I want to mount by-label
+  fileSystems."/" = lib.mkForce {
+    device = "/dev/disk/by-label/root";
+    fsType = "bcachefs";
+    options = [ "defaults" "relatime" "nodiratime" ];
+  };
+
+  fileSystems."/boot" = lib.mkForce {
+    device = "/dev/disk/by-label/ESP";
+    fsType = "vfat";
+  };
+
+  swapDevices = lib.mkForce [{
+    device = "/dev/disk/by-label/swap";
   }];
 
   boot = {
