@@ -6,7 +6,11 @@
 
   boot = {
     kernelParams = [ "quiet" "vt.global_cursor_default=0" "mitigations=off" ];
-    plymouth.enable = true;
+    plymouth = {
+      enable = true;
+      themePackages = [ pkgs.adi1090x-plymouth-themes ];
+      theme = "darth_vader";
+    };
   };
 
   hardware = {
