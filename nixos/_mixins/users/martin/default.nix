@@ -19,7 +19,7 @@ let
   ];
 
   # For fast moving apps; use the unstable branch
-  unstable-packages = with pkgs.unstable; [
+  unstable-packages = with pkgs.unstable; [ ] ++ lib.optionals (desktop != null) [
     brave
     google-chrome
     microsoft-edge
