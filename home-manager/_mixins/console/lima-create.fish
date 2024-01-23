@@ -84,7 +84,7 @@ fi
 
 # Activate home-manager configuration
 pushd "${HOME}/Zero/nix-config"
-nix run nixpkgs#home-manager -- switch --flake ${HOME}/Zero/nix-config"
+nix run nixpkgs#home-manager -- switch --flake "${HOME}/Zero/nix-config"
 
 # Fake a fish login shell
 echo "fish --login" >> "${HOME}/.bashrc"
