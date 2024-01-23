@@ -22,7 +22,9 @@ in
 
   home = {
     activation.report-changes = config.lib.dag.entryAnywhere ''
-      ${pkgs.nvd}/bin/nvd diff $oldGenPath $newGenPath
+      if [ -e /run/current-system/boot.json ] && ! grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
+        ${pkgs.nvd}/bin/nvd diff $oldGenPath $newGenPath
+      fi
     '';
     homeDirectory = if isDarwin then "/Users/${username}" else if isLima then "/home/${username}.linux" else "/home/${username}";
     inherit stateVersion;

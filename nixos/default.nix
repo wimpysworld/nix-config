@@ -271,7 +271,9 @@
     activationScripts.diff = {
       supportsDryActivation = true;
       text = ''
-        ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.nix}/bin diff /run/current-system "$systemConfig"
+        if [ -e /run/current-system/boot.json ] && ! grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
+          ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.unstable.nix}/bin diff /run/current-system "$systemConfig"
+        fi
       '';
     };
     stateVersion = stateVersion;
