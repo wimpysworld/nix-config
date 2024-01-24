@@ -49,26 +49,26 @@
       # nix shell nixpkgs#home-manager --command sh -c 'home-manager switch -b backup --flake "${HOME}/Zero/nix-config"'
       homeConfigurations = {
         # .iso images
-        "martin@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
-        "martin@iso-desktop" = libx.mkHome { hostname = "iso-desktop"; username = "nixos"; desktop = "pantheon"; };
+        "nixos@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
+        "nixos@iso-desktop" = libx.mkHome { hostname = "iso-desktop"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
         "martin@airmac" = libx.mkHome { hostname = "airmac"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
         "martin@airnix" = libx.mkHome { hostname = "airnix"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
-        "martin@designare" = libx.mkHome { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
         "martin@p1" = libx.mkHome { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
         "martin@ripper" = libx.mkHome { hostname = "ripper"; username = "martin"; desktop = "pantheon"; };
-        "martin@trooper" = libx.mkHome { hostname = "trooper"; username = "martin"; desktop = "pantheon"; };
-        "martin@sith" = libx.mkHome { hostname = "sith"; username = "martin"; }; #desktop = "pantheon"; *************************************************************
-        "martin@vm" = libx.mkHome { hostname = "vm"; username = "martin"; desktop = "pantheon"; };
+        "martin@vader" = libx.mkHome { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
+        "martin@phasma" = libx.mkHome { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
         "martin@zed" = libx.mkHome { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
         # Servers
         "martin@brix" = libx.mkHome { hostname = "brix"; username = "martin"; };
-        "martin@lima-builder" = libx.mkHome { hostname = "lima-builder"; username = "martin"; };
-        "martin@lima-default" = libx.mkHome { hostname = "lima-default"; username = "martin"; };
         "martin@skull" = libx.mkHome { hostname = "skull"; username = "martin"; };
-        "martin@vm-mini" = libx.mkHome { hostname = "vm-mini"; username = "martin"; };
         # Steam Deck
         "deck@steamdeck" = libx.mkHome { hostname = "steamdeck"; username = "deck"; };
+        # VMs
+        "martin@minimech" = libx.mkHome { hostname = "minimech"; username = "martin"; };
+        "martin@scrubber" = libx.mkHome { hostname = "scrubber"; username = "martin"; desktop = "pantheon"; };
+        "martin@lima-builder" = libx.mkHome { hostname = "lima-builder"; username = "martin"; };
+        "martin@lima-default" = libx.mkHome { hostname = "lima-default"; username = "martin"; };
       };
       nixosConfigurations = {
         # .iso images
@@ -77,19 +77,19 @@
         iso-desktop = libx.mkHost { hostname = "iso-desktop"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
         # Workstations
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
-        #  - nix build .#nixosConfigurations.ripper.config.system.build.toplevel
-        airnix = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux";};
-        designare = libx.mkHost { hostname = "designare"; username = "martin"; desktop = "pantheon"; };
+        #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
+        airnix = libx.mkHost { hostname = "airnix"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux"; };
         p1 = libx.mkHost { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
         ripper = libx.mkHost { hostname = "ripper"; username = "martin"; desktop = "pantheon"; };
-        sith = libx.mkHost { hostname = "sith"; username = "martin"; }; #desktop = "pantheon"; *************************************************************
-        trooper = libx.mkHost { hostname = "trooper"; username = "martin"; desktop = "pantheon"; };
-        vm = libx.mkHost { hostname = "vm"; username = "martin"; desktop = "pantheon"; };
+        phasma = libx.mkHost { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
+        vader = libx.mkHost { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
         zed = libx.mkHost { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
         # Servers
         brix = libx.mkHost { hostname = "brix"; username = "martin"; };
         skull = libx.mkHost { hostname = "skull"; username = "martin"; };
-        vm-mini = libx.mkHost { hostname = "vm-mini"; username = "martin"; };
+        # VMs
+        minimech = libx.mkHost { hostname = "minimech"; username = "martin"; };
+        scrubber = libx.mkHost { hostname = "scrubber"; username = "martin"; desktop = "pantheon"; };
       };
 
       # Devshell for bootstrapping; acessible via 'nix develop' or 'nix-shell' (legacy)

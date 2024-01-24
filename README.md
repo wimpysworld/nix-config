@@ -3,28 +3,34 @@
 [NixOS]: https://nixos.org/
 [Home Manager]: https://github.com/nix-community/home-manager
 
-This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for configuring my computers and home environment.
+This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for configuring my computers and/or home environment.
 These are the computers this configuration currently manages:
 
-|    Hostname    |       OEM      |        Model        |       OS      |     Role     |  Status  |
-| :------------: | :------------: | :-----------------: | :-----------: | :----------: | :------- |
-| `designare`    | DIY            | i9-9900K            | NixOS         | Desktop      | Done     |
-| `ripper`       | DIY            | AMD 3970X           | NixOS         | Desktop      | Done     |
-| `sith`         | DIY            | AMD 5900X           | NixOS         | Desktop      | Done     |
-| `trooper`      | DIY            | AMD 5950X           | NixOS         | Desktop      | Done     |
-| `p1`           | Lenovo         | ThinkPad P1 Gen 1   | NixOS         | Laptop       | Done     |
-| `zed`          | Lenovo         | ThinkPad Z13 Gen 1  | NixOS         | Laptop       | Done     |
-| `macair`       | Apple          | Macbook Air M2 15"  | macOS         | Laptop       | Done     |
-| `nixair`       | Apple          | Macbook Air M2 15"  | NixOS         | Laptop       | WIP      |
-| `nuc`          | Intel          | [NUC5i7RYH]         | NixOS         | Server       | WIP      |
-| `skull`        | Intel          | [NUC6i7KYK]         | NixOS         | Server       | Done     |
-| `brix`         | Gigabyte       | [GB-BXCEH-2955]     | NixOS         | Server       | WIP      |
-| `vm`           | n/a            | -                   | NixOS         | Desktop      | Done     |
+|   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |      Secondary GPU      | Role | OS  | State |
+| :---------: | :-------------------------: | :----------------------------: | :---: | :-------------------------: | :---------------------: | :--: | :-: | :---: |
+| `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T1000]          | 🖥️   | ❄️  | 🚧    |
+| `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T600]           | 🖥️   | ❄️  | 🚧    |
+| `p1`        | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️   | ❄️  | ✅    |
+| `zed`       | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | ✅    |
+| `macair`    | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | 🍏  | 🚧    |
+| `nixair`    | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | ❄️  | 🚧    |
+| `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
+| `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
+| `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
+| `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                         | ☁️   | ❄️  | 🚧    |
+| `designare` | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | [Intel Arc A770 16GB]       | Intel UHD Graphics 630  | ☁️   | ❄️  | 🚧    |
+| `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                         | ☁️   | ❄️  | 🧟    |
+| `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                         | ☁️   | ❄️  | 🧟    |
+| ~~ripper~~  | [TRX40-DESIGNARE]           | [AMD Ryzen Threadripper 3970X] | 256GB | [GeForce RTX 3090 GAMING OC]|                         | 🖥️   | ❄️  | ⚰️    |
+| ~~trooper~~ | [ROG Crosshair VIII Impact] | [AMD Ryzen 9 5950X]            | 64GB  | [Fighter RX 6800]           |                         | 🖥️   | ❄️  | ⚰️    |
 
-[NUC5i7RYH]: https://www.intel.co.uk/content/www/uk/en/products/sku/87570/intel-nuc-kit-nuc5i7ryh/specifications.html
-[NUC6i7KYK]: https://ark.intel.com/content/www/us/en/ark/products/89187/intel-nuc-kit-nuc6i7kyk.html
-[GB-BXCEH-2955]: https://www.gigabyte.com/uk/Mini-PcBarebone/GB-BXCEH-2955-rev-10
-[GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
+**Key**
+
+🖥️ : Desktop
+💻️ : Laptop
+🎮️ : Games Machine
+🐄 : Virtual Machine
+☁️ : Server
 
 **As featured on [Linux Matters](https://linuxmatters.sh) podcast!** 🎙️ I am a presenter on Linux Matters and this configuration was featured in [Episode 7 - Immutable Desktop Linux for Anyone](https://linuxmatters.sh/7/).
 
@@ -45,8 +51,6 @@ These are the computers this configuration currently manages:
   - Sane defaults for shell and desktop
 - [nixos]: NixOS configurations
   - Includes discrete hardware configurations that leverage the [NixOS](https://github.com/NixOS/nixos-hardware) Hardware modules](https://github.com/NixOS/nixos-hardware) via [flake.nix].
-- [scripts]: Helper scripts
-- [shells]: [Nix shell environments using direnv](https://determinate.systems/posts/nix-direnv) for infrequently used tools
 
 The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited configurations based on the arguments defined in [flake.nix].
 
@@ -56,8 +60,6 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
 [nixos/_mixins]: ./nixos/_mixins
 [home-manager/_mixins]: ./home-manager/_mixins
 [flake.nix]: ./flake.nix
-[scripts]: ./scripts
-[shells]: ./shells
 
 ## Installing 💾
 
@@ -251,3 +253,37 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [Will Taylor's dotfiles]: https://github.com/wiltaylor/dotfiles
 [GitHub nixos configuration]: https://github.com/search?q=nixos+configuration
 [Disko]: https://github.com/nix-community/disko
+
+[Z390-DESIGNARE]: https://www.gigabyte.com/Motherboard/Z390-DESIGNARE-rev-10#kf
+[MEG-X570-UNIFY]: https://www.msi.com/Motherboard/MEG-X570-UNIFY
+[MEG-X570-ACE]: https://www.msi.com/Motherboard/MEG-X570-ACE
+[NUC5i7RYH]: https://www.intel.co.uk/content/www/uk/en/products/sku/87570/intel-nuc-kit-nuc5i7ryh/specifications.html
+[NUC6i7KYK]: https://ark.intel.com/content/www/us/en/ark/products/89187/intel-nuc-kit-nuc6i7kyk.html
+[TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10#kf
+[ROG Crosshair VIII Impact]: https://rog.asus.com/uk/motherboards/rog-crosshair/rog-crosshair-viii-impact-model/
+[ThinkPad P1 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadp/thinkpad-p1/22ws2wpp101
+[ThinkPad Z13 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadz/thinkpad-z13-(13-inch-amd)/21d20012uk
+[Macbook Air M2 15"]: https://www.apple.com/uk/macbook-air-13-and-15-m2/
+[Steam Deck 64GB LCD]: https://store.steampowered.com/steamdeck
+[GB-BXCEH-2955]: https://www.gigabyte.com/uk/Mini-PcBarebone/GB-BXCEH-2955-rev-10
+[GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
+[QEMU]: https://www.qemu.org/
+
+[Intel Core i9-9900K]: https://www.intel.com/content/www/us/en/products/sku/186605/intel-core-i99900k-processor-16m-cache-up-to-5-00-ghz/specifications.html
+[Intel Xeon E-2176M]: https://ark.intel.com/content/www/us/en/ark/products/134867/intel-xeon-e-2176m-processor-12m-cache-up-to-4-40-ghz.html
+[Intel Core i7-5557U]: https://www.intel.com/content/www/us/en/products/sku/84993/intel-core-i75557u-processor-4m-cache-up-to-3-40-ghz/specifications.html
+[Intel Core i7-6770HQ]: https://ark.intel.com/content/www/us/en/ark/products/93341/intel-core-i7-6770hq-processor-6m-cache-up-to-3-50-ghz.html
+[Intel Celeron 2955U]: https://www.intel.com/content/www/us/en/products/sku/75608/intel-celeron-processor-2955u-2m-cache-1-40-ghz/specifications.html
+[AMD Ryzen 9 5950X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5950x
+[AMD Ryzen 9 5900X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5900x
+[AMD Ryzen 5 PRO 6650U]: https://www.amd.com/en/products/apu/amd-ryzen-5-pro-6650u
+[AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/support/cpu/amd-ryzen-processors/amd-ryzen-threadripper-processors/amd-ryzen-threadripper-3970x
+[Intel Arc A770 16GB]: https://www.intel.com/content/www/us/en/products/sku/229151/intel-arc-a770-graphics-16gb/specifications.html
+[Fighter RX 6800]: https://www.powercolor.com/product?id=1606212415
+[Fighter RX 6700 XT]: https://www.powercolor.com/product?id=1612512944
+[GeForce RTX 3090 GAMING OC]: https://www.gigabyte.com/uk/Graphics-Card/GV-N3090GAMING-OC-24GD#kf
+[NVIDIA Quadro P2000 Max-Q]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/quadro-pascal-p2000-data-sheet-us-nvidia-704443-r2-web.pdf
+[NVIDIA T1000]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/proviz-print-nvidia-T1000-datasheet-us-nvidia-1670054-r4-web.pdf
+[NVIDIA T600]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/proviz-print-nvidia-T600-datasheet-us-nvidia-1670029-r5-web.pdf
+[NVIDIA T400]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/nvidia-t400-datasheet-1987150-r3.pdf
+[VirGL]: https://docs.mesa3d.org/drivers/virgl.html

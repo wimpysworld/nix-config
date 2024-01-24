@@ -122,11 +122,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     mkswap -f /dev/nvme0n1p2 --label swap
 
     echo "mkfs root"
-    bcachefs format -f --fs_label=root --uuid=caf2a42b-ae3e-4e1d-bc1f-b9a881403b73 \
+    bcachefs format -f --fs_label=root --uuid=ad91c0a6-2c8f-4abf-9e9d-6dd3e555defb \
         --background_compression=lz4:0 \
         --compression=lz4:1 \
         --discard \
-        --encrypted \
         --replicas=2 \
         --label=nvme.nvme0 /dev/nvme0n1p3 \
         --label=nvme.nvme1 /dev/nvme1n1p1 \
@@ -139,7 +138,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         bcachefs unlock /dev/disk/by-label/root
     fi
 
-    mkfs.btrfs -f --label borg --uuid bef8c5bb-1fa6-4106-b546-0ebf1fc00c3a \
+    mkfs.btrfs -f --label borg --uuid aa4811f7-750e-4779-93a1-581b51777846 \
         /dev/sda1 /dev/sdb1 /dev/sdc1
 
     # mount the filesystems

@@ -3,12 +3,10 @@ let
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
-      "designare"
       "p1"
+      "phasma"
       "ripper"
-      "sith"
-      "trooper"
-      "vm"
+      "vader"
       "zed"
     ];
     tcpPorts = [ 22000 ];
