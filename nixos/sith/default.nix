@@ -1,7 +1,7 @@
 # Motherboard:
 # CPU:         AMD Ryzen 5900X
-# GPU:         Radeon RX 6700
-# GPU:         NVIDIA T6000
+# GPU:         Radeon RX 6700 XT
+# GPU:         NVIDIA T600
 # CAP:         Magewell Pro Capture Dual HDMI
 # RAM:         128GB DDR4
 # NVME:        2TB Corsair MP600
@@ -18,8 +18,6 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
-    (import ./disks.nix { })
-    (import ./disks-home.nix { })
     ../_mixins/linux/latest.nix
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
@@ -34,28 +32,28 @@
     ../_mixins/virt
   ];
 
-  # disko does handle mounting but I want to mount by-partlabel
-  #fileSystems."/" = lib.mkForce {
-  #  device = "/dev/disk/by-partlabel/root";
-  #  fsType = "xfs";
-  #  options = [ "defaults" "relatime" "nodiratime" ];
-  #};
+  # disko does manage mounting, but I need to mount bcachefs via UUID
+  # - https://www.reddit.com/r/bcachefs/comments/17y0ydd/psa_for_those_having_trouble_with_mountingbooting/
+  fileSystems."/" = lib.mkForce {
+    device = "UUID=caf2a42b-ae3e-4e1d-bc1f-b9a881403b73";
+    fsType = "bcachefs";
+    options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
+  };
 
   fileSystems."/boot" = lib.mkForce {
-    device = "/dev/disk/by-partlabel/ESP";
+    device = "/dev/disk/by-label/ESP";
     fsType = "vfat";
-    options = [ "defaults" "umask=0077" ];
   };
 
-  fileSystems."/home" = lib.mkForce {
-    device = "/dev/disk/by-label/home";
-    fsType = "bcachefs";
-    options = [ "defaults" "relatime" "discard" ];
+  fileSystems."/mnt/borg" = lib.mkForce {
+    #device = "UUID=bef8c5bb-1fa6-4106-b546-0ebf1fc00c3a";
+    device = "/dev/disk/by-label/borg";
+    fsType = "btrfs";
+    options = [ "defaults" "relatime" "nodiratime" "discard=async" "nofail" "x-systemd.device-timeout=10" ];
   };
 
-  swapDevices = [{
-    device = "/.swap";
-    size = 2048;
+  swapDevices = lib.mkForce [{
+    device = "/dev/disk/by-label/swap";
   }];
 
   boot = {
@@ -83,9 +81,9 @@
     nvidia = {
       package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
       prime = {
-        amdgpuBusId = "PCI:23:0:0";
-        nvidiaBusId = "PCI:3:0:0";
-        # Make the Radeon RX6700 default. The NVIDIA T600 is on for CUDA/NVENC
+        amdgpuBusId = "PCI:34:0:0";
+        nvidiaBusId = "PCI:31:0:0";
+        # Make the Radeon RX6700 XT default; the NVIDIA T600 is for CUDA/NVENC
         reverseSync.enable = true;
       };
       nvidiaSettings = false;

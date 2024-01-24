@@ -74,7 +74,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
         # Wipe the beginning and end of the disk to remove partition table and RAID metadata
         dd if=/dev/zero of="$disk" bs=1M count=10
-        dd if=/dev/zero of="$disk" bs=1M count=10 seek=$(( $(blockdev --getsz "$disk") - 20))
+        dd if=/dev/zero of="$disk" bs=1M count=10 seek=$(( `blockdev --getsz "$disk"` - 20))
 
         echo "$disk has been wiped."
     done
