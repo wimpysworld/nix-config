@@ -126,6 +126,8 @@
   networking = {
     extraHosts = ''
       192.168.2.1     router
+      192.168.2.6     vader-wifi vader
+      192.168.2.7     vader-lan
       192.168.2.8     ripper-wifi ripper
       192.168.2.9     ripper-lan1
       192.168.2.10    ripper-lan2
@@ -142,10 +144,10 @@
       192.168.2.250   hue-bridge
 
       192.168.192.40  skull-zt
-      #192.168.192.x  sith-zt
-      192.168.192.59  trooper trooper-zt
-      #192.168.193.x  sith-gaming
-      192.168.193.59  trooper-gaming
+      #192.168.192.x  phasma-zt
+      #192.168.193.x  phasma-gaming
+      #192.168.192.x  vader-zt
+      #192.168.193.x  vader-gaming
       192.168.192.104 steamdeck-zt
       192.168.193.104 steamdeck-gaming
       192.168.192.181 zed-zt

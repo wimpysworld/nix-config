@@ -1,14 +1,3 @@
-# Motherboard:
-# CPU:         AMD Ryzen 5900X
-# GPU:         Radeon RX 6700 XT
-# GPU:         NVIDIA T600
-# CAP:         Magewell Pro Capture Dual HDMI
-# RAM:         128GB DDR4
-# NVME:        2TB Corsair MP600
-# NVME:        4TB Corsair MP600
-# NVME:        4TB Corsair MP510
-# SATA:        4TB Samsung 860 EVO
-
 { config, inputs, lib, pkgs, platform, ... }:
 {
   imports = [
@@ -35,7 +24,7 @@
   # disko does manage mounting, but I need to mount bcachefs via UUID
   # - https://www.reddit.com/r/bcachefs/comments/17y0ydd/psa_for_those_having_trouble_with_mountingbooting/
   fileSystems."/" = lib.mkForce {
-    device = "UUID=caf2a42b-ae3e-4e1d-bc1f-b9a881403b73";
+    device = "UUID=ad91c0a6-2c8f-4abf-9e9d-6dd3e555defb";
     fsType = "bcachefs";
     options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
   };
@@ -46,7 +35,7 @@
   };
 
   fileSystems."/mnt/borg" = lib.mkForce {
-    #device = "UUID=bef8c5bb-1fa6-4106-b546-0ebf1fc00c3a";
+    #device = "UUID=aa4811f7-750e-4779-93a1-581b51777846";
     device = "/dev/disk/by-label/borg";
     fsType = "btrfs";
     options = [ "defaults" "relatime" "nodiratime" "discard=async" "nofail" "x-systemd.device-timeout=10" ];
@@ -83,18 +72,27 @@
       prime = {
         amdgpuBusId = "PCI:34:0:0";
         nvidiaBusId = "PCI:31:0:0";
-        # Make the Radeon RX6700 XT default; the NVIDIA T600 is for CUDA/NVENC
+        # Make the Radeon RX6700 XT default; the NVIDIA T1000 is for CUDA/NVENC
         reverseSync.enable = true;
       };
       nvidiaSettings = false;
     };
   };
 
+  # Adjust MTU for Virgin Fibre
+  # - https://search.nixos.org/options?channel=23.11&show=networking.networkmanager.connectionConfig&from=0&size=50&sort=relevance&type=packages&query=networkmanager
+  networking.networkmanager.connectionConfig = {
+    "ethernet.mtu" = 1462;
+    "wifi.mtu" = 1462;
+  };
+
   services = {
-    hardware.openrgb = {
+    cron = {
       enable = true;
-      motherboard = "amd";
-      package = pkgs.openrgb-with-all-plugins;
+      systemCronJobs = [
+        "*/30 * * * * martin /home/martin/Scripts/backup/sync-legoworlds.sh >> /home/martin/Games/Steam_Backups/legoworlds.log"
+        "42 * * * * martin /home/martin/Scripts/backup/sync-hotshotracing.sh >> /home/martin/Games/Steam_Backups/hotshotracing.log"
+      ];
     };
     xserver.videoDrivers = [ "amdgpu" "nvidia" ];
   };
