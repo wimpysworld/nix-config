@@ -26,7 +26,8 @@
   services.xserver.excludePackages = [ pkgs.xterm ];
   services.xserver.desktopManager.xterm.enable = false;
 
-  # Disable autoSuspend - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
+  # Disable autoSuspend; my Pantheon session kept auto-suspending
+  # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
   services.xserver.displayManager.gdm.autoSuspend = false;
   security.polkit.extraConfig = ''
     polkit.addRule(function(action, subject) {

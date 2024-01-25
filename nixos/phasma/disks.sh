@@ -10,8 +10,7 @@
 #/dev/disk/by-id/ata-TS4TMTS830S_H986540082                   -> /mnt/borg  (4TB)    sdb
 #/dev/disk/by-id/ata-Samsung_SSD_870_QVO_4TB_S5STNG0R100684E  -> /mnt/borg  (4TB)    sdc
 
-size_esp="768MiB"
-size_swap="128GiB"
+size_esp="1024MiB"
 
 # Array of disk devices to be wiped
 disks=(/dev/nvme0n1 \
@@ -71,6 +70,7 @@ stop_mdadm_arrays() {
 
 # Unmount any mounted partitions
 unmount_if_mounted /mnt/mnt/borg
+unmount_if_mounted /mnt/home
 unmount_if_mounted /mnt/boot
 unmount_if_mounted /mnt
 # Stop mdadm arrays
@@ -105,31 +105,28 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
             /dev/nvme0n1)
                 # Partition the first 2TB NVME
                 parted "${disk}" -- mklabel gpt
-                parted "${disk}" -- mkpart ESP fat32 2MiB "${size_esp}"
+                parted "${disk}" -- mkpart ESP fat32 1MiB "${size_esp}"
                 parted "${disk}" -- set 1 esp on
                 parted "${disk}" -- set 1 boot on
-                parted "${disk}" -- mkpart primary linux-swap "${size_esp}" "${size_swap}"
-                parted "${disk}" -- mkpart primary "${size_swap}" 100%
+                parted "${disk}" -- mkpart primary "${size_esp}" 100%
                 ;;
             *)
-                parted "${disk}" -- mklabel gpt
-                parted "${disk}" -- mkpart primary 2MiB 100%
-                ;;
+                # No partitioning for the other disks
+                true;;
         esac
     done
 
     mkfs.fat -F 32 -n ESP /dev/nvme0n1p1
-    mkswap -f /dev/nvme0n1p2 --label swap
 
-    echo "mkfs root"
     bcachefs format -f --fs_label=root --uuid=caf2a42b-ae3e-4e1d-bc1f-b9a881403b73 \
         --background_compression=lz4:0 \
         --compression=lz4:1 \
         --discard \
+        --encrypted \
         --replicas=2 \
-        --label=nvme.nvme0 /dev/nvme0n1p3 \
-        --label=nvme.nvme1 /dev/nvme1n1p1 \
-        --label=nvme.nvme2 /dev/nvme2n1p1
+        --label=nvme.nvme0 /dev/nvme0n1p2 \
+        --label=nvme.nvme1 /dev/nvme1n1 \
+        --label=nvme.nvme2 /dev/nvme2n1
     # check if the encrypted device needs unlocking
     if bcachefs unlock -c /dev/disk/by-label/root; then
         # https://nixos.wiki/wiki/Bcachefs#NixOS_installation_on_bcachefs
@@ -138,22 +135,25 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         bcachefs unlock /dev/disk/by-label/root
     fi
 
-    mkfs.btrfs -f --label borg --uuid bef8c5bb-1fa6-4106-b546-0ebf1fc00c3a \
-        /dev/sda1 /dev/sdb1 /dev/sdc1
+    bcachefs format -f --fs_label=borg --uuid=bef8c5bb-1fa6-4106-b546-0ebf1fc00c3a \
+        --discard \
+        --label=sata.sda /dev/sda \
+        --label=sata.sdb /dev/sdb \
+        --label=sata.sdc /dev/sdc
 
     # mount the filesystems
     echo "mount root"
-    bcachefs mount -o relatime,nodiratime,background_compression=lz4:0,compression=lz4:1,discard /dev/nvme0n1p3:/dev/nvme1n1p1:/dev/nvme2n1p1 /mnt
+    bcachefs mount -o relatime,nodiratime,background_compression=lz4:0,compression=lz4:1,discard /dev/nvme0n1p2:/dev/nvme1n1:/dev/nvme2n1 /mnt
     sleep 1
 
-    mkdir -p /mnt/boot
     echo "mount boot"
+    mkdir -p /mnt/boot
     mount -o umask=0077 /dev/disk/by-label/ESP /mnt/boot
     sleep 1
 
-    mkdir -p /mnt/mnt/borg
     echo "mount borg"
-    mount -t btrfs -o relatime,nodiratime,discard=async /dev/disk/by-label/borg /mnt/mnt/borg
+    mkdir -p /mnt/mnt/borg
+    bcachefs mount -o relatime,nodiratime,discard /dev/sda:/dev/sdb:/dev/sdc /mnt/mnt/borg
     sleep 1
 else
     echo "Aborting."

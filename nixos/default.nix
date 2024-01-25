@@ -263,8 +263,11 @@
   };
 
   services.fwupd.enable = true;
-  services.journald.forwardToSyslog = true;
-  services.syslog-ng.enable = true;
+
+  # Disable hiberate and hybrid-sleep as I only use zram.
+  systemd.targets.hibernate.enable = false;
+  systemd.targets.hybrid-sleep.enable = false;
+  zramSwap.enable = true;
 
   systemd.tmpfiles.rules = [
     "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
