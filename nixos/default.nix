@@ -27,6 +27,9 @@
     kernel.sysctl = {
       "net.ipv4.ip_forward" = 1;
       "net.ipv6.conf.all.forwarding" = 1;
+      # Keep zram (lz4) latency in check
+      # - https://www.reddit.com/r/Fedora/comments/mzun99/new_zram_tuning_benchmarks/
+      "vm.page-cluster" = 1;
     };
   };
 
@@ -267,7 +270,14 @@
   # Disable hiberate and hybrid-sleep as I only use zram.
   systemd.targets.hibernate.enable = false;
   systemd.targets.hybrid-sleep.enable = false;
-  zramSwap.enable = true;
+  # Enable zram
+  # - https://github.com/ecdye/zram-config/blob/main/README.md#performance
+  # - https://www.reddit.com/r/Fedora/comments/mzun99/new_zram_tuning_benchmarks/
+  # - https://linuxreviews.org/Zram
+  zramSwap = {
+    algorithm = "lz4";
+    enable = true;
+  };
 
   systemd.tmpfiles.rules = [
     "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
