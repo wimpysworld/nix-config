@@ -50,6 +50,7 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "ahci" "xhci_pci" "usbhid" "uas" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
+    kernelParams = [ "video=3440x1440@60" ];
     # Disable Plymouth because bcachefs unlocking doesn't work with it via initrd
     plymouth = {
       enable = lib.mkForce false;
