@@ -1,4 +1,4 @@
-{ config, inputs, lib, pkgs, platform, username, ... }:
+{ config, inputs, lib, pkgs, platform, .. }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
@@ -21,7 +21,7 @@
     ../_mixins/virt
   ];
 
-  # Mount bcachefs using UUID and via initrd to workaround issues with systemd
+  # Mount bcachefs using multi-device path via initrd to workaround issues with systemd
   # - https://www.reddit.com/r/bcachefs/comments/17y0ydd/psa_for_those_having_trouble_with_mountingbooting/
   # - https://discourse.nixos.org/t/how-can-i-install-specifically-util-linux-from-unstable/38637/7?u=wimpy
   # - https://github.com/systemd/systemd/issues/8234
@@ -92,8 +92,6 @@
       package = pkgs.openrgb-with-all-plugins;
     };
     xserver.videoDrivers = [ "amdgpu" "nvidia" ];
-    # Auto login because bcachefs unlocking is the authentication mechanism
-    xserver.displayManager.autoLogin.user = "${username}";
   };
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }
