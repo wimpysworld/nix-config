@@ -21,12 +21,29 @@
     ../_mixins/virt
   ];
 
-  # disko does manage mounting, but I need to mount bcachefs via UUID
+  # Mount bcachefs using multi-device path via initrd to workaround issues with systemd
   # - https://www.reddit.com/r/bcachefs/comments/17y0ydd/psa_for_those_having_trouble_with_mountingbooting/
-  fileSystems."/" = lib.mkForce {
-    device = "UUID=ad91c0a6-2c8f-4abf-9e9d-6dd3e555defb";
-    fsType = "bcachefs";
-    options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
+  # - https://discourse.nixos.org/t/how-can-i-install-specifically-util-linux-from-unstable/38637/7?u=wimpy
+  # - https://github.com/systemd/systemd/issues/8234
+  fileSystems = {
+    "/" = lib.mkForce {
+      #device = "UUID=cafeface-b007-b007-b007-0c278079e5e6";
+      device = "/dev/disk/by-label/root";
+      fsType = "bcachefs";
+      neededForBoot = true;
+      options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
+    };
+    "/boot" = lib.mkForce {
+      device = "/dev/disk/by-label/ESP";
+      fsType = "vfat";
+    };
+    "/home" = lib.mkForce {
+      #device = "UUID=deadbeef-da7a-da7a-da7a-ab86f7c169a6";
+      device = "/dev/nvme1n1:/dev/nvme2n1:/dev/sda:/dev/sdb:/dev/sdc";
+      fsType = "bcachefs";
+      neededForBoot = true;
+      options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
+    };
   };
 
   fileSystems."/boot" = lib.mkForce {
@@ -49,6 +66,11 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "ahci" "xhci_pci" "usbhid" "uas" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
+    kernelParams = [ "video=2560x1440@60" ];
+    # Disable Plymouth because bcachefs unlocking doesn't work with it via initrd
+    plymouth = {
+      enable = lib.mkForce false;
+    };
   };
 
   # https://nixos.wiki/wiki/PipeWire
