@@ -25,25 +25,25 @@
   # - https://www.reddit.com/r/bcachefs/comments/17y0ydd/psa_for_those_having_trouble_with_mountingbooting/
   # - https://discourse.nixos.org/t/how-can-i-install-specifically-util-linux-from-unstable/38637/7?u=wimpy
   # - https://github.com/systemd/systemd/issues/8234
-  fileSystems."/" = lib.mkForce {
-    #device = "UUID=cafeface-b007-b007-b007-b9a881403b73";
-    device = "/dev/disk/by-label/root";
-    fsType = "bcachefs";
-    neededForBoot = true;
-    options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
-  };
-
-  fileSystems."/boot" = lib.mkForce {
-    device = "/dev/disk/by-label/ESP";
-    fsType = "vfat";
-  };
-
-  fileSystems."/home" = lib.mkForce {
-    #device = "UUID=deadbeef-da7a-da7a-da7a-0ebf1fc00c3a";
-    device = "/dev/nvme1n1:/dev/nvme2n1:/dev/sda:/dev/sdb:/dev/sdc";
-    fsType = "bcachefs";
-    neededForBoot = true;
-    options = [ "defaults" "relatime" "nodiratime" "discard" "nofail" ];
+  fileSystems = {
+    "/" = lib.mkForce {
+      #device = "UUID=cafeface-b007-b007-b007-b9a881403b73";
+      device = "/dev/disk/by-label/root";
+      fsType = "bcachefs";
+      neededForBoot = true;
+      options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
+    };
+    "/boot" = lib.mkForce {
+      device = "/dev/disk/by-label/ESP";
+      fsType = "vfat";
+    };
+    "/home" = lib.mkForce {
+      #device = "UUID=deadbeef-da7a-da7a-da7a-0ebf1fc00c3a";
+      device = "/dev/nvme1n1:/dev/nvme2n1:/dev/sda:/dev/sdb:/dev/sdc";
+      fsType = "bcachefs";
+      neededForBoot = true;
+      options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
+    };
   };
 
   boot = {
