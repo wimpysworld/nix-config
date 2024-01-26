@@ -26,8 +26,8 @@
   # - https://discourse.nixos.org/t/how-can-i-install-specifically-util-linux-from-unstable/38637/7?u=wimpy
   # - https://github.com/systemd/systemd/issues/8234
   fileSystems."/" = lib.mkForce {
-    #device = "UUID=caf2a42b-ae3e-4e1d-bc1f-b9a881403b73";
-    device = "/dev/nvme0n1p2:/dev/nvme1n1:/dev/nvme2n1";
+    #device = "UUID=cafeface-b007-b007-b007-b9a881403b73";
+    device = "/dev/disk/by-label/root";
     fsType = "bcachefs";
     neededForBoot = true;
     options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
@@ -38,9 +38,9 @@
     fsType = "vfat";
   };
 
-  fileSystems."/mnt/borg" = lib.mkForce {
-    #device = "UUID=bef8c5bb-1fa6-4106-b546-0ebf1fc00c3a";
-    device = "/dev/sda:/dev/sdb:/dev/sdc";
+  fileSystems."/home" = lib.mkForce {
+    #device = "UUID=deadbeef-da7a-da7a-da7a-0ebf1fc00c3a";
+    device = "/dev/nvme1n1:/dev/nvme2n1:/dev/sda:/dev/sdb:/dev/sdc";
     fsType = "bcachefs";
     neededForBoot = true;
     options = [ "defaults" "relatime" "nodiratime" "discard" "nofail" ];

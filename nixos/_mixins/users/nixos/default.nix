@@ -73,7 +73,10 @@ if [[ -z "$TARGET_USER" ]]; then
 fi
 
 if [ -x "nixos/$TARGET_HOST/disks.sh" ]; then
-  sudo nixos/$TARGET_HOST/disks.sh
+  if ! sudo nixos/$TARGET_HOST/disks.sh "$TARGET_USER"; then
+    echo "ERROR! Failed to prepare disks; stopping here!"
+    exit 1
+  fi
 else
   if [ ! -e "nixos/$TARGET_HOST/disks.nix" ]; then
     echo "ERROR! $(basename "$0") could not find the required nixos/$TARGET_HOST/disks.nix"

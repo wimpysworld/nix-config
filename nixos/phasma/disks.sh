@@ -10,43 +10,64 @@
 #/dev/disk/by-id/ata-TS4TMTS830S_H986540082                   -> /mnt/borg  (4TB)    sdb
 #/dev/disk/by-id/ata-Samsung_SSD_870_QVO_4TB_S5STNG0R100684E  -> /mnt/borg  (4TB)    sdc
 
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <target_user>"
+    exit 1
+fi
+target_user="${1}"
+
 size_esp="1024MiB"
 
-# Array of disk devices to be wiped
-disks=(/dev/nvme0n1 \
-       /dev/nvme1n1 \
-       /dev/nvme2n1 \
-       /dev/sda \
-       /dev/sdb \
-       /dev/sdc
-      )
+# Array of disks to be prepared
+disks_root=(/dev/nvme0n1)
+disks_home=(
+    /dev/nvme1n1 \
+    /dev/nvme2n1 \
+    /dev/sda \
+    /dev/sdb \
+    /dev/sdc
+)
+disks_all=("${disks_root[@]}" "${disks_home[@]}")
 
-unmount_if_mounted() {
+function confirm_action() {
+    local MESSAGE="${1}"
+
+    echo "ALERT! ${MESSAGE}"
+    echo
+    read -p "Are you sure? [y/N]" -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function unmount_if_mounted() {
     # Check if the directory path is provided
     if [ $# -eq 0 ]; then
         echo "Usage: unmount_if_mounted <directory>"
         return 1
     fi
 
-    local directory=$1
-
+    local directory="${1}"
     # Check if the directory is a mount point
-    if mountpoint -q "$directory"; then
-        echo "Directory $directory is a mount point. Attempting to unmount..."
+    if mountpoint -q "${directory}"; then
+        echo "Directory ${directory} is a mount point. Attempting to unmount..."
         # Attempt to unmount the directory
-        if umount "$directory"; then
-            echo "Successfully unmounted $directory."
+        if umount -q "${directory}"; then
+            echo "Successfully unmounted ${directory}."
         else
-            echo "Failed to unmount $directory. Check if it's in use."
+            echo "Failed to unmount ${directory}. Check if it's in use."
             return 1
         fi
     else
-        echo "Directory $directory is not a mount point."
+        echo "Directory ${directory} is not a mount point."
     fi
 }
 
 # Function to stop mdadm arrays
-stop_mdadm_arrays() {
+function stop_mdadm_arrays() {
     for disk in "$@"; do
         # Check for any active mdadm arrays on the disk
         arrays=$(grep "$disk" /proc/mdstat | awk '{print $1}')
@@ -68,93 +89,125 @@ stop_mdadm_arrays() {
     done
 }
 
-# Unmount any mounted partitions
-unmount_if_mounted /mnt/mnt/borg
-unmount_if_mounted /mnt/home
-unmount_if_mounted /mnt/boot
-unmount_if_mounted /mnt
-# Stop mdadm arrays
-stop_mdadm_arrays "${disks[@]}"
-
-echo "ALERT! About to wipe and reformat the following disks:"
-echo "       ${disks[@]}"
-echo "       Do you want to continue?"
-echo "       This is a destructive operation!"
-echo
-read -p "Are you sure? [y/N]" -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+function wipe_disks() {
+    local disks=("$@")
     # Loop over each disk device
     for disk in "${disks[@]}"; do
         echo "Wiping ${disk}..."
-
         # Wipe filesystem signatures using wipefs
         wipefs --all --force "${disk}"
-
         # Wipe the beginning and end of the disk to remove partition table and RAID metadata
-        dd if=/dev/zero of="${disk}" bs=1M count=10
-        dd if=/dev/zero of="${disk}" bs=1M count=10 seek=$(( `blockdev --getsz "${disk}"` - 20))
-
+        dd if=/dev/zero of="${disk}" bs=1M count=10 status=none
         echo "$disk has been wiped."
     done
-    echo "All specified disks have been wiped."
-    sync
+}
+
+function output_labels() {
+    local disks=("$@")
+    output=""
 
     for disk in "${disks[@]}"; do
-        case "${disk}" in
-            /dev/nvme0n1)
-                # Partition the first 2TB NVME
-                parted "${disk}" -- mklabel gpt
-                parted "${disk}" -- mkpart ESP fat32 1MiB "${size_esp}"
-                parted "${disk}" -- set 1 esp on
-                parted "${disk}" -- set 1 boot on
-                parted "${disk}" -- mkpart primary "${size_esp}" 100%
-                ;;
-            *)
-                # No partitioning for the other disks
-                true;;
-        esac
+        # Extract the disk type and name
+        if [[ ${disk} == /dev/nvme* ]]; then
+            disk_type="nvme"
+            disk_name="${disk##*/}"
+        else
+            disk_type="sata"
+            disk_name="${disk##*/}"
+        fi
+
+        # Append to output string
+        output+="--label=${disk_type}.${disk_name} ${disk} "
     done
 
-    mkfs.fat -F 32 -n ESP /dev/nvme0n1p1
+    # Remove trailing space
+    output=${output% }
 
-    bcachefs format -f --fs_label=root --uuid=caf2a42b-ae3e-4e1d-bc1f-b9a881403b73 \
+    echo "${output}"
+}
+
+function make_uncompressed_dir() {
+    local directory="${1}"
+    mkdir -p "${directory}"
+    bcachefs setattr --compression=none --background_compression=none "${directory}"
+}
+
+unmount_if_mounted /mnt/home
+unmount_if_mounted /mnt/boot
+unmount_if_mounted /mnt
+stop_mdadm_arrays "${disks_all[@]}"
+
+# Ask for confirmation before wiping disks
+if confirm_action "About to WIPE the / disk(s): ${disks_root[*]}"; then
+    wipe_disks "${disks_root[@]}"
+fi
+
+if confirm_action "About to FORMAT the / disk(s): ${disks_root[*]}"; then
+    # Partition the first root disk
+    parted "${disks_root[0]}" -- mklabel gpt
+    parted "${disks_root[0]}" -- mkpart ESP fat32 1MiB "${size_esp}"
+    parted "${disks_root[0]}" -- set 1 esp on
+    parted "${disks_root[0]}" -- set 1 boot on
+    parted "${disks_root[0]}" -- mkpart primary "${size_esp}" 100%
+
+    # Create the /boot filesystem
+    mkfs.fat -F 32 -n ESP "${disks_root[0]}p1"
+
+    # Create the / filesystem
+    bcachefs format -f --fs_label=root --uuid=cafeface-b007-b007-b007-b9a881403b73 \
         --background_compression=lz4:0 \
         --compression=lz4:1 \
         --discard \
-        --encrypted \
-        --replicas=2 \
-        --label=nvme.nvme0 /dev/nvme0n1p2 \
-        --label=nvme.nvme1 /dev/nvme1n1 \
-        --label=nvme.nvme2 /dev/nvme2n1
-    # check if the encrypted device needs unlocking
-    if bcachefs unlock -c /dev/disk/by-label/root; then
-        # https://nixos.wiki/wiki/Bcachefs#NixOS_installation_on_bcachefs
-        # https://github.com/NixOS/nixpkgs/issues/32279
-        keyctl link @u @s
-        bcachefs unlock /dev/disk/by-label/root
+        "${disks_root[0]}p2"
+fi
+
+# mount the filesystems
+echo "Mount: /"
+bcachefs mount -o relatime,nodiratime,background_compression=lz4:0,compression=lz4:1,discard /dev/disk/by-label/root /mnt
+
+echo "Mount: /boot"
+mkdir -p /mnt/boot 2>/dev/null
+mount -o umask=0077 /dev/disk/by-label/ESP /mnt/boot
+
+if [ ${#disks_home[@]} -ne 0 ]; then
+    if confirm_action "About to WIPE the /home disk(s): ${disks_home[*]}"; then
+        wipe_disks "${disks_home[@]}"
     fi
 
-    bcachefs format -f --fs_label=borg --uuid=bef8c5bb-1fa6-4106-b546-0ebf1fc00c3a \
-        --discard \
-        --label=sata.sda /dev/sda \
-        --label=sata.sdb /dev/sdb \
-        --label=sata.sdc /dev/sdc
+    if confirm_action "About to FORMAT the /home disk(s): ${disks_home[*]}"; then
+        bcachefs format -f --fs_label=home --uuid=deadbeef-da7a-da7a-da7a-0ebf1fc00c3a \
+            --background_compression=lz4:0 \
+            --compression=lz4:1 \
+            --discard \
+            --encrypted \
+            $(output_labels "${disks_home[@]}") \
+            --foreground_target=nvme \
+            --promote_target=nvme \
+            --background_target=sata \
+            --replicas=2
+    fi
 
-    # mount the filesystems
-    echo "mount root"
-    bcachefs mount -o relatime,nodiratime,background_compression=lz4:0,compression=lz4:1,discard /dev/nvme0n1p2:/dev/nvme1n1:/dev/nvme2n1 /mnt
-    sleep 1
+    # Unlock the encrypted /home filesystem
+    # - https://nixos.wiki/wiki/Bcachefs#NixOS_installation_on_bcachefs
+    # - https://github.com/NixOS/nixpkgs/issues/32279
+    if bcachefs unlock -c /dev/disk/by-label/home; then
+        keyctl link @u @s
+        bcachefs unlock /dev/disk/by-label/home
+    fi
 
-    echo "mount boot"
-    mkdir -p /mnt/boot
-    mount -o umask=0077 /dev/disk/by-label/ESP /mnt/boot
-    sleep 1
-
-    echo "mount borg"
-    mkdir -p /mnt/mnt/borg
-    bcachefs mount -o relatime,nodiratime,discard /dev/sda:/dev/sdb:/dev/sdc /mnt/mnt/borg
-    sleep 1
-else
-    echo "Aborting."
+    echo "Mount: /home"
+    mkdir -p /mnt/home 2>/dev/null
+    bcachefs mount -o relatime,nodiratime,background_compression=lz4:0,compression=lz4:1,discard "$(echo "${disks_home[*]}" | sed 's/ /:/g')" /mnt/home
+    # Create the user's home directory as a subvolume
+    bcachefs subvolume create "/mnt/home/${target_user}"
+    # Create directories that will store data I do not want to be compressed
+    make_uncompressed_dir "/mnt/home/${target_user}/Audio"
+    make_uncompressed_dir "/mnt/home/${target_user}/Music"
+    make_uncompressed_dir "/mnt/home/${target_user}/Pictures"
+    make_uncompressed_dir "/mnt/home/${target_user}/Quickemu"
+    make_uncompressed_dir "/mnt/home/${target_user}/Videos"
+    chown -R 1000:100 "/mnt/home/${target_user}"
+    # Create the snapshots directory
+    mkdir -p --mode=700 /mnt/home/snapshots
+    chown -R 1000:100 /mnt/home/snapshots
 fi
