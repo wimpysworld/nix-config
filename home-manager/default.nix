@@ -10,8 +10,8 @@ in
     # If you want to use modules your own flake exports (from modules/home-manager):
     # outputs.homeManagerModules.example
 
-    # Or modules exported from other flakes (such as nix-colors):
-    # inputs.nix-colors.homeManagerModules.default
+    # Or modules exported from other flakes:
+    inputs.sops-nix.homeManagerModules.sops
 
     # You can also split up your configuration and import pieces of it here:
     ./_mixins/console
@@ -44,7 +44,7 @@ in
       outputs.overlays.unstable-packages
 
       # Add overlays exported from other flakes:
-      inputs.agenix.overlays.default
+
     ];
     # Configure your nixpkgs instance
     config = {
@@ -68,6 +68,29 @@ in
       keep-outputs = true;
       keep-derivations = true;
       warn-dirty = false;
+    };
+  };
+
+  sops = {
+    age = {
+      keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
+      generateKey = false;
+    };
+    defaultSopsFile = ../secrets/secrets.yaml;
+    # sops-nix options: https://dl.thalheim.io/
+    secrets = {
+      asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
+      hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
+      gpg_private = {};
+      gpg_public = {};
+      gpg_ownertrust = {};
+      obs_secrets = {};
+      ssh_config.path = "${config.home.homeDirectory}/.ssh/config";
+      ssh_key.path = "${config.home.homeDirectory}/.ssh/id_rsa";
+      ssh_pub.path = "${config.home.homeDirectory}/.ssh/id_rsa.pub";
+      ssh_semaphore_key.path = "${config.home.homeDirectory}/.ssh/id_rsa_semaphore";
+      ssh_semaphore_pub.path = "${config.home.homeDirectory}/.ssh/id_rsa_semaphore.pub";
+      transifex.path = "${config.home.homeDirectory}/.transifexrc";
     };
   };
 }

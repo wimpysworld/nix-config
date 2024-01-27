@@ -134,6 +134,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     sudo cp /tmp/data.keyfile /mnt/etc/data.keyfile
     sudo chmod 0400 /mnt/etc/data.keyfile
   fi
+
+  echo "Public age key for $TARGET_HOST"
+  ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
 fi
 '';
 in

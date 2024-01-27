@@ -1,10 +1,9 @@
 # Wimpy's [NixOS]  & [Home Manager] Configurations
 
-[NixOS]: https://nixos.org/
-[Home Manager]: https://github.com/nix-community/home-manager
-
-This repository contains a [Nix Flake](https://nixos.wiki/wiki/Flakes) for configuring my computers and/or home environment.
-These are the computers this configuration currently manages:
+This repository contains a [Nix Flake](https://zero-to-nix.com/concepts/flakes) for configuring my computers and/or home environment.
+It is not intended to be a drop in configuration for your computer, but you are welcome to use it as a reference or starting point for your own configuration.
+**If you are looking for a more generic NixOS configuration, I recommend [nix-starter-configs].** 👍️
+These computers are managed by this Nix flake ❄️
 
 |   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |      Secondary GPU      | Role | OS  | State |
 | :---------: | :-------------------------: | :----------------------------: | :---: | :-------------------------: | :---------------------: | :--: | :-: | :---: |
@@ -54,13 +53,6 @@ These are the computers this configuration currently manages:
 
 The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited configurations based on the arguments defined in [flake.nix].
 
-[.github]: ./github/workflows
-[home-manager]: ./home-manager
-[nixos]: ./nixos
-[nixos/_mixins]: ./nixos/_mixins
-[home-manager/_mixins]: ./home-manager/_mixins
-[flake.nix]: ./flake.nix
-
 ## Installing 💾
 
 - Boot off a .iso image created by this flake using `build-iso-desktop` or `build-iso-console` (*see below*)
@@ -69,17 +61,11 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
 - Two installation options are available:
   1 Use the graphical Calamares installer to install an ad-hoc system
   2 Run `install-system <hostname> <username>` from a terminal
-   - The install script uses [Disko] to automatically partition and format the disks, then uses my flake via `nixos-install` to complete a full-system installation
+   - The install script uses [Disko] or `disks.sh` to automatically partition and format the disks, then uses my flake via `nixos-install` to complete a full-system installation
    - This flake is copied to the target user's home directory as `~/Zero/nix-config`
+   - The `nixos-enter` command is used to automatically chroot into the new system and apply the Home Manager configuration.
 - Make a cuppa 🫖
-- Reboot
-- Login and run `switch-home` (*see below*) from a terminal to complete the Home Manager configuration.
-
-If the target system is booted from something other than the .iso image created by this flake, you can still install the system using the following:
-
-```bash
-curl -sL https://raw.githubusercontent.com/wimpysworld/nix-config/main/scripts/install.sh | bash -s <hostname> <username>
-```
+- Reboot 🥾
 
 ## Applying Changes ✨
 
@@ -89,37 +75,16 @@ I clone this repo to `~/Zero/nix-config`. NixOS and Home Manager changes are app
 gh repo clone wimpysworld/nix-config ~/Zero/nix-config
 ```
 
-### NixOS ❄️
-
-A `switch-host` alias is provided that does the following:
-
-```bash
-pushd $HOME/Zero/nix-config
-sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
-popd
-```
-
-### Home Manager 🏠️
-
-A `switch-home` alias is provided that does the following:
-
-```bash
-pushd $HOME/Zero/nix-config
-home-manager switch -b backup --flake $HOME/Zero/nix-config
-popd
-```
+❄️ **NixOS:**  A `build-host` and `switch-host` aliases are provided that build the NixOS configuration and switch to it respectively.
+🏠️ **Home Manager:**  A `build-home` and `switch-home` aliases are provided that build the Home Manager configuration and switch to it respectively.
+🌍️ **All:** There are also `build-all` and `switch-all` aliases that build and switch to both the NixOS and Home Manager configurations.
 
 ### ISO 📀
 
 `build-iso-desktop` (*desktop*) and `build-iso-console` (*console only*) aliases are provided that create .iso images from this flake. They do the following:
 
-```bash
-pushd $HOME/Zero/nix-config
-nix build .#nixosConfigurations.iso.config.system.build.isoImage
-popd
-```
-
-A live image will be left in `~/$HOME/Zero/nix-config/result/iso/`. These .iso images are also periodically built and published via [GitHub [Actions](./.github/workflows) and are available in [this](https://github.com/wimpysworld/nix-config/releases) project's Releases](https://github.com/wimpysworld/nix-config/releases).
+A live image will be left in `~/$HOME/Zero/nix-config/result/iso/` and are injected into `~/Quickemu/nixos-console` or `~/Quickemu/nixos-desktop`.
+These .iso images are also periodically built and published via [GitHub [Actions](./.github/workflows) and are available in [this](https://github.com/wimpysworld/nix-config/releases) project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
 ## What's in the box? 🎁
 
@@ -145,28 +110,25 @@ Here is the directory structure I'm using.
 │   │   ├── services
 │   │   ├── users
 │   │   └── virt
-│   ├── designare
-│   ├── iso
-│   ├── skull
-│   ├── vm
-│   ├── z13
+│   ├── phasma
+│   ├── vader
+│   ├── minimech
+│   ├── scrubber
 │   └── default.nix
 ├── overlays
 ├── pkgs
-├── scripts
+├── secrets
 └── flake.nix
 ```
 
+The NixOS and Home Manager configurations are in the `nixos` and `home-manager` directories respectively, they are structured in the same way with `_mixins` directories that contain the mixin configurations that are used to compose the final configuration.
+The `pkgs` directory contains my custom packages with package overlays in the `overlays` directory.
+The `secrets` directory contains secrets managed by [sops-nix].
+The `default.nix` files in the root of each directory are the entry points.
+
 ### The Shell 🐚
 
-[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [ZeroTier], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
-
-[Fish shell]: ./nixos/default.nix
-[Modern Unix]: ./home-manager/_mixins/console/default.nix
-[OpenSSH]: ./nixos/_mixins/services/openssh.nix
-[ZeroTier]: ./nixos/_mixins/services/zerotier.nix
-[Podman & Distrobox]: ./nixos/_mixins/virt/default.nix
-[micro]: [https://micro-editor.github.io/]
+[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [ZeroTier], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
 
 ![fastfetch on Trooper](.github/screenshots/fastfetch.png)
 
@@ -174,22 +136,10 @@ Here is the directory structure I'm using.
 
 MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. The [font configuration] is common with both desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code). The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as [Pipewire], Bluetooth, [Avahi], [CUPS], [SANE] and [NetworkManager].
 
-[font configuration]: ./nixos/_mixins/desktop/default.nix
-[Pipewire]: ./nixos/_mixins/services/pipewire.nix
-[Avahi]: ./nixos/_mixins/services/avahi.nix
-[CUPS]: ./nixos/_mixins/services/cups.nix
-[SANE]: ./nixos/_mixins/services/sane.nix
-[NetworkManager]: ./nixos/_mixins/services/networkmanager.nix
-
 |  Desktop  |       System       |       Configuration       |             Theme            |
 | :-------: | :----------------: | :-----------------------: | :--------------------------: |
 | MATE      | [MATE Install]     | [MATE Configuration]      | Yaru Magenta (Dark)          |
 | Pantheon  | [Pantheon Install] | [Pantheon Configuration]  | elementary Bubble Gum (Dark) |
-
-[MATE Install]: ./nixos/_mixins/desktop/mate.nix
-[Pantheon Install]: ./nixos/_mixins/desktop/pantheon.nix
-[MATE Configuration]: ./home-manager/_mixins/desktop/mate.nix
-[Pantheon Configuration]: ./home-manager/_mixins/desktop/pantheon.nix
 
 ## Eye Candy 👀🍬
 
@@ -199,18 +149,14 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ## TODO 🗒️
 
-Things I should do or improve
+Things I should do or improve:
 
 - [ ] Install Rosetta and disable Xcode Command Line tools on macOS
   - `softwareupdate --install-rosetta --agree-to-license`
-- [x] `isLinux` and `isDarwin` conditionals
-  - https://stackoverflow.com/questions/77527439/error-when-using-lib-mkif-and-lib-mkmerge-to-set-configuration-based-on-hostname
-  - https://www.reddit.com/r/NixOS/comments/knq819/how_to_check_for_nixosdarwin/
 - [ ] Add Password Managers
 - [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
 - [ ] Integrate [homepage](https://github.com/benphelps/homepage)
-- [ ] Integrate [agenix](https://github.com/ryantm/agenix) ~~or [sops-nix](https://github.com/Mic92/sops-nix)~~
 - [ ] Bind Syncthing GUI to ZeroTier.
 - [ ] Configure Plank.
 
@@ -235,7 +181,7 @@ Things I should do or improve
 
 Before preparing my NixOS and Home Manager configurations I took a look at what other Nix users are doing. My colleagues shared their configs and tips which included [nome from Luc Perkins], [nixos-config from Cole Helbling], [flake from Ana Hoverbear] and her [Declarative GNOME configuration with NixOS] blog post. A couple of friends also shared their configurations and here's [Jon Seager's nixos-config] and [Aaron Honeycutt's nix-configs].
 
-While learning Nix I watched some talks/interviews with [Matthew Croughan](https://github.com/MatthewCroughan) and [Will Taylor's Nix tutorials on Youtube](https://www.youtube.com/playlist?list=PL-saUBvIJzOkjAw_vOac75v-x6EzNzZq-). [Will Taylor's dotfiles] are worth a look, as are his videos, and [Matthew Croughan's nixcfg] is also a useful reference. **After I created my initial flake I found [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs) by [Gabriel Fontes](https://m7.rs) which is an excellent starting point**. I'll be incorporating many of the techniques it demonstrates in my nix-config.
+While learning Nix I watched some talks/interviews with [Matthew Croughan](https://github.com/MatthewCroughan) and [Will Taylor's Nix tutorials on Youtube](https://www.youtube.com/playlist?list=PL-saUBvIJzOkjAw_vOac75v-x6EzNzZq-). [Will Taylor's dotfiles] are worth a look, as are his videos, and [Matthew Croughan's nixcfg] is also a useful reference. **After I created my initial flake I found [nix-starter-configs] by [Gabriel Fontes](https://m7.rs) which is an excellent starting point**. I'll be incorporating many of the techniques it demonstrates in my nix-config.
 
 I like the directory hierarchy in [Jon Seager's nixos-config] and the mixin pattern used in [Matthew Croughan's nixcfg], so my initial Nix configuration is heavily influenced by both of those. Ana's excellent [Declarative GNOME configuration with NixOS] blog post was essential to get a personalised desktop. That said, there's plenty to learn from browsing other people's Nix configurations, not least for discovering cool software. I recommend a search of [GitHub nixos configuration] from time to time to see what interesting techniques you pick up and new tools you might discover.
 
@@ -247,12 +193,16 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [nixos-config from Cole Helbling]: https://github.com/cole-h/nixos-config
 [flake from Ana Hoverbear]: https://github.com/Hoverbear-Consulting/flake
 [Declarative GNOME configuration with NixOS]: https://hoverbear.org/blog/declarative-gnome-configuration-in-nixos/
+[nix-starter-configs]: (https://github.com/Misterio77/nix-starter-configs)
 [Jon Seager's nixos-config]: https://github.com/jnsgruk/nixos-config
 [Aaron Honeycutt's nix-configs]: https://gitlab.com/ahoneybun/nix-configs
 [Matthew Croughan's nixcfg]: https://github.com/MatthewCroughan/nixcfg
 [Will Taylor's dotfiles]: https://github.com/wiltaylor/dotfiles
 [GitHub nixos configuration]: https://github.com/search?q=nixos+configuration
 [Disko]: https://github.com/nix-community/disko
+
+[NixOS]: https://nixos.org/
+[Home Manager]: https://github.com/nix-community/home-manager
 
 [Z390-DESIGNARE]: https://www.gigabyte.com/Motherboard/Z390-DESIGNARE-rev-10#kf
 [MEG-X570-UNIFY]: https://www.msi.com/Motherboard/MEG-X570-UNIFY
@@ -287,3 +237,30 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [NVIDIA T600]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/proviz-print-nvidia-T600-datasheet-us-nvidia-1670029-r5-web.pdf
 [NVIDIA T400]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/nvidia-t400-datasheet-1987150-r3.pdf
 [VirGL]: https://docs.mesa3d.org/drivers/virgl.html
+
+[.github]: ./github/workflows
+[home-manager]: ./home-manager
+[nixos]: ./nixos
+[nixos/_mixins]: ./nixos/_mixins
+[home-manager/_mixins]: ./home-manager/_mixins
+[flake.nix]: ./flake.nix
+
+[Fish shell]: ./nixos/default.nix
+[Modern Unix]: ./home-manager/_mixins/console/default.nix
+[OpenSSH]: ./nixos/_mixins/services/openssh.nix
+[ZeroTier]: ./nixos/_mixins/services/zerotier.nix
+[Podman & Distrobox]: ./nixos/_mixins/virt/default.nix
+[micro]: [https://micro-editor.github.io/]
+[sops-nix]: [https://github.com/Mic92/sops-nix]
+
+[font configuration]: ./nixos/_mixins/desktop/default.nix
+[Pipewire]: ./nixos/_mixins/services/pipewire.nix
+[Avahi]: ./nixos/_mixins/services/avahi.nix
+[CUPS]: ./nixos/_mixins/services/cups.nix
+[SANE]: ./nixos/_mixins/services/sane.nix
+[NetworkManager]: ./nixos/_mixins/services/networkmanager.nix
+
+[MATE Install]: ./nixos/_mixins/desktop/mate.nix
+[Pantheon Install]: ./nixos/_mixins/desktop/pantheon.nix
+[MATE Configuration]: ./home-manager/_mixins/desktop/mate.nix
+[Pantheon Configuration]: ./home-manager/_mixins/desktop/pantheon.nix
