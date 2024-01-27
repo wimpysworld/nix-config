@@ -1,6 +1,7 @@
 { config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }: {
   imports = [
     inputs.disko.nixosModules.disko
+    inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
     ./_mixins/console
@@ -72,9 +73,11 @@
       rsync
     ];
     systemPackages = with pkgs; [
-      agenix
+      age
       pciutils
       psmisc
+      ssh-to-age
+      sops
       unzip
       usbutils
       wget
@@ -171,7 +174,6 @@
       outputs.overlays.unstable-packages
 
       # Add overlays exported from other flakes:
-      inputs.agenix.overlays.default
     ];
     # Configure your nixpkgs instance
     config = {
@@ -266,6 +268,16 @@
   };
 
   services.fwupd.enable = true;
+
+  sops = {
+    age = {
+      keyFile = "/home/${username}/.config/sops/age/keys.txt";
+      generateKey = false;
+    };
+    defaultSopsFile = ../secrets/secrets.yaml;
+    # sops-nix options: https://dl.thalheim.io/
+    secrets.test-key = {};
+  };
 
   # Disable hiberate and hybrid-sleep as I only use zram.
   systemd.targets.hibernate.enable = false;

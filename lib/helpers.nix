@@ -15,7 +15,6 @@
     };
     modules = [
       ../nixos
-      inputs.agenix.nixosModules.default
     ] ++ (inputs.nixpkgs.lib.optionals (installer != null) [ installer ]);
   };
 

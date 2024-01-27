@@ -27,43 +27,6 @@ in
     file."Development/git.launchpad.net/.envrc".text = "export DEB_VENDOR=Ubuntu";
     file."Development/github.com/ubuntu/.envrc".text = "export DEB_VENDOR=Ubuntu";
     file."Development/github.com/ubuntu-mate/.envrc".text = "export DEB_VENDOR=Ubuntu";
-    file.".ssh/config".text = "
-      Host github.com
-        HostName github.com
-        User git
-
-      Host man
-        HostName man.wimpress.io
-
-      Host yor
-        HostName yor.wimpress.io
-
-      Host man.ubuntu-mate.net
-        HostName man.ubuntu-mate.net
-        User matey
-        IdentityFile ~/.ssh/id_rsa_semaphore
-
-      Host yor.ubuntu-mate.net
-        HostName yor.ubuntu-mate.net
-        User matey
-        IdentityFile ~/.ssh/id_rsa_semaphore
-
-      Host bazaar.launchpad.net
-        User flexiondotorg
-
-      Host git.launchpad.net
-        User flexiondotorg
-
-      Host ubuntu.com
-        HostName people.ubuntu.com
-        User flexiondotorg
-
-      Host people.ubuntu.com
-        User flexiondotorg
-
-      Host ubuntupodcast.org
-        HostName live.ubuntupodcast.org
-    ";
     file."Quickemu/nixos-console.conf".text = ''
       #!/run/current-system/sw/bin/quickemu --vm
       guest_os="linux"

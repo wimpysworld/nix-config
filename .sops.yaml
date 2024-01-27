@@ -1,0 +1,26 @@
+# Make a user key
+# mkdir -p ~/.config/sops/age
+# age-keygen -o ~/.config/sops/age/keys.txt
+# chmod 600 ~/.config/sops/age/keys.txt
+
+# Display the user public key:
+# age-keygen -y ~/.config/sops/age/keys.txt
+
+# Make a host public key:
+# ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
+
+# Rekey secrets.yaml after editing recipients in .sops.yaml:
+# sops updatekeys secrets/secrets.yaml
+keys:
+  - &user_martin age1xfpzwdsz06243ndj39x4yr2qs4u3ja777r3xautdtm59j54wa3kssualcn
+  - &user_backup age1v5c455hd0shs745dhd3gl7kzw6zaqflnyl4v96pq56j96xyvvc5sgse0za
+  - &host_ripper age1z7kwm9t4a570dzm83e5h8nsphyqkd5c9uxnam5gnrpcmplsx6pxqtn9xdc
+  - &host_phasma age1cyldrg56zzugxuw07daf4fa3wek2zlva3zs6w0q9c64nggjvrsjsnkalpx
+creation_rules:
+  - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
+    key_groups:
+    - age:
+      - *user_martin
+      - *user_backup
+      - *host_ripper
+      - *host_phasma

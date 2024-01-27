@@ -24,6 +24,9 @@ in
       "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./lima-create.fish;
     };
     file = {
+      "${config.xdg.configHome}/fish/functions/gpg-restore.fish".text = builtins.readFile ./gpg-restore.fish;
+    };
+    file = {
       "${config.xdg.configHome}/fish/functions/get-nix-hash.fish".text = builtins.readFile ./get-nix-hash.fish;
     };
     file = {
@@ -136,6 +139,7 @@ in
       settings = {
         auto_sync = true;
         dialect = "uk";
+        key_path = config.sops.secrets.atuin_key.path;
         show_preview = true;
         style = "compact";
         sync_frequency = "1h";
@@ -416,6 +420,8 @@ in
       enableZshIntegration = true;
     };
   };
+
+  sops.secrets.atuin_key.path = "${config.home.homeDirectory}/.local/share/atuin/key";
 
   services = {
     gpg-agent = {

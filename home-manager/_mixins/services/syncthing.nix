@@ -18,4 +18,12 @@
       "--no-browser"
     ];
   };
+  sops = {
+    # sops-nix options: https://dl.thalheim.io/
+    secrets = {
+      syncthing_apikey = {};
+      syncthing_user = {};
+      syncthing_pass = {};
+    };
+  };
 }
