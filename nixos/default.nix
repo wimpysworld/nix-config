@@ -150,8 +150,8 @@
       192.168.2.250   hue-bridge
 
       192.168.192.40  skull-zt
-      #192.168.192.x  phasma-zt
-      #192.168.193.x  phasma-gaming
+      192.168.192.87  phasma-zt
+      192.168.193.87  phasma-gaming
       #192.168.192.x  vader-zt
       #192.168.193.x  vader-gaming
       192.168.192.104 steamdeck-zt
