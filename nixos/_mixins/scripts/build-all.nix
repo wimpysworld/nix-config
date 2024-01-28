@@ -5,8 +5,8 @@ pkgs.writeScriptBin "build-all" ''
 
 if [ -e $HOME/Zero/nix-config ]; then
   pushd $HOME/Zero/nix-config
-  ${pkgs.home-manager}/bin/home-manager build --flake $HOME/Zero/nix-config
-  ${pkgs.unstable.nixos-rebuild}/bin/nixos-rebuild build --flake $HOME/Zero/nix-config
+  ${pkgs.home-manager}/bin/home-manager build --flake .#
+  ${pkgs.unstable.nixos-rebuild}/bin/nixos-rebuild build --flake .#
   popd
 else
   ${pkgs.coreutils-full}/bin/echo "ERROR! No nix-config found in $HOME/Zero/nix-config"
