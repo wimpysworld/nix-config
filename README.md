@@ -49,7 +49,7 @@ These computers are managed by this Nix flake ❄️
 - [home-manager]: Home Manager configurations
   - Sane defaults for shell and desktop
 - [nixos]: NixOS configurations
-  - Includes discrete hardware configurations that leverage the [NixOS](https://github.com/NixOS/nixos-hardware) Hardware modules](https://github.com/NixOS/nixos-hardware) via [flake.nix].
+  - Includes discrete hardware configurations that leverage the [NixOS Hardware modules](https://github.com/NixOS/nixos-hardware).
 
 The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited configurations based on the arguments defined in [flake.nix].
 
@@ -75,9 +75,9 @@ I clone this repo to `~/Zero/nix-config`. NixOS and Home Manager changes are app
 gh repo clone wimpysworld/nix-config ~/Zero/nix-config
 ```
 
-❄️ **NixOS:**  A `build-host` and `switch-host` aliases are provided that build the NixOS configuration and switch to it respectively.
-🏠️ **Home Manager:**  A `build-home` and `switch-home` aliases are provided that build the Home Manager configuration and switch to it respectively.
-🌍️ **All:** There are also `build-all` and `switch-all` aliases that build and switch to both the NixOS and Home Manager configurations.
+- ❄️ **NixOS:**  A `build-host` and `switch-host` aliases are provided that build the NixOS configuration and switch to it respectively.
+- 🏠️ **Home Manager:**  A `build-home` and `switch-home` aliases are provided that build the Home Manager configuration and switch to it respectively.
+- 🌍️ **All:** There are also `build-all` and `switch-all` aliases that build and switch to both the NixOS and Home Manager configurations.
 
 ### ISO 📀
 
