@@ -1,6 +1,7 @@
 { config, pkgs,... }:
 let
   build-all = import ./build-all.nix { inherit pkgs; };
+  build-home = import ./build-home.nix { inherit pkgs; };
   build-host = import ./build-host.nix { inherit pkgs; };
   build-iso-console = import ./build-iso-console.nix { inherit pkgs; };
   build-iso-desktop = import ./build-iso-desktop.nix { inherit pkgs; };
@@ -8,6 +9,7 @@ let
   purge-gpu-caches = import ./purge-gpu-caches.nix { inherit pkgs; };
   simple-password = import ./simple-password.nix { inherit pkgs; };
   switch-all = import ./switch-all.nix { inherit pkgs; };
+  switch-home = import ./switch-home.nix { inherit pkgs; };
   switch-host = import ./switch-host.nix { inherit pkgs; };
   unroll-url = import ./unroll-url.nix { inherit pkgs; };
 in
