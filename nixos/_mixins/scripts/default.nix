@@ -16,6 +16,7 @@ in
 {
   environment.systemPackages = [
     build-all
+    build-home
     build-host
     build-iso-console
     build-iso-desktop
@@ -23,6 +24,7 @@ in
     purge-gpu-caches
     simple-password
     switch-all
+    switch-home
     switch-host
     unroll-url
   ];
