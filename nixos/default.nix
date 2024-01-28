@@ -5,6 +5,7 @@
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
     ./_mixins/console
+    ./_mixins/scripts
     ./_mixins/services/firewall.nix
     ./_mixins/services/kmscon.nix
     ./_mixins/services/openssh.nix
@@ -67,20 +68,12 @@
   environment = {
     # Eject nano and perl from the system
     defaultPackages = with pkgs; lib.mkForce [
-      gitMinimal
-      home-manager
       micro
-      rsync
     ];
     systemPackages = with pkgs; [
       age
-      pciutils
-      psmisc
       ssh-to-age
       sops
-      unzip
-      usbutils
-      wget
     ] ++ [
       inputs.fh.packages.${platform}.default
     ];
@@ -249,15 +242,9 @@
         set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
       shellAbbrs = {
-        build-all = "pushd $HOME/Zero/nix-config && home-manager build --flake $HOME/Zero/nix-config && nixos-rebuild build --flake $HOME/Zero/nix-config && popd";
-        build-host = "pushd $HOME/Zero/nix-config && nixos-rebuild build --flake $HOME/Zero/nix-config && popd";
-        build-iso-console = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-console.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-console/nixos.iso && chown $USER: $HOME/Quickemu/nixos-console/nixos.iso && chmod 644 $HOME/Quickemu/nixos-console/nixos.iso && popd";
-        build-iso-desktop = "pushd $HOME/Zero/nix-config && nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage && set ISO (head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6) && cp result/iso/$ISO $HOME/Quickemu/nixos-desktop/nixos.iso && chown $USER: $HOME/Quickemu/nixos-desktop/nixos.iso && chmod 644 $HOME/Quickemu/nixos-desktop/nixos.iso && popd";
         captive-portal = "xdg-open http://$(ip --oneline route get 1.1.1.1 | awk '{print $3}'";
-        nix-gc = "sudo nix-collect-garbage --delete-older-than 10d && nix-collect-garbage --delete-older-than 10d";
-        switch-all  = "sudo true && pushd $HOME/Zero/nix-config && home-manager switch -b backup --flake $HOME/Zero/nix-config && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && popd";
-        switch-host = "pushd $HOME/Zero/nix-config && sudo nixos-rebuild switch --flake $HOME/Zero/nix-config && popd";
-        update-lock = "pushd $HOME/Zero/nix-config && nix flake update && popd";
+        nix-gc = "sudo ${pkgs.unstable.nix}/bin/nix-collect-garbage --delete-older-than 10d && ${pkgs.unstable.nix}/bin/nix-collect-garbage --delete-older-than 10d";
+        update-lock = "pushd $HOME/Zero/nix-config && ${pkgs.unstable.nix}/bin/nix flake update && popd";
       };
       shellAliases = {
         nano = "micro";

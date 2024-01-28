@@ -89,13 +89,16 @@ in
       procs # Modern Unix `ps`
       quilt # Terminal patch manager
       rclone # Modern Unix `rsync`
+      rsync # Traditional `rsync`
       sd # Modern Unix `sed`
       speedtest-go # Terminal speedtest.net
       terminal-parrot # Terminal ASCII parrot
       tldr # Modern Unix `man`
       tokei # Modern Unix `wc` for code
       ueberzugpp # Terminal image viewer integration
+      unzip # Terminal ZIP extractor
       upterm # Terminal sharing
+      wget # Terminal HTTP client
       wget2 # Terminal HTTP client
       wthrr # Modern Unix weather
       wormhole-william # Terminal file transfer
@@ -105,8 +108,11 @@ in
       iw # Terminal WiFi info
       libva-utils # Terminal VAAPI info
       lurk # Modern Unix `strace`
+      pciutils # Terminal PCI info
+      psmisc # Traditional `ps`
       python310Packages.gpustat # Terminal GPU info
       ramfetch # Terminal system info
+      usbutils # Terminal USB info
       vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
       zsync # Terminal file sync; FTBFS on aarch64-darwin
