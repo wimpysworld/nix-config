@@ -23,7 +23,7 @@ in
 
   home = {
     activation.report-changes = config.lib.dag.entryAnywhere ''
-      if [ -e /run/current-system/boot.json ] && ! grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
+      if [ -e /run/current-system/boot.json ] && ! ${pkgs.gnugrep}/bin/grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
         ${pkgs.nvd}/bin/nvd diff $oldGenPath $newGenPath
       fi
     '';
