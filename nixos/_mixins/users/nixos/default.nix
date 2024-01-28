@@ -22,12 +22,12 @@ function run_disko() {
 
   # If the requested mode is not mount, ask for confirmation.
   if [ "$DISKO_MODE" != "mount" ]; then
-    echo "ALERT! Found $DISKO_CONFIG"
-    echo "       Do you want to format the disks in $DISKO_CONFIG"
-    echo "       This is a destructive operation!"
-    echo
+    ${pkgs.coreutils-full}/bin/echo "ALERT! Found $DISKO_CONFIG"
+    ${pkgs.coreutils-full}/bin/echo "       Do you want to format the disks in $DISKO_CONFIG"
+    ${pkgs.coreutils-full}/bin/echo "       This is a destructive operation!"
+    ${pkgs.coreutils-full}/bin/echo
     read -p "Proceed with $DISKO_CONFIG format? [y/N]" -n 1 -r
-    echo
+    ${pkgs.coreutils-full}/bin/echo
   else
     REPLY="y"
   fi
@@ -43,100 +43,100 @@ function run_disko() {
   fi
 }
 
-if [ "$(id -u)" -eq 0 ]; then
-  echo "ERROR! $(basename "$0") should be run as a regular user"
+if [ "$(${pkgs.coreutils-full}/bin/id -u)" -eq 0 ]; then
+  ${pkgs.coreutils-full}/bin/echo "ERROR! $(${pkgs.coreutils}/bin/basename "$0") should be run as a regular user"
   exit 1
 fi
 
 if [ ! -d "$HOME/Zero/nix-config/.git" ]; then
-  git clone https://github.com/wimpysworld/nix-config.git "$HOME/Zero/nix-config"
+  ${pkgs.git}/bin/git clone https://github.com/wimpysworld/nix-config.git "$HOME/Zero/nix-config"
 fi
 
 pushd "$HOME/Zero/nix-config"
 
 if [[ -n "$TARGET_BRANCH" ]]; then
-  git checkout "$TARGET_BRANCH"
+  ${pkgs.git}/bin/git checkout "$TARGET_BRANCH"
 fi
 
 if [[ -z "$TARGET_HOST" ]]; then
-  echo "ERROR! $(basename "$0") requires a hostname as the first argument"
-  echo "       The following hosts are available"
-  ls -1 nixos/*/default.nix | cut -d'/' -f2 | grep -v iso
+  ${pkgs.coreutils-full}/bin/echo "ERROR! $(basename "$0") requires a hostname as the first argument"
+  ${pkgs.coreutils-full}/bin/echo "       The following hosts are available"
+  ${pkgs.coreutils-full}/bin/ls -1 nixos/*/default.nix | ${pkgs.coreutils-full}/bin/cut -d'/' -f2 | ${pkgs.gnugrep}/bin/grep -v iso
   exit 1
 fi
 
 if [[ -z "$TARGET_USER" ]]; then
-  echo "ERROR! $(basename "$0") requires a username as the second argument"
-  echo "       The following users are available"
-  ls -1 nixos/_mixins/users/ | grep -v -E "nixos|root"
+  ${pkgs.coreutils-full}/bin/echo "ERROR! $(basename "$0") requires a username as the second argument"
+  ${pkgs.coreutils-full}/bin/echo "       The following users are available"
+  ${pkgs.coreutils-full}/bin/ls -1 nixos/_mixins/users/ | ${pkgs.gnugrep}/bin/grep -v -E "nixos|root"
   exit 1
 fi
 
 if [ -x "nixos/$TARGET_HOST/disks.sh" ]; then
   if ! sudo nixos/$TARGET_HOST/disks.sh "$TARGET_USER"; then
-    echo "ERROR! Failed to prepare disks; stopping here!"
+    ${pkgs.coreutils-full}/bin/echo "ERROR! Failed to prepare disks; stopping here!"
     exit 1
   fi
 else
   if [ ! -e "nixos/$TARGET_HOST/disks.nix" ]; then
-    echo "ERROR! $(basename "$0") could not find the required nixos/$TARGET_HOST/disks.nix"
+    ${pkgs.coreutils-full}/bin/echo "ERROR! $(basename "$0") could not find the required nixos/$TARGET_HOST/disks.nix"
     exit 1
   fi
 
   # Check if the machine we're provisioning expects a keyfile to unlock a disk.
   # If it does, generate a new key, and write to a known location.
-  if grep -q "data.keyfile" "nixos/$TARGET_HOST/disks.nix"; then
-    echo -n "$(head -c32 /dev/random | base64)" > /tmp/data.keyfile
+  if ${pkgs.gnugrep}/bin/grep -q "data.keyfile" "nixos/$TARGET_HOST/disks.nix"; then
+    ${pkgs.coreutils-full}/bin/echo -n "$(head -c32 /dev/random | base64)" > /tmp/data.keyfile
   fi
 
   run_disko "nixos/$TARGET_HOST/disks.nix" "disko"
 
   # If the main configuration was denied, make sure the root partition is mounted.
-  if ! mountpoint -q /mnt; then
+  if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt; then
     run_disko "nixos/$TARGET_HOST/disks.nix" "mount"
   fi
 
-  for CONFIG in $(find "nixos/$TARGET_HOST" -name "disks-*.nix" | sort); do
+  for CONFIG in $(${pkgs.findutils}/bin/find "nixos/$TARGET_HOST" -name "disks-*.nix" | ${pkgs.coreutils-full}/bin/sort); do
     run_disko "$CONFIG" "disko"
     run_disko "$CONFIG" "mount"
   done
 fi
 
-if ! mountpoint -q /mnt; then
-  echo "ERROR! /mnt is not mounted; make sure the disk preparation was successful."
+if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt; then
+  ${pkgs.coreutils-full}/bin/echo "ERROR! /mnt is not mounted; make sure the disk preparation was successful."
   exit 1
 fi
 
-echo "WARNING! NixOS will be re-installed"
-echo "         This is a destructive operation!"
-echo
+${pkgs.coreutils-full}/bin/echo "WARNING! NixOS will be re-installed"
+${pkgs.coreutils-full}/bin/echo "         This is a destructive operation!"
+${pkgs.coreutils-full}/bin/echo
 read -p "Are you sure? [y/N]" -n 1 -r
-echo
+${pkgs.coreutils-full}/bin/echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
   sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
 
   # Rsync nix-config to the target install and set the remote origin to SSH.
-  rsync -a --delete "$HOME/Zero/" "/mnt/home/$TARGET_USER/Zero/"
+  ${pkgs.rsync}/bin/rsync -a --delete "$HOME/Zero/" "/mnt/home/$TARGET_USER/Zero/"
   if [ "$TARGET_HOST" != "minimech" ] && [ "$TARGET_HOST" != "scrubber" ]; then
     pushd "/mnt/home/$TARGET_USER/Zero/nix-config"
-    git remote set-url origin git@github.com:wimpysworld/nix-config.git
+    ${pkgs.git}/bin/git remote set-url origin git@github.com:wimpysworld/nix-config.git
     popd
   fi
 
   # Enter to the new install and apply the home-manager configuration.
-  sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
-  sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config; env USER=$TARGET_USER HOME=/home/$TARGET_USER home-manager switch --flake \".#$TARGET_USER@$TARGET_HOST\""
-  sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
+  sudo nixos-enter --root /mnt --command "${pkgs.coreutils-full}/bin/chown -R $TARGET_USER:users /home/$TARGET_USER"
+  sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config; env USER=$TARGET_USER HOME=/home/$TARGET_USER ${pkgs.home-manager}/bin/home-manager switch --flake \".#$TARGET_USER@$TARGET_HOST\""
+  sudo nixos-enter --root /mnt --command "${pkgs.coreutils-full}/bin/chown -R $TARGET_USER:users /home/$TARGET_USER"
 
   # If there is a keyfile for a data disk, put copy it to the root partition and
   # ensure the permissions are set appropriately.
   if [[ -f "/tmp/data.keyfile" ]]; then
-    sudo cp /tmp/data.keyfile /mnt/etc/data.keyfile
-    sudo chmod 0400 /mnt/etc/data.keyfile
+    sudo ${pkgs.coreutils-full}/bin/cp /tmp/data.keyfile /mnt/etc/data.keyfile
+    sudo ${pkgs.coreutils-full}/bin/chmod 0400 /mnt/etc/data.keyfile
   fi
 
   echo "Public age key for $TARGET_HOST"
-  ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
+  ${pkgs.ssh-to-age}/bin/ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
 fi
 '';
 in
