@@ -2,8 +2,10 @@
 let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
   stable-packages = with pkgs;  [
-    yadm # Terminal dot file manager
+    _1password
+    lastpass-cli
   ] ++ lib.optionals (desktop != null) [
+    _1password-gui
     appimage-run
     authy
     gimp-with-plugins

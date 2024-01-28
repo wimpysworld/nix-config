@@ -153,12 +153,10 @@ Things I should do or improve:
 
 - [ ] Install Rosetta and disable Xcode Command Line tools on macOS
   - `softwareupdate --install-rosetta --agree-to-license`
-- [ ] Add Password Managers
 - [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
 - [ ] Integrate [homepage](https://github.com/benphelps/homepage)
-- [ ] Bind Syncthing GUI to ZeroTier.
-- [ ] Configure Plank.
+- [ ] Create gschema overrides for Pantheon & Plank
 
 ### Game Development
 
