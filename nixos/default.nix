@@ -1,6 +1,7 @@
 { config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }: {
   imports = [
     inputs.disko.nixosModules.disko
+    inputs.nix-index-database.nixosModules.nix-index
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
@@ -251,6 +252,7 @@
       };
     };
     nano.enable = lib.mkDefault false;
+    nix-index-database.comma.enable = true;
     nix-ld.enable = true;
   };
 

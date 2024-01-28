@@ -12,6 +12,7 @@ in
 
     # Or modules exported from other flakes:
     inputs.sops-nix.homeManagerModules.sops
+    inputs.nix-index-database.hmModules.nix-index
 
     # You can also split up your configuration and import pieces of it here:
     ./_mixins/console

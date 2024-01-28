@@ -372,6 +372,7 @@ in
         scrollspeed = 1;
       };
     };
+    nix-index.enable = true;
     powerline-go = {
       enable = true;
       settings = {
