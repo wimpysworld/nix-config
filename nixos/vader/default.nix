@@ -46,22 +46,6 @@
     };
   };
 
-  fileSystems."/boot" = lib.mkForce {
-    device = "/dev/disk/by-label/ESP";
-    fsType = "vfat";
-  };
-
-  fileSystems."/mnt/borg" = lib.mkForce {
-    #device = "UUID=aa4811f7-750e-4779-93a1-581b51777846";
-    device = "/dev/disk/by-label/borg";
-    fsType = "btrfs";
-    options = [ "defaults" "relatime" "nodiratime" "discard=async" "nofail" "x-systemd.device-timeout=10" ];
-  };
-
-  swapDevices = lib.mkForce [{
-    device = "/dev/disk/by-label/swap";
-  }];
-
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "ahci" "xhci_pci" "usbhid" "uas" "sd_mod" ];

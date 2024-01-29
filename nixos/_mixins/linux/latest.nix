@@ -17,7 +17,6 @@
 
   environment.systemPackages = with pkgs; [
     unstable.bcachefs-tools
-    btrfs-progs
     keyutils
   ];
 }
