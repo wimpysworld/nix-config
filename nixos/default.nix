@@ -268,6 +268,8 @@
     secrets.test-key = {};
   };
 
+  system.nixos.label = "-";
+
   # Disable hiberate and hybrid-sleep as I only use zram.
   systemd.targets.hibernate.enable = false;
   systemd.targets.hybrid-sleep.enable = false;
