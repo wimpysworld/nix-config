@@ -27,16 +27,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1699872225,
-        "narHash": "sha256-qTUeX5Tqga82IEFNOXkL5/InN3MZ8qQbeyjahOh2SzU=",
-        "rev": "7255d03a5ad8258aac6dfc351980cff51c69afcf",
-        "revCount": 78,
+        "lastModified": 1702039845,
+        "narHash": "sha256-mz+rc9bsnp/5JTSHPXZ8TUzHQstqTclMAXFmoZ19Ggc=",
+        "rev": "0c620d88c97cacf5bb00d7f564bb1a7b9f5e65d5",
+        "revCount": 96,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/jnsgruk/crafts-flake/0.3.3/018bc848-d11f-7988-8eda-a0c7e8fbaaf5/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/jnsgruk/crafts-flake/0.4.3/018c4980-5584-7a44-b6e4-f62a1731354e/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/jnsgruk/crafts-flake/0.3.%2A.tar.gz"
+        "url": "https://flakehub.com/f/jnsgruk/crafts-flake/%3D0.4.3.tar.gz"
       }
     },
     "disko": {
@@ -46,11 +46,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1706302763,
-        "narHash": "sha256-Le1wk75qlzOSfzDk8vqYxSdoEyr/ORIbMhziltVNGYw=",
+        "lastModified": 1706491084,
+        "narHash": "sha256-eaEv+orTmr2arXpoE4aFZQMVPOYXCBEbLgK22kOtkhs=",
         "owner": "nix-community",
         "repo": "disko",
-        "rev": "f7424625dc1f2e4eceac3009cbd1203d566feebc",
+        "rev": "f67ba6552845ea5d7f596a24d57c33a8a9dc8de9",
         "type": "github"
       },
       "original": {
@@ -178,11 +178,11 @@
         "nmt": "nmt"
       },
       "locked": {
-        "lastModified": 1694984852,
-        "narHash": "sha256-A1x55uLb2LT9evsTWYc1U9+iki1AmE5ROxOuCKPf3JE=",
+        "lastModified": 1705252799,
+        "narHash": "sha256-HgSTREh7VoXjGgNDwKQUYcYo13rPkltW7IitHrTPA5c=",
         "owner": "Gerschtli",
         "repo": "nix-formatter-pack",
-        "rev": "23795a4daf29ce784b3edc13b9776c7b445c453b",
+        "rev": "2de39dedd79aab14c01b9e2934842051a160ffa5",
         "type": "github"
       },
       "original": {
@@ -250,7 +250,7 @@
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/io12/nix-snapd/0.1.29.tar.gz"
+        "url": "https://flakehub.com/f/io12/nix-snapd/0.1.%2A.tar.gz"
       }
     },
     "nixos-hardware": {
@@ -287,11 +287,11 @@
     },
     "nixpkgs-stable": {
       "locked": {
-        "lastModified": 1705033721,
-        "narHash": "sha256-K5eJHmL1/kev6WuqyqqbS1cdNnSidIZ3jeqJ7GbrYnQ=",
+        "lastModified": 1705957679,
+        "narHash": "sha256-Q8LJaVZGJ9wo33wBafvZSzapYsjOaNjP/pOnSiKVGHY=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "a1982c92d8980a0114372973cbdfe0a307f1bdea",
+        "rev": "9a333eaa80901efe01df07eade2c16d183761fa3",
         "type": "github"
       },
       "original": {
@@ -422,11 +422,11 @@
         "nixpkgs-stable": "nixpkgs-stable"
       },
       "locked": {
-        "lastModified": 1706130372,
-        "narHash": "sha256-fHZxKH1DhsXPP36a2vJ91Zy6S+q6+QRIFlpLr9fZHU8=",
+        "lastModified": 1706410821,
+        "narHash": "sha256-iCfXspqUOPLwRobqQNAQeKzprEyVowLMn17QaRPQc+M=",
         "owner": "Mic92",
         "repo": "sops-nix",
-        "rev": "4606d9b1595e42ffd9b75b9e69667708c70b1d68",
+        "rev": "73bf36912e31a6b21af6e0f39218e067283c67ef",
         "type": "github"
       },
       "original": {
