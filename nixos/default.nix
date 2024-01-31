@@ -126,11 +126,8 @@
   networking = {
     extraHosts = ''
       192.168.2.1     router
-      192.168.2.6     vader-wifi vader
-      192.168.2.7     vader-lan
-      192.168.2.8     ripper-wifi ripper
-      192.168.2.9     ripper-lan1
-      192.168.2.10    ripper-lan2
+      192.168.2.8     vader-wifi vader
+      192.168.2.9     vader-lan
       192.168.2.11    printer
       192.168.2.15	  nuc
       192.168.2.17    skull
@@ -146,13 +143,11 @@
       192.168.192.40  skull-zt
       192.168.192.87  phasma-zt
       192.168.193.87  phasma-gaming
-      #192.168.192.x  vader-zt
-      #192.168.193.x  vader-gaming
+      192.168.192.170 vader-zt
+      192.168.193.170 vader-gaming
       192.168.192.104 steamdeck-zt
       192.168.193.104 steamdeck-gaming
       192.168.192.181 zed-zt
-      192.168.192.220 ripper-zt
-      192.168.193.220 ripper-gaming
       192.168.192.162 p1-zt
     '';
     hostName = hostname;

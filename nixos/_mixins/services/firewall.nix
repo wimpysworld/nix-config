@@ -5,7 +5,6 @@ let
     hosts = [
       "p1"
       "phasma"
-      "ripper"
       "vader"
       "zed"
     ];
