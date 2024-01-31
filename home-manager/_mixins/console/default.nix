@@ -387,7 +387,7 @@ in
       enable = true;
     };
     yazi = {
-      enable = true;
+      enable = false;
       enableBashIntegration = true;
       enableFishIntegration = true;
       enableZshIntegration = true;
