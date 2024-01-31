@@ -76,8 +76,8 @@
     nvidia = {
       package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
       prime = {
-        amdgpuBusId = "PCI:34:0:0";
-        nvidiaBusId = "PCI:31:0:0";
+        amdgpuBusId = "PCI:33:0:0";
+        nvidiaBusId = "PCI:30:0:0";
         # Make the Radeon RX6700 XT default; the NVIDIA T1000 is for CUDA/NVENC
         reverseSync.enable = true;
       };
