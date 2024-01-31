@@ -5,7 +5,7 @@ pkgs.writeScriptBin "switch-home" ''
 
 if [ -e $HOME/Zero/nix-config ]; then
   pushd $HOME/Zero/nix-config
-  ${pkgs.home-manager}/bin/home-manager switch -b backup --flake .#
+  ${pkgs.home-manager}/bin/home-manager switch -b backup --flake $HOME/Zero/nix-config
   popd
 else
   ${pkgs.coreutils-full}/bin/echo "ERROR! No nix-config found in $HOME/Zero/nix-config"
