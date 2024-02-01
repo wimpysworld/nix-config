@@ -153,6 +153,7 @@ Things I currently need to do manually after install.
 
 - [ ] Drop in `~/.config/sops/age/keys.txt`.
 - [ ] Add the age public key for the host to `.sops.yaml`.
+- [ ] Run `gpg-restore`.
 - [ ] 1Password - authenticate
 - [ ] Atuin - authenticate
 - [ ] LastPass - authenticate
