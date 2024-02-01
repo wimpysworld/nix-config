@@ -12,7 +12,7 @@ let
     gnome.gnome-clocks
     irccloud
     inkscape
-    onlyoffice-bin_7_5
+    libreoffice
     wavebox
     wmctrl
     xdotool
