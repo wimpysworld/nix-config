@@ -73,6 +73,7 @@
     ];
     systemPackages = with pkgs; [
       age
+      git
       ssh-to-age
       sops
     ] ++ [
