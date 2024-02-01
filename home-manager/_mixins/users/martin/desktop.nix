@@ -14,7 +14,7 @@ with lib.hm.gvariant;
     ../../desktop/gnome-sound-recorder.nix
     ../../desktop/gnome-text-editor.nix
     ../../desktop/iterm2.nix
-    ../../desktop/localsend.nix
+    #../../desktop/localsend.nix
     ../../desktop/meld.nix
     ../../desktop/nheko.nix
     ../../desktop/pick-colour-picker.nix
