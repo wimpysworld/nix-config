@@ -147,6 +147,29 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ![Alt](https://repobeats.axiom.co/api/embed/a82d5acf21276546e716d36dca41be774e6a5b74.svg "Repobeats analytics image")
 
+## Post-install Checklist
+
+Things I currently need to do manually after install.
+
+- [ ] Drop in `~/.config/sops/age/keys.txt`.
+- [ ] Add the age public key for the host to `.sops.yaml`.
+- [ ] 1Password - authenticate
+- [ ] Atuin - authenticate
+- [ ] LastPass - authenticate
+- [ ] Authy - activate
+- [ ] Brave - enroll sync
+- [ ] Discord - authenticate
+- [ ] GitKraken - authenticate with GitHub
+- [ ] Grammarly - authenticate
+- [ ] VSCode - authenticate with GitHub and sync
+- [ ] Maelstral - authenticate and selective sync
+- [ ] Syncthing - connect syncthingtray to API and introduce new host
+- [ ] Tailscale - `sudo tailscale up`
+- [ ] Telegram - authenticate
+- [ ] Keybase - authenticate
+- [ ] Wavebox - restore profile and authenticate Google and GitHub
+- [ ] ZeroTier - enable host
+
 ## TODO 🗒️
 
 Things I should do or improve:
