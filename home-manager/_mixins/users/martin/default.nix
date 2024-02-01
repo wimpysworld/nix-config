@@ -43,6 +43,8 @@ in
     '';
     file."/Development/.keep".text = "";
     file."/Games/.keep".text = "";
+    file."/Quickemu/nix-console/.keep".text = "";
+    file."/Quickemu/nix-desktop/.keep".text = "";
     file."/Scripts/.keep".text = "";
     file."/Studio/OBS/config/obs-studio/.keep".text = "";
     file."/Syncthing/.keep".text = "";
