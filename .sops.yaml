@@ -16,7 +16,7 @@ keys:
   - &user_backup age1v5c455hd0shs745dhd3gl7kzw6zaqflnyl4v96pq56j96xyvvc5sgse0za
   - &host_ripper age1z7kwm9t4a570dzm83e5h8nsphyqkd5c9uxnam5gnrpcmplsx6pxqtn9xdc
   - &host_phasma age1cyldrg56zzugxuw07daf4fa3wek2zlva3zs6w0q9c64nggjvrsjsnkalpx
-  - &host_vader age1kl3qglc9suzf89yt7ss8kwatrfhgl4s3sftwlzt4uskca25sk4lqq9ax8z
+  - &host_vader age1xs0vlxts7dfa770kea0nyagq0j95nennmx79qml4ddfg6np2qefs9gah9e
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
