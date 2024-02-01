@@ -15,7 +15,7 @@ function run_disko() {
   local DISKO_MODE="$2"
   local REPLY="n"
 
-  # If the requested doesn't exist, skip it.
+  # If the requested config doesn't exist, skip it.
   if [ ! -e "$DISKO_CONFIG" ]; then
     return
   fi
@@ -136,7 +136,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   fi
 
   echo "Public age key for $TARGET_HOST"
-  ${pkgs.ssh-to-age}/bin/ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
+  ${pkgs.ssh-to-age}/bin/ssh-to-age -i /mnt/etc/ssh/ssh_host_ed25519_key.pub
 fi
 '';
 in
