@@ -12,7 +12,7 @@
     wantedBy = [ "default.target" ];
     serviceConfig = {
       ExecStart = "${pkgs.maestral}/bin/maestral start";
-      ExecReload = "/run/current-system/sw/bin/kill $MAINPID";
+      ExecReload = "${pkgs.util-linux}/bin/kill $MAINPID";
       KillMode = "process";
       Restart = "on-failure";
     };
