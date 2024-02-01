@@ -8,11 +8,13 @@ let
     _1password-gui
     appimage-run
     authy
+    firefox
     gimp-with-plugins
     gnome.gnome-clocks
     irccloud
     inkscape
     libreoffice
+    tenacity
     wavebox
     wmctrl
     xdotool
