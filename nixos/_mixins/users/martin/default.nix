@@ -21,7 +21,7 @@ let
   ];
 
   # For fast moving apps; use the unstable branch
-  unstable-packages = with pkgs.unstable; [ ] ++ lib.optionals (desktop != null) [
+  unstable-packages = with pkgs.unstable; lib.optionals (desktop != null) [
     brave
     google-chrome
     microsoft-edge
@@ -32,8 +32,7 @@ let
   ];
 in
 {
-  imports = [ ]
-  ++ lib.optionals (desktop != null) [
+  imports = lib.optionals (desktop != null) [
     ../../desktop/chromium.nix
     ../../desktop/chromium-extensions.nix
     ../../desktop/obs-studio.nix
