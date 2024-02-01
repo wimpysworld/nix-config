@@ -18,18 +18,4 @@ lib.mkIf isLinux {
       enable = isLinux;
     };
   };
-  systemd.user.services = lib.mkIf (desktop != null) {
-    keybase-gui = {
-      Unit = {
-        Description = "Keybase GUI";
-      };
-      Service = {
-        ExecStart = "${pkgs.keybase-gui}/bin/keybase-gui";
-        Restart = "on-failure";
-      };
-      Install = {
-        WantedBy = [ "default.target" ];
-      };
-    };
-  };
 }
