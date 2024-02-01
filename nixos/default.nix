@@ -141,11 +141,11 @@
       192.168.2.184   lametric LaMetric-LM2144
       192.168.2.250   hue-bridge
 
+      192.168.192.2   vader-zt
+      192.168.193.2   vader-gaming
       192.168.192.40  skull-zt
       192.168.192.87  phasma-zt
       192.168.193.87  phasma-gaming
-      192.168.192.170 vader-zt
-      192.168.193.170 vader-gaming
       192.168.192.104 steamdeck-zt
       192.168.193.104 steamdeck-gaming
       192.168.192.181 zed-zt
