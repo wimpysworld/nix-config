@@ -40,7 +40,8 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "ahci" "xhci_pci" "usbhid" "uas" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
-    #kernelParams = [ "video=2560x1440@60" ];
+    kernelPackages = pkgs.linuxPackages_latest;
+    kernelParams = [ "video=2560x1440@60" ];
     swraid = {
       enable = true;
       mdadmConf = "PROGRAM=true";
