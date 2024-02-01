@@ -168,7 +168,9 @@ Things I currently need to do manually after install.
 - [ ] Discord - authenticate
 - [ ] GitKraken - authenticate with GitHub
 - [ ] Grammarly - authenticate
+- [ ] IRCCloud - authenticate
 - [ ] Maelstral - `maestral_qt`
+- [ ] Matrix - authenticate
 - [ ] Syncthing - Connect API and introduce host
 - [ ] Tailscale - `sudo tailscale up`
 - [ ] Telegram - authenticate
