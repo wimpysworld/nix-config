@@ -151,25 +151,31 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 Things I currently need to do manually after install.
 
-- [ ] Drop in `~/.config/sops/age/keys.txt`.
-- [ ] Add the age public key for the host to `.sops.yaml`.
-- [ ] Run `gpg-restore`.
-- [ ] 1Password - authenticate
-- [ ] Atuin - authenticate
+### Secrets
+
+- [ ] Add `~/.config/sops/age/keys.txt`.
+- [ ] Add `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub` to `.sops.yaml`.
+- [ ] Update `sops updatekeys secrets/secrets.yaml`
+- [ ] Restore `gpg-restore`.
 - [ ] LastPass - authenticate
 - [ ] Authy - activate
+- [ ] 1Password - authenticate
+
+### Services
+
+- [ ] Atuin - `atuin login -u <user>`
 - [ ] Brave - enroll sync
 - [ ] Discord - authenticate
 - [ ] GitKraken - authenticate with GitHub
 - [ ] Grammarly - authenticate
-- [ ] VSCode - authenticate with GitHub and sync
-- [ ] Maelstral - authenticate and selective sync
-- [ ] Syncthing - connect syncthingtray to API and introduce new host
+- [ ] Maelstral - `maestral_qt`
+- [ ] Syncthing - Connect API and introduce host
 - [ ] Tailscale - `sudo tailscale up`
 - [ ] Telegram - authenticate
-- [ ] Keybase - authenticate
-- [ ] Wavebox - restore profile and authenticate Google and GitHub
-- [ ] ZeroTier - enable host
+- [ ] Keybase - `keybase login`
+- [ ] VSCode - authenticate with GitHub enable sync
+- [ ] Wavebox - authenticate Google and restore profile
+- [ ] ZeroTier - enable host `sudo zerotier-cli info`
 
 ## TODO 🗒️
 
