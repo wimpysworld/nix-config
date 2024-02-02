@@ -72,6 +72,21 @@ if [[ -z "$TARGET_USER" ]]; then
   exit 1
 fi
 
+if [ ! -e "$HOME/.config/sops/age/keys.txt" ]; then
+  ${pkgs.coreutils-full}/bin/echo "WARNING! sops keys.txt was not found."
+  ${pkgs.coreutils-full}/bin/echo "         Do you want to continue without it?"
+  ${pkgs.coreutils-full}/bin/echo
+  read -p "Are you sure? [y/N]" -n 1 -r
+  ${pkgs.coreutils-full}/bin/echo
+  if [[ $REPLY =~ ^[Nn]$ ]]; then
+    IP=$(${pkgs.iproute2}/bin/ip route get 1.1.1.1 | ${pkgs.gawk}/bin/awk '{print $7}' | ${pkgs.coreutils-full}/bin/head -n 1)
+    ${pkgs.coreutils-full}/bin/mkdir -p "$HOME/.config/sops/age"
+    ${pkgs.coreutils-full}/bin/echo "From a trusted host run:"
+    ${pkgs.coreutils-full}/bin/echo "scp ~/.config/sops/age/keys.txt $USER@$IP:.config/sops/age/keys.txt"
+    exit
+  fi
+fi
+
 if [ -x "nixos/$TARGET_HOST/disks.sh" ]; then
   if ! sudo nixos/$TARGET_HOST/disks.sh "$TARGET_USER"; then
     ${pkgs.coreutils-full}/bin/echo "ERROR! Failed to prepare disks; stopping here!"
@@ -113,6 +128,7 @@ ${pkgs.coreutils-full}/bin/echo
 read -p "Are you sure? [y/N]" -n 1 -r
 ${pkgs.coreutils-full}/bin/echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
+  # Copy the sops keys.txt to the target install
   sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
 
   # Rsync nix-config to the target install and set the remote origin to SSH.
@@ -121,6 +137,15 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     pushd "/mnt/home/$TARGET_USER/Zero/nix-config"
     ${pkgs.git}/bin/git remote set-url origin git@github.com:wimpysworld/nix-config.git
     popd
+  fi
+
+  # Drop the age public key for the host into the home directory of the target user.
+  ${pkgs.ssh-to-age}/bin/ssh-to-age -i /mnt/etc/ssh/ssh_host_ed25519_key.pub > /mnt/home/$TARGET_USER/age_host_ed25519_key.pub
+  # Copy the sops keys.txt to the target install
+  if [ -e "$HOME/.config/sops/age/keys.txt" ]; then
+    ${pkgs.coreutils-full}/bin/mkdir -p /mnt/home/$TARGET_USER/.config/sops/age
+    ${pkgs.coreutils-full}/bin/cp "$HOME/.config/sops/age/keys.txt" /mnt/home/$TARGET_USER/.config/sops/age/keys.txt
+    ${pkgs.coreutils-full}/bin/chmod 600 /mnt/home/$TARGET_USER/.config/sops/age/keys.txt
   fi
 
   # Enter to the new install and apply the home-manager configuration.
@@ -134,9 +159,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     sudo ${pkgs.coreutils-full}/bin/cp /tmp/data.keyfile /mnt/etc/data.keyfile
     sudo ${pkgs.coreutils-full}/bin/chmod 0400 /mnt/etc/data.keyfile
   fi
-
-  echo "Public age key for $TARGET_HOST"
-  ${pkgs.ssh-to-age}/bin/ssh-to-age -i /mnt/etc/ssh/ssh_host_ed25519_key.pub
 fi
 '';
 in
