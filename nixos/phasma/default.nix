@@ -7,7 +7,9 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
-    ../_mixins/linux/latest.nix
+    (import ./disks.nix { })
+    (import ./disks-home.nix { })
+    (import ./disks-snapshot.nix { })
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/hardware/streamdeck.nix
@@ -21,39 +23,28 @@
     ../_mixins/virt
   ];
 
-  # Mount bcachefs using multi-device path via initrd to workaround issues with systemd
-  # - https://www.reddit.com/r/bcachefs/comments/17y0ydd/psa_for_those_having_trouble_with_mountingbooting/
-  # - https://discourse.nixos.org/t/how-can-i-install-specifically-util-linux-from-unstable/38637/7?u=wimpy
-  # - https://github.com/systemd/systemd/issues/8234
-  fileSystems = {
-    "/" = lib.mkForce {
-      #device = "UUID=cafeface-b007-b007-b007-b9a881403b73";
-      device = "/dev/disk/by-label/root";
-      fsType = "bcachefs";
-      neededForBoot = true;
-      options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
-    };
-    "/boot" = lib.mkForce {
-      device = "/dev/disk/by-label/ESP";
-      fsType = "vfat";
-    };
-    "/home" = lib.mkForce {
-      #device = "UUID=deadbeef-da7a-da7a-da7a-0ebf1fc00c3a";
-      device = "/dev/nvme1n1:/dev/nvme2n1:/dev/sda:/dev/sdb:/dev/sdc";
-      fsType = "bcachefs";
-      neededForBoot = true;
-      options = [ "defaults" "relatime" "nodiratime" "background_compression=lz4:0" "compression=lz4:1" "discard" ];
-    };
-  };
+  # disko does manage mounting / and /boot, but I want to mount by-partlabel
+  #fileSystems = {
+  #  "/" = lib.mkForce {
+  #    device = "/dev/disk/by-label/root";
+  #    fsType = "xfs";
+  #    options = [ "defaults" "relatime" "nodiratime" ];
+  #  };
+  #  "/boot" = lib.mkForce {
+  #    device = "/dev/disk/by-label/ESP";
+  #    fsType = "vfat";
+  #  };
+  #};
 
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "ahci" "xhci_pci" "usbhid" "uas" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
+    kernelPackages = pkgs.linuxPackages_latest;
     kernelParams = [ "video=3440x1440@60" ];
-    # Disable Plymouth because bcachefs unlocking doesn't work with it via initrd
-    plymouth = {
-      enable = lib.mkForce false;
+    swraid = {
+      enable = true;
+      mdadmConf = "PROGRAM=true";
     };
   };
 
