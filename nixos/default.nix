@@ -127,8 +127,8 @@
   networking = {
     extraHosts = ''
       192.168.2.1     router
-      192.168.2.8     vader-wifi vader
-      192.168.2.9     vader-lan
+      192.168.2.6     vader-wifi vader
+      192.168.2.7     vader-lan
       192.168.2.11    printer
       192.168.2.15	  nuc
       192.168.2.17    skull
@@ -140,7 +140,7 @@
       192.168.2.58    vonage Vonage-HT801
       192.168.2.184   lametric LaMetric-LM2144
       192.168.2.250   hue-bridge
-
+      # Zerotier
       192.168.192.2   vader-zt
       192.168.193.2   vader-gaming
       192.168.192.40  skull-zt
@@ -150,6 +150,9 @@
       192.168.193.104 steamdeck-gaming
       192.168.192.181 zed-zt
       192.168.192.162 p1-zt
+      # Tailscale
+      100.82.90.87    vadar-tail
+      100.98.218.63   phasma-tail
     '';
     hostName = hostname;
     useDHCP = lib.mkDefault true;
