@@ -15,6 +15,12 @@ in
       "${config.xdg.configHome}/yazi/theme.toml".text = builtins.readFile ./yazi-theme.toml;
     };
     file = {
+      "${config.xdg.configHome}/fish/functions/build-home.fish".text = builtins.readFile ./build-home.fish;
+    };
+    file = {
+      "${config.xdg.configHome}/fish/functions/switch-home.fish".text = builtins.readFile ./switch-home.fish;
+    };
+    file = {
       "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./help.fish;
     };
     file = {
