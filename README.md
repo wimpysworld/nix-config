@@ -153,7 +153,7 @@ Things I currently need to do manually after install.
 
 ### Secrets
 
-- [ ] Add `~/.config/sops/age/keys.txt`.
+- [ ] Add `~/.config/sops/age/keys.txt`. Optionally handled by `install-system`.
 - [ ] Add `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub` to `.sops.yaml`.
 - [ ] Update `sops updatekeys secrets/secrets.yaml`
 - [ ] Restore `gpg-restore`.
