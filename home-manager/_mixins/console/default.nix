@@ -118,6 +118,8 @@ in
       psmisc # Traditional `ps`
       python310Packages.gpustat # Terminal GPU info
       ramfetch # Terminal system info
+      s-tui # Terminal CPU stress test
+      stress-ng # Terminal CPU stress test
       usbutils # Terminal USB info
       vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
