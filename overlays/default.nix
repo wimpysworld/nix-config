@@ -67,10 +67,10 @@
 
     wavebox = prev.wavebox.overrideAttrs ( _old: rec {
       pname = "wavebox";
-      version = "10.120.25-2";
+      version = "10.121.6-2";
       src = prev.fetchurl {
         url = "https://download.wavebox.app/stable/linux/tar/Wavebox_${version}.tar.gz";
-        sha256 = "sha256-kBixK+9+DC5Oh6XgDd4xDfETxsbNeXTP7l1TR980ocs=";
+        sha256 = "sha256-UxUhGWXjOo/Yjzh3FihLhZDWg3RbLuIc88TqKuDfzhU=";
       };
     });
   };
