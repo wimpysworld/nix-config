@@ -53,6 +53,7 @@
 let
   inherit (lib) optional optionals;
   libcef = pkgs.callPackage ../libcef { };
+  libdatachannel = pkgs.callPackage ../libdatachannel { };
   libvpl = pkgs.callPackage ../libvpl { };
   qrcodegencpp = pkgs.callPackage ../qrcodegencpp { };
 in

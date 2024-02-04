@@ -4,6 +4,7 @@
 { pkgs ? (import ../nixpkgs.nix) { } }: {
   distrobox = pkgs.callPackage ./distrobox { };
   gitkraken = pkgs.callPackage ./gitkraken { };
+  libdatachannel = pkgs.callPackage ./libdatachannel { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   obs-studio = pkgs.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
