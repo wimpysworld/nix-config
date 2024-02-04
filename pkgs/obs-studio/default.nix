@@ -60,13 +60,13 @@ in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "obs-studio";
-  version = "30.0.2";
+  version = "30.1.0-beta1";
 
   src = fetchFromGitHub {
     owner = "obsproject";
     repo = finalAttrs.pname;
     rev = finalAttrs.version;
-    sha256 = "sha256-8pX1kqibrtDIaE1+/Pey1A5bu6MwFTXLrBOah4rsF+4=";
+    sha256 = "sha256-mTzQBr3tuacibRvrlyXIA0zGmJepVmqgcr5d40fHSxM=";
     fetchSubmodules = true;
   };
 
@@ -145,6 +145,8 @@ stdenv.mkDerivation (finalAttrs: {
     "-DENABLE_JACK=ON"
     "-DENABLE_LIBFDK=ON"
   ];
+
+  NIX_CFLAGS_COMPILE = [ "-Wno-error=sign-compare" ];
 
   dontWrapGApps = true;
   preFixup = let
