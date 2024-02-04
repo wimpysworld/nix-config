@@ -8,13 +8,14 @@
 }:
 stdenv.mkDerivation rec {
   pname = "obs-localvocal";
-  version = "0.0.8";
+  version = "0.1.0";
 
+  # FTBFS because it wants to clone git repos during the build
   src = fetchFromGitHub {
     owner = "occ-ai";
     repo = "obs-localvocal";
     rev = version;
-    sha256 = "sha256-pZnWPXrG3sWg8Wv/ZA0LxH8p+VWAlJRSfTVn7dm4X8I=";
+    sha256 = "sha256-/czUGvMOuf4Xk6uho0Ev1KDaLHRxckdx245+wWN4MgA=";
     fetchSubmodules = true;
   };
 
