@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-advanced-masks";
-  version = "v1.0.1";
+  version = "v1.1.0";
 
   src = fetchFromGitHub {
     owner = "FiniteSingularity";
     repo = "obs-advanced-masks";
     rev = version;
-    sha256 = "sha256-ybVbrj/y5Z/PD6a77m6RlMUuQ6V9A4wGeb1LKmRFz4Q=";
+    sha256 = "sha256-NtmOWKk3eZeRa3TvclZpg4sj8lbOoY8hUhxs1z6kEW4=";
   };
 
   nativeBuildInputs = [ cmake ];
