@@ -7,7 +7,7 @@
 , qtbase
 }:
 
-stdenv.mkDerivation (finalAttrs: {
+stdenv.mkDerivation (_finalAttrs: {
   pname = "obs-replay-source";
   version = "1.7.0";
 
