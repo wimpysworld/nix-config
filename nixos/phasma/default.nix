@@ -41,7 +41,6 @@
     initrd.availableKernelModules = [ "nvme" "ahci" "xhci_pci" "usbhid" "uas" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
     kernelPackages = pkgs.linuxPackages_latest;
-    kernelParams = [ "video=3440x1440@60" ];
     swraid = {
       enable = true;
       mdadmConf = "PROGRAM=true";
