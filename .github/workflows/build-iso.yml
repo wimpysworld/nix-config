@@ -23,7 +23,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@v9
-    - uses: DeterminateSystems/magic-nix-cache-action@v2
+    - uses: DeterminateSystems/magic-nix-cache-action@v3
     - name: Build Console ISO
       run: |
         nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
@@ -47,7 +47,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@v9
-    - uses: DeterminateSystems/magic-nix-cache-action@v2
+    - uses: DeterminateSystems/magic-nix-cache-action@v3
     - name: Build Desktop ISO
       run: |
         nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage
