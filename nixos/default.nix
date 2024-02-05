@@ -151,7 +151,7 @@
       192.168.192.217 phasma-zt
       192.168.193.217 phasma-gaming
       # Tailscale
-      100.82.90.87    vadar-tail
+      100.82.90.87    vader-tail
       100.88.163.93   phasma-tail
     '';
     hostName = hostname;
