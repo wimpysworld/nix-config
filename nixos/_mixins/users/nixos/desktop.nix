@@ -10,5 +10,4 @@
   ];
   config.isoImage.edition = lib.mkForce "${desktop}";
   config.services.xserver.displayManager.autoLogin.user = "${username}";
-  config.services.kmscon.autologinUser = lib.mkForce null;
 }

@@ -1,4 +1,9 @@
-{ pkgs, ... }: {
+{ hostname, lib, pkgs, ... }:
+let
+  # Do not enable kmscon on ISO images
+  isISO = builtins.substring 0 4 hostname == "iso-";
+in
+lib.mkIf (!isISO) {
   services = {
     kmscon = {
       enable = true;
