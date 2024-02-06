@@ -8,7 +8,6 @@ let
     _1password-gui
     appimage-run
     authy
-    firefox
     gimp-with-plugins
     gnome.gnome-clocks
     irccloud
@@ -37,6 +36,7 @@ in
   imports = lib.optionals (desktop != null) [
     ../../desktop/chromium.nix
     ../../desktop/chromium-extensions.nix
+    ../../desktop/firefox.nix
     ../../desktop/games.nix
     ../../desktop/obs-studio.nix
     ../../desktop/${desktop}-apps.nix
