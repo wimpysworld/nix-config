@@ -37,6 +37,7 @@ in
   imports = lib.optionals (desktop != null) [
     ../../desktop/chromium.nix
     ../../desktop/chromium-extensions.nix
+    ../../desktop/games.nix
     ../../desktop/obs-studio.nix
     ../../desktop/${desktop}-apps.nix
   ];
