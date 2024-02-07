@@ -205,8 +205,8 @@
         {
           name = "vscode-mdx";
           publisher = "unifiedjs";
-          version = "1.5.0";
-          sha256 = "sha256-UwvicVck4HBbIm+N8pkOGUdr4/j1n0Dg1Iz1nedYAu8=";
+          version = "1.7.1";
+          sha256 = "sha256-YlBfcrDXAmzXX/1e93MG6LNtbIpEqT4KjbZEUYpYFbI=";
         }
         {
           name = "vscode-mdx-preview";
