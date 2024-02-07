@@ -40,33 +40,9 @@ jobs:
           gh release upload "${{ github.ref }}" "${artefact}" --clobber
         done
 
-  build-desktop-iso:
-    needs: [create-release]
-    name: Desktop ISO
-    runs-on: ubuntu-22.04
-    steps:
-    - uses: actions/checkout@v4
-    - uses: DeterminateSystems/nix-installer-action@v9
-    - uses: DeterminateSystems/magic-nix-cache-action@v2
-    - name: Build Desktop ISO
-      run: |
-        nix build .#nixosConfigurations.iso-desktop.config.system.build.isoImage
-        mkdir iso || true
-        ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
-        sudo mv "result/iso/${ISO}" iso/desktop-${ISO}
-        sha256sum "iso/desktop-${ISO}" > "iso/desktop-${ISO}.sha256"
-        sed -i -r "s/ .*\/(.+)/  \1/g" "iso/desktop-${ISO}.sha256"
-    - name: Upload Desktop ISO
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        for artefact in "iso/"*; do
-          gh release upload "${{ github.ref }}" "${artefact}" --clobber
-        done
-
   publish-release:
     name: Publish Release
-    needs: [build-console-iso, build-desktop-iso]
+    needs: [build-console-iso]
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
