@@ -193,8 +193,8 @@
         {
           name = "vscode-fish";
           publisher = "bmalehorn";
-          version = "1.0.37";
-          sha256 = "sha256-zcX0hNzS36wd5K/niEqSMt5wbgLS9jI36ygmHZBQ1pc=";
+          version = "1.0.38";
+          sha256 = "sha256-QEifCTlzYMX+5H6+k2o1lsQrhW3vxVpn+KFg/3WVVFo=";
         }
         {
           name = "vscode-front-matter";
