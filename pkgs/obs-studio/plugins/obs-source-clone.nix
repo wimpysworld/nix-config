@@ -19,6 +19,9 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ cmake ];
   buildInputs = [ obs-studio ];
 
+  # circlebuf_push_back()
+  NIX_CFLAGS_COMPILE = [ "-Wno-error=deprecated-declarations" ];
+
   postInstall = ''
     rm -rf $out/obs-plugins $out/data
   '';

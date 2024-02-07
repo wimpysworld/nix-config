@@ -2,7 +2,7 @@
 
 This repository contains a [Nix Flake](https://zero-to-nix.com/concepts/flakes) for configuring my computers and/or home environment.
 It is not intended to be a drop in configuration for your computer, but you are welcome to use it as a reference or starting point for your own configuration.
-**If you are looking for a more generic NixOS configuration, I recommend [nix-starter-configs].** 👍️
+**If you are looking for a more generic NixOS configuration, I recommend [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs).** 👍️
 These computers are managed by this Nix flake ❄️
 
 |   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |      Secondary GPU      | Role | OS  | State |
@@ -81,10 +81,13 @@ gh repo clone wimpysworld/nix-config ~/Zero/nix-config
 
 ### ISO 📀
 
-`build-iso-desktop` (*desktop*) and `build-iso-console` (*console only*) aliases are provided that create .iso images from this flake. They do the following:
+The `build-iso` script is included that creates .iso images from this flake. The following modes are available:
 
-A live image will be left in `~/$HOME/Zero/nix-config/result/iso/` and are injected into `~/Quickemu/nixos-console` or `~/Quickemu/nixos-desktop`.
-These .iso images are also periodically built and published via [GitHub [Actions](./.github/workflows) and are available in [this](https://github.com/wimpysworld/nix-config/releases) project's Releases](https://github.com/wimpysworld/nix-config/releases).
+- `build-iso console` (*terminal environment*): Includes `install-system` for automated installation.
+- `build-iso desktop` (*desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
+
+Live images will be left in `~/$HOME/Zero/nix-config/result/iso/` and are also injected into `~/Quickemu/nixos-console` and `~/Quickemu/nixos-desktop` respectively.
+The console .iso image is also periodically built and published via [GitHub [Actions](./.github/workflows) and are available in [this](https://github.com/wimpysworld/nix-config/releases) project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
 ## What's in the box? 🎁
 

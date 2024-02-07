@@ -5,12 +5,10 @@
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
-    ./_mixins/console
+    ./_mixins/base
     ./_mixins/scripts
     ./_mixins/services/firewall.nix
-    ./_mixins/services/kmscon.nix
     ./_mixins/services/openssh.nix
-    ./_mixins/services/smartmon.nix
     ./_mixins/users/root
   ]
   ++ lib.optional (builtins.pathExists (./. + "/_mixins/users/${username}")) ./_mixins/users/${username}
@@ -69,7 +67,9 @@
   environment = {
     # Eject nano and perl from the system
     defaultPackages = with pkgs; lib.mkForce [
+      coreutils-full
       micro
+      util-linux
     ];
     systemPackages = with pkgs; [
       age
@@ -83,43 +83,6 @@
       EDITOR = "micro";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
-    };
-  };
-
-  fonts = {
-    # Enable a basic set of fonts providing several font styles and families and reasonable coverage of Unicode.
-    enableDefaultPackages = false;
-    fontDir.enable = true;
-    packages = with pkgs; [
-      (nerdfonts.override { fonts = [ "FiraCode" "SourceCodePro" "UbuntuMono" ]; })
-      fira
-      fira-go
-      joypixels
-      liberation_ttf
-      noto-fonts-emoji
-      source-serif
-      ubuntu_font_family
-      work-sans
-    ];
-
-    fontconfig = {
-      antialias = true;
-      defaultFonts = {
-        serif = [ "Source Serif" ];
-        sansSerif = [ "Work Sans" "Fira Sans" "FiraGO" ];
-        monospace = [ "FiraCode Nerd Font Mono" "SauceCodePro Nerd Font Mono" ];
-        emoji = [ "Joypixels" "Noto Color Emoji" ];
-      };
-      enable = true;
-      hinting = {
-        autohint = false;
-        enable = true;
-        style = "slight";
-      };
-      subpixel = {
-        rgba = "rgb";
-        lcdfilter = "light";
-      };
     };
   };
 
@@ -151,7 +114,7 @@
       192.168.192.217 phasma-zt
       192.168.193.217 phasma-gaming
       # Tailscale
-      100.82.90.87    vadar-tail
+      100.82.90.87    vader-tail
       100.88.163.93   phasma-tail
     '';
     hostName = hostname;
@@ -172,8 +135,6 @@
     config = {
       # Disable if you don't want unfree packages
       allowUnfree = true;
-      # Accept the joypixels license
-      joypixels.acceptLicense = true;
     };
   };
 
@@ -242,7 +203,7 @@
         set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
       shellAbbrs = {
-        captive-portal = "xdg-open http://$(ip --oneline route get 1.1.1.1 | awk '{print $3}'";
+        captive-portal = "${pkgs.xdg-utils}/bin/xdg-open http://$(${pkgs.iproute2}/bin/ip --oneline route get 1.1.1.1 | ${pkgs.gawk}/bin/awk '{print $3}'";
         nix-gc = "sudo ${pkgs.unstable.nix}/bin/nix-collect-garbage --delete-older-than 10d && ${pkgs.unstable.nix}/bin/nix-collect-garbage --delete-older-than 10d";
         update-lock = "pushd $HOME/Zero/nix-config && ${pkgs.unstable.nix}/bin/nix flake update && popd";
       };
@@ -251,11 +212,7 @@
       };
     };
     nano.enable = lib.mkDefault false;
-    nix-index-database.comma.enable = true;
-    nix-ld.enable = true;
   };
-
-  services.fwupd.enable = true;
 
   sops = {
     age = {
@@ -267,7 +224,10 @@
     secrets.test-key = {};
   };
 
-  system.nixos.label = "-";
+  systemd.tmpfiles.rules = [
+    "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
+    "d /mnt/snapshot/${username} 0755 ${username} users"
+  ];
 
   # Disable hiberate and hybrid-sleep as I only use zram.
   systemd.targets.hibernate.enable = false;
@@ -281,20 +241,5 @@
     enable = true;
   };
 
-  systemd.tmpfiles.rules = [
-    "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
-    "d /mnt/snapshot/${username} 0755 ${username} users"
-  ];
-
-  system = {
-    activationScripts.diff = {
-      supportsDryActivation = true;
-      text = ''
-        if [ -e /run/current-system/boot.json ] && ! grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
-          ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.unstable.nix}/bin diff /run/current-system "$systemConfig"
-        fi
-      '';
-    };
-    stateVersion = stateVersion;
-  };
+  system.stateVersion = stateVersion;
 }

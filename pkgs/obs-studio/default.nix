@@ -146,6 +146,7 @@ stdenv.mkDerivation (finalAttrs: {
     "-DENABLE_LIBFDK=ON"
   ];
 
+  # https://github.com/obsproject/obs-studio/issues/10200
   NIX_CFLAGS_COMPILE = [ "-Wno-error=sign-compare" ];
 
   dontWrapGApps = true;
