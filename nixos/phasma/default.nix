@@ -57,7 +57,7 @@
     "pipewire/pipewire.conf.d/92-fix-resync.conf".text = ''
       context.properties = {
         default.clock.rate = 48000
-        default.clock.min-quantum = 64
+        default.clock.min-quantum = 128
       }
     '';
   };
