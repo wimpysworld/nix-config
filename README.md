@@ -7,8 +7,8 @@ These computers are managed by this Nix flake ❄️
 
 |   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |      Secondary GPU      | Role | OS  | State |
 | :---------: | :-------------------------: | :----------------------------: | :---: | :-------------------------: | :---------------------: | :--: | :-: | :---: |
-| `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T1000]          | 🖥️   | ❄️  | 🚧    |
-| `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T600]           | 🖥️   | ❄️  | 🚧    |
+| `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T1000]          | 🖥️   | ❄️  | ✅    |
+| `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T600]           | 🖥️   | ❄️  | ✅    |
 | `p1`        | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️   | ❄️  | ✅    |
 | `zed`       | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | ✅    |
 | `macair`    | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | 🍏  | 🚧    |
