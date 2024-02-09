@@ -25,11 +25,11 @@ These computers are managed by this Nix flake ❄️
 
 **Key**
 
-🖥️ : Desktop
-💻️ : Laptop
-🎮️ : Games Machine
-🐄 : Virtual Machine
-☁️ : Server
+- 🖥️ : Desktop
+- 💻️ : Laptop
+- 🎮️ : Games Machine
+- 🐄 : Virtual Machine
+- ☁️ : Server
 
 **As featured on [Linux Matters](https://linuxmatters.sh) podcast!** 🎙️ I am a presenter on Linux Matters and this configuration was featured in [Episode 7 - Immutable Desktop Linux for Anyone](https://linuxmatters.sh/7/).
 
