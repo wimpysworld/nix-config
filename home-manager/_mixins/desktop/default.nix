@@ -1,4 +1,4 @@
-{ desktop, lib, pkgs, username, ... }:
+{ config, desktop, lib, pkgs, username, ... }:
 let
   inherit (pkgs.stdenv) isLinux;
 in
@@ -11,6 +11,20 @@ in
   services.mpris-proxy.enable = isLinux;
   services.gpg-agent = lib.mkIf isLinux {
     pinentryFlavor = lib.mkForce "gnome3";
+  };
+
+  xdg = {
+    desktopEntries = {
+      # Create a desktop entry for the Cider AppImage.
+      cider = lib.mkIf isLinux {
+        name = "Cider";
+        exec = "${lib.getExe pkgs.appimage-run} -- ${config.home.homeDirectory}/Apps/Cider.AppImage";
+        terminal = false;
+        icon = "cider";
+        type = "Application";
+        categories = [ "Audio" "Application" ];
+      };
+    };
   };
 
   xresources.properties = {
