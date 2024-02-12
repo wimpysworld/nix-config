@@ -41,6 +41,7 @@ in {
       daemon = {
         enable  = true;
         settings = {
+          ConcurrentDatabaseReload = false;
           OnAccessIncludePath = all-sus-dirs;
           OnAccessPrevention = false;
           OnAccessExtraScanning = true;
