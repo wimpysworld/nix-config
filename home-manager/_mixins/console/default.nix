@@ -396,10 +396,11 @@ in
       enable = true;
     };
     yazi = {
-      enable = false;
+      enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
       enableZshIntegration = true;
+      package = pkgs.unstable.yazi;
       settings = {
         manager = {
           show_hidden = false;
