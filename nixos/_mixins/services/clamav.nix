@@ -25,14 +25,14 @@ let
     # Send an alert to all graphical users.
     for ADDRESS in /run/user/*; do
         USERID=''${ADDRESS#/run/user/}
-       /run/wrappers/bin/sudo -u "#$USERID" DBUS_SESSION_BUS_ADDRESS="unix:path=$ADDRESS/bus" ${pkgs.libnotify}/bin/notify-send -i dialog-warning "Sus file" "$ALERT"
+       /run/wrappers/bin/sudo -u "#$USERID" DBUS_SESSION_BUS_ADDRESS="unix:path=$ADDRESS/bus" ${pkgs.notify-desktop}/bin/notify-desktop -i dialog-warning "Sus file" "$ALERT"
     done
   '';
 in {
   security.sudo = {
     extraConfig  =
     ''
-      clamav ALL = (ALL) NOPASSWD: SETENV: ${pkgs.libnotify}/bin/notify-send
+      clamav ALL = (ALL) NOPASSWD: SETENV: ${pkgs.notify-desktop}/bin/notify-desktop
     '';
   };
 
