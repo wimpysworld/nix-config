@@ -7,7 +7,18 @@
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
+  # Get 1.3.0 to addres infinite loop:
+  # - https://github.com/Cisco-Talos/clamav/pull/1047
   modifications = _final: prev: {
+    clamav = prev.clamav.overrideAttrs ( _old: rec {
+      pname = "clamav";
+      version = "1.3.0";
+      src = prev.fetchurl {
+        url = "https://www.clamav.net/downloads/production/${pname}-${version}.tar.gz";
+        sha256 = "sha256-CoamSWMg2RV2A3szEBEZr2/Y1bkQYM0xajqcIp6WBKo=";
+      };
+    });
+
     # https://github.com/NixOS/nixpkgs/issues/278277#issuecomment-1878292158
     keybase = prev.keybase.overrideAttrs ( _old: rec {
       pname = "keybase";
