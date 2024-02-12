@@ -52,7 +52,7 @@
 
 let
   inherit (lib) optional optionals;
-  libcef = pkgs.callPackage ../libcef { };
+  obscef = pkgs.callPackage ../obscef { };
   libdatachannel = pkgs.callPackage ../libdatachannel { };
   libvpl = pkgs.callPackage ../libvpl { };
   qrcodegencpp = pkgs.callPackage ../qrcodegencpp { };
@@ -90,7 +90,7 @@ stdenv.mkDerivation (finalAttrs: {
     fdk_aac
     ffmpeg-headless
     jansson
-    libcef
+    obscef
     libjack2
     libv4l
     libxkbcommon
@@ -126,13 +126,13 @@ stdenv.mkDerivation (finalAttrs: {
   # Copied from the obs-linuxbrowser
   postUnpack = ''
     mkdir -p cef/Release cef/Resources cef/libcef_dll_wrapper/
-    for i in ${libcef}/share/cef/*; do
+    for i in ${obscef}/share/cef/*; do
       ln -s $i cef/Release/
       ln -s $i cef/Resources/
     done
-    ln -s ${libcef}/lib/libcef.so cef/Release/
-    ln -s ${libcef}/lib/libcef_dll_wrapper.a cef/libcef_dll_wrapper/
-    ln -s ${libcef}/include cef/
+    ln -s ${obscef}/lib/libcef.so cef/Release/
+    ln -s ${obscef}/lib/libcef_dll_wrapper.a cef/libcef_dll_wrapper/
+    ln -s ${obscef}/include cef/
   '';
 
   cmakeFlags = [
@@ -173,7 +173,7 @@ stdenv.mkDerivation (finalAttrs: {
     addOpenGLRunpath $out/lib/obs-plugins/*.so
 
     # Link libcef again after patchelfing other libs
-    ln -s ${libcef}/lib/* $out/lib/obs-plugins/
+    ln -s ${obscef}/lib/* $out/lib/obs-plugins/
   '';
 
   meta = with lib; {
@@ -186,7 +186,7 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://obsproject.com";
     maintainers = with maintainers; [ jb55 MP2E materus fpletz ];
     license = licenses.gpl2Plus;
-    platforms = [ "x86_64-linux" "i686-linux" "aarch64-linux" ];
+    platforms = [ "x86_64-linux" ];
     mainProgram = "obs";
   };
 })
