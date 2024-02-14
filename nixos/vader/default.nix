@@ -87,6 +87,7 @@
       };
     };
     # https://stackoverflow.com/questions/24040672/the-meaning-of-period-in-alsa
+    # https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/3241
     "wireplumber/main.lua.d/92-low-latency.lua".text = ''
       alsa_monitor.rules = {
         {
