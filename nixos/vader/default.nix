@@ -48,18 +48,17 @@
   };
 
   # https://nixos.wiki/wiki/PipeWire
+  # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
   # Debugging
-  #  - pw-top                              # see live stats
-  #  - journalctl -b0 --user -u pipewire   # see logs (spa resync in "bad")
-  #  - pw-metadata -n settings 0           # ser current quantums
+  #  - pw-top                                            # see live stats
+  #  - journalctl -b0 --user -u pipewire                 # see logs (spa resync in "bad")
+  #  - pw-metadata -n settings 0                         # see current quantums
   #  - pw-metadata -n settings 0 clock.force-quantum 128 # override quantum
   #  - pw-metadata -n settings 0 clock.force-quantum 0   # disable override
-  #environment.etc = {
-  #
-  #};
   environment.etc = let
     json = pkgs.formats.json {};
   in {
+    # Change this to use: services.pipewire.extraConfig.pipewire
     "pipewire/pipewire.conf.d/92-low-latency.conf".text = ''
       context.properties = {
         default.clock.rate = 48000
@@ -68,6 +67,7 @@
         default.clock.max-quantum = 64
       }
     '';
+    # Change this to use: services.pipewire.extraConfig.pipewire-pulse
     "pipewire/pipewire-pulse.d/92-low-latency.conf".source = json.generate "92-low-latency.conf" {
       context.modules = [
         {
