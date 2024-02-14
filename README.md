@@ -156,10 +156,10 @@ Things I currently need to do manually after install.
 
 ### Secrets
 
-- [ ] Add `~/.config/sops/age/keys.txt`. Optionally handled by `install-system`.
+- [ ] Provision `~/.config/sops/age/keys.txt`. Optionally handled by `install-system`.
 - [ ] Add `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub` to `.sops.yaml`.
-- [ ] Update `sops updatekeys secrets/secrets.yaml`
-- [ ] Restore `gpg-restore`.
+- [ ] Run `sops updatekeys secrets/secrets.yaml`
+- [ ] Run `gpg-restore`
 - [ ] LastPass - authenticate
 - [ ] Authy - activate
 - [ ] 1Password - authenticate
@@ -168,6 +168,7 @@ Things I currently need to do manually after install.
 
 - [ ] Atuin - `atuin login -u <user>`
 - [ ] Brave - enroll sync
+- [ ] Chatterino - authenticate
 - [ ] Discord - authenticate
 - [ ] GitKraken - authenticate with GitHub
 - [ ] Grammarly - authenticate
@@ -181,6 +182,7 @@ Things I currently need to do manually after install.
 - [ ] VSCode - authenticate with GitHub enable sync
 - [ ] Wavebox - authenticate Google and restore profile
 - [ ] ZeroTier - enable host `sudo zerotier-cli info`
+- [ ] Run `fonts.sh` to install commercial fonts
 
 ## TODO 🗒️
 
