@@ -51,13 +51,53 @@
   # Debugging
   #  - pw-top                              # see live stats
   #  - journalctl -b0 --user -u pipewire   # see logs (spa resync in "bad")
-  # default.clock.quantum = 512
-  # default.clock.max-quantum = 2048
-  environment.etc = {
-    "pipewire/pipewire.conf.d/92-fix-resync.conf".text = ''
+  #  - pw-metadata -n settings 0           # ser current quantums
+  #  - pw-metadata -n settings 0 clock.force-quantum 128 # override quantum
+  #  - pw-metadata -n settings 0 clock.force-quantum 0   # disable override
+  #environment.etc = {
+  #
+  #};
+  environment.etc = let
+    json = pkgs.formats.json {};
+  in {
+    "pipewire/pipewire.conf.d/92-low-latency.conf".text = ''
       context.properties = {
         default.clock.rate = 48000
-        default.clock.min-quantum = 128
+        default.clock.quantum = 64
+        default.clock.min-quantum = 64
+        default.clock.max-quantum = 64
+      }
+    '';
+    "pipewire/pipewire-pulse.d/92-low-latency.conf".source = json.generate "92-low-latency.conf" {
+      context.modules = [
+        {
+          name = "libpipewire-module-protocol-pulse";
+          args = {
+            pulse.min.req = "64/48000";
+            pulse.default.req = "64/48000";
+            pulse.max.req = "64/48000";
+            pulse.min.quantum = "64/48000";
+            pulse.max.quantum = "64/48000";
+          };
+        }
+      ];
+      stream.properties = {
+        node.latency = "64/48000";
+        resample.quality = 1;
+      };
+    };
+    # https://stackoverflow.com/questions/24040672/the-meaning-of-period-in-alsa
+    "wireplumber/main.lua.d/92-low-latency.lua".text = ''
+      alsa_monitor.rules = {
+        {
+          matches = {{{ "node.name", "matches", "alsa_output.*" }}};
+          apply_properties = {
+            ["audio.format"] = "S32LE",
+            ["audio.rate"] = "96000", -- for USB soundcards it should be twice your desired rate
+            ["api.alsa.period-size"] = 2, -- defaults to 1024, tweak by trial-and-error
+            ["api.alsa.disable-batch"] = false, -- generally, USB soundcards use the batch mode
+          },
+        },
       }
     '';
   };
