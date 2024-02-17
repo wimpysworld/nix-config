@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-retro-effects";
-  version = "0.0.2a";
+  version = "0.0.3a";
 
   src = fetchFromGitHub {
     owner = "FiniteSingularity";
     repo = "obs-retro-effects";
     rev = "${version}";
-    sha256 = "sha256-EPzfCKL4JQiRaHyJJw0HNqfhHiYd/v2705R+j5H/Oow=";
+    sha256 = "sha256-dEi62erMaJ0QOYUlm2QgttLFiqW4lG9/MfJA87Ods1I=";
   };
 
   nativeBuildInputs = [ cmake ];
