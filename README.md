@@ -9,10 +9,11 @@ These computers are managed by this Nix flake ❄️
 | :---------: | :-------------------------: | :----------------------------: | :---: | :-------------------------: | :---------------------: | :--: | :-: | :---: |
 | `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T1000]          | 🖥️   | ❄️  | ✅    |
 | `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T600]           | 🖥️   | ❄️  | ✅    |
-| `p1`        | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️   | ❄️  | ✅    |
+| `palpatine` | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | 🪟  | 🚧    |
+| `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | 🚧    |
 | `zed`       | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | ✅    |
-| `macair`    | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | 🍏  | 🚧    |
-| `nixair`    | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | ❄️  | 🚧    |
+| `dooku`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | 🍏  | 🚧    |
+| `tyranus`   | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | ❄️  | 🚧    |
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
 | `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
 | `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
@@ -25,6 +26,7 @@ These computers are managed by this Nix flake ❄️
 
 **Key**
 
+- 🎭️ : Dual boot
 - 🖥️ : Desktop
 - 💻️ : Laptop
 - 🎮️ : Games Machine
