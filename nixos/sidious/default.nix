@@ -9,7 +9,7 @@
     inputs.nixos-hardware.nixosModules.common-hidpi
     (import ./disks.nix { })
     ../_mixins/hardware/gpu.nix
-    ../_mixins/hardware/systemd-boot.nix
+    ../_mixins/hardware/grub-boot.nix
     ../_mixins/services/bluetooth.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/pipewire.nix
@@ -18,35 +18,11 @@
     ../_mixins/virt
   ];
 
-  # disko does manage mounting of / /boot /home, but I want to mount by-partlabel
-  fileSystems."/" = lib.mkForce {
-    device = "/dev/disk/by-partlabel/root";
-    fsType = "xfs";
-    options = [ "defaults" "relatime" "nodiratime" ];
-  };
-
-  fileSystems."/boot" = lib.mkForce {
-    device = "/dev/disk/by-partlabel/ESP";
-    fsType = "vfat";
-  };
-
-  fileSystems."/home" = lib.mkForce {
-    device = "/dev/disk/by-partlabel/home";
-    fsType = "xfs";
-    options = [ "defaults" "relatime" "nodiratime" ];
-  };
-
-  swapDevices = [{
-    device = "/swap";
-    size = 2048;
-  }];
-
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "xhci_pci" "nvme" "uas" "usb_storage" "sd_mod" ];
     kernelModules = [ "i915" "kvm-intel" "nvidia" ];
     kernelPackages = pkgs.linuxPackages_latest;
-    loader.systemd-boot.consoleMode = "max";
   };
 
   hardware = {
