@@ -55,9 +55,10 @@
         "nixos@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
         "nixos@iso-desktop" = libx.mkHome { hostname = "iso-desktop"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
-        "martin@airmac" = libx.mkHome { hostname = "airmac"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
-        "martin@airnix" = libx.mkHome { hostname = "airnix"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
-        "martin@p1" = libx.mkHome { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
+        "martin@dooku" = libx.mkHome { hostname = "dooku"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
+        "martin@tyranus" = libx.mkHome { hostname = "tyranus"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
+        "martin@palpatine" = libx.mkHome { hostname = "palpatine"; username = "martin"; };
+        "martin@sidious" = libx.mkHome { hostname = "sidious"; username = "martin"; desktop = "pantheon"; };
         "martin@vader" = libx.mkHome { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
         "martin@phasma" = libx.mkHome { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
         "martin@zed" = libx.mkHome { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
@@ -80,8 +81,8 @@
         # Workstations
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
         #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
-        airnix = libx.mkHost { hostname = "airnix"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux"; };
-        p1 = libx.mkHost { hostname = "p1"; username = "martin"; desktop = "pantheon"; };
+        tyranus = libx.mkHost { hostname = "tyranus"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux"; };
+        sidious = libx.mkHost { hostname = "sidious"; username = "martin"; desktop = "pantheon"; };
         phasma = libx.mkHost { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
         vader = libx.mkHost { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
         zed = libx.mkHost { hostname = "zed"; username = "martin"; desktop = "pantheon"; };
