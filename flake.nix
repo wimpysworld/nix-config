@@ -55,8 +55,11 @@
         "nixos@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
         "nixos@iso-desktop" = libx.mkHome { hostname = "iso-desktop"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
+        # dooku/tyranus are dual boot hosts, macOS and NixOS respectively.
         "martin@dooku" = libx.mkHome { hostname = "dooku"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
         "martin@tyranus" = libx.mkHome { hostname = "tyranus"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
+
+        # palpatine/sidious are dual boot hosts, WSL2/Ubuntu and NixOS respectively.
         "martin@palpatine" = libx.mkHome { hostname = "palpatine"; username = "martin"; };
         "martin@sidious" = libx.mkHome { hostname = "sidious"; username = "martin"; desktop = "pantheon"; };
         "martin@vader" = libx.mkHome { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
