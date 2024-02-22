@@ -3,6 +3,11 @@
     ./zerotier.nix
   ];
   networking = {
+    extraHosts = ''
+      192.168.193.2   vader-gaming
+      192.168.193.104 steamdeck-gaming
+      192.168.193.217 phasma-gaming
+    '';
     firewall = {
       trustedInterfaces = [
         "ztrfyc7hsl"

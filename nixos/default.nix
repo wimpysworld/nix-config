@@ -101,19 +101,6 @@
       192.168.2.58    vonage Vonage-HT801
       192.168.2.184   lametric LaMetric-LM2144
       192.168.2.250   hue-bridge
-      # Zerotier
-      192.168.192.2   vader-zt
-      192.168.193.2   vader-gaming
-      192.168.192.40  skull-zt
-      192.168.192.104 steamdeck-zt
-      192.168.193.104 steamdeck-gaming
-      192.168.192.181 zed-zt
-      192.168.192.162 p1-zt
-      192.168.192.217 phasma-zt
-      192.168.193.217 phasma-gaming
-      # Tailscale
-      100.82.90.87    vader-tail
-      100.88.163.93   phasma-tail
     '';
     hostName = hostname;
     useDHCP = lib.mkDefault true;

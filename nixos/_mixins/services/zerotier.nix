@@ -1,5 +1,13 @@
 { config, ... }: {
   networking = {
+    extraHosts = ''
+      192.168.192.2   vader-zt
+      192.168.192.40  skull-zt
+      192.168.192.104 steamdeck-zt
+      192.168.192.181 zed-zt
+      192.168.192.162 sidious-zt
+      192.168.192.217 phasma-zt
+    '';
     firewall = {
       checkReversePath = "loose";
       allowedUDPPorts = [ config.services.zerotierone.port ];
