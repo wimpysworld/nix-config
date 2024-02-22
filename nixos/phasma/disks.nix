@@ -2,7 +2,7 @@
 # nvme1n1 4TB:   Home RAID-0
 # nvme2n1 4TB:   Home RAID-0
 # sda     4TB:   Backup RAID-0
-# sdb     4TB:   Backup RAID-0   
+# sdb     4TB:   Backup RAID-0
 # sdc     4TB:   Backup RAID-0
 { disks ? [ "/dev/nvme0n1" ], ... }:
 let
@@ -15,24 +15,19 @@ in
         type = "disk";
         device = builtins.elemAt disks 0;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [
-            {
-              name = "ESP";
+          type = "gpt";
+          partitions = {
+            ESP = {
               start = "0%";
               end = "1024MiB";
-              bootable = true;
-              flags = [ "esp" ];
-              fs-type = "fat32";
+              type = "EF00";
               content = {
                 type = "filesystem";
                 format = "vfat";
                 mountpoint = "/boot";
               };
-            }
-            {
-              name = "root";
+            };
+            root = {
               start = "1024MiB";
               end = "100%";
               content = {
@@ -43,8 +38,8 @@ in
                 mountpoint = "/";
                 mountOptions = defaultXfsOpts;
               };
-            }
-          ];
+            };
+          };
         };
       };
     };

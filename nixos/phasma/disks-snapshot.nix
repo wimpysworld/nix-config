@@ -2,7 +2,7 @@
 # nvme1n1 4TB:   Home RAID-0
 # nvme2n1 4TB:   Home RAID-0
 # sda     4TB:   Backup RAID-0
-# sdb     4TB:   Backup RAID-0   
+# sdb     4TB:   Backup RAID-0
 # sdc     4TB:   Backup RAID-0
 { disks ? [ "/dev/sda" "/dev/sdb" "/dev/sdc" ], ... }:
 let
@@ -15,57 +15,51 @@ in
         type = "disk";
         device = builtins.elemAt disks 0;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [
-            {
-              name = "snapshot-sda";
+          type = "gpt";
+          partitions = {
+            snapshot-sda = {
               start = "0%";
               end = "100%";
               content = {
                 type = "mdraid";
                 name = "snapshot";
               };
-            }
-          ];
+            };
+          };
         };
       };
       sdb = {
         type = "disk";
         device = builtins.elemAt disks 1;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [
-            {
-              name = "snapshot-sdb";
+          type = "gpt";
+          partitions = {
+            snapshot-sdb = {
               start = "0%";
               end = "100%";
               content = {
                 type = "mdraid";
                 name = "snapshot";
               };
-            }
-          ];
+            };
+          };
         };
       };
       sdc = {
         type = "disk";
         device = builtins.elemAt disks 2;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [
-            {
-              name = "snapshot-sdc";
+          type = "gpt";
+          partitions = {
+              snapshot-sdc = {
               start = "0%";
               end = "100%";
               content = {
                 type = "mdraid";
                 name = "snapshot";
               };
-            }
-          ];
+            };
+          };
         };
       };
     };
@@ -74,11 +68,9 @@ in
         type = "mdadm";
         level = 0;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [
-            {
-              name = "snapshot";
+          type = "gpt";
+          partitions = {
+            snapshot = {
               start = "0%";
               end = "100%";
               content = {
@@ -89,8 +81,8 @@ in
                 mountpoint = "/mnt/snapshot";
                 mountOptions = defaultXfsOpts;
               };
-            }
-          ];
+            };
+          };
         };
       };
     };

@@ -2,7 +2,7 @@
 # nvme1n1 4TB:   Home RAID-0
 # nvme2n1 4TB:   Home RAID-0
 # sda     4TB:   Backup RAID-0
-# sdb     4TB:   Backup RAID-0   
+# sdb     4TB:   Backup RAID-0
 # sdc     4TB:   Backup RAID-0
 { disks ? [ "/dev/nvme1n1" "/dev/nvme2n1" ], ... }:
 let
@@ -15,34 +15,34 @@ in
         type = "disk";
         device = builtins.elemAt disks 0;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [{
-            name = "home-nvme1";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "home";
+          type = "gpt";
+          partitions = {
+            home-nvme1 = {
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "home";
+              };
             };
-          }];
+          };
         };
       };
       nvme2 = {
         type = "disk";
         device = builtins.elemAt disks 1;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [{
-            name = "home-nvme2";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "home";
+          type = "gpt";
+          partitions = {
+            home-nvme2 = {
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "home";
+              };
             };
-          }];
+          };
         };
       };
     };
@@ -51,11 +51,9 @@ in
         type = "mdadm";
         level = 0;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [
-            {
-              name = "home";
+          type = "gpt";
+          partitions = {
+            home = {
               start = "0%";
               end = "100%";
               content = {
@@ -66,8 +64,8 @@ in
                 mountpoint = "/home";
                 mountOptions = defaultXfsOpts;
               };
-            }
-          ];
+            };
+          };
         };
       };
     };
