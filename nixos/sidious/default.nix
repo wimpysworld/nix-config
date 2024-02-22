@@ -14,7 +14,6 @@
     ../_mixins/services/filesync.nix
     ../_mixins/services/pipewire.nix
     ../_mixins/services/tailscale.nix
-    ../_mixins/services/zerotier.nix
     ../_mixins/virt
   ];
 
