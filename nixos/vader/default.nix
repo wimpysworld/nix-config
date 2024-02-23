@@ -22,18 +22,19 @@
     ../_mixins/virt
   ];
 
-  # disko does manage mounting / and /boot, but I want to mount by-partlabel
-  #fileSystems = {
-  #  "/" = lib.mkForce {
-  #    device = "/dev/disk/by-label/root";
-  #    fsType = "xfs";
-  #    options = [ "defaults" "relatime" "nodiratime" ];
-  #  };
-  #  "/boot" = lib.mkForce {
-  #    device = "/dev/disk/by-label/ESP";
-  #    fsType = "vfat";
-  #  };
-  #};
+  # Workaround: manually account for newer disko configuration
+  #             REMOVE THIS IF/WHEN /boot and / ARE RE-INSTALLED
+  fileSystems = {
+    "/" = lib.mkForce {
+      device = "/dev/disk/by-partlabel/root";
+      fsType = "xfs";
+      options = [ "defaults" "relatime" "nodiratime" ];
+    };
+    "/boot" = lib.mkForce {
+      device = "/dev/disk/by-partlabel/ESP";
+      fsType = "vfat";
+    };
+  };
 
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
