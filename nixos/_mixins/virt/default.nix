@@ -4,7 +4,7 @@
   ];
   #https://nixos.wiki/wiki/Podman
   environment.systemPackages = with pkgs; [
-    distrobox
+    unstable.distrobox
     flyctl
     fuse-overlayfs
     podman-compose
