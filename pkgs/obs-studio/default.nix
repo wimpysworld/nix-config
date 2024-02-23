@@ -71,8 +71,6 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   patches = [
-    # Lets obs-browser build against CEF 90.1.0+
-    ./Enable-file-access-and-universal-access-for-file-URL.patch
     ./fix-nix-plugin-path.patch
   ];
 
