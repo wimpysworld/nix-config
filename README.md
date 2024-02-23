@@ -110,8 +110,10 @@ Here is the directory structure I'm using.
 │   └── default.nix
 ├── nixos
 │   ├── _mixins
+│   │   ├── base
 │   │   ├── desktop
 │   │   ├── hardware
+│   │   ├── scripts
 │   │   ├── services
 │   │   ├── users
 │   │   └── virt
@@ -154,7 +156,7 @@ MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. Th
 
 ## Post-install Checklist
 
-Things I currently need to do manually after install.
+Things I currently need to do manually after installation.
 
 ### Secrets
 
