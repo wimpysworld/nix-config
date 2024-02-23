@@ -9,6 +9,9 @@
 # Make a host public key:
 # ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
 
+# Add secrets
+# sops secrets/secrets.yaml
+
 # Rekey secrets.yaml after editing recipients in .sops.yaml:
 # sops updatekeys secrets/secrets.yaml
 keys:

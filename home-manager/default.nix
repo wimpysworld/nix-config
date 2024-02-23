@@ -65,6 +65,7 @@ in
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
+      netrc-file = "${config.home.homeDirectory}/.local/share/flakehub/netrc";
       # Avoid unwanted garbage collection when using nix-direnv
       keep-outputs = true;
       keep-derivations = true;
@@ -81,10 +82,11 @@ in
     # sops-nix options: https://dl.thalheim.io/
     secrets = {
       asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
-      hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
+      flakehub_token.path = "${config.home.homeDirectory}/.local/share/flakehub/netrc";
       gpg_private = {};
       gpg_public = {};
       gpg_ownertrust = {};
+      hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
       obs_secrets = {};
       ssh_config.path = "${config.home.homeDirectory}/.ssh/config";
       ssh_key.path = "${config.home.homeDirectory}/.ssh/id_rsa";
