@@ -60,13 +60,13 @@ in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "obs-studio";
-  version = "30.1.0-beta2";
+  version = "30.1.0-beta3";
 
   src = fetchFromGitHub {
     owner = "obsproject";
     repo = finalAttrs.pname;
     rev = finalAttrs.version;
-    sha256 = "sha256-eDLAVRyyrd149JJKp/8B4B7JtzElW5CX5hdJEt9rtHY=";
+    sha256 = "sha256-Uadpfzv8UHHzI3UMCQ/CcuiSme1ke/j8nYRdEkCj8ic=";
     fetchSubmodules = true;
   };
 
