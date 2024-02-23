@@ -82,6 +82,7 @@
         iso-console = libx.mkHost { hostname = "iso-console"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"; };
         iso-desktop = libx.mkHost { hostname = "iso-desktop"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
         # Workstations
+        #  - sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
         #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
         tyranus = libx.mkHost { hostname = "tyranus"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux"; };
