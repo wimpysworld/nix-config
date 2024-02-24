@@ -5,8 +5,8 @@ let
     hosts = [
       "p1"
       "phasma"
+      "tanis"
       "vader"
-      "zed"
     ];
     tcpPorts = [ 22000 ];
     udpPorts = [ 22000 21027 ];
