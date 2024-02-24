@@ -8,8 +8,9 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-hidpi
     (import ./disks.nix { })
+    ../_mixins/linux/latest.nix
     ../_mixins/hardware/gpu.nix
-    ../_mixins/hardware/grub-boot.nix
+    ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/pipewire.nix
@@ -21,7 +22,6 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "xhci_pci" "nvme" "uas" "usb_storage" "sd_mod" ];
     kernelModules = [ "i915" "kvm-intel" "nvidia" ];
-    kernelPackages = pkgs.linuxPackages_latest;
   };
 
   hardware = {
@@ -43,10 +43,16 @@
   # - https://github.com/uunicorn/python-validity
   # - https://github.com/tester1969/pam-validity
   # TODO: Package the above project as libfprint-2-tod1-vfs009a
-  services.fprintd = {
-    enable = lib.mkDefault false;
-    #tod.enable = true;
-    #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
+  services = {
+    fprintd = {
+      enable = lib.mkDefault false;
+      #tod.enable = true;
+      #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
+    };
+    kmscon.extraConfig = lib.mkForce ''
+      font-size=24
+      xkb-layout=gb
+    '';
   };
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }
