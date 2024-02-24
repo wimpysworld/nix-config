@@ -19,6 +19,7 @@ keys:
   - &user_backup age1v5c455hd0shs745dhd3gl7kzw6zaqflnyl4v96pq56j96xyvvc5sgse0za
   - &host_phasma age15fmple5gj3u8ljt7xjxpn0frdw2psla37y9u9tskf2dncfl88fyqnv6lll
   - &host_sidious age1xad649funyd5hj8evfntaddcuwrymjcvg9myutrcjzw7rs64ay2q2qpdsp
+  - &host_tanis age156lyf8pwfkegcqug7ll8v5x7g8tqdtl3tcxr55cd5zpew725q4lqndqcmf
   - &host_vader age1xs0vlxts7dfa770kea0nyagq0j95nennmx79qml4ddfg6np2qefs9gah9e
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
@@ -28,4 +29,5 @@ creation_rules:
       - *user_backup
       - *host_phasma
       - *host_sidious
+      - *host_tanis
       - *host_vader
