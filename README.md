@@ -188,6 +188,40 @@ Things I currently need to do manually after installation.
 - [ ] ZeroTier - enable host `sudo zerotier-cli info`
 - [ ] Run `fonts.sh` to install commercial fonts
 
+### Windows Boot Manager on multi-disk systems
+
+One of my laptops (`sidious`) is a multi-disk system with Windows 11 Pro installed on a separate disk from NixOS.
+The Windows EFI partition is not automatically detected by systemd-boot.
+The following steps are required to copy the Windows Boot Manager to the NixOS EFI partition.
+
+Find Windows EFI Partition
+
+```shell
+lsblk -o NAME,FSTYPE,SIZE,MOUNTPOINT
+```
+
+Mount Windows EFI Partition
+
+```shell
+sudo mkdir /mnt/win-efi
+sudo mount /dev/nvme1n1p1 /mnt/win-efi
+```
+
+Copy Contents of Windows EFI to NixOS EFI
+
+```shell
+sudo rsync -av /mnt/win-efi/EFI/Microsoft/ /boot/EFI/Microsoft/
+```
+
+Clean up
+
+```shell
+sudo umount /mnt/win-efi
+sudo rm -rf /mnt/win-efi
+```
+
+Reboot and systemd-boot should now offer the option to boot NixOS and Windows.
+
 ## TODO 🗒️
 
 Things I should do or improve:
