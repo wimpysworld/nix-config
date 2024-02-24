@@ -57,7 +57,7 @@
         # Workstations
         "martin@phasma" = libx.mkHome { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
         "martin@vader" = libx.mkHome { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
-        "martin@tanis" = libx.mkHome { hostname = "tanis"; username = "martin"; desktop = null; };
+        "martin@tanis" = libx.mkHome { hostname = "tanis"; username = "martin"; desktop = "gnome"; };
         # dooku/tyranus are dual boot hosts, macOS and NixOS respectively.
         "martin@dooku" = libx.mkHome { hostname = "dooku"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
         "martin@tyranus" = libx.mkHome { hostname = "tyranus"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
@@ -87,7 +87,7 @@
         #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
         phasma = libx.mkHost { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
         vader = libx.mkHost { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
-        tanis = libx.mkHost { hostname = "tanis"; username = "martin"; desktop = null; };
+        tanis = libx.mkHost { hostname = "tanis"; username = "martin"; desktop = "gnome"; };
         tyranus = libx.mkHost { hostname = "tyranus"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux"; };
         sidious = libx.mkHost { hostname = "sidious"; username = "martin"; desktop = "gnome"; };
         # Servers
