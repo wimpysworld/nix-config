@@ -1,7 +1,7 @@
 { lib, platform, ... }:
 {
   imports = [
-    ../_mixins/linux/latest.nix
+    ../_mixins/kernel/bcachefs.nix
   ];
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

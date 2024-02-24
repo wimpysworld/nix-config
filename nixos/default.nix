@@ -6,7 +6,7 @@
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
     ./_mixins/base
-    ./_mixins/hardware/zram-swap.nix
+    ./_mixins/kernel
     ./_mixins/scripts
     ./_mixins/services/firewall.nix
     ./_mixins/services/openssh.nix

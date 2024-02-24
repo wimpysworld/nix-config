@@ -1,9 +1,12 @@
-{ ... }: {
+{ lib, pkgs, ... }: {
   boot = {
-    # Keep zram swap (lz4) latency in check
-    kernel.sysctl = {
-      "vm.page-cluster" = 1;
+    kernel = {
+      # Keep zram swap (lz4) latency in check
+      sysctl = {
+        "vm.page-cluster" = 1;
+      };
     };
+    kernelPackages = pkgs.linuxPackages_latest;
   };
   # Disable hiberate and hybrid-sleep when using zram.
   systemd.targets.hibernate.enable = false;
