@@ -8,7 +8,7 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-hidpi
     (import ./disks.nix { })
-    ../_mixins/linux/latest.nix
+    ../_mixins/kernel/bcachefs.nix
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
