@@ -3,8 +3,8 @@ let
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
-      "p1"
       "phasma"
+      "sidious"
       "tanis"
       "vader"
     ];
