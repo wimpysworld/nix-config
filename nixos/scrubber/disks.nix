@@ -1,4 +1,8 @@
-{ disks ? [ "/dev/vda" ], ... }: {
+{ disks ? [ "/dev/vda" ], ... }:
+let
+  defaultBcachefsOpts = [ "defaults" "relatime" "nodiratime" ];
+in
+{
   disko.devices = {
     disk = {
       vda = {
@@ -8,7 +12,8 @@
           type = "gpt";
           partitions = {
             ESP = {
-              size = "512M";
+              start = "0%";
+              end = "1024MiB";
               type = "EF00";
               content = {
                 format = "vfat";
@@ -20,10 +25,9 @@
             root = {
               size = "100%";
               content = {
-                # "--fs_label=root"
                 extraArgs = [ "-f" ];
                 format = "bcachefs";
-                mountOptions = [ "defaults" "relatime" "nodiratime" ];
+                mountOptions = defaultBcachefsOpts;
                 mountpoint = "/";
                 type = "filesystem";
               };
