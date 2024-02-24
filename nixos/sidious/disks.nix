@@ -1,8 +1,8 @@
-# nvme0n1 2TB:     NixOS
-# nvme1n1 512GB:   Windows 11 Pro
-{ disks ? [ "/dev/nvme0n1" ], ... }:
+# nvme0n1 2TB:     NixOS              nvme-Samsung_SSD_970_EVO_2TB_S464NB0K800345W
+# nvme1n1 512GB:   Windows 11 Pro     nvme-Samsung_SSD_970_EVO_500GB_S466NB0K703260N
+{ disks ? [ "/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_2TB_S464NB0K800345W" ], ... }:
 let
-  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
+  defaultBcachefsOpts = [ "defaults" "compression=lz4" "discard" "relatime" "nodiratime" ];
 in
 {
   disko.devices = {
@@ -11,36 +11,29 @@ in
         type = "disk";
         device = builtins.elemAt disks 0;
         content = {
-          type = "table";
-          format = "gpt";
-          partitions = [
-            {
-              name = "ESP";
-              start = "0%";
-              end = "1024MiB";
-              bootable = true;
-              flags = [ "esp" ];
-              fs-type = "fat32";
+          type = "gpt";
+          partitions = {
+            ESP = {
+              size = "1024M";
+              type = "EF00";
               content = {
-                type = "filesystem";
                 format = "vfat";
+                mountOptions = [ "defaults" "umask=0077" ];
                 mountpoint = "/boot";
-              };
-            }
-            {
-              name = "root";
-              start = "1024MiB";
-              end = "100%";
-              content = {
                 type = "filesystem";
-                # Overwirte the existing filesystem
-                extraArgs = [ "-f" ];
-                format = "xfs";
-                mountpoint = "/";
-                mountOptions = defaultXfsOpts;
               };
-            }
-          ];
+            };
+            root = {
+              size = "100%";
+              content = {
+                extraArgs = [ "-f" "--compression=lz4" "--discard" ];
+                format = "bcachefs";
+                mountOptions = defaultBcachefsOpts;
+                mountpoint = "/";
+                type = "filesystem";
+              };
+            };
+          };
         };
       };
     };
