@@ -139,8 +139,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     popd
   fi
 
-  # Drop the age public key for the host into the home directory of the target user.
-  ${pkgs.ssh-to-age}/bin/ssh-to-age -i /mnt/etc/ssh/ssh_host_ed25519_key.pub > /mnt/home/$TARGET_USER/age_host_ed25519_key.pub
   # Copy the sops keys.txt to the target install
   if [ -e "$HOME/.config/sops/age/keys.txt" ]; then
     ${pkgs.coreutils-full}/bin/mkdir -p /mnt/home/$TARGET_USER/.config/sops/age
