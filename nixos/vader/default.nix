@@ -1,4 +1,4 @@
-{ config, inputs, lib, pkgs, platform, ... }:
+{ config, inputs, lib, pkgs, platform, username, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
@@ -154,8 +154,8 @@
     cron = {
       enable = true;
       systemCronJobs = [
-        "*/30 * * * * martin /home/martin/Scripts/backup/sync-legoworlds.sh >> /home/martin/Games/Steam_Backups/legoworlds.log"
-        "42 * * * * martin /home/martin/Scripts/backup/sync-hotshotracing.sh >> /home/martin/Games/Steam_Backups/hotshotracing.log"
+        "*/30 * * * * ${username} /home/${username}/Scripts/backup/sync-legoworlds.sh >> /home/${username}/Games/Steam_Backups/legoworlds.log"
+        "42 * * * * ${username} /home/${username}/Scripts/backup/sync-hotshotracing.sh >> /home/${username}/Games/Steam_Backups/hotshotracing.log"
       ];
     };
     xserver.videoDrivers = [ "amdgpu" "nvidia" ];
