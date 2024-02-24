@@ -3,6 +3,7 @@
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13
     (import ./disks.nix { })
+    ../_mixins/linux/latest.nix
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/services/bluetooth.nix
@@ -11,11 +12,6 @@
     ../_mixins/services/tailscale.nix
     ../_mixins/virt
   ];
-
-  swapDevices = [{
-    device = "/swap";
-    size = 2048;
-  }];
 
   boot = {
     initrd = {
@@ -32,7 +28,6 @@
       ];
     };
     kernelModules = [ "amdgpu" "kvm-amd" ];
-    kernelPackages = pkgs.linuxPackages_latest;
   };
 
   services.kmscon.extraConfig = lib.mkForce ''
