@@ -49,7 +49,7 @@
     in
     {
       # home-manager switch -b backup --flake $HOME/Zero/nix-config
-      # nix shell nixpkgs#home-manager --command sh -c 'home-manager switch -b backup --flake "${HOME}/Zero/nix-config"'
+      # nix run nixpkgs#home-manager -- switch -b backup --flake "${HOME}/Zero/nix-config"
       homeConfigurations = {
         # .iso images
         "nixos@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
