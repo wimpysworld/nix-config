@@ -34,6 +34,10 @@ function run_disko() {
 
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     sudo true
+    # Workaround for mounting encrypted bcachefs filesystems.
+    # - https://nixos.wiki/wiki/Bcachefs#NixOS_installation_on_bcachefs
+    # - https://github.com/NixOS/nixpkgs/issues/32279
+    sudo ${pkgs.keyutils}/bin/keyctl link @u @s
     sudo nix run github:nix-community/disko \
       --extra-experimental-features "nix-command flakes" \
       --no-write-lock-file \

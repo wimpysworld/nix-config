@@ -28,6 +28,8 @@
       ];
     };
     kernelModules = [ "amdgpu" "kvm-amd" ];
+    # Forcibly disable Plymouth, so the bcachefs root can be unlocked
+    plymouth.enable = lib.mkForce false;
   };
 
   services.kmscon.extraConfig = lib.mkForce ''
