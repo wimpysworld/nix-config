@@ -17,8 +17,8 @@
 keys:
   - &user_martin age1xfpzwdsz06243ndj39x4yr2qs4u3ja777r3xautdtm59j54wa3kssualcn
   - &user_backup age1v5c455hd0shs745dhd3gl7kzw6zaqflnyl4v96pq56j96xyvvc5sgse0za
-  - &host_ripper age1z7kwm9t4a570dzm83e5h8nsphyqkd5c9uxnam5gnrpcmplsx6pxqtn9xdc
   - &host_phasma age15fmple5gj3u8ljt7xjxpn0frdw2psla37y9u9tskf2dncfl88fyqnv6lll
+  - &host_sidious age1xad649funyd5hj8evfntaddcuwrymjcvg9myutrcjzw7rs64ay2q2qpdsp
   - &host_vader age1xs0vlxts7dfa770kea0nyagq0j95nennmx79qml4ddfg6np2qefs9gah9e
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
@@ -26,6 +26,6 @@ creation_rules:
     - age:
       - *user_martin
       - *user_backup
-      - *host_ripper
       - *host_phasma
+      - *host_sidious
       - *host_vader
