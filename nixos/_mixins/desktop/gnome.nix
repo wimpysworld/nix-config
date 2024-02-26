@@ -1,9 +1,6 @@
 { pkgs, ... }: {
   imports = [
     ./qt-style.nix
-    ../services/flatpak.nix
-    ../services/networkmanager.nix
-    ../services/sane.nix
   ];
 
   environment.systemPackages = with pkgs; [

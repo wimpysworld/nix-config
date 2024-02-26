@@ -1,9 +1,6 @@
 { pkgs, ... }: {
   imports = [
     ./qt-style.nix
-    ../services/flatpak.nix
-    ../services/networkmanager.nix
-    ../services/sane.nix
   ];
 
   # Exclude MATE themes. Yaru will be used instead.
