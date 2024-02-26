@@ -9,7 +9,6 @@ let
     appimage-run
     authy
     gimp-with-plugins
-    gnome.gnome-clocks
     irccloud
     inkscape
     libreoffice

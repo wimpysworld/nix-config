@@ -18,6 +18,7 @@
 
     # Add some packages to complete the MATE desktop
     systemPackages = with pkgs; [
+      gnome.gnome-clocks
       gnome.gucharmap
       gnome-firmware
       gthumb
