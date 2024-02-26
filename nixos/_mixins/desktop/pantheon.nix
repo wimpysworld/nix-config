@@ -3,13 +3,14 @@
 { pkgs, ... }: {
   imports = [
     ./qt-style.nix
+    ../services/flatpak.nix
     ../services/networkmanager.nix
+    ../services/sane.nix
   ];
 
   # Exclude the elementary apps I don't use
   environment = {
     pantheon.excludePackages = with pkgs.pantheon; [
-      elementary-camera
       elementary-code
       elementary-music
       elementary-photos
@@ -21,6 +22,22 @@
     # - https://discourse.nixos.org/t/anyone-with-pantheon-de/28422
     # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
     pathsToLink = [ "/libexec" ];
+
+    # Add additional apps and include Yaru for syntax highlighting
+    systemPackages = with pkgs; [
+      appeditor
+      formatter
+      loupe
+      usbimager
+      yaru-theme
+    ];
+  };
+
+  # Add GNOME Disks, Pantheon Tweaks and Seahorse
+  programs = {
+    gnome-disks.enable = true;
+    pantheon-tweaks.enable = true;
+    seahorse.enable = true;
   };
 
   services = {
