@@ -304,7 +304,7 @@ StartupNotify=false";
 
   xdg = {
     desktopEntries = {
-      # The usbimager icon pasth is hardcoded, so override the desktop file
+      # The usbimager icon path is hardcoded, so override the desktop file
       usbimager = {
         name = "USBImager";
         exec = "${pkgs.usbimager}/bin/usbimager";
