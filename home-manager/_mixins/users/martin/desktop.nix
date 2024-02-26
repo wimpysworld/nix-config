@@ -18,11 +18,4 @@ with lib.hm.gvariant;
     ../../desktop/utm.nix
     ../../desktop/vscode.nix
   ];
-
-  # Authrorize X11 access in Distrobox
-  home.file.".distroboxrc" = lib.mkIf isLinux {
-    text = ''
-      xhost +si:localuser:$USER
-    '';
-  };
 }
