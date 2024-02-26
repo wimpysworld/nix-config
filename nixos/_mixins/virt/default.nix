@@ -15,7 +15,6 @@
   ] ++ lib.optionals (desktop != null) [
     pods
     quickemu
-    xorg.xhost
   ];
 
   services.snap.enable = true;

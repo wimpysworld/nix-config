@@ -7,6 +7,13 @@ in
     (./. + "/${desktop}.nix")
   ] ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
 
+  # Authrorize X11 access in Distrobox
+  home.file.".distroboxrc" = lib.mkIf isLinux {
+    text = ''
+      ${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER
+    '';
+  };
+
   # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
   services.mpris-proxy.enable = isLinux;
   services.gpg-agent = lib.mkIf isLinux {
