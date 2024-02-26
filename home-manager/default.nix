@@ -66,6 +66,8 @@ in
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
       netrc-file = "${config.home.homeDirectory}/.local/share/flakehub/netrc";
+      extra-trusted-substituters = "https://cache.flakehub.com/";
+      extra-trusted-public-keys = "cache.flakehub.com-1:t6986ugxCA+d/ZF9IeMzJkyqi5mDhvFIx7KA/ipulzE= cache.flakehub.com-2:ntBGiaKSmygJOw2j1hFS7KDlUHQWmZALvSJ9PxMJJYU=";
       # Avoid unwanted garbage collection when using nix-direnv
       keep-outputs = true;
       keep-derivations = true;
