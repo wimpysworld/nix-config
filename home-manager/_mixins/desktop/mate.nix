@@ -36,7 +36,7 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/evolution/plugin/external-editor" = {
-      command = "pluma";
+      command = "${pkgs.mate.pluma}/bin/pluma";
     };
 
     "org/gtk/settings/file-chooser" = {
@@ -44,11 +44,11 @@ with lib.hm.gvariant;
     };
 
     "org/mate/applications-office/calendar" = {
-      exec = "evolution";
+      exec = "${pkgs.evolution}/bin/evolution";
     };
 
     "org/mate/applications-office/tasks" = {
-      exec = "evolution";
+      exec = "${pkgs.evolution}/bin/evolution";
     };
 
     "org/mate/caja/desktop" = {
@@ -75,7 +75,7 @@ with lib.hm.gvariant;
     };
 
     "org/mate/desktop/applications/calculator" = {
-      exec = "mate-calc";
+      exec = "${pkgs.mate.mate-calc}/bin/mate-calc";
     };
 
     "org/mate/desktop/applications/messager" = {
@@ -332,19 +332,22 @@ with lib.hm.gvariant;
     gtk2 = {
       configLocation = "${config.xdg.configHome}/gtk-2.0/gtkrc";
       extraConfig = ''
-        gtk-application-prefer-dark-theme=1
+        gtk-application-prefer-dark-theme = 1
+        gtk-enable-primary-paste = true
       '';
     };
 
     gtk3 = {
       extraConfig = {
         gtk-application-prefer-dark-theme = 1;
+        gtk-enable-primary-paste = true;
       };
     };
 
     gtk4 = {
       extraConfig = {
         gtk-application-prefer-dark-theme = 1;
+        gtk-enable-primary-paste = true;
       };
     };
 
@@ -385,6 +388,20 @@ with lib.hm.gvariant;
       };
       Install = {
         WantedBy = [ "default.target" ];
+      };
+    };
+  };
+
+  xdg = {
+    desktopEntries = {
+      # The usbimager icon path is hardcoded, so override the desktop file
+      usbimager = {
+        name = "USBImager";
+        exec = "${pkgs.usbimager}/bin/usbimager";
+        terminal = false;
+        icon = "usbimager";
+        type = "Application";
+        categories = [ "System" "Application" ];
       };
     };
   };
