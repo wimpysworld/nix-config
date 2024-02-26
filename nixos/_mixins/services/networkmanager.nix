@@ -1,4 +1,4 @@
-{ pkgs, username, ... }:
+{ desktop, lib, pkgs, username, ... }:
 let
   # Define DNS settings for specific users
   # - https://cleanbrowsing.org/filters/
@@ -27,6 +27,10 @@ let
   defaultDns = [ "1.1.1.1" "1.0.0.1" ];
 in
 {
+  environment.systemPackages = with pkgs; lib.mkIf (desktop == "mate") [
+    networkmanagerapplet
+  ];
+
   networking = {
     networkmanager = {
       enable = true;
@@ -41,5 +45,9 @@ in
       };
     };
     wireless.iwd.package = pkgs.iwd;
+  };
+
+  programs = lib.mkIf (desktop == "mate") {
+    nm-applet.enable = true;
   };
 }
