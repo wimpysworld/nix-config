@@ -4,6 +4,11 @@ let
 in
 lib.mkIf isDarwin {
   # Darwin specific configuration
+  home.packages = with pkgs; [
+    iterm2
+    pika
+    utm
+  ];
   targets.darwin = {
     currentHostDefaults = {
       NSGlobalDomain = {
@@ -34,6 +39,12 @@ lib.mkIf isDarwin {
       };
       "com.apple.controlcenter" = {
         BatteryShowPercentage = true;
+      };
+    };
+    defaults = {
+      "com.googlecode.iterm2" = {
+        AddNewTabAtEndOfTabs = true;
+        CopySelection = true;
       };
     };
     search = "Google";
