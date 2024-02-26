@@ -123,6 +123,7 @@ in
       usbutils # Terminal USB info
       vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
+      writedisk # Modern Unix `dd`
       zsync # Terminal file sync; FTBFS on aarch64-darwin
     ] ++ lib.optionals isDarwin [
       m-cli # Terminal Swiss Army Knife for macOS
