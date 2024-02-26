@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ desktop, lib, pkgs, ... }:
 let
   inherit (pkgs.stdenv) isLinux;
 in
@@ -8,9 +8,11 @@ lib.mkIf isLinux {
     celluloid
   ];
 
+  # Only disable CSD on non-GNOME desktops
   dconf.settings = {
-    "io/github/celluloid-player/celluloid" = {
+    "io/github/celluloid-player/celluloid" = lib.optionalAttrs (desktop != "gnome") {
       csd-enable = false;
+    } // {
       dark-theme-enable = true;
     };
   };
