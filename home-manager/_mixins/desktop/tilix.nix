@@ -64,27 +64,5 @@ lib.mkIf isLinux {
       use-theme-colors = false;
       visible-name = "Bearded Dark Vivid";
     };
-
-    "org/gnome/desktop/default/applications/terminal" = {
-      exec = "tilix";
-      exec-arg = "-e";
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys" = {
-      custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/" "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/" "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/" ];
-      terminal = [ "" ];
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
-      binding = "<Super>t";
-      command = "tilix";
-      name = "tilix";
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
-      binding = "<Primary><Alt>t";
-      command = "tilix";
-      name = "tilix";
-    };
   };
 }

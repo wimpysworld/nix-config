@@ -1,9 +1,21 @@
 { config, lib, pkgs, ... }:
 with lib.hm.gvariant;
 {
+  imports = [
+    ./celluloid.nix
+    ./dconf-editor.nix
+    ./gnome-sound-recorder.nix
+    ./gnome-text-editor.nix
+    ./tilix.nix
+  ];
   dconf.settings = {
     "org/gnome/desktop/datetime" = {
       automatic-timezone = true;
+    };
+
+    "org/gnome/desktop/default/applications/terminal" = {
+      exec = "${pkgs.tilix}/bin/tilix";
+      exec-arg = "-e";
     };
 
     "org/gnome/desktop/input-sources" = {
@@ -69,13 +81,37 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/settings-daemon/plugins/media-keys" = {
-      custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/" ];
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom3/"
+      ];
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       binding = "<Super>e";
       command = "nautilus --new-windows ~/";
       name = "nautilus --new-windows ~/";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      binding = "<Super>t";
+      command = "${pkgs.tilix}/bin/tilix";
+      name = "tilix";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
+      binding = "<Primary><Alt>t";
+      command = "${pkgs.tilix}/bin/tilix";
+      name = "tilix";
+    };
+
+    # https://github.com/tom-james-watson/emote
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom3" = {
+      binding = "<Primary><Alt>e";
+      command = "${pkgs.emote}/bin/emote";
+      name = "emote";
     };
 
     "org/gnome/settings-daemon/plugins/power" = {
