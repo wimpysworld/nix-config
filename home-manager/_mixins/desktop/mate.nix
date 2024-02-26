@@ -83,7 +83,7 @@ with lib.hm.gvariant;
     };
 
     "org/mate/desktop/applications/terminal" = {
-      exec = "mate-terminal";
+      exec = "${pkgs.tilix}/bin/tilix";
     };
 
     "org/mate/desktop/background" = {
@@ -183,7 +183,7 @@ with lib.hm.gvariant;
       command-1 = "mate-screensaver-command --lock";
       command-2 = "/bin/sh -c \"sleep 0.1; mate-screenshot --area\"";
       command-3 = "caja";
-      command-4 = "mate-terminal --window";
+      command-4 = "tilix";
       command-5 = "mate-control-center";
       command-6 = "mate-search-tool";
       command-7 = "mate-system-monitor -p";
