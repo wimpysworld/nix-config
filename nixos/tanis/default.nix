@@ -2,7 +2,7 @@
 {
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13
-    (import ./disks.nix { })
+    ./disks.nix
     ../_mixins/kernel/bcachefs.nix
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
@@ -28,8 +28,6 @@
       ];
     };
     kernelModules = [ "amdgpu" "kvm-amd" ];
-    # Forcibly disable Plymouth, so the bcachefs root can be unlocked
-    plymouth.enable = lib.mkForce false;
   };
 
   services.kmscon.extraConfig = lib.mkForce ''

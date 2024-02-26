@@ -1,13 +1,16 @@
-{ disks ? [ "/dev/disk/by-id/nvme-WD_PC_SN740_SDDPTQE-2T00_22504Z446124" ], ... }:
+{ lib, ... }:
 let
   defaultBcachefsOpts = [ "defaults" "compression=lz4" "discard" "relatime" "nodiratime" ];
 in
 {
+  # Forcibly disable Plymouth, so the encrypted bcachefs root can be unlocked
+  boot.plymouth.enable = lib.mkForce false;
+
   disko.devices = {
     disk = {
       nvme0 = {
         type = "disk";
-        device = builtins.elemAt disks 0;
+        device = "/dev/disk/by-id/nvme-WD_PC_SN740_SDDPTQE-2T00_22504Z446124";
         content = {
           type = "gpt";
           partitions = {
