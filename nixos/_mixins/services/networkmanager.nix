@@ -44,10 +44,17 @@ in
         powersave = false;
       };
     };
-    wireless.iwd.package = pkgs.iwd;
   };
 
   programs = lib.mkIf (desktop == "mate") {
     nm-applet.enable = true;
+  };
+
+  systemd.services.disable-wifi-powersave = {
+    wantedBy = ["multi-user.target"];
+    path = [ pkgs.iw ];
+    script = ''
+      iw dev wlan0 set power_save off
+    '';
   };
 }
