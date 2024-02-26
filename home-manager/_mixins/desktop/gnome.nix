@@ -143,7 +143,7 @@ with lib.hm.gvariant;
 
     "org/gnome/shell/extensions/Logo-menu" = {
       menu-button-icon-image = 23;
-      menu-button-terminal = "tilix";
+      menu-button-terminal = "${pkgs.tilix}/bin/tilix";
       show-activities-button = true;
       symbolic-icon = true;
     };
