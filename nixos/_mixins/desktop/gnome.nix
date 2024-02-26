@@ -7,6 +7,7 @@
   ];
 
   environment.systemPackages = with pkgs; [
+    eyedropper
     formatter
     gnome.gnome-tweaks
     gnomeExtensions.appindicator

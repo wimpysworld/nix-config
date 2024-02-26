@@ -12,7 +12,6 @@ with lib.hm.gvariant;
     #../../desktop/localsend.nix
     ../../desktop/meld.nix
     ../../desktop/nheko.nix
-    ../../desktop/pick-colour-picker.nix
     ../../desktop/pika.nix
     ../../desktop/rhythmbox.nix
     ../../desktop/sakura.nix

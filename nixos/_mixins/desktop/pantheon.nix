@@ -28,6 +28,7 @@
       appeditor
       formatter
       loupe
+      pick-colour-picker
       usbimager
       yaru-theme
     ];

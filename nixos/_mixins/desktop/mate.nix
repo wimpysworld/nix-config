@@ -24,6 +24,7 @@
       gnome.gucharmap
       gnome-firmware
       gthumb
+      pick-colour-picker
       usbimager
     ];
   };
