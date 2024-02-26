@@ -1,6 +1,9 @@
 { desktop, lib, pkgs, ... }: {
   imports = [
     ../services/cups.nix
+    ../services/flatpak.nix
+    ../services/networkmanager.nix
+    ../services/sane.nix
   ]
   ++ lib.optional (builtins.pathExists (./. + "/${desktop}.nix")) ./${desktop}.nix;
 
