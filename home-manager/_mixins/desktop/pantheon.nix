@@ -1,6 +1,13 @@
 { config, lib, pkgs, ... }:
 with lib.hm.gvariant;
 {
+  imports = [
+    ./celluloid.nix
+    ./dconf-editor.nix
+    ./gnome-sound-recorder.nix
+    ./gnome-text-editor.nix
+    ./tilix.nix
+  ];
   dconf.settings = {
     "com/github/stsdc/monitor/settings" = {
       background-state = true;
@@ -141,13 +148,29 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/settings-daemon/plugins/media-keys" = {
-      custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/" ];
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
+      ];
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       binding = "<Super>e";
       command = "io.elementary.files -n ~/";
       name = "io.elementary.files -n ~/";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      binding = "<Super>t";
+      command = "${pkgs.tilix}/bin/tilix";
+      name = "tilix";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
+      binding = "<Primary><Alt>t";
+      command = "${pkgs.tilix}/bin/tilix";
+      name = "tilix";
     };
 
     "org/gnome/settings-daemon/plugins/power" = {
@@ -261,6 +284,22 @@ Icon=com.github.stsdc.monitor
 Categories=
 Terminal=false
 StartupNotify=false";
+  };
+
+  systemd.user.services = {
+    # https://github.com/tom-james-watson/emote
+    emote = {
+      Unit = {
+        Description = "Emote";
+      };
+      Service = {
+        ExecStart = "${pkgs.emote}/bin/emote";
+        Restart = "on-failure";
+      };
+      Install = {
+        WantedBy = [ "default.target" ];
+      };
+    };
   };
 
   xdg = {

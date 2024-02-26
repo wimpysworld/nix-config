@@ -34,7 +34,6 @@
     totem
   ]);
 
-  # Add GNOME Disks and Seahorse
   programs = {
     calls.enable = false;
     evince.enable = true;

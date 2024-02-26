@@ -1,6 +1,12 @@
 { config, lib, pkgs, ... }:
 with lib.hm.gvariant;
 {
+  imports = [
+    ./celluloid.nix
+    ./dconf-editor.nix
+    ./gnome-sound-recorder.nix
+    ./tilix.nix
+  ];
   dconf.settings = {
     "org/gnome/charmap" = {
       font = "Work Sans 22";
@@ -359,5 +365,21 @@ with lib.hm.gvariant;
     size = 32;
     gtk.enable = true;
     x11.enable = true;
+  };
+
+  systemd.user.services = {
+    # https://github.com/tom-james-watson/emote
+    emote = {
+      Unit = {
+        Description = "Emote";
+      };
+      Service = {
+        ExecStart = "${pkgs.emote}/bin/emote";
+        Restart = "on-failure";
+      };
+      Install = {
+        WantedBy = [ "default.target" ];
+      };
+    };
   };
 }
