@@ -22,6 +22,7 @@
     systemPackages = with pkgs; [
       appeditor
       formatter
+      gnome.gnome-clocks
       loupe
       pick-colour-picker
       usbimager
