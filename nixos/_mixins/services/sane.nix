@@ -1,5 +1,5 @@
 { desktop, lib, pkgs, ... }: {
-  environment.systemPackages = with pkgs; [ ] ++ lib.optionals (desktop != null) [
+  environment.systemPackages = with pkgs; lib.mkIf (desktop != null) [
     gnome.simple-scan
   ];
 
