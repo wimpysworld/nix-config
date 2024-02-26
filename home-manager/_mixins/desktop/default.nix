@@ -14,12 +14,6 @@ in
     '';
   };
 
-  # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
-  services.mpris-proxy.enable = isLinux;
-  services.gpg-agent = lib.mkIf isLinux {
-    pinentryFlavor = lib.mkForce "gnome3";
-  };
-
   xdg = {
     desktopEntries = {
       # Create a desktop entry for the Cider AppImage.

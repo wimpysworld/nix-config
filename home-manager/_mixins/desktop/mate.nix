@@ -367,6 +367,12 @@ with lib.hm.gvariant;
     x11.enable = true;
   };
 
+  services = {
+    gpg-agent.pinentryFlavor = lib.mkForce "gnome3";
+    # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
+    mpris-proxy.enable = true;
+  };
+
   systemd.user.services = {
     # https://github.com/tom-james-watson/emote
     emote = {
