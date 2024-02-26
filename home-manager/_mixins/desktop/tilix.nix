@@ -37,7 +37,8 @@ lib.mkIf isLinux {
       badge-color = "#E6E66D6DFFFF";
       badge-color-set = true;
       badge-font = "FiraCode Nerd Font Mono 12";
-      badge-text = "\${columns}x\${rows}";
+      #badge-text = "\${columns}x\${rows}";
+      badge-text = "";
       badge-use-system-font = false;
       bold-color = "#C8C8C8C8C8C8";
       bold-color-set = true;
