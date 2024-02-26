@@ -39,7 +39,6 @@ in
     ../../desktop/firefox.nix
     ../../desktop/games.nix
     ../../desktop/obs-studio.nix
-    ../../desktop/${desktop}-apps.nix
   ];
 
   environment.localBinInPath = true;

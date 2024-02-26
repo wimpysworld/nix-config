@@ -1,7 +1,9 @@
 { pkgs, ... }: {
   imports = [
     ./qt-style.nix
+    ../services/flatpak.nix
     ../services/networkmanager.nix
+    ../services/sane.nix
   ];
 
   # Exclude MATE themes. Yaru will be used instead.
@@ -19,14 +21,17 @@
 
     # Add some packages to complete the MATE desktop
     systemPackages = with pkgs; [
-      networkmanagerapplet
+      gnome.gucharmap
+      gnome-firmware
+      gthumb
+      usbimager
     ];
   };
 
   # Enable some programs to provide a complete desktop
   programs = {
-    nm-applet.enable = true;
-    system-config-printer.enable = true;
+    gnome-disks.enable = true;
+    seahorse.enable = true;
   };
 
   # Enable services to round out the desktop
@@ -34,7 +39,6 @@
     blueman.enable = true;
     gnome.gnome-keyring.enable = true;
     gvfs.enable = true;
-    system-config-printer.enable = true;
     xserver = {
       enable = true;
       displayManager = {
