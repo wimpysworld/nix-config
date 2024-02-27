@@ -15,7 +15,6 @@
     ../_mixins/services/openrazer.nix
     ../_mixins/services/pipewire.nix
     ../_mixins/services/tailscale.nix
-    ../_mixins/virt
   ];
 
   # Workaround: manually account for newer disko configuration

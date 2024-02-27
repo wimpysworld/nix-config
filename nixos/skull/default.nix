@@ -10,7 +10,6 @@
     (import ./disks.nix { })
     ../_mixins/services/filesync.nix
     ../_mixins/services/zerotier.nix
-    ../_mixins/virt
   ];
 
   # disko does manage mounting of / /boot /home, but I want to mount by-partlabel

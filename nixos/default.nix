@@ -1,5 +1,6 @@
 { config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
 let
+  notVM = if (hostname == "minimech" || hostname == "scrubber" || builtins.substring 0 5 hostname == "lima-") then false else true;
   # Create some variable to control what doesn't get installed/enabled on ISO images
   notISO = builtins.substring 0 4 hostname != "iso-";
   onlyEnabledOnRealInstalls = notISO;
@@ -19,6 +20,7 @@ in
   imports = [
     inputs.disko.nixosModules.disko
     inputs.nix-index-database.nixosModules.nix-index
+    inputs.nix-snapd.nixosModules.default
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
@@ -100,11 +102,22 @@ in
       ssh-to-age
       sops
     ] ++ lib.optionals (notISO) [
+      inputs.crafts-flake.packages.${platform}.snapcraft
       inputs.fh.packages.${platform}.default
-      nvme-cli
-      smartmontools
       clinfo
+      unstable.distrobox
+      flyctl
+      fuse-overlayfs
       libva-utils
+      nvme-cli
+      #https://nixos.wiki/wiki/Podman
+      podman-compose
+      podman-tui
+      podman
+      smartmontools
+    ] ++ lib.optionals (desktop != null && notISO && notVM) [
+      pods
+      quickemu
     ] ++ (if lib.elem "nvidia" config.services.xserver.videoDrivers then [ nvtop vdpauinfo ] else [ nvtop-amd ]);
     variables = {
       EDITOR = "micro";
@@ -151,6 +164,7 @@ in
         ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.tcpPorts;
       allowedUDPPorts = [ ]
         ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.udpPorts;
+      trustedInterfaces = lib.mkIf (notISO) [ "lxdbr0" ];
     };
     hostName = hostname;
     useDHCP = lib.mkDefault true;
@@ -274,6 +288,7 @@ in
       };
     };
     smartd.enable = onlyEnabledOnRealInstalls;
+    snap.enable = onlyEnabledOnRealInstalls;
     sshguard = {
       enable = true;
       whitelist = [
@@ -340,5 +355,20 @@ in
     };
     nixos.label = lib.mkIf (notISO) "-";
     stateVersion = stateVersion;
+  };
+
+  virtualisation = lib.mkIf (notISO) {
+    lxd = {
+      enable = true;
+    };
+    podman = {
+      defaultNetwork.settings = {
+        dns_enabled = true;
+      };
+      dockerCompat = true;
+      dockerSocket.enable = true;
+      enable = true;
+      enableNvidia = lib.elem "nvidia" config.services.xserver.videoDrivers;
+    };
   };
 }

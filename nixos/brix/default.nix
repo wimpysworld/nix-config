@@ -8,7 +8,6 @@
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     (import ./disks.nix { })
-    ../_mixins/virt
   ];
 
   # disko does manage mounting of / /boot /home, but I want to mount by-partlabel
