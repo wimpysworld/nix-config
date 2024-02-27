@@ -4,5 +4,4 @@
     ../_mixins/kernel/bcachefs.nix
     ../_mixins/kernel/no-zfs.nix
   ];
-  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

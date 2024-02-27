@@ -30,5 +30,4 @@
     font-size=18
     xkb-layout=gb
   '';
-  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

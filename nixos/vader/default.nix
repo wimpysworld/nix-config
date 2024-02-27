@@ -155,5 +155,4 @@
     };
     xserver.videoDrivers = [ "amdgpu" "nvidia" ];
   };
-  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }
