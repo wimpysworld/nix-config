@@ -169,7 +169,7 @@
             click-action="skip"
             disable-overview-on-startup=true
             dock-position="LEFT"
-            hot-keys=false
+            hot-keys=true
             scroll-action = "cycle-windows"
             show-trash=false
 
