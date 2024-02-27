@@ -1,5 +1,6 @@
 { config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
 let
+  # Create some variable to control what doesn't get installed/enabled on ISO images
   notISO = builtins.substring 0 4 hostname != "iso-";
   onlyEnabledOnRealInstalls = notISO;
   # Firewall configuration variable for syncthing
@@ -102,7 +103,9 @@ in
       inputs.fh.packages.${platform}.default
       nvme-cli
       smartmontools
-    ];
+      clinfo
+      libva-utils
+    ] ++ (if lib.elem "nvidia" config.services.xserver.videoDrivers then [ nvtop vdpauinfo ] else [ nvtop-amd ]);
     variables = {
       EDITOR = "micro";
       SYSTEMD_EDITOR = "micro";

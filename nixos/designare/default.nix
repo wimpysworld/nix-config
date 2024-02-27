@@ -19,7 +19,6 @@
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     (import ./disks.nix { })
-    ../_mixins/hardware/gpu.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/openrazer.nix
     ../_mixins/services/pipewire.nix
