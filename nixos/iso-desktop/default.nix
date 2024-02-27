@@ -5,5 +5,4 @@
     ../_mixins/kernel/no-zfs.nix
     ../_mixins/services/pipewire.nix
   ];
-  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

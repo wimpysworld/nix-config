@@ -50,5 +50,4 @@
       xkb-layout=gb
     '';
   };
-  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

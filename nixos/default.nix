@@ -214,6 +214,7 @@ in
       warn-dirty = false;
     };
   };
+  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 
   programs = {
     command-not-found.enable = false;

@@ -50,6 +50,4 @@
     nameservers = [ "192.168.2.17" ];
     useDHCP = lib.mkForce false;
   };
-
-  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }

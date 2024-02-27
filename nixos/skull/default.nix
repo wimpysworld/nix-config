@@ -155,5 +155,4 @@
       openFirewall = true;
     };
   };
-  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 }
