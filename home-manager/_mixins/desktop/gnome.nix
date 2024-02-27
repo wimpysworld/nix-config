@@ -146,11 +146,6 @@ with lib.hm.gvariant;
       application-list = [ "brave-browser.desktop:1" "Wavebox.desktop:2" "discord.desktop:2" "org.telegram.desktop.desktop:3" "nheko.desktop:3" "code.desktop:4" "GitKraken.desktop:4" "com.obsproject.Studio.desktop:6" ];
     };
 
-    "org/gnome/shell/extensions/emoji-copy" = {
-      always-show = false;
-      emoji-keybind = [ "<Primary><Alt>e" ];
-    };
-
     "org/gnome/shell/extensions/dash-to-dock" = {
       click-action = "skip";
       disable-overview-on-startup = true;
@@ -158,6 +153,11 @@ with lib.hm.gvariant;
       hot-keys = false;
       scroll-action = "cycle-windows";
       show-trash = false;
+    };
+
+    "org/gnome/shell/extensions/emoji-copy" = {
+      always-show = false;
+      emoji-keybind = [ "<Primary><Alt>e" ];
     };
 
     "org/gnome/shell/extensions/just-perfection" = {
