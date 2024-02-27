@@ -202,7 +202,7 @@
             show-layout-panel-indicator=true
             single-screen-gap=10
             window-gap=10
-            overridden-settings={'org.gnome.mutter.edge-tiling': <@mb nothing>, 'org.gnome.desktop.wm.keybindings.maximize': <@mb nothing>, 'org.gnome.desktop.wm.keybindings.unmaximize': <@mb nothing>, 'org.gnome.mutter.keybindings.toggle-tiled-left': <['<Super>Left']>, 'org.gnome.mutter.keybindings.toggle-tiled-right': <['<Super>Right']>}
+            #overridden-settings={'org.gnome.mutter.edge-tiling': <@mb nothing>, 'org.gnome.desktop.wm.keybindings.maximize': <@mb nothing>, 'org.gnome.desktop.wm.keybindings.unmaximize': <@mb nothing>, 'org.gnome.mutter.keybindings.toggle-tiled-left': <['<Super>Left']>, 'org.gnome.mutter.keybindings.toggle-tiled-right': <['<Super>Right']>}
 
             [org.gnome.shell.extensions.vitals]
             alphabetize=false
