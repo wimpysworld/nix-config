@@ -1,4 +1,18 @@
-{ config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }: {
+{ config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
+let
+  # Firewall configuration variable for syncthing
+  syncthing = {
+    hosts = [
+      "phasma"
+      "sidious"
+      "tanis"
+      "vader"
+    ];
+    tcpPorts = [ 22000 ];
+    udpPorts = [ 22000 21027 ];
+  };
+in
+{
   imports = [
     inputs.disko.nixosModules.disko
     inputs.nix-index-database.nixosModules.nix-index
@@ -8,8 +22,6 @@
     ./_mixins/base
     ./_mixins/kernel
     ./_mixins/scripts
-    ./_mixins/services/firewall.nix
-    ./_mixins/services/openssh.nix
     ./_mixins/users/root
   ]
   ++ lib.optional (builtins.pathExists (./. + "/_mixins/users/${username}")) ./_mixins/users/${username}
@@ -102,6 +114,13 @@
       192.168.2.184   lametric LaMetric-LM2144
       192.168.2.250   hue-bridge
     '';
+    firewall = {
+      enable = true;
+      allowedTCPPorts = [ 22 ]
+        ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.tcpPorts;
+      allowedUDPPorts = [ ]
+        ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.udpPorts;
+    };
     hostName = hostname;
     useDHCP = lib.mkDefault true;
   };
@@ -197,6 +216,26 @@
       };
     };
     nano.enable = lib.mkDefault false;
+    ssh.startAgent = true;
+  };
+
+  services = {
+    openssh = {
+      enable = true;
+      settings = {
+        PasswordAuthentication = false;
+        PermitRootLogin = lib.mkDefault "no";
+      };
+    };
+    sshguard = {
+      enable = true;
+      whitelist = [
+        "192.168.2.0/24"
+        "192.168.192.0/24"
+        "62.31.16.154"
+        "80.209.186.67"
+      ];
+    };
   };
 
   sops = {
