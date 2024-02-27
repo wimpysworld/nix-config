@@ -12,7 +12,6 @@
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
     ../_mixins/hardware/streamdeck.nix
-    ../_mixins/services/bluetooth.nix
     ../_mixins/services/clamav.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/openrazer.nix

@@ -96,6 +96,20 @@ in
     };
   };
 
+  hardware = {
+    # https://nixos.wiki/wiki/Bluetooth
+    bluetooth = {
+      enable = true;
+      package = pkgs.bluez;
+      settings = {
+        General = {
+          Enable = "Source,Sink,Media,Socket";
+          Experimental = true;
+        };
+      };
+    };
+  };
+
   # Use passed hostname to configure basic networking
   networking = {
     extraHosts = ''

@@ -6,7 +6,6 @@
     ../_mixins/kernel/bcachefs.nix
     ../_mixins/hardware/gpu.nix
     ../_mixins/hardware/systemd-boot.nix
-    ../_mixins/services/bluetooth.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/pipewire.nix
     ../_mixins/services/tailscale.nix
