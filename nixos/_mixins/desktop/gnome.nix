@@ -210,7 +210,7 @@
             network-speed-format=1
             show-fan=false
             show-temperature=false
-            show-voltage=false1
+            show-voltage=false
             update-time=2
             use-higher-precision=false
 
