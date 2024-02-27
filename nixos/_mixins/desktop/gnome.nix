@@ -31,6 +31,7 @@
 
   # Exclude the GNOME apps I don't use
   environment.gnome.excludePackages = (with pkgs; [
+    baobab
     gnome-console
   ]) ++ (with pkgs.gnome; [
     geary
