@@ -1,4 +1,4 @@
-{ config, desktop, lib, pkgs, ... }:
+{ config, desktop, lib, pkgs, username, ... }:
 let
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
   stable-packages = with pkgs;  [
@@ -69,4 +69,8 @@ in
     packages = [ pkgs.home-manager ];
     shell = pkgs.fish;
   };
+
+  systemd.tmpfiles.rules = [
+    "d /mnt/snapshot/${username} 0755 ${username} users"
+  ];
 }
