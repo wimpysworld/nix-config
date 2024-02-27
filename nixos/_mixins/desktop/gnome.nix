@@ -35,6 +35,7 @@
   ]) ++ (with pkgs.gnome; [
     geary
     gnome-music
+    gnome-system-monitor
     epiphany
     totem
   ]);
