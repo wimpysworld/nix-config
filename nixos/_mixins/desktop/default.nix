@@ -1,6 +1,5 @@
 { desktop, lib, pkgs, ... }: {
   imports = [
-    ../services/cups.nix
     ../services/flatpak.nix
     ../services/networkmanager.nix
     ../services/sane.nix
@@ -61,16 +60,33 @@
     };
   };
 
-  programs.dconf.enable = true;
+  programs = {
+    dconf.enable = true;
+    system-config-printer = {
+      enable = if (desktop == "mate") then true else false;
+    };
+  };
 
-  # Disable xterm
-  services.xserver.excludePackages = [ pkgs.xterm ];
-  services.xserver.desktopManager.xterm.enable = false;
+  services = {
+    printing = {
+      enable = true;
+      drivers = with pkgs; [ gutenprint hplip ];
+    };
+    system-config-printer.enable = true;
+
+    # Disable xterm
+    xserver = {
+      desktopManager.xterm.enable = false;
+      # Disable autoSuspend; my Pantheon session kept auto-suspending
+      # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
+      displayManager.gdm.autoSuspend = if (desktop == "pantheon") then true else false;
+      excludePackages = [ pkgs.xterm ];
+    };
+  };
 
   # Disable autoSuspend; my Pantheon session kept auto-suspending
   # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
-  services.xserver.displayManager.gdm.autoSuspend = false;
-  security.polkit.extraConfig = ''
+  security.polkit.extraConfig = lib.mkIf (desktop == "pantheon") ''
     polkit.addRule(function(action, subject) {
         if (action.id == "org.freedesktop.login1.suspend" ||
             action.id == "org.freedesktop.login1.suspend-multiple-sessions" ||
