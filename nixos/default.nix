@@ -25,10 +25,8 @@ in
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
     ./_mixins/scripts
-    ./_mixins/users/root
-  ]
-  ++ lib.optional (builtins.pathExists (./. + "/_mixins/users/${username}")) ./_mixins/users/${username}
-  ++ lib.optional (desktop != null) ./_mixins/desktop;
+    ./_mixins/users
+  ] ++ lib.optional (desktop != null) ./_mixins/desktop;
 
   boot = {
     consoleLogLevel = 0;
