@@ -1,5 +1,6 @@
 { config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
 let
+  notISO = builtins.substring 0 4 hostname != "iso-";
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
@@ -43,6 +44,15 @@ in
       "net.ipv6.conf.all.forwarding" = 1;
       # Keep zram swap (lz4) latency in check
       "vm.page-cluster" = 1;
+    };
+    # Only enable the systemd-boot on installs, not live media (.ISO images)
+    loader = lib.mkIf (notISO) {
+      efi.canTouchEfiVariables = true;
+      systemd-boot.configurationLimit = 10;
+      systemd-boot.consoleMode = "max";
+      systemd-boot.enable = true;
+      systemd-boot.memtest86.enable = true;
+      timeout = 10;
     };
   };
 
