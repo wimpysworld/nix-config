@@ -120,8 +120,32 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/desktop/wm/keybindings" = {
-      switch-to-workspace-left = [ "<Primary><Alt>Left" ];
-      switch-to-workspace-right = [ "<Primary><Alt>Right" ];
+      switch-to-workspace-1 = [ "<Control><Alt>1" "<Control><Alt>Home" ];
+      switch-to-workspace-2 = [ "<Control><Alt>2" ];
+      switch-to-workspace-3 = [ "<Control><Alt>3" ];
+      switch-to-workspace-4 = [ "<Control><Alt>4" ];
+      switch-to-workspace-5 = [ "<Control><Alt>5" ];
+      switch-to-workspace-6 = [ "<Control><Alt>6" ];
+      switch-to-workspace-7 = [ "<Control><Alt>7" ];
+      switch-to-workspace-8 = [ "<Control><Alt>8" ];
+      switch-to-workspace-down = [ "<Control><Alt>Down" ];
+      switch-to-workspace-last = [ "<Control><Alt>End" ];
+      switch-to-workspace-left = [ "<Control><Alt>Left" ];
+      switch-to-workspace-right = [ "<Control><Alt>Right" ];
+      switch-to-workspace-up = [ "<Control><Alt>Up" ];
+      move-to-workspace-1 = [ "<Super><Alt>1" ];
+      move-to-workspace-2 = [ "<Super><Alt>2" ];
+      move-to-workspace-3 = [ "<Super><Alt>3" ];
+      move-to-workspace-4 = [ "<Super><Alt>4" ];
+      move-to-workspace-5 = [ "<Super><Alt>5" ];
+      move-to-workspace-6 = [ "<Super><Alt>6" ];
+      move-to-workspace-7 = [ "<Super><Alt>7" ];
+      move-to-workspace-8 = [ "<Super><Alt>8" ];
+      move-to-workspace-down = [ "<Super><Alt>Down" ];
+      move-to-workspace-last = [ "<Super><Alt>End" ];
+      move-to-workspace-left = [ "<Super><Alt>Left" ];
+      move-to-workspace-right = [ "<Super><Alt>Right" ];
+      move-to-workspace-up = [ "<Super><Alt>Up" ];
     };
 
     "org/gnome/desktop/wm/preferences" = {
