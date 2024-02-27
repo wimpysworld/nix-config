@@ -1,6 +1,7 @@
 { config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
 let
   notISO = builtins.substring 0 4 hostname != "iso-";
+  onlyEnabledOnRealInstalls = notISO;
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
@@ -20,7 +21,6 @@ in
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
-    ./_mixins/base
     ./_mixins/scripts
     ./_mixins/users/root
   ]
@@ -98,8 +98,10 @@ in
       git
       ssh-to-age
       sops
-    ] ++ [
+    ] ++ lib.optionals (notISO) [
       inputs.fh.packages.${platform}.default
+      nvme-cli
+      smartmontools
     ];
     variables = {
       EDITOR = "micro";
@@ -242,10 +244,25 @@ in
       };
     };
     nano.enable = lib.mkDefault false;
+    nix-index-database.comma.enable = onlyEnabledOnRealInstalls;
+    nix-ld.enable = onlyEnabledOnRealInstalls;
     ssh.startAgent = true;
   };
 
   services = {
+    fwupd.enable = onlyEnabledOnRealInstalls;
+    kmscon = lib.mkIf (notISO) {
+      enable = true;
+      hwRender = true;
+      fonts = [{
+        name = "FiraCode Nerd Font Mono";
+        package = pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; };
+      }];
+      extraConfig = ''
+        font-size=14
+        xkb-layout=gb
+      '';
+    };
     openssh = {
       enable = true;
       settings = {
@@ -253,6 +270,7 @@ in
         PermitRootLogin = lib.mkDefault "no";
       };
     };
+    smartd.enable = onlyEnabledOnRealInstalls;
     sshguard = {
       enable = true;
       whitelist = [
@@ -309,5 +327,16 @@ in
     "d /mnt/snapshot/${username} 0755 ${username} users"
   ];
 
-  system.stateVersion = stateVersion;
+  system = {
+    activationScripts.diff = lib.mkIf (notISO) {
+      supportsDryActivation = true;
+      text = ''
+        if [ -e /run/current-system/boot.json ] && ! ${pkgs.gnugrep}/bin/grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
+          ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.unstable.nix}/bin diff /run/current-system "$systemConfig"
+        fi
+      '';
+    };
+    nixos.label = lib.mkIf (notISO) "-";
+    stateVersion = stateVersion;
+  };
 }
