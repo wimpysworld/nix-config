@@ -14,7 +14,7 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/desktop/default/applications/terminal" = {
-      exec = "${pkgs.tilix}/bin/tilix";
+      exec = "tilix";
       exec-arg = "-e";
     };
 
@@ -120,13 +120,13 @@ with lib.hm.gvariant;
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
       binding = "<Super>t";
-      command = "${pkgs.tilix}/bin/tilix";
+      command = "tilix";
       name = "tilix";
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
       binding = "<Primary><Alt>t";
-      command = "${pkgs.tilix}/bin/tilix";
+      command = "tilix";
       name = "tilix";
     };
 
@@ -167,8 +167,8 @@ with lib.hm.gvariant;
 
     "org/gnome/shell/extensions/Logo-menu" = {
       menu-button-icon-image = 23;
-      menu-button-system-monitor = "${pkgs.gnome-usage}/bin/gnome-usage";
-      menu-button-terminal = "${pkgs.tilix}/bin/tilix";
+      menu-button-system-monitor = "gnome-usage";
+      menu-button-terminal = "tilix";
       show-activities-button = true;
       symbolic-icon = true;
     };
@@ -178,7 +178,7 @@ with lib.hm.gvariant;
       fixed-widths = true;
       include-static-info = false;
       menu-centered = true;
-      monitor-cmd = "${pkgs.gnome-usage}/bin/gnome-usage";
+      monitor-cmd = "gnome-usage";
       network-speed-format = 1;
       show-temperature = false;
       show-fan = false;
