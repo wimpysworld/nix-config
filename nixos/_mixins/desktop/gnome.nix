@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ lib, pkgs, hostname,... }: {
   imports = [
     ./qt-style.nix
   ];
@@ -7,19 +7,26 @@
     eyedropper
     formatter
     gnome.gnome-tweaks
+    gnome-usage
     gnomeExtensions.appindicator
     gnomeExtensions.autohide-battery
+    gnomeExtensions.battery-time
     gnomeExtensions.dash-to-dock
     gnomeExtensions.emoji-copy
+    gnomeExtensions.freon
+    gnomeExtensions.hide-workspace-thumbnails
     gnomeExtensions.just-perfection
     gnomeExtensions.logo-menu
     #gnomeExtensions.maccy-menu
     gnomeExtensions.status-area-horizontal-spacing
-    #gnomeExtensions.useless-gaps
-    gnomeExtensions.wayland-or-x11
+    #gnomeExtensions.useless-gaps               - needs overlay
+    gnomeExtensions.upower-battery
+    gnomeExtensions.vitals
     gnomeExtensions.wifi-qrcode
-    gnomeExtensions.wireless-hid
+    unstable.gnomeExtensions.workspace-switcher-manager
     usbimager
+  ] ++ lib.optionals (hostname == "tanis" || hostname == "sidious") [
+    gnomeExtensions.thinkpad-battery-threshold
   ];
 
   # Exclude the GNOME apps I don't use
@@ -80,7 +87,6 @@
             document-font-name="Work Sans 12"
             font-name="Work Sans 12"
             #gtk-theme="io.elementary.stylesheet.bubblegum"
-            gtk-enable-primary-paste=true
             #icon-theme="elementary"
             monospace-font-name="FiraCode Nerd Font Medium 13"
             text-scaling-factor=1.0
@@ -95,8 +101,32 @@
             theme-name="freedesktop"
 
             [org.gnome.desktop.wm.keybindings]
-            switch-to-workspace-left=[ "<Primary><Alt>Left" ]
-            switch-to-workspace-right=[ "<Primary><Alt>Right" ]
+            switch-to-workspace-1=['<Control><Alt>1', '<Control><Alt>Home', '<Super>Home']
+            switch-to-workspace-2=['<Control><Alt>2']
+            switch-to-workspace-3=['<Control><Alt>3']
+            switch-to-workspace-4=['<Control><Alt>4']
+            switch-to-workspace-5=['<Control><Alt>5']
+            switch-to-workspace-6=['<Control><Alt>6']
+            switch-to-workspace-7=['<Control><Alt>7']
+            switch-to-workspace-8=['<Control><Alt>8']
+            switch-to-workspace-down=['<Control><Alt>Down']
+            switch-to-workspace-last=['<Control><Alt>End', '<Super>End']
+            switch-to-workspace-left=['<Control><Alt>Left']
+            switch-to-workspace-right=['<Control><Alt>Right']
+            switch-to-workspace-up=['<Control><Alt>Up']
+            move-to-workspace-1=['<Super><Alt>1', '<Super><Alt>Home']
+            move-to-workspace-2=['<Super><Alt>2']
+            move-to-workspace-3=['<Super><Alt>3']
+            move-to-workspace-4=['<Super><Alt>4']
+            move-to-workspace-5=['<Super><Alt>5']
+            move-to-workspace-6=['<Super><Alt>6']
+            move-to-workspace-7=['<Super><Alt>7']
+            move-to-workspace-8=['<Super><Alt>8']
+            move-to-workspace-down=['<Super><Alt>Down']
+            move-to-workspace-last=['<Super><Alt>End']
+            move-to-workspace-left=['<Super><Alt>Left']
+            move-to-workspace-right=['<Super><Alt>Right']
+            move-to-workspace-up=["<Super><Alt>Up"]
 
             [org.gnome.desktop.wm.preferences]
             audible-bell=false
@@ -128,16 +158,22 @@
             overrides={'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/DecorationLayout': <':minimize,maximize,close,menu'>, 'Gtk/ShowUnicodeMenu': <0>}
 
             [org.gnome.shell]
-            enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'dash-to-dock@micxgx.gmail.com', 'workspace-indicator@gnome-shell-extensions.gcampax.github.com', 'auto-move-windows@gnome-shell-extensions.gcampax.github.com', 'autohide-battery@sitnik.ru', 'just-perfection-desktop@just-perfection', 'waylandorx11@injcristianrojas.github.com', 'wifiqrcode@glerro.pm.me', 'wireless-hid@chlumskyvaclav.gmail.com', 'logomenu@aryan_k', 'status-area-horizontal-spacing@mathematical.coffee.gmail.com' ]
-
-            [org.gnome.shell.extensions.dash-to-dock]
-            disable-overview-on-startup=true
-            dock-position="LEFT"
-            hot-keys=false
-            show-trash=false
+            enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'dash-to-dock@micxgx.gmail.com', 'auto-move-windows@gnome-shell-extensions.gcampax.github.com', 'autohide-battery@sitnik.ru', 'just-perfection-desktop@just-perfection', 'wifiqrcode@glerro.pm.me', 'logomenu@aryan_k', 'status-area-horizontal-spacing@mathematical.coffee.gmail.com', 'emoji-copy@felipeftn', 'freon@UshakovVasilii_Github.yahoo.com', 'upower-battery@codilia.com', 'batime@martin.zurowietz.de', 'workspace-switcher-manager@G-dH.github.com', 'hide-workspace-thumbnails@dylanmc.ca', 'Vitals@CoreCoding.com']
 
             [org.gnome.shell.extensions.auto-move-windows]
             application-list=['brave-browser.desktop:1', 'Wavebox.desktop:2', 'discord.desktop:2', 'org.telegram.desktop.desktop:3', 'nheko.desktop:3', 'code.desktop:4', 'GitKraken.desktop:4', 'com.obsproject.Studio.desktop:6']
+
+            [org.gnome.shell.extensions.dash-to-dock]
+            click-action="skip"
+            disable-overview-on-startup=true
+            dock-position="LEFT"
+            hot-keys=false
+            scroll-action = "cycle-windows"
+            show-trash=false
+
+            [org.gnome.shell.extensions.emoji-copy]
+            always-show=false
+            emoji-keybind=['<Primary><Alt>e']
 
             [org.gnome.shell.extensions.just-perfection]
             startup-status=0
@@ -145,15 +181,53 @@
 
             [org.gnome.shell.extensions.Logo-menu]
             menu-button-icon-image=23
-            menu-button-terminal="tilix"
+            menu-button-system-monitor="${pkgs.gnome-usage}/bin/gnome-usage"
+            menu-button-terminal="${pkgs.tilix}/bin/tilix"
             show-activities-button=true
             symbolic-icon=true
+
+            [org.gnome.shell.extensions.vitals]
+            alphabetize=false
+            fixed-widths=true
+            include-static-info=false
+            menu-centered=true
+            monitor-cmd="${pkgs.gnome-usage}/bin/gnome-usage"
+            network-speed-format=1
+            show-temperature=false
+            show-fan=false
+            update-time=2
+            use-higher-precision=false
+
+            [org/gnome/shell/extensions/workspace-switcher-manager]
+            active-show-ws-name=true
+            active-show-app-name=false
+            inactive-show-ws-name=true
+            inactive-show-app-name=false
 
             [org.gtk.gtk4.Settings.FileChooser]
             clock-format="24h"
 
+            [org.gtk.gtk4.settings.file-chooser]
+            show-hidden=false
+            show-size-column=true
+            show-type-column=true
+            sort-column="name"
+            sort-directories-first=true
+            sort-order="ascending"
+            type-format="category"
+            view-type="list"
+
             [org.gtk.Settings.FileChooser]
             clock-format="24h"
+
+            [org.gtk.settings.file-chooser]
+            show-hidden=false
+            show-size-column=true
+            show-type-column=true
+            sort-column="name"
+            sort-directories-first=true
+            sort-order="ascending"
+            type-format="category"
           '';
         };
       };
