@@ -75,6 +75,9 @@ with lib.hm.gvariant;
       move-to-workspace-left = [ "<Super><Alt>Left" ];
       move-to-workspace-right = [ "<Super><Alt>Right" ];
       move-to-workspace-up = [ "<Super><Alt>Up" ];
+      # Disable maximise/unmaximise because tiling-assistant extension handles it
+      maximize = [];
+      unmaximize = [];
     };
 
     "org/gnome/desktop/wm/preferences" = {
@@ -90,13 +93,16 @@ with lib.hm.gvariant;
     };
 
     "org/gnome/mutter" = {
-      workspaces-only-on-primary = false;
       dynamic-workspaces = false;
+      # Disable Mutter edge-tiling because tiling-assistant extension handles it
+      edge-tiling = false;
+      workspaces-only-on-primary = false;
     };
 
     "org/gnome/mutter/keybindings" = {
-      toggle-tiled-left = [ "<Super>Left" ];
-      toggle-tiled-right = [ "<Super>Right" ];
+      # Disable Mutter toggle-tiled because tiling-assistant extension handles it
+      toggle-tiled-left = [];
+      toggle-tiled-right = [];
     };
 
     "org/gnome/nautilus/preferences" = {
@@ -138,7 +144,7 @@ with lib.hm.gvariant;
 
     "org/gnome/shell" = {
       disabled-extensions = [];
-      enabled-extensions = [ "appindicatorsupport@rgcjonas.gmail.com" "dash-to-dock@micxgx.gmail.com" "auto-move-windows@gnome-shell-extensions.gcampax.github.com" "autohide-battery@sitnik.ru" "just-perfection-desktop@just-perfection" "wifiqrcode@glerro.pm.me" "logomenu@aryan_k" "status-area-horizontal-spacing@mathematical.coffee.gmail.com" "emoji-copy@felipeftn" "freon@UshakovVasilii_Github.yahoo.com" "upower-battery@codilia.com" "batime@martin.zurowietz.de" "workspace-switcher-manager@G-dH.github.com" "hide-workspace-thumbnails@dylanmc.ca" "Vitals@CoreCoding.com"]
+      enabled-extensions = [ "appindicatorsupport@rgcjonas.gmail.com" "dash-to-dock@micxgx.gmail.com" "auto-move-windows@gnome-shell-extensions.gcampax.github.com" "autohide-battery@sitnik.ru" "just-perfection-desktop@just-perfection" "wifiqrcode@glerro.pm.me" "logomenu@aryan_k" "status-area-horizontal-spacing@mathematical.coffee.gmail.com" "emoji-copy@felipeftn" "freon@UshakovVasilii_Github.yahoo.com" "wireless-hid@chlumskyvaclav.gmail.com" "batime@martin.zurowietz.de" "workspace-switcher-manager@G-dH.github.com" "hide-workspace-thumbnails@dylanmc.ca" "Vitals@CoreCoding.com" "tiling-assistant@leleat-on-github" ]
       ++ lib.optionals (hostname == "tanis" || hostname == "sidious") [ "thinkpad-battery-threshold@marcosdalvarez.org" ];
     };
 
@@ -173,6 +179,14 @@ with lib.hm.gvariant;
       symbolic-icon = true;
     };
 
+    "org/gnome/shell/extensions/tiling-assistant" = {
+      enable-advanced-experimental-features = true;
+      show-layout-panel-indicator = true;
+      single-screen-gap = 10;
+      window-gap = 10;
+      maximize-with-gap = true;
+    };
+
     "org/gnome/shell/extensions/vitals" = {
       alphabetize = false;
       fixed-widths = true;
@@ -185,6 +199,10 @@ with lib.hm.gvariant;
       show-voltage = false;
       update-time = 2;
       use-higher-precision = false;
+    };
+
+    "org/gnome/shell/extensions/wireless-hid" = {
+      panel-box-index = 4;
     };
 
     "org/gnome/shell/extensions/workspace-switcher-manager" = {

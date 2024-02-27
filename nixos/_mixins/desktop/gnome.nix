@@ -17,10 +17,9 @@
     gnomeExtensions.hide-workspace-thumbnails
     gnomeExtensions.just-perfection
     gnomeExtensions.logo-menu
-    #gnomeExtensions.maccy-menu
     gnomeExtensions.status-area-horizontal-spacing
-    #gnomeExtensions.useless-gaps               - needs overlay
-    gnomeExtensions.upower-battery
+    gnomeExtensions.tiling-assistant
+    gnomeExtensions.wireless-hid
     gnomeExtensions.vitals
     gnomeExtensions.wifi-qrcode
     unstable.gnomeExtensions.workspace-switcher-manager
@@ -129,6 +128,9 @@
             move-to-workspace-left=['<Super><Alt>Left']
             move-to-workspace-right=['<Super><Alt>Right']
             move-to-workspace-up=["<Super><Alt>Up"]
+            # Disable maximise/unmaximise because tiling-assistant extension handles it
+            maximize=[]
+            unmaximize=[]
 
             [org.gnome.desktop.wm.preferences]
             audible-bell=false
@@ -141,12 +143,15 @@
             temperature-unit="centigrade"
 
             [org.gnome.mutter]
-            workspaces-only-on-primary=false
             dynamic-workspaces=false
+            # Disable Mutter edge-tiling because tiling-assistant extension handles it
+            edge-tiling=false
+            workspaces-only-on-primary=false
 
             [org.gnome.mutter.keybindings]
-            toggle-tiled-left=[ "<Super>Left" ]
-            toggle-tiled-right=[ "<Super>Right" ]
+            # Disable Mutter toggle-tiled because tiling-assistant extension handles it
+            toggle-tiled-left=[]
+            toggle-tiled-right=[]
 
             [org.gnome.nautilus.preferences]
             default-folder-viewer="list-view"
@@ -160,7 +165,7 @@
             overrides={'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/DecorationLayout': <':minimize,maximize,close,menu'>, 'Gtk/ShowUnicodeMenu': <0>}
 
             [org.gnome.shell]
-            enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'dash-to-dock@micxgx.gmail.com', 'auto-move-windows@gnome-shell-extensions.gcampax.github.com', 'autohide-battery@sitnik.ru', 'just-perfection-desktop@just-perfection', 'wifiqrcode@glerro.pm.me', 'logomenu@aryan_k', 'status-area-horizontal-spacing@mathematical.coffee.gmail.com', 'emoji-copy@felipeftn', 'freon@UshakovVasilii_Github.yahoo.com', 'upower-battery@codilia.com', 'batime@martin.zurowietz.de', 'workspace-switcher-manager@G-dH.github.com', 'hide-workspace-thumbnails@dylanmc.ca', 'Vitals@CoreCoding.com']
+            enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'dash-to-dock@micxgx.gmail.com', 'auto-move-windows@gnome-shell-extensions.gcampax.github.com', 'autohide-battery@sitnik.ru', 'just-perfection-desktop@just-perfection', 'wifiqrcode@glerro.pm.me', 'logomenu@aryan_k', 'status-area-horizontal-spacing@mathematical.coffee.gmail.com', 'emoji-copy@felipeftn', 'freon@UshakovVasilii_Github.yahoo.com', 'wireless-hid@chlumskyvaclav.gmail.com', 'batime@martin.zurowietz.de', 'workspace-switcher-manager@G-dH.github.com', 'hide-workspace-thumbnails@dylanmc.ca', 'Vitals@CoreCoding.com', 'tiling-assistant@leleat-on-github']
 
             [org.gnome.shell.extensions.auto-move-windows]
             application-list=['brave-browser.desktop:1', 'Wavebox.desktop:2', 'discord.desktop:2', 'org.telegram.desktop.desktop:3', 'nheko.desktop:3', 'code.desktop:4', 'GitKraken.desktop:4', 'com.obsproject.Studio.desktop:6']
@@ -188,6 +193,14 @@
             show-activities-button=true
             symbolic-icon=true
 
+            [org.gnome.shell.extensions.tiling-assistant]
+            enable-advanced-experimental-features=true
+            maximize-with-gap=true
+            show-layout-panel-indicator=true
+            single-screen-gap=10
+            window-gap=10
+            overridden-settings={'org.gnome.mutter.edge-tiling': <@mb nothing>, 'org.gnome.desktop.wm.keybindings.maximize': <@mb nothing>, 'org.gnome.desktop.wm.keybindings.unmaximize': <@mb nothing>, 'org.gnome.mutter.keybindings.toggle-tiled-left': <['<Super>Left']>, 'org.gnome.mutter.keybindings.toggle-tiled-right': <['<Super>Right']>}
+
             [org.gnome.shell.extensions.vitals]
             alphabetize=false
             fixed-widths=true
@@ -200,6 +213,9 @@
             show-voltage=false1
             update-time=2
             use-higher-precision=false
+
+            [org.gnome.shell.extensions.wireless-hid]
+            panel-box-index=4
 
             [org/gnome/shell/extensions/workspace-switcher-manager]
             active-show-ws-name=true
