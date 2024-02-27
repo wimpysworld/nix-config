@@ -179,6 +179,10 @@ with lib.hm.gvariant;
       symbolic-icon = true;
     };
 
+    "org/gnome/shell/extensions/thinkpad-battery-threshold" = {
+      color-mode = false;
+    };
+
     "org/gnome/shell/extensions/tiling-assistant" = {
       enable-advanced-experimental-features = true;
       show-layout-panel-indicator = true;
