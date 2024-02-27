@@ -193,6 +193,9 @@
             show-activities-button=true
             symbolic-icon=true
 
+            [org.gnome.shell.extensions.thinkpad-battery-threshold]
+            color-mode=false
+
             [org.gnome.shell.extensions.tiling-assistant]
             enable-advanced-experimental-features=true
             maximize-with-gap=true
