@@ -300,7 +300,7 @@ in
     };
   };
 
-  sops = {
+  sops = lib.mkIf (notISO) {
     age = {
       keyFile = "/home/${username}/.config/sops/age/keys.txt";
       generateKey = false;
