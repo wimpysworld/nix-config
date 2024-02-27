@@ -193,8 +193,9 @@
             menu-centered=true
             monitor-cmd="${pkgs.gnome-usage}/bin/gnome-usage"
             network-speed-format=1
-            show-temperature=false
             show-fan=false
+            show-temperature=false
+            show-voltage=false1
             update-time=2
             use-higher-precision=false
 
