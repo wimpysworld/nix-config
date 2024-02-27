@@ -36,9 +36,9 @@ in
       enable = true;
       # Conditionally set Public DNS based on username, defaulting if user not matched
       insertNameservers = if builtins.hasAttr username userDnsSettings then
-                             userDnsSettings.${username}
-                           else
-                             defaultDns;
+                            userDnsSettings.${username}
+                          else
+                            defaultDns;
       wifi = {
         backend = "iwd";
         powersave = false;
