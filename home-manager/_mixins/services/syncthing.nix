@@ -2,7 +2,7 @@
   home.packages = with pkgs; [
     stc-cli
   ];
-  imports = [ ] ++ lib.optionals (desktop != null) [
+  imports = lib.optionals (desktop != null) [
     ./syncthing-tray.nix
   ];
   programs.fish.shellAliases = {
