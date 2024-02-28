@@ -175,7 +175,6 @@ in
       outputs.overlays.additions
       outputs.overlays.modifications
       outputs.overlays.unstable-packages
-
       # Add overlays exported from other flakes:
     ];
     # Configure your nixpkgs instance
