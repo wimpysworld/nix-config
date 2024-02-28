@@ -95,6 +95,13 @@ in
     hashedPassword = "$6$UXNQ20Feu82wCFK9$dnJTeSqoECw1CGMSUdxKREtraO.Nllv3/fW9N3m7lPHYxFKA/Cf8YqYGDmiWNfaKeyx2DKdURo0rPYBrSZRL./";
   };
 
+  services.xserver.desktopManager.gnome = lib.mkIf (isWorkstation && desktop == "gnome") {
+    favoriteAppsOverride = lib.mkForce ''
+      [org.gnome.shell]
+      favorite-apps=[ 'brave-browser.desktop', 'authy.desktop', 'Wavebox.desktop', 'org.telegram.desktop.desktop', 'discord.desktop', 'nheko.desktop', 'code.desktop', 'GitKraken.desktop', 'com.obsproject.Studio.desktop' ]
+    '';
+  };
+
   systemd.tmpfiles.rules = [
     "d /mnt/snapshot/${username} 0755 ${username} users"
   ];
