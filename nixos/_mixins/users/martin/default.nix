@@ -87,6 +87,30 @@ in
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
       ];
     };
+    dconf.profiles.user.databases = [{
+      settings = with lib.gvariant; {
+        "org/gnome/desktop/input-sources" = lib.mkIf (isWorkstation) {
+          xkb-options = [ "grp:alt_shift_toggle" "caps:none" ];
+        };
+
+        "org/gnome/desktop/wm/preferences" = lib.mkIf (desktop == "gnome") {
+          num-workspaces = mkInt32 8;
+          workspace-names = [ "Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff" ];
+        };
+
+        "org/gnome/shell" = lib.mkIf (desktop == "gnome") {
+          disabled-extensions = mkEmptyArray type.string;
+        };
+
+        "org/gnome/shell/extensions/auto-move-windows" = lib.mkIf (desktop == "gnome") {
+          application-list = [ "brave-browser.desktop:1" "Wavebox.desktop:2" "discord.desktop:2" "org.telegram.desktop.desktop:3" "nheko.desktop:3" "code.desktop:4" "GitKraken.desktop:4" "com.obsproject.Studio.desktop:6" ];
+        };
+
+        "org/gnome/shell/extensions/tiling-assistant" = lib.mkIf (desktop == "gnome") {
+          show-layout-panel-indicator = true;
+        };
+      };
+    }];
   };
 
   users.users.martin = {
@@ -95,7 +119,7 @@ in
     hashedPassword = "$6$UXNQ20Feu82wCFK9$dnJTeSqoECw1CGMSUdxKREtraO.Nllv3/fW9N3m7lPHYxFKA/Cf8YqYGDmiWNfaKeyx2DKdURo0rPYBrSZRL./";
   };
 
-  services.xserver.desktopManager.gnome = lib.mkIf (isWorkstation && desktop == "gnome") {
+  services.xserver.desktopManager.gnome = lib.mkIf (desktop == "gnome") {
     favoriteAppsOverride = lib.mkForce ''
       [org.gnome.shell]
       favorite-apps=[ 'brave-browser.desktop', 'authy.desktop', 'Wavebox.desktop', 'org.telegram.desktop.desktop', 'discord.desktop', 'nheko.desktop', 'code.desktop', 'GitKraken.desktop', 'com.obsproject.Studio.desktop' ]

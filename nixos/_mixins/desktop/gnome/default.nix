@@ -58,10 +58,6 @@ in
           exec-arg = "-e";
         };
 
-        "org/gnome/desktop/input-sources" = {
-          xkb-options = [ "grp:alt_shift_toggle" "caps:none" ];
-        };
-
         "org/gnome/desktop/interface" = {
           clock-format = "24h";
           clock-show-weekday = true;
@@ -124,9 +120,7 @@ in
         "org/gnome/desktop/wm/preferences" = {
           audible-bell = false;
           button-layout = ":minimize,maximize,close";
-          num-workspaces = mkInt32 8;
           titlebar-font = "Work Sans Semi-Bold 12";
-          workspace-names = [ "Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff" ];
         };
 
         "org/gnome/GWeather" = {
@@ -177,7 +171,6 @@ in
         };
 
         "org/gnome/shell" = {
-          disabled-extensions = mkEmptyArray type.string;
           enabled-extensions = [
             "appindicatorsupport@rgcjonas.gmail.com"
             "autohide-battery@sitnik.ru"
@@ -197,10 +190,6 @@ in
           ]
           ++ lib.optionals (isInstall) [ "freon@UshakovVasilii_Github.yahoo.com" ]
           ++ lib.optionals (isThinkpad) [ "thinkpad-battery-threshold@marcosdalvarez.org" ];
-        };
-
-        "org/gnome/shell/extensions/auto-move-windows" = {
-          application-list = [ "brave-browser.desktop:1" "Wavebox.desktop:2" "discord.desktop:2" "org.telegram.desktop.desktop:3" "nheko.desktop:3" "code.desktop:4" "GitKraken.desktop:4" "com.obsproject.Studio.desktop:6" ];
         };
 
         "org/gnome/shell/extensions/dash-to-dock" = {
@@ -236,7 +225,6 @@ in
 
         "org/gnome/shell/extensions/tiling-assistant" = {
           enable-advanced-experimental-features = true;
-          show-layout-panel-indicator = true;
           single-screen-gap = mkInt32 10;
           window-gap = mkInt32 10;
           maximize-with-gap = true;
@@ -355,7 +343,7 @@ in
           enable = true;
           favoriteAppsOverride = ''
             [org.gnome.shell]
-            favorite-apps=[ 'firefox.desktop' ]
+            favorite-apps=[ 'firefox.desktop', 'org.gnome.Nautilus.desktop' 'com.gexperts.Tilix.desktop', 'org.gnome.Software.desktop', 'org.gnome.Settings.desktop', 'org.gnome.Tour.desktop' ]
           '';
         };
       };
