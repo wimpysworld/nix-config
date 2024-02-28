@@ -1,4 +1,8 @@
-{ desktop, lib, pkgs, ... }: {
+{ desktop, hostname, lib, pkgs, username, ... }:
+let
+  hasRazerPeripherals = if (hostname == "phasma" || hostname == "vader") then true else false;
+in
+{
   imports = [
     ../services/flatpak.nix
     ../services/networkmanager.nix
@@ -11,6 +15,10 @@
       enable = true;
     };
   };
+
+  environment.systemPackages = with pkgs; lib.optionals (hasRazerPeripherals) [
+    polychromatic
+  ];
 
   fonts = {
     # Enable a basic set of fonts providing several font styles and families and reasonable coverage of Unicode.
@@ -56,6 +64,14 @@
     opengl = {
       enable = true;
       driSupport = true;
+    };
+    openrazer = lib.mkIf (hasRazerPeripherals) {
+      enable = true;
+      devicesOffOnScreensaver = false;
+      keyStatistics = true;
+      mouseBatteryNotifier = true;
+      syncEffectsEnabled = true;
+      users = [ "${username}" ];
     };
     sane = {
       enable = true;
