@@ -3,10 +3,6 @@ let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
 in
 {
-  imports = [
-    ./qt-style.nix
-  ];
-
   # Exclude the elementary apps I don't use
   environment = {
     pantheon.excludePackages = with pkgs.pantheon; [
@@ -41,6 +37,12 @@ in
     gnome-disks.enable = isInstall;
     pantheon-tweaks.enable = isInstall;
     seahorse.enable = isInstall;
+  };
+
+  qt = {
+    enable = true;
+    platformTheme = "gnome";
+    style = "adwaita-dark";
   };
 
   services = {
