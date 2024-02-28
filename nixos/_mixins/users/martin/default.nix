@@ -22,6 +22,7 @@ in
     zoom-us
   ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
     brave
+    chromium
     google-chrome
     microsoft-edge
     opera
