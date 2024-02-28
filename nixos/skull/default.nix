@@ -84,9 +84,6 @@
       settings.server = [ "94.140.14.15" "94.140.15.16"];
       settings = { cache-size=500; };
     };
-    hardware = {
-      bolt.enable = true;
-    };
     netdata = {
       enable = true;
       package = pkgs.netdataCloud;
