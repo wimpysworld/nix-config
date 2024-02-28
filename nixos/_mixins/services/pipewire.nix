@@ -1,4 +1,7 @@
 { desktop, lib, pkgs, ... }:
+let
+  isWorkstation = if (desktop != null) then true else false;
+in
 {
   # Enable the threadirqs kernel parameter to reduce audio latency
   # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
@@ -8,7 +11,7 @@
 
   environment.systemPackages = with pkgs; [
     pulseaudio
-  ] ++ lib.optionals (desktop != null) [
+  ] ++ lib.optionals (isWorkstation) [
     pavucontrol
   ];
 

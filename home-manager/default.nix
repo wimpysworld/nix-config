@@ -2,6 +2,7 @@
 let
   inherit (pkgs.stdenv) isDarwin;
   isLima = builtins.substring 0 5 hostname == "lima-";
+  isWorkstation = if (desktop != null) then true else false;
 in
 {
   # Only import desktop configuration if the host is desktop enabled
@@ -19,7 +20,7 @@ in
   ]
   ++ lib.optional (builtins.isPath (./. + "/_mixins/users/${username}")) ./_mixins/users/${username}
   ++ lib.optional (builtins.pathExists (./. + "/_mixins/users/${username}/hosts/${hostname}.nix")) ./_mixins/users/${username}/hosts/${hostname}.nix
-  ++ lib.optional (desktop != null) ./_mixins/desktop;
+  ++ lib.optional (isWorkstation) ./_mixins/desktop;
 
   home = {
     activation.report-changes = config.lib.dag.entryAnywhere ''

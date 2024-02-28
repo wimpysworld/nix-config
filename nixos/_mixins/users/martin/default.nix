@@ -1,9 +1,10 @@
 { config, desktop, lib, pkgs, username, ... }:
 let
+  isWorkstation = if (desktop != null) then true else false;
   stable-packages = with pkgs;  [
     _1password
     lastpass-cli
-  ] ++ lib.optionals (desktop != null) [
+  ] ++ lib.optionals (isWorkstation) [
     _1password-gui
     appimage-run
     authy
@@ -20,7 +21,7 @@ let
   ];
 
   # For fast moving apps; use the unstable branch
-  unstable-packages = with pkgs.unstable; lib.optionals (desktop != null) [
+  unstable-packages = with pkgs.unstable; lib.optionals (isWorkstation) [
     brave
     google-chrome
     microsoft-edge
@@ -31,7 +32,7 @@ let
   ];
 in
 {
-  imports = lib.optionals (desktop != null) [
+  imports = lib.optionals (isWorkstation) [
     ../../desktop/chromium.nix
     ../../desktop/chromium-extensions.nix
     ../../desktop/firefox.nix

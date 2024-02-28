@@ -26,7 +26,7 @@ in
     ./${hostname}
     ./_mixins/scripts
     ./_mixins/users
-  ] ++ lib.optional (desktop != null) ./_mixins/desktop;
+  ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
 
   boot = {
     consoleLogLevel = 0;
@@ -270,11 +270,12 @@ in
     avahi = {
       enable = true;
       nssmdns = true;
-      openFirewall = true;
+      # Only open the avahi firewall ports on servers
+      openFirewall = isWorkstation;
       publish = {
         addresses = true;
       	enable = true;
-      	workstation = if (builtins.isString desktop) then true else false;
+      	workstation = isWorkstation;
       };
     };
     fwupd.enable = isInstall;
