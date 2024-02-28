@@ -1,6 +1,7 @@
 { desktop, hostname, lib, pkgs, username, ... }:
 let
   defaultDns = [ "1.1.1.1" "1.0.0.1" ];
+  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   hasRazerPeripherals = if (hostname == "phasma" || hostname == "vader") then true else false;
   saveBattery = if (hostname != "phasma" || hostname != "vader") then true else false;
 
@@ -123,7 +124,28 @@ in
   };
 
   programs = {
-    system-config-printer = {
+    chromium = lib.mkIf (isInstall) {
+      enable = true;
+      extraOpts = {
+        "AutofillAddressEnabled" = false;
+        "AutofillCreditCardEnabled" = false;
+        "BuiltInDnsClientEnabled" = false;
+        "DeviceMetricsReportingEnabled" = true;
+        "ReportDeviceCrashReportInfo" = false;
+        "PasswordManagerEnabled" = false;
+        "SpellcheckEnabled" = true;
+        "SpellcheckLanguage" = [
+          "en-GB"
+          "en-US"
+        ];
+        "VoiceInteractionHotwordEnabled" = false;
+      };
+    };
+    firefox = {
+      enable = true;
+      languagePacks = [ "en-GB" ];
+      package = pkgs.firefox;
+    };
       enable = if (desktop == "mate") then true else false;
     };
   };
