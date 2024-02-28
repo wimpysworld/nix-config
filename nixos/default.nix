@@ -94,6 +94,7 @@ in
       micro
       util-linux
     ];
+
     systemPackages = with pkgs; [
       age
       git
@@ -117,6 +118,7 @@ in
       pods
       quickemu
     ] ++ (if lib.elem "nvidia" config.services.xserver.videoDrivers then [ nvtop vdpauinfo ] else [ nvtop-amd ]);
+
     variables = {
       EDITOR = "micro";
       SYSTEMD_EDITOR = "micro";
