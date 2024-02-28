@@ -6,7 +6,6 @@ let
     lastpass-cli
   ] ++ lib.optionals (isWorkstation) [
     _1password-gui
-    appimage-run
     authy
     gimp-with-plugins
     irccloud
