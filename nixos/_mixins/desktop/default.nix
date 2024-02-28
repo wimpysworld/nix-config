@@ -124,8 +124,9 @@ in
   };
 
   programs = {
-    chromium = lib.mkIf (isInstall) {
-      enable = true;
+    chromium = {
+      # chromium.enable just enables the Chromium policies.
+      enable = isInstall;
       extraOpts = {
         "AutofillAddressEnabled" = false;
         "AutofillCreditCardEnabled" = false;
