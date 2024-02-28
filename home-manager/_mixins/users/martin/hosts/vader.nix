@@ -46,7 +46,7 @@ with lib.hm.gvariant;
     '';
   };
 
-  dconf.settings = lib.mkIf (desktop != null) {
+  dconf.settings = {
     "org/gnome/desktop/background" = {
       picture-options = "zoom";
       picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-2560x1440.png";

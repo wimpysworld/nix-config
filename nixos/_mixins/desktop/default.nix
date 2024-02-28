@@ -61,7 +61,6 @@
   };
 
   programs = {
-    dconf.enable = true;
     system-config-printer = {
       enable = if (desktop == "mate") then true else false;
     };
