@@ -13,9 +13,6 @@ let
     libreoffice
     tenacity
     wavebox
-    wmctrl
-    xdotool
-    ydotool
     zoom-us
   ];
 
