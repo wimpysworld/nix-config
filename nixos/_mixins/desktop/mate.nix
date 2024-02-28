@@ -24,6 +24,7 @@ in
     systemPackages = with pkgs; [
       gthumb
     ] ++ lib.optionals (isInstall) [
+      evolutionWithPlugins
       gnome.gnome-clocks
       gnome.gucharmap
       gnome.simple-scan
@@ -35,6 +36,7 @@ in
 
   # Enable some programs to provide a complete desktop
   programs = {
+    evolution.enable = isInstall;
     gnome-disks.enable = isInstall;
     nm-applet = {
       enable = true;
@@ -47,6 +49,7 @@ in
   # Enable services to round out the desktop
   services = {
     blueman.enable = true;
+    gnome.evolution-data-server.enable = isInstall;
     gnome.gnome-keyring.enable = true;
     gvfs.enable = true;
     xserver = {
