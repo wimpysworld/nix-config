@@ -2,7 +2,6 @@
   imports = [
     ../services/flatpak.nix
     ../services/networkmanager.nix
-    ../services/sane.nix
   ]
   ++ lib.optional (builtins.pathExists (./. + "/${desktop}.nix")) ./${desktop}.nix;
 
@@ -57,6 +56,11 @@
     opengl = {
       enable = true;
       driSupport = true;
+    };
+    sane = {
+      enable = true;
+      #extraBackends = with pkgs; [ hplipWithPlugin sane-airscan ];
+      extraBackends = with pkgs; [ sane-airscan ];
     };
   };
 

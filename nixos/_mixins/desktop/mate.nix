@@ -20,6 +20,7 @@
     systemPackages = with pkgs; [
       gnome.gnome-clocks
       gnome.gucharmap
+      gnome.simple-scan
       gnome-firmware
       gthumb
       pick-colour-picker
