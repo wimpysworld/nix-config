@@ -29,14 +29,26 @@ let
 in
 {
   imports = lib.optionals (isWorkstation) [
-    ../../desktop/chromium.nix
-    ../../desktop/chromium-extensions.nix
-    ../../desktop/firefox.nix
     ../../desktop/games.nix
     ../../desktop/obs-studio.nix
   ];
 
   environment.systemPackages = stable-packages ++ unstable-packages;
+
+  programs = {
+    chromium = lib.mkIf (isWorkstation) {
+      extensions = [
+        "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
+        "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
+        "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
+        "mdjildafknihdffpkfmmpnpoiajfjnjd" # Consent-O-Matic
+        "mnjggcdmjocbbbhaepdhchncahnbgone" # SponsorBlock for YouTube
+        "gebbhagfogifgggkldgodflihgfeippi" # Return YouTube Dislike
+        "fdpohaocaechififmbbbbbknoalclacl" # GoFullPage
+        "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
+      ];
+    };
+  };
 
   users.users.martin = {
     description = "Martin Wimpress";
