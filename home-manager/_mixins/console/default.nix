@@ -112,16 +112,13 @@ in
     ] ++ lib.optionals isLinux [
       figlet # Terminal ASCII banners
       iw # Terminal WiFi info
-      libva-utils # Terminal VAAPI info
       lurk # Modern Unix `strace`
       pciutils # Terminal PCI info
       psmisc # Traditional `ps`
-      python310Packages.gpustat # Terminal GPU info
       ramfetch # Terminal system info
       s-tui # Terminal CPU stress test
       stress-ng # Terminal CPU stress test
       usbutils # Terminal USB info
-      vdpauinfo # Terminal VDPAU info
       wavemon # Terminal WiFi monitor
       writedisk # Modern Unix `dd`
       zsync # Terminal file sync; FTBFS on aarch64-darwin
