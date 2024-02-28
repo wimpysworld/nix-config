@@ -1,9 +1,9 @@
 { config, desktop, hostname, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
 let
   notVM = if (hostname == "minimech" || hostname == "scrubber" || builtins.substring 0 5 hostname == "lima-") then false else true;
-  # Create some variable to control what doesn't get installed/enabled on ISO images
-  notISO = builtins.substring 0 4 hostname != "iso-";
-  onlyEnabledOnRealInstalls = notISO;
+  # Create some variable to control what doesn't get installed/enabled
+  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  isWorkstation = if (desktop != null) then true else false;
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
@@ -47,7 +47,7 @@ in
       "vm.page-cluster" = 1;
     };
     # Only enable the systemd-boot on installs, not live media (.ISO images)
-    loader = lib.mkIf (notISO) {
+    loader = lib.mkIf (isInstall) {
       efi.canTouchEfiVariables = true;
       systemd-boot.configurationLimit = 10;
       systemd-boot.consoleMode = "max";
@@ -99,7 +99,7 @@ in
       git
       ssh-to-age
       sops
-    ] ++ lib.optionals (notISO) [
+    ] ++ lib.optionals (isInstall) [
       inputs.crafts-flake.packages.${platform}.snapcraft
       inputs.fh.packages.${platform}.default
       clinfo
@@ -113,7 +113,7 @@ in
       podman-tui
       podman
       smartmontools
-    ] ++ lib.optionals (desktop != null && notISO && notVM) [
+    ] ++ lib.optionals (isInstall && isWorkstation && notVM) [
       pods
       quickemu
     ] ++ (if lib.elem "nvidia" config.services.xserver.videoDrivers then [ nvtop vdpauinfo ] else [ nvtop-amd ]);
@@ -163,7 +163,7 @@ in
         ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.tcpPorts;
       allowedUDPPorts = [ ]
         ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.udpPorts;
-      trustedInterfaces = lib.mkIf (notISO) [ "lxdbr0" ];
+      trustedInterfaces = lib.mkIf (isInstall) [ "lxdbr0" ];
     };
     hostName = hostname;
     useDHCP = lib.mkDefault true;
@@ -262,8 +262,8 @@ in
       };
     };
     nano.enable = lib.mkDefault false;
-    nix-index-database.comma.enable = onlyEnabledOnRealInstalls;
-    nix-ld.enable = onlyEnabledOnRealInstalls;
+    nix-index-database.comma.enable = isInstall;
+    nix-ld.enable = isInstall;
     ssh.startAgent = true;
   };
 
@@ -278,8 +278,8 @@ in
       	workstation = if (builtins.isString desktop) then true else false;
       };
     };
-    fwupd.enable = onlyEnabledOnRealInstalls;
-    kmscon = lib.mkIf (notISO) {
+    fwupd.enable = isInstall;
+    kmscon = lib.mkIf (isInstall) {
       enable = true;
       hwRender = true;
       fonts = [{
@@ -298,8 +298,8 @@ in
         PermitRootLogin = lib.mkDefault "no";
       };
     };
-    smartd.enable = onlyEnabledOnRealInstalls;
-    snap.enable = onlyEnabledOnRealInstalls;
+    smartd.enable = isInstall;
+    snap.enable = isInstall;
     sshguard = {
       enable = true;
       whitelist = [
@@ -311,7 +311,7 @@ in
     };
   };
 
-  sops = lib.mkIf (notISO) {
+  sops = lib.mkIf (isInstall) {
     age = {
       keyFile = "/home/${username}/.config/sops/age/keys.txt";
       generateKey = false;
@@ -356,7 +356,7 @@ in
   ];
 
   system = {
-    activationScripts.diff = lib.mkIf (notISO) {
+    activationScripts.diff = lib.mkIf (isInstall) {
       supportsDryActivation = true;
       text = ''
         if [ -e /run/current-system/boot.json ] && ! ${pkgs.gnugrep}/bin/grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
@@ -364,11 +364,11 @@ in
         fi
       '';
     };
-    nixos.label = lib.mkIf (notISO) "-";
+    nixos.label = lib.mkIf (isInstall) "-";
     stateVersion = stateVersion;
   };
 
-  virtualisation = lib.mkIf (notISO) {
+  virtualisation = lib.mkIf (isInstall) {
     lxd = {
       enable = true;
     };
