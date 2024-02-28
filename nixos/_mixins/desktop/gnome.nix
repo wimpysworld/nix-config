@@ -7,6 +7,7 @@
     eyedropper
     formatter
     gnome.gnome-tweaks
+    gnome.simple-scan
     gnome-usage
     gnomeExtensions.appindicator
     gnomeExtensions.autohide-battery

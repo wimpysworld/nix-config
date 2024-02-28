@@ -23,6 +23,7 @@
       appeditor
       formatter
       gnome.gnome-clocks
+      gnome.simple-scan
       loupe
       pick-colour-picker
       usbimager
