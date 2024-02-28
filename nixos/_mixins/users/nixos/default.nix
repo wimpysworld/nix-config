@@ -1,6 +1,9 @@
-{ config, desktop, lib, pkgs, username, ... }:
+{ config, desktop, hostname, lib, pkgs, username, ... }:
 let
+  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  isISO = !isInstall;
   isWorkstation = if (desktop != null) then true else false;
+  isWorkstationISO = if (isISO && isWorkstation) then true else false;
   install-system = pkgs.writeScriptBin "install-system" ''
 #!${pkgs.stdenv.shell}
 
@@ -165,13 +168,33 @@ fi
 '';
 in
 {
-  # Only include desktop components if one is supplied.
-  imports = lib.optional (isWorkstation) ./desktop.nix;
-
   config.users.users.nixos = {
     description = "NixOS";
   };
 
-  config.system.stateVersion = lib.mkForce lib.trivial.release;
-  config.environment.systemPackages = [ install-system ];
+  # All configurations for live media are below:
+  config.system = lib.mkIf (isISO) {
+    stateVersion = lib.mkForce lib.trivial.release;
+  };
+
+  config.environment.systemPackages = lib.optionals (isISO) [
+    install-system
+  ] ++ lib.optionals (isWorkstationISO) [
+    pkgs.gparted
+  ];
+
+  # All workstation configurations for live media are below.
+  config.isoImage = lib.mkIf (isWorkstationISO) {
+    edition = lib.mkForce "${desktop}";
+  };
+
+  config.services.xserver.displayManager.autoLogin = lib.mkIf (isWorkstationISO) {
+    user = "${username}";
+  };
+
+  config.systemd.tmpfiles.rules = lib.mkIf (isWorkstationISO) [
+    "d /home/${username}/Desktop 0755 ${username} users"
+    "L+ /home/${username}/Desktop/gparted.desktop - - - - ${pkgs.gparted}/share/applications/gparted.desktop"
+    "L+ /home/${username}/Desktop/io.calamares.calamares.desktop - - - - ${pkgs.calamares-nixos}/share/applications/io.calamares.calamares.desktop"
+  ];
 }
