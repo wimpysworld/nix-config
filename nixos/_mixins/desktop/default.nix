@@ -4,7 +4,6 @@ let
 in
 {
   imports = [
-    ../services/flatpak.nix
     ../services/networkmanager.nix
   ]
   ++ lib.optional (builtins.pathExists (./. + "/${desktop}.nix")) ./${desktop}.nix;
@@ -87,6 +86,7 @@ in
   };
 
   services = {
+    flatpak.enable = true;
     printing = {
       enable = true;
       drivers = with pkgs; [ gutenprint hplip ];
@@ -116,6 +116,23 @@ in
         }
     });
   '';
+
+  systemd.services = {
+    configure-flathub-repo = {
+      wantedBy = ["multi-user.target"];
+      path = [ pkgs.flatpak ];
+      script = ''
+        flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+      '';
+    };
+    configure-appcenter-repo = lib.mkIf (desktop == "pantheon") {
+      wantedBy = ["multi-user.target"];
+      path = [ pkgs.flatpak ];
+      script = ''
+        flatpak remote-add --if-not-exists appcenter https://flatpak.elementary.io/repo.flatpakrepo
+      '';
+    };
+  };
 
   xdg.portal = {
     config = {
