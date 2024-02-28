@@ -31,6 +31,11 @@
   # Enable some programs to provide a complete desktop
   programs = {
     gnome-disks.enable = true;
+    nm-applet = {
+      enable = true;
+      # When Indicator support for MATE is available in NixOS, this can be true
+      indicator = false;
+    };
     seahorse.enable = true;
   };
 
