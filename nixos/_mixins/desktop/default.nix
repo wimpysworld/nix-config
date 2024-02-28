@@ -1,6 +1,8 @@
 { desktop, hostname, lib, pkgs, username, ... }:
 let
   defaultDns = [ "1.1.1.1" "1.0.0.1" ];
+  # https://nixos.wiki/wiki/Steam
+  isGamestation = if (hostname == "phasma" || hostname == "vader") && (desktop != null) then true else false;
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   hasRazerPeripherals = if (hostname == "phasma" || hostname == "vader") then true else false;
   saveBattery = if (hostname != "phasma" && hostname != "vader") then true else false;
@@ -44,6 +46,8 @@ in
     wmctrl
     xdotool
     ydotool
+  ] ++ lib.optionals (isGamestation) [
+    mangohud
   ] ++ lib.optionals (isInstall && hasRazerPeripherals) [
     polychromatic
   ];
@@ -66,6 +70,7 @@ in
 
     fontconfig = {
       antialias = true;
+      cache32Bit = isGamestation;
       defaultFonts = {
         serif = [ "Source Serif" ];
         sansSerif = [ "Work Sans" "Fira Sans" "FiraGO" ];
@@ -107,6 +112,7 @@ in
     opengl = {
       enable = true;
       driSupport = true;
+      driSupport32Bit = isGamestation;
     };
     openrazer = lib.mkIf (hasRazerPeripherals) {
       enable = true;
@@ -146,6 +152,11 @@ in
       enable = true;
       languagePacks = [ "en-GB" ];
       package = pkgs.firefox;
+    };
+    steam = lib.mkIf (isGamestation) {
+      enable = true;
+      remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
+      dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
     };
     system-config-printer = lib.mkIf (isInstall) {
       enable = if (desktop == "mate") then true else false;

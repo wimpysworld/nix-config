@@ -2,6 +2,8 @@
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   isWorkstation = if (desktop != null) then true else false;
+  # https://nixos.wiki/wiki/Steam
+  isGamestation = if (hostname == "phasma" || hostname == "vader") && (isWorkstation) then true else false;
 in
 {
   # Enable the threadirqs kernel parameter to reduce audio latency
@@ -36,6 +38,7 @@ in
     pipewire = {
       enable = true;
       alsa.enable = true;
+      alsa.support32Bit = isGamestation;
       jack.enable = false;
       pulse.enable = true;
       wireplumber.enable = true;
