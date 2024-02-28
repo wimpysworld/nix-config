@@ -30,7 +30,7 @@ let
   };
 in
 {
-  imports = lib.optional (builtins.pathExists (./. + "/${desktop}.nix")) ./${desktop}.nix;
+  imports = lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {
     kernelParams = [ "quiet" "vt.global_cursor_default=0" "mitigations=off" ];
