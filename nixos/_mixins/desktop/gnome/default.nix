@@ -1,4 +1,4 @@
-{ lib, pkgs, hostname,... }:
+{ config, lib, pkgs, hostname,... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
@@ -310,6 +310,31 @@ in
     platformTheme = "gnome";
     style = "adwaita-dark";
   };
+
+  # Allow login/authentication with fingerprint or password
+  # - https://github.com/NixOS/nixpkgs/issues/171136
+  # - https://discourse.nixos.org/t/fingerprint-auth-gnome-gdm-wont-allow-typing-password/35295
+  security.pam.services.login.fprintAuth = false;
+  security.pam.services.gdm-fingerprint = lib.mkIf (config.services.fprintd.enable) {
+    text = ''
+      auth       required                    pam_shells.so
+      auth       requisite                   pam_nologin.so
+      auth       requisite                   pam_faillock.so      preauth
+      auth       required                    ${pkgs.fprintd}/lib/security/pam_fprintd.so
+      auth       optional                    pam_permit.so
+      auth       required                    pam_env.so
+      auth       [success=ok default=1]      ${pkgs.gnome.gdm}/lib/security/pam_gdm.so
+      auth       optional                    ${pkgs.gnome.gnome-keyring}/lib/security/pam_gnome_keyring.so
+
+      account    include                     login
+
+      password   required                    pam_deny.so
+
+      session    include                     login
+      session    optional                    ${pkgs.gnome.gnome-keyring}/lib/security/pam_gnome_keyring.so auto_start
+    '';
+  };
+  security.pam.services.gdm.enableGnomeKeyring = true;
 
   services = {
     gnome = {
