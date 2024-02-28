@@ -1,7 +1,13 @@
-{ config, desktop, lib, pkgs, username, ... }:
+{ config, desktop, inputs, lib, pkgs, platform, username, ... }:
 let
   isWorkstation = if (desktop != null) then true else false;
-  stable-packages = with pkgs;  [
+in
+{
+  imports = lib.optionals (isWorkstation) [
+    ../../desktop/obs-studio.nix
+  ];
+
+  environment.systemPackages = (with pkgs; [
     _1password
     lastpass-cli
   ] ++ lib.optionals (isWorkstation) [
@@ -14,10 +20,7 @@ let
     tenacity
     wavebox
     zoom-us
-  ];
-
-  # For fast moving apps; use the unstable branch
-  unstable-packages = with pkgs.unstable; lib.optionals (isWorkstation) [
+  ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
     brave
     google-chrome
     microsoft-edge
@@ -25,15 +28,9 @@ let
     telegram-desktop
     vivaldi
     vivaldi-ffmpeg-codecs
-  ];
-in
-{
-  imports = lib.optionals (isWorkstation) [
-    ../../desktop/games.nix
-    ../../desktop/obs-studio.nix
-  ];
-
-  environment.systemPackages = stable-packages ++ unstable-packages;
+  ]) ++ (with inputs; lib.optionals (isWorkstation) [
+    antsy-alien-attack-pico.packages.${platform}.default
+  ]);
 
   programs = {
     chromium = lib.mkIf (isWorkstation) {
