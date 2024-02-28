@@ -1,5 +1,6 @@
-{ desktop, lib, pkgs, ... }:
+{ desktop, hostname, lib, pkgs, ... }:
 let
+  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   isWorkstation = if (desktop != null) then true else false;
 in
 {
@@ -11,7 +12,7 @@ in
 
   environment.systemPackages = with pkgs; [
     pulseaudio
-  ] ++ lib.optionals (isWorkstation) [
+  ] ++ lib.optionals (isWorkstation && isInstall) [
     pavucontrol
   ];
 
