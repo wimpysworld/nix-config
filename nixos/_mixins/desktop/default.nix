@@ -15,7 +15,9 @@ in
     };
   };
 
-  environment.systemPackages = with pkgs; lib.optionals (hasRazerPeripherals) [
+  environment.systemPackages = with pkgs; [
+    appimage-run
+  ] ++ lib.optionals (hasRazerPeripherals) [
     polychromatic
   ];
 
