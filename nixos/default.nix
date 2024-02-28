@@ -136,7 +136,6 @@ in
         };
       };
     };
-    bolt.enable = true;
   };
 
   # Use passed hostname to configure basic networking
@@ -279,6 +278,7 @@ in
       };
     };
     fwupd.enable = isInstall;
+    hardware.bolt.enable = true;
     kmscon = lib.mkIf (isInstall) {
       enable = true;
       hwRender = true;
