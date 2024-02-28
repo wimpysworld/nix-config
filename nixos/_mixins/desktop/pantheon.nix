@@ -1,4 +1,8 @@
-{ pkgs, ... }: {
+{ hostname, pkgs, ... }:
+let
+  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+in
+{
   imports = [
     ./qt-style.nix
   ];
@@ -20,22 +24,23 @@
 
     # Add additional apps and include Yaru for syntax highlighting
     systemPackages = with pkgs; [
+      loupe
+      yaru-theme
+    ] ++ lib.optionals (isInstall) [
       appeditor
       formatter
       gnome.gnome-clocks
       gnome.simple-scan
-      loupe
       pick-colour-picker
       usbimager
-      yaru-theme
     ];
   };
 
   # Add GNOME Disks, Pantheon Tweaks and Seahorse
   programs = {
-    gnome-disks.enable = true;
-    pantheon-tweaks.enable = true;
-    seahorse.enable = true;
+    gnome-disks.enable = isInstall;
+    pantheon-tweaks.enable = isInstall;
+    seahorse.enable = isInstall;
   };
 
   services = {

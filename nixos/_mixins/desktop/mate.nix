@@ -1,4 +1,8 @@
-{ pkgs, ... }: {
+{ hostname, pkgs, ... }:
+let
+  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+in
+{
   imports = [
     ./qt-style.nix
   ];
@@ -18,11 +22,12 @@
 
     # Add some packages to complete the MATE desktop
     systemPackages = with pkgs; [
+      gthumb
+    ] ++ lib.optionals (isInstall) [
       gnome.gnome-clocks
       gnome.gucharmap
       gnome.simple-scan
       gnome-firmware
-      gthumb
       pick-colour-picker
       usbimager
     ];
@@ -30,13 +35,13 @@
 
   # Enable some programs to provide a complete desktop
   programs = {
-    gnome-disks.enable = true;
+    gnome-disks.enable = isInstall;
     nm-applet = {
       enable = true;
       # When Indicator support for MATE is available in NixOS, this can be true
       indicator = false;
     };
-    seahorse.enable = true;
+    seahorse.enable = isInstall;
   };
 
   # Enable services to round out the desktop
