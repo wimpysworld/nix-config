@@ -1,11 +1,16 @@
-{ config, desktop, inputs, lib, pkgs, platform, username, ... }:
+{ config, desktop, hostname, inputs, lib, pkgs, platform, username, ... }:
 let
   isWorkstation = if (desktop != null) then true else false;
+  # https://nixos.wiki/wiki/OBS_Studio
+  isStreamstation = if (hostname == "phasma" || hostname == "vader") && (isWorkstation) then true else false;
 in
 {
-  imports = lib.optionals (isWorkstation) [
-    ../../desktop/obs-studio.nix
-  ];
+  boot = lib.mkIf (isStreamstation) {
+    extraModulePackages = with config.boot.kernelPackages; [ v4l2loopback ];
+    extraModprobeConfig = ''
+      options v4l2loopback devices=1 video_nr=13 card_label="OBS Virtual Camera" exclusive_caps=1
+    '';
+  };
 
   environment.systemPackages = (with pkgs; [
     _1password
@@ -31,6 +36,42 @@ in
     vivaldi-ffmpeg-codecs
   ]) ++ (with inputs; lib.optionals (isWorkstation) [
     antsy-alien-attack-pico.packages.${platform}.default
+  ]) ++ (with pkgs; lib.optionals (isStreamstation) [
+    (wrapOBS {
+      plugins = with obs-studio-plugins; [
+        advanced-scene-switcher
+        obs-3d-effect
+        obs-advanced-masks
+        obs-command-source
+        obs-composite-blur
+        obs-dvd-screensaver
+        obs-freeze-filter
+        obs-gradient-source
+        obs-gstreamer
+        obs-markdown
+        obs-move-transition
+        obs-multi-rtmp
+        obs-pipewire-audio-capture
+        obs-rgb-levels
+        obs-scale-to-sound
+        obs-scene-as-transition
+        obs-shaderfilter
+        obs-source-clone
+        obs-source-record
+        obs-source-switcher
+        obs-stroke-glow-shadow
+        obs-teleport
+        obs-text-pthread
+        obs-transition-table
+        obs-urlsource
+        obs-vaapi
+        obs-vertical-canvas
+        obs-vintage-filter
+        obs-websocket
+        pixel-art
+        waveform
+      ];
+    })
   ]);
 
   programs = {
