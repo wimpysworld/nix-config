@@ -2,6 +2,7 @@
 let
   isWorkstation = if (desktop != null) then true else false;
 in
+{
   home.packages = with pkgs; [
     stc-cli
   ];
