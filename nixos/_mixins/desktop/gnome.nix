@@ -1,13 +1,13 @@
-{ lib, pkgs, hostname,... }: {
+{ lib, pkgs, hostname,... }:
+let
+  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+in
+{
   imports = [
     ./qt-style.nix
   ];
 
   environment.systemPackages = with pkgs; [
-    eyedropper
-    formatter
-    gnome.gnome-tweaks
-    gnome.simple-scan
     gnome-usage
     gnomeExtensions.appindicator
     gnomeExtensions.autohide-battery
@@ -24,6 +24,10 @@
     gnomeExtensions.vitals
     gnomeExtensions.wifi-qrcode
     unstable.gnomeExtensions.workspace-switcher-manager
+  ] ++ lib.optionals (isInstall) [
+    eyedropper
+    gnome.gnome-tweaks
+    gnome.simple-scan
     usbimager
   ] ++ lib.optionals (hostname == "tanis" || hostname == "sidious") [
     gnomeExtensions.thinkpad-battery-threshold
@@ -46,9 +50,9 @@
     evince.enable = true;
     file-roller.enable = true;
     geary.enable = false;
-    gnome-disks.enable = true;
+    gnome-disks.enable = isInstall;
     gnome-terminal.enable = false;
-    seahorse.enable = true;
+    seahorse.enable = isInstall;
   };
 
   services = {

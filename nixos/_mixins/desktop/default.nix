@@ -39,12 +39,12 @@ in
     };
   };
 
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = with pkgs; lib.optionals (isInstall) [
     appimage-run
     wmctrl
     xdotool
     ydotool
-  ] ++ lib.optionals (hasRazerPeripherals) [
+  ] ++ lib.optionals (isInstall && hasRazerPeripherals) [
     polychromatic
   ];
 
@@ -116,7 +116,7 @@ in
       syncEffectsEnabled = true;
       users = [ "${username}" ];
     };
-    sane = {
+    sane = lib.mkIf (isInstall) {
       enable = true;
       #extraBackends = with pkgs; [ hplipWithPlugin sane-airscan ];
       extraBackends = with pkgs; [ sane-airscan ];
@@ -146,17 +146,20 @@ in
       languagePacks = [ "en-GB" ];
       package = pkgs.firefox;
     };
+    system-config-printer = lib.mkIf (isInstall) {
       enable = if (desktop == "mate") then true else false;
     };
   };
 
   services = {
-    flatpak.enable = true;
-    printing = {
+    flatpak = lib.mkIf (isInstall) {
+      enable = true;
+    };
+    printing = lib.mkIf (isInstall) {
       enable = true;
       drivers = with pkgs; [ gutenprint hplip ];
     };
-    system-config-printer.enable = true;
+    system-config-printer.enable = isInstall;
 
     # Disable xterm
     xserver = {
@@ -183,14 +186,14 @@ in
   '';
 
   systemd.services = {
-    configure-flathub-repo = {
+    configure-flathub-repo = lib.mkIf (isInstall) {
       wantedBy = ["multi-user.target"];
       path = [ pkgs.flatpak ];
       script = ''
         flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
       '';
     };
-    configure-appcenter-repo = lib.mkIf (desktop == "pantheon") {
+    configure-appcenter-repo = lib.mkIf (isInstall && desktop == "pantheon") {
       wantedBy = ["multi-user.target"];
       path = [ pkgs.flatpak ];
       script = ''
