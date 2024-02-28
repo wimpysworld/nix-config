@@ -60,7 +60,7 @@
         "martin@tanis" = libx.mkHome { hostname = "tanis"; username = "martin"; desktop = "gnome"; };
         # dooku/tyranus are dual boot hosts, macOS and NixOS respectively.
         "martin@dooku" = libx.mkHome { hostname = "dooku"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
-        "martin@tyranus" = libx.mkHome { hostname = "tyranus"; username = "martin"; platform = "aarch64-linux"; desktop = "pantheon"; };
+        "martin@tyranus" = libx.mkHome { hostname = "tyranus"; username = "martin"; platform = "aarch64-linux"; desktop = "gnome"; };
         # palpatine/sidious are dual boot hosts, WSL2/Ubuntu and NixOS respectively.
         "martin@palpatine" = libx.mkHome { hostname = "palpatine"; username = "martin"; };
         "martin@sidious" = libx.mkHome { hostname = "sidious"; username = "martin"; desktop = "gnome"; };
@@ -88,7 +88,7 @@
         phasma = libx.mkHost { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
         vader = libx.mkHost { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
         tanis = libx.mkHost { hostname = "tanis"; username = "martin"; desktop = "gnome"; };
-        tyranus = libx.mkHost { hostname = "tyranus"; username = "martin"; desktop = "pantheon"; platform = "aarch64-linux"; };
+        tyranus = libx.mkHost { hostname = "tyranus"; username = "martin"; desktop = "gnome"; platform = "aarch64-linux"; };
         sidious = libx.mkHost { hostname = "sidious"; username = "martin"; desktop = "gnome"; };
         # Servers
         brix = libx.mkHost { hostname = "brix"; username = "martin"; };
