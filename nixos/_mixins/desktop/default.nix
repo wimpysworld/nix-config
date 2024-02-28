@@ -40,6 +40,9 @@ in
 
   environment.systemPackages = with pkgs; [
     appimage-run
+    wmctrl
+    xdotool
+    ydotool
   ] ++ lib.optionals (hasRazerPeripherals) [
     polychromatic
   ];
