@@ -3,7 +3,7 @@ let
   defaultDns = [ "1.1.1.1" "1.0.0.1" ];
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   hasRazerPeripherals = if (hostname == "phasma" || hostname == "vader") then true else false;
-  saveBattery = if (hostname != "phasma" || hostname != "vader") then true else false;
+  saveBattery = if (hostname != "phasma" && hostname != "vader") then true else false;
 
   # Define DNS settings for specific users
   # - https://cleanbrowsing.org/filters/
