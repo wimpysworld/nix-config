@@ -1,5 +1,6 @@
 { config, desktop, lib, pkgs, username, ... }:
 let
+  isWorkstation = if (desktop != null) then true else false;
   install-system = pkgs.writeScriptBin "install-system" ''
 #!${pkgs.stdenv.shell}
 
@@ -165,7 +166,7 @@ fi
 in
 {
   # Only include desktop components if one is supplied.
-  imports = lib.optional (desktop != null) ./desktop.nix;
+  imports = lib.optional (isWorkstation) ./desktop.nix;
 
   config.users.users.nixos = {
     description = "NixOS";

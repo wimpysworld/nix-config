@@ -1,8 +1,11 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }: {
+{ config, desktop, hostname, lib, pkgs, username, ... }:
+let
+  isWorkstation = if (desktop != null) then true else false;
+in
   home.packages = with pkgs; [
     stc-cli
   ];
-  imports = lib.optionals (desktop != null) [
+  imports = lib.optionals (isWorkstation) [
     ./syncthing-tray.nix
   ];
   programs.fish.shellAliases = {
