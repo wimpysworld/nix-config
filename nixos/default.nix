@@ -136,6 +136,7 @@ in
         };
       };
     };
+    bolt.enable = true;
   };
 
   # Use passed hostname to configure basic networking
