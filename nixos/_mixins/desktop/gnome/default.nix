@@ -186,7 +186,6 @@ in
             "hide-workspace-thumbnails@dylanmc.ca"
             "logomenu@aryan_k"
             "tiling-assistant@leleat-on-github"
-            "user-themes@gnome-shell-extensions.gcampax.github.com"
             "Vitals@CoreCoding.com"
             "wireless-hid@chlumskyvaclav.gmail.com"
             "wifiqrcode@glerro.pm.me"
