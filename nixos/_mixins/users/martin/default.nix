@@ -117,6 +117,25 @@ in
         "org/gnome/shell/extensions/tiling-assistant" = {
           show-layout-panel-indicator = true;
         };
+
+        "org/mate/desktop/peripherals/keyboard/kbd" = {
+          options = [ "terminate\tterminate:ctrl_alt_bksp" "caps\tcaps:none" ];
+        };
+
+        "org/mate/marco/general" = {
+          num-workspaces = mkInt32 8;
+        };
+
+        "org/mate/marco/workspace-names" = {
+          name-1 = " Web ";
+          name-2 = " Work ";
+          name-3 = " Chat ";
+          name-4 = " Code ";
+          name-5 = " Virt ";
+          name-6 = " Cast ";
+          name-7 = " Fun ";
+          name-8 = " Stuff ";
+        };
       };
     }];
   };

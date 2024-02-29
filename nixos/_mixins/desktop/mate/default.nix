@@ -133,10 +133,6 @@ in
           monospace-font-name = "FiraCode Nerd Font Medium 13";
         };
 
-        "org/mate/desktop/peripherals/keyboard/kbd" = {
-          options = [ "terminate\tterminate:ctrl_alt_bksp" "caps\tcaps:none" ];
-        };
-
         "org/mate/desktop/peripherals/mouse" = {
           cursor-size = mkInt32 32;
           cursor-theme = "Yaru";
@@ -173,7 +169,6 @@ in
           button-layout = ":minimize,maximize,close";
           center-new-windows = false;
           compositing-manager = true;
-          num-workspaces = mkInt32 8;
           show-tab-border = false;
           theme = "Yaru-dark";
           titlebar-font = "Work Sans Semi-Bold 12";
@@ -194,14 +189,14 @@ in
           switch-windows-all = "<Control><Alt>Tab";
           switch-windows-all-backward = "<Control><Alt><Shift>Tab";
           switch-windows-backward = "<Alt><Shift>Tab";
-          switch-to-workspace-1 = "<Mod4>1";
-          switch-to-workspace-2 = "<Mod4>2";
-          switch-to-workspace-3 = "<Mod4>3";
-          switch-to-workspace-4 = "<Mod4>4";
-          switch-to-workspace-5 = "<Mod4>5";
-          switch-to-workspace-6 = "<Mod4>6";
-          switch-to-workspace-7 = "<Mod4>7";
-          switch-to-workspace-8 = "<Mod4>8";
+          switch-to-workspace-1 = "<Control><Alt>1";
+          switch-to-workspace-2 = "<Control><Alt>2";
+          switch-to-workspace-3 = "<Control><Alt>3";
+          switch-to-workspace-4 = "<Control><Alt>4";
+          switch-to-workspace-5 = "<Control><Alt>5";
+          switch-to-workspace-6 = "<Control><Alt>6";
+          switch-to-workspace-7 = "<Control><Alt>7";
+          switch-to-workspace-8 = "<Control><Alt>8";
         };
 
         "org/mate/marco/keybinding-commands" = {
@@ -226,17 +221,6 @@ in
           tile-to-side-w = "<Mod4>Left";
           toggle-shaded = "<Control><Alt>s";
           unmaximize = "<Mod4>Down";
-        };
-
-        "org/mate/marco/workspace-names" = {
-          name-1 = " Web ";
-          name-2 = " Work ";
-          name-3 = " Chat ";
-          name-4 = " Code ";
-          name-5 = " Virt ";
-          name-6 = " Cast ";
-          name-7 = " Fun ";
-          name-8 = " Stuff ";
         };
 
         "org/mate/maximus" = {
