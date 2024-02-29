@@ -5,6 +5,7 @@ let
   isGamestation = if (hostname == "phasma" || hostname == "vader") && (desktop != null) then true else false;
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   hasRazerPeripherals = if (hostname == "phasma" || hostname == "vader") then true else false;
+  needsLowLatencyPipewire = if (hostname == "phasma" || hostname == "vader") then true else false;
   saveBattery = if (hostname != "phasma" && hostname != "vader") then true else false;
 
   # Define DNS settings for specific users
@@ -35,14 +36,101 @@ in
   imports = lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {
-    kernelParams = [ "quiet" "vt.global_cursor_default=0" "mitigations=off" ];
+    # Enable the threadirqs kernel parameter to reduce audio latency
+    # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
+    kernelParams = [ "quiet" "vt.global_cursor_default=0" "mitigations=off" "threadirqs" ];
     plymouth = {
       enable = true;
     };
   };
 
+  # https://nixos.wiki/wiki/PipeWire
+  # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
+  # Debugging
+  #  - pw-top                                            # see live stats
+  #  - journalctl -b0 --user -u pipewire                 # see logs (spa resync in "bad")
+  #  - pw-metadata -n settings 0                         # see current quantums
+  #  - pw-metadata -n settings 0 clock.force-quantum 128 # override quantum
+  #  - pw-metadata -n settings 0 clock.force-quantum 0   # disable override
+  environment.etc = let
+    json = pkgs.formats.json {};
+  in
+  lib.mkIf (needsLowLatencyPipewire) {
+    # Change this to use: services.pipewire.extraConfig.pipewire
+    # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
+    "pipewire/pipewire.conf.d/92-low-latency.conf".text = ''
+      context.properties = {
+        default.clock.rate          = 48000
+        default.clock.allowed-rates = [ 48000 ]
+        default.clock.quantum       = 64
+        default.clock.min-quantum   = 64
+        default.clock.max-quantum   = 64
+      }
+      context.modules = [
+        {
+          name = libpipewire-module-rt
+          args = {
+            nice.level = -11
+            rt.prio = 88
+          }
+        }
+      ]
+    '';
+    # Change this to use: services.pipewire.extraConfig.pipewire-pulse
+    "pipewire/pipewire-pulse.d/92-low-latency.conf".source = json.generate "92-low-latency.conf" {
+      context.modules = [
+        {
+          name = "libpipewire-module-protocol-pulse";
+          args = {
+            pulse.min.req     = "64/48000";
+            pulse.default.req = "64/48000";
+            pulse.max.req     = "64/48000";
+            pulse.min.quantum = "64/48000";
+            pulse.max.quantum = "64/48000";
+          };
+        }
+      ];
+      stream.properties = {
+        node.latency = "64/48000";
+        resample.quality = 4;
+      };
+    };
+    # https://stackoverflow.com/questions/24040672/the-meaning-of-period-in-alsa
+    # https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/alsa.html#alsa-buffer-properties
+    # https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/3241
+    # cat /nix/store/*-wireplumber-*/share/wireplumber/main.lua.d/50-alsa-config.lua
+    "wireplumber/main.lua.d/92-low-latency.lua".text = ''
+      alsa_monitor.rules = {
+        {
+          matches = {
+            {
+              -- Matches all sources.
+              { "node.name", "matches", "alsa_input.*" },
+            },
+            {
+              -- Matches all sinks.
+              { "node.name", "matches", "alsa_output.*" },
+            },
+          },
+          apply_properties = {
+            ["audio.rate"] = "48000",
+            ["api.alsa.headroom"] = 128,             -- Default: 0
+            ["api.alsa.period-num"] = 2,             -- Default: 2
+            ["api.alsa.period-size"] = 512,          -- Default: 1024
+            ["api.alsa.disable-batch"] = false,      -- generally, USB soundcards use the batch mode
+            ["resample.quality"] = 4,
+            ["resample.disable"] = false,
+            ["session.suspend-timeout-seconds"] = 0,
+          },
+        },
+      }
+    '';
+  };
+
   environment.systemPackages = with pkgs; lib.optionals (isInstall) [
     appimage-run
+    pavucontrol
+    pulseaudio
     wmctrl
     xdotool
     ydotool
@@ -122,6 +210,7 @@ in
       syncEffectsEnabled = true;
       users = [ "${username}" ];
     };
+    pulseaudio.enable = lib.mkForce false;
     sane = lib.mkIf (isInstall) {
       enable = true;
       #extraBackends = with pkgs; [ hplipWithPlugin sane-airscan ];
@@ -167,6 +256,14 @@ in
     flatpak = lib.mkIf (isInstall) {
       enable = true;
     };
+    pipewire = {
+      enable = true;
+      alsa.enable = true;
+      alsa.support32Bit = isGamestation;
+      jack.enable = false;
+      pulse.enable = true;
+      wireplumber.enable = true;
+    };
     printing = lib.mkIf (isInstall) {
       enable = true;
       drivers = with pkgs; [ gutenprint hplip ];
@@ -204,6 +301,11 @@ in
 
       # Elgato Stream Deck Pedal
       SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0086", TAG+="uaccess", SYMLINK+="streamdeck-pedal"
+
+      # Expose important timers the members of the audio group
+      # Inspired by musnix: https://github.com/musnix/musnix/blob/master/modules/base.nix#L94
+      KERNEL=="rtc0", GROUP="audio"
+      KERNEL=="hpet", GROUP="audio"
     '';
 
     # Disable xterm
@@ -216,19 +318,30 @@ in
     };
   };
 
-  # Disable autoSuspend; my Pantheon session kept auto-suspending
-  # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
-  security.polkit.extraConfig = lib.mkIf (desktop == "pantheon") ''
-    polkit.addRule(function(action, subject) {
-        if (action.id == "org.freedesktop.login1.suspend" ||
-            action.id == "org.freedesktop.login1.suspend-multiple-sessions" ||
-            action.id == "org.freedesktop.login1.hibernate" ||
-            action.id == "org.freedesktop.login1.hibernate-multiple-sessions")
-        {
-            return polkit.Result.NO;
-        }
-    });
-  '';
+  security = {
+    # Allow members of the "audio" group to set RT priorities
+    # Inspired by musnix: https://github.com/musnix/musnix/blob/master/modules/base.nix#L87
+    pam.loginLimits = [
+      { domain = "@audio"; item = "memlock"; type = "-"   ; value = "unlimited"; }
+      { domain = "@audio"; item = "rtprio" ; type = "-"   ; value = "99"       ; }
+      { domain = "@audio"; item = "nofile" ; type = "soft"; value = "99999"    ; }
+      { domain = "@audio"; item = "nofile" ; type = "hard"; value = "99999"    ; }
+    ];
+    # Disable autoSuspend; my Pantheon session kept auto-suspending
+    # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
+    polkit.extraConfig = lib.mkIf (desktop == "pantheon") ''
+      polkit.addRule(function(action, subject) {
+          if (action.id == "org.freedesktop.login1.suspend" ||
+              action.id == "org.freedesktop.login1.suspend-multiple-sessions" ||
+              action.id == "org.freedesktop.login1.hibernate" ||
+              action.id == "org.freedesktop.login1.hibernate-multiple-sessions")
+          {
+              return polkit.Result.NO;
+          }
+      });
+    '';
+    rtkit.enable = true;
+  };
 
   systemd.services = {
     configure-flathub-repo = lib.mkIf (isInstall) {
