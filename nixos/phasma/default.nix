@@ -11,7 +11,6 @@
     (import ./disks-snapshot.nix { })
     ../_mixins/services/clamav.nix
     ../_mixins/services/filesync.nix
-    ../_mixins/services/pipewire.nix
     ../_mixins/services/tailscale.nix
   ];
 
@@ -41,87 +40,6 @@
     };
   };
 
-  # https://nixos.wiki/wiki/PipeWire
-  # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
-  # Debugging
-  #  - pw-top                                            # see live stats
-  #  - journalctl -b0 --user -u pipewire                 # see logs (spa resync in "bad")
-  #  - pw-metadata -n settings 0                         # see current quantums
-  #  - pw-metadata -n settings 0 clock.force-quantum 128 # override quantum
-  #  - pw-metadata -n settings 0 clock.force-quantum 0   # disable override
-  environment.etc = let
-    json = pkgs.formats.json {};
-  in {
-    # Change this to use: services.pipewire.extraConfig.pipewire
-    # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
-    "pipewire/pipewire.conf.d/92-low-latency.conf".text = ''
-      context.properties = {
-        default.clock.rate          = 48000
-        default.clock.allowed-rates = [ 48000 ]
-        default.clock.quantum       = 64
-        default.clock.min-quantum   = 64
-        default.clock.max-quantum   = 64
-      }
-      context.modules = [
-        {
-          name = libpipewire-module-rt
-          args = {
-            nice.level = -11
-            rt.prio = 88
-          }
-        }
-      ]
-    '';
-    # Change this to use: services.pipewire.extraConfig.pipewire-pulse
-    "pipewire/pipewire-pulse.d/92-low-latency.conf".source = json.generate "92-low-latency.conf" {
-      context.modules = [
-        {
-          name = "libpipewire-module-protocol-pulse";
-          args = {
-            pulse.min.req     = "64/48000";
-            pulse.default.req = "64/48000";
-            pulse.max.req     = "64/48000";
-            pulse.min.quantum = "64/48000";
-            pulse.max.quantum = "64/48000";
-          };
-        }
-      ];
-      stream.properties = {
-        node.latency = "64/48000";
-        resample.quality = 4;
-      };
-    };
-    # https://stackoverflow.com/questions/24040672/the-meaning-of-period-in-alsa
-    # https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/alsa.html#alsa-buffer-properties
-    # https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/3241
-    # cat /nix/store/*-wireplumber-*/share/wireplumber/main.lua.d/50-alsa-config.lua
-    "wireplumber/main.lua.d/92-low-latency.lua".text = ''
-      alsa_monitor.rules = {
-        {
-          matches = {
-            {
-              -- Matches all sources.
-              { "node.name", "matches", "alsa_input.*" },
-            },
-            {
-              -- Matches all sinks.
-              { "node.name", "matches", "alsa_output.*" },
-            },
-          },
-          apply_properties = {
-            ["audio.rate"] = "48000",
-            ["api.alsa.headroom"] = 128,             -- Default: 0
-            ["api.alsa.period-num"] = 2,             -- Default: 2
-            ["api.alsa.period-size"] = 512,          -- Default: 1024
-            ["api.alsa.disable-batch"] = false,      -- generally, USB soundcards use the batch mode
-            ["resample.quality"] = 4,
-            ["resample.disable"] = false,
-            ["session.suspend-timeout-seconds"] = 0,
-          },
-        },
-      }
-    '';
-  };
   hardware = {
     mwProCapture.enable = true;
     nvidia = {

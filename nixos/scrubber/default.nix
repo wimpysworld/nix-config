@@ -4,7 +4,6 @@
     (modulesPath + "/profiles/qemu-guest.nix")
     (import ./disks.nix { })
     ../_mixins/kernel/bcachefs.nix
-    ../_mixins/services/pipewire.nix
   ];
 
   boot = {

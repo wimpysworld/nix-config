@@ -20,7 +20,6 @@
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     (import ./disks.nix { })
     ../_mixins/services/filesync.nix
-    ../_mixins/services/pipewire.nix
     ../_mixins/services/tailscale.nix
   ];
 
