@@ -190,9 +190,14 @@ in
 
   config.programs = {
     dconf.profiles.user.databases = [{
-      settings = with lib.gvariant; {
+      settings = with lib.gvariant; lib.mkIf (isWorkstationISO) {
         "net/launchpad/plank/docks/dock1" = {
           dock-items = [ "firefox.desktop" "io.elementary.files.dockitem" "com.gexperts.Tilix.desktop" "io.calamares.calamares.desktop" "gparted.desktop" ];
+        };
+
+        "org/gnome/shell" = {
+          disabled-extensions = mkEmptyArray type.string;
+          favorite-apps = [ "firefox.desktop" "io.elementary.files.dockitem" "com.gexperts.Tilix.desktop" "io.calamares.calamares.desktop" "gparted.desktop" ];
         };
       };
     }];
@@ -201,12 +206,6 @@ in
   config.services.xserver = {
     displayManager.autoLogin = lib.mkIf (isWorkstationISO) {
       user = "${username}";
-    };
-    desktopManager.gnome = lib.mkIf (desktop == "gnome") {
-      favoriteAppsOverride = lib.mkForce ''
-        [org.gnome.shell]
-        favorite-apps=[ 'firefox.desktop', 'org.gnome.Nautilus.desktop', 'com.gexperts.Tilix.desktop', 'io.calamares.calamares.desktop', 'gparted.desktop' ]
-      '';
     };
   };
 

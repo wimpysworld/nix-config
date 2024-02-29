@@ -87,7 +87,7 @@ in
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
       ];
     };
-    dconf.profiles.user.databases = lib.mkForce [{
+    dconf.profiles.user.databases = [{
       settings = with lib.gvariant; lib.mkIf (isWorkstation) {
         "io/elementary/terminal/settings" = {
           unsafe-paste-alert = false;
@@ -108,6 +108,7 @@ in
 
         "org/gnome/shell" = {
           disabled-extensions = mkEmptyArray type.string;
+          favorite-apps = [ "brave-browser.desktop" "authy.desktop" "Wavebox.desktop" "org.telegram.desktop.desktop" "discord.desktop" "nheko.desktop" "code.desktop" "GitKraken.desktop" "com.obsproject.Studio.desktop" ];
         };
 
         "org/gnome/shell/extensions/auto-move-windows" = {
@@ -144,13 +145,6 @@ in
     description = "Martin Wimpress";
     # mkpasswd -m sha-512
     hashedPassword = "$6$UXNQ20Feu82wCFK9$dnJTeSqoECw1CGMSUdxKREtraO.Nllv3/fW9N3m7lPHYxFKA/Cf8YqYGDmiWNfaKeyx2DKdURo0rPYBrSZRL./";
-  };
-
-  services.xserver.desktopManager.gnome = lib.mkIf (desktop == "gnome") {
-    favoriteAppsOverride = lib.mkForce ''
-      [org.gnome.shell]
-      favorite-apps=[ 'brave-browser.desktop', 'authy.desktop', 'Wavebox.desktop', 'org.telegram.desktop.desktop', 'discord.desktop', 'nheko.desktop', 'code.desktop', 'GitKraken.desktop', 'com.obsproject.Studio.desktop' ]
-    '';
   };
 
   systemd.tmpfiles.rules = [
