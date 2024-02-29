@@ -41,9 +41,7 @@ in
     # A Modern Unix experience
     # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages = with pkgs; [
-      (nerdfonts.override { fonts = [ "FiraCode" "SourceCodePro" "UbuntuMono" ]; })
-      fira
-      fira-go
+      (nerdfonts.override { fonts = [ "FiraCode" "NerdFontsSymbolsOnly" ]; })
       ubuntu_font_family
       work-sans
       asciicam # Terminal webcam

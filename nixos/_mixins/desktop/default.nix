@@ -145,15 +145,15 @@ in
     enableDefaultPackages = false;
     fontDir.enable = true;
     packages = with pkgs; [
-      (nerdfonts.override { fonts = [ "FiraCode" "SourceCodePro" "UbuntuMono" ]; })
+      (nerdfonts.override { fonts = [ "FiraCode" "NerdFontsSymbolsOnly" ]; })
       fira
-      fira-go
-      joypixels
       liberation_ttf
       noto-fonts-emoji
       source-serif
-      ubuntu_font_family
+      twitter-color-emoji
       work-sans
+    ] ++ lib.optionals (isInstall) [
+      ubuntu_font_family
     ];
 
     fontconfig = {
@@ -161,9 +161,9 @@ in
       cache32Bit = isGamestation;
       defaultFonts = {
         serif = [ "Source Serif" ];
-        sansSerif = [ "Work Sans" "Fira Sans" "FiraGO" ];
-        monospace = [ "FiraCode Nerd Font Mono" "SauceCodePro Nerd Font Mono" ];
-        emoji = [ "Joypixels" "Noto Color Emoji" ];
+        sansSerif = [ "Work Sans" "Fira Sans" ];
+        monospace = [ "FiraCode Nerd Font Mono" "Symbols Nerd Font Mono" ];
+        emoji = [ "Noto Color Emoji" "Twitter Color Emoji" ];
       };
       enable = true;
       hinting = {
@@ -192,9 +192,6 @@ in
       };
     };
   };
-
-  # Accept the joypixels license
-  nixpkgs.config.joypixels.acceptLicense = true;
 
   hardware = {
     opengl = {
