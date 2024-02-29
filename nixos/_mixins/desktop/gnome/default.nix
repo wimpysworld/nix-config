@@ -11,7 +11,6 @@ in
     gnomeExtensions.autohide-battery
     gnomeExtensions.dash-to-dock
     gnomeExtensions.emoji-copy
-    gnomeExtensions.hide-workspace-thumbnails
     gnomeExtensions.just-perfection
     gnomeExtensions.logo-menu
     gnomeExtensions.tiling-assistant
@@ -183,7 +182,6 @@ in
             "dash-to-dock@micxgx.gmail.com"
             "emoji-copy@felipeftn"
             "just-perfection-desktop@just-perfection"
-            "hide-workspace-thumbnails@dylanmc.ca"
             "logomenu@aryan_k"
             "tiling-assistant@leleat-on-github"
             "Vitals@CoreCoding.com"
