@@ -4,6 +4,7 @@ let
   # Create some variable to control what doesn't get installed/enabled
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   isWorkstation = if (desktop != null) then true else false;
+  hasNvidia = lib.elem "nvidia" config.services.xserver.videoDrivers;
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
@@ -117,7 +118,12 @@ in
     ] ++ lib.optionals (isInstall && isWorkstation && notVM) [
       pods
       quickemu
-    ] ++ (if lib.elem "nvidia" config.services.xserver.videoDrivers then [ nvtop vdpauinfo ] else [ nvtop-amd ]);
+    ] ++ lib.optionals (isInstall && hasNvidia) [
+      nvtop
+      vdpauinfo
+    ]  ++ lib.optionals (isInstall && !hasNvidia) [
+      nvtop-amd
+    ];
 
     variables = {
       EDITOR = "micro";
