@@ -1,5 +1,4 @@
 { config, lib, pkgs, ... }:
-with lib.hm.gvariant;
 {
   imports = [
     ./celluloid.nix

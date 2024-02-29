@@ -3,19 +3,18 @@
 let
   inherit (pkgs.stdenv) isLinux;
 in
-with lib.hm.gvariant;
 lib.mkIf isLinux {
   home.packages = with pkgs; [
     tilix
   ];
 
-  dconf.settings = {
+  dconf.settings = with lib.hm.gvariant; {
     "com/gexperts/Tilix" = {
       app-title = "\${appName}: \${directory}";
       paste-strip-trailing-whitespace = true;
       prompt-on-close = true;
       quake-hide-lose-focus = true;
-      quake-specific-monitor = 0;
+      quake-specific-monitor = mkInt32 0;
       session-name = "\${id}";
       terminal-title-show-when-single = true;
       terminal-title-style = "none";
@@ -43,15 +42,15 @@ lib.mkIf isLinux {
       bold-color = "#C8C8C8C8C8C8";
       bold-color-set = true;
       bold-is-bright = false;
-      cell-height-scale = 1.0;
-      cell-width-scale = 1.0;
+      cell-height-scale = mkDouble 1.0;
+      cell-width-scale = mkDouble 1.0;
       cursor-background-color = "#FFFFB6B63838";
       cursor-blink-mode = "on";
       cursor-colors-set = true;
       cursor-foreground-color = "#FFFFB6B63838";
-      default-size-columns = 132;
-      default-size-rows = 50;
-      draw-margin = 80;
+      default-size-columns = mkInt32 132;
+      default-size-rows = mkInt32 50;
+      draw-margin = mkInt32 80;
       font = "FiraCode Nerd Font Medium 12";
       foreground-color = "#C8C8C8C8C8C8";
       highlight-background-color = "#1E1E1E1E2020";
