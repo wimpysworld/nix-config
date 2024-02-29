@@ -19,7 +19,7 @@ in
       # Create a desktop entry for the Cider AppImage.
       cider = lib.mkIf isLinux {
         name = "Cider";
-        exec = "${lib.getExe pkgs.appimage-run} -- ${config.home.homeDirectory}/Apps/Cider.AppImage";
+        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Cider.AppImage";
         terminal = false;
         icon = "cider";
         type = "Application";
