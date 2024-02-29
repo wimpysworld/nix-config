@@ -2,21 +2,20 @@
 let
   inherit (pkgs.stdenv) isLinux;
 in
-with lib.hm.gvariant;
 {
   home.packages = with pkgs; [
     meld
   ];
 
-  dconf.settings = lib.mkIf isLinux {
+  dconf.settings = with lib.hm.gvariant; lib.mkIf isLinux {
     "org/gnome/meld" = {
-      indent-width = 4;
+      indent-width = mkInt32 4;
       insert-spaces-instead-of-tabs = true;
       highlight-current-line = true;
       show-line-numbers = true;
       prefer-dark-theme = true;
       highlight-syntax = true;
-      style-scheme = "Yaru-dark";
+      style-scheme = "oblivion";
     };
   };
 }

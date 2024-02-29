@@ -1,5 +1,4 @@
 { config, desktop, lib, pkgs, ... }:
-with lib.hm.gvariant;
 {
   imports = [
     ../../../desktop/deckmaster-xl.nix
@@ -46,7 +45,7 @@ with lib.hm.gvariant;
     '';
   };
 
-  dconf.settings = {
+  dconf.settings = with lib.hm.gvariant; {
     "org/gnome/desktop/background" = {
       picture-options = "zoom";
       picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-2560x1440.png";

@@ -2,13 +2,12 @@
 let
   inherit (pkgs.stdenv) isLinux;
 in
-with lib.hm.gvariant;
 lib.mkIf isLinux {
   home.packages = with pkgs; [
     gnome.gnome-sound-recorder
   ];
 
-  dconf.settings = {
+  dconf.settings = with lib.hm.gvariant; {
     "org/gnome/SoundRecorder" = {
       audio-channel = "mono";
       audio-profile = "flac";
