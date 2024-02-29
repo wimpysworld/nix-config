@@ -14,7 +14,6 @@ in
     gnomeExtensions.hide-workspace-thumbnails
     gnomeExtensions.just-perfection
     gnomeExtensions.logo-menu
-    gnomeExtensions.status-area-horizontal-spacing
     gnomeExtensions.tiling-assistant
     gnomeExtensions.wireless-hid
     gnomeExtensions.vitals
@@ -185,7 +184,6 @@ in
             "just-perfection-desktop@just-perfection"
             "hide-workspace-thumbnails@dylanmc.ca"
             "logomenu@aryan_k"
-            "status-area-horizontal-spacing@mathematical.coffee.gmail.com"
             "tiling-assistant@leleat-on-github"
             "user-themes@gnome-shell-extensions.gcampax.github.com"
             "Vitals@CoreCoding.com"
@@ -212,8 +210,11 @@ in
         };
 
         "org/gnome/shell/extensions/just-perfection" = {
+          panel-button-padding-size = mkInt32 5;
+          panel-indicator-padding-size = mkInt32 3;
           startup-status = mkInt32 0;
           window-demands-attention-focus = true;
+          workspaces-in-app-grid = false;
         };
 
         "org/gnome/shell/extensions/Logo-menu" = {
