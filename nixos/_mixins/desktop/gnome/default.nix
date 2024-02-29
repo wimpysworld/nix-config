@@ -348,10 +348,6 @@ in
       desktopManager = {
         gnome = {
           enable = true;
-          favoriteAppsOverride = ''
-            [org.gnome.shell]
-            favorite-apps=[ 'firefox.desktop', 'org.gnome.Nautilus.desktop' 'com.gexperts.Tilix.desktop', 'org.gnome.Software.desktop', 'org.gnome.Settings.desktop', 'org.gnome.Tour.desktop' ]
-          '';
         };
       };
     };
