@@ -69,6 +69,7 @@ in
           cursor-size = mkInt32 32;
           cursor-theme = "Adwaita";
           document-font-name = "Work Sans 12";
+          enable-hot-corners = false;
           font-name = "Work Sans 12";
           gtk-theme = "Adwaita-dark";
           icon-theme = "Adwaita";
