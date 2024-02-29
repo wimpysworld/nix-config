@@ -87,8 +87,8 @@ in
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
       ];
     };
-    dconf.profiles.user.databases = lib.mkIf (isWorkstation) [{
-      settings = with lib.gvariant; {
+    dconf.profiles.user.databases = lib.mkForce [{
+      settings = with lib.gvariant; lib.mkIf (isWorkstation) {
         "io/elementary/terminal/settings" = {
           unsafe-paste-alert = false;
         };

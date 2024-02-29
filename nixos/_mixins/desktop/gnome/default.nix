@@ -1,6 +1,7 @@
 { config, lib, pkgs, hostname,... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  isISO = !isInstall;
   isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
 in
 {
@@ -31,16 +32,20 @@ in
   ];
 
   # Exclude the GNOME apps I don't use
-  environment.gnome.excludePackages = (with pkgs; [
+  environment.gnome.excludePackages = with pkgs; [
     baobab
     gnome-console
-  ]) ++ (with pkgs.gnome; [
-    geary
-    gnome-music
-    gnome-system-monitor
-    epiphany
-    totem
-  ]);
+    gnome.geary
+    gnome.gnome-music
+    gnome.gnome-system-monitor
+    gnome.epiphany
+    gnome.totem
+  ] ++ lib.optionals (isISO) [
+    gnome.gnome-calendar
+    gnome.gnome-contacts
+    gnome.simple-scan
+    gnome-tour
+  ];
 
   programs = {
     calls.enable = false;
