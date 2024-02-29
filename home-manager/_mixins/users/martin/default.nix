@@ -34,17 +34,33 @@ in
       disk_size="96G"
       iso="nixos-console/nixos.iso"
     '';
-    file."Quickemu/nixos-desktop.conf".text = ''
+    file."Quickemu/nixos-gnome.conf".text = ''
       #!/run/current-system/sw/bin/quickemu --vm
       guest_os="linux"
-      disk_img="nixos-desktop/disk.qcow2"
+      disk_img="nixos-gnome/disk.qcow2"
       disk_size="96G"
-      iso="nixos-desktop/nixos.iso"
+      iso="nixos-gnome/nixos.iso"
+    '';
+    file."Quickemu/nixos-mate.conf".text = ''
+      #!/run/current-system/sw/bin/quickemu --vm
+      guest_os="linux"
+      disk_img="nixos-mate/disk.qcow2"
+      disk_size="96G"
+      iso="nixos-mate/nixos.iso"
+    '';
+    file."Quickemu/nixos-pantheon.conf".text = ''
+      #!/run/current-system/sw/bin/quickemu --vm
+      guest_os="linux"
+      disk_img="nixos-pantheon/disk.qcow2"
+      disk_size="96G"
+      iso="nixos-pantheon/nixos.iso"
     '';
     file."/Development/.keep".text = "";
     file."/Games/.keep".text = "";
     file."/Quickemu/nixos-console/.keep".text = "";
-    file."/Quickemu/nixos-desktop/.keep".text = "";
+    file."/Quickemu/nixos-gnome/.keep".text = "";
+    file."/Quickemu/nixos-mate/.keep".text = "";
+    file."/Quickemu/nixos-pantheon/.keep".text = "";
     file."/Scripts/.keep".text = "";
     file."/Studio/OBS/config/obs-studio/.keep".text = "";
     file."/Syncthing/.keep".text = "";

@@ -3,7 +3,7 @@
 pkgs.writeScriptBin "build-iso" ''
 #!${pkgs.stdenv.shell}
 if [ -z $1 ]; then
-  ${pkgs.coreutils-full}/bin/echo "Usage: build-iso <console|desktop>"
+  ${pkgs.coreutils-full}/bin/echo "Usage: build-iso <console|gnome|mate|pantheon>"
   exit 1
 fi
 

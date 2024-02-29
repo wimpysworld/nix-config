@@ -53,7 +53,9 @@
       homeConfigurations = {
         # .iso images
         "nixos@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
-        "nixos@iso-desktop" = libx.mkHome { hostname = "iso-desktop"; username = "nixos"; desktop = "gnome"; };
+        "nixos@iso-gnome" = libx.mkHome { hostname = "iso-gnome"; username = "nixos"; desktop = "gnome"; };
+        "nixos@iso-mate" = libx.mkHome { hostname = "iso-mate"; username = "nixos"; desktop = "mate"; };
+        "nixos@iso-pantheon" = libx.mkHome { hostname = "iso-pantheon"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
         "martin@phasma" = libx.mkHome { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
         "martin@vader" = libx.mkHome { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
@@ -80,7 +82,9 @@
         # .iso images
         #  - nix build .#nixosConfigurations.{iso-console|iso-desktop}.config.system.build.isoImage
         iso-console = libx.mkHost { hostname = "iso-console"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"; };
-        iso-desktop = libx.mkHost { hostname = "iso-desktop"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "gnome"; };
+        iso-gnome = libx.mkHost { hostname = "iso-gnome"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "gnome"; };
+        iso-mate = libx.mkHost { hostname = "iso-mate"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "mate"; };
+        iso-pantheon = libx.mkHost { hostname = "iso-pantheon"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
         # Workstations
         #  - sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config

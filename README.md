@@ -57,7 +57,7 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
 
 ## Installing 💾
 
-- Boot off a .iso image created by this flake using `build-iso-desktop` or `build-iso-console` (*see below*)
+- Boot off a .iso image created by this flake using `build-iso console` or `build-iso <desktop>` (*see below*)
 - Put the .iso image on a USB drive
 - Boot the target computer from the USB drive
 - Two installation options are available:
@@ -86,10 +86,12 @@ gh repo clone wimpysworld/nix-config ~/Zero/nix-config
 The `build-iso` script is included that creates .iso images from this flake. The following modes are available:
 
 - `build-iso console` (*terminal environment*): Includes `install-system` for automated installation.
-- `build-iso desktop` (*desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
+- `build-iso gnome` (*GNOME Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
+- `build-iso mate` (*MATE Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
+- `build-iso pantheon` (*Pantheon Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 
-Live images will be left in `~/$HOME/Zero/nix-config/result/iso/` and are also injected into `~/Quickemu/nixos-console` and `~/Quickemu/nixos-desktop` respectively.
-The console .iso image is also periodically built and published via [GitHub [Actions](./.github/workflows) and are available in [this](https://github.com/wimpysworld/nix-config/releases) project's Releases](https://github.com/wimpysworld/nix-config/releases).
+Live images will be left in `~/$HOME/Zero/nix-config/result/iso/` and are also injected into `~/Quickemu/nixos-console` and `~/Quickemu/nixos-<desktop>` respectively.
+The console .iso image is also periodically built and published via [GitHub [Actions](./.github/workflows) and is available in [this](https://github.com/wimpysworld/nix-config/releases) project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
 ## What's in the box? 🎁
 
@@ -97,7 +99,7 @@ Nix is configured with [flake support](https://zero-to-nix.com/concepts/flakes) 
 
 ### Structure
 
-Here is the directory structure I'm using.
+Here's the directory structure I'm using:
 
 ```
 .
@@ -110,13 +112,13 @@ Here is the directory structure I'm using.
 │   └── default.nix
 ├── nixos
 │   ├── _mixins
-│   │   ├── base
 │   │   ├── desktop
-│   │   ├── hardware
+│   │   │   ├── gnome
+│   │   │   ├── mate
+│   │   │   └── pantheon
 │   │   ├── scripts
 │   │   ├── services
-│   │   ├── users
-│   │   └── virt
+│   │   └── users
 │   ├── phasma
 │   ├── vader
 │   ├── minimech
@@ -141,10 +143,11 @@ The `default.nix` files in the root of each directory are the entry points.
 
 ### The Desktop 🖥️
 
-MATE Desktop 🧉 and Pantheon 🏛️ are the two desktop options available. The [font configuration] is common with both desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code). The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as [Pipewire], Bluetooth, [Avahi], [CUPS], [SANE] and [NetworkManager].
+GNOME 👣 MATE 🧉 and Pantheon 🏛️ desktop options are available. The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code). The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
 |  Desktop  |       System       |       Configuration       |             Theme            |
 | :-------: | :----------------: | :-----------------------: | :--------------------------: |
+| GNOME     | [GNOME Install]    | [GNOME Configuration]     | Adwaita (Dark)               |
 | MATE      | [MATE Install]     | [MATE Configuration]      | Yaru Magenta (Dark)          |
 | Pantheon  | [Pantheon Install] | [Pantheon Configuration]  | elementary Bubble Gum (Dark) |
 
@@ -190,9 +193,9 @@ Things I currently need to do manually after installation.
 
 ### Windows Boot Manager on multi-disk systems
 
-One of my laptops (`sidious`) is a multi-disk system with Windows 11 Pro installed on a separate disk from NixOS.
-The Windows EFI partition is not automatically detected by systemd-boot.
-The following steps are required to copy the Windows Boot Manager to the NixOS EFI partition.
+One of my laptops (`sidious`) is a multi-disk system with Windows 11 Pro 🪟 installed on a separate disk from NixOS.
+The Windows EFI partition is not automatically detected by systemd-boot, because it is on a different disk.
+The following steps are required to copy the Windows Boot Manager to the NixOS EFI partition so dual-booting is possible.
 
 Find Windows EFI Partition
 
@@ -318,22 +321,13 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [home-manager/_mixins]: ./home-manager/_mixins
 [flake.nix]: ./flake.nix
 
-[Fish shell]: ./nixos/default.nix
 [Modern Unix]: ./home-manager/_mixins/console/default.nix
-[OpenSSH]: ./nixos/_mixins/services/openssh.nix
-[ZeroTier]: ./nixos/_mixins/services/zerotier.nix
-[Podman & Distrobox]: ./nixos/_mixins/virt/default.nix
 [micro]: [https://micro-editor.github.io/]
 [sops-nix]: [https://github.com/Mic92/sops-nix]
 
-[font configuration]: ./nixos/_mixins/desktop/default.nix
-[Pipewire]: ./nixos/_mixins/services/pipewire.nix
-[Avahi]: ./nixos/_mixins/services/avahi.nix
-[CUPS]: ./nixos/_mixins/services/cups.nix
-[SANE]: ./nixos/_mixins/services/sane.nix
-[NetworkManager]: ./nixos/_mixins/services/networkmanager.nix
-
-[MATE Install]: ./nixos/_mixins/desktop/mate.nix
-[Pantheon Install]: ./nixos/_mixins/desktop/pantheon.nix
+[GNOME Install]: ./nixos/_mixins/desktop/gnome/defaul.nix
+[MATE Install]: ./nixos/_mixins/desktop/mate/defaul.nix
+[Pantheon Install]: ./nixos/_mixins/desktop/pantheon/default.nix
+[GNOME Configuration]: ./home-manager/_mixins/desktop/gnome.nix
 [MATE Configuration]: ./home-manager/_mixins/desktop/mate.nix
 [Pantheon Configuration]: ./home-manager/_mixins/desktop/pantheon.nix
