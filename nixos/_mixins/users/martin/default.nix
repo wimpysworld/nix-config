@@ -87,26 +87,34 @@ in
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
       ];
     };
-    dconf.profiles.user.databases = [{
+    dconf.profiles.user.databases = lib.mkIf (isWorkstation) [{
       settings = with lib.gvariant; {
-        "org/gnome/desktop/input-sources" = lib.mkIf (isWorkstation) {
+        "io/elementary/terminal/settings" = {
+          unsafe-paste-alert = false;
+        };
+
+        "net/launchpad/plank/docks/dock1" = {
+          dock-items = [ "brave-browser.dockitem" "authy.dockitem" "Wavebox.dockitem" "org.telegram.desktop.dockitem" "discord.dockitem" "nheko.dockitem" "code.dockitem" "GitKraken.dockitem" "com.obsproject.Studio.dockitem" ];
+        };
+
+        "org/gnome/desktop/input-sources" = {
           xkb-options = [ "grp:alt_shift_toggle" "caps:none" ];
         };
 
-        "org/gnome/desktop/wm/preferences" = lib.mkIf (desktop == "gnome") {
+        "org/gnome/desktop/wm/preferences" = {
           num-workspaces = mkInt32 8;
           workspace-names = [ "Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff" ];
         };
 
-        "org/gnome/shell" = lib.mkIf (desktop == "gnome") {
+        "org/gnome/shell" = {
           disabled-extensions = mkEmptyArray type.string;
         };
 
-        "org/gnome/shell/extensions/auto-move-windows" = lib.mkIf (desktop == "gnome") {
+        "org/gnome/shell/extensions/auto-move-windows" = {
           application-list = [ "brave-browser.desktop:1" "Wavebox.desktop:2" "discord.desktop:2" "org.telegram.desktop.desktop:3" "nheko.desktop:3" "code.desktop:4" "GitKraken.desktop:4" "com.obsproject.Studio.desktop:6" ];
         };
 
-        "org/gnome/shell/extensions/tiling-assistant" = lib.mkIf (desktop == "gnome") {
+        "org/gnome/shell/extensions/tiling-assistant" = {
           show-layout-panel-indicator = true;
         };
       };
