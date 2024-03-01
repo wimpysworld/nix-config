@@ -197,7 +197,7 @@ in
 
         "org/gnome/shell" = {
           disabled-extensions = mkEmptyArray type.string;
-          favorite-apps = [ "firefox.desktop" "io.elementary.files.dockitem" "com.gexperts.Tilix.desktop" "io.calamares.calamares.desktop" "gparted.desktop" ];
+          favorite-apps = [ "firefox.desktop" "org.gnome.Nautilus.desktop" "org.gnome.Console.desktop" "io.calamares.calamares.desktop" "gparted.desktop" ];
         };
       };
     }];
