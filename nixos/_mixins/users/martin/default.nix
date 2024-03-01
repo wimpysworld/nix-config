@@ -19,7 +19,7 @@ in
     _1password-gui
     authy
     gimp-with-plugins
-    irccloud
+    halloy
     inkscape
     libreoffice
     tenacity

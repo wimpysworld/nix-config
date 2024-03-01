@@ -15,6 +15,9 @@ in
       "${config.xdg.configHome}/yazi/theme.toml".text = builtins.readFile ./yazi-theme.toml;
     };
     file = {
+      "${config.xdg.configHome}/halloy/themes/harmony-dark.yaml".text = builtins.readFile ./harmony-dark.yaml;
+    };
+    file = {
       "${config.xdg.configHome}/fish/functions/build-home.fish".text = builtins.readFile ./build-home.fish;
     };
     file = {
