@@ -6,7 +6,6 @@
     ../../desktop/gitkraken.nix
     #../../desktop/localsend.nix
     ../../desktop/meld.nix
-    ../../desktop/nheko.nix
     ../../desktop/rhythmbox.nix
     ../../desktop/sakura.nix
     ../../desktop/vscode.nix
