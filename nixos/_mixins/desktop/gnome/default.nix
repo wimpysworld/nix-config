@@ -5,46 +5,64 @@ let
   isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
 in
 {
-  environment.systemPackages = with pkgs; [
-    gnome-usage
-    gnomeExtensions.appindicator
-    gnomeExtensions.autohide-battery
-    gnomeExtensions.dash-to-dock
-    gnomeExtensions.emoji-copy
-    gnomeExtensions.just-perfection
-    gnomeExtensions.logo-menu
-    gnomeExtensions.no-overview
-    gnomeExtensions.tiling-assistant
-    gnomeExtensions.wireless-hid
-    gnomeExtensions.vitals
-    gnomeExtensions.wifi-qrcode
-    unstable.gnomeExtensions.workspace-switcher-manager
-    tilix
-  ] ++ lib.optionals (isInstall) [
-    eyedropper
-    gnome.gnome-tweaks
-    gnome.simple-scan
-    gnomeExtensions.freon
-    usbimager
-  ] ++ lib.optionals (isThinkpad) [
-    gnomeExtensions.thinkpad-battery-threshold
-  ];
+  environment = {
+    gnome.excludePackages = (with pkgs; [
+      baobab
+      gnome-console
+      gnome.geary
+      gnome.gnome-music
+      gnome.gnome-system-monitor
+      gnome.epiphany
+      gnome.totem
+    ] ++ lib.optionals (isISO) [
+      # Don't install these on the ISO
+      gnome.gnome-calculator
+      gnome.gnome-calendar
+      gnome.gnome-characters
+      gnome.gnome-clocks
+      gnome.gnome-contacts
+      gnome.gnome-font-viewer
+      gnome.gnome-logs
+      gnome.gnome-maps
+      gnome.simple-scan
+      gnome.gnome-weather
+      gnome.yelp
+      gnome-connections
+      gnome-extension-manager
+      gnome-tour
+      gnome-user-docs
+      loupe
+      snapshot
+    ]);
 
-  # Exclude the GNOME apps I don't use
-  environment.gnome.excludePackages = with pkgs; [
-    baobab
-    gnome-console
-    gnome.geary
-    gnome.gnome-music
-    gnome.gnome-system-monitor
-    gnome.epiphany
-    gnome.totem
-  ] ++ lib.optionals (isISO) [
-    gnome.gnome-calendar
-    gnome.gnome-contacts
-    gnome.simple-scan
-    gnome-tour
-  ];
+    systemPackages = (with pkgs; [
+      gnomeExtensions.appindicator
+      gnomeExtensions.autohide-battery
+      gnomeExtensions.dash-to-dock
+      gnomeExtensions.emoji-copy
+      gnomeExtensions.just-perfection
+      gnomeExtensions.logo-menu
+      gnomeExtensions.no-overview
+      gnomeExtensions.tiling-assistant
+      gnomeExtensions.wireless-hid
+      gnomeExtensions.vitals
+      gnomeExtensions.wifi-qrcode
+      unstable.gnomeExtensions.workspace-switcher-manager
+    ] ++ lib.optionals (isInstall) [
+      eyedropper
+      gnome.gnome-tweaks
+      gnome-usage
+      gnome.simple-scan
+      gnomeExtensions.freon
+      usbimager
+      tilix
+    ] ++ lib.optionals (isISO) [
+      # Things we do want on the ISO, but not on the installed system
+      gnome-console
+    ] ++ lib.optionals (isThinkpad) [
+      gnomeExtensions.thinkpad-battery-threshold
+    ]);
+  };
 
   programs = {
     calls.enable = false;
@@ -290,8 +308,8 @@ in
         };
       };
     }];
-    evince.enable = true;
-    file-roller.enable = true;
+    evince.enable = isInstall;
+    file-roller.enable = isInstall;
     geary.enable = false;
     gnome-disks.enable = isInstall;
     gnome-terminal.enable = false;
@@ -331,7 +349,12 @@ in
 
   services = {
     gnome = {
+      evolution-data-server.enable = lib.mkForce isInstall;
       games.enable = false;
+      gnome-browser-connector.enable = isInstall;
+      gnome-online-accounts.enable = isInstall;
+      tracker.enable = isInstall;
+      tracker-miners.enable = isInstall;
     };
     udev.packages = with pkgs; [ gnome.gnome-settings-daemon ];
     xserver = {
@@ -342,12 +365,7 @@ in
           autoSuspend = false;
         };
       };
-
-      desktopManager = {
-        gnome = {
-          enable = true;
-        };
-      };
+      desktopManager.gnome.enable = true;
     };
   };
 
