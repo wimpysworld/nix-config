@@ -28,6 +28,7 @@ in
   ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
     brave
     chromium
+    fractal
     google-chrome
     microsoft-edge
     opera
