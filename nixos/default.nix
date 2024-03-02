@@ -269,7 +269,13 @@ in
     };
     nano.enable = lib.mkDefault false;
     nix-index-database.comma.enable = isInstall;
-    nix-ld.enable = isInstall;
+    nix-ld = lib.mkIf (isInstall) {
+      enable = true;
+      libraries = with pkgs; [
+      # Add any missing dynamic libraries for unpackaged
+      # programs here, NOT in environment.systemPackages
+      ];
+    };
     ssh.startAgent = true;
   };
 
@@ -387,7 +393,7 @@ in
       dockerCompat = true;
       dockerSocket.enable = true;
       enable = true;
-      enableNvidia = lib.elem "nvidia" config.services.xserver.videoDrivers;
+      enableNvidia = hasNvidia;
     };
   };
 }

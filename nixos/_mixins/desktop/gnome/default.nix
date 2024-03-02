@@ -28,7 +28,6 @@ in
       gnome.gnome-weather
       gnome.yelp
       gnome-connections
-      gnome-extension-manager
       gnome-tour
       gnome-user-docs
       loupe
