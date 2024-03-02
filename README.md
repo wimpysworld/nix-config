@@ -10,7 +10,7 @@ These computers are managed by this Nix flake ❄️
 | `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T1000]          | 🖥️   | ❄️  | ✅    |
 | `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T600]           | 🖥️   | ❄️  | ✅    |
 | `palpatine` | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | 🪟  | ✅    |
-| `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | 🚧    |
+| `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | ✅    |
 | `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | 🚧    |
 | `dooku`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | 🍏  | 🚧    |
 | `tyranus`   | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | ❄️  | 🚧    |
@@ -234,7 +234,21 @@ Things I should do or improve:
 - [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
 - [ ] Integrate [homepage](https://github.com/benphelps/homepage)
-- [ ] Create gschema overrides for Pantheon & Plank
+
+#### GNOME
+
+- [ ] Configure Tiling Assistant extension
+- [ ] Replace Tilix with Blackbox on GNOME
+- [x] gnomeExtensions.no-overview
+- [ ] Fix GNOME by overview on start up
+- [ ] BUGS! Be cautious: GNOME add gnomeExtensions.favourites-in-appgrid or gnomeExtensions.alphabetical-app-grid and enable favs to be shown in the app-grid
+
+#### System
+
+- [ ] Sidious disk encryption and re-install
+- [ ] Tanis Linux 6.6 and XFS and re-install
+- [ ] Migrate desktop apps from Home Manager to NixOS and dconf
+- [ ] https://github.com/vinceliuice/grub2-themes or https://github.com/sandesh236/sleek--themes (in nixpkgs)
 
 ### Game Development
 
