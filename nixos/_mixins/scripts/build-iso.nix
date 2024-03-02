@@ -9,7 +9,7 @@ fi
 
 if [ -e $HOME/Zero/nix-config ]; then
   pushd $HOME/Zero/nix-config
-  ${pkgs.unstable.nix}/bin/nix build .#nixosConfigurations.iso-$1.config.system.build.isoImage
+  ${pkgs.unstable.nix}/bin/nix build .#nixosConfigurations.iso-$1.config.system.build.isoImage -L
   ISO=$(${pkgs.coreutils-full}/bin/head -n1 result/nix-support/hydra-build-products | ${pkgs.coreutils-full}/bin/cut -d'/' -f6)
   ${pkgs.coreutils-full}/bin/mkdir -p $HOME/Quickemu/nixos-$1 2>/dev/null
   ${pkgs.coreutils-full}/bin/cp result/iso/$ISO $HOME/Quickemu/nixos-$1/nixos.iso
