@@ -4,7 +4,6 @@
     ./celluloid.nix
     ./dconf-editor.nix
     ./gnome-sound-recorder.nix
-    ./tilix.nix
   ];
 
   gtk = {
