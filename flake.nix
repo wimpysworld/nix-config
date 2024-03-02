@@ -52,29 +52,28 @@
       # nix run nixpkgs#home-manager -- switch -b backup --flake "${HOME}/Zero/nix-config"
       homeConfigurations = {
         # .iso images
-        "nixos@iso-console" = libx.mkHome { hostname = "iso-console"; username = "nixos"; };
-        "nixos@iso-gnome" = libx.mkHome { hostname = "iso-gnome"; username = "nixos"; desktop = "gnome"; };
-        "nixos@iso-mate" = libx.mkHome { hostname = "iso-mate"; username = "nixos"; desktop = "mate"; };
+        "nixos@iso-console" =  libx.mkHome { hostname = "iso-console";  username = "nixos"; };
+        "nixos@iso-gnome" =    libx.mkHome { hostname = "iso-gnome";    username = "nixos"; desktop = "gnome"; };
+        "nixos@iso-mate" =     libx.mkHome { hostname = "iso-mate";     username = "nixos"; desktop = "mate"; };
         "nixos@iso-pantheon" = libx.mkHome { hostname = "iso-pantheon"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
         "martin@phasma" = libx.mkHome { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
-        "martin@vader" = libx.mkHome { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
-        "martin@tanis" = libx.mkHome { hostname = "tanis"; username = "martin"; desktop = "gnome"; };
+        "martin@vader"  = libx.mkHome { hostname = "vader";  username = "martin"; desktop = "pantheon"; };
+        "martin@tanis"  = libx.mkHome { hostname = "tanis";  username = "martin"; desktop = "gnome"; };
         # dooku/tyranus are dual boot hosts, macOS and NixOS respectively.
-        "martin@dooku" = libx.mkHome { hostname = "dooku"; username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
-        "martin@tyranus" = libx.mkHome { hostname = "tyranus"; username = "martin"; platform = "aarch64-linux"; desktop = "gnome"; };
+        "martin@dooku"     = libx.mkHome { hostname = "dooku";   username = "martin"; platform = "aarch64-darwin"; desktop = "aqua";};
+        "martin@tyranus"   = libx.mkHome { hostname = "tyranus"; username = "martin"; platform = "aarch64-linux";  desktop = "gnome"; };
         # palpatine/sidious are dual boot hosts, WSL2/Ubuntu and NixOS respectively.
         "martin@palpatine" = libx.mkHome { hostname = "palpatine"; username = "martin"; };
-        "martin@sidious" = libx.mkHome { hostname = "sidious"; username = "martin"; desktop = "gnome"; };
-
+        "martin@sidious"   = libx.mkHome { hostname = "sidious";   username = "martin"; desktop = "gnome"; };
         # Servers
-        "martin@brix" = libx.mkHome { hostname = "brix"; username = "martin"; };
+        "martin@brix"  = libx.mkHome { hostname = "brix";  username = "martin"; };
         "martin@skull" = libx.mkHome { hostname = "skull"; username = "martin"; };
         # Steam Deck
         "deck@steamdeck" = libx.mkHome { hostname = "steamdeck"; username = "deck"; };
         # VMs
-        "martin@minimech" = libx.mkHome { hostname = "minimech"; username = "martin"; };
-        "martin@scrubber" = libx.mkHome { hostname = "scrubber"; username = "martin"; desktop = "pantheon"; };
+        "martin@minimech"     = libx.mkHome { hostname = "minimech";     username = "martin"; };
+        "martin@scrubber"     = libx.mkHome { hostname = "scrubber";     username = "martin"; desktop = "pantheon"; };
         "martin@lima-builder" = libx.mkHome { hostname = "lima-builder"; username = "martin"; };
         "martin@lima-default" = libx.mkHome { hostname = "lima-default"; username = "martin"; };
       };
@@ -89,13 +88,13 @@
         #  - sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
         #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
-        phasma = libx.mkHost { hostname = "phasma"; username = "martin"; desktop = "pantheon"; };
-        vader = libx.mkHost { hostname = "vader"; username = "martin"; desktop = "pantheon"; };
-        tanis = libx.mkHost { hostname = "tanis"; username = "martin"; desktop = "gnome"; };
+        phasma  = libx.mkHost { hostname = "phasma";  username = "martin"; desktop = "pantheon"; };
+        vader   = libx.mkHost { hostname = "vader";   username = "martin"; desktop = "pantheon"; };
+        tanis   = libx.mkHost { hostname = "tanis";   username = "martin"; desktop = "gnome"; };
         tyranus = libx.mkHost { hostname = "tyranus"; username = "martin"; desktop = "gnome"; platform = "aarch64-linux"; };
         sidious = libx.mkHost { hostname = "sidious"; username = "martin"; desktop = "gnome"; };
         # Servers
-        brix = libx.mkHost { hostname = "brix"; username = "martin"; };
+        brix  = libx.mkHost { hostname = "brix";  username = "martin"; };
         skull = libx.mkHost { hostname = "skull"; username = "martin"; };
         # VMs
         minimech = libx.mkHost { hostname = "minimech"; username = "martin"; };
