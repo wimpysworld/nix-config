@@ -13,6 +13,9 @@
 
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings = with lib.hm.gvariant; {
+    "ca/desrt/dconf-editor" = {
+      show-warning = false;
+    };
     "com/gexperts/Tilix" = {
       app-title = "\${appName}: \${directory}";
       paste-strip-trailing-whitespace = true;

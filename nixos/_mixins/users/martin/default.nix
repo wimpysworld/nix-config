@@ -19,6 +19,7 @@ in
     authy
     celluloid
     gimp-with-plugins
+    gnome.dconf-editor
     halloy
     inkscape
     libreoffice
