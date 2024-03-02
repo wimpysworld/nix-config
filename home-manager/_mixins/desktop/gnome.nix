@@ -1,6 +1,5 @@
 { config, lib, hostname, pkgs, ... }: {
   imports = [
-    ./celluloid.nix
     ./dconf-editor.nix
     ./gnome-sound-recorder.nix
     ./gnome-text-editor.nix

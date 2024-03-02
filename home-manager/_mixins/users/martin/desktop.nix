@@ -1,4 +1,4 @@
-{ config, lib, pkgs, username, ... }:
+{ config, desktop, lib, pkgs, username, ... }:
 {
   imports = [
     ../../desktop/chatterino2.nix
@@ -66,6 +66,12 @@
       use-system-font = true;
       use-theme-colors = false;
       visible-name = "Bearded Dark Vivid";
+    };
+
+    "io/github/celluloid-player/celluloid" = lib.optionalAttrs (desktop != "gnome") {
+      csd-enable = false;
+    } // {
+      dark-theme-enable = true;
     };
   };
 }

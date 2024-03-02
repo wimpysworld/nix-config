@@ -17,6 +17,7 @@ in
   ] ++ lib.optionals (isWorkstation) [
     _1password-gui
     authy
+    celluloid
     gimp-with-plugins
     halloy
     inkscape
