@@ -19,6 +19,7 @@ in
       pantheon.elementary-screenshot
       pantheon.elementary-shortcut-overlay
       pantheon.elementary-tasks
+      pantheon.elementary-wallpapers
     ]);
 
     # App indicator
