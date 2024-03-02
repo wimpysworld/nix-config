@@ -76,6 +76,10 @@
     } // {
       dark-theme-enable = true;
     };
+    "org/gnome/SoundRecorder" = {
+      audio-channel = "mono";
+      audio-profile = "flac";
+    };
   };
 
   home.file = {
@@ -262,4 +266,9 @@
       }
     '';
   };
+
+  systemd.user.tmpfiles.rules = [
+    "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
+    "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
+  ];
 }
