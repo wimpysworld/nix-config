@@ -1,7 +1,6 @@
 { config, desktop, hostname, inputs, lib, pkgs, platform, username, ... }:
 let
   isWorkstation = if (desktop != null) then true else false;
-  # https://nixos.wiki/wiki/OBS_Studio
   isStreamstation = if (hostname == "phasma" || hostname == "vader") && (isWorkstation) then true else false;
 in
 {
@@ -39,6 +38,7 @@ in
   ]) ++ (with inputs; lib.optionals (isWorkstation) [
     antsy-alien-attack-pico.packages.${platform}.default
   ]) ++ (with pkgs; lib.optionals (isStreamstation) [
+    # https://nixos.wiki/wiki/OBS_Studio
     (wrapOBS {
       plugins = with obs-studio-plugins; [
         advanced-scene-switcher
