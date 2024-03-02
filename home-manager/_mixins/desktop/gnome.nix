@@ -58,18 +58,4 @@
     # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
     mpris-proxy.enable = true;
   };
-
-  xdg = {
-    desktopEntries = {
-      # The usbimager icon path is hardcoded, so override the desktop file
-      usbimager = {
-        name = "USBImager";
-        exec = "${pkgs.usbimager}/bin/usbimager";
-        terminal = false;
-        icon = "usbimager";
-        type = "Application";
-        categories = [ "System" "Application" ];
-      };
-    };
-  };
 }

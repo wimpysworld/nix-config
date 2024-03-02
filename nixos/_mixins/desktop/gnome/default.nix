@@ -52,8 +52,6 @@ in
       gnome.gnome-tweaks
       gnome.simple-scan
       gnomeExtensions.freon
-      usbimager
-      tilix
     ] ++ lib.optionals (isISO) [
       # Things we do want on the ISO, but not on the installed system
       gnome-console
