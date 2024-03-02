@@ -33,7 +33,6 @@ in
       gnome.simple-scan
       loupe
       pick-colour-picker
-      usbimager
     ]);
   };
 

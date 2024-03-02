@@ -27,7 +27,6 @@ in
       gnome.simple-scan
       gnome-firmware
       gthumb
-      usbimager
     ]);
   };
 

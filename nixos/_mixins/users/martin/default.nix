@@ -26,6 +26,7 @@ in
     libreoffice
     tenacity
     tilix
+    usbimager
     wavebox
     zoom-us
   ] ++ lib.optionals (isWorkstation && desktop != "mate") [

@@ -282,4 +282,18 @@
     "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
     "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
   ];
+
+  xdg = {
+    desktopEntries = {
+      # The usbimager icon path is hardcoded, so override the desktop file
+      usbimager = {
+        name = "USBImager";
+        exec = "${pkgs.usbimager}/bin/usbimager";
+        terminal = false;
+        icon = "usbimager";
+        type = "Application";
+        categories = [ "System" "Application" ];
+      };
+    };
+  };
 }
