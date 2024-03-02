@@ -1,33 +1,38 @@
 { lib, hostname, pkgs, ... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  isISO = !isInstall;
 in
 {
-  # Exclude MATE themes. Yaru will be used instead.
-  # Don't install mate-netbook or caja-dropbox
   environment = {
-    mate.excludePackages = with pkgs.mate; [
-      caja-dropbox
-      eom
-      mate-themes
-      mate-netbook
-      mate-icon-theme
-      mate-backgrounds
-      mate-icon-theme-faenza
-    ];
+    mate.excludePackages = (with pkgs; [
+      mate.caja-dropbox
+      mate.eom
+      mate.mate-themes
+      mate.mate-netbook
+      mate.mate-icon-theme
+      mate.mate-backgrounds
+      mate.mate-icon-theme-faenza
+    ] ++ lib.optionals (isISO) [
+      # Don't install these on the ISO
+      mate.atril
+      mate.engrampa
+      mate.mate-calc
+      mate.mate-system-monitor
+      mate.mate-utils
+    ]);
 
-    # Add some packages to complete the MATE desktop
-    systemPackages = with pkgs; [
-      gthumb
+    systemPackages = (with pkgs; [
+      yaru-theme
     ] ++ lib.optionals (isInstall) [
       evolutionWithPlugins
       gnome.gnome-clocks
       gnome.gucharmap
       gnome.simple-scan
       gnome-firmware
-      pick-colour-picker
+      gthumb
       usbimager
-    ];
+    ]);
   };
 
   programs = {
@@ -38,12 +43,16 @@ in
         };
 
         "org/gnome/desktop/interface" = {
+          clock-format = "24h";
+          color-scheme = "prefer-dark";
+          cursor-size = mkInt32 32;
           cursor-theme = "Yaru";
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
-          gtk-theme = "Yaru-magenta-dark";
-          icon-theme = "Yaru-magenta-dark";
+          gtk-theme = "Yaru-blue-dark";
+          icon-theme = "Yaru-blue-dark";
           monospace-font-name = "FiraCode Nerd Font Medium 13";
+          text-scaling-factor = mkDouble 1.0;
         };
 
         "org/gnome/desktop/wm/preferences" = {
@@ -61,7 +70,7 @@ in
         };
 
         "org/gnome/evolution/plugin/external-editor" = {
-          command = "${pkgs.mate.pluma}/bin/pluma";
+          command = "pluma";
         };
 
         "org/gtk/settings/file-chooser" = {
@@ -69,11 +78,11 @@ in
         };
 
         "org/mate/applications-office/calendar" = {
-          exec = "${pkgs.evolution}/bin/evolution";
+          exec = "evolution";
         };
 
         "org/mate/applications-office/tasks" = {
-          exec = "${pkgs.evolution}/bin/evolution";
+          exec = "evolution";
         };
 
         "org/mate/caja/desktop" = {
@@ -100,7 +109,7 @@ in
         };
 
         "org/mate/desktop/applications/calculator" = {
-          exec = "${pkgs.mate.mate-calc}/bin/mate-calc";
+          exec = "mate-calc";
         };
 
         "org/mate/desktop/applications/messager" = {
@@ -108,7 +117,7 @@ in
         };
 
         "org/mate/desktop/applications/terminal" = {
-          exec = "${pkgs.tilix}/bin/tilix";
+          exec = "tilix";
         };
 
         "org/mate/desktop/background" = {
@@ -127,9 +136,9 @@ in
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
           gtk-decoration-layout = ":minimize,maximize,close";
-          gtk-theme = "Yaru-magenta-dark";
+          gtk-theme = "Yaru-blue-dark";
           gtk-color-scheme = "tooltip_fg_color:#ffffff\ntooltip_bg_color:#343434";
-          icon-theme = "Yaru-magenta-dark";
+          icon-theme = "Yaru-blue-dark";
           monospace-font-name = "FiraCode Nerd Font Medium 13";
         };
 
@@ -344,7 +353,7 @@ in
   # Enable services to round out the desktop
   services = {
     blueman.enable = true;
-    gnome.evolution-data-server.enable = isInstall;
+    gnome.evolution-data-server.enable = lib.mkForce isInstall;
     gnome.gnome-keyring.enable = true;
     gvfs.enable = true;
     xserver = {
@@ -356,9 +365,9 @@ in
           cursorTheme.name = "Yaru";
           cursorTheme.package = pkgs.yaru-theme;
           cursorTheme.size = 32;
-          iconTheme.name = "Yaru-magenta-dark";
+          iconTheme.name = "Yaru-blue-dark";
           iconTheme.package = pkgs.yaru-theme;
-          theme.name = "Yaru-magenta-dark";
+          theme.name = "Yaru-blue-dark";
           theme.package = pkgs.yaru-theme;
           indicators = [
             "~session"
@@ -389,9 +398,20 @@ in
           '';
         };
       };
+      desktopManager.mate.enable = true;
+    };
+  };
 
-      desktopManager = {
-        mate.enable = true;
+  xdg.portal = {
+    config = {
+      x-cinnamon = {
+        default = [
+          "xapp"
+          "gtk"
+        ];
+        "org.freedesktop.impl.portal.Secret" = [
+          "gnome-keyring"
+        ];
       };
     };
   };
