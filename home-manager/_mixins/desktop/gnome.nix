@@ -1,8 +1,4 @@
 { config, lib, hostname, pkgs, ... }: {
-  imports = [
-    ./gnome-text-editor.nix
-  ];
-
   gtk = {
     enable = true;
     cursorTheme = {
