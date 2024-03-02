@@ -28,6 +28,8 @@ in
     tilix
     wavebox
     zoom-us
+  ] ++ lib.optionals (isWorkstation && desktop != "mate") [
+    gnome-text-editor
   ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
     brave
     chromium

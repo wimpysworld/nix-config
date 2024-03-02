@@ -80,6 +80,17 @@
       audio-channel = "mono";
       audio-profile = "flac";
     };
+    "org/gnome/TextEditor" = {
+      custom-font = "FiraCode Nerd Font Mono Medium 14";
+      highlight-current-line = true;
+      indent-style = "space";
+      show-line-numbers = true;
+      show-map = true;
+      show-right-margin = true;
+      style-scheme = "builder-dark";
+      tab-width = mkInt32 4;
+      use-system-font = false;
+    };
   };
 
   home.file = {
