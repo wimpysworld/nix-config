@@ -390,7 +390,16 @@ in
   ];
 
   xdg = {
-    desktopEntries = {
+    desktopEntries = lib.mkIf (isLinux) {
+      # Create a desktop entry for the Cider AppImage.
+      cider = {
+        name = "Cider";
+        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Cider.AppImage";
+        terminal = false;
+        icon = "cider";
+        type = "Application";
+        categories = [ "Audio" "Application" ];
+      };
       # The usbimager icon path is hardcoded, so override the desktop file
       usbimager = {
         name = "USBImager";

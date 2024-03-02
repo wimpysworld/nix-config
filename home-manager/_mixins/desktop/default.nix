@@ -14,20 +14,6 @@ in
     '';
   };
 
-  xdg = {
-    desktopEntries = {
-      # Create a desktop entry for the Cider AppImage.
-      cider = lib.mkIf isLinux {
-        name = "Cider";
-        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Cider.AppImage";
-        terminal = false;
-        icon = "cider";
-        type = "Application";
-        categories = [ "Audio" "Application" ];
-      };
-    };
-  };
-
   xresources.properties = {
     "XTerm*background" = "#121214";
     "XTerm*foreground" = "#c8c8c8";
