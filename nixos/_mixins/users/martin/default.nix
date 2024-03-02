@@ -46,6 +46,7 @@ in
     antsy-alien-attack-pico.packages.${platform}.default
   ]) ++ (with pkgs; lib.optionals (isStreamstation) [
     # https://nixos.wiki/wiki/OBS_Studio
+    rhythmbox
     (wrapOBS {
       plugins = with obs-studio-plugins; [
         advanced-scene-switcher
