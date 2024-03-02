@@ -91,16 +91,11 @@ in
   environment = {
     # Eject nano and perl from the system
     defaultPackages = with pkgs; lib.mkForce [
-      coreutils-full
       micro
-      util-linux
     ];
 
     systemPackages = with pkgs; [
-      age
       git
-      ssh-to-age
-      sops
     ] ++ lib.optionals (isInstall) [
       inputs.crafts-flake.packages.${platform}.snapcraft
       inputs.fh.packages.${platform}.default
@@ -115,8 +110,11 @@ in
       podman-tui
       podman
       smartmontools
-    ] ++ lib.optionals (isInstall && isWorkstation && notVM) [
+      sops
+      ssh-to-age
+    ] ++ lib.optionals (isInstall && isWorkstation) [
       pods
+    ] ++ lib.optionals (isInstall && isWorkstation && notVM) [
       quickemu
     ] ++ lib.optionals (isInstall && hasNvidia) [
       nvtop
@@ -207,7 +205,7 @@ in
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
     optimise.automatic = true;
-    package = pkgs.unstable.nix;
+    package = lib.mkIf (isInstall) pkgs.unstable.nix;
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
@@ -258,10 +256,10 @@ in
         set -U fish_pager_color_prefix white --bold --underline
         set -U fish_pager_color_progress brwhite '--background=cyan'
       '';
-      shellAbbrs = {
+      shellAbbrs = lib.mkIf (isInstall) {
         captive-portal = "${pkgs.xdg-utils}/bin/xdg-open http://$(${pkgs.iproute2}/bin/ip --oneline route get 1.1.1.1 | ${pkgs.gawk}/bin/awk '{print $3}'";
-        nix-gc = "sudo ${pkgs.unstable.nix}/bin/nix-collect-garbage --delete-older-than 10d && ${pkgs.unstable.nix}/bin/nix-collect-garbage --delete-older-than 10d";
-        update-lock = "pushd $HOME/Zero/nix-config && ${pkgs.unstable.nix}/bin/nix flake update && popd";
+        nix-gc = "sudo nix-collect-garbage --delete-older-than 10d && nix-collect-garbage --delete-older-than 10d";
+        update-lock = "pushd $HOME/Zero/nix-config && nix flake update && popd";
       };
       shellAliases = {
         nano = "micro";
@@ -374,7 +372,7 @@ in
       supportsDryActivation = true;
       text = ''
         if [ -e /run/current-system/boot.json ] && ! ${pkgs.gnugrep}/bin/grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
-          ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.unstable.nix}/bin diff /run/current-system "$systemConfig"
+          ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.nix}/bin diff /run/current-system "$systemConfig"
         fi
       '';
     };
