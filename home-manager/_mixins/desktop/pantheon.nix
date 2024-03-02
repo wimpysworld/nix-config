@@ -26,7 +26,6 @@
       extraConfig = ''
         gtk-application-prefer-dark-theme = 1
         gtk-decoration-layout = ":minimize,maximize,close"
-        gtk-enable-primary-paste = true
       '';
     };
 
@@ -34,7 +33,6 @@
       extraConfig = {
         gtk-application-prefer-dark-theme = 1;
         gtk-decoration-layout = ":minimize,maximize,close";
-        gtk-enable-primary-paste = true;
       };
     };
 
@@ -42,7 +40,6 @@
       extraConfig = {
         gtk-application-prefer-dark-theme = 1;
         gtk-decoration-layout = ":minimize,maximize,close";
-        gtk-enable-primary-paste = true;
       };
     };
 
@@ -52,7 +49,7 @@
     };
 
     theme = {
-      name = "io.elementary.stylesheet.bubblegum";
+      name = "io.elementary.stylesheet.blueberry";
       package = pkgs.pantheon.elementary-gtk-theme;
     };
   };
