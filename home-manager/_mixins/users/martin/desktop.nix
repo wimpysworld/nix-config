@@ -1,4 +1,7 @@
 { config, desktop, lib, pkgs, username, ... }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
 {
   imports = [
     ../../desktop/chatterino2.nix
@@ -10,7 +13,7 @@
   ];
 
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
-  dconf.settings = with lib.hm.gvariant; {
+  dconf.settings = with lib.hm.gvariant; lib.mkIf (isLinux) {
     "ca/desrt/dconf-editor" = {
       show-warning = false;
     };
