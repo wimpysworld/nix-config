@@ -4,7 +4,6 @@
     ./dconf-editor.nix
     ./gnome-sound-recorder.nix
     ./gnome-text-editor.nix
-    ./tilix.nix
   ];
 
   gtk = {

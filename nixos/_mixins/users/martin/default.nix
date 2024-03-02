@@ -23,6 +23,7 @@ in
     inkscape
     libreoffice
     tenacity
+    tilix
     wavebox
     zoom-us
   ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
