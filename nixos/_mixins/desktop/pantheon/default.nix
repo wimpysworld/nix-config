@@ -272,7 +272,7 @@ in
   security = {
     # Disable autoSuspend; my Pantheon session kept auto-suspending
     # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
-    polkit.extraConfig = lib.mkIf (desktop == "pantheon") ''
+    polkit.extraConfig = ''
       polkit.addRule(function(action, subject) {
           if (action.id == "org.freedesktop.login1.suspend" ||
               action.id == "org.freedesktop.login1.suspend-multiple-sessions" ||
