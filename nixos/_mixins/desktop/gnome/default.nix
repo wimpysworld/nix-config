@@ -42,7 +42,6 @@ in
       gnomeExtensions.emoji-copy
       gnomeExtensions.just-perfection
       gnomeExtensions.logo-menu
-      gnomeExtensions.no-overview
       gnomeExtensions.tiling-assistant
       gnomeExtensions.wireless-hid
       gnomeExtensions.vitals
@@ -201,7 +200,6 @@ in
             "emoji-copy@felipeftn"
             "just-perfection-desktop@just-perfection"
             "logomenu@aryan_k"
-            "no-overview@fthx"
             "tiling-assistant@leleat-on-github"
             "Vitals@CoreCoding.com"
             "wireless-hid@chlumskyvaclav.gmail.com"
@@ -229,6 +227,7 @@ in
         "org/gnome/shell/extensions/just-perfection" = {
           panel-button-padding-size = mkInt32 5;
           panel-indicator-padding-size = mkInt32 3;
+          startup-status = mkInt32 0;
           window-demands-attention-focus = true;
           workspaces-in-app-grid = false;
         };
