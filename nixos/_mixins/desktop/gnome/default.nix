@@ -16,7 +16,6 @@ in
       gnome.totem
     ] ++ lib.optionals (isISO) [
       # Don't install these on the ISO
-      gnome.gnome-calculator
       gnome.gnome-calendar
       gnome.gnome-characters
       gnome.gnome-clocks

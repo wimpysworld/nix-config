@@ -14,7 +14,6 @@ in
     ] ++ lib.optionals (isISO) [
       # Don't install these on the ISO
       pantheon.elementary-calendar
-      pantheon.elementary-calculator
       pantheon.elementary-camera
       pantheon.elementary-mail
       pantheon.elementary-screenshot
