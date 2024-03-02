@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }:
 {
   imports = [
-    ./dconf-editor.nix
     ./gnome-sound-recorder.nix
     ./gnome-text-editor.nix
   ];
