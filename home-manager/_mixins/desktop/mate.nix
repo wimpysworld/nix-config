@@ -1,9 +1,5 @@
 { config, lib, pkgs, ... }:
 {
-  imports = [
-    ./gnome-sound-recorder.nix
-  ];
-
   gtk = {
     enable = true;
     cursorTheme = {

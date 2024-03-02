@@ -1,6 +1,5 @@
 { config, lib, hostname, pkgs, ... }: {
   imports = [
-    ./gnome-sound-recorder.nix
     ./gnome-text-editor.nix
   ];
 

@@ -20,6 +20,7 @@ in
     celluloid
     gimp-with-plugins
     gnome.dconf-editor
+    gnome.gnome-sound-recorder
     halloy
     inkscape
     libreoffice
