@@ -36,7 +36,6 @@ in
     ]);
 
     systemPackages = (with pkgs; [
-      unstable.adw-gtk3
       gnomeExtensions.appindicator
       gnomeExtensions.autohide-battery
       gnomeExtensions.dash-to-dock
