@@ -324,19 +324,6 @@ in
       { domain = "@audio"; item = "nofile" ; type = "soft"; value = "99999"    ; }
       { domain = "@audio"; item = "nofile" ; type = "hard"; value = "99999"    ; }
     ];
-    # Disable autoSuspend; my Pantheon session kept auto-suspending
-    # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
-    polkit.extraConfig = lib.mkIf (desktop == "pantheon") ''
-      polkit.addRule(function(action, subject) {
-          if (action.id == "org.freedesktop.login1.suspend" ||
-              action.id == "org.freedesktop.login1.suspend-multiple-sessions" ||
-              action.id == "org.freedesktop.login1.hibernate" ||
-              action.id == "org.freedesktop.login1.hibernate-multiple-sessions")
-          {
-              return polkit.Result.NO;
-          }
-      });
-    '';
     rtkit.enable = true;
   };
 

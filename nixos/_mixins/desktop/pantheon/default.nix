@@ -1,35 +1,44 @@
 { hostname, lib, pkgs, ... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  isISO = !isInstall;
 in
 {
-  # Exclude the elementary apps I don't use
   environment = {
-    pantheon.excludePackages = with pkgs.pantheon; [
-      elementary-code
-      elementary-music
-      elementary-photos
-      elementary-videos
-      epiphany
-    ];
+    pantheon.excludePackages = (with pkgs; [
+      pantheon.elementary-code
+      pantheon.elementary-music
+      pantheon.elementary-photos
+      pantheon.elementary-videos
+      pantheon.epiphany
+    ] ++ lib.optionals (isISO) [
+      # Don't install these on the ISO
+      pantheon.elementary-calendar
+      pantheon.elementary-calculator
+      pantheon.elementary-camera
+      pantheon.elementary-mail
+      pantheon.elementary-screenshot
+      pantheon.elementary-shortcut-overlay
+      pantheon.elementary-tasks
+    ]);
 
     # App indicator
     # - https://discourse.nixos.org/t/anyone-with-pantheon-de/28422
     # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
     pathsToLink = [ "/libexec" ];
 
-    # Add additional apps and include Yaru for syntax highlighting
-    systemPackages = with pkgs; [
-      loupe
-      yaru-theme
-    ] ++ lib.optionals (isInstall) [
+    systemPackages = (with pkgs; lib.optionals (isInstall) [
       appeditor
       formatter
       gnome.gnome-clocks
       gnome.simple-scan
+      loupe
       pick-colour-picker
       usbimager
-    ];
+    ] ++ lib.optionals (isISO) [
+      # Things we do want on the ISO, but not on the installed system
+      gnome-text-editor
+    ]);
   };
 
   programs = {
@@ -53,7 +62,7 @@ in
         };
 
         "desktop/ibus/panel/emoji" = {
-          font = "JoyPixels 16";
+          font = "Noto Color Emoji 16";
         };
 
         "io/elementary/code/saved-state" = {
@@ -78,6 +87,7 @@ in
 
         "io/elementary/files/preferences" = {
           singleclick-select = true;
+          restore-tabs = false;
         };
 
         "io/elementary/notifications/applications/gala-other" = {
@@ -108,7 +118,6 @@ in
 
         "net/launchpad/plank/docks/dock1" = {
           alignment = "center";
-          dock-items = [ "firefox.desktop" "io.elementary.files.dockitem" "com.gexperts.Tilix.desktop" "io.elementary.appcenter.dockitem" "io.elementary.switchboard.dockitem" ];
           hide-mode = "window-dodge";
           icon-size = mkInt32 48;
           pinned-only = false;
@@ -127,7 +136,7 @@ in
           cursor-theme = "elementary";
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
-          gtk-theme = "io.elementary.stylesheet.bubblegum";
+          gtk-theme = "io.elementary.stylesheet.blueberry";
           gtk-enable-primary-paste = true;
           icon-theme = "elementary";
           monospace-font-name = "FiraCode Nerd Font Medium 13";
@@ -202,19 +211,19 @@ in
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
           binding = "<Super>e";
           command = "io.elementary.files -n ~/";
-          name = "io.elementary.files -n ~/";
+          name = "File Manager";
         };
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
           binding = "<Super>t";
-          command = "${pkgs.tilix}/bin/tilix";
-          name = "tilix";
+          command = "tilix";
+          name = "Terminal";
         };
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
           binding = "<Primary><Alt>t";
-          command = "${pkgs.tilix}/bin/tilix";
-          name = "tilix";
+          command = "tilix";
+          name = "Terminal";
         };
 
         "org/gnome/settings-daemon/plugins/power" = {
@@ -249,6 +258,7 @@ in
         };
       };
     }];
+    evince.enable = isInstall;
     gnome-disks.enable = isInstall;
     pantheon-tweaks.enable = isInstall;
     seahorse.enable = isInstall;
@@ -260,8 +270,28 @@ in
     style = "adwaita-dark";
   };
 
+  security = {
+    # Disable autoSuspend; my Pantheon session kept auto-suspending
+    # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
+    polkit.extraConfig = lib.mkIf (desktop == "pantheon") ''
+      polkit.addRule(function(action, subject) {
+          if (action.id == "org.freedesktop.login1.suspend" ||
+              action.id == "org.freedesktop.login1.suspend-multiple-sessions" ||
+              action.id == "org.freedesktop.login1.hibernate" ||
+              action.id == "org.freedesktop.login1.hibernate-multiple-sessions")
+          {
+              return polkit.Result.NO;
+          }
+      });
+    '';
+  };
+
   services = {
-    gnome.gnome-keyring.enable = true;
+    gnome = {
+      evolution-data-server.enable = lib.mkForce isInstall;
+      gnome-online-accounts.enable = isInstall;
+      gnome-keyring.enable = true;
+    };
     gvfs.enable = true;
     xserver = {
       enable = true;
@@ -274,8 +304,9 @@ in
         pantheon = {
           enable = true;
           extraWingpanelIndicators = with pkgs; [
-            monitor
             wingpanel-indicator-ayatana
+          ] ++ lib.optionals (isInstall) [
+            monitor
           ];
         };
       };

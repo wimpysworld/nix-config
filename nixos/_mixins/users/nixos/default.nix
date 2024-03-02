@@ -177,11 +177,38 @@ in
     stateVersion = lib.mkForce lib.trivial.release;
   };
 
-  config.environment.systemPackages = lib.optionals (isISO) [
-    install-system
-  ] ++ lib.optionals (isWorkstationISO) [
-    pkgs.gparted
-  ];
+  config.environment = {
+    etc = lib.mkIf (isWorkstationISO) {
+      "firefox.dockitem".source = pkgs.writeText "firefox.dockitem" ''
+        [PlankDockItemPreferences]
+        Launcher=file:///run/current-system/sw/share/applications/firefox.desktop
+      '';
+      "firefox.dockitem".target = "/plank/firefox.dockitem";
+
+      "io.elementary.files.dockitem".source = pkgs.writeText "io.elementary.files.dockitem" ''
+        [PlankDockItemPreferences]
+        Launcher=file:///run/current-system/sw/share/applications/io.elementary.files.desktop
+      '';
+      "io.elementary.files.dockitem".target = "/plank/io.elementary.files.dockitem";
+
+      "io.elementary.terminal.dockitem".source = pkgs.writeText "io.elementary.terminal.dockitem" ''
+        [PlankDockItemPreferences]
+        Launcher=file:///run/current-system/sw/share/applications/io.elementary.terminal.desktop
+      '';
+      "io.elementary.terminal.dockitem".target = "/plank/io.elementary.terminal.dockitem";
+
+      "gparted.dockitem".source = pkgs.writeText "gparted.dockitem" ''
+        [PlankDockItemPreferences]
+        Launcher=file:///run/current-system/sw/share/applications/gparted.desktop
+      '';
+      "gparted.dockitem".target = "/plank/gparted.dockitem";
+    };
+    systemPackages = lib.optionals (isISO) [
+      install-system
+    ] ++ lib.optionals (isWorkstationISO) [
+      pkgs.gparted
+    ];
+  };
 
   # All workstation configurations for live media are below.
   config.isoImage = lib.mkIf (isWorkstationISO) {
@@ -192,7 +219,7 @@ in
     dconf.profiles.user.databases = [{
       settings = with lib.gvariant; lib.mkIf (isWorkstationISO) {
         "net/launchpad/plank/docks/dock1" = {
-          dock-items = [ "firefox.desktop" "io.elementary.files.dockitem" "com.gexperts.Tilix.desktop" "io.calamares.calamares.desktop" "gparted.desktop" ];
+          dock-items = [ "firefox.dockitem" "io.elementary.files.dockitem" "io.elementary.terminal.dockitem" "gparted.dockitem" ];
         };
 
         "org/gnome/shell" = {
@@ -209,9 +236,18 @@ in
     };
   };
 
-  config.systemd.tmpfiles.rules = lib.mkIf (isWorkstationISO) [
-    "d /home/${username}/Desktop 0755 ${username} users"
-    "L+ /home/${username}/Desktop/gparted.desktop - - - - ${pkgs.gparted}/share/applications/gparted.desktop"
-    "L+ /home/${username}/Desktop/io.calamares.calamares.desktop - - - - ${pkgs.calamares-nixos}/share/applications/io.calamares.calamares.desktop"
-  ];
+  # Create desktop shortcuts and dock items for the live media
+  config.systemd.tmpfiles = lib.mkIf (isWorkstationISO) {
+    rules = [
+      "d /home/${username}/Desktop 0755 ${username} users"
+      "d /home/${username}/.config 0755 ${username} users"
+      "d /home/${username}/.config/plank 0755 ${username} users"
+      "d /home/${username}/.config/plank/dock1 0755 ${username} users"
+      "d /home/${username}/.config/plank/dock1/launchers 0755 ${username} users"
+      "L+ /home/${username}/.config/plank/dock1/launchers/firefox.dockitem - - - - /etc/plank/firefox.dockitem"
+      "L+ /home/${username}/.config/plank/dock1/launchers/io.elementary.files.dockitem - - - - /etc/plank/io.elementary.files.dockitem"
+      "L+ /home/${username}/.config/plank/dock1/launchers/io.elementary.terminal.dockitem - - - - /etc/plank/io.elementary.terminal.dockitem"
+      "L+ /home/${username}/.config/plank/dock1/launchers/gparted.dockitem - - - - /etc/plank/gparted.dockitem"
+    ];
+  };
 }
