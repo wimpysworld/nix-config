@@ -95,7 +95,7 @@ in
         };
 
         "net/launchpad/plank/docks/dock1" = {
-          dock-items = [ "brave-browser.dockitem" "authy.dockitem" "Wavebox.dockitem" "org.telegram.desktop.dockitem" "discord.dockitem" "nheko.dockitem" "code.dockitem" "GitKraken.dockitem" "com.obsproject.Studio.dockitem" ];
+          dock-items = [ "brave-browser.dockitem" "authy.dockitem" "Wavebox.dockitem" "org.telegram.desktop.dockitem" "discord.dockitem" "org.gnome.Fractal.dockitem" "org.squidowl.halloy.dockitem" "code.dockitem" "GitKraken.dockitem" "com.obsproject.Studio.dockitem" ];
         };
 
         "org/gnome/desktop/input-sources" = {
@@ -109,7 +109,7 @@ in
 
         "org/gnome/shell" = {
           disabled-extensions = mkEmptyArray type.string;
-          favorite-apps = [ "brave-browser.desktop" "authy.desktop" "Wavebox.desktop" "org.telegram.desktop.desktop" "discord.desktop" "nheko.desktop" "code.desktop" "GitKraken.desktop" "com.obsproject.Studio.desktop" ];
+          favorite-apps = [ "brave-browser.desktop" "authy.desktop" "Wavebox.desktop" "org.telegram.desktop.desktop" "discord.desktop" "org.gnome.Fractal.desktop" "org.squidowl.halloy.desktop" "code.desktop" "GitKraken.desktop" "com.obsproject.Studio.desktop" ];
         };
 
         "org/gnome/shell/extensions/auto-move-windows" = {

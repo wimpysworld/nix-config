@@ -22,9 +22,7 @@ in
       mate.mate-utils
     ]);
 
-    systemPackages = (with pkgs; [
-      yaru-theme
-    ] ++ lib.optionals (isInstall) [
+    systemPackages = (with pkgs; lib.optionals (isInstall) [
       evolutionWithPlugins
       gnome.gnome-clocks
       gnome.gucharmap
