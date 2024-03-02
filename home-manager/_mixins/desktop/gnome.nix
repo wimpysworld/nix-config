@@ -48,7 +48,8 @@
     };
 
     theme = {
-      name = "Adwaita-dark";
+      name = "adw-gtk3-dark";
+      package = pkgs.unstable.adw-gtk3;
     };
   };
 

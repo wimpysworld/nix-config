@@ -36,6 +36,7 @@ in
     ]);
 
     systemPackages = (with pkgs; [
+      unstable.adw-gtk3
       gnomeExtensions.appindicator
       gnomeExtensions.autohide-battery
       gnomeExtensions.dash-to-dock
@@ -89,7 +90,7 @@ in
           document-font-name = "Work Sans 12";
           enable-hot-corners = false;
           font-name = "Work Sans 12";
-          gtk-theme = "Adwaita-dark";
+          gtk-theme = "adw-gtk3-dark";
           icon-theme = "Adwaita";
           monospace-font-name = "FiraCode Nerd Font Medium 13";
           show-battery-percentage = true;
