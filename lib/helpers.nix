@@ -9,13 +9,18 @@
   };
 
   # Helper function for generating host configs
-  mkHost = { hostname, username, desktop ? null, installer ? null,  platform ? "x86_64-linux" }: inputs.nixpkgs.lib.nixosSystem {
+  mkHost = { hostname, username, desktop ? null, platform ? "x86_64-linux" }: inputs.nixpkgs.lib.nixosSystem {
     specialArgs = {
       inherit inputs outputs desktop hostname platform username stateVersion;
     };
-    modules = [
+    # If the hostname starts with "iso-", generate an ISO image
+    modules = let
+      isISO = if (builtins.substring 0 4 hostname == "iso-") then true else false;
+      cd-dvd = if (desktop == null) then inputs.nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix" else inputs.nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix";
+    in
+    [
       ../nixos
-    ] ++ (inputs.nixpkgs.lib.optionals (installer != null) [ installer ]);
+    ] ++ (inputs.nixpkgs.lib.optionals (isISO) [ cd-dvd ]);
   };
 
   forAllSystems = inputs.nixpkgs.lib.genAttrs [
