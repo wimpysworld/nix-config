@@ -6,7 +6,6 @@ in
 {
   environment = {
     pantheon.excludePackages = (with pkgs; [
-      pantheon.elementary-code
       pantheon.elementary-music
       pantheon.elementary-photos
       pantheon.elementary-videos
@@ -35,9 +34,6 @@ in
       loupe
       pick-colour-picker
       usbimager
-    ] ++ lib.optionals (isISO) [
-      # Things we do want on the ISO, but not on the installed system
-      gnome-text-editor
     ]);
   };
 
