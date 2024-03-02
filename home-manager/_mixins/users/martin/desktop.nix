@@ -7,7 +7,6 @@ in
     ../../desktop/chatterino2.nix
     ../../desktop/discord.nix
     ../../desktop/gitkraken.nix
-    ../../desktop/rhythmbox.nix
     ../../desktop/sakura.nix
     ../../desktop/vscode.nix
   ];
@@ -86,6 +85,24 @@ in
       prefer-dark-theme = true;
       highlight-syntax = true;
       style-scheme = "oblivion";
+    };
+
+    "org/gnome/rhythmbox/plugins" = {
+      active-plugins = [ "rb" "power-manager" "mpris" "iradio" "generic-player" "audiocd" "android" ];
+    };
+
+    "org/gnome/rhythmbox/podcast" = {
+      download-interval = "manual";
+    };
+
+    "org/gnome/rhythmbox/rhythmdb" = {
+      locations = [ "file://${config.home.homeDirectory}/Studio/Music" ];
+      monitor-library = true;
+    };
+
+    "org/gnome/rhythmbox/sources" = {
+      browser-views = "genres-artists-albums";
+      visible-columns = [ "post-time" "duration" "track-number" "album" "genre" "beats-per-minute" "play-count" "artist" ];
     };
 
     "org/gnome/SoundRecorder" = {
