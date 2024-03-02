@@ -3,9 +3,9 @@ let
   inherit (pkgs.stdenv) isLinux;
 in
 {
-  imports = [
-    (./. + "/${desktop}.nix")
-  ] ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
+  # import the DE specific configuration and any user specific desktop configuration
+  imports = lib.optional (builtins.pathExists (./. + "/desktop/${desktop}/default.nix")) ./desktop/${desktop} ++
+            lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
 
   # Authrorize X11 access in Distrobox
   home.file.".distroboxrc" = lib.mkIf isLinux {
