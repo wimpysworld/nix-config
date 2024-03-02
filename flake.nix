@@ -81,10 +81,10 @@
       nixosConfigurations = {
         # .iso images
         #  - nix build .#nixosConfigurations.{iso-console|iso-desktop}.config.system.build.isoImage
-        iso-console = libx.mkHost { hostname = "iso-console"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"; };
-        iso-gnome = libx.mkHost { hostname = "iso-gnome"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "gnome"; };
-        iso-mate = libx.mkHost { hostname = "iso-mate"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "mate"; };
-        iso-pantheon = libx.mkHost { hostname = "iso-pantheon"; username = "nixos"; installer = nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix"; desktop = "pantheon"; };
+        iso-console  = libx.mkHost { hostname = "iso-console";  username = "nixos"; };
+        iso-gnome    = libx.mkHost { hostname = "iso-gnome";    username = "nixos"; desktop = "gnome"; };
+        iso-mate     = libx.mkHost { hostname = "iso-mate";     username = "nixos"; desktop = "mate"; };
+        iso-pantheon = libx.mkHost { hostname = "iso-pantheon"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
         #  - sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
