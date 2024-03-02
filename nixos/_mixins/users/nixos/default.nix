@@ -248,6 +248,12 @@ in
       "L+ /home/${username}/.config/plank/dock1/launchers/io.elementary.files.dockitem - - - - /etc/plank/io.elementary.files.dockitem"
       "L+ /home/${username}/.config/plank/dock1/launchers/io.elementary.terminal.dockitem - - - - /etc/plank/io.elementary.terminal.dockitem"
       "L+ /home/${username}/.config/plank/dock1/launchers/gparted.dockitem - - - - /etc/plank/gparted.dockitem"
+      "L+ /home/${username}/Desktop/firefox.desktop - - - - ${pkgs.firefox}/share/applications/firefox.desktop"
+      "L+ /home/${username}/Desktop/io.calamares.calamares.desktop - - - - ${pkgs.calamares-nixos}/share/applications/io.calamares.calamares.desktop"
+      "L+ /home/${username}/Desktop/gparted.desktop - - - - ${pkgs.gparted}/share/applications/gparted.desktop"
+    ] ++ lib.optionals (isWorkstationISO && desktop == "mate") [
+      "L+ /home/${username}/Desktop/caja.desktop - - - - ${pkgs.mate.caja}/share/applications/caja.desktop"
+      "L+ /home/${username}/Desktop/mate-terminal.desktop - - - - ${pkgs.mate.mate-terminal}/share/applications/mate-terminal.desktop"
     ];
   };
 }

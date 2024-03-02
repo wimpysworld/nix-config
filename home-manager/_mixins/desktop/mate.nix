@@ -24,31 +24,28 @@
       configLocation = "${config.xdg.configHome}/gtk-2.0/gtkrc";
       extraConfig = ''
         gtk-application-prefer-dark-theme = 1
-        gtk-enable-primary-paste = true
       '';
     };
 
     gtk3 = {
       extraConfig = {
         gtk-application-prefer-dark-theme = 1;
-        gtk-enable-primary-paste = true;
       };
     };
 
     gtk4 = {
       extraConfig = {
         gtk-application-prefer-dark-theme = 1;
-        gtk-enable-primary-paste = true;
       };
     };
 
     iconTheme = {
-      name = "Yaru-dark-magenta";
+      name = "Yaru-blue-dark";
       package = pkgs.yaru-theme;
     };
 
     theme = {
-      name = "Yaru-dark-magenta";
+      name = "Yaru-blue-dark";
       package = pkgs.yaru-theme;
     };
   };
