@@ -7,7 +7,7 @@
     inputs.nixos-hardware.nixosModules.common-gpu-intel
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-hidpi
-    (import ./disks.nix { })
+    ./disks.nix
     ../_mixins/kernel/bcachefs.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/tailscale.nix
