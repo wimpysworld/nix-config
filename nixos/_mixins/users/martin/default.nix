@@ -24,6 +24,7 @@ in
     halloy
     inkscape
     libreoffice
+    meld
     tenacity
     tilix
     usbimager
