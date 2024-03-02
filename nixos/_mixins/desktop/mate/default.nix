@@ -17,7 +17,6 @@ in
       # Don't install these on the ISO
       mate.atril
       mate.engrampa
-      mate.mate-system-monitor
       mate.mate-utils
     ]);
 

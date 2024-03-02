@@ -35,6 +35,7 @@ in
     ]);
 
     systemPackages = (with pkgs; [
+      gnome-usage
       gnomeExtensions.appindicator
       gnomeExtensions.autohide-battery
       gnomeExtensions.dash-to-dock
@@ -50,7 +51,6 @@ in
     ] ++ lib.optionals (isInstall) [
       eyedropper
       gnome.gnome-tweaks
-      gnome-usage
       gnome.simple-scan
       gnomeExtensions.freon
       usbimager

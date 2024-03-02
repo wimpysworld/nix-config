@@ -304,7 +304,6 @@ in
           enable = true;
           extraWingpanelIndicators = with pkgs; [
             wingpanel-indicator-ayatana
-          ] ++ lib.optionals (isInstall) [
             monitor
           ];
         };
