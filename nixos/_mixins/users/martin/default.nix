@@ -47,6 +47,7 @@ in
   ]) ++ (with pkgs; lib.optionals (isStreamstation) [
     # https://nixos.wiki/wiki/OBS_Studio
     rhythmbox
+    sakura
     (wrapOBS {
       plugins = with obs-studio-plugins; [
         advanced-scene-switcher
