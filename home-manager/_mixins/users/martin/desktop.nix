@@ -144,7 +144,7 @@ in
       '';
     };
 
-    "${config.xdg.configHome}/sakura.conf".text = ''
+    "${config.xdg.configHome}/sakura/sakura.conf".text = ''
       [sakura]
       colorset1_fore=rgb(192,192,192)
       colorset1_back=rgb(18,18,20)
