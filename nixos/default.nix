@@ -91,6 +91,7 @@ in
   environment = {
     # Eject nano and perl from the system
     defaultPackages = with pkgs; lib.mkForce [
+      coreutils-full
       micro
     ];
 
