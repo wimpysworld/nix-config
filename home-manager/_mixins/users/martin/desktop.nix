@@ -130,7 +130,8 @@ in
 
   home.file = {
     # FIXME: Make this a systemd user service
-    "${config.xdg.configHome}/autostart/deskmaster-xl.desktop".text =  ''
+    "${config.xdg.configHome}/autostart/deskmaster-xl.desktop" = lib.mkIf (isStreamstation) {
+      text = ''
         [Desktop Entry]
         Name=Deckmaster XL
         Comment=Deckmaster XL
@@ -140,7 +141,8 @@ in
         Terminal=false
         NoDisplay=true
         StartupNotify=false
-    '';
+      '';
+    };
 
     "${config.xdg.configHome}/sakura.conf".text = ''
       [sakura]
