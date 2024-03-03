@@ -240,40 +240,39 @@ Reboot and systemd-boot should now offer the option to boot NixOS and Windows.
 
 Things I should do or improve:
 
+#### macOS
+
 - [ ] Install Rosetta and disable Xcode Command Line tools on macOS
   - `softwareupdate --install-rosetta --agree-to-license`
-- [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
-- [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
-- [ ] Integrate [homepage](https://github.com/benphelps/homepage)
 
 #### GNOME
 
 - [ ] Configure Tiling Assistant extension
-- [ ] Replace Tilix with Blackbox on GNOME
-- [x] gnomeExtensions.no-overview
-- [ ] Fix GNOME by overview on start up
+- [ ] Replace Tilix and Sakura with Blackbox
 - [ ] BUGS! Be cautious: GNOME add gnomeExtensions.favourites-in-appgrid or gnomeExtensions.alphabetical-app-grid and enable favs to be shown in the app-grid
 
 #### System
 
-- [ ] Sidious disk encryption and re-install
-- [ ] Tanis Linux 6.6 and XFS and re-install
-- [ ] Migrate desktop apps from Home Manager to NixOS and dconf
-- [ ] https://github.com/vinceliuice/grub2-themes or https://github.com/sandesh236/sleek--themes (in nixpkgs)
+- [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
+- [ ] Tanis Linux 6.6 with XFS and re-install to workaround wake from suspend regression in Linux 6.7
+- [ ] Migrate terminal settings to the home-manager entry point
+- [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
+- [ ] Integrate [homepage](https://github.com/benphelps/homepage)
+- [ ] Integrate [scrutiny](https://github.com/AnalogJ/scrutiny): <https://github.com/NixOS/nixpkgs/pull/289934/files>
 
-### Game Development
+#### Game Development
 
 - [ ] Defold
 - [ ] Godot
 - [ ] PICO-8
 
-### Shell
+#### Shell
 
 - [ ] `fzf`
 - [ ] `tmate` or `tmux`
 - [ ] `git-graph` and/or `git-igitt` integration
 
-### Servers
+#### Servers
 
 - [ ] Forgejo or Gitea
 - [ ] [microbin](https://github.com/szabodanika/microbin)
