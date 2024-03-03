@@ -112,6 +112,7 @@ in
       name = "Terminal";
     };
 
+    "org/gnome/desktop/background" = lib.optionalAttrs (desktop == "gnome" || desktop == "pantheon") {
       picture-options = "zoom";
     } // lib.optionalAttrs (hostname == "phasma") {
       picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3440x1440.png";
