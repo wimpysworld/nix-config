@@ -48,7 +48,7 @@ in
 
         "org/gnome/shell" = {
           disabled-extensions = mkEmptyArray type.string;
-          favorite-apps = [ "firefox.desktop" "org.gnome.Nautilus.desktop" "org.gnome.Console.desktop" "io.calamares.calamares.desktop" "gparted.desktop" ];
+          favorite-apps = [ "firefox.desktop" "org.gnome.Nautilus.desktop" "com.raggesilver.BlackBox.desktop" "io.calamares.calamares.desktop" "gparted.desktop" ];
           welcome-dialog-last-shown-version = "9999999999";
         };
       };
