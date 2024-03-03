@@ -185,6 +185,44 @@ in
       '';
     };
 
+    ".local/share/blackbox/schemes/Bearded-Dark-Vivid.json".text = ''
+      {
+          "background-color": "#121214",
+          "badge-color": "#E66DFF",
+          "bold-color": "#C8C8C8",
+          "cursor-background-color": "#FFB638",
+          "cursor-foreground-color": "#FFB638",
+          "foreground-color": "#C8C8C8",
+          "highlight-background-color": "#1E1E20",
+          "highlight-foreground-color": "#C8C8C8",
+          "name": "Bearded Dark Vivid",
+          "comment": "Bearded Dark Vivid",
+          "palette": [
+              "#121214",
+              "#d62b2b",
+              "#41dd75",
+              "#ffb638",
+              "#28a9ff",
+              "#e66dff",
+              "#14e5d3",
+              "#c8c8c8",
+              "#434345",
+              "#de5656",
+              "#a1eebb",
+              "#ffc560",
+              "#94d4ff",
+              "#f2b6ff",
+              "#a0f5ed",
+              "#e9e9e9"
+          ],
+          "use-badge-color": true,
+          "use-bold-color": true,
+          "use-cursor-color": true,
+          "use-highlight-color": false,
+          "use-theme-colors": false
+      }
+    '';
+
     ".gitkraken/themes/bearded-vivid-black.jsonc".text = ''
       {
         "meta": {
