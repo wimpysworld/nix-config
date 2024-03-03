@@ -71,6 +71,18 @@ in
       dark-theme-enable = true;
     };
 
+    "org/gnome/desktop/background" = {
+      picture-options = "zoom";
+    } // lib.optionalAttrs (hostname == "phasma") {
+      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3440x1440.png";
+    } // lib.optionalAttrs (hostname == "sidious") {
+      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3840x2160.png";
+    } // lib.optionalAttrs (hostname == "tanis") {
+      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-1920x1200.png";
+    } // lib.optionalAttrs (hostname == "vader") {
+      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-2560x1440.png";
+    };
+
     "org/gnome/meld" = {
       indent-width = mkInt32 4;
       insert-spaces-instead-of-tabs = true;
@@ -129,6 +141,7 @@ in
         NoDisplay=true
         StartupNotify=false
     '';
+
     "${config.xdg.configHome}/sakura.conf".text = ''
       [sakura]
       colorset1_fore=rgb(192,192,192)

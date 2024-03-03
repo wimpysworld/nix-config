@@ -107,8 +107,16 @@ Here's the directory structure I'm using:
 │   ├── _mixins
 │   │   ├── console
 │   │   ├── desktop
+│   │   │   ├── aqua
+│   │   │   ├── gnome
+│   │   │   ├── mate
+│   │   │   └── pantheon
+│   │   ├── hosts
+│   │   │   ├── phasma
+│   │   │   └── vader
 │   │   ├── services
 │   │   └── users
+│   │       └── martin
 │   └── default.nix
 ├── nixos
 │   ├── _mixins
@@ -119,6 +127,9 @@ Here's the directory structure I'm using:
 │   │   ├── scripts
 │   │   ├── services
 │   │   └── users
+│   │       ├── martin
+│   │       ├── nixos
+│   │       └── root
 │   ├── phasma
 │   ├── vader
 │   ├── minimech
