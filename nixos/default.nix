@@ -25,7 +25,7 @@ in
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
-    ./_mixins/scripts
+    ./_mixins/configs
     ./_mixins/users
   ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
 
