@@ -1,9 +1,5 @@
 { config, desktop, lib, pkgs, ... }:
 {
-  imports = [
-    ../../../desktop/deckmaster-xl.nix
-  ];
-
   home = {
     file = {
       "${config.xdg.configHome}/autostart/screenlayout.desktop".text = lib.mkIf (desktop == "pantheon") ''

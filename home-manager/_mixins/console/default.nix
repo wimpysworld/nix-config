@@ -1,6 +1,7 @@
-{ config, lib, pkgs, ... }:
+{ config, hostname, lib, pkgs, ... }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
+  isStreamstation = if (hostname == "phasma" || hostname == "vader") then true else false;
 in
 {
   fonts.fontconfig.enable = true;
@@ -110,6 +111,17 @@ in
       wthrr # Modern Unix weather
       wormhole-william # Terminal file transfer
       yq-go # Terminal `jq` for YAML
+    ] ++ lib.optionals (isStreamstation) [
+      # Deckmaster and the utilities I bind to the Stream Deck
+      alsa-utils
+      bc
+      deckmaster
+      hueadm
+      notify-desktop
+      obs-cli
+      piper-tts
+      playerctl
+      pulsemixer
     ] ++ lib.optionals isLinux [
       figlet # Terminal ASCII banners
       iw # Terminal WiFi info

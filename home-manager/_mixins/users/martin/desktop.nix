@@ -1,6 +1,8 @@
-{ config, desktop, lib, pkgs, username, ... }:
+{ config, desktop, hostname, lib, pkgs, username, ... }:
 let
   inherit (pkgs.stdenv) isLinux;
+  isWorkstation = if (desktop != null) then true else false;
+  isStreamstation = if (hostname == "phasma" || hostname == "vader") && (isWorkstation) then true else false;
 in
 {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
@@ -115,6 +117,18 @@ in
   };
 
   home.file = {
+    # FIXME: Make this a systemd user service
+    "${config.xdg.configHome}/autostart/deskmaster-xl.desktop".text =  ''
+        [Desktop Entry]
+        Name=Deckmaster XL
+        Comment=Deckmaster XL
+        Type=Application
+        Exec=deckmaster -deck ${config.home.homeDirectory}/Studio/StreamDeck/Deckmaster-xl/main.deck
+        Categories=
+        Terminal=false
+        NoDisplay=true
+        StartupNotify=false
+    '';
     "${config.xdg.configHome}/sakura.conf".text = ''
       [sakura]
       colorset1_fore=rgb(192,192,192)
