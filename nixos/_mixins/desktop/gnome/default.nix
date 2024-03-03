@@ -8,7 +8,7 @@ in
   environment = {
     gnome.excludePackages = (with pkgs; [
       baobab
-      gnome-console
+      blackbox-terminal
       gnome.geary
       gnome.gnome-music
       gnome.gnome-system-monitor
@@ -53,9 +53,6 @@ in
       gnome.gnome-tweaks
       gnome.simple-scan
       gnomeExtensions.freon
-    ] ++ lib.optionals (isISO) [
-      # Things we do want on the ISO, but not on the installed system
-      gnome-console
     ] ++ lib.optionals (isThinkpad) [
       gnomeExtensions.thinkpad-battery-threshold
     ]);
@@ -68,13 +65,28 @@ in
     # https://discourse.nixos.org/t/configuration-of-gnome-extensions/33337
     dconf.profiles.user.databases = [{
       settings = with lib.gvariant; {
+        "com/raggesilver/BlackBox" = {
+          cursor-blink-mode = mkUint32 1;
+          cursor-shape = mkUint32 0;
+          easy-copy-paste = true;
+          floating-controls = true;
+          floating-controls-hover-area = mkUint32 20;
+          font = "FiraCode Nerd Font Mono Medium 12";
+          pretty = true;
+          remember-window-size = true;
+          scrollback-lines = mkUint32 10240;
+          theme-dark = "Adwaita Dark";
+          window-height = mkUint32 1150;
+          window-width = mkUint32 1450;
+        };
+
         "org/gnome/desktop/datetime" = {
           automatic-timezone = true;
         };
 
         "org/gnome/desktop/default/applications/terminal" = {
-          exec = "tilix";
-          exec-arg = "-e";
+          exec = "blackbox";
+          exec-arg = "-c";
         };
 
         "org/gnome/desktop/interface" = {
@@ -174,13 +186,13 @@ in
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
           binding = "<Super>t";
-          command = "tilix";
+          command = "blackbox";
           name = "Terminal";
         };
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
           binding = "<Primary><Alt>t";
-          command = "tilix";
+          command = "blackbox";
           name = "Terminal";
         };
 
@@ -234,7 +246,7 @@ in
         "org/gnome/shell/extensions/Logo-menu" = {
           menu-button-icon-image = mkInt32 23;
           menu-button-system-monitor = "gnome-usage";
-          menu-button-terminal = "tilix";
+          menu-button-terminal = "blackbox";
           show-activities-button = true;
           symbolic-icon = true;
         };

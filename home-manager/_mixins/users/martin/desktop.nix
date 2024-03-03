@@ -65,13 +65,53 @@ in
       visible-name = "Bearded Dark Vivid";
     };
 
+    "com/raggesilver/BlackBox" = {
+      cursor-blink-mode = lib.hm.gvariant.mkUint32 1;
+      cursor-shape = lib.hm.gvariant.mkUint32 0;
+      easy-copy-paste = true;
+      floating-controls = true;
+      floating-controls-hover-area = lib.hm.gvariant.mkUint32 20;
+      font = "FiraCode Nerd Font Mono Medium 12";
+      pretty = true;
+      remember-window-size = true;
+      scrollback-lines = lib.hm.gvariant.mkUint32 10240;
+      theme-dark = "Adwaita Dark";
+      window-height = lib.hm.gvariant.mkUint32 1150;
+      window-width = lib.hm.gvariant.mkUint32 1450;
+    };
+
     "io/github/celluloid-player/celluloid" = lib.optionalAttrs (desktop != "gnome") {
       csd-enable = false;
     } // {
       dark-theme-enable = true;
     };
 
-    "org/gnome/desktop/background" = {
+    "org/gnome/settings-daemon/plugins/media-keys" = lib.optionalAttrs (desktop == "pantheon") {
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
+      ];
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = lib.optionalAttrs (desktop == "pantheon") {
+      binding = "<Super>e";
+      command = "io.elementary.files -n ~/";
+      name = "File Manager";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = lib.optionalAttrs (desktop == "pantheon") {
+      binding = "<Super>t";
+      command = "tilix";
+      name = "Terminal";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = lib.optionalAttrs (desktop == "pantheon") {
+      binding = "<Primary><Alt>t";
+      command = "tilix";
+      name = "Terminal";
+    };
+
       picture-options = "zoom";
     } // lib.optionalAttrs (hostname == "phasma") {
       picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3440x1440.png";
@@ -143,84 +183,6 @@ in
         StartupNotify=false
       '';
     };
-
-    "${config.xdg.configHome}/sakura/sakura.conf".text = ''
-      [sakura]
-      colorset1_fore=rgb(192,192,192)
-      colorset1_back=rgb(18,18,20)
-      colorset1_curs=rgb(255,182,56)
-      colorset1_scheme=0
-      colorset1_key=F1
-      colorset2_fore=rgb(192,192,192)
-      colorset2_back=rgb(0,0,0)
-      colorset2_curs=rgb(255,255,255)
-      colorset2_scheme=1
-      colorset2_key=F2
-      colorset3_fore=rgb(192,192,192)
-      colorset3_back=rgb(0,0,0)
-      colorset3_curs=rgb(255,255,255)
-      colorset3_scheme=1
-      colorset3_key=F3
-      colorset4_fore=rgb(192,192,192)
-      colorset4_back=rgb(0,0,0)
-      colorset4_curs=rgb(255,255,255)
-      colorset4_scheme=1
-      colorset4_key=F4
-      colorset5_fore=rgb(192,192,192)
-      colorset5_back=rgb(0,0,0)
-      colorset5_curs=rgb(255,255,255)
-      colorset5_scheme=1
-      colorset5_key=F5
-      colorset6_fore=rgb(192,192,192)
-      colorset6_back=rgb(0,0,0)
-      colorset6_curs=rgb(255,255,255)
-      colorset6_scheme=1
-      colorset6_key=F6
-      last_colorset=1
-      bold_is_bright=false
-      scroll_lines=4096
-      font=FixedsysModernV05 Nerd Font Mono 18
-      show_tab_bar=never
-      scrollbar=false
-      closebutton=false
-      tabs_on_bottom=false
-      less_questions=true
-      disable_numbered_tabswitch=true
-      use_fading=false
-      scrollable_tabs=true
-      urgent_bell=Yes
-      audible_bell=Yes
-      blinking_cursor=Yes
-      cursor_type=VTE_CURSOR_SHAPE_BLOCK
-      word_chars=-,./?%&#_~:
-      palette=1
-      add_tab_accelerator=5
-      del_tab_accelerator=5
-      switch_tab_accelerator=8
-      move_tab_accelerator=9
-      copy_accelerator=5
-      scrollbar_accelerator=5
-      open_url_accelerator=5
-      font_size_accelerator=4
-      set_tab_name_accelerator=5
-      search_accelerator=5
-      add_tab_key=T
-      del_tab_key=W
-      prev_tab_key=Left
-      next_tab_key=Right
-      copy_key=C
-      paste_key=V
-      scrollbar_key=S
-      set_tab_name_key=N
-      search_key=F
-      increase_font_size_key=plus
-      decrease_font_size_key=minus
-      fullscreen_key=F11
-      set_colorset_accelerator=5
-      icon_file=terminal-tango.svg
-      paste_button=2
-      menu_button=3
-    '';
 
     ".gitkraken/themes/bearded-vivid-black.jsonc".text = ''
       {

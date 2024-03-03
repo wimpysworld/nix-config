@@ -26,12 +26,13 @@ in
     libreoffice
     meld
     tenacity
-    tilix
     usbimager
     wavebox
     zoom-us
   ] ++ lib.optionals (isWorkstation && desktop != "mate") [
     gnome-text-editor
+  ] ++ lib.optionals (isWorkstation && desktop == "mate" && desktop == "pantheon") [
+    tilix
   ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
     brave
     chromium
@@ -46,8 +47,8 @@ in
     antsy-alien-attack-pico.packages.${platform}.default
   ]) ++ (with pkgs; lib.optionals (isStreamstation) [
     # https://nixos.wiki/wiki/OBS_Studio
+    blackbox-terminal
     rhythmbox
-    sakura
     (wrapOBS {
       plugins = with obs-studio-plugins; [
         advanced-scene-switcher

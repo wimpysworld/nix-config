@@ -211,13 +211,13 @@ in
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
           binding = "<Super>t";
-          command = "tilix";
+          command = "io.elementary.terminal";
           name = "Terminal";
         };
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
           binding = "<Primary><Alt>t";
-          command = "tilix";
+          command = "io.elementary.terminal";
           name = "Terminal";
         };
 
