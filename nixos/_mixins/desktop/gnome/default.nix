@@ -71,7 +71,7 @@ in
           easy-copy-paste = true;
           floating-controls = true;
           floating-controls-hover-area = mkUint32 20;
-          font = "FiraCode Nerd Font Mono Medium 12";
+          font = "FiraCode Nerd Font Mono Medium 13";
           pretty = true;
           remember-window-size = true;
           scrollback-lines = mkUint32 10240;
@@ -100,7 +100,7 @@ in
           font-name = "Work Sans 12";
           gtk-theme = "adw-gtk3-dark";
           icon-theme = "Adwaita";
-          monospace-font-name = "FiraCode Nerd Font Medium 13";
+          monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
           show-battery-percentage = true;
           text-scaling-factor = mkDouble 1.0;
         };

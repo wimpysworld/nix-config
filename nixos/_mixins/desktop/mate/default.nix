@@ -46,7 +46,7 @@ in
           font-name = "Work Sans 12";
           gtk-theme = "Yaru-blue-dark";
           icon-theme = "Yaru-blue-dark";
-          monospace-font-name = "FiraCode Nerd Font Medium 13";
+          monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
           text-scaling-factor = mkDouble 1.0;
         };
 
@@ -58,7 +58,7 @@ in
         };
 
         "org/gnome/evolution/mail" = {
-          monospace-font = "FiraCode Nerd Font Medium 13";
+          monospace-font = "FiraCode Nerd Font Mono Medium 13";
           search-gravatar-for-photo = true;
           show-sender-photo = true;
           variable-width-font = "Work Sans 12";
@@ -134,7 +134,7 @@ in
           gtk-theme = "Yaru-blue-dark";
           gtk-color-scheme = "tooltip_fg_color:#ffffff\ntooltip_bg_color:#343434";
           icon-theme = "Yaru-blue-dark";
-          monospace-font-name = "FiraCode Nerd Font Medium 13";
+          monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
         };
 
         "org/mate/desktop/peripherals/mouse" = {
@@ -256,10 +256,10 @@ in
           display-line-numbers = true;
           display-right-margin = true;
           display-overview-map = true;
-          editor-font = "FiraCode Nerd Font Medium 13";
+          editor-font = "FiraCode Nerd Font Mono Medium 13";
           highlight-current-line = true;
           insert-spaces = true;
-          print-font-body-pango = "FiraCode Nerd Font Medium 10";
+          print-font-body-pango = "FiraCode Nerd Font Mono Medium 10";
           print-font-header-pango = "Work Sans 11";
           print-font-numbers-pango = "Work Sans 8";
         };

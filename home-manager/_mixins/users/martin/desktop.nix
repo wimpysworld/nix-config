@@ -52,7 +52,7 @@ in
       default-size-columns = mkInt32 132;
       default-size-rows = mkInt32 50;
       draw-margin = mkInt32 80;
-      font = "FiraCode Nerd Font Medium 12";
+      font = "FiraCode Nerd Font Mono Medium 13";
       foreground-color = "#C8C8C8C8C8C8";
       highlight-background-color = "#1E1E1E1E2020";
       highlight-colors-set = false;
@@ -71,7 +71,7 @@ in
       easy-copy-paste = true;
       floating-controls = true;
       floating-controls-hover-area = lib.hm.gvariant.mkUint32 20;
-      font = "FiraCode Nerd Font Mono Medium 12";
+      font = "FiraCode Nerd Font Mono Medium 13";
       pretty = true;
       remember-window-size = true;
       scrollback-lines = lib.hm.gvariant.mkUint32 10240;
@@ -157,7 +157,7 @@ in
       audio-profile = "flac";
     };
     "org/gnome/TextEditor" = {
-      custom-font = "FiraCode Nerd Font Mono Medium 14";
+      custom-font = "FiraCode Nerd Font Mono Medium 13";
       highlight-current-line = true;
       indent-style = "space";
       show-line-numbers = true;
