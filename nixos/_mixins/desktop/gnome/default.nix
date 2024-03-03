@@ -40,6 +40,7 @@ in
       gnomeExtensions.autohide-battery
       gnomeExtensions.dash-to-dock
       gnomeExtensions.emoji-copy
+      gnomeExtensions.favourites-in-appgrid
       gnomeExtensions.just-perfection
       gnomeExtensions.logo-menu
       gnomeExtensions.tiling-assistant
