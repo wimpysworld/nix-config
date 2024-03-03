@@ -105,7 +105,7 @@ Here's the directory structure I'm using:
 .
 ├── home-manager
 │   ├── _mixins
-│   │   ├── console
+│   │   ├── configs
 │   │   ├── desktop
 │   │   │   ├── aqua
 │   │   │   ├── gnome
@@ -120,11 +120,11 @@ Here's the directory structure I'm using:
 │   └── default.nix
 ├── nixos
 │   ├── _mixins
+│   │   ├── configs
 │   │   ├── desktop
 │   │   │   ├── gnome
 │   │   │   ├── mate
 │   │   │   └── pantheon
-│   │   ├── scripts
 │   │   ├── services
 │   │   └── users
 │   │       ├── martin
@@ -132,8 +132,6 @@ Here's the directory structure I'm using:
 │   │       └── root
 │   ├── phasma
 │   ├── vader
-│   ├── minimech
-│   ├── scrubber
 │   └── default.nix
 ├── overlays
 ├── pkgs
@@ -142,7 +140,7 @@ Here's the directory structure I'm using:
 ```
 
 The NixOS and Home Manager configurations are in the `nixos` and `home-manager` directories respectively, they are structured in the same way with `_mixins` directories that contain the mixin configurations that are used to compose the final configuration.
-The `pkgs` directory contains my custom packages with package overlays in the `overlays` directory.
+The `pkgs` directory contains my custom local packages with package overlays in the `overlays` directory.
 The `secrets` directory contains secrets managed by [sops-nix].
 The `default.nix` files in the root of each directory are the entry points.
 
@@ -240,33 +238,39 @@ Reboot and systemd-boot should now offer the option to boot NixOS and Windows.
 
 Things I should do or improve:
 
-#### macOS
+### System
 
-- [ ] Install Rosetta and disable Xcode Command Line tools on macOS
-  - `softwareupdate --install-rosetta --agree-to-license`
-
-#### GNOME
-
-- [ ] Configure Tiling Assistant extension
-- [ ] Replace Tilix and Sakura with Blackbox
-- [ ] BUGS! Be cautious: GNOME add gnomeExtensions.favourites-in-appgrid or gnomeExtensions.alphabetical-app-grid and enable favs to be shown in the app-grid
-
-#### System
-
-- [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
+- [x] Migrate terminal settings to the home-manager entry point
 - [ ] Tanis Linux 6.6 with XFS and re-install to workaround wake from suspend regression in Linux 6.7
-- [ ] Migrate terminal settings to the home-manager entry point
+- [ ] Make `disks.nix` consistent across all hosts
+- [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
+- [ ] Add README.md to each level of the configuration to add context
+- [ ] Do this: <https://github.com/Electrostasy/dots/blob/master/flake.nix#L93>
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
 - [ ] Integrate [homepage](https://github.com/benphelps/homepage)
 - [ ] Integrate [scrutiny](https://github.com/AnalogJ/scrutiny): <https://github.com/NixOS/nixpkgs/pull/289934/files>
 
-#### Game Development
+### macOS
 
-- [ ] Defold
-- [ ] Godot
-- [ ] PICO-8
+- [ ] Install Rosetta and disable Xcode Command Line tools on macOS
+  - `softwareupdate --install-rosetta --agree-to-license`
 
-#### Shell
+### GNOME
+
+- [ ] Configure Tiling Assistant extension
+- [ ] Disable maximum temp in Freon
+- [ ] Replace Tilix and Sakura with Blackbox
+- [ ] Add `gnomeExtensions.favourites-in-appgrid`
+  - The bug needs to be fixed in the extension first:
+    - <https://gitlab.gnome.org/harshadgavali/favourites-in-appgrid/-/issues/6>
+
+### Game Development
+
+- [ ] Add Godot
+- [ ] Package for Defold
+- [ ] Local package PICO-8
+
+### Shell
 
 - [ ] `fzf`
 - [ ] `tmate` or `tmux`
@@ -344,8 +348,8 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [nixos/_mixins]: ./nixos/_mixins
 [home-manager/_mixins]: ./home-manager/_mixins
 [flake.nix]: ./flake.nix
+[Modern Unix]: ./home-manager/default.nix
 
-[Modern Unix]: ./home-manager/_mixins/console/default.nix
 [micro]: [https://micro-editor.github.io/]
 [sops-nix]: [https://github.com/Mic92/sops-nix]
 
