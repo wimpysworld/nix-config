@@ -235,6 +235,10 @@ in
           emoji-keybind = [ "<Primary><Alt>e" ];
         };
 
+        "org/gnome/shell/extensions/freon" = {
+          hot-sensors = [ "__average__" ];
+        };
+
         "org/gnome/shell/extensions/just-perfection" = {
           panel-button-padding-size = mkInt32 5;
           panel-indicator-padding-size = mkInt32 3;
