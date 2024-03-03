@@ -258,8 +258,8 @@ Things I should do or improve:
 ### GNOME
 
 - [ ] Configure Tiling Assistant extension
-- [ ] Disable maximum temp in Freon
-- [ ] Replace Tilix and Sakura with Blackbox
+- [x] Disable maximum temp in Freon
+- [x] Replace GNOME Console and Sakura with Blackbox
 - [ ] Add `gnomeExtensions.favourites-in-appgrid`
   - The bug needs to be fixed in the extension first:
     - <https://gitlab.gnome.org/harshadgavali/favourites-in-appgrid/-/issues/6>
