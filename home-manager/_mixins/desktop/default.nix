@@ -1,11 +1,10 @@
 { config, desktop, lib, pkgs, username, ... }:
 let
-  inherit (pkgs.stdenv) isDarwin;
-  inherit (pkgs.stdenv) isLinux;
+  inherit (pkgs.stdenv) isDarwin isLinux;
 in
 {
   # import the DE specific configuration and any user specific desktop configuration
-  imports = lib.optional (builtins.pathExists (./. + "/desktop/${desktop}/default.nix")) ./desktop/${desktop} ++
+  imports = lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop} ++
             lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
 
   home = {
