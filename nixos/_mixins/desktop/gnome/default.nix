@@ -8,7 +8,7 @@ in
   environment = {
     gnome.excludePackages = (with pkgs; [
       baobab
-      blackbox-terminal
+      gnome-console
       gnome.geary
       gnome.gnome-music
       gnome.gnome-system-monitor
@@ -35,6 +35,7 @@ in
     ]);
 
     systemPackages = (with pkgs; [
+      blackbox-terminal
       gnome-usage
       gnomeExtensions.appindicator
       gnomeExtensions.autohide-battery
