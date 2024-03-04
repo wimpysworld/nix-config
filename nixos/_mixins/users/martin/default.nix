@@ -67,10 +67,11 @@ in
     ] ++ lib.optionals (isWorkstation && (desktop == "mate" || desktop == "pantheon")) [
       tilix
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
+      blackbox-terminal
+      gnome-extension-manager
       gnomeExtensions.start-overlay-in-application-view
       gnomeExtensions.tiling-assistant
       gnomeExtensions.vitals
-      blackbox-terminal
     ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
       brave
       chromium
