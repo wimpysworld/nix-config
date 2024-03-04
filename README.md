@@ -240,7 +240,6 @@ Things I should do or improve:
 
 ### System
 
-- [x] Migrate terminal settings to the home-manager entry point
 - [ ] Tanis Linux 6.6 with XFS and re-install to workaround wake from suspend regression in Linux 6.7
 - [ ] Make `disks.nix` consistent across all hosts
 - [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
@@ -267,7 +266,6 @@ Things I should do or improve:
 
 ### Shell
 
-- [ ] `fzf`
 - [ ] `tmate` or `tmux`
 - [ ] `git-graph` and/or `git-igitt` integration
 
