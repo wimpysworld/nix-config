@@ -229,7 +229,6 @@ in
       disabled-extensions = mkEmptyArray type.string;
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
-        "autohide-battery@sitnik.ru"
         "auto-move-windows@gnome-shell-extensions.gcampax.github.com"
         "dash-to-dock@micxgx.gmail.com"
         "emoji-copy@felipeftn"

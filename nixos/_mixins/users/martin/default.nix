@@ -67,7 +67,6 @@ in
     ] ++ lib.optionals (isWorkstation && (desktop == "mate" || desktop == "pantheon")) [
       tilix
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
-      gnomeExtensions.autohide-battery
       gnomeExtensions.start-overlay-in-application-view
       gnomeExtensions.tiling-assistant
       gnomeExtensions.vitals
