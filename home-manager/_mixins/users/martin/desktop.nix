@@ -185,13 +185,21 @@ in
     "org/gnome/desktop/background" = lib.optionalAttrs (desktop == "gnome" || desktop == "pantheon") {
       picture-options = "zoom";
     } // lib.optionalAttrs (hostname == "phasma") {
-      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3440x1440.png";
+      picture-uri = "file:///etc/backgrounds/DeterminateColorway-3440x1440.png";
+      picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-1920x1200.png";
     } // lib.optionalAttrs (hostname == "sidious") {
-      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3840x2160.png";
+      picture-uri = "file:///etcbackgrounds/DeterminateColorway-3840x2160.png";
+      picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-1920x1200.png";
     } // lib.optionalAttrs (hostname == "tanis") {
-      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-1920x1200.png";
+      picture-uri = "file:///etc/backgrounds/DeterminateColorway-1920x1200.png";
+      picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-1920x1200.png";
     } // lib.optionalAttrs (hostname == "vader") {
-      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-2560x1440.png";
+      picture-uri = "file:///etc/backgrounds/DeterminateColorway-2560x1440.png";
+      picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-2560x1440.png";
+    };
+
+    "org/gnome/desktop/screensaver" = lib.optionalAttrs (desktop == "gnome" || desktop == "pantheon") {
+      picture-uri = "file://etc/backgrounds/DeterminateColorway-3840x2160.png";
     };
 
     "org/gnome/desktop/input-sources" = {

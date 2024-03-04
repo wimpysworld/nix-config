@@ -219,11 +219,18 @@ in
         "net/launchpad/plank/docks/dock1" = {
           dock-items = [ "firefox.dockitem" "io.elementary.files.dockitem" "io.elementary.terminal.dockitem" "gparted.dockitem" ];
         };
-
         "org/gnome/shell" = {
           disabled-extensions = mkEmptyArray type.string;
           favorite-apps = [ "firefox.desktop" "org.gnome.Nautilus.desktop" "org.gnome.Console.desktop" "io.calamares.calamares.desktop" "gparted.desktop" ];
           welcome-dialog-last-shown-version = "9999999999";
+        };
+        "org/gnome/desktop/background" = {
+          picture-options = "zoom";
+          picture-uri = "file:///etc/backgrounds/DeterminateColorway-3840x2160.png";
+          picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-3840x2160.png";
+        };
+        "org/gnome/desktop/screensaver" = {
+          picture-uri = "file:///etc/backgrounds/DeterminateColorway-3840x2160.png";
         };
       };
     }];

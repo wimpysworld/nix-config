@@ -55,7 +55,13 @@ in
   environment.etc = let
     json = pkgs.formats.json {};
   in
-  lib.mkIf (needsLowLatencyPipewire) {
+  {
+    "backgrounds/DeterminateColorway-1920x1080.png".source = ../configs/backgrounds/DeterminateColorway-1920x1080.png;
+    "backgrounds/DeterminateColorway-1920x1200.png".source = ../configs/backgrounds/DeterminateColorway-1920x1200.png;
+    "backgrounds/DeterminateColorway-2560x1440.png".source = ../configs/backgrounds/DeterminateColorway-2560x1440.png;
+    "backgrounds/DeterminateColorway-3440x1440.png".source = ../configs/backgrounds/DeterminateColorway-3440x1440.png;
+    "backgrounds/DeterminateColorway-3840x2160.png".source = ../configs/backgrounds/DeterminateColorway-3840x2160.png;
+  } // lib.optionalAttrs (needsLowLatencyPipewire) {
     # Change this to use: services.pipewire.extraConfig.pipewire
     # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
     "pipewire/pipewire.conf.d/92-low-latency.conf".text = ''
