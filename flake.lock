@@ -269,6 +269,26 @@
         "type": "github"
       }
     },
+    "nixos-needtoreboot": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1709571683,
+        "narHash": "sha256-rqgsWGTaIHDx7kN055jv+pgFrDqX+Ke3qIaaIN5q4iQ=",
+        "owner": "thefossguy",
+        "repo": "nixos-needsreboot",
+        "rev": "57e82f86a53d31c788f08bb04d5e6fa7d350125c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "thefossguy",
+        "repo": "nixos-needsreboot",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1709309926,
@@ -392,6 +412,7 @@
         "nix-index-database": "nix-index-database",
         "nix-snapd": "nix-snapd",
         "nixos-hardware": "nixos-hardware",
+        "nixos-needtoreboot": "nixos-needtoreboot",
         "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "sops-nix": "sops-nix"
