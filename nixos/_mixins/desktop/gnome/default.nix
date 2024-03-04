@@ -1,7 +1,6 @@
 { config, lib, pkgs, hostname,... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
-  isISO = !isInstall;
   isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
 in
 {
