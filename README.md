@@ -255,14 +255,9 @@ Things I should do or improve:
 - [ ] Install Rosetta and disable Xcode Command Line tools on macOS
   - `softwareupdate --install-rosetta --agree-to-license`
 
-### GNOME
+### Linux Desktop
 
 - [ ] Configure Tiling Assistant extension
-- [x] Disable maximum temp in Freon
-- [x] Replace GNOME Console and Sakura with Blackbox
-- [ ] Add `gnomeExtensions.favourites-in-appgrid`
-  - The bug needs to be fixed in the extension first:
-    - <https://gitlab.gnome.org/harshadgavali/favourites-in-appgrid/-/issues/6>
 
 ### Game Development
 
@@ -353,9 +348,9 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [micro]: [https://micro-editor.github.io/]
 [sops-nix]: [https://github.com/Mic92/sops-nix]
 
-[GNOME Install]: ./nixos/_mixins/desktop/gnome/defaul.nix
-[MATE Install]: ./nixos/_mixins/desktop/mate/defaul.nix
+[GNOME Install]: ./nixos/_mixins/desktop/gnome/default.nix
+[MATE Install]: ./nixos/_mixins/desktop/mate/default.nix
 [Pantheon Install]: ./nixos/_mixins/desktop/pantheon/default.nix
-[GNOME Configuration]: ./home-manager/_mixins/desktop/gnome.nix
-[MATE Configuration]: ./home-manager/_mixins/desktop/mate.nix
-[Pantheon Configuration]: ./home-manager/_mixins/desktop/pantheon.nix
+[GNOME Configuration]: ./nixos/_mixins/desktop/gnome/default.nix
+[MATE Configuration]: ./nixos/_mixins/desktop/mate/default.nix
+[Pantheon Configuration]: ./nixos/_mixins/desktop/pantheon/default/.nix

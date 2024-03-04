@@ -3,13 +3,16 @@ let
   inherit (pkgs.stdenv) isLinux;
   isWorkstation = if (desktop != null) then true else false;
   isStreamstation = if (hostname == "phasma" || hostname == "vader") && (isWorkstation) then true else false;
+  isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
 in
 {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings = with lib.hm.gvariant; lib.mkIf (isLinux) {
+    ### Various Applications ###
     "ca/desrt/dconf-editor" = {
       show-warning = false;
     };
+
     "com/gexperts/Tilix" = {
       app-title = "\${appName}: \${directory}";
       paste-strip-trailing-whitespace = true;
@@ -86,52 +89,15 @@ in
       dark-theme-enable = true;
     };
 
-    "org/gnome/settings-daemon/plugins/media-keys" = lib.optionalAttrs (desktop == "pantheon") {
-      custom-keybindings = [
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
-      ];
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = lib.optionalAttrs (desktop == "pantheon") {
-      binding = "<Super>e";
-      command = "io.elementary.files -n ~/";
-      name = "File Manager";
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = lib.optionalAttrs (desktop == "pantheon") {
-      binding = "<Super>t";
-      command = "tilix";
-      name = "Terminal";
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = lib.optionalAttrs (desktop == "pantheon") {
-      binding = "<Primary><Alt>t";
-      command = "tilix";
-      name = "Terminal";
-    };
-
-    "org/gnome/desktop/background" = lib.optionalAttrs (desktop == "gnome" || desktop == "pantheon") {
-      picture-options = "zoom";
-    } // lib.optionalAttrs (hostname == "phasma") {
-      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3440x1440.png";
-    } // lib.optionalAttrs (hostname == "sidious") {
-      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3840x2160.png";
-    } // lib.optionalAttrs (hostname == "tanis") {
-      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-1920x1200.png";
-    } // lib.optionalAttrs (hostname == "vader") {
-      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-2560x1440.png";
-    };
-
     "org/gnome/meld" = {
+      custom-font = "FiraCode Nerd Font Mono Medium 13";
       indent-width = mkInt32 4;
       insert-spaces-instead-of-tabs = true;
       highlight-current-line = true;
       show-line-numbers = true;
       prefer-dark-theme = true;
       highlight-syntax = true;
-      style-scheme = "oblivion";
+      style-scheme = "Yaru-dark";
     };
 
     "org/gnome/rhythmbox/plugins" = {
@@ -156,16 +122,198 @@ in
       audio-channel = "mono";
       audio-profile = "flac";
     };
-    "org/gnome/TextEditor" = {
-      custom-font = "FiraCode Nerd Font Mono Medium 13";
-      highlight-current-line = true;
-      indent-style = "space";
-      show-line-numbers = true;
-      show-map = true;
-      show-right-margin = true;
-      style-scheme = "builder-dark";
-      tab-width = mkInt32 4;
-      use-system-font = false;
+
+    "com/github/fabiocolacio/marker/preferences/editor" = {
+      auto-indent = true;
+      enable-syntax-theme = true;
+      replace-tabs = true;
+      show-spaces = false;
+      spell-check = false;
+      syntax-theme = "Yaru-dark";
+    };
+
+    "com/github/fabiocolacio/marker/preferences/preview" = {
+      css-theme = "GithubDark.css";
+      highlight-toggle = true;
+    };
+
+    "com/github/fabiocolacio/marker/preferences/window" = {
+      enable-dark-mode = true;
+      view-mode = "editor-only";
+    };
+
+    ### Common Desktop settings ###
+    "net/launchpad/plank/docks/dock1" = lib.optionalAttrs (desktop == "mate" || desktop == "pantheon") {
+      dock-items = [ "brave-browser.dockitem" "authy.dockitem" "Wavebox.dockitem" "org.telegram.desktop.dockitem" "discord.dockitem" "org.gnome.Fractal.dockitem" "org.squidowl.halloy.dockitem" "code.dockitem" "GitKraken.dockitem" "com.obsproject.Studio.dockitem" ];
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys" = {
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
+      ];
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" =  {
+      binding = "<Super>e";
+      name = "File Manager";
+    } // lib.optionalAttrs (desktop == "pantheon") {
+      command = "io.elementary.files -n ~/";
+    } // lib.optionalAttrs (desktop == "gnome") {
+      command = "nautilus -w ~/";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      binding = "<Super>t";
+      name = "Terminal";
+    } // lib.optionalAttrs (desktop == "pantheon") {
+      command = "tilix";
+    } // lib.optionalAttrs (desktop == "gnome") {
+      command = "blackbox";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
+      binding = "<Primary><Alt>t";
+      name = "Terminal";
+    } // lib.optionalAttrs (desktop == "pantheon") {
+      command = "tilix";
+    } // lib.optionalAttrs (desktop == "gnome") {
+      command = "blackbox";
+    };
+
+    "org/gnome/desktop/background" = lib.optionalAttrs (desktop == "gnome" || desktop == "pantheon") {
+      picture-options = "zoom";
+    } // lib.optionalAttrs (hostname == "phasma") {
+      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3440x1440.png";
+    } // lib.optionalAttrs (hostname == "sidious") {
+      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-3840x2160.png";
+    } // lib.optionalAttrs (hostname == "tanis") {
+      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-1920x1200.png";
+    } // lib.optionalAttrs (hostname == "vader") {
+      picture-uri = "file://${config.home.homeDirectory}/Pictures/Determinate/DeterminateColorway-2560x1440.png";
+    };
+
+    "org/gnome/desktop/input-sources" = {
+      xkb-options = [ "grp:alt_shift_toggle" "caps:none" ];
+    };
+
+    "org/gnome/desktop/wm/preferences" = {
+      num-workspaces = mkInt32 8;
+      workspace-names = [ "Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff" ];
+    };
+
+    ### Pantheon ###
+    "io/elementary/terminal/settings" = lib.optionalAttrs (desktop == "pantheon") {
+      unsafe-paste-alert = false;
+    };
+
+    ### GNOME Desktop ###
+    "org/gnome/desktop/default/applications/terminal" = lib.optionalAttrs (desktop == "gnome") {
+      exec = "blackbox";
+      exec-arg = "-c";
+    };
+
+    "org/gnome/mutter" = lib.optionalAttrs (desktop == "gnome") {
+      # Disable Mutter edge-tiling because tiling-assistant extension handles it
+      edge-tiling = false;
+    };
+
+    "org/gnome/mutter/keybindings" = lib.optionalAttrs (desktop == "gnome") {
+      # Disable Mutter toggle-tiled because tiling-assistant extension handles it
+      toggle-tiled-left = mkEmptyArray type.string;
+      toggle-tiled-right = mkEmptyArray type.string;
+    };
+
+    "org/gnome/shell" = lib.optionalAttrs (desktop == "gnome") {
+      disabled-extensions = mkEmptyArray type.string;
+      enabled-extensions = [
+        "appindicatorsupport@rgcjonas.gmail.com"
+        "autohide-battery@sitnik.ru"
+        "auto-move-windows@gnome-shell-extensions.gcampax.github.com"
+        "dash-to-dock@micxgx.gmail.com"
+        "emoji-copy@felipeftn"
+        "freon@UshakovVasilii_Github.yahoo.com"
+        "just-perfection-desktop@just-perfection"
+        "logomenu@aryan_k"
+        "tiling-assistant@leleat-on-github"
+        "Vitals@CoreCoding.com"
+        "wireless-hid@chlumskyvaclav.gmail.com"
+        "wifiqrcode@glerro.pm.me"
+        "workspace-switcher-manager@G-dH.github.com"
+      ]
+      ++ lib.optionals (isThinkpad) [ "thinkpad-battery-threshold@marcosdalvarez.org" ];
+      favorite-apps = [ "brave-browser.desktop" "authy.desktop" "Wavebox.desktop" "org.telegram.desktop.desktop" "discord.desktop" "org.gnome.Fractal.desktop" "org.squidowl.halloy.desktop" "code.desktop" "GitKraken.desktop" "com.obsproject.Studio.desktop" ];
+    };
+
+    "org/gnome/shell/extensions/auto-move-windows" = lib.optionalAttrs (desktop == "gnome") {
+      application-list = [ "brave-browser.desktop:1" "Wavebox.desktop:2" "discord.desktop:2" "org.telegram.desktop.desktop:3" "nheko.desktop:3" "code.desktop:4" "GitKraken.desktop:4" "com.obsproject.Studio.desktop:6" ];
+    };
+
+    "org/gnome/shell/extensions/dash-to-dock" = {
+      background-opacity = mkDouble 0.0;
+      transparency-mode = "FIXED";
+    };
+
+    "org/gnome/shell/extensions/freon" = lib.optionalAttrs (desktop == "gnome") {
+      hot-sensors = [ "__average__" ];
+    };
+
+    "org/gnome/shell/extensions/Logo-menu" = lib.optionalAttrs (desktop == "gnome") {
+      menu-button-system-monitor = "gnome-usage";
+      menu-button-terminal = "blackbox";
+    };
+
+    "org/gnome/shell/extensions/thinkpad-battery-threshold" = lib.optionalAttrs (desktop == "gnome" && isThinkpad) {
+      color-mode = false;
+    };
+
+    "org/gnome/shell/extensions/tiling-assistant" = lib.optionalAttrs (desktop == "gnome") {
+      enable-advanced-experimental-features = true;
+      show-layout-panel-indicator = true;
+      single-screen-gap = mkInt32 10;
+      window-gap = mkInt32 10;
+      maximize-with-gap = true;
+    };
+
+    "org/gnome/shell/extensions/vitals" = lib.optionalAttrs (desktop == "gnome") {
+      alphabetize = false;
+      fixed-widths = true;
+      include-static-info = false;
+      menu-centered = true;
+      monitor-cmd = "gnome-usage";
+      network-speed-format = mkInt32 1;
+      show-fan = false;
+      show-temperature = false;
+      show-voltage = false;
+      update-time = mkInt32 2;
+      use-higher-precision = false;
+    };
+
+    "org/gnome/desktop/wm/keybindings" = lib.optionalAttrs (desktop == "gnome") {
+      # Disable maximise/unmaximise because tiling-assistant extension handles it
+      maximize = mkEmptyArray type.string;
+      unmaximize = mkEmptyArray type.string;
+    };
+
+    ### MATE Desktop ###
+    "org/mate/desktop/peripherals/keyboard/kbd" = lib.optionalAttrs (desktop == "mate") {
+      options = [ "terminate\tterminate:ctrl_alt_bksp" "caps\tcaps:none" ];
+    };
+
+    "org/mate/marco/general" = lib.optionalAttrs (desktop == "mate") {
+      num-workspaces = mkInt32 8;
+    };
+
+    "org/mate/marco/workspace-names" = lib.optionalAttrs (desktop == "mate") {
+      name-1 = " Web ";
+      name-2 = " Work ";
+      name-3 = " Chat ";
+      name-4 = " Code ";
+      name-5 = " Virt ";
+      name-6 = " Cast ";
+      name-7 = " Fun ";
+      name-8 = " Stuff ";
     };
   };
 

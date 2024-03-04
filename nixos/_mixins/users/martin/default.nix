@@ -11,80 +11,119 @@ in
     '';
   };
 
-  environment.systemPackages = (with pkgs; [
-    _1password
-    lastpass-cli
-  ] ++ lib.optionals (isWorkstation) [
-    _1password-gui
-    authy
-    celluloid
-    gimp-with-plugins
-    gnome.dconf-editor
-    gnome.gnome-sound-recorder
-    halloy
-    inkscape
-    libreoffice
-    meld
-    tenacity
-    usbimager
-    wavebox
-    zoom-us
-  ] ++ lib.optionals (isWorkstation && desktop != "mate") [
-    gnome-text-editor
-  ] ++ lib.optionals (isWorkstation && desktop == "mate" && desktop == "pantheon") [
-    tilix
-  ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
-    brave
-    chromium
-    fractal
-    google-chrome
-    microsoft-edge
-    opera
-    telegram-desktop
-    vivaldi
-    vivaldi-ffmpeg-codecs
-  ]) ++ (with inputs; lib.optionals (isWorkstation) [
-    antsy-alien-attack-pico.packages.${platform}.default
-  ]) ++ (with pkgs; lib.optionals (isStreamstation) [
-    # https://nixos.wiki/wiki/OBS_Studio
-    blackbox-terminal
-    rhythmbox
-    (wrapOBS {
-      plugins = with obs-studio-plugins; [
-        advanced-scene-switcher
-        obs-3d-effect
-        obs-advanced-masks
-        obs-command-source
-        obs-composite-blur
-        obs-dvd-screensaver
-        obs-freeze-filter
-        obs-gradient-source
-        obs-gstreamer
-        obs-markdown
-        obs-move-transition
-        obs-multi-rtmp
-        obs-pipewire-audio-capture
-        obs-rgb-levels
-        obs-scale-to-sound
-        obs-scene-as-transition
-        obs-shaderfilter
-        obs-source-clone
-        obs-source-record
-        obs-source-switcher
-        obs-stroke-glow-shadow
-        obs-teleport
-        obs-text-pthread
-        obs-transition-table
-        obs-urlsource
-        obs-vaapi
-        obs-vertical-canvas
-        obs-vintage-filter
-        obs-websocket
-        pixel-art
-        waveform
-      ];
-    })
-  ]);
+  environment = {
+    # Desktop environment applications/features I don't use or want
+    gnome.excludePackages = with pkgs; [
+      baobab
+      gnome-console
+      gnome-text-editor
+      gnome.epiphany
+      gnome.geary
+      gnome.gnome-music
+      gnome.gnome-system-monitor
+      gnome.totem
+    ];
+
+    mate.excludePackages = with pkgs; [
+      mate.caja-dropbox
+      mate.eom
+      mate.mate-themes
+      mate.mate-netbook
+      mate.mate-icon-theme
+      mate.mate-backgrounds
+      mate.mate-icon-theme-faenza
+    ];
+
+    pantheon.excludePackages = with pkgs; [
+      pantheon.elementary-code
+      pantheon.elementary-music
+      pantheon.elementary-photos
+      pantheon.elementary-videos
+      pantheon.epiphany
+    ];
+
+    systemPackages = (with pkgs; [
+      _1password
+      lastpass-cli
+    ] ++ lib.optionals (isWorkstation) [
+      _1password-gui
+      authy
+      celluloid
+      gimp-with-plugins
+      gnome.dconf-editor
+      gnome.gnome-sound-recorder
+      halloy
+      inkscape
+      libreoffice
+      meld
+      tenacity
+      usbimager
+      wavebox
+      yaru-theme
+      zoom-us
+    ] ++ lib.optionals (isWorkstation && (desktop == "gnome" || desktop == "pantheon")) [
+      loupe
+      marker
+    ] ++ lib.optionals (isWorkstation && (desktop == "mate" || desktop == "pantheon")) [
+      tilix
+    ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
+      gnomeExtensions.autohide-battery
+      gnomeExtensions.tiling-assistant
+      gnomeExtensions.vitals
+      blackbox-terminal
+    ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
+      brave
+      chromium
+      fractal
+      google-chrome
+      microsoft-edge
+      opera
+      telegram-desktop
+      vivaldi
+      vivaldi-ffmpeg-codecs
+    ]) ++ (with inputs; lib.optionals (isWorkstation) [
+      antsy-alien-attack-pico.packages.${platform}.default
+    ]) ++ (with pkgs; lib.optionals (isStreamstation) [
+      # https://nixos.wiki/wiki/OBS_Studio
+      blackbox-terminal
+      rhythmbox
+      (wrapOBS {
+        plugins = with obs-studio-plugins; [
+          advanced-scene-switcher
+          obs-3d-effect
+          obs-advanced-masks
+          obs-command-source
+          obs-composite-blur
+          obs-dvd-screensaver
+          obs-freeze-filter
+          obs-gradient-source
+          obs-gstreamer
+          obs-markdown
+          obs-move-transition
+          obs-multi-rtmp
+          obs-pipewire-audio-capture
+          obs-rgb-levels
+          obs-scale-to-sound
+          obs-scene-as-transition
+          obs-shaderfilter
+          obs-source-clone
+          obs-source-record
+          obs-source-switcher
+          obs-stroke-glow-shadow
+          obs-teleport
+          obs-text-pthread
+          obs-transition-table
+          obs-urlsource
+          obs-vaapi
+          obs-vertical-canvas
+          obs-vintage-filter
+          obs-websocket
+          pixel-art
+          waveform
+        ];
+      })
+    ]);
+  };
 
   programs = {
     chromium = lib.mkIf (isWorkstation) {
@@ -101,54 +140,6 @@ in
     };
     dconf.profiles.user.databases = [{
       settings = with lib.gvariant; lib.mkIf (isWorkstation) {
-        "io/elementary/terminal/settings" = {
-          unsafe-paste-alert = false;
-        };
-
-        "net/launchpad/plank/docks/dock1" = {
-          dock-items = [ "brave-browser.dockitem" "authy.dockitem" "Wavebox.dockitem" "org.telegram.desktop.dockitem" "discord.dockitem" "org.gnome.Fractal.dockitem" "org.squidowl.halloy.dockitem" "code.dockitem" "GitKraken.dockitem" "com.obsproject.Studio.dockitem" ];
-        };
-
-        "org/gnome/desktop/input-sources" = {
-          xkb-options = [ "grp:alt_shift_toggle" "caps:none" ];
-        };
-
-        "org/gnome/desktop/wm/preferences" = {
-          num-workspaces = mkInt32 8;
-          workspace-names = [ "Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff" ];
-        };
-
-        "org/gnome/shell" = {
-          disabled-extensions = mkEmptyArray type.string;
-          favorite-apps = [ "brave-browser.desktop" "authy.desktop" "Wavebox.desktop" "org.telegram.desktop.desktop" "discord.desktop" "org.gnome.Fractal.desktop" "org.squidowl.halloy.desktop" "code.desktop" "GitKraken.desktop" "com.obsproject.Studio.desktop" ];
-        };
-
-        "org/gnome/shell/extensions/auto-move-windows" = {
-          application-list = [ "brave-browser.desktop:1" "Wavebox.desktop:2" "discord.desktop:2" "org.telegram.desktop.desktop:3" "nheko.desktop:3" "code.desktop:4" "GitKraken.desktop:4" "com.obsproject.Studio.desktop:6" ];
-        };
-
-        "org/gnome/shell/extensions/tiling-assistant" = {
-          show-layout-panel-indicator = true;
-        };
-
-        "org/mate/desktop/peripherals/keyboard/kbd" = {
-          options = [ "terminate\tterminate:ctrl_alt_bksp" "caps\tcaps:none" ];
-        };
-
-        "org/mate/marco/general" = {
-          num-workspaces = mkInt32 8;
-        };
-
-        "org/mate/marco/workspace-names" = {
-          name-1 = " Web ";
-          name-2 = " Work ";
-          name-3 = " Chat ";
-          name-4 = " Code ";
-          name-5 = " Virt ";
-          name-6 = " Cast ";
-          name-7 = " Fun ";
-          name-8 = " Stuff ";
-        };
       };
     }];
   };

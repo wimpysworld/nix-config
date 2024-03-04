@@ -5,28 +5,20 @@ let
 in
 {
   environment = {
-    mate.excludePackages = (with pkgs; [
+    mate.excludePackages = with pkgs; [
       mate.caja-dropbox
-      mate.eom
       mate.mate-themes
       mate.mate-netbook
       mate.mate-icon-theme
       mate.mate-backgrounds
       mate.mate-icon-theme-faenza
-    ] ++ lib.optionals (isISO) [
-      # Don't install these on the ISO
-      mate.atril
-      mate.engrampa
-      mate.mate-utils
-    ]);
+    ];
 
     systemPackages = (with pkgs; lib.optionals (isInstall) [
       evolutionWithPlugins
-      gnome.gnome-clocks
       gnome.gucharmap
       gnome.simple-scan
       gnome-firmware
-      gthumb
     ]);
   };
 

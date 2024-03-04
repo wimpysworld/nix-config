@@ -5,33 +5,21 @@ let
 in
 {
   environment = {
-    pantheon.excludePackages = (with pkgs; [
-      pantheon.elementary-music
-      pantheon.elementary-photos
-      pantheon.elementary-videos
-      pantheon.epiphany
-    ] ++ lib.optionals (isISO) [
-      # Don't install these on the ISO
-      pantheon.elementary-calendar
-      pantheon.elementary-camera
-      pantheon.elementary-mail
-      pantheon.elementary-screenshot
-      pantheon.elementary-shortcut-overlay
-      pantheon.elementary-tasks
-      pantheon.elementary-wallpapers
-    ]);
+    pantheon.excludePackages = [
+      pkgs.pantheon.epiphany
+    ];
 
     # App indicator
     # - https://discourse.nixos.org/t/anyone-with-pantheon-de/28422
     # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
     pathsToLink = [ "/libexec" ];
 
-    systemPackages = (with pkgs; lib.optionals (isInstall) [
+    systemPackages = (with pkgs; [
+      yaru-theme
+    ] ++ lib.optionals (isInstall) [
       appeditor
       formatter
-      gnome.gnome-clocks
       gnome.simple-scan
-      loupe
       pick-colour-picker
     ]);
   };
