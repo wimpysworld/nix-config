@@ -195,7 +195,7 @@ in
         "org/gnome/shell/extensions/just-perfection" = {
           panel-button-padding-size = mkInt32 5;
           panel-indicator-padding-size = mkInt32 3;
-          startup-status = mkInt32 0;
+          #startup-status = mkInt32 0;
           window-demands-attention-focus = true;
           workspaces-in-app-grid = false;
         };
