@@ -17,6 +17,9 @@
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
+    nixos-needtoreboot.url = github:thefossguy/nixos-needsreboot;
+    nixos-needtoreboot.inputs.nixpkgs.follows = "nixpkgs";
+
     nix-index-database.url = "github:Mic92/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
