@@ -1,4 +1,4 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
+{ config, desktop, hostname, inputs, lib, pkgs, platform, username, ... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   isISO = !isInstall;
@@ -41,12 +41,7 @@ function run_disko() {
     # - https://nixos.wiki/wiki/Bcachefs#NixOS_installation_on_bcachefs
     # - https://github.com/NixOS/nixpkgs/issues/32279
     sudo ${pkgs.keyutils}/bin/keyctl link @u @s
-    sudo nix run github:nix-community/disko \
-      --extra-experimental-features "nix-command flakes" \
-      --no-write-lock-file \
-      -- \
-      --mode $DISKO_MODE \
-      "$DISKO_CONFIG"
+    sudo disko --mode $DISKO_MODE "$DISKO_CONFIG"
   fi
 }
 
@@ -224,6 +219,7 @@ in
     };
     systemPackages = lib.optionals (isISO) [
       install-system
+      inputs.disko.packages.${platform}.default
     ] ++ lib.optionals (isWorkstationISO) [
       pkgs.gparted
     ];
