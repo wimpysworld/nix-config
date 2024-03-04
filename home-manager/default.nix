@@ -348,6 +348,11 @@ in
         weather-home = "${pkgs.wthrr}/bin/wthrr basingstoke -u f,24h,c,mph -f d,w";
       };
     };
+    fzf = {
+        enable = true;
+        enableBashIntegration = true;
+        enableFishIntegration = true;
+    };
     gh = {
       enable = true;
       extensions = with pkgs; [ gh-markdown-preview ];
@@ -509,6 +514,10 @@ in
       enableBashIntegration = true;
       enableFishIntegration = true;
       enableZshIntegration = true;
+      # Replace cd with z and add cdi to access zi
+      options = [
+        "--cmd cd"
+      ];
     };
   };
 
