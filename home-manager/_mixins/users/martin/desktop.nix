@@ -236,6 +236,7 @@ in
         "freon@UshakovVasilii_Github.yahoo.com"
         "just-perfection-desktop@just-perfection"
         "logomenu@aryan_k"
+        "start-overlay-in-application-view@Hex_cz"
         "tiling-assistant@leleat-on-github"
         "Vitals@CoreCoding.com"
         "wireless-hid@chlumskyvaclav.gmail.com"
