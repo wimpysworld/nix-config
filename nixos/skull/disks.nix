@@ -1,13 +1,9 @@
-{ disks ? [ "/dev/nvme0n1" "/dev/nvme1n1" ], ... }:
-let
-  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
-in
-{
+_: {
   disko.devices = {
     disk = {
       nvme0 = {
         type = "disk";
-        device = builtins.elemAt disks 0;
+        device = "/dev/nvme0n1";
         content = {
           type = "table";
           format = "gpt";
@@ -34,14 +30,14 @@ in
                 extraArgs = [ "-f" ];
                 format = "xfs";
                 mountpoint = "/";
-                mountOptions = defaultXfsOpts;
+                mountOptions = [ "defaults" "relatime" "nodiratime" ];
               };
             }];
         };
       };
       nvme1 = {
         type = "disk";
-        device = builtins.elemAt disks 1;
+        device = "/dev/nvme1n1";
         content = {
           type = "table";
           format = "gpt";
