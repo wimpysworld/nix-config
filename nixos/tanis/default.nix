@@ -16,6 +16,7 @@
         "uas"
         "xhci_pci"
       ];
+      systemd.enable = true;
     };
     kernelModules = [ "amdgpu" "kvm-amd" ];
     # Wake from suspend regression in Linux 6.7 and 6.8
