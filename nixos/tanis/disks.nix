@@ -1,11 +1,4 @@
-{ lib, ... }:
-let
-  defaultBcachefsOpts = [ "defaults" "compression=lz4" "discard" "relatime" "nodiratime" ];
-in
-{
-  # Forcibly disable Plymouth, so the encrypted bcachefs root can be unlocked
-  boot.plymouth.enable = lib.mkForce false;
-
+_: {
   disko.devices = {
     disk = {
       nvme0 = {
@@ -24,14 +17,20 @@ in
                 type = "filesystem";
               };
             };
-            root = {
+            luks = {
               size = "100%";
               content = {
-                extraArgs = [ "-f" "--compression=lz4" "--discard" "--encrypted" ];
-                format = "bcachefs";
-                mountOptions = defaultBcachefsOpts;
-                mountpoint = "/";
-                type = "filesystem";
+                type = "luks";
+                name = "crypted";
+                settings.allowDiscards = true;
+                passwordFile = "/tmp/data.passwordFile";
+                content = {
+                  extraArgs = [ "-f" ];
+                  format = "xfs";
+                  mountOptions = [ "defaults" "relatime" "nodiratime" ];
+                  mountpoint = "/";
+                  type = "filesystem";
+                };
               };
             };
           };
