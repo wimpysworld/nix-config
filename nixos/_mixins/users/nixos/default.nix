@@ -105,10 +105,31 @@ else
     exit 1
   fi
 
-  # Check if the machine we're provisioning expects a keyfile to unlock a disk.
-  # If it does, generate a new key, and write to a known location.
-  if ${pkgs.gnugrep}/bin/grep -q "data.keyfile" "nixos/$TARGET_HOST/disks.nix"; then
-    ${pkgs.coreutils-full}/bin/echo -n "$(head -c32 /dev/random | base64)" > /tmp/data.keyfile
+  if ${pkgs.gnugrep}/bin/grep -q "data.passwordFile" "nixos/$TARGET_HOST/disks.nix"; then
+    # If the machine we're provisioning expects a password to unlock a disk, prompt for it.
+    while true; do
+      # Prompt for the password, input is hidden
+      read -rsp "Enter password:   " password
+      echo
+      # Prompt for the password again for confirmation
+      read -rsp "Confirm password: " password_confirm
+      echo
+      # Check if both entered passwords match
+      if [ "$password" == "$password_confirm" ]; then
+          break
+      else
+          echo "Passwords do not match, please try again."
+      fi
+    done
+
+    # Write the password to /tmp/data.passwordFile with no trailing newline
+    ${pkgs.coreutils-full}/bin/echo -n "$password" > /tmp/data.passwordFile
+  fi
+
+  if ${pkgs.gnugrep}/bin/grep -q "data.keyFile" "nixos/$TARGET_HOST/disks.nix"; then
+    # Check if the machine we're provisioning expects a keyfile to unlock a disk.
+    # If it does, generate a new key, and write to a known location.
+    ${pkgs.coreutils-full}/bin/echo -n "$(head -c32 /dev/random | base64)" > /tmp/data.keyFile
   fi
 
   run_disko "nixos/$TARGET_HOST/disks.nix" "disko"
@@ -160,9 +181,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
   # If there is a keyfile for a data disk, put copy it to the root partition and
   # ensure the permissions are set appropriately.
-  if [[ -f "/tmp/data.keyfile" ]]; then
-    sudo ${pkgs.coreutils-full}/bin/cp /tmp/data.keyfile /mnt/etc/data.keyfile
-    sudo ${pkgs.coreutils-full}/bin/chmod 0400 /mnt/etc/data.keyfile
+  if [[ -f "/tmp/data.keyFile" ]]; then
+    sudo ${pkgs.coreutils-full}/bin/cp /tmp/data.keyFile /mnt/etc/data.keyFile
+    sudo ${pkgs.coreutils-full}/bin/chmod 0400 /mnt/etc/data.keyFile
   fi
 fi
 '';
