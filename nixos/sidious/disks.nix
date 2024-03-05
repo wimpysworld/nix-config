@@ -1,13 +1,6 @@
 # nvme0n1 2TB:     NixOS              nvme-Samsung_SSD_970_EVO_2TB_S464NB0K800345W
 # nvme1n1 512GB:   Windows 11 Pro     nvme-Samsung_SSD_970_EVO_500GB_S466NB0K703260N
-{ lib, ... }:
-let
-  defaultBcachefsOpts = [ "defaults" "compression=lz4" "discard" "relatime" "nodiratime" ];
-in
-{
-  # Forcibly disable Plymouth, so the encrypted bcachefs root can be unlocked
-  boot.plymouth.enable = lib.mkForce false;
-
+{ lib, ... }: {
   disko.devices = {
     disk = {
       nvme0 = {
@@ -31,7 +24,7 @@ in
               content = {
                 extraArgs = [ "-f" "--compression=lz4" "--discard" "--encrypted" ];
                 format = "bcachefs";
-                mountOptions = defaultBcachefsOpts;
+                mountOptions = [ "defaults" "compression=lz4" "discard" "relatime" "nodiratime" ];
                 mountpoint = "/";
                 type = "filesystem";
               };
