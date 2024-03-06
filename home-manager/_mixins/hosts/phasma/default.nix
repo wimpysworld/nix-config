@@ -1,7 +1,6 @@
 { config, desktop, lib, pkgs, ... }:
 {
   home = {
-    file = {
     # Disable unused audio devices
     # pactl list
     # - alsa_card.pci-0000_34_00.1: NVIDIA (HDA NVidia) T600
