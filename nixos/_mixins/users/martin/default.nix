@@ -48,16 +48,23 @@ in
     ] ++ lib.optionals (isWorkstation) [
       _1password-gui
       authy
+      brave
+      chromium
       celluloid
       gimp-with-plugins
       gnome.dconf-editor
       gnome.gnome-sound-recorder
+      google-chrome
       halloy
       inkscape
       libreoffice
       meld
+      microsoft-edge
+      opera
       tenacity
       usbimager
+      vivaldi
+      vivaldi-ffmpeg-codecs
       wavebox
       yaru-theme
       zoom-us
@@ -73,15 +80,8 @@ in
       gnomeExtensions.tiling-assistant
       gnomeExtensions.vitals
     ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
-      brave
-      chromium
       fractal
-      google-chrome
-      microsoft-edge
-      opera
       telegram-desktop
-      vivaldi
-      vivaldi-ffmpeg-codecs
     ]) ++ (with inputs; lib.optionals (isWorkstation) [
       antsy-alien-attack-pico.packages.${platform}.default
     ]) ++ (with pkgs; lib.optionals (isStreamstation) [
