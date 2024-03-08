@@ -4,16 +4,12 @@
 # sda     4TB:   Backup RAID-0
 # sdb     4TB:   Backup RAID-0
 # sdc     4TB:   Backup RAID-0
-{ disks ? [ "/dev/nvme1n1" "/dev/nvme2n1" ], ... }:
-let
-  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
-in
-{
+_: {
   disko.devices = {
     disk = {
       nvme1 = {
         type = "disk";
-        device = builtins.elemAt disks 0;
+        device = "/dev/disk/by-id/nvme-CT4000P3PSSD8_2336E873DCBF";
         content = {
           type = "gpt";
           partitions = {
@@ -30,7 +26,7 @@ in
       };
       nvme2 = {
         type = "disk";
-        device = builtins.elemAt disks 1;
+        device = "/dev/disk/by-id/nvme-Corsair_MP600_CORE_21177909000130384189";
         content = {
           type = "gpt";
           partitions = {
@@ -62,7 +58,7 @@ in
                 extraArgs = [ "-f" ];
                 format = "xfs";
                 mountpoint = "/home";
-                mountOptions = defaultXfsOpts;
+                mountOptions = [ "defaults" ];
               };
             };
           };
