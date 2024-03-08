@@ -6,26 +6,19 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
-    (import ./disks.nix { })
-    (import ./disks-home.nix { })
-    (import ./disks-snapshot.nix { })
+    ./disks.nix
+    ./disks-home.nix
+    ./disks-snapshot.nix
     ../_mixins/services/clamav.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/tailscale.nix
   ];
 
-  # Workaround: manually account for newer disko configuration
-  #             REMOVE THIS IF/WHEN /boot and / ARE RE-INSTALLED
+  # TODO: Remove this if/when machine is reinstalled.
+  # This is a workaround for the legacy -> gpt tables disko format.
   fileSystems = {
-    "/" = lib.mkForce {
-      device = "/dev/disk/by-partlabel/root";
-      fsType = "xfs";
-      options = [ "defaults" "relatime" "nodiratime" ];
-    };
-    "/boot" = lib.mkForce {
-      device = "/dev/disk/by-partlabel/ESP";
-      fsType = "vfat";
-    };
+    "/".device = lib.mkForce "/dev/disk/by-partlabel/root";
+    "/boot".device = lib.mkForce "/dev/disk/by-partlabel/ESP";
   };
 
   boot = {
