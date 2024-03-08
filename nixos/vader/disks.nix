@@ -4,16 +4,12 @@
 # sda     4TB:   Backup RAID-0
 # sdb     4TB:   Backup RAID-0
 # sdc     4TB:   Backup RAID-0
-{ disks ? [ "/dev/nvme0n1" ], ... }:
-let
-  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
-in
-{
+_: {
   disko.devices = {
     disk = {
       nvme0 = {
         type = "disk";
-        device = builtins.elemAt disks 0;
+        device = "/dev/disk/by-id/nvme-Force_MP600_20478230000128563170";
         content = {
           type = "gpt";
           partitions = {
@@ -24,6 +20,7 @@ in
               content = {
                 type = "filesystem";
                 format = "vfat";
+                mountOptions = [ "defaults" "umask=0077" ];
                 mountpoint = "/boot";
               };
             };
@@ -36,7 +33,7 @@ in
                 extraArgs = [ "-f" ];
                 format = "xfs";
                 mountpoint = "/";
-                mountOptions = defaultXfsOpts;
+                mountOptions = [ "defaults" ];
               };
             };
           };

@@ -4,16 +4,12 @@
 # sda     4TB:   Backup RAID-0
 # sdb     4TB:   Backup RAID-0
 # sdc     4TB:   Backup RAID-0
-{ disks ? [ "/dev/sda" "/dev/sdb" "/dev/sdc" ], ... }:
-let
-  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
-in
-{
+_: {
   disko.devices = {
     disk = {
       sda = {
         type = "disk";
-        device = builtins.elemAt disks 0;
+        device = "/dev/disk/by-id/ata-TS4TMTS830S_H986540080";
         content = {
           type = "gpt";
           partitions = {
@@ -30,7 +26,7 @@ in
       };
       sdb = {
         type = "disk";
-        device = builtins.elemAt disks 1;
+        device = "/dev/disk/by-id/ata-TS4TMTS830S_H986540076";
         content = {
           type = "gpt";
           partitions = {
@@ -47,7 +43,7 @@ in
       };
       sdc = {
         type = "disk";
-        device = builtins.elemAt disks 2;
+        device = "/dev/disk/by-id/ata-Samsung_SSD_870_QVO_4TB_S5STNF0R108211L";
         content = {
           type = "gpt";
           partitions = {
@@ -79,7 +75,7 @@ in
                 extraArgs = [ "-f" ];
                 format = "xfs";
                 mountpoint = "/mnt/snapshot";
-                mountOptions = defaultXfsOpts;
+                mountOptions = [ "defaults" ];
               };
             };
           };
