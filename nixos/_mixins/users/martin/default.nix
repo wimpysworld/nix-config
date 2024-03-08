@@ -81,6 +81,7 @@ in
       gnomeExtensions.vitals
     ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
       fractal
+      pika-backup
       telegram-desktop
     ]) ++ (with inputs; lib.optionals (isWorkstation) [
       antsy-alien-attack-pico.packages.${platform}.default
