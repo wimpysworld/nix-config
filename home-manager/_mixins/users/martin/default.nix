@@ -64,7 +64,6 @@ in
     file."/Scripts/.keep".text = "";
     file."/Studio/OBS/config/obs-studio/.keep".text = "";
     file."/Syncthing/.keep".text = "";
-    file."/Volatile/Vorta/.keep".text = "";
     file."/Websites/.keep".text = "";
     file."/Zero/.keep".text = "";
 
