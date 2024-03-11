@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 let
   inherit (pkgs.stdenv) isLinux;
+  ghTokenScript = if isLinux then ''(cat $XDG_RUNTIME_DIR/secrets/gh_token)'' else ''cat (getconf DARWIN_USER_TEMP_DIR)'' + ''/secrets/gh_token'';
 in
 {
   imports = [
@@ -75,6 +76,10 @@ in
     };
   };
   programs = {
+    fish.interactiveShellInit = ''
+      set -x GH_TOKEN ${ghTokenScript}
+      set -x GITHUB_TOKEN ${ghTokenScript}
+    '';
     git = {
       userEmail = "martin@wimpress.org";
       userName = "Martin Wimpress";
