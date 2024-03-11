@@ -11,7 +11,7 @@ These computers are managed by this Nix flake ❄️
 | `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T600]           | 🖥️   | ❄️  | ✅    |
 | `palpatine` | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | 🪟  | ✅    |
 | `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | ✅    |
-| `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | 🚧    |
+| `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | ✅    |
 | `dooku`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | 🍏  | 🚧    |
 | `tyranus`   | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | ❄️  | 🚧    |
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
@@ -240,7 +240,6 @@ Things I should do or improve:
 
 ### System
 
-- [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
 - [ ] Add README.md to each level of the configuration to add context
 - [ ] Do this: <https://github.com/Electrostasy/dots/blob/master/flake.nix#L93>
 - [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
@@ -259,8 +258,8 @@ Things I should do or improve:
 ### Game Development
 
 - [ ] Package for Defold
-- [ ] Local package PICO-8
-- [ ] Add Godot, maybe
+- [ ] Local package for PICO-8
+- [ ] Add Godot. *Maybe...*
 
 ### Shell
 
@@ -269,6 +268,7 @@ Things I should do or improve:
 
 #### Servers
 
+- [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
 - [ ] Forgejo or Gitea
 - [ ] [microbin](https://github.com/szabodanika/microbin)
 
