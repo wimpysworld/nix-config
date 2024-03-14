@@ -5,7 +5,7 @@ pkgs.writeScriptBin "build-all" ''
 
 if [ -e $HOME/Zero/nix-config ]; then
   all_cores=$(nproc)
-  build_cores=$(printf "%.0f" $(echo "$all_cores * 0.75" | bc))
+  build_cores=$(printf "%.0f" $(echo "$all_cores * 0.75" | ${pkgs.bc}/bin/bc))
   pushd $HOME/Zero/nix-config 2>&1 > /dev/null
   echo "Building NixOS with $build_cores cores"
   nixos-rebuild build --flake .# -L --cores $build_cores
