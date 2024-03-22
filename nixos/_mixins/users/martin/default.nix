@@ -119,6 +119,7 @@ in
           obs-vaapi
           obs-vertical-canvas
           obs-vintage-filter
+          obs-webkitgtk
           obs-websocket
           pixel-art
           waveform
