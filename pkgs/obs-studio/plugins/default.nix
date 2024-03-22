@@ -104,6 +104,8 @@
 
   obs-vnc = callPackage ./obs-vnc.nix { };
 
+  obs-webkitgtk = callPackage ./obs-webkitgtk.nix { };
+
   obs-websocket = qt6Packages.callPackage ./obs-websocket.nix { }; # Websocket 4.x compatibility for OBS Studio 28+
 
   pixel-art = callPackage ./pixel-art.nix { };
