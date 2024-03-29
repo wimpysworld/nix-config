@@ -254,6 +254,7 @@ Things I should do or improve:
 ### Linux Desktop
 
 - [ ] Configure Tiling Assistant extension
+- [ ] Add <https://github.com/p-chan5/EasyPulse> to Easy Effects presets
 
 ### Game Development
 
