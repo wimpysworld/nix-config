@@ -51,6 +51,7 @@ in
       brave
       chromium
       celluloid
+      element-desktop
       gimp-with-plugins
       gnome.dconf-editor
       gnome.gnome-sound-recorder
