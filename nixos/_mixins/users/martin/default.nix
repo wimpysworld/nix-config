@@ -56,7 +56,6 @@ in
       gnome.dconf-editor
       gnome.gnome-sound-recorder
       google-chrome
-      halloy
       inkscape
       libreoffice
       meld
@@ -82,6 +81,7 @@ in
       gnomeExtensions.vitals
     ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
       fractal
+      halloy
       pika-backup
       telegram-desktop
     ]) ++ (with inputs; lib.optionals (isWorkstation) [
