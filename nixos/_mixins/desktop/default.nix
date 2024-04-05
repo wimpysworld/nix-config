@@ -104,32 +104,39 @@ in
     # https://stackoverflow.com/questions/24040672/the-meaning-of-period-in-alsa
     # https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/alsa.html#alsa-buffer-properties
     # https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/3241
+    # https://gitlab.freedesktop.org/pipewire/wireplumber/-/issues/562
     # cat /nix/store/*-wireplumber-*/share/wireplumber/main.lua.d/50-alsa-config.lua
-    "wireplumber/main.lua.d/92-low-latency.lua".text = ''
-      alsa_monitor.rules = {
+    "wireplumber/main.lua.d/92-low-latency.conf".text = ''
+      monitor.alsa.rules = [
         {
-          matches = {
+          matches = [
             {
-              -- Matches all sources.
-              { "node.name", "matches", "alsa_input.*" },
-            },
+              ## Matches all sources.
+              node.name = "~alsa_input.*"
+            }
             {
-              -- Matches all sinks.
-              { "node.name", "matches", "alsa_output.*" },
-            },
-          },
-          apply_properties = {
-            ["audio.rate"] = "48000",
-            ["api.alsa.headroom"] = 128,             -- Default: 0
-            ["api.alsa.period-num"] = 2,             -- Default: 2
-            ["api.alsa.period-size"] = 512,          -- Default: 1024
-            ["api.alsa.disable-batch"] = false,      -- generally, USB soundcards use the batch mode
-            ["resample.quality"] = 4,
-            ["resample.disable"] = false,
-            ["session.suspend-timeout-seconds"] = 0,
-          },
-        },
-      }
+              ## Matches all sinks.
+              node.name = "~alsa_output.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              audio.rate = 48000
+              ## Default: 0
+              api.alsa.headroom = 128
+              ## Default: 2
+              api.alsa.period-num = 2
+              ## Default: 1024
+              api.alsa.period-size = 512
+              ## generally, USB soundcards use the batch mode
+              api.alsa.disable-batch = false
+              resample.quality = 4
+              resample.disable = false
+              session.suspend-timeout-seconds = 0
+            }
+          }
+        }
+      ]
     '';
   };
 
