@@ -7,24 +7,17 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-scale-to-sound";
-  version = "1.2.3";
+  version = "1.2.4";
 
   src = fetchFromGitHub {
     owner = "dimtpap";
     repo = "obs-scale-to-sound";
     rev = version;
-    sha256 = "sha256-q/zNHPazNwmd7GHXrxNgajtOhcW+oTgH9rkIBzJpdpA=";
+    sha256 = "sha256-N6OMufx4+WyLGnIZQNxwlPdlmsa+GoZhuDMS9NIbIGE=";
   };
 
   nativeBuildInputs = [ cmake ];
   buildInputs = [ obs-studio ];
-
-  postInstall = ''
-    mkdir $out/lib $out/share
-    mv $out/obs-plugins/64bit $out/lib/obs-plugins
-    rm -rf $out/obs-plugins
-    mv $out/data $out/share/obs
-  '';
 
   meta = with lib; {
     description = "OBS filter plugin that scales a source reactively to sound levels";
