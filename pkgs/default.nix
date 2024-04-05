@@ -3,7 +3,6 @@
 
 { pkgs ? (import ../nixpkgs.nix) { } }: {
   gitkraken = pkgs.callPackage ./gitkraken { };
-  halloy = pkgs.callPackage ./halloy { };
   libdatachannel = pkgs.callPackage ./libdatachannel { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   obs-studio = pkgs.callPackage ./obs-studio { };
