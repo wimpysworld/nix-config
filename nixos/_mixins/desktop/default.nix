@@ -271,8 +271,12 @@ in
       alsa.enable = true;
       alsa.support32Bit = isGamestation;
       jack.enable = false;
+      package = pkgs.unstable.pipewire;
       pulse.enable = true;
-      wireplumber.enable = true;
+      wireplumber = {
+        enable = true;
+        package = pkgs.unstable.wireplumber;
+      };
     };
     printing = lib.mkIf (isInstall) {
       enable = true;

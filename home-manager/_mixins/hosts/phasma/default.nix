@@ -1,28 +1,7 @@
 { config, desktop, lib, pkgs, ... }:
 {
   home = {
-    # Disable unused audio devices
-    # pactl list
-    # - alsa_card.pci-0000_34_00.1: NVIDIA (HDA NVidia) T600
-    # - alsa_card.pci-0000_26_00.0: Magewell (00-00 Pro Capture Quad HDMI)
-    # - sa_card.usb-AVerMedia_Technologies__Inc._Live_Streamer_CAM_513_5203711200146-00
     file = {
-      "${config.xdg.configHome}/wireplumber/main.lua.d/51-disable-cards.lua".text = ''
-        rule = {
-        matches = {
-            {
-              { "device.name", "equals", "alsa_card.pci-0000_34_00.1" },
-              { "device.name", "equals", "alsa_card.pci-0000_26_00.0" },
-              { "device.name", "equals", "alsa_card.usb-AVerMedia_Technologies__Inc._Live_Streamer_CAM_513_5203711200146-00" },
-            },
-          },
-          apply_properties = {
-            ["device.disabled"] = true,
-          },
-        }
-        table.insert(alsa_monitor.rules,rule)
-      '';
-
       "${config.xdg.configHome}/autostart/screenlayout.desktop".text = lib.mkIf (desktop == "pantheon") ''
           [Desktop Entry]
           Name=xrandr screenlayout
