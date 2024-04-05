@@ -320,6 +320,8 @@ in
       # Inspired by musnix: https://github.com/musnix/musnix/blob/master/modules/base.nix#L94
       KERNEL=="rtc0", GROUP="audio"
       KERNEL=="hpet", GROUP="audio"
+      # Allow users in the audio group to change cpu dma latency
+      DEVPATH=="/devices/virtual/misc/cpu_dma_latency", OWNER="root", GROUP="audio", MODE="0660"
     '';
 
     # Disable xterm
