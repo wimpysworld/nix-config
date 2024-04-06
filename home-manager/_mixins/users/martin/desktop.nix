@@ -959,9 +959,9 @@ in
       # Create a desktop entry for the Cider AppImage.
       cider = {
         name = "Cider";
-        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Cider.AppImage";
+        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Cider-linux-appimage-x64.AppImage";
         terminal = false;
-        icon = "cider";
+        icon = "${config.home.homeDirectory}/Apps/cider.png";
         type = "Application";
         categories = [ "Audio" "Application" ];
       };
