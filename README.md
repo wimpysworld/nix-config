@@ -176,9 +176,9 @@ Things I currently need to do manually after installation.
 - [ ] Add `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub` to `.sops.yaml`.
 - [ ] Run `sops updatekeys secrets/secrets.yaml`
 - [ ] Run `gpg-restore`
-- [ ] LastPass - authenticate
-- [ ] Authy - activate
 - [ ] 1Password - authenticate
+- [ ] Authy - activate
+- [ ] LastPass - authenticate
 
 ### Services
 
