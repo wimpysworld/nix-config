@@ -102,7 +102,7 @@ in
       inputs.fh.packages.${platform}.default
       inputs.nixos-needtoreboot.packages.${platform}.default
       clinfo
-      unstable.distrobox
+      distrobox
       flyctl
       fuse-overlayfs
       libva-utils
