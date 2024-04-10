@@ -34,7 +34,7 @@ stdenv.mkDerivation rec {
     description = "OBS plugin to fetch data from a URL or file, connect to an API or AI service, parse responses and display text, image or audio on scene";
     homepage = "https://github.com/occ-ai/obs-urlsource";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

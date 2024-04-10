@@ -32,7 +32,7 @@ stdenv.mkDerivation rec {
     description = "VNC viewer integrated into OBS Studio as a source plugin";
     homepage = "https://github.com/norihiro/obs-vnc";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

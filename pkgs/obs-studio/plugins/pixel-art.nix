@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
     description = "An OBS Plugin that can be used to create retro-inspired pixel art visuals.";
     homepage = "https://github.com/dspstanky/pixel-art";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

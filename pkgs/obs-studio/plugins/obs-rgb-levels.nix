@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
     description = "A simple OBS Studio filter to adjust RGB levels.";
     homepage = "https://github.com/wimpysworld/obs-rgb-levels";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

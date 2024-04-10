@@ -27,7 +27,7 @@ stdenv.mkDerivation rec {
     description = "Plugin for OBS Studio to add Markdown sources";
     homepage = "https://github.com/exeldro/obs-markdown";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }
