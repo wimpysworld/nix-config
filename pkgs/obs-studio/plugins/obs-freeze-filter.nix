@@ -5,14 +5,14 @@
 , obs-studio
 }:
 
-stdenv.mkDerivation (_finalAttrs: {
+stdenv.mkDerivation ({
   pname = "obs-freeze-filter";
-  version = "0.3.3";
+  version = "0.3.3-unstable-2023-11-22";
 
   src = fetchFromGitHub {
     owner = "exeldro";
     repo = "obs-freeze-filter";
-    rev = "f407266bb12f8be764a012f86bbbc7ca0285942c"; #finalAttrs.version
+    rev = "f407266bb12f8be764a012f86bbbc7ca0285942c";
     sha256 = "sha256-CaHBTfdk8VFjmiclG61elj35glQafgz5B4ENo+7J35o=";
   };
 
