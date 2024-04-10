@@ -5,12 +5,13 @@
 , obs-studio
 , curl
 , qt6
+, openai-whisper
 }:
 stdenv.mkDerivation rec {
   pname = "obs-localvocal";
   version = "0.1.0";
 
-  # FTBFS because it wants to clone git repos during the build
+  # FIXME: This is WIP! FTBFS because it can't clone Whisper buring the build step
   src = fetchFromGitHub {
     owner = "occ-ai";
     repo = "obs-localvocal";
@@ -20,14 +21,20 @@ stdenv.mkDerivation rec {
   };
 
   nativeBuildInputs = [ cmake ];
-  buildInputs = [ curl obs-studio qt6.qtbase];
+  buildInputs = [ curl obs-studio qt6.qtbase openai-whisper ];
   dontWrapQtApps = true;
   cmakeFlags = [
       "-DQT_VERSION=6"
       "-DENABLE_QT=ON"
       "-DUSE_SYSTEM_CURL=ON"
-      #"-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF"
+      "-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF"
   ];
+
+  #postUnpack = ''
+  #  cp -r ${openai-whisper.src}/* $sourceRoot/Whispercpp_Build
+  #  chmod -R +w $sourceRoot/Whispercpp_Build
+  #'';
+
 
   meta = with lib; {
     description = "OBS plugin for local speech recognition and captioning using AI";
