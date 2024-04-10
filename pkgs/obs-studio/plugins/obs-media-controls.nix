@@ -8,7 +8,7 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-media-controls";
-  version = "0.4.0";
+  version = "0.4.0-unstable-2024-01-10";
 
   src = fetchFromGitHub {
     owner = "exeldro";
