@@ -2,10 +2,11 @@
 , lib
 , stdenv
 , fetchFromGitHub
+, fetchpatch
 , addOpenGLRunpath
 , cmake
 , fdk_aac
-, ffmpeg-headless
+, ffmpeg
 , jansson
 , libjack2
 , libxkbcommon
@@ -33,6 +34,7 @@
 , libpulseaudio
 , pciutils
 , pipewireSupport ? stdenv.isLinux
+, withFdk ? true
 , pipewire
 , libdrm
 , libajantv2
@@ -45,6 +47,7 @@
 , decklinkSupport ? false
 , blackmagic-desktop-video
 , libdatachannel
+, nix-update-script
 , cjson
 , vulkan-loader
 , pkgs
@@ -66,12 +69,20 @@ stdenv.mkDerivation (finalAttrs: {
     owner = "obsproject";
     repo = finalAttrs.pname;
     rev = finalAttrs.version;
-    sha256 = "sha256-M4IINBoYrgkM37ykb4boHyWP8AxwMX0b7IAeeNIw9Qo";
+    sha256 = "sha256-M4IINBoYrgkM37ykb4boHyWP8AxwMX0b7IAeeNIw9Qo=";
     fetchSubmodules = true;
   };
 
   patches = [
     ./fix-nix-plugin-path.patch
+
+    # Fix libobs.pc for plugins on non-x86 systems
+    (fetchpatch {
+      name = "fix-arm64-cmake.patch";
+      url = "https://git.alpinelinux.org/aports/plain/community/obs-studio/broken-config.patch?id=a92887564dcc65e07b6be8a6224fda730259ae2b";
+      hash = "sha256-yRSw4VWDwMwysDB3Hw/tsmTjEQUhipvrVRQcZkbtuoI=";
+      includes = [ "*/CompilerConfig.cmake" ];
+    })
   ];
 
   nativeBuildInputs = [
@@ -85,8 +96,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildInputs = [
     curl
-    fdk_aac
-    ffmpeg-headless
+    ffmpeg
     jansson
     obscef
     libjack2
@@ -119,8 +129,8 @@ stdenv.mkDerivation (finalAttrs: {
   ++ optionals scriptingSupport [ luajit python3 ]
   ++ optional alsaSupport alsa-lib
   ++ optional pulseaudioSupport libpulseaudio
-  ++ optionals pipewireSupport [ pipewire libdrm ];
-
+  ++ optionals pipewireSupport [ pipewire libdrm ]
+  ++ optional withFdk fdk_aac;
   # Copied from the obs-linuxbrowser
   postUnpack = ''
     mkdir -p cef/Release cef/Resources cef/libcef_dll_wrapper/
@@ -139,13 +149,17 @@ stdenv.mkDerivation (finalAttrs: {
     # Add support for browser source
     "-DBUILD_BROWSER=ON"
     "-DCEF_ROOT_DIR=../../cef"
-    "-DENABLE_ALSA=OFF"
     "-DENABLE_JACK=ON"
-    "-DENABLE_LIBFDK=ON"
+    (lib.cmakeBool "ENABLE_QSV11" stdenv.hostPlatform.isx86_64)
+    (lib.cmakeBool "ENABLE_LIBFDK" withFdk)
+    (lib.cmakeBool "ENABLE_ALSA" alsaSupport)
+    (lib.cmakeBool "ENABLE_PULSEAUDIO" pulseaudioSupport)
+    (lib.cmakeBool "ENABLE_PIPEWIRE" pipewireSupport)
   ];
 
-  # https://github.com/obsproject/obs-studio/issues/10200
-  NIX_CFLAGS_COMPILE = [ "-Wno-error=sign-compare" ];
+  env.NIX_CFLAGS_COMPILE = toString [
+    "-Wno-error=sign-compare" # https://github.com/obsproject/obs-studio/issues/10200
+  ];
 
   dontWrapGApps = true;
   preFixup = let
@@ -174,6 +188,8 @@ stdenv.mkDerivation (finalAttrs: {
     ln -s ${obscef}/lib/* $out/lib/obs-plugins/
   '';
 
+  passthru.updateScript = nix-update-script { };
+
   meta = with lib; {
     description = "Free and open source software for video recording and live streaming";
     longDescription = ''
@@ -182,9 +198,9 @@ stdenv.mkDerivation (finalAttrs: {
       video content, efficiently
     '';
     homepage = "https://obsproject.com";
-    maintainers = with maintainers; [ jb55 MP2E materus fpletz ];
-    license = licenses.gpl2Plus;
-    platforms = [ "x86_64-linux" ];
+    maintainers = with maintainers; [ eclairevoyant jb55 MP2E materus fpletz ];
+    license = with licenses; [ gpl2Plus ] ++ optional withFdk fraunhofer-fdk;
+    platforms = [ "x86_64-linux" "i686-linux" "aarch64-linux" ];
     mainProgram = "obs";
   };
 })
