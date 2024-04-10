@@ -27,7 +27,7 @@ stdenv.mkDerivation rec {
     description = "Plugin for OBS Studio adding a filter that can watch a directory for media files";
     homepage = "https://github.com/exeldro/obs-dir-watch-media";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

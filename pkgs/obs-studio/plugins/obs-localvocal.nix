@@ -31,9 +31,9 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "OBS plugin for local speech recognition and captioning using AI";
-    homepage = "https://github.com/occ-ai/localvocal";
+    homepage = "https://github.com/occ-ai/obs-localvocal";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

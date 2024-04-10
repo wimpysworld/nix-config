@@ -33,7 +33,7 @@ stdenv.mkDerivation rec {
     description = "An OBS plugin to provide efficient Stroke, Glow, and Shadow effects on masked sources.";
     homepage = "https://github.com/FiniteSingularity/obs-stroke-glow-shadow";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
     description = "DVD screen saver for OBS Studio";
     homepage = "https://github.com/wimpysworld/obs-dvd-screensaver";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

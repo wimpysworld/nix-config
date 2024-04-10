@@ -30,7 +30,7 @@ stdenv.mkDerivation rec {
     description = "Plugin for OBS Studio to add a Media Controls dock.";
     homepage = "https://github.com/exeldro/obs-media-controls";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }

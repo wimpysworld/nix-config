@@ -29,7 +29,7 @@ stdenv.mkDerivation rec {
     description = "Advanced Masking Plugin for OBS Studio.";
     homepage = "https://github.com/FiniteSingularity/obs-advanced-masks";
     maintainers = with maintainers; [ flexiondotorg ];
-    license = licenses.gpl2Plus;
+    license = licenses.gpl2Only;
     platforms = [ "x86_64-linux" "i686-linux" ];
   };
 }
