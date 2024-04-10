@@ -5,7 +5,7 @@
 , obs-studio
 , pugixml
 , curl
-, qt6
+, qtbase
 }:
 stdenv.mkDerivation rec {
   pname = "obs-urlsource";
@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
   };
 
   nativeBuildInputs = [ cmake ];
-  buildInputs = [ curl obs-studio pugixml qt6.qtbase ];
+  buildInputs = [ curl obs-studio pugixml qtbase ];
   dontWrapQtApps = true;
   cmakeFlags = [
       "-DQT_VERSION=6"
