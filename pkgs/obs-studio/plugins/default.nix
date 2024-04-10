@@ -6,7 +6,7 @@
 # - Add plugin to it's own directory (because of future patches).
 
 {
-  advanced-scene-switcher = qt6Packages.callPackage ./advanced-scene-switcher { };
+  #advanced-scene-switcher = qt6Packages.callPackage ./advanced-scene-switcher { };
 
   droidcam-obs = callPackage ./droidcam-obs { };
 
@@ -82,7 +82,7 @@
 
   obs-stroke-glow-shadow = callPackage ./obs-stroke-glow-shadow.nix { };
 
-  obs-teleport = callPackage ./obs-teleport { };
+  #obs-teleport = callPackage ./obs-teleport { };
 
   obs-text-pthread = callPackage ./obs-text-pthread.nix { };
 
