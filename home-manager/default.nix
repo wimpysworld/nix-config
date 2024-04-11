@@ -142,6 +142,7 @@ in
       hueadm
       notify-desktop
       obs-cli
+      unstable.obs-cmd
       piper-tts
       playerctl
       pulsemixer
