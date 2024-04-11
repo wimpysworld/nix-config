@@ -92,7 +92,7 @@ in
       rhythmbox
       (wrapOBS {
         plugins = [
-          unstable.obs-studio-plugins.advanced-scene-switcher
+          obs-studio-plugins.advanced-scene-switcher
           obs-studio-plugins.obs-3d-effect
           obs-studio-plugins.obs-advanced-masks
           obs-studio-plugins.obs-command-source
