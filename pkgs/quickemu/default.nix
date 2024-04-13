@@ -55,8 +55,8 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "quickemu-project";
     repo = "quickemu";
-    rev = "77123d07519758a78fa0fbaa91c27f30bbde8e35";
-    hash = "sha256-3BwsYKIxOBJ+xk3EpupgPZ2m1QRShAzpB2iBLCQ7yn8=";
+    rev = "10d69b72d0c1d406101715b23da0ac6a25bfd8f9";
+    hash = "sha256-+oz3QkfjjVPsEYHch6jrwNzegxbe8cc7CglcWL30iQs=";
   };
 
   postPatch = ''
