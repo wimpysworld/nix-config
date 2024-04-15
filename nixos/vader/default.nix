@@ -55,6 +55,11 @@
     "wifi.mtu" = 1462;
   };
 
+  programs.corectrl = {
+    enable = true;
+    gpuOverclock.enable = true;
+  };
+
   services = {
     cron = {
       enable = true;

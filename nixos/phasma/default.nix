@@ -34,6 +34,11 @@
     };
   };
 
+  programs.corectrl = {
+    enable = true;
+    gpuOverclock.enable = true;
+  };
+
   hardware = {
     mwProCapture.enable = true;
     nvidia = {
