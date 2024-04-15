@@ -61,6 +61,13 @@ stdenv.mkDerivation rec {
     chmod -R +w $sourceRoot/deps/libremidi
   '';
 
+  postInstall = ''
+    mkdir $out/lib $out/share
+    mv $out/obs-plugins/64bit $out/lib/obs-plugins
+    mv $out/data $out/share/obs
+    rm -rf $out/obs-plugins
+  '';
+
   env.NIX_CFLAGS_COMPILE = "-Wno-error=stringop-overflow";
 
   meta = with lib; {
@@ -68,6 +75,6 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/WarmUpTill/SceneSwitcher";
     license = licenses.gpl2Plus;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ ];
+    maintainers = with maintainers; [ flexiondotorg ];
   };
 }
