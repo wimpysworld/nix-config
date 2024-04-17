@@ -3,6 +3,7 @@
 , stdenv
 , makeWrapper
 , qemu
+, curl
 , gnugrep
 , gnused
 , lsb-release
@@ -29,6 +30,7 @@
 let
   runtimePaths = [
     qemu
+    curl
     gnugrep
     gnused
     jq
@@ -50,13 +52,13 @@ in
 
 stdenv.mkDerivation rec {
   pname = "quickemu";
-  version = "7e3515aa063ea8ff8d1369a167059a78e9d9c2f5";
+  version = "ce39944f434baaa4a5dcafcbf5111a735af42f53";
 
   src = fetchFromGitHub {
     owner = "quickemu-project";
     repo = "quickemu";
     rev = version;
-    hash = "sha256-dr3QkbHSPxpf+2NvggNrovIqkeyqWDvrBsbFQ+r7074=";
+    hash = "sha256-SFORrfBmS4sI69Qtnn/s4d8VYx6zOxsnbb1/5paJIMI=";
   };
 
   postPatch = ''
