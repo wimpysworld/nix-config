@@ -20,6 +20,7 @@ in
 {
   imports = [
     inputs.disko.nixosModules.disko
+    inputs.nh.nixosModules.default
     inputs.nix-index-database.nixosModules.nix-index
     inputs.nix-snapd.nixosModules.default
     inputs.sops-nix.nixosModules.sops
@@ -106,6 +107,7 @@ in
       flyctl
       fuse-overlayfs
       libva-utils
+      nix-output-monitor
       nvme-cli
       #https://nixos.wiki/wiki/Podman
       podman-compose
@@ -190,6 +192,16 @@ in
       # Disable if you don't want unfree packages
       allowUnfree = true;
     };
+  };
+
+  # TODO: Switch to NixOS module of `nh` when migrating to NixOS 24.05
+  nh = {
+    clean = {
+      enable = true;
+      extraArgs = "--keep-since 10d --keep 5";
+    };
+    enable = true;
+    flake = "/home/${username}/Zero/nix-config";
   };
 
   nix = {
