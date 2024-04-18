@@ -108,6 +108,7 @@ in
       fuse-overlayfs
       libva-utils
       nix-output-monitor
+      nvd
       nvme-cli
       #https://nixos.wiki/wiki/Podman
       podman-compose
@@ -382,15 +383,6 @@ in
   ];
 
   system = {
-    activationScripts.diff = lib.mkIf (isInstall) {
-      supportsDryActivation = true;
-      text = ''
-        if [ -e /run/current-system/boot.json ] && ! ${pkgs.gnugrep}/bin/grep -q "LABEL=nixos-minimal" /run/current-system/boot.json; then
-          ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.nix}/bin diff /run/current-system "$systemConfig"
-        fi
-        #/run/current-system/sw/bin/nixos-needsreboot
-      '';
-    };
     nixos.label = lib.mkIf (isInstall) "-";
     stateVersion = stateVersion;
   };
