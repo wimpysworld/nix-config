@@ -263,7 +263,6 @@ in
       '';
       shellAbbrs = lib.mkIf (isInstall) {
         captive-portal = "${pkgs.xdg-utils}/bin/xdg-open http://$(${pkgs.iproute2}/bin/ip --oneline route get 1.1.1.1 | ${pkgs.gawk}/bin/awk '{print $3}'";
-        nix-gc = "sudo nix-collect-garbage --delete-older-than 10d && nix-collect-garbage --delete-older-than 10d";
         update-lock = "pushd $HOME/Zero/nix-config && nix flake update && popd";
       };
       shellAliases = {
