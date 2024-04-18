@@ -263,7 +263,6 @@ in
       '';
       shellAbbrs = lib.mkIf (isInstall) {
         captive-portal = "${pkgs.xdg-utils}/bin/xdg-open http://$(${pkgs.iproute2}/bin/ip --oneline route get 1.1.1.1 | ${pkgs.gawk}/bin/awk '{print $3}'";
-        update-lock = "pushd $HOME/Zero/nix-config && nix flake update && popd";
       };
       shellAliases = {
         nano = "micro";
