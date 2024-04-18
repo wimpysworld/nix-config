@@ -1,7 +1,7 @@
 { inputs, lib, pkgs, ... }:
 {
   imports = [
-    inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13
+    inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13-gen1
     ./disks.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/tailscale.nix
