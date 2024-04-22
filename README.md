@@ -177,7 +177,6 @@ Things I currently need to do manually after installation.
 - [ ] Run `sops updatekeys secrets/secrets.yaml`
 - [ ] Run `gpg-restore`
 - [ ] 1Password - authenticate
-- [ ] Authy - activate
 - [ ] LastPass - authenticate
 
 ### Services

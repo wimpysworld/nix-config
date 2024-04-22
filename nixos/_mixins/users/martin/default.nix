@@ -47,7 +47,6 @@ in
       lastpass-cli
     ] ++ lib.optionals (isWorkstation) [
       _1password-gui
-      authy
       brave
       chromium
       celluloid
