@@ -388,5 +388,6 @@ in
       enable = true;
       enableNvidia = hasNvidia;
     };
+    spiceUSBRedirection.enable = true;
   };
 }
