@@ -25,7 +25,7 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "nvme" "ahci" "xhci_pci" "usbhid" "uas" "sd_mod" ];
     kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
-    kernelPackages = lib.mkForce pkgs.linuxPackages_6_6;
+    kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
     # Disable USB autosuspend on workstations
     kernelParams = [ "usbcore.autosuspend=-1" ];
     swraid = {
