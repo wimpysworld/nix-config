@@ -54,7 +54,7 @@
       patches = [ ./darwin.patch ];
     });
 
-    linuxPackages_latest = prev.linuxPackages_latest.extend (lpself: lpsuper: {
+    linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
       mwprocapture = lpsuper.mwprocapture.overrideAttrs ( _old: rec {
         pname = "mwprocapture";
         subVersion = "4390";
