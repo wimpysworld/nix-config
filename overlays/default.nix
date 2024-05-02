@@ -54,18 +54,17 @@
       patches = [ ./darwin.patch ];
     });
 
-    linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
-      mwprocapture = lpsuper.mwprocapture.overrideAttrs ( _old: rec {
-        pname = "mwprocapture";
-        subVersion = "4390";
-        version = "1.3.0.${subVersion}";
-
-        src = prev.fetchurl {
-          url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${subVersion}.tar.gz";
-          sha256 = "sha256-a2cU7PYQh1KR5eeMhMNx2Sc3HHd7QvCG9+BoJyVPp1Y=";
-        };
-      });
-    });
+    #linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
+    #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( _old: rec {
+    #    pname = "mwprocapture";
+    #    subVersion = "4390";
+    #    version = "1.3.0.${subVersion}";
+    #    src = prev.fetchurl {
+    #      url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${subVersion}.tar.gz";
+    #      sha256 = "sha256-a2cU7PYQh1KR5eeMhMNx2Sc3HHd7QvCG9+BoJyVPp1Y=";
+    #    };
+    #  });
+    #});
 
     nelua = prev.nelua.overrideAttrs ( _old: rec {
       pname = "nelua";
