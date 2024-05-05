@@ -88,8 +88,8 @@ in
         {
           name = "beardedtheme";
           publisher = "beardedbear";
-          version = "8.3.2";
-          sha256 = "sha256-TwHuoXme0o6EeciA1lxhs5vmhGlDvaWlH8tjVmuSQH8";
+          version = "9.1.4";
+          sha256 = "sha256-RL6Yko0ustm/4Ery/JbNOaZUiQgvSbvQvd4SmQf8oWM=";
         }
         {
           name = "better-comments";
