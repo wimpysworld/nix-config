@@ -82,8 +82,8 @@ in
         {
           name = "beardedicons";
           publisher = "beardedbear";
-          version = "1.16.0";
-          sha256 = "sha256-cBbc7v2yo1/u/DSnHQN9hme2RvFVjbrxv39GQEGpiww=";
+          version = "1.18.0";
+          sha256 = "sha256-m8utv500Xk6jLI5ndNfiOoPZfyJcLC2XuNwLdC9J+6w=";
         }
         {
           name = "beardedtheme";
