@@ -49,6 +49,7 @@ in
         vscode-extensions.editorconfig.editorconfig
         vscode-extensions.esbenp.prettier-vscode
         vscode-extensions.github.copilot
+        vscode-extensions.github.copilot-chat
         vscode-extensions.github.vscode-github-actions
         vscode-extensions.golang.go
         vscode-extensions.jnoortheen.nix-ide
