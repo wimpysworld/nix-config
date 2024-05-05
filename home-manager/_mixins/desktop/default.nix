@@ -122,10 +122,10 @@ in
           sha256 = "sha256-SSRoQSowBmebplX2dWIP50ErroNfe0Wgtuz7y77LB8Y=";
         }
         {
-          name = "debian-vscode";
-          publisher = "dawidd6";
-          version = "0.1.2";
-          sha256 = "sha256-DrCaEVf1tnB/ccFTJ5HpJfTxe0npbXMjqGkyHNri+G8=";
+          name = "debian-control-vscode";
+          publisher = "jdemille";
+          version = "0.2.0";
+          sha256 = "sha256-5XRtEKCZ/cOq9HiN4AwaZqcgAPSz3pruG1jVUyPuNz8=";
         }
         {
           name = "font-switcher";
