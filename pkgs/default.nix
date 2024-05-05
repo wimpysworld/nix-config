@@ -8,6 +8,6 @@
   lima-bin = pkgs.callPackage ./lima-bin { };
   obs-studio = pkgs.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
-  quickemu = pkgs.callPackage ./quickemu { };
+  #quickemu = pkgs.callPackage ./quickemu { };
   quickgui = pkgs.callPackage ./quickgui { };
 }
