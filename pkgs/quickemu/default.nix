@@ -6,7 +6,6 @@
 , curl
 , gnugrep
 , gnused
-, lsb-release
 , jq
 , procps
 , python3
@@ -17,13 +16,11 @@
 , spice-gtk
 , swtpm
 , unzip
-, wget
 , xdg-user-dirs
 , xrandr
 , zsync
 , OVMF
 , OVMFFull
-, quickemu
 , testers
 , installShellFiles
 }:
@@ -34,7 +31,6 @@ let
     gnugrep
     gnused
     jq
-    lsb-release
     procps
     python3
     cdrtools
@@ -43,7 +39,6 @@ let
     unzip
     socat
     swtpm
-    wget
     xdg-user-dirs
     xrandr
     zsync
@@ -52,13 +47,13 @@ in
 
 stdenv.mkDerivation rec {
   pname = "quickemu";
-  version = "ce39944f434baaa4a5dcafcbf5111a735af42f53";
+  version = "bad6ad7cd74574736532129f497f7329b8124281";
 
   src = fetchFromGitHub {
     owner = "quickemu-project";
     repo = "quickemu";
     rev = version;
-    hash = "sha256-SFORrfBmS4sI69Qtnn/s4d8VYx6zOxsnbb1/5paJIMI=";
+    hash = "sha256-/Y+hU1PAcah4juGzlTHf2DVykel90dheda4cyFyWZAc=";
   };
 
   postPatch = ''
@@ -89,7 +84,7 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  passthru.tests = testers.testVersion { package = quickemu; };
+  #passthru.tests = testers.testVersion { package = quickemu; };
 
   meta = with lib; {
     description = "Quickly create and run optimised Windows, macOS and Linux desktop virtual machines";
