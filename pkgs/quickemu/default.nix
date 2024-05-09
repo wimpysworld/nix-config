@@ -7,6 +7,7 @@
 , gnugrep
 , gnused
 , jq
+, pciutils
 , procps
 , python3
 , cdrtools
@@ -31,6 +32,7 @@ let
     gnugrep
     gnused
     jq
+    pciutils
     procps
     python3
     cdrtools
@@ -47,13 +49,13 @@ in
 
 stdenv.mkDerivation rec {
   pname = "quickemu";
-  version = "6c2aad8e4d384a9124ff054232a10a2546eb3c74";
+  version = "4.9.4";
 
   src = fetchFromGitHub {
     owner = "quickemu-project";
     repo = "quickemu";
     rev = version;
-    hash = "sha256-z74QO7itRQO061wkbgZbapkCGAopqrzONfR/iym+n9s=";
+    hash = "sha256-fjbXgze6klvbRgkJtPIUh9kEkP/As7dAj+cazpzelBY=";
   };
 
   postPatch = ''
@@ -71,11 +73,11 @@ stdenv.mkDerivation rec {
     runHook preInstall
 
     installManPage docs/quickget.1 docs/quickemu.1 docs/quickemu_conf.1
-    install -Dm755 -t "$out/bin" chunkcheck quickemu quickget windowskey
+    install -Dm755 -t "$out/bin" chunkcheck quickemu quickget quickreport windowskey
 
     # spice-gtk needs to be put in suffix so that when virtualisation.spiceUSBRedirection
     # is enabled, the wrapped spice-client-glib-usb-acl-helper is used
-    for f in chunkcheck quickget quickemu windowskey; do
+    for f in chunkcheck quickget quickemu quickreport windowskey; do
       wrapProgram $out/bin/$f \
         --prefix PATH : "${lib.makeBinPath runtimePaths}" \
         --suffix PATH : "${lib.makeBinPath [ spice-gtk ]}"
@@ -84,10 +86,8 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  #passthru.tests = testers.testVersion { package = quickemu; };
-
   meta = with lib; {
-    description = "Quickly create and run optimised Windows, macOS and Linux desktop virtual machines";
+    description = "Quickly create and run optimised Windows, macOS and Linux virtual machines";
     homepage = "https://github.com/quickemu-project/quickemu";
     license = licenses.mit;
     maintainers = with maintainers; [ fedx-sudo flexiondotorg ];
