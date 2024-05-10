@@ -4,7 +4,6 @@
 {
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-p1
-    inputs.nixos-hardware.nixosModules.common-gpu-intel
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-hidpi
     ./disks.nix
@@ -17,7 +16,7 @@
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "xhci_pci" "nvme" "uas" "usb_storage" "sd_mod" ];
     initrd.systemd.enable = true;
-    kernelModules = [ "i915" "kvm-intel" "nvidia" ];
+    kernelModules = [ "kvm-intel" "nvidia" ];
   };
 
   hardware = {
