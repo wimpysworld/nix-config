@@ -19,4 +19,4 @@ jobs:
           fetch-depth: 0
       - uses: DeterminateSystems/nix-installer-action@v10
       - uses: DeterminateSystems/magic-nix-cache-action@v4
-      - uses: DeterminateSystems/flake-checker-action@v5
+      - uses: DeterminateSystems/flake-checker-action@v7
