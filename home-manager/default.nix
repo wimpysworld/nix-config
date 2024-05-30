@@ -72,7 +72,7 @@ in
       bandwhich # Modern Unix `iftop`
       bmon # Modern Unix `iftop`
       breezy # Terminal bzr client
-      butler # Terminal Itch.io API client
+      #butler # Terminal Itch.io API client
       chafa # Terminal image viewer
       chroma # Code syntax highlighter
       clinfo # Terminal OpenCL info
