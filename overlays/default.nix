@@ -21,17 +21,6 @@
     #  });
     #});
 
-    syncthingtray = prev.syncthingtray.overrideAttrs ( _old: rec {
-      pname = "syncthingtray";
-      version = "1.4.12";
-      src = prev.fetchFromGitHub {
-        owner = "Martchus";
-        repo = "syncthingtray";
-        rev = "v${version}";
-        sha256 = "sha256-KfJ/MEgQdvzAM+rnKGMsjnRrbFeFu6F8Or+rgFNLgFI=";
-      };
-    });
-
     wavebox = prev.wavebox.overrideAttrs ( _old: rec {
       pname = "wavebox";
       version = "10.124.17-2";
