@@ -12,9 +12,6 @@
     home-manager.url = "github:nix-community/home-manager/release-24.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
-    nh.url = "github:viperML/nh/v3.5.10";
-    nh.inputs.nixpkgs.follows = "nixpkgs";
-
     nix-formatter-pack.url = "github:Gerschtli/nix-formatter-pack";
     nix-formatter-pack.inputs.nixpkgs.follows = "nixpkgs";
 
