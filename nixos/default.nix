@@ -20,7 +20,6 @@ in
 {
   imports = [
     inputs.disko.nixosModules.disko
-    inputs.nh.nixosModules.default
     inputs.nix-index-database.nixosModules.nix-index
     inputs.nix-snapd.nixosModules.default
     inputs.sops-nix.nixosModules.sops
@@ -195,16 +194,6 @@ in
     };
   };
 
-  # TODO: Switch to NixOS module of `nh` when migrating to NixOS 24.05
-  nh = {
-    clean = {
-      enable = true;
-      extraArgs = "--keep-since 10d --keep 5";
-    };
-    enable = true;
-    flake = "/home/${username}/Zero/nix-config";
-  };
-
   nix = {
     # This will add each flake input as a registry
     # To make nix3 commands consistent with your flake
@@ -269,6 +258,14 @@ in
       };
     };
     nano.enable = lib.mkDefault false;
+    nh = {
+      clean = {
+        enable = true;
+        extraArgs = "--keep-since 10d --keep 5";
+      };
+      enable = true;
+      flake = "/home/${username}/Zero/nix-config";
+    };
     nix-index-database.comma.enable = isInstall;
     nix-ld = lib.mkIf (isInstall) {
       enable = true;

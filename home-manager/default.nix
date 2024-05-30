@@ -158,7 +158,7 @@ in
       zsync # Terminal file sync; FTBFS on aarch64-darwin
     ] ++ lib.optionals isDarwin [
       m-cli # Terminal Swiss Army Knife for macOS
-      unstable.nh
+      nh
       coreutils
     ];
     sessionVariables = {
