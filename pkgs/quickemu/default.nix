@@ -52,7 +52,7 @@ let
   ];
 in
 
-stdenv.mkDerivation (finalAttrs : {
+stdenv.mkDerivation (_finalAttrs : {
   pname = "quickemu";
   version = "4.9.5";
 
