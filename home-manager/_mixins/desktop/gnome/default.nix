@@ -41,7 +41,7 @@
 
     theme = {
       name = "adw-gtk3-dark";
-      package = pkgs.unstable.adw-gtk3;
+      package = pkgs.adw-gtk3;
     };
   };
 
