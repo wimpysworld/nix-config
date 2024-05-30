@@ -141,6 +141,7 @@ in
   };
 
   programs = {
+    appimage.binfmt = true;
     chromium = {
       # TODO: Add some of these https://github.com/M86xKC/edge-config/blob/main/policies.json
       # chromium.enable just enables the Chromium policies.
