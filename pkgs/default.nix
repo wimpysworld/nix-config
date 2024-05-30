@@ -2,7 +2,6 @@
 # Build them using 'nix build .#example' or (legacy) 'nix-build -A example'
 
 { pkgs ? (import ../nixpkgs.nix) { } }: {
-  gitkraken = pkgs.callPackage ./gitkraken { };
   libdatachannel = pkgs.callPackage ./libdatachannel { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   obs-studio = pkgs.callPackage ./obs-studio { };
