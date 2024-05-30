@@ -23,13 +23,13 @@
 
 stdenv.mkDerivation rec {
   pname = "advanced-scene-switcher";
-  version = "1.24.2";
+  version = "1.25.5";
 
   src = fetchFromGitHub {
     owner = "WarmUpTill";
     repo = "SceneSwitcher";
     rev = version;
-    hash = "sha256-J5Qcs2eoKMeO1O/MCsR5wfmfbtndRaZmHrbleEZqqOo=";
+    hash = "sha256-ROR+R1Zak8XkhFk1+Pyi0lB+JZI4SVtKGin4vem7NEE=";
   };
 
   nativeBuildInputs = [
@@ -59,13 +59,6 @@ stdenv.mkDerivation rec {
     cp -r ${libremidi.src}/* $sourceRoot/deps/libremidi
     chmod -R +w $sourceRoot/deps/cpp-httplib
     chmod -R +w $sourceRoot/deps/libremidi
-  '';
-
-  postInstall = ''
-    mkdir $out/lib $out/share
-    mv $out/obs-plugins/64bit $out/lib/obs-plugins
-    mv $out/data $out/share/obs
-    rm -rf $out/obs-plugins
   '';
 
   env.NIX_CFLAGS_COMPILE = "-Wno-error=stringop-overflow";

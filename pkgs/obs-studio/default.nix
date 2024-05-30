@@ -23,7 +23,7 @@
 , libvlc
 , libGL
 , mbedtls
-, wrapGAppsHook
+, wrapGAppsHook3
 , scriptingSupport ? true
 , luajit
 , swig4
@@ -47,6 +47,8 @@
 , decklinkSupport ? false
 , blackmagic-desktop-video
 , libdatachannel
+, libvpl
+, qrcodegencpp
 , nix-update-script
 , cjson
 , vulkan-loader
@@ -56,9 +58,6 @@
 let
   inherit (lib) optional optionals;
   obscef = pkgs.callPackage ../obscef { };
-  libdatachannel = pkgs.callPackage ../libdatachannel { };
-  libvpl = pkgs.callPackage ../libvpl { };
-  qrcodegencpp = pkgs.callPackage ../qrcodegencpp { };
 in
 
 stdenv.mkDerivation (finalAttrs: {
@@ -89,7 +88,7 @@ stdenv.mkDerivation (finalAttrs: {
     addOpenGLRunpath
     cmake
     pkg-config
-    wrapGAppsHook
+    wrapGAppsHook3
     qt6.wrapQtAppsHook
   ]
   ++ optional scriptingSupport swig4;
@@ -131,6 +130,7 @@ stdenv.mkDerivation (finalAttrs: {
   ++ optional pulseaudioSupport libpulseaudio
   ++ optionals pipewireSupport [ pipewire libdrm ]
   ++ optional withFdk fdk_aac;
+
   # Copied from the obs-linuxbrowser
   postUnpack = ''
     mkdir -p cef/Release cef/Resources cef/libcef_dll_wrapper/
@@ -198,7 +198,7 @@ stdenv.mkDerivation (finalAttrs: {
       video content, efficiently
     '';
     homepage = "https://obsproject.com";
-    maintainers = with maintainers; [ eclairevoyant jb55 MP2E materus fpletz ];
+    maintainers = with maintainers; [ eclairevoyant jb55 materus fpletz ];
     license = with licenses; [ gpl2Plus ] ++ optional withFdk fraunhofer-fdk;
     platforms = [ "x86_64-linux" "i686-linux" "aarch64-linux" ];
     mainProgram = "obs";

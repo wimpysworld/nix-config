@@ -112,7 +112,7 @@ in
           obs-studio-plugins.obs-source-record
           obs-studio-plugins.obs-source-switcher
           obs-studio-plugins.obs-stroke-glow-shadow
-          unstable.obs-studio-plugins.obs-teleport
+          obs-studio-plugins.obs-teleport
           obs-studio-plugins.obs-text-pthread
           obs-studio-plugins.obs-transition-table
           obs-studio-plugins.obs-urlsource
@@ -139,6 +139,7 @@ in
         "gebbhagfogifgggkldgodflihgfeippi" # Return YouTube Dislike
         "fdpohaocaechififmbbbbbknoalclacl" # GoFullPage
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
+        "cdglnehniifkbagbbombnjghhcihifij" # Kagi
       ];
     };
     dconf.profiles.user.databases = [{
