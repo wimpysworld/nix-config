@@ -525,7 +525,7 @@ in
     gpg-agent = {
       enable = isLinux;
       enableSshSupport = true;
-      pinentryFlavor = "curses";
+      pinentryPackage = pkgs.pinentry-curses;
     };
   };
 

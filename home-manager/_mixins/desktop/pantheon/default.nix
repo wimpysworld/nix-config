@@ -80,7 +80,7 @@ StartupNotify=false";
   };
 
   services = {
-    gpg-agent.pinentryFlavor = lib.mkForce "gnome3";
+    gpg-agent.pinentryPackage = lib.mkForce pkgs.gcr;
     # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
     mpris-proxy.enable = true;
   };
