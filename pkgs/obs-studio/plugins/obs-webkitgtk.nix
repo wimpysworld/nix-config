@@ -8,7 +8,7 @@
 , cmake
 , pkg-config
 , ninja
-, wrapGAppsHook
+, wrapGAppsHook3
 }:
 
 stdenv.mkDerivation rec {
@@ -17,7 +17,7 @@ stdenv.mkDerivation rec {
 
   src = fetchFromGitHub {
     owner = "fzwoch";
-    repo = pname;
+    repo = "obs-webkitgtk";
     rev = "ddf230852c3c338e69b248bdf453a0630f1298a7";
     hash = "sha256-DU2w9dRgqWniTE76KTAtFdxIN82VKa/CS6ZdfNcTMto=";
   };
@@ -33,7 +33,7 @@ stdenv.mkDerivation rec {
     cmake
     pkg-config
     ninja
-    wrapGAppsHook
+    wrapGAppsHook3
   ];
 
   postPatch = ''
@@ -46,6 +46,6 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/fzwoch/obs-webkitgtk";
     maintainers = with maintainers; [ flexiondotorg j-hui ];
     license = licenses.gpl2Only;
-    platforms = [ "x86_64-linux" "i686-linux" ];
+    platforms = platforms.linux;
   };
 }

@@ -37,5 +37,6 @@ stdenv.mkDerivation rec {
     license = licenses.gpl2Only;
     maintainers = with maintainers; [ GaetanLepage ];
     mainProgram = "obs-composite-blur";
+    platforms = platforms.linux;
   };
 }

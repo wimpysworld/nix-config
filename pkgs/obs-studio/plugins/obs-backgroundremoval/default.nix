@@ -17,7 +17,7 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "occ-ai";
     repo = "obs-backgroundremoval";
-    rev = "${version}";
+    rev = version;
     hash = "sha256-QoC9/HkwOXMoFNvcOxQkGCLLAJmsja801LKCNT9O9T0=";
   };
 
@@ -28,7 +28,7 @@ stdenv.mkDerivation rec {
 
   cmakeFlags = [
     "--preset linux-x86_64"
-    "-DCMAKE_MODULE_PATH:PATH=/build/source/cmake"
+    "-DCMAKE_MODULE_PATH:PATH=${src}/cmake"
     "-DUSE_SYSTEM_ONNXRUNTIME=ON"
     "-DUSE_SYSTEM_OPENCV=ON"
     "-DDISABLE_ONNXRUNTIME_GPU=ON"

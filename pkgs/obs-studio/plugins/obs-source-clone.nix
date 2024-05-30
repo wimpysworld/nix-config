@@ -31,6 +31,6 @@ stdenv.mkDerivation {
     homepage = "https://github.com/exeldro/obs-source-clone";
     maintainers = with maintainers; [ flexiondotorg ];
     license = licenses.gpl2Plus;
-    platforms = [ "x86_64-linux" "i686-linux" ];
+    platforms = platforms.linux;
   };
 }
