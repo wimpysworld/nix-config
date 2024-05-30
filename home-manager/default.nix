@@ -98,7 +98,9 @@ in
       hr # Terminal horizontal rule
       httpie # Terminal HTTP client
       hyperfine # Terminal benchmarking
+      iamb # Terminal Matrix Client
       iperf3 # Terminal network benchmarking
+      unstable.halloy # Terminal IRC
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
       lima-bin # Terminal VM manager
