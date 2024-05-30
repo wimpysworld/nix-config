@@ -98,7 +98,6 @@ in
     systemPackages = with pkgs; [
       git
     ] ++ lib.optionals (isInstall) [
-      inputs.crafts-flake.packages.${platform}.snapcraft
       inputs.fh.packages.${platform}.default
       inputs.nixos-needtoreboot.packages.${platform}.default
       clinfo
