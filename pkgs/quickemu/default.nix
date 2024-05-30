@@ -54,13 +54,14 @@ in
 
 stdenv.mkDerivation (finalAttrs : {
   pname = "quickemu";
-  version = "4.9.4";
+  version = "4.9.5";
 
   src = fetchFromGitHub {
     owner = "quickemu-project";
     repo = "quickemu";
-    rev = finalAttrs.version;
-    hash = "sha256-fjbXgze6klvbRgkJtPIUh9kEkP/As7dAj+cazpzelBY=";
+    #rev = finalAttrs.version;
+    rev = "d78255b097b599e8ab3713cb61c4085cc45f5a95";
+    hash = "sha256-fF306CdGqKM+779OLm0NNyqPBtm7TuU7UN/NanT12y8=";
   };
 
   postPatch = ''
