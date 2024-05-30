@@ -100,7 +100,7 @@ in
       hyperfine # Terminal benchmarking
       iamb # Terminal Matrix Client
       iperf3 # Terminal network benchmarking
-      unstable.halloy # Terminal IRC
+      halloy # Terminal IRC
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
       lima-bin # Terminal VM manager
@@ -139,7 +139,7 @@ in
       hueadm
       notify-desktop
       obs-cli
-      unstable.obs-cmd
+      obs-cmd
       piper-tts
       playerctl
       pulsemixer
@@ -482,7 +482,7 @@ in
       enableBashIntegration = true;
       enableFishIntegration = true;
       enableZshIntegration = true;
-      package = pkgs.unstable.yazi;
+      package = pkgs.yazi;
       settings = {
         manager = {
           show_hidden = false;
@@ -496,7 +496,7 @@ in
     };
     yt-dlp = {
       enable = true;
-      package = pkgs.unstable.yt-dlp;
+      package = pkgs.yt-dlp;
       settings ={
         audio-format = "best";
         audio-quality = 0;

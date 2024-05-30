@@ -945,7 +945,6 @@ in
 
   services.easyeffects = lib.mkIf (isLinux) {
     enable = true;
-    package = pkgs.unstable.easyeffects;
     preset = lib.mkIf (isStreamstation) "mic-${hostname}-oktava";
   };
 

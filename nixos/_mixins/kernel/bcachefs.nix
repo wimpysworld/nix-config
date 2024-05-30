@@ -7,7 +7,7 @@
     supportedFilesystems = [ "bcachefs" ];
   };
   environment.systemPackages = with pkgs; [
-    unstable.bcachefs-tools
+    bcachefs-tools
     keyutils
   ];
 }
