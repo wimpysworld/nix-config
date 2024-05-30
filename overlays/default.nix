@@ -9,19 +9,6 @@
   # https://nixos.wiki/wiki/Overlays
   modifications = _final: prev: {
 
-    librist = prev.librist.overrideAttrs ( _old: rec {
-      pname = "librist";
-      version = "0.2.10";
-      src = prev.fetchFromGitLab {
-        domain = "code.videolan.org";
-        owner = "rist";
-        repo = "librist";
-        rev = "v${version}";
-        hash = "sha256-8N4wQXxjNZuNGx/c7WVAV5QS48Bff5G3t11UkihT+K0=";
-      };
-      patches = [ ./darwin.patch ];
-    });
-
     #linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
     #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( _old: rec {
     #    pname = "mwprocapture";
