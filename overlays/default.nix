@@ -21,18 +21,6 @@
     #  });
     #});
 
-    nelua = prev.nelua.overrideAttrs ( _old: rec {
-      pname = "nelua";
-      version = "unstable-2024-02-03";
-
-      src = prev.fetchFromGitHub {
-        owner = "edubart";
-        repo = "nelua-lang";
-        rev = "05a2633a18dfdde7389394b9289da582c10e79bc";
-        hash = "sha256-oRW+pCB10T0A6fEPP3S+8iurQ2J5WMpQlCYScfIk07c=";
-      };
-    });
-
     syncthingtray = prev.syncthingtray.overrideAttrs ( _old: rec {
       pname = "syncthingtray";
       version = "1.4.12";
