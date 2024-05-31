@@ -159,6 +159,12 @@ in
           "en-US"
         ];
         "VoiceInteractionHotwordEnabled" = false;
+        # New Tab prefs
+        "NewTabPageQuickLinksEnabled" = false;
+        "NewTabPageAllowedBackgroundTypes" = 3;
+        "NewTabPageContentEnabled" = false;
+        "NewTabPageHideDefaultTopSites" = true;
+        "NewTabPageLocation" = "http://localhost:8082";
       };
     };
     firefox = {

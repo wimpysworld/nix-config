@@ -290,6 +290,214 @@ in
     };
     fwupd.enable = isInstall;
     hardware.bolt.enable = true;
+    homepage-dashboard = {
+      enable = isInstall;
+      bookmarks = [
+        {
+        Links = [
+          {
+            GitHub = [
+              {
+                abbr = "GH";
+                href = "https://github.com/flexiondotorg";
+                icon = "github-light.png";
+              }
+            ];
+          }
+          {
+            FlakeHub = [
+              {
+                abbr = "FH";
+                href = "https://flakehub.com";
+                icon = "https://flakehub.com/favicon.png";
+              }
+            ];
+          }
+          {
+            Launchpad = [
+              {
+                abbr = "LP";
+                href = "https://launchpad.net/~flexiondotorg";
+                icon = "https://launchpad.net/@@/favicon-32x32.png?v=2022";
+              }
+            ];
+          }
+          {
+            "NixOS Discourse" = [
+              {
+                abbr = "ND";
+                href = "https://discourse.nixos.org";
+                icon = "https://discourse.nixos.org/uploads/default/original/2X/c/cb4fe584627b37e7c1d5424e9cec0bb30fdb6c4d.png";
+              }
+            ];
+          }
+          {
+            "NixOS Search" = [
+              {
+                abbr = "NS";
+                href = "https://search.nixos.org";
+                icon = "https://search.nixos.org/images/nix-logo.png";
+              }
+            ];
+          }
+          {
+            "NixOS Wiki" = [
+              {
+                abbr = "NW";
+                href = "https://wiki.nixos.org";
+                icon = "https://wiki.nixos.org/nixos.png";
+              }
+            ];
+          }
+          {
+            Mastodon = [
+              {
+                abbr = "MD";
+                href = "https://fosstodon.org/deck/@wimpy";
+                icon = "mastodon.png";
+              }
+            ];
+          }
+          {
+            Bluesky = [
+              {
+                abbr = "BS";
+                href = "https://bsky.app/notifications";
+                icon = "https://bsky.app/static/favicon-32x32.png";
+              }
+            ];
+          }
+          {
+            X = [
+              {
+                abbr = "X";
+                href = "https://x.com/flexiondotorg";
+                icon = "x-light.png";
+              }
+            ];
+          }
+          {
+            Amazon = [
+              {
+                abbr = "AZ";
+                href = "https://www.amazon.co.uk/";
+                icon = "amazon-light.png";
+              }
+            ];
+          }
+          {
+            eBay = [
+              {
+                abbr = "EB";
+                href = "https://www.ebay.co.uk";
+                icon = "ebay.png";
+              }
+            ];
+          }
+          {
+            Scan = [
+              {
+                abbr = "SC";
+                href = "https://scan.co.uk";
+                icon = "https://scan.co.uk/content/images/logo-192x192.png";
+              }
+            ];
+          }
+          {
+            ChatGPT = [
+              {
+                abbr = "AI";
+                href = "https://chatgpt.com/";
+                icon = "https://cdn.oaistatic.com/_next/static/media/favicon-32x32.630a2b99.png";
+              }
+            ];
+          }
+          {
+            Calendar = [
+              {
+                abbr = "CA";
+                href = "https://calendar.google.com";
+                icon = "https://ssl.gstatic.com/calendar/images/dynamiclogo_2020q4/calendar_31_2x.png";
+              }
+            ];
+          }
+          {
+            Gmail = [
+              {
+                abbr = "GM";
+                href = "https://mail.google.com";
+                icon = "gmail.png";
+              }
+            ];
+          }
+        ];
+        }
+      ];
+      services = [
+        {
+          "Hardware" = [
+            {
+              "Scrutiny" = {
+                description = "Scrutiny";
+                href = "http://localhost:8080";
+              };
+            }
+          ];
+        }
+        {
+          "Services" = [
+            {
+              "Syncthing" = {
+                description = "Syncthing";
+                href = "http://localhost:8384";
+              };
+            }
+          ];
+        }
+      ];
+      settings = {
+        color = "zinc";
+        title = "Wimpy's Dashboard";
+        favicon = "https://wimpysworld.com/favicon.ico";
+        layout = {
+          Links = {
+            style = "row";
+            columns = 3;
+          };
+        };
+      };
+      widgets = [
+        {
+          search = {
+            provider = "custom";
+            target = "_blank";
+            url = "https://kagi.com/search?q=";
+          };
+        }
+        {
+          resources = {
+            label = "system";
+            cpu = true;
+            memory = true;
+          };
+        }
+        {
+          resources = {
+            label = "storage";
+            disk = [ "/" "/home"];
+          };
+        }
+        {
+          openmeteo = {
+            label = "Weather";
+            latitude = "51.254383";
+            longitude = "-0.939525";
+            timezone = "Europe/London";
+            units = "metric";
+          };
+        }
+      ];
+    };
     kmscon = lib.mkIf (isInstall) {
       enable = true;
       hwRender = true;
@@ -308,6 +516,10 @@ in
         PasswordAuthentication = false;
         PermitRootLogin = lib.mkDefault "no";
       };
+    };
+    scrutiny = {
+      enable = isInstall;
+      collector.enable = false;
     };
     smartd.enable = isInstall;
     snap.enable = isInstall;
