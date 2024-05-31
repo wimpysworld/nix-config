@@ -305,6 +305,15 @@ in
             ];
           }
           {
+            GitLab = [
+              {
+                abbr = "GL";
+                href = "https://gitlab.com";
+                icon = "gitlab.png";
+              }
+            ];
+          }
+          {
             FlakeHub = [
               {
                 abbr = "FH";
@@ -328,6 +337,15 @@ in
                 abbr = "ND";
                 href = "https://discourse.nixos.org";
                 icon = "https://discourse.nixos.org/uploads/default/original/2X/c/cb4fe584627b37e7c1d5424e9cec0bb30fdb6c4d.png";
+              }
+            ];
+          }
+          {
+            "Nixpkgs" = [
+              {
+                abbr = "NP";
+                href = "https://github.com/NixOS/nixpkgs";
+                icon = "https://avatars.githubusercontent.com/u/487568?s=48&v=4";
               }
             ];
           }
@@ -368,6 +386,15 @@ in
             ];
           }
           {
+            Instagram = [
+              {
+                abbr = "IG";
+                href = "https://www.instagram.com/";
+                icon = "instagram.png";
+              }
+            ];
+          }
+          {
             X = [
               {
                 abbr = "X";
@@ -391,6 +418,15 @@ in
                 abbr = "EB";
                 href = "https://www.ebay.co.uk";
                 icon = "ebay.png";
+              }
+            ];
+          }
+          {
+            Ocado = [
+              {
+                abbr = "OC";
+                href = "https://www.ocado.com/";
+                icon = "https://www.ocado.com/webshop/static/images/7.4.99/favicon.png";
               }
             ];
           }
@@ -430,6 +466,15 @@ in
               }
             ];
           }
+          {
+            Notion = [
+              {
+                abbr = "NT";
+                href = "https://notion.so";
+                icon = "notion.png";
+              }
+            ];
+          }
         ];
         }
       ];
@@ -456,15 +501,18 @@ in
         }
       ];
       settings = {
+        background = "https://raw.githubusercontent.com/wimpysworld/nix-config/main/nixos/_mixins/configs/backgrounds/DeterminateColorway-2560x1440.png";
         color = "zinc";
-        title = "Wimpy's Dashboard";
         favicon = "https://wimpysworld.com/favicon.ico";
+        hideVersion = true;
         layout = {
           Links = {
             style = "row";
-            columns = 3;
+            columns = 4;
           };
         };
+        showStats = true;
+        title = "Wimpy's Dashboard";
       };
       widgets = [
         {
