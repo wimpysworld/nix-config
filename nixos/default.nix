@@ -120,10 +120,10 @@ in
     ] ++ lib.optionals (isInstall && isWorkstation && notVM) [
       quickemu
     ] ++ lib.optionals (isInstall && hasNvidia) [
-      nvtop
+      nvtopPackages.full
       vdpauinfo
     ]  ++ lib.optionals (isInstall && !hasNvidia) [
-      nvtop-amd
+      nvtopPackages.amd
     ];
 
     variables = {
