@@ -211,8 +211,6 @@ in
         enable = true;
         # https://stackoverflow.com/questions/24040672/the-meaning-of-period-in-alsa
         # https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/alsa.html#alsa-buffer-properties
-        # https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/3241
-        # https://gitlab.freedesktop.org/pipewire/wireplumber/-/issues/562
         # cat /nix/store/*-wireplumber-*/share/wireplumber/main.lua.d/99-alsa-lowlatency.lua
         # cat /nix/store/*-wireplumber-*/share/wireplumber/wireplumber.conf.d/99-alsa-lowlatency.conf
         configPackages = lib.mkIf (needsLowLatencyPipewire) [
