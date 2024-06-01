@@ -31,7 +31,6 @@
 
     gtk4 = {
       extraConfig = {
-        gtk-application-prefer-dark-theme = 1;
         gtk-decoration-layout = ":minimize,maximize,close";
       };
     };
@@ -39,11 +38,6 @@
     iconTheme = {
       name = "elementary";
       package = pkgs.pantheon.elementary-icon-theme;
-    };
-
-    theme = {
-      name = "io.elementary.stylesheet.blueberry";
-      package = pkgs.pantheon.elementary-gtk-theme;
     };
   };
 

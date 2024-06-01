@@ -36,11 +36,6 @@
       name = "Yaru-blue-dark";
       package = pkgs.yaru-theme;
     };
-
-    theme = {
-      name = "Yaru-blue-dark";
-      package = pkgs.yaru-theme;
-    };
   };
 
   home.pointerCursor = {
