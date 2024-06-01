@@ -144,7 +144,13 @@ in
   programs = {
     appimage.binfmt = true;
     chromium = {
-      # TODO: Add some of these https://github.com/M86xKC/edge-config/blob/main/policies.json
+      # TODO: Configure policy:
+      # - /etc/brave/policies/managed/<filename>.json
+      # - /etc/brave/policies/recommended/<filename>.json
+      # - https://chromeenterprise.google/policies/
+      # - https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies
+      # - https://github.com/M86xKC/edge-config/blob/main/policies.json
+      # - https://mozilla.github.io/policy-templates/
       # chromium.enable just enables the Chromium policies.
       enable = isInstall;
       extraOpts = {
