@@ -54,6 +54,7 @@ in
 
   environment.systemPackages = with pkgs; lib.optionals (isInstall) [
     appimage-run
+    (chromium.override { enableWideVine = true; })
     pavucontrol
     pulseaudio
     wmctrl
