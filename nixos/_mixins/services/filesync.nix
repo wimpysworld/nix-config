@@ -6,7 +6,6 @@ in
   environment.systemPackages = with pkgs; [
     maestral
   ] ++ lib.optionals (isWorkstation) [
-    celeste
     maestral-gui
   ];
 
