@@ -51,6 +51,7 @@ in
       chromium
       celluloid
       element-desktop
+      fractal
       gimp-with-plugins
       gnome.dconf-editor
       gnome.gnome-sound-recorder
