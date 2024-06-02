@@ -55,11 +55,13 @@ in
       gnome.dconf-editor
       gnome.gnome-sound-recorder
       google-chrome
+      halloy
       inkscape
       libreoffice
       meld
       microsoft-edge
       opera
+      pika-backup
       tenacity
       usbimager
       vivaldi
@@ -79,9 +81,6 @@ in
       gnomeExtensions.tiling-assistant
       gnomeExtensions.vitals
     ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
-      fractal
-      halloy
-      pika-backup
       telegram-desktop
     ]) ++ (with inputs; lib.optionals (isWorkstation) [
       antsy-alien-attack-pico.packages.${platform}.default
