@@ -241,9 +241,8 @@ Things I should do or improve:
 
 - [ ] Add README.md to each level of the configuration to add context
 - [ ] Do this: <https://github.com/Electrostasy/dots/blob/master/flake.nix#L93>
-- [ ] Integrate [notify](https://github.com/projectdiscovery/notify)
-- [ ] Integrate [homepage](https://github.com/benphelps/homepage)
-- [ ] Integrate [scrutiny](https://github.com/AnalogJ/scrutiny): <https://github.com/NixOS/nixpkgs/pull/289934/files>
+- [ ] Integrate [ntfy](https://ntfy.sh/)
+- [ ] Configure [scrutiny](https://github.com/AnalogJ/scrutiny)
 
 ### macOS
 
