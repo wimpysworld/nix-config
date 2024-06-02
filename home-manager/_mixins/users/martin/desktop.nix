@@ -962,7 +962,7 @@ in
         terminal = false;
         icon = "${config.home.homeDirectory}/Apps/cider.png";
         type = "Application";
-        categories = [ "Audio" "Application" ];
+        categories = [ "GNOME" "GTK" "AudioVideo" ];
       };
       # The usbimager icon path is hardcoded, so override the desktop file
       usbimager = {
