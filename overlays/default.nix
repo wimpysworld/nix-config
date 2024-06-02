@@ -8,7 +8,6 @@
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
   modifications = _final: prev: {
-
     #linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
     #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( _old: rec {
     #    pname = "mwprocapture";
@@ -21,14 +20,14 @@
     #  });
     #});
 
-    wavebox = prev.wavebox.overrideAttrs ( _old: rec {
-      pname = "wavebox";
-      version = "10.125.28-2";
-      src = prev.fetchurl {
-        url = "https://download.wavebox.app/stable/linux/tar/Wavebox_${version}.tar.gz";
-        sha256 = "sha256-8X17WLa1q2c7FQD61e5wYZKOYnHA9sSvfGrtARACGZc=";
-      };
-    });
+    #wavebox = prev.wavebox.overrideAttrs ( _old: rec {
+    #  pname = "wavebox";
+    #  version = "10.125.28-2";
+    #  src = prev.fetchurl {
+    #    url = "https://download.wavebox.app/stable/linux/tar/Wavebox_${version}.tar.gz";
+    #    sha256 = "sha256-8X17WLa1q2c7FQD61e5wYZKOYnHA9sSvfGrtARACGZc=";
+    #  };
+    #});
   };
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
