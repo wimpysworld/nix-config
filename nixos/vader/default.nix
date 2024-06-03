@@ -11,6 +11,7 @@
     ./disks-snapshot.nix
     #../_mixins/services/clamav.nix
     ../_mixins/services/filesync.nix
+    ../_mixins/services/homepage.nix
     ../_mixins/services/tailscale.nix
   ];
 
