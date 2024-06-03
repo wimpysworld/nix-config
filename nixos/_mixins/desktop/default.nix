@@ -229,8 +229,8 @@ in
         "SafeBrowsingSurveysEnabled" = false;
         # Startup, Home and New Tab Page
         "HomePageIsNewTabPage" = true;
-        "HomePageLocation" = "http://localhost:8082";
-        "NewTabPageLocation" = "http://localhost:8082";
+        "HomePageLocation" = "https://${hostname}.wimpress.io";
+        "NewTabPageLocation" = "https://${hostname}.wimpress.io";
         "RestoreOnStartup" = 1;
         "ShowHomeButton" = false;
       };
@@ -293,7 +293,7 @@ in
           "Enabled" = true;
           "ProviderURL" = "https://cloudflare-dns.com/dns-query";
           "Locked" = false;
-          "Fallback" = false;
+          "Fallback" = true;
         };
         "DontCheckDefaultBrowser" = true;
         "EnableTrackingProtection" = {
@@ -374,7 +374,7 @@ in
         "Homepage" = {
           "Locked" = false;
           "StartPage" = "previous-session";
-          "URL" = "http://localhost:8082";
+          "URL" = "https://${hostname}.wimpress.io";
         };
         "NetworkPrediction" = false;
         "NewTabPage" = true;
@@ -409,6 +409,7 @@ in
         };
         "SearchSuggestEnabled" = true;
         "ShowHomeButton" = false;
+        "StartDownloadsInTempDirectory" = true;
         "UserMessaging" = {
           "WhatsNew" = false;
           "ExtensionRecommendations" = true;
