@@ -211,8 +211,8 @@ in
           "Hardware" = [
             {
               "Scrutiny" = {
-                description = "Scrutiny";
-                href = "http://localhost:8080";
+                description = "Scrutiny: ${hostname}";
+                href = "http://${hostname}.drongo-gamma.ts.net:8080";
               };
             }
           ];
@@ -221,8 +221,8 @@ in
           "Services" = [
             {
               "Syncthing" = {
-                description = "Syncthing";
-                href = "http://localhost:8384";
+                description = "Syncthing: ${hostname}";
+                href = "http://${hostname}.drongo-gamma.ts.net:8384";
               };
             }
           ];
