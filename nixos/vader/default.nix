@@ -12,7 +12,7 @@
     #../_mixins/services/clamav.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/homepage.nix
-    ../_mixins/services/tailscale.nix
+    ../_mixins/services/tailscale
   ];
 
   # TODO: Remove this if/when machine is reinstalled.

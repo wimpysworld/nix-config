@@ -9,7 +9,6 @@
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     (import ./disks.nix { })
     ../_mixins/services/filesync.nix
-    ../_mixins/services/zerotier.nix
   ];
 
   # disko does manage mounting of / /boot /home, but I want to mount by-partlabel
@@ -53,15 +52,7 @@
   # Use passed hostname to configure basic networking
   networking = {
     defaultGateway = "192.168.2.1";
-    # ZeroTier routing
-    # - https://chrisatech.wordpress.com/2021/02/22/routing-traffic-to-zerotiers-subnet-from-all-devices-on-the-lan/
-    # - https://harivemula.com/2021/09/18/routing-all-traffic-through-home-with-zerotier-on-travel/
     firewall = {
-      extraCommands = "
-        iptables -t nat -A POSTROUTING -o eno1 -j MASQUERADE
-        iptables -A FORWARD -i eno1 -o ztwfukvgqh -m state --state RELATED,ESTABLISHED -j ACCEPT
-        iptables -A FORWARD -i ztwfukvgqh -o eno1 -j ACCEPT
-      ";
       trustedInterfaces = [ "eno1" ];
     };
     interfaces.eno1.mtu = 1462;
