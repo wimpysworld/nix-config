@@ -146,7 +146,7 @@ The `default.nix` files in the root of each directory are the entry points.
 
 ### The Shell 🐚
 
-[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [ZeroTier], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊) My [common scripts](nixos/_mixins/scripts) are (slowly) being migrated to declarative Nix-managed scripts.
+[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊) My [common scripts](nixos/_mixins/scripts) are (slowly) being migrated to declarative Nix-managed scripts.
 
 ![fastfetch on Ripper](.github/screenshots/fastfetch.png)
 
@@ -192,11 +192,12 @@ Things I currently need to do manually after installation.
 - [ ] Matrix - authenticate
 - [ ] Syncthing - Connect API and introduce host
 - [ ] Tailscale - `sudo tailscale up`
+  - [ ] Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
+  - [ ] Enable HTTPS - <https://tailscale.com/kb/1153/enabling-https>
 - [ ] Telegram - authenticate
 - [ ] Keybase - `keybase login`
 - [ ] VSCode - authenticate with GitHub enable sync
 - [ ] Wavebox - authenticate Google and restore profile
-- [ ] ZeroTier - enable host `sudo zerotier-cli info`
 - [ ] Run `fonts.sh` to install commercial fonts
 
 ### Windows Boot Manager on multi-disk systems
@@ -342,7 +343,7 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 
 [micro]: [https://micro-editor.github.io/]
 [sops-nix]: [https://github.com/Mic92/sops-nix]
-
+[Tailscale]: [https://tailscale.com/]
 [GNOME Install]: ./nixos/_mixins/desktop/gnome/default.nix
 [MATE Install]: ./nixos/_mixins/desktop/mate/default.nix
 [Pantheon Install]: ./nixos/_mixins/desktop/pantheon/default.nix
