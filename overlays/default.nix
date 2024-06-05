@@ -20,14 +20,14 @@
     #  });
     #});
 
-    #wavebox = prev.wavebox.overrideAttrs ( _old: rec {
-    #  pname = "wavebox";
-    #  version = "10.125.28-2";
-    #  src = prev.fetchurl {
-    #    url = "https://download.wavebox.app/stable/linux/tar/Wavebox_${version}.tar.gz";
-    #    sha256 = "sha256-8X17WLa1q2c7FQD61e5wYZKOYnHA9sSvfGrtARACGZc=";
-    #  };
-    #});
+    wavebox = prev.wavebox.overrideAttrs ( _old: rec {
+      pname = "wavebox";
+      version = "10.125.53-2";
+      src = prev.fetchurl {
+        url = "https://download.wavebox.app/stable/linux/tar/Wavebox_${version}.tar.gz";
+        sha256 = "sha256-ymmo0SaE71wJe8i7qAiEvPdWIA5ePUfOS8JmhxFmQvI=";
+      };
+    });
   };
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
