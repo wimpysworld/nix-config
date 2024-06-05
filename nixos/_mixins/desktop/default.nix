@@ -106,6 +106,7 @@ in
 
   networking = {
     networkmanager = {
+       dns = "systemd-resolved";
       enable = true;
       # Conditionally set Public DNS based on username, defaulting if user not matched
       insertNameservers = if builtins.hasAttr username userDnsSettings then
@@ -158,12 +159,7 @@ in
         "MetricsReportingEnabled" = false;
         "SpellCheckServiceEnabled" = false;
         # Misc; DNS
-        "AdditionalDnsQueryTypesEnabled" = true;
-        "BuiltInDnsClientEnabled" = true;
-        "DNSInterceptionChecksEnabled" = true;
-        "DnsOverHttpsMode" = "secure";
-        "DnsOverHttpsTemplates" = "https://cloudflare-dns.com/dns-query";
-        "EncryptedClientHelloEnabled" = true;
+        "BuiltInDnsClientEnabled" = false;
         # Misc; Tabs
         "NTPCardsVisible" = false;
         "NTPCustomBackgroundEnabled" = false;
@@ -290,10 +286,7 @@ in
         "DisplayBookmarksToolbar" = "never";
         "DisplayMenuBar" = "default-off";
         "DNSOverHTTPS" = {
-          "Enabled" = true;
-          "ProviderURL" = "https://cloudflare-dns.com/dns-query";
-          "Locked" = false;
-          "Fallback" = true;
+          "Enabled" = false;
         };
         "DontCheckDefaultBrowser" = true;
         "EnableTrackingProtection" = {
