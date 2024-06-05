@@ -4,19 +4,6 @@ let
   isWorkstation = if (desktop != null) then true else false;
 in
 {
-  networking = {
-    extraHosts = ''
-      127.0.0.2   ${hostname}.wimpress.io
-    '';
-    firewall.allowedTCPPorts = [
-      80
-      443
-    ];
-  };
-  security.acme = {
-    email = "REDACTED";
-    acceptTerms = true;
-  };
   services = {
     homepage-dashboard = {
       enable = isInstall;
@@ -279,10 +266,12 @@ in
       virtualHosts."localhost" = {
         extraConfig = ''
           reverse_proxy http://127.0.0.1:8082
-          tls internal
         '';
-        serverAliases = [ "${hostname}.wimpress.io" ];
+        serverAliases = [ "${hostname}.drongo-gamma.ts.net" ];
       };
     };
+    # Enable caddy to acquire certificates from the tailscale daemon
+    # - https://tailscale.com/blog/caddy
+    tailscale.permitCertUid = "caddy";
   };
 }

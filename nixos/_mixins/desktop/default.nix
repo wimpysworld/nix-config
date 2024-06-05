@@ -225,8 +225,8 @@ in
         "SafeBrowsingSurveysEnabled" = false;
         # Startup, Home and New Tab Page
         "HomePageIsNewTabPage" = true;
-        "HomePageLocation" = "https://${hostname}.wimpress.io";
-        "NewTabPageLocation" = "https://${hostname}.wimpress.io";
+        "HomePageLocation" = "https://${hostname}.drongo-gamma.ts.net";
+        "NewTabPageLocation" = "https://${hostname}.drongo-gamma.ts.net";
         "RestoreOnStartup" = 1;
         "ShowHomeButton" = false;
       };
@@ -367,7 +367,7 @@ in
         "Homepage" = {
           "Locked" = false;
           "StartPage" = "previous-session";
-          "URL" = "https://${hostname}.wimpress.io";
+          "URL" = "https://${hostname}.drongo-gamma.ts.net";
         };
         "NetworkPrediction" = false;
         "NewTabPage" = true;
