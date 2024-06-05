@@ -151,7 +151,7 @@ in
   networking = {
     extraHosts = ''
       192.168.2.1     router
-      192.168.2.6     vader-wifi vader
+      192.168.2.6     vader-wifi
       192.168.2.7     vader-lan
       192.168.2.11    printer
       192.168.2.15	  nuc
@@ -309,6 +309,7 @@ in
         PermitRootLogin = lib.mkDefault "no";
       };
     };
+    resolved.enable = true;
     scrutiny = {
       enable = isInstall;
       collector.enable = false;
