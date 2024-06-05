@@ -7,7 +7,7 @@
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
-  modifications = _final: prev: {
+  modifications = _final: _prev: {
     #linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
     #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( _old: rec {
     #    pname = "mwprocapture";
