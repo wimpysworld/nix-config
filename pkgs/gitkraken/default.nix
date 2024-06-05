@@ -97,13 +97,16 @@ let
     ];
 
     desktopItems = [ (makeDesktopItem {
-      name = "GitKraken Desktop";
-      exec = "gitkraken";
+      name = "gitkraken";
+      exec = "gitkraken %U";
       icon = "gitkraken";
-      desktopName = "GitKraken Desktop";
+      desktopName = "GitKraken";
       genericName = "Git Client";
-      categories = [ "Development" ];
+      categories = [ "Development" "RevisionControl" ];
       comment = "Unleash your repo";
+      startupNotify = true;
+      startupWMClass = "gitkraken";
+      type = "Application";
     }) ];
 
     nativeBuildInputs = [ copyDesktopItems (wrapGAppsHook3.override { makeWrapper = makeShellWrapper; }) ];
