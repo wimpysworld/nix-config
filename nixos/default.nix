@@ -42,8 +42,6 @@ in
     ];
     kernelPackages = pkgs.linuxPackages_latest;
     kernel.sysctl = {
-      "net.ipv4.ip_forward" = 1;
-      "net.ipv6.conf.all.forwarding" = 1;
       # Keep zram swap (lz4) latency in check
       "vm.page-cluster" = 1;
     };
