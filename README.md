@@ -193,7 +193,7 @@ Things I currently need to do manually after installation.
 - [ ] Syncthing - Connect API and introduce host
 - [ ] Tailscale - `sudo tailscale up`
   - [ ] Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
-  - [ ] Enable HTTPS - <https://tailscale.com/kb/1153/enabling-https>
+  - [ ] `sudo tailscale set --operator=$USER`
 - [ ] Telegram - authenticate
 - [ ] Keybase - `keybase login`
 - [ ] VSCode - authenticate with GitHub enable sync
