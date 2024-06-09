@@ -218,6 +218,7 @@ in
         background = "https://raw.githubusercontent.com/wimpysworld/nix-config/main/nixos/_mixins/configs/backgrounds/DeterminateColorway-2560x1440.png";
         color = "zinc";
         favicon = "https://wimpysworld.com/favicon.ico";
+        headerStyle = "boxed";
         hideVersion = true;
         layout = {
           Links = {
@@ -230,6 +231,29 @@ in
       };
       widgets = [
         {
+          #logo = {
+          #  icon = "https://wimpysworld.com/profile.webp";
+          #};
+          #datetime = {
+          #  format = {
+          #    dateStyle = "long";
+          #    hourCycle = "h23";
+          #    timeStyle = "short";
+          #  };
+          #};
+          #greeting = {
+          #  text_size = "xl";
+          #  text = "Greeting Text";
+          #};
+          #quicklaunch = {
+          #  provider = "custom";
+          #  target = "_blank";
+          #  url = "https://kagi.com/search?q=";
+          #  #searchDescriptions = true;
+          #  #hideInternetSearch = false;
+          #  #showSearchSuggestions = false;
+          #  #hideVisitURL = false;
+          #};
           search = {
             provider = "custom";
             target = "_blank";
@@ -238,15 +262,16 @@ in
         }
         {
           resources = {
-            label = "system";
+            label = "Computer";
             cpu = true;
-            memory = true;
-          };
-        }
-        {
-          resources = {
-            label = "storage";
-            disk = [ "/" "/home"];
+          #  cputemp = false;
+          #  memory = true;
+            refresh = 2000;
+          #  uptime = true;
+          #  units = "metric";
+          #  disk = [ "/" "/home"];
+          #  diskUnits = "gigabytes";
+          #  expanded = false;
           };
         }
         {
