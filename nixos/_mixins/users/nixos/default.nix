@@ -75,7 +75,7 @@ if [[ -z "$TARGET_USER" ]]; then
 fi
 
 if [ ! -e "$HOME/.config/sops/age/keys.txt" ]; then
-  ${pkgs.coreutils-full}/bin/echo "WARNING! sops keys.txt was not found."
+  ${pkgs.coreutils-full}/bin/echo "WARNING! $HOME/.config/sops/age/keys.txt was not found."
   ${pkgs.coreutils-full}/bin/echo "         Do you want to continue without it?"
   ${pkgs.coreutils-full}/bin/echo
   read -p "Are you sure? [y/N]" -n 1 -r
