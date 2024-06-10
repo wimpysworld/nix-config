@@ -55,7 +55,6 @@
       address = "192.168.2.18";
       prefixLength = 24;
     }];
-    nameservers = [ "127.0.0.1" ];
     useDHCP = lib.mkForce false;
   };
 
