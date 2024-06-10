@@ -12,6 +12,7 @@ let
       "sidious"
       "tanis"
       "vader"
+      "revan"
     ];
     tcpPorts = [ 22000 ];
     udpPorts = [ 22000 21027 ];
