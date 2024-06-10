@@ -96,6 +96,7 @@ in
 
     systemPackages = with pkgs; [
       git
+      nix-output-monitor
     ] ++ lib.optionals (isInstall) [
       inputs.fh.packages.${platform}.default
       inputs.nixos-needtoreboot.packages.${platform}.default
@@ -104,7 +105,6 @@ in
       flyctl
       fuse-overlayfs
       libva-utils
-      nix-output-monitor
       nvd
       nvme-cli
       #https://nixos.wiki/wiki/Podman
