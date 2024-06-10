@@ -26,7 +26,7 @@
     ./disks.nix
     ./disks-home.nix
     ../_mixins/services/filesync.nix
-    ../_mixins/services/tailscale.nix
+    ../_mixins/services/tailscale
   ];
 
   swapDevices = [{
