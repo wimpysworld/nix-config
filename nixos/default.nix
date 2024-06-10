@@ -376,6 +376,7 @@ in
   };
 
   virtualisation = lib.mkIf (isInstall) {
+    containers.cdi.dynamic.nvidia.enable = hasNvidia;
     lxd = {
       enable = true;
     };
@@ -386,7 +387,6 @@ in
       dockerCompat = true;
       dockerSocket.enable = true;
       enable = true;
-      enableNvidia = hasNvidia;
     };
     spiceUSBRedirection.enable = true;
   };
