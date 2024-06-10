@@ -7,7 +7,7 @@ These computers are managed by this Nix flake ❄️
 
 |   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |      Secondary GPU      | Role | OS  | State |
 | :---------: | :-------------------------: | :----------------------------: | :---: | :-------------------------: | :---------------------: | :--: | :-: | :---: |
-| `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T1000]          | 🖥️   | ❄️  | ✅    |
+| `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 6800]           | [NVIDIA T1000]          | 🖥️   | ❄️  | ✅    |
 | `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T600]           | 🖥️   | ❄️  | ✅    |
 | `palpatine` | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | 🪟  | ✅    |
 | `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | ✅    |
@@ -17,12 +17,10 @@ These computers are managed by this Nix flake ❄️
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
 | `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
 | `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
-| `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                         | ☁️   | ❄️  | 🚧    |
-| `designare` | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | [Intel Arc A770 16GB]       | Intel UHD Graphics 630  | ☁️   | ❄️  | 🚧    |
-| `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                         | ☁️   | ❄️  | 🧟    |
+| `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T400]           | ☁️   | ❄️  | 🚧    |
+| `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                         | ☁️   | ❄️  | 🧟    |
 | `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                         | ☁️   | ❄️  | 🧟    |
-| ~~ripper~~  | [TRX40-DESIGNARE]           | [AMD Ryzen Threadripper 3970X] | 256GB | [GeForce RTX 3090 GAMING OC]|                         | 🖥️   | ❄️  | ⚰️    |
-| ~~trooper~~ | [ROG Crosshair VIII Impact] | [AMD Ryzen 9 5950X]            | 64GB  | [Fighter RX 6800]           |                         | 🖥️   | ❄️  | ⚰️    |
+| `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                         | ☁️   | ❄️  | 🧟    |
 
 **Key**
 

@@ -1,20 +1,25 @@
-# Motherboard: Gigabye Z390 Designare
-# CPU:         Intel i9 9900K
-# GPU:         Radeon RX6800
-# GPU:         NVIDIA T600
-# CAP:         Magewell Pro Capture Dual HDMI 11080
-# RAM:         128GB DDR4
-# NVME:        512GB Samsung 960 Pro
-# NVME:        2TB Samsung 960 Pro
-# Storage:     Sedna PCIe Dual 2.5 Inch SATA III (6G) SSD Adapter
-# SATA:        1TB SanDisk SSD Plus
-# SATA:        1TB SanDisk SSD Plus
+# Motherboard:       Gigabye Z390 Designare
+# CPU:               Intel i9 9900K
+# RAM:               64GB DDR4
+# NVME:              512GB Corsair Force MP600
+# NVME:              1TB Corsair Force MP600
+# SATA2:             12TB Ultrastar He12
+# SATA3:             12TB Ultrastar He12
+# Slot 1 (PCIEX16):  Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter
+#                    4x Transcend MTS830S 2TB
+# Slot 2 (PCIEX1_1): Sedna PCIe Quad 2.5 Inch SATA III (6G) SSD Adapter
+#                    4x Crucial MX500 2TB
+# Slot 3 (PCIEX8):   NVIDIA T400
+# Slot 4 (PCIEX1_2): Sedna PCIe Dual 2.5 Inch SATA III (6G) SSD Adapter
+#                    2x 2TB WD Blue (m.2 SATA adapted to 2.5" SATA)
+# Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter
+#                    4x Transcend MTS830S 2TB
 
 { config, inputs, lib, pkgs, platform, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
-    inputs.nixos-hardware.nixosModules.common-gpu-amd
+    inputs.nixos-hardware.nixosModules.common-gpu-intel
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
@@ -31,36 +36,44 @@
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "ahci" "nvme" "uas" "usbhid" "sd_mod" "xhci_pci" ];
-    kernelModules = [ "amdgpu" "kvm-intel" "nvidia" ];
+    kernelModules = [ "kvm-intel" "nvidia" ];
+    swraid = {
+      enable = true;
+      mdadmConf = "PROGRAM=true";
+    };
+  };
+
+  environment.systemPackages = with pkgs; [
+    mergerfs
+    mergerfs-tools
+    snapraid
+  ];
+
+  # Use passed hostname to configure basic networking
+  networking = {
+    defaultGateway = "192.168.2.1";
+    firewall = {
+      trustedInterfaces = [ "enp6s0" ];
+    };
+    interfaces.eno1.mtu = 1462;
+    interfaces.eno1.ipv4.addresses = [{
+      address = "192.168.2.18";
+      prefixLength = 24;
+    }];
+    nameservers = [ "127.0.0.1" ];
+    useDHCP = lib.mkForce false;
   };
 
   hardware = {
-    mwProCapture.enable = true;
     nvidia = {
       package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
       prime = {
-        amdgpuBusId = "PCI:3:0:0";
-        nvidiaBusId = "PCI:4:0:0";
-        # Make the Radeon RX6800 default. The NVIDIA T600 is for CUDA/NVENC
+        intelBusId = "PCI:0:2:0";
+        nvidiaBusId = "PCI:2:0:0";
+        # Make the Intel iGPU default. The NVIDIA T400 is for CUDA/NVENC
         reverseSync.enable = true;
       };
       nvidiaSettings = false;
     };
-  };
-
-  # Adjust MTU for Virgin Fibre
-  # - https://search.nixos.org/options?channel=23.11&show=networking.networkmanager.connectionConfig&from=0&size=50&sort=relevance&type=packages&query=networkmanager
-  networking.networkmanager.connectionConfig = {
-    "ethernet.mtu" = 1462;
-    "wifi.mtu" = 1462;
-  };
-
-  services = {
-    hardware.openrgb = {
-      enable = true;
-      motherboard = "intel";
-      package = pkgs.openrgb-with-all-plugins;
-    };
-    xserver.videoDrivers = [ "amdgpu" "nvidia" ];
   };
 }

@@ -68,6 +68,7 @@
         "martin@palpatine" = libx.mkHome { hostname = "palpatine"; username = "martin"; };
         "martin@sidious"   = libx.mkHome { hostname = "sidious";   username = "martin"; desktop = "gnome"; };
         # Servers
+        "martin@revan" = libx.mkHome { hostname = "revan"; username = "martin"; };
         "martin@brix"  = libx.mkHome { hostname = "brix";  username = "martin"; };
         "martin@skull" = libx.mkHome { hostname = "skull"; username = "martin"; };
         # Steam Deck
@@ -95,6 +96,7 @@
         tyranus = libx.mkHost { hostname = "tyranus"; username = "martin"; desktop = "gnome"; platform = "aarch64-linux"; };
         sidious = libx.mkHost { hostname = "sidious"; username = "martin"; desktop = "gnome"; };
         # Servers
+        revan = libx.mkHost { hostname = "revan";  username = "martin"; };
         brix  = libx.mkHost { hostname = "brix";  username = "martin"; };
         skull = libx.mkHost { hostname = "skull"; username = "martin"; };
         # VMs
