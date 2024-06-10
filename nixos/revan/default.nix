@@ -28,11 +28,6 @@
     ../_mixins/services/tailscale
   ];
 
-  swapDevices = [{
-    device = "/swap";
-    size = 2048;
-  }];
-
   boot = {
     blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "ahci" "nvme" "uas" "usbhid" "sd_mod" "xhci_pci" ];
