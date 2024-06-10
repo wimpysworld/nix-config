@@ -48,14 +48,15 @@
   networking = {
     defaultGateway = "192.168.2.1";
     firewall = {
-      trustedInterfaces = [ "enp6s0" ];
+      trustedInterfaces = [ "eth0" ];
     };
-    interfaces.enp6s0.mtu = 1462;
-    interfaces.enp6s0.ipv4.addresses = [{
+    interfaces.eth0.mtu = 1462;
+    interfaces.eth0.ipv4.addresses = [{
       address = "192.168.2.18";
       prefixLength = 24;
     }];
     useDHCP = lib.mkForce false;
+    usePredictableInterfaceNames = false;
   };
 
   hardware = {
