@@ -55,8 +55,8 @@
     firewall = {
       trustedInterfaces = [ "enp6s0" ];
     };
-    interfaces.eno1.mtu = 1462;
-    interfaces.eno1.ipv4.addresses = [{
+    interfaces.enp6s0.mtu = 1462;
+    interfaces.enp6s0.ipv4.addresses = [{
       address = "192.168.2.18";
       prefixLength = 24;
     }];
