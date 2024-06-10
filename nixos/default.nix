@@ -77,7 +77,7 @@ in
       LC_TIME = "en_GB.utf8";
     };
   };
-  services.xserver.layout = "gb";
+  services.xserver.xkb.layout = "gb";
   time.timeZone = "Europe/London";
 
   # Only install the docs I use
