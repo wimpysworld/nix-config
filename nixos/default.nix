@@ -153,13 +153,13 @@ in
       192.168.2.6     vader-wifi
       192.168.2.7     vader-lan
       192.168.2.11    printer
-      192.168.2.15	  nuc
+      192.168.2.15    nuc
       192.168.2.17    skull
-      192.168.2.20	  keylight-light key-left Elgato_Key_Light_Air_DAD4
+      192.168.2.20    keylight-light key-left Elgato_Key_Light_Air_DAD4
       192.168.2.21    keylight-right key-right Elgato_Key_Light_Air_EEE9
       192.168.2.23    moodlamp
       192.168.2.30    chimeraos-lan
-      192.168.2.31	  chimeraos-wifi chimeraos
+      192.168.2.31    chimeraos-wifi chimeraos
       192.168.2.58    vonage Vonage-HT801
       192.168.2.184   lametric LaMetric-LM2144
       192.168.2.250   hue-bridge
