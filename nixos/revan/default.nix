@@ -23,7 +23,8 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
-    (import ./disks.nix { })
+    ./disks.nix
+    ./disks-home.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/tailscale.nix
   ];

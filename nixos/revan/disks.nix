@@ -10,8 +10,7 @@ _: {
           type = "gpt";
           partitions = {
             ESP = {
-              start = "0%";
-              end = "1024MiB";
+              size = "1024M";
               type = "EF00";
               content = {
                 type = "filesystem";
@@ -21,8 +20,7 @@ _: {
               };
             };
             root = {
-              start = "1024MiB";
-              end = "100%";
+              size = "100%";
               content = {
                 type = "filesystem";
                 # Overwirte the existing filesystem
