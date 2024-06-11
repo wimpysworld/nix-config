@@ -12,7 +12,7 @@
 # Slot 4 (PCIEX1_2): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)
 # Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
 
-{ config, inputs, lib, pkgs, platform, ... }:
+{ config, inputs, lib, pkgs, platform, username, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -70,8 +70,62 @@
     };
   };
 
-  services.udev.extraRules = ''
-    # Remove NVIDIA Audio devices, if present
-    ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x040300", ATTR{power/control}="auto", ATTR{remove}="1"
-  '';
+  services = {
+    snapraid = {
+      enable = true;
+      exclude = [
+        "/.state_data/"
+      ];
+      extraConfig = ''
+        autosave 256
+        pool /srv/pool_ro
+      '';
+      contentFiles = [
+        "/home/${username}/.snapraid.content"
+        "/mnt/data_01/.snapraid.content"
+        "/mnt/data_06/.snapraid.content"
+      ];
+      dataDisks = {
+        d1 = "/mnt/data_01/";
+        d2 = "/mnt/data_02/";
+        d3 = "/mnt/data_03/";
+        d4 = "/mnt/data_04/";
+        d5 = "/mnt/data_05/";
+        d6 = "/mnt/data_06/";
+        d7 = "/mnt/data_07/";
+        d8 = "/mnt/data_08/";
+      };
+      parityFiles = [
+        "/mnt/parity_01/snapraid.parity"
+        "/mnt/parity_02/snapraid.parity"
+      ];
+      touchBeforeSync = true;
+    };
+    udev.extraRules = ''
+      # Remove NVIDIA Audio devices, if present
+      ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x040300", ATTR{power/control}="auto", ATTR{remove}="1"
+    '';
+  };
+
+  #Seed the initial directories to coerce mergerfs epmfs
+  # - data_01 and data_06 are the largest directories (4TB)
+  systemd.tmpfiles.rules = [
+    "d /mnt/data_01/Films           0755 ${username} users"
+    "d /mnt/data_02/Films_Education 0755 ${username} users"
+    "d /mnt/data_02/TV              0755 ${username} users"
+    "d /mnt/data_03/Films_Home      0755 ${username} users"
+    "d /mnt/data_03/Projects        0755 ${username} users"
+    "d /mnt/data_03/Internet        0755 ${username} users"
+    "d /mnt/data_04/Retro           0755 ${username} users"
+    "d /mnt/data_05/Retro           0755 ${username} users"
+    "d /mnt/data_06/Films           0755 ${username} users"
+    "d /mnt/data_07/Films_Short     0755 ${username} users"
+    "d /mnt/data_07/TV              0755 ${username} users"
+    "d /mnt/data_08/TV_Kids         0755 ${username} users"
+    "d /mnt/data_08/Films_Kids      0755 ${username} users"
+    "d /mnt/data_08/Internet_Kids   0755 ${username} users"
+    "d /mnt/parity_01 0755 ${username} users"
+    "d /mnt/parity_02 0755 ${username} users"
+    "d /srv/pool_ro   0755 ${username} users"
+  ];
 }
