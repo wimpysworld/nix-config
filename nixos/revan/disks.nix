@@ -23,8 +23,6 @@ _: {
               size = "100%";
               content = {
                 type = "filesystem";
-                # Overwirte the existing filesystem
-                extraArgs = [ "-f" ];
                 format = "xfs";
                 mountpoint = "/";
                 mountOptions = [ "defaults" ];
