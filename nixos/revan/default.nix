@@ -1,19 +1,16 @@
 # Motherboard:       Gigabye Z390 Designare
 # CPU:               Intel i9 9900K
+# GPU:               NVIDIA T400
 # RAM:               64GB DDR4
-# NVME:              512GB Corsair Force MP600
-# NVME:              1TB Corsair Force MP600
+# NVME0:             512GB Corsair Force MP600
+# NVME1:             1TB Corsair Force MP600
 # SATA2:             12TB Ultrastar He12
 # SATA3:             12TB Ultrastar He12
-# Slot 1 (PCIEX16):  Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter
-#                    4x Transcend MTS830S 2TB
-# Slot 2 (PCIEX1_1): Sedna PCIe Quad 2.5 Inch SATA III (6G) SSD Adapter
-#                    4x Crucial MX500 2TB
+# Slot 1 (PCIEX16):  Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
+# Slot 2 (PCIEX1_1): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)
 # Slot 3 (PCIEX8):   NVIDIA T400
-# Slot 4 (PCIEX1_2): Sedna PCIe Dual 2.5 Inch SATA III (6G) SSD Adapter
-#                    2x 2TB WD Blue (m.2 SATA adapted to 2.5" SATA)
-# Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter
-#                    4x Transcend MTS830S 2TB
+# Slot 4 (PCIEX1_2): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)
+# Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
 
 { config, inputs, lib, pkgs, platform, ... }:
 {
