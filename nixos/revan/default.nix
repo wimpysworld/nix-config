@@ -24,6 +24,7 @@
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     ./disks.nix
     ./disks-home.nix
+    ./disks-snapraid.nix
     ./disks-snapshot.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/tailscale
@@ -42,7 +43,6 @@
   environment.systemPackages = with pkgs; [
     mergerfs
     mergerfs-tools
-    snapraid
   ];
 
   # Use passed hostname to configure basic networking
