@@ -261,7 +261,6 @@ Things I should do or improve:
 
 ### Shell
 
-- [ ] `zellij`, `tmate` or `tmux`
 - [ ] `git-graph` and/or `git-igitt` integration
 
 #### Servers
