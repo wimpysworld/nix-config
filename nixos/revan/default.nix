@@ -91,7 +91,6 @@
       ];
       extraConfig = ''
         autosave 256
-        pool /srv/pool_ro
       '';
       contentFiles = [
         "/home/${username}/.snapraid.content"
@@ -139,7 +138,6 @@
     "d /mnt/data_08/Internet_Kids   0755 ${username} users"
     "d /mnt/parity_01 0755 ${username} users"
     "d /mnt/parity_02 0755 ${username} users"
-    "d /srv/pool_ro   0755 ${username} users"
     "d /srv/pool      0755 ${username} users"
   ];
 }
