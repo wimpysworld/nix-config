@@ -255,6 +255,7 @@ in
         nano = "micro";
       };
     };
+    mosh.enable = true;
     nano.enable = lib.mkDefault false;
     nh = {
       clean = {
