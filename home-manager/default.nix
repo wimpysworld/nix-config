@@ -484,6 +484,7 @@ in
       enable = true;
       mouse = true;
       newSession = true;
+      terminal = "screen-256color";
     };
     yazi = {
       enable = true;
