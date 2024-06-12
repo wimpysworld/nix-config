@@ -42,6 +42,19 @@
     mergerfs-tools
   ];
 
+  fileSystems."/srv/pool" = {
+    fsType = "fuse.mergerfs";
+    device = "/mnt/data_*";
+    options = [
+      "cache.files=partial"
+      "category.create=mspmfs"
+      "dropcacheonclose=true"
+      "fsname=pool"
+      "minfreespace=16G"
+      "moveonenospc=true"
+    ];
+  };
+
   # Use passed hostname to configure basic networking
   networking = {
     defaultGateway = "192.168.2.1";
@@ -127,5 +140,6 @@
     "d /mnt/parity_01 0755 ${username} users"
     "d /mnt/parity_02 0755 ${username} users"
     "d /srv/pool_ro   0755 ${username} users"
+    "d /srv/pool      0755 ${username} users"
   ];
 }
