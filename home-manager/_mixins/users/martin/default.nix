@@ -40,6 +40,8 @@ in
       disk_img="nixos-gnome/disk.qcow2"
       disk_size="96G"
       iso="nixos-gnome/nixos.iso"
+      width="1920"
+      height="1080"
     '';
     file."Quickemu/nixos-mate.conf".text = ''
       #!/run/current-system/sw/bin/quickemu --vm
@@ -47,6 +49,8 @@ in
       disk_img="nixos-mate/disk.qcow2"
       disk_size="96G"
       iso="nixos-mate/nixos.iso"
+      width="1920"
+      height="1080"
     '';
     file."Quickemu/nixos-pantheon.conf".text = ''
       #!/run/current-system/sw/bin/quickemu --vm
@@ -54,6 +58,8 @@ in
       disk_img="nixos-pantheon/disk.qcow2"
       disk_size="96G"
       iso="nixos-pantheon/nixos.iso"
+      width="1920"
+      height="1080"
     '';
     file."/Development/.keep".text = "";
     file."/Games/.keep".text = "";
