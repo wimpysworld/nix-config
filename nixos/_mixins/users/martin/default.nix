@@ -63,6 +63,7 @@ in
       microsoft-edge
       opera
       pika-backup
+      tartube
       tenacity
       usbimager
       vivaldi
