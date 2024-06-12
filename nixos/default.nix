@@ -310,10 +310,6 @@ in
       };
     };
     resolved.enable = true;
-    scrutiny = {
-      enable = isInstall;
-      collector.enable = false;
-    };
     smartd.enable = isInstall;
     snap.enable = isInstall;
     sshguard = {
