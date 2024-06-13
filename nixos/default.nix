@@ -278,8 +278,6 @@ in
     avahi = {
       enable = true;
       nssmdns4 = true;
-      # Only open the avahi firewall ports on servers
-      openFirewall = isWorkstation;
       publish = {
         addresses = true;
       	enable = true;
