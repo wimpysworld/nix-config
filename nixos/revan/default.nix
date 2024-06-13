@@ -25,7 +25,6 @@
     ./disks-snapshot.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/caddy
-    ../_mixins/services/cockpit
     ../_mixins/services/netdata
     ../_mixins/services/tailscale
   ];
