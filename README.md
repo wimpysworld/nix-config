@@ -176,6 +176,9 @@ Things I currently need to do manually after installation.
 - [ ] Run `gpg-restore`
 - [ ] 1Password - authenticate
 - [ ] LastPass - authenticate
+- [ ] Tailscale - `sudo tailscale up`
+  - Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
+- [ ] Keybase - `keybase login`
 
 ### Services
 
@@ -185,15 +188,10 @@ Things I currently need to do manually after installation.
 - [ ] Discord - authenticate
 - [ ] GitKraken - authenticate with GitHub
 - [ ] Grammarly - authenticate
-- [ ] IRCCloud - authenticate
 - [ ] Maelstral - `maestral_qt`
 - [ ] Matrix - authenticate
 - [ ] Syncthing - Connect API and introduce host
-- [ ] Tailscale - `sudo tailscale up`
-  - [ ] Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
-  - [ ] `sudo tailscale set --operator=$USER`
 - [ ] Telegram - authenticate
-- [ ] Keybase - `keybase login`
 - [ ] VSCode - authenticate with GitHub enable sync
 - [ ] Wavebox - authenticate Google and restore profile
 - [ ] Run `fonts.sh` to install commercial fonts
