@@ -479,6 +479,13 @@ in
       ];
       enable = true;
     };
+    tmux = {
+      clock24 = true;
+      enable = true;
+      mouse = true;
+      newSession = true;
+      terminal = "screen-256color";
+    };
     yazi = {
       enable = true;
       enableBashIntegration = true;

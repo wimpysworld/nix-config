@@ -15,7 +15,6 @@ TARGET_BRANCH="''${3:-main}"
 
 function run_disko() {
   local DISKO_CONFIG="$1"
-  local DISKO_MODE="$2"
   local REPLY="n"
 
   # If the requested config doesn't exist, skip it.
@@ -23,27 +22,26 @@ function run_disko() {
     return
   fi
 
-  # If the requested mode is not mount, ask for confirmation.
-  if [ "$DISKO_MODE" != "mount" ]; then
-    ${pkgs.coreutils-full}/bin/echo "ALERT! Found $DISKO_CONFIG"
-    ${pkgs.coreutils-full}/bin/echo "       Do you want to format the disks in $DISKO_CONFIG"
-    ${pkgs.coreutils-full}/bin/echo "       This is a destructive operation!"
-    ${pkgs.coreutils-full}/bin/echo
-    read -p "Proceed with $DISKO_CONFIG format? [y/N]" -n 1 -r
-    ${pkgs.coreutils-full}/bin/echo
-  else
-    REPLY="y"
-  fi
+  ${pkgs.coreutils-full}/bin/echo "ALERT! Found $DISKO_CONFIG"
+  ${pkgs.coreutils-full}/bin/echo "       Do you want to format the disks in $DISKO_CONFIG"
+  ${pkgs.coreutils-full}/bin/echo "       This is a destructive operation!"
+  ${pkgs.coreutils-full}/bin/echo
+  read -p "Proceed with $DISKO_CONFIG format? [y/N]" -n 1 -r
+  ${pkgs.coreutils-full}/bin/echo
 
+  sudo true
   if [[ $REPLY =~ ^[Yy]$ ]]; then
-    sudo true
     # Workaround for mounting encrypted bcachefs filesystems.
     # - https://nixos.wiki/wiki/Bcachefs#NixOS_installation_on_bcachefs
     # - https://github.com/NixOS/nixpkgs/issues/32279
     sudo ${pkgs.keyutils}/bin/keyctl link @u @s
-    sudo disko --mode $DISKO_MODE "$DISKO_CONFIG"
+    sudo disko --mode disko "$DISKO_CONFIG"
+  else
+    sudo disko --mode mount "$DISKO_CONFIG"
   fi
 }
+
+sudo umount -R /mnt || true
 
 if [ "$(${pkgs.coreutils-full}/bin/id -u)" -eq 0 ]; then
   ${pkgs.coreutils-full}/bin/echo "ERROR! $(${pkgs.coreutils}/bin/basename "$0") should be run as a regular user"
@@ -75,7 +73,7 @@ if [[ -z "$TARGET_USER" ]]; then
 fi
 
 if [ ! -e "$HOME/.config/sops/age/keys.txt" ]; then
-  ${pkgs.coreutils-full}/bin/echo "WARNING! sops keys.txt was not found."
+  ${pkgs.coreutils-full}/bin/echo "WARNING! $HOME/.config/sops/age/keys.txt was not found."
   ${pkgs.coreutils-full}/bin/echo "         Do you want to continue without it?"
   ${pkgs.coreutils-full}/bin/echo
   read -p "Are you sure? [y/N]" -n 1 -r
@@ -127,16 +125,10 @@ else
     ${pkgs.coreutils-full}/bin/echo -n "$(head -c32 /dev/random | base64)" > /tmp/data.keyFile
   fi
 
-  run_disko "nixos/$TARGET_HOST/disks.nix" "disko"
-
-  # If the main configuration was denied, make sure the root partition is mounted.
-  if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt; then
-    run_disko "nixos/$TARGET_HOST/disks.nix" "mount"
-  fi
+  run_disko "nixos/$TARGET_HOST/disks.nix"
 
   for CONFIG in $(${pkgs.findutils}/bin/find "nixos/$TARGET_HOST" -name "disks-*.nix" | ${pkgs.coreutils-full}/bin/sort); do
-    run_disko "$CONFIG" "disko"
-    run_disko "$CONFIG" "mount"
+    run_disko "$CONFIG"
   done
 fi
 

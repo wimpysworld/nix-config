@@ -21,6 +21,7 @@ keys:
   - &host_sidious age1wv5n63qt2jvlrap064j84sjvhpge0utaz36n7pm28aypx7qtagxs22qhqz
   - &host_tanis age1kscrpd0rx7ud06y635rsdc6h2ehyuwakhs65w442wa70qc0ct5ps0t0h5j
   - &host_vader age1xs0vlxts7dfa770kea0nyagq0j95nennmx79qml4ddfg6np2qefs9gah9e
+  - &host_revan age18qvgrnqftm43getj6m8qc09hg5cpwsyt6ac2zkl7w2r60d2gjajqz60n9w
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
@@ -31,3 +32,4 @@ creation_rules:
       - *host_sidious
       - *host_tanis
       - *host_vader
+      - *host_revan

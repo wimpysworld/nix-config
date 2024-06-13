@@ -194,20 +194,10 @@ in
       ];
       services = [
         {
-          "Hardware" = [
-            {
-              "Scrutiny" = {
-                description = "Scrutiny: ${hostname}";
-                href = "http://${hostname}.drongo-gamma.ts.net:8080";
-              };
-            }
-          ];
-        }
-        {
           "Services" = [
             {
               "Syncthing" = {
-                description = "Syncthing: ${hostname}";
+                description = "${hostname}";
                 href = "http://${hostname}.drongo-gamma.ts.net:8384";
               };
             }

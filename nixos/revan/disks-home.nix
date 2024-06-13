@@ -10,12 +10,9 @@ _: {
           type = "gpt";
           partitions = {
             home = {
-              start = "0%";
-              end = "100%";
+              size = "100%";
               content = {
                 type = "filesystem";
-                # Overwirte the existing filesystem
-                extraArgs = [ "-f" ];
                 format = "xfs";
                 mountpoint = "/home";
                 mountOptions = [ "defaults" ];
