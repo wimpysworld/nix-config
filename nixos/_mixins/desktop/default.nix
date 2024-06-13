@@ -167,7 +167,7 @@ in
         # Misc; Downloads
         "DefaultDownloadDirectory" = "/home/${username}/Downloads";
         "DownloadDirectory" = "/home/${username}/Downloads";
-        "PromptForDownloadLocation" = false;
+        "PromptForDownloadLocation" = true;
         # Misc
         "AllowSystemNotifications" = true;
         "AutofillAddressEnabled" = false;
@@ -379,7 +379,7 @@ in
         "PopupBlocking" = {
           "Default" = true;
         };
-        "PromptForDownloadLocation" = false;
+        "PromptForDownloadLocation" = true;
         "SearchBar" = "unified";
         "SearchEngines" = {
           "Add" = [
