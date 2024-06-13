@@ -166,7 +166,7 @@ in
     '';
     firewall = {
       enable = true;
-      allowedTCPPorts = [ 22 ]
+      allowedTCPPorts = [ ]
         ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.tcpPorts;
       allowedUDPPorts = [ ]
         ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.udpPorts;
@@ -304,6 +304,7 @@ in
     };
     openssh = {
       enable = true;
+      openFirewall = true;
       settings = {
         PasswordAuthentication = false;
         PermitRootLogin = lib.mkDefault "no";
