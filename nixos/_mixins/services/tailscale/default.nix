@@ -12,11 +12,11 @@ in
   services.tailscale = {
       enable = true;
       extraUpFlags = [ "--accept-routes" "--operator ${username}" "--ssh" ];
-      useRoutingFeatures = "client";
+    openFirewall = true;
+    useRoutingFeatures = "both";
   };
   networking = {
     firewall = {
-      allowedUDPPorts = [ config.services.tailscale.port ];
       trustedInterfaces = [ "tailscale0" ];
     };
   };
