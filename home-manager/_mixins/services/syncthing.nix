@@ -17,7 +17,7 @@ in
     extraOptions = [
       "--config=${config.home.homeDirectory}/Syncthing/Devices/${hostname}"
       "--data=${config.home.homeDirectory}/Syncthing/DB/${hostname}"
-      "--gui-address=${hostname}.drongo-gamma.ts.net:8384"
+      "--gui-address=127.0.0.1:8384"
       "--no-default-folder"
       "--no-browser"
     ];
