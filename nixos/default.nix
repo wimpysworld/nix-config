@@ -153,8 +153,6 @@ in
       192.168.2.6     vader-wifi
       192.168.2.7     vader-lan
       192.168.2.11    printer
-      192.168.2.15    nuc
-      192.168.2.17    skull
       192.168.2.20    keylight-light key-left Elgato_Key_Light_Air_DAD4
       192.168.2.21    keylight-right key-right Elgato_Key_Light_Air_EEE9
       192.168.2.23    moodlamp
@@ -317,7 +315,6 @@ in
       enable = true;
       whitelist = [
         "192.168.2.0/24"
-        "192.168.192.0/24"
         "62.31.16.154"
         "80.209.186.67"
       ];
