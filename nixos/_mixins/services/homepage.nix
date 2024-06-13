@@ -284,8 +284,5 @@ in
         serverAliases = [ "${hostname}.drongo-gamma.ts.net" ];
       };
     };
-    # Enable caddy to acquire certificates from the tailscale daemon
-    # - https://tailscale.com/blog/caddy
-    tailscale.permitCertUid = "caddy";
   };
 }
