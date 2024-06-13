@@ -24,6 +24,7 @@
     ./disks-snapraid.nix
     ./disks-snapshot.nix
     ../_mixins/services/filesync.nix
+    ../_mixins/services/cockpit
     ../_mixins/services/tailscale
   ];
 
