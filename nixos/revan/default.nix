@@ -124,40 +124,40 @@
   # - Balance TV over data_02,04,07 (3x2TB)
   # - Balance everything else over data_03,05,08 (3x2TB)
   systemd.tmpfiles.rules = [
-    "d /mnt/data_01/Films           0755 ${username} users" #4TB
-    "d /mnt/data_01/Films_Education 0755 ${username} users" #3.12 GiB
-    "d /mnt/data_01/Films_Kids      0755 ${username} users" #422.26 GiB
-    "d /mnt/data_01/Films_Short     0755 ${username} users" #6.95 GiB
-    "d /mnt/data_06/Films           0755 ${username} users" #4TB
-    "d /mnt/data_06/Films_Education 0755 ${username} users" #3.12 GiB
-    "d /mnt/data_06/Films_Kids      0755 ${username} users" #422.26 GiB
-    "d /mnt/data_06/Films_Short     0755 ${username} users" #6.95 GiB
+    "d /mnt/data_01/Films           0755 ${username} users"
+    "d /mnt/data_01/Films_Education 0755 ${username} users"
+    "d /mnt/data_01/Films_Kids      0755 ${username} users"
+    "d /mnt/data_01/Films_Short     0755 ${username} users"
+    "d /mnt/data_06/Films           0755 ${username} users"
+    "d /mnt/data_06/Films_Education 0755 ${username} users"
+    "d /mnt/data_06/Films_Kids      0755 ${username} users"
+    "d /mnt/data_06/Films_Short     0755 ${username} users"
 
-    "d /mnt/data_02/TV              0755 ${username} users" #2TB
-    "d /mnt/data_02/TV_Kids         0755 ${username} users" #700GB
-    "d /mnt/data_04/TV              0755 ${username} users" #2TB
-    "d /mnt/data_04/TV_Kids         0755 ${username} users" #700GB
-    "d /mnt/data_07/TV              0755 ${username} users" #2TB
-    "d /mnt/data_07/TV_Kids         0755 ${username} users" #700GB
+    "d /mnt/data_02/TV              0755 ${username} users"
+    "d /mnt/data_02/TV_Kids         0755 ${username} users"
+    "d /mnt/data_04/TV              0755 ${username} users"
+    "d /mnt/data_04/TV_Kids         0755 ${username} users"
+    "d /mnt/data_07/TV              0755 ${username} users"
+    "d /mnt/data_07/TV_Kids         0755 ${username} users"
 
-    "d /mnt/data_03/Archive         0755 ${username} users" #300 GiB
-    "d /mnt/data_03/Films_Home      0755 ${username} users" #69.34 GiB
+    "d /mnt/data_03/Archive         0755 ${username} users"
+    "d /mnt/data_03/Films_Home      0755 ${username} users"
     "d /mnt/data_03/Internet        0755 ${username} users"
-    "d /mnt/data_03/Internet_Kids   0755 ${username} users" #455.84 MiB
-    "d /mnt/data_03/Projects        0755 ${username} users" #27.65 GiB
-    "d /mnt/data_03/Retro           0755 ${username} users" #300GB
-    "d /mnt/data_05/Archive         0755 ${username} users" #300 GiB
-    "d /mnt/data_05/Films_Home      0755 ${username} users" #69.34 GiB
+    "d /mnt/data_03/Internet_Kids   0755 ${username} users"
+    "d /mnt/data_03/Projects        0755 ${username} users"
+    "d /mnt/data_03/Retro           0755 ${username} users"
+    "d /mnt/data_05/Archive         0755 ${username} users"
+    "d /mnt/data_05/Films_Home      0755 ${username} users"
     "d /mnt/data_05/Internet        0755 ${username} users"
-    "d /mnt/data_05/Internet_Kids   0755 ${username} users" #455.84 MiB
-    "d /mnt/data_05/Projects        0755 ${username} users" #27.65 GiB
-    "d /mnt/data_05/Retro           0755 ${username} users" #300GB
-    "d /mnt/data_08/Archive         0755 ${username} users" #300 GiB
-    "d /mnt/data_08/Films_Home      0755 ${username} users" #69.34 GiB
+    "d /mnt/data_05/Internet_Kids   0755 ${username} users"
+    "d /mnt/data_05/Projects        0755 ${username} users"
+    "d /mnt/data_05/Retro           0755 ${username} users"
+    "d /mnt/data_08/Archive         0755 ${username} users"
+    "d /mnt/data_08/Films_Home      0755 ${username} users"
     "d /mnt/data_08/Internet        0755 ${username} users"
-    "d /mnt/data_08/Internet_Kids   0755 ${username} users" #455.84 MiB
-    "d /mnt/data_08/Projects        0755 ${username} users" #27.65 GiB
-    "d /mnt/data_08/Retro           0755 ${username} users" #300GB
+    "d /mnt/data_08/Internet_Kids   0755 ${username} users"
+    "d /mnt/data_08/Projects        0755 ${username} users"
+    "d /mnt/data_08/Retro           0755 ${username} users"
 
     "d /mnt/parity_01               0755 ${username} users"
     "d /mnt/parity_02               0755 ${username} users"
