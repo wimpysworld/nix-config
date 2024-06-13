@@ -10,8 +10,8 @@ in
     ];
   };
   services.tailscale = {
-      enable = true;
-      extraUpFlags = [ "--accept-routes" "--operator ${username}" "--ssh" ];
+    enable = true;
+    extraUpFlags = [ "--accept-routes" "--operator=${username}" "--ssh" ];
     openFirewall = true;
     useRoutingFeatures = "both";
   };
