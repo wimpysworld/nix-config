@@ -1,6 +1,6 @@
 { lib, ... }:
 {
   services.tailscale = {
-      extraUpFlags = [ "--advertise-exit-node" ];
+    extraUpFlags = [ "--advertise-exit-node" ];
   };
 }
