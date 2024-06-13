@@ -372,9 +372,7 @@ in
 
   virtualisation = lib.mkIf (isInstall) {
     containers.cdi.dynamic.nvidia.enable = hasNvidia;
-    lxd = {
-      enable = true;
-    };
+    lxd.enable = true;
     podman = {
       defaultNetwork.settings = {
         dns_enabled = true;
