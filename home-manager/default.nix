@@ -481,11 +481,26 @@ in
     };
     tmate.enable = true;
     tmux = {
+      aggressiveResize = true;
+      baseIndex = 1;
       clock24 = true;
+      historyLimit = 50000;
       enable = true;
+      escapeTime = 0;
+      extraConfig = ''
+        set -g status on
+        # Increase tmux messages display duration from 750ms to 4s
+        set -g display-time 4000
+        # Refresh 'status-left' and 'status-right' more often, from every 15s to 5s
+        set -g status-interval 5
+        # Focus events enabled for terminals that support them
+        set -g focus-events on
+      '';
+      keyMode = "emacs";
       mouse = true;
       newSession = true;
-      terminal = "screen-256color";
+      sensibleOnTop = true;
+      terminal = "tmux-256color";
     };
     yazi = {
       enable = true;
