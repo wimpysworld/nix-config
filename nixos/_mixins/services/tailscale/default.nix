@@ -9,15 +9,14 @@ in
       trayscale
     ];
   };
+  networking.firewall.trustedInterfaces = [ "tailscale0" ];
   services.tailscale = {
     enable = true;
     extraUpFlags = [ "--accept-routes" "--operator=${username}" "--ssh" ];
+    # Enable caddy to acquire certificates from the tailscale daemon
+    # - https://tailscale.com/blog/caddy
+    permitCertUid = "caddy";
     openFirewall = true;
     useRoutingFeatures = "both";
-  };
-  networking = {
-    firewall = {
-      trustedInterfaces = [ "tailscale0" ];
-    };
   };
 }
