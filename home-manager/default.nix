@@ -479,6 +479,7 @@ in
       ];
       enable = true;
     };
+    tmate.enable = true;
     tmux = {
       clock24 = true;
       enable = true;
