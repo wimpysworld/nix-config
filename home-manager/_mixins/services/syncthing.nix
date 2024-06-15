@@ -17,7 +17,6 @@ in
     extraOptions = [
       "--config=${config.home.homeDirectory}/Syncthing/Devices/${hostname}"
       "--data=${config.home.homeDirectory}/Syncthing/DB/${hostname}"
-      "--gui-address=127.0.0.1:8384"
       "--no-default-folder"
       "--no-browser"
     ];

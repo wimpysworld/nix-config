@@ -9,7 +9,8 @@
     ./disks.nix
     ../_mixins/kernel/bcachefs.nix
     ../_mixins/services/filesync.nix
-    ../_mixins/services/homepage.nix
+    ../_mixins/services/caddy
+    ../_mixins/services/homepage
     ../_mixins/services/tailscale
   ];
 

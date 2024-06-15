@@ -4,7 +4,8 @@
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13-gen1
     ./disks.nix
     ../_mixins/services/filesync.nix
-    ../_mixins/services/homepage.nix
+    ../_mixins/services/caddy
+    ../_mixins/services/homepage
     ../_mixins/services/tailscale
   ];
 
