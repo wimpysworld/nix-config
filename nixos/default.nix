@@ -326,7 +326,10 @@ in
     };
     defaultSopsFile = ../secrets/secrets.yaml;
     # sops-nix options: https://dl.thalheim.io/
-    secrets.test-key = {};
+    secrets = {
+      test-key = {};
+      homepage-env = {};
+    };
   };
 
   # Enable Multi-Gen LRU:
