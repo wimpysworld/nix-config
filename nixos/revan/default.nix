@@ -26,6 +26,7 @@
     ../_mixins/services/filesync.nix
     ../_mixins/services/caddy
     ../_mixins/services/homepage
+    ../_mixins/services/jellyfin
     ../_mixins/services/netdata
     ../_mixins/services/plex
     ../_mixins/services/tailscale
