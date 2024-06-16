@@ -16,6 +16,10 @@
             }
           }
 
+          # - https://jellyfin.org/docs/general/networking/caddy/
+          redir /jellyfin /jellyfin/
+          reverse_proxy /jellyfin/* localhost:8096
+
           # - https://www.jjpdev.com/posts/plex-media-server-tailscale/
           # - https://furotmark.github.io/2023/01/04/Configuring-Caddy2-With-Plex-And-Transmission.html
           reverse_proxy /web/* localhost:32400 {
