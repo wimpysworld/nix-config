@@ -15,6 +15,17 @@
               header_up Host localhost
             }
           }
+
+          # - https://www.jjpdev.com/posts/plex-media-server-tailscale/
+          # - https://furotmark.github.io/2023/01/04/Configuring-Caddy2-With-Plex-And-Transmission.html
+          reverse_proxy /web/* localhost:32400 {
+            header_up -Referer
+            header_up -X-Forwarded-For
+            header_up Origin "${hostname}.drongo-gamma.ts.net" "192.168.2.18"
+            header_up Host "${hostname}.drongo-gamma.ts.net" "192.168.2.18"
+            header_down Location "192.168.2.18" "${hostname}.drongo-gamma.ts.net"
+          }
+
           reverse_proxy localhost:8082
         }
       '';
