@@ -27,6 +27,7 @@
     ../_mixins/services/caddy
     ../_mixins/services/homepage
     ../_mixins/services/netdata
+    ../_mixins/services/plex
     ../_mixins/services/tailscale
   ];
 
@@ -131,10 +132,12 @@
     "d /mnt/data_01/Films_Education 0755 ${username} users"
     "d /mnt/data_01/Films_Kids      0755 ${username} users"
     "d /mnt/data_01/Films_Short     0755 ${username} users"
+    "d /mnt/data_01/Films_Archived  0755 ${username} users"
     "d /mnt/data_06/Films           0755 ${username} users"
     "d /mnt/data_06/Films_Education 0755 ${username} users"
     "d /mnt/data_06/Films_Kids      0755 ${username} users"
     "d /mnt/data_06/Films_Short     0755 ${username} users"
+    "d /mnt/data_06/Films_Archived  0755 ${username} users"
 
     "d /mnt/data_02/TV              0755 ${username} users"
     "d /mnt/data_02/TV_Kids         0755 ${username} users"
