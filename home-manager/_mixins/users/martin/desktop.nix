@@ -36,36 +36,29 @@ in
     };
 
     "com/gexperts/Tilix/profiles/d1def387-a465-4497-81bc-b8b2de782b2d" = {
-      background-color = "#121212121414";
-      badge-color = "#E6E66D6DFFFF";
-      badge-color-set = true;
-      badge-font = "FiraCode Nerd Font Mono 12";
-      #badge-text = "\${columns}x\${rows}";
-      badge-text = "";
-      badge-use-system-font = false;
-      bold-color = "#C8C8C8C8C8C8";
-      bold-color-set = true;
-      bold-is-bright = false;
+      background-color = "#1E1E2E";
+      badge-color-set = false;
+      bold-color-set = false;
       cell-height-scale = mkDouble 1.0;
       cell-width-scale = mkDouble 1.0;
-      cursor-background-color = "#FFFFB6B63838";
+      cursor-background-color = "#F5E0DC";
       cursor-blink-mode = "on";
       cursor-colors-set = true;
-      cursor-foreground-color = "#FFFFB6B63838";
+      cursor-foreground-color = "#1E1E2E";
       default-size-columns = mkInt32 132;
       default-size-rows = mkInt32 50;
       draw-margin = mkInt32 80;
       font = "FiraCode Nerd Font Mono Medium 13";
-      foreground-color = "#C8C8C8C8C8C8";
-      highlight-background-color = "#1E1E1E1E2020";
-      highlight-colors-set = false;
-      highlight-foreground-color = "#C8C8C8C8C8C8";
-      palette = [ "#121212121414" "#D6D62B2B2B2B" "#4141DDDD7575" "#FFFFB6B63838" "#2828A9A9FFFF" "#E6E66D6DFFFF" "#1414E5E5D3D3" "#C8C8C8C8C8C8" "#434343434545" "#DEDE56565656" "#A1A1EEEEBBBB" "#FFFFC5C56060" "#9494D4D4FFFF" "#F2F2B6B6FFFF" "#A0A0F5F5EDED" "#E9E9E9E9E9E9" ];
+      foreground-color = "#CDD6F4";
+      highlight-background-color = "#F5E0DC";
+      highlight-colors-set = true;
+      highlight-foreground-color = "#1E1E2E";
+      palette = [ "#BAC2DE" "#F38BA8" "#A6E3A1" "#F9E2AF" "#89B4FA" "#F5C2E7" "#94E2D5" "#585B70" "#A6ADC8" "#F38BA8" "#A6E3A1" "#F9E2AF" "#89B4FA" "#F5C2E7" "#94E2D5" "#45475A" ];
       scrollback-unlimited = true;
       terminal-title = "";
       use-system-font = true;
       use-theme-colors = false;
-      visible-name = "Bearded Dark Vivid";
+      visible-name = "Default";
     };
 
     "com/raggesilver/BlackBox" = {
@@ -78,7 +71,7 @@ in
       pretty = true;
       remember-window-size = true;
       scrollback-lines = lib.hm.gvariant.mkUint32 10240;
-      theme-dark = "Adwaita Dark";
+      theme-dark = "Catppuccin-Mocha";
       window-height = lib.hm.gvariant.mkUint32 1150;
       window-width = lib.hm.gvariant.mkUint32 1450;
     };
@@ -715,41 +708,79 @@ in
       '';
     };
 
-    ".local/share/blackbox/schemes/Bearded-Dark-Vivid.json".text = ''
+    "${config.xdg.configHome}/tilix/schemes/Catppuccin-Mocha.json".text = ''
+    {
+      "name": "Catppuccin Mocha",
+      "comment": "Soothing pastel theme for Tilix",
+      "background-color": "#1e1e2e",
+      "foreground-color": "#cdd6f4",
+      "badge-color": "#585b70",
+      "bold-color": "#585b70",
+      "cursor-background-color": "#f5e0dc",
+      "cursor-foreground-color": "#1e1e2e",
+      "highlight-background-color": "#f5e0dc",
+      "highlight-foreground-color": "#1e1e2e",
+      "palette": [
+        "#bac2de",
+        "#f38ba8",
+        "#a6e3a1",
+        "#f9e2af",
+        "#89b4fa",
+        "#f5c2e7",
+        "#94e2d5",
+        "#585b70",
+        "#a6adc8",
+        "#f38ba8",
+        "#a6e3a1",
+        "#f9e2af",
+        "#89b4fa",
+        "#f5c2e7",
+        "#94e2d5",
+        "#45475a"
+      ],
+      "use-badge-color": false,
+      "use-bold-color": false,
+      "use-cursor-color": true,
+      "use-highlight-color": true,
+      "use-theme-colors": false
+    }
+    '';
+
+    ".local/share/blackbox/schemes/Catppuccin-Mocha.json".text = ''
       {
-          "background-color": "#121214",
-          "badge-color": "#E66DFF",
-          "bold-color": "#C8C8C8",
-          "cursor-background-color": "#FFB638",
-          "cursor-foreground-color": "#FFB638",
-          "foreground-color": "#C8C8C8",
-          "highlight-background-color": "#1E1E20",
-          "highlight-foreground-color": "#C8C8C8",
-          "name": "Bearded Dark Vivid",
-          "comment": "Bearded Dark Vivid",
-          "palette": [
-              "#121214",
-              "#d62b2b",
-              "#41dd75",
-              "#ffb638",
-              "#28a9ff",
-              "#e66dff",
-              "#14e5d3",
-              "#c8c8c8",
-              "#434345",
-              "#de5656",
-              "#a1eebb",
-              "#ffc560",
-              "#94d4ff",
-              "#f2b6ff",
-              "#a0f5ed",
-              "#e9e9e9"
-          ],
-          "use-badge-color": true,
-          "use-bold-color": true,
-          "use-cursor-color": true,
-          "use-highlight-color": false,
-          "use-theme-colors": false
+        "name": "Catppuccin-Mocha",
+        "comment": "Soothing pastel theme for the high-spirited!",
+        "background-color": "#1E1E2E",
+        "foreground-color": "#CDD6F4",
+        "badge-color": "#585B70",
+        "bold-color": "#585B70",
+        "cursor-background-color": "#F5E0DC",
+        "cursor-foreground-color": "#1E1E2E",
+        "highlight-background-color": "#F5E0DC",
+        "highlight-foreground-color": "#1E1E2E",
+        "palette": [
+          "#45475A",
+          "#F38BA8",
+          "#A6E3A1",
+          "#F9E2AF",
+          "#89B4FA",
+          "#F5C2E7",
+          "#94E2D5",
+          "#BAC2DE",
+          "#585B70",
+          "#F38BA8",
+          "#A6E3A1",
+          "#F9E2AF",
+          "#89B4FA",
+          "#F5C2E7",
+          "#94E2D5",
+          "#A6ADC8"
+        ],
+        "use-badge-color": false,
+        "use-bold-color": false,
+        "use-cursor-color": true,
+        "use-highlight-color": true,
+        "use-theme-colors": false
       }
     '';
 
