@@ -137,6 +137,7 @@ in
         "fdpohaocaechififmbbbbbknoalclacl" # GoFullPage
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
         "cdglnehniifkbagbbombnjghhcihifij" # Kagi
+        "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
       ];
     };
     dconf.profiles.user.databases = [{
