@@ -495,11 +495,28 @@ in
         set -g status-interval 5
         # Focus events enabled for terminals that support them
         set -g focus-events on
+        # Status at the top
+        set -g status-position top
+        # | and - for splitting panes:
+        bind | split-window -h
+        bind "\\" split-window -fh
+        bind - split-window -v
+        bind _ split-window -fv
+        unbind '"'
+        unbind %
+        # reload config file
+        bind r source-file ~/.config/tmux/tmux.conf; display-message "Config reloaded"
+        # Fast pant-switching using Alt-arrow without prefix
+        bind -n M-Left select-pane -L
+        bind -n M-Right select-pane -R
+        bind -n M-Up select-pane -U
+        bind -n M-Down select-pane -D
       '';
       keyMode = "emacs";
       mouse = true;
-      newSession = true;
+      newSession = false;
       sensibleOnTop = true;
+      shortcut = "a";
       terminal = "tmux-256color";
     };
     yazi = {
