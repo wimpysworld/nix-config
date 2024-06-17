@@ -19,6 +19,11 @@ in
   ++ lib.optional (builtins.pathExists (./. + "/_mixins/hosts/${hostname}")) ./_mixins/hosts/${hostname}
   ++ lib.optional (isWorkstation) ./_mixins/desktop;
 
+  catppuccin = {
+    accent = "blue";
+    flavor = "mocha";
+  };
+
   home = {
     inherit stateVersion;
     inherit username;

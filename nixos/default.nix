@@ -58,6 +58,11 @@ in
     };
   };
 
+  catppuccin = {
+    accent = "blue";
+    flavor = "mocha";
+  };
+
   console = {
     font = "${pkgs.tamzen}/share/consolefonts/TamzenForPowerline10x20.psf";
     keyMap = "uk";
