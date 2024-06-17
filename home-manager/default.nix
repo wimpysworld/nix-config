@@ -67,6 +67,7 @@ in
     # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages = with pkgs; [
       (nerdfonts.override { fonts = [ "FiraCode" "NerdFontsSymbolsOnly" ]; })
+      symbola
       ubuntu_font_family
       work-sans
       asciicam # Terminal webcam
@@ -121,6 +122,7 @@ in
       rclone # Modern Unix `rsync`
       rsync # Traditional `rsync`
       sd # Modern Unix `sed`
+      st # Suckless Terminal
       speedtest-go # Terminal speedtest.net
       terminal-parrot # Terminal ASCII parrot
       tldr # Modern Unix `man`
