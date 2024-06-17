@@ -74,10 +74,7 @@ in
     ] ++ lib.optionals (isWorkstation && (desktop == "gnome" || desktop == "pantheon")) [
       loupe
       marker
-    ] ++ lib.optionals (isWorkstation && (desktop == "mate" || desktop == "pantheon")) [
-      tilix
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
-      blackbox-terminal
       gnome-extension-manager
       gnomeExtensions.start-overlay-in-application-view
       gnomeExtensions.tiling-assistant
@@ -88,7 +85,6 @@ in
       antsy-alien-attack-pico.packages.${platform}.default
     ]) ++ (with pkgs; lib.optionals (isStreamstation) [
       # https://nixos.wiki/wiki/OBS_Studio
-      blackbox-terminal
       rhythmbox
       (wrapOBS {
         plugins = [
