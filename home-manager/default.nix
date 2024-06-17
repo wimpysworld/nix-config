@@ -11,6 +11,7 @@ in
     # outputs.homeManagerModules.example
 
     # Modules exported from other flakes:
+    inputs.catppuccin.homeManagerModules.catppuccin
     inputs.sops-nix.homeManagerModules.sops
     inputs.nix-index-database.hmModules.nix-index
   ]
