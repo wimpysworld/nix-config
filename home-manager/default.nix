@@ -528,7 +528,7 @@ in
         unbind '"'
         unbind %
         # reload config file
-        bind r source-file ~/.config/tmux/tmux.conf; display-message "Config reloaded"
+        bind r source-file ~/.config/tmux/tmux.conf
         # Fast pant-switching using Alt-arrow without prefix
         bind -n M-Left select-pane -L
         bind -n M-Right select-pane -R
