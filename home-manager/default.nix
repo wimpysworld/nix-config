@@ -248,6 +248,7 @@ in
       };
     };
     bat = {
+      catppuccin.enable = true;
       enable = true;
       extraPackages = with pkgs.bat-extras; [
         batgrep
