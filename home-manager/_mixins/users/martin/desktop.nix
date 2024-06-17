@@ -193,19 +193,13 @@ in
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
       binding = "<Super>t";
       name = "Terminal";
-    } // lib.optionalAttrs (desktop == "pantheon") {
-      command = "tilix";
-    } // lib.optionalAttrs (desktop == "gnome") {
-      command = "blackbox";
+      command = "rio";
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
       binding = "<Primary><Alt>t";
       name = "Terminal";
-    } // lib.optionalAttrs (desktop == "pantheon") {
-      command = "tilix";
-    } // lib.optionalAttrs (desktop == "gnome") {
-      command = "blackbox";
+      command = "rio";
     };
 
     "org/gnome/desktop/background" = lib.optionalAttrs (desktop == "gnome" || desktop == "pantheon") {
@@ -244,8 +238,8 @@ in
 
     ### GNOME Desktop ###
     "org/gnome/desktop/default/applications/terminal" = lib.optionalAttrs (desktop == "gnome") {
-      exec = "blackbox";
-      exec-arg = "-c";
+      exec = "rio";
+      exec-arg = "--command";
     };
 
     "org/gnome/mutter" = lib.optionalAttrs (desktop == "gnome") {
@@ -295,7 +289,7 @@ in
 
     "org/gnome/shell/extensions/Logo-menu" = lib.optionalAttrs (desktop == "gnome") {
       menu-button-system-monitor = "gnome-usage";
-      menu-button-terminal = "blackbox";
+      menu-button-terminal = "rio";
     };
 
     "org/gnome/shell/extensions/thinkpad-battery-threshold" = lib.optionalAttrs (desktop == "gnome" && isThinkpad) {
