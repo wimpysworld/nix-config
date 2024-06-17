@@ -122,6 +122,18 @@ in
           sha256 = "sha256-SSRoQSowBmebplX2dWIP50ErroNfe0Wgtuz7y77LB8Y=";
         }
         {
+          name = "catppuccin-vsc";
+          publisher = "Catppuccin";
+          version = "3.14.0";
+          sha256 = "sha256-kNQFR1ghdFJF4XLWCFgVpeXCZ/XiHGr/O1iJyWTT3Bg=";
+        }
+        {
+          name = "catppuccin-vsc-icons";
+          publisher = "Catppuccin";
+          version = "1.13.0";
+          sha256 = "sha256-4gsblUMcN7a7UgoklBjc+2uiaSERq1vmi0exLht+Xi0=";
+        }
+        {
           name = "debian-control-vscode";
           publisher = "jdemille";
           version = "0.2.0";
