@@ -260,13 +260,9 @@ in
       };
     };
     bottom = {
+      catppuccin.enable = true;
       enable = true;
       settings = {
-        colors = {
-          high_battery_color = "green";
-          medium_battery_color = "yellow";
-          low_battery_color = "red";
-        };
         disk_filter = {
           is_list_ignored = true;
           list = [ "/dev/loop" ];
