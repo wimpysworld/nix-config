@@ -342,6 +342,10 @@ in
             install_url = "https://addons.mozilla.org/firefox/downloads/latest/enterprise-policy-generator/latest.xpi";
             installation_mode = "force_installed";
           };
+          "FirefoxColor@mozilla.com" = {
+            install_url = "https://addons.mozilla.org/firefox/downloads/latest/firefox-color/latest.xpi";
+            installation_mode = "force_installed";
+          };
         };
         "ExtensionUpdate" = true;
         "FirefoxHome" = {
