@@ -193,13 +193,13 @@ in
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
       binding = "<Super>t";
       name = "Terminal";
-      command = "rio";
+      command = "st -g 132x50";
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
       binding = "<Primary><Alt>t";
       name = "Terminal";
-      command = "rio";
+      command = "st -g 132x50";
     };
 
     "org/gnome/desktop/background" = lib.optionalAttrs (desktop == "gnome" || desktop == "pantheon") {
@@ -238,7 +238,7 @@ in
 
     ### GNOME Desktop ###
     "org/gnome/desktop/default/applications/terminal" = lib.optionalAttrs (desktop == "gnome") {
-      exec = "rio";
+      exec = "st -g 132x50";
       exec-arg = "--command";
     };
 
@@ -289,7 +289,7 @@ in
 
     "org/gnome/shell/extensions/Logo-menu" = lib.optionalAttrs (desktop == "gnome") {
       menu-button-system-monitor = "gnome-usage";
-      menu-button-terminal = "rio";
+      menu-button-terminal = "st -g 132x50";
     };
 
     "org/gnome/shell/extensions/thinkpad-battery-threshold" = lib.optionalAttrs (desktop == "gnome" && isThinkpad) {

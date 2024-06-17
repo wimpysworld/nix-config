@@ -103,7 +103,7 @@ in
         };
 
         "org/mate/desktop/applications/terminal" = {
-          exec = "rio";
+          exec = "st -g 132x50";
         };
 
         "org/mate/desktop/background" = {
@@ -198,7 +198,7 @@ in
           command-1 = "mate-screensaver-command --lock";
           command-2 = "/bin/sh -c \"sleep 0.1; mate-screenshot --area\"";
           command-3 = "caja";
-          command-4 = "rio";
+          command-4 = "st -g 132x50";
           command-5 = "mate-control-center";
           command-6 = "mate-search-tool";
           command-7 = "mate-system-monitor -p";
