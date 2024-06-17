@@ -15,7 +15,7 @@ in
   systemd.user.targets.tray =  lib.mkIf isLinux {
     Unit = {
       Description = "Home Manager System Tray";
-      Requires = [ "graphical-session-pre.target" ];
+      Wants = [ "graphical-session-pre.target" ];
     };
   };
 }
