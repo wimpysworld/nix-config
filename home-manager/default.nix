@@ -33,9 +33,6 @@ in
       "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./_mixins/configs/fastfetch.jsonc;
     };
     file = {
-      "${config.xdg.configHome}/rio/themes/catppuccin-mocha.toml".text = builtins.readFile ./_mixins/configs/rio-catppuccin-mocha.toml;
-    };
-    file = {
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./_mixins/configs/yazi-keymap.toml;
     };
     file = {
@@ -444,6 +441,7 @@ in
     };
     rio = {
       enable = true;
+      catppuccin.enable = true;
       package = pkgs.rio;
       settings = {
         # Whenever the key binding `OpenConfigEditor` is triggered it will
@@ -455,7 +453,6 @@ in
         blinking-cursor = true;
         # Ignore theme selection foreground color; false by default
         ignore-selection-foreground-color = false;
-        theme = "catppuccin-mocha";
         # define x axis padding (default is 0)
         padding-x = 2;
         # Window configuration
