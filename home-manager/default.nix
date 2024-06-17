@@ -506,6 +506,7 @@ in
     tmux = {
       aggressiveResize = true;
       baseIndex = 1;
+      catppuccin.enable = true;
       clock24 = true;
       historyLimit = 50000;
       enable = true;
