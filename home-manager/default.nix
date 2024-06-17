@@ -548,6 +548,7 @@ in
       enableBashIntegration = true;
       enableFishIntegration = true;
       enableZshIntegration = true;
+      catppuccin.enable = true;
       package = pkgs.yazi;
       settings = {
         manager = {
