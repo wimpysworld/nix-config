@@ -345,9 +345,10 @@ in
       };
     };
     fzf = {
-        enable = true;
-        enableBashIntegration = true;
-        enableFishIntegration = true;
+      catppuccin.enable = true;
+      enable = true;
+      enableBashIntegration = true;
+      enableFishIntegration = true;
     };
     gh = {
       enable = true;
