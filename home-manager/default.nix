@@ -311,6 +311,7 @@ in
       icons = true;
     };
     fish = {
+      catppuccin.enable = true;
       enable = true;
       shellAliases = {
         banner = lib.mkIf isLinux "${pkgs.figlet}/bin/figlet";
