@@ -272,41 +272,53 @@ in
   };
 
   xresources.properties = {
-    "XTerm*background" = "#121214";
-    "XTerm*foreground" = "#c8c8c8";
-    "XTerm*cursorBlink" = true;
-    "XTerm*cursorColor" = "#FFC560";
-    "XTerm*boldColors" = false;
+    "*background" = "#1E1E2E";
+    "*foreground" = "#CDD6F4";
+    # black
+    "*color0" = "#45475A";
+    "*color8" = "#585B70";
+    # red
+    "*color1" = "#F38BA8";
+    "*color9" = "#F38BA8";
+    # green
+    "*color2" = "#A6E3A1";
+    "*color10" = "#A6E3A1";
+    # yellow
+    "*color3" = "#F9E2AF";
+    "*color11" = "#F9E2AF";
+    # blue
+    "*color4" = "#89B4FA";
+    "*color12" = "#89B4FA";
+    #magenta
+    "*color5" = "#F5C2E7";
+    "*color13" = "#F5C2E7";
+    #cyan
+    "*color6" = "#94E2D5";
+    "*color14" = "#94E2D5";
+    #white
+    "*color7" = "#BAC2DE";
+    "*color15" = "#A6ADC8";
 
-    #Black + DarkGrey
-    "*color0" = "#141417";
-    "*color8" = "#434345";
-    #DarkRed + Red
-    "*color1" = "#D62C2C";
-    "*color9" = "#DE5656";
-    #DarkGreen + Green
-    "*color2" = "#42DD76";
-    "*color10" = "#A1EEBB";
-    #DarkYellow + Yellow
-    "*color3" = "#FFB638";
-    "*color11" = "#FFC560";
-    #DarkBlue + Blue
-    "*color4" = "#28A9FF";
-    "*color12" = "#94D4FF";
-    #DarkMagenta + Magenta
-    "*color5" = "#E66DFF";
-    "*color13" = "#F3B6FF";
-    #DarkCyan + Cyan
-    "*color6" = "#14E5D4";
-    "*color14" = "#A1F5EE";
-    #LightGrey + White
-    "*color7" = "#c8c8c8";
-    "*color15" = "#e9e9e9";
-    "XTerm*faceName" = "FiraCode Nerd Font:size=13:style=Medium:antialias=true";
-    "XTerm*boldFont" = "FiraCode Nerd Font:size=13:style=Bold:antialias=true";
+    # Xterm Appearance
+    "XTerm*background" = "#1E1E2E";
+    "XTerm*foreground" = "#CDD6F4";
+    "XTerm*letterSpace" = 0;
+    "XTerm*lineSpace" = 0;
     "XTerm*geometry" = "132x50";
     "XTerm.termName" = "xterm-256color";
-    "XTerm*locale" = false;
+    "XTerm*internalBorder" = 2;
+    "XTerm*faceName" = "FiraCode Nerd Font Mono:size=14:style=Medium:antialias=true";
+    "XTerm*boldFont" = "FiraCode Nerd Font Mono:size=14:style=Bold:antialias=true";
+    "XTerm*boldColors" = true;
+    "XTerm*cursorBlink" = true;
+    "XTerm*cursorUnderline" = false;
+    "XTerm*saveline" = 2048;
+    "XTerm*scrollBar" = false;
+    "XTerm*scrollBar_right" = false;
+    "XTerm*urgentOnBell" = true;
+    "XTerm*depth" = 24;
     "XTerm*utf8" = true;
+    "XTerm*locale" = false;
+    "XTerm.vt100.metaSendsEscape" = true;
   };
 }
