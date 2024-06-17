@@ -20,6 +20,7 @@ let
 in
 {
   imports = [
+    inputs.catppuccin.nixosModules.catppuccin
     inputs.disko.nixosModules.disko
     inputs.nix-index-database.nixosModules.nix-index
     inputs.nix-snapd.nixosModules.default
