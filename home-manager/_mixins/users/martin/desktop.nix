@@ -753,60 +753,69 @@ in
       }
     '';
 
-    ".gitkraken/themes/bearded-vivid-black.jsonc".text = ''
+    # https://github.com/davi19/gitkraken
+    ".gitkraken/themes/catppuccin_mocha.jsonc".text = ''
       {
         "meta": {
-          "name": "Bearded Vivid Black",
+          "name": "Catppuccin Mocha",
           "scheme": "dark" // must be "light" or "dark"
         },
         "themeValues": {
           // values applied to the entire app
           "root": {
-            "red": "#d62c2c",
-            "orange": "#ff7135",
-            "yellow": "#ffb638",
-            "green": "#42dd76",
-            "teal": "#14e5d4",
-            "blue": "#28a9ff",
-            "ltblue": "#94D4FF",
-            "purple": "#e66dff",
-            "app__bg0": "#141417",
-            "toolbar__bg0": "lighten(saturate(@app__bg0, 3%), 1%)",
-            "toolbar__bg1": "lighten(@toolbar__bg0, 4%)", //4%
-            "toolbar__bg2": "lighten(@toolbar__bg1, 6%)", //6%
-            "panel__bg0": "lighten(@app__bg0, 5%)", //5%
-            "panel__bg1": "lighten(@panel__bg0, 4%)", //4%
-            "panel__bg2": "lighten(@panel__bg1, 4%)", //4%
-            "input__bg": "#141417",
-            "input-bg-warn-color": "fade(@orange, 60%)",
-            "panel-border": "fade(#FFFFFF, 8%)",
-            "section-border": "fade(#FFFFFF, 8%)",
-            "subtle-border": "fade(#FFFFFF, 4%)",
-            "modal-overlay-color": "rgba(0,0,0,.5)",
+            "current__line": "#f2cdcd",
+            "background": "#1e1e2e",
+            "foreground": "#cdd6f4",
+            "mantle":"#181825",
+            "crust": "#11111b"
+            "comment": "#74c7ec",
+            "pink": "#f5c2e7",
+            "red": "#f38ba8",
+            "orange": "#fab387",
+            "yellow": "#f9e2af",
+            "green": "#a6e3a1",
+            "purple": "#cba6f7",
+            "cyan": "#94e2d5",
+            "lavander": "#b4befe",
+            "blue": "#89b4fa",
+            "sky":"#89dceb",
+            "maroon":"#eba0ac",
+            "rosewater": "#f5e0dc",
+            "subtext1": "#bac2de",
+            "subtext0":"#a6adc8",
+            "app__bg0": "@background",
+            "toolbar__bg0": "@crust",
+            "toolbar__bg1": "@background",
+            "toolbar__bg2": "@crust",
+            "panel__bg0": "@background",
+            "panel__bg1": "@mantle",
+            "panel__bg2": "@mantle",
+            "input__bg": "#181825",
+            "input-bg-warn-color": "@orange",
+            "panel-border": "@background",
+            "section-border": "@mantle",
+            "subtle-border": "@mantle",
+            "modal-overlay-color": "@background",
             // graph colors
-            "graph-color-0": "#14E5D4", //cyan
-            "graph-color-1": "#28A9FF", //blue
-            "graph-color-2": "#8e00c2", //purle
-            "graph-color-3": "#E66DFF", //magenta
-            "graph-color-4": "#F3B6FF", //lt. magenta
-            "graph-color-5": "#D62C2C", //red
-            "graph-color-6": "#ff7135", //orange
-            "graph-color-7": "#FFB638", //yellow
-            "graph-color-8": "#42DD76", //green
-            "graph-color-9": "#2ece9d", //teal
+            "graph-color-0": "@purple",
+            "graph-color-1": "@cyan",
+            "graph-color-2": "@green",
+            "graph-color-3": "@orange",
+            "graph-color-4": "@yellow",
+            "graph-color-5": "@lavander",
+            "graph-color-6": "@blue",
+            "graph-color-7": "@sky",
+            "graph-color-8": "@maroon",
+            "graph-color-9": "@rosewater",
             // text colors
             // values starting with . aren't added to the CSS, they're just variables
-            ".text-color": "#c8c8c8",
+            ".text-color": "@foreground",
             "text-selected": "@.text-color",
-            "text-normal": "fade(@.text-color, 78%)",
-            "text-secondary": "fade(@.text-color, 65%)",
-            "text-disabled": "fade(@.text-color, 45%)",
-            "text-accent": "#28a9ff", //blue
-            "text-inverse": "#373737",
-            "text-bright": "@.text-color",
-            "text-dimmed": "fade(@text-normal, 20%)",
-            "text-dimmed-selected": "fade(@text-dimmed, 50%)",
-            "text-selected-row": "@text-selected",
+            "text-normal": "@.text-color",
+            "text-secondary": "@subtext1",
+            "text-disabled": "subtext0",
+            "text-accent": "@purple",
+            "text-inverse": "@comment",
             // buttons
             "btn-text": "@text-normal",
             "btn-text-hover": "@text-selected",
@@ -814,80 +823,78 @@ in
             "default-bg": "transparent",
             "default-hover": "transparent",
             "default-border-hover": "@text-selected",
-            "primary-border": "@blue",
-            "primary-bg": "fade(@blue, 10%)", //10%
-            "primary-hover": "fade(@blue, 40%)", //40%
+            "primary-border": "@purple",
+            "primary-bg": "fade(@purple, 80%)",
+            "primary-hover": "fade(@purple, 60%)",
             "success-border": "@green",
-            "success-bg": "fade(@green, 10%)",
-            "success-hover": "fade(@green, 40%)",
+            "success-bg": "fade(@green,80%)",
+            "success-hover": "fade(@green, 60%)",
             "warning-border": "@orange",
-            "warning-bg": "fade(@orange, 10%)",
-            "warning-hover": "fade(@orange, 35%)",
+            "warning-bg": "fade(@orange, 80%)",
+            "warning-hover": "fade(@orange, 60%)",
             "danger-border": "@red",
-            "danger-bg": "fade(@red, 10%)",
-            "danger-hover": "fade(@red, 40%)",
+            "danger-bg": "fade(@red, 80%)",
+            "danger-hover": "fade(@red, 60%)",
             // states
-            "hover-row": "fade(@blue, 50%)", //15%
-            "danger-row": "fade(@red, 40%)",
-            "selected-row": "fade(@blue, 75%)", //20%
-            "selected-row-border": "none",
-            "warning-row": "fade(@orange, 40%)",
+            "hover-row": "fade(@purple, 10%)",
+            "danger-row": "fade(@red, 60%)",
+            "selected-row": "fade(@purple, 20%)",
+            "warning-row": "fade(@orange, 60%)",
             "droppable": "fade(@yellow, 30%)",
             "drop-target": "fade(@green, 50%)",
-            "input--disabled": "fade(#000000, 10%)",
-            "link-color": "#14e5d4", //cyan
-            "link-color-bright": "#14e5d4", //cyan
-            "form-control-focus": "@blue",
+            "input--disabled": "fade(@background, 10%)",
+            "link-color": "@sky",
+            "form-control-focus": "@purple",
             // various app elements
-            "scroll-thumb-border": "rgba(0,0,0,0)",
-            "scroll-thumb-bg": "rgba(255,255,255,0.15)",
-            "scroll-thumb-bg-light": "rgba(0,0,0,0.15)",
-            "wip-status": "fade(@blue, 40%)",
+            "scroll-thumb-border": "@background",
+            "scroll-thumb-bg": "@toolbar__bg2",
+            "scroll-thumb-bg-light": "@toolbar__bg2",
+            "wip-status": "fade(@green,50%)",
             "card__bg": "@panel__bg2",
-            "card-shadow": "@rgba(0,0,0,.2)",
-            "statusbar__warning-bg": "mixLess(@graph-color-7, @app__bg0, 50%)",
-            "label__yellow-color": "#ffb638", //yellow
-            "label__light-blue-color": "#28a9ff", //blue
-            "label__purple-color": "#e66dff", //magenta
+            "card-shadow": "@background",
+            "statusbar__warning-bg": "mixLess(@graph-color-7, @background, 50%)",
+            "label__yellow-color": "@yellow",
+            "label__light-blue-color": "@cyan",
+            "label__purple-color": "@purple",
             // component states
-            "filtering": "fade(@blue, 50%)",
-            "soloing": "fade(@orange, 50%)",
-            "checked-out": "fade(@green, 30%)",
-            "soloed": "fade(@orange, 30%)",
-            "filter-match": "fade(@blue, 50%)",
-            "clone__progress": "fade(@blue, 70%)",
-            "toolbar__prompt": "fade(@blue, 20%)",
-            "verified": "fade(@green, 30%)",
-            "unverified": "fade(#ffffff, 10%)",
+            "filtering": "@purple",
+            "soloing": "@orange",
+            "checked-out": "@purple",
+            "soloed": "@orange",
+            "filter-match": @purple",
+            "clone__progress": "@purple",
+            "toolbar__prompt": "@purple",
+            "verified": "fade(@green,60%)",
+            "unverified": "@foreground",
             "drop-sort-border": "@green",
             // terminal
-            "terminal__repo-name-color": "turquoise",
-            "terminal__repo-branch-color": "violet",
-            "terminal__repo-tag-color": "coral",
-            "terminal__repo-upstream-color": "lime",
-            "terminal__background": "#121214",
-            "terminal__cursor": "#ffb638",
-            "terminal__cursorAccent": "#ffb638",
-            "terminal__foreground": "#c8c8c8",
-            "terminal__selection": "#37373a", //grey-dark
-            "terminal__black": "#141417",
-            "terminal__red": "#d62c2c",
-            "terminal__green": "#42dd76",
-            "terminal__yellow": "#ffb638",
-            "terminal__blue": "#28a9ff",
-            "terminal__magenta": "#e66dff",
-            "terminal__cyan": "#14e5d4",
-            "terminal__white": "#c8c8c8",
-            "terminal__brightBlack": "#434345",
-            "terminal__brightRed": "#DE5656",
-            "terminal__brightGreen": "#A1EEBB",
-            "terminal__brightYellow": "#FFC560",
-            "terminal__brightBlue": "#94D4FF",
-            "terminal__brightMagenta": "#F3B6FF",
-            "terminal__brightCyan": "#A1F5EE,
-            "terminal__brightWhite": "#E9E9E9,
+            "terminal__repo-name-color": "@pink",
+            "terminal__repo-branch-color": "@cyan",
+            "terminal__repo-tag-color": "@cyan",
+            "terminal__repo-upstream-color": "@green",
+            "terminal__background": "@background",
+            "terminal__cursor": "@foreground",
+            "terminal__cursorAccent": "@background",
+            "terminal__foreground": "@foreground",
+            "terminal__selection": "@comment",
+            "terminal__black": "@background",
+            "terminal__red": "@red",
+            "terminal__green": "@green",
+            "terminal__yellow": "@yellow",
+            "terminal__blue": "@pink",
+            "terminal__magenta": "@purple",
+            "terminal__cyan": "@cyan",
+            "terminal__white": "@foreground",
+            "terminal__brightBlack": "@background",
+            "terminal__brightRed": "@red",
+            "terminal__brightGreen": "@green",
+            "terminal__brightYellow": "@yellow",
+            "terminal__brightBlue": "@pink",
+            "terminal__brightMagenta": "@purple",
+            "terminal__brightCyan": "@cyan",
+            "terminal__brightWhite": "@foreground",
             // code editor
-            "code-bg": "@app__bg0",
+            "code-bg": "@background",
             "code-foreground": "@text-normal",
             "code-blame-color-0": "@graph-color-0",
             "code-blame-color-1": "@graph-color-1",
@@ -899,37 +906,37 @@ in
             "code-blame-color-7": "@graph-color-7",
             "code-blame-color-8": "@graph-color-8",
             "code-blame-color-9": "@graph-color-9",
-            "added-line": "fade(@green, 30%)",
-            "deleted-line": "fade(@red, 30%)",
-            "modified-line": "fade(#000000, 25%)",
-            "conflict-info-color": "#14e5d4", //cyan
-            "conflict-left-border-color": "#14e5d4", //cyan
-            "conflict-left-color": "fade(@conflict-left-border-color, 25%)",
-            "conflict-right-border-color": "#ffb638", //yellow
-            "conflict-right-color": "fade(@conflict-right-border-color, 25%)",
-            "conflict-output-border-color": "#e66dff", //magenta
-            "conflict-output-color": "fade(@conflict-output-border-color, 25%)"
+            "added-line": "fade(@green,30%)",
+            "deleted-line": "fade(@red,30%)",
+            "modified-line": "@background",
+            "conflict-info-color": "@cyan",
+            "conflict-left-border-color": "@cyan",
+            "conflict-left-color": "@conflict-left-border-color",
+            "conflict-right-border-color": "@yellow",
+            "conflict-right-color": "@conflict-right-border-color",
+            "conflict-output-border-color": "@red",
+            "conflict-output-color": "@conflict-output-border-color"
           },
           // override specific values just for the toolbar
           "toolbar": {
-            "text-selected": "rgba(255,255,255,1)",
-            "text-normal": "rgba(255,255,255,.9)",
-            "text-secondary": "rgba(255,255,255,.6)",
-            "text-disabled": "rgba(255,255,255,.4)",
-            "section-border": "rgba(255,255,255,.2)",
-            "input__bg": "rgba(0,0,0,.20)",
-            "link-color": "#14e5d4", //cyan
+            "text-selected": "@foreground",
+            "text-normal": "@foreground",
+            "text-secondary": "@subtext1",
+            "text-disabled": "@subtext0",
+            "section-border": "@foreground",
+            "input__bg": "@background",
+            "link-color": "@cyan",
             "btn-text": "var(--text-normal)"
           },
           // override specific values just for the tabs bar
           "tabsbar": {
-            "text-selected": "rgba(255,255,255,1)",
-            "text-normal": "rgba(255,255,255,.9)",
-            "text-secondary": "rgba(255,255,255,.6)",
-            "text-disabled": "rgba(255,255,255,.4)",
-            "section-border": "rgba(255,255,255,.2)",
-            "input__bg": "rgba(0,0,0,.20)",
-            "link-color": "#14e5d4", //cyan
+            "text-selected": "@foreground",
+            "text-normal": "@foreground",
+            "text-secondary": "@subtext1",
+            "text-disabled": "@subtext0",
+            "section-border": "@foreground",
+            "input__bg": "@background",
+            "link-color": "@cyan",
             "btn-text": "var(--text-normal)"
           }
         }
