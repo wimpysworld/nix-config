@@ -228,7 +228,7 @@ in
 
     "org/gnome/desktop/wm/preferences" = {
       num-workspaces = mkInt32 8;
-      workspace-names = [ "Web" "Work" "Chat" "Code" "Virt" "Cast" "Fun" "Stuff" ];
+      workspace-names = [ "Web" "Work" "Chat" "Code" "Term" "Cast" "Virt" "Fun" ];
     };
 
     ### Pantheon ###
@@ -338,10 +338,10 @@ in
       name-2 = " Work ";
       name-3 = " Chat ";
       name-4 = " Code ";
-      name-5 = " Virt ";
+      name-5 = " Term ";
       name-6 = " Cast ";
-      name-7 = " Fun ";
-      name-8 = " Stuff ";
+      name-7 = " Virt ";
+      name-8 = " Fun ";
     };
   };
 
