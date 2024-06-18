@@ -16,6 +16,7 @@ in
     };
     packages = with pkgs; [
       # cross-platform desktop apps
+      betterdiscordctl
       chatterino2
       discord
       gitkraken
