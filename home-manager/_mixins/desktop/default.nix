@@ -81,18 +81,6 @@ in
           sha256 = "sha256-f8FUZCvz/PonqQP9RCNbyQLZPnN5Oce0Eezm/hD19Fg=";
         }
         {
-          name = "beardedicons";
-          publisher = "beardedbear";
-          version = "1.18.0";
-          sha256 = "sha256-m8utv500Xk6jLI5ndNfiOoPZfyJcLC2XuNwLdC9J+6w=";
-        }
-        {
-          name = "beardedtheme";
-          publisher = "beardedbear";
-          version = "9.1.4";
-          sha256 = "sha256-RL6Yko0ustm/4Ery/JbNOaZUiQgvSbvQvd4SmQf8oWM=";
-        }
-        {
           name = "better-comments";
           publisher = "aaron-bond";
           version = "3.0.2";
