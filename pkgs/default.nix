@@ -6,7 +6,6 @@
   obs-studio = pkgs.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
   quickemu = pkgs.callPackage ./quickemu { };
-  st = pkgs.callPackage ./st { };
   wavebox = pkgs.callPackage ./wavebox { };
   zoom-us = pkgs.callPackage ./zoom-us { };
 }
