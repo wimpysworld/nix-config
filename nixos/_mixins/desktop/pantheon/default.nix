@@ -87,13 +87,13 @@ in
 
         "io/elementary/terminal/settings" = {
           audible-bell = false;
-          background = "rgb(18,18,20)";
-          cursor-color = "rgb(255,182,56)";
+          background = "rgb(30,30,46)";
+          cursor-color = "rgb(245, 224, 220)";
           follow-last-tab = "true";
           font = "FiraCode Nerd Font Mono Medium 13";
-          foreground = "rgb(200,200,200)";
+          foreground = "rgb(205,214,244)";
           natural-copy-paste = false;
-          palette = "rgb(20,20,23):rgb(214,43,43):rgb(65,221,117):rgb(255,182,56):rgb(40,169,255):rgb(230,109,255):rgb(20,229,211):rgb(200,200,200):rgb(67,67,69):rgb(222,86,86):rgb(161,238,187):rgb(255,219,156):rgb(148,212,255):rgb(243,182,255):rgb(161,245,238):rgb(233,233,233)";
+          palette = "rgb(69,71,90):rgb(243,139,168):rgb(166,227,161):rgb(249,226,175):rgb(137,180,250):rgb(245,194,231):rgb(148,226,213):rgb(186,194,222):rgb(88,91,112):rgb(243,139,168):rgb(166,227,161):rgb(249,226,175):rgb(137,180,250):rgb(245,194,231):rgb(148,226,213):rgb(166,173,200)";
           theme = "custom";
           unsafe-paste-alert = false;
         };
