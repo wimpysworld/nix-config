@@ -109,7 +109,7 @@ in
 
         "org/gnome/desktop/wm/preferences" = {
           audible-bell = false;
-          button-layout = ":minimize,maximize,close";
+          button-layout = "close,minimize,maximize:menu";
           titlebar-font = "Work Sans Semi-Bold 12";
         };
 

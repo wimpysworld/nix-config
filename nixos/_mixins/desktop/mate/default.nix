@@ -42,7 +42,7 @@ in
         };
 
         "org/gnome/desktop/wm/preferences" = {
-          button-layout = ":minimize,maximize,close";
+          button-layout = "close,minimize,maximize:menu";
           theme = "Yaru-dark";
           titlebar-font = "Work Sans Semi-Bold 12";
           titlebar-uses-system-font = false;
@@ -161,7 +161,7 @@ in
 
         "org/mate/marco/general" = {
           alt-tab-expand-to-fit-title = true;
-          button-layout = ":minimize,maximize,close";
+          button-layout = "close,minimize,maximize:menu";
           center-new-windows = false;
           compositing-manager = true;
           show-tab-border = false;
