@@ -185,7 +185,15 @@ Things I currently need to do manually after installation.
 - [ ] Atuin - `atuin login -u <user>`
 - [ ] Brave - enroll sync
 - [ ] Chatterino - authenticate
-- [ ] Discord - authenticate
+- [ ] BetterDiscord: `betterdiscordctl install`
+- [ ] Discord
+  - [ ] Authenticate
+  - [ ] Catppuccin
+```css
+/* mocha */
+@import url("https://catppuccin.github.io/discord/dist/catppuccin-mocha.theme.css");
+@import url("https://catppuccin.github.io/discord/dist/catppuccin-mocha-blue.theme.css");
+```
 - [ ] GitKraken - authenticate with GitHub
 - [ ] Grammarly - authenticate
 - [ ] Maelstral - `maestral_qt`
