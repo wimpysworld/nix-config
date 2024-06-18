@@ -798,7 +798,7 @@ in
             "background": "#1e1e2e",
             "foreground": "#cdd6f4",
             "mantle":"#181825",
-            "crust": "#11111b"
+            "crust": "#11111b",
             "comment": "#74c7ec",
             "pink": "#f5c2e7",
             "red": "#f38ba8",
@@ -892,7 +892,7 @@ in
             "soloing": "@orange",
             "checked-out": "@purple",
             "soloed": "@orange",
-            "filter-match": @purple",
+            "filter-match": "@purple",
             "clone__progress": "@purple",
             "toolbar__prompt": "@purple",
             "verified": "fade(@green,60%)",
