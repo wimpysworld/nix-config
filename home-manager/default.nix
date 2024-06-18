@@ -169,6 +169,7 @@ in
       EDITOR = "micro";
       MANPAGER = "sh -c 'col --no-backspaces --spaces | bat --language man'";
       MANROFFOPT = "-c";
+      MICRO_TRUECOLOR = "1";
       PAGER = "bat";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
@@ -469,17 +470,17 @@ in
     info.enable = true;
     jq.enable = true;
     micro = {
+      catppuccin.enable = true;
       enable = true;
       settings = {
         autosu = true;
-        colorscheme = "simple";
         diffgutter = true;
         paste = true;
         rmtrailingws = true;
         savecursor = true;
         saveundo = true;
         scrollbar = true;
-        scrollbarchar = "•";
+        scrollbarchar = "░";
         scrollmargin = 4;
         scrollspeed = 1;
       };
