@@ -814,7 +814,7 @@ in
             "rosewater": "#f5e0dc",
             "subtext1": "#bac2de",
             "subtext0":"#a6adc8",
-            "app__bg0": "@background",
+            "app__bg0": "@crust",
             "toolbar__bg0": "@crust",
             "toolbar__bg1": "@background",
             "toolbar__bg2": "@crust",
