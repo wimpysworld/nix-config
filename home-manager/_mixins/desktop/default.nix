@@ -1,4 +1,4 @@
-{ config, desktop, lib, pkgs, username, ... }:
+{ config, desktop, inputs, lib, pkgs, username, ... }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
 in
@@ -6,6 +6,8 @@ in
   # import the DE specific configuration and any user specific desktop configuration
   imports = lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop} ++
             lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
+
+  nixpkgs.overlays = [ inputs.catppuccin-vsc.overlays.default ];
 
   home = {
     # Authrorize X11 access in Distrobox
@@ -41,6 +43,18 @@ in
     vscode = {
       enable = true;
       extensions = with pkgs; [
+            # all the theme options will be available as overrides, these are defaults:
+            (catppuccin-vsc.override {
+              accent = "blue";
+              boldKeywords = true;
+              italicComments = true;
+              italicKeywords = true;
+              extraBordersEnabled = false;
+              workbenchMode = "default";
+              bracketMode = "rainbow";
+              colorOverrides = {};
+              customUIColors = {};
+            })
         vscode-extensions.alefragnani.project-manager
         vscode-extensions.codezombiech.gitignore
         vscode-extensions.coolbear.systemd-unit-file
@@ -109,12 +123,6 @@ in
           publisher = "jeff-hykin";
           version = "1.8.7";
           sha256 = "sha256-SSRoQSowBmebplX2dWIP50ErroNfe0Wgtuz7y77LB8Y=";
-        }
-        {
-          name = "catppuccin-vsc";
-          publisher = "Catppuccin";
-          version = "3.14.0";
-          sha256 = "sha256-kNQFR1ghdFJF4XLWCFgVpeXCZ/XiHGr/O1iJyWTT3Bg=";
         }
         {
           name = "catppuccin-vsc-icons";
