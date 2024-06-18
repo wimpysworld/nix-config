@@ -68,8 +68,9 @@ in
         };
 
         "io/elementary/files/preferences" = {
-          singleclick-select = true;
+          date-format = "iso";
           restore-tabs = false;
+          singleclick-select = true;
         };
 
         "io/elementary/notifications/applications/gala-other" = {
