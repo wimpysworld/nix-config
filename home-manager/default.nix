@@ -122,7 +122,6 @@ in
       rclone # Modern Unix `rsync`
       rsync # Traditional `rsync`
       sd # Modern Unix `sed`
-      st # Suckless Terminal
       speedtest-go # Terminal speedtest.net
       terminal-parrot # Terminal ASCII parrot
       tldr # Modern Unix `man`
@@ -222,6 +221,62 @@ in
   };
 
   programs = {
+    alacritty = {
+      catppuccin.enable = true;
+      enable = true;
+      settings = {
+        cursor = {
+          style = {
+            shape = "Block";
+            blinking = "Always";
+          };
+        };
+        env = {
+          TERM = "alacritty";
+        };
+        font = {
+          normal = {
+            family = "FiraCode Nerd Font Mono";
+          };
+          bold = {
+            family = "FiraCode Nerd Font Mono";
+          };
+          italic = {
+            family = "FiraCode Nerd Font Mono";
+          };
+          bold_italic = {
+            family = "FiraCode Nerd Font Mono";
+          };
+          size = 16;
+          builtin_box_drawing = true;
+        };
+        mouse = {
+          bindings = [{
+            mouse = "Middle";
+            action = "Paste";
+          }];
+        };
+        selection = {
+          save_to_clipboard = true;
+        };
+        scrolling = {
+          history = 50000;
+          multiplier = 3;
+        };
+        window = {
+          dimensions = {
+            columns = 132;
+            lines = 50;
+          };
+          padding = {
+            x = 2;
+            y = 2;
+          };
+          opacity = 1.0;
+          blur = false;
+        };
+      };
+    };
     aria2.enable = true;
     atuin = {
       enable = true;
