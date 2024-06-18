@@ -296,11 +296,6 @@ in
     "*color7" = "#BAC2DE";
     "*color15" = "#A6ADC8";
 
-    # st Appearance
-    "st.font" = "FiraCode Nerd Font Mono:style=medium:size=15";
-    "st.borderpx" = 2;  # window padding
-    "st.alpha" = "0.9"; # 0.1 to 0.9 = transparency
-
     # Xterm Appearance
     "XTerm*background" = "#1E1E2E";
     "XTerm*foreground" = "#CDD6F4";
