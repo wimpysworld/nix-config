@@ -342,8 +342,8 @@ in
             install_url = "https://addons.mozilla.org/firefox/downloads/latest/enterprise-policy-generator/latest.xpi";
             installation_mode = "force_installed";
           };
-          "FirefoxColor@mozilla.com" = {
-            install_url = "https://addons.mozilla.org/firefox/downloads/latest/firefox-color/latest.xpi";
+          "{2adf0361-e6d8-4b74-b3bc-3f450e8ebb69}" = {
+            install_url = "https://addons.mozilla.org/firefox/downloads/latest/catppuccin-mocha-blue-git/latest.xpi";
             installation_mode = "force_installed";
           };
         };
