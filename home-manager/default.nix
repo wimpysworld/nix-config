@@ -36,7 +36,7 @@ in
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./_mixins/configs/yazi-keymap.toml;
     };
     file = {
-      "${config.xdg.configHome}/halloy/themes/catppuccin-mocha.yaml".text = builtins.readFile ./_mixins/configs/halloy-catppuccin-mocha.yaml;
+      "${config.xdg.configHome}/halloy/themes/catppuccin-mocha.toml".text = builtins.readFile ./_mixins/configs/halloy-catppuccin-mocha.toml;
     };
     file = {
       "${config.xdg.configHome}/fish/functions/build-home.fish".text = builtins.readFile ./_mixins/configs/build-home.fish;

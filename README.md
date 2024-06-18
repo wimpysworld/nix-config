@@ -240,6 +240,7 @@ Things I should do or improve:
 - [ ] Do this: <https://github.com/Electrostasy/dots/blob/master/flake.nix#L93>
 - [ ] Integrate [ntfy](https://ntfy.sh/)
 - [ ] Configure [scrutiny](https://github.com/AnalogJ/scrutiny)
+- [ ] Configure [gh-dash](https://github.com/dlvhdr/gh-dash)
 
 ### macOS
 
