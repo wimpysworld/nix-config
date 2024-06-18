@@ -494,61 +494,6 @@ in
         max-width = 60;
       };
     };
-    rio = {
-      enable = true;
-      catppuccin.enable = true;
-      package = pkgs.rio;
-      settings = {
-        # Whenever the key binding `OpenConfigEditor` is triggered it will
-        # use the value of the editor along with the rio configuration path.
-        editor = "micro";
-        # Default cursor is Block; other available options are: '_' and '|'
-        cursor = "▇";
-        # Blinking Cursor; false by default
-        blinking-cursor = true;
-        # Ignore theme selection foreground color; false by default
-        ignore-selection-foreground-color = false;
-        # define x axis padding (default is 0)
-        padding-x = 2;
-        # Window configuration
-        # • width - define the intial window width.
-        # • height - define the inital window height.
-        # • mode - define how the window will be created
-        #     - "Windowed" (default) is based on width and height
-        #     - "Maximized" window is created with maximized
-        #     - "Fullscreen" window is created with fullscreen
-        # • background-opacity - Set background opacity
-        # • foreground-opacity - Set foreground opacity
-        # • blur - Set blur on the window background. Changing this config requires restarting Rio to take effect.
-        # • decorations - Set window decorations, options: "Enabled", "Disabled", "Transparent", "Buttonless"
-        window.width = 1024;
-        window.height = 768;
-        window.mode = "Windowed";
-        window.foreground-opacity = 1.0;
-        window.background-opacity = 1.0;
-        window.blur = false;
-        window.decorations = "Enabled";
-        fonts.family = "FiraCode Nerd Font Mono";
-        fonts = {
-          extras = [ {
-            family = "Symbols Nerd Font Mono";
-          } ];
-	      };
-        fonts.size = 25;
-        fonts.regular.family = "FiraCode Nerd Font";
-        fonts.regular.style = "Medium";
-        fonts.regular.weight = 500;
-        fonts.bold.family = "FiraCode Nerd Font";
-        fonts.bold.style = "Bold";
-        fonts.bold.weight = 800;
-        fonts.italic.family = "FiraCode Nerd Font";
-        fonts.italic.style = "italic";
-        fonts.italic.weight = 400;
-        fonts.bold-italic.family = "FiraCode Nerd Font";
-        fonts.bold-italic.style = "italic";
-        fonts.bold-italic.weight = 800;
-      };
-    };
     ripgrep = {
       arguments = [
         "--colors=line:style:bold"
