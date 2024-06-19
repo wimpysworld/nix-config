@@ -15,6 +15,7 @@ in
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
         "cdglnehniifkbagbbombnjghhcihifij" # Kagi
         "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
+        "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
       ];
       # - https://help.kagi.com/kagi/getting-started/setting-default.html
       extraOpts = {

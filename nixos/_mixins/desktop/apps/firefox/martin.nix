@@ -46,6 +46,10 @@
             install_url = "https://addons.mozilla.org/firefox/downloads/latest/catppuccin-mocha-blue-git/latest.xpi";
             installation_mode = "force_installed";
           };
+          "{7a7a4a92-a2a0-41d1-9fd7-1e92480d612d}" = {
+            install_url = "https://addons.mozilla.org/firefox/downloads/latest/styl-us/latest.xpi";
+            installation_mode = "force_installed";
+          };
         };
         "Homepage" = {
           "URL" = "https://${hostname}.drongo-gamma.ts.net";

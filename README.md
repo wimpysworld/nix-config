@@ -185,15 +185,7 @@ Things I currently need to do manually after installation.
 - [ ] Atuin - `atuin login -u <user>`
 - [ ] Brave - enroll sync
 - [ ] Chatterino - authenticate
-- [ ] BetterDiscord: `betterdiscordctl install`
-- [ ] Discord
-  - [ ] Authenticate
-  - [ ] Catppuccin
-```css
-/* mocha */
-@import url("https://catppuccin.github.io/discord/dist/catppuccin-mocha.theme.css");
-@import url("https://catppuccin.github.io/discord/dist/catppuccin-mocha-blue.theme.css");
-```
+- [ ] Discord - authenticate
 - [ ] GitKraken - authenticate with GitHub
 - [ ] Grammarly - authenticate
 - [ ] Maelstral - `maestral_qt`
@@ -203,6 +195,25 @@ Things I currently need to do manually after installation.
 - [ ] VSCode - authenticate with GitHub enable sync
 - [ ] Wavebox - authenticate Google and restore profile
 - [ ] Run `fonts.sh` to install commercial fonts
+
+### Themes
+
+Some applications require manual configuration to apply the correct theme.
+
+- [ ] Enable [Stylus](https://github.com/openstyles/stylus) Sync to Dropbox to get [Catppuccin userstyles](https://github.com/catppuccin/userstyles/releases/tag/all-userstyles-export) and **Enable Patch CSP**
+  - [ ] Brave
+  - [ ] Chrome
+  - [ ] Chromium
+  - [ ] Firefox
+  - [ ] Wavebox
+- [ ] BetterDiscord
+  - [ ] `betterdiscordctl install`
+  - [ ] Add Catppuccin CSS
+```css
+/* mocha */
+@import url("https://catppuccin.github.io/discord/dist/catppuccin-mocha.theme.css");
+@import url("https://catppuccin.github.io/discord/dist/catppuccin-mocha-blue.theme.css");
+```
 
 ### Windows Boot Manager on multi-disk systems
 
