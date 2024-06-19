@@ -30,8 +30,6 @@ in
     homeDirectory = if isDarwin then "/Users/${username}" else if isLima then "/home/${username}.linux" else "/home/${username}";
 
     file = {
-      # https://github.com/davi19/gitkraken
-      "${config.home.homeDirectory}/.gitkraken/themes/catppuccin_mocha.jsonc".text = builtins.readFile ./_mixins/configs/gitkraken-catppuccin-mocha-blue.json;
       "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text = builtins.readFile ./_mixins/configs/gedit-catppuccin-mocha.xml;
       "${config.home.homeDirectory}/.local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ./_mixins/configs/plank-catppuccin-mocha.theme;
       "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./_mixins/configs/fastfetch.jsonc;

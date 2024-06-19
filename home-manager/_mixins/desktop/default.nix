@@ -7,6 +7,7 @@ in
   imports = [
     ./apps/chatterino
     ./apps/discord
+    ./apps/gitkraken
     ./apps/vscode
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
     ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
@@ -18,9 +19,7 @@ in
         ${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER
       '';
     };
-    packages = with pkgs; [
-      gitkraken
-    ] ++ lib.optionals (isDarwin) [
+    packages = with pkgs; lib.optionals (isDarwin) [
       # macOS apps
       iterm2
       pika
