@@ -34,6 +34,25 @@
         "type": "github"
       }
     },
+    "catppuccin-vsc": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1713966373,
+        "narHash": "sha256-8bMRH+z426e6zWcS15QZsQ8moSAKbEDjtBnAE10+DW8=",
+        "rev": "4b857d9b86cbb393e121f0f2544a6efb549dbbf4",
+        "revCount": 482,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/catppuccin/vscode/3.14.0/018f15b6-7a7e-7bae-80f2-cf902f1db7fe/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/catppuccin/vscode/%2A.tar.gz"
+      }
+    },
     "disko": {
       "inputs": {
         "nixpkgs": [
@@ -327,11 +346,11 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1718318537,
-        "narHash": "sha256-4Zu0RYRcAY/VWuu6awwq4opuiD//ahpc2aFHg2CWqFY=",
+        "lastModified": 1718530797,
+        "narHash": "sha256-pup6cYwtgvzDpvpSCFh1TEUjw2zkNpk8iolbKnyFmmU=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "e9ee548d90ff586a6471b4ae80ae9cfcbceb3420",
+        "rev": "b60ebf54c15553b393d144357375ea956f89e9a9",
         "type": "github"
       },
       "original": {
@@ -377,6 +396,7 @@
       "inputs": {
         "antsy-alien-attack-pico": "antsy-alien-attack-pico",
         "catppuccin": "catppuccin",
+        "catppuccin-vsc": "catppuccin-vsc",
         "disko": "disko",
         "fh": "fh",
         "home-manager": "home-manager",
