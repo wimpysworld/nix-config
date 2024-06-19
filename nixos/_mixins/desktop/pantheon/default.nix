@@ -105,7 +105,7 @@ in
           icon-size = mkInt32 48;
           pinned-only = false;
           position = "left";
-          theme = "Transparent";
+          theme = "Catppuccin-mocha";
         };
 
         "org/gnome/desktop/datetime" = {
