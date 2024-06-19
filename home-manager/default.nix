@@ -29,50 +29,22 @@ in
     inherit username;
     homeDirectory = if isDarwin then "/Users/${username}" else if isLima then "/home/${username}.linux" else "/home/${username}";
 
-    # https://github.com/davi19/gitkraken
     file = {
+      # https://github.com/davi19/gitkraken
       "${config.home.homeDirectory}/.gitkraken/themes/catppuccin_mocha.jsonc".text = builtins.readFile ./_mixins/configs/gitkraken-catppuccin-mocha-blue.json;
-    };
-    file = {
       "${config.home.homeDirectory}/.local/share/chatterino/Themes/mocha-blue.json".text = builtins.readFile ./_mixins/configs/chatterino-mocha-blue.json;
-    };
-    file = {
       "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text = builtins.readFile ./_mixins/configs/gedit-catppuccin-mocha.xml;
-    };
-    file = {
       "${config.home.homeDirectory}/.local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ./_mixins/configs/plank-catppuccin-mocha.theme;
-    };
-    file = {
       "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./_mixins/configs/fastfetch.jsonc;
-    };
-    file = {
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./_mixins/configs/yazi-keymap.toml;
-    };
-    file = {
       "${config.xdg.configHome}/halloy/themes/catppuccin-mocha.toml".text = builtins.readFile ./_mixins/configs/halloy-catppuccin-mocha.toml;
-    };
-    file = {
       "${config.xdg.configHome}/fish/functions/build-home.fish".text = builtins.readFile ./_mixins/configs/build-home.fish;
-    };
-    file = {
       "${config.xdg.configHome}/fish/functions/switch-home.fish".text = builtins.readFile ./_mixins/configs/switch-home.fish;
-    };
-    file = {
       "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./_mixins/configs/help.fish;
-    };
-    file = {
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./_mixins/configs/h.fish;
-    };
-    file = {
       "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./_mixins/configs/lima-create.fish;
-    };
-    file = {
       "${config.xdg.configHome}/fish/functions/gpg-restore.fish".text = builtins.readFile ./_mixins/configs/gpg-restore.fish;
-    };
-    file = {
       "${config.xdg.configHome}/fish/functions/get-nix-hash.fish".text = builtins.readFile ./_mixins/configs/get-nix-hash.fish;
-    };
-    file = {
       ".hidden".text = ''snap'';
     };
 
