@@ -36,6 +36,7 @@ in
   imports = [
     ./apps/chromium
     ./apps/firefox
+    ./apps/obs-studio
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {

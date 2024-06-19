@@ -3,7 +3,6 @@ let
   inherit (pkgs.stdenv) isDarwin isLinux;
   isLima = builtins.substring 0 5 hostname == "lima-";
   isWorkstation = if (desktop != null) then true else false;
-  isStreamstation = if (hostname == "phasma" || hostname == "vader") then true else false;
 in
 {
   imports = [
@@ -116,18 +115,6 @@ in
       wthrr # Modern Unix weather
       wormhole-william # Terminal file transfer
       yq-go # Terminal `jq` for YAML
-    ] ++ lib.optionals (isStreamstation) [
-      # Deckmaster and the utilities I bind to the Stream Deck
-      alsa-utils
-      bc
-      deckmaster
-      hueadm
-      notify-desktop
-      obs-cli
-      obs-cmd
-      piper-tts
-      playerctl
-      pulsemixer
     ] ++ lib.optionals isLinux [
       figlet # Terminal ASCII banners
       iw # Terminal WiFi info

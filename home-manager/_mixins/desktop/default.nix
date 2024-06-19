@@ -8,6 +8,7 @@ in
     ./apps/chatterino
     ./apps/discord
     ./apps/gitkraken
+    ./apps/obs-studio
     ./apps/vscode
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
     ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
