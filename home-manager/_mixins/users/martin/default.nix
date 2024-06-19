@@ -68,7 +68,6 @@ in
     file."/Quickemu/nixos-mate/.keep".text = "";
     file."/Quickemu/nixos-pantheon/.keep".text = "";
     file."/Scripts/.keep".text = "";
-    file."/Studio/OBS/config/obs-studio/.keep".text = "";
     file."/Syncthing/.keep".text = "";
     file."/Websites/.keep".text = "";
     file."/Zero/.keep".text = "";
@@ -135,9 +134,4 @@ in
       transifex.path = "${config.home.homeDirectory}/.transifexrc";
     };
   };
-
-  # Linux specific configuration
-  systemd.user.tmpfiles.rules = lib.mkIf isLinux [
-    "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
-  ];
 }
