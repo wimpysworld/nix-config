@@ -48,7 +48,6 @@ in
     ] ++ lib.optionals (isWorkstation) [
       _1password-gui
       brave
-      chromium
       celluloid
       element-desktop
       fractal
@@ -126,20 +125,6 @@ in
   };
 
   programs = {
-    chromium = lib.mkIf (isWorkstation) {
-      extensions = [
-        "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-        "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
-        "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
-        "mdjildafknihdffpkfmmpnpoiajfjnjd" # Consent-O-Matic
-        "mnjggcdmjocbbbhaepdhchncahnbgone" # SponsorBlock for YouTube
-        "gebbhagfogifgggkldgodflihgfeippi" # Return YouTube Dislike
-        "fdpohaocaechififmbbbbbknoalclacl" # GoFullPage
-        "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
-        "cdglnehniifkbagbbombnjghhcihifij" # Kagi
-        "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
-      ];
-    };
     dconf.profiles.user.databases = [{
       settings = with lib.gvariant; lib.mkIf (isWorkstation) {
       };
