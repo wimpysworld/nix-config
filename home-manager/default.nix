@@ -29,6 +29,10 @@ in
     inherit username;
     homeDirectory = if isDarwin then "/Users/${username}" else if isLima then "/home/${username}.linux" else "/home/${username}";
 
+    # https://github.com/davi19/gitkraken
+    file = {
+      "${config.home.homeDirectory}/.gitkraken/themes/catppuccin_mocha.jsonc".text = builtins.readFile ./_mixins/configs/gitkraken-catppuccin-mocha-blue.json;
+    };
     file = {
       "${config.home.homeDirectory}/.local/share/chatterino/Themes/mocha-blue.json".text = builtins.readFile ./_mixins/configs/chatterino-mocha-blue.json;
     };
