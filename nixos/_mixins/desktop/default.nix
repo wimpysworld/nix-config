@@ -43,6 +43,7 @@ in
     # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
     kernelParams = [ "quiet" "vt.global_cursor_default=0" "mitigations=off" "threadirqs" ];
     plymouth = {
+      catppuccin.enable = if (username == "martin") then true else false;
       enable = true;
     };
   };
