@@ -5,6 +5,7 @@ in
 {
   # import the DE specific configuration and any user specific desktop configuration
   imports = [
+    ./apps/chatterino
     ./apps/discord
     ./apps/vscode
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
@@ -18,8 +19,6 @@ in
       '';
     };
     packages = with pkgs; [
-      # cross-platform desktop apps
-      chatterino2
       gitkraken
     ] ++ lib.optionals (isDarwin) [
       # macOS apps
