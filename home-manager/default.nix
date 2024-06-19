@@ -33,6 +33,9 @@ in
       "${config.home.homeDirectory}/.local/share/chatterino/Themes/mocha-blue.json".text = builtins.readFile ./_mixins/configs/chatterino-mocha-blue.json;
     };
     file = {
+      "${config.home.homeDirectory}/.local/share/gedit/styles/catppuccin-mocha.xml".text = builtins.readFile ./_mixins/configs/gedit-catppuccin-mocha.xml;
+    };
+    file = {
       "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./_mixins/configs/fastfetch.jsonc;
     };
     file = {
