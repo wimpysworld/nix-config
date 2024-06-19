@@ -3,9 +3,7 @@
 Catppuccin Gedit theme based on Oblivion theme and Cappuccin for Visual Studio Code.
 -->
 
-<style-scheme id="catppuccin_mocha" _name="Catppuccin Mocha" version="1.0">
-
-  <author>sacerdos</author>
+<style-scheme id="catppuccin_mocha" _name="Catppuccin Mocha" kind="dark">
   <_description>Soothing pastel theme for Gedit</_description>
 
   <!-- Tango Palette -->
