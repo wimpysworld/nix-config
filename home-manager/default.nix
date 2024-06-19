@@ -37,7 +37,7 @@ in
       "${config.home.homeDirectory}/.local/share/chatterino/Themes/mocha-blue.json".text = builtins.readFile ./_mixins/configs/chatterino-mocha-blue.json;
     };
     file = {
-      "${config.home.homeDirectory}/.local/share/gedit/styles/catppuccin-mocha.xml".text = builtins.readFile ./_mixins/configs/gedit-catppuccin-mocha.xml;
+      "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text = builtins.readFile ./_mixins/configs/gedit-catppuccin-mocha.xml;
     };
     file = {
       "${config.home.homeDirectory}/.local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ./_mixins/configs/plank-catppuccin-mocha.theme;

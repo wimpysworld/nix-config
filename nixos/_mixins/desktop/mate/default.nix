@@ -243,7 +243,7 @@ in
         "org/mate/pluma" = {
           auto-indent = true;
           bracket-matching = true;
-          color-scheme = "Yaru-dark";
+          color-scheme = "catppuccin";
           display-line-numbers = true;
           display-right-margin = true;
           display-overview-map = true;
