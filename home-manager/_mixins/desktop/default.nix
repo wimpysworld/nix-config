@@ -4,8 +4,10 @@ let
 in
 {
   # import the DE specific configuration and any user specific desktop configuration
-  imports = lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop} ++
-            lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
+  imports = [
+    ./apps/discord
+  ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
+    ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
 
   nixpkgs.overlays = [ inputs.catppuccin-vsc.overlays.default ];
 
@@ -18,9 +20,7 @@ in
     };
     packages = with pkgs; [
       # cross-platform desktop apps
-      betterdiscordctl
       chatterino2
-      discord
       gitkraken
       # cross platform dev tools
       black                 # Code format Python
