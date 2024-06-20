@@ -5,6 +5,7 @@ in
 {
   # import the DE specific configuration and any user specific desktop configuration
   imports = [
+    ./features/qt
     ./apps/chatterino
     ./apps/discord
     ./apps/gitkraken

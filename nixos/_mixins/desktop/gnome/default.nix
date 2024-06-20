@@ -256,12 +256,6 @@ in
     seahorse.enable = isInstall;
   };
 
-  qt = {
-    enable = true;
-    platformTheme = "gnome";
-    style = "adwaita-dark";
-  };
-
   # Allow login/authentication with fingerprint or password
   # - https://github.com/NixOS/nixpkgs/issues/171136
   # - https://discourse.nixos.org/t/fingerprint-auth-gnome-gdm-wont-allow-typing-password/35295

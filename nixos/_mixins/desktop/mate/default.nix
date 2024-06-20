@@ -330,12 +330,6 @@ in
     seahorse.enable = isInstall;
   };
 
-  qt = {
-    enable = true;
-    platformTheme = "gnome";
-    style = "adwaita-dark";
-  };
-
   # Enable services to round out the desktop
   services = {
     blueman.enable = true;

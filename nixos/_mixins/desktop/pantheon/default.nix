@@ -247,12 +247,6 @@ in
     seahorse.enable = isInstall;
   };
 
-  qt = {
-    enable = true;
-    platformTheme = "gnome";
-    style = "adwaita-dark";
-  };
-
   security = {
     # Disable autoSuspend; my Pantheon session kept auto-suspending
     # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
