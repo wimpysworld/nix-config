@@ -14,8 +14,6 @@ in
     pathsToLink = [ "/libexec" ];
 
     systemPackages = (with pkgs; lib.optionals (isInstall) [
-      appeditor
-      formatter
       gnome.simple-scan
       pick-colour-picker
     ]);
