@@ -90,7 +90,7 @@ in
       show-line-numbers = true;
       prefer-dark-theme = true;
       highlight-syntax = true;
-      style-scheme = "Yaru-dark";
+      style-scheme = "catppuccin_mocha";
     };
 
     "org/gnome/rhythmbox/plugins" = {
@@ -122,7 +122,7 @@ in
       replace-tabs = true;
       show-spaces = false;
       spell-check = false;
-      syntax-theme = "Yaru-dark";
+      syntax-theme = "catppuccin_mocha";
     };
 
     "com/github/fabiocolacio/marker/preferences/preview" = {

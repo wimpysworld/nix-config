@@ -57,7 +57,18 @@ in
     "backgrounds/DeterminateColorway-3840x2160.png".source = ../configs/backgrounds/DeterminateColorway-3840x2160.png;
   };
 
-  environment.systemPackages = with pkgs; lib.optionals (isInstall) [
+  environment.systemPackages = with pkgs; [
+    catppuccin-cursors.mochaBlue
+    (catppuccin-gtk.override {
+      accents = [ "blue" ];
+      size = "standard";
+      variant = "mocha";
+    })
+    (catppuccin-papirus-folders.override {
+      flavor = "mocha";
+      accent = "blue";
+    })
+  ] ++ lib.optionals (isInstall) [
     appimage-run
     pavucontrol
     pulseaudio

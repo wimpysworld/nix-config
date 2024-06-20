@@ -13,9 +13,7 @@ in
     # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
     pathsToLink = [ "/libexec" ];
 
-    systemPackages = (with pkgs; [
-      yaru-theme
-    ] ++ lib.optionals (isInstall) [
+    systemPackages = (with pkgs; lib.optionals (isInstall) [
       appeditor
       formatter
       gnome.simple-scan
@@ -116,12 +114,12 @@ in
           clock-format = "24h";
           color-scheme = "prefer-dark";
           cursor-size = mkInt32 32;
-          cursor-theme = "elementary";
+          cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
-          gtk-theme = "io.elementary.stylesheet.blueberry";
+          gtk-theme = "Catppuccin-Mocha-Standard-Blue-Dark";
           gtk-enable-primary-paste = true;
-          icon-theme = "elementary";
+          icon-theme = "Papirus-Dark";
           monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
           text-scaling-factor = mkDouble 1.0;
         };
@@ -165,7 +163,7 @@ in
 
         "org/gnome/desktop/wm/preferences" = {
           audible-bell = false;
-          button-layout = "close,minimize,maximize:menu";
+          button-layout = "close,minimize,maximize";
           titlebar-font = "Work Sans Semi-Bold 12";
         };
 
@@ -216,7 +214,7 @@ in
         };
 
         "org/gnome/settings-daemon/plugins/xsettings" = {
-          overrides = "{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/DecorationLayout': <'close,minimize,maximize:menu'>, 'Gtk/ShowUnicodeMenu': <0>}";
+          overrides = "{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/DecorationLayout': <'close,minimize,maximize'>, 'Gtk/ShowUnicodeMenu': <0>}";
         };
 
         "org/gtk/gtk4/Settings/FileChooser" = {
@@ -228,7 +226,7 @@ in
         };
 
         "org/pantheon/desktop/gala/appearance" = {
-          button-layout = "close,minimize,maximize:menu";
+          button-layout = "close,minimize,maximize";
         };
 
         "org/pantheon/desktop/gala/behavior" = {
