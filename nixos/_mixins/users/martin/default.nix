@@ -51,13 +51,10 @@ in
       libreoffice
       meld
       microsoft-edge
-      opera
       pika-backup
       tartube
       tenacity
       usbimager
-      vivaldi
-      vivaldi-ffmpeg-codecs
       wavebox
       zoom-us
     ] ++ lib.optionals (isWorkstation && (desktop == "gnome" || desktop == "pantheon")) [
