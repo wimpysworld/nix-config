@@ -53,6 +53,7 @@ in
       meld
       microsoft-edge
       pika-backup
+      shotcut
       tartube
       tenacity
       usbimager
