@@ -29,12 +29,9 @@ in
     homeDirectory = if isDarwin then "/Users/${username}" else if isLima then "/home/${username}.linux" else "/home/${username}";
 
     file = {
-      "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text = builtins.readFile ./_mixins/configs/gedit-catppuccin-mocha.xml;
-      "${config.home.homeDirectory}/.local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ./_mixins/configs/plank-catppuccin-mocha.theme;
       "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./_mixins/configs/fastfetch.jsonc;
       "${config.xdg.configHome}/gh-dash/config.yml".text = builtins.readFile ./_mixins/configs/gh-dash-catppuccin-mocha-blue.yml;
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./_mixins/configs/yazi-keymap.toml;
-      "${config.xdg.configHome}/halloy/themes/catppuccin-mocha.toml".text = builtins.readFile ./_mixins/configs/halloy-catppuccin-mocha.toml;
       "${config.xdg.configHome}/fish/functions/build-home.fish".text = builtins.readFile ./_mixins/configs/build-home.fish;
       "${config.xdg.configHome}/fish/functions/switch-home.fish".text = builtins.readFile ./_mixins/configs/switch-home.fish;
       "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./_mixins/configs/help.fish;
