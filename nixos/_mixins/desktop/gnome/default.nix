@@ -51,12 +51,12 @@ in
           clock-format = "24h";
           clock-show-weekday = true;
           color-scheme = "prefer-dark";
-          cursor-size = mkInt32 32;
+          cursor-size = mkInt32 48;
           cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
           document-font-name = "Work Sans 12";
           enable-hot-corners = false;
           font-name = "Work Sans 12";
-          gtk-theme = "Catppuccin-Mocha-Standard-Blue-Dark";
+          gtk-theme = "catppuccin-mocha-blue-standard+default";
           icon-theme = "Papirus-Dark";
           monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
           show-battery-percentage = true;

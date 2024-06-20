@@ -35,7 +35,7 @@ in
           cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
-          gtk-theme = "Catppuccin-Mocha-Standard-Blue-Dark";
+          gtk-theme = "catppuccin-mocha-blue-standard+default";
           icon-theme = "Papirus-Dark";
           monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
           text-scaling-factor = mkDouble 1.0;
@@ -43,7 +43,7 @@ in
 
         "org/gnome/desktop/wm/preferences" = {
           button-layout = "close,minimize,maximize";
-          theme = "Catppuccin-Mocha-Standard-Blue-Dark";
+          theme = "catppuccin-mocha-blue-standard+default";
           titlebar-font = "Work Sans Semi-Bold 12";
           titlebar-uses-system-font = false;
         };
@@ -122,14 +122,14 @@ in
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
           gtk-decoration-layout = "close,minimize,maximize";
-          gtk-theme = "Catppuccin-Mocha-Standard-Blue-Dark";
+          gtk-theme = "catppuccin-mocha-blue-standard+default";
           gtk-color-scheme = "tooltip_fg_color:#ffffff\ntooltip_bg_color:#343434";
           icon-theme = "Papirus-Dark";
           monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
         };
 
         "org/mate/desktop/peripherals/mouse" = {
-          cursor-size = mkInt32 32;
+          cursor-size = mkInt32 48;
           cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
         };
 
@@ -165,7 +165,7 @@ in
           center-new-windows = false;
           compositing-manager = true;
           show-tab-border = false;
-          theme = "Catppuccin-Mocha-Standard-Blue-Dark";
+          theme = "catppuccin-mocha-blue-standard+default";
           titlebar-font = "Work Sans Semi-Bold 12";
         };
 
@@ -343,11 +343,11 @@ in
         lightdm.greeters.gtk = {
           enable = true;
           cursorTheme.name = "Catppuccin-Mocha-Blue-Cursors";
-          cursorTheme.package = pkgs.catppuccin-cursors;
+          cursorTheme.package = pkgs.catppuccin-cursors.mochaBlue;
           cursorTheme.size = 32;
           iconTheme.name = "Papirus-Dark";
           iconTheme.package = pkgs.catppuccin-papirus-folders-unstable;
-          theme.name = "Catppuccin-Mocha-Standard-Blue-Dark";
+          theme.name = "catppuccin-mocha-blue-standard+default";
           theme.package = pkgs.catppuccin-gtk;
           indicators = [
             "~session"

@@ -113,11 +113,11 @@ in
         "org/gnome/desktop/interface" = {
           clock-format = "24h";
           color-scheme = "prefer-dark";
-          cursor-size = mkInt32 32;
+          cursor-size = mkInt32 48;
           cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
-          gtk-theme = "Catppuccin-Mocha-Standard-Blue-Dark";
+          gtk-theme = "catppuccin-mocha-blue-standard+default";
           gtk-enable-primary-paste = true;
           icon-theme = "Papirus-Dark";
           monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
@@ -213,9 +213,9 @@ in
           sleep-inactive-ac-type = "nothing";
         };
 
-        "org/gnome/settings-daemon/plugins/xsettings" = {
-          overrides = "{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/DecorationLayout': <'close,minimize,maximize'>, 'Gtk/ShowUnicodeMenu': <0>}";
-        };
+        #"org/gnome/settings-daemon/plugins/xsettings" = {
+        #  overrides = "{'Gtk/DialogsUseHeader': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/DecorationLayout': <'close,minimize,maximize'>, 'Gtk/ShowUnicodeMenu': <0>}";
+        #};
 
         "org/gtk/gtk4/Settings/FileChooser" = {
           clock-format = "24h";
