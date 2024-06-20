@@ -1,0 +1,12 @@
+{
+    "blacklisted-desktop-dirs": "",
+    "clear-previous-query": true,
+    "disable-desktop-filters": false,
+    "grab-mouse-pointer": false,
+    "hotkey-show-app": "",
+    "render-on-screen": "default-monitor",
+    "show-indicator-icon": true,
+    "show-recent-apps": "0",
+    "terminal-command": "alacritty --command",
+    "theme-name": "Catppuccin-Mocha-Blue"
+}
