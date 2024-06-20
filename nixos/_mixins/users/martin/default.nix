@@ -41,7 +41,6 @@ in
       _1password-gui
       brave
       celluloid
-      element-desktop
       fractal
       gimp-with-plugins
       gnome.dconf-editor
