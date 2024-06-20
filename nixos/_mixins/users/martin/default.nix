@@ -60,7 +60,6 @@ in
       vivaldi
       vivaldi-ffmpeg-codecs
       wavebox
-      yaru-theme
       zoom-us
     ] ++ lib.optionals (isWorkstation && (desktop == "gnome" || desktop == "pantheon")) [
       loupe

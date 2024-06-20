@@ -52,12 +52,12 @@ in
           clock-show-weekday = true;
           color-scheme = "prefer-dark";
           cursor-size = mkInt32 32;
-          cursor-theme = "Adwaita";
+          cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
           document-font-name = "Work Sans 12";
           enable-hot-corners = false;
           font-name = "Work Sans 12";
-          gtk-theme = "adw-gtk3-dark";
-          icon-theme = "Adwaita";
+          gtk-theme = "Catppuccin-Mocha-Standard-Blue-Dark";
+          icon-theme = "Papirus-Dark";
           monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
           show-battery-percentage = true;
           text-scaling-factor = mkDouble 1.0;
@@ -109,7 +109,7 @@ in
 
         "org/gnome/desktop/wm/preferences" = {
           audible-bell = false;
-          button-layout = "close,minimize,maximize:menu";
+          button-layout = "close,minimize,maximize";
           titlebar-font = "Work Sans Semi-Bold 12";
         };
 

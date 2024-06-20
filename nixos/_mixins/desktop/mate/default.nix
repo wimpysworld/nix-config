@@ -32,18 +32,18 @@ in
           clock-format = "24h";
           color-scheme = "prefer-dark";
           cursor-size = mkInt32 32;
-          cursor-theme = "Yaru";
+          cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
-          gtk-theme = "Yaru-blue-dark";
-          icon-theme = "Yaru-blue-dark";
+          gtk-theme = "Catppuccin-Mocha-Standard-Blue-Dark";
+          icon-theme = "Papirus-Dark";
           monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
           text-scaling-factor = mkDouble 1.0;
         };
 
         "org/gnome/desktop/wm/preferences" = {
-          button-layout = "close,minimize,maximize:menu";
-          theme = "Yaru-dark";
+          button-layout = "close,minimize,maximize";
+          theme = "Catppuccin-Mocha-Standard-Blue-Dark";
           titlebar-font = "Work Sans Semi-Bold 12";
           titlebar-uses-system-font = false;
         };
@@ -121,16 +121,16 @@ in
         "org/mate/desktop/interface" = {
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
-          gtk-decoration-layout = ":minimize,maximize,close";
-          gtk-theme = "Yaru-blue-dark";
+          gtk-decoration-layout = "close,minimize,maximize";
+          gtk-theme = "Catppuccin-Mocha-Standard-Blue-Dark";
           gtk-color-scheme = "tooltip_fg_color:#ffffff\ntooltip_bg_color:#343434";
-          icon-theme = "Yaru-blue-dark";
+          icon-theme = "Papirus-Dark";
           monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
         };
 
         "org/mate/desktop/peripherals/mouse" = {
           cursor-size = mkInt32 32;
-          cursor-theme = "Yaru";
+          cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
         };
 
         "org/mate/desktop/peripherals/touchpad" = {
@@ -147,7 +147,7 @@ in
         "org/mate/desktop/sound" = {
           event-sounds = true;
           input-feedback-sounds = true;
-          theme-name = "Yaru";
+          theme-name = "freedesktop";
         };
 
         "org/mate/eom/view" = {
@@ -161,11 +161,11 @@ in
 
         "org/mate/marco/general" = {
           alt-tab-expand-to-fit-title = true;
-          button-layout = "close,minimize,maximize:menu";
+          button-layout = "close,minimize,maximize";
           center-new-windows = false;
           compositing-manager = true;
           show-tab-border = false;
-          theme = "Yaru-dark";
+          theme = "Catppuccin-Mocha-Standard-Blue-Dark";
           titlebar-font = "Work Sans Semi-Bold 12";
         };
 
@@ -342,13 +342,13 @@ in
         lightdm.enable = true;
         lightdm.greeters.gtk = {
           enable = true;
-          cursorTheme.name = "Yaru";
-          cursorTheme.package = pkgs.yaru-theme;
+          cursorTheme.name = "Catppuccin-Mocha-Blue-Cursors";
+          cursorTheme.package = pkgs.catppuccin-cursors;
           cursorTheme.size = 32;
-          iconTheme.name = "Yaru-blue-dark";
-          iconTheme.package = pkgs.yaru-theme;
-          theme.name = "Yaru-blue-dark";
-          theme.package = pkgs.yaru-theme;
+          iconTheme.name = "Papirus-Dark";
+          iconTheme.package = pkgs.catppuccin-papirus-folders-unstable;
+          theme.name = "Catppuccin-Mocha-Standard-Blue-Dark";
+          theme.package = pkgs.catppuccin-gtk;
           indicators = [
             "~session"
             "~host"

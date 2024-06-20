@@ -1,54 +1,5 @@
 { config, lib, pkgs, ... }:
 {
-  gtk = {
-    enable = true;
-    cursorTheme = {
-      name = "elementary";
-      package = pkgs.pantheon.elementary-icon-theme;
-      size = 32;
-    };
-
-    font = {
-      name = "Work Sans 12";
-      package = pkgs.work-sans;
-    };
-
-    gtk2 = {
-      configLocation = "${config.xdg.configHome}/.gtkrc-2.0";
-      extraConfig = ''
-        gtk-application-prefer-dark-theme = 1
-        gtk-decoration-layout = ":minimize,maximize,close"
-        gtk-theme-name = "io.elementary.stylesheet.bubblegum"
-      '';
-    };
-
-    gtk3 = {
-      extraConfig = {
-        gtk-application-prefer-dark-theme = 1;
-        gtk-decoration-layout = ":minimize,maximize,close";
-      };
-    };
-
-    gtk4 = {
-      extraConfig = {
-        gtk-decoration-layout = ":minimize,maximize,close";
-      };
-    };
-
-    iconTheme = {
-      name = "elementary";
-      package = pkgs.pantheon.elementary-icon-theme;
-    };
-  };
-
-  home.pointerCursor = {
-    package = pkgs.pantheon.elementary-icon-theme;
-    name = "elementary";
-    size = 32;
-    gtk.enable = true;
-    x11.enable = true;
-  };
-
   home.file = {
     "${config.xdg.configHome}/autostart/ibus-daemon.desktop".text = "
 [Desktop Entry]
