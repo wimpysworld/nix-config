@@ -27,6 +27,7 @@ in
     ];
 
     pantheon.excludePackages = with pkgs; [
+      pantheon.elementary-camera
       pantheon.elementary-code
       pantheon.elementary-music
       pantheon.elementary-photos
