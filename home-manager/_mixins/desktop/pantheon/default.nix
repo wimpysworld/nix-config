@@ -1,17 +1,6 @@
 { config, lib, pkgs, ... }:
 {
   home.file = {
-    "${config.xdg.configHome}/autostart/ibus-daemon.desktop".text = "
-[Desktop Entry]
-Name=IBus Daemon
-Comment=IBus Daemon
-Type=Application
-Exec=${pkgs.ibus}/bin/ibus-daemon --daemonize --desktop=pantheon --replace --xim
-Categories=
-Terminal=false
-NoDisplay=true
-StartupNotify=false";
-
     "${config.xdg.configHome}/autostart/monitor.desktop".text = "
 [Desktop Entry]
 Name=Monitor Indicators
