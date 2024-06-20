@@ -5,8 +5,6 @@ in
 {
   environment.systemPackages = with pkgs; [
     maestral
-  ] ++ lib.optionals (isWorkstation) [
-    maestral-gui
   ];
 
   systemd.user.services.maestral = {
