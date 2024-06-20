@@ -58,6 +58,7 @@ in
       tenacity
       usbimager
       wavebox
+      youtube-music
       zoom-us
     ] ++ lib.optionals (isWorkstation && (desktop == "gnome" || desktop == "pantheon")) [
       loupe
