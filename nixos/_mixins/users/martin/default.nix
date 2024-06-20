@@ -60,7 +60,6 @@ in
       zoom-us
     ] ++ lib.optionals (isWorkstation && (desktop == "gnome" || desktop == "pantheon")) [
       loupe
-      marker
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
       gnome-extension-manager
       gnomeExtensions.start-overlay-in-application-view

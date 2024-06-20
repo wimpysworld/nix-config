@@ -116,25 +116,6 @@ in
       audio-profile = "flac";
     };
 
-    "com/github/fabiocolacio/marker/preferences/editor" = {
-      auto-indent = true;
-      enable-syntax-theme = true;
-      replace-tabs = true;
-      show-spaces = false;
-      spell-check = false;
-      syntax-theme = "catppuccin_mocha";
-    };
-
-    "com/github/fabiocolacio/marker/preferences/preview" = {
-      css-theme = "GithubDark.css";
-      highlight-toggle = true;
-    };
-
-    "com/github/fabiocolacio/marker/preferences/window" = {
-      enable-dark-mode = true;
-      view-mode = "editor-only";
-    };
-
     "com/github/wwmm/easyeffects" = {
       bypass = false;
       process-all-inputs = false;
