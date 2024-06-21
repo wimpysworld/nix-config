@@ -1,6 +1,6 @@
 { config, desktop, lib, pkgs, ... }:
 let
-  inherit (pkgs.stdenv) isDarwin isLinux;
+  inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf isLinux {
   # TODO: Migrate to Colloid-gtk-theme 2024-06-18 or newer; now has catppuccin colors

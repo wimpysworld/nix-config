@@ -1,7 +1,4 @@
 { config, lib, pkgs, ... }:
-let
-  inherit (pkgs.stdenv) isLinux;
-in
 {
   imports = [
     ../../services/keybase.nix
