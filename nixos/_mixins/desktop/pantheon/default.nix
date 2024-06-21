@@ -4,8 +4,15 @@ let
 in
 {
   environment = {
-    pantheon.excludePackages = [
-      pkgs.pantheon.epiphany
+    pantheon.excludePackages = with pkgs; [
+      pantheon.elementary-camera
+      pantheon.elementary-code
+      pantheon.elementary-files
+      pantheon.elementary-music
+      pantheon.elementary-photos
+      pantheon.elementary-terminal
+      pantheon.elementary-videos
+      pantheon.epiphany
     ];
 
     # App indicator
@@ -13,8 +20,11 @@ in
     # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
     pathsToLink = [ "/libexec" ];
 
-    systemPackages = (with pkgs; lib.optionals (isInstall) [
+    systemPackages = (with pkgs; [
+      mate.caja-with-extensions
+    ] ++ lib.optionals (isInstall) [
       gnome.simple-scan
+      loupe
       pick-colour-picker
     ]);
   };
@@ -22,6 +32,20 @@ in
   programs = {
     dconf.profiles.user.databases = [{
       settings = with lib.gvariant; {
+        "org/mate/caja/preferences" = {
+          date-format = "iso";
+          default-folder-viewer = "list-view";
+        };
+        "org/mate/caja/list-view" = {
+          default-zoom-level = "small";
+        };
+        "org/mate/caja/extensions" = {
+          disabled-extensions = [ "libcaja-gksu" "libcaja-wallpaper" "libcaja-share" "libcaja-sendto" ];
+        };
+        "org/mate/desktop/applications/terminal" = {
+          exec = "alacritty";
+        };
+
         "com/github/stsdc/monitor/settings" = {
           background-state = true;
           indicator-state = true;
@@ -189,19 +213,19 @@ in
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
           binding = "<Super>e";
-          command = "io.elementary.files -n ~/";
+          command = "caja --no-desktop";
           name = "File Manager";
         };
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
           binding = "<Super>t";
-          command = "io.elementary.terminal";
+          command = "alacritty";
           name = "Terminal";
         };
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
           binding = "<Primary><Alt>t";
-          command = "io.elementary.terminal";
+          command = "alacritty";
           name = "Terminal";
         };
 

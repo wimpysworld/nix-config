@@ -6,6 +6,7 @@ in
   environment = {
     mate.excludePackages = with pkgs; [
       mate.caja-dropbox
+      mate.eom
       mate.mate-themes
       mate.mate-netbook
       mate.mate-icon-theme
@@ -18,6 +19,7 @@ in
       gnome.gucharmap
       gnome.simple-scan
       gnome-firmware
+      loupe
     ]);
   };
 
@@ -78,11 +80,16 @@ in
           trash-icon-visible = false;
         };
 
+        "org/mate/caja/extensions" = {
+          disabled-extensions = [ "libcaja-gksu" "libcaja-wallpaper" "libcaja-share" "libcaja-sendto" ];
+        };
+
         "org/mate/caja/list-view" = {
           default-zoom-level = "small";
         };
 
         "org/mate/caja/preferences" = {
+          date-format = "iso";
           default-folder-view = "list-view";
         };
 
@@ -278,8 +285,16 @@ in
         };
 
         "org/mate/system-monitor" = {
-          cpu-color0 = "#9A0606";
-          cpu-color1 = "#B42828";
+          cpu-color0  = "#9A0606";
+          cpu-color1  = "#B42828";
+          cpu-color2  = "#CD5050";
+          cpu-color3  = "#E67F7F";
+          cpu-color4  = "#FFB4B4";
+          cpu-color5  = "#9A5306";
+          cpu-color6  = "#B47028";
+          cpu-color7  = "#CD8F50";
+          cpu-color8  = "#E6B37F";
+          cpu-color9  = "#FFDBB5";
           cpu-color10 = "#6B9A06";
           cpu-color11 = "#86B428";
           cpu-color12 = "#A4CD50";
@@ -290,7 +305,6 @@ in
           cpu-color17 = "#50A5CD";
           cpu-color18 = "#7FC4E6";
           cpu-color19 = "#B3E6FF";
-          cpu-color2 = "#CD5050";
           cpu-color20 = "#21069A";
           cpu-color21 = "#4028B4";
           cpu-color22 = "#6550CD";
@@ -301,15 +315,8 @@ in
           cpu-color27 = "#F100F1";
           cpu-color28 = "#FF4FFF";
           cpu-color29 = "#FF87FF";
-          cpu-color3 = "#E67F7F";
           cpu-color30 = "#C4A000";
           cpu-color31 = "#EDD400";
-          cpu-color4 = "#FFB4B4";
-          cpu-color5 = "#9A5306";
-          cpu-color6 = "#B47028";
-          cpu-color7 = "#CD8F50";
-          cpu-color8 = "#E6B37F";
-          cpu-color9 = "#FFDBB5";
           show-tree = true;
           solaris-mode = false;
         };
@@ -346,7 +353,7 @@ in
           cursorTheme.package = pkgs.catppuccin-cursors.mochaBlue;
           cursorTheme.size = 32;
           iconTheme.name = "Papirus-Dark";
-          iconTheme.package = pkgs.catppuccin-papirus-folders-unstable;
+          iconTheme.package = pkgs.catppuccin-papirus-folders;
           theme.name = "catppuccin-mocha-blue-standard+default";
           theme.package = pkgs.catppuccin-gtk;
           indicators = [

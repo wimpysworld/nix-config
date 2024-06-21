@@ -159,7 +159,7 @@ in
       binding = "<Super>e";
       name = "File Manager";
     } // lib.optionalAttrs (desktop == "pantheon") {
-      command = "io.elementary.files -n ~/";
+      command = "caja --no-desktop";
     } // lib.optionalAttrs (desktop == "gnome") {
       command = "nautilus -w ~/";
     };
@@ -211,7 +211,7 @@ in
     };
 
     ### GNOME Desktop ###
-    "org/gnome/desktop/default/applications/terminal" = lib.optionalAttrs (desktop == "gnome") {
+    "org/gnome/desktop/default/applications/terminal" = {
       exec = "alacritty";
       exec-arg = "--command";
     };
