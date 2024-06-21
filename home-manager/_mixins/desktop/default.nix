@@ -10,6 +10,7 @@ in
     ./apps/chatterino
     ./apps/discord
     ./apps/gitkraken
+    ./apps/joplin
     ./apps/obs-studio
     ./apps/ulauncher
     ./apps/vscode
