@@ -33,7 +33,7 @@
         "panel__bg0": "@background",
         "panel__bg1": "@mantle",
         "panel__bg2": "@mantle",
-        "input__bg": "#181825",
+        "input__bg": "@crust",
         "input-bg-warn-color": "@orange",
         "panel-border": "@background",
         "section-border": "@mantle",
