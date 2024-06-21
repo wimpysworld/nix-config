@@ -34,6 +34,7 @@ let
 in
 {
   imports = [
+    ./features/flatpak
     ./apps/chromium
     ./apps/firefox
     ./apps/obs-studio
@@ -170,9 +171,6 @@ in
   };
 
   services = {
-    flatpak = lib.mkIf (isInstall) {
-      enable = true;
-    };
     # https://nixos.wiki/wiki/PipeWire
     # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
     # Debugging
@@ -323,20 +321,6 @@ in
   };
 
   systemd.services = {
-    configure-flathub-repo = lib.mkIf (isInstall) {
-      wantedBy = ["multi-user.target"];
-      path = [ pkgs.flatpak ];
-      script = ''
-        flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-      '';
-    };
-    configure-appcenter-repo = lib.mkIf (isInstall && desktop == "pantheon") {
-      wantedBy = ["multi-user.target"];
-      path = [ pkgs.flatpak ];
-      script = ''
-        flatpak remote-add --if-not-exists appcenter https://flatpak.elementary.io/repo.flatpakrepo
-      '';
-    };
     disable-wifi-powersave = lib.mkIf (!saveBattery) {
       wantedBy = ["multi-user.target"];
       path = [ pkgs.iw ];
