@@ -12,7 +12,6 @@ in
       brave
       celluloid
       fractal
-      gimp-with-plugins
       gnome.dconf-editor
       gnome.gnome-sound-recorder
       google-chrome
@@ -22,6 +21,7 @@ in
       meld
       microsoft-edge
       pika-backup
+      pinta
       shotcut
       tartube
       tenacity
