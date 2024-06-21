@@ -1,7 +1,4 @@
 { desktop, lib, pkgs, ... }:
-let
-  isWorkstation = if (desktop != null) then true else false;
-in
 {
   environment.systemPackages = with pkgs; [
     maestral
