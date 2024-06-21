@@ -7,8 +7,13 @@ in
   environment = {
     gnome.excludePackages = with pkgs; [
       baobab
+      gnome-console
+      gnome-text-editor
+      gnome.geary
       gnome.gnome-system-monitor
       gnome.epiphany
+      gnome.gnome-music
+      gnome.totem
     ];
 
     systemPackages = (with pkgs; [
@@ -26,6 +31,7 @@ in
       gnome.gnome-tweaks
       gnome.simple-scan
       gnomeExtensions.freon
+      loupe
     ] ++ lib.optionals (isThinkpad) [
       gnomeExtensions.thinkpad-battery-threshold
     ]);

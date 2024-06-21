@@ -4,37 +4,6 @@ let
 in
 {
   environment = {
-    # Desktop environment applications/features I don't use or want
-    gnome.excludePackages = with pkgs; [
-      baobab
-      gnome-console
-      gnome-text-editor
-      gnome.epiphany
-      gnome.geary
-      gnome.gnome-music
-      gnome.gnome-system-monitor
-      gnome.totem
-    ];
-
-    mate.excludePackages = with pkgs; [
-      mate.caja-dropbox
-      mate.eom
-      mate.mate-themes
-      mate.mate-netbook
-      mate.mate-icon-theme
-      mate.mate-backgrounds
-      mate.mate-icon-theme-faenza
-    ];
-
-    pantheon.excludePackages = with pkgs; [
-      pantheon.elementary-camera
-      pantheon.elementary-code
-      pantheon.elementary-music
-      pantheon.elementary-photos
-      pantheon.elementary-videos
-      pantheon.epiphany
-    ];
-
     systemPackages = (with pkgs; [
       _1password
       lastpass-cli
@@ -60,8 +29,6 @@ in
       wavebox
       youtube-music
       zoom-us
-    ] ++ lib.optionals (isWorkstation && (desktop == "gnome" || desktop == "pantheon")) [
-      loupe
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
       gnome-extension-manager
       gnomeExtensions.start-overlay-in-application-view
