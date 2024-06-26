@@ -55,16 +55,14 @@ let
   ];
 in
 
-stdenv.mkDerivation (_finalAttrs : {
+stdenv.mkDerivation rec {
   pname = "quickemu";
   version = "4.9.5";
-
   src = fetchFromGitHub {
     owner = "quickemu-project";
     repo = "quickemu";
-    #rev = finalAttrs.version;
-    rev = "1c89f520f2c7d10cc9cc1d15b8cae32215359224";
-    hash = "sha256-sISmcqZSS+T1oU4/agotU6S5Up4ABmcY2NCPDENG3UM=";
+    rev = version;
+    hash = "sha256-UlpNujF2E8H1zcWTen8D29od60pY8FaGueviT0iwupQ=";
   };
 
   postPatch = ''
@@ -104,4 +102,4 @@ stdenv.mkDerivation (_finalAttrs : {
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ fedx-sudo flexiondotorg ];
   };
-})
+}
