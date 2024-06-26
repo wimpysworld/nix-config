@@ -1,10 +1,13 @@
 { lib
 , fetchFromGitHub
-, stdenv
+, installShellFiles
 , makeWrapper
+, stdenv
+, testers
 , cdrtools
 , curl
 , gawk
+, glxinfo
 , gnugrep
 , gnused
 , jq
@@ -16,17 +19,15 @@
 , socat
 , spice-gtk
 , swtpm
+, unzip
 , usbutils
 , util-linux
-, unzip
 , xdg-user-dirs
 , xrandr
 , zsync
 , OVMF
 , OVMFFull
 , quickemu
-, testers
-, installShellFiles
 }:
 let
   runtimePaths = [
@@ -43,12 +44,14 @@ let
     qemu
     socat
     swtpm
-    usbutils
-    util-linux
     unzip
-    xdg-user-dirs
+    util-linux
     xrandr
     zsync
+  ] ++ lib.optionals stdenv.isLinux [
+    glxinfo
+    usbutils
+    xdg-user-dirs
   ];
 in
 
@@ -60,8 +63,8 @@ stdenv.mkDerivation (_finalAttrs : {
     owner = "quickemu-project";
     repo = "quickemu";
     #rev = finalAttrs.version;
-    rev = "d78255b097b599e8ab3713cb61c4085cc45f5a95";
-    hash = "sha256-fF306CdGqKM+779OLm0NNyqPBtm7TuU7UN/NanT12y8=";
+    rev = "1c89f520f2c7d10cc9cc1d15b8cae32215359224";
+    hash = "sha256-sISmcqZSS+T1oU4/agotU6S5Up4ABmcY2NCPDENG3UM=";
   };
 
   postPatch = ''
