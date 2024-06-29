@@ -36,7 +36,6 @@
     antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.4.1.tar.gz";
-    nix-flatpak.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-snapd.url = "https://flakehub.com/f/io12/nix-snapd/0.1.*.tar.gz";
     nix-snapd.inputs.nixpkgs.follows = "nixpkgs";
