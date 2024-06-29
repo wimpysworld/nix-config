@@ -15,7 +15,8 @@
 , pciutils
 , procps
 , python3
-, qemu
+, qemu_full
+, samba
 , socat
 , spice-gtk
 , swtpm
@@ -41,20 +42,22 @@ let
     pciutils
     procps
     python3
-    qemu
+    qemu_full
+    samba
     socat
     swtpm
     unzip
     util-linux
     xrandr
     zsync
+    OVMF
+    OVMFFull
   ] ++ lib.optionals stdenv.isLinux [
     glxinfo
     usbutils
     xdg-user-dirs
   ];
 in
-
 stdenv.mkDerivation rec {
   pname = "quickemu";
   version = "4.9.5";
