@@ -127,7 +127,7 @@ in
     ] ++ lib.optionals (isInstall && isWorkstation) [
       pods
     ] ++ lib.optionals (isInstall && isWorkstation && notVM) [
-      quickemu
+      inputs.quickemu.packages.${platform}.default
     ] ++ lib.optionals (isInstall && hasNvidia) [
       nvtopPackages.full
       vdpauinfo
