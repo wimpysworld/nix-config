@@ -241,12 +241,6 @@ in
           sha256 = "sha256-OKwEqkUEjHIJrbi9S2v2nJrZchYByDU6cXHAn7uhxcQ=";
         }
         {
-          name = "vscode-pets";
-          publisher = "tonybaloney";
-          version = "1.25.1";
-          sha256 = "sha256-as3e2LzKBSsiGs/UGIZ06XqbLh37irDUaCzslqITEJQ=";
-        }
-        {
           name = "vscode-power-mode";
           publisher = "hoovercj";
           version = "3.0.2";
