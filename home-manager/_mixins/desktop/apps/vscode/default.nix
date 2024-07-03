@@ -231,7 +231,7 @@ in
         {
           name = "vscode-mdx";
           publisher = "unifiedjs";
-          version = "1.8.4";
+          version = "1.8.9";
           sha256 = "sha256-QKI7GaASrWzdjC/gb0JNDAlTtAdQOGo/c1RE5WrmIZ0=";
         }
         {
