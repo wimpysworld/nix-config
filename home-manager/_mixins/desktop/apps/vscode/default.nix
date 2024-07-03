@@ -43,8 +43,6 @@ in
         vscode-extensions.dotjoshjohnson.xml
         vscode-extensions.editorconfig.editorconfig
         vscode-extensions.esbenp.prettier-vscode
-        vscode-extensions.github.copilot
-        vscode-extensions.github.copilot-chat
         vscode-extensions.github.vscode-github-actions
         vscode-extensions.golang.go
         vscode-extensions.jnoortheen.nix-ide
@@ -68,6 +66,18 @@ in
         vscode-extensions.ms-vsliveshare.vsliveshare
         vscode-extensions.vadimcn.vscode-lldb
       ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
+        {
+          name = "copilot";
+          publisher = "github";
+          version = "1.208.961";
+          sha256 = "sha256-ptY0y7WBut1N/weEoktnNYe3lrpwCfPNLtTo/y3Ou+Y=";
+        }
+        {
+          name = "copilot-chat";
+          publisher = "github";
+          version = "0.17.2024062801";
+          sha256 = "sha256-aDTqHDGdWE/CG5bt/9um62sGFngHsJJvTl38NEqNq8E=";
+        }
         {
           name = "dart-code";
           publisher = "dart-code";
