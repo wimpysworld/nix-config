@@ -40,8 +40,6 @@ in
         vscode-extensions.alefragnani.project-manager
         vscode-extensions.codezombiech.gitignore
         vscode-extensions.coolbear.systemd-unit-file
-        vscode-extensions.dart-code.flutter
-        vscode-extensions.dart-code.dart-code
         vscode-extensions.dotjoshjohnson.xml
         vscode-extensions.editorconfig.editorconfig
         vscode-extensions.esbenp.prettier-vscode
@@ -70,6 +68,18 @@ in
         vscode-extensions.ms-vsliveshare.vsliveshare
         vscode-extensions.vadimcn.vscode-lldb
       ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
+        {
+          name = "dart-code";
+          publisher = "dart-code";
+          version = "3.91.20240624";
+          sha256 = "sha256-5u5CBrEuCh7m694G+0VvLiLBLVguY06aLCUZrI43RkY=";
+        }
+        {
+          name = "flutter";
+          publisher = "dart-code";
+          version = "3.91.20240529";
+          sha256 = "sha256-iy18P9Xt+6TEegJ3n63vHDqxZgAMAt5pE9/yZqfAHeA=";
+        }
         {
           name = "bash-debug";
           publisher = "rogalmic";
