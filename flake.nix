@@ -35,7 +35,7 @@
     antsy-alien-attack-pico.url = "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/*.tar.gz";
     antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";
 
-    nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.4.1.tar.gz";
+    nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/*.tar.gz";
 
     nix-snapd.url = "https://flakehub.com/f/io12/nix-snapd/0.1.*.tar.gz";
     nix-snapd.inputs.nixpkgs.follows = "nixpkgs";
