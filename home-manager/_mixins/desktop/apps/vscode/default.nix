@@ -125,12 +125,6 @@ in
           sha256 = "sha256-KkXUfA/W73kRfs1TpguXtZvBXFiSMXXzU9AYZGwpVsY=";
         }
         {
-          name = "grammarly";
-          publisher = "znck";
-          version = "0.25.0";
-          sha256 = "sha256-/wiUkAivEPYpPFF4X+d9PCrRHPRTlhW+NnEoqBxUCxE=";
-        }
-        {
           name = "language-hugo-vscode";
           publisher = "budparr";
           version = "1.3.1";
@@ -195,12 +189,6 @@ in
           publisher = "trond-snekvik";
           version = "1.5.4";
           sha256 = "sha256-W3LydBsc7rEHIcjE/0jESFS87uc1DfjuZt6lZhMiQcs=";
-        }
-        {
-          name = "unfoldai";
-          publisher = "TalDennis-UnfoldAI-ChatGPT-Copilot";
-          version = "0.4.3";
-          sha256 = "sha256-57cfT5T0LBLlp/ugYWYGUsx42rEoFSilXokWqzxkFhE=";
         }
         {
           name = "vala";
