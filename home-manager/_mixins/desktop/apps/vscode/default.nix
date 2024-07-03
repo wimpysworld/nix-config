@@ -225,7 +225,7 @@ in
         {
           name = "vscode-front-matter";
           publisher = "eliostruyf";
-          version = "10.1.0";
+          version = "10.2.0";
           sha256 = "sha256-TQ3jcXOcSQMoYGihKg6oSSPTtQtXIEzTbYRVyA0SyLE=";
         }
         {
