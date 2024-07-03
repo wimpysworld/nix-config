@@ -40,6 +40,11 @@
     nix-snapd.url = "https://flakehub.com/f/io12/nix-snapd/0.1.*.tar.gz";
     nix-snapd.inputs.nixpkgs.follows = "nixpkgs";
 
+    quickemu.url = "https://flakehub.com/f/quickemu-project/quickemu/*.tar.gz";
+    quickemu.inputs.nixpkgs.follows = "nixpkgs";
+    quickgui.url = "https://flakehub.com/f/quickemu-project/quickgui/*.tar.gz";
+    quickgui.inputs.nixpkgs.follows = "nixpkgs";
+
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
     fh.inputs.nixpkgs.follows = "nixpkgs";
   };

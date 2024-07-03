@@ -6,8 +6,6 @@
   gitkraken = pkgs.callPackage ./gitkraken { };
   obs-studio = pkgs.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
-  quickemu = pkgs.callPackage ./quickemu { };
-  quickgui = pkgs.callPackage ./quickgui { };
   wavebox = pkgs.callPackage ./wavebox { };
   zoom-us = pkgs.callPackage ./zoom-us { };
 }
