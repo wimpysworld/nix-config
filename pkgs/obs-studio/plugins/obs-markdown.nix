@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-markdown";
-  version = "0.2.2";
+  version = "0.2.4";
 
   src = fetchFromGitHub {
     owner = "exeldro";
     repo = "obs-markdown";
     rev = version;
-    sha256 = "sha256-Cc1QaFBYYOd/xt7zBnLEIrQb4RGNTckBJmNEZ1ZIgBE=";
+    sha256 = "sha256-tL17miSkeMfNV0JoLAIY/IqtwB0PG/kzrYC5CY0B+iE=";
   };
 
   nativeBuildInputs = [ cmake ];
