@@ -24,9 +24,9 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ cmake pkg-config ];
   buildInputs = [
-    obs-studio libuiohook qtbase
+    obs-studio libuiohook qtbase SDL2
     xorg.libX11 xorg.libXau xorg.libXdmcp xorg.libXtst xorg.libXext
-    xorg.libXi xorg.libXt xorg.libXinerama libxkbcommon libxkbfile SDL2
+    xorg.libXi xorg.libXt xorg.libXinerama libxkbcommon libxkbfile
   ];
 
   cmakeFlags = [
