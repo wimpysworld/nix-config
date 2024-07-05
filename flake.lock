@@ -60,11 +60,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1719864345,
-        "narHash": "sha256-e4Pw+30vFAxuvkSTaTypd9zYemB/QlWcH186dsGT+Ms=",
+        "lastModified": 1720056646,
+        "narHash": "sha256-BymcV4HWtx2VFuabDCM4/nEJcfivCx0S02wUCz11mAY=",
         "owner": "nix-community",
         "repo": "disko",
-        "rev": "544a80a69d6e2da04e4df7ec8210a858de8c7533",
+        "rev": "64679cd7f318c9b6595902b47d4585b1d51d5f9e",
         "type": "github"
       },
       "original": {
@@ -188,6 +188,20 @@
         "url": "https://flakehub.com/f/DeterminateSystems/flake-schemas/%2A.tar.gz"
       }
     },
+    "flake-schemas_3": {
+      "locked": {
+        "lastModified": 1697467827,
+        "narHash": "sha256-j8SR19V1SRysyJwpOBF4TLuAvAjF5t+gMiboN4gYQDU=",
+        "rev": "764932025c817d4e500a8d2a4d8c565563923d29",
+        "revCount": 29,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/flake-schemas/0.1.2/018b3da8-4cc3-7fbb-8ff7-1588413c53e2/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/DeterminateSystems/flake-schemas/%2A.tar.gz"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -195,11 +209,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1719827385,
-        "narHash": "sha256-qs+nU20Sm8czHg3bhGCqiH+8e13BJyRrKONW34g3i50=",
+        "lastModified": 1720042825,
+        "narHash": "sha256-A0vrUB6x82/jvf17qPCpxaM+ulJnD8YZwH9Ci0BsAzE=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "391ca6e950c2525b4f853cbe29922452c14eda82",
+        "rev": "e1391fb22e18a36f57e6999c7a9f966dc80ac073",
         "type": "github"
       },
       "original": {
@@ -344,11 +358,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1719838683,
-        "narHash": "sha256-Zw9rQjHz1ilNIimEXFeVa1ERNRBF8DoXDhLAZq5B4pE=",
+        "lastModified": 1719956923,
+        "narHash": "sha256-nNJHJ9kfPdzYsCOlHOnbiiyKjZUW5sWbwx3cakg3/C4=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "d032c1a6dfad4eedec7e35e91986becc699d7d69",
+        "rev": "706eef542dec88cc0ed25b9075d3037564b2d164",
         "type": "github"
       },
       "original": {
@@ -388,11 +402,11 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1719848872,
-        "narHash": "sha256-H3+EC5cYuq+gQW8y0lSrrDZfH71LB4DAf+TDFyvwCNA=",
+        "lastModified": 1720031269,
+        "narHash": "sha256-rwz8NJZV+387rnWpTYcXaRNvzUSnnF9aHONoJIYmiUQ=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "00d80d13810dbfea8ab4ed1009b09100cca86ba8",
+        "rev": "9f4128e00b0ae8ec65918efeba59db998750ead6",
         "type": "github"
       },
       "original": {
@@ -442,12 +456,33 @@
         ]
       },
       "locked": {
-        "lastModified": 1719316513,
-        "narHash": "sha256-9EQMWByMD0K0mRFKO+CtTFRWREaePB6xU6jBmtVhF3U=",
-        "rev": "1c89f520f2c7d10cc9cc1d15b8cae32215359224",
-        "revCount": 1992,
+        "lastModified": 1720106666,
+        "narHash": "sha256-zzD9nRkbYWg1vAW8QclJfrTePq1Y0h6lcIay+bv56iY=",
+        "rev": "ca8f81f7fbabaa00e21e5e94519f9cc1fd7dcf1f",
+        "revCount": 2038,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/quickemu-project/quickemu/4.9.5/01904f50-5263-7e22-b58e-a1dae34d5486/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/quickemu-project/quickemu/4.9.6/01907e69-af19-7432-9708-89c294672e35/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/quickemu-project/quickemu/%2A.tar.gz"
+      }
+    },
+    "quickemu_2": {
+      "inputs": {
+        "flake-schemas": "flake-schemas_3",
+        "nixpkgs": [
+          "quickgui",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1720106666,
+        "narHash": "sha256-zzD9nRkbYWg1vAW8QclJfrTePq1Y0h6lcIay+bv56iY=",
+        "rev": "ca8f81f7fbabaa00e21e5e94519f9cc1fd7dcf1f",
+        "revCount": 2038,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/quickemu-project/quickemu/4.9.6/01907e69-af19-7432-9708-89c294672e35/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -459,15 +494,16 @@
         "flake-schemas": "flake-schemas_2",
         "nixpkgs": [
           "nixpkgs"
-        ]
+        ],
+        "quickemu": "quickemu_2"
       },
       "locked": {
-        "lastModified": 1719591212,
-        "narHash": "sha256-RfK/T4lordDdOOorMZdynDdX9qKY/tYEJxqxFIq/Qi8=",
-        "rev": "0a512da081a081344ab52b2cee534211947b3823",
-        "revCount": 220,
+        "lastModified": 1720109202,
+        "narHash": "sha256-M2Qy66RqsjXg7ZpHwaXCN8qXRIsisnIyaENx3KqmUfQ=",
+        "rev": "7de10876663f00a1a36b019c71aad8ccd94011eb",
+        "revCount": 253,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/quickemu-project/quickgui/1.2.9/01905fa1-b606-7380-ba13-c02c88fb0025/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/quickemu-project/quickgui/1.2.10/01907e84-e2ff-77bb-8e8c-eb24a980cb31/source.tar.gz"
       },
       "original": {
         "type": "tarball",
