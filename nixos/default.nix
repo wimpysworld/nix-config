@@ -118,8 +118,6 @@ in
       nvd
       nvme-cli
       #https://nixos.wiki/wiki/Podman
-      podman-compose
-      podman-tui
       podman
       smartmontools
       sops
