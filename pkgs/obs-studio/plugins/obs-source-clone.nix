@@ -7,7 +7,7 @@
 
 stdenv.mkDerivation {
   pname = "obs-source-clone";
-  version = "0.1.4-unstable-2024-02-19";
+  version = "0.1.5";
 
   src = fetchFromGitHub {
     owner = "exeldro";
