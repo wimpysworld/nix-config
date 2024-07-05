@@ -9,7 +9,7 @@ lib.mkIf isLinux {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
       cursor-size = 48;
-      cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
+      cursor-theme = "catppuccin-mocha-blue-cursors";
       gtk-theme = "catppuccin-mocha-blue-standard+default";
       icon-theme = "Papirus-Dark";
     };
@@ -42,7 +42,7 @@ lib.mkIf isLinux {
 
   gtk = {
     cursorTheme = {
-      name = "Catppuccin-Mocha-Blue-Cursors";
+      name = "catppuccin-mocha-blue-cursors";
       package = pkgs.catppuccin-cursors.mochaBlue;
       size = 48;
     };
@@ -92,7 +92,7 @@ lib.mkIf isLinux {
       papirus-folders
     ];
     pointerCursor = {
-      name = "Catppuccin-Mocha-Blue-Cursors";
+      name = "catppuccin-mocha-blue-cursors";
       package = pkgs.catppuccin-cursors.mochaBlue;
       size = 48;
       gtk.enable = true;
