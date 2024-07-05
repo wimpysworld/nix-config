@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-scene-as-transition";
-  version = "1.1.0";
+  version = "1.1.1";
 
   src = fetchFromGitHub {
     owner = "andilippi";
     repo = "obs-scene-as-transition";
     rev = "v${version}";
-    sha256 = "sha256-uzNsHdsW140N+Cq0+aOjXmsqDLM9KCRRqQVfH3fSEGU=";
+    sha256 = "sha256-qeiJR68MqvhpzvY7yNnR6w77SvavlZTdbnGBWrd7iZM=";
   };
 
   nativeBuildInputs = [ cmake ];
