@@ -34,7 +34,7 @@ in
           clock-format = "24h";
           color-scheme = "prefer-dark";
           cursor-size = mkInt32 32;
-          cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
+          cursor-theme = "catppuccin-mocha-blue-cursors";
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
           gtk-theme = "catppuccin-mocha-blue-standard+default";
@@ -137,7 +137,7 @@ in
 
         "org/mate/desktop/peripherals/mouse" = {
           cursor-size = mkInt32 48;
-          cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
+          cursor-theme = "catppuccin-mocha-blue-cursors";
         };
 
         "org/mate/desktop/peripherals/touchpad" = {
@@ -349,7 +349,7 @@ in
         lightdm.enable = true;
         lightdm.greeters.gtk = {
           enable = true;
-          cursorTheme.name = "Catppuccin-Mocha-Blue-Cursors";
+          cursorTheme.name = "catppuccin-mocha-blue-cursors";
           cursorTheme.package = pkgs.catppuccin-cursors.mochaBlue;
           cursorTheme.size = 32;
           iconTheme.name = "Papirus-Dark";

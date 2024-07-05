@@ -136,7 +136,7 @@ in
           clock-format = "24h";
           color-scheme = "prefer-dark";
           cursor-size = mkInt32 48;
-          cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
+          cursor-theme = "catppuccin-mocha-blue-cursors";
           document-font-name = "Work Sans 12";
           font-name = "Work Sans 12";
           gtk-theme = "catppuccin-mocha-blue-standard+default";
