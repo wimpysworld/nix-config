@@ -32,6 +32,7 @@ in
     ./_mixins/features/distrobox
     ./_mixins/features/quickemu
     ./_mixins/features/zram
+    ./_mixins/services/ssh
     ./_mixins/configs
     ./_mixins/users
   ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
@@ -117,7 +118,6 @@ in
       nvme-cli
       smartmontools
       sops
-      ssh-to-age
     ] ++ lib.optionals (isInstall && hasNvidia) [
       nvtopPackages.full
       vdpauinfo
@@ -239,7 +239,6 @@ in
         nano = "micro";
       };
     };
-    mosh.enable = true;
     nano.enable = lib.mkDefault false;
     nh = {
       clean = {
@@ -257,7 +256,6 @@ in
       # programs here, NOT in environment.systemPackages
       ];
     };
-    ssh.startAgent = true;
   };
 
   services = {
@@ -284,25 +282,9 @@ in
         xkb-layout=gb
       '';
     };
-    openssh = {
-      enable = true;
-      openFirewall = true;
-      settings = {
-        PasswordAuthentication = false;
-        PermitRootLogin = lib.mkDefault "no";
-      };
-    };
     resolved.enable = true;
     smartd.enable = isInstall;
     snap.enable = isInstall;
-    sshguard = {
-      enable = true;
-      whitelist = [
-        "192.168.2.0/24"
-        "62.31.16.154"
-        "80.209.186.67"
-      ];
-    };
   };
 
   sops = lib.mkIf (isInstall) {
