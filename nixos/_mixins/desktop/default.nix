@@ -4,20 +4,18 @@ let
   isGamestation = if (hostname == "phasma" || hostname == "vader") && (desktop != null) then true else false;
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   hasRazerPeripherals = if (hostname == "phasma" || hostname == "vader") then true else false;
-  needsLowLatencyPipewire = if (hostname == "phasma" || hostname == "vader") then true else false;
 in
 {
   imports = [
     ./features/flatpak
+    ./features/pipewire
     ./apps/chromium
     ./apps/firefox
     ./apps/obs-studio
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {
-    # Enable the threadirqs kernel parameter to reduce audio latency
-    # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
-    kernelParams = [ "quiet" "vt.global_cursor_default=0" "mitigations=off" "threadirqs" ];
+    kernelParams = [ "quiet" "vt.global_cursor_default=0" "mitigations=off" ];
     plymouth = {
       catppuccin.enable = if (username == "martin") then true else false;
       enable = true;
@@ -45,8 +43,6 @@ in
     })
   ] ++ lib.optionals (isInstall) [
     appimage-run
-    pavucontrol
-    pulseaudio
     wmctrl
     xdotool
     ydotool
@@ -103,7 +99,6 @@ in
       syncEffectsEnabled = true;
       users = [ "${username}" ];
     };
-    pulseaudio.enable = lib.mkForce false;
     sane = lib.mkIf (isInstall) {
       enable = true;
       #extraBackends = with pkgs; [ hplipWithPlugin sane-airscan ];
@@ -124,87 +119,6 @@ in
   };
 
   services = {
-    # https://nixos.wiki/wiki/PipeWire
-    # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
-    # Debugging
-    #  - pw-top                                            # see live stats
-    #  - journalctl -b0 --user -u pipewire                 # see logs (spa resync is "bad")
-    #  - pw-metadata -n settings 0                         # see current quantums
-    #  - pw-metadata -n settings 0 clock.force-quantum 128 # override quantum
-    #  - pw-metadata -n settings 0 clock.force-quantum 0   # disable override
-    pipewire = {
-      enable = true;
-      alsa.enable = true;
-      alsa.support32Bit = isGamestation;
-      jack.enable = false;
-      pulse.enable = true;
-      wireplumber = {
-        enable = true;
-        # https://stackoverflow.com/questions/24040672/the-meaning-of-period-in-alsa
-        # https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/alsa.html#alsa-buffer-properties
-        # cat /nix/store/*-wireplumber-*/share/wireplumber/main.lua.d/99-alsa-lowlatency.lua
-        # cat /nix/store/*-wireplumber-*/share/wireplumber/wireplumber.conf.d/99-alsa-lowlatency.conf
-        configPackages = lib.mkIf (needsLowLatencyPipewire) [
-          (pkgs.writeTextDir "share/wireplumber/main.lua.d/99-alsa-lowlatency.lua" ''
-              alsa_monitor.rules = {
-                {
-                  matches = {{{ "node.name", "matches", "*_*put.*" }}};
-                  apply_properties = {
-                    ["audio.format"] = "S16LE",
-                    ["audio.rate"] = 48000,
-                    -- api.alsa.headroom: defaults to 0
-                    ["api.alsa.headroom"] = 128,
-                    -- api.alsa.period-num: defaults to 2
-                    ["api.alsa.period-num"] = 2,
-                    -- api.alsa.period-size: defaults to 1024, tweak by trial-and-error
-                    ["api.alsa.period-size"] = 512,
-                    -- api.alsa.disable-batch: USB audio interface typically use the batch mode
-                    ["api.alsa.disable-batch"] = false,
-                    ["resample.quality"] = 4,
-                    ["resample.disable"] = false,
-                    ["session.suspend-timeout-seconds"] = 0,
-                  },
-                },
-              }
-            '')
-        ];
-      };
-      # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
-      extraConfig.pipewire."92-low-latency" = lib.mkIf (needsLowLatencyPipewire) {
-        "context.properties" = {
-          "default.clock.rate"          = 48000;
-          "default.clock.quantum"       = 64;
-          "default.clock.min-quantum"   = 64;
-          "default.clock.max-quantum"   = 64;
-        };
-        "context.modules" = [{
-          name = "libpipewire-module-rt";
-          args = {
-            "nice.level" = -11;
-            "rt.prio" = 88;
-          };
-        }];
-      };
-      extraConfig.pipewire-pulse."92-low-latency" = lib.mkIf (needsLowLatencyPipewire) {
-        "pulse.properties" = {
-          "pulse.default.format" = "S16";
-          "pulse.fix.format" = "S16LE";
-          "pulse.fix.rate" = "48000";
-          "pulse.min.frag" = "64/48000";      # 1.3ms
-          "pulse.min.req" = "64/48000";       # 1.3ms
-          "pulse.default.frag" = "64/48000";  # 1.3ms
-          "pulse.default.req" = "64/48000";   # 1.3ms
-          "pulse.max.req" = "64/48000";       # 1.3ms
-          "pulse.min.quantum" = "64/48000";   # 1.3ms
-          "pulse.max.quantum" = "64/48000";   # 1.3ms
-        };
-        "stream.properties" = {
-          "node.latency" = "64/48000";        # 1.3ms
-          "resample.quality" = 4;
-          "resample.disable" = false;
-        };
-      };
-    };
     printing = lib.mkIf (isInstall) {
       enable = true;
       drivers = with pkgs; [ gutenprint hplip ];
@@ -259,18 +173,6 @@ in
       displayManager.gdm.autoSuspend = if (desktop == "pantheon") then true else false;
       excludePackages = [ pkgs.xterm ];
     };
-  };
-
-  security = {
-    # Allow members of the "audio" group to set RT priorities
-    # Inspired by musnix: https://github.com/musnix/musnix/blob/master/modules/base.nix#L87
-    pam.loginLimits = [
-      { domain = "@audio"; item = "memlock"; type = "-"   ; value = "unlimited"; }
-      { domain = "@audio"; item = "rtprio" ; type = "-"   ; value = "99"       ; }
-      { domain = "@audio"; item = "nofile" ; type = "soft"; value = "99999"    ; }
-      { domain = "@audio"; item = "nofile" ; type = "hard"; value = "99999"    ; }
-    ];
-    rtkit.enable = true;
   };
 
   xdg.portal = {
