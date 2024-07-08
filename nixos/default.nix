@@ -31,6 +31,7 @@ in
     ./_mixins/features/bluetooth
     ./_mixins/features/distrobox
     ./_mixins/features/quickemu
+    ./_mixins/features/snapcraft
     ./_mixins/features/zram
     ./_mixins/services/ssh
     ./_mixins/configs
@@ -284,7 +285,6 @@ in
     };
     resolved.enable = true;
     smartd.enable = isInstall;
-    snap.enable = isInstall;
   };
 
   sops = lib.mkIf (isInstall) {
@@ -307,9 +307,5 @@ in
   system = {
     nixos.label = lib.mkIf (isInstall) "-";
     stateVersion = stateVersion;
-  };
-
-  virtualisation = lib.mkIf (isInstall) {
-    lxd.enable = true;
   };
 }

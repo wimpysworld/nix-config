@@ -121,7 +121,6 @@ in
       psmisc # Traditional `ps`
       ramfetch # Terminal system info
       s-tui # Terminal CPU stress test
-      snapcraft
       stress-ng # Terminal CPU stress test
       usbutils # Terminal USB info
       wavemon # Terminal WiFi monitor
