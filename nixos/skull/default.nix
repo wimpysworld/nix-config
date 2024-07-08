@@ -49,21 +49,6 @@
     };
   };
 
-  # Use passed hostname to configure basic networking
-  networking = {
-    defaultGateway = "192.168.2.1";
-    firewall = {
-      trustedInterfaces = [ "eno1" ];
-    };
-    interfaces.eno1.mtu = 1462;
-    interfaces.eno1.ipv4.addresses = [{
-      address = "192.168.2.17";
-      prefixLength = 24;
-    }];
-    nameservers = [ "127.0.0.1" ];
-    useDHCP = lib.mkForce false;
-  };
-
   services = {
     # Home LAN DNS server
     # - https://l33tsource.com/blog/2023/06/18/dnsmasq-on-NixOS-2305/

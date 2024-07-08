@@ -5,18 +5,6 @@ let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   isWorkstation = if (desktop != null) then true else false;
   hasNvidia = lib.elem "nvidia" config.services.xserver.videoDrivers;
-  # Firewall configuration variable for syncthing
-  syncthing = {
-    hosts = [
-      "phasma"
-      "sidious"
-      "tanis"
-      "vader"
-      "revan"
-    ];
-    tcpPorts = [ 22000 ];
-    udpPorts = [ 22000 21027 ];
-  };
 in
 {
   imports = [
@@ -31,6 +19,7 @@ in
     ./_mixins/features/bluetooth
     ./_mixins/features/distrobox
     ./_mixins/features/gpu
+    ./_mixins/features/network
     ./_mixins/features/quickemu
     ./_mixins/features/snapcraft
     ./_mixins/features/zram
@@ -125,34 +114,6 @@ in
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
     };
-  };
-
-  # Use passed hostname to configure basic networking
-  networking = {
-    extraHosts = ''
-      192.168.2.1     router
-      192.168.2.6     vader-wifi
-      192.168.2.7     vader-lan
-      192.168.2.11    printer
-      192.168.2.20    keylight-light key-left Elgato_Key_Light_Air_DAD4
-      192.168.2.21    keylight-right key-right Elgato_Key_Light_Air_EEE9
-      192.168.2.23    moodlamp
-      192.168.2.30    chimeraos-lan
-      192.168.2.31    chimeraos-wifi chimeraos
-      192.168.2.58    vonage Vonage-HT801
-      192.168.2.184   lametric LaMetric-LM2144
-      192.168.2.250   hue-bridge
-    '';
-    firewall = {
-      enable = true;
-      allowedTCPPorts = [ ]
-        ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.tcpPorts;
-      allowedUDPPorts = [ ]
-        ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.udpPorts;
-      trustedInterfaces = lib.mkIf (isInstall) [ "lxdbr0" ];
-    };
-    hostName = hostname;
-    useDHCP = lib.mkDefault true;
   };
 
   nixpkgs = {
@@ -277,7 +238,6 @@ in
         xkb-layout=gb
       '';
     };
-    resolved.enable = true;
     smartd.enable = isInstall;
   };
 
