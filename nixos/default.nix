@@ -28,6 +28,7 @@ in
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
+    ./_mixins/features/bluetooth
     ./_mixins/configs
     ./_mixins/users
   ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
@@ -138,20 +139,6 @@ in
       EDITOR = "micro";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
-    };
-  };
-
-  hardware = {
-    # https://nixos.wiki/wiki/Bluetooth
-    bluetooth = {
-      enable = true;
-      package = pkgs.bluez;
-      settings = {
-        General = {
-          Enable = "Source,Sink,Media,Socket";
-          Experimental = true;
-        };
-      };
     };
   };
 
