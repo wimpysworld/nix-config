@@ -29,6 +29,7 @@ in
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
     ./_mixins/features/bluetooth
+    ./_mixins/features/distrobox
     ./_mixins/features/zram
     ./_mixins/configs
     ./_mixins/users
@@ -109,19 +110,13 @@ in
       inputs.fh.packages.${platform}.default
       inputs.nixos-needtoreboot.packages.${platform}.default
       clinfo
-      distrobox
       flyctl
-      fuse-overlayfs
       libva-utils
       nvd
       nvme-cli
-      #https://nixos.wiki/wiki/Podman
-      podman
       smartmontools
       sops
       ssh-to-age
-    ] ++ lib.optionals (isInstall && isWorkstation) [
-      pods
     ] ++ lib.optionals (isInstall && isWorkstation && notVM) [
       inputs.quickemu.packages.${platform}.default
       inputs.quickgui.packages.${platform}.default
@@ -335,16 +330,7 @@ in
   };
 
   virtualisation = lib.mkIf (isInstall) {
-    containers.cdi.dynamic.nvidia.enable = hasNvidia;
     lxd.enable = true;
-    podman = {
-      defaultNetwork.settings = {
-        dns_enabled = true;
-      };
-      dockerCompat = true;
-      dockerSocket.enable = true;
-      enable = true;
-    };
     spiceUSBRedirection.enable = true;
   };
 }
