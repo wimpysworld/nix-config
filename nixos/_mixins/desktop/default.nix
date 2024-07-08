@@ -5,6 +5,7 @@ let
 in
 {
   imports = [
+    ./features/appimage
     ./features/flatpak
     ./features/pipewire
     ./apps/chromium
@@ -41,7 +42,6 @@ in
       accent = "blue";
     })
   ] ++ lib.optionals (isInstall) [
-    appimage-run
     wmctrl
     xdotool
     ydotool
@@ -105,7 +105,6 @@ in
   };
 
   programs = {
-    appimage.binfmt = true;
     system-config-printer = lib.mkIf (isInstall) {
       enable = if (desktop == "mate") then true else false;
     };
