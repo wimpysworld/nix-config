@@ -30,6 +30,7 @@ in
     ./${hostname}
     ./_mixins/features/bluetooth
     ./_mixins/features/distrobox
+    ./_mixins/features/gpu
     ./_mixins/features/quickemu
     ./_mixins/features/snapcraft
     ./_mixins/features/zram
@@ -112,18 +113,11 @@ in
     ] ++ lib.optionals (isInstall) [
       inputs.fh.packages.${platform}.default
       inputs.nixos-needtoreboot.packages.${platform}.default
-      clinfo
       flyctl
-      libva-utils
       nvd
       nvme-cli
       smartmontools
       sops
-    ] ++ lib.optionals (isInstall && hasNvidia) [
-      nvtopPackages.full
-      vdpauinfo
-    ]  ++ lib.optionals (isInstall && !hasNvidia) [
-      nvtopPackages.amd
     ];
 
     variables = {

@@ -137,11 +137,6 @@ in
   };
 
   hardware = {
-    opengl = {
-      enable = true;
-      driSupport = true;
-      driSupport32Bit = isGamestation;
-    };
     openrazer = lib.mkIf (hasRazerPeripherals) {
       enable = true;
       devicesOffOnScreensaver = false;
