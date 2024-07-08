@@ -8,6 +8,7 @@ in
     ./features/appimage
     ./features/flatpak
     ./features/pipewire
+    ./features/print
     ./features/scan
     ./apps/chromium
     ./apps/firefox
@@ -100,19 +101,7 @@ in
     };
   };
 
-  programs = {
-    system-config-printer = lib.mkIf (isInstall) {
-      enable = if (desktop == "mate") then true else false;
-    };
-  };
-
   services = {
-    printing = lib.mkIf (isInstall) {
-      enable = true;
-      drivers = with pkgs; [ gutenprint hplip ];
-    };
-    system-config-printer.enable = isInstall;
-
     # Provides users with access to all Elgato StreamDecks.
     # https://github.com/muesli/deckmaster
     # https://gitlab.gnome.org/World/boatswain/-/blob/main/README.md#udev-rules
