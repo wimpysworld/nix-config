@@ -73,23 +73,23 @@ in {
     };
   };
 
-  systemd.timers.av-user-scan = {
-    description = "scan normal user directories for suspect files";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = "weekly";
-      Unit = "av-user-scan.service";
-    };
-  };
+  #systemd.timers.av-user-scan = {
+  #  description = "scan normal user directories for suspect files";
+  #  wantedBy = [ "timers.target" ];
+  #  timerConfig = {
+  #    OnCalendar = "weekly";
+  #    Unit = "av-user-scan.service";
+  #  };
+  #};
 
-  systemd.services.av-user-scan = {
-    description = "scan normal user directories for suspect files";
-    after = [ "network-online.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.systemd}/bin/systemd-cat --identifier=av-scan ${pkgs.clamav}/bin/clamdscan --quiet --recursive --fdpass ${toString all-user-folders}";
-    };
-  };
+  #systemd.services.av-user-scan = {
+  #  description = "scan normal user directories for suspect files";
+  #  after = [ "network-online.target" ];
+  #  serviceConfig = {
+  #    Type = "oneshot";
+  #    ExecStart = "${pkgs.systemd}/bin/systemd-cat --identifier=av-scan ${pkgs.clamav}/bin/clamdscan --quiet --recursive --fdpass ${toString all-user-folders}";
+  #  };
+  #};
 
   systemd.timers.av-all-scan = {
     description = "scan all directories for suspect files";
