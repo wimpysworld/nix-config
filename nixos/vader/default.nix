@@ -50,13 +50,6 @@
     };
   };
 
-  # Adjust MTU for Virgin Fibre
-  # - https://search.nixos.org/options?channel=23.11&show=networking.networkmanager.connectionConfig&from=0&size=50&sort=relevance&type=packages&query=networkmanager
-  networking.networkmanager.connectionConfig = {
-    "ethernet.mtu" = 1462;
-    "wifi.mtu" = 1462;
-  };
-
   programs.corectrl = {
     enable = true;
     gpuOverclock.enable = true;
