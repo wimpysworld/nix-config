@@ -22,7 +22,8 @@ lib.mkIf (isInstall) {
     opengl = {
       enable = true;
       driSupport = true;
-      driSupport32Bit = true;
+      # Enable 32-bit support for Steam
+      driSupport32Bit = config.programs.steam.enable;
     };
   };
   # TODO: Change to this for >= 24.11
