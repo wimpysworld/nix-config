@@ -19,6 +19,7 @@ in
     ./_mixins/features/bluetooth
     ./_mixins/features/distrobox
     ./_mixins/features/gpu
+    ./_mixins/features/locale
     ./_mixins/features/network
     ./_mixins/features/quickemu
     ./_mixins/features/snapcraft
@@ -61,26 +62,8 @@ in
 
   console = {
     font = "${pkgs.tamzen}/share/consolefonts/TamzenForPowerline10x20.psf";
-    keyMap = "uk";
     packages = with pkgs; [ tamzen ];
   };
-
-  i18n = {
-    defaultLocale = "en_GB.utf8";
-    extraLocaleSettings = {
-      LC_ADDRESS = "en_GB.utf8";
-      LC_IDENTIFICATION = "en_GB.utf8";
-      LC_MEASUREMENT = "en_GB.utf8";
-      LC_MONETARY = "en_GB.utf8";
-      LC_NAME = "en_GB.utf8";
-      LC_NUMERIC = "en_GB.utf8";
-      LC_PAPER = "en_GB.utf8";
-      LC_TELEPHONE = "en_GB.utf8";
-      LC_TIME = "en_GB.utf8";
-    };
-  };
-  services.xserver.xkb.layout = "gb";
-  time.timeZone = "Europe/London";
 
   # Only install the docs I use
   documentation.enable = true;
@@ -235,7 +218,6 @@ in
       }];
       extraConfig = ''
         font-size=14
-        xkb-layout=gb
       '';
     };
     smartd.enable = isInstall;
