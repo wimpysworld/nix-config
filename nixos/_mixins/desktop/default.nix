@@ -8,6 +8,7 @@ in
     ./features/appimage
     ./features/flatpak
     ./features/pipewire
+    ./features/scan
     ./apps/chromium
     ./apps/firefox
     ./apps/obs-studio
@@ -96,11 +97,6 @@ in
       mouseBatteryNotifier = true;
       syncEffectsEnabled = true;
       users = [ "${username}" ];
-    };
-    sane = lib.mkIf (isInstall) {
-      enable = true;
-      #extraBackends = with pkgs; [ hplipWithPlugin sane-airscan ];
-      extraBackends = with pkgs; [ sane-airscan ];
     };
   };
 

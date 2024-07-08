@@ -23,7 +23,6 @@ in
     systemPackages = (with pkgs; [
       mate.caja-with-extensions
     ] ++ lib.optionals (isInstall) [
-      gnome.simple-scan
       loupe
       pick-colour-picker
     ]);
