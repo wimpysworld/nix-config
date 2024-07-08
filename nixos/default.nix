@@ -30,6 +30,7 @@ in
     ./${hostname}
     ./_mixins/features/bluetooth
     ./_mixins/features/distrobox
+    ./_mixins/features/quickemu
     ./_mixins/features/zram
     ./_mixins/configs
     ./_mixins/users
@@ -117,9 +118,6 @@ in
       smartmontools
       sops
       ssh-to-age
-    ] ++ lib.optionals (isInstall && isWorkstation && notVM) [
-      inputs.quickemu.packages.${platform}.default
-      inputs.quickgui.packages.${platform}.default
     ] ++ lib.optionals (isInstall && hasNvidia) [
       nvtopPackages.full
       vdpauinfo
@@ -331,6 +329,5 @@ in
 
   virtualisation = lib.mkIf (isInstall) {
     lxd.enable = true;
-    spiceUSBRedirection.enable = true;
   };
 }
