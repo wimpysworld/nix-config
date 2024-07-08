@@ -17,7 +17,6 @@ in
     systemPackages = (with pkgs; lib.optionals (isInstall) [
       evolutionWithPlugins
       gnome.gucharmap
-      gnome.simple-scan
       gnome-firmware
       loupe
     ]);

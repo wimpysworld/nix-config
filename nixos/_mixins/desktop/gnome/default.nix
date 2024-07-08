@@ -29,7 +29,6 @@ in
     ] ++ lib.optionals (isInstall) [
       eyedropper
       gnome.gnome-tweaks
-      gnome.simple-scan
       gnomeExtensions.freon
       loupe
     ] ++ lib.optionals (isThinkpad) [
