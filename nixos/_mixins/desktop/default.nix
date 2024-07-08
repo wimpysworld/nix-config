@@ -1,4 +1,4 @@
-{ desktop, hostname, lib, pkgs, username, ... }:
+{ config, desktop, hostname, lib, pkgs, username, ... }:
 let
   # https://nixos.wiki/wiki/Steam
   isGamestation = if (hostname == "phasma" || hostname == "vader") && (desktop != null) then true else false;
@@ -70,7 +70,8 @@ in
 
     fontconfig = {
       antialias = true;
-      cache32Bit = isGamestation;
+      # Enable 32-bit support for Steam
+      cache32Bit = config.programs.steam.enable;
       defaultFonts = {
         serif = [ "Source Serif" ];
         sansSerif = [ "Work Sans" "Fira Sans" ];
