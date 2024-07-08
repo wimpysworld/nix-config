@@ -17,6 +17,7 @@ in
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
     ./_mixins/features/bluetooth
+    ./_mixins/features/console
     ./_mixins/features/distrobox
     ./_mixins/features/gpu
     ./_mixins/features/locale
@@ -39,9 +40,6 @@ in
       "rd.systemd.show_status=false"
       "rd.udev.log_level=3"
       "udev.log_priority=3"
-      "vt.default_red=30,243,166,249,137,245,148,186,88,243,166,249,137,245,148,166"
-      "vt.default_grn=30,139,227,226,180,194,226,194,91,139,227,226,180,194,226,173"
-      "vt.default_blu=46,168,161,175,250,231,213,222,112,168,161,175,250,231,213,200"
     ];
     kernelPackages = pkgs.linuxPackages_latest;
     # Only enable the systemd-boot on installs, not live media (.ISO images)
@@ -53,16 +51,6 @@ in
       systemd-boot.memtest86.enable = true;
       timeout = 10;
     };
-  };
-
-  catppuccin = {
-    accent = "blue";
-    flavor = "mocha";
-  };
-
-  console = {
-    font = "${pkgs.tamzen}/share/consolefonts/TamzenForPowerline10x20.psf";
-    packages = with pkgs; [ tamzen ];
   };
 
   # Only install the docs I use
@@ -209,17 +197,6 @@ in
     };
     fwupd.enable = isInstall;
     hardware.bolt.enable = true;
-    kmscon = lib.mkIf (isInstall) {
-      enable = true;
-      hwRender = true;
-      fonts = [{
-        name = "FiraCode Nerd Font Mono";
-        package = pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; };
-      }];
-      extraConfig = ''
-        font-size=14
-      '';
-    };
     smartd.enable = isInstall;
   };
 
