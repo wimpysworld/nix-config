@@ -1,7 +1,5 @@
 { config, desktop, hostname, lib, pkgs, username, ... }:
 let
-  # https://nixos.wiki/wiki/Steam
-  isGamestation = if (hostname == "phasma" || hostname == "vader") && (desktop != null) then true else false;
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   hasRazerPeripherals = if (hostname == "phasma" || hostname == "vader") then true else false;
 in
@@ -12,6 +10,7 @@ in
     ./apps/chromium
     ./apps/firefox
     ./apps/obs-studio
+    ./apps/steam
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {
@@ -46,8 +45,6 @@ in
     wmctrl
     xdotool
     ydotool
-  ] ++ lib.optionals (isGamestation) [
-    mangohud
   ] ++ lib.optionals (isInstall && hasRazerPeripherals) [
     polychromatic
   ];
@@ -109,11 +106,6 @@ in
 
   programs = {
     appimage.binfmt = true;
-    steam = lib.mkIf (isGamestation) {
-      enable = true;
-      remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
-      dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
-    };
     system-config-printer = lib.mkIf (isInstall) {
       enable = if (desktop == "mate") then true else false;
     };
