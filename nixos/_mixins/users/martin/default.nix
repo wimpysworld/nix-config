@@ -11,6 +11,7 @@ in
       _1password-gui
       brave
       celluloid
+      davinci-resolve
       fractal
       gnome.dconf-editor
       gnome.gnome-sound-recorder
