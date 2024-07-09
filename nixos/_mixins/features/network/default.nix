@@ -11,18 +11,22 @@ let
     ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
 
-  # Firewall configuration variable for syncthing
-  syncthing = {
-    hosts = [
-      "phasma"
-      "sidious"
-      "tanis"
-      "vader"
-      "revan"
-    ];
-    tcpPorts = [ 22000 ];
-    udpPorts = [ 22000 21027 ];
+  # Per-host firewall configuration; mostly for Syncthing which is configured via Home Manager
+  allowedTCPPorts = {
+    phasma  = [ 22000 ];
+    sidious = [ 22000 ];
+    tanis   = [ 22000 ];
+    vader   = [ 22000 ];
+    revan   = [ 22000 ];
   };
+  allowedUDPPorts = {
+    phasma  = [ 22000 21027 ];
+    sidious = [ 22000 21027 ];
+    tanis   = [ 22000 21027 ];
+    vader   = [ 22000 21027 ];
+    revan   = [ 22000 21027 ];
+  };
+
   # Define DNS settings for specific users
   # - https://mullvad.net/en/help/dns-over-https-and-dns-over-tls
   fallbackDns = [ "194.242.2.2#dns.mullvad.net" ];
@@ -57,10 +61,8 @@ in
     '';
     firewall = {
       enable = true;
-      allowedTCPPorts = [ ]
-        ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.tcpPorts;
-      allowedUDPPorts = [ ]
-        ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.udpPorts;
+      allowedTCPPorts = lib.optionals (builtins.hasAttr hostname allowedTCPPorts) allowedTCPPorts.${hostname};
+      allowedUDPPorts = lib.optionals (builtins.hasAttr hostname allowedUDPPorts) allowedUDPPorts.${hostname};
       trustedInterfaces = trustedInterfaces;
     };
     hostName = hostname;
