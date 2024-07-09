@@ -4,6 +4,7 @@ let
   isWorkstation = if (desktop != null) then true else false;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
   hasAmdGPU = config.hardware.amdgpu.initrd.enable;
+  hasIntelGPU = builtins.isString config.hardware.intelgpu.driver;
 in
 lib.mkIf (isInstall) {
   environment = {
