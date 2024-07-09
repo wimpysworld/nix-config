@@ -2,14 +2,30 @@
 { inputs, ... }:
 {
   # This one brings our custom packages from the 'pkgs' directory
-  additions = final: _prev: import ../pkgs { pkgs = final; };
+  additions = final: prev: import ../pkgs { pkgs = final; };
 
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
-  modifications = _final: prev: {
+  modifications = final: prev: {
+    # https://discourse.nixos.org/t/davinci-resolve-studio-install-issues/37699/44
+    # https://theholytachanka.com/posts/setting-up-resolve/
+    davinci-resolve = prev.davinci-resolve.override (old: {
+      buildFHSEnv = a: (old.buildFHSEnv (a // {
+        extraBwrapArgs = a.extraBwrapArgs ++ [
+          "--bind /run/opengl-driver/etc/OpenCL /etc/OpenCL"
+        ];
+      }));
+    });
+    davinci-resolve-studio = prev.davinci-resolve-studio.override (old: {
+      buildFHSEnv = a: (old.buildFHSEnv (a // {
+        extraBwrapArgs = a.extraBwrapArgs ++ [
+          "--bind /run/opengl-driver/etc/OpenCL /etc/OpenCL"
+        ];
+      }));
+    });
     #linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
-    #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( _old: rec {
+    #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
     #    pname = "mwprocapture";
     #    subVersion = "4390";
     #    version = "1.3.0.${subVersion}";
@@ -20,7 +36,7 @@
     #  });
     #});
 
-    #wavebox = prev.wavebox.overrideAttrs ( _old: rec {
+    #wavebox = prev.wavebox.overrideAttrs ( old: rec {
     #  pname = "wavebox";
     #  version = "10.125.53-2";
     #  src = prev.fetchurl {
@@ -32,7 +48,7 @@
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
   # be accessible through 'pkgs.unstable'
-  unstable-packages = final: _prev: {
+  unstable-packages = final: prev: {
     unstable = import inputs.nixpkgs-unstable {
       inherit (final) system;
       config.allowUnfree = true;
