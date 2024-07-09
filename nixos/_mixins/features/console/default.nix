@@ -25,8 +25,9 @@ in
   services = {
     kmscon = lib.mkIf (isInstall) {
       enable = true;
-      hwRender = config.services.kmscon.enable;
-      fonts = lib.mkIf (config.services.kmscon.enable) [{
+      #hwRender = config.services.kmscon.enable;
+      hwRender = true;
+      fonts = [{
         name = "FiraCode Nerd Font Mono";
         package = pkgs.nerdfonts.override { fonts = [ "FiraCode" "NerdFontsSymbolsOnly" ]; };
       }];
