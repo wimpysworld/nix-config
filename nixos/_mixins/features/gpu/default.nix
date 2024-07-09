@@ -19,6 +19,8 @@ lib.mkIf (isInstall) {
       nvtopPackages.full
     ] ++ lib.optionals (!hasNvidiaGPU) [
       nvtopPackages.amd
+    ] ++ lib.optionals (hasAmdGPU) [
+      amdgpu_top
     ];
   };
   hardware = {
