@@ -29,8 +29,8 @@ in
     pipewire = {
       enable = true;
       alsa.enable = true;
-      # Enable 32-bit support for Steam;
-      alsa.support32Bit = config.programs.steam.enable;
+      # Enable 32-bit support if driSupport32Bit is true
+      alsa.support32Bit = lib.mkForce config.hardware.opengl.driSupport32Bit;
       jack.enable = false;
       pulse.enable = true;
       wireplumber = {

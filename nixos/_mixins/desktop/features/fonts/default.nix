@@ -22,8 +22,8 @@ in
 
     fontconfig = {
       antialias = true;
-      # Enable 32-bit support for Steam
-      cache32Bit = config.programs.steam.enable;
+      # Enable 32-bit support if driSupport32Bit is true
+      cache32Bit = lib.mkForce config.hardware.opengl.driSupport32Bit;
       defaultFonts = {
         serif = [ "Source Serif" ];
         sansSerif = [ "Work Sans" "Fira Sans" ];

@@ -39,7 +39,7 @@ lib.mkIf (isInstall) {
     opengl = {
       enable = true;
       driSupport = true;
-      # Enable 32-bit support for Steam
+      driSupport32Bit = lib.mkForce isInstall;
       extraPackages = with pkgs; lib.optionals (hasIntelGPU) [
         intel-compute-runtime
       ];
@@ -52,7 +52,7 @@ lib.mkIf (isInstall) {
   #hardware
   #  graphics = {
   #    enable = true;
-  #    enable32Bit = config.programs.steam.enable;
+  #    enable32Bit = lib.mkForce isInstall;
   #  };
   #};
   programs = {
