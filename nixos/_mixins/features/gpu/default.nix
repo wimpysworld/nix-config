@@ -12,6 +12,8 @@ lib.mkIf (isInstall) {
       libva-utils
       vdpauinfo
       vulkan-tools
+    ] ++ lib.optionals (isWorkstation) [
+      gpu-viewer
     ] ++ lib.optionals (hasNvidiaGPU) [
       nvtopPackages.full
     ] ++ lib.optionals (!hasNvidiaGPU) [
