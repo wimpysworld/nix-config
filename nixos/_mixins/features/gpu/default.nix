@@ -27,6 +27,9 @@ lib.mkIf (isInstall) {
       nvtopPackages.amd
     ] ++ lib.optionals (hasAmdGPU) [
       amdgpu_top
+    ] ++ lib.optionals (config.hardware.amdgpu.opencl.enable) [
+      rocmPackages.rocminfo
+      rocmPackages.rocm-smi
     ];
   };
   hardware = {
