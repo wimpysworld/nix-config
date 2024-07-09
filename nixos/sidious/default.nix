@@ -29,7 +29,6 @@
         # Make the Intel iGP default. The NVIDIA Quadro is for CUDA/NVENC
         reverseSync.enable = true;
       };
-      nvidiaSettings = false;
     };
   };
 

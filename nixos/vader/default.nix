@@ -46,7 +46,6 @@
         # Make the Radeon RX6700 XT default; the NVIDIA T1000 is for CUDA/NVENC
         reverseSync.enable = true;
       };
-      nvidiaSettings = false;
     };
   };
 
