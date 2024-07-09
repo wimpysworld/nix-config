@@ -73,7 +73,6 @@ in
     ] ++ lib.optionals (isInstall) [
       inputs.fh.packages.${platform}.default
       inputs.nixos-needtoreboot.packages.${platform}.default
-      flyctl
       nvd
       nvme-cli
       smartmontools
