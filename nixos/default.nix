@@ -187,8 +187,8 @@ in
       nssmdns4 = true;
       publish = {
         addresses = true;
-      	enable = true;
-      	workstation = isWorkstation;
+        enable = true;
+        workstation = isWorkstation;
       };
     };
     fwupd.enable = isInstall;
