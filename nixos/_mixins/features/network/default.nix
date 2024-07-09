@@ -1,6 +1,10 @@
 { config, desktop, hostname, lib, pkgs, username, ... }:
 let
   isWorkstation = if (desktop != null) then true else false;
+  unmanagedInterfaces = [ ]
+    ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
+    ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
+
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
@@ -73,10 +77,14 @@ in
                             userDnsSettings.${username}
                           else
                             defaultDns;
+      unmanaged = unmanagedInterfaces;
       wifi.backend = "iwd";
     };
     useDHCP = lib.mkDefault true;
   };
   # Use resolved for DNS resolution; tailscale requires it
   services.resolved.enable = true;
+
+  # Workaround https://github.com/NixOS/nixpkgs/issues/180175
+  systemd.services.NetworkManager-wait-online.enable = false;
 }
