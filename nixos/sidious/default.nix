@@ -49,4 +49,5 @@
       #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
     };
   };
+  services.xserver.videoDrivers = [ "i915" "nvidia" ];
 }

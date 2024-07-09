@@ -59,6 +59,6 @@
         "42 * * * * ${username} /home/${username}/Scripts/backup/sync-hotshotracing.sh >> /home/${username}/Games/Steam_Backups/hotshotracing.log"
       ];
     };
-    xserver.videoDrivers = [ "amdgpu" "nvidia" ];
   };
+  services.xserver.videoDrivers = [ "amdgpu" "nvidia" ];
 }
