@@ -45,9 +45,5 @@
       #tod.enable = true;
       #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
     };
-    kmscon.extraConfig = lib.mkForce ''
-      font-size=24
-      xkb-layout=gb
-    '';
   };
 }
