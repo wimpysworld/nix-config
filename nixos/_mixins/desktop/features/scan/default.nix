@@ -19,7 +19,5 @@ lib.mkIf (isInstall) {
     extraBackends = with pkgs; lib.mkIf (config.hardware.sane.enable) [ sane-airscan ];
   };
 
-  users.users.${username} = lib.mkIf (config.hardware.sane.enable) {
-    extraGroups = [ "scanner" ];
-  };
+  users.users.${username}.extraGroups = lib.optionals (config.hardware.sane.enable) [ "scanner" ];
 }
