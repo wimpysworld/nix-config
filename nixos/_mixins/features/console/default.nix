@@ -1,6 +1,14 @@
 { config, hostname, lib, pkgs, ... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  kmsconFontSize = {
+    sidious = "24";
+    tanis = "18";
+  };
+  kmsconExtraConfig = if (builtins.hasAttr hostname kmsconFontSize) then
+                        ''font-size=${kmsconFontSize.${hostname}}''
+                      else
+                        ''font-size=14'';
 in
 {
   boot = {
@@ -31,9 +39,7 @@ in
         name = "FiraCode Nerd Font Mono";
         package = pkgs.nerdfonts.override { fonts = [ "FiraCode" "NerdFontsSymbolsOnly" ]; };
       }];
-      extraConfig = ''
-        font-size=14
-      '';
+      extraConfig = kmsconExtraConfig;
     };
   };
 }

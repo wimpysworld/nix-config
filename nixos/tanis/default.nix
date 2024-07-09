@@ -30,9 +30,4 @@
 
     kernelPackages = lib.mkForce pkgs.linuxPackages_6_6;
   };
-
-  services.kmscon.extraConfig = lib.mkForce ''
-    font-size=18
-    xkb-layout=gb
-  '';
 }
