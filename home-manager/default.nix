@@ -541,7 +541,6 @@ in
       enableFishIntegration = true;
       enableZshIntegration = true;
       catppuccin.enable = true;
-      package = pkgs.yazi;
       settings = {
         manager = {
           show_hidden = false;
@@ -555,7 +554,6 @@ in
     };
     yt-dlp = {
       enable = true;
-      package = pkgs.yt-dlp;
       settings ={
         audio-format = "best";
         audio-quality = 0;
