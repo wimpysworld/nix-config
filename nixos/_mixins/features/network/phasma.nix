@@ -1,17 +1,7 @@
-{ desktop, lib, pkgs, ... }:
-let
-  isWorkstation = if (desktop != null) then true else false;
-in
-lib.mkIf (isWorkstation) {
+{ config, lib, ... }:
+{
   # Disable WiFi power saving
-  networking.networkmanager.wifi.powersave = true;
-  systemd.services = {
-    disable-wifi-powersave = {
-      wantedBy = ["multi-user.target"];
-      path = [ pkgs.iw ];
-      script = ''
-        iw dev wlan0 set power_save off
-      '';
-    };
+  networking.networkmanager = lib.mkIf (config.networking.networkmanager.enable) {
+    wifi.powersave = true;
   };
 }

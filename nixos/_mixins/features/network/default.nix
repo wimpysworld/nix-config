@@ -92,6 +92,14 @@ in
   # Use resolved for DNS resolution; tailscale requires it
   services.resolved.enable = true;
 
+  # Belt and braces disable WiFi power saving
+  systemd.services.disable-wifi-powersave = lib.mkIf (config.networking.networkmanager.wifi.powersave) {
+    wantedBy = ["multi-user.target"];
+    path = [ pkgs.iw ];
+    script = ''
+      iw dev wlan0 set power_save off
+    '';
+  };
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175
   systemd.services.NetworkManager-wait-online.enable = false;
 }
