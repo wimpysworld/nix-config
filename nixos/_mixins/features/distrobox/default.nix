@@ -2,7 +2,7 @@
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   isWorkstation = if (desktop != null) then true else false;
-  hasNvidia = lib.elem "nvidia" config.services.xserver.videoDrivers;
+  hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
 lib.mkIf (isInstall) {
   #https://nixos.wiki/wiki/Podman
@@ -15,8 +15,9 @@ lib.mkIf (isInstall) {
     ]);
   };
 
+  hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
+
   virtualisation =  {
-    containers.cdi.dynamic.nvidia.enable = hasNvidia;
     podman = {
       defaultNetwork.settings = {
         dns_enabled = true;
