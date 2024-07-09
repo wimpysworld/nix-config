@@ -55,11 +55,5 @@
     };
   };
 
-  services = {
-    udev.extraRules = ''
-      # Remove NVIDIA Audio devices, if present
-      ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x040300", ATTR{power/control}="auto", ATTR{remove}="1"
-    '';
-    xserver.videoDrivers = [ "amdgpu" "nvidia" ];
-  };
+  services.xserver.videoDrivers = [ "amdgpu" "nvidia" ];
 }
