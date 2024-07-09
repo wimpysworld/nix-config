@@ -29,6 +29,9 @@ lib.mkIf (isInstall) {
     ];
   };
   hardware = {
+    amdgpu = lib.mkIf (hasAmdGPU) {
+      opencl.enable = lib.mkIf (isInstall) true;
+    };
     opengl = {
       enable = true;
       driSupport = true;
