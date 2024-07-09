@@ -1,4 +1,4 @@
-{ config, desktop, hostname, lib, pkgs, ... }:
+{ config, desktop, hostname, lib, pkgs, username, ... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   useLowLatencyPipewire = if (hostname == "phasma" || hostname == "vader") then true else false;
@@ -123,4 +123,6 @@ in
       ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x040300", ATTR{power/control}="auto", ATTR{remove}="1"
     '';
   };
+
+  users.users.${username}.extraGroups = lib.optionals (config.security.rtkit.enable) [ "rtkit" ];
 }

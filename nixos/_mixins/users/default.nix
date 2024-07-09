@@ -22,7 +22,6 @@ in
       "docker"
       "lxd"
       "podman"
-      "rtkit"
     ];
     homeMode = "0755";
     isNormalUser = true;
