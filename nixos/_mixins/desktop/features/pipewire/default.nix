@@ -1,7 +1,6 @@
 { config, desktop, hostname, lib, pkgs, ... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
-  isWorkstation = if (desktop != null) then true else false;
   useLowLatencyPipewire = if (hostname == "phasma" || hostname == "vader") then true else false;
 in
 {
@@ -13,7 +12,6 @@ in
 
   environment.systemPackages = (with pkgs; lib.optionals (isInstall) [
     pulseaudio
-  ] ++ lib.optionals (isInstall && isWorkstation) [
     pavucontrol
   ]);
 

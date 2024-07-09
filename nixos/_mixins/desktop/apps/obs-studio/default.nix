@@ -1,7 +1,6 @@
 { config, desktop, hostname, lib, pkgs, username, ... }:
 let
-  isWorkstation = if (desktop != null) then true else false;
-  isStreamstation = if (hostname == "phasma" || hostname == "vader") && (isWorkstation) then true else false;
+  isStreamstation = if (hostname == "phasma" || hostname == "vader") then true else false;
 in
 {
   imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
