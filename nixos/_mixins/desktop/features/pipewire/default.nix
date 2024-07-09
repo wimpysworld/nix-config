@@ -12,7 +12,7 @@ in
 
   environment.systemPackages = (with pkgs; lib.optionals (isInstall) [
     pulseaudio
-    pavucontrol
+    pwvucontrol
   ]);
 
   hardware.pulseaudio.enable = lib.mkForce false;
