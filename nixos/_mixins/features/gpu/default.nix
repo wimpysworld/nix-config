@@ -40,7 +40,9 @@ lib.mkIf (isInstall) {
       enable = true;
       driSupport = true;
       # Enable 32-bit support for Steam
-      driSupport32Bit = config.programs.steam.enable;
+      extraPackages = with pkgs; lib.optionals (hasIntelGPU) [
+        intel-compute-runtime
+      ];
     };
     nvidia = lib.mkIf (hasNvidiaGPU) {
       nvidiaSettings = lib.mkDefault isWorkstation;
