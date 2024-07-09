@@ -20,6 +20,7 @@ in
     ./_mixins/features/locale
     ./_mixins/features/network
     ./_mixins/features/quickemu
+    ./_mixins/features/rgb
     ./_mixins/features/snapcraft
     ./_mixins/features/zram
     ./_mixins/services/ssh
