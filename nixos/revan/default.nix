@@ -62,7 +62,6 @@
 
   hardware = {
     nvidia = {
-      package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
       prime = {
         intelBusId = "PCI:0:2:0";
         nvidiaBusId = "PCI:2:0:0";
