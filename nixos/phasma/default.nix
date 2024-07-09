@@ -39,7 +39,6 @@
   hardware = {
     mwProCapture.enable = true;
     nvidia = {
-      package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.production;
       prime = {
         amdgpuBusId = "PCI:34:0:0";
         nvidiaBusId = "PCI:31:0:0";
