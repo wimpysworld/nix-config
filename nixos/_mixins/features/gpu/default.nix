@@ -15,6 +15,7 @@ lib.mkIf (isInstall) {
     ] ++ lib.optionals (isWorkstation) [
       gpu-viewer
     ] ++ lib.optionals (hasNvidiaGPU) [
+      nvitop
       nvtopPackages.full
     ] ++ lib.optionals (!hasNvidiaGPU) [
       nvtopPackages.amd
