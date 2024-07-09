@@ -15,6 +15,8 @@ lib.mkIf (isInstall) {
       vulkan-tools
     ] ++ lib.optionals (isWorkstation) [
       gpu-viewer
+    ] ++ lib.optionals (isWorkstation && hasAmdGPU) [
+      lact
     ] ++ lib.optionals (hasNvidiaGPU) [
       nvitop
       nvtopPackages.full
@@ -43,9 +45,19 @@ lib.mkIf (isInstall) {
   #  };
   #};
   programs = {
-    corectrl = lib.mkIf (isWorkstation) {
+    corectrl = lib.mkIf (isInstall && isWorkstation) {
       enable = config.hardware.cpu.amd.updateMicrocode;
       gpuOverclock.enable = hasAmdGPU;
     };
+  };
+
+  # Enable `lact` daemon for AMD GPUs
+  systemd.services.lactd = lib.mkIf (hasAmdGPU) {
+    description = "AMDGPU Control Daemon";
+    enable = true;
+    serviceConfig = {
+      ExecStart = "${pkgs.lact}/bin/lact daemon";
+    };
+    wantedBy = ["multi-user.target"];
   };
 }
