@@ -28,7 +28,7 @@ in
       hwRender = config.services.kmscon.enable;
       fonts = lib.mkIf (config.services.kmscon.enable) [{
         name = "FiraCode Nerd Font Mono";
-        package = pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; };
+        package = pkgs.nerdfonts.override { fonts = [ "FiraCode" "NerdFontsSymbolsOnly" ]; };
       }];
       extraConfig = ''
         font-size=14
