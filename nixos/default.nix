@@ -150,15 +150,6 @@ in
   };
 
   services = {
-    avahi = {
-      enable = true;
-      nssmdns4 = true;
-      publish = {
-        addresses = true;
-        enable = true;
-        workstation = isWorkstation;
-      };
-    };
     fwupd.enable = isInstall;
     hardware.bolt.enable = true;
     smartd.enable = isInstall;

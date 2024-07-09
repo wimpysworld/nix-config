@@ -24,28 +24,17 @@ let
     udpPorts = [ 22000 21027 ];
   };
   # Define DNS settings for specific users
-  # - https://cleanbrowsing.org/filters/
-  defaultDns = [ "1.1.1.1" "1.0.0.1" ];
-  userDnsSettings = {
-    # Security Filter:
-    # - Blocks access to phishing, spam, malware and malicious domains.
-    martin = [ "185.228.168.9" "185.228.169.9" ];
+  # - https://mullvad.net/en/help/dns-over-https-and-dns-over-tls
+  fallbackDns = [ "194.242.2.2#dns.mullvad.net" ];
+  userDns = {
+    # adblock.dns.mullvad.net; ads, trackers
+    martin = [ "194.242.2.3#adblock.dns.mullvad.net" ];
 
-    # Adult Filter:
-    # - Blocks access to all adult, pornographic and explicit sites.
-    # - It does not block proxy or VPNs, nor mixed-content sites.
-    # - Sites like Reddit are allowed.
-    # - Google and Bing are set to the Safe Mode.
-    # - Malicious and Phishing domains are blocked.
-    louise = [ "185.228.168.10" "185.228.169.11" ];
+    # base.dns.mullvad.net; ads, trackers, malware
+    louise = [ "194.242.2.4#base.dns.mullvad.net" ];
 
-    # Family Filter:
-    # - Blocks access to all adult, pornographic and explicit sites.
-    # - It also blocks proxy and VPN domains that are used to bypass the filters.
-    # - Mixed content sites (like Reddit) are also blocked.
-    # - Google, Bing and Youtube are set to the Safe Mode.
-    # - Malicious and Phishing domains are blocked.
-    agatha = [ "185.228.168.168" "185.228.169.168" ];
+    # family.dns.mullvad.net; ads, trackers, malware, adult, gambling
+    agatha = [ "194.242.2.6#family.dns.mullvad.net" ];
   };
 in
 {
@@ -75,22 +64,38 @@ in
       trustedInterfaces = trustedInterfaces;
     };
     hostName = hostname;
-    # Use resolved for DNS resolution; tailscale requires it
+    nameservers = if builtins.hasAttr username userDns then
+                    userDns.${username}
+                  else
+                    fallbackDns;
     networkmanager = lib.mkIf (isWorkstation) {
+      # Use resolved for DNS resolution; tailscale MagicDNS requires it
       dns = "systemd-resolved";
       enable = true;
-      # Conditionally set Public DNS based on username, defaulting if user not matched
-      insertNameservers = if builtins.hasAttr username userDnsSettings then
-                            userDnsSettings.${username}
-                          else
-                            defaultDns;
       unmanaged = unmanagedInterfaces;
       wifi.backend = "iwd";
     };
     useDHCP = lib.mkDefault true;
   };
-  # Use resolved for DNS resolution; tailscale requires it
-  services.resolved.enable = true;
+  services = {
+    avahi = {
+      enable = true;
+      nssmdns4 = true;
+      publish = {
+        addresses = true;
+        enable = true;
+        workstation = isWorkstation;
+      };
+    };
+    # Use resolved for DNS resolution; tailscale MagicDNS requires it
+    resolved = {
+      enable = true;
+      domains = [ "~." ];
+      dnsovertls = "true";
+      dnssec = "false";
+      fallbackDns = fallbackDns;
+    };
+  };
 
   # Belt and braces disable WiFi power saving
   systemd.services.disable-wifi-powersave = lib.mkIf (config.networking.networkmanager.wifi.powersave) {
