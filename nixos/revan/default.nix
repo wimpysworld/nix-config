@@ -33,7 +33,6 @@
   ];
 
   boot = {
-    blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "ahci" "nvme" "uas" "usbhid" "sd_mod" "xhci_pci" ];
     kernelModules = [ "kvm-intel" "nvidia" ];
     swraid = {
