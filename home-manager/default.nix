@@ -13,6 +13,7 @@ in
     inputs.catppuccin.homeManagerModules.catppuccin
     inputs.sops-nix.homeManagerModules.sops
     inputs.nix-index-database.hmModules.nix-index
+    ./_mixins/features/fonts
   ]
   ++ lib.optional (builtins.pathExists (./. + "/_mixins/users/${username}")) ./_mixins/users/${username}
   ++ lib.optional (builtins.pathExists (./. + "/_mixins/hosts/${hostname}")) ./_mixins/hosts/${hostname}
@@ -45,10 +46,6 @@ in
     # A Modern Unix experience
     # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages = with pkgs; [
-      (nerdfonts.override { fonts = [ "FiraCode" "NerdFontsSymbolsOnly" ]; })
-      symbola
-      ubuntu_font_family
-      work-sans
       asciicam # Terminal webcam
       asciinema-agg # Convert asciinema to .gif
       asciinema # Terminal recorder
