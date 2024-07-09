@@ -1,7 +1,6 @@
 { config, desktop, hostname, lib, pkgs, username, ... }:
 let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
-  hasRazerPeripherals = if (hostname == "phasma" || hostname == "vader") then true else false;
 in
 {
   imports = [
@@ -48,20 +47,7 @@ in
     wmctrl
     xdotool
     ydotool
-  ] ++ lib.optionals (isInstall && hasRazerPeripherals) [
-    polychromatic
   ];
-
-  hardware = {
-    openrazer = lib.mkIf (hasRazerPeripherals) {
-      enable = true;
-      devicesOffOnScreensaver = false;
-      keyStatistics = true;
-      mouseBatteryNotifier = true;
-      syncEffectsEnabled = true;
-      users = [ "${username}" ];
-    };
-  };
 
   services = {
     # Provides users with access to all Elgato StreamDecks.
