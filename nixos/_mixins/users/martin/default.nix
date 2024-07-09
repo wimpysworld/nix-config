@@ -1,6 +1,8 @@
 { config, desktop, hostname, inputs, lib, pkgs, platform, username, ... }:
 let
   isWorkstation = if (desktop != null) then true else false;
+  hasCUDA = lib.elem "cudaPackages.cudatoolkit" config.environment.systemPackages;
+  hasOpenCL = config.hardware.amdgpu.opencl.enable;
 in
 {
   environment = {
@@ -9,6 +11,10 @@ in
       lastpass-cli
     ] ++ lib.optionals (isWorkstation) [
       _1password-gui
+      (blender.override {
+        cudaSupport = hasCUDA;
+        hipSupport = hasOpenCL;
+      })
       brave
       celluloid
       davinci-resolve
