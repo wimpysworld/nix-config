@@ -20,6 +20,7 @@ lib.mkIf (isInstall) {
     ] ++ lib.optionals (isWorkstation && hasNvidiaGPU) [
       gwe
     ] ++ lib.optionals (hasNvidiaGPU) [
+      cudaPackages.cudatoolkit
       nvitop
       nvtopPackages.full
     ] ++ lib.optionals (!hasNvidiaGPU) [
