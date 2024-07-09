@@ -30,6 +30,9 @@ lib.mkIf (isInstall) {
       # Enable 32-bit support for Steam
       driSupport32Bit = config.programs.steam.enable;
     };
+    nvidia = lib.mkIf (hasNvidiaGPU) {
+      nvidiaSettings = lib.mkDefault isWorkstation;
+    };
   };
   # TODO: Change to this for >= 24.11
   #hardware

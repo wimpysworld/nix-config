@@ -69,7 +69,6 @@
         # Make the Intel iGPU default. The NVIDIA T400 is for CUDA/NVENC
         reverseSync.enable = true;
       };
-      nvidiaSettings = false;
     };
   };
 
