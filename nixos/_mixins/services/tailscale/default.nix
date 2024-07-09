@@ -9,10 +9,7 @@ in
       trayscale
     ];
   };
-  # Trust the tailscale interface, if tailscale is enabled
-  networking.firewall = lib.mkIf (config.services.tailscale.enable) {
-    trustedInterfaces = [ "tailscale0" ];
-  };
+
   services.tailscale = {
     enable = true;
     extraUpFlags = [ "--accept-routes" "--operator=${username}" "--ssh" ];

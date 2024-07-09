@@ -5,6 +5,12 @@ let
     ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
 
+  # Trust the lxd bridge interface, if lxd is enabled
+  # Trust the tailscale interface, if tailscale is enabled
+  trustedInterfaces = [ ]
+    ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
+    ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
+
   # Firewall configuration variable for syncthing
   syncthing = {
     hosts = [
@@ -66,6 +72,7 @@ in
         ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.tcpPorts;
       allowedUDPPorts = [ ]
         ++ lib.optionals (builtins.elem hostname syncthing.hosts) syncthing.udpPorts;
+      trustedInterfaces = trustedInterfaces;
     };
     hostName = hostname;
     # Use resolved for DNS resolution; tailscale requires it
