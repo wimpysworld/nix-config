@@ -50,11 +50,6 @@
     };
   };
 
-  programs.corectrl = {
-    enable = true;
-    gpuOverclock.enable = true;
-  };
-
   services = {
     cron = {
       enable = true;
