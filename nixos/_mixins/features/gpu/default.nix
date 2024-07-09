@@ -7,6 +7,12 @@ let
   hasIntelGPU = lib.any (mod: lib.elem mod config.boot.initrd.kernelModules) ["i915" "xe"];
 in
 lib.mkIf (isInstall) {
+
+  # If the "nvidia" driver is enabled, blacklist the "nouveau" driver
+  boot = lib.mkIf (hasNvidiaGPU) {
+    blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
+  };
+
   environment = {
     systemPackages = with pkgs; [
       clinfo

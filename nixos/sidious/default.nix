@@ -15,7 +15,6 @@
   ];
 
   boot = {
-    blacklistedKernelModules = lib.mkDefault [ "nouveau" ];
     initrd.availableKernelModules = [ "xhci_pci" "nvme" "uas" "usb_storage" "sd_mod" ];
     initrd.systemd.enable = true;
     kernelModules = [ "kvm-intel" "nvidia" ];
