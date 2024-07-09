@@ -33,7 +33,6 @@ in
   services = {
     kmscon = lib.mkIf (isInstall) {
       enable = true;
-      #hwRender = config.services.kmscon.enable;
       hwRender = true;
       fonts = [{
         name = "FiraCode Nerd Font Mono";
