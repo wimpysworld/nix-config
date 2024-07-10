@@ -1,18 +1,15 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
+{ config, hostname, lib, pkgs, ... }:
 let
-  isStreamstation = if (hostname == "phasma" || hostname == "vader") then true else false;
+  installOn = [ "phasma" "vader" ];
 in
-{
-  imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
-
-  boot = lib.mkIf (isStreamstation) {
+lib.mkIf (lib.elem hostname installOn) {
+  boot = {
     extraModulePackages = with config.boot.kernelPackages; [ v4l2loopback ];
     extraModprobeConfig = ''
       options v4l2loopback devices=1 video_nr=13 card_label="OBS Virtual Camera" exclusive_caps=1
     '';
   };
-
-  environment = lib.mkIf (isStreamstation) {
+  environment = {
     systemPackages = with pkgs; [
       # https://nixos.wiki/wiki/OBS_Studio
       rhythmbox
