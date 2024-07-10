@@ -1,8 +1,8 @@
-{ config, desktop, hostname, lib, pkgs, ... }:
+{ config, hostname, lib, pkgs, ... }:
 let
-  isGamestation = if (hostname == "phasma" || hostname == "vader") && (desktop != null) then true else false;
+  installOn = [ "phasma" "vader" ];
 in
-lib.mkIf (isGamestation) {
+lib.mkIf (lib.elem hostname installOn) {
   # Only include mangohud if Steam is enabled
   environment.systemPackages = with pkgs; lib.mkIf (config.programs.steam.enable) [
     mangohud
