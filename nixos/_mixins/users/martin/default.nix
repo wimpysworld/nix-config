@@ -1,16 +1,10 @@
-{ config, desktop, hostname, inputs, lib, pkgs, platform, username, ... }:
+{ desktop, inputs, lib, pkgs, platform, username, ... }:
 let
   isWorkstation = if (desktop != null) then true else false;
-  hasCUDA = lib.elem "cudaPackages.cudatoolkit" config.environment.systemPackages;
-  hasOpenCL = config.hardware.amdgpu.opencl.enable;
 in
 {
   environment = {
     systemPackages = (with pkgs; lib.optionals (isWorkstation) [
-      (blender.override {
-        cudaSupport = hasCUDA;
-        hipSupport = hasOpenCL;
-      })
       brave
       celluloid
       davinci-resolve
