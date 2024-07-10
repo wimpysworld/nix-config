@@ -1,9 +1,9 @@
-{ desktop, hostname, lib, pkgs, ... }:
+{ desktop, hostname, lib, username, ... }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  installFor = [ "martin" ];
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
 in
-lib.mkIf isLinux {
+lib.mkIf (lib.elem username installFor || desktop == "gnome" || desktop == "pantheon") {
   services = {
     flatpak = lib.mkIf (isInstall) {
       enable = true;
