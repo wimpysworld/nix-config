@@ -100,7 +100,7 @@ in
   };
 
   # Belt and braces disable WiFi power saving
-  systemd.services.disable-wifi-powersave = lib.mkIf (config.networking.networkmanager.wifi.powersave) {
+  systemd.services.disable-wifi-powersave = lib.mkIf (lib.isBool config.networking.networkmanager.wifi.powersave && config.networking.networkmanager.wifi.powersave) {
     wantedBy = ["multi-user.target"];
     path = [ pkgs.iw ];
     script = ''
