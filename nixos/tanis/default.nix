@@ -6,7 +6,6 @@
     ../_mixins/services/filesync.nix
     ../_mixins/services/caddy
     ../_mixins/services/homepage
-    ../_mixins/services/tailscale
   ];
 
   boot = {

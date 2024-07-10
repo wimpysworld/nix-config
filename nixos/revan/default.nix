@@ -29,7 +29,6 @@
     ../_mixins/services/jellyfin
     ../_mixins/services/netdata
     ../_mixins/services/plex
-    ../_mixins/services/tailscale
   ];
 
   boot = {

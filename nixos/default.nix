@@ -25,6 +25,7 @@ in
     ./_mixins/features/zram
     ./_mixins/services/clamav
     ./_mixins/services/ssh
+    ./_mixins/services/tailscale
     ./_mixins/configs
     ./_mixins/users
   ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
