@@ -1,7 +1,4 @@
 { config, desktop, lib, pkgs, username, ... }:
-let
-  ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
-in
 {
   imports = [
     ./root
@@ -11,16 +8,9 @@ in
 
   users.users.${username} = {
     extraGroups = [
-      "audio"
       "input"
       "users"
-      "video"
       "wheel"
-    ]
-    ++ ifExists [
-      "docker"
-      "lxd"
-      "podman"
     ];
     homeMode = "0755";
     isNormalUser = true;
