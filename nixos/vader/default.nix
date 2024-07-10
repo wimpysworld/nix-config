@@ -9,7 +9,6 @@
     ./disks.nix
     ./disks-home.nix
     ./disks-snapshot.nix
-    ../_mixins/services/clamav.nix
     ../_mixins/services/filesync.nix
     ../_mixins/services/caddy
     ../_mixins/services/homepage
