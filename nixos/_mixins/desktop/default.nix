@@ -81,13 +81,6 @@ in
 
       # Elgato Stream Deck Pedal
       SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0086", TAG+="uaccess", SYMLINK+="streamdeck-pedal"
-
-      # Expose important timers the members of the audio group
-      # Inspired by musnix: https://github.com/musnix/musnix/blob/master/modules/base.nix#L94
-      KERNEL=="rtc0", GROUP="audio"
-      KERNEL=="hpet", GROUP="audio"
-      # Allow users in the audio group to change cpu dma latency
-      DEVPATH=="/devices/virtual/misc/cpu_dma_latency", OWNER="root", GROUP="audio", MODE="0660"
     '';
 
     # Disable xterm
