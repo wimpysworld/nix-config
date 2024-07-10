@@ -1,8 +1,8 @@
-{ hostname, lib, pkgs, ... }:
+{ config, hostname, ... }:
 {
   services = {
     caddy = {
-      enable = lib.mkForce true;
+      enable = config.services.tailscale.enable;
       extraConfig = ''
         ${hostname}.drongo-gamma.ts.net {
           redir /syncthing /syncthing/
