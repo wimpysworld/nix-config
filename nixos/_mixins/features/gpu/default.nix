@@ -1,4 +1,4 @@
-{ config, desktop, hostname, lib, pkgs, ... }:
+{ config, desktop, hostname, lib, pkgs, username, ... }:
 let
   isInstall = builtins.substring 0 4 hostname != "iso-";
   isWorkstation = builtins.isString desktop;
@@ -77,4 +77,6 @@ lib.mkIf (isInstall) {
     };
     wantedBy = ["multi-user.target"];
   };
+
+  users.users.${username}.extraGroups = lib.optional (config.hardware.opengl.enable) "video";
 }

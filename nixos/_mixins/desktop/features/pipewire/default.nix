@@ -130,5 +130,7 @@ in
     '';
   };
 
-  users.users.${username}.extraGroups = lib.optionals (config.security.rtkit.enable) [ "rtkit" ];
+  users.users.${username}.extraGroups = [ ]
+    ++ lib.optional (config.security.rtkit.enable) "rtkit"
+    ++ lib.optional (config.services.pipewire.enable) "audio";
 }
