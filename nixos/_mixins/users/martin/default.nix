@@ -11,12 +11,10 @@ in
       gnome.dconf-editor
       google-chrome
       halloy
-      inkscape
       libreoffice
       meld
       microsoft-edge
       pika-backup
-      pinta
       tartube
       usbimager
       wavebox
