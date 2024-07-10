@@ -76,7 +76,6 @@
       DEBFULLNAME = "Martin Wimpress";
       DEBEMAIL = "code@wimpress.io";
       DEBSIGN_KEYID = "8F04688C17006782143279DA61DF940515E06DA3";
-      TERMINAL = "alacritty";
     };
   };
   programs = {
