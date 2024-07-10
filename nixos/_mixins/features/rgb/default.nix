@@ -3,7 +3,7 @@ let
   isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   isWorkstation = if (desktop != null) then true else false;
   hostRGB = {
-    phasma = [ "amd" ];
+    phasma = "amd";
   };
   razerPeripherals = {
     phasma = [ "keyboard" "mouse" ];
