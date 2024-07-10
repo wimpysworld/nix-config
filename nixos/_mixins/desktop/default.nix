@@ -12,6 +12,7 @@ in
     ./features/scan
     ./features/xdg
     ./apps/1password
+    ./apps/audio-production
     ./apps/blender
     ./apps/chromium
     ./apps/firefox
