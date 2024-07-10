@@ -1,10 +1,10 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
+{ config, desktop, lib, pkgs, username, ... }:
 let
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  installFor = [ "martin" ];
   isWorkstation = if (desktop != null) then true else false;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
-lib.mkIf (isInstall) {
+lib.mkIf (lib.elem "${username}" installFor) {
   #https://nixos.wiki/wiki/Podman
   environment = {
     systemPackages = (with pkgs; [
