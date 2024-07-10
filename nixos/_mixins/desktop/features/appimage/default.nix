@@ -1,8 +1,8 @@
-{ config, hostname, lib, pkgs, ... }:
+{ lib, username, ... }:
 let
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  installFor = [ "martin" ];
 in
-lib.mkIf (isInstall) {
+lib.mkIf (lib.elem username installFor) {
   # https://wiki.nixos.org/w/index.php?title=Appimage
   # https://nixos.org/manual/nixpkgs/stable/#sec-pkgs-appimageTools
   programs.appimage = {
