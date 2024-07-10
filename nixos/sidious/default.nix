@@ -7,7 +7,6 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-hidpi
     ./disks.nix
-    ../_mixins/kernel/bcachefs.nix
   ];
 
   boot = {

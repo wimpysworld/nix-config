@@ -13,6 +13,7 @@ in
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
+    ./_mixins/features/bcachefs
     ./_mixins/features/bluetooth
     ./_mixins/features/console
     ./_mixins/features/distrobox
