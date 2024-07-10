@@ -776,21 +776,6 @@ in
     "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
   ];
 
-  systemd.user.services =  lib.mkIf (isLinux) {
-    maestral_qt = {
-      Unit = {
-        Description = "Maestal Qt";
-      };
-      Service = {
-        ExecStart = "${pkgs.maestral-gui}/bin/maestral_qt";
-        Restart = "on-failure";
-      };
-      Install = {
-        WantedBy = [ "default.target" ];
-      };
-    };
-  };
-
   xdg = {
     desktopEntries = lib.mkIf (isLinux) {
       # Create a desktop entry for the Cider AppImage.

@@ -8,7 +8,6 @@
     inputs.nixos-hardware.nixosModules.common-hidpi
     ./disks.nix
     ../_mixins/kernel/bcachefs.nix
-    ../_mixins/services/filesync.nix
   ];
 
   boot = {
