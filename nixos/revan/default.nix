@@ -24,7 +24,6 @@
     ./disks-snapraid.nix
     ./disks-snapshot.nix
     ../_mixins/services/filesync.nix
-    ../_mixins/services/caddy
     ../_mixins/services/homepage
     ../_mixins/services/jellyfin
     ../_mixins/services/netdata
