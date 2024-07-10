@@ -3,7 +3,6 @@
   imports = [
     (modulesPath + "/profiles/qemu-guest.nix")
     (import ./disks.nix { })
-    ../_mixins/kernel/bcachefs.nix
   ];
 
   boot = {
