@@ -304,18 +304,4 @@ in
       ExecStart = "${pkgs.indicator-application-gtk3}/libexec/indicator-application/indicator-application-service";
     };
   };
-
-  xdg.portal = {
-    config = {
-      pantheon = {
-        default = [
-          "pantheon"
-          "gtk"
-        ];
-        "org.freedesktop.impl.portal.Secret" = [
-          "gnome-keyring"
-        ];
-      };
-    };
-  };
 }

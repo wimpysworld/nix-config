@@ -10,6 +10,7 @@ in
     ./features/pipewire
     ./features/print
     ./features/scan
+    ./features/xdg
     ./apps/chromium
     ./apps/firefox
     ./apps/obs-studio
@@ -88,17 +89,5 @@ in
       desktopManager.xterm.enable = false;
       excludePackages = [ pkgs.xterm ];
     };
-  };
-
-  xdg.portal = {
-    config = {
-      common = {
-        default = [
-          "gtk"
-        ];
-      };
-    };
-    enable = true;
-    xdgOpenUsePortal = true;
   };
 }

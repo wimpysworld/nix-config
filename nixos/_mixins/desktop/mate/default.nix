@@ -387,18 +387,4 @@ in
       desktopManager.mate.enable = true;
     };
   };
-
-  xdg.portal = {
-    config = {
-      x-cinnamon = {
-        default = [
-          "xapp"
-          "gtk"
-        ];
-        "org.freedesktop.impl.portal.Secret" = [
-          "gnome-keyring"
-        ];
-      };
-    };
-  };
 }

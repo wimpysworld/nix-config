@@ -307,18 +307,4 @@ in
       desktopManager.gnome.enable = true;
     };
   };
-
-  xdg.portal = {
-    config = {
-      gnome = {
-        default = [
-          "gnome"
-          "gtk"
-        ];
-        "org.freedesktop.impl.portal.Secret" = [
-          "gnome-keyring"
-        ];
-      };
-    };
-  };
 }
