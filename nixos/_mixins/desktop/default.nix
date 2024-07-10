@@ -17,6 +17,7 @@ in
     ./apps/firefox
     ./apps/obs-studio
     ./apps/steam
+    ./apps/video-production
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {

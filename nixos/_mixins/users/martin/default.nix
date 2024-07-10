@@ -7,7 +7,6 @@ in
     systemPackages = (with pkgs; lib.optionals (isWorkstation) [
       brave
       celluloid
-      davinci-resolve
       fractal
       gnome.dconf-editor
       gnome.gnome-sound-recorder
@@ -19,7 +18,6 @@ in
       microsoft-edge
       pika-backup
       pinta
-      shotcut
       tartube
       tenacity
       usbimager
