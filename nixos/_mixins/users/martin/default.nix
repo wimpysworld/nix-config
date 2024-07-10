@@ -6,11 +6,7 @@ let
 in
 {
   environment = {
-    systemPackages = (with pkgs; [
-      _1password
-      lastpass-cli
-    ] ++ lib.optionals (isWorkstation) [
-      _1password-gui
+    systemPackages = (with pkgs; lib.optionals (isWorkstation) [
       (blender.override {
         cudaSupport = hasCUDA;
         hipSupport = hasOpenCL;
