@@ -275,6 +275,9 @@ in
     xserver = {
       enable = true;
       displayManager = {
+        # Disable autoSuspend; my Pantheon session kept auto-suspending
+        # - https://discourse.nixos.org/t/why-is-my-new-nixos-install-suspending/19500
+        gdm.autoSuspend = true;
         lightdm.enable = true;
         lightdm.greeters.pantheon.enable = true;
       };
