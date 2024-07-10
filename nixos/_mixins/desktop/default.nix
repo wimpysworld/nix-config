@@ -16,6 +16,7 @@ in
     ./apps/blender
     ./apps/chromium
     ./apps/firefox
+    ./apps/graphics-production
     ./apps/obs-studio
     ./apps/steam
     ./apps/video-production
