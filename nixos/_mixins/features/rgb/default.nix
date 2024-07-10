@@ -21,7 +21,7 @@ lib.mkIf (isInstall) {
       enable = true;
       devicesOffOnScreensaver = false;
       keyStatistics = true;
-      mouseBatteryNotifier = true;
+      batteryNotifier.enable = true;
       syncEffectsEnabled = true;
       users = [ "${username}" ];
     };
