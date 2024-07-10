@@ -1,9 +1,9 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
+{ config, desktop, lib, pkgs, username, ... }:
 let
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  installFor = [ "martin" ];
   isWorkstation = if (desktop != null) then true else false;
 in
-lib.mkIf (isInstall && isWorkstation) {
+lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   # Install snapcraft and enable snapd (for running snaps) and lxd (for building snaps)
   environment.systemPackages = with pkgs; [ snapcraft ];
   services.snap.enable = true;

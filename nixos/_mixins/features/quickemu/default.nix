@@ -1,15 +1,14 @@
-{ desktop, hostname, inputs, lib, pkgs, platform, ... }:
+{ desktop, inputs, lib, pkgs, platform, username, ... }:
 let
-  notVM = if (hostname == "minimech" || hostname == "scrubber" || builtins.substring 0 5 hostname == "lima-") then false else true;
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  installFor = [ "martin" ];
   isWorkstation = if (desktop != null) then true else false;
 in
-lib.mkIf (isInstall) {
+lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   environment = {
-    systemPackages = (with pkgs; lib.optionals (isWorkstation && notVM) [
+    systemPackages = with pkgs; [
       inputs.quickemu.packages.${platform}.default
       inputs.quickgui.packages.${platform}.default
-    ]);
+    ];
   };
   virtualisation = {
     spiceUSBRedirection.enable = true;
