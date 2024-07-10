@@ -7,7 +7,6 @@ in
     pantheon.excludePackages = with pkgs; [
       pantheon.elementary-camera
       pantheon.elementary-code
-      pantheon.elementary-files
       pantheon.elementary-music
       pantheon.elementary-photos
       pantheon.elementary-terminal
@@ -20,31 +19,15 @@ in
     # - https://github.com/NixOS/nixpkgs/issues/144045#issuecomment-992487775
     pathsToLink = [ "/libexec" ];
 
-    systemPackages = (with pkgs; [
-      mate.caja-with-extensions
-    ] ++ lib.optionals (isInstall) [
+    systemPackages = with pkgs; lib.optionals (isInstall) [
       loupe
       pick-colour-picker
-    ]);
+    ];
   };
 
   programs = {
     dconf.profiles.user.databases = [{
       settings = with lib.gvariant; {
-        "org/mate/caja/preferences" = {
-          date-format = "iso";
-          default-folder-viewer = "list-view";
-        };
-        "org/mate/caja/list-view" = {
-          default-zoom-level = "small";
-        };
-        "org/mate/caja/extensions" = {
-          disabled-extensions = [ "libcaja-gksu" "libcaja-wallpaper" "libcaja-share" "libcaja-sendto" ];
-        };
-        "org/mate/desktop/applications/terminal" = {
-          exec = "alacritty";
-        };
-
         "com/github/stsdc/monitor/settings" = {
           background-state = true;
           indicator-state = true;
@@ -212,7 +195,7 @@ in
 
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
           binding = "<Super>e";
-          command = "caja --no-desktop";
+          command = "io.elementary.files --new-window ~";
           name = "File Manager";
         };
 
