@@ -27,7 +27,6 @@ in
     };
     packages = with pkgs; lib.optionals (isDarwin) [
       # macOS apps
-      iterm2
       pika
       utm
     ];
