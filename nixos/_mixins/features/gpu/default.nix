@@ -68,6 +68,13 @@ lib.mkIf (isInstall) {
     };
   };
 
+  # Allow power and thermal control for NVIDIA GPUs
+  services.xserver = lib.mkIf (hasNvidiaGPU) {
+    deviceSection = ''
+      Option "Coolbits" "28"
+    '';
+  };
+
   # Enable `lact` daemon for AMD GPUs
   systemd.services.lactd = lib.mkIf (hasAmdGPU) {
     description = "AMDGPU Control Daemon";
