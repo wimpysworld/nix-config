@@ -11,6 +11,7 @@ in
     ./features/print
     ./features/scan
     ./features/xdg
+    ./apps/1password
     ./apps/chromium
     ./apps/firefox
     ./apps/obs-studio
