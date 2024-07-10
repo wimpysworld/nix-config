@@ -25,6 +25,7 @@ in
     ./_mixins/features/zram
     ./_mixins/services/caddy
     ./_mixins/services/clamav
+    ./_mixins/services/homepage
     ./_mixins/services/ssh
     ./_mixins/services/tailscale
     ./_mixins/configs

@@ -1,11 +1,11 @@
-{ config, desktop, hostname, pkgs, ... }:
+{ config, hostname, lib, pkgs, ... }:
 let
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
+  installOn = [ "phasma" "tanis" "revan" "sidious" "vader" ];
 in
-{
+lib.mkIf (lib.elem "${hostname}" installOn) {
   services = {
     homepage-dashboard = {
-      enable = isInstall;
+      enable = true;
       environmentFile = config.sops.secrets.homepage-env.path;
       package = pkgs.unstable.homepage-dashboard;
       bookmarks = [
@@ -466,8 +466,8 @@ in
             };
           }
           {
-            "Front Room" = {
-              description = "AppleTV: Front Room";
+            "Lounge" = {
+              description = "AppleTV: Lounge";
               icon = "tailscale.png";
               href = "https://login.tailscale.com/admin/machines";
               widget = {
@@ -478,8 +478,8 @@ in
             };
           }
           {
-            "Bed Room" = {
-              description = "AppleTV: Bed Room";
+            "Bedroom" = {
+              description = "AppleTV: Bedroom";
               icon = "tailscale.png";
               href = "https://login.tailscale.com/admin/machines";
               widget = {

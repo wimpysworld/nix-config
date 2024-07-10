@@ -10,7 +10,6 @@
     ./disks-home.nix
     ./disks-snapshot.nix
     ../_mixins/services/filesync.nix
-    ../_mixins/services/homepage
   ];
 
   # TODO: Remove this if/when machine is reinstalled.
