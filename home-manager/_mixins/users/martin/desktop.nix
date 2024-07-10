@@ -159,7 +159,7 @@ in
       picture-uri = "file:///etc/backgrounds/DeterminateColorway-3440x1440.png";
       picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-1920x1200.png";
     } // lib.optionalAttrs (hostname == "sidious") {
-      picture-uri = "file:///etcbackgrounds/DeterminateColorway-3840x2160.png";
+      picture-uri = "file:///etc/backgrounds/DeterminateColorway-3840x2160.png";
       picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-1920x1200.png";
     } // lib.optionalAttrs (hostname == "tanis") {
       picture-uri = "file:///etc/backgrounds/DeterminateColorway-1920x1200.png";
