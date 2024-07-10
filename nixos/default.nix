@@ -26,6 +26,7 @@ in
     ./_mixins/services/caddy
     ./_mixins/services/clamav
     ./_mixins/services/homepage
+    ./_mixins/services/maestral
     ./_mixins/services/ssh
     ./_mixins/services/tailscale
     ./_mixins/configs
