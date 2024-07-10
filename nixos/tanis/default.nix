@@ -6,16 +6,8 @@
   ];
 
   boot = {
-    initrd = {
-      availableKernelModules = [
-        "nvme"
-        "sd_mod"
-        "thunderbolt"
-        "uas"
-        "xhci_pci"
-      ];
-      systemd.enable = true;
-    };
+    initrd.availableKernelModules = [ "nvme" "sd_mod" "thunderbolt" "uas" "xhci_pci" ];
+    initrd.systemd.enable = true;
     kernelModules = [ "amdgpu" "kvm-amd" ];
     # Wake from suspend regression in Linux 6.7 and 6.8
     # Use pkgs.linuxPackages_6_6 until it's fixed
