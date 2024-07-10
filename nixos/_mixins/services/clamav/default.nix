@@ -1,6 +1,8 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, hostname, lib, ... }:
 with lib;
 let
+  # Declare which hosts have AV scanning enabled.
+  installOn = [ "phasma" "vader" ];
   sus-user-dirs = [
     "Downloads"
   ];
@@ -28,7 +30,8 @@ let
        /run/wrappers/bin/sudo -u "#$USERID" DBUS_SESSION_BUS_ADDRESS="unix:path=$ADDRESS/bus" ${pkgs.notify-desktop}/bin/notify-desktop -i dialog-warning "Sus file" "$ALERT"
     done
   '';
-in {
+in
+lib.mkIf (lib.elem "${hostname}" installOn) {
   security.sudo = {
     extraConfig  =
     ''

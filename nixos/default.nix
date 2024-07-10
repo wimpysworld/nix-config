@@ -23,6 +23,7 @@ in
     ./_mixins/features/rgb
     ./_mixins/features/snapcraft
     ./_mixins/features/zram
+    ./_mixins/services/clamav
     ./_mixins/services/ssh
     ./_mixins/configs
     ./_mixins/users
