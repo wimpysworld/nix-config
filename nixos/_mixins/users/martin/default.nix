@@ -9,7 +9,6 @@ in
       celluloid
       fractal
       gnome.dconf-editor
-      gnome.gnome-sound-recorder
       google-chrome
       halloy
       inkscape
@@ -19,7 +18,6 @@ in
       pika-backup
       pinta
       tartube
-      tenacity
       usbimager
       wavebox
       youtube-music
@@ -34,13 +32,6 @@ in
     ]) ++ (with inputs; lib.optionals (isWorkstation) [
       antsy-alien-attack-pico.packages.${platform}.default
     ]);
-  };
-
-  programs = {
-    dconf.profiles.user.databases = [{
-      settings = with lib.gvariant; lib.mkIf (isWorkstation) {
-      };
-    }];
   };
 
   users.users.martin = {

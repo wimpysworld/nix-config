@@ -111,11 +111,6 @@ in
       visible-columns = [ "post-time" "duration" "track-number" "album" "genre" "beats-per-minute" "play-count" "artist" ];
     };
 
-    "org/gnome/SoundRecorder" = {
-      audio-channel = "mono";
-      audio-profile = "flac";
-    };
-
     "com/github/wwmm/easyeffects" = {
       bypass = false;
       process-all-inputs = false;
