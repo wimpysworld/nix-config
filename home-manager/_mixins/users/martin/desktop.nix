@@ -116,7 +116,7 @@ in
       binding = "<Super>e";
       name = "File Manager";
     } // lib.optionalAttrs (desktop == "pantheon") {
-      command = "caja --no-desktop";
+      command = "io.elementary.files -n ~/";
     } // lib.optionalAttrs (desktop == "gnome") {
       command = "nautilus -w ~/";
     };
