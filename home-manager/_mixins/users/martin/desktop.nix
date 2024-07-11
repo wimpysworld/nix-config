@@ -9,9 +9,6 @@ in
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings = with lib.hm.gvariant; lib.mkIf (isLinux) {
     ### Various Applications ###
-    "ca/desrt/dconf-editor" = {
-      show-warning = false;
-    };
 
     "com/gexperts/Tilix" = {
       app-title = "\${appName}: \${directory}";
