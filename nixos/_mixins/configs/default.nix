@@ -1,4 +1,10 @@
-{ hostname, isInstall, lib, pkgs,... }:
+{
+  hostname,
+  isInstall,
+  lib,
+  pkgs,
+  ...
+}:
 let
   build-all = import ./build-all.nix { inherit pkgs; };
   build-host = import ./build-host.nix { inherit pkgs; };
@@ -22,7 +28,5 @@ in
     boot-host
     switch-host
     unroll-url
-  ] ++ lib.optionals (isInstall) [
-    flatpak-theme
-  ];
+  ] ++ lib.optionals (isInstall) [ flatpak-theme ];
 }

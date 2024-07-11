@@ -17,9 +17,7 @@
       # - https://help.kagi.com/kagi/getting-started/setting-default.html
       extraOpts = {
         # Default search provider; Kagi
-        "DefaultSearchProviderAlternateURLs" = [
-          "https://kagi.com/search?q={searchTerms}"
-        ];
+        "DefaultSearchProviderAlternateURLs" = [ "https://kagi.com/search?q={searchTerms}" ];
         "DefaultSearchProviderImageURL" = "https://assets.kagi.com/v2/apple-touch-icon.png";
         "DefaultSearchProviderKeyword" = "kagi";
         "DefaultSearchProviderName" = "Kagi";

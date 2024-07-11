@@ -12,7 +12,10 @@ _: {
               type = "EF00";
               content = {
                 format = "vfat";
-                mountOptions = [ "defaults" "umask=0077" ];
+                mountOptions = [
+                  "defaults"
+                  "umask=0077"
+                ];
                 mountpoint = "/boot";
                 type = "filesystem";
               };
@@ -22,7 +25,11 @@ _: {
               content = {
                 extraArgs = [ "-f" ];
                 format = "bcachefs";
-                mountOptions = [ "defaults" "relatime" "nodiratime" ];
+                mountOptions = [
+                  "defaults"
+                  "relatime"
+                  "nodiratime"
+                ];
                 mountpoint = "/";
                 type = "filesystem";
               };

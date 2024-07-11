@@ -1,16 +1,21 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   home.file = {
     "${config.xdg.configHome}/autostart/monitor.desktop".text = ''
-[Desktop Entry]
-Name=Monitor Indicators
-Comment=Monitor Indicators
-Type=Application
-Exec=/run/current-system/sw/bin/com.github.stsdc.monitor --start-in-background
-Icon=com.github.stsdc.monitor
-Categories=
-Terminal=false
-StartupNotify=false'';
+      [Desktop Entry]
+      Name=Monitor Indicators
+      Comment=Monitor Indicators
+      Type=Application
+      Exec=/run/current-system/sw/bin/com.github.stsdc.monitor --start-in-background
+      Icon=com.github.stsdc.monitor
+      Categories=
+      Terminal=false
+      StartupNotify=false'';
   };
 
   services = {

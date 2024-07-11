@@ -1,4 +1,12 @@
-{ config, desktop, isWorkstation, lib, pkgs, username, ... }:
+{
+  config,
+  desktop,
+  isWorkstation,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   installFor = [ "martin" ];
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
@@ -6,17 +14,19 @@ in
 lib.mkIf (lib.elem "${username}" installFor) {
   #https://nixos.wiki/wiki/Podman
   environment = {
-    systemPackages = (with pkgs; [
-      distrobox
-      fuse-overlayfs
-    ] ++ lib.optionals (isWorkstation) [
-      pods
-    ]);
+    systemPackages = (
+      with pkgs;
+      [
+        distrobox
+        fuse-overlayfs
+      ]
+      ++ lib.optionals (isWorkstation) [ pods ]
+    );
   };
 
   hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
 
-  virtualisation =  {
+  virtualisation = {
     podman = {
       defaultNetwork.settings = {
         dns_enabled = true;

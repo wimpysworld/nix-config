@@ -1,17 +1,32 @@
-{ desktop, inputs, isWorkstation, lib, pkgs, platform, username, ... }:
+{
+  desktop,
+  inputs,
+  isWorkstation,
+  lib,
+  pkgs,
+  platform,
+  username,
+  ...
+}:
 {
   environment = {
-    systemPackages = (with pkgs; lib.optionals (isWorkstation) [
-      libreoffice
-      zoom-us
-    ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
-      gnome-extension-manager
-      gnomeExtensions.start-overlay-in-application-view
-      gnomeExtensions.tiling-assistant
-      gnomeExtensions.vitals
-    ]) ++ (with inputs; lib.optionals (isWorkstation) [
-      antsy-alien-attack-pico.packages.${platform}.default
-    ]);
+    systemPackages =
+      (
+        with pkgs;
+        lib.optionals (isWorkstation) [
+          libreoffice
+          zoom-us
+        ]
+        ++ lib.optionals (isWorkstation && desktop == "gnome") [
+          gnome-extension-manager
+          gnomeExtensions.start-overlay-in-application-view
+          gnomeExtensions.tiling-assistant
+          gnomeExtensions.vitals
+        ]
+      )
+      ++ (
+        with inputs; lib.optionals (isWorkstation) [ antsy-alien-attack-pico.packages.${platform}.default ]
+      );
   };
 
   users.users.martin = {
@@ -20,7 +35,5 @@
     hashedPassword = "$6$UXNQ20Feu82wCFK9$dnJTeSqoECw1CGMSUdxKREtraO.Nllv3/fW9N3m7lPHYxFKA/Cf8YqYGDmiWNfaKeyx2DKdURo0rPYBrSZRL./";
   };
 
-  systemd.tmpfiles.rules = [
-    "d /mnt/snapshot/${username} 0755 ${username} users"
-  ];
+  systemd.tmpfiles.rules = [ "d /mnt/snapshot/${username} 0755 ${username} users" ];
 }

@@ -1,4 +1,9 @@
-{ lib, pkgs, username, ... }:
+{
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   installFor = [ "martin" ];
 in
@@ -10,12 +15,14 @@ lib.mkIf (builtins.elem username installFor) {
   ];
 
   programs = {
-    dconf.profiles.user.databases = [{
-      settings = with lib.gvariant; {
-        "ca/desrt/dconf-editor" = {
-          show-warning = false;
+    dconf.profiles.user.databases = [
+      {
+        settings = with lib.gvariant; {
+          "ca/desrt/dconf-editor" = {
+            show-warning = false;
+          };
         };
-      };
-    }];
+      }
+    ];
   };
 }

@@ -1,18 +1,23 @@
-{ config, pkgs, hostname, lib, ... }:
+{
+  config,
+  pkgs,
+  hostname,
+  lib,
+  ...
+}:
 with lib;
 let
   # Declare which hosts have AV scanning enabled.
-  installOn = [ "phasma" "vader" ];
-  sus-user-dirs = [
-    "Downloads"
+  installOn = [
+    "phasma"
+    "vader"
   ];
+  sus-user-dirs = [ "Downloads" ];
   all-normal-users = attrsets.filterAttrs (_username: config: config.isNormalUser) config.users.users;
-  all-sus-dirs = builtins.concatMap (dir:
-    attrsets.mapAttrsToList
-      (_username: config: config.home + "/" + dir)
-      all-normal-users
+  all-sus-dirs = builtins.concatMap (
+    dir: attrsets.mapAttrsToList (_username: config: config.home + "/" + dir) all-normal-users
   ) sus-user-dirs;
-  all-user-folders = attrsets.mapAttrsToList(_username: config: config.home) all-normal-users;
+  all-user-folders = attrsets.mapAttrsToList (_username: config: config.home) all-normal-users;
   all-system-folders = [
     "/boot"
     "/etc"
@@ -20,8 +25,7 @@ let
     "/root"
     "/usr"
   ];
-  notify-all-users = pkgs.writeScript "notify-all-users-of-sus-file"
-  ''
+  notify-all-users = pkgs.writeScript "notify-all-users-of-sus-file" ''
     #!/usr/bin/env bash
     ALERT="Signature detected by clamav: $CLAM_VIRUSEVENT_VIRUSNAME in $CLAM_VIRUSEVENT_FILENAME"
     # Send an alert to all graphical users.
@@ -33,8 +37,7 @@ let
 in
 lib.mkIf (lib.elem "${hostname}" installOn) {
   security.sudo = {
-    extraConfig  =
-    ''
+    extraConfig = ''
       clamav ALL = (ALL) NOPASSWD: SETENV: ${pkgs.notify-desktop}/bin/notify-desktop
     '';
   };
@@ -42,13 +45,13 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
   services = {
     clamav = {
       daemon = {
-        enable  = true;
+        enable = true;
         settings = {
           ConcurrentDatabaseReload = false;
           OnAccessIncludePath = all-sus-dirs;
           OnAccessPrevention = false;
           OnAccessExtraScanning = true;
-          OnAccessExcludeUname =  "clamav";
+          OnAccessExcludeUname = "clamav";
           VirusEvent = "${notify-all-users}";
           User = "clamav";
         };

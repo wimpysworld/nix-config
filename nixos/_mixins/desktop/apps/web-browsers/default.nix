@@ -1,18 +1,28 @@
-{ hostname, isInstall, lib, pkgs, username, ... }:
+{
+  hostname,
+  isInstall,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   installFor = [ "martin" ];
 in
 {
   imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
 
-  environment.systemPackages = with pkgs; lib.optionals (isInstall) [
-    google-chrome
-    microsoft-edge
-  ] ++ lib.optionals (builtins.elem username installFor && isInstall) [
-    brave
-    (chromium.override { enableWideVine = true; })
-    wavebox
-  ];
+  environment.systemPackages =
+    with pkgs;
+    lib.optionals (isInstall) [
+      google-chrome
+      microsoft-edge
+    ]
+    ++ lib.optionals (builtins.elem username installFor && isInstall) [
+      brave
+      (chromium.override { enableWideVine = true; })
+      wavebox
+    ];
 
   # TODO: Configure Microsoft Edge policy
   # - https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies
@@ -99,12 +109,15 @@ in
     # - https://mozilla.github.io/policy-templates/
     firefox = {
       enable = true;
-      languagePacks = [ "en-GB" "en-US" ];
+      languagePacks = [
+        "en-GB"
+        "en-US"
+      ];
       package = pkgs.firefox;
       preferences = {
         "browser.crashReports.unsubmittedCheck.autoSubmit2" = false;
         "browser.crashReports.unsubmittedCheck.enabled" = false;
-        "browser.fixup.dns_first_for_single_words" =  false;
+        "browser.fixup.dns_first_for_single_words" = false;
         "browser.newtab.extensionControlled" = true;
         "browser.search.update" = true;
         "browser.tabs.crashReporting.sendReport" = false;
@@ -170,7 +183,7 @@ in
         };
         "ExtensionUpdate" = true;
         "FirefoxHome" = {
-          "Search" = true ;
+          "Search" = true;
           "TopSites" = false;
           "SponsoredTopSites" = false;
           "Highlights" = false;

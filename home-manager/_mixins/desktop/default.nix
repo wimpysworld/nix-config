@@ -1,22 +1,34 @@
-{ config, desktop, inputs, lib, pkgs, username, ... }:
+{
+  config,
+  desktop,
+  inputs,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
 in
 {
   # import the DE specific configuration and any user specific desktop configuration
-  imports = [
-    ./features/gtk
-    ./features/qt
-    ./apps/gitkraken
-    ./apps/internet-chat
-    ./apps/joplin
-    ./apps/meld
-    ./apps/obs-studio
-    ./apps/ulauncher
-    ./apps/vscode
-    ./apps/youtube-music
-  ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
-    ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
+  imports =
+    [
+      ./features/gtk
+      ./features/qt
+      ./apps/gitkraken
+      ./apps/internet-chat
+      ./apps/joplin
+      ./apps/meld
+      ./apps/obs-studio
+      ./apps/ulauncher
+      ./apps/vscode
+      ./apps/youtube-music
+    ]
+    ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
+    ++ lib.optional (builtins.pathExists (
+      ./. + "/../users/${username}/desktop.nix"
+    )) ../users/${username}/desktop.nix;
 
   home = {
     # Authrorize X11 access in Distrobox
@@ -24,11 +36,13 @@ in
       ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
       "${config.home.homeDirectory}/.local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ./configs/plank-catppuccin-mocha.theme;
     };
-    packages = with pkgs; lib.optionals (isDarwin) [
-      # macOS apps
-      pika
-      utm
-    ];
+    packages =
+      with pkgs;
+      lib.optionals (isDarwin) [
+        # macOS apps
+        pika
+        utm
+      ];
   };
 
   xresources.properties = {

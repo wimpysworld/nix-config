@@ -1,4 +1,10 @@
-{ config, lib, pkgs, username, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 {
   imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
 
@@ -7,8 +13,6 @@
       # https://github.com/davi19/gitkraken
       "${config.home.homeDirectory}/.gitkraken/themes/catppuccin_mocha.jsonc".text = builtins.readFile ./gitkraken-catppuccin-mocha-blue.json;
     };
-    packages = with pkgs; [
-      gitkraken
-    ];
+    packages = with pkgs; [ gitkraken ];
   };
 }

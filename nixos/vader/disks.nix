@@ -20,7 +20,10 @@ _: {
               content = {
                 type = "filesystem";
                 format = "vfat";
-                mountOptions = [ "defaults" "umask=0077" ];
+                mountOptions = [
+                  "defaults"
+                  "umask=0077"
+                ];
                 mountpoint = "/boot";
               };
             };

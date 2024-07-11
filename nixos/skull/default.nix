@@ -1,6 +1,13 @@
 # Intel Skull Canyon NUC6i7KYK
 # - https://github.com/rm-hull/skull-canyon
-{ hostname, inputs, lib, platform, username, ... }:
+{
+  hostname,
+  inputs,
+  lib,
+  platform,
+  username,
+  ...
+}:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -14,7 +21,11 @@
   fileSystems."/" = lib.mkForce {
     device = "/dev/disk/by-partlabel/root";
     fsType = "xfs";
-    options = [ "defaults" "relatime" "nodiratime" ];
+    options = [
+      "defaults"
+      "relatime"
+      "nodiratime"
+    ];
   };
 
   fileSystems."/boot" = lib.mkForce {
@@ -25,22 +36,38 @@
   fileSystems."/home" = lib.mkForce {
     device = "/dev/disk/by-partlabel/home";
     fsType = "xfs";
-    options = [ "defaults" "relatime" "nodiratime" ];
+    options = [
+      "defaults"
+      "relatime"
+      "nodiratime"
+    ];
   };
 
   fileSystems."/mnt/sonnet" = lib.mkForce {
     device = "/dev/md/TS4p1";
     fsType = "xfs";
-    options = [ "defaults" "relatime" "nodiratime" ];
+    options = [
+      "defaults"
+      "relatime"
+      "nodiratime"
+    ];
   };
 
-  swapDevices = [{
-    device = "/swap";
-    size = 2048;
-  }];
+  swapDevices = [
+    {
+      device = "/swap";
+      size = 2048;
+    }
+  ];
 
   boot = {
-    initrd.availableKernelModules = [ "xhci_pci" "nvme" "usbhid" "uas" "sd_mod" ];
+    initrd.availableKernelModules = [
+      "xhci_pci"
+      "nvme"
+      "usbhid"
+      "uas"
+      "sd_mod"
+    ];
     kernelModules = [ "kvm-intel" ];
     swraid = {
       enable = true;
@@ -56,8 +83,13 @@
       alwaysKeepRunning = true;
       # Use AdGuard Public DNS with family protection filters
       # - https://adguard-dns.io/en/public-dns.html
-      settings.server = [ "94.140.14.15" "94.140.15.16"];
-      settings = { cache-size=500; };
+      settings.server = [
+        "94.140.14.15"
+        "94.140.15.16"
+      ];
+      settings = {
+        cache-size = 500;
+      };
     };
     netdata = {
       enable = true;

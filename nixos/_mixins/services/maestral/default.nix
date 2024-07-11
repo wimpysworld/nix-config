@@ -1,12 +1,23 @@
-{ desktop, hostname, isWorkstation, lib, pkgs, ... }:
+{
+  desktop,
+  hostname,
+  isWorkstation,
+  lib,
+  pkgs,
+  ...
+}:
 let
   # Declare which hosts have Maestral (Dropbox) enabled.
-  installOn = [ "phasma" "tanis" "revan" "sidious" "vader" ];
+  installOn = [
+    "phasma"
+    "tanis"
+    "revan"
+    "sidious"
+    "vader"
+  ];
 in
 lib.mkIf (lib.elem "${hostname}" installOn) {
-  environment.systemPackages = with pkgs; [
-    maestral
-  ];
+  environment.systemPackages = with pkgs; [ maestral ];
 
   systemd.user.services.maestral = {
     description = "Maestral";

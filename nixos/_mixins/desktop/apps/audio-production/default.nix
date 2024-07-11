@@ -1,6 +1,14 @@
-{ hostname, lib, pkgs, ... }:
+{
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
-  installOn = [ "phasma" "vader" ];
+  installOn = [
+    "phasma"
+    "vader"
+  ];
 in
 lib.mkIf (lib.elem hostname installOn) {
   environment.systemPackages = with pkgs; [
@@ -9,13 +17,15 @@ lib.mkIf (lib.elem hostname installOn) {
   ];
 
   programs = {
-    dconf.profiles.user.databases = [{
-      settings = with lib.gvariant; {
-        "org/gnome/SoundRecorder" = {
-          audio-channel = "mono";
-          audio-profile = "flac";
+    dconf.profiles.user.databases = [
+      {
+        settings = with lib.gvariant; {
+          "org/gnome/SoundRecorder" = {
+            audio-channel = "mono";
+            audio-profile = "flac";
+          };
         };
-      };
-    }];
+      }
+    ];
   };
 }

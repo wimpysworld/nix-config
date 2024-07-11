@@ -12,7 +12,15 @@
 # Slot 4 (PCIEX1_2): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)
 # Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
 
-{ config, inputs, lib, pkgs, platform, username, ... }:
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  platform,
+  username,
+  ...
+}:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
@@ -28,8 +36,18 @@
   ];
 
   boot = {
-    initrd.availableKernelModules = [ "ahci" "nvme" "uas" "usbhid" "sd_mod" "xhci_pci" ];
-    kernelModules = [ "kvm-intel" "nvidia" ];
+    initrd.availableKernelModules = [
+      "ahci"
+      "nvme"
+      "uas"
+      "usbhid"
+      "sd_mod"
+      "xhci_pci"
+    ];
+    kernelModules = [
+      "kvm-intel"
+      "nvidia"
+    ];
     swraid = {
       enable = true;
       mdadmConf = "PROGRAM=true";
@@ -68,9 +86,7 @@
   services = {
     snapraid = {
       enable = true;
-      exclude = [
-        "/.state_data/"
-      ];
+      exclude = [ "/.state_data/" ];
       extraConfig = ''
         autosave 256
       '';

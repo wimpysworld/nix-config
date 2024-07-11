@@ -1,4 +1,13 @@
-{ config, desktop, hostname, isInstall, lib, pkgs, username, ... }:
+{
+  config,
+  desktop,
+  hostname,
+  isInstall,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 {
   imports = [
     ./features/appimage
@@ -21,7 +30,11 @@
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {
-    kernelParams = [ "quiet" "vt.global_cursor_default=0" "mitigations=off" ];
+    kernelParams = [
+      "quiet"
+      "vt.global_cursor_default=0"
+      "mitigations=off"
+    ];
     plymouth = {
       catppuccin.enable = if (username == "martin") then true else false;
       enable = true;
@@ -36,22 +49,25 @@
     "backgrounds/DeterminateColorway-3840x2160.png".source = ../configs/backgrounds/DeterminateColorway-3840x2160.png;
   };
 
-  environment.systemPackages = with pkgs; [
-    catppuccin-cursors.mochaBlue
-    (catppuccin-gtk.override {
-      accents = [ "blue" ];
-      size = "standard";
-      variant = "mocha";
-    })
-    (catppuccin-papirus-folders.override {
-      flavor = "mocha";
-      accent = "blue";
-    })
-  ] ++ lib.optionals (isInstall) [
-    wmctrl
-    xdotool
-    ydotool
-  ];
+  environment.systemPackages =
+    with pkgs;
+    [
+      catppuccin-cursors.mochaBlue
+      (catppuccin-gtk.override {
+        accents = [ "blue" ];
+        size = "standard";
+        variant = "mocha";
+      })
+      (catppuccin-papirus-folders.override {
+        flavor = "mocha";
+        accent = "blue";
+      })
+    ]
+    ++ lib.optionals (isInstall) [
+      wmctrl
+      xdotool
+      ydotool
+    ];
 
   services = {
     # Provides users with access to all Elgato StreamDecks.

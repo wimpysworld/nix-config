@@ -1,4 +1,19 @@
-{ config, desktop, hostname, isInstall, isWorkstation, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
+{
+  config,
+  desktop,
+  hostname,
+  isInstall,
+  isWorkstation,
+  inputs,
+  lib,
+  modulesPath,
+  outputs,
+  pkgs,
+  platform,
+  stateVersion,
+  username,
+  ...
+}:
 {
   imports = [
     inputs.catppuccin.nixosModules.catppuccin
@@ -63,22 +78,27 @@
 
   environment = {
     # Eject nano and perl from the system
-    defaultPackages = with pkgs; lib.mkForce [
-      coreutils-full
-      micro
-    ];
+    defaultPackages =
+      with pkgs;
+      lib.mkForce [
+        coreutils-full
+        micro
+      ];
 
-    systemPackages = with pkgs; [
-      git
-      nix-output-monitor
-    ] ++ lib.optionals (isInstall) [
-      inputs.fh.packages.${platform}.default
-      inputs.nixos-needtoreboot.packages.${platform}.default
-      nvd
-      nvme-cli
-      smartmontools
-      sops
-    ];
+    systemPackages =
+      with pkgs;
+      [
+        git
+        nix-output-monitor
+      ]
+      ++ lib.optionals (isInstall) [
+        inputs.fh.packages.${platform}.default
+        inputs.nixos-needtoreboot.packages.${platform}.default
+        nvd
+        nvme-cli
+        smartmontools
+        sops
+      ];
 
     variables = {
       EDITOR = "micro";
@@ -116,7 +136,10 @@
     package = lib.mkIf (isInstall) pkgs.unstable.nix;
     settings = {
       auto-optimise-store = true;
-      experimental-features = [ "nix-command" "flakes" ];
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
       warn-dirty = false;
     };
   };
@@ -146,8 +169,8 @@
     nix-ld = lib.mkIf (isInstall) {
       enable = true;
       libraries = with pkgs; [
-      # Add any missing dynamic libraries for unpackaged
-      # programs here, NOT in environment.systemPackages
+        # Add any missing dynamic libraries for unpackaged
+        # programs here, NOT in environment.systemPackages
       ];
     };
   };
@@ -166,14 +189,12 @@
     defaultSopsFile = ../secrets/secrets.yaml;
     # sops-nix options: https://dl.thalheim.io/
     secrets = {
-      test-key = {};
-      homepage-env = {};
+      test-key = { };
+      homepage-env = { };
     };
   };
 
-  systemd.tmpfiles.rules = [
-    "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
-  ];
+  systemd.tmpfiles.rules = [ "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root" ];
 
   system = {
     nixos.label = lib.mkIf (isInstall) "-";

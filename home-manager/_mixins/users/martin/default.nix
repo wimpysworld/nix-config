@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   imports = [
     ../../services/keybase.nix
@@ -116,12 +121,12 @@
       atuin_key.path = "${config.home.homeDirectory}/.local/share/atuin/key";
       flakehub_netrc.path = "${config.home.homeDirectory}/.local/share/flakehub/netrc";
       flakehub_token.path = "${config.home.homeDirectory}/.config/flakehub/auth";
-      gh_token = {};
-      gpg_private = {};
-      gpg_public = {};
-      gpg_ownertrust = {};
+      gh_token = { };
+      gpg_private = { };
+      gpg_public = { };
+      gpg_ownertrust = { };
       hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
-      obs_secrets = {};
+      obs_secrets = { };
       ssh_config.path = "${config.home.homeDirectory}/.ssh/config";
       ssh_key.path = "${config.home.homeDirectory}/.ssh/id_rsa";
       ssh_pub.path = "${config.home.homeDirectory}/.ssh/id_rsa.pub";

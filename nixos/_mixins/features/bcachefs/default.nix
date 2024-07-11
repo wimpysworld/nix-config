@@ -1,6 +1,16 @@
-{ hostname, isISO, lib, pkgs, ... }:
+{
+  hostname,
+  isISO,
+  lib,
+  pkgs,
+  ...
+}:
 let
-  installOn = [ "minimech" "scrubber" "sidious" ];
+  installOn = [
+    "minimech"
+    "scrubber"
+    "sidious"
+  ];
 in
 lib.mkIf (lib.elem hostname installOn || isISO) {
   # Create a bootable ISO image with bcachefs.

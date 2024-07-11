@@ -1,4 +1,13 @@
-{ config, desktop, hostname, isInstall, lib, pkgs, username, ... }:
+{
+  config,
+  desktop,
+  hostname,
+  isInstall,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   useLowLatencyPipewire = if (hostname == "phasma" || hostname == "vader") then true else false;
 in
@@ -9,10 +18,13 @@ in
     kernelParams = [ "threadirqs" ];
   };
 
-  environment.systemPackages = (with pkgs; lib.optionals (isInstall) [
-    pulseaudio
-    pwvucontrol
-  ]);
+  environment.systemPackages = (
+    with pkgs;
+    lib.optionals (isInstall) [
+      pulseaudio
+      pwvucontrol
+    ]
+  );
 
   hardware.pulseaudio.enable = lib.mkForce false;
 
@@ -40,60 +52,62 @@ in
         # cat /nix/store/*-wireplumber-*/share/wireplumber/wireplumber.conf.d/99-alsa-lowlatency.conf
         configPackages = lib.mkIf (useLowLatencyPipewire) [
           (pkgs.writeTextDir "share/wireplumber/main.lua.d/99-alsa-lowlatency.lua" ''
-              alsa_monitor.rules = {
-                {
-                  matches = {{{ "node.name", "matches", "*_*put.*" }}};
-                  apply_properties = {
-                    ["audio.format"] = "S16LE",
-                    ["audio.rate"] = 48000,
-                    -- api.alsa.headroom: defaults to 0
-                    ["api.alsa.headroom"] = 128,
-                    -- api.alsa.period-num: defaults to 2
-                    ["api.alsa.period-num"] = 2,
-                    -- api.alsa.period-size: defaults to 1024, tweak by trial-and-error
-                    ["api.alsa.period-size"] = 512,
-                    -- api.alsa.disable-batch: USB audio interface typically use the batch mode
-                    ["api.alsa.disable-batch"] = false,
-                    ["resample.quality"] = 4,
-                    ["resample.disable"] = false,
-                    ["session.suspend-timeout-seconds"] = 0,
-                  },
+            alsa_monitor.rules = {
+              {
+                matches = {{{ "node.name", "matches", "*_*put.*" }}};
+                apply_properties = {
+                  ["audio.format"] = "S16LE",
+                  ["audio.rate"] = 48000,
+                  -- api.alsa.headroom: defaults to 0
+                  ["api.alsa.headroom"] = 128,
+                  -- api.alsa.period-num: defaults to 2
+                  ["api.alsa.period-num"] = 2,
+                  -- api.alsa.period-size: defaults to 1024, tweak by trial-and-error
+                  ["api.alsa.period-size"] = 512,
+                  -- api.alsa.disable-batch: USB audio interface typically use the batch mode
+                  ["api.alsa.disable-batch"] = false,
+                  ["resample.quality"] = 4,
+                  ["resample.disable"] = false,
+                  ["session.suspend-timeout-seconds"] = 0,
                 },
-              }
-            '')
+              },
+            }
+          '')
         ];
       };
       # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
       extraConfig.pipewire."92-low-latency" = lib.mkIf (useLowLatencyPipewire) {
         "context.properties" = {
-          "default.clock.rate"          = 48000;
-          "default.clock.quantum"       = 64;
-          "default.clock.min-quantum"   = 64;
-          "default.clock.max-quantum"   = 64;
+          "default.clock.rate" = 48000;
+          "default.clock.quantum" = 64;
+          "default.clock.min-quantum" = 64;
+          "default.clock.max-quantum" = 64;
         };
-        "context.modules" = [{
-          name = "libpipewire-module-rt";
-          args = {
-            "nice.level" = -11;
-            "rt.prio" = 88;
-          };
-        }];
+        "context.modules" = [
+          {
+            name = "libpipewire-module-rt";
+            args = {
+              "nice.level" = -11;
+              "rt.prio" = 88;
+            };
+          }
+        ];
       };
       extraConfig.pipewire-pulse."92-low-latency" = lib.mkIf (useLowLatencyPipewire) {
         "pulse.properties" = {
           "pulse.default.format" = "S16";
           "pulse.fix.format" = "S16LE";
           "pulse.fix.rate" = "48000";
-          "pulse.min.frag" = "64/48000";      # 1.3ms
-          "pulse.min.req" = "64/48000";       # 1.3ms
-          "pulse.default.frag" = "64/48000";  # 1.3ms
-          "pulse.default.req" = "64/48000";   # 1.3ms
-          "pulse.max.req" = "64/48000";       # 1.3ms
-          "pulse.min.quantum" = "64/48000";   # 1.3ms
-          "pulse.max.quantum" = "64/48000";   # 1.3ms
+          "pulse.min.frag" = "64/48000"; # 1.3ms
+          "pulse.min.req" = "64/48000"; # 1.3ms
+          "pulse.default.frag" = "64/48000"; # 1.3ms
+          "pulse.default.req" = "64/48000"; # 1.3ms
+          "pulse.max.req" = "64/48000"; # 1.3ms
+          "pulse.min.quantum" = "64/48000"; # 1.3ms
+          "pulse.max.quantum" = "64/48000"; # 1.3ms
         };
         "stream.properties" = {
-          "node.latency" = "64/48000";        # 1.3ms
+          "node.latency" = "64/48000"; # 1.3ms
           "resample.quality" = 4;
           "resample.disable" = false;
         };
@@ -105,10 +119,30 @@ in
   security = {
     # Inspired by musnix: https://github.com/musnix/musnix/blob/master/modules/base.nix#L87
     pam.loginLimits = [
-      { domain = "@audio"; item = "memlock"; type = "-"   ; value = "unlimited"; }
-      { domain = "@audio"; item = "rtprio" ; type = "-"   ; value = "99"       ; }
-      { domain = "@audio"; item = "nofile" ; type = "soft"; value = "99999"    ; }
-      { domain = "@audio"; item = "nofile" ; type = "hard"; value = "99999"    ; }
+      {
+        domain = "@audio";
+        item = "memlock";
+        type = "-";
+        value = "unlimited";
+      }
+      {
+        domain = "@audio";
+        item = "rtprio";
+        type = "-";
+        value = "99";
+      }
+      {
+        domain = "@audio";
+        item = "nofile";
+        type = "soft";
+        value = "99999";
+      }
+      {
+        domain = "@audio";
+        item = "nofile";
+        type = "hard";
+        value = "99999";
+      }
     ];
     rtkit.enable = true;
   };
@@ -129,7 +163,8 @@ in
     '';
   };
 
-  users.users.${username}.extraGroups = [ ]
+  users.users.${username}.extraGroups =
+    [ ]
     ++ lib.optional (config.security.rtkit.enable) "rtkit"
     ++ lib.optional (config.services.pipewire.enable) "audio";
 }

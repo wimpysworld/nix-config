@@ -1,6 +1,16 @@
-{ disks ? [ "/dev/sda" "/dev/sdb" ], ... }:
+{
+  disks ? [
+    "/dev/sda"
+    "/dev/sdb"
+  ],
+  ...
+}:
 let
-  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
+  defaultXfsOpts = [
+    "defaults"
+    "relatime"
+    "nodiratime"
+  ];
 in
 {
   disko.devices = {
@@ -11,12 +21,13 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "boot";
-            start = "0%";
-            end = "1M";
-            flags = [ "bios_grub" ];
-          }
+          partitions = [
+            {
+              name = "boot";
+              start = "0%";
+              end = "1M";
+              flags = [ "bios_grub" ];
+            }
             {
               name = "ESP";
               start = "1M";
@@ -42,7 +53,8 @@ in
                 mountpoint = "/";
                 mountOptions = defaultXfsOpts;
               };
-            }];
+            }
+          ];
         };
       };
       sdb = {
@@ -51,19 +63,21 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "home";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "filesystem";
-              # Overwirte the existing filesystem
-              extraArgs = [ "-f" ];
-              format = "xfs";
-              mountpoint = "/home";
-              mountOptions = defaultXfsOpts;
-            };
-          }];
+          partitions = [
+            {
+              name = "home";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "filesystem";
+                # Overwirte the existing filesystem
+                extraArgs = [ "-f" ];
+                format = "xfs";
+                mountpoint = "/home";
+                mountOptions = defaultXfsOpts;
+              };
+            }
+          ];
         };
       };
     };

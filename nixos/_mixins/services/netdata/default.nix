@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   installOn = [ "revan" ];
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
@@ -18,6 +23,7 @@ lib.mkIf (lib.elem config.networking.hostName installOn) {
     };
   };
   # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present
-  systemd.services.netdata.path = lib.optionals (hasNvidiaGPU) [ pkgs.linuxPackages_latest.nvidia_x11 ];
-
+  systemd.services.netdata.path = lib.optionals (hasNvidiaGPU) [
+    pkgs.linuxPackages_latest.nvidia_x11
+  ];
 }

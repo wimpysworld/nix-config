@@ -1,4 +1,9 @@
-{ inputs, lib, pkgs, ... }:
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-z13-gen1
@@ -6,9 +11,18 @@
   ];
 
   boot = {
-    initrd.availableKernelModules = [ "nvme" "sd_mod" "thunderbolt" "uas" "xhci_pci" ];
+    initrd.availableKernelModules = [
+      "nvme"
+      "sd_mod"
+      "thunderbolt"
+      "uas"
+      "xhci_pci"
+    ];
     initrd.systemd.enable = true;
-    kernelModules = [ "amdgpu" "kvm-amd" ];
+    kernelModules = [
+      "amdgpu"
+      "kvm-amd"
+    ];
     # Wake from suspend regression in Linux 6.7 and 6.8
     # Use pkgs.linuxPackages_6_6 until it's fixed
     # - https://bugzilla.kernel.org/show_bug.cgi?id=217239 (ath11k firmware bug)

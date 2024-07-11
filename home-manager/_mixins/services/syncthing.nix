@@ -1,11 +1,16 @@
-{ config, desktop, hostname, isWorkstation, lib, pkgs, username, ... }:
 {
-  home.packages = with pkgs; [
-    stc-cli
-  ];
-  imports = lib.optionals (isWorkstation) [
-    ./syncthing-tray.nix
-  ];
+  config,
+  desktop,
+  hostname,
+  isWorkstation,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
+{
+  home.packages = with pkgs; [ stc-cli ];
+  imports = lib.optionals (isWorkstation) [ ./syncthing-tray.nix ];
   programs.fish.shellAliases = {
     stc = "${pkgs.stc-cli}/bin/stc -homedir \"${config.home.homeDirectory}/Syncthing/Devices/${hostname}\"";
   };
@@ -21,9 +26,9 @@
   sops = {
     # sops-nix options: https://dl.thalheim.io/
     secrets = {
-      syncthing_apikey = {};
-      syncthing_user = {};
-      syncthing_pass = {};
+      syncthing_apikey = { };
+      syncthing_user = { };
+      syncthing_pass = { };
     };
   };
 }

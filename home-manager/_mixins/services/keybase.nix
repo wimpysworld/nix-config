@@ -1,4 +1,12 @@
-{ config, desktop, isWorkstation, lib, pkgs, username, ... }:
+{
+  config,
+  desktop,
+  isWorkstation,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   inherit (pkgs.stdenv) isLinux;
 in
@@ -12,11 +20,7 @@ lib.mkIf isLinux {
       '';
     };
   };
-  home.packages = with pkgs; [
-    keybase
-  ] ++ lib.optionals (isWorkstation) [
-    keybase-gui
-  ];
+  home.packages = with pkgs; [ keybase ] ++ lib.optionals (isWorkstation) [ keybase-gui ];
   services = {
     kbfs = {
       enable = true;
