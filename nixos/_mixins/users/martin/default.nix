@@ -5,12 +5,8 @@ in
 {
   environment = {
     systemPackages = (with pkgs; lib.optionals (isWorkstation) [
-      brave
-      google-chrome
       libreoffice
       meld
-      microsoft-edge
-      wavebox
       zoom-us
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
       gnome-extension-manager
