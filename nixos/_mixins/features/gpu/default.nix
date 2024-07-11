@@ -1,6 +1,5 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
+{ config, desktop, hostname, isInstall, lib, pkgs, username, ... }:
 let
-  isInstall = builtins.substring 0 4 hostname != "iso-";
   isWorkstation = builtins.isString desktop;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
   hasAmdGPU = config.hardware.amdgpu.initrd.enable;

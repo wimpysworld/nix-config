@@ -1,7 +1,4 @@
-{ config, desktop, hostname, lib, pkgs, ... }:
-let
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
-in
+{ config, desktop, hostname, isInstall, lib, pkgs, ... }:
 lib.mkIf (isInstall) {
   # Only enables auxilary printing support/packages if
   # config.services.printing.enable is true; the master control

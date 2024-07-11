@@ -1,7 +1,6 @@
-{ config, lib, pkgs, hostname,... }:
+{ config, lib, pkgs, hostname, isInstall, ... }:
 let
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
-  isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
+  isThinkpad = (hostname == "tanis" || hostname == "sidious");
 in
 {
   environment = {

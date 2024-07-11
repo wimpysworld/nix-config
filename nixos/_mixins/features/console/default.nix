@@ -1,6 +1,5 @@
-{ config, hostname, lib, pkgs, ... }:
+{ config, hostname, isInstall, lib, pkgs, ... }:
 let
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   kmsconFontSize = {
     sidious = "24";
     tanis = "18";

@@ -1,4 +1,4 @@
-{ hostname, lib, pkgs,... }:
+{ hostname, isInstall, lib, pkgs,... }:
 let
   build-all = import ./build-all.nix { inherit pkgs; };
   build-host = import ./build-host.nix { inherit pkgs; };
@@ -10,7 +10,6 @@ let
   boot-host = import ./boot-host.nix { inherit pkgs; };
   switch-host = import ./switch-host.nix { inherit pkgs; };
   unroll-url = import ./unroll-url.nix { inherit pkgs; };
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
 in
 {
   environment.systemPackages = [
