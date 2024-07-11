@@ -12,7 +12,7 @@ in
 lib.mkIf (isInstall) {
   environment.systemPackages =
     with pkgs;
-    [ celluloid ] ++ lib.optionals (builtins.elem username installFor) [ tartube ];
+    [ celluloid ] ++ lib.optionals (builtins.elem username installFor) [ tartube-yt-dlp ];
 
   programs = {
     dconf.profiles.user.databases = [
