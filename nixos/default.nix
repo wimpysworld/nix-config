@@ -23,27 +23,9 @@
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
-    ./_mixins/features/bcachefs
-    ./_mixins/features/bluetooth
-    ./_mixins/features/console
-    ./_mixins/features/distrobox
-    ./_mixins/features/gpu
-    ./_mixins/features/locale
-    ./_mixins/features/network
-    ./_mixins/features/quickemu
-    ./_mixins/features/rgb
-    ./_mixins/features/snapcraft
-    ./_mixins/features/zram
-    ./_mixins/services/caddy
-    ./_mixins/services/clamav
-    ./_mixins/services/homepage
-    ./_mixins/services/jellyfin
-    ./_mixins/services/maestral
-    ./_mixins/services/netdata
-    ./_mixins/services/plex
-    ./_mixins/services/ssh
-    ./_mixins/services/tailscale
     ./_mixins/configs
+    ./_mixins/features
+    ./_mixins/services
     ./_mixins/users
   ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
 
