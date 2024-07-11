@@ -3,8 +3,6 @@
 {
   inputs,
   lib,
-  pkgs,
-  platform,
   ...
 }:
 {

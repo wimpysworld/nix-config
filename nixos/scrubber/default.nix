@@ -1,8 +1,5 @@
 {
-  lib,
   modulesPath,
-  pkgs,
-  platform,
   ...
 }:
 {

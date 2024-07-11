@@ -1,6 +1,5 @@
 {
   config,
-  desktop,
   lib,
   pkgs,
   ...

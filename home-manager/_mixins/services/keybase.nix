@@ -1,10 +1,8 @@
 {
   config,
-  desktop,
   isWorkstation,
   lib,
   pkgs,
-  username,
   ...
 }:
 let

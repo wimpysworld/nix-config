@@ -1,11 +1,8 @@
 # Intel Skull Canyon NUC6i7KYK
 # - https://github.com/rm-hull/skull-canyon
 {
-  hostname,
   inputs,
   lib,
-  platform,
-  username,
   ...
 }:
 {

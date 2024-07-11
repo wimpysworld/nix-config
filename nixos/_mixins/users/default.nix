@@ -1,6 +1,4 @@
 {
-  config,
-  desktop,
   lib,
   pkgs,
   username,

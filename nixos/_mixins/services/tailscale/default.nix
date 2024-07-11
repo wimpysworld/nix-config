@@ -1,6 +1,5 @@
 {
   config,
-  desktop,
   hostname,
   isWorkstation,
   lib,
