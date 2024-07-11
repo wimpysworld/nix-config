@@ -14,6 +14,7 @@ in
     ./apps/obs-studio
     ./apps/ulauncher
     ./apps/vscode
+    ./apps/youtube-music
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
     ++ lib.optional (builtins.pathExists (./. + "/../users/${username}/desktop.nix")) ../users/${username}/desktop.nix;
 
