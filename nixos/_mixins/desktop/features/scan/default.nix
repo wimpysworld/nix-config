@@ -1,6 +1,5 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
+{ config, desktop, hostname, isInstall, lib, pkgs, username, ... }:
 let
-  isInstall = if (builtins.substring 0 4 hostname != "iso-") then true else false;
   scanningApp = if (desktop == "plasma") then pkgs.kdePackages.skanpage else pkgs.gnome.simple-scan;
 in
 lib.mkIf (isInstall) {
