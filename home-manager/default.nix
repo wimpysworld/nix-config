@@ -86,6 +86,7 @@ in
       mtr # Modern Unix `traceroute`
       neo-cowsay # Terminal ASCII cows
       netdiscover # Modern Unix `arp`
+      nixfmt-rfc-style # Nix code formatter
       nixpkgs-review # Nix code review
       nix-prefetch-scripts # Nix code fetcher
       nurl # Nix URL fetcher
