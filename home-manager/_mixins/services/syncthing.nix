@@ -1,7 +1,4 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
-let
-  isWorkstation = if (desktop != null) then true else false;
-in
+{ config, desktop, hostname, isWorkstation, lib, pkgs, username, ... }:
 {
   home.packages = with pkgs; [
     stc-cli

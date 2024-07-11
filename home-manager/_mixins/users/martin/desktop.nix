@@ -1,7 +1,6 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
+{ config, desktop, hostname, isWorkstation, lib, pkgs, username, ... }:
 let
   inherit (pkgs.stdenv) isLinux;
-  isWorkstation = if (desktop != null) then true else false;
   isStreamstation = if (hostname == "phasma" || hostname == "vader") && (isWorkstation) then true else false;
   isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
 in

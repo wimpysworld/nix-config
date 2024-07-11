@@ -1,7 +1,4 @@
-{ config, desktop, hostname, isInstall, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
-let
-  isWorkstation = if (desktop != null) then true else false;
-in
+{ config, desktop, hostname, isInstall, isWorkstation, inputs, lib, modulesPath, outputs, pkgs, platform, stateVersion, username, ... }:
 {
   imports = [
     inputs.catppuccin.nixosModules.catppuccin

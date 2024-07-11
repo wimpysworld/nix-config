@@ -1,6 +1,5 @@
-{ config, desktop, hostname, isInstall, lib, pkgs, username, ... }:
+{ config, desktop, hostname, isInstall, isWorkstation, lib, pkgs, username, ... }:
 let
-  isWorkstation = if (desktop != null) then true else false;
   hostRGB = {
     phasma = "amd";
   };

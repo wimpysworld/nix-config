@@ -1,7 +1,6 @@
-{ config, desktop, hostname, isISO, isInstall, inputs, lib, pkgs, platform, username, ... }:
+{ config, desktop, hostname, inputs, isInstall, isISO, isWorkstation, lib, pkgs, platform, username, ... }:
 let
-  isWorkstation = if (desktop != null) then true else false;
-  isWorkstationISO = if (isISO && isWorkstation) then true else false;
+  isWorkstationISO = (isISO && isWorkstation);
   install-system = pkgs.writeScriptBin "install-system" ''
 #!${pkgs.stdenv.shell}
 
