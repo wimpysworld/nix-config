@@ -7,14 +7,11 @@ in
     systemPackages = (with pkgs; lib.optionals (isWorkstation) [
       brave
       fractal
-      gnome.dconf-editor
       google-chrome
       halloy
       libreoffice
       meld
       microsoft-edge
-      pika-backup
-      usbimager
       wavebox
       zoom-us
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [

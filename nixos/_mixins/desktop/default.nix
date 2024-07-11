@@ -20,6 +20,7 @@ in
     ./apps/media-players
     ./apps/obs-studio
     ./apps/steam
+    ./apps/utilities
     ./apps/video-production
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
