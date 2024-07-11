@@ -3,6 +3,10 @@ let
   inherit (pkgs.stdenv) isDarwin;
 in
 lib.mkIf isDarwin {
+  home.packages = with pkgs; [
+    pika
+    utm
+  ];
   targets.darwin = {
     currentHostDefaults = {
       NSGlobalDomain = {
