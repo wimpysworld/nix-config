@@ -1,11 +1,9 @@
 {
   config,
-  desktop,
   hostname,
   isWorkstation,
   lib,
   pkgs,
-  username,
   ...
 }:
 {

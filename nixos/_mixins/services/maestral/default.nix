@@ -1,5 +1,4 @@
 {
-  desktop,
   hostname,
   isWorkstation,
   lib,

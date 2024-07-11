@@ -1,6 +1,5 @@
 {
   desktop,
-  hostname,
   isInstall,
   lib,
   pkgs,

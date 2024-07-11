@@ -1,4 +1,4 @@
-{ lib, stdenv, fetchFromGitHub, fetchpatch, cmake, obs-studio }:
+{ lib, stdenv, fetchFromGitHub, cmake, obs-studio }:
 
 stdenv.mkDerivation rec {
   pname = "obs-source-record";

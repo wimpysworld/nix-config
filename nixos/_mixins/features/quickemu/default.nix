@@ -1,5 +1,4 @@
 {
-  desktop,
   inputs,
   isWorkstation,
   lib,

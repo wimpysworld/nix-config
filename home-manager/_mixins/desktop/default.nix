@@ -1,7 +1,6 @@
 {
   config,
   desktop,
-  inputs,
   lib,
   pkgs,
   username,

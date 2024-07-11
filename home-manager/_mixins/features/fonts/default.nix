@@ -1,14 +1,7 @@
 {
-  config,
-  desktop,
-  hostname,
   isInstall,
-  inputs,
   lib,
-  outputs,
   pkgs,
-  stateVersion,
-  username,
   ...
 }:
 let

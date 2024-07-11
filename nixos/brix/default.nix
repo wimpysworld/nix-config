@@ -4,7 +4,6 @@
   inputs,
   lib,
   pkgs,
-  platform,
   ...
 }:
 {

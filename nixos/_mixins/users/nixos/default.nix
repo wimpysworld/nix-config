@@ -1,9 +1,7 @@
 {
   config,
   desktop,
-  hostname,
   inputs,
-  isInstall,
   isISO,
   isWorkstation,
   lib,

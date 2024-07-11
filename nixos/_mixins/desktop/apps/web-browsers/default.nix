@@ -1,5 +1,4 @@
 {
-  hostname,
   isInstall,
   lib,
   pkgs,
