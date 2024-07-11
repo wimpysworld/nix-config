@@ -1,6 +1,5 @@
-{ config, desktop, hostname, isInstall, lib, pkgs, username, ... }:
+{ config, desktop, hostname, isInstall, isWorkstation, lib, pkgs, username, ... }:
 let
-  isWorkstation = builtins.isString desktop;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
   hasAmdGPU = config.hardware.amdgpu.initrd.enable;
   hasIntelGPU = lib.any (mod: lib.elem mod config.boot.initrd.kernelModules) ["i915" "xe"];

@@ -1,7 +1,4 @@
-{ desktop, inputs, lib, pkgs, platform, username, ... }:
-let
-  isWorkstation = if (desktop != null) then true else false;
-in
+{ desktop, inputs, isWorkstation, lib, pkgs, platform, username, ... }:
 {
   environment = {
     systemPackages = (with pkgs; lib.optionals (isWorkstation) [

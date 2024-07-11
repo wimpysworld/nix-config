@@ -1,7 +1,6 @@
-{ desktop, inputs, lib, pkgs, platform, username, ... }:
+{ desktop, inputs, isWorkstation, lib, pkgs, platform, username, ... }:
 let
   installFor = [ "martin" ];
-  isWorkstation = if (desktop != null) then true else false;
 in
 lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   environment = {

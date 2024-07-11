@@ -1,7 +1,6 @@
-{ config, desktop, lib, pkgs, username, ... }:
+{ config, desktop, isWorkstation, lib, pkgs, username, ... }:
 let
   installFor = [ "martin" ];
-  isWorkstation = if (desktop != null) then true else false;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
 lib.mkIf (lib.elem "${username}" installFor) {

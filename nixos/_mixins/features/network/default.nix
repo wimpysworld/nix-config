@@ -1,6 +1,5 @@
-{ config, desktop, hostname, lib, pkgs, username, ... }:
+{ config, desktop, hostname, isWorkstation, lib, pkgs, username, ... }:
 let
-  isWorkstation = if (desktop != null) then true else false;
   unmanagedInterfaces = [ ]
     ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
