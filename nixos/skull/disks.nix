@@ -7,19 +7,20 @@ _: {
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "ESP";
-            start = "0%";
-            end = "550MiB";
-            bootable = true;
-            flags = [ "esp" ];
-            fs-type = "fat32";
-            content = {
-              type = "filesystem";
-              format = "vfat";
-              mountpoint = "/boot";
-            };
-          }
+          partitions = [
+            {
+              name = "ESP";
+              start = "0%";
+              end = "550MiB";
+              bootable = true;
+              flags = [ "esp" ];
+              fs-type = "fat32";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+              };
+            }
             {
               name = "root";
               start = "550MiB";
@@ -30,9 +31,14 @@ _: {
                 extraArgs = [ "-f" ];
                 format = "xfs";
                 mountpoint = "/";
-                mountOptions = [ "defaults" "relatime" "nodiratime" ];
+                mountOptions = [
+                  "defaults"
+                  "relatime"
+                  "nodiratime"
+                ];
               };
-            }];
+            }
+          ];
         };
       };
       nvme1 = {
@@ -41,19 +47,21 @@ _: {
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "home";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "filesystem";
-              # Overwirte the existing filesystem
-              extraArgs = [ "-f" ];
-              format = "xfs";
-              mountpoint = "/home";
-              mountOptions = defaultXfsOpts;
-            };
-          }];
+          partitions = [
+            {
+              name = "home";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "filesystem";
+                # Overwirte the existing filesystem
+                extraArgs = [ "-f" ];
+                format = "xfs";
+                mountpoint = "/home";
+                mountOptions = defaultXfsOpts;
+              };
+            }
+          ];
         };
       };
     };

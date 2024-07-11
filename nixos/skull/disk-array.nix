@@ -29,17 +29,25 @@
 #/dev/disk/by-id/ata-TS4TMTS830S_H760910070 (SATA-3)
 #/dev/disk/by-id/ata-TS4TMTS830S_H760910072 (SATA-4)
 
-{ disks ? [ "/dev/disk/by-id/ata-TS4TMTS830S_H986540082"
-            "/dev/disk/by-id/ata-TS4TMTS830S_H986540080"
-            "/dev/disk/by-id/ata-TS4TMTS830S_H986540076"
-            "/dev/disk/by-id/ata-TS4TMTS830S_H986540074"
-            "/dev/disk/by-id/ata-TS4TMTS830S_H738980002"
-            "/dev/disk/by-id/ata-TS4TMTS830S_H760910071"
-            "/dev/disk/by-id/ata-TS4TMTS830S_H760910070"
-            "/dev/disk/by-id/ata-TS4TMTS830S_H760910072"
-          ], ... }:
+{
+  disks ? [
+    "/dev/disk/by-id/ata-TS4TMTS830S_H986540082"
+    "/dev/disk/by-id/ata-TS4TMTS830S_H986540080"
+    "/dev/disk/by-id/ata-TS4TMTS830S_H986540076"
+    "/dev/disk/by-id/ata-TS4TMTS830S_H986540074"
+    "/dev/disk/by-id/ata-TS4TMTS830S_H738980002"
+    "/dev/disk/by-id/ata-TS4TMTS830S_H760910071"
+    "/dev/disk/by-id/ata-TS4TMTS830S_H760910070"
+    "/dev/disk/by-id/ata-TS4TMTS830S_H760910072"
+  ],
+  ...
+}:
 let
-  defaultXfsOpts = [ "defaults" "relatime" "nodiratime" ];
+  defaultXfsOpts = [
+    "defaults"
+    "relatime"
+    "nodiratime"
+  ];
 in
 {
   disko.devices = {
@@ -50,15 +58,17 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "MID-SATA1";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "TS4";
-            };
-          }];
+          partitions = [
+            {
+              name = "MID-SATA1";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "TS4";
+              };
+            }
+          ];
         };
       };
       TS4-2 = {
@@ -67,15 +77,17 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "MID-SATA2";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "TS4";
-            };
-          }];
+          partitions = [
+            {
+              name = "MID-SATA2";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "TS4";
+              };
+            }
+          ];
         };
       };
       TS4-3 = {
@@ -84,15 +96,17 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "MID-SATA3";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "TS4";
-            };
-          }];
+          partitions = [
+            {
+              name = "MID-SATA3";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "TS4";
+              };
+            }
+          ];
         };
       };
       TS4-4 = {
@@ -101,15 +115,17 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "MID-SATA4";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "TS4";
-            };
-          }];
+          partitions = [
+            {
+              name = "MID-SATA4";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "TS4";
+              };
+            }
+          ];
         };
       };
       TS4-5 = {
@@ -118,15 +134,17 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "BOT-SATA1";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "TS4";
-            };
-          }];
+          partitions = [
+            {
+              name = "BOT-SATA1";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "TS4";
+              };
+            }
+          ];
         };
       };
       TS4-6 = {
@@ -135,15 +153,17 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "BOT-SATA2";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "TS4";
-            };
-          }];
+          partitions = [
+            {
+              name = "BOT-SATA2";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "TS4";
+              };
+            }
+          ];
         };
       };
       TS4-7 = {
@@ -152,15 +172,17 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "BOT-SATA3";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "TS4";
-            };
-          }];
+          partitions = [
+            {
+              name = "BOT-SATA3";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "TS4";
+              };
+            }
+          ];
         };
       };
       TS4-8 = {
@@ -169,15 +191,17 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "BOT-SATA4";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "mdraid";
-              name = "TS4";
-            };
-          }];
+          partitions = [
+            {
+              name = "BOT-SATA4";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "mdraid";
+                name = "TS4";
+              };
+            }
+          ];
         };
       };
     };
@@ -188,19 +212,21 @@ in
         content = {
           type = "table";
           format = "gpt";
-          partitions = [{
-            name = "primary";
-            start = "0%";
-            end = "100%";
-            content = {
-              type = "filesystem";
-              # Overwirte the existing filesystem
-              extraArgs = [ "-f" ];
-              format = "xfs";
-              mountpoint = "/mnt/TS4";
-              mountOptions = defaultXfsOpts;
-            };
-          }];
+          partitions = [
+            {
+              name = "primary";
+              start = "0%";
+              end = "100%";
+              content = {
+                type = "filesystem";
+                # Overwirte the existing filesystem
+                extraArgs = [ "-f" ];
+                format = "xfs";
+                mountpoint = "/mnt/TS4";
+                mountOptions = defaultXfsOpts;
+              };
+            }
+          ];
         };
       };
     };

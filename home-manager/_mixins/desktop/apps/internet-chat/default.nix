@@ -1,4 +1,10 @@
-{ config, lib, pkgs, username, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
@@ -10,16 +16,18 @@ in
       "${config.home.homeDirectory}/.config/halloy/themes/catppuccin-mocha.toml".text = builtins.readFile ./halloy-catppuccin-mocha.toml;
     };
 
-    packages = with pkgs; [
-      unstable.telegram-desktop
-    ] ++ lib.optionals (lib.elem username installFor) [
-      chatterino2
-      discord
-      halloy
-    ] ++ lib.optionals (lib.elem username installFor && isLinux) [
-      betterdiscordctl
-      fractal
-    ];
+    packages =
+      with pkgs;
+      [ unstable.telegram-desktop ]
+      ++ lib.optionals (lib.elem username installFor) [
+        chatterino2
+        discord
+        halloy
+      ]
+      ++ lib.optionals (lib.elem username installFor && isLinux) [
+        betterdiscordctl
+        fractal
+      ];
   };
 
   sops = {

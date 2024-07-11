@@ -23,7 +23,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             p01 = {
+            p01 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -41,7 +41,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             d01 = {
+            d01 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -59,7 +59,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             d02 = {
+            d02 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -77,7 +77,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             d03 = {
+            d03 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -95,7 +95,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             d04 = {
+            d04 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -113,7 +113,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             d05 = {
+            d05 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -131,7 +131,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             p02 = {
+            p02 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -149,7 +149,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             d06 = {
+            d06 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -167,7 +167,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             d07 = {
+            d07 = {
               size = "100%";
               content = {
                 type = "filesystem";
@@ -185,7 +185,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-             d08 = {
+            d08 = {
               size = "100%";
               content = {
                 type = "filesystem";

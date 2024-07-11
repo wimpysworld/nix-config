@@ -30,9 +30,7 @@ lib.mkIf isLinux {
   xdg.configFile = {
     kvantum = {
       target = "Kvantum/kvantum.kvconfig";
-      text = lib.generators.toINI { } {
-        General.theme = "Catppuccin-Mocha-Blue";
-      };
+      text = lib.generators.toINI { } { General.theme = "Catppuccin-Mocha-Blue"; };
     };
     qt5ct = {
       target = "qt5ct/qt5ct.conf";

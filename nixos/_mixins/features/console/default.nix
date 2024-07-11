@@ -1,13 +1,21 @@
-{ config, hostname, isInstall, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  isInstall,
+  lib,
+  pkgs,
+  ...
+}:
 let
   kmsconFontSize = {
     sidious = "24";
     tanis = "18";
   };
-  kmsconExtraConfig = if (builtins.hasAttr hostname kmsconFontSize) then
-                        ''font-size=${kmsconFontSize.${hostname}}''
-                      else
-                        ''font-size=14'';
+  kmsconExtraConfig =
+    if (builtins.hasAttr hostname kmsconFontSize) then
+      ''font-size=${kmsconFontSize.${hostname}}''
+    else
+      ''font-size=14'';
 in
 {
   boot = {
@@ -33,10 +41,17 @@ in
     kmscon = lib.mkIf (isInstall) {
       enable = true;
       hwRender = true;
-      fonts = [{
-        name = "FiraCode Nerd Font Mono";
-        package = pkgs.nerdfonts.override { fonts = [ "FiraCode" "NerdFontsSymbolsOnly" ]; };
-      }];
+      fonts = [
+        {
+          name = "FiraCode Nerd Font Mono";
+          package = pkgs.nerdfonts.override {
+            fonts = [
+              "FiraCode"
+              "NerdFontsSymbolsOnly"
+            ];
+          };
+        }
+      ];
       extraConfig = kmsconExtraConfig;
     };
   };

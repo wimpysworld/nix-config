@@ -1,6 +1,17 @@
-{ config, hostname, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
-  installOn = [ "phasma" "sidious" "tanis" "vader" ];
+  installOn = [
+    "phasma"
+    "sidious"
+    "tanis"
+    "vader"
+  ];
   hasCUDA = lib.elem "cudaPackages.cudatoolkit" config.environment.systemPackages;
   hasOpenCL = config.hardware.amdgpu.opencl.enable;
 in

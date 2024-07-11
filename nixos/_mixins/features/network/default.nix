@@ -1,29 +1,55 @@
-{ config, desktop, hostname, isWorkstation, lib, pkgs, username, ... }:
+{
+  config,
+  desktop,
+  hostname,
+  isWorkstation,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
-  unmanagedInterfaces = [ ]
+  unmanagedInterfaces =
+    [ ]
     ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
 
   # Trust the lxd bridge interface, if lxd is enabled
   # Trust the tailscale interface, if tailscale is enabled
-  trustedInterfaces = [ ]
+  trustedInterfaces =
+    [ ]
     ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
 
   # Per-host firewall configuration; mostly for Syncthing which is configured via Home Manager
   allowedTCPPorts = {
-    phasma  = [ 22000 ];
+    phasma = [ 22000 ];
     sidious = [ 22000 ];
-    tanis   = [ 22000 ];
-    vader   = [ 22000 ];
-    revan   = [ 22000 ];
+    tanis = [ 22000 ];
+    vader = [ 22000 ];
+    revan = [ 22000 ];
   };
   allowedUDPPorts = {
-    phasma  = [ 22000 21027 ];
-    sidious = [ 22000 21027 ];
-    tanis   = [ 22000 21027 ];
-    vader   = [ 22000 21027 ];
-    revan   = [ 22000 21027 ];
+    phasma = [
+      22000
+      21027
+    ];
+    sidious = [
+      22000
+      21027
+    ];
+    tanis = [
+      22000
+      21027
+    ];
+    vader = [
+      22000
+      21027
+    ];
+    revan = [
+      22000
+      21027
+    ];
   };
 
   # Define DNS settings for specific users
@@ -60,15 +86,16 @@ in
     '';
     firewall = {
       enable = true;
-      allowedTCPPorts = lib.optionals (builtins.hasAttr hostname allowedTCPPorts) allowedTCPPorts.${hostname};
-      allowedUDPPorts = lib.optionals (builtins.hasAttr hostname allowedUDPPorts) allowedUDPPorts.${hostname};
+      allowedTCPPorts =
+        lib.optionals (builtins.hasAttr hostname allowedTCPPorts)
+          allowedTCPPorts.${hostname};
+      allowedUDPPorts =
+        lib.optionals (builtins.hasAttr hostname allowedUDPPorts)
+          allowedUDPPorts.${hostname};
       trustedInterfaces = trustedInterfaces;
     };
     hostName = hostname;
-    nameservers = if builtins.hasAttr username userDns then
-                    userDns.${username}
-                  else
-                    fallbackDns;
+    nameservers = if builtins.hasAttr username userDns then userDns.${username} else fallbackDns;
     networkmanager = lib.mkIf (isWorkstation) {
       # Use resolved for DNS resolution; tailscale MagicDNS requires it
       dns = "systemd-resolved";
@@ -99,15 +126,23 @@ in
   };
 
   # Belt and braces disable WiFi power saving
-  systemd.services.disable-wifi-powersave = lib.mkIf (lib.isBool config.networking.networkmanager.wifi.powersave && config.networking.networkmanager.wifi.powersave) {
-    wantedBy = ["multi-user.target"];
-    path = [ pkgs.iw ];
-    script = ''
-      iw dev wlan0 set power_save off
-    '';
-  };
+  systemd.services.disable-wifi-powersave =
+    lib.mkIf
+      (
+        lib.isBool config.networking.networkmanager.wifi.powersave
+        && config.networking.networkmanager.wifi.powersave
+      )
+      {
+        wantedBy = [ "multi-user.target" ];
+        path = [ pkgs.iw ];
+        script = ''
+          iw dev wlan0 set power_save off
+        '';
+      };
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175
   systemd.services.NetworkManager-wait-online.enable = false;
 
-  users.users.${username}.extraGroups = lib.optionals (config.networking.networkmanager.enable) [ "networkmanager" ];
+  users.users.${username}.extraGroups = lib.optionals (config.networking.networkmanager.enable) [
+    "networkmanager"
+  ];
 }

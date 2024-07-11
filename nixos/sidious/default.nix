@@ -1,6 +1,12 @@
 # Lenovo ThinkPad P1 Gen 1
 
-{ inputs, lib, pkgs, platform, ... }:
+{
+  inputs,
+  lib,
+  pkgs,
+  platform,
+  ...
+}:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-p1
@@ -10,9 +16,18 @@
   ];
 
   boot = {
-    initrd.availableKernelModules = [ "xhci_pci" "nvme" "uas" "usb_storage" "sd_mod" ];
+    initrd.availableKernelModules = [
+      "xhci_pci"
+      "nvme"
+      "uas"
+      "usb_storage"
+      "sd_mod"
+    ];
     initrd.systemd.enable = true;
-    kernelModules = [ "kvm-intel" "nvidia" ];
+    kernelModules = [
+      "kvm-intel"
+      "nvidia"
+    ];
   };
 
   hardware = {
@@ -44,5 +59,8 @@
       #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
     };
   };
-  services.xserver.videoDrivers = [ "i915" "nvidia" ];
+  services.xserver.videoDrivers = [
+    "i915"
+    "nvidia"
+  ];
 }

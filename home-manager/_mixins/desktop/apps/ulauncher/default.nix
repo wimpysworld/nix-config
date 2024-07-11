@@ -1,4 +1,10 @@
-{ config, desktop, lib, pkgs, ... }:
+{
+  config,
+  desktop,
+  lib,
+  pkgs,
+  ...
+}:
 let
   user-themes = pkgs.lib.cleanSource ./user-themes;
 in
@@ -26,8 +32,6 @@ lib.mkIf (desktop == "pantheon") {
         Terminal=false
         StartupNotify=false'';
     };
-    packages = with pkgs; [
-      ulauncher
-    ];
+    packages = with pkgs; [ ulauncher ];
   };
 }

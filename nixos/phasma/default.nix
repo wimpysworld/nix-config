@@ -1,4 +1,11 @@
-{ config, inputs, lib, pkgs, platform, ... }:
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  platform,
+  ...
+}:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
@@ -19,8 +26,19 @@
   };
 
   boot = {
-    initrd.availableKernelModules = [ "nvme" "ahci" "xhci_pci" "usbhid" "uas" "sd_mod" ];
-    kernelModules = [ "amdgpu" "kvm-amd" "nvidia" ];
+    initrd.availableKernelModules = [
+      "nvme"
+      "ahci"
+      "xhci_pci"
+      "usbhid"
+      "uas"
+      "sd_mod"
+    ];
+    kernelModules = [
+      "amdgpu"
+      "kvm-amd"
+      "nvidia"
+    ];
     kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
     # Disable USB autosuspend on workstations
     kernelParams = [ "usbcore.autosuspend=-1" ];
@@ -45,5 +63,8 @@
       };
     };
   };
-  services.xserver.videoDrivers = [ "amdgpu" "nvidia" ];
+  services.xserver.videoDrivers = [
+    "amdgpu"
+    "nvidia"
+  ];
 }

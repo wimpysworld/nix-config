@@ -1,10 +1,12 @@
-{ hostname, isInstall, lib, pkgs, ... }:
 {
-  environment = lib.mkIf (isInstall) {
-    systemPackages = with pkgs; [
-      ssh-to-age
-    ];
-  };
+  hostname,
+  isInstall,
+  lib,
+  pkgs,
+  ...
+}:
+{
+  environment = lib.mkIf (isInstall) { systemPackages = with pkgs; [ ssh-to-age ]; };
   programs = {
     mosh.enable = isInstall;
     ssh.startAgent = true;

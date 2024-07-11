@@ -1,8 +1,13 @@
-{ config, desktop, lib, pkgs, username, ... }:
 {
-  imports = [
-    ./root
-  ] ++ lib.optional (builtins.pathExists (./. + "/${username}")) ./${username};
+  config,
+  desktop,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
+{
+  imports = [ ./root ] ++ lib.optional (builtins.pathExists (./. + "/${username}")) ./${username};
 
   environment.localBinInPath = true;
 

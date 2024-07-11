@@ -1,5 +1,4 @@
-_:
-{
+_: {
   users.users.root = {
     hashedPassword = null;
     openssh.authorizedKeys.keys = [

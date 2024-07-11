@@ -11,18 +11,24 @@
     # https://discourse.nixos.org/t/davinci-resolve-studio-install-issues/37699/44
     # https://theholytachanka.com/posts/setting-up-resolve/
     davinci-resolve = prev.davinci-resolve.override (old: {
-      buildFHSEnv = a: (old.buildFHSEnv (a // {
-        extraBwrapArgs = a.extraBwrapArgs ++ [
-          "--bind /run/opengl-driver/etc/OpenCL /etc/OpenCL"
-        ];
-      }));
+      buildFHSEnv =
+        a:
+        (old.buildFHSEnv (
+          a
+          // {
+            extraBwrapArgs = a.extraBwrapArgs ++ [ "--bind /run/opengl-driver/etc/OpenCL /etc/OpenCL" ];
+          }
+        ));
     });
     davinci-resolve-studio = prev.davinci-resolve-studio.override (old: {
-      buildFHSEnv = a: (old.buildFHSEnv (a // {
-        extraBwrapArgs = a.extraBwrapArgs ++ [
-          "--bind /run/opengl-driver/etc/OpenCL /etc/OpenCL"
-        ];
-      }));
+      buildFHSEnv =
+        a:
+        (old.buildFHSEnv (
+          a
+          // {
+            extraBwrapArgs = a.extraBwrapArgs ++ [ "--bind /run/opengl-driver/etc/OpenCL /etc/OpenCL" ];
+          }
+        ));
     });
     #linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
     #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {

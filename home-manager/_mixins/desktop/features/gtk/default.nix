@@ -1,4 +1,10 @@
-{ config, desktop, lib, pkgs, ... }:
+{
+  config,
+  desktop,
+  lib,
+  pkgs,
+  ...
+}:
 let
   inherit (pkgs.stdenv) isLinux;
 in
@@ -88,9 +94,7 @@ lib.mkIf isLinux {
     };
   };
   home = {
-    packages = with pkgs; [
-      papirus-folders
-    ];
+    packages = with pkgs; [ papirus-folders ];
     pointerCursor = {
       name = "catppuccin-mocha-blue-cursors";
       package = pkgs.catppuccin-cursors.mochaBlue;

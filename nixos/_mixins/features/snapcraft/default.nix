@@ -1,4 +1,12 @@
-{ config, desktop, isWorkstation, lib, pkgs, username, ... }:
+{
+  config,
+  desktop,
+  isWorkstation,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   installFor = [ "martin" ];
 in

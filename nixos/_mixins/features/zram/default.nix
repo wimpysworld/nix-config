@@ -10,7 +10,7 @@
   # - Inspired by: https://github.com/hakavlad/mg-lru-helper
   systemd.services."mglru" = {
     enable = true;
-    wantedBy = ["basic.target"];
+    wantedBy = [ "basic.target" ];
     script = ''
       ${pkgs.coreutils-full}/bin/echo 1000 > /sys/kernel/mm/lru_gen/min_ttl_ms
     '';

@@ -47,7 +47,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-              snapshot-sdc = {
+            snapshot-sdc = {
               start = "0%";
               end = "100%";
               content = {

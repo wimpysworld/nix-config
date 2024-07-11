@@ -1,4 +1,10 @@
-{ config, hostname, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
   inherit (pkgs.stdenv) isLinux;
   isStreamstation = if (hostname == "phasma" || hostname == "vader") then true else false;
@@ -30,7 +36,7 @@ in
 
   # Linux specific configuration
   systemd.user.tmpfiles = lib.mkIf isLinux {
-    rules =  lib.mkIf isStreamstation [
+    rules = lib.mkIf isStreamstation [
       "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
     ];
   };
