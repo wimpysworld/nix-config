@@ -2,15 +2,13 @@
   inputs,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 in
-{
-  imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
-
+lib.mkIf (lib.elem username installFor) {
   nixpkgs.overlays = [
     inputs.catppuccin-vsc.overlays.default
     inputs.nix-vscode-extensions.overlays.default
