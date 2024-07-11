@@ -4,11 +4,12 @@
   let
     isISO = builtins.substring 0 4 hostname == "iso-";
     isInstall = !isISO;
+    isWorkstation = builtins.isString desktop;
   in
   inputs.home-manager.lib.homeManagerConfiguration {
     pkgs = inputs.nixpkgs.legacyPackages.${platform};
     extraSpecialArgs = {
-      inherit inputs outputs desktop hostname platform username stateVersion isInstall isISO;
+      inherit inputs outputs desktop hostname platform username stateVersion isInstall isISO isWorkstation;
     };
     modules = [ ../home-manager ];
   };
@@ -18,10 +19,11 @@
   let
     isISO = builtins.substring 0 4 hostname == "iso-";
     isInstall = !isISO;
+    isWorkstation = builtins.isString desktop;
   in
   inputs.nixpkgs.lib.nixosSystem {
     specialArgs = {
-      inherit inputs outputs desktop hostname platform username stateVersion isInstall isISO;
+      inherit inputs outputs desktop hostname platform username stateVersion isInstall isISO isWorkstation;
     };
     # If the hostname starts with "iso-", generate an ISO image
     modules = let
