@@ -14,14 +14,13 @@ in
     ./apps/1password
     ./apps/audio-production
     ./apps/blender
-    ./apps/chromium
-    ./apps/firefox
     ./apps/graphics-production
     ./apps/media-players
     ./apps/obs-studio
     ./apps/steam
     ./apps/utilities
     ./apps/video-production
+    ./apps/web-browsers
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {
