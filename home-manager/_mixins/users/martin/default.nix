@@ -1,13 +1,5 @@
+{ config, pkgs, ... }:
 {
-  config,
-  pkgs,
-  ...
-}:
-{
-  imports = [
-    ../../services/keybase.nix
-    ../../services/syncthing.nix
-  ];
   home = {
     file.".bazaar/authentication.conf".text = "
       [Launchpad]
@@ -69,7 +61,6 @@
     file."/Quickemu/nixos-mate/.keep".text = "";
     file."/Quickemu/nixos-pantheon/.keep".text = "";
     file."/Scripts/.keep".text = "";
-    file."/Syncthing/.keep".text = "";
     file."/Websites/.keep".text = "";
     file."/Zero/.keep".text = "";
     file.".ssh/allowed_signers".text = ''

@@ -24,14 +24,12 @@ in
       inputs.catppuccin.homeManagerModules.catppuccin
       inputs.sops-nix.homeManagerModules.sops
       inputs.nix-index-database.hmModules.nix-index
-      ./_mixins/features/fonts
+      ./_mixins/features
+      ./_mixins/services
     ]
     ++ lib.optional (builtins.pathExists (
       ./. + "/_mixins/users/${username}"
     )) ./_mixins/users/${username}
-    ++ lib.optional (builtins.pathExists (
-      ./. + "/_mixins/hosts/${hostname}"
-    )) ./_mixins/hosts/${hostname}
     ++ lib.optional (isWorkstation) ./_mixins/desktop;
 
   catppuccin = {
