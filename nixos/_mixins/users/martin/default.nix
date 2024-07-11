@@ -6,7 +6,6 @@ in
   environment = {
     systemPackages = (with pkgs; lib.optionals (isWorkstation) [
       libreoffice
-      meld
       zoom-us
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
       gnome-extension-manager

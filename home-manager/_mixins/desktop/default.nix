@@ -10,6 +10,7 @@ in
     ./apps/gitkraken
     ./apps/internet-chat
     ./apps/joplin
+    ./apps/meld
     ./apps/obs-studio
     ./apps/ulauncher
     ./apps/vscode
@@ -21,7 +22,6 @@ in
     # Authrorize X11 access in Distrobox
     file = lib.mkIf isLinux {
       ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
-      "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text = builtins.readFile ./configs/gedit-catppuccin-mocha.xml;
       "${config.home.homeDirectory}/.local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ./configs/plank-catppuccin-mocha.theme;
     };
     packages = with pkgs; lib.optionals (isDarwin) [
