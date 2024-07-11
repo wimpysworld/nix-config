@@ -3,12 +3,14 @@
   isWorkstation,
   lib,
   pkgs,
+  username,
   ...
 }:
 let
+  installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf isLinux {
+lib.mkIf (lib.elem username installFor && isLinux) {
   home.file = {
     "${config.xdg.configHome}/keybase/autostart_created" = {
       text = ''
