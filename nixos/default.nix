@@ -49,18 +49,18 @@
     consoleLogLevel = 0;
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
-    kernelParams = [
-      "boot.shell_on_fail"
-      "loglevel=3"
-      "rd.systemd.show_status=false"
-      "rd.udev.log_level=3"
-      "udev.log_priority=3"
-    ];
+    #kernelParams = [
+    #  "boot.shell_on_fail"
+    #  "loglevel=3"
+    #  "rd.systemd.show_status=false"
+    #  "rd.udev.log_level=3"
+    #  "udev.log_priority=3"
+    #];
     kernelPackages = pkgs.linuxPackages_latest;
     # Only enable the systemd-boot on installs, not live media (.ISO images)
     loader = lib.mkIf (isInstall) {
       efi.canTouchEfiVariables = true;
-      systemd-boot.configurationLimit = 10;
+      systemd-boot.configurationLimit = 30;
       systemd-boot.consoleMode = "max";
       systemd-boot.enable = true;
       systemd-boot.memtest86.enable = true;
@@ -159,7 +159,7 @@
     nh = {
       clean = {
         enable = true;
-        extraArgs = "--keep-since 10d --keep 5";
+        extraArgs = "--keep-since 30d --keep 30";
       };
       enable = true;
       flake = "/home/${username}/Zero/nix-config";
