@@ -7,7 +7,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isDarwin isLinux;
+  inherit (pkgs.stdenv) isLinux;
 in
 {
   # import the DE specific configuration and any user specific desktop configuration
@@ -35,13 +35,6 @@ in
       ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
       "${config.home.homeDirectory}/.local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ./configs/plank-catppuccin-mocha.theme;
     };
-    packages =
-      with pkgs;
-      lib.optionals (isDarwin) [
-        # macOS apps
-        pika
-        utm
-      ];
   };
 
   xresources.properties = {
