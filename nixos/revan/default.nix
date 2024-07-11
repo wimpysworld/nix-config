@@ -28,8 +28,6 @@
     ./disks-home.nix
     ./disks-snapraid.nix
     ./disks-snapshot.nix
-    ../_mixins/services/jellyfin
-    ../_mixins/services/plex
   ];
 
   boot = {
