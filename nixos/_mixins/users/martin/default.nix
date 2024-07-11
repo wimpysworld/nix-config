@@ -6,9 +6,7 @@ in
   environment = {
     systemPackages = (with pkgs; lib.optionals (isWorkstation) [
       brave
-      fractal
       google-chrome
-      halloy
       libreoffice
       meld
       microsoft-edge
@@ -19,8 +17,6 @@ in
       gnomeExtensions.start-overlay-in-application-view
       gnomeExtensions.tiling-assistant
       gnomeExtensions.vitals
-    ]) ++ (with pkgs.unstable; lib.optionals (isWorkstation) [
-      telegram-desktop
     ]) ++ (with inputs; lib.optionals (isWorkstation) [
       antsy-alien-attack-pico.packages.${platform}.default
     ]);

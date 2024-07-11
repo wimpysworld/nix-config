@@ -79,7 +79,6 @@ in
       httpie # Terminal HTTP client
       hyperfine # Terminal benchmarking
       iperf3 # Terminal network benchmarking
-      halloy # Terminal IRC
       jpegoptim # Terminal JPEG optimizer
       jiq # Modern Unix `jq`
       lima-bin # Terminal VM manager
