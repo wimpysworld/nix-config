@@ -76,12 +76,6 @@ in
       window-width = lib.hm.gvariant.mkUint32 1450;
     };
 
-    "io/github/celluloid-player/celluloid" = lib.optionalAttrs (desktop != "gnome") {
-      csd-enable = false;
-    } // {
-      dark-theme-enable = true;
-    };
-
     "org/gnome/meld" = {
       custom-font = "FiraCode Nerd Font Mono Medium 13";
       indent-width = mkInt32 4;

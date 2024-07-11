@@ -17,6 +17,7 @@ in
     ./apps/chromium
     ./apps/firefox
     ./apps/graphics-production
+    ./apps/media-players
     ./apps/obs-studio
     ./apps/steam
     ./apps/video-production

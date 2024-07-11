@@ -6,7 +6,6 @@ in
   environment = {
     systemPackages = (with pkgs; lib.optionals (isWorkstation) [
       brave
-      celluloid
       fractal
       gnome.dconf-editor
       google-chrome
@@ -15,10 +14,8 @@ in
       meld
       microsoft-edge
       pika-backup
-      tartube
       usbimager
       wavebox
-      youtube-music
       zoom-us
     ] ++ lib.optionals (isWorkstation && desktop == "gnome") [
       gnome-extension-manager
