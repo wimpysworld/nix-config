@@ -97,18 +97,19 @@
       "inputs": {
         "fenix": "fenix",
         "flake-compat": "flake-compat",
+        "flake-schemas": "flake-schemas",
         "naersk": "naersk",
         "nixpkgs": [
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1718572120,
-        "narHash": "sha256-zmnW3n1Adg47MaoBTIXDDcgFy4HCxcgNuc8LrmPK4F0=",
-        "rev": "5b7e079a747f22ee1d2450c0c972d466308a928a",
-        "revCount": 455,
+        "lastModified": 1720661053,
+        "narHash": "sha256-CI6tD6B4CTrC1yCAK03faUm63hyLUBJhseB8oBdIlrc=",
+        "rev": "0da4df06c07d83292b649ee9008f53f2b309c7d6",
+        "revCount": 492,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/fh/0.1.12/019022e3-a731-7729-af25-f7717f950ec4/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/fh/0.1.13/0190a257-196d-7492-a396-9bd014391ad5/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -205,6 +206,20 @@
       }
     },
     "flake-schemas_3": {
+      "locked": {
+        "lastModified": 1697467827,
+        "narHash": "sha256-j8SR19V1SRysyJwpOBF4TLuAvAjF5t+gMiboN4gYQDU=",
+        "rev": "764932025c817d4e500a8d2a4d8c565563923d29",
+        "revCount": 29,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/flake-schemas/0.1.2/018b3da8-4cc3-7fbb-8ff7-1588413c53e2/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/DeterminateSystems/flake-schemas/%2A.tar.gz"
+      }
+    },
+    "flake-schemas_4": {
       "locked": {
         "lastModified": 1697467827,
         "narHash": "sha256-j8SR19V1SRysyJwpOBF4TLuAvAjF5t+gMiboN4gYQDU=",
@@ -452,7 +467,7 @@
     },
     "quickemu": {
       "inputs": {
-        "flake-schemas": "flake-schemas",
+        "flake-schemas": "flake-schemas_2",
         "nixpkgs": [
           "nixpkgs"
         ]
@@ -472,7 +487,7 @@
     },
     "quickemu_2": {
       "inputs": {
-        "flake-schemas": "flake-schemas_3",
+        "flake-schemas": "flake-schemas_4",
         "nixpkgs": [
           "quickgui",
           "nixpkgs"
@@ -493,7 +508,7 @@
     },
     "quickgui": {
       "inputs": {
-        "flake-schemas": "flake-schemas_2",
+        "flake-schemas": "flake-schemas_3",
         "nixpkgs": [
           "nixpkgs"
         ],
