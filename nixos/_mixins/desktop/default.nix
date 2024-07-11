@@ -18,8 +18,8 @@
     ./apps/1password
     ./apps/audio-production
     ./apps/blender
+    ./apps/celluloid
     ./apps/graphics-production
-    ./apps/media-players
     ./apps/obs-studio
     ./apps/steam
     ./apps/utilities

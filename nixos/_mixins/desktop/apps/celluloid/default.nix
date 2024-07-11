@@ -3,16 +3,10 @@
   isInstall,
   lib,
   pkgs,
-  username,
   ...
 }:
-let
-  installFor = [ "martin" ];
-in
 lib.mkIf (isInstall) {
-  environment.systemPackages =
-    with pkgs;
-    [ celluloid ] ++ lib.optionals (builtins.elem username installFor) [ tartube-yt-dlp ];
+  environment.systemPackages = with pkgs; [ celluloid ];
 
   programs = {
     dconf.profiles.user.databases = [
