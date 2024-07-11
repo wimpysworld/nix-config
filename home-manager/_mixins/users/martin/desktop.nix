@@ -73,17 +73,6 @@ in
       window-width = lib.hm.gvariant.mkUint32 1450;
     };
 
-    "org/gnome/meld" = {
-      custom-font = "FiraCode Nerd Font Mono Medium 13";
-      indent-width = mkInt32 4;
-      insert-spaces-instead-of-tabs = true;
-      highlight-current-line = true;
-      show-line-numbers = true;
-      prefer-dark-theme = true;
-      highlight-syntax = true;
-      style-scheme = "catppuccin_mocha";
-    };
-
     "com/github/wwmm/easyeffects" = {
       bypass = false;
       process-all-inputs = false;
