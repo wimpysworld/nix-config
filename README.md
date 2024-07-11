@@ -18,9 +18,9 @@ These computers are managed by this Nix flake ❄️
 | `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
 | `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T400]           | ☁️   | ❄️  | 🚧    |
-| `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                         | ☁️   | ❄️  | 🧟    |
-| `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                         | ☁️   | ❄️  | 🧟    |
-| `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                         | ☁️   | ❄️  | 🧟    |
+| `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                         | 🧟   | 🧟  | 🧟    |
+| `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                         | 🧟   | 🧟  | 🧟    |
+| `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                         | 🧟   | 🧟  | 🧟    |
 
 **Key**
 
@@ -30,6 +30,7 @@ These computers are managed by this Nix flake ❄️
 - 🎮️ : Games Machine
 - 🐄 : Virtual Machine
 - ☁️ : Server
+- 🧟 : Not in service
 
 **As featured on [Linux Matters](https://linuxmatters.sh) podcast!** 🎙️ I am a presenter on Linux Matters and this configuration was featured in [Episode 7 - Immutable Desktop Linux for Anyone](https://linuxmatters.sh/7/).
 
@@ -89,7 +90,7 @@ The `build-iso` script is included that creates .iso images from this flake. The
 - `build-iso pantheon` (*Pantheon Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 
 Live images will be left in `~/$HOME/Zero/nix-config/result/iso/` and are also injected into `~/Quickemu/nixos-console` and `~/Quickemu/nixos-<desktop>` respectively.
-The console .iso image is also periodically built and published via [GitHub [Actions](./.github/workflows) and is available in [this](https://github.com/wimpysworld/nix-config/releases) project's Releases](https://github.com/wimpysworld/nix-config/releases).
+The console .iso image is also periodically built and published via [GitHub Actions](./.github/workflows) and is available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
 ## What's in the box? 🎁
 
@@ -102,38 +103,40 @@ Here's the directory structure I'm using:
 ```
 .
 ├── home-manager
-│   ├── _mixins
-│   │   ├── configs
-│   │   ├── desktop
-│   │   │   ├── aqua
-│   │   │   ├── gnome
-│   │   │   ├── mate
-│   │   │   └── pantheon
-│   │   ├── hosts
-│   │   │   ├── phasma
-│   │   │   └── vader
-│   │   ├── services
-│   │   └── users
-│   │       └── martin
-│   └── default.nix
+│  ├── _mixins
+│  │  ├── configs
+│  │  ├── desktop
+│  │  ├── features
+│  │  ├── services
+│  │  └── users
+│  └── default.nix
+├── lib
+│  └── default.nix
 ├── nixos
-│   ├── _mixins
-│   │   ├── configs
-│   │   ├── desktop
-│   │   │   ├── gnome
-│   │   │   ├── mate
-│   │   │   └── pantheon
-│   │   ├── services
-│   │   └── users
-│   │       ├── martin
-│   │       ├── nixos
-│   │       └── root
-│   ├── phasma
-│   ├── vader
-│   └── default.nix
+│  ├── _mixins
+│  │  ├── configs
+│  │  ├── desktop
+│  │  ├── features
+│  │  ├── services
+│  │  └── users
+│  ├── iso-console
+│  ├── iso-gnome -> iso-console
+│  ├── iso-mate -> iso-console
+│  ├── iso-pantheon -> iso-console
+│  ├── minimech -> scrubber
+│  ├── phasma
+│  ├── revan
+│  ├── scrubber
+│  ├── sidious
+│  ├── tanis
+│  ├── vader
+│  └── default.nix
 ├── overlays
+│  └── default.nix
 ├── pkgs
+│  └── default.nix
 ├── secrets
+│  └── secrets.yaml
 └── flake.nix
 ```
 
@@ -144,25 +147,23 @@ The `default.nix` files in the root of each directory are the entry points.
 
 ### The Shell 🐚
 
-[Fish shell] with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], [Podman & Distrobox] and, of course, a delightfully configured [micro]. (*Fight me!* 🥊) My [common scripts](nixos/_mixins/scripts) are (slowly) being migrated to declarative Nix-managed scripts.
+Fish shell 🐟️ with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], [Distrobox](./nixos/_mixins/features/distrobox/default.nix) and, of course, a delightfully configured [micro]. (*Fight me!* 🥊) My [common scripts](./nixos/_mixins/configs) are (slowly) being migrated to declarative Nix-managed scripts.
 
-![fastfetch on Ripper](.github/screenshots/fastfetch.png)
+![fastfetch on Phasma](.github/screenshots/fastfetch.png)
 
 ### The Desktop 🖥️
 
 GNOME 👣 MATE 🧉 and Pantheon 🏛️ desktop options are available. The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code). The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
-|  Desktop  |       System       |       Configuration       |             Theme            |
-| :-------: | :----------------: | :-----------------------: | :--------------------------: |
-| GNOME     | [GNOME Install]    | [GNOME Configuration]     | Adwaita (Dark)               |
-| MATE      | [MATE Install]     | [MATE Configuration]      | Yaru Magenta (Dark)          |
-| Pantheon  | [Pantheon Install] | [Pantheon Configuration]  | elementary Bubble Gum (Dark) |
+|  Desktops |       System       |       Configuration       |       Theme       |
+| :-------: | :----------------: | :-----------------------: | :---------------: |
+| GNOME     | [GNOME Install]    | [GNOME Configuration]     | Catppuccin Mocha  |
+| MATE      | [MATE Install]     | [MATE Configuration]      | Catppuccin Mocha  |
+| Pantheon  | [Pantheon Install] | [Pantheon Configuration]  | Catppuccin Mocha  |
 
 ## Eye Candy 👀🍬
 
-![Pantheon on Designare](.github/screenshots/pantheon.png)
-
-![Alt](https://repobeats.axiom.co/api/embed/a82d5acf21276546e716d36dca41be774e6a5b74.svg "Repobeats analytics image")
+![Pantheon on Phasma](.github/screenshots/pantheon.png)
 
 ## Post-install Checklist
 
@@ -355,6 +356,7 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [home-manager/_mixins]: ./home-manager/_mixins
 [flake.nix]: ./flake.nix
 [Modern Unix]: ./home-manager/default.nix
+[OpenSSH]: ./nixos/_mixins/services/ssh/default.nix
 
 [micro]: [https://micro-editor.github.io/]
 [sops-nix]: [https://github.com/Mic92/sops-nix]
