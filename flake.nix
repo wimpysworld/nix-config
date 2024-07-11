@@ -57,66 +57,66 @@
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "24.05";
-      libx = import ./lib { inherit inputs outputs stateVersion; };
+      helper = import ./lib { inherit inputs outputs stateVersion; };
     in
     {
       # home-manager switch -b backup --flake $HOME/Zero/nix-config
       # nix run nixpkgs#home-manager -- switch -b backup --flake "${HOME}/Zero/nix-config"
       homeConfigurations = {
         # .iso images
-        "nixos@iso-console" =  libx.mkHome { hostname = "iso-console";  username = "nixos"; };
-        "nixos@iso-gnome" =    libx.mkHome { hostname = "iso-gnome";    username = "nixos"; desktop = "gnome"; };
-        "nixos@iso-mate" =     libx.mkHome { hostname = "iso-mate";     username = "nixos"; desktop = "mate"; };
-        "nixos@iso-pantheon" = libx.mkHome { hostname = "iso-pantheon"; username = "nixos"; desktop = "pantheon"; };
+        "nixos@iso-console" =  helper.mkHome { hostname = "iso-console";  username = "nixos"; };
+        "nixos@iso-gnome" =    helper.mkHome { hostname = "iso-gnome";    username = "nixos"; desktop = "gnome"; };
+        "nixos@iso-mate" =     helper.mkHome { hostname = "iso-mate";     username = "nixos"; desktop = "mate"; };
+        "nixos@iso-pantheon" = helper.mkHome { hostname = "iso-pantheon"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
-        "martin@phasma" = libx.mkHome { hostname = "phasma"; desktop = "pantheon"; };
-        "martin@vader"  = libx.mkHome { hostname = "vader";  desktop = "pantheon"; };
-        "martin@tanis"  = libx.mkHome { hostname = "tanis";  desktop = "gnome"; };
+        "martin@phasma" = helper.mkHome { hostname = "phasma"; desktop = "pantheon"; };
+        "martin@vader"  = helper.mkHome { hostname = "vader";  desktop = "pantheon"; };
+        "martin@tanis"  = helper.mkHome { hostname = "tanis";  desktop = "gnome"; };
         # dooku/tyranus are dual boot hosts, macOS and NixOS respectively.
-        "martin@dooku"     = libx.mkHome { hostname = "dooku";   platform = "aarch64-darwin"; desktop = "aqua";};
-        "martin@tyranus"   = libx.mkHome { hostname = "tyranus"; platform = "aarch64-linux";  desktop = "gnome"; };
+        "martin@dooku"     = helper.mkHome { hostname = "dooku";   platform = "aarch64-darwin"; desktop = "aqua";};
+        "martin@tyranus"   = helper.mkHome { hostname = "tyranus"; platform = "aarch64-linux";  desktop = "gnome"; };
         # palpatine/sidious are dual boot hosts, WSL2/Ubuntu and NixOS respectively.
-        "martin@palpatine" = libx.mkHome { hostname = "palpatine"; };
-        "martin@sidious"   = libx.mkHome { hostname = "sidious"; desktop = "gnome"; };
+        "martin@palpatine" = helper.mkHome { hostname = "palpatine"; };
+        "martin@sidious"   = helper.mkHome { hostname = "sidious"; desktop = "gnome"; };
         # Servers
-        "martin@revan" = libx.mkHome { hostname = "revan"; };
-        "martin@brix"  = libx.mkHome { hostname = "brix"; };
-        "martin@skull" = libx.mkHome { hostname = "skull"; };
+        "martin@revan" = helper.mkHome { hostname = "revan"; };
+        "martin@brix"  = helper.mkHome { hostname = "brix"; };
+        "martin@skull" = helper.mkHome { hostname = "skull"; };
         # Steam Deck
-        "deck@steamdeck" = libx.mkHome { hostname = "steamdeck"; username = "deck"; };
+        "deck@steamdeck" = helper.mkHome { hostname = "steamdeck"; username = "deck"; };
         # VMs
-        "martin@minimech"     = libx.mkHome { hostname = "minimech"; };
-        "martin@scrubber"     = libx.mkHome { hostname = "scrubber"; desktop = "pantheon"; };
-        "martin@lima-builder" = libx.mkHome { hostname = "lima-builder"; };
-        "martin@lima-default" = libx.mkHome { hostname = "lima-default"; };
+        "martin@minimech"     = helper.mkHome { hostname = "minimech"; };
+        "martin@scrubber"     = helper.mkHome { hostname = "scrubber"; desktop = "pantheon"; };
+        "martin@lima-builder" = helper.mkHome { hostname = "lima-builder"; };
+        "martin@lima-default" = helper.mkHome { hostname = "lima-default"; };
       };
       nixosConfigurations = {
         # .iso images
         #  - nix build .#nixosConfigurations.{iso-console|iso-desktop}.config.system.build.isoImage
-        iso-console  = libx.mkHost { hostname = "iso-console";  username = "nixos"; };
-        iso-gnome    = libx.mkHost { hostname = "iso-gnome";    username = "nixos"; desktop = "gnome"; };
-        iso-mate     = libx.mkHost { hostname = "iso-mate";     username = "nixos"; desktop = "mate"; };
-        iso-pantheon = libx.mkHost { hostname = "iso-pantheon"; username = "nixos"; desktop = "pantheon"; };
+        iso-console  = helper.mkHost { hostname = "iso-console";  username = "nixos"; };
+        iso-gnome    = helper.mkHost { hostname = "iso-gnome";    username = "nixos"; desktop = "gnome"; };
+        iso-mate     = helper.mkHost { hostname = "iso-mate";     username = "nixos"; desktop = "mate"; };
+        iso-pantheon = helper.mkHost { hostname = "iso-pantheon"; username = "nixos"; desktop = "pantheon"; };
         # Workstations
         #  - sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
         #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
-        phasma  = libx.mkHost { hostname = "phasma";  desktop = "pantheon"; };
-        vader   = libx.mkHost { hostname = "vader";   desktop = "pantheon"; };
-        tanis   = libx.mkHost { hostname = "tanis";   desktop = "gnome"; };
-        tyranus = libx.mkHost { hostname = "tyranus"; desktop = "gnome"; platform = "aarch64-linux"; };
-        sidious = libx.mkHost { hostname = "sidious"; desktop = "gnome"; };
+        phasma  = helper.mkHost { hostname = "phasma";  desktop = "pantheon"; };
+        vader   = helper.mkHost { hostname = "vader";   desktop = "pantheon"; };
+        tanis   = helper.mkHost { hostname = "tanis";   desktop = "gnome"; };
+        tyranus = helper.mkHost { hostname = "tyranus"; desktop = "gnome"; platform = "aarch64-linux"; };
+        sidious = helper.mkHost { hostname = "sidious"; desktop = "gnome"; };
         # Servers
-        revan = libx.mkHost { hostname = "revan"; };
-        brix  = libx.mkHost { hostname = "brix"; };
-        skull = libx.mkHost { hostname = "skull"; };
+        revan = helper.mkHost { hostname = "revan"; };
+        brix  = helper.mkHost { hostname = "brix"; };
+        skull = helper.mkHost { hostname = "skull"; };
         # VMs
-        minimech = libx.mkHost { hostname = "minimech"; };
-        scrubber = libx.mkHost { hostname = "scrubber"; desktop = "pantheon"; };
+        minimech = helper.mkHost { hostname = "minimech"; };
+        scrubber = helper.mkHost { hostname = "scrubber"; desktop = "pantheon"; };
       };
 
       # Devshell for bootstrapping; acessible via 'nix develop' or 'nix-shell' (legacy)
-      devShells = libx.forAllSystems (system:
+      devShells = helper.forAllSystems (system:
         let pkgs = nixpkgs.legacyPackages.${system};
         in import ./shell.nix { inherit pkgs; }
       );
@@ -125,7 +125,7 @@
       overlays = import ./overlays { inherit inputs; };
 
       # Custom packages; acessible via 'nix build', 'nix shell', etc
-      packages = libx.forAllSystems (system:
+      packages = helper.forAllSystems (system:
         let pkgs = nixpkgs.legacyPackages.${system};
         in import ./pkgs { inherit pkgs; }
       );
