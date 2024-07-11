@@ -1,6 +1,6 @@
 { inputs, outputs, stateVersion, ... }: {
   # Helper function for generating home-manager configs
-  mkHome = { hostname, username, desktop ? null, platform ? "x86_64-linux" }:
+  mkHome = { hostname, username ? "martin", desktop ? null, platform ? "x86_64-linux" }:
   let
     isISO = builtins.substring 0 4 hostname == "iso-";
     isInstall = !isISO;
@@ -15,7 +15,7 @@
   };
 
   # Helper function for generating host configs
-  mkHost = { hostname, username, desktop ? null, platform ? "x86_64-linux" }:
+  mkHost = { hostname, username ? "martin", desktop ? null, platform ? "x86_64-linux" }:
   let
     isISO = builtins.substring 0 4 hostname == "iso-";
     isInstall = !isISO;
