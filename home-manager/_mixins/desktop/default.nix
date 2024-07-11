@@ -13,16 +13,8 @@ in
   # import the DE specific configuration and any user specific desktop configuration
   imports =
     [
-      ./features/gtk
-      ./features/qt
-      ./apps/gitkraken
-      ./apps/internet-chat
-      ./apps/joplin
-      ./apps/meld
-      ./apps/obs-studio
-      ./apps/ulauncher
-      ./apps/vscode
-      ./apps/youtube-music
+      ./apps
+      ./features
     ]
     ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
     ++ lib.optional (builtins.pathExists (
