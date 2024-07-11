@@ -83,6 +83,7 @@ in
         croc # Terminal file transfer
         curlie # Terminal HTTP client
         dconf2nix # Nix code from Dconf files
+        deadnix # Nix dead code finder
         difftastic # Modern Unix `diff`
         dogdns # Modern Unix `dig`
         dotacat # Modern Unix lolcat
