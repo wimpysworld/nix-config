@@ -37,8 +37,10 @@
     ./_mixins/services/caddy
     ./_mixins/services/clamav
     ./_mixins/services/homepage
+    ./_mixins/services/jellyfin
     ./_mixins/services/maestral
     ./_mixins/services/netdata
+    ./_mixins/services/plex
     ./_mixins/services/ssh
     ./_mixins/services/tailscale
     ./_mixins/configs
