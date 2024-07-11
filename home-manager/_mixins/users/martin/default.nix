@@ -120,7 +120,6 @@
       gpg_private = {};
       gpg_public = {};
       gpg_ownertrust = {};
-      halloy_config.path = "${config.home.homeDirectory}/.config/halloy/config.toml";
       hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
       obs_secrets = {};
       ssh_config.path = "${config.home.homeDirectory}/.ssh/config";
