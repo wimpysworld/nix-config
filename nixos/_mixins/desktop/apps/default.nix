@@ -3,6 +3,7 @@ _: {
     ./1password
     ./blender
     ./celluloid
+    ./games
     ./graphics-production
     ./libreoffice
     ./rhythmbox
