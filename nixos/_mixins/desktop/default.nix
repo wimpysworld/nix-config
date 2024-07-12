@@ -3,7 +3,6 @@
   isInstall,
   lib,
   pkgs,
-  username,
   ...
 }:
 {
@@ -19,7 +18,7 @@
       "mitigations=off"
     ];
     plymouth = {
-      catppuccin.enable = if (username == "martin") then true else false;
+      catppuccin.enable = true;
       enable = true;
     };
   };
