@@ -9,15 +9,13 @@
 }:
 let
   unmanagedInterfaces =
-    [ ]
-    ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
+    lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
 
   # Trust the lxd bridge interface, if lxd is enabled
   # Trust the tailscale interface, if tailscale is enabled
   trustedInterfaces =
-    [ ]
-    ++ lib.optionals config.services.tailscale.enable [ "tailscale0" ]
+    lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
 
   # Per-host firewall configuration; mostly for Syncthing which is configured via Home Manager
@@ -91,11 +89,11 @@ in
       allowedUDPPorts =
         lib.optionals (builtins.hasAttr hostname allowedUDPPorts)
           allowedUDPPorts.${hostname};
-      trustedInterfaces = trustedInterfaces;
+      inherit trustedInterfaces;
     };
     hostName = hostname;
     nameservers = if builtins.hasAttr username userDns then userDns.${username} else fallbackDns;
-    networkmanager = lib.mkIf (isWorkstation) {
+    networkmanager = lib.mkIf isWorkstation {
       # Use resolved for DNS resolution; tailscale MagicDNS requires it
       dns = "systemd-resolved";
       enable = true;
@@ -120,7 +118,7 @@ in
       domains = [ "~." ];
       dnsovertls = "true";
       dnssec = "false";
-      fallbackDns = fallbackDns;
+      inherit fallbackDns;
     };
   };
 
@@ -141,7 +139,7 @@ in
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175
   systemd.services.NetworkManager-wait-online.enable = false;
 
-  users.users.${username}.extraGroups = lib.optionals (config.networking.networkmanager.enable) [
+  users.users.${username}.extraGroups = lib.optionals config.networking.networkmanager.enable [
     "networkmanager"
   ];
 }

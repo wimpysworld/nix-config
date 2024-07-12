@@ -7,11 +7,11 @@
 let
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (isLinux) {
+lib.mkIf isLinux {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;
-    lib.mkIf (isLinux) {
+    lib.mkIf isLinux {
       "com/gexperts/Tilix" = {
         app-title = "\${appName}: \${directory}";
         paste-strip-trailing-whitespace = true;

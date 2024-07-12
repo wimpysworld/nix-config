@@ -106,7 +106,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.xyc.vscode-mdx-preview
           vscode-marketplace.yzhang.markdown-all-in-one
         ]
-        ++ lib.optionals (isLinux) [
+        ++ lib.optionals isLinux [
           vscode-marketplace.ms-vscode.cpptools
           vscode-marketplace.ms-vsliveshare.vsliveshare
           vscode-marketplace.vadimcn.vscode-lldb

@@ -10,7 +10,7 @@ let
 in
 lib.mkIf (lib.elem username installFor || desktop == "gnome" || desktop == "pantheon") {
   services = {
-    flatpak = lib.mkIf (isInstall) {
+    flatpak = lib.mkIf isInstall {
       enable = true;
       # By default nix-flatpak will add the flathub remote;
       # Therefore Appcenter is only added when the desktop is Pantheon

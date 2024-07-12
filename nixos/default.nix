@@ -27,7 +27,7 @@
     ./_mixins/features
     ./_mixins/services
     ./_mixins/users
-  ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
+  ] ++ lib.optional isWorkstation ./_mixins/desktop;
 
   boot = {
     consoleLogLevel = 0;
@@ -42,7 +42,7 @@
     #];
     kernelPackages = pkgs.linuxPackages_latest;
     # Only enable the systemd-boot on installs, not live media (.ISO images)
-    loader = lib.mkIf (isInstall) {
+    loader = lib.mkIf isInstall {
       efi.canTouchEfiVariables = true;
       systemd-boot.configurationLimit = 30;
       systemd-boot.consoleMode = "max";
@@ -74,7 +74,7 @@
         git
         nix-output-monitor
       ]
-      ++ lib.optionals (isInstall) [
+      ++ lib.optionals isInstall [
         inputs.fh.packages.${platform}.default
         inputs.nixos-needtoreboot.packages.${platform}.default
         nvd
@@ -115,7 +115,7 @@
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
     optimise.automatic = true;
-    package = lib.mkIf (isInstall) pkgs.unstable.nix;
+    package = lib.mkIf isInstall pkgs.unstable.nix;
     settings = {
       auto-optimise-store = true;
       experimental-features = [
@@ -131,7 +131,7 @@
     command-not-found.enable = false;
     fish = {
       enable = true;
-      shellAbbrs = lib.mkIf (isInstall) {
+      shellAbbrs = lib.mkIf isInstall {
         captive-portal = "${pkgs.xdg-utils}/bin/xdg-open http://$(${pkgs.iproute2}/bin/ip --oneline route get 1.1.1.1 | ${pkgs.gawk}/bin/awk '{print $3}')";
       };
       shellAliases = {
@@ -148,7 +148,7 @@
       flake = "/home/${username}/Zero/nix-config";
     };
     nix-index-database.comma.enable = isInstall;
-    nix-ld = lib.mkIf (isInstall) {
+    nix-ld = lib.mkIf isInstall {
       enable = true;
       libraries = with pkgs; [
         # Add any missing dynamic libraries for unpackaged
@@ -179,7 +179,7 @@
   systemd.tmpfiles.rules = [ "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root" ];
 
   system = {
-    nixos.label = lib.mkIf (isInstall) "-";
-    stateVersion = stateVersion;
+    nixos.label = lib.mkIf isInstall "-";
+    inherit stateVersion;
   };
 }

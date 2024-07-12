@@ -11,7 +11,7 @@
   ...
 }:
 let
-  isWorkstationISO = (isISO && isWorkstation);
+  isWorkstationISO = isISO && isWorkstation;
   install-system = pkgs.writeScriptBin "install-system" ''
     #!${pkgs.stdenv.shell}
 
@@ -187,10 +187,10 @@ in
   config.users.users.nixos.description = "NixOS";
 
   # All configurations for live media are below:
-  config.system = lib.mkIf (isISO) { stateVersion = lib.mkForce lib.trivial.release; };
+  config.system = lib.mkIf isISO { stateVersion = lib.mkForce lib.trivial.release; };
 
   config.environment = {
-    etc = lib.mkIf (isWorkstationISO) {
+    etc = lib.mkIf isWorkstationISO {
       "firefox.dockitem".source = pkgs.writeText "firefox.dockitem" ''
         [PlankDockItemPreferences]
         Launcher=file:///run/current-system/sw/share/applications/firefox.desktop
@@ -216,22 +216,22 @@ in
       "gparted.dockitem".target = "/plank/gparted.dockitem";
     };
     systemPackages =
-      lib.optionals (isISO) [
+      lib.optionals isISO [
         install-system
         inputs.disko.packages.${platform}.default
       ]
-      ++ lib.optionals (isWorkstationISO) [ pkgs.gparted ];
+      ++ lib.optionals isWorkstationISO [ pkgs.gparted ];
   };
 
   # All workstation configurations for live media are below.
-  config.isoImage = lib.mkIf (isWorkstationISO) { edition = lib.mkForce "${desktop}"; };
+  config.isoImage = lib.mkIf isWorkstationISO { edition = lib.mkForce "${desktop}"; };
 
   config.programs = {
     dconf.profiles.user.databases = [
       {
         settings =
           with lib.gvariant;
-          lib.mkIf (isWorkstationISO) {
+          lib.mkIf isWorkstationISO {
             "net/launchpad/plank/docks/dock1" = {
               dock-items = [
                 "firefox.dockitem"
@@ -265,11 +265,11 @@ in
   };
 
   config.services.xserver = {
-    displayManager.autoLogin = lib.mkIf (isWorkstationISO) { user = "${username}"; };
+    displayManager.autoLogin = lib.mkIf isWorkstationISO { user = "${username}"; };
   };
 
   # Create desktop shortcuts and dock items for the live media
-  config.systemd.tmpfiles = lib.mkIf (isWorkstationISO) {
+  config.systemd.tmpfiles = lib.mkIf isWorkstationISO {
     rules =
       [
         "d /home/${username}/Desktop 0755 ${username} users"

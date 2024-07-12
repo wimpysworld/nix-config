@@ -23,7 +23,7 @@ let
   ];
 in
 lib.mkIf (lib.elem "${hostname}" installOn) {
-  environment.systemPackages = with pkgs; lib.optionals (isWorkstation) [ trayscale ];
+  environment.systemPackages = with pkgs; lib.optionals isWorkstation [ trayscale ];
 
   services.tailscale = {
     enable = true;
@@ -35,7 +35,7 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
 
     # Enable caddy to acquire certificates from the tailscale daemon
     # - https://tailscale.com/blog/caddy
-    permitCertUid = lib.mkIf (config.services.caddy.enable) "caddy";
+    permitCertUid = lib.mkIf config.services.caddy.enable "caddy";
     openFirewall = true;
     useRoutingFeatures = "both";
   };

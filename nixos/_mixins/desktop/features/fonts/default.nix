@@ -26,7 +26,7 @@
         symbola
         work-sans
       ]
-      ++ lib.optionals (isInstall) [
+      ++ lib.optionals isInstall [
         ubuntu_font_family
         twitter-color-emoji
       ];

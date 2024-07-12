@@ -37,7 +37,7 @@ in
   };
 
   services = {
-    kmscon = lib.mkIf (isInstall) {
+    kmscon = lib.mkIf isInstall {
       enable = true;
       hwRender = true;
       fonts = [

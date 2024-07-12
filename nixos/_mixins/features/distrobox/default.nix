@@ -13,14 +13,13 @@ in
 lib.mkIf (lib.elem "${username}" installFor) {
   #https://nixos.wiki/wiki/Podman
   environment = {
-    systemPackages = (
+    systemPackages =
       with pkgs;
       [
         distrobox
         fuse-overlayfs
       ]
-      ++ lib.optionals (isWorkstation) [ pods ]
-    );
+      ++ lib.optionals isWorkstation [ pods ];
   };
 
   hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
@@ -36,5 +35,5 @@ lib.mkIf (lib.elem "${username}" installFor) {
     };
   };
 
-  users.users.${username}.extraGroups = lib.optional (config.virtualisation.podman.enable) "podman";
+  users.users.${username}.extraGroups = lib.optional config.virtualisation.podman.enable "podman";
 }
