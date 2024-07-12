@@ -25,10 +25,8 @@ in
     ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
   };
 
-  services = {
-    # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
-    mpris-proxy.enable = true;
-  };
+  # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
+  services.mpris-proxy.enable = true;
 
   xresources.properties = {
     "*background" = "#1E1E2E";
