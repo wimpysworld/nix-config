@@ -1,7 +1,6 @@
 _: {
   imports = [
     ./1password
-    ./audio-production
     ./blender
     ./celluloid
     ./graphics-production

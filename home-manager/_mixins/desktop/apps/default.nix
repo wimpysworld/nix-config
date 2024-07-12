@@ -1,5 +1,6 @@
 _: {
   imports = [
+    ./audio-production
     ./gitkraken
     ./internet-chat
     ./joplin
