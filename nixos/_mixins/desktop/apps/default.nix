@@ -5,7 +5,6 @@ _: {
     ./blender
     ./celluloid
     ./graphics-production
-    ./obs-studio
     ./rhythmbox
     ./steam
     ./utilities
