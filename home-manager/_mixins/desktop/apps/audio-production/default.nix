@@ -2,6 +2,8 @@
   config,
   hostname,
   lib,
+  pkgs,
+  username,
   ...
 }:
 let
@@ -11,7 +13,6 @@ let
   ];
 in
 lib.mkIf (lib.elem hostname installOn) {
-  # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings = with lib.hm.gvariant; {
     "com/github/wwmm/easyeffects" = {
       bypass = false;
@@ -37,6 +38,11 @@ lib.mkIf (lib.elem hostname installOn) {
 
     "com/github/wwmm/easyeffects/streamoutputs" = {
       blocklist = [ "output.Mic-Loopback" ];
+    };
+
+    "org/gnome/SoundRecorder" = {
+      audio-channel = "mono";
+      audio-profile = "flac";
     };
   };
 
@@ -396,8 +402,18 @@ lib.mkIf (lib.elem hostname installOn) {
     };
   };
 
+  home.packages = with pkgs; [
+    gnome.gnome-sound-recorder
+    tenacity
+  ];
+
   services.easyeffects = {
     enable = true;
     preset = "mic-${hostname}-oktava";
   };
+
+  systemd.user.tmpfiles.rules = [
+    "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
+    "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
+  ];
 }
