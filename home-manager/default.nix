@@ -70,6 +70,7 @@ in
         asciicam # Terminal webcam
         asciinema-agg # Convert asciinema to .gif
         asciinema # Terminal recorder
+        bc # Terminal calculator
         bandwhich # Modern Unix `iftop`
         bmon # Modern Unix `iftop`
         breezy # Terminal bzr client
@@ -92,6 +93,7 @@ in
         entr # Modern Unix `watch`
         fastfetch # Modern Unix system info
         fd # Modern Unix `find`
+        file # Terminal file info
         frogmouth # Terminal mardown viewer
         glow # Terminal Markdown renderer
         gping # Modern Unix `ping`
@@ -99,6 +101,7 @@ in
         hexyl # Modern Unix `hexedit`
         hr # Terminal horizontal rule
         httpie # Terminal HTTP client
+        hueadm # Terminal Philips Hue client
         hyperfine # Terminal benchmarking
         iperf3 # Terminal network benchmarking
         jpegoptim # Terminal JPEG optimizer
