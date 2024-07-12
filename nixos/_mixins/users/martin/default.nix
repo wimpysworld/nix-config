@@ -14,7 +14,6 @@
       (
         with pkgs;
         lib.optionals (isWorkstation) [
-          libreoffice
           zoom-us
         ]
         ++ lib.optionals (isWorkstation && desktop == "gnome") [

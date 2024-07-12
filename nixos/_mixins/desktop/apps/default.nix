@@ -4,6 +4,7 @@ _: {
     ./blender
     ./celluloid
     ./graphics-production
+    ./libreoffice
     ./rhythmbox
     ./steam
     ./utilities
