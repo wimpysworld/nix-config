@@ -1,5 +1,4 @@
 {
-  config,
   desktop,
   lib,
   pkgs,
@@ -21,12 +20,9 @@ in
       ./. + "/${desktop}/${username}/default.nix"
     )) ./${desktop}/${username};
 
-  home = {
-    # Authrorize X11 access in Distrobox
-    file = lib.mkIf isLinux {
-      ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
-      "${config.home.homeDirectory}/.local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ./configs/plank-catppuccin-mocha.theme;
-    };
+  # Authrorize X11 access in Distrobox
+  home.file = lib.mkIf isLinux {
+    ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
   };
 
   services = {

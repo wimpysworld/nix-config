@@ -6,6 +6,7 @@
 }:
 {
   home.file = {
+    ".local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ../../configs/plank-catppuccin-mocha.theme;
     "${config.xdg.configHome}/autostart/monitor.desktop".text = ''
       [Desktop Entry]
       Name=Monitor Indicators

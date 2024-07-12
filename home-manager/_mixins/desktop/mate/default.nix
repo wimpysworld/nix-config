@@ -1,5 +1,9 @@
 { lib, pkgs, ... }:
 {
+  home.file = {
+    ".local/share/plank/themes/Catppuccin-mocha/dock.theme".text = builtins.readFile ../../configs/plank-catppuccin-mocha.theme;
+  };
+
   services = {
     gpg-agent.pinentryPackage = lib.mkForce pkgs.pinentry-gnome3;
   };
