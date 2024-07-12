@@ -25,7 +25,7 @@ in
     ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
   };
 
-  programs = lib.mkif (username == "martin") {
+  programs = lib.mkIf (username == "martin") {
     alacritty = {
       catppuccin.enable = isLinux;
       enable = true;
