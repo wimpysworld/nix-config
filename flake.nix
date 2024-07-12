@@ -203,5 +203,7 @@
         in
         import ./pkgs { inherit pkgs; }
       );
+
+      formatter = helper.forAllSystems (system: self.packages.${system}.nixfmt-plus);
     };
 }
