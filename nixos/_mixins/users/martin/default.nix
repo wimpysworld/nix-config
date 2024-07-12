@@ -12,11 +12,7 @@
   environment = {
     systemPackages =
       (
-        with pkgs;
-        lib.optionals (isWorkstation) [
-          zoom-us
-        ]
-        ++ lib.optionals (isWorkstation && desktop == "gnome") [
+        with pkgs; lib.optionals (isWorkstation && desktop == "gnome") [
           gnome-extension-manager
           gnomeExtensions.start-overlay-in-application-view
           gnomeExtensions.tiling-assistant
