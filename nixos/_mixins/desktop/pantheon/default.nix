@@ -11,7 +11,6 @@
       pantheon.elementary-code
       pantheon.elementary-music
       pantheon.elementary-photos
-      pantheon.elementary-terminal
       pantheon.elementary-videos
       pantheon.epiphany
     ];
@@ -209,13 +208,13 @@
 
           "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
             binding = "<Super>t";
-            command = "alacritty";
+            command = "io.elementary.terminal --new-window --working-directory=~";
             name = "Terminal";
           };
 
           "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
             binding = "<Primary><Alt>t";
-            command = "alacritty";
+            command = "io.elementary.terminal --new-window --working-directory=~";
             name = "Terminal";
           };
 
