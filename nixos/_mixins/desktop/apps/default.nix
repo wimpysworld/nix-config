@@ -10,5 +10,6 @@ _: {
     ./utilities
     ./video-production
     ./web-browsers
+    ./zoom
   ];
 }
