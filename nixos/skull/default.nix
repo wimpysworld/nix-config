@@ -1,10 +1,6 @@
 # Intel Skull Canyon NUC6i7KYK
 # - https://github.com/rm-hull/skull-canyon
-{
-  inputs,
-  lib,
-  ...
-}:
+{ inputs, lib, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel

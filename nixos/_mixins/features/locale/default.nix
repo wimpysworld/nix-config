@@ -1,8 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 let
   locale = "en_GB.utf8";
   xkbLayout = "gb";

@@ -1,12 +1,6 @@
+{ pkgs, username, ... }:
 {
-  pkgs,
-  username,
-  ...
-}:
-{
-  environment.systemPackages = with pkgs; [
-    deckmaster
-  ];
+  environment.systemPackages = with pkgs; [ deckmaster ];
   services = {
     # Provides users with access to all Elgato StreamDecks.
     # https://github.com/muesli/deckmaster
