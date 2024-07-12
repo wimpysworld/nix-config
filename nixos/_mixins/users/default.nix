@@ -6,9 +6,7 @@
 }:
 {
   imports = [ ./root ] ++ lib.optional (builtins.pathExists (./. + "/${username}")) ./${username};
-
   environment.localBinInPath = true;
-
   users.users.${username} = {
     extraGroups = [
       "input"
