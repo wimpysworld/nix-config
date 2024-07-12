@@ -23,7 +23,6 @@ lib.mkIf (lib.elem hostname installOn) {
       };
     };
     packages = with pkgs; [
-      alsa-utils
       bc
       deckmaster
       hueadm
@@ -31,8 +30,6 @@ lib.mkIf (lib.elem hostname installOn) {
       obs-cli
       obs-cmd
       piper-tts
-      playerctl
-      pulsemixer
     ];
   };
 

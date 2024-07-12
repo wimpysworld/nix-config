@@ -2,13 +2,14 @@
   config,
   hostname,
   isInstall,
+  isWorkstation,
   lib,
   pkgs,
   username,
   ...
 }:
 let
-  useLowLatencyPipewire = if (hostname == "phasma" || hostname == "vader") then true else false;
+  useLowLatencyPipewire = (hostname == "phasma" || hostname == "vader");
 in
 {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency
@@ -17,13 +18,15 @@ in
     kernelParams = [ "threadirqs" ];
   };
 
-  environment.systemPackages = (
+  environment.systemPackages =
     with pkgs;
     lib.optionals (isInstall) [
+      alsa-utils
+      playerctl
       pulseaudio
-      pwvucontrol
+      pulsemixer
     ]
-  );
+    ++ lib.optionals (isInstall && isWorkstation) [ pwvucontrol ];
 
   hardware.pulseaudio.enable = lib.mkForce false;
 
