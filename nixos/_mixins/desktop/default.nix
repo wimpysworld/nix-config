@@ -14,6 +14,7 @@
     ./features/pipewire
     ./features/print
     ./features/scan
+    ./features/v4l2loopback
     ./features/xdg
     ./apps/1password
     ./apps/audio-production
