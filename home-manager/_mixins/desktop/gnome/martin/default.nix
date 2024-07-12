@@ -12,7 +12,7 @@ in
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;
-    lib.mkIf (isLinux) {
+    lib.mkIf isLinux {
       "org/gnome/settings-daemon/plugins/media-keys" = {
         custom-keybindings = [
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
@@ -117,7 +117,7 @@ in
           "wireless-hid@chlumskyvaclav.gmail.com"
           "wifiqrcode@glerro.pm.me"
           "workspace-switcher-manager@G-dH.github.com"
-        ] ++ lib.optionals (isThinkpad) [ "thinkpad-battery-threshold@marcosdalvarez.org" ];
+        ] ++ lib.optionals isThinkpad [ "thinkpad-battery-threshold@marcosdalvarez.org" ];
         favorite-apps = [
           "brave-browser.desktop"
           "Wavebox.desktop"
@@ -159,7 +159,7 @@ in
         menu-button-terminal = "alacritty";
       };
 
-      "org/gnome/shell/extensions/thinkpad-battery-threshold" = lib.optionalAttrs (isThinkpad) {
+      "org/gnome/shell/extensions/thinkpad-battery-threshold" = lib.optionalAttrs isThinkpad {
         color-mode = false;
       };
 

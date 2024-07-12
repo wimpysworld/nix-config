@@ -22,7 +22,7 @@
 
     systemPackages =
       with pkgs;
-      lib.optionals (isInstall) [
+      lib.optionals isInstall [
         loupe
         pick-colour-picker
       ];

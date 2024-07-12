@@ -2,7 +2,7 @@
 {
   services = {
     caddy = {
-      enable = config.services.tailscale.enable;
+      inherit (config.services.tailscale) enable;
       extraConfig = ''
         ${hostname}.drongo-gamma.ts.net {
           redir /netdata /netdata/

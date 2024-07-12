@@ -1,7 +1,6 @@
 # nvme0n1 2TB:     NixOS              nvme-Samsung_SSD_970_EVO_2TB_S464NB0K800345W
 # nvme1n1 512GB:   Windows 11 Pro     nvme-Samsung_SSD_970_EVO_500GB_S466NB0K703260N
-{ ... }:
-{
+_: {
   disko.devices = {
     disk = {
       nvme0 = {

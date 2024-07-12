@@ -16,15 +16,14 @@
       mate.mate-icon-theme-faenza
     ];
 
-    systemPackages = (
+    systemPackages =
       with pkgs;
-      lib.optionals (isInstall) [
+      lib.optionals isInstall [
         evolutionWithPlugins
         gnome.gucharmap
         gnome-firmware
         loupe
-      ]
-    );
+      ];
   };
 
   programs = {

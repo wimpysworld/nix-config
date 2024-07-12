@@ -2,10 +2,10 @@
 let
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (isLinux) {
+lib.mkIf isLinux {
   dconf.settings =
     with lib.hm.gvariant;
-    lib.mkIf (isLinux) {
+    lib.mkIf isLinux {
       "com/raggesilver/BlackBox" = {
         cursor-blink-mode = lib.hm.gvariant.mkUint32 1;
         cursor-shape = lib.hm.gvariant.mkUint32 0;

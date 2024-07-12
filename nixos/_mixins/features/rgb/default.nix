@@ -23,7 +23,7 @@ let
     ];
   };
 in
-lib.mkIf (isInstall) {
+lib.mkIf isInstall {
   environment = {
     systemPackages =
       with pkgs;

@@ -24,7 +24,7 @@ in
   time.timeZone = timezone;
 
   services = {
-    kmscon = lib.mkIf (config.services.kmscon.enable) {
+    kmscon = lib.mkIf config.services.kmscon.enable {
       extraConfig = ''
         xkb-layout=${xkbLayout}
       '';

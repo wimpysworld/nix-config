@@ -21,7 +21,7 @@ lib.mkIf (lib.elem username installFor) {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;
-    lib.mkIf (isLinux) {
+    lib.mkIf isLinux {
       "org/gnome/meld" = {
         custom-font = "FiraCode Nerd Font Mono Medium 13";
         indent-width = mkInt32 4;

@@ -45,7 +45,7 @@
         accent = "blue";
       })
     ]
-    ++ lib.optionals (isInstall) [
+    ++ lib.optionals isInstall [
       notify-desktop
       wmctrl
       xdotool

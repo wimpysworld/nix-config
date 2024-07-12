@@ -27,5 +27,5 @@ in
     boot-host
     switch-host
     unroll-url
-  ] ++ lib.optionals (isInstall) [ flatpak-theme ];
+  ] ++ lib.optionals isInstall [ flatpak-theme ];
 }

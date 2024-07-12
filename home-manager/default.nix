@@ -26,7 +26,7 @@ in
     ./_mixins/features
     ./_mixins/services
     ./_mixins/users
-  ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
+  ] ++ lib.optional isWorkstation ./_mixins/desktop;
 
   catppuccin = {
     accent = "blue";

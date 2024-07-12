@@ -8,7 +8,7 @@
   ...
 }:
 let
-  isThinkpad = (hostname == "tanis" || hostname == "sidious");
+  isThinkpad = hostname == "tanis" || hostname == "sidious";
 in
 {
   environment = {
@@ -22,7 +22,7 @@ in
       gnome.totem
     ];
 
-    systemPackages = (
+    systemPackages =
       with pkgs;
       [
         gnome-usage
@@ -41,14 +41,13 @@ in
         gnomeExtensions.tiling-assistant
         gnomeExtensions.vitals
       ]
-      ++ lib.optionals (isInstall) [
+      ++ lib.optionals isInstall [
         eyedropper
         gnome.gnome-tweaks
         gnomeExtensions.freon
         loupe
       ]
-      ++ lib.optionals (isThinkpad) [ gnomeExtensions.thinkpad-battery-threshold ]
-    );
+      ++ lib.optionals isThinkpad [ gnomeExtensions.thinkpad-battery-threshold ];
   };
 
   programs = {
@@ -301,7 +300,7 @@ in
   # - https://github.com/NixOS/nixpkgs/issues/171136
   # - https://discourse.nixos.org/t/fingerprint-auth-gnome-gdm-wont-allow-typing-password/35295
   security.pam.services.login.fprintAuth = false;
-  security.pam.services.gdm-fingerprint = lib.mkIf (config.services.fprintd.enable) {
+  security.pam.services.gdm-fingerprint = lib.mkIf config.services.fprintd.enable {
     text = ''
       auth       required                    pam_shells.so
       auth       requisite                   pam_nologin.so

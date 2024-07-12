@@ -27,7 +27,7 @@ lib.mkIf (lib.elem username installFor && isLinux) {
       "--no-default-folder"
       "--no-browser"
     ];
-    tray = lib.mkIf (isWorkstation) {
+    tray = lib.mkIf isWorkstation {
       enable = true;
       package = pkgs.syncthingtray;
     };
@@ -44,7 +44,7 @@ lib.mkIf (lib.elem username installFor && isLinux) {
 
   # Workaround for Failed to restart syncthingtray.service: Unit tray.target not found.
   # - https://github.com/nix-community/home-manager/issues/2064
-  systemd.user.targets.tray = lib.mkIf (isWorkstation) {
+  systemd.user.targets.tray = lib.mkIf isWorkstation {
     Unit = {
       Description = "Home Manager System Tray";
       Wants = [ "graphical-session-pre.target" ];

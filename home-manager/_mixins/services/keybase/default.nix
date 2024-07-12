@@ -20,7 +20,7 @@ lib.mkIf (lib.elem username installFor && isLinux) {
       '';
     };
   };
-  home.packages = with pkgs; [ keybase ] ++ lib.optionals (isWorkstation) [ keybase-gui ];
+  home.packages = with pkgs; [ keybase ] ++ lib.optionals isWorkstation [ keybase-gui ];
   services = {
     kbfs = {
       enable = true;

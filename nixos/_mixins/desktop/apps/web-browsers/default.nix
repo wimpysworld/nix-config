@@ -13,7 +13,7 @@ in
 
   environment.systemPackages =
     with pkgs;
-    lib.optionals (isInstall) [
+    lib.optionals isInstall [
       google-chrome
       microsoft-edge
     ]

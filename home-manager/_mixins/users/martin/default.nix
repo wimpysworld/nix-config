@@ -8,11 +8,11 @@
 }:
 let
   inherit (pkgs.stdenv) isLinux;
-  isStreamstation = (hostname == "phasma" || hostname == "vader");
+  isStreamstation = hostname == "phasma" || hostname == "vader";
 in
 {
   home = {
-    file."${config.xdg.configHome}/autostart/deskmaster-xl.desktop" = lib.mkIf (isStreamstation) {
+    file."${config.xdg.configHome}/autostart/deskmaster-xl.desktop" = lib.mkIf isStreamstation {
       text = ''
         [Desktop Entry]
         Name=Deckmaster XL

@@ -29,7 +29,7 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
     };
   };
 
-  systemd.user.services.maestral-gui = lib.mkIf (isWorkstation) {
+  systemd.user.services.maestral-gui = lib.mkIf isWorkstation {
     description = "Maestral GUI";
     wantedBy = [ "default.target" ];
     serviceConfig = {

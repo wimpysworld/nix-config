@@ -14,5 +14,5 @@ lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   environment.systemPackages = with pkgs; [ snapcraft ];
   services.snap.enable = true;
   virtualisation.lxd.enable = true;
-  users.users.${username}.extraGroups = lib.optional (config.virtualisation.lxd.enable) "lxd";
+  users.users.${username}.extraGroups = lib.optional config.virtualisation.lxd.enable "lxd";
 }

@@ -9,18 +9,18 @@
   ...
 }:
 let
-  useLowLatencyPipewire = (hostname == "phasma" || hostname == "vader");
+  useLowLatencyPipewire = hostname == "phasma" || hostname == "vader";
 in
 {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency
-  boot = lib.mkIf (config.services.pipewire.enable) {
+  boot = lib.mkIf config.services.pipewire.enable {
     # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
     kernelParams = [ "threadirqs" ];
   };
 
   environment.systemPackages =
     with pkgs;
-    lib.optionals (isInstall) [
+    lib.optionals isInstall [
       alsa-utils
       playerctl
       pulseaudio
@@ -52,7 +52,7 @@ in
         # https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/alsa.html#alsa-buffer-properties
         # cat /nix/store/*-wireplumber-*/share/wireplumber/main.lua.d/99-alsa-lowlatency.lua
         # cat /nix/store/*-wireplumber-*/share/wireplumber/wireplumber.conf.d/99-alsa-lowlatency.conf
-        configPackages = lib.mkIf (useLowLatencyPipewire) [
+        configPackages = lib.mkIf useLowLatencyPipewire [
           (pkgs.writeTextDir "share/wireplumber/main.lua.d/99-alsa-lowlatency.lua" ''
             alsa_monitor.rules = {
               {
@@ -78,7 +78,7 @@ in
         ];
       };
       # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
-      extraConfig.pipewire."92-low-latency" = lib.mkIf (useLowLatencyPipewire) {
+      extraConfig.pipewire."92-low-latency" = lib.mkIf useLowLatencyPipewire {
         "context.properties" = {
           "default.clock.rate" = 48000;
           "default.clock.quantum" = 64;
@@ -95,7 +95,7 @@ in
           }
         ];
       };
-      extraConfig.pipewire-pulse."92-low-latency" = lib.mkIf (useLowLatencyPipewire) {
+      extraConfig.pipewire-pulse."92-low-latency" = lib.mkIf useLowLatencyPipewire {
         "pulse.properties" = {
           "pulse.default.format" = "S16";
           "pulse.fix.format" = "S16LE";
@@ -166,7 +166,6 @@ in
   };
 
   users.users.${username}.extraGroups =
-    [ ]
-    ++ lib.optional (config.security.rtkit.enable) "rtkit"
-    ++ lib.optional (config.services.pipewire.enable) "audio";
+    lib.optional config.security.rtkit.enable "rtkit"
+    ++ lib.optional config.services.pipewire.enable "audio";
 }
