@@ -29,6 +29,11 @@ in
     };
   };
 
+  services = {
+    # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
+    mpris-proxy.enable = true;
+  };
+
   xresources.properties = {
     "*background" = "#1E1E2E";
     "*foreground" = "#CDD6F4";
