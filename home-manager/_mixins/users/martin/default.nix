@@ -1,11 +1,13 @@
 {
   config,
   hostname,
+  isWorkstation,
   lib,
   pkgs,
   ...
 }:
 let
+  inherit (pkgs.stdenv) isLinux;
   isStreamstation = (hostname == "phasma" || hostname == "vader");
 in
 {
@@ -145,6 +147,43 @@ in
       ssh_semaphore_key.path = "${config.home.homeDirectory}/.ssh/id_rsa_semaphore";
       ssh_semaphore_pub.path = "${config.home.homeDirectory}/.ssh/id_rsa_semaphore.pub";
       transifex.path = "${config.home.homeDirectory}/.transifexrc";
+    };
+  };
+
+  xdg = lib.mkIf (isLinux && isWorkstation) {
+    desktopEntries = {
+      cider = {
+        name = "Cider";
+        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Cider-linux-appimage-x64.AppImage";
+        terminal = false;
+        icon = "${config.home.homeDirectory}/Apps/Cider/logo.png";
+        type = "Application";
+        categories = [
+          "AudioVideo"
+          "Audio"
+          "Player"
+        ];
+      };
+      heynote = {
+        name = "Heynote";
+        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Heynote_1.7.0_x86_64.AppImage";
+        terminal = false;
+        icon = "${config.home.homeDirectory}/Apps/Hey/logo.png";
+        type = "Application";
+        categories = [ "Office" ];
+      };
+      # The usbimager icon path is hardcoded, so override the desktop file
+      usbimager = {
+        name = "USBImager";
+        exec = "${pkgs.usbimager}/bin/usbimager";
+        terminal = false;
+        icon = "usbimager";
+        type = "Application";
+        categories = [
+          "System"
+          "Application"
+        ];
+      };
     };
   };
 }
