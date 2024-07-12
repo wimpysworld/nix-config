@@ -1,18 +1,5 @@
+{ username, ... }:
 {
-  inputs,
-  isWorkstation,
-  lib,
-  platform,
-  username,
-  ...
-}:
-{
-  environment = {
-    systemPackages =
-      with inputs;
-      lib.optionals (isWorkstation) [ antsy-alien-attack-pico.packages.${platform}.default ];
-  };
-
   users.users.martin = {
     description = "Martin Wimpress";
     # mkpasswd -m sha-512
