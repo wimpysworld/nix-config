@@ -23,13 +23,9 @@ lib.mkIf (lib.elem hostname installOn) {
       };
     };
     packages = with pkgs; [
-      bc
       deckmaster
-      hueadm
-      notify-desktop
       obs-cli
       obs-cmd
-      piper-tts
     ];
   };
 

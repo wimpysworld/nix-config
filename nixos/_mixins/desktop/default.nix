@@ -47,6 +47,7 @@
       })
     ]
     ++ lib.optionals (isInstall) [
+      notify-desktop
       wmctrl
       xdotool
       ydotool
