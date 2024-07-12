@@ -163,7 +163,7 @@
     smartd.enable = isInstall;
   };
 
-  sops = lib.mkIf (isInstall) {
+  sops = lib.mkIf (isInstall && username == "martin") {
     age = {
       keyFile = "/home/${username}/.config/sops/age/keys.txt";
       generateKey = false;
