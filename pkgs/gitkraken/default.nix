@@ -11,24 +11,24 @@ with lib;
 
 let
   pname = "gitkraken";
-  version = "10.0.2";
+  version = "10.1.0";
 
   throwSystem = throw "Unsupported system: ${stdenv.hostPlatform.system}";
 
   srcs = {
     x86_64-linux = fetchzip {
       url = "https://release.axocdn.com/linux/GitKraken-v${version}.tar.gz";
-      hash = "sha256-vqB+2W4c9ObmC5IfBy8oZQToURh4GYms6mzQeZeKJZU=";
+      hash = "sha256-h10ovuzvZ/QwU8lugSdczUBcMEqe5BCJSUYHvHr9Jzo=";
     };
 
     x86_64-darwin = fetchzip {
       url = "https://release.axocdn.com/darwin/GitKraken-v${version}.zip";
-      hash = "sha256-mRMHw6hAQocOFbJBC4LhmxdJ9Xd3ejGiTTwPk5XIeDc=";
+      hash = "sha256-4pTBxgERiMuvQnPv4grIjs9my779G1qv2kgv43OspNY=";
     };
 
     aarch64-darwin = fetchzip {
       url = "https://release.axocdn.com/darwin-arm64/GitKraken-v${version}.zip";
-      hash = "sha256-qqeuhhBux6z/uytdmmaTrqz8m+IDfgmQDCdqggBgroY=";
+      hash = "sha256-iME0813ypZVM1F4TCR68iHrzd+yCKJxYfPPoMiQt6Mo=";
     };
   };
 
@@ -97,16 +97,13 @@ let
     ];
 
     desktopItems = [ (makeDesktopItem {
-      name = "gitkraken";
-      exec = "gitkraken %U";
+      name = "GitKraken Desktop";
+      exec = "gitkraken";
       icon = "gitkraken";
-      desktopName = "GitKraken";
+      desktopName = "GitKraken Desktop";
       genericName = "Git Client";
-      categories = [ "Development" "RevisionControl" ];
+      categories = [ "Development" ];
       comment = "Unleash your repo";
-      startupNotify = true;
-      startupWMClass = "gitkraken";
-      type = "Application";
     }) ];
 
     nativeBuildInputs = [ copyDesktopItems (wrapGAppsHook3.override { makeWrapper = makeShellWrapper; }) ];
@@ -164,13 +161,15 @@ let
   darwin = stdenv.mkDerivation {
     inherit pname version src meta;
 
-    nativeBuildInputs = [ unzip ];
+    nativeBuildInputs = [ unzip makeWrapper ];
 
     installPhase = ''
       runHook preInstall
 
-      mkdir -p $out/Applications/GitKraken.app
+      mkdir -p $out/Applications/GitKraken.app $out/bin
       cp -R . $out/Applications/GitKraken.app
+
+      makeWrapper $out/Applications/GitKraken.app/Contents/MacOS/GitKraken $out/bin/gitkraken
 
       runHook postInstall
     '';
