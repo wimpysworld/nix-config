@@ -22,6 +22,7 @@
     ./apps/celluloid
     ./apps/graphics-production
     ./apps/obs-studio
+    ./apps/rhythmbox
     ./apps/steam
     ./apps/utilities
     ./apps/video-production
