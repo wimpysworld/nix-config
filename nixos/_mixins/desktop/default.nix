@@ -8,25 +8,8 @@
 }:
 {
   imports = [
-    ./features/appimage
-    ./features/flatpak
-    ./features/fonts
-    ./features/pipewire
-    ./features/print
-    ./features/scan
-    ./features/v4l2loopback
-    ./features/xdg
-    ./apps/1password
-    ./apps/audio-production
-    ./apps/blender
-    ./apps/celluloid
-    ./apps/graphics-production
-    ./apps/obs-studio
-    ./apps/rhythmbox
-    ./apps/steam
-    ./apps/utilities
-    ./apps/video-production
-    ./apps/web-browsers
+    ./apps
+    ./features
   ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {
