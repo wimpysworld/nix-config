@@ -35,6 +35,12 @@ in
         gnomeExtensions.wifi-qrcode
         unstable.gnomeExtensions.workspace-switcher-manager
       ]
+      ++ lib.optionals (username == "martin" && isInstall) [
+        gnome-extension-manager
+        gnomeExtensions.start-overlay-in-application-view
+        gnomeExtensions.tiling-assistant
+        gnomeExtensions.vitals
+      ]
       ++ lib.optionals (isInstall) [
         eyedropper
         gnome.gnome-tweaks

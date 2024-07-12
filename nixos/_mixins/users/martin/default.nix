@@ -1,9 +1,7 @@
 {
-  desktop,
   inputs,
   isWorkstation,
   lib,
-  pkgs,
   platform,
   username,
   ...
@@ -11,17 +9,8 @@
 {
   environment = {
     systemPackages =
-      (
-        with pkgs; lib.optionals (isWorkstation && desktop == "gnome") [
-          gnome-extension-manager
-          gnomeExtensions.start-overlay-in-application-view
-          gnomeExtensions.tiling-assistant
-          gnomeExtensions.vitals
-        ]
-      )
-      ++ (
-        with inputs; lib.optionals (isWorkstation) [ antsy-alien-attack-pico.packages.${platform}.default ]
-      );
+      with inputs;
+      lib.optionals (isWorkstation) [ antsy-alien-attack-pico.packages.${platform}.default ];
   };
 
   users.users.martin = {
