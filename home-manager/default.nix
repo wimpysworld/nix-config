@@ -26,10 +26,8 @@ in
       inputs.nix-index-database.hmModules.nix-index
       ./_mixins/features
       ./_mixins/services
+      ./_mixins/users
     ]
-    ++ lib.optional (builtins.pathExists (
-      ./. + "/_mixins/users/${username}"
-    )) ./_mixins/users/${username}
     ++ lib.optional (isWorkstation) ./_mixins/desktop;
 
   catppuccin = {
