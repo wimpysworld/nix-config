@@ -18,8 +18,8 @@ in
     ]
     ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
     ++ lib.optional (builtins.pathExists (
-      ./. + "/../users/${username}/desktop.nix"
-    )) ../users/${username}/desktop.nix;
+      ./. + "/${desktop}/${username}/default.nix"
+    )) ./${desktop}/${username};
 
   home = {
     # Authrorize X11 access in Distrobox
