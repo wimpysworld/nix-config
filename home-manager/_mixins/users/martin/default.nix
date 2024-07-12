@@ -1,6 +1,28 @@
-{ config, pkgs, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  isStreamstation = (hostname == "phasma" || hostname == "vader");
+in
 {
   home = {
+    file."${config.xdg.configHome}/autostart/deskmaster-xl.desktop" = lib.mkIf (isStreamstation) {
+      text = ''
+        [Desktop Entry]
+        Name=Deckmaster XL
+        Comment=Deckmaster XL
+        Type=Application
+        Exec=deckmaster -deck ${config.home.homeDirectory}/Studio/StreamDeck/Deckmaster-xl/main.deck
+        Categories=
+        Terminal=false
+        NoDisplay=true
+        StartupNotify=false
+      '';
+    };
     file.".bazaar/authentication.conf".text = "
       [Launchpad]
       host = .launchpad.net

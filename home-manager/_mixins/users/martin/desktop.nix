@@ -2,16 +2,12 @@
   config,
   desktop,
   hostname,
-  isWorkstation,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
   inherit (pkgs.stdenv) isLinux;
-  isStreamstation =
-    if (hostname == "phasma" || hostname == "vader") && (isWorkstation) then true else false;
   isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
 in
 {
@@ -323,20 +319,6 @@ in
     };
 
   home.file = {
-    "${config.xdg.configHome}/autostart/deskmaster-xl.desktop" = lib.mkIf (isStreamstation) {
-      text = ''
-        [Desktop Entry]
-        Name=Deckmaster XL
-        Comment=Deckmaster XL
-        Type=Application
-        Exec=deckmaster -deck ${config.home.homeDirectory}/Studio/StreamDeck/Deckmaster-xl/main.deck
-        Categories=
-        Terminal=false
-        NoDisplay=true
-        StartupNotify=false
-      '';
-    };
-
     "${config.xdg.configHome}/tilix/schemes/Catppuccin-Mocha.json".text = ''
       {
         "name": "Catppuccin Mocha",
