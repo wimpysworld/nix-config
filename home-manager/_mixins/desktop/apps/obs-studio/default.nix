@@ -23,7 +23,6 @@ lib.mkIf (lib.elem hostname installOn) {
       };
     };
     packages = with pkgs; [
-      deckmaster
       obs-cli
       obs-cmd
     ];

@@ -323,7 +323,6 @@ in
     };
 
   home.file = {
-    # FIXME: Make this a systemd user service
     "${config.xdg.configHome}/autostart/deskmaster-xl.desktop" = lib.mkIf (isStreamstation) {
       text = ''
         [Desktop Entry]

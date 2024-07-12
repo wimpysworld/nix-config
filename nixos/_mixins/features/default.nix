@@ -10,6 +10,7 @@ _: {
     ./quickemu
     ./rgb
     ./snapcraft
+    ./streamdeck
     ./zram
   ];
 }
