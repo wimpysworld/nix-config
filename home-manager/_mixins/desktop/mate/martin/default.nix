@@ -16,6 +16,10 @@
       ];
     };
 
+    "org/mate/desktop/applications/terminal" = {
+      exec = "alacritty";
+    };
+
     "org/mate/desktop/peripherals/keyboard/kbd" = {
       options = [
         "terminate\tterminate:ctrl_alt_bksp"

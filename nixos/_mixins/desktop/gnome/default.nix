@@ -13,7 +13,6 @@ in
   environment = {
     gnome.excludePackages = with pkgs; [
       baobab
-      gnome-console
       gnome-text-editor
       gnome.geary
       gnome.gnome-system-monitor

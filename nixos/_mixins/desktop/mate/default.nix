@@ -120,7 +120,7 @@
           };
 
           "org/mate/desktop/applications/terminal" = {
-            exec = "alacritty";
+            exec = "mate-terminal";
           };
 
           "org/mate/desktop/background" = {
