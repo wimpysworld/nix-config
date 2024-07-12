@@ -15,20 +15,18 @@ let
   isLima = builtins.substring 0 5 hostname == "lima-";
 in
 {
-  imports =
-    [
-      # If you want to use modules your own flake exports (from modules/home-manager):
-      # outputs.homeManagerModules.example
+  imports = [
+    # If you want to use modules your own flake exports (from modules/home-manager):
+    # outputs.homeManagerModules.example
 
-      # Modules exported from other flakes:
-      inputs.catppuccin.homeManagerModules.catppuccin
-      inputs.sops-nix.homeManagerModules.sops
-      inputs.nix-index-database.hmModules.nix-index
-      ./_mixins/features
-      ./_mixins/services
-      ./_mixins/users
-    ]
-    ++ lib.optional (isWorkstation) ./_mixins/desktop;
+    # Modules exported from other flakes:
+    inputs.catppuccin.homeManagerModules.catppuccin
+    inputs.sops-nix.homeManagerModules.sops
+    inputs.nix-index-database.hmModules.nix-index
+    ./_mixins/features
+    ./_mixins/services
+    ./_mixins/users
+  ] ++ lib.optional (isWorkstation) ./_mixins/desktop;
 
   catppuccin = {
     accent = "blue";
