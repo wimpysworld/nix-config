@@ -4,6 +4,7 @@
   pkgs,
   hostname,
   isInstall,
+  username,
   ...
 }:
 let
