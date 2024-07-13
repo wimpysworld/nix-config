@@ -3,7 +3,7 @@ if [ -e "${HOME}/Zero/nix-config" ]; then
     # Get the number of processing units
     all_cores=$(nproc)
     # Calculate 75% of the number of processing units
-    build_cores=$(echo "scale=0; 0.75 * ${all_cores} / 1" | bc)
+    build_cores=$(printf "%.0f" "$(echo "${all_cores} * 0.75" | bc)")
     echo "Building Home Manager with ${build_cores} cores"
     nh home build --backup-extension backup "${HOME}/Zero/nix-config/" -- --cores "${build_cores}"
 else
