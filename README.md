@@ -107,6 +107,7 @@ Here's the directory structure I'm using:
 │  │  ├── configs
 │  │  ├── desktop
 │  │  ├── features
+│  │  ├── scripts
 │  │  ├── services
 │  │  └── users
 │  └── default.nix
@@ -117,6 +118,7 @@ Here's the directory structure I'm using:
 │  │  ├── configs
 │  │  ├── desktop
 │  │  ├── features
+│  │  ├── scripts
 │  │  ├── services
 │  │  └── users
 │  ├── iso-console
@@ -140,14 +142,14 @@ Here's the directory structure I'm using:
 └── flake.nix
 ```
 
-The NixOS and Home Manager configurations are in the `nixos` and `home-manager` directories respectively, they are structured in the same way with `_mixins` directories that contain the mixin configurations that are used to compose the final configuration.
+The NixOS and Home Manager configurations are in the `nixos` and `home-manager` directories respectively, they are structured in the same way with `_mixins` directories that contain the configurations applied via mixin pattern that compose the final configuration.
 The `pkgs` directory contains my custom local packages with package overlays in the `overlays` directory.
 The `secrets` directory contains secrets managed by [sops-nix].
 The `default.nix` files in the root of each directory are the entry points.
 
 ### The Shell 🐚
 
-Fish shell 🐟️ with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], [Distrobox](./nixos/_mixins/features/distrobox/default.nix) and, of course, a delightfully configured [micro]. (*Fight me!* 🥊) My [common scripts](./nixos/_mixins/configs) are (slowly) being migrated to declarative Nix-managed scripts.
+Fish shell 🐟️ with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience. The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], [Distrobox](./nixos/_mixins/features/distrobox/default.nix) and, of course, a delightfully configured [micro]. (*Fight me!* 🥊) My own scripts are (slowly) being migrated to [NixOS scripts](./nixos/_mixins/scripts) or [Home Manager scripts](./home-manager/_mixins/scripts) to provide declarative, reproducible and `shellcheck` validated tooling 🧰
 
 ![fastfetch on Phasma](.github/screenshots/fastfetch.png)
 
@@ -258,9 +260,9 @@ Things I should do or improve:
 
 - [ ] Add README.md to each level of the configuration to add context
 - [ ] Do this: <https://github.com/Electrostasy/dots/blob/master/flake.nix#L93>
+- [ ] Useful Darwin stuff: <https://github.com/jwiegley/nix-config/blob/master/config/darwin.nix>
 - [ ] Integrate [ntfy](https://ntfy.sh/)
 - [ ] Configure [scrutiny](https://github.com/AnalogJ/scrutiny)
-- [ ] Configure [gh-dash](https://github.com/dlvhdr/gh-dash)
 
 ### macOS
 
@@ -292,7 +294,7 @@ Things I should do or improve:
 
 Before preparing my NixOS and Home Manager configurations I took a look at what other Nix users are doing. My colleagues shared their configs and tips which included [nome from Luc Perkins], [nixos-config from Cole Helbling], [flake from Ana Hoverbear] and her [Declarative GNOME configuration with NixOS] blog post. A couple of friends also shared their configurations and here's [Jon Seager's nixos-config] and [Aaron Honeycutt's nix-configs].
 
-While learning Nix I watched some talks/interviews with [Matthew Croughan](https://github.com/MatthewCroughan) and [Will Taylor's Nix tutorials on Youtube](https://www.youtube.com/playlist?list=PL-saUBvIJzOkjAw_vOac75v-x6EzNzZq-). [Will Taylor's dotfiles] are worth a look, as are his videos, and [Matthew Croughan's nixcfg] is also a useful reference. **After I created my initial flake I found [nix-starter-configs] by [Gabriel Fontes](https://m7.rs) which is an excellent starting point**. I'll be incorporating many of the techniques it demonstrates in my nix-config.
+While learning Nix I watched some talks/interviews with [Matthew Croughan](https://github.com/MatthewCroughan) and [Will Taylor's Nix tutorials on Youtube](https://www.youtube.com/playlist?list=PL-saUBvIJzOkjAw_vOac75v-x6EzNzZq-). [Will Taylor's dotfiles] are worth a look, as are his videos, and [Matthew Croughan's nixcfg] is also a useful reference. **After I created my initial flake I found [nix-starter-configs] by [Gabriel Fontes](https://m7.rs) which is an excellent starting point**. I'll have since incorporated many of the techniques it demonstrates in my nix-config.
 
 I like the directory hierarchy in [Jon Seager's nixos-config] and the mixin pattern used in [Matthew Croughan's nixcfg], so my initial Nix configuration is heavily influenced by both of those. Ana's excellent [Declarative GNOME configuration with NixOS] blog post was essential to get a personalised desktop. That said, there's plenty to learn from browsing other people's Nix configurations, not least for discovering cool software. I recommend a search of [GitHub nixos configuration] from time to time to see what interesting techniques you pick up and new tools you might discover.
 
