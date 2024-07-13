@@ -1,5 +1,6 @@
 _: {
   imports = [
+    ./build-home
     ./captive-portal
     ./flatpak-theme
     ./nixfmt-plus
