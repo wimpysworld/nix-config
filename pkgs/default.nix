@@ -7,7 +7,6 @@
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
   gitkraken = pkgs.callPackage ./gitkraken { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
-  nixfmt-plus = pkgs.callPackage ./nixfmt-plus { };
   obs-studio = pkgs.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
   wavebox = pkgs.callPackage ./wavebox { };
