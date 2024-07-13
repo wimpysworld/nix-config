@@ -25,6 +25,7 @@
     ./${hostname}
     ./_mixins/configs
     ./_mixins/features
+    ./_mixins/scripts
     ./_mixins/services
     ./_mixins/users
   ] ++ lib.optional isWorkstation ./_mixins/desktop;
