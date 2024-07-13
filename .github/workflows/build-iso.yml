@@ -5,48 +5,33 @@ on:
     tags: ['*']
 
 jobs:
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-22.04
-    steps:
-    - uses: actions/checkout@v4
-    - name: Create release ${{ github.ref }} as a draft
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release create "${{ github.ref }}" --draft --generate-notes
-
   build-console-iso:
-    needs: [create-release]
-    name: Console ISO
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@v12
     - uses: DeterminateSystems/magic-nix-cache-action@v7
-    - name: Build Console ISO
+    - name: Build 👷 ISO 💿️
       run: |
-        nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
+        nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
         mkdir iso || true
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
-    - name: Upload Console ISO
+    - name: Draft release ✍️
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ github.ref }}" --draft --generate-notes
+    - name: Upload ⤴️ ISO 💿️
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         for artefact in "iso/"*; do
           gh release upload "${{ github.ref }}" "${artefact}" --clobber
         done
-
-  publish-release:
-    name: Publish Release
-    needs: [build-console-iso]
-    runs-on: ubuntu-22.04
-    steps:
-    - uses: actions/checkout@v4
-    - name: Publish release ${{ github.ref }}
+    - name: Publish release 🎁
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
