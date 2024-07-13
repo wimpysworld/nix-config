@@ -53,7 +53,6 @@ in
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./_mixins/configs/h.fish;
       "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./_mixins/configs/lima-create.fish;
       "${config.xdg.configHome}/fish/functions/gpg-restore.fish".text = builtins.readFile ./_mixins/configs/gpg-restore.fish;
-      "${config.xdg.configHome}/fish/functions/get-nix-hash.fish".text = builtins.readFile ./_mixins/configs/get-nix-hash.fish;
       ".hidden".text = ''snap'';
     };
 
