@@ -52,7 +52,6 @@ in
       "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./_mixins/configs/help.fish;
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./_mixins/configs/h.fish;
       "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./_mixins/configs/lima-create.fish;
-      "${config.xdg.configHome}/fish/functions/gpg-restore.fish".text = builtins.readFile ./_mixins/configs/gpg-restore.fish;
       ".hidden".text = ''snap'';
     };
 
