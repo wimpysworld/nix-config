@@ -1,1 +1,6 @@
-_: { imports = [ ./install-system ]; }
+_: {
+  imports = [
+    ./build-host
+    ./install-system
+  ];
+}
