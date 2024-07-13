@@ -1,1 +1,6 @@
-_: { imports = [ ./nixfmt-plus ]; }
+_: {
+  imports = [
+    ./nixfmt-plus
+    ./purge-gpu-caches
+  ];
+}
