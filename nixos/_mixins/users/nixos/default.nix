@@ -12,7 +12,6 @@
 }:
 let
   isWorkstationISO = isISO && isWorkstation;
-  install-system = pkgs.callPackage ./install-system { };
 in
 {
   config.users.users.nixos.description = "NixOS";
@@ -46,12 +45,7 @@ in
       '';
       "gparted.dockitem".target = "/plank/gparted.dockitem";
     };
-    systemPackages =
-      lib.optionals isISO [
-        install-system
-        inputs.disko.packages.${platform}.default
-      ]
-      ++ lib.optionals isWorkstationISO [ pkgs.gparted ];
+    systemPackages = lib.optionals isWorkstationISO [ pkgs.gparted ];
   };
 
   # All workstation configurations for live media are below.
