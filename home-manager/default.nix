@@ -24,6 +24,7 @@ in
     inputs.sops-nix.homeManagerModules.sops
     inputs.nix-index-database.hmModules.nix-index
     ./_mixins/features
+    ./_mixins/scripts
     ./_mixins/services
     ./_mixins/users
   ] ++ lib.optional isWorkstation ./_mixins/desktop;
@@ -108,7 +109,6 @@ in
         neo-cowsay # Terminal ASCII cows
         netdiscover # Modern Unix `arp`
         nixfmt-rfc-style # Nix code formatter
-        nixfmt-plus # Nix code formatter (deadnix, nixfmt-rfc-style, statix)
         nixpkgs-review # Nix code review
         nix-prefetch-scripts # Nix code fetcher
         nurl # Nix URL fetcher
