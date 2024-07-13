@@ -132,9 +132,6 @@
     command-not-found.enable = false;
     fish = {
       enable = true;
-      shellAbbrs = lib.mkIf isInstall {
-        captive-portal = "${pkgs.xdg-utils}/bin/xdg-open http://$(${pkgs.iproute2}/bin/ip --oneline route get 1.1.1.1 | ${pkgs.gawk}/bin/awk '{print $3}')";
-      };
       shellAliases = {
         nano = "micro";
       };
