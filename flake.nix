@@ -201,9 +201,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
         in
-        import ./pkgs { inherit pkgs; }
+        if system == "x86_64-linux" then import ./pkgs { inherit pkgs; } else { }
       );
-
-      formatter = helper.forAllSystems (system: self.packages.${system}.nixfmt-plus);
     };
 }
