@@ -201,7 +201,8 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
         in
-        if system == "x86_64-linux" then import ./pkgs { inherit pkgs; } else { }
+        #if system == "x86_64-linux" then import ./pkgs { inherit pkgs; } else { }
+        if false then import ./pkgs { inherit pkgs; } else { }
       );
     };
 }
