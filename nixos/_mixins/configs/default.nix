@@ -9,7 +9,6 @@ let
   build-host = import ./build-host.nix { inherit pkgs; };
   build-iso = import ./build-iso.nix { inherit pkgs; };
   flatpak-theme = import ./flatpak-theme.nix { inherit pkgs; };
-  simple-password = import ./simple-password.nix { inherit pkgs; };
   switch-all = import ./switch-all.nix { inherit pkgs; };
   boot-host = import ./boot-host.nix { inherit pkgs; };
   switch-host = import ./switch-host.nix { inherit pkgs; };
@@ -19,7 +18,6 @@ in
     build-all
     build-host
     build-iso
-    simple-password
     switch-all
     boot-host
     switch-host
