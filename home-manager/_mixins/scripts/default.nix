@@ -2,6 +2,7 @@ _: {
   imports = [
     ./build-home
     ./captive-portal
+    ./disrun
     ./flatpak-theme
     ./gpg-restore
     ./nixfmt-plus
