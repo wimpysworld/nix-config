@@ -15,6 +15,7 @@
 
   commodore-64-pixelized-font = pkgs.callPackage ./fonts/commodore-64-pixelized-font { };
   digital-7-font = pkgs.callPackage ./fonts/digital-7-font { };
+  dirty-ego-font = pkgs.callPackage ./fonts/dirty-ego-font { };
   impact-label-font = pkgs.callPackage ./fonts/impact-label-font { };
   poppins-font = pkgs.callPackage ./fonts/poppins-font { };
   spaceport-2006-font = pkgs.callPackage ./fonts/spaceport-2006-font { };
