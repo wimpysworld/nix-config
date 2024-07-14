@@ -541,6 +541,15 @@ in
       enableSshSupport = true;
       pinentryPackage = pkgs.pinentry-curses;
     };
+    pueue = {
+      enable = true;
+      # https://github.com/Nukesor/pueue/wiki/Configuration
+      settings = {
+        daemon = {
+          default_parallel_tasks = 1;
+        };
+      };
+    };
   };
 
   sops = lib.mkIf (username == "martin") {
