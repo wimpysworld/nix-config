@@ -11,6 +11,7 @@ _: {
     ./rgb
     ./snapcraft
     ./streamdeck
+    ./time
     ./zram
   ];
 }

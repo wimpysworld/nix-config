@@ -2,7 +2,6 @@
 let
   locale = "en_GB.utf8";
   xkbLayout = "gb";
-  timezone = "Europe/London";
 in
 {
   console.keyMap = lib.mkIf (config.console.font != null) "uk";
@@ -20,8 +19,6 @@ in
       LC_TIME = locale;
     };
   };
-  services.xserver.xkb.layout = xkbLayout;
-  time.timeZone = timezone;
 
   services = {
     kmscon = lib.mkIf config.services.kmscon.enable {
@@ -29,5 +26,6 @@ in
         xkb-layout=${xkbLayout}
       '';
     };
+    xserver.xkb.layout = xkbLayout;
   };
 }
