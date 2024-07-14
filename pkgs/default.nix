@@ -14,5 +14,6 @@
   zoom-us = pkgs.callPackage ./zoom-us { };
 
   digital-7-font = pkgs.callPackage ./fonts/digital-7-font { };
+  impact-label-font = pkgs.callPackage ./fonts/impact-label-font { };
   poppins-font = pkgs.callPackage ./fonts/poppins-font { };
 }
