@@ -5,6 +5,7 @@ _: {
     ./disrun
     ./flatpak-theme
     ./gpg-restore
+    ./lima-create
     ./nixfmt-plus
     ./purge-gpu-caches
     ./simple-password
