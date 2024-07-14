@@ -29,6 +29,7 @@
       ]
       ++ lib.optionals isInstall [
         digital-7-font
+        impact-label-font
         poppins-font
         ubuntu_font_family
         twitter-color-emoji
