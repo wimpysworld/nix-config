@@ -30,6 +30,7 @@
       ++ lib.optionals isInstall [
         commodore-64-pixelized-font
         digital-7-font
+        dirty-ego-font
         impact-label-font
         poppins-font
         ubuntu_font_family
