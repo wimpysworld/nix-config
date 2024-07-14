@@ -51,7 +51,6 @@ in
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./_mixins/configs/yazi-keymap.toml;
       "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./_mixins/configs/help.fish;
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./_mixins/configs/h.fish;
-      "${config.xdg.configHome}/fish/functions/lima-create.fish".text = builtins.readFile ./_mixins/configs/lima-create.fish;
       ".hidden".text = ''snap'';
     };
 
@@ -300,8 +299,6 @@ in
         ip = "${pkgs.iproute2}/bin/ip --color --brief";
         less = "${pkgs.bat}/bin/bat";
         lolcat = "${pkgs.dotacat}/bin/dotacat";
-        make-lima-builder = "lima-create builder";
-        make-lima-default = "lima-create default";
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
         more = "${pkgs.bat}/bin/bat";
         checkip = "${pkgs.curlMinimal}/bin/curl -s ifconfig.me/ip";
@@ -578,7 +575,8 @@ in
   xdg = {
     enable = isLinux;
     userDirs = {
-      enable = isLinux;
+      # Do not create XDG directories for LIMA; it is confusing
+      enable = isLinux && !isLima;
       createDirectories = lib.mkDefault true;
       extraConfig = {
         XDG_SCREENSHOTS_DIR = "${config.home.homeDirectory}/Pictures/Screenshots";
