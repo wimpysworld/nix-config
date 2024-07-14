@@ -123,6 +123,7 @@
         "nix-command"
         "flakes"
       ];
+      trusted-users = [ "root" "${username}" ];
       warn-dirty = false;
     };
   };
