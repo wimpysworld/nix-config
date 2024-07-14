@@ -29,6 +29,7 @@ lib.mkIf (isDarwin || isOtherOS) {
         work-sans
       ]
       ++ lib.optionals isInstall [
+        digital-7-font
         poppins-font
         ubuntu_font_family
         twitter-color-emoji
