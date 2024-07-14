@@ -13,5 +13,6 @@
   wavebox = pkgs.callPackage ./wavebox { };
   zoom-us = pkgs.callPackage ./zoom-us { };
 
+  digital-7-font = pkgs.callPackage ./fonts/digital-7-font { };
   poppins-font = pkgs.callPackage ./fonts/poppins-font { };
 }
