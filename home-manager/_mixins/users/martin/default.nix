@@ -1,6 +1,7 @@
 {
   config,
   hostname,
+  isLima,
   isWorkstation,
   lib,
   pkgs,
@@ -8,7 +9,6 @@
 }:
 let
   inherit (pkgs.stdenv) isLinux;
-  isLima = builtins.substring 0 5 hostname == "lima-";
   isStreamstation = hostname == "phasma" || hostname == "vader";
 in
 {

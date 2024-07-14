@@ -2,6 +2,7 @@
   config,
   hostname,
   inputs,
+  isLima,
   isWorkstation,
   lib,
   outputs,
@@ -12,7 +13,6 @@
 }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
-  isLima = builtins.substring 0 5 hostname == "lima-";
 in
 {
   imports = [
