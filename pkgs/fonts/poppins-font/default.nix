@@ -5,7 +5,7 @@
 }:
 
 stdenvNoCC.mkDerivation rec {
-  pname = "poppins-font";
+  pname = "poppins";
   version = "4.003";
 
   src = fetchzip {
