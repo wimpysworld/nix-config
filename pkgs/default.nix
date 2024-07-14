@@ -12,4 +12,6 @@
   obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
   wavebox = pkgs.callPackage ./wavebox { };
   zoom-us = pkgs.callPackage ./zoom-us { };
+
+  poppins-font = pkgs.callPackage ./fonts/poppins-font { };
 }

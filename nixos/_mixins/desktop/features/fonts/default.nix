@@ -6,6 +6,7 @@
   ...
 }:
 {
+  # https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
   fonts = {
     # Enable a basic set of fonts providing several font styles and families and reasonable coverage of Unicode.
     enableDefaultPackages = false;
@@ -27,6 +28,7 @@
         work-sans
       ]
       ++ lib.optionals isInstall [
+        poppins-font
         ubuntu_font_family
         twitter-color-emoji
       ];

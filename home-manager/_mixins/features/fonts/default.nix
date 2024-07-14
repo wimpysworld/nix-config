@@ -10,6 +10,7 @@ let
     if builtins.isString (builtins.getEnv "__NIXOS_SET_ENVIRONMENT_DONE") then false else true;
 in
 lib.mkIf (isDarwin || isOtherOS) {
+  # https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
   home = {
     packages =
       with pkgs;
@@ -28,6 +29,7 @@ lib.mkIf (isDarwin || isOtherOS) {
         work-sans
       ]
       ++ lib.optionals isInstall [
+        poppins-font
         ubuntu_font_family
         twitter-color-emoji
       ];
