@@ -13,6 +13,7 @@
   wavebox = pkgs.callPackage ./wavebox { };
   zoom-us = pkgs.callPackage ./zoom-us { };
 
+  commodore-64-pixelized-font = pkgs.callPackage ./fonts/commodore-64-pixelized-font { };
   digital-7-font = pkgs.callPackage ./fonts/digital-7-font { };
   impact-label-font = pkgs.callPackage ./fonts/impact-label-font { };
   poppins-font = pkgs.callPackage ./fonts/poppins-font { };

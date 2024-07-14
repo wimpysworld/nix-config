@@ -28,6 +28,7 @@
         work-sans
       ]
       ++ lib.optionals isInstall [
+        commodore-64-pixelized-font
         digital-7-font
         impact-label-font
         poppins-font
