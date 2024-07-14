@@ -1,5 +1,6 @@
 {
   config,
+  isLinux,
   lib,
   pkgs,
   username,
@@ -21,11 +22,12 @@ in
       [ unstable.telegram-desktop ]
       ++ lib.optionals (lib.elem username installFor) [
         chatterino2
-        discord
+        (pkgs.discord.override {
+          withOpenASAR = true;
+        })
         halloy
       ]
       ++ lib.optionals (lib.elem username installFor && isLinux) [
-        betterdiscordctl
         fractal
       ];
   };

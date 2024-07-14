@@ -43,6 +43,17 @@
     #  });
     #});
 
+    openasar = prev.openasar.overrideAttrs ( old: rec {
+      pname = "openasar";
+      version = "0-unstable-2024-06-30";
+      src = prev.fetchFromGitHub {
+        owner = "GooseMod";
+        repo = "OpenAsar";
+        rev = "5c875eb048e96543f1ec711fae522ace5e4a836c";
+        hash = "sha256-dlf4X+2W2GfL2E46ZM35PqpcoKHoZ4fhroOCLpye1D0=";
+      };
+    });
+
     #wavebox = prev.wavebox.overrideAttrs ( old: rec {
     #  pname = "wavebox";
     #  version = "10.125.53-2";

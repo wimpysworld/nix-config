@@ -209,8 +209,7 @@ Some applications require manual configuration to apply the correct theme.
   - [ ] Chromium
   - [ ] Firefox
   - [ ] Wavebox
-- [ ] BetterDiscord
-  - [ ] `betterdiscordctl install`
+- [ ] Discord OpenAsar
   - [ ] Add Catppuccin CSS
 ```css
 /* mocha */
