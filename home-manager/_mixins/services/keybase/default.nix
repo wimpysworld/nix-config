@@ -1,5 +1,6 @@
 {
   config,
+  isLima,
   isWorkstation,
   lib,
   pkgs,
@@ -10,7 +11,7 @@ let
   installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (lib.elem username installFor && isLinux) {
+lib.mkIf (lib.elem username installFor && isLinux && !isLima) {
   home.file = {
     "${config.xdg.configHome}/keybase/autostart_created" = {
       text = ''

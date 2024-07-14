@@ -1,6 +1,7 @@
 {
   config,
   hostname,
+  isLima,
   isWorkstation,
   lib,
   pkgs,
@@ -11,7 +12,7 @@ let
   installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (lib.elem username installFor && isLinux) {
+lib.mkIf (lib.elem username installFor && isLinux && !isLima) {
   home = {
     file."/Syncthing/.keep".text = "";
     packages = with pkgs; [ stc-cli ];
