@@ -1,12 +1,10 @@
 {
   config,
   desktop,
-  inputs,
   isISO,
   isWorkstation,
   lib,
   pkgs,
-  platform,
   username,
   ...
 }:
