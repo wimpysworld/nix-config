@@ -3,5 +3,6 @@ _: {
     ./build-host
     ./build-iso
     ./install-system
+    ./switch-host
   ];
 }
