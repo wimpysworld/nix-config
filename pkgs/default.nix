@@ -17,5 +17,6 @@
   digital-7-font = pkgs.callPackage ./fonts/digital-7-font { };
   impact-label-font = pkgs.callPackage ./fonts/impact-label-font { };
   poppins-font = pkgs.callPackage ./fonts/poppins-font { };
+  spaceport-2006-font = pkgs.callPackage ./fonts/spaceport-2006-font { };
   zx-spectrum-7-font = pkgs.callPackage ./fonts/zx-spectrum-7-font { };
 }

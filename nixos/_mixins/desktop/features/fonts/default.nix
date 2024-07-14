@@ -33,6 +33,7 @@
         impact-label-font
         poppins-font
         ubuntu_font_family
+        spaceport-2006-font
         twitter-color-emoji
         zx-spectrum-7-font
       ];
