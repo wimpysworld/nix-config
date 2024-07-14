@@ -195,6 +195,7 @@ in
       # Avoid unwanted garbage collection when using nix-direnv
       keep-outputs = true;
       keep-derivations = true;
+      trusted-users = [ "root" "${username}" ];
       warn-dirty = false;
     };
   };
