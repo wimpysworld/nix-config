@@ -34,6 +34,7 @@ lib.mkIf (isDarwin || isOtherOS) {
         poppins-font
         ubuntu_font_family
         twitter-color-emoji
+        zx-spectrum-7-font
       ];
   };
 
