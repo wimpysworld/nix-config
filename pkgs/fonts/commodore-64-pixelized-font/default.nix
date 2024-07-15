@@ -9,7 +9,7 @@ stdenvNoCC.mkDerivation rec {
   version = "1.2";
 
   src = fetchzip {
-    url = " https://dl.dafont.com/dl/?f=${pname}";
+    url = "https://dl.dafont.com/dl/?f=${pname}";
     hash = "sha256-DAnToB/EIzCF45+ebOu7cq3cpsQg5j4xxnVHTOMapBA=";
     extension = "zip";
     stripRoot = false;

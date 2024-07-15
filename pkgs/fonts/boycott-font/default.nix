@@ -6,7 +6,7 @@
 
 stdenvNoCC.mkDerivation rec {
   pname = "boycott";
-  version = "2005";
+  version = "1.00";
 
   src = fetchzip {
     url = " https://dl.dafont.com/dl/?f=${pname}";

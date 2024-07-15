@@ -6,10 +6,10 @@
 
 stdenvNoCC.mkDerivation rec {
   pname = "digital_7";
-  version = "2013";
+  version = "1.020";
 
   src = fetchzip {
-    url = " https://dl.dafont.com/dl/?f=${pname}";
+    url = "https://dl.dafont.com/dl/?f=${pname}";
     hash = "sha256-gufM+ofcUvCnc7vjBH3lA7IvcEBCd9xetZwFy3H0SHY=";
     extension = "zip";
     stripRoot = false;
