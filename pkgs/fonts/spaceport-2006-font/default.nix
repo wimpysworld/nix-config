@@ -6,10 +6,10 @@
 
 stdenvNoCC.mkDerivation rec {
   pname = "spaceport_2006";
-  version = "2016";
+  version = "1.000";
 
   src = fetchzip {
-    url = " https://dl.dafont.com/dl/?f=${pname}";
+    url = "https://dl.dafont.com/dl/?f=${pname}";
     hash = "sha256-TZU5wVPVdg+cvuiOVxmdjJndGyQck/u191uxcawHoS4=";
     extension = "zip";
     stripRoot = false;

@@ -6,10 +6,10 @@
 
 stdenvNoCC.mkDerivation rec {
   pname = "zx_spectrum_7";
-  version = "2022";
+  version = "1.2";
 
   src = fetchzip {
-    url = " https://dl.dafont.com/dl/?f=${pname}";
+    url = "https://dl.dafont.com/dl/?f=${pname}";
     hash = "sha256-TqFDh/kmlqL9350Gp/VGUrZNfHifh8uOR6qLCRnI4KM=";
     extension = "zip";
     stripRoot = false;

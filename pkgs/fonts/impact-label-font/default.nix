@@ -6,10 +6,10 @@
 
 stdenvNoCC.mkDerivation rec {
   pname = "impact_label";
-  version = "2011";
+  version = "2.000";
 
   src = fetchzip {
-    url = " https://dl.dafont.com/dl/?f=${pname}";
+    url = "https://dl.dafont.com/dl/?f=${pname}";
     hash = "sha256-zIUPsEpd+vJZNcgvSbEIF1efO0GCXyVHK0w07DQz7Ug=";
     extension = "zip";
     stripRoot = false;
