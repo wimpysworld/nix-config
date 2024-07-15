@@ -23,6 +23,8 @@
   commodore-64-pixelized-font = pkgs.callPackage ./fonts/commodore-64-pixelized-font { };
   digital-7-font = pkgs.callPackage ./fonts/digital-7-font { };
   dirty-ego-font = pkgs.callPackage ./fonts/dirty-ego-font { };
+  fixedsys-core-font = pkgs.callPackage ./fonts/fixedsys-core-font { };
+  fixedsys-excelsior-font = pkgs.callPackage ./fonts/fixedsys-excelsior-font { };
   impact-label-font = pkgs.callPackage ./fonts/impact-label-font { };
   mocha-mattari-font = pkgs.callPackage ./fonts/mocha-mattari-font { };
   poppins-font = pkgs.callPackage ./fonts/poppins-font { };
