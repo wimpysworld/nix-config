@@ -29,10 +29,16 @@ lib.mkIf (isDarwin || isOtherOS) {
         work-sans
       ]
       ++ lib.optionals isInstall [
+        bebas-neue-2014-font
+        bebas-neue-pro-font
+        bebas-neue-rounded-font
+        bebas-neue-semi-rounded-font
+        boycott-font
         commodore-64-pixelized-font
         digital-7-font
         dirty-ego-font
         impact-label-font
+        mocha-mattari-font
         poppins-font
         ubuntu_font_family
         spaceport-2006-font

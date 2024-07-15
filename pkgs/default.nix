@@ -13,10 +13,18 @@
   wavebox = pkgs.callPackage ./wavebox { };
   zoom-us = pkgs.callPackage ./zoom-us { };
 
+  # https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
+  bebas-neue-2014-font = pkgs.callPackage ./fonts/bebas-neue-2014-font { };
+  bebas-neue-2018-font = pkgs.callPackage ./fonts/bebas-neue-2018-font { };
+  bebas-neue-pro-font = pkgs.callPackage ./fonts/bebas-neue-pro-font { };
+  bebas-neue-rounded-font = pkgs.callPackage ./fonts/bebas-neue-rounded-font { };
+  bebas-neue-semi-rounded-font = pkgs.callPackage ./fonts/bebas-neue-semi-rounded-font { };
+  boycott-font = pkgs.callPackage ./fonts/boycott-font { };
   commodore-64-pixelized-font = pkgs.callPackage ./fonts/commodore-64-pixelized-font { };
   digital-7-font = pkgs.callPackage ./fonts/digital-7-font { };
   dirty-ego-font = pkgs.callPackage ./fonts/dirty-ego-font { };
   impact-label-font = pkgs.callPackage ./fonts/impact-label-font { };
+  mocha-mattari-font = pkgs.callPackage ./fonts/mocha-mattari-font { };
   poppins-font = pkgs.callPackage ./fonts/poppins-font { };
   spaceport-2006-font = pkgs.callPackage ./fonts/spaceport-2006-font { };
   zx-spectrum-7-font = pkgs.callPackage ./fonts/zx-spectrum-7-font { };
