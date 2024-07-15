@@ -197,7 +197,6 @@ Things I currently need to do manually after installation.
 - [ ] Telegram - authenticate
 - [ ] VSCode - authenticate with GitHub enable sync
 - [ ] Wavebox - authenticate Google and restore profile
-- [ ] Run `fonts.sh` to install commercial fonts
 
 ### Themes
 
