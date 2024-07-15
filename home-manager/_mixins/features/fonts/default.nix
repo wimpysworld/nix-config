@@ -37,6 +37,8 @@ lib.mkIf (isDarwin || isOtherOS) {
         commodore-64-pixelized-font
         digital-7-font
         dirty-ego-font
+        fixedsys-core-font
+        fixedsys-excelsior-font
         impact-label-font
         mocha-mattari-font
         poppins-font
