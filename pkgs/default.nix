@@ -8,6 +8,7 @@
   gitkraken = pkgs.callPackage ./gitkraken { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
   lima-bin = pkgs.callPackage ./lima-bin { };
+  nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
   obs-studio = pkgs.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
   wavebox = pkgs.callPackage ./wavebox { };
