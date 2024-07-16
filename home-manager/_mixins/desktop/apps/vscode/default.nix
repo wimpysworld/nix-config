@@ -63,6 +63,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.eliostruyf.vscode-front-matter
           vscode-marketplace.esbenp.prettier-vscode
           vscode-marketplace.evan-buss.font-switcher
+          vscode-marketplace.fill-labs.dependi
           vscode-marketplace.foxundermoon.shell-format
           vscode-marketplace.github.copilot
           vscode-marketplace.github.copilot-chat
@@ -94,7 +95,6 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.rust-lang.rust-analyzer
           vscode-marketplace.ryu1kn.partial-diff
           vscode-marketplace.s3anmorrow.openwithkraken
-          vscode-marketplace.serayuzgur.crates
           vscode-marketplace.streetsidesoftware.code-spell-checker
           vscode-marketplace.tamasfe.even-better-toml
           vscode-marketplace.timonwong.shellcheck
