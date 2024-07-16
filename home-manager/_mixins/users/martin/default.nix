@@ -156,7 +156,7 @@ in
       };
       heynote = {
         name = "Heynote";
-        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Heynote_1.7.0_x86_64.AppImage";
+        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Heynote.AppImage";
         terminal = false;
         icon = "${config.home.homeDirectory}/Apps/Hey/logo.png";
         type = "Application";
