@@ -8,16 +8,10 @@ stdenvNoCC.mkDerivation rec {
   pname = "fixedsys_excelsior";
   version = "3.022";
 
-  src = fetchFromGitHub {
-    owner = "MARTYR-X-LTD";
-    repo = "fixedsys-excelsior";
-    rev = "e6be91168935e97b0f07c12a840c8b907ab0d791";
-    hash = "sha256-0/zIJppLA9E4Yv6U6JWCMiJ4rnD1OjmPrwb6OiGoo64=";
-    sparseCheckout = [ "OTF" ];
-  };
+  src = lib.cleanSource ./fonts;
 
   installPhase = ''
-    install -m444 -Dt $out/share/fonts/opentype/${pname} "OTF/Fixedsys Excelsior.otf"
+    install -m444 -Dt $out/share/fonts/truetype/${pname} *ttf
   '';
 
   meta = {
@@ -27,6 +21,8 @@ stdenvNoCC.mkDerivation rec {
       raster monospaced fonts. The font was originally authored by Darien
       Valentine and provided via a now-defunct site at fixedsysexcelsior.com.
       This derivative adds programming ligatures and fixes rendering and hinting.
+
+      This version is patched to include Nerd Font and Braille glyphs.
     '';
     homepage = "https://github.com/MARTYR-X-LTD/fixedsys-excelsior";
     license = lib.licenses.free;
