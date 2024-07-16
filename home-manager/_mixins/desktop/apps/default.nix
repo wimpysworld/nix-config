@@ -9,5 +9,6 @@ _: {
     ./ulauncher
     ./vscode
     ./youtube-music
+    ./zed-editor
   ];
 }
