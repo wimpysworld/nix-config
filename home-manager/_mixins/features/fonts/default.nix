@@ -42,9 +42,10 @@ lib.mkIf (isDarwin || isOtherOS) {
         impact-label-font
         mocha-mattari-font
         poppins-font
-        ubuntu_font_family
         spaceport-2006-font
         twitter-color-emoji
+        ubuntu_font_family
+        unscii
         zx-spectrum-7-font
       ];
   };
