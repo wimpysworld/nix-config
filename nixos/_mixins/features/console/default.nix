@@ -39,6 +39,7 @@ in
   services = {
     kmscon = lib.mkIf isInstall {
       enable = true;
+      extraOptions = "--gpus primary";
       hwRender = true;
       fonts = [
         {
