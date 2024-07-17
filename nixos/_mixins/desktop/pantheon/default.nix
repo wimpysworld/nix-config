@@ -242,11 +242,16 @@
 
           "org/pantheon/desktop/gala/behavior" = {
             dynamic-workspaces = false;
+            move-fullscreened-workspace = false;
+            move-maximized-workspace = false;
             overlay-action = "io.elementary.wingpanel --toggle-indicator=app-launcher";
           };
 
           "org/pantheon/desktop/gala/mask-corners" = {
+            corner-radius = mkInt32 1;
+            disable-on-fullscreen = true;
             enable = false;
+            only-on-primary = false;
           };
         };
       }
