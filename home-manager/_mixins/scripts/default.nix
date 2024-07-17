@@ -4,6 +4,7 @@ _: {
     ./disrun
     ./flatpak-theme
     ./gpg-restore
+    ./ipad-volume
     ./lima-create
     ./nh-home
     ./nixfmt-plus
