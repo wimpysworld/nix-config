@@ -3,6 +3,7 @@ _: {
     ./captive-portal
     ./disrun
     ./flatpak-theme
+    ./get-cider-volume
     ./gpg-restore
     ./ipad-volume
     ./lima-create
