@@ -59,8 +59,8 @@
         picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-1920x1200.png";
       }
       // lib.optionalAttrs (hostname == "vader") {
-        picture-uri = "file:///etc/backgrounds/DeterminateColorway-2560x1440.png";
-        picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-2560x1440.png";
+        picture-uri = "file:///etc/backgrounds/DeterminateColorway-2560x2880.png";
+        picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-2560x2880.png";
       };
 
     "org/gnome/desktop/screensaver" = {
