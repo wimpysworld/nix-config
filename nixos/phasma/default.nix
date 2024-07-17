@@ -38,8 +38,13 @@
       "nvidia"
     ];
     kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
-    # Disable USB autosuspend on workstations
-    kernelParams = [ "usbcore.autosuspend=-1" ];
+    kernelParams = [
+      # Disable USB autosuspend on workstations
+      "usbcore.autosuspend=-1"
+      "video=DP-1:3440x1440@60"
+      "video=DP-2:1920x1080@60"
+      "video=HDMI-A-1:1920x1080@60"
+    ];
     swraid = {
       enable = true;
       mdadmConf = "PROGRAM=true";
