@@ -9,6 +9,7 @@ let
   kmsconFontSize = {
     sidious = "24";
     tanis = "18";
+    vader = "24";
   };
   kmsconExtraConfig =
     if (builtins.hasAttr hostname kmsconFontSize) then
