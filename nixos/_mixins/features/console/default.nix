@@ -12,10 +12,15 @@ let
     vader = "24";
   };
   kmsconExtraConfig =
-    if (builtins.hasAttr hostname kmsconFontSize) then
-      ''font-size=${kmsconFontSize.${hostname}}''
-    else
-      ''font-size=14'';
+  (if (builtins.hasAttr hostname kmsconFontSize) then
+    ''font-size=${kmsconFontSize.${hostname}} ''
+  else
+    ''font-size=14''
+  ) + ''
+    palette=custom
+    palette-foreground=30, 30, 46
+    palette-foreground=20, 214, 244
+  '';
 in
 {
   boot = {
