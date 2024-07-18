@@ -1,11 +1,14 @@
 { pkgs, ... }:
 let
-  simple-password = pkgs.writeShellApplication {
-    name = "simple-password";
-    runtimeInputs = with pkgs; [ coreutils-full ];
-    text = builtins.readFile ./simple-password.sh;
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
+    runtimeInputs = with pkgs; [
+      coreutils-full
+    ];
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ simple-password ];
+  home.packages = with pkgs; [ shellApplication ];
 }

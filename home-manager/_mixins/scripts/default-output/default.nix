@@ -1,16 +1,17 @@
 { pkgs, ... }:
 let
-  default-output = pkgs.writeShellApplication {
-    name = "default-output";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       gnugrep
       gnused
       pulseaudio
     ];
-    text = builtins.readFile ./default-output.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ default-output ];
+  home.packages = with pkgs; [ shellApplication ];
 }

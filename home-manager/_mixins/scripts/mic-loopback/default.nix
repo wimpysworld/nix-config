@@ -1,7 +1,8 @@
 { pkgs, ... }:
 let
-  mic-loopback = pkgs.writeShellApplication {
-    name = "mic-loopback";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       gnugrep
@@ -10,9 +11,9 @@ let
       procps
       pulsemixer
     ];
-    text = builtins.readFile ./mic-loopback.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ mic-loopback ];
+  home.packages = with pkgs; [ shellApplication ];
 }

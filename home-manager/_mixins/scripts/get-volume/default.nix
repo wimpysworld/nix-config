@@ -1,14 +1,15 @@
 { pkgs, ... }:
 let
-  get-volume = pkgs.writeShellApplication {
-    name = "get-volume";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       pulsemixer
     ];
-    text = builtins.readFile ./get-volume.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ get-volume ];
+  home.packages = with pkgs; [ shellApplication ];
 }

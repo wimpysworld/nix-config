@@ -1,14 +1,15 @@
 { pkgs, ... }:
 let
-  purge-gpu-caches = pkgs.writeShellApplication {
-    name = "purge-gpu-caches";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       fd
     ];
-    text = builtins.readFile ./purge-gpu-caches.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ purge-gpu-caches ];
+  home.packages = with pkgs; [ shellApplication ];
 }

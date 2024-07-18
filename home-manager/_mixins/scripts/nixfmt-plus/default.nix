@@ -1,17 +1,16 @@
 { pkgs, ... }:
 let
-  nixfmt-plus = pkgs.writeShellApplication {
-    name = "nixfmt-plus";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       deadnix
       nixfmt-rfc-style
       statix
     ];
-    text = builtins.readFile ./nixfmt-plus.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home = {
-    packages = with pkgs; [ nixfmt-plus ];
-  };
+  home.packages = with pkgs; [ shellApplication ];
 }

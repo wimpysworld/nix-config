@@ -1,13 +1,14 @@
 { pkgs, ... }:
 let
-  template = pkgs.writeShellApplication {
-    name = "template";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
     ];
-    text = builtins.readFile ./template.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ template ];
+  home.packages = with pkgs; [ shellApplication ];
 }

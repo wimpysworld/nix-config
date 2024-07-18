@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-echo "Template"
+set +u
+basename "${0}"

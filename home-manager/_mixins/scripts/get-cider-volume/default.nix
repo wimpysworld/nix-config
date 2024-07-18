@@ -1,7 +1,8 @@
 { pkgs, ... }:
 let
-  get-cider-volume = pkgs.writeShellApplication {
-    name = "get-cider-volume";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       bc
       coreutils-full
@@ -11,9 +12,9 @@ let
       pulseaudio
       pulsemixer
     ];
-    text = builtins.readFile ./get-cider-volume.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ get-cider-volume ];
+  home.packages = with pkgs; [ shellApplication ];
 }
