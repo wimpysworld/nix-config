@@ -10,6 +10,7 @@ _: {
     ./gpg-restore
     ./ipad-volume
     ./lima-create
+    ./mic-loopback
     ./nh-home
     ./nixfmt-plus
     ./purge-gpu-caches
