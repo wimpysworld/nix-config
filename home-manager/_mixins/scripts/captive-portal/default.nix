@@ -1,16 +1,17 @@
 { pkgs, ... }:
 let
-  inherit (pkgs.stdenv) isLinux;
-  captive-portal = pkgs.writeShellApplication {
-    name = "captive-portal";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
+      coreutils-full
       gawk
       iproute2
       xdg-utils
     ];
-    text = builtins.readFile ./captive-portal.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; lib.optionals isLinux [ captive-portal ];
+  home.packages = with pkgs; [ shellApplication ];
 }

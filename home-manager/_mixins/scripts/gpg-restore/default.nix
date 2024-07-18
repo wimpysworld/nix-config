@@ -1,15 +1,16 @@
 { pkgs, ... }:
 let
-  gpg-restore = pkgs.writeShellApplication {
-    name = "gpg-restore";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       findutils
       gnupg
     ];
-    text = builtins.readFile ./gpg-restore.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ gpg-restore ];
+  home.packages = with pkgs; [ shellApplication ];
 }

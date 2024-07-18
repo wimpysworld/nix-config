@@ -1,15 +1,16 @@
 { pkgs, ... }:
 let
-  ipad-volume = pkgs.writeShellApplication {
-    name = "ipad-volume";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       gnugrep
       pulsemixer
     ];
-    text = builtins.readFile ./ipad-volume.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ ipad-volume ];
+  home.packages = with pkgs; [ shellApplication ];
 }

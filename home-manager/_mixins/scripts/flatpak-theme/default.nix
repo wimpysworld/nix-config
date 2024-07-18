@@ -1,16 +1,17 @@
 { pkgs, ... }:
 let
-  flatpak-theme = pkgs.writeShellApplication {
-    name = "flatpak-theme";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       dconf
       flatpak
       gnused
     ];
-    text = builtins.readFile ./flatpak-theme.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ flatpak-theme ];
+  home.packages = with pkgs; [ shellApplication ];
 }

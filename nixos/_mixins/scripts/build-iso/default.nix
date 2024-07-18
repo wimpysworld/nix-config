@@ -1,15 +1,16 @@
 { pkgs, ... }:
 let
-  build-iso = pkgs.writeShellApplication {
-    name = "build-iso";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       bc
       coreutils-full
       nix-output-monitor
     ];
-    text = builtins.readFile ./build-iso.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  environment.systemPackages = with pkgs; [ build-iso ];
+  environment.systemPackages = with pkgs; [ shellApplication ];
 }

@@ -1,17 +1,18 @@
 { pkgs, ... }:
 let
-  nh-host = pkgs.writeShellApplication {
-    name = "nh-host";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       bc
       coreutils-full
       nh
     ];
-    text = builtins.readFile ./nh-host.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  environment.systemPackages = with pkgs; [ nh-host ];
+  environment.systemPackages = with pkgs; [ shellApplication ];
   programs.fish.shellAliases = {
     build-host = "nh-host build";
     switch-host = "nh-host switch";

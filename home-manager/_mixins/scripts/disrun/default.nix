@@ -1,15 +1,15 @@
 { pkgs, ... }:
 let
-  disrun = pkgs.writeShellApplication {
-    name = "disrun";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       util-linux
     ];
-
-    text = builtins.readFile ./disrun.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ disrun ];
+  home.packages = with pkgs; [ shellApplication ];
 }

@@ -1,14 +1,15 @@
 { pkgs, ... }:
 let
-  unroll-url = pkgs.writeShellApplication {
-    name = "unroll-url";
+  name = builtins.baseNameOf (builtins.toString ./.);
+  shellApplication = pkgs.writeShellApplication {
+    inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
       curlMinimal
     ];
-    text = builtins.readFile ./unroll-url.sh;
+    text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ unroll-url ];
+  home.packages = with pkgs; [ shellApplication ];
 }
