@@ -1,6 +1,7 @@
 _: {
   imports = [
     ./captive-portal
+    ./default-input
     ./disrun
     ./flatpak-theme
     ./get-cider-volume
