@@ -6,7 +6,6 @@ _: {
     ./games
     ./graphics-production
     ./libreoffice
-    ./rhythmbox
     ./steam
     ./utilities
     ./video-production

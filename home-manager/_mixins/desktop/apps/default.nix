@@ -6,6 +6,7 @@ _: {
     ./joplin
     ./meld
     ./obs-studio
+    ./rhythmbox
     ./ulauncher
     ./vscode
     ./youtube-music
