@@ -11,6 +11,7 @@ _: {
     ./ipad-volume
     ./lima-create
     ./mic-loopback
+    ./mic-mute
     ./nh-home
     ./nixfmt-plus
     ./purge-gpu-caches
