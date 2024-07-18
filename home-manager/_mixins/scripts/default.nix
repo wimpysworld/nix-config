@@ -2,6 +2,7 @@ _: {
   imports = [
     ./captive-portal
     ./default-input
+    ./default-output
     ./disrun
     ./flatpak-theme
     ./get-cider-volume
