@@ -34,9 +34,7 @@
     consoleLogLevel = 0;
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
-    kernelParams = [
-      "udev.log_priority=3"
-    ];
+    kernelParams = [ "udev.log_priority=3" ];
     kernelPackages = pkgs.linuxPackages_latest;
     # Only enable the systemd-boot on installs, not live media (.ISO images)
     loader = lib.mkIf isInstall {
@@ -119,7 +117,10 @@
         "nix-command"
         "flakes"
       ];
-      trusted-users = [ "root" "${username}" ];
+      trusted-users = [
+        "root"
+        "${username}"
+      ];
       warn-dirty = false;
     };
   };

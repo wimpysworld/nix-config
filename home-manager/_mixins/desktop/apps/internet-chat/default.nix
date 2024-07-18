@@ -1,6 +1,5 @@
 {
   config,
-  isLinux,
   lib,
   pkgs,
   username,
@@ -22,14 +21,10 @@ in
       [ unstable.telegram-desktop ]
       ++ lib.optionals (lib.elem username installFor) [
         chatterino2
-        (pkgs.discord.override {
-          withOpenASAR = true;
-        })
+        (pkgs.discord.override { withOpenASAR = true; })
         halloy
       ]
-      ++ lib.optionals (lib.elem username installFor && isLinux) [
-        fractal
-      ];
+      ++ lib.optionals (lib.elem username installFor && isLinux) [ fractal ];
   };
 
   sops = {
