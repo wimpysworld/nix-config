@@ -4,6 +4,7 @@ _: {
     ./disrun
     ./flatpak-theme
     ./get-cider-volume
+    ./get-volume
     ./gpg-restore
     ./ipad-volume
     ./lima-create
