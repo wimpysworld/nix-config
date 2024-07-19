@@ -13,6 +13,9 @@ lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   # Install snapcraft and enable snapd (for running snaps) and lxd (for building snaps)
   environment.systemPackages = with pkgs; [ snapcraft ];
   services.snap.enable = true;
+  # lxd in Nixpkgs errorneously disables unified cgroup hierarchy.
+  # LXD has had support for cgroups v2 since since 2020.
+  systemd.enableUnifiedCgroupHierarchy = lib.mkForce true;
   virtualisation.lxd.enable = true;
   users.users.${username}.extraGroups = lib.optional config.virtualisation.lxd.enable "lxd";
 }
