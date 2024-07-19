@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set +u
+set +e  # Disable errexit
+set +u  # Disable nounset
+set +o pipefail  # Disable pipefail
 
 LOOPBACK_NAME="Mic-Loopback"
 LOOPBACK_ID=""

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set +u
+set +e  # Disable errexit
+set +u  # Disable nounset
+set +o pipefail  # Disable pipefail
 
 function get_default_sink() {
     pactl info | grep "Default Sink" | cut -d':' -f2 | sed 's/ //g'

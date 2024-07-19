@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set +u
+set +u  # Disable nounset
 
 WINDOW_ID="$(xdotool search '^Meet ' 2>/dev/null)"
 if [ -n "${WINDOW_ID}" ]; then

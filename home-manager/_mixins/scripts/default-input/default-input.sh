@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set +u
+set +e  # Disable errexit
+set +u  # Disable nounset
+set +o pipefail  # Disable pipefail
 
 function get_default_source() {
     pactl info | grep "Default Source" | cut -d':' -f2 | sed 's/ //g'

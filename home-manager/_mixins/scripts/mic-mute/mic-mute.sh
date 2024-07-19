@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-set +u
+set +u  # Disable nounset
+set +o pipefail  # Disable pipefail
 
 case "${1}" in
     status)
