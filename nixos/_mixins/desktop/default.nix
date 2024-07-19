@@ -54,6 +54,7 @@
     ];
 
   services = {
+    usbmuxd.enable = true;
     xserver = {
       # Disable xterm
       desktopManager.xterm.enable = false;
