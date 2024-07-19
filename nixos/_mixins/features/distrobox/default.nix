@@ -20,9 +20,6 @@ lib.mkIf (lib.elem "${username}" installFor) {
         fuse-overlayfs
       ]
       ++ lib.optionals isWorkstation [ boxbuddy pods ];
-    variables = {
-      PODMAN_IGNORE_CGROUPSV1_WARNING = "1";
-    };
   };
 
   hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
