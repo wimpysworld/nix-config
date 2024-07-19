@@ -11,7 +11,7 @@ let
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
 lib.mkIf (lib.elem "${username}" installFor) {
-  #https://nixos.wiki/wiki/Podman
+  #https://nixos.org/wiki/Podman
   environment = {
     systemPackages =
       with pkgs;
@@ -19,7 +19,7 @@ lib.mkIf (lib.elem "${username}" installFor) {
         distrobox
         fuse-overlayfs
       ]
-      ++ lib.optionals isWorkstation [ pods ];
+      ++ lib.optionals isWorkstation [ boxbuddy pods ];
     variables = {
       PODMAN_IGNORE_CGROUPSV1_WARNING = "1";
     };
@@ -28,6 +28,7 @@ lib.mkIf (lib.elem "${username}" installFor) {
   hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
 
   virtualisation = {
+    containers.enable = true;
     podman = {
       defaultNetwork.settings = {
         dns_enabled = true;
