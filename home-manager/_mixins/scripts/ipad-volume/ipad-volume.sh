@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-# Disable nounset; we want to allow unset variables such as $0 and $1
-set +u
+set +e  # Disable errexit
+set +u  # Disable nounset
+set +o pipefail  # Disable pipefail
 
 if [ -z "${1}" ]; then
   echo "Usage: $(basename "${0}") {set|status|vol-down|vol-up}"

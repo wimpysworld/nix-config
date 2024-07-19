@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+set +e  # Disable errexit
+set +o pipefail  # Disable pipefail
+
 if ! playerctl --no-messages -p cider status; then
   echo "--"
   exit 0
