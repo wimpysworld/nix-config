@@ -65,6 +65,7 @@
         reverseSync.enable = true;
       };
     };
+    xone.enable = true;
   };
   services.xserver.videoDrivers = [
     "amdgpu"
