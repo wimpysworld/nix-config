@@ -44,6 +44,8 @@
     quickemu.inputs.nixpkgs.follows = "nixpkgs";
     quickgui.url = "https://flakehub.com/f/quickemu-project/quickgui/*.tar.gz";
     quickgui.inputs.nixpkgs.follows = "nixpkgs";
+    stream-sprout.url = "https://flakehub.com/f/wimpysworld/stream-sprout/*.tar.gz";
+    stream-sprout.inputs.nixpkgs.follows = "nixpkgs";
 
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
     fh.inputs.nixpkgs.follows = "nixpkgs";
