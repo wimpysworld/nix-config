@@ -1,8 +1,10 @@
 {
   config,
   hostname,
+  inputs,
   lib,
   pkgs,
+  platform,
   ...
 }:
 let
@@ -22,6 +24,7 @@ lib.mkIf (lib.elem hostname installOn) {
       };
     };
     packages = with pkgs; [
+      inputs.stream-sprout.packages.${platform}.default
       obs-cli
       obs-cmd
     ];
