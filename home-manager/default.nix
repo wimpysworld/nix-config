@@ -182,7 +182,7 @@ in
 
   nix = {
     settings = {
-      auto-optimise-store = true;
+      auto-optimise-store = isLinux;
       netrc-file = "${config.home.homeDirectory}/.local/share/flakehub/netrc";
       extra-trusted-substituters = "https://cache.flakehub.com/";
       # Avoid unwanted garbage collection when using nix-direnv
