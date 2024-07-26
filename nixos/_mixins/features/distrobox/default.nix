@@ -19,7 +19,10 @@ lib.mkIf (lib.elem "${username}" installFor) {
         distrobox
         fuse-overlayfs
       ]
-      ++ lib.optionals isWorkstation [ boxbuddy pods ];
+      ++ lib.optionals isWorkstation [
+        boxbuddy
+        pods
+      ];
   };
 
   hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
