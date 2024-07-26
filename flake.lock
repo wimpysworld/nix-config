@@ -609,12 +609,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1721772679,
-        "narHash": "sha256-4XHzcd0tlUeQ7yLdM4EJDC8LtPVgon2oIsJw4Ih+0gA=",
-        "rev": "6d14c84e7268b6fb2c014c3347b3e5113ffeedf6",
-        "revCount": 47,
+        "lastModified": 1721975507,
+        "narHash": "sha256-b7NTKenvUhoptDQjo00vDAPM34S/zSIfzML4reDmVMk=",
+        "rev": "198c807a076c81b57fe6fd7c02c6253ce3a138ab",
+        "revCount": 79,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/wimpysworld/stream-sprout/0.1.4/0190e1a8-3436-7d13-92be-1c9431228648/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/wimpysworld/stream-sprout/0.1.5/0190edc1-1e63-7d66-8d7b-1a945411f70a/source.tar.gz"
       },
       "original": {
         "type": "tarball",
