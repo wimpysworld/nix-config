@@ -13,6 +13,9 @@
   username,
   ...
 }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
 {
   imports = [
     inputs.catppuccin.nixosModules.catppuccin
@@ -109,7 +112,7 @@
 
     optimise.automatic = true;
     settings = {
-      auto-optimise-store = true;
+      auto-optimise-store = isLinux;
       # Opinionated: disable global registry
       flake-registry = "";
       # Workaround for https://github.com/NixOS/nix/issues/9574
