@@ -299,7 +299,7 @@ in
         glow = "${pkgs.glow}/bin/glow --pager";
         hr = ''${pkgs.hr}/bin/hr "─━"'';
         htop = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
-        ip = "${pkgs.iproute2}/bin/ip --color --brief";
+        ip = lib.mkIf isLinux "${pkgs.iproute2}/bin/ip --color --brief";
         less = "${pkgs.bat}/bin/bat";
         lolcat = "${pkgs.dotacat}/bin/dotacat";
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
@@ -538,13 +538,13 @@ in
   };
 
   services = {
-    gpg-agent = {
+    gpg-agent = lib.mkIf isLinux {
       enable = isLinux;
       enableSshSupport = true;
       pinentryPackage = pkgs.pinentry-curses;
     };
     pueue = {
-      enable = true;
+      enable = isLinux;
       # https://github.com/Nukesor/pueue/wiki/Configuration
       settings = {
         daemon = {
