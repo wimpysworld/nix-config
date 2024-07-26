@@ -39,7 +39,7 @@
     # Only enable the systemd-boot on installs, not live media (.ISO images)
     loader = lib.mkIf isInstall {
       efi.canTouchEfiVariables = true;
-      systemd-boot.configurationLimit = 30;
+      systemd-boot.configurationLimit = 10;
       systemd-boot.consoleMode = "max";
       systemd-boot.enable = true;
       systemd-boot.memtest86.enable = true;
@@ -138,7 +138,7 @@
     nh = {
       clean = {
         enable = true;
-        extraArgs = "--keep-since 30d --keep 30";
+        extraArgs = "--keep-since 15d --keep 10";
       };
       enable = true;
       flake = "/home/${username}/Zero/nix-config";
