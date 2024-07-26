@@ -81,6 +81,37 @@
         [ ../nixos ] ++ inputs.nixpkgs.lib.optionals isISO [ cd-dvd ];
     };
 
+  mkDarwin =
+    {
+      desktop ? "aqua",
+      hostname,
+      username ? "martin",
+      platform ? "aarch64-darwin",
+    }:
+    let
+      isISO = false;
+      isInstall = true;
+      isLima = false;
+      isWorkstation = true;
+    in
+    inputs.nix-darwin.lib.darwinSystem {
+      specialArgs = {
+        inherit
+          inputs
+          outputs
+          desktop
+          hostname
+          platform
+          username
+          isInstall
+          isLima
+          isISO
+          isWorkstation
+          ;
+      };
+      modules = [ ../darwin ];
+    };
+
   forAllSystems = inputs.nixpkgs.lib.genAttrs [
     "aarch64-linux"
     "i686-linux"

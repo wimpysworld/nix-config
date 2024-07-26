@@ -19,6 +19,9 @@
     nixos-needtoreboot.url = "github:thefossguy/nixos-needsreboot";
     nixos-needtoreboot.inputs.nixpkgs.follows = "nixpkgs";
 
+    nix-darwin.url = "github:LnL7/nix-darwin";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+
     nix-index-database.url = "github:Mic92/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -50,7 +53,7 @@
     stream-sprout.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
-    { self, nixpkgs, ... }@inputs:
+    { self, nix-darwin, nixpkgs, ... }@inputs:
     let
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
@@ -181,6 +184,13 @@
         scrubber = helper.mkHost {
           hostname = "scrubber";
           desktop = "pantheon";
+        };
+      };
+      #nix run nix-darwin -- switch --flake ~/Zero/nix-config
+      #nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
+      darwinConfigurations = {
+        dooku = helper.mkDarwin {
+          hostname = "dooku";
         };
       };
 
