@@ -46,9 +46,6 @@
     quickgui.inputs.nixpkgs.follows = "nixpkgs";
     stream-sprout.url = "https://flakehub.com/f/wimpysworld/stream-sprout/*.tar.gz";
     stream-sprout.inputs.nixpkgs.follows = "nixpkgs";
-
-    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
-    fh.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
     { self, nixpkgs, ... }@inputs:

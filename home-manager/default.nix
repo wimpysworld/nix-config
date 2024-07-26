@@ -564,8 +564,6 @@ in
     secrets = {
       asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
       atuin_key.path = "${config.home.homeDirectory}/.local/share/atuin/key";
-      flakehub_netrc.path = "${config.home.homeDirectory}/.local/share/flakehub/netrc";
-      flakehub_token.path = "${config.home.homeDirectory}/.config/flakehub/auth";
       gh_token = { };
       gpg_private = { };
       gpg_public = { };
