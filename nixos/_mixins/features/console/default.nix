@@ -48,7 +48,7 @@ in
     kmscon = lib.mkIf isInstall {
       enable = true;
       extraOptions = "--gpus primary";
-      hwRender = true;
+      hwRender = false;
       fonts = [
         {
           name = "FiraCode Nerd Font Mono";
