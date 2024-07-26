@@ -20,6 +20,7 @@ in
 
     # Modules exported from other flakes:
     inputs.catppuccin.homeManagerModules.catppuccin
+    inputs.determinate.homeManagerModules.default
     inputs.sops-nix.homeManagerModules.sops
     inputs.nix-index-database.hmModules.nix-index
     ./_mixins/features
@@ -32,6 +33,9 @@ in
     accent = "blue";
     flavor = "mocha";
   };
+
+  determinate.nix.primaryUser.username = username;
+  determinate.nix.primaryUser.isTrusted = true;
 
   home = {
     inherit stateVersion;

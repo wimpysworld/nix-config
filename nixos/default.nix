@@ -16,6 +16,7 @@
 {
   imports = [
     inputs.catppuccin.nixosModules.catppuccin
+    inputs.determinate.nixosModules.default
     inputs.disko.nixosModules.disko
     inputs.nix-flatpak.nixosModules.nix-flatpak
     inputs.nix-index-database.nixosModules.nix-index
@@ -46,6 +47,8 @@
       timeout = 10;
     };
   };
+
+  determinate.nix.primaryUser.username = username;
 
   # Only install the docs I use
   documentation.enable = true;
