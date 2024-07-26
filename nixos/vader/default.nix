@@ -38,7 +38,7 @@
       "kvm-amd"
       "nvidia"
     ];
-    kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
+    kernelPackages = lib.mkForce pkgs.linuxPackages_xanmod_latest;
     kernelParams = [
       # Disable USB autosuspend on workstations
       "usbcore.autosuspend=-1"
