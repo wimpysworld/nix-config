@@ -32,6 +32,8 @@
     catppuccin-vsc.url = "https://flakehub.com/f/catppuccin/vscode/*.tar.gz";
     catppuccin-vsc.inputs.nixpkgs.follows = "nixpkgs";
 
+    determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/0";
+
     antsy-alien-attack-pico.url = "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/*.tar.gz";
     antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";
 
