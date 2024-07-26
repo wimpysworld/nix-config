@@ -119,6 +119,8 @@ in
       nix-path = config.nix.nixPath;
       warn-dirty = false;
     };
+    # Opinionated: disable channels
+    channel.enable = false;
   };
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 
