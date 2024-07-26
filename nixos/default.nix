@@ -105,11 +105,9 @@ in
     };
   };
 
-  nix = {
-    # This will add each flake input as a registry
-    # To make nix3 commands consistent with your flake
-    registry = lib.mapAttrs (_: value: { flake = value; }) inputs;
-
+  nix = let
+    flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
+  in {
     settings = {
       auto-optimise-store = isLinux;
       # Opinionated: disable global registry
@@ -120,7 +118,12 @@ in
     };
     # Opinionated: disable channels
     channel.enable = false;
+
+    # Opinionated: make flake registry and nix path match flake inputs
+    registry = lib.mapAttrs (_: flake: {inherit flake;}) flakeInputs;
+    nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
   };
+
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 
   programs = {
