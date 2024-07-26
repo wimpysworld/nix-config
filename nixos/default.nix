@@ -110,7 +110,6 @@ in
     # To make nix3 commands consistent with your flake
     registry = lib.mapAttrs (_: value: { flake = value; }) inputs;
 
-    optimise.automatic = true;
     settings = {
       auto-optimise-store = isLinux;
       # Opinionated: disable global registry
