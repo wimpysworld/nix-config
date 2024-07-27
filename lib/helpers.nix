@@ -103,6 +103,7 @@
           hostname
           platform
           username
+          stateVersion
           isInstall
           isLima
           isISO

@@ -12,39 +12,29 @@ lib.mkIf isDarwin {
       NSGlobalDomain = {
         AppleLanguages = [ "en-GB" ];
         AppleLocale = "en_GB";
-        AppleMeasurementUnits = "Centimeters";
-        AppleMetricUnits = true;
-        AppleTemperatureUnit = "Celsius";
-        NSAutomaticCapitalizationEnabled = false;
-        NSAutomaticDashSubstitutionEnabled = false;
-        NSAutomaticPeriodSubstitutionEnabled = false;
-        NSAutomaticQuoteSubstitutionEnabled = false;
-        NSAutomaticSpellingCorrectionEnabled = false;
       };
       "com.apple.Safari" = {
         AutoFillCreditCardData = false;
+        AutoFillFromAddressBook = false;
+        AutoFillMiscellaneousForms = false;
         AutoFillPasswords = false;
+        # Prevent Safari from opening ‘safe’ files automatically after downloading
         AutoOpenSafeDownloads = false;
+        IncludeInternalDebugMenu = true;
+        IncludeDevelopMenu = true;
+        # Privacy: don’t send search queries to Apple
+        SuppressSearchSuggestions = true;
+        UniversalSearchEnabled = false;
+        ShowFavoritesBar = false;
+        ShowFullURLInSmartSearchField = true;
         ShowOverlayStatusBar = true;
-      };
-      "com.apple.desktopservices" = {
-        DSDontWriteNetworkStores = true;
-        DSDontWriteUSBStores = true;
-      };
-      "com.apple.dock" = {
-        size-immutable = true;
-        tilesize = 64;
-      };
-      "com.apple.controlcenter" = {
-        BatteryShowPercentage = true;
+        WarnAboutFraudulentWebsites = true;
+        WebAutomaticSpellingCorrectionEnabled = false;
+        WebContinuousSpellCheckingEnabled = true;
+        WebKitDeveloperExtrasEnabledPreferenceKey = true;
+        WebKitJavaEnabled = false;
+        WebKitJavaScriptCanOpenWindowsAutomatically = false;
       };
     };
-    defaults = {
-      "com.googlecode.iterm2" = {
-        AddNewTabAtEndOfTabs = true;
-        CopySelection = true;
-      };
-    };
-    search = "Google";
   };
 }
