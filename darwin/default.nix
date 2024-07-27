@@ -123,6 +123,7 @@ in
   services = {
     activate-system.enable = true;
     nix-daemon.enable = true;
+    tailscale.enable = true;
   };
 
   system = {
