@@ -20,7 +20,7 @@ in
 
     # Modules exported from other flakes:
     inputs.catppuccin.homeManagerModules.catppuccin
-    inputs.determinate.homeManagerModules.default
+    inputs.determinate.homeModules.default
     inputs.sops-nix.homeManagerModules.sops
     inputs.nix-index-database.hmModules.nix-index
     ./_mixins/features
