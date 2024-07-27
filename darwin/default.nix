@@ -17,10 +17,9 @@ in
   imports = [
     inputs.nix-index-database.darwinModules.nix-index
     ./${hostname}
+    ./_mixins/desktop
     ./_mixins/scripts
   ];
-  # ++ lib.optional isWorkstation ./_mixins/desktop;
-
 
   # Only install the docs I use
   documentation.enable = true;
