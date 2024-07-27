@@ -44,6 +44,15 @@ in
     };
   };
 
+  homebrew = {
+    enable = true;
+    onActivation = {
+      autoUpdate = true;
+      upgrade = true;
+      cleanup = "zap";
+    };
+  };
+
   nixpkgs = {
     # You can add overlays here
     overlays = [
