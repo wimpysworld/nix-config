@@ -63,12 +63,21 @@ in
   nix = let
     flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
   in {
+    optimise.automatic = isLinux;
     settings = {
       auto-optimise-store = isLinux;
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
       # Opinionated: disable global registry
-      #flake-registry = "";
+      flake-registry = "";
       # Workaround for https://github.com/NixOS/nix/issues/9574
       nix-path = config.nix.nixPath;
+      trusted-users = [
+        "root"
+        "${username}"
+      ];
       warn-dirty = false;
     };
 
