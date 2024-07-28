@@ -8,6 +8,7 @@
 let
   installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
+  matrixClient = if isLinux then pkgs.fractal else pkgs.cinny-desktop;
 in
 {
   home = {
@@ -17,14 +18,16 @@ in
     };
 
     packages =
-      with pkgs;
-      [ unstable.telegram-desktop ]
+      [ pkgs.unstable.telegram-desktop ]
       ++ lib.optionals (lib.elem username installFor) [
-        chatterino2
+        matrixClient
+        pkgs.chatterino2
         (pkgs.discord.override { withOpenASAR = true; })
-        halloy
       ]
-      ++ lib.optionals (lib.elem username installFor && isLinux) [ fractal ];
+      # Install Halloy for Darwin via Homebrew
+      ++ lib.optionals (lib.elem username installFor && isLinux) [
+        pkgs.halloy
+      ];
   };
 
   sops = {

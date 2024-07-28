@@ -4,6 +4,7 @@ _: {
     ./blender
     ./grammarly
     ./heynote
+    ./internet-chat
     ./maestral
     ./obs-studio
     ./web-browsers
