@@ -3,7 +3,7 @@ _: {
     ./1password
     ./blender
     ./grammarly
-    ./heynote
+    ./notes
     ./internet-chat
     ./maestral
     ./obs-studio

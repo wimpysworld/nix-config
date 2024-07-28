@@ -6,6 +6,7 @@
 }:
 let
   installFor = [ "martin" ];
+  inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
@@ -16,7 +17,7 @@ lib.mkIf (lib.elem username installFor) {
   };
 
   programs.joplin-desktop = {
-    enable = true;
+    enable = isLinux;
     extraConfig = {
       "markdown.plugin.sub" = true;
       "markdown.plugin.sup" = true;
