@@ -203,15 +203,20 @@ in
       };
       dock = {
         orientation = "left";
+        # TODO: Make this user-specific
         persistent-apps = [
           "/Applications/Brave Browser.app"
           "/Applications/Wavebox.app"
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"
+          "/Users/${username}/Applications/Home Manager Apps/Cinny.app"
+          "/Applications/Halloy.app"
           "/Users/${username}/Applications/Home Manager Apps/Visual Studio Code.app"
           "/Users/${username}/Applications/Home Manager Apps/GitKraken.app"
           "/Users/${username}/Applications/Home Manager Apps/Alacritty.app"
           "/System/Applications/Music.app"
+          "/Applications/Heynote.app"
+          "/Applications/Joplin.app"
           "/System/Applications/Launchpad.app"
         ];
         show-recents = false;
