@@ -101,6 +101,7 @@ in
         iperf3 # Terminal network benchmarking
         jpegoptim # Terminal JPEG optimizer
         jiq # Modern Unix `jq`
+        lastpass-cli # Terminal LastPass client
         lima-bin # Terminal VM manager
         mdp # Terminal Markdown presenter
         mtr # Modern Unix `traceroute`
