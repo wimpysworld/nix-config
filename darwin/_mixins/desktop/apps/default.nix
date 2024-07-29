@@ -4,6 +4,7 @@ _: {
     ./blender
     ./grammarly
     ./internet-chat
+    ./keybase
     ./lastpass
     ./notes
     ./maestral
