@@ -10,6 +10,7 @@ _: {
     ./notes
     ./maestral
     ./obs-studio
+    ./utilities
     ./web-browsers
     ./zoom
   ];
