@@ -120,6 +120,10 @@ in
     nix-index-database.comma.enable = true;
   };
 
+
+  # Enable TouchID for sudo authentication
+  security.pam.enableSudoTouchIdAuth = true;
+
   services = {
     activate-system.enable = true;
     nix-daemon.enable = true;
