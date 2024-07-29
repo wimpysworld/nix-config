@@ -8,7 +8,6 @@
 let
   installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
-  matrixClient = if isLinux then pkgs.fractal else pkgs.cinny-desktop;
 in
 {
   home = {
@@ -17,16 +16,17 @@ in
       "${config.home.homeDirectory}/.config/halloy/themes/catppuccin-mocha.toml".text = builtins.readFile ./halloy-catppuccin-mocha.toml;
     };
 
-    packages =
-      [ pkgs.unstable.telegram-desktop ]
+    packages = with pkgs;
+      [ unstable.telegram-desktop ]
       ++ lib.optionals (lib.elem username installFor) [
-        matrixClient
-        pkgs.chatterino2
-        (pkgs.discord.override { withOpenASAR = true; })
+        chatterino2
+        cinny-desktop
+        (discord.override { withOpenASAR = true; })
       ]
-      # Install Halloy for Darwin via Homebrew
+      # Halloy is installed via homebrew on Darwin
       ++ lib.optionals (lib.elem username installFor && isLinux) [
-        pkgs.halloy
+        fractal
+        halloy
       ];
   };
 
