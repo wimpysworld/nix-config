@@ -11,6 +11,7 @@ lib.mkIf (builtins.elem username installFor) {
   environment.systemPackages = with pkgs; [
     gnome.dconf-editor
     pika-backup
+    squirreldisk
     usbimager
   ];
 
