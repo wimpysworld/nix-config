@@ -35,8 +35,11 @@ in
       with pkgs;
       [
         git
+        m-cli
+        mas
         nix-output-monitor
         nvd
+        plistwatch
         sops
       ];
 
