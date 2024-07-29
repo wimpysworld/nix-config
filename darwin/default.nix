@@ -73,20 +73,14 @@ in
     ];
   };
 
-  nix = let
-    flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-  in {
-    optimise.automatic = isLinux;
+  nix = {
+    optimise.automatic = true;
     settings = {
-      auto-optimise-store = isLinux;
+      auto-optimise-store = true;
       experimental-features = [
         "nix-command"
         "flakes"
       ];
-      # Opinionated: disable global registry
-      flake-registry = "";
-      # Workaround for https://github.com/NixOS/nix/issues/9574
-      nix-path = config.nix.nixPath;
       trusted-public-keys = [
         "cache.flakehub.com-1:t6986ugxCA+d/ZF9IeMzJkyqi5mDhvFIx7KA/ipulzE= cache.flakehub.com-2:ntBGiaKSmygJOw2j1hFS7KDlUHQWmZALvSJ9PxMJJYU="
       ];
@@ -99,10 +93,6 @@ in
       ];
       warn-dirty = false;
     };
-
-    # Opinionated: make flake registry and nix path match flake inputs
-    registry = lib.mapAttrs (_: flake: {inherit flake;}) flakeInputs;
-    nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
   };
 
   networking.hostName = hostname;
