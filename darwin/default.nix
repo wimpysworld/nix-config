@@ -126,6 +126,12 @@ in
   system = {
     # activationScripts run every time you boot the system or execute `darwin-rebuild`
     activationScripts = {
+      diff = {
+        supportsDryActivation = true;
+        text = ''
+          ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.nix}/bin diff /run/current-system "$systemConfig"
+        '';
+      };
       # reload the settings and apply them without the need to logout/login
       postUserActivation.text = ''
         /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
