@@ -3,8 +3,9 @@ _: {
     ./1password
     ./blender
     ./grammarly
-    ./notes
     ./internet-chat
+    ./lastpass
+    ./notes
     ./maestral
     ./obs-studio
     ./web-browsers
