@@ -12,7 +12,7 @@ These computers are managed by this Nix flake ❄️
 | `palpatine` | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | 🪟  | ✅    |
 | `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | ✅    |
 | `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | ✅    |
-| `dooku`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | 🍏  | 🚧    |
+| `dooku`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | 🍏  | ✅    |
 | `tyranus`   | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | ❄️  | 🚧    |
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
 | `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
@@ -102,6 +102,13 @@ Here's the directory structure I'm using:
 
 ```
 .
+├── darwin
+│  ├── _mixins
+│  │  ├── desktop
+│  │  ├── scripts
+│  │  └── users
+│  ├── dooku
+│  └── default.nix
 ├── home-manager
 │  ├── _mixins
 │  │  ├── configs
@@ -113,6 +120,7 @@ Here's the directory structure I'm using:
 │  └── default.nix
 ├── lib
 │  └── default.nix
+├── modules
 ├── nixos
 │  ├── _mixins
 │  │  ├── configs
@@ -142,10 +150,13 @@ Here's the directory structure I'm using:
 └── flake.nix
 ```
 
-The NixOS and Home Manager configurations are in the `nixos` and `home-manager` directories respectively, they are structured in the same way with `_mixins` directories that contain the configurations applied via mixin pattern that compose the final configuration.
-The `pkgs` directory contains my custom local packages with package overlays in the `overlays` directory.
-The `secrets` directory contains secrets managed by [sops-nix].
-The `default.nix` files in the root of each directory are the entry points.
+- The NixOS macOS (darwin) and Home Manager configurations are in the `nixos`, `darwin` and `home-manager` directories respectively, they are structured in a similar way with `_mixins` directories that contain the configurations applied via mixin pattern that compose the final configuration.
+- The `lib` directory contains helper functions for the `nixos`, `nix-darwin` and `home-manager` configurations.
+- The `modules` directory contains my custom NixOS modules.
+- The `overlays` directory hold my custom overlays.
+- The `pkgs` directory contains my custom local packages.
+- The `secrets` directory contains secrets managed by [sops-nix].
+- The `default.nix` files in the root of each directory are the entry points.
 
 ### The Shell 🐚
 
@@ -250,49 +261,12 @@ sudo rm -rf /mnt/win-efi
 
 Reboot and systemd-boot should now offer the option to boot NixOS and Windows.
 
-## TODO 🗒️
-
-Things I should do or improve:
-
-### System
-
-- [ ] Add README.md to each level of the configuration to add context
-- [ ] Do this: <https://github.com/Electrostasy/dots/blob/master/flake.nix#L93>
-- [ ] Useful Darwin stuff: <https://github.com/jwiegley/nix-config/blob/master/config/darwin.nix>
-- [ ] Integrate [ntfy](https://ntfy.sh/)
-- [ ] Configure [scrutiny](https://github.com/AnalogJ/scrutiny)
-
-### macOS
-
-- [ ] Install Rosetta and disable Xcode Command Line tools on macOS
-  - `softwareupdate --install-rosetta --agree-to-license`
-
-### Linux Desktop
-
-- [ ] Configure Tiling Assistant extension
-- [ ] Add <https://github.com/p-chan5/EasyPulse> to Easy Effects presets
-
-### Game Development
-
-- [ ] Package for Defold
-- [ ] Local package for PICO-8
-- [ ] Add Godot. *Maybe...*
-
-### Shell
-
-- [ ] `git-graph` and/or `git-igitt` integration
-
-#### Servers
-
-- [ ] Migrate Borg Backups to [borgmatic](https://torsion.org/borgmatic/) via NixOS modules and Home Manager
-- [ ] Forgejo or Gitea
-- [ ] [microbin](https://github.com/szabodanika/microbin)
-
 ## Inspirations 🧑‍🏫
 
 Before preparing my NixOS and Home Manager configurations I took a look at what other Nix users are doing. My colleagues shared their configs and tips which included [nome from Luc Perkins], [nixos-config from Cole Helbling], [flake from Ana Hoverbear] and her [Declarative GNOME configuration with NixOS] blog post. A couple of friends also shared their configurations and here's [Jon Seager's nixos-config] and [Aaron Honeycutt's nix-configs].
 
 While learning Nix I watched some talks/interviews with [Matthew Croughan](https://github.com/MatthewCroughan) and [Will Taylor's Nix tutorials on Youtube](https://www.youtube.com/playlist?list=PL-saUBvIJzOkjAw_vOac75v-x6EzNzZq-). [Will Taylor's dotfiles] are worth a look, as are his videos, and [Matthew Croughan's nixcfg] is also a useful reference. **After I created my initial flake I found [nix-starter-configs] by [Gabriel Fontes](https://m7.rs) which is an excellent starting point**. I'll have since incorporated many of the techniques it demonstrates in my nix-config.
+Similarly, some of my nix-darwin configuration is inspired by [nix-darwin-kickstarter](](https://github.com/ryan4yin/nix-darwin-kickstarter).
 
 I like the directory hierarchy in [Jon Seager's nixos-config] and the mixin pattern used in [Matthew Croughan's nixcfg], so my initial Nix configuration is heavily influenced by both of those. Ana's excellent [Declarative GNOME configuration with NixOS] blog post was essential to get a personalised desktop. That said, there's plenty to learn from browsing other people's Nix configurations, not least for discovering cool software. I recommend a search of [GitHub nixos configuration] from time to time to see what interesting techniques you pick up and new tools you might discover.
 

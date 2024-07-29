@@ -1,5 +1,5 @@
 {
-  description = "Wimpy's NixOS and Home Manager Configuration";
+  description = "Wimpy's NixOS, nix-darwin and Home Manager Configuration";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
     # You can access packages and modules from different nixpkgs revs at the same time.
