@@ -19,7 +19,7 @@ in
 {
   imports = [
     inputs.catppuccin.nixosModules.catppuccin
-    inputs.determinate.nixosModules.default
+    #inputs.determinate.nixosModules.default
     inputs.disko.nixosModules.disko
     inputs.nix-flatpak.nixosModules.nix-flatpak
     inputs.nix-index-database.nixosModules.nix-index
@@ -51,7 +51,7 @@ in
     };
   };
 
-  determinate.nix.primaryUser.username = username;
+  #determinate.nix.primaryUser.username = username;
 
   # Only install the docs I use
   documentation.enable = true;
@@ -112,10 +112,6 @@ in
       experimental-features = [
         "nix-command"
         "flakes"
-      ];
-      trusted-users = [
-        "root"
-        "${username}"
       ];
       warn-dirty = false;
     };
