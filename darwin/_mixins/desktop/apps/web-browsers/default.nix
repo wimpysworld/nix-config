@@ -1,14 +1,4 @@
-{
-  isInstall,
-  lib,
-  pkgs,
-  username,
-  ...
-}:
-let
-  installFor = [ "martin" ];
-in
-{
+_: {
   homebrew = {
     casks = [
       "brave-browser"

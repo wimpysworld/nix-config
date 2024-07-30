@@ -1,9 +1,4 @@
-{
-  lib,
-  pkgs,
-  username,
-  ...
-}:
+{ lib, username, ... }:
 let
   installFor = [ "martin" ];
 in

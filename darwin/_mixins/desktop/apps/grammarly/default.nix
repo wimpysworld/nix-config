@@ -1,12 +1,5 @@
-{
-  lib,
-  pkgs,
-  ...
-}:
-{
+_: {
   homebrew = {
-    casks = [
-      "grammarly-desktop"
-    ];
+    casks = [ "grammarly-desktop" ];
   };
 }
