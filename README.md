@@ -12,8 +12,7 @@ These computers are managed by this Nix flake ❄️
 | `palpatine` | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | 🪟  | ✅    |
 | `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | ✅    |
 | `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | ✅    |
-| `dooku`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | 🍏  | ✅    |
-| `tyranus`   | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️🎭️ | ❄️  | 🚧    |
+| `dooku`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | 🍏  | ✅    |
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
 | `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
 | `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
@@ -120,7 +119,6 @@ Here's the directory structure I'm using:
 │  └── default.nix
 ├── lib
 │  └── default.nix
-├── modules
 ├── nixos
 │  ├── _mixins
 │  │  ├── configs
@@ -182,6 +180,10 @@ GNOME 👣 MATE 🧉 and Pantheon 🏛️ desktop options are available. The fon
 
 Things I currently need to do manually after installation.
 
+### System
+
+- [ ] On macOS run `install-homebrew`.
+
 ### Secrets
 
 - [ ] Provision `~/.config/sops/age/keys.txt`. Optionally handled by `install-system`.
@@ -194,7 +196,7 @@ Things I currently need to do manually after installation.
   - Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
 - [ ] Keybase - `keybase login`
 
-### Services
+### Accounts
 
 - [ ] Atuin - `atuin login -u <user>`
 - [ ] Brave - enroll sync
