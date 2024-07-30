@@ -11,6 +11,4 @@ let
     text = builtins.readFile ./${name}.sh;
   };
 in
-lib.mkIf isLinux {
-  home.packages = with pkgs; [ shellApplication ];
-}
+lib.mkIf isLinux { home.packages = with pkgs; [ shellApplication ]; }

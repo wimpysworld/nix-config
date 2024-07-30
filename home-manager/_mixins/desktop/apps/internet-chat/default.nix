@@ -16,7 +16,8 @@ in
       "${config.home.homeDirectory}/.config/halloy/themes/catppuccin-mocha.toml".text = builtins.readFile ./halloy-catppuccin-mocha.toml;
     };
 
-    packages = with pkgs;
+    packages =
+      with pkgs;
       [ unstable.telegram-desktop ]
       ++ lib.optionals (lib.elem username installFor) [
         chatterino2
