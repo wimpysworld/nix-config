@@ -13,9 +13,6 @@
   username,
   ...
 }:
-let
-  inherit (pkgs.stdenv) isLinux;
-in
 {
   imports = [
     inputs.catppuccin.nixosModules.catppuccin
