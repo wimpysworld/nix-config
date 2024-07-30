@@ -1,4 +1,9 @@
-{ hostname, lib, pkgs, ... }:
+{
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
   installOn = [
     "phasma"
@@ -15,6 +20,4 @@ let
     text = builtins.readFile ./${name}.sh;
   };
 in
-lib.mkIf (builtins.elem hostname installOn) {
-  home.packages = with pkgs; [ shellApplication ];
-}
+lib.mkIf (builtins.elem hostname installOn) { home.packages = with pkgs; [ shellApplication ]; }
