@@ -6,13 +6,9 @@
   outputs,
   pkgs,
   platform,
-  stateVersion,
   username,
   ...
 }:
-let
-  inherit (pkgs.stdenv) isLinux;
-in
 {
   imports = [
     inputs.nix-index-database.darwinModules.nix-index
@@ -28,20 +24,16 @@ in
   documentation.man.enable = true;
 
   environment = {
-    shells = [
-      pkgs.fish
+    shells = [ pkgs.fish ];
+    systemPackages = with pkgs; [
+      git
+      m-cli
+      mas
+      nix-output-monitor
+      nvd
+      plistwatch
+      sops
     ];
-    systemPackages =
-      with pkgs;
-      [
-        git
-        m-cli
-        mas
-        nix-output-monitor
-        nvd
-        plistwatch
-        sops
-      ];
 
     variables = {
       EDITOR = "micro";
@@ -102,7 +94,6 @@ in
     info.enable = false;
     nix-index-database.comma.enable = true;
   };
-
 
   # Enable TouchID for sudo authentication
   security.pam.enableSudoTouchIdAuth = true;
@@ -170,7 +161,7 @@ in
           # Install System data files & security updates
           CriticalUpdateInstall = 1;
         };
-         "com.apple.TimeMachine".DoNotOfferNewDisksForBackup = true;
+        "com.apple.TimeMachine".DoNotOfferNewDisksForBackup = true;
         # Turn on app auto-update
         "com.apple.commerce".AutoUpdate = true;
       };
@@ -226,7 +217,7 @@ in
         FXPreferredViewStyle = "Nlsv";
         AppleShowAllExtensions = true;
         AppleShowAllFiles = true;
-        QuitMenuItem =true;
+        QuitMenuItem = true;
         ShowPathbar = true;
         ShowStatusBar = true;
       };
@@ -243,8 +234,8 @@ in
       smb.NetBIOSName = hostname;
       trackpad = {
         Clicking = true;
-        TrackpadRightClick = true;  # enable two finger right click
-        TrackpadThreeFingerDrag = true;  # enable three finger drag
+        TrackpadRightClick = true; # enable two finger right click
+        TrackpadThreeFingerDrag = true; # enable three finger drag
       };
     };
   };

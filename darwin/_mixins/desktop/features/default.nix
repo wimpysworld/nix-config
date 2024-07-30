@@ -1,5 +1,1 @@
-_: {
-  imports = [
-    ./fonts
-  ];
-}
+_: { imports = [ ./fonts ]; }

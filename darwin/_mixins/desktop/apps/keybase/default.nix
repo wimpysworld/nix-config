@@ -1,12 +1,5 @@
-{
-  lib,
-  pkgs,
-  ...
-}:
-{
+_: {
   homebrew = {
-    casks = [
-      "keybase"
-    ];
+    casks = [ "keybase" ];
   };
 }

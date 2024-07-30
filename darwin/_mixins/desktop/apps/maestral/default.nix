@@ -1,16 +1,8 @@
+{ pkgs, ... }:
 {
-  lib,
-  pkgs,
-  ...
-}:
-{
-  environment.systemPackages =
-    with pkgs;
-    [ maestral ];
+  environment.systemPackages = with pkgs; [ maestral ];
 
   homebrew = {
-    casks = [
-      "maestral"
-    ];
+    casks = [ "maestral" ];
   };
 }

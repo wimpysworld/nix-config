@@ -1,17 +1,5 @@
-{
-  isInstall,
-  lib,
-  pkgs,
-  username,
-  ...
-}:
-let
-  installFor = [ "martin" ];
-in
-{
+_: {
   homebrew = {
-    casks = [
-      "halloy"
-    ];
+    casks = [ "halloy" ];
   };
 }
