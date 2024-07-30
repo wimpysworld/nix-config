@@ -133,21 +133,21 @@
       nixosConfigurations = {
         # .iso images
         #  - nix build .#nixosConfigurations.{iso-console|iso-desktop}.config.system.build.isoImage
-        iso-console = helper.mkHost {
+        iso-console = helper.mkNixos {
           hostname = "iso-console";
           username = "nixos";
         };
-        iso-gnome = helper.mkHost {
+        iso-gnome = helper.mkNixos {
           hostname = "iso-gnome";
           username = "nixos";
           desktop = "gnome";
         };
-        iso-mate = helper.mkHost {
+        iso-mate = helper.mkNixos {
           hostname = "iso-mate";
           username = "nixos";
           desktop = "mate";
         };
-        iso-pantheon = helper.mkHost {
+        iso-pantheon = helper.mkNixos {
           hostname = "iso-pantheon";
           username = "nixos";
           desktop = "pantheon";
@@ -156,32 +156,32 @@
         #  - sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
         #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
-        phasma = helper.mkHost {
+        phasma = helper.mkNixos {
           hostname = "phasma";
           desktop = "pantheon";
         };
-        vader = helper.mkHost {
+        vader = helper.mkNixos {
           hostname = "vader";
           desktop = "pantheon";
         };
-        tanis = helper.mkHost {
+        tanis = helper.mkNixos {
           hostname = "tanis";
           desktop = "gnome";
         };
-        tyranus = helper.mkHost {
+        tyranus = helper.mkNixos {
           hostname = "tyranus";
           desktop = "gnome";
           platform = "aarch64-linux";
         };
-        sidious = helper.mkHost {
+        sidious = helper.mkNixos {
           hostname = "sidious";
           desktop = "gnome";
         };
         # Servers
-        revan = helper.mkHost { hostname = "revan"; };
+        revan = helper.mkNixos { hostname = "revan"; };
         # VMs
-        minimech = helper.mkHost { hostname = "minimech"; };
-        scrubber = helper.mkHost {
+        minimech = helper.mkNixos { hostname = "minimech"; };
+        scrubber = helper.mkNixos {
           hostname = "scrubber";
           desktop = "pantheon";
         };

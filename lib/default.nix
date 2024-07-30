@@ -8,5 +8,5 @@ let
   helpers = import ./helpers.nix { inherit inputs outputs stateVersion; };
 in
 {
-  inherit (helpers) mkDarwin mkHome mkHost forAllSystems;
+  inherit (helpers) mkDarwin mkHome mkNixos forAllSystems;
 }
