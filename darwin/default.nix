@@ -81,16 +81,6 @@ in
         "nix-command"
         "flakes"
       ];
-      trusted-public-keys = [
-        "cache.flakehub.com-1:t6986ugxCA+d/ZF9IeMzJkyqi5mDhvFIx7KA/ipulzE= cache.flakehub.com-2:ntBGiaKSmygJOw2j1hFS7KDlUHQWmZALvSJ9PxMJJYU="
-      ];
-      trusted-substituters = [
-        "https://cache.flakehub.com/"
-      ];
-      trusted-users = [
-        "root"
-        "${username}"
-      ];
       warn-dirty = false;
     };
   };
