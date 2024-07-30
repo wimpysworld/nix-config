@@ -14,4 +14,10 @@ lib.mkIf (lib.elem username installFor) {
     stats
     utm
   ];
+
+  homebrew = {
+    casks = [
+      "balenaetcher"
+    ];
+  };
 }
