@@ -12,7 +12,7 @@ These computers are managed by this Nix flake ❄️
 | `palpatine` | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | 🪟  | ✅    |
 | `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | ✅    |
 | `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | ✅    |
-| `dooku`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | 🍏  | ✅    |
+| `momin`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | 🍏  | ✅    |
 | `krall`     | [Macbook Pro (Mid 2015)]    | Intel Core i7                  | 16GB  | Intel Iris Pro Graphics     |                         | 💻️   | 🍏  | ✅    |
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
 | `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
@@ -107,7 +107,8 @@ Here's the directory structure I'm using:
 │  │  ├── desktop
 │  │  ├── scripts
 │  │  └── users
-│  ├── dooku
+│  ├── momin
+│  ├── krall
 │  └── default.nix
 ├── home-manager
 │  ├── _mixins
@@ -151,7 +152,6 @@ Here's the directory structure I'm using:
 
 - The NixOS macOS (darwin) and Home Manager configurations are in the `nixos`, `darwin` and `home-manager` directories respectively, they are structured in a similar way with `_mixins` directories that contain the configurations applied via mixin pattern that compose the final configuration.
 - The `lib` directory contains helper functions for the `nixos`, `nix-darwin` and `home-manager` configurations.
-- The `modules` directory contains my custom NixOS modules.
 - The `overlays` directory hold my custom overlays.
 - The `pkgs` directory contains my custom local packages.
 - The `secrets` directory contains secrets managed by [sops-nix].
