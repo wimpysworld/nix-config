@@ -97,8 +97,8 @@
           hostname = "tanis";
           desktop = "gnome";
         };
-        "martin@dooku" = helper.mkHome {
-          hostname = "dooku";
+        "martin@momin" = helper.mkHome {
+          hostname = "momin";
           platform = "aarch64-darwin";
           desktop = "aqua";
         };
@@ -167,11 +167,6 @@
           hostname = "tanis";
           desktop = "gnome";
         };
-        tyranus = helper.mkNixos {
-          hostname = "tyranus";
-          desktop = "gnome";
-          platform = "aarch64-linux";
-        };
         sidious = helper.mkNixos {
           hostname = "sidious";
           desktop = "gnome";
@@ -188,8 +183,8 @@
       #nix run nix-darwin -- switch --flake ~/Zero/nix-config
       #nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
       darwinConfigurations = {
-        dooku = helper.mkDarwin {
-          hostname = "dooku";
+        momin = helper.mkDarwin {
+          hostname = "momin";
         };
         krall = helper.mkDarwin {
           hostname = "krall";
