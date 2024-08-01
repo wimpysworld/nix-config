@@ -97,16 +97,15 @@
           hostname = "tanis";
           desktop = "gnome";
         };
-        # dooku/tyranus are dual boot hosts, macOS and NixOS respectively.
         "martin@dooku" = helper.mkHome {
           hostname = "dooku";
           platform = "aarch64-darwin";
           desktop = "aqua";
         };
-        "martin@tyranus" = helper.mkHome {
-          hostname = "tyranus";
-          platform = "aarch64-linux";
-          desktop = "gnome";
+        "martin@krall" = helper.mkHome {
+          hostname = "krall";
+          platform = "x86_64-darwin";
+          desktop = "aqua";
         };
         # palpatine/sidious are dual boot hosts, WSL2/Ubuntu and NixOS respectively.
         "martin@palpatine" = helper.mkHome { hostname = "palpatine"; };
@@ -191,6 +190,10 @@
       darwinConfigurations = {
         dooku = helper.mkDarwin {
           hostname = "dooku";
+        };
+        krall = helper.mkDarwin {
+          hostname = "krall";
+          platform = "x86_64-darwin";
         };
       };
 
