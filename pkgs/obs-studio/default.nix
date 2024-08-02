@@ -1,60 +1,61 @@
-{
-  config,
-  lib,
-  stdenv,
-  fetchurl,
-  fetchFromGitHub,
-  fetchpatch,
-  addOpenGLRunpath,
-  cmake,
-  fdk_aac,
-  ffmpeg,
-  jansson,
-  libjack2,
-  libxkbcommon,
-  libpthreadstubs,
-  libXdmcp,
-  qt6,
-  speex,
-  libv4l,
-  x264,
-  curl,
-  wayland,
-  xorg,
-  pkg-config,
-  libvlc,
-  libGL,
-  mbedtls,
-  wrapGAppsHook3,
-  scriptingSupport ? true,
-  luajit,
-  swig4,
-  python3,
-  alsaSupport ? stdenv.isLinux,
-  alsa-lib,
-  pulseaudioSupport ? config.pulseaudio or stdenv.isLinux,
-  libpulseaudio,
-  libcef,
-  pciutils,
-  pipewireSupport ? stdenv.isLinux,
-  withFdk ? true,
-  pipewire,
-  libdrm,
-  libajantv2,
-  librist,
-  libva,
-  srt,
-  nlohmann_json,
-  websocketpp,
-  asio,
-  decklinkSupport ? false,
-  blackmagic-desktop-video,
-  libdatachannel,
-  libvpl,
-  qrcodegencpp,
-  nix-update-script,
-  cjson,
-  vulkan-loader,
+{ config
+, uthash
+, lib
+, stdenv
+, nv-codec-headers-12
+, fetchFromGitHub
+, fetchpatch
+, fetchurl
+, addDriverRunpath
+, cmake
+, fdk_aac
+, ffmpeg
+, jansson
+, libjack2
+, libxkbcommon
+, libpthreadstubs
+, libXdmcp
+, qtbase
+, qtsvg
+, speex
+, libv4l
+, x264
+, curl
+, wayland
+, xorg
+, pkg-config
+, libvlc
+, libGL
+, mbedtls
+, wrapGAppsHook3
+, scriptingSupport ? true
+, luajit
+, swig4
+, python3
+, alsaSupport ? stdenv.isLinux
+, alsa-lib
+, pulseaudioSupport ? config.pulseaudio or stdenv.isLinux
+, libpulseaudio
+, libcef
+, pciutils
+, pipewireSupport ? stdenv.isLinux
+, withFdk ? true
+, pipewire
+, libdrm
+, librist
+, libva
+, srt
+, qtwayland
+, wrapQtAppsHook
+, nlohmann_json
+, websocketpp
+, asio
+, decklinkSupport ? false
+, blackmagic-desktop-video
+, libdatachannel
+, libvpl
+, qrcodegencpp
+, nix-update-script
 }:
 
 let
@@ -71,13 +72,13 @@ in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "obs-studio";
-  version = "30.1.2";
+  version = "30.2.2";
 
   src = fetchFromGitHub {
     owner = "obsproject";
-    repo = finalAttrs.pname;
+    repo = "obs-studio";
     rev = finalAttrs.version;
-    sha256 = "sha256-M4IINBoYrgkM37ykb4boHyWP8AxwMX0b7IAeeNIw9Qo=";
+    hash = "sha256-yMtLN/86+3wuNR+gGhsaxN4oGIC21bAcjbQfyTuXIYc=";
     fetchSubmodules = true;
   };
 
@@ -94,57 +95,50 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   nativeBuildInputs = [
-    addOpenGLRunpath
+    addDriverRunpath
     cmake
     pkg-config
     wrapGAppsHook3
-    qt6.wrapQtAppsHook
-  ] ++ optional scriptingSupport swig4;
+    wrapQtAppsHook
+  ]
+  ++ optional scriptingSupport swig4;
 
-  buildInputs =
-    [
-      curl
-      ffmpeg
-      jansson
-      libcef_obs
-      libjack2
-      libv4l
-      libxkbcommon
-      libpthreadstubs
-      libXdmcp
-      qt6.qtbase
-      qt6.qtsvg
-      speex
-      wayland
-      x264
-      libvlc
-      mbedtls
-      pciutils
-      libajantv2
-      librist
-      libva
-      srt
-      qt6.qtwayland
-      nlohmann_json
-      websocketpp
-      asio
-      libdatachannel
-      libvpl
-      qrcodegencpp
-      cjson
-      vulkan-loader
-    ]
-    ++ optionals scriptingSupport [
-      luajit
-      python3
-    ]
-    ++ optional alsaSupport alsa-lib
-    ++ optional pulseaudioSupport libpulseaudio
-    ++ optionals pipewireSupport [
-      pipewire
-      libdrm
-    ]
-    ++ optional withFdk fdk_aac;
+  buildInputs = [
+    curl
+    ffmpeg
+    jansson
+    libcef
+    libjack2
+    libv4l
+    libxkbcommon
+    libpthreadstubs
+    libXdmcp
+    qtbase
+    qtsvg
+    speex
+    wayland
+    x264
+    libvlc
+    mbedtls
+    pciutils
+    librist
+    libva
+    srt
+    qtwayland
+    nlohmann_json
+    websocketpp
+    asio
+    libdatachannel
+    libvpl
+    qrcodegencpp
+    uthash
+    nv-codec-headers-12
+  ]
+  ++ optionals scriptingSupport [ luajit python3 ]
+  ++ optional alsaSupport alsa-lib
+  ++ optional pulseaudioSupport libpulseaudio
+  ++ optionals pipewireSupport [ pipewire libdrm ]
+  ++ optional withFdk fdk_aac;
 
   # Copied from the obs-linuxbrowser
   postUnpack = ''
@@ -170,6 +164,7 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.cmakeBool "ENABLE_ALSA" alsaSupport)
     (lib.cmakeBool "ENABLE_PULSEAUDIO" pulseaudioSupport)
     (lib.cmakeBool "ENABLE_PIPEWIRE" pipewireSupport)
+    (lib.cmakeBool "ENABLE_AJA" false) # TODO: fix linking against libajantv2
   ];
 
   env.NIX_CFLAGS_COMPILE = toString [
@@ -177,27 +172,27 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   dontWrapGApps = true;
-  preFixup =
-    let
-      wrapperLibraries = [
-        xorg.libX11
-        libvlc
-        libGL
-      ] ++ optionals decklinkSupport [ blackmagic-desktop-video ];
-    in
-    ''
-      # Remove libcef before patchelf, otherwise it will fail
-      rm $out/lib/obs-plugins/libcef.so
+  preFixup = let
+    wrapperLibraries = [
+      xorg.libX11
+      libvlc
+      libGL
+    ] ++ optionals decklinkSupport [
+      blackmagic-desktop-video
+    ];
+  in ''
+    # Remove libcef before patchelf, otherwise it will fail
+    rm $out/lib/obs-plugins/libcef.so
 
-      qtWrapperArgs+=(
-        --prefix LD_LIBRARY_PATH : "$out/lib:${lib.makeLibraryPath wrapperLibraries}"
-        ''${gappsWrapperArgs[@]}
-      )
-    '';
+    qtWrapperArgs+=(
+      --prefix LD_LIBRARY_PATH : "$out/lib:${lib.makeLibraryPath wrapperLibraries}"
+      ''${gappsWrapperArgs[@]}
+    )
+  '';
 
   postFixup = lib.optionalString stdenv.isLinux ''
-    addOpenGLRunpath $out/lib/lib*.so
-    addOpenGLRunpath $out/lib/obs-plugins/*.so
+    addDriverRunpath $out/lib/lib*.so
+    addDriverRunpath $out/lib/obs-plugins/*.so
 
     # Link libcef again after patchelfing other libs
     ln -s ${libcef_obs}/lib/* $out/lib/obs-plugins/
@@ -213,18 +208,9 @@ stdenv.mkDerivation (finalAttrs: {
       video content, efficiently
     '';
     homepage = "https://obsproject.com";
-    maintainers = with maintainers; [
-      eclairevoyant
-      jb55
-      materus
-      fpletz
-    ];
+    maintainers = with maintainers; [ eclairevoyant jb55 materus fpletz ];
     license = with licenses; [ gpl2Plus ] ++ optional withFdk fraunhofer-fdk;
-    platforms = [
-      "x86_64-linux"
-      "i686-linux"
-      "aarch64-linux"
-    ];
+    platforms = [ "x86_64-linux" "i686-linux" "aarch64-linux" ];
     mainProgram = "obs";
   };
 })
