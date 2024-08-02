@@ -9,8 +9,8 @@
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
-  obs-studio = pkgs.callPackage ./obs-studio { };
-  obs-studio-plugins = pkgs.callPackage ./obs-studio/plugins { };
+  obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
+  obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
   wavebox = pkgs.callPackage ./wavebox { };
   zoom-us = pkgs.callPackage ./zoom-us { };
 
