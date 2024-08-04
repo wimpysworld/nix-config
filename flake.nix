@@ -93,6 +93,10 @@
           hostname = "vader";
           desktop = "pantheon";
         };
+        "martin@shaa" = helper.mkHome {
+          hostname = "shaa";
+          desktop = "gnome";
+        };
         "martin@tanis" = helper.mkHome {
           hostname = "tanis";
           desktop = "gnome";
@@ -162,6 +166,10 @@
         vader = helper.mkNixos {
           hostname = "vader";
           desktop = "pantheon";
+        };
+        shaa = helper.mkNixos {
+          hostname = "shaa";
+          desktop = "gnome";
         };
         tanis = helper.mkNixos {
           hostname = "tanis";

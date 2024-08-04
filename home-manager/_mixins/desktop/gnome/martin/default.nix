@@ -6,7 +6,7 @@
 }:
 let
   inherit (pkgs.stdenv) isLinux;
-  isThinkpad = if (hostname == "tanis" || hostname == "sidious") then true else false;
+  isThinkpad = if (hostname == "tanis" || hostname == "sidious"|| hostname == "shaa") then true else false;
 in
 {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
