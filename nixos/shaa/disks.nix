@@ -1,4 +1,3 @@
-# nvme0n1 1TB:     NixOS              nvme-THNSN51T02DU7_NVMe_TOSHIBA_1024GB__66PS10N1T61V
 _: {
   disko.devices = {
     disk = {
