@@ -8,7 +8,7 @@
   ...
 }:
 let
-  isThinkpad = hostname == "tanis" || hostname == "sidious";
+  isThinkpad = hostname == "tanis" || hostname == "sidious"|| hostname == "shaa";
 in
 {
   environment = {
