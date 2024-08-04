@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+set +e  # Disable errexit
+set +u  # Disable nounset
+set +o pipefail  # Disable pipefail
+
 TARGET_HOST="${1:-}"
 TARGET_USER="${2:-martin}"
 TARGET_BRANCH="${3:-main}"
