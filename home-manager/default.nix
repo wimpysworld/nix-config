@@ -99,6 +99,7 @@ in
         hueadm # Terminal Philips Hue client
         hyperfine # Terminal benchmarking
         iperf3 # Terminal network benchmarking
+        ipfetch # Terminal IP info
         jpegoptim # Terminal JPEG optimizer
         jiq # Modern Unix `jq`
         lastpass-cli # Terminal LastPass client
@@ -297,7 +298,6 @@ in
         lolcat = "${pkgs.dotacat}/bin/dotacat";
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
         more = "${pkgs.bat}/bin/bat";
-        checkip = "${pkgs.curlMinimal}/bin/curl -s ifconfig.me/ip";
         parrot = "${pkgs.terminal-parrot}/bin/terminal-parrot -delay 50 -loops 7";
         ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
         screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
