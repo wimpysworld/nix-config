@@ -7,9 +7,6 @@
   username,
   ...
 }:
-let
-  isThinkpad = hostname == "tanis" || hostname == "sidious"|| hostname == "shaa";
-in
 {
   environment = {
     gnome.excludePackages = with pkgs; [
@@ -46,8 +43,7 @@ in
         gnome.gnome-tweaks
         gnomeExtensions.freon
         loupe
-      ]
-      ++ lib.optionals isThinkpad [ gnomeExtensions.thinkpad-battery-threshold ];
+      ];
   };
 
   programs = {
