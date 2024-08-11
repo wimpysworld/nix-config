@@ -15,6 +15,7 @@
 }:
 {
   imports = [
+    inputs.auto-cpufreq.nixosModules.default
     inputs.catppuccin.nixosModules.catppuccin
     #inputs.determinate.nixosModules.default
     inputs.disko.nixosModules.disko

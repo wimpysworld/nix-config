@@ -6,6 +6,9 @@
     # See 'unstable-packages' overlay in 'overlays/default.nix'.
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
 
+    auto-cpufreq.url = "github:AdnanHodzic/auto-cpufreq";
+    auto-cpufreq.inputs.nixpkgs.follows = "nixpkgs-unstable";
+
     catppuccin.url = "github:catppuccin/nix";
 
     disko.url = "github:nix-community/disko";
