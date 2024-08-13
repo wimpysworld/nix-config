@@ -14,6 +14,7 @@ let
     "tanis"
     "revan"
     "sidious"
+    "shaa"
     "vader"
   ];
   tsExitNodes = [
