@@ -3,7 +3,7 @@ _: {
     disk = {
       nvme0 = {
         type = "disk";
-        device = "/dev/disk/by-id/nvme-THNSN51T02DU7_NVMe_TOSHIBA_1024GB__66PS10N1T61V";
+        device = "/dev/disk/by-id/nvme-CT1000P3SSD8_2402463DE763";
         content = {
           type = "gpt";
           partitions = {
