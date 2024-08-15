@@ -73,6 +73,40 @@
         enable = true;
         style = "slight";
       };
+      localConf = ''
+        <?xml version="1.0"?>
+        <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+        <fontconfig>
+          <alias binding="weak">
+            <family>monospace</family>
+            <prefer>
+              <family>emoji</family>
+            </prefer>
+          </alias>
+          <alias binding="weak">
+            <family>sans-serif</family>
+            <prefer>
+              <family>emoji</family>
+            </prefer>
+          </alias>
+          <alias binding="weak">
+            <family>serif</family>
+            <prefer>
+              <family>emoji</family>
+            </prefer>
+          </alias>
+          <!-- Block Symbola from the list of fallback fonts. -->
+          <selectfont>
+            <rejectfont>
+              <pattern>
+                <patelt name="family">
+                    <string>Symbola</string>
+                </patelt>
+              </pattern>
+            </rejectfont>
+          </selectfont>
+        </fontconfig>
+      '';
       subpixel = {
         rgba = "rgb";
         lcdfilter = "light";
