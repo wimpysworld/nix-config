@@ -14,6 +14,9 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
+    gBar.url = "github:scorpion-26/gBar";
+    gBar.inputs.nixpkgs.follows = "nixpkgs-unstable";
+
     home-manager.url = "github:nix-community/home-manager/release-24.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -33,6 +36,9 @@
 
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
+
+    walker.url = "github:abenz1267/walker/v0.7.6";
+    walker.inputs.nixpkgs.follows = "nixpkgs-unstable";
 
     # FlakeHub
     catppuccin-vsc.url = "https://flakehub.com/f/catppuccin/vscode/*.tar.gz";
@@ -98,7 +104,7 @@
         };
         "martin@shaa" = helper.mkHome {
           hostname = "shaa";
-          desktop = "gnome";
+          desktop = "hyprland";
         };
         "martin@tanis" = helper.mkHome {
           hostname = "tanis";
@@ -172,7 +178,7 @@
         };
         shaa = helper.mkNixos {
           hostname = "shaa";
-          desktop = "gnome";
+          desktop = "hyprland";
         };
         tanis = helper.mkNixos {
           hostname = "tanis";

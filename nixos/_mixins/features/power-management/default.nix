@@ -3,7 +3,7 @@ let
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
   isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan";
   isThinkpad = hostname == "tanis" || hostname == "sidious"|| hostname == "shaa";
-  usePowerProfiles = config.services.xserver.desktopManager.gnome.enable || config.services.xserver.desktopManager.pantheon.enable;
+  usePowerProfiles = config.programs.hyprland.enable || config.services.xserver.desktopManager.gnome.enable || config.services.xserver.desktopManager.pantheon.enable;
 in
 lib.mkIf isInstall {
   # Power Management strategy:

@@ -54,6 +54,7 @@
     ];
 
   services = {
+    dbus.enable = true;
     usbmuxd.enable = true;
     xserver = {
       # Disable xterm
