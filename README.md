@@ -168,12 +168,12 @@ Fish shell 🐟️ with [powerline-go](https://github.com/justjanne/powerline-go
 
 GNOME 👣 MATE 🧉 and Pantheon 🏛️ desktop options are available. The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code). The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
-|  Desktops |       System       |       Configuration       |       Theme       |
+|  Desktops |        NixOS       |       Home Manager        |       Theme       |
 | :-------: | :----------------: | :-----------------------: | :---------------: |
-| GNOME     | [GNOME Install]    | [GNOME Configuration]     | Catppuccin Mocha  |
-| Hyprland  | [Hyprland Install] | [Hyprland Configuration]  | Catppuccin Mocha  |
-| MATE      | [MATE Install]     | [MATE Configuration]      | Catppuccin Mocha  |
-| Pantheon  | [Pantheon Install] | [Pantheon Configuration]  | Catppuccin Mocha  |
+| GNOME     | [GNOME NixOS]      | [GNOME Home Manager]      | Catppuccin Mocha  |
+| Hyprland  | [Hyprland NixOS]   | [Hyprland Home Manager]   | Catppuccin Mocha  |
+| MATE      | [MATE NixOS]       | [MATE Home Manager]       | Catppuccin Mocha  |
+| Pantheon  | [Pantheon NixOS]   | [Pantheon Home Manager]   | Catppuccin Mocha  |
 
 ## Eye Candy 👀🍬
 
@@ -347,10 +347,11 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [micro]: [https://micro-editor.github.io/]
 [sops-nix]: [https://github.com/Mic92/sops-nix]
 [Tailscale]: [https://tailscale.com/]
-[GNOME Install]: ./nixos/_mixins/desktop/gnome/default.nix
-[Hyprland Install]: ./nixos/_mixins/desktop/hyprland/default.nix
-[MATE Install]: ./nixos/_mixins/desktop/mate/default.nix
-[Pantheon Install]: ./nixos/_mixins/desktop/pantheon/default.nix
-[GNOME Configuration]: ./nixos/_mixins/desktop/gnome/default.nix
-[MATE Configuration]: ./nixos/_mixins/desktop/mate/default.nix
-[Pantheon Configuration]: ./nixos/_mixins/desktop/pantheon/default/.nix
+[GNOME NixOS]: ./nixos/_mixins/desktop/gnome/default.nix
+[Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
+[MATE NixOS]: ./nixos/_mixins/desktop/mate/default.nix
+[Pantheon NixOS]: ./nixos/_mixins/desktop/pantheon/default.nix
+[GNOME Home Manager]: ./home-manager/_mixins/desktop/gnome/default.nix
+[Hyprland Home Manager]: ./home-manager/_mixins/desktop/hyprland/default.nix
+[MATE Home Manager]: ./home-manager/_mixins/desktop/mate/default.nix
+[Pantheon Home Manager]: ./home-manager/_mixins/desktop/pantheon/default/.nix
