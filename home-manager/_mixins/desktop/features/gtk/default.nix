@@ -6,6 +6,7 @@
 }:
 let
   inherit (pkgs.stdenv) isLinux;
+  buttonLayout = if config.wayland.windowManager.hyprland.enable then "appmenu" else "close,minimize,maximize";
 in
 lib.mkIf isLinux {
   # TODO: Migrate to Colloid-gtk-theme 2024-06-18 or newer; now has catppuccin colors
@@ -20,12 +21,12 @@ lib.mkIf isLinux {
     };
 
     "org/gnome/desktop/wm/preferences" = {
-      button-layout = "close,minimize,maximize";
+      button-layout = "${buttonLayout}";
       theme = "catppuccin-mocha-blue-standard+default";
     };
 
     "org/mate/desktop/interface" = {
-      gtk-decoration-layout = "close,minimize,maximize";
+      gtk-decoration-layout = "${buttonLayout}";
       gtk-theme = "catppuccin-mocha-blue-standard+default";
       icon-theme = "Papirus-Dark";
     };
@@ -36,12 +37,12 @@ lib.mkIf isLinux {
     };
 
     "org/mate/marco/general" = {
-      button-layout = "close,minimize,maximize";
+      button-layout = "${buttonLayout}";
       theme = "catppuccin-mocha-blue-standard+default";
     };
 
     "org/pantheon/desktop/gala/appearance" = {
-      button-layout = "close,minimize,maximize";
+      button-layout = "${buttonLayout}";
     };
   };
 
@@ -61,19 +62,19 @@ lib.mkIf isLinux {
       extraConfig = ''
         gtk-application-prefer-dark-theme = 1
         gtk-button-images = 1
-        gtk-decoration-layout = "close,minimize,maximize"
+        gtk-decoration-layout = "${buttonLayout}"
       '';
     };
     gtk3 = {
       extraConfig = {
         gtk-application-prefer-dark-theme = 1;
         gtk-button-images = 1;
-        gtk-decoration-layout = "close,minimize,maximize";
+        gtk-decoration-layout = "${buttonLayout}";
       };
     };
     gtk4 = {
       extraConfig = {
-        gtk-decoration-layout = "close,minimize,maximize";
+        gtk-decoration-layout = "${buttonLayout}";
       };
     };
     iconTheme = {

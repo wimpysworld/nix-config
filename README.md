@@ -171,12 +171,17 @@ GNOME 👣 MATE 🧉 and Pantheon 🏛️ desktop options are available. The fon
 |  Desktops |       System       |       Configuration       |       Theme       |
 | :-------: | :----------------: | :-----------------------: | :---------------: |
 | GNOME     | [GNOME Install]    | [GNOME Configuration]     | Catppuccin Mocha  |
+| Hyprland  | [Hyprland Install] | [Hyprland Configuration]  | Catppuccin Mocha  |
 | MATE      | [MATE Install]     | [MATE Configuration]      | Catppuccin Mocha  |
 | Pantheon  | [Pantheon Install] | [Pantheon Configuration]  | Catppuccin Mocha  |
 
 ## Eye Candy 👀🍬
 
+![Hyprland on Shaa](.github/screenshots/hyprland.png)
+<div align="center"><small>Hyprland on Shaa; <i>a work in progress; soon to be daily driver</i></small></div>
+
 ![Pantheon on Phasma](.github/screenshots/pantheon.png)
+<div align="center"><small>Pantheon on Phasma; <i>daily driver</i></small></div>
 
 ## Post-install Checklist
 
@@ -343,6 +348,7 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [sops-nix]: [https://github.com/Mic92/sops-nix]
 [Tailscale]: [https://tailscale.com/]
 [GNOME Install]: ./nixos/_mixins/desktop/gnome/default.nix
+[Hyprland Install]: ./nixos/_mixins/desktop/hyprland/default.nix
 [MATE Install]: ./nixos/_mixins/desktop/mate/default.nix
 [Pantheon Install]: ./nixos/_mixins/desktop/pantheon/default.nix
 [GNOME Configuration]: ./nixos/_mixins/desktop/gnome/default.nix

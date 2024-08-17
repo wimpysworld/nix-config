@@ -14,6 +14,13 @@
           ];
           "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
         };
+        hyprland = lib.mkIf (desktop == "hyprland") {
+          default = [
+            "hyprland"
+            "gtk"
+          ];
+          "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
+        };
         pantheon = lib.mkIf (desktop == "pantheon") {
           default = [
             "pantheon"
