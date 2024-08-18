@@ -295,16 +295,16 @@ tooltip label {
         network = {
           format = "<big>{icon}</big>";
           format-alt = " <small>{bandwidthDownBits}</small>   <small>{bandwidthUpBits}</small>";
-          format-ethernet = "";
-          format-disconnected = "";
+          format-ethernet = "󰈀";
+          format-disconnected = "󰖪";
           format-linked = "";
           format-wifi = "";
           interval = 2;
           on-click-right = "${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
           tooltip-format = " {ifname}\n󱦂 {ipaddr} via {gwaddr}\n {bandwidthDownBits}\t {bandwidthUpBits}";
           tooltip-format-wifi = " {essid} {signalStrength}%\n󱦂 {ipaddr} via {gwaddr}\n {bandwidthDownBits}\t {bandwidthUpBits}";
-          tooltip-format-ethernet = " {ifname}\n󱦂 {ipaddr} via {gwaddr})\n {bandwidthDownBits}\t {bandwidthUpBits}";
-          tooltip-format-disconnected = " Disconnected";
+          tooltip-format-ethernet = "󰈀 {ifname}\n󱦂 {ipaddr} via {gwaddr})\n {bandwidthDownBits}\t {bandwidthUpBits}";
+          tooltip-format-disconnected = "󰖪 Disconnected";
         };
         bluetooth = {
           format = "<big>{icon}</big>";
@@ -358,10 +358,10 @@ tooltip label {
           format = "<big>{icon}</big>";
           format-alt = "<big>{icon}</big> <small>{capacity}%</small>";
           format-charging = "";
-          format-full = "";
+          format-full = "󰁹";
           format-plugged = "";
-          format-icons = [ "" "" "" "" "" ];
-          tooltip-format = " {time} ({capacity}%)";
+          format-icons = [ "󰂃" "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
+          tooltip-format = "󰁹 {time} ({capacity}%)";
         };
         "custom/session" = {
           format = "<big></big>";
