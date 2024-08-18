@@ -79,20 +79,33 @@ in
           )
           9)
       );
+      # https://wiki.hyprland.org/Configuring/Variables/#animations
+      # https://wiki.hyprland.org/Configuring/Animations/
       animation = [
-        "border, 1, 2, default"
-        "fade, 1, 4, default"
-        "windows, 1, 3, default, popin 80%"
-        "workspaces, 1, 2, default, slide"
+        "windows, 1, 6, wind, slide"
+        "windowsIn, 1, 6, winIn, slide"
+        "windowsOut, 1, 5, winOut, slide"
+        "windowsMove, 1, 5, wind, slide"
+        "border, 1, 1, liner"
+        "borderangle, 1, 30, liner, loop"
+        "fade, 1, 10, default"
+        "workspaces, 1, 5, wind"
+      ];
+      bezier = [
+        "wind, 0.05, 0.9, 0.1, 1.05"
+        "winIn, 0.1, 1.1, 0.1, 1.1"
+        "winOut, 0.3, -0.3, 0, 1"
+        "liner, 1, 1, 1, 1"
       ];
       decoration = {
         rounding = 8;
+        # Change transparency of focused and unfocused windows
+        active_opacity = 1.0;
+        inactive_opacity = 1.0;
         drop_shadow = true;
-        shadow_ignore_window = true;
-        shadow_offset = "0 5";
-        shadow_range = 16;
+        shadow_range = 4;
         shadow_render_power = 3;
-        "col.shadow" = "rgba(00000099)";
+        "col.shadow" = "rgba(1a1a1aee)";
       };
       dwindle = {
         preserve_split = true;
@@ -102,11 +115,14 @@ in
         "sleep 5 && trayscale --gapplication-service --hide-window"
       ];
       general = {
-        gaps_in = 4;
-        gaps_out = 8;
-        border_size = 1;
+        gaps_in = 5;
+        gaps_out = 5;
+        border_size = 2;
+        # https://wiki.hyprland.org/Configuring/Variables/#variable-types for info about colors
+        #"col.active_border" = "rgb(8aadf4) rgb(24273A) rgb(24273A) rgb(8aadf4) 45deg";
+        "col.inactive_border" = "rgb(24273A) rgb(24273A) rgb(24273A) rgb(27273A) 45deg";
         "col.active_border" = "rgba(89b4faee)";
-        "col.inactive_border" = "rgba(11111baa)";
+        #"col.inactive_border" = "rgba(11111baa)";
       };
       gestures = {
         workspace_swipe = true;
@@ -158,9 +174,9 @@ in
         "pin, class:^(code)$"
 
         # assign windows to workspaces
-        "workspace 1 silent, class:[Bb]rave"
-        "workspace 2 silent, class:[Ww]avebox"
-        "workspace 4 silent, class:code-url-handler"
+        #"workspace 1 silent, class:[Bb]rave"
+        #"workspace 2 silent, class:[Ww]avebox"
+        #"workspace 4 silent, class:code-url-handler"
 
         # throw sharing indicators away
         "workspace special silent, title:^(Firefox — Sharing Indicator)$"
