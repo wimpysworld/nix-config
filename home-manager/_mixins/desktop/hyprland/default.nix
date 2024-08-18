@@ -54,19 +54,24 @@ in
         ", XF86AudioNext, exec, ${lib.getExe pkgs.playerctl} next"
       ];
       bind = [
+        # Process management
+        "ALT, Q, killactive"
+        # Launch applications
         "$mod, E, exec, nautilus --new-window"
         "$mod, T, exec, alacritty"
-        "ALT, Q, killactive"
+        # Move focus
         "ALT, Tab, cyclenext"
         "ALT, Tab, bringactivetotop"
         "ALT SHIFT, Tab, cyclenext, prev"
         "ALT SHIFT, Tab, bringactivetotop"
-
         # Move focus with $mod + arrow keys
         "$mod, left, movefocus, l"
         "$mod, right, movefocus, r"
         "$mod, up, movefocus, u"
         "$mod, down, movefocus, d"
+        # Switch workspace
+        "CTRL ALT, left, workspace, -1"
+        "CTRL ALT, right, workspace, +1"
         ]
         ++ (
         # workspaces
