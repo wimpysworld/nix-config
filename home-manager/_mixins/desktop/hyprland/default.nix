@@ -70,8 +70,8 @@ in
         "$mod, up, movefocus, u"
         "$mod, down, movefocus, d"
         # Switch workspace
-        "CTRL ALT, left, workspace, -1"
-        "CTRL ALT, right, workspace, +1"
+        "CTRL ALT, left, workspace, e-1"
+        "CTRL ALT, right, workspace, e+1"
         ]
         ++ (
         # workspaces
