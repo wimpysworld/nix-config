@@ -311,12 +311,13 @@ tooltip label {
         };
         battery = {
           states = {
+            good = 80;
             warning = 20;
-            critical = 10;
+            critical = 5;
           };
           format = "<big>{icon}</big>";
           format-alt = "<big>{icon}</big> <small>{capacity}%</small>";
-          format-charging = "";
+          format-charging = "󰂄";
           format-full = "󰁹";
           format-plugged = "";
           format-icons = [ "󰂃" "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
