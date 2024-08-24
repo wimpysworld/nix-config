@@ -24,6 +24,7 @@ in
     ./grimblast.nix              # screenshot grabber and editor
     ./hyprlock.nix               # screen locker
     ./hyprpaper.nix              # wallpaper setter
+    ./wlogout                    # session menu
   ];
   services = {
     gpg-agent.pinentryPackage = lib.mkForce pkgs.pinentry-gnome3;

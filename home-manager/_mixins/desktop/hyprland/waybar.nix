@@ -20,47 +20,6 @@ let
       fi
     '';
   };
-  sessionMenu = pkgs.writeShellApplication {
-    name = "session-menu";
-    runtimeInputs = with pkgs; [
-      fuzzel
-      notify-desktop
-    ];
-    text = ''
-      host=$(hostname -s)
-      shutdown="🔘 Power Off"
-      reboot="♻️ Reboot"
-      suspend="💤 Suspend"
-      logout="👋 Log Out"
-      lock="🔒️ Lock"
-
-      selected=$(
-        echo -e "$shutdown\n$reboot\n$logout\n$lock" |
-        fuzzel --dmenu --prompt "⚙️ Session > " --lines 4)
-      case $selected in
-        "$shutdown")
-          notify-desktop "$shutdown" "Shutting down: $host."
-          sleep 2
-          systemctl poweroff;;
-        "$reboot")
-          notify-desktop "$reboot" "Rebooting: $host."
-          sleep 2
-          systemctl reboot;;
-        "$suspend")
-          notify-desktop "$suspend" "Suspending: $host."
-          sleep 2
-          systemctl suspend;;
-        "$logout")
-          notify-desktop "$logout" "Logging out $USER on $host."
-          sleep 1
-          hyprctl dispatch exit;;
-        "$lock")
-          notify-desktop "$lock" "Locking: $host."
-          sleep 2
-          hyprlock --immediate;;
-      esac
-    '';
-  };
 in
 {
   programs = {
@@ -365,13 +324,12 @@ tooltip label {
         };
         "custom/session" = {
           format = "<big></big>";
-          on-click = "${lib.getExe sessionMenu}";
+          on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 --no-span";
           tooltip-format = " Session Menu";
         };
       }];
       systemd = {
         enable = true;
-        target = "hyprland-session.target";
       };
     };
   };
