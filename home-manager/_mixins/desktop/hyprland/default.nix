@@ -28,6 +28,12 @@ in
   ];
   services = {
     gpg-agent.pinentryPackage = lib.mkForce pkgs.pinentry-gnome3;
+    udiskie = {
+      enable = true;
+      automount = false;
+      tray = "auto";
+      notify = true;
+    };
   };
 
   systemd.user.services.polkit-gnome-authentication-agent-1 = {

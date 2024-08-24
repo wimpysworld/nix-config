@@ -32,7 +32,6 @@
         overskride      # bluetooth manager
         papers
         polkit_gnome
-        udiskie         # disk mounter
         wdisplays       # display configuration
         gnome.zenity
         unstable.catppuccin-cursors
