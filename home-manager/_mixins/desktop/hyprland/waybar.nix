@@ -9,14 +9,17 @@ let
     name = "bluetooth-toggle";
     runtimeInputs = with pkgs; [
       bluez
+      gawk
       gnugrep
     ];
     text = ''
-      if [[ "$(bluetoothctl show | grep -Po "Powered: \K(.+)$")" =~ no ]]; then
+      state=$(bluetoothctl show | grep 'Powered:' | awk '{ print $2 }')
+      if [[ $state == 'yes' ]]; then
+        bluetoothctl discoverable off
+        bluetoothctl power off
+      else
         bluetoothctl power on
         bluetoothctl discoverable on
-      else
-        bluetoothctl power off
       fi
     '';
   };
