@@ -97,10 +97,9 @@
 
   services = {
     dbus = {
-      #implementation = "broker";
+      implementation = "broker";
       packages = with pkgs; [
         gcr
-        gnome.gnome-settings-daemon
       ];
     };
     gnome = {
