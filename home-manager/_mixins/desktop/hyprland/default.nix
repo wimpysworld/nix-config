@@ -6,10 +6,10 @@
 }:
 let
   monitors = (import ./monitors.nix { }).${hostname};
-  appLauncher = "fuzzel";       # fuzzel or walker
-  notificationDaemon = "mako";  # mako or swaync (TBD)
-  onScreenDisplay = "avizo";    # avizo
-  statusBar = "waybar";         # gBar or waybar
+  appLauncher = "fuzzel";         # fuzzel or walker
+  notificationDaemon = "swaync";  # mako or swaync
+  onScreenDisplay = "avizo";      # avizo
+  statusBar = "waybar";           # gBar or waybar
 in
 {
   # Hyprland is a Wayland-based tile window manager
@@ -18,7 +18,7 @@ in
   # so I can enable/disable them as I experiment with different setups
   imports = [
     ./${appLauncher}.nix         # app launcher, emoji picker and clipboard manager
-    ./${notificationDaemon}.nix  # notification daemon
+    ./${notificationDaemon}      # notification daemon
     ./${statusBar}.nix           # status bar
     ./${onScreenDisplay}.nix     # on-screen display for audio and backlight
     ./grimblast.nix              # screenshot grabber and editor

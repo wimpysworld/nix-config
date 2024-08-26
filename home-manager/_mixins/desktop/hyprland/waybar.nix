@@ -84,6 +84,10 @@ tooltip label {
   color: @sky;
 }
 
+#custom-swaync {
+  color: @sapphire;
+}
+
 #clock {
   border-radius: 0px 1rem 1rem 0px;
   color: @blue;
@@ -95,6 +99,7 @@ tooltip label {
 }
 
 #idle_inhibitor,
+#custom-swaync,
 #clock,
 #tray,
 #wireplumber,
@@ -181,7 +186,7 @@ tooltip label {
         position = "top";
         passthrough = false;
         modules-left = [ "hyprland/workspaces" ];
-        modules-center = [ "idle_inhibitor" "clock" ];
+        modules-center = [ "idle_inhibitor" "custom/swaync" "clock" ];
         modules-right = [ "tray" "wireplumber" "pulseaudio" "network" "bluetooth" "backlight" "power-profiles-daemon" "temperature" "battery" "custom/session" ];
         "hyprland/workspaces" = {
           active-only = false;
@@ -196,7 +201,7 @@ tooltip label {
             "7" = "";
             "8" = "";
           };
-          "persistent_workspaces" = {
+          persistent_workspaces = {
             "1" = [];
             "2" = [];
             "3" = [];
@@ -217,6 +222,28 @@ tooltip label {
           start-activated = false;
           tooltip-format-activated = " Presentation mode: {status}";
           tooltip-format-deactivated = " Presentation mode: {status}";
+        };
+        #https://haseebmajid.dev/posts/2024-03-15-til-how-to-get-swaync-to-play-nice-with-waybar/
+        "custom/swaync" = {
+          format = "<big>{icon}</big>";
+          format-icons = {
+            none = "<sup> </sup>";
+            notification = "<span foreground='#fab387'><sup></sup></span>";
+            dnd-none = "󰂛<sup> </sup>";
+            dnd-notification = "󰂛<span foreground='#f2cdcd'><sup></sup></span>";
+            inhibited-none = "<sup> </sup>";
+            inhibited-notification = "<span foreground='#f2cdcd'><sup></sup></span>";
+            dnd-inhibited-none = "󰂛<sup> </sup>";
+            dnd-inhibited-notification = "󰂛<span foreground='#f2cdcd'><sup></sup></span>";
+          };
+          max-length = 2;
+          return-type = "json";
+          escape = true;
+          exec-if = "which ${pkgs.swaynotificationcenter}/bin/swaync-client";
+          exec = "${pkgs.swaynotificationcenter}/bin/swaync-client --subscribe-waybar";
+          on-click = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
+          on-click-middle = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-dnd --skip-wait";
+          tooltip-format = " Notifications: {}";
         };
         clock = {
           format = "<small>{:%a, %d %b %R}</small>";
