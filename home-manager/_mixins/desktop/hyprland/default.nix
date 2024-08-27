@@ -8,15 +8,15 @@ let
   monitors = (import ./monitors.nix { }).${hostname};
 in
 {
-  # Hyprland is a Wayland-based tile window manager
-  # It requires additional components to create a full desktop shell
+  # Hyprland is a Wayland compositor and dynamic tiling window manager
+  # Additional applications are required to create a full desktop shell
   imports = [
     ./avizo        # on-screen display for audio and backlight
     ./fuzzel       # app launcher, emoji picker and clipboard manager
-    ./grimblast    # screenshot grabber and editor
+    ./grimblast    # screenshot grabber and annotator
     ./hyprlock     # screen locker
     ./hyprpaper    # wallpaper setter
-    ./swaync       # notification daemon
+    ./swaync       # notification center
     ./waybar       # status bar
     ./wlogout      # session menu
   ];
