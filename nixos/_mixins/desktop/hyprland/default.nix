@@ -88,6 +88,7 @@
       indicator = true;
     };
     seahorse.enable = isInstall;
+    udevil.enable = true;
   };
   security = {
     pam.services.hyprlock = {};
@@ -109,7 +110,6 @@
       sushi.enable = isInstall;
     };
     gvfs.enable = true;
-    udevil.enable = true;
     udisks2.enable = true;
   };
 }
