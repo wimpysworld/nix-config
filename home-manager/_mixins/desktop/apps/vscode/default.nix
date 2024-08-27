@@ -107,7 +107,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.yzhang.markdown-all-in-one
         ]
         ++ lib.optionals isLinux [
-          vscode-marketplace.ms-vscode.cpptools
+          vscode-extensions.ms-vscode.cpptools-extension-pack
           vscode-marketplace.ms-vsliveshare.vsliveshare
           vscode-marketplace.vadimcn.vscode-lldb
         ];
