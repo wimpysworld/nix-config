@@ -9,7 +9,6 @@ let
   appLauncher = "fuzzel";         # fuzzel or walker
   notificationDaemon = "swaync";  # mako or swaync
   onScreenDisplay = "avizo";      # avizo
-  statusBar = "waybar";           # gBar or waybar
 in
 {
   # Hyprland is a Wayland-based tile window manager
@@ -19,11 +18,11 @@ in
   imports = [
     ./${appLauncher}.nix         # app launcher, emoji picker and clipboard manager
     ./${notificationDaemon}      # notification daemon
-    ./${statusBar}.nix           # status bar
     ./${onScreenDisplay}.nix     # on-screen display for audio and backlight
     ./grimblast.nix              # screenshot grabber and editor
     ./hyprlock.nix               # screen locker
     ./hyprpaper.nix              # wallpaper setter
+    ./waybar                     # status bar
     ./wlogout                    # session menu
   ];
   services = {

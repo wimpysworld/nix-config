@@ -14,9 +14,6 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
-    gBar.url = "github:scorpion-26/gBar";
-    gBar.inputs.nixpkgs.follows = "nixpkgs-unstable";
-
     home-manager.url = "github:nix-community/home-manager/release-24.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
