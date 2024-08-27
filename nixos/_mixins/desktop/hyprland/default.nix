@@ -103,11 +103,13 @@
         gcr
       ];
     };
+    devmon.enable = true;
     gnome = {
       gnome-keyring.enable = isInstall;
       sushi.enable = isInstall;
     };
     gvfs.enable = true;
+    udevil.enable = true;
     udisks2.enable = true;
   };
 }
