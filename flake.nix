@@ -34,9 +34,6 @@
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    walker.url = "github:abenz1267/walker/v0.7.6";
-    walker.inputs.nixpkgs.follows = "nixpkgs-unstable";
-
     # FlakeHub
     catppuccin-vsc.url = "https://flakehub.com/f/catppuccin/vscode/*.tar.gz";
     catppuccin-vsc.inputs.nixpkgs.follows = "nixpkgs";

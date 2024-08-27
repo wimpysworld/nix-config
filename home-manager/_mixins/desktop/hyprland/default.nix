@@ -6,7 +6,6 @@
 }:
 let
   monitors = (import ./monitors.nix { }).${hostname};
-  appLauncher = "fuzzel";         # fuzzel or walker
   notificationDaemon = "swaync";  # mako or swaync
   onScreenDisplay = "avizo";      # avizo
 in
@@ -16,9 +15,9 @@ in
   # I've broken these components into separate files for organization and
   # so I can enable/disable them as I experiment with different setups
   imports = [
-    ./${appLauncher}.nix         # app launcher, emoji picker and clipboard manager
     ./${notificationDaemon}      # notification daemon
     ./${onScreenDisplay}.nix     # on-screen display for audio and backlight
+    ./fuzzel                     # app launcher, emoji picker and clipboard manager
     ./grimblast.nix              # screenshot grabber and editor
     ./hyprlock.nix               # screen locker
     ./hyprpaper.nix              # wallpaper setter
