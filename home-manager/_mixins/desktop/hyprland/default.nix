@@ -6,27 +6,28 @@
 }:
 let
   monitors = (import ./monitors.nix { }).${hostname};
-  appLauncher = "fuzzel";       # fuzzel or walker
-  notificationDaemon = "mako";  # mako or swaync (TBD)
-  onScreenDisplay = "avizo";    # avizo
-  statusBar = "waybar";         # gBar or waybar
 in
 {
   # Hyprland is a Wayland-based tile window manager
   # It requires additional components to create a full desktop shell
-  # I've broken these components into separate files for organization and
-  # so I can enable/disable them as I experiment with different setups
   imports = [
-    ./${appLauncher}.nix         # app launcher, emoji picker and clipboard manager
-    ./${notificationDaemon}.nix  # notification daemon
-    ./${statusBar}.nix           # status bar
-    ./${onScreenDisplay}.nix     # on-screen display for audio and backlight
-    ./grimblast.nix              # screenshot grabber and editor
-    ./hyprlock.nix               # screen locker
-    ./hyprpaper.nix              # wallpaper setter
+    ./avizo        # on-screen display for audio and backlight
+    ./fuzzel       # app launcher, emoji picker and clipboard manager
+    ./grimblast    # screenshot grabber and editor
+    ./hyprlock     # screen locker
+    ./hyprpaper    # wallpaper setter
+    ./swaync       # notification daemon
+    ./waybar       # status bar
+    ./wlogout      # session menu
   ];
   services = {
     gpg-agent.pinentryPackage = lib.mkForce pkgs.pinentry-gnome3;
+    udiskie = {
+      enable = true;
+      automount = false;
+      tray = "auto";
+      notify = true;
+    };
   };
 
   systemd.user.services.polkit-gnome-authentication-agent-1 = {
@@ -70,8 +71,8 @@ in
         "$mod, up, movefocus, u"
         "$mod, down, movefocus, d"
         # Switch workspace
-        "CTRL ALT, left, workspace, -1"
-        "CTRL ALT, right, workspace, +1"
+        "CTRL ALT, left, workspace, e-1"
+        "CTRL ALT, right, workspace, e+1"
         ]
         ++ (
         # workspaces

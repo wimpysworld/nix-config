@@ -9,10 +9,12 @@
   # This config provide comprehensive screenshot functionality for hyprland
   home = {
     file = {
-      ".config/swappy/config".text = ''
+      "${config.xdg.configHome}/swappy/config".text = ''
         [Default]
-        save_dir="${config.home.homeDirectory}/Pictures/Screenshots";
+        save_dir=${config.home.homeDirectory}/Pictures/Screenshots
         save_filename_format=screenshot-%Y%m%d-%H%M%S.png
+        text_size=50
+        text_font=Work Sans Bold
         early_exit=true
       '';
     };

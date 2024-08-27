@@ -32,7 +32,6 @@
         overskride      # bluetooth manager
         papers
         polkit_gnome
-        udiskie         # disk mounter
         wdisplays       # display configuration
         gnome.zenity
         unstable.catppuccin-cursors
@@ -91,6 +90,7 @@
     seahorse.enable = isInstall;
   };
   security = {
+    pam.services.hyprlock = {};
     polkit = {
       enable = true;
     };
@@ -98,17 +98,18 @@
 
   services = {
     dbus = {
-      #implementation = "broker";
+      implementation = "broker";
       packages = with pkgs; [
         gcr
-        gnome.gnome-settings-daemon
       ];
     };
+    devmon.enable = true;
     gnome = {
       gnome-keyring.enable = isInstall;
       sushi.enable = isInstall;
     };
     gvfs.enable = true;
+    udevil.enable = true;
     udisks2.enable = true;
   };
 }

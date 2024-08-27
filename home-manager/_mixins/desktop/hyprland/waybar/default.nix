@@ -9,56 +9,18 @@ let
     name = "bluetooth-toggle";
     runtimeInputs = with pkgs; [
       bluez
+      gawk
       gnugrep
     ];
     text = ''
-      if [[ "$(bluetoothctl show | grep -Po "Powered: \K(.+)$")" =~ no ]]; then
+      state=$(bluetoothctl show | grep 'Powered:' | awk '{ print $2 }')
+      if [[ $state == 'yes' ]]; then
+        bluetoothctl discoverable off
+        bluetoothctl power off
+      else
         bluetoothctl power on
         bluetoothctl discoverable on
-      else
-        bluetoothctl power off
       fi
-    '';
-  };
-  sessionMenu = pkgs.writeShellApplication {
-    name = "session-menu";
-    runtimeInputs = with pkgs; [
-      fuzzel
-      notify-desktop
-    ];
-    text = ''
-      host=$(hostname -s)
-      shutdown="🔘 Power Off"
-      reboot="♻️ Reboot"
-      suspend="💤 Suspend"
-      logout="👋 Log Out"
-      lock="🔒️ Lock"
-
-      selected=$(
-        echo -e "$shutdown\n$reboot\n$logout\n$lock" |
-        fuzzel --dmenu --prompt "⚙️ Session > " --lines 4)
-      case $selected in
-        "$shutdown")
-          notify-desktop "$shutdown" "Shutting down: $host."
-          sleep 2
-          systemctl poweroff;;
-        "$reboot")
-          notify-desktop "$reboot" "Rebooting: $host."
-          sleep 2
-          systemctl reboot;;
-        "$suspend")
-          notify-desktop "$suspend" "Suspending: $host."
-          sleep 2
-          systemctl suspend;;
-        "$logout")
-          notify-desktop "$logout" "Logging out $USER on $host."
-          sleep 1
-          hyprctl dispatch exit;;
-        "$lock")
-          notify-desktop "$lock" "Locking: $host."
-          sleep 2
-          hyprlock --immediate;;
-      esac
     '';
   };
 in
@@ -70,17 +32,20 @@ in
       style = ''
 * {
   font-family: FiraCode Nerd Font Mono;
-  font-size: 20px;
+  font-size: 22px;
   min-height: 0;
 }
 
 tooltip {
   background: @base;
+  opacity: 0.9;
   border: 1px solid @blue;
 }
 
 tooltip label {
   color: @text;
+  font-family: Work Sans;
+  font-size: 18px;
 }
 
 #waybar {
@@ -91,8 +56,8 @@ tooltip label {
 
 #workspaces {
   border-radius: 1rem;
-  margin: 5px;
   background-color: @base;
+  margin: 5px;
   margin-left: 0.5rem;
 }
 
@@ -103,7 +68,7 @@ tooltip label {
 }
 
 #workspaces button.active {
-  color: @sky;
+  color: @mauve;
 }
 
 #workspaces button:hover {
@@ -112,19 +77,25 @@ tooltip label {
 
 #idle_inhibitor {
   border-radius: 1rem 0px 0px 1rem;
-}
-
-#idle_inhibitor.activated{
-  color: @text;
-}
-
-#idle_inhibitor.deactivated{
   color: @sky;
 }
 
 #clock {
-  border-radius: 0px 1rem 1rem 0px;
   color: @blue;
+  font-size: 16px;
+}
+
+#custom-swaync {
+  border-radius: 0px 1rem 1rem 0px;
+  color: @sky;
+}
+
+#idle_inhibitor,
+#clock,
+#custom-swaync {
+  background-color: @base;
+  padding: 0.5rem 0.7rem;
+  margin: 5px 0;
 }
 
 #tray {
@@ -132,8 +103,11 @@ tooltip label {
   border-radius: 1rem;
 }
 
-#idle_inhibitor,
-#clock,
+#tray menu * {
+  font-family: Work Sans;
+  font-size: 18px;
+}
+
 #tray,
 #wireplumber,
 #pulseaudio,
@@ -152,41 +126,48 @@ tooltip label {
 #wireplumber {
   color: @mauve;
   border-radius: 1rem 0px 0px 1rem;
+  font-family: Work Sans;
+  font-size: 17px;
   margin-left: 1rem;
 }
 
 #pulseaudio {
+  border-radius: 0;
   color: @mauve;
+  font-family: Work Sans;
+  font-size: 17px;
 }
 
 #network {
+  border-radius: 0;
   color: @sapphire;
+  font-family: Work Sans;
+  font-size: 18px;
 }
 
 #bluetooth {
+  border-radius: 0;
   color: @blue;
 }
 
-#pulseaudio,
-#network,
-#bluetooth,
-#backlight,
-#power-profiles-daemon,
-#temperature,
-#battery {
-  border-radius: 0;
-}
-
 #backlight {
+  border-radius: 0;
   color: @yellow;
+  font-family: Work Sans;
+  font-size: 18px;
 }
 
 #power-profiles-daemon {
+  border-radius: 0;
   color: @teal;
+  font-size: 26px;
 }
 
 #temperature {
+  border-radius: 0;
   color: @maroon;
+  font-family: Work Sans;
+  font-size: 18px;
 }
 
 #temperature.critical {
@@ -194,8 +175,10 @@ tooltip label {
 }
 
 #battery {
-  color: @green;
   border-radius: 0px 1rem 1rem 0px;
+  color: @green;
+  font-family: Work Sans;
+  font-size: 18px;
   margin-right: 1rem;
 }
 
@@ -208,9 +191,9 @@ tooltip label {
 }
 
 #custom-session {
-  margin-right: 0.5rem;
   border-radius: 1rem 1rem 1rem 1rem;
   color: @red;
+  margin-right: 0.5rem;
 }
       '';
       settings = [{
@@ -219,7 +202,7 @@ tooltip label {
         position = "top";
         passthrough = false;
         modules-left = [ "hyprland/workspaces" ];
-        modules-center = [ "idle_inhibitor" "clock" ];
+        modules-center = [ "idle_inhibitor" "clock" "custom/swaync" ];
         modules-right = [ "tray" "wireplumber" "pulseaudio" "network" "bluetooth" "backlight" "power-profiles-daemon" "temperature" "battery" "custom/session" ];
         "hyprland/workspaces" = {
           active-only = false;
@@ -234,7 +217,7 @@ tooltip label {
             "7" = "";
             "8" = "";
           };
-          "persistent_workspaces" = {
+          persistent_workspaces = {
             "1" = [];
             "2" = [];
             "3" = [];
@@ -253,14 +236,36 @@ tooltip label {
             deactivated = "";
           };
           start-activated = false;
-          tooltip-format-activated = " Presentation mode: {status}";
-          tooltip-format-deactivated = " Presentation mode: {status}";
+          tooltip-format-activated = "  Presentation mode {status}";
+          tooltip-format-deactivated = "  Presentation mode {status}";
         };
         clock = {
-          format = "<small>{:%a, %d %b %R}</small>";
-          format-alt = "<small>{:%H:%M}</small>";
+          format = "<big>{:%H:%M}</big>";
+          format-alt = "{:%a, %d %b %R}";
           timezone = "Europe/London";
-          tooltip-format = "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>";
+          tooltip-format = "<big>{:%a, %d %b}</big>\n<tt>{calendar}</tt>";
+        };
+        #https://haseebmajid.dev/posts/2024-03-15-til-how-to-get-swaync-to-play-nice-with-waybar/
+        "custom/swaync" = {
+          format = "<big>{icon}</big>";
+          format-icons = {
+            none = "<sup> </sup>";
+            notification = "<span foreground='#fab387'><sup></sup></span>";
+            dnd-none = "󰂛<sup> </sup>";
+            dnd-notification = "󰂛<span foreground='#f2cdcd'><sup></sup></span>";
+            inhibited-none = "<sup> </sup>";
+            inhibited-notification = "<span foreground='#f2cdcd'><sup></sup></span>";
+            dnd-inhibited-none = "󰂛<sup> </sup>";
+            dnd-inhibited-notification = "󰂛<span foreground='#f2cdcd'><sup></sup></span>";
+          };
+          max-length = 3;
+          return-type = "json";
+          escape = true;
+          exec-if = "which ${pkgs.swaynotificationcenter}/bin/swaync-client";
+          exec = "${pkgs.swaynotificationcenter}/bin/swaync-client --subscribe-waybar";
+          on-click = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
+          on-click-middle = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-dnd --skip-wait";
+          tooltip-format = "  {} notifications";
         };
         tray = {
           icon-size = 22;
@@ -269,7 +274,7 @@ tooltip label {
         wireplumber = {
           scroll-step = 5;
           format = "<big>{icon}</big>";
-          format-alt = "<big>{icon}</big> <small>{volume}%</small>";
+          format-alt = "<big>{icon}</big><tt>  <small>{volume}%</small></tt>";
           format-muted = "";
           format-icons = {
             default = [ "" "" "" ];
@@ -279,32 +284,32 @@ tooltip label {
           on-click-right = "${lib.getExe pkgs.pwvucontrol}";
           on-scroll-up = "${pkgs.avizo}/bin/volumectl -u up 2";
           on-scroll-down = "${pkgs.avizo}/bin/volumectl -u down 2";
-          tooltip-format = " {volume}% / {node_name}";
+          tooltip-format = "  {volume}% / {node_name}";
         };
         pulseaudio = {
           format = "<big>{format_source}</big>";
-          format-alt = "<big>{format_source}</big> <small>{source_volume}%</small>";
+          format-alt = "<big>{format_source}</big><tt> <small>{source_volume}%</small></tt>";
           format-source = "";
           format-source-muted = "";
           on-click-middle = "${pkgs.avizo}/bin/volumectl -m toggle-mute";
           on-click-right = "${lib.getExe pkgs.pwvucontrol}";
           on-scroll-up = "${pkgs.avizo}/bin/volumectl -m up 2";
           on-scroll-down = "${pkgs.avizo}/bin/volumectl -m down 2";
-          tooltip-format = " {source_volume}% / {desc}";
+          tooltip-format = "  {source_volume}% / {desc}";
         };
         network = {
           format = "<big>{icon}</big>";
-          format-alt = " <small>{bandwidthDownBits}</small>   <small>{bandwidthUpBits}</small>";
+          format-alt = "<tt> <small>{bandwidthDownBits}</small> </tt><tt> <small>{bandwidthUpBits}</small></tt>";
           format-ethernet = "󰈀";
           format-disconnected = "󰖪";
           format-linked = "";
           format-wifi = "";
           interval = 2;
           on-click-right = "${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
-          tooltip-format = " {ifname}\n󱦂 {ipaddr} via {gwaddr}\n {bandwidthDownBits}\t {bandwidthUpBits}";
-          tooltip-format-wifi = " {essid} {signalStrength}%\n󱦂 {ipaddr} via {gwaddr}\n {bandwidthDownBits}\t {bandwidthUpBits}";
-          tooltip-format-ethernet = "󰈀 {ifname}\n󱦂 {ipaddr} via {gwaddr})\n {bandwidthDownBits}\t {bandwidthUpBits}";
-          tooltip-format-disconnected = "󰖪 Disconnected";
+          tooltip-format = "  {ifname}\n󱦂  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+          tooltip-format-wifi = "  {essid} {signalStrength}%\n󱦂  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+          tooltip-format-ethernet = "󰈀  {ifname}\n󱦂  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+          tooltip-format-disconnected = "󰖪  disconnected";
         };
         bluetooth = {
           format = "<big>{icon}</big>";
@@ -314,22 +319,22 @@ tooltip label {
           format-off = "󰂲";
           on-click-middle = "${lib.getExe bluetoothToggle}";
           on-click-right = "${lib.getExe pkgs.overskride}";
-          tooltip-format = "󰂯 {controller_alias}\t{controller_address}\n{num_connections} connected";
-          tooltip-format-connected = "󰂱 {controller_alias}\t{controller_address}\n{num_connections} connected\n{device_enumerate}";
-          tooltip-format-disabled = "󰂲 {controller_alias}\t{controller_address}\n{status}";
-          tooltip-format-enumerate-connected = "󰂱 {device_alias}\t{device_address}";
-          tooltip-format-enumerate-connected-battery = "󰂱 {device_alias}\t{device_address}\t{device_battery_percentage}%";
-          tooltip-format-off = "󰂲 {controller_alias}\t{controller_address}\n{status}";
+          tooltip-format = "󰂯  {controller_alias}\t{controller_address}\n{num_connections} connected";
+          tooltip-format-connected = "󰂱  {controller_alias}\t{controller_address}\n{num_connections} connected\n{device_enumerate}";
+          tooltip-format-disabled = "󰂲  {controller_alias}\t{controller_address}\n{status}";
+          tooltip-format-enumerate-connected = "󰂱  {device_alias}\t{device_address}";
+          tooltip-format-enumerate-connected-battery = "󰂱  {device_alias}\t{device_address}\t{device_battery_percentage}%";
+          tooltip-format-off = "󰂲  {controller_alias}\t{controller_address}\n{status}";
         };
         backlight = {
           device = "thinkpad_acpi";
           format = "<big>{icon}</big>";
-          format-alt = "<big>{icon}</big> <small>{percent}%</small>";
+          format-alt = "<big>{icon}</big><tt> <small>{percent}%</small></tt>";
           format-icons = ["" "" "" "" "" "" "" "" ""];
           on-click-middle = "${pkgs.avizo}/bin/lightctl set 50";
           on-scroll-up = "${pkgs.avizo}/bin/lightctl up 2";
           on-scroll-down = "${pkgs.avizo}/bin/lightctl down 2";
-          tooltip-format = " {percent}%";
+          tooltip-format = "  {percent}%";
         };
         power-profiles-daemon = {
           format = "<big>{icon}</big>";
@@ -339,39 +344,39 @@ tooltip label {
             balanced = "";
             power-saver = "";
           };
-          tooltip-format = " Power profile: {profile}\n Driver: {driver}";
+          tooltip-format = "  Power profile: {profile}\n  Driver: {driver}";
         };
         temperature = {
           thermal-zone = 0;
           critical-threshold = 80;
           format = "<big>{icon}</big>";
-          format-alt = "<big>{icon}</big> <small>{temperatureC}°C</small>";
-          format-critical = " <small>{temperatureC}°C</small>";
-          format-icons = ["" "" "" "" ""];
-          tooltip-format = " CPU {temperatureC}°C";
+          format-alt = "<big>{icon}</big><tt> <small>{temperatureC}°C</small></tt>";
+          format-critical = "<tt> <small>{temperatureC}°C</small></tt>";
+          format-icons = ["" "" "" "" "" "" "" ""];
+          tooltip-format = "  CPU {temperatureC}°C";
         };
         battery = {
           states = {
+            good = 80;
             warning = 20;
-            critical = 10;
+            critical = 5;
           };
           format = "<big>{icon}</big>";
-          format-alt = "<big>{icon}</big> <small>{capacity}%</small>";
-          format-charging = "";
+          format-alt = "<big>{icon}</big><tt> <small>{capacity}%</small></tt>";
+          format-charging = "󰂄";
           format-full = "󰁹";
           format-plugged = "";
           format-icons = [ "󰂃" "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
-          tooltip-format = "󰁹 {time} ({capacity}%)";
+          tooltip-format = "󰁹  {time} ({capacity}%)";
         };
         "custom/session" = {
           format = "<big></big>";
-          on-click = "${lib.getExe sessionMenu}";
-          tooltip-format = " Session Menu";
+          on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 --no-span";
+          tooltip-format = "  Session Menu";
         };
       }];
       systemd = {
         enable = true;
-        target = "hyprland-session.target";
       };
     };
   };
