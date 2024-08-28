@@ -34,9 +34,6 @@ in
     flavor = "mocha";
   };
 
-  determinate.nix.primaryUser.username = username;
-  determinate.nix.primaryUser.isTrusted = true;
-
   home = {
     inherit stateVersion;
     inherit username;

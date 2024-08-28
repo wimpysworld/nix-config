@@ -17,7 +17,7 @@
   imports = [
     inputs.auto-cpufreq.nixosModules.default
     inputs.catppuccin.nixosModules.catppuccin
-    #inputs.determinate.nixosModules.default
+    inputs.determinate.nixosModules.default
     inputs.disko.nixosModules.disko
     inputs.nix-flatpak.nixosModules.nix-flatpak
     inputs.nix-index-database.nixosModules.nix-index
@@ -49,8 +49,6 @@
     };
   };
 
-  #determinate.nix.primaryUser.username = username;
-
   # Only install the docs I use
   documentation.enable = true;
   documentation.nixos.enable = false;
@@ -74,6 +72,8 @@
         nix-output-monitor
       ]
       ++ lib.optionals isInstall [
+        inputs.determinate.packages.${platform}.default
+        inputs.fh.packages.${platform}.default
         inputs.nixos-needtoreboot.packages.${platform}.default
         nvd
         nvme-cli
@@ -111,6 +111,7 @@
         "nix-command"
         "flakes"
       ];
+      trusted-users = [ "root" "${username}" ];
       warn-dirty = false;
     };
   };
