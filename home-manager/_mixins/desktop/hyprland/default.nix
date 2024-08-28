@@ -198,7 +198,10 @@ in
         force_zero_scaling = true;
       };
     };
-    systemd.enableXdgAutostart = true;
+    systemd = {
+      enableXdgAutostart = true;
+      variables = [ "--all" ];
+    };
     xwayland.enable = true;
   };
 }
