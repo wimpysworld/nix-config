@@ -211,6 +211,7 @@ tooltip label {
         modules-right = [ "tray" "wireplumber" "pulseaudio" "network" "bluetooth" "backlight" "power-profiles-daemon" "temperature" "battery" "custom/session" ];
         "hyprland/workspaces" = {
           active-only = false;
+          all-outputs = true;
           format = "<big>{icon}</big>";
           format-icons = {
             "1" = "󰖟";
@@ -223,14 +224,9 @@ tooltip label {
             "8" = "󰺵";
           };
           persistent_workspaces = {
-            "1" = [];
-            "2" = [];
-            "3" = [];
-            "4" = [];
-            "5" = [];
-            "6" = [];
-            "7" = [];
-            "8" = [];
+            # TODO: On desktops workstations, only put workspace 6 (Cast) on the dummy output
+            # https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#persistent-workspaces
+            "*" = 8;
           };
           on-click = "activate";
         };
@@ -241,14 +237,34 @@ tooltip label {
             deactivated = "󰾪";
           };
           start-activated = false;
-          tooltip-format-activated = "󰅶  Caffeinate {status}";
-          tooltip-format-deactivated = "󰾪  Caffeinate {status}";
+          tooltip-format-activated = "󰅶  Caffeination {status}";
+          tooltip-format-deactivated = "󰾪  Caffeination {status}";
         };
         clock = {
+          actions = {
+            on-click = "shift_down";
+            on-click-middle = "shift_reset";
+            on-click-right = "shift_up";
+          };
+          calendar = {
+            mode = "year";
+            mode-mon-col = 3;
+            on-scroll = 1;
+            weeks-pos = "right";
+            format = {
+              days   = "<span color='#cdd6f4'><b>{}</b></span>";
+              months = "<span color='#89b4fa'><b>{}</b></span>";
+              weeks  = "<span color='#74c7ec'><b>󱦰{}</b></span>";
+              weekdays = "<span color='#fab387'><b>{}</b></span>";
+              today  = "<span color='#f38ba8'><b>{}</b></span>";
+            };
+          };
           format = "<big>{:%H:%M}</big>";
           format-alt = "{:%a, %d %b %R}";
+          interval = 60;
           timezone = "Europe/London";
-          tooltip-format = "<big>{:%a, %d %b}</big>\n<tt>{calendar}</tt>";
+          #timezones = [ "Europe/London" "Europe/Amsterdam" "America/Boston" "America/Los_Angeles" "Africa/Lagos" ];
+          tooltip-format = "<tt><small>{calendar}</small></tt>";
         };
         #https://haseebmajid.dev/posts/2024-03-15-til-how-to-get-swaync-to-play-nice-with-waybar/
         "custom/swaync" = {
@@ -270,7 +286,7 @@ tooltip label {
           exec = "${pkgs.swaynotificationcenter}/bin/swaync-client --subscribe-waybar";
           on-click = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
           on-click-middle = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-dnd --skip-wait";
-          tooltip-format = "  {} notifications";
+          tooltip-format = "󰵚  {} notification(s)";
         };
         tray = {
           icon-size = 22;
