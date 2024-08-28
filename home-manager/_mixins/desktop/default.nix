@@ -37,7 +37,7 @@ in
           };
         };
         env = {
-          TERM = "alacritty";
+          TERM = "xterm-256color";
         };
         font = {
           normal = {
@@ -71,13 +71,14 @@ in
           multiplier = 3;
         };
         window = {
+          decorations = "none";
           dimensions = {
             columns = 132;
             lines = 50;
           };
           padding = {
-            x = 2;
-            y = 2;
+            x = 5;
+            y = 5;
           };
           opacity = 1.0;
           blur = false;
