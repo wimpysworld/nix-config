@@ -61,8 +61,8 @@ tooltip label {
 }
 
 #workspaces button {
-  color: @lavender;
   border-radius: 0.75rem;
+  color: @lavender;
   padding: 0.25rem 0.75rem;
 }
 
@@ -71,7 +71,7 @@ tooltip label {
 }
 
 #workspaces button:hover {
-  color: @mauve;
+  background-color: @mantle;
 }
 
 #idle_inhibitor {
@@ -97,6 +97,12 @@ tooltip label {
   padding: 0.25rem 0.75rem;
 }
 
+#idle_inhibitor:hover,
+#clock:hover,
+#custom-swaync:hover {
+  background-color: #242536;
+}
+
 #tray {
   margin-right: 1rem;
   border-radius: 0.75rem;
@@ -120,6 +126,18 @@ tooltip label {
   background-color: @base;
   margin: 5px 0 0 0;
   padding: 0.25rem 0.75rem;
+}
+
+#wireplumber:hover,
+#pulseaudio:hover,
+#network:hover,
+#bluetooth:hover,
+#backlight:hover,
+#power-profiles-daemon:hover,
+#temperature:hover,
+#battery:hover,
+#custom-session:hover {
+  background-color: #242536;
 }
 
 #wireplumber {
