@@ -133,7 +133,7 @@ in
           size = "300, 60";
           position = "0, -130";
           color = "rgba(88, 91, 112, 1.0)";
-          rounding = -1;
+          rounding = 8;
           border_size = 2;
           border_color = "rgba(137, 180, 250, 1.0)";
           rotate = 0;
@@ -156,6 +156,7 @@ in
           hide_input = false;
           halign = "center";
           valign = "center";
+          rounding = 8;
           outer_color = "rgba(137, 180, 250, 1.0)";
           inner_color = "rgba(88, 91, 112, 1.0)";
           font_color = "rgba(205, 214, 244, 1.0)";
