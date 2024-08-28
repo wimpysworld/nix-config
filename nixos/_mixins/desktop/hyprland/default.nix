@@ -34,6 +34,7 @@
         papers
         polkit_gnome
         wdisplays       # display configuration
+        wlr-randr
         gnome.zenity
         unstable.catppuccin-cursors
       ];
