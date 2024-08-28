@@ -58,6 +58,7 @@ in
         background = [{
           path = "screenshot";
           blur_passes = 3;
+          color = "rgb(1e1e2e)";
           contrast = 0.8916;
           brightness = 0.8172;
           vibrancy = 0.1696;
