@@ -15,10 +15,11 @@
     # Enable HEIC image previews in Nautilus
     pathsToLink = [ "share/thumbnailers" ];
     sessionVariables = {
-      NIXOS_OZONE_WL = "1";
       # Make sure the cursor size is the same in all environments
       HYPRCURSOR_SIZE = 48;
       HYPRCURSOR_THEME = "catppuccin-mocha-blue-cursors";
+      NIXOS_OZONE_WL = 1;
+      QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
     };
     systemPackages =
       with pkgs;
