@@ -99,7 +99,7 @@ in
           }
           {
             # Username
-            text = "  $DESC";
+            text = "  $DESC";
             color = "#cdd6f4";
             font_size = 18;
             font_family = "Work Sans";
@@ -150,8 +150,8 @@ in
           dots_spacing = 0.2;
           dots_center = true;
           fade_on_empty = false;
-          placeholder_text = ''<span foreground="##cdd6f4">  enter password</span>'';
-          fail_text = "<i>  incorrect <b>($ATTEMPTS)</b></i>";
+          placeholder_text = ''<span foreground="##cdd6f4">󰌋  enter password</span>'';
+          fail_text = "<i>  incorrect <b>($ATTEMPTS)</b></i>";
           fail_timeout = 3000;
           hide_input = false;
           halign = "center";
