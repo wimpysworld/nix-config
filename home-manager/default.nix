@@ -20,7 +20,6 @@ in
 
     # Modules exported from other flakes:
     inputs.catppuccin.homeManagerModules.catppuccin
-    inputs.determinate.homeModules.default
     inputs.sops-nix.homeManagerModules.sops
     inputs.nix-index-database.hmModules.nix-index
     ./_mixins/features
@@ -33,9 +32,6 @@ in
     accent = "blue";
     flavor = "mocha";
   };
-
-  determinate.nix.primaryUser.username = username;
-  determinate.nix.primaryUser.isTrusted = true;
 
   home = {
     inherit stateVersion;
@@ -183,15 +179,13 @@ in
   };
 
   nix = {
+    package = pkgs.nixVersions.latest;
     settings = {
-      auto-optimise-store = isLinux;
       experimental-features = [
         "nix-command"
         "flakes"
       ];
-      # Avoid unwanted garbage collection when using nix-direnv
-      keep-outputs = true;
-      keep-derivations = true;
+      trusted-users = [ "root" "${username}" ];
       warn-dirty = false;
     };
   };
