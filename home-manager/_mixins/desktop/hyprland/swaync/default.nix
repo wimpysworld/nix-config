@@ -362,7 +362,7 @@
 
       .widget-buttons-grid > flowbox > flowboxchild > button label {
         font-family: "FiraCode Nerd Font Mono";
-        font-size: 1.5rem;
+        font-size: 2rem;
       }
 
       .widget-volume {

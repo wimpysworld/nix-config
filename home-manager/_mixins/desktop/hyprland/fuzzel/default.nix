@@ -30,13 +30,13 @@
   wayland.windowManager.hyprland = {
     settings = {
       bindr = [
-        "$mod, SUPER_L, exec, fuzzel --prompt '🖥️ Desktop Apps > '"
+        "$mod, SUPER_L, exec, fuzzel --prompt '󰵆 > '"
       ];
       bind = [
-        "$mod, SPACE, exec, fuzzel --prompt '🚀 Desktop Actions > ' --show-actions"
-        "CTRL ALT, C, exec, cliphist list | fuzzel --dmenu --prompt '📋️ Clipboard > ' | cliphist decode | wl-copy --primary --regular --trim-newline"
+        "$mod, SPACE, exec, fuzzel --prompt '󰌧 > ' --show-actions"
+        "CTRL ALT, C, exec, cliphist list | fuzzel --dmenu --prompt '󰅌 > ' | cliphist decode | wl-copy --primary --regular --trim-newline"
         "CTRL ALT, E, exec, ${lib.getExe pkgs.bemoji} --clip --noline --type --hist-limit 32"
-        "CTRL ALT, R, exec, history | uniq | fuzzel --dmenu --prompt '💲 Command History > ' | wl-copy --primary --regular --trim-newline"
+        "CTRL ALT, R, exec, history | uniq | fuzzel --dmenu --prompt '󱆃 > ' | wl-copy --primary --regular --trim-newline"
       ];
     };
   };
