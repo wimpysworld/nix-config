@@ -72,6 +72,7 @@
         nix-output-monitor
       ]
       ++ lib.optionals isInstall [
+        inputs.fh.packages.${platform}.default
         inputs.nixos-needtoreboot.packages.${platform}.default
         nvd
         nvme-cli

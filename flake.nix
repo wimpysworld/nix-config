@@ -44,6 +44,8 @@
 
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/0";
 
+    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/0";
+
     antsy-alien-attack-pico.url = "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/*.tar.gz";
     antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";
 
