@@ -8,6 +8,10 @@
   # Use a minimal Sway to run regreet
   environment = {
     etc."greetd/regreet-sway".text = ''
+      input type:touchpad {
+        tap enabled
+        natural_scroll enabled
+      }
       output * scale 1
       output * bg #1E1E2D solid_color
       output * bg /etc/backgrounds/DeterminateColorway-1920x1080.png fill
