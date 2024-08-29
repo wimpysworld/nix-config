@@ -1,4 +1,5 @@
 {
+  config,
   desktop,
   lib,
   pkgs,
@@ -71,7 +72,7 @@ in
           multiplier = 3;
         };
         window = {
-          decorations = "none";
+          decorations = if config.wayland.windowManager.hyprland.enable then "None" else "Full";
           dimensions = {
             columns = 132;
             lines = 50;
