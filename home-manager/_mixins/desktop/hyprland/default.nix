@@ -5,6 +5,7 @@
   ...
 }:
 let
+  isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan";
   monitors = (import ./monitors.nix { }).${hostname};
 in
 {
@@ -46,7 +47,7 @@ in
     enable = true;
     catppuccin.enable = true;
     settings = {
-      inherit (monitors) monitor workspace;
+      inherit (monitors) monitor;
       "$mod" = "SUPER";
       # Work when input inhibitor (l) is active.
       bindl = [
@@ -92,6 +93,10 @@ in
           9)
       );
       # https://wiki.hyprland.org/Configuring/Variables/#animations
+      animations = {
+        enabled = true;
+        first_launch_animation = false;
+      };
       # https://wiki.hyprland.org/Configuring/Animations/
       animation = [
         "windows, 1, 6, wind, slide"
@@ -119,11 +124,22 @@ in
         shadow_render_power = 3;
         "col.shadow" = "rgba(1a1a1aee)";
       };
+      master = {
+        orientation = if hostname == "vader" then "top" else "left";
+      };
       dwindle = {
         preserve_split = true;
         force_split = 2;
       };
-      exec = [
+      exec-once = [
+        #"sleep 1 && hyprctl dispatch exec [workspace 1 silent] brave"
+        #"sleep 2 && hyprctl dispatch exec [workspace 2 silent] wavebox"
+        #"sleep 2 && hyprctl dispatch exec [workspace 2 silent] discord"
+        #"sleep 3 && hyprctl dispatch exec [workspace 3 silent] telegram-desktop"
+        #"sleep 3 && hyprctl dispatch exec [workspace 3 silent] fractal"
+        #"sleep 4 && hyprctl dispatch exec [workspace 4 silent] code"
+        #"sleep 4 && hyprctl dispatch exec [workspace 4 silent] gitkraken"
+        #"sleep 5 && hyprctl dispatch exec [workspace 5 silent] alacritty"
         "sleep 5 && trayscale --gapplication-service --hide-window"
       ];
       general = {
@@ -135,11 +151,14 @@ in
         "col.inactive_border" = "rgb(24273A) rgb(24273A) rgb(24273A) rgb(27273A) 45deg";
         "col.active_border" = "rgba(89b4faee)";
         #"col.inactive_border" = "rgba(11111baa)";
+        # Set to true enable resizing windows by clicking and dragging on borders and gaps
+        resize_on_border = true;
+        extend_border_grab_area = 10;
+        layout = "master";
       };
       gestures = {
         workspace_swipe = true;
-        workspace_swipe_forever = true;
-        workspace_swipe_invert = false;
+        workspace_swipe_forever = false;
       };
       group = {
         groupbar = {
@@ -151,31 +170,26 @@ in
       input = {
         kb_layout = "gb";
         follow_mouse = 2;
-        repeat_rate = 50;
+        repeat_rate = 30;
         repeat_delay = 300;
+        touchpad = {
+          clickfinger_behavior = true;
+          middle_button_emulation = true;
+          natural_scroll = true;
+          tap-to-click = true;
+        };
       };
       misc = {
-        background_color = "rgb(69, 71, 90)";
+        animate_manual_resizes = true;
+        background_color = "rgb(30, 30, 46)";
         disable_hyprland_logo = true;
         disable_splash_rendering = true;
-        animate_manual_resizes = true;
+        mouse_move_enables_dpms = true;
+        key_press_enables_dpms = true;
       };
       windowrulev2 = [
         # only allow shadows for floating windows
         "noshadow, floating:0"
-
-        # idle inhibit while watching videos
-        "idleinhibit focus, class:^(mpv|.+exe)$"
-        "idleinhibit fullscreen, class:.*"
-
-        # make Firefox PiP window floating and sticky
-        "float, title:^(Picture-in-Picture)$"
-        "pin, title:^(Picture-in-Picture)$"
-
-        "float, class:^(1Password)$"
-        "stayfocused,title:^(Quick Access — 1Password)$"
-        "dimaround,title:^(Quick Access — 1Password)$"
-        "noanim,title:^(Quick Access — 1Password)$"
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
@@ -184,15 +198,17 @@ in
         "float, class:^(code)$"
         "center, class:^(code)$"
         "pin, class:^(code)$"
-
-        # assign windows to workspaces
-        #"workspace 1 silent, class:[Bb]rave"
-        #"workspace 2 silent, class:[Ww]avebox"
-        #"workspace 4 silent, class:code-url-handler"
-
-        # throw sharing indicators away
-        "workspace special silent, title:^(Firefox — Sharing Indicator)$"
-        "workspace special silent, title:^(.*is sharing (your screen|a window)\.)$"
+      ];
+      # Simulate static workspaces
+      workspace = [
+        "1, name:Web, persistent:true, monitor:*, default:true"
+        "2, name:Work, persistent:true, monitor:*"
+        "3, name:Chat, persistent:true, monitor:*"
+        "4, name:Code, persistent:true, monitor:*"
+        "5, name:Term, persistent:true, monitor:*"
+        "6, name:Cast, persistent:true, monitor:*"
+        "7, name:Virt, persistent:true, monitor:*"
+        "8, name:Fun, persistent:true, monitor:*"
       ];
       xwayland = {
         force_zero_scaling = true;

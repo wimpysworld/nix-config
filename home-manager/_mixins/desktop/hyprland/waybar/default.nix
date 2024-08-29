@@ -205,7 +205,6 @@ tooltip label {
         exclusive = true;
         layer = "top";
         position = "top";
-        passthrough = false;
         modules-left = [ "hyprland/workspaces" ];
         modules-center = [ "idle_inhibitor" "clock" "custom/swaync" ];
         modules-right = [ "tray" "wireplumber" "pulseaudio" "network" "bluetooth" "backlight" "power-profiles-daemon" "temperature" "battery" "custom/session" ];
