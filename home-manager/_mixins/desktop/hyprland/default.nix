@@ -55,9 +55,13 @@ in
         ", XF86AudioPrev, exec, ${lib.getExe pkgs.playerctl} previous"
         ", XF86AudioNext, exec, ${lib.getExe pkgs.playerctl} next"
       ];
+      bindm = [
+        # Move windows with $mod + LMB and dragging
+        "$mod, mouse:272, movewindow"
+      ];
       bind = [
         # Process management
-        "ALT, Q, killactive"
+        "$mod, Q, killactive"
         # Launch applications
         "$mod, E, exec, nautilus --new-window"
         "$mod, T, exec, alacritty"
@@ -66,11 +70,17 @@ in
         "ALT, Tab, bringactivetotop"
         "ALT SHIFT, Tab, cyclenext, prev"
         "ALT SHIFT, Tab, bringactivetotop"
-        # Move focus with $mod + arrow keys
-        "$mod, left, movefocus, l"
-        "$mod, right, movefocus, r"
-        "$mod, up, movefocus, u"
-        "$mod, down, movefocus, d"
+        # Move focus with SHIFT + arrow keys
+        "SHIFT, left, movefocus, l"
+        "SHIFT, right, movefocus, r"
+        "SHIFT, up, movefocus, u"
+        "SHIFT, down, movefocus, d"
+        "$mod, left, swapwindow, l"
+        "$mod, right, swapwindow, r"
+        "$mod, up, fullscreen, 1"
+        "$mod, down, swapwindow, d"
+        "$mod, F, togglefloating"
+        "$mod, P, pseudo"
         # Switch workspace
         "CTRL ALT, left, workspace, e-1"
         "CTRL ALT, right, workspace, e+1"
@@ -103,8 +113,8 @@ in
         "windowsIn, 1, 6, winIn, slide"
         "windowsOut, 1, 5, winOut, slide"
         "windowsMove, 1, 5, wind, slide"
-        "border, 1, 1, liner"
-        "borderangle, 1, 30, liner, loop"
+        "border, 1, 10, liner"
+        "borderangle, 1, 100, linear, loop"
         "fade, 1, 10, default"
         "workspaces, 1, 5, wind"
       ];
@@ -113,23 +123,30 @@ in
         "winIn, 0.1, 1.1, 0.1, 1.1"
         "winOut, 0.3, -0.3, 0, 1"
         "liner, 1, 1, 1, 1"
+        "linear, 0.0, 0.0, 1.0, 1.0"
       ];
       decoration = {
         rounding = 8;
-        # Change transparency of focused and unfocused windows
         active_opacity = 1.0;
         inactive_opacity = 1.0;
+        dim_inactive = true;
+        dim_strength = 0.1;
         drop_shadow = true;
-        shadow_range = 4;
+        shadow_range = 8;
         shadow_render_power = 3;
-        "col.shadow" = "rgba(1a1a1aee)";
+        "col.shadow" = "rgba(1e1e2eee)";
       };
+      #https://wiki.hyprland.org/Configuring/Master-Layout/
       master = {
+        mfact = 0.55;
         orientation = if hostname == "vader" then "top" else "left";
       };
+      # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
       dwindle = {
-        preserve_split = true;
+        default_split_ratio = 0.55;
         force_split = 2;
+        preserve_split = true;
+        pseudotile = true;
       };
       exec-once = [
         #"sleep 1 && hyprctl dispatch exec [workspace 1 silent] brave"
@@ -147,11 +164,8 @@ in
         gaps_out = 5;
         border_size = 2;
         # https://wiki.hyprland.org/Configuring/Variables/#variable-types for info about colors
-        #"col.active_border" = "rgb(8aadf4) rgb(24273A) rgb(24273A) rgb(8aadf4) 45deg";
-        "col.inactive_border" = "rgb(24273A) rgb(24273A) rgb(24273A) rgb(27273A) 45deg";
-        "col.active_border" = "rgba(89b4faee)";
-        #"col.inactive_border" = "rgba(11111baa)";
-        # Set to true enable resizing windows by clicking and dragging on borders and gaps
+        "col.active_border" = "rgb(cba6f7) rgb(f38ba8) rgb(eba0ac) rgb(fab387) rgb(f9e2af) rgb(a6e3a1) rgb(94e2d5) rgb(89dceb) rgb(89b4fa) rgb(b4befe) 270deg";
+        "col.inactive_border" = "rgb(45475a) rgb(313244) rgb(45475a) rgb(313244) 270deg";
         resize_on_border = true;
         extend_border_grab_area = 10;
         layout = "master";
@@ -184,8 +198,9 @@ in
         background_color = "rgb(30, 30, 46)";
         disable_hyprland_logo = true;
         disable_splash_rendering = true;
-        mouse_move_enables_dpms = true;
         key_press_enables_dpms = true;
+        mouse_move_enables_dpms = true;
+        vfr = true;
       };
       windowrulev2 = [
         # only allow shadows for floating windows
@@ -201,7 +216,7 @@ in
       ];
       # Simulate static workspaces
       workspace = [
-        "1, name:Web, persistent:true, monitor:*, default:true"
+        "1, name:Web, persistent:true, monitor:*"
         "2, name:Work, persistent:true, monitor:*"
         "3, name:Chat, persistent:true, monitor:*"
         "4, name:Code, persistent:true, monitor:*"
