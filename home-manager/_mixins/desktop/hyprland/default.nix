@@ -231,6 +231,12 @@ in
         "float, class:^(code)$"
         "center, class:^(code)$"
         "pin, class:^(code)$"
+
+        # Apps that should be floating
+        "float, title:(overskride|Pipewire Volume Control|Trayscale)"
+        "center, title:(overskride|Pipewire Volume Control|Trayscale)"
+        "float, class:(nm-connection-editor)"
+        "center, class:(nm-connection-editor)"
       ];
       # Simulate static workspaces
       workspace = [
