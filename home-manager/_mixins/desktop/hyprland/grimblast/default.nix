@@ -30,7 +30,7 @@
         "SHIFT, Print, exec, ${lib.getExe pkgs.grimblast} save area - | ${lib.getExe pkgs.swappy} -f -"
         "CTRL ALT, Print, exec, ${lib.getExe pkgs.grimblast} save active - | ${lib.getExe pkgs.swappy} -f -"
         "CTRL, Print, exec, ${lib.getExe pkgs.grimblast} save output - | ${lib.getExe pkgs.swappy} -f -"
-        ];
+      ];
     };
   };
 }

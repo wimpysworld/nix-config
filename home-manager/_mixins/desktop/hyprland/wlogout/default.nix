@@ -1,17 +1,19 @@
-{
-  config,
-  pkgs,
-  ...
-}:
+{ config, ... }:
 let
-  pngFiles = builtins.filter (file: builtins.match ".*\\.png" file != null) (builtins.attrNames (builtins.readDir ./.));
+  pngFiles = builtins.filter (file: builtins.match ".*\\.png" file != null) (
+    builtins.attrNames (builtins.readDir ./.)
+  );
 in
 {
   # Copy .png files in the current directory to the wlogout configuration directory
-  home.file = builtins.listToAttrs (builtins.map (pngFile: {
-    name = "${config.xdg.configHome}/wlogout/${pngFile}";
-    value = { source = ./. + "/${pngFile}"; };
-  }) pngFiles);
+  home.file = builtins.listToAttrs (
+    builtins.map (pngFile: {
+      name = "${config.xdg.configHome}/wlogout/${pngFile}";
+      value = {
+        source = ./. + "/${pngFile}";
+      };
+    }) pngFiles
+  );
 
   programs = {
     wlogout = {

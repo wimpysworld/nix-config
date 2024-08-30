@@ -1,9 +1,4 @@
-{
-  lib,
-  pkgs,
-  ...
-}:
-{
+_: {
   # avizo is an osd notification daemon for audio and backlight
   # avizo provides volumectl and lightctl for controlling audio and backlight
   services = {
@@ -23,7 +18,7 @@
           image-opacity = 0.9;
           padding = 32;
           time = 2;
-          fade-in = 0.50;
+          fade-in = 0.5;
           fade-out = 0.75;
           width = 480;
           height = 240;

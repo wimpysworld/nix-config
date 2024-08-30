@@ -182,7 +182,10 @@ in
     package = pkgs.nixVersions.latest;
     settings = {
       experimental-features = "flakes nix-command";
-      trusted-users = [ "root" "${username}" ];
+      trusted-users = [
+        "root"
+        "${username}"
+      ];
     };
   };
 
