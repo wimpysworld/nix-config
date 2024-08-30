@@ -46,6 +46,9 @@ in
   wayland.windowManager.hyprland = {
     enable = true;
     catppuccin.enable = true;
+    plugins = with pkgs; [
+      hyprlandPlugins.hyprtrails
+    ];
     settings = {
       inherit (monitors) monitor;
       "$mod" = "SUPER";
@@ -84,8 +87,7 @@ in
         # Switch workspace
         "CTRL ALT, left, workspace, e-1"
         "CTRL ALT, right, workspace, e+1"
-        ]
-        ++ (
+      ] ++ (
         # workspaces
         # binds ctrl + alt + {1..8} to switch to workspace {1..8}
         # binds $mod + alt + {1..8} to move window to workspace {1..8}
@@ -201,6 +203,15 @@ in
         key_press_enables_dpms = true;
         mouse_move_enables_dpms = true;
         vfr = true;
+      };
+      plugin = {
+        hyprtrails = {
+          color = "rgba(a6e3a1aa)";
+          bezier_step = 0.025; #0.025
+          points_per_step = 2; #2
+          history_points = 12; #20
+          history_step = 2;    #2
+        };
       };
       windowrulev2 = [
         # only allow shadows for floating windows

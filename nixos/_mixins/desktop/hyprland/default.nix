@@ -77,8 +77,6 @@
     gnome-disks.enable = isInstall;
     hyprland = {
       enable = true;
-      #portalPackage
-      package = pkgs.unstable.hyprland;
       systemd.setPath.enable = true;
     };
     nautilus-open-any-terminal = {
