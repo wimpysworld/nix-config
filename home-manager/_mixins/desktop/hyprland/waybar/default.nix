@@ -116,10 +116,10 @@ in
         #pulseaudio,
         #bluetooth,
         #network,
+        #battery,
         #backlight,
         #temperature,
         #power-profiles-daemon,
-        #battery,
         #custom-session {
           background-color: @base;
           margin: 5px 0 0 0;
@@ -131,10 +131,10 @@ in
         #pulseaudio:hover,
         #bluetooth:hover,
         #network:hover,
+        #battery:hover,
         #backlight:hover,
         #temperature:hover,
         #power-profiles-daemon:hover,
-        #battery:hover,
         #custom-session:hover {
           background-color: #242536;
         }
@@ -160,6 +160,19 @@ in
           color: @sapphire;
         }
 
+        #battery {
+          border-radius: 0;
+          color: @green;
+        }
+
+        #battery.charging {
+          color: @green;
+        }
+
+        #battery.warning:not(.charging) {
+          color: @red;
+        }
+
         #backlight {
           border-radius: 0;
           color: @yellow;
@@ -175,23 +188,10 @@ in
         }
 
         #power-profiles-daemon {
-          border-radius: 0;
+          border-radius: 0 0.75rem 0.75rem 0;
           color: @maroon;
           font-size: 25px;
-        }
-
-        #battery {
-          border-radius: 0 0.75rem 0.75rem 0;
-          color: @green;
           margin-right: 1rem;
-        }
-
-        #battery.charging {
-          color: @green;
-        }
-
-        #battery.warning:not(.charging) {
-          color: @red;
         }
 
         #custom-session {
@@ -217,11 +217,11 @@ in
             "wireplumber"
             "pulseaudio"
             "bluetooth"
+            "battery"
             "network"
             "backlight"
             "temperature"
             "power-profiles-daemon"
-            "battery"
             "custom/session"
           ];
           "hyprland/workspaces" = {
