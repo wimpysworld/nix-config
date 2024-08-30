@@ -1,8 +1,4 @@
-{
-  fetchFromGitHub,
-  lib,
-  stdenvNoCC,
-}:
+{ lib, stdenvNoCC }:
 
 stdenvNoCC.mkDerivation rec {
   pname = "fixedsys_excelsior";
