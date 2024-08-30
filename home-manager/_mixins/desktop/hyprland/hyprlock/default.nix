@@ -183,8 +183,8 @@ in
           }
           {
             timeout = 305;
-            on-timeout = "${pkgs.unstable.hyprland}/bin/hyprctl dispatch dpms off";
-            on-resume = "${pkgs.unstable.hyprland}/bin/hyprctl dispatch dpms on";
+            on-timeout = "hyprctl dispatch dpms off";
+            on-resume = "hyprctl dispatch dpms on";
           }
         ];
       };
