@@ -1,12 +1,13 @@
 # This file defines overlays
-{inputs, ...}: {
+{ inputs, ... }:
+{
   # This one brings our custom packages from the 'pkgs' directory
   additions = final: _prev: import ../pkgs final.pkgs;
 
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
-  modifications = final: prev: {
+  modifications = _final: prev: {
     # https://discourse.nixos.org/t/davinci-resolve-studio-install-issues/37699/44
     # https://theholytachanka.com/posts/setting-up-resolve/
     davinci-resolve = prev.davinci-resolve.override (old: {
@@ -42,7 +43,7 @@
     #  });
     #});
 
-    openasar = prev.openasar.overrideAttrs ( old: rec {
+    openasar = prev.openasar.overrideAttrs (_old: rec {
       pname = "openasar";
       version = "0-unstable-2024-06-30";
       src = prev.fetchFromGitHub {
@@ -67,7 +68,7 @@
   # be accessible through 'pkgs.unstable'
   unstable-packages = final: _prev: {
     unstable = import inputs.nixpkgs-unstable {
-      system = final.system;
+      inherit (final) system;
       config.allowUnfree = true;
     };
   };
