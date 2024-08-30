@@ -37,8 +37,8 @@ in
 }
 
 tooltip {
-  background: @base;
-  opacity: 0.9;
+  background: @mantle;
+  opacity: 0.95;
   border: 1px solid @blue;
 }
 
@@ -58,16 +58,17 @@ tooltip label {
   border-radius: 0.75rem;
   background-color: @base;
   margin: 5px 0 0 0.5rem;
+  opacity: 0.9;
 }
 
 #workspaces button {
   border-radius: 0.75rem;
-  color: @lavender;
+  color: @mauve;
   padding: 0.25rem 0.75rem;
 }
 
 #workspaces button.active {
-  color: @mauve;
+  color: @peach;
 }
 
 #workspaces button:hover {
@@ -76,17 +77,17 @@ tooltip label {
 
 #idle_inhibitor {
   border-radius: 0.75rem 0 0 0.75rem;
-  color: @sky;
+  color: @flamingo;
 }
 
 #clock {
-  color: @blue;
+  color: @rosewater;
   font-size: 16px;
 }
 
 #custom-swaync {
   border-radius: 0 0.75rem 0.75rem 0;
-  color: @sky;
+  color: @flamingo;
 }
 
 #idle_inhibitor,
@@ -95,6 +96,7 @@ tooltip label {
   background-color: @base;
   margin: 5px 0 0 0;
   padding: 0.25rem 0.75rem;
+  opacity: 0.9;
 }
 
 #idle_inhibitor:hover,
@@ -116,25 +118,26 @@ tooltip label {
 #tray,
 #wireplumber,
 #pulseaudio,
-#network,
 #bluetooth,
+#network,
 #backlight,
-#power-profiles-daemon,
 #temperature,
+#power-profiles-daemon,
 #battery,
 #custom-session {
   background-color: @base;
   margin: 5px 0 0 0;
   padding: 0.25rem 0.75rem;
+  opacity: 0.9;
 }
 
 #wireplumber:hover,
 #pulseaudio:hover,
-#network:hover,
 #bluetooth:hover,
+#network:hover,
 #backlight:hover,
-#power-profiles-daemon:hover,
 #temperature:hover,
+#power-profiles-daemon:hover,
 #battery:hover,
 #custom-session:hover {
   background-color: #242536;
@@ -151,14 +154,14 @@ tooltip label {
   color: @mauve;
 }
 
-#network {
-  border-radius: 0;
-  color: @sapphire;
-}
-
 #bluetooth {
   border-radius: 0;
   color: @blue;
+}
+
+#network {
+  border-radius: 0;
+  color: @sapphire;
 }
 
 #backlight {
@@ -166,19 +169,19 @@ tooltip label {
   color: @yellow;
 }
 
-#power-profiles-daemon {
-  border-radius: 0;
-  color: @teal;
-  font-size: 25px;
-}
-
 #temperature {
   border-radius: 0;
-  color: @maroon;
+  color: @peach;
 }
 
 #temperature.critical {
   color: @red;
+}
+
+#power-profiles-daemon {
+  border-radius: 0;
+  color: @maroon;
+  font-size: 25px;
 }
 
 #battery {
@@ -207,7 +210,7 @@ tooltip label {
         position = "top";
         modules-left = [ "hyprland/workspaces" ];
         modules-center = [ "idle_inhibitor" "clock" "custom/swaync" ];
-        modules-right = [ "tray" "wireplumber" "pulseaudio" "network" "bluetooth" "backlight" "power-profiles-daemon" "temperature" "battery" "custom/session" ];
+        modules-right = [ "tray" "wireplumber" "pulseaudio" "bluetooth" "network" "backlight" "temperature" "power-profiles-daemon" "battery" "custom/session" ];
         "hyprland/workspaces" = {
           active-only = false;
           all-outputs = true;
@@ -270,11 +273,11 @@ tooltip label {
           format = "<big>{icon}</big>";
           format-icons = {
             none = "";
-            notification = "<span foreground='#fab387'>󱅫</span>";
+            notification = "<span foreground='#f5c2e7'>󱅫</span>";
             dnd-none = "󰂠";
             dnd-notification = "󰂞";
             inhibited-none = "";
-            inhibited-notification = "<span foreground='#f2cdcd'>󰅸</span>";
+            inhibited-notification = "<span foreground='#f5c2e7'>󰅸</span>";
             dnd-inhibited-none = "󰪓";
             dnd-inhibited-notification = "󰂟";
           };
