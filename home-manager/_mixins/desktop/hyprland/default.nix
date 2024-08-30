@@ -132,11 +132,15 @@ in
         active_opacity = 1.0;
         inactive_opacity = 1.0;
         dim_inactive = true;
-        dim_strength = 0.1;
+        dim_strength = 0.025;
+        # Subtle shadows
+        "col.shadow" = "rgba(11111baf)";
+        "col.shadow_inactive" = "rgba(1e1e2eaf)";
         drop_shadow = true;
-        shadow_range = 8;
-        shadow_render_power = 3;
-        "col.shadow" = "rgba(1e1e2eee)";
+        shadow_range = 304;
+        shadow_render_power = 4;
+        shadow_offset = "0, 42";
+        shadow_scale = 0.90;
       };
       #https://wiki.hyprland.org/Configuring/Master-Layout/
       master = {
@@ -215,7 +219,7 @@ in
       };
       windowrulev2 = [
         # only allow shadows for floating windows
-        "noshadow, floating:0"
+        #"noshadow, floating:0"
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
