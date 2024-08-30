@@ -158,6 +158,8 @@ in
         pseudotile = true;
       };
       exec-once = [
+        "sleep 0.25 && hyprctl dispatch workspace 1"
+        "sleep 1 && trayscale --gapplication-service --hide-window"
         #"sleep 1 && hyprctl dispatch exec [workspace 1 silent] brave"
         #"sleep 2 && hyprctl dispatch exec [workspace 2 silent] wavebox"
         #"sleep 2 && hyprctl dispatch exec [workspace 2 silent] discord"
@@ -166,7 +168,6 @@ in
         #"sleep 4 && hyprctl dispatch exec [workspace 4 silent] code"
         #"sleep 4 && hyprctl dispatch exec [workspace 4 silent] gitkraken"
         #"sleep 5 && hyprctl dispatch exec [workspace 5 silent] alacritty"
-        "sleep 5 && trayscale --gapplication-service --hide-window"
       ];
       general = {
         gaps_in = 5;
