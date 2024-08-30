@@ -202,17 +202,9 @@
           platform = "x86_64-darwin";
         };
       };
-
       # Custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };
-
       # Custom packages; acessible via 'nix build', 'nix shell', etc
-      packages = helper.forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        import ./pkgs { inherit pkgs; }
-      );
+      packages = helper.forAllSystems (system: import ./pkgs nixpkgs.legacyPackages.${system});
     };
 }

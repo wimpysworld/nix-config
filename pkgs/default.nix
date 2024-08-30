@@ -1,9 +1,6 @@
 # Custom packages, that can be defined similarly to ones from nixpkgs
-# Build them using 'nix build .#example' or (legacy) 'nix-build -A example'
-{
-  pkgs ? (import ../nixpkgs.nix) { },
-}:
-{
+# You can build them using 'nix build .#example'
+pkgs: {
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
   gitkraken = pkgs.callPackage ./gitkraken { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
