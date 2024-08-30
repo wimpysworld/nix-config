@@ -1,16 +1,12 @@
 {
   config,
   isInstall,
-  hostname,
   lib,
   pkgs,
-  username,
   ...
 }:
 {
-  imports = [
-    ./greetd.nix
-  ];
+  imports = [ ./greetd.nix ];
   environment = {
     # Enable HEIC image previews in Nautilus
     pathsToLink = [ "share/thumbnailers" ];
@@ -91,7 +87,7 @@
     udevil.enable = true;
   };
   security = {
-    pam.services.hyprlock = {};
+    pam.services.hyprlock = { };
     polkit = {
       enable = true;
     };
@@ -100,9 +96,7 @@
   services = {
     dbus = {
       implementation = "broker";
-      packages = with pkgs; [
-        gcr
-      ];
+      packages = with pkgs; [ gcr ];
     };
     devmon.enable = true;
     gnome = {

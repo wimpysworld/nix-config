@@ -33,10 +33,13 @@
     # Force use of the thinkpad_acpi driver for backlight control.
     # This allows the backlight save/load systemd service to work.
     # Thinkpad T14s AMD Gen 1 does not wake up from suspend using 'deep' sleep.
-    kernelParams = [ "acpi_backlight=native" "mem_sleep_default=s2idle" ];
+    kernelParams = [
+      "acpi_backlight=native"
+      "mem_sleep_default=s2idle"
+    ];
   };
 
-  hardware ={
+  hardware = {
     trackpoint = {
       enable = lib.mkDefault true;
       emulateWheel = lib.mkDefault config.hardware.trackpoint.enable;

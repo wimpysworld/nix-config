@@ -1,9 +1,19 @@
-{ config, hostname, isInstall, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  isInstall,
+  lib,
+  pkgs,
+  ...
+}:
 let
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
   isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan";
-  isThinkpad = hostname == "tanis" || hostname == "sidious"|| hostname == "shaa";
-  usePowerProfiles = config.programs.hyprland.enable || config.services.xserver.desktopManager.gnome.enable || config.services.xserver.desktopManager.pantheon.enable;
+  isThinkpad = hostname == "tanis" || hostname == "sidious" || hostname == "shaa";
+  usePowerProfiles =
+    config.programs.hyprland.enable
+    || config.services.xserver.desktopManager.gnome.enable
+    || config.services.xserver.desktopManager.pantheon.enable;
 in
 lib.mkIf isInstall {
   # Power Management strategy:
@@ -16,20 +26,20 @@ lib.mkIf isInstall {
   # - Thinkpads have a battery threshold charging either via the GNOME extension or auto-cpufreq
 
   # Disable USB autosuspend on desktop always on power workstations
-  boot.kernelParams = lib.optionals (!isLaptop) [
-    "usbcore.autosuspend=-1"
-  ];
+  boot.kernelParams = lib.optionals (!isLaptop) [ "usbcore.autosuspend=-1" ];
 
   # Install Battery Threshold GNOME extensions for Thinkpads
-  environment.systemPackages = with pkgs; lib.optionals (isThinkpad && config.services.xserver.desktopManager.gnome.enable) [
-    gnomeExtensions.thinkpad-battery-threshold
-  ];
+  environment.systemPackages =
+    with pkgs;
+    lib.optionals (isThinkpad && config.services.xserver.desktopManager.gnome.enable) [
+      gnomeExtensions.thinkpad-battery-threshold
+    ];
 
   powerManagement.powertop.enable = lib.mkDefault false;
 
   programs = {
     auto-cpufreq = {
-      enable = (!usePowerProfiles && isLaptop);
+      enable = !usePowerProfiles && isLaptop;
       settings = {
         battery = {
           governor = "powersave";

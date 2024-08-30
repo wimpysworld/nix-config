@@ -1,9 +1,4 @@
-{
-  hostname,
-  pkgs,
-  username,
-  ...
-}:
+{ hostname, pkgs, ... }:
 {
   # Use a minimal Sway to run regreet
   environment = {
@@ -34,8 +29,14 @@
           fit = "Cover";
         };
         commands = {
-          reboot = [ "${pkgs.systemd}/bin/systemctl" "reboot" ];
-          poweroff = [ "${pkgs.systemd}/bin/systemctl" "poweroff" ];
+          reboot = [
+            "${pkgs.systemd}/bin/systemctl"
+            "reboot"
+          ];
+          poweroff = [
+            "${pkgs.systemd}/bin/systemctl"
+            "poweroff"
+          ];
         };
         GTK = {
           application_prefer_dark_theme = true;
