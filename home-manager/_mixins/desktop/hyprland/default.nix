@@ -222,7 +222,7 @@ in
       };
       windowrulev2 = [
         # only allow shadows for floating windows
-        #"noshadow, floating:0"
+        "noshadow, floating:0"
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
