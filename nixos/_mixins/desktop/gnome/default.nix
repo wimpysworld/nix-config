@@ -2,7 +2,6 @@
   config,
   lib,
   pkgs,
-  hostname,
   isInstall,
   username,
   ...

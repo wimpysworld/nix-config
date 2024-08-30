@@ -1,13 +1,16 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   # Only enable zram swap if no swap devices are configured
   usezramSwap = builtins.length config.swapDevices == 0;
 in
 {
   # Keep zram swap (lz4) latency in check
-  boot.kernel.sysctl = lib.mkIf usezramSwap {
-    "vm.page-cluster" = 1;
-  };
+  boot.kernel.sysctl = lib.mkIf usezramSwap { "vm.page-cluster" = 1; };
 
   # Enable Multi-Gen LRU:
   # - https://docs.kernel.org/next/admin-guide/mm/multigen_lru.html

@@ -17,7 +17,6 @@ let
   all-sus-dirs = builtins.concatMap (
     dir: attrsets.mapAttrsToList (_username: config: config.home + "/" + dir) all-normal-users
   ) sus-user-dirs;
-  all-user-folders = attrsets.mapAttrsToList (_username: config: config.home) all-normal-users;
   all-system-folders = [
     "/boot"
     "/etc"
