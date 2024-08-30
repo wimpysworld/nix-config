@@ -181,12 +181,8 @@ in
   nix = {
     package = pkgs.nixVersions.latest;
     settings = {
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
+      experimental-features = "flakes nix-command";
       trusted-users = [ "root" "${username}" ];
-      warn-dirty = false;
     };
   };
 
