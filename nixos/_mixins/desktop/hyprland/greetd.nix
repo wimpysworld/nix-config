@@ -1,4 +1,7 @@
 { hostname, pkgs, ... }:
+let
+  wallpaperResolution = if hostname == "vader" then "2560x2880" else "1920x1080";
+in
 {
   # Use a minimal Sway to run regreet
   environment = {
@@ -9,7 +12,7 @@
       }
       output * scale 1
       output * bg #1E1E2D solid_color
-      output * bg /etc/backgrounds/DeterminateColorway-1920x1080.png fill
+      output * bg /etc/backgrounds/DeterminateColorway-${wallpaperResolution}.png fill
       seat seat0 xcursor_theme catppuccin-mocha-blue-cursors 48
       exec "${pkgs.greetd.regreet}/bin/regreet; ${pkgs.sway}/bin/swaymsg exit"
     '';
@@ -22,7 +25,7 @@
           greeting_msg = "This is ${hostname}!";
         };
         background = {
-          path = "/etc/backgrounds/DeterminateColorway-1920x1080.png";
+          path = "/etc/backgrounds/DeterminateColorway-${wallpaperResolution}.png";
           # How the background image covers the screen if the aspect ratio doesn't match
           # Available values: "Fill", "Contain", "Cover", "ScaleDown"
           # Refer to: https://docs.gtk.org/gtk4/enum.ContentFit.html
