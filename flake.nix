@@ -94,7 +94,7 @@
         };
         "martin@vader" = helper.mkHome {
           hostname = "vader";
-          desktop = "pantheon";
+          desktop = "hyprland";
         };
         "martin@shaa" = helper.mkHome {
           hostname = "shaa";
@@ -168,7 +168,7 @@
         };
         vader = helper.mkNixos {
           hostname = "vader";
-          desktop = "pantheon";
+          desktop = "hyprland";
         };
         shaa = helper.mkNixos {
           hostname = "shaa";
