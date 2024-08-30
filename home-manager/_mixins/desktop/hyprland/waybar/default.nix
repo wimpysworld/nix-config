@@ -255,8 +255,7 @@ in
           };
           clock = {
             actions = {
-              on-click = "shift_down";
-              on-click-middle = "shift_reset";
+              on-click-middle = "shift_down";
               on-click-right = "shift_up";
             };
             calendar = {
@@ -319,7 +318,7 @@ in
             };
             max-volume = 100;
             on-click-middle = "${pkgs.avizo}/bin/volumectl toggle-mute";
-            on-click-right = "${lib.getExe pkgs.pwvucontrol}";
+            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -u up 2";
             on-scroll-down = "${pkgs.avizo}/bin/volumectl -u down 2";
             tooltip-format = "󰓃  {volume}󰏰\n󰒓  {node_name}";
@@ -330,7 +329,7 @@ in
             format-source = "󰍰";
             format-source-muted = "󰍱";
             on-click-middle = "${pkgs.avizo}/bin/volumectl -m toggle-mute";
-            on-click-right = "${lib.getExe pkgs.pwvucontrol}";
+            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -m up 2";
             on-scroll-down = "${pkgs.avizo}/bin/volumectl -m down 2";
             tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
@@ -343,7 +342,7 @@ in
             format-linked = "";
             format-wifi = "󰖩";
             interval = 2;
-            on-click-right = "${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
+            on-click-right = "hyprctl dispatch exec [workspace current] ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
             tooltip-format = "  {ifname}\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
@@ -356,7 +355,7 @@ in
             format-on = "󰂯";
             format-off = "󰂲";
             on-click-middle = "${lib.getExe bluetoothToggle}";
-            on-click-right = "${lib.getExe pkgs.overskride}";
+            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.overskride}";
             tooltip-format = "  {controller_alias}\n󰿀  {controller_address}\n󰂴  {num_connections} connected";
             tooltip-format-connected = "󰂱  {controller_alias}\n󰿀  {controller_address}\n󰂴  {num_connections} connected\n{device_enumerate}";
             tooltip-format-disabled = "󰂲  {controller_alias}\n󰿀  {controller_address}\n󰂳  {status}";
