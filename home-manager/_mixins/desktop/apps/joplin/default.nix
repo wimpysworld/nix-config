@@ -12,11 +12,7 @@ in
 lib.mkIf (lib.elem username installFor) {
   # Jopin CLI fails to build on x86_64-darwin
   home = {
-    packages = with pkgs; [
-      font-awesome_5
-    ] ++ lib.optionals (platform != "x86_64-darwin") [
-      joplin
-    ];
+    packages = with pkgs; [ font-awesome_5 ] ++ lib.optionals (platform != "x86_64-darwin") [ joplin ];
   };
 
   programs.joplin-desktop = {

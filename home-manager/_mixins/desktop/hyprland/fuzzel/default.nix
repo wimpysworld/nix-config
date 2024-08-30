@@ -1,9 +1,4 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+{ lib, pkgs, ... }:
 {
   # Fuzzel powered app launcher, emoji picker and clipboard manager for Hyprland
   home = {
@@ -29,9 +24,7 @@
   };
   wayland.windowManager.hyprland = {
     settings = {
-      bindr = [
-        "$mod, SUPER_L, exec, fuzzel --prompt '󰵆 > '"
-      ];
+      bindr = [ "$mod, SUPER_L, exec, fuzzel --prompt '󰵆 > '" ];
       bind = [
         "$mod, SPACE, exec, fuzzel --prompt '󰌧 > ' --show-actions"
         "CTRL ALT, C, exec, cliphist list | fuzzel --dmenu --prompt '󰅌 > ' | cliphist decode | wl-copy --primary --regular --trim-newline"

@@ -6,7 +6,8 @@
 }:
 let
   inherit (pkgs.stdenv) isLinux;
-  buttonLayout = if config.wayland.windowManager.hyprland.enable then "appmenu" else "close,minimize,maximize";
+  buttonLayout =
+    if config.wayland.windowManager.hyprland.enable then "appmenu" else "close,minimize,maximize";
 in
 lib.mkIf isLinux {
   # TODO: Migrate to Colloid-gtk-theme 2024-06-18 or newer; now has catppuccin colors

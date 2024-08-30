@@ -5,7 +5,6 @@
   ...
 }:
 let
-  isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan";
   monitors = (import ./monitors.nix { }).${hostname};
 in
 {
@@ -46,9 +45,7 @@ in
   wayland.windowManager.hyprland = {
     enable = true;
     catppuccin.enable = true;
-    plugins = with pkgs; [
-      hyprlandPlugins.hyprtrails
-    ];
+    plugins = with pkgs; [ hyprlandPlugins.hyprtrails ];
     settings = {
       inherit (monitors) monitor;
       "$mod" = "SUPER";
@@ -62,48 +59,54 @@ in
         # Move windows with $mod + LMB and dragging
         "$mod, mouse:272, movewindow"
       ];
-      bind = [
-        # Process management
-        "$mod, Q, killactive"
-        # Launch applications
-        "$mod, E, exec, nautilus --new-window"
-        "$mod, T, exec, alacritty"
-        # Move focus
-        "ALT, Tab, cyclenext"
-        "ALT, Tab, bringactivetotop"
-        "ALT SHIFT, Tab, cyclenext, prev"
-        "ALT SHIFT, Tab, bringactivetotop"
-        # Move focus with SHIFT + arrow keys
-        "SHIFT, left, movefocus, l"
-        "SHIFT, right, movefocus, r"
-        "SHIFT, up, movefocus, u"
-        "SHIFT, down, movefocus, d"
-        "$mod, left, swapwindow, l"
-        "$mod, right, swapwindow, r"
-        "$mod, up, fullscreen, 1"
-        "$mod, down, swapwindow, d"
-        "$mod, F, togglefloating"
-        "$mod, P, pseudo"
-        # Switch workspace
-        "CTRL ALT, left, workspace, e-1"
-        "CTRL ALT, right, workspace, e+1"
-      ] ++ (
-        # workspaces
-        # binds ctrl + alt + {1..8} to switch to workspace {1..8}
-        # binds $mod + alt + {1..8} to move window to workspace {1..8}
-        builtins.concatLists (builtins.genList (
-            x: let
-              ws = let
-                c = (x + 1) / 9;
+      bind =
+        [
+          # Process management
+          "$mod, Q, killactive"
+          # Launch applications
+          "$mod, E, exec, nautilus --new-window"
+          "$mod, T, exec, alacritty"
+          # Move focus
+          "ALT, Tab, cyclenext"
+          "ALT, Tab, bringactivetotop"
+          "ALT SHIFT, Tab, cyclenext, prev"
+          "ALT SHIFT, Tab, bringactivetotop"
+          # Move focus with SHIFT + arrow keys
+          "SHIFT, left, movefocus, l"
+          "SHIFT, right, movefocus, r"
+          "SHIFT, up, movefocus, u"
+          "SHIFT, down, movefocus, d"
+          "$mod, left, swapwindow, l"
+          "$mod, right, swapwindow, r"
+          "$mod, up, fullscreen, 1"
+          "$mod, down, swapwindow, d"
+          "$mod, F, togglefloating"
+          "$mod, P, pseudo"
+          # Switch workspace
+          "CTRL ALT, left, workspace, e-1"
+          "CTRL ALT, right, workspace, e+1"
+        ]
+        ++ (
+          # workspaces
+          # binds ctrl + alt + {1..8} to switch to workspace {1..8}
+          # binds $mod + alt + {1..8} to move window to workspace {1..8}
+          builtins.concatLists (
+            builtins.genList (
+              x:
+              let
+                ws =
+                  let
+                    c = (x + 1) / 9;
+                  in
+                  builtins.toString (x + 1 - (c * 9));
               in
-                builtins.toString (x + 1 - (c * 9));
-            in [
-              "CTRL ALT, ${ws}, workspace, ${toString (x + 1)}"
-              "$mod ALT,  ${ws}, movetoworkspace, ${toString (x + 1)}"
-            ]
+              [
+                "CTRL ALT, ${ws}, workspace, ${toString (x + 1)}"
+                "$mod ALT,  ${ws}, movetoworkspace, ${toString (x + 1)}"
+              ]
+            ) 9
           )
-          9)
-      );
+        );
       # https://wiki.hyprland.org/Configuring/Variables/#animations
       animations = {
         enabled = true;
@@ -140,7 +143,7 @@ in
         shadow_range = 304;
         shadow_render_power = 4;
         shadow_offset = "0, 42";
-        shadow_scale = 0.90;
+        shadow_scale = 0.9;
       };
       #https://wiki.hyprland.org/Configuring/Master-Layout/
       master = {
