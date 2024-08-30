@@ -56,8 +56,10 @@ in
         ", XF86AudioNext, exec, ${lib.getExe pkgs.playerctl} next"
       ];
       bindm = [
-        # Move windows with $mod + LMB and dragging
-        "$mod, mouse:272, movewindow"
+        # Move windows with AltGr + RMB and dragging
+        # Resize windows with Control_R + RMB and dragging
+        "Mod5, mouse:273, movewindow"
+        "Control_R, mouse:273, resizewindow"
       ];
       bind =
         [
