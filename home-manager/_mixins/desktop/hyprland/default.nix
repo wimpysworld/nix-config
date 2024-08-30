@@ -207,7 +207,7 @@ in
         };
       };
       misc = {
-        animate_manual_resizes = true;
+        animate_manual_resizes = false;
         background_color = "rgb(30, 30, 46)";
         disable_hyprland_logo = true;
         disable_splash_rendering = true;
