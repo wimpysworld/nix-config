@@ -1,6 +1,6 @@
 { hostname, lib, pkgs, ... }:
 let
-  outputDisplay = if hostname == "vader" then "DP-1" else "eDP-1";
+  outputDisplay = if (hostname == "vader" || hostname == "phasma") then "DP-1" else "eDP-1";
   bluetoothToggle = pkgs.writeShellApplication {
     name = "bluetooth-toggle";
     runtimeInputs = with pkgs; [

@@ -90,7 +90,7 @@
         # Workstations
         "martin@phasma" = helper.mkHome {
           hostname = "phasma";
-          desktop = "pantheon";
+          desktop = "hyprland";
         };
         "martin@vader" = helper.mkHome {
           hostname = "vader";
@@ -164,7 +164,7 @@
         #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
         phasma = helper.mkNixos {
           hostname = "phasma";
-          desktop = "pantheon";
+          desktop = "hyprland";
         };
         vader = helper.mkNixos {
           hostname = "vader";

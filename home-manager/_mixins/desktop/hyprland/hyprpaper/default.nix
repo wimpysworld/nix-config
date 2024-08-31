@@ -1,6 +1,11 @@
 {hostname, ... }:
 let
-  wallpaperResolution = if hostname == "vader" then "2560x2880" else "1920x1080";
+  wallpaperResolution = if hostname == "vader" then
+    "2560x2880"
+  else if hostname == "phasma" then
+    "3440x1440"
+  else
+    "1920x1080";
 in
 {
   # hyprpaper is a wallpaper manager and part of the hyprland suite
