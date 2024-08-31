@@ -1,6 +1,10 @@
 { hostname, pkgs, ... }:
 let
   wallpaperResolution = if hostname == "vader" then "2560x2880" else "1920x1080";
+  defaultSession = if (hostname == "vader" || hostname == "phasma") then
+    "env WLR_DRM_DEVICES=/dev/dri/card1 ${pkgs.sway}/bin/sway --config /etc/greetd/regreet-sway --unsupported-gpu"
+  else
+    "${pkgs.sway}/bin/sway --config /etc/greetd/regreet-sway";
 in
 {
   # Use a minimal Sway to run regreet
@@ -80,7 +84,7 @@ in
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.sway}/bin/sway --config /etc/greetd/regreet-sway";
+        command = defaultSession;
         user = "greeter";
       };
     };
