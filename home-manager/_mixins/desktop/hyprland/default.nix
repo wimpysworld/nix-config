@@ -148,18 +148,6 @@ in
         shadow_offset = "0, 42";
         shadow_scale = 0.9;
       };
-      #https://wiki.hyprland.org/Configuring/Master-Layout/
-      master = {
-        mfact = 0.55;
-        orientation = if hostname == "vader" then "top" else "left";
-      };
-      # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
-      dwindle = {
-        default_split_ratio = 0.55;
-        force_split = 2;
-        preserve_split = true;
-        pseudotile = true;
-      };
       exec-once = [
         "sleep 0.25 && hyprctl dispatch workspace 1"
         "sleep 1 && trayscale --gapplication-service --hide-window"
@@ -182,6 +170,21 @@ in
         resize_on_border = true;
         extend_border_grab_area = 10;
         layout = "master";
+      };
+      #https://wiki.hyprland.org/Configuring/Master-Layout/
+      master = {
+        mfact = if hostname == "phasma" then 0.5 else 0.55;
+        orientation = if hostname == "vader" then
+          "top"
+        else if hostname == "phasma" then
+          "center"
+        else
+          "left";
+      };
+      # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
+      dwindle = {
+        force_split = 1;
+        preserve_split = true;
       };
       gestures = {
         workspace_swipe = true;
