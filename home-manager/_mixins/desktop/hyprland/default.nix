@@ -55,11 +55,11 @@ in
         ", XF86AudioPrev, exec, ${lib.getExe pkgs.playerctl} previous"
         ", XF86AudioNext, exec, ${lib.getExe pkgs.playerctl} next"
       ];
+      # https://en.wikipedia.org/wiki/Table_of_keyboard_shortcuts
       bindm = [
-        # Move windows with AltGr + RMB and dragging
-        # Resize windows with Control_R + RMB and dragging
-        "Mod5, mouse:273, movewindow"
-        "Control_R, mouse:273, resizewindow"
+        # Move windows with AltGr + LMB (for lefties) and $mod + LMB
+        "$mod, mouse:272, movewindow"
+        "Mod5, mouse:272, movewindow"
       ];
       bind =
         [
@@ -74,16 +74,16 @@ in
           "ALT SHIFT, Tab, cyclenext, prev"
           "ALT SHIFT, Tab, bringactivetotop"
           # Move focus with SHIFT + arrow keys
-          "SHIFT $mod, left, movefocus, l"
-          "SHIFT $mod, right, movefocus, r"
-          "SHIFT $mod, up, movefocus, u"
-          "SHIFT $mod, down, movefocus, d"
+          "ALT, left, movefocus, l"
+          "ALT, right, movefocus, r"
+          "ALT, up, movefocus, u"
+          "ALT, down, movefocus, d"
           "ALT $mod, left, swapwindow, l"
           "ALT $mod, right, swapwindow, r"
           "ALT $mod, up, swapwindow, u"
           "ALT $mod, down, swapwindow, d"
           "$mod, up, fullscreen, 1"
-          "$mod, F, togglefloating"
+          "$mod, down, togglefloating"
           "$mod, P, pseudo"
           # Switch workspace
           "CTRL ALT, left, workspace, e-1"
