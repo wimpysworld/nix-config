@@ -1,38 +1,39 @@
-{ desktop, lib, ... }:
+{ desktop, lib, pkgs, ... }:
 {
-  programs.dconf.enable = true;
   xdg = {
     portal = {
+      configPackages = [ ] ++ lib.optionals (desktop == "hyprland") [
+        pkgs.hyprland
+      ];
+      extraPortals = lib.optionals (desktop == "gnome") [
+        pkgs.xdg-desktop-portal-gnome
+      ] ++ lib.optionals (desktop == "hyprland") [
+        pkgs.xdg-desktop-portal-hyprland
+      ] ++ lib.optionals (desktop == "mate") [
+        pkgs.xdg-desktop-portal-xapp
+      ] ++ lib.optionals (desktop == "pantheon") [
+        pkgs.pantheon.xdg-desktop-portal-pantheon
+      ] ++ [
+        pkgs.xdg-desktop-portal-gtk
+      ];
       config = {
         common = {
           default = [ "gtk" ];
         };
         gnome = lib.mkIf (desktop == "gnome") {
-          default = [
-            "gnome"
-            "gtk"
-          ];
+          default = [ "gnome" "gtk" ];
           "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
         };
         hyprland = lib.mkIf (desktop == "hyprland") {
-          default = [
-            "hyprland"
-            "gtk"
-          ];
-          "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
-        };
-        pantheon = lib.mkIf (desktop == "pantheon") {
-          default = [
-            "pantheon"
-            "gtk"
-          ];
+          default = [ "hyprland" "gtk" ];
           "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
         };
         x-cinnamon = lib.mkIf (desktop == "mate") {
-          default = [
-            "xapp"
-            "gtk"
-          ];
+          default = [ "xapp" "gtk" ];
+          "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
+        };
+        pantheon = lib.mkIf (desktop == "pantheon") {
+          default = [ "pantheon" "gtk" ];
           "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
         };
       };
@@ -46,4 +47,8 @@
       };
     };
   };
+  # Fix xdg-portals opening URLs: https://github.com/NixOS/nixpkgs/issues/189851
+  systemd.user.extraConfig = ''
+    DefaultEnvironment="PATH=/run/wrappers/bin:/etc/profiles/per-user/%u/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
+  '';
 }
