@@ -17,7 +17,7 @@ lib.mkIf isLinux {
 
   qt = {
     enable = true;
-    platformTheme.name = "qtct";
+    platformTheme.name = "gtk";
     style = {
       name = "kvantum";
     };
