@@ -12,7 +12,6 @@ let
     runtimeInputs = with pkgs; [ procps ];
     # Dirty hack to make sure the portal services are started correctly so that
     # screen capture/sharing works in OBS Studio and other applications
-    # https://gist.github.com/brunoanc/2dea6ddf6974ba4e5d26c3139ffb7580
     # TODO: Try Coercing the units directly to enforce the "After" dependency
     text = ''
       set +e  # Disable errexit
@@ -265,8 +264,10 @@ in
         "pin, class:^(code)$"
 
         # Apps that should be floating
-        "float, title:(overskride|Pipewire Volume Control|Trayscale)"
-        "center, title:(overskride|Pipewire Volume Control|Trayscale)"
+        "float, title:(overskride|Pipewire Volume Control|Trayscale|Maestral Settings)"
+        "center, title:(overskride|Pipewire Volume Control|Trayscale|Maestral Settings)"
+        "float, initialTitle:(Polychromatic|Syncthing Tray)"
+        "center, initialTitle:(Polychromatic|Syncthing Tray)"
         "float, class:(nm-connection-editor)"
         "center, class:(nm-connection-editor)"
       ];
