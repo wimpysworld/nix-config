@@ -441,7 +441,7 @@ in
           };
           "custom/session" = {
             format = "<big>󰐥</big>";
-            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 --no-span ${wlogoutMagins}";
+            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 ${wlogoutMagins}";
             tooltip-format = "󰐥  Session Menu";
           };
         }
