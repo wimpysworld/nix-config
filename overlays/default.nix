@@ -54,6 +54,12 @@
       };
     });
 
+    hyprland = prev.hyprland.overrideAttrs (_old: rec {
+      postPatch = _old.postPatch + ''
+        sed -i 's|Exec=Hyprland|Exec=hypr-launch|' example/hyprland.desktop
+      '';
+    });
+
     #wavebox = prev.wavebox.overrideAttrs ( old: rec {
     #  pname = "wavebox";
     #  version = "10.125.53-2";
