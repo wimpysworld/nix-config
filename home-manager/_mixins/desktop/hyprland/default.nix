@@ -264,12 +264,19 @@ in
         "pin, class:^(code)$"
 
         # Apps that should be floating
-        "float, title:(overskride|Pipewire Volume Control|Trayscale|Maestral Settings)"
-        "center, title:(overskride|Pipewire Volume Control|Trayscale|Maestral Settings)"
+        "float, title:(Maestral Settings|MainPicker|overskride|Pipewire Volume Control|Trayscale)"
+        "center, title:(Maestral Settings|MainPicker|overskride|Pipewire Volume Control|Trayscale)"
         "float, initialTitle:(Polychromatic|Syncthing Tray)"
         "center, initialTitle:(Polychromatic|Syncthing Tray)"
-        "float, class:(nm-connection-editor)"
-        "center, class:(nm-connection-editor)"
+        "float, class:(nm-connection-editor|polkit-gnome-authentication-agent-1)"
+        "center, class:(nm-connection-editor|polkit-gnome-authentication-agent-1)"
+        "size 600 402, title:(Maestral Settings)"
+        "size 512 290, title:(MainPicker)"
+        "size 700 500, class:(nm-connection-editor)"
+        "size 1134 880, title:(Pipewire Volume Control)"
+        "size 960 640 initialTitle:(Polychromatic)"
+        "size 880 1010, title:(overskride)"
+        "size 886 960, title:(Trayscale)"
       ];
       # Simulate static workspaces
       workspace = [
