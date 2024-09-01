@@ -1,6 +1,7 @@
 { hostname, pkgs, ... }:
 let
   wallpaperResolution = if hostname == "vader" then "2560x2880" else "1920x1080";
+  # Vader and Phasma have dual GPUs; AMD for graphics and NVIDIA for compute
   defaultSession = if (hostname == "vader" || hostname == "phasma") then
     "env WLR_DRM_DEVICES=/dev/dri/card1 ${pkgs.sway}/bin/sway --config /etc/greetd/regreet-sway --unsupported-gpu"
   else
@@ -18,6 +19,7 @@ in
       output * bg #1E1E2D solid_color
       output * bg /etc/backgrounds/DeterminateColorway-${wallpaperResolution}.png fill
       seat seat0 xcursor_theme catppuccin-mocha-blue-cursors 48
+      xwayland disable
       exec "${pkgs.greetd.regreet}/bin/regreet; ${pkgs.sway}/bin/swaymsg exit"
     '';
   };
