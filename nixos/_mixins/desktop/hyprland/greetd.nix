@@ -1,11 +1,50 @@
-{ hostname, pkgs, ... }:
+{ config, hostname, lib, pkgs, ... }:
 let
-  wallpaperResolution = if hostname == "vader" then "2560x2880" else "1920x1080";
-  # Vader and Phasma have dual GPUs; AMD for graphics and NVIDIA for compute
-  defaultSession = if (hostname == "vader" || hostname == "phasma") then
-    "env WLR_DRM_DEVICES=/dev/dri/card1 ${pkgs.sway}/bin/sway --config /etc/greetd/regreet-sway --unsupported-gpu"
+  hyprLaunch = pkgs.writeShellScriptBin "hypr-launch" ''
+    systemd-run --user --scope --collect --quiet --unit="hypr-launch" \
+      systemd-cat --identifier="hypr-launch" ${pkgs.hyprland}/bin/Hyprland $@
+    ${pkgs.hyprland}/bin/hyperctl dispatch exit
+  '';
+  regreetSway = pkgs.writeShellScriptBin "regreet-sway" ''
+    # Check if a GPU is NVIDIA
+    function is_nvidia() {
+        local card=$1
+        if [ -f "/sys/class/drm/$card/device/vendor" ]; then
+            vendor=$(cat "/sys/class/drm/$card/device/vendor")
+            # NVIDIA vendor ID is 0x10de
+            if [ "$vendor" = "0x10de" ]; then
+                # It is NVIDIA
+                return 0
+            fi
+        fi
+        # It is not NVIDIA
+        return 1
+    }
+    REGREET_SWAY="${pkgs.sway}/bin/sway --config /etc/greetd/regreet-sway"
+    # Prevent Sway from starting on NVIDIA GPUs; they are for compute only
+    NVIDIA_MODULE_COUNT=$(lsmod | grep -w ^nvidia | wc -l)
+    if [ $NVIDIA_MODULE_COUNT -gt 0 ]; then
+      # Iterate through GPU devices
+      for gpu in /dev/dri/card*; do
+        # Extract the card name
+        card=$(basename "$gpu")
+        # Check if the GPU is not NVIDIA
+        if ! is_nvidia "$card"; then
+          export WLR_DRM_DEVICES=$gpu
+        fi
+      done
+      REGREET_SWAY+=" --unsupported-gpu"
+    fi
+    systemd-run --user --scope --collect --quiet --unit="regreet-sway" \
+      systemd-cat --identifier="regreet-sway" $REGREET_SWAY
+  '';
+
+  wallpaperResolution = if hostname == "vader" then
+    "2560x2880"
+  else if hostname == "phasma" then
+    "3440x1440"
   else
-    "${pkgs.sway}/bin/sway --config /etc/greetd/regreet-sway";
+    "1920x1080";
 in
 {
   # Use a minimal Sway to run regreet
@@ -22,6 +61,10 @@ in
       xwayland disable
       exec "${pkgs.greetd.regreet}/bin/regreet; ${pkgs.sway}/bin/swaymsg exit"
     '';
+    systemPackages = [
+      hyprLaunch
+      regreetSway
+    ];
   };
   programs = {
     regreet = {
@@ -30,11 +73,9 @@ in
         appearance = {
           greeting_msg = "This is ${hostname}!";
         };
+        # https://docs.gtk.org/gtk4/enum.ContentFit.html
         background = {
           path = "/etc/backgrounds/DeterminateColorway-${wallpaperResolution}.png";
-          # How the background image covers the screen if the aspect ratio doesn't match
-          # Available values: "Fill", "Contain", "Cover", "ScaleDown"
-          # Refer to: https://docs.gtk.org/gtk4/enum.ContentFit.html
           fit = "Cover";
         };
         commands = {
@@ -86,7 +127,7 @@ in
     enable = true;
     settings = {
       default_session = {
-        command = defaultSession;
+        command = "regreet-sway";
         user = "greeter";
       };
     };
