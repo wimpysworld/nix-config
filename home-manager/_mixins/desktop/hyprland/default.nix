@@ -179,6 +179,7 @@ in
           brightness = 0.8172;
           vibrancy = 0.1696;
           vibrancy_darkness = 0.0;
+          ignore_opacity = true;
         };
       };
       exec-once = [
@@ -263,6 +264,8 @@ in
       windowrulev2 = [
         # only allow shadows for floating windows
         "noshadow, floating:0"
+        # make floating windows opaque
+        "opacity 0.64, floating:1"
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
