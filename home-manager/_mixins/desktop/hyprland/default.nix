@@ -7,8 +7,32 @@
 }:
 let
   monitors = (import ./monitors.nix { }).${hostname};
+  portalProdder = pkgs.writeShellApplication {
+    name = "portal-prodder";
+    runtimeInputs = with pkgs; [ procps ];
+    # Dirty hack to make sure the portal services are started correctly so that
+    # screen capture/sharing works in OBS Studio and other applications
+    # https://gist.github.com/brunoanc/2dea6ddf6974ba4e5d26c3139ffb7580
+    # TODO: Try Coercing the units directly to enforce the "After" dependency
+    text = ''
+      set +e  # Disable errexit
+      echo "Stop the desktop portal services..."
+      pgrep --list-full xdg-desktop
+      echo
+      systemctl --user stop xdg-desktop-portal-hyprland
+      systemctl --user stop xdg-desktop-portal-gtk
+      systemctl --user stop xdg-desktop-portal
+      echo "Start the desktop portal services..."
+      systemctl --user start xdg-desktop-portal-hyprland
+      systemctl --user start xdg-desktop-portal-gtk
+      systemctl --user start xdg-desktop-portal
+      pgrep --list-full xdg-desktop
+    '';
+  };
 in
 {
+  home.packages = with pkgs; [ portalProdder ];
+
   # Hyprland is a Wayland compositor and dynamic tiling window manager
   # Additional applications are required to create a full desktop shell
   imports = [
