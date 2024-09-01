@@ -161,6 +161,7 @@ in
         rounding = 8;
         active_opacity = 1.0;
         inactive_opacity = 1.0;
+        fullscreen_opacity = 1.0;
         dim_inactive = true;
         dim_strength = 0.025;
         # Subtle shadows
@@ -171,6 +172,14 @@ in
         shadow_render_power = 4;
         shadow_offset = "0, 42";
         shadow_scale = 0.9;
+        blur = {
+          enabled = true;
+          passes = 3;
+          contrast = 0.8916;
+          brightness = 0.8172;
+          vibrancy = 0.1696;
+          vibrancy_darkness = 0.0;
+        };
       };
       exec-once = [
         "sleep 0.25 && hyprctl dispatch workspace 1"
@@ -277,6 +286,9 @@ in
         "size 960 640 initialTitle:(Polychromatic)"
         "size 880 1010, title:(overskride)"
         "size 886 960, title:(Trayscale)"
+      ];
+      layerrule = [
+        "blur, logout_dialog" # wlogout
       ];
       # Simulate static workspaces
       workspace = [
