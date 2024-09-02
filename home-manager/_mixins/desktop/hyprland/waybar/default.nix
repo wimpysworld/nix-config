@@ -1,6 +1,11 @@
 { hostname, lib, pkgs, ... }:
 let
-  wlogoutMagins = if hostname == "vader" then "--margin-top 960 --margin-bottom 960" else "";
+  wlogoutMargins = if hostname == "vader" then
+    "--margin-top 960 --margin-bottom 960"
+  else if hostname == "phasma" then
+    "--margin-left 540 --margin-right 540"
+  else
+    "";
   outputDisplay = if (hostname == "vader" || hostname == "phasma") then "DP-1" else "eDP-1";
   bluetoothToggle = pkgs.writeShellApplication {
     name = "bluetooth-toggle";
@@ -443,7 +448,7 @@ in
           };
           "custom/session" = {
             format = "<big>󰐥</big>";
-            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 ${wlogoutMagins}";
+            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 ${wlogoutMargins}";
             tooltip-format = "󰐥  Session Menu";
           };
         }
