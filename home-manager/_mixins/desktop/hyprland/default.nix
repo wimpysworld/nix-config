@@ -292,6 +292,10 @@ in
       ];
       layerrule = [
         "blur, logout_dialog" # wlogout
+        "blur, swaync-control-center"
+        "blur, swaync-notification-window"
+        "ignorealpha 0.6, swaync-control-center"
+        "ignorealpha 0.6, swaync-notification-window"
       ];
       # Simulate static workspaces
       workspace = [
