@@ -210,7 +210,7 @@ in
         {
           exclusive = true;
           output = outputDisplay;
-          layer = "top";
+          layer = "bottom";
           position = "top";
           modules-left = [ "hyprland/workspaces" ];
           modules-center = [
