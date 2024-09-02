@@ -8,6 +8,15 @@
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
   modifications = _final: prev: {
+    blueman = prev.blueman.overrideAttrs (_old: rec {
+      pname = "blueman";
+      version = "2.4.3";
+      src = prev.fetchurl {
+        url = "https://github.com/blueman-project/blueman/releases/download/${version}/${pname}-${version}.tar.xz";
+        sha256 = "sha256-vfxJkJdCy3koj4oR1vZmt1wnE7kcCF5tDdMpQ0eT/oU=";
+      };
+    });
+
     # https://discourse.nixos.org/t/davinci-resolve-studio-install-issues/37699/44
     # https://theholytachanka.com/posts/setting-up-resolve/
     davinci-resolve = prev.davinci-resolve.override (old: {
