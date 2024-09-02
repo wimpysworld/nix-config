@@ -332,6 +332,7 @@ in
             format-alt = "<big>{format_source}</big> <small>{source_volume}󰏰</small>";
             format-source = "󰍰";
             format-source-muted = "󰍱";
+            ignored-sinks = [ "INZONE Buds Analog Stereo" ];
             on-click-middle = "${pkgs.avizo}/bin/volumectl -m toggle-mute";
             on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -m up 2";
