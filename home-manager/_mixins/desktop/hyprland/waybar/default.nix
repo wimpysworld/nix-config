@@ -359,13 +359,13 @@ in
             format-on = "󰂯";
             format-off = "󰂲";
             on-click-middle = "${lib.getExe bluetoothToggle}";
-            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.overskride}";
-            tooltip-format = "  {controller_alias}\n󰿀  {controller_address}\n󰂴  {num_connections} connected";
-            tooltip-format-connected = "󰂱  {controller_alias}\n󰿀  {controller_address}\n󰂴  {num_connections} connected\n{device_enumerate}";
-            tooltip-format-disabled = "󰂲  {controller_alias}\n󰿀  {controller_address}\n󰂳  {status}";
-            tooltip-format-enumerate-connected = "󰂱  {device_alias}\n󰿀  {device_address}";
-            tooltip-format-enumerate-connected-battery = "󰂱  {device_alias}\t󰿀  {device_address}\n󰥉  {device_battery_percentage}󰏰";
-            tooltip-format-off = "󰂲  {controller_alias}\n󰿀  {controller_address}\n󰂳  {status}";
+            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.blueberry}";
+            tooltip-format = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected";
+            tooltip-format-connected = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected\n{device_enumerate}";
+            tooltip-format-disabled = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
+            tooltip-format-enumerate-connected = "󰂱  {device_alias}\t󰿀  {device_address}";
+            tooltip-format-enumerate-connected-battery = "󰂱  {device_alias}\t󰿀  {device_address} (󰥉  {device_battery_percentage}󰏰)";
+            tooltip-format-off = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
           };
           backlight = {
             device = "thinkpad_acpi";
