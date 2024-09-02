@@ -243,12 +243,68 @@ in
               "6" = "󰡨";
               "7" = "󰦔";
               "8" = "󰺵";
+              "9" = "󰄀";
+              "10" = "󰊓";
               default = "";
             };
             persistent_workspaces = {
-              # TODO: On desktops workstations, only put workspace 6 (Cast) on the dummy output
               # https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#persistent-workspaces
-              "*" = 8;
+              "1" = if (hostname == "phasma" || hostname == "vader") then
+                      [ "DP-1" ]
+                    else
+                      [ "eDP-1" ];
+              "2" = if (hostname == "phasma" || hostname == "vader") then
+                      [ "DP-1" ]
+                    else
+                      [ "eDP-1" ];
+              "3" = if (hostname == "phasma") then
+                      [ "DP-1" ]
+                    else if (hostname == "vader") then
+                      [ "DP-2" ]
+                    else
+                      [ "eDP-1" ];
+              "4" = if (hostname == "phasma") then
+                      [ "DP-1" ]
+                    else if (hostname == "vader") then
+                      [ "DP-2" ]
+                    else
+                      [ "eDP-1" ];
+              "5" = if (hostname == "phasma") then
+                      [ "DP-1" ]
+                    else if (hostname == "vader") then
+                      [ "DP-2" ]
+                    else
+                      [ "eDP-1" ];
+              "6" = if (hostname == "phasma") then
+                      [ "DP-1" ]
+                    else if (hostname == "vader") then
+                      [ "DP-2" ]
+                    else
+                      [ "eDP-1" ];
+              "7" = if (hostname == "phasma") then
+                      [ "DP-1" ]
+                    else if (hostname == "vader") then
+                      [ "DP-2" ]
+                    else
+                      [ "eDP-1" ];
+              "8" = if (hostname == "phasma") then
+                      [ "DP-1" ]
+                    else if (hostname == "vader") then
+                      [ "DP-2" ]
+                    else
+                      [ "eDP-1" ];
+              "9" = if (hostname == "phasma") then
+                      [ "HDMI-A-1" ]
+                    else if (hostname == "vader") then
+                      [ "DP-2" ]
+                    else
+                      [ "*" ];
+              "10" = if (hostname == "phasma") then
+                      [ "DP-2" ]
+                    else if (hostname == "vader") then
+                      [ "DP-3" ]
+                    else
+                      [ "*" ];
             };
             on-click = "activate";
           };
