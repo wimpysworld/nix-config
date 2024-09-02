@@ -25,6 +25,52 @@ let
       fi
     '';
   };
+  eyecandyCheck = pkgs.writeShellApplication {
+    name = "eyecandy-check";
+    runtimeInputs = with pkgs; [
+      findutils
+      gawk
+      jq
+    ];
+    text = ''
+      HYPR_ANIMATIONS=$(hyprctl getoption animations:enabled | awk 'NR==1{print $2}')
+      if [ "$HYPR_ANIMATIONS" -eq 1 ] ; then
+        echo -en "󱥰\n󱥰  Hyprland eye-candy is enabled\nactive"
+      else
+        echo -en "󱥱\n󱥱  Hyprland eye-candy is disabled\ninactive"
+        # Disable opacity on all clients every 4 seconds
+        if [ $(( $(date +%S) % 4 )) -eq 0 ]; then
+          hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl setprop address:{} forceopaque 1 lock
+        fi
+      fi
+    '';
+  };
+  eyecandyToggle = pkgs.writeShellApplication {
+    name = "eyecandy-toggle";
+    runtimeInputs = with pkgs; [
+      findutils
+      gawk
+      jq
+      notify-desktop
+    ];
+    # https://github.com/hyprwm/Hyprland/issues/3655#issuecomment-1784217814
+    text = ''
+      HYPR_ANIMATIONS=$(hyprctl getoption animations:enabled | awk 'NR==1{print $2}')
+      if [ "$HYPR_ANIMATIONS" -eq 1 ] ; then
+        hyprctl --batch "\
+          keyword animations:enabled 0;\
+          keyword decoration:drop_shadow 0;\
+          keyword decoration:blur:enabled 0;\
+          keyword layerrule:blur:enabled 0"
+          # Disable opacity on all clients
+          hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl setprop address:{} forceopaque 1 lock
+        notify-desktop "🍬🛑 Eye candy disabled" "Hyprland animations, shadows and blur effects have been disabled." --urgency=low --app-name="Hypr Candy"
+      else
+        hyprctl reload
+        notify-desktop "🍬👀 Eye candy enabled" "Hyprland animations, shadows and blur effects have been restored." --urgency=low --app-name="Hypr Candy"
+      fi
+    '';
+  };
 in
 {
   programs = {
@@ -82,6 +128,10 @@ in
           color: @flamingo;
         }
 
+        #custom-eyecandy {
+          color: @flamingo;
+        }
+
         #clock {
           color: @rosewater;
           font-size: 16px;
@@ -93,6 +143,7 @@ in
         }
 
         #idle_inhibitor,
+        #custom-eyecandy,
         #clock,
         #custom-swaync {
           background-color: @base;
@@ -102,6 +153,7 @@ in
         }
 
         #idle_inhibitor:hover,
+        #custom-eyecandy:hover,
         #clock:hover,
         #custom-swaync:hover {
           background-color: #242536;
@@ -215,6 +267,7 @@ in
           modules-left = [ "hyprland/workspaces" ];
           modules-center = [
             "idle_inhibitor"
+            "custom/eyecandy"
             "clock"
             "custom/swaync"
           ];
@@ -317,6 +370,13 @@ in
             start-activated = false;
             tooltip-format-activated = "󰅶  Caffeination {status}";
             tooltip-format-deactivated = "󰾪  Caffeination {status}";
+          };
+          "custom/eyecandy" = {
+            format = "<big>{}</big>";
+            max-length = 2;
+            interval = 1;
+            exec = "${lib.getExe eyecandyCheck}";
+            on-click = "${lib.getExe eyecandyToggle}";
           };
           clock = {
             actions = {
