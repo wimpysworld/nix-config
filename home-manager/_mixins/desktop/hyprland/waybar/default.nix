@@ -311,7 +311,7 @@ in
           idle_inhibitor = {
             format = "<big>{icon}</big>";
             format-icons = {
-              activated = "󰅶";
+              activated = "<span foreground='#f5c2e7'>󰅶</span>";
               deactivated = "󰾪";
             };
             start-activated = false;
