@@ -137,6 +137,10 @@ in
           font-size: 16px;
         }
 
+        #custom-calendar {
+          color: @flamingo;
+        }
+
         #custom-swaync {
           border-radius: 0 0.75rem 0.75rem 0;
           color: @flamingo;
@@ -145,6 +149,7 @@ in
         #idle_inhibitor,
         #custom-eyecandy,
         #clock,
+        #custom-calendar,
         #custom-swaync {
           background-color: @base;
           margin: 5px 0 0 0;
@@ -155,6 +160,7 @@ in
         #idle_inhibitor:hover,
         #custom-eyecandy:hover,
         #clock:hover,
+        #custom-calendar:hover,
         #custom-swaync:hover {
           background-color: #242536;
         }
@@ -269,6 +275,7 @@ in
             "idle_inhibitor"
             "custom/eyecandy"
             "clock"
+            "custom/calendar"
             "custom/swaync"
           ];
           modules-right = [
@@ -402,6 +409,14 @@ in
             timezone = "Europe/London";
             #timezones = [ "Europe/London" "Europe/Amsterdam" "America/Boston" "America/Los_Angeles" "Africa/Lagos" ];
             tooltip-format = "<tt><small>{calendar}</small></tt>";
+          };
+          "custom/calendar" = {
+            format = "<big>󰔠</big>";
+            max-length = 2;
+            on-click = "${lib.getExe pkgs.gnome.gnome-calendar}";
+            on-click-middle = "${lib.getExe pkgs.gnome.gnome-weather}";
+            on-click-right = "${lib.getExe pkgs.gnome.gnome-clocks}";
+            tooltip-format = "󰸗  Calendar (left-click)\n󰼳  Weather (middle-click)\n󱎫  Clock (right-click)";
           };
           #https://haseebmajid.dev/posts/2024-03-15-til-how-to-get-swaync-to-play-nice-with-waybar/
           "custom/swaync" = {
