@@ -238,6 +238,7 @@ in
               "6" = "󰡨";
               "7" = "󰦔";
               "8" = "󰺵";
+              default = "";
             };
             persistent_workspaces = {
               # TODO: On desktops workstations, only put workspace 6 (Cast) on the dummy output
