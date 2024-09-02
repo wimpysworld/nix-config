@@ -71,7 +71,7 @@ in
     catppuccin.enable = true;
     plugins = with pkgs; [ hyprlandPlugins.hyprtrails ];
     settings = {
-      inherit (monitors) monitor;
+      inherit (monitors) monitor workspace;
       "$mod" = "SUPER";
       # Work when input inhibitor (l) is active.
       bindl = [
@@ -112,28 +112,27 @@ in
           # Switch workspace
           "CTRL ALT, left, workspace, e-1"
           "CTRL ALT, right, workspace, e+1"
-        ]
-        ++ (
-          # workspaces
-          # binds ctrl + alt + {1..8} to switch to workspace {1..8}
-          # binds $mod + alt + {1..8} to move window to workspace {1..8}
-          builtins.concatLists (
-            builtins.genList (
-              x:
-              let
-                ws =
-                  let
-                    c = (x + 1) / 9;
-                  in
-                  builtins.toString (x + 1 - (c * 9));
-              in
-              [
-                "CTRL ALT, ${ws}, workspace, ${toString (x + 1)}"
-                "$mod ALT,  ${ws}, movetoworkspace, ${toString (x + 1)}"
-              ]
-            ) 9
-          )
-        );
+          "CTRL ALT, 1, workspace, 1"
+          "$mod ALT, 1, movetoworkspace, 1"
+          "CTRL ALT, 2, workspace, 2"
+          "$mod ALT, 2, movetoworkspace, 2"
+          "CTRL ALT, 3, workspace, 3"
+          "$mod ALT, 3, movetoworkspace, 3"
+          "CTRL ALT, 4, workspace, 4"
+          "$mod ALT, 4, movetoworkspace, 4"
+          "CTRL ALT, 5, workspace, 5"
+          "$mod ALT, 5, movetoworkspace, 5"
+          "CTRL ALT, 6, workspace, 6"
+          "$mod ALT, 6, movetoworkspace, 6"
+          "CTRL ALT, 7, workspace, 7"
+          "$mod ALT, 7, movetoworkspace, 7"
+          "CTRL ALT, 8, workspace, 8"
+          "$mod ALT, 8, movetoworkspace, 8"
+          "CTRL ALT, 9, workspace, 9"
+          "$mod ALT, 9, movetoworkspace, 9"
+          "CTRL ALT, 0, workspace, 10"
+          "$mod ALT, 0, movetoworkspace, 10"
+      ];
       # https://wiki.hyprland.org/Configuring/Variables/#animations
       animations = {
         enabled = true;
@@ -298,17 +297,6 @@ in
         "blur, swaync-notification-window"
         "ignorealpha 0.6, swaync-control-center"
         "ignorealpha 0.6, swaync-notification-window"
-      ];
-      # Simulate static workspaces
-      workspace = [
-        "1, name:Web, persistent:true, monitor:*"
-        "2, name:Work, persistent:true, monitor:*"
-        "3, name:Chat, persistent:true, monitor:*"
-        "4, name:Code, persistent:true, monitor:*"
-        "5, name:Term, persistent:true, monitor:*"
-        "6, name:Cast, persistent:true, monitor:*"
-        "7, name:Virt, persistent:true, monitor:*"
-        "8, name:Fun, persistent:true, monitor:*"
       ];
       xwayland = {
         force_zero_scaling = true;
