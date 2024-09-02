@@ -69,7 +69,7 @@
           all: unset;
           font-size: 20px;
           font-family: "Work Sans";
-          transition: 200ms;
+          transition: 250ms;
         }
 
         trough highlight {
@@ -88,12 +88,13 @@
         }
 
         .floating-notifications.background .notification-row .notification-background {
-          box-shadow: 0 0 8px 0 rgba(0, 0, 0, 0.8), inset 0 0 0 1px #313244;
+          box-shadow: 0 0 10px 0 rgba(17, 17, 17, 0.8), inset 0 0 0 1px #313244;
           border-radius: 12.6px;
           margin: 18px;
           background-color: #1e1e2e;
           color: #cdd6f4;
           padding: 0;
+          opacity: 0.64;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification {
@@ -164,12 +165,13 @@
         }
 
         .control-center {
-          box-shadow: 0 0 8px 0 rgba(0, 0, 0, 0.8), inset 0 0 0 1px #313244;
+          box-shadow: 0 0 25px 0 rgba(17, 17, 17, 0.6), inset 0 0 0 1px #313244;
           border-radius: 12.6px;
           margin: 18px;
           background-color: #1e1e2e;
           color: #cdd6f4;
           padding: 14px;
+          opacity: 0.64;
         }
 
         .control-center .widget-title > label {
