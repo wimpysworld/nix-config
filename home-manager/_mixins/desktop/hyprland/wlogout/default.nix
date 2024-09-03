@@ -28,7 +28,7 @@ in
         }
         {
           label = "logout";
-          action = "hyprctl dispatch exit";
+          action = "hypr-session logout";
           text = " Logout ";
           keybind = "e";
           height = 0.5;
@@ -42,14 +42,14 @@ in
         }
         {
           label = "reboot";
-          action = "systemctl reboot";
+          action = "hypr-session reboot";
           text = " Reboot ";
           keybind = "r";
           height = 0.5;
         }
         {
           label = "shutdown";
-          action = "systemctl poweroff";
+          action = "hypr-session shutdown";
           text = "Shutdown";
           keybind = "s";
           height = 0.5;
