@@ -7,6 +7,136 @@
 }:
 let
   monitors = (import ./monitors.nix { }).${hostname};
+  hyprSession = pkgs.writeShellApplication {
+    name = "hypr-session";
+    runtimeInputs = with pkgs; [
+      coreutils-full
+      gnused
+      obs-cmd
+      playerctl
+      procps
+    ];
+    text = ''
+      set +e  # Disable errexit
+      set +u  # Disable nounset
+      HOSTNAME=$(hostname -s)
+
+      function app_is_running() {
+          local CLASS="$1"
+          if hyprctl clients | grep "$CLASS" &>/dev/null; then
+              return 0
+          fi
+          return 1
+      }
+
+      function wait_for_app() {
+          local COUNT=0
+          local SLEEP=1
+          local LIMIT=5
+          local CLASS="$1"
+          echo " - Waiting for $CLASS..."
+          while ! app_is_running "$CLASS"; do
+              sleep "$SLEEP"
+              ((COUNT++))
+              if [ "$COUNT" -ge "$LIMIT" ]; then
+                  echo " - Failed to find $CLASS"
+                  break
+              fi
+          done
+      }
+
+      function start_app() {
+          local APP="$1"
+          local WORKSPACE="$2"
+          local CLASS="$3"
+          local APP_LOWER=""
+          APP_LOWER=$(echo "$APP" | tr '[:upper:]' '[:lower:]')
+          if ! app_is_running "$CLASS"; then
+              echo -n " - Starting $APP on workspace $WORKSPACE: "
+              hyprctl dispatch exec "[workspace $WORKSPACE silent]" "$APP_LOWER"
+              wait_for_app "$CLASS"
+          else
+              echo " - $APP_LOWER is already running"
+          fi
+          echo -n " - Moving $CLASS to $WORKSPACE: "
+          hyprctl dispatch movetoworkspacesilent "$WORKSPACE,$CLASS"
+          hyprctl dispatch movetoworkspacesilent "$WORKSPACE,$APP" &>/dev/null
+      }
+
+      function start_appimage() {
+          local APPIMAGE="$1"
+          local CLASS="$2"
+          local WORKSPACE="$3"
+          local SHORT_CLASS=""
+          SHORT_CLASS=$(echo "$2" | cut -d':' -f2 | sed 's/ //g')
+          if [ -e "$HOME/Apps/$APPIMAGE" ]; then
+              if ! app_is_running "$CLASS"; then
+                  disrun appimage-run "$HOME/Apps/$APPIMAGE"
+                  wait_for_app "$CLASS"
+                  hyprctl dispatch movetoworkspacesilent "$WORKSPACE","$SHORT_CLASS"
+              else
+                  echo " - $APPIMAGE is already running"
+              fi
+          fi
+      }
+
+      function session_start() {
+          echo "Starting session..."
+          start_app brave 1 "class: brave-browser"
+          start_app wavebox 2 "class: wavebox"
+          start_app discord 2 " - Discord"
+          start_app telegram-desktop 3 "initialTitle: Telegram"
+          start_app fractal 3 "class: org.gnome.Fractal"
+          start_app halloy 3 "class: org.squidowl.halloy"
+          start_app code 4 "initialTitle: Visual Studio Code"
+          start_app GitKraken 4 "title: GitKraken Desktop"
+          start_app alacritty 5 "class: Alacritty"
+          start_app pods 6 "class: com.github.marhkb.Pods"
+          if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
+              start_app "obs --collection 'VirtualCam' --profile 'VirtualCam' --scene 'VirtualCam-DetSys' --startvirtualcam" 7 "class: com.obsproject.Studio"
+          fi
+
+          start_appimage "Cider-linux-appimage-x64.AppImage" "class: Cider" 8
+          start_appimage "Heynote.AppImage" "class: Heynote" 9
+
+          if ! pidof -q trayscale; then
+              disrun trayscale --gapplication-service --hide-window
+          fi
+          hyprctl dispatch workspace 1 &>/dev/null
+      }
+
+      function session_end() {
+          echo "Ending session..."
+          obs-cmd virtual-camera stop
+          sleep 0.25
+          playerctl --all-players pause
+          pkill trayscale
+          hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl dispatch closewindow address:{}
+          sleep 0.75
+      }
+
+      OPT="help"
+      if [ -n "$1" ]; then
+          OPT="$1"
+      fi
+
+      case "$OPT" in
+          start) session_start;;
+          clear|close|close-all|wipe) session_end;;
+          logout)
+            session_end
+            hyprctl dispatch exit;;
+          reboot)
+            session_end
+            systemctl reboot;;
+          shutdown)
+            session_end
+            systemctl poweroff;;
+          *) echo "Usage: $(basename "$0") {start|clear|wipe|logout|reboot|shutdown}";
+            exit 1;;
+      esac
+    '';
+  };
   portalProdder = pkgs.writeShellApplication {
     name = "portal-prodder";
     runtimeInputs = with pkgs; [ procps ];
@@ -30,7 +160,10 @@ let
   };
 in
 {
-  home.packages = with pkgs; [ portalProdder ];
+  home.packages = with pkgs; [
+    hyprSession
+    portalProdder
+  ];
 
   # Hyprland is a Wayland compositor and dynamic tiling window manager
   # Additional applications are required to create a full desktop shell
@@ -182,16 +315,7 @@ in
         };
       };
       exec-once = [
-        "sleep 0.25 && hyprctl dispatch workspace 1"
-        "sleep 1 && trayscale --gapplication-service --hide-window"
-        #"sleep 1 && hyprctl dispatch exec [workspace 1 silent] brave"
-        #"sleep 2 && hyprctl dispatch exec [workspace 2 silent] wavebox"
-        #"sleep 2 && hyprctl dispatch exec [workspace 2 silent] discord"
-        #"sleep 3 && hyprctl dispatch exec [workspace 3 silent] telegram-desktop"
-        #"sleep 3 && hyprctl dispatch exec [workspace 3 silent] fractal"
-        #"sleep 4 && hyprctl dispatch exec [workspace 4 silent] code"
-        #"sleep 4 && hyprctl dispatch exec [workspace 4 silent] gitkraken"
-        #"sleep 5 && hyprctl dispatch exec [workspace 5 silent] alacritty"
+        "hypr-session start"
       ];
       general = {
         gaps_in = 5;
