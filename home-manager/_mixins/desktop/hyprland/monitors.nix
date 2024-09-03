@@ -45,7 +45,7 @@ _: {
       "5, name:Term, persistent:true, monitor:DP-2"
       "6, name:Cast, persistent:true, monitor:DP-2"
       "7, name:Virt, persistent:true, monitor:DP-2"
-      "8, name:Fun, persistent:true, monitor:DP-2"
+      "8, name:Fun, persistent:true, monitor:DP-1"
       "9, name:Camera, persistent:true, monitor:DP-2"
       "10,name:Stream, persistent:true, monitor:DP-3"
     ];
