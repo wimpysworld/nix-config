@@ -27,6 +27,13 @@ in
           height = 0.5;
         }
         {
+          label = "clear";
+          action = "hypr-session clear";
+          text = "  Clear ";
+          keybind = "c";
+          height = 0.5;
+        }
+        {
           label = "logout";
           action = "hypr-session logout";
           text = " Logout ";
@@ -85,6 +92,13 @@ in
         }
         #lock:focus {
           background-image: image(url("./lock-hover.png"));
+        }
+
+        #clear {
+          background-image: image(url("./clear.png"));
+        }
+        #clear:focus {
+          background-image: image(url("./clear-hover.png"));
         }
 
         #logout {
