@@ -102,10 +102,25 @@ in
           margin: 5px 0 0 0;
         }
 
+        #custom-launcher {
+          background-color: @base;
+          border-radius: 0.75rem;
+          color: @sapphire;
+          margin: 5px 0 0 0;
+          margin-left: 0.5rem;
+          opacity: 0.9;
+          padding: 0.25rem 0.75rem;
+        }
+
+        #custom-launcher:hover {
+          background-color: #242536;
+        }
+
         #workspaces {
           border-radius: 0.75rem;
           background-color: @base;
           margin: 5px 0 0 0.5rem;
+          margin-left: 1rem;
           opacity: 0.9;
         }
 
@@ -270,7 +285,10 @@ in
           output = outputDisplay;
           layer = "bottom";
           position = "top";
-          modules-left = [ "hyprland/workspaces" ];
+          modules-left = [
+            "custom/launcher"
+            "hyprland/workspaces"
+          ];
           modules-center = [
             "idle_inhibitor"
             "custom/eyecandy"
@@ -290,6 +308,11 @@ in
             "power-profiles-daemon"
             "custom/session"
           ];
+          "custom/launcher" = {
+            format = "<big>󱄅</big>";
+            on-click = "fuzzel --prompt '󰌧 > ' --show-actions";
+            tooltip-format = "  Applications Menu";
+          };
           "hyprland/workspaces" = {
             active-only = false;
             all-outputs = true;
