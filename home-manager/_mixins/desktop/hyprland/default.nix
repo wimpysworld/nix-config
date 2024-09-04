@@ -102,17 +102,22 @@ let
           if ! pidof -q trayscale; then
               disrun trayscale --gapplication-service --hide-window
           fi
+      }
+
+      function session_clear() {
+          echo "Closing clients..."
+          obs-cmd virtual-camera stop
+          sleep 0.25
+          hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl dispatch closewindow address:{}
+          sleep 0.75
           hyprctl dispatch workspace 1 &>/dev/null
       }
 
-      function session_end() {
+      function session_stop() {
           echo "Ending session..."
-          obs-cmd virtual-camera stop
-          sleep 0.25
           playerctl --all-players pause
           pkill trayscale
-          hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl dispatch closewindow address:{}
-          sleep 0.75
+          session_clear
       }
 
       OPT="help"
@@ -122,17 +127,17 @@ let
 
       case "$OPT" in
           start) session_start;;
-          clear|close|close-all|wipe) session_end;;
+          clear) session_clear;;
           logout)
-            session_end
+            session_stop
             hyprctl dispatch exit;;
           reboot)
-            session_end
+            session_stop
             systemctl reboot;;
           shutdown)
-            session_end
+            session_stop
             systemctl poweroff;;
-          *) echo "Usage: $(basename "$0") {start|clear|wipe|logout|reboot|shutdown}";
+          *) echo "Usage: $(basename "$0") {start|clear|logout|reboot|shutdown}";
             exit 1;;
       esac
     '';

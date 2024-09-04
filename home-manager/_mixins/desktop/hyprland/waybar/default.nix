@@ -600,7 +600,7 @@ in
           };
           "custom/session" = {
             format = "<big>󰐥</big>";
-            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 ${wlogoutMargins}";
+            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 6 ${wlogoutMargins}";
             tooltip-format = "󰐥  Session Menu";
           };
         }
