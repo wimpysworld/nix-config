@@ -214,6 +214,10 @@ let
           wimpysworld) session_wimpysworld;;
           start) session_start;;
           clear) session_clear;;
+          lock)
+            pkill wlogout
+            sleep 0.5
+            hyprlock --immediate;;
           logout)
             session_stop
             hyprctl dispatch exit;;
