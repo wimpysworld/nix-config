@@ -401,11 +401,8 @@ in
         shadow_scale = 0.9;
         blur = {
           enabled = true;
-          passes = 3;
-          contrast = 0.8916;
-          brightness = 0.8172;
-          vibrancy = 0.1696;
-          vibrancy_darkness = 0.0;
+          passes = 2;
+          size = 6;
           ignore_opacity = true;
         };
       };
@@ -483,7 +480,7 @@ in
         # only allow shadows for floating windows
         "noshadow, floating:0"
         # make floating windows opaque
-        "opacity 0.64, floating:1"
+        "opacity 0.72, floating:1"
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
@@ -519,8 +516,8 @@ in
         "blur, logout_dialog" # wlogout
         "blur, swaync-control-center"
         "blur, swaync-notification-window"
-        "ignorealpha 0.6, swaync-control-center"
-        "ignorealpha 0.6, swaync-notification-window"
+        "ignorealpha 0.7, swaync-control-center"
+        "ignorealpha 0.7, swaync-notification-window"
       ];
       xwayland = {
         force_zero_scaling = true;

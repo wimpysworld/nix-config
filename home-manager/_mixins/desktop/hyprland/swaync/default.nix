@@ -94,7 +94,7 @@
           background-color: #1e1e2e;
           color: #cdd6f4;
           padding: 0;
-          opacity: 0.64;
+          opacity: 0.72;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification {
@@ -171,7 +171,7 @@
           background-color: #1e1e2e;
           color: #cdd6f4;
           padding: 14px;
-          opacity: 0.64;
+          opacity: 0.72;
         }
 
         .control-center .widget-title > label {
