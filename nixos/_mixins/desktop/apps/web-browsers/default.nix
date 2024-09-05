@@ -203,7 +203,7 @@ in
         "HardwareAcceleration" = true;
         "Homepage" = {
           "Locked" = false;
-          "StartPage" = "previous-session";
+          "StartPage" = "none";
         };
         "NetworkPrediction" = false;
         "NewTabPage" = true;

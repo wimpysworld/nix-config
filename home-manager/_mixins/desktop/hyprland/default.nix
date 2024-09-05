@@ -29,6 +29,24 @@ let
           return 1
       }
 
+      function block_on_app() {
+          local COUNT=0
+          local SLEEP=0.5
+          local LIMIT=15
+          local CLASS="$1"
+          echo " - Ignoring $CLASS..."
+          while app_is_running "$CLASS"; do
+              sleep "$SLEEP"
+              ((COUNT++))
+              if [ "$COUNT" -ge "$LIMIT" ]; then
+                  echo " - Ignored $CLASS for long enough"
+                  break
+              else
+                  echo " - Ignored $CLASS $COUNT times..."
+              fi
+          done
+      }
+
       function wait_for_app() {
           local COUNT=0
           local SLEEP=1
@@ -49,18 +67,23 @@ let
           local APP="$1"
           local WORKSPACE="$2"
           local CLASS="$3"
-          local APP_LOWER=""
-          APP_LOWER=$(echo "$APP" | tr '[:upper:]' '[:lower:]')
           if ! app_is_running "$CLASS"; then
               echo -n " - Starting $APP on workspace $WORKSPACE: "
-              hyprctl dispatch exec "[workspace $WORKSPACE silent]" "$APP_LOWER"
+              hyprctl dispatch exec "[workspace $WORKSPACE silent]" "$APP"
+              if [ "$APP" == "tenacity" ]; then
+                  #block_on_app "title: Tenacity is starting up..."
+                  sleep 5
+              fi
               wait_for_app "$CLASS"
           else
-              echo " - $APP_LOWER is already running"
+              echo " - $APP is already running"
           fi
           echo -n " - Moving $CLASS to $WORKSPACE: "
           hyprctl dispatch movetoworkspacesilent "$WORKSPACE,$CLASS"
           hyprctl dispatch movetoworkspacesilent "$WORKSPACE,$APP" &>/dev/null
+          if [ "$APP" == "gitkraken" ]; then
+              hyprctl dispatch movetoworkspacesilent "$WORKSPACE,GitKraken" &>/dev/null
+          fi
       }
 
       function start_appimage() {
@@ -71,7 +94,7 @@ let
           SHORT_CLASS=$(echo "$2" | cut -d':' -f2 | sed 's/ //g')
           if [ -e "$HOME/Apps/$APPIMAGE" ]; then
               if ! app_is_running "$CLASS"; then
-                  disrun appimage-run "$HOME/Apps/$APPIMAGE"
+                  disrun appimage-run "$HOME/Apps/$APPIMAGE" &>/dev/null
                   wait_for_app "$CLASS"
                   hyprctl dispatch movetoworkspacesilent "$WORKSPACE","$SHORT_CLASS"
               else
@@ -81,7 +104,6 @@ let
       }
 
       function session_start() {
-          echo "Starting session..."
           start_app brave 1 "class: brave-browser"
           start_app wavebox 2 "class: wavebox"
           start_app discord 2 " - Discord"
@@ -89,12 +111,17 @@ let
           start_app fractal 3 "class: org.gnome.Fractal"
           start_app halloy 3 "class: org.squidowl.halloy"
           start_app code 4 "initialTitle: Visual Studio Code"
-          start_app GitKraken 4 "title: GitKraken Desktop"
+          start_app gitkraken 4 "title: GitKraken Desktop"
           start_app alacritty 5 "class: Alacritty"
           start_app pods 6 "class: com.github.marhkb.Pods"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
-              start_app "obs --collection 'VirtualCam' --profile 'VirtualCam' --scene 'VirtualCam-DetSys' --startvirtualcam" 7 "class: com.obsproject.Studio"
+              start_app "obs --disable-shutdown-check --collection 'VirtualCam' --profile 'VirtualCam' --scene 'VirtualCam-DetSys' --startvirtualcam" 7 "class: com.obsproject.Studio"
           fi
+          firefox -CreateProfile meet-detsys
+          start_app "firefox \
+            -P meet-detsys \
+            -no-remote \
+            --new-window https://meet.google.com" 9 "title: Google Meet - Mozilla Firefox"
 
           start_appimage "Cider-linux-appimage-x64.AppImage" "class: Cider" 8
           start_appimage "Heynote.AppImage" "class: Heynote" 9
@@ -102,10 +129,67 @@ let
           if ! pidof -q trayscale; then
               disrun trayscale --gapplication-service --hide-window
           fi
+          hyprctl dispatch forcerendererreload
+      }
+
+      function session_linuxmatters() {
+          start_app tenacity 9 "class: tenacity"
+          firefox -CreateProfile linuxmatters-stage
+          start_app "firefox -P linuxmatters-stage -no-remote --new-window https://github.com/restfulmedia/linuxmatters_backstage" 9 "title: restfulmedia/linuxmatters_backstage"
+          if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
+              start_app "obs --disable-shutdown-check --collection VirtualCam --profile VirtualCam --scene VirtualCam-LinuxMatters --startvirtualcam" 9 "class: com.obsproject.Studio"
+          fi
+          hyprctl dispatch workspace 9 &>/dev/null
+          firefox -CreateProfile linuxmatters-studio
+          start_app "firefox \
+              -P linuxmatters-studio \
+              -no-remote \
+              --new-window https://talky.io/linux-matters-studio" 7 "title: Talky — Mozilla Firefox"
+          start_app telegram-desktop 7 "initialTitle: Telegram"
+          start_app "nautilus -w $HOME/Audio" 7 "title: Audio"
+          hyprctl dispatch workspace 7 &>/dev/null
+          hyprctl dispatch forcerendererreload
+      }
+
+      function session_stream_common() {
+          start_app chatterino 7 "chatterino"
+          start_app discord 9 " - Discord"
+      }
+
+      function session_wimpysworld() {
+          firefox -CreateProfile wimpysworld-studio
+          start_app "firefox \
+              -P wimpysworld-studio \
+              -no-remote \
+              --new-window https://dashboard.twitch.tv/u/wimpysworld/stream-manager \
+              --new-tab https://streamelements.com \
+              --new-tab https://botrix.live" 9 "title: Twitch — Mozilla Firefox"
+          start_app "obs --disable-shutdown-check --collection 'Wimpys World' --profile Dev-Local --scene Collage" 7 "class: com.obsproject.Studio"
+          session_stream_common
+          start_app code 10 "initialTitle: Visual Studio Code"
+          start_app gitkraken 10 "title: GitKraken Desktop"
+          start_app alacritty 10 "class: Alacritty"
+          firefox -CreateProfile wimpysworld-stage
+          start_app "firefox \
+              -P wimpysworld-stage \
+              -no-remote \
+              --new-window https://wimpysworld.com
+              --new-tab https://github.com/wimpysworld" 10 "title: Wimpy's World — Mozilla Firefox"
+          hyprctl dispatch forcerendererreload
+      }
+
+      function session_8bitversus() {
+          firefox -CreateProfile 8bitversus-studio
+          start_app "firefox \
+            -P 8bitversus-studio \
+            -no-remote \
+            --new-window https://dashboard.twitch.tv/u/8bitversus/stream-manager" 9 "title: Twitch — Mozilla Firefox"
+          start_app "obs --disable-shutdown-check --collection 8-bit-VS --profile 8-bit-VS-Local --scene Hosts" 7 "class: com.obsproject.Studio"
+          session_stream_common
+          hyprctl dispatch forcerendererreload
       }
 
       function session_clear() {
-          echo "Closing clients..."
           obs-cmd virtual-camera stop
           sleep 0.25
           hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl dispatch closewindow address:{}
@@ -114,7 +198,6 @@ let
       }
 
       function session_stop() {
-          echo "Ending session..."
           playerctl --all-players pause
           pkill trayscale
           session_clear
@@ -126,6 +209,9 @@ let
       fi
 
       case "$OPT" in
+          8bitversus) session_8bitversus;;
+          linuxmatters) session_linuxmatters;;
+          wimpysworld) session_wimpysworld;;
           start) session_start;;
           clear) session_clear;;
           logout)
@@ -137,7 +223,7 @@ let
           shutdown)
             session_stop
             systemctl poweroff;;
-          *) echo "Usage: $(basename "$0") {start|clear|logout|reboot|shutdown}";
+          *) echo "Usage: $(basename "$0") {start|clear|logout|reboot|shutdown|8bitversus|linuxmatters|wimpysworld}";
             exit 1;;
       esac
     '';

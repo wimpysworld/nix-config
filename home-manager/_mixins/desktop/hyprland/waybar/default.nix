@@ -364,10 +364,8 @@ in
                       [ "DP-2" ]
                     else
                       [ "eDP-1" ];
-              "7" = if (hostname == "phasma") then
+              "7" = if (hostname == "phasma" || hostname == "vader") then
                       [ "DP-1" ]
-                    else if (hostname == "vader") then
-                      [ "DP-2" ]
                     else
                       [ "eDP-1" ];
               "8" = if (hostname == "phasma" || hostname == "vader") then
