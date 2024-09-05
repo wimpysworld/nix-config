@@ -510,6 +510,8 @@ in
         "size 886 960, title:(Trayscale)"
       ];
       layerrule = [
+        "blur, launcher" # fuzzel
+        "ignorezero, launcher"
         "blur, logout_dialog" # wlogout
         "blur, swaync-control-center"
         "blur, swaync-notification-window"
