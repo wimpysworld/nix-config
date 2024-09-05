@@ -46,6 +46,7 @@ in
           disable_loading_bar = false;
           grace = 5;
           hide_cursor = true;
+          immediate_render = true;
           no_fade_in = false;
           no_fade_out = false;
         };

@@ -21,7 +21,7 @@ in
       layout = [
         {
           label = "lock";
-          action = "hyprlock --immediate";
+          action = "hypr-session lock";
           text = "  Lock  ";
           keybind = "l";
           height = 0.5;
