@@ -406,9 +406,6 @@ in
           ignore_opacity = true;
         };
       };
-      exec-once = [
-        "hypr-session start"
-      ];
       general = {
         gaps_in = 5;
         gaps_out = 5;
