@@ -21,7 +21,6 @@ in
       [ unstable.telegram-desktop ]
       ++ lib.optionals (lib.elem username installFor) [
         chatterino2
-        cinny-desktop
         (discord.override { withOpenASAR = true; })
       ]
       # Halloy is installed via homebrew on Darwin
