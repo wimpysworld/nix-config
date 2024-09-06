@@ -11,6 +11,7 @@
     bemoji = prev.bemoji.overrideAttrs (_old: rec {
       postPatch = ''
         sed -i 's/🔍/"󰞅 "/g' bemoji
+        sed -i 's/fuzzel -d/fuzzel -d -w 48/' bemoji
       '';
     });
 
