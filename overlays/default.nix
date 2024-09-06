@@ -8,6 +8,12 @@
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
   modifications = _final: prev: {
+    bemoji = prev.bemoji.overrideAttrs (_old: rec {
+      postPatch = ''
+        sed -i 's/🔍/"󰞅 "/g' bemoji
+      '';
+    });
+
     blueman = prev.blueman.overrideAttrs (_old: rec {
       pname = "blueman";
       version = "2.4.3";
