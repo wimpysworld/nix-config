@@ -511,6 +511,7 @@ in
         "blur, launcher" # fuzzel
         "ignorezero, launcher"
         "blur, logout_dialog" # wlogout
+        "blur, rofi"
         "blur, swaync-control-center"
         "blur, swaync-notification-window"
         "ignorealpha 0.7, swaync-control-center"

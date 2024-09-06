@@ -1,4 +1,4 @@
-{ hostname, lib, pkgs, ... }:
+{ config, hostname, lib, pkgs, ... }:
 let
   wlogoutMargins = if hostname == "vader" then
     "--margin-top 960 --margin-bottom 960"
@@ -115,8 +115,22 @@ let
       fi
     '';
   };
+  rofiAppGrid = pkgs.writeShellApplication {
+    name = "rofi-appgrid";
+    runtimeInputs = with pkgs; [
+      rofi-wayland
+    ];
+    text = ''
+      rofi \
+        -show drun \
+        -theme "${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi"
+    '';
+  };
 in
 {
+  home = {
+    file."${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi".source = ./style.rasi;
+  };
   programs = {
     waybar = {
       enable = true;
@@ -354,7 +368,7 @@ in
           ];
           "custom/launcher" = {
             format = "<big>󱄅</big>";
-            on-click = "${pkgs.procps}/bin/pkill fuzzel || fuzzel --prompt '󱓞 '";
+            on-click = "${lib.getExe rofiAppGrid}";
             on-click-right = "${lib.getExe hyprSessionMenu}";
             tooltip-format = "  Applications Menu";
           };
