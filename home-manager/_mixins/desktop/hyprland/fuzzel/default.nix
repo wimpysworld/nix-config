@@ -18,7 +18,7 @@
       settings = {
         main = {
           filter-desktop = true;
-          font = "FiraCode Nerd Font Mono:size=32";
+          font = "FiraCode Nerd Font Mono:size=30";
           lines = 16;
           terminal = "alacritty";
           width = 32;
