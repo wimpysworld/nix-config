@@ -27,13 +27,6 @@ in
           height = 0.5;
         }
         {
-          label = "clear";
-          action = "hypr-session clear";
-          text = "  Clear ";
-          keybind = "c";
-          height = 0.5;
-        }
-        {
           label = "logout";
           action = "hypr-session logout";
           text = " Logout ";

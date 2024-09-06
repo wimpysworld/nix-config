@@ -42,7 +42,7 @@
             # 󰀞
             {
               label = "󰐥";
-              command = "${lib.getExe pkgs.wlogout} --buttons-per-row 6 --no-span";
+              command = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 --no-span";
             }
           ];
           title = {

@@ -7,6 +7,50 @@ let
   else
     "";
   outputDisplay = if (hostname == "vader" || hostname == "phasma") then "DP-1" else "eDP-1";
+  hyprSessionMenu = pkgs.writeShellApplication {
+    name = "hypr-sessionmenu";
+    runtimeInputs = with pkgs; [
+      fuzzel
+      notify-desktop
+    ];
+    text = ''
+      appname="hypr-sessionmenu"
+      clear="🛑 Close Everything"
+      start="💩 Get Shit Done"
+      record_linuxmatters="️🎙️ Record Linux Matters"
+      stream_wimpysworld="📹 Stream Wimpys's World"
+      stream_8bitversus="️🕹️ Stream 8-bit VS"
+      selected=$(
+        echo -e "$clear\n$start\n$record_linuxmatters\n$stream_wimpysworld\n$stream_8bitversus" |
+        fuzzel --dmenu --prompt "󱑞 " --lines 5)
+      case $selected in
+        "$clear")
+          notify-desktop "$clear" "Whelp! Here comes the desktop Thanos snap!" --app-name="$appname"
+          hypr-session clear
+          ;;
+        "$start")
+          notify-desktop "$start" "Time to knuckle down. Here's comes the default session." --app-name="$appname"
+          hypr-session start
+          notify-desktop "💩 Session is ready" "The desktop session is all set and ready to go." --app-name="$appname"
+          ;;
+        "$record_linuxmatters")
+          notify-desktop "$record_linuxmatters" "Get some Yerba Mate and clear your throat. Time to chat with Alan and Mark." --app-name="$appname"
+          hypr-session linuxmatters
+          notify-desktop "🎙️ Session is ready" "Podcast studio session is initialised." --app-name="$appname"
+          ;;
+        "$stream_wimpysworld")
+          notify-desktop "$stream_wimpysworld" "Lights. Camera. Action. Setting up the session to stream to Wimpy's World." --app-name="$appname"
+          hypr-session wimpysworld
+          notify-desktop "📹 Session is ready" "Streaming session is engaged and ready to go live." --app-name="$appname"
+          ;;
+        "$stream_8bitversus")
+          notify-desktop "$stream_8bitversus" "Two grown men reignite the ultimate playground fight of their pasts: which is better, the Commodore 64 or ZX Spectrum?" --app-name="$appname"
+          hypr-session 8bitversus
+          notify-desktop "🕹️ Session is ready" "Dust of your cassette tapes, retro-gaming streaming is ready." --app-name="$appname"
+          ;;
+      esac
+    '';
+  };
   bluetoothToggle = pkgs.writeShellApplication {
     name = "bluetooth-toggle";
     runtimeInputs = with pkgs; [
@@ -310,7 +354,8 @@ in
           ];
           "custom/launcher" = {
             format = "<big>󱄅</big>";
-            on-click = "fuzzel --prompt '󰌧 > ' --show-actions";
+            on-click = "${pkgs.procps}/bin/pkill fuzzel || fuzzel --prompt '󱓞 '";
+            on-click-right = "${lib.getExe hyprSessionMenu}";
             tooltip-format = "  Applications Menu";
           };
           "hyprland/workspaces" = {
@@ -598,7 +643,7 @@ in
           };
           "custom/session" = {
             format = "<big>󰐥</big>";
-            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 6 ${wlogoutMargins}";
+            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 ${wlogoutMargins}";
             tooltip-format = "󰐥  Session Menu";
           };
         }
