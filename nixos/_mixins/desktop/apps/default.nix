@@ -2,7 +2,7 @@ _: {
   imports = [
     ./1password
     ./blender
-    ./celluloid
+    #./celluloid
     ./games
     ./graphics-production
     ./libreoffice

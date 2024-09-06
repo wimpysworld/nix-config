@@ -41,7 +41,6 @@
         eyedropper
         gnome.gnome-tweaks
         gnomeExtensions.freon
-        loupe
       ];
   };
 
@@ -283,7 +282,7 @@
         };
       }
     ];
-    evince.enable = isInstall;
+    evince.enable = false;
     file-roller.enable = isInstall;
     geary.enable = false;
     gnome-disks.enable = isInstall;

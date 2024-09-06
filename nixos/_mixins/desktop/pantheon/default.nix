@@ -7,6 +7,7 @@
 {
   environment = {
     pantheon.excludePackages = with pkgs; [
+      pantheon.elementary-calculator
       pantheon.elementary-camera
       pantheon.elementary-code
       pantheon.elementary-music
@@ -23,7 +24,6 @@
     systemPackages =
       with pkgs;
       lib.optionals isInstall [
-        loupe
         pick-colour-picker
       ];
   };
@@ -256,7 +256,7 @@
         };
       }
     ];
-    evince.enable = isInstall;
+    evince.enable = false;
     gnome-disks.enable = isInstall;
     pantheon-tweaks.enable = isInstall;
     seahorse.enable = isInstall;
