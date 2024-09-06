@@ -1,4 +1,7 @@
-{ lib, pkgs, ... }:
+{ hostname, lib, pkgs, ... }:
+let
+  fontSize = if (hostname == "phasma" || hostname =="vader") then "30" else "18";
+in
 {
   # Fuzzel powered app launcher, emoji picker and clipboard manager for Hyprland
   home = {
@@ -18,7 +21,7 @@
       settings = {
         main = {
           filter-desktop = true;
-          font = "FiraCode Nerd Font Mono:size=30";
+          font = "FiraCode Nerd Font Mono:size=${fontSize}";
           lines = 16;
           terminal = "alacritty";
           width = 32;
