@@ -22,7 +22,6 @@
         evolutionWithPlugins
         gnome.gucharmap
         gnome-firmware
-        loupe
       ];
   };
 
@@ -108,10 +107,6 @@
 
           "org/mate/disk-usage-analyzer/ui" = {
             statusbar-visible = true;
-          };
-
-          "org/mate/desktop/applications/calculator" = {
-            exec = "mate-calc";
           };
 
           "org/mate/desktop/applications/messager" = {

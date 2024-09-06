@@ -20,14 +20,12 @@
     systemPackages =
       with pkgs;
       lib.optionals isInstall [
-        unstable.decibels
         # Enable HEIC image previews in Nautilus
         libheif
         libheif.out
-        loupe           # image viewer
         gnome.nautilus  # file manager
+        hyprpicker
         overskride      # bluetooth manager
-        papers
         polkit_gnome
         wdisplays       # display configuration
         wlr-randr
@@ -68,7 +66,6 @@
         };
       }
     ];
-    evince.enable = false;
     file-roller.enable = isInstall;
     gnome-disks.enable = isInstall;
     hyprland = {
