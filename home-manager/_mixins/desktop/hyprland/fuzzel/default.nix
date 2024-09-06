@@ -5,6 +5,7 @@
     packages = with pkgs; [
       bemoji
       wl-clipboard-rs
+      wtype
     ];
     sessionVariables = {
       BEMOJI_PICKER_CMD = "${lib.getExe pkgs.fuzzel} --dmenu";
