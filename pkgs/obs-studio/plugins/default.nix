@@ -42,8 +42,6 @@
 
   obs-livesplit-one = callPackage ./obs-livesplit-one { };
 
-  obs-localvocal = callPackage ./obs-localvocal.nix { };
-
   obs-markdown = callPackage ./obs-markdown.nix { };
 
   obs-media-controls = callPackage ./obs-media-controls.nix { };
