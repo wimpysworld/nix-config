@@ -1,11 +1,12 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, cmake
-, ninja
-, obs-studio
-, pipewire
-, pkg-config
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  cmake,
+  ninja,
+  obs-studio,
+  pipewire,
+  pkg-config,
 }:
 
 stdenv.mkDerivation rec {
@@ -19,13 +20,18 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-qYHU0m+jz/mQmjleITnzxNkTio5ir8dFkHKfmY4l0Es=";
   };
 
-  nativeBuildInputs = [ cmake ninja pkg-config ];
-  buildInputs = [ obs-studio pipewire ];
+  nativeBuildInputs = [
+    cmake
+    ninja
+    pkg-config
+  ];
+  buildInputs = [
+    obs-studio
+    pipewire
+  ];
 
   cmakeFlags = [
-    "-DLIBOBS_INCLUDE_DIR=${obs-studio.src}/libobs"
-    "-DCMAKE_INSTALL_LIBDIR=lib"
-    "-Wno-dev"
+    "-DCMAKE_INSTALL_LIBDIR=/lib"
   ];
 
   meta = with lib; {
@@ -33,6 +39,9 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/dimtpap/obs-pipewire-audio-capture";
     maintainers = with maintainers; [ Elinvention ];
     license = licenses.gpl2Plus;
-    platforms = [ "x86_64-linux" "i686-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "i686-linux"
+    ];
   };
 }
