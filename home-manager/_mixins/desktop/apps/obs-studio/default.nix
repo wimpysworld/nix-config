@@ -34,6 +34,7 @@ lib.mkIf (lib.elem hostname installOn) {
     enable = true;
     plugins = with pkgs.obs-studio-plugins; [
       advanced-scene-switcher
+      obs-aitum-multistream
       obs-3d-effect
       obs-advanced-masks
       obs-command-source
@@ -44,7 +45,6 @@ lib.mkIf (lib.elem hostname installOn) {
       obs-gstreamer
       obs-markdown
       obs-move-transition
-      obs-multi-rtmp
       obs-pipewire-audio-capture
       obs-rgb-levels
       obs-scale-to-sound
