@@ -17,8 +17,12 @@ let
 in
 lib.mkIf isInstall {
 
-  # If the "nvidia" driver is enabled, blacklist the "nouveau" driver
-  boot = lib.mkIf hasNvidiaGPU { blacklistedKernelModules = lib.mkDefault [ "nouveau" ]; };
+  boot = {
+    # If the "nvidia" driver is enabled, blacklist the "nouveau" driver
+    blacklistedKernelModules = lib.optionals hasNvidiaGPU [ "nouveau" ];
+    # Unlock access to adjust AMD GPU clocks and voltages via sysfs
+    kernelParams = lib.optionals hasAmdGPU [ "amdgpu.ppfeaturemask=0xfff7ffff" ];
+  };
 
   environment = {
     systemPackages =
@@ -61,12 +65,6 @@ lib.mkIf isInstall {
   #    enable32Bit = lib.mkForce isInstall;
   #  };
   #};
-  programs = {
-    corectrl = lib.mkIf (isInstall && isWorkstation) {
-      enable = config.hardware.cpu.amd.updateMicrocode;
-      gpuOverclock.enable = hasAmdGPU;
-    };
-  };
 
   # Allow power and thermal control for NVIDIA GPUs
   services.xserver = lib.mkIf hasNvidiaGPU {
