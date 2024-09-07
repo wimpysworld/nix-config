@@ -72,17 +72,19 @@ in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "obs-studio";
-  version = "30.2.2";
+  version = "30.2.3";
 
   src = fetchFromGitHub {
     owner = "obsproject";
     repo = "obs-studio";
     rev = finalAttrs.version;
-    hash = "sha256-yMtLN/86+3wuNR+gGhsaxN4oGIC21bAcjbQfyTuXIYc=";
+    hash = "sha256-4bAzW62xX9apKOAJyn3iys1bFdHj4re2reMZtlGsn5s=";
     fetchSubmodules = true;
   };
 
   patches = [
+    # Lets obs-browser build against CEF 90.1.0+
+    ./Enable-file-access-and-universal-access-for-file-URL.patch
     ./fix-nix-plugin-path.patch
 
     # Fix libobs.pc for plugins on non-x86 systems
