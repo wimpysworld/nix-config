@@ -1,17 +1,34 @@
-{ lib, stdenv, fetchFromGitHub, obs-studio, cmake, qtbase, ndi }:
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  obs-studio,
+  cmake,
+  qtbase,
+  ndi,
+  curl,
+}:
 
 stdenv.mkDerivation rec {
   pname = "obs-ndi";
-  version = "4.13.2";
+  version = "4.14.1";
 
-  nativeBuildInputs = [ cmake qtbase ];
-  buildInputs = [ obs-studio qtbase ndi ];
+  nativeBuildInputs = [
+    cmake
+    qtbase
+  ];
+  buildInputs = [
+    obs-studio
+    qtbase
+    ndi
+    curl
+  ];
 
   src = fetchFromGitHub {
-    owner = "obs-ndi";
+    owner = "Palakis";
     repo = "obs-ndi";
     rev = version;
-    sha256 = "sha256-DVUoLV2jCdD8qXSpmGvqjrQh02dCLroKsUAb5+lYTog=";
+    sha256 = "sha256-ex/fZmZpFM6GTKNBQClzSf6Ns0Yts5+0PAmf5mIQCwc=";
   };
 
   patches = [
@@ -30,18 +47,11 @@ stdenv.mkDerivation rec {
 
   cmakeFlags = [ "-DENABLE_QT=ON" ];
 
-  postInstall = ''
-    mkdir $out/lib $out/share
-    mv $out/obs-plugins/64bit $out/lib/obs-plugins
-    rm -rf $out/obs-plugins
-    mv $out/data $out/share/obs
-  '';
-
   dontWrapQtApps = true;
 
   meta = with lib; {
     description = "Network A/V plugin for OBS Studio";
-    homepage = "https://github.com/obs-ndi/obs-ndi";
+    homepage = "https://github.com/Palakis/obs-ndi";
     license = licenses.gpl2;
     maintainers = with maintainers; [ jshcmpbll ];
     platforms = platforms.linux;
