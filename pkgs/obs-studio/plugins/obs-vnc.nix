@@ -9,13 +9,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-vnc";
-  version = "0.5.0";
+  version = "0.6.1";
 
   src = fetchFromGitHub {
     owner = "norihiro";
     repo = "obs-vnc";
     rev = version;
-    sha256 = "sha256-gzzidW4iPEs/j8qBdcou3D/gcIX8hjlqJKsUmIVZa5U=";
+    sha256 = "sha256-eTvKACeVFFw6DOFAiWaG/m14jYyzZc61e79S8oVWrCs=";
   };
 
   nativeBuildInputs = [ cmake pkg-config ];
