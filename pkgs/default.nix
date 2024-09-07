@@ -4,6 +4,7 @@ pkgs: {
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
   gitkraken = pkgs.callPackage ./gitkraken { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
+  libcef = pkgs.callPackage ./libcef { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
   obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
