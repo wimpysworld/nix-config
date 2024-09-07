@@ -1,24 +1,25 @@
-{ lib
-, fetchFromGitHub
+{
+  lib,
+  fetchFromGitHub,
 
-, cmake
-, ninja
+  cmake,
+  ninja,
 
-, alsa-lib
-, asio
-, curl
-, nlohmann_json
-, obs-studio
-, opencv
-, procps
-, qtbase
-, stdenv
-, tesseract
-, websocketpp
-, xorg
+  alsa-lib,
+  asio,
+  curl,
+  nlohmann_json,
+  obs-studio,
+  opencv,
+  procps,
+  qtbase,
+  stdenv,
+  tesseract,
+  websocketpp,
+  xorg,
 
-, httplib
-, libremidi
+  httplib,
+  libremidi,
 }:
 
 stdenv.mkDerivation rec {
@@ -28,13 +29,13 @@ stdenv.mkDerivation rec {
   # 1.26.4 segfaults
   # 1.26.3 segfaults
   # 1.26.2 worked
-  version = "1.26.2";
+  version = "1.27.2";
 
   src = fetchFromGitHub {
     owner = "WarmUpTill";
     repo = "SceneSwitcher";
     rev = version;
-    hash = "sha256-x9wk4tqCXufHSb/ssUxjm0o6JrZzXnIk+adIn/YI9Qk=";
+    hash = "sha256-7IciHCe2KemKNJpD9QcYK4AtxHlYuWaPsBCcVuPVvgA=";
   };
 
   nativeBuildInputs = [
@@ -73,6 +74,6 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/WarmUpTill/SceneSwitcher";
     license = licenses.gpl2Plus;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ flexiondotorg ];
+    maintainers = [ ];
   };
 }
