@@ -389,7 +389,7 @@ in
               "10" = "󰊓";
               default = "";
             };
-            persistent_workspaces = {
+            persistent-workspaces = {
               # https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#persistent-workspaces
               "1" = if (hostname == "phasma" || hostname == "vader") then
                       [ "DP-1" ]
