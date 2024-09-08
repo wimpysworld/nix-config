@@ -51,9 +51,7 @@ lib.mkIf (lib.elem username installFor && isLinux && !isLima) {
       Wants = [ "graphical-session-pre.target" ];
     };
   };
-  # If waybar is enabled, start syncthingtray after waybar so the tray is ready
-  systemd.user.services.syncthingtray = lib.mkIf config.programs.waybar.enable {
-    Service.ExecStartPre = "${pkgs.coreutils-full}/bin/sleep 0.25";
-    Unit.After = lib.mkDefault [ "waybar.service" ];
+  systemd.user.services.syncthingtray = {
+    Service.ExecStart = lib.mkForce "${pkgs.syncthingtray}/bin/syncthingtray --wait";
   };
 }
