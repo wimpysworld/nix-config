@@ -17,6 +17,11 @@
           "/etc/backgrounds/Catppuccin-2560x2880.png"
           "/etc/backgrounds/Catppuccin-1920x1080.png"
         ]
+        else if hostname == "vader" then
+        [
+          "/etc/backgrounds/DeterminateColorway-2560x2880.png"
+          "/etc/backgrounds/DeterminateColorway-1920x1080.png"
+        ]
         else
         [
           "/etc/backgrounds/Catppuccin-1920x1080.png"
@@ -32,6 +37,12 @@
           "DP-1, /etc/backgrounds/Catppuccin-2560x2880.png"
           "DP-2, /etc/backgrounds/Catppuccin-2560x2880.png"
           "DP-3, /etc/backgrounds/Catppuccin-1920x1080.png"
+        ]
+        else if hostname == "vader" then
+        [
+          "DP-1, /etc/backgrounds/DeterminateColorway-2560x2880.png"
+          "DP-2, /etc/backgrounds/DeterminateColorway-2560x2880.png"
+          "DP-3, /etc/backgrounds/DeterminateColorway-1920x1080.png"
         ]
         else
         [
