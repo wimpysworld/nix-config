@@ -1,12 +1,4 @@
 {hostname, ... }:
-let
-  wallpaperResolution = if hostname == "vader" then
-    "2560x2880"
-  else if hostname == "phasma" then
-    "3440x1440"
-  else
-    "1920x1080";
-in
 {
   # hyprpaper is a wallpaper manager and part of the hyprland suite
   services = {
@@ -14,9 +6,26 @@ in
       enable = true;
       settings = {
         splash = false;
-        splash_offset = 2.0;
-        preload = [ "/etc/backgrounds/DeterminateColorway-${wallpaperResolution}.png" ];
-        wallpaper = [ ", /etc/backgrounds/DeterminateColorway-${wallpaperResolution}.png" ];
+        preload = if hostname == "phasma" then
+        [
+          "/etc/backgrounds/DeterminateColorway-3440x1440.png"
+          "/etc/backgrounds/DeterminateColorway-1920x1200.png"
+          "/etc/backgrounds/DeterminateColorway-1920x1080.png"
+        ]
+        else
+        [
+          "/etc/backgrounds/DeterminateColorway-1920x1080.png"
+        ];
+        wallpaper = if hostname == "phasma" then
+        [
+          "DP-1, /etc/backgrounds/DeterminateColorway-3440x1440.png"
+          "HDMI-A-1, /etc/backgrounds/DeterminateColorway-1920x1200.png"
+          "DP-2, /etc/backgrounds/DeterminateColorway-1920x1080.png"
+        ]
+        else
+        [
+          ", /etc/backgrounds/DeterminateColorway-1920x1080.png"
+        ];
       };
     };
   };
