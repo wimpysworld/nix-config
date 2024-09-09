@@ -10,6 +10,7 @@ let
   hyprSession = pkgs.writeShellApplication {
     name = "hypr-session";
     runtimeInputs = with pkgs; [
+      bluez
       coreutils-full
       gnused
       obs-cmd
@@ -20,6 +21,16 @@ let
       set +e  # Disable errexit
       set +u  # Disable nounset
       HOSTNAME=$(hostname -s)
+
+      function bluetooth_devices() {
+          case "$1" in
+              connect|disconnect)
+                  if [ "$HOSTNAME" == "phasma" ]; then
+                      bluetoothctl "$1" E4:50:EB:7D:86:22
+                  fi
+                  ;;
+          esac
+      }
 
       function app_is_running() {
           local CLASS="$1"
@@ -103,7 +114,7 @@ let
           fi
       }
 
-      function session_start() {
+      function session_gsd() {
           start_app brave 1 "class: brave-browser"
           start_app wavebox 2 "class: wavebox"
           start_app discord 2 " - Discord"
@@ -125,10 +136,6 @@ let
 
           start_appimage "Cider-linux-appimage-x64.AppImage" "class: Cider" 8
           start_appimage "Heynote.AppImage" "class: Heynote" 9
-
-          if ! pidof -q trayscale; then
-              disrun trayscale --gapplication-service --hide-window
-          fi
           hyprctl dispatch forcerendererreload
       }
 
@@ -151,11 +158,6 @@ let
           hyprctl dispatch forcerendererreload
       }
 
-      function session_stream_common() {
-          start_app chatterino 7 "chatterino"
-          start_app discord 9 " - Discord"
-      }
-
       function session_wimpysworld() {
           firefox -CreateProfile wimpysworld-studio
           start_app "firefox \
@@ -165,7 +167,8 @@ let
               --new-tab https://streamelements.com \
               --new-tab https://botrix.live" 9 "title: Twitch — Mozilla Firefox"
           start_app "obs --disable-shutdown-check --collection 'Wimpys World' --profile Dev-Local --scene Collage" 7 "class: com.obsproject.Studio"
-          session_stream_common
+          start_app chatterino 7 "chatterino"
+          start_app discord 9 " - Discord"
           start_app code 10 "initialTitle: Visual Studio Code"
           start_app gitkraken 10 "title: GitKraken Desktop"
           start_app alacritty 10 "class: Alacritty"
@@ -185,7 +188,8 @@ let
             -no-remote \
             --new-window https://dashboard.twitch.tv/u/8bitversus/stream-manager" 9 "title: Twitch — Mozilla Firefox"
           start_app "obs --disable-shutdown-check --collection 8-bit-VS --profile 8-bit-VS-Local --scene Hosts" 7 "class: com.obsproject.Studio"
-          session_stream_common
+          start_app chatterino 7 "chatterino"
+          start_app discord 9 " - Discord"
           hyprctl dispatch forcerendererreload
       }
 
@@ -197,10 +201,38 @@ let
           hyprctl dispatch workspace 1 &>/dev/null
       }
 
+      function session_start() {
+          systemctl --user restart dbus-broker
+          disrun waybar
+          sleep 4.5 && disrun trayscale --hide-window
+          sleep 6.5 && systemctl --user restart maestral-gui
+          bluetooth_devices connect
+      }
+
+      function session_reload() {
+          pkill trayscale
+          pkill waybar
+          bluetooth_devices disconnect
+          for AUDIO in pipewire pipewire-pulse wireplumber mpris-proxy; do
+              systemctl --user restart "$AUDIO"
+          done
+          disrun waybar
+          for DESKTOP_SHELL in polkit-gnome-authentication-agent-1 avizo cliphist-images cliphist hypridle hyprpaper swaync; do
+              systemctl --user restart "$DESKTOP_SHELL"
+          done
+          for MISC in maestral-gui syncthingtray; do
+              systemctl --user restart "$MISC"
+          done
+          sleep 2.5
+          bluetooth_devices connect
+          disrun trayscale --hide-window
+      }
+
       function session_stop() {
           playerctl --all-players pause
           pkill trayscale
           session_clear
+          pkill waybar
       }
 
       OPT="help"
@@ -210,9 +242,11 @@ let
 
       case "$OPT" in
           8bitversus) session_8bitversus;;
+          gsd) session_gsd;;
           linuxmatters) session_linuxmatters;;
           wimpysworld) session_wimpysworld;;
           start) session_start;;
+          reload) session_reload;;
           clear) session_clear;;
           lock)
             pkill wlogout
@@ -227,7 +261,7 @@ let
           shutdown)
             session_stop
             systemctl poweroff;;
-          *) echo "Usage: $(basename "$0") {start|clear|logout|reboot|shutdown|8bitversus|linuxmatters|wimpysworld}";
+          *) echo "Usage: $(basename "$0") {start|reload|clear|logout|reboot|shutdown|8bitversus|gsd|linuxmatters|wimpysworld}";
             exit 1;;
       esac
     '';
@@ -406,6 +440,9 @@ in
           ignore_opacity = true;
         };
       };
+      exec-once = [
+        "hypr-session start"
+      ];
       general = {
         gaps_in = 5;
         gaps_out = 5;

@@ -16,21 +16,27 @@ let
     text = ''
       appname="hypr-sessionmenu"
       clear="🛑 Close Everything"
-      start="💩 Get Shit Done"
+      reload="️♻️ Reload Desktop"
+      gsd="💩 Get Shit Done"
       record_linuxmatters="️🎙️ Record Linux Matters"
       stream_wimpysworld="📹 Stream Wimpys's World"
       stream_8bitversus="️🕹️ Stream 8-bit VS"
       selected=$(
-        echo -e "$clear\n$start\n$record_linuxmatters\n$stream_wimpysworld\n$stream_8bitversus" |
-        fuzzel --dmenu --prompt "󱑞 " --lines 5)
+        echo -e "$gsd\n$record_linuxmatters\n$stream_wimpysworld\n$stream_8bitversus\n$reload\n$clear" |
+        fuzzel --dmenu --prompt "󱑞 " --lines 6)
       case $selected in
         "$clear")
           notify-desktop "$clear" "Whelp! Here comes the desktop Thanos snap!" --app-name="$appname"
           hypr-session clear
           ;;
-        "$start")
-          notify-desktop "$start" "Time to knuckle down. Here's comes the default session." --app-name="$appname"
-          hypr-session start
+        "$reload")
+          hypr-session reload
+          sleep 5
+          notify-desktop "♻️ Desktop services are reloaded" "The desktop session has been refreshed and is ready to go." --app-name="$appname"
+          ;;
+        "$gsd")
+          notify-desktop "$gsd" "Time to knuckle down. Here's comes the default session." --app-name="$appname"
+          hypr-session gsd
           notify-desktop "💩 Session is ready" "The desktop session is all set and ready to go." --app-name="$appname"
           ;;
         "$record_linuxmatters")
@@ -59,6 +65,7 @@ let
       gnugrep
     ];
     text = ''
+      HOSTNAME=$(hostname -s)
       state=$(bluetoothctl show | grep 'Powered:' | awk '{ print $2 }')
       if [[ $state == 'yes' ]]; then
         bluetoothctl discoverable off
@@ -66,6 +73,9 @@ let
       else
         bluetoothctl power on
         bluetoothctl discoverable on
+        if [ "$HOSTNAME" == "phasma" ]; then
+            bluetoothctl connect E4:50:EB:7D:86:22
+        fi
       fi
     '';
   };
@@ -546,7 +556,6 @@ in
             format-alt = "<big>{format_source}</big> <small>{source_volume}󰏰</small>";
             format-source = "󰍰";
             format-source-muted = "󰍱";
-            ignored-sinks = [ "INZONE Buds Analog Stereo" ];
             on-click-middle = "${pkgs.avizo}/bin/volumectl -m toggle-mute";
             on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -m up 2";
@@ -663,7 +672,7 @@ in
         }
       ];
       systemd = {
-        enable = true;
+        enable = false;
       };
     };
   };
