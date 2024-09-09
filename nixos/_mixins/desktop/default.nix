@@ -24,12 +24,13 @@
   };
 
   environment.etc = {
-    "backgrounds/DeterminateColorway-1920x1080.png".source = ../configs/backgrounds/DeterminateColorway-1920x1080.png;
-    "backgrounds/DeterminateColorway-1920x1200.png".source = ../configs/backgrounds/DeterminateColorway-1920x1200.png;
-    "backgrounds/DeterminateColorway-2560x1440.png".source = ../configs/backgrounds/DeterminateColorway-2560x1440.png;
-    "backgrounds/DeterminateColorway-2560x2880.png".source = ../configs/backgrounds/DeterminateColorway-2560x2880.png;
-    "backgrounds/DeterminateColorway-3440x1440.png".source = ../configs/backgrounds/DeterminateColorway-3440x1440.png;
-    "backgrounds/DeterminateColorway-3840x2160.png".source = ../configs/backgrounds/DeterminateColorway-3840x2160.png;
+    "backgrounds/Catppuccin-1920x1080.png".source = ../configs/backgrounds/Catppuccin-1920x1080.png;
+    "backgrounds/Catppuccin-1920x1200.png".source = ../configs/backgrounds/Catppuccin-1920x1200.png;
+    "backgrounds/Catppuccin-2560x1440.png".source = ../configs/backgrounds/Catppuccin-2560x1440.png;
+    "backgrounds/Catppuccin-2560x1600.png".source = ../configs/backgrounds/Catppuccin-2560x1600.png;
+    "backgrounds/Catppuccin-2560x2880.png".source = ../configs/backgrounds/Catppuccin-2560x2880.png;
+    "backgrounds/Catppuccin-3440x1440.png".source = ../configs/backgrounds/Catppuccin-3440x1440.png;
+    "backgrounds/Catppuccin-3840x2160.png".source = ../configs/backgrounds/Catppuccin-3840x2160.png;
   };
 
   environment.systemPackages =

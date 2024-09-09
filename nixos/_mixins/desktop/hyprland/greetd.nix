@@ -56,7 +56,7 @@ in
       }
       output * scale 1
       output * bg #1E1E2D solid_color
-      output * bg /etc/backgrounds/DeterminateColorway-${wallpaperResolution}.png fill
+      output * bg /etc/backgrounds/Catppuccin-${wallpaperResolution}.png fill
       seat seat0 xcursor_theme catppuccin-mocha-blue-cursors 48
       xwayland disable
       exec "${pkgs.greetd.regreet}/bin/regreet; ${pkgs.sway}/bin/swaymsg exit"
@@ -75,7 +75,7 @@ in
         };
         # https://docs.gtk.org/gtk4/enum.ContentFit.html
         background = {
-          path = "/etc/backgrounds/DeterminateColorway-${wallpaperResolution}.png";
+          path = "/etc/backgrounds/Catppuccin-${wallpaperResolution}.png";
           fit = "Cover";
         };
         commands = {

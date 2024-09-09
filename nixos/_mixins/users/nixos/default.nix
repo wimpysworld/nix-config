@@ -76,11 +76,11 @@ in
             };
             "org/gnome/desktop/background" = {
               picture-options = "zoom";
-              picture-uri = "file:///etc/backgrounds/DeterminateColorway-3840x2160.png";
-              picture-uri-dark = "file:///etc/backgrounds/DeterminateColorway-3840x2160.png";
+              picture-uri = "file:///etc/backgrounds/Catppuccin-3840x2160.png";
+              picture-uri-dark = "file:///etc/backgrounds/Catppuccin-3840x2160.png";
             };
             "org/gnome/desktop/screensaver" = {
-              picture-uri = "file:///etc/backgrounds/DeterminateColorway-3840x2160.png";
+              picture-uri = "file:///etc/backgrounds/Catppuccin-3840x2160.png";
             };
           };
       }
