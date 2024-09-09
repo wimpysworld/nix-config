@@ -1,9 +1,9 @@
 _: {
   phasma = {
     monitor = [
-      "DP-1, 3440x1440@60Hz, 0x1080, 1"
-      "DP-2, 1920x1080@60Hz, 760x2520, 1"
-      "HDMI-A-1, 1920x1080@60Hz, 1520x0, 1"
+      "DP-1, 3440x1440@100Hz, 0x1280, 1"
+      "DP-2, 1920x1080@60Hz, 760x3040, 1"
+      "HDMI-A-1, 2560x1600@120Hz, 1920x0, 1.25"
     ];
     workspace = [
       "1, name:Web, persistent:true, monitor:DP-1"
@@ -14,7 +14,7 @@ _: {
       "6, name:Virt, persistent:true, monitor:DP-1"
       "7, name:Cast, persistent:true, monitor:DP-1"
       "8, name:Fun, persistent:true, monitor:DP-1"
-      "9, name:Camera, persistent:true, monitor:HDMI-A-1"
+      "9, name:Camera, persistent:true, monitor:HDMI-A-1, layoutopt:orientation:left"
       "10,name:Stream, persistent:true, monitor:DP-2"
     ];
   };
