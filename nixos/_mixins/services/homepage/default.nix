@@ -476,7 +476,7 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
       ];
       settings = {
         background = {
-          image = "https://raw.githubusercontent.com/wimpysworld/nix-config/main/nixos/_mixins/configs/backgrounds/DeterminateColorway-2560x1440.png";
+          image = "https://raw.githubusercontent.com/wimpysworld/nix-config/main/nixos/_mixins/configs/backgrounds/Catppuccin-2560x2880.png";
           blur = "sm"; # sm, md, xl... see https://tailwindcss.com/docs/backdrop-blur
           saturate = "75"; # 0, 50, 100... see https://tailwindcss.com/docs/backdrop-saturate
           brightness = "75"; # 0, 50, 75... see https://tailwindcss.com/docs/backdrop-brightness
