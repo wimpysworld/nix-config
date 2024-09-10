@@ -1,17 +1,17 @@
 { hostname, lib, pkgs, ... }:
 let
   catSize = if hostname == "vader" then
-    430
+    320
   else if hostname == "phasma" then
     430
   else
-    430;
+    240;
   catPosition = if hostname == "vader" then
-    "0, -460"
+    "0, -1124"
   else if hostname == "phasma" then
     "0, -460"
   else
-    "0, -460";
+    "0, -316";
   catResolution = if hostname == "vader" then
     "2560"
   else if hostname == "phasma" then
@@ -22,6 +22,8 @@ let
     "DP-1"
   else if hostname == "phasma" then
     "DP-1"
+  else if hostname == "shaa" then
+    "eDP-1"
   else
     "";
 in
