@@ -1,40 +1,29 @@
-{ lib, pkgs, ... }:
+{ hostname, lib, pkgs, ... }:
 let
-  batteryLockInfo = pkgs.writeShellApplication {
-    name = "battery-lock-info";
-    runtimeInputs = with pkgs; [ coreutils-full ];
-    text = ''
-      battery="BAT0"
-
-      # Get the battery status (Charging or Discharging)
-      battery_status=$(cat /sys/class/power_supply/$battery/status)
-      # Check if the battery is charging
-      if [ "$battery_status" = "Charging" ]; then
-        battery_icon="󰂄"
-      else
-        # Get the current battery percentage
-        battery_capacity=$(cat /sys/class/power_supply/$battery/capacity)
-        icon_index=$((battery_capacity / 10))
-        # Define the battery icons for each 10% segment
-        #battery_icons=("󰂃" "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰁹")
-        # Get the corresponding icon
-        case $icon_index in
-          2)  battery_icon="󰁺";;
-          3)  battery_icon="󰁻";;
-          4)  battery_icon="󰁼";;
-          5)  battery_icon="󰁽";;
-          6)  battery_icon="󰁾";;
-          7)  battery_icon="󰁿";;
-          8)  battery_icon="󰂀";;
-          9)  battery_icon="󰂁";;
-          10) battery_icon="󰁹";;
-          *)  battery_icon="󰂃";;
-        esac
-      fi
-      # Output the battery percentage and icon
-      echo "$battery_icon  $battery_capacity%"
-    '';
-  };
+  catSize = if hostname == "vader" then
+    430
+  else if hostname == "phasma" then
+    430
+  else
+    430;
+  catPosition = if hostname == "vader" then
+    "0, -460"
+  else if hostname == "phasma" then
+    "0, -460"
+  else
+    "0, -460";
+  catResolution = if hostname == "vader" then
+    "2560"
+  else if hostname == "phasma" then
+    "3440"
+  else
+    "1920";
+  monitor = if hostname == "vader" then
+    "DP-1"
+  else if hostname == "phasma" then
+    "DP-1"
+  else
+    "";
 in
 {
   # Hyprlock is a lockscreen that is a part of the hyprland suite
@@ -43,7 +32,7 @@ in
       enable = true;
       settings = {
         general = {
-          disable_loading_bar = false;
+          disable_loading_bar = true;
           grace = 5;
           hide_cursor = true;
           immediate_render = true;
@@ -61,6 +50,7 @@ in
         image = [
           {
             # Avatar
+            monitor = monitor;
             path = "$HOME/.face";
             border_size = 2;
             border_color = "rgba(137, 180, 250, 0.7)";
@@ -72,12 +62,26 @@ in
             halign = "center";
             valign = "center";
           }
+          {
+            # Catppuccin
+            monitor = monitor;
+            path = "/etc/backgrounds/Cat-${catResolution}px.png";
+            border_size = 0;
+            rounding = 0;
+            rotate = 0;
+            reload_time = -1;
+            size = catSize;
+            position = catPosition;
+            halign = "left";
+            valign = "center";
+          }
         ];
         label = [
           {
             # Date (1 hour)
+            monitor = monitor;
             text = ''cmd[update:3600000] echo -e "$(date +"%a, %d %b")"'';
-            color = "#cdd6f4";
+            color = "rgba(205, 214, 244, 1.0)";
             font_size = 25;
             font_family = "Work Sans";
             position = "0, 350";
@@ -85,49 +89,81 @@ in
             valign = "center";
           }
           {
-            # Time
+            # Time Border left
+            monitor = monitor;
             text = "$TIME";
-            color = "#cdd6f4";
+            color = "rgba(17, 17, 27, 0.8)";
+            font_size = 120;
+            font_family = "Work Sans Bold";
+            position = "-4, 250";
+            halign = "center";
+            valign = "center";
+            zindex = 0;
+          }
+          {
+            # Time Border right
+            monitor = monitor;
+            text = "$TIME";
+            color = "rgba(17, 17, 27, 0.8)";
+            font_size = 120;
+            font_family = "Work Sans Bold";
+            position = "4, 250";
+            halign = "center";
+            valign = "center";
+            zindex = 0;
+          }
+          {
+            # Time Border up
+            monitor = monitor;
+            text = "$TIME";
+            color = "rgba(17, 17, 27, 0.8)";
+            font_size = 120;
+            font_family = "Work Sans Bold";
+            position = "0, 246";
+            halign = "center";
+            valign = "center";
+            zindex = 0;
+          }
+          {
+            # Time Border down
+            monitor = monitor;
+            text = "$TIME";
+            color = "rgba(17, 17, 27, 0.8)";
+            font_size = 120;
+            font_family = "Work Sans Bold";
+            position = "0, 254";
+            halign = "center";
+            valign = "center";
+            zindex = 0;
+          }
+          {
+            # Hour
+            monitor = monitor;
+            text = "$TIME";
+            color = "rgba(205, 214, 244, 1.0)";
             font_size = 120;
             font_family = "Work Sans Bold";
             position = "0, 250";
             halign = "center";
             valign = "center";
+            zindex = 1;
           }
           {
             # Username
+            monitor = monitor;
             text = "  $DESC";
-            color = "#cdd6f4";
+            color = "rgba(166, 173, 200, 1.0)";
             font_size = 18;
             font_family = "Work Sans";
             position = "0, -130";
             halign = "center";
             valign = "center";
           }
-          {
-            # Weather (30min)
-            text = ''cmd[update:1800000] ${lib.getExe pkgs.curl} -sLq "wttr.in/Odiham?format=%c+%t\n"'';
-            color = "#cdd6f4";
-            font_size = 14;
-            font_family = "Work Sans";
-            position = "20, 50";
-            halign = "left";
-            valign = "bottom";
-          }
-          {
-            # Battery (1min)
-            text = ''cmd[update:60000] ${lib.getExe batteryLockInfo}'';
-            color = "#cdd6f4";
-            font_size = 14;
-            font_family = "Work Sans";
-            position = "-20, 50";
-            halign = "right";
-            valign = "bottom";
-          }
         ];
         # Username box
         shape = [
           {
+            monitor = monitor;
             size = "300, 60";
             position = "0, -130";
             color = "rgba(88, 91, 112, 1.0)";
@@ -143,6 +179,7 @@ in
         # Password
         input-field = [
           {
+            monitor = monitor;
             size = "300, 60";
             position = "0, -210";
             outline_thickness = 2;
@@ -150,7 +187,7 @@ in
             dots_spacing = 0.2;
             dots_center = true;
             fade_on_empty = false;
-            placeholder_text = ''<span foreground="##cdd6f4">󰌋  enter password</span>'';
+            placeholder_text = ''<span foreground="##f9e2af">󰌋</span>  <span foreground="##cdd6f4">enter password</span>'';
             fail_text = "<i>  incorrect <b>($ATTEMPTS)</b></i>";
             fail_timeout = 3000;
             hide_input = false;

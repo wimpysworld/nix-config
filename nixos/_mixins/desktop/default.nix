@@ -24,6 +24,10 @@
   };
 
   environment.etc = {
+    "backgrounds/Cat-1920px.png".source = ../configs/backgrounds/Cat-1920px.png;
+    "backgrounds/Cat-2560px.png".source = ../configs/backgrounds/Cat-2560px.png;
+    "backgrounds/Cat-3440px.png".source = ../configs/backgrounds/Cat-3440px.png;
+    "backgrounds/Cat-3840px.png".source = ../configs/backgrounds/Cat-3840px.png;
     "backgrounds/Catppuccin-1920x1080.png".source = ../configs/backgrounds/Catppuccin-1920x1080.png;
     "backgrounds/Catppuccin-1920x1200.png".source = ../configs/backgrounds/Catppuccin-1920x1200.png;
     "backgrounds/Catppuccin-2560x1440.png".source = ../configs/backgrounds/Catppuccin-2560x1440.png;
