@@ -43,8 +43,22 @@ let
     "2560x2880"
   else if hostname == "phasma" then
     "3440x1440"
+  else "1920x1080";
+
+  wallpapers = if hostname == "vader" then
+    ''
+    output DP-1 bg /etc/backgrounds/Catppuccin-2560x2880.png fill
+    output DP-2 bg /etc/backgrounds/Colorway-2560x2880.png fill
+    output DP-3 bg /etc/backgrounds/Colorway-1920x1080.png fill
+    ''
+  else if hostname == "phasma" then
+    ''
+    output DP-1 bg /etc/backgrounds/Catppuccin-3440x1440.png fill
+    output HDMI-A-1 bg /etc/backgrounds/Colorway-2560x1600.png fill
+    output DP-2 bg /etc/backgrounds/Colorway-1920x1080.png fill
+    ''
   else
-    "1920x1080";
+    ''output * bg /etc/backgrounds/Catppuccin-1920x1080.png fill'';
 in
 {
   # Use a minimal Sway to run regreet
@@ -56,7 +70,7 @@ in
       }
       output * scale 1
       output * bg #1E1E2D solid_color
-      output * bg /etc/backgrounds/Catppuccin-${wallpaperResolution}.png fill
+      ${wallpapers}
       seat seat0 xcursor_theme catppuccin-mocha-blue-cursors 48
       xwayland disable
       exec "${pkgs.greetd.regreet}/bin/regreet; ${pkgs.sway}/bin/swaymsg exit"

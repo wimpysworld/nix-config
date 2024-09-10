@@ -31,6 +31,13 @@
     "backgrounds/Catppuccin-2560x2880.png".source = ../configs/backgrounds/Catppuccin-2560x2880.png;
     "backgrounds/Catppuccin-3440x1440.png".source = ../configs/backgrounds/Catppuccin-3440x1440.png;
     "backgrounds/Catppuccin-3840x2160.png".source = ../configs/backgrounds/Catppuccin-3840x2160.png;
+    "backgrounds/Colorway-1920x1080.png".source = ../configs/backgrounds/Colorway-1920x1080.png;
+    "backgrounds/Colorway-1920x1200.png".source = ../configs/backgrounds/Colorway-1920x1200.png;
+    "backgrounds/Colorway-2560x1440.png".source = ../configs/backgrounds/Colorway-2560x1440.png;
+    "backgrounds/Colorway-2560x1600.png".source = ../configs/backgrounds/Colorway-2560x1600.png;
+    "backgrounds/Colorway-2560x2880.png".source = ../configs/backgrounds/Colorway-2560x2880.png;
+    "backgrounds/Colorway-3440x1440.png".source = ../configs/backgrounds/Colorway-3440x1440.png;
+    "backgrounds/Colorway-3840x2160.png".source = ../configs/backgrounds/Colorway-3840x2160.png;
   };
 
   environment.systemPackages =
