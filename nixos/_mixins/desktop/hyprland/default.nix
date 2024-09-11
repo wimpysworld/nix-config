@@ -20,13 +20,14 @@
     systemPackages =
       with pkgs;
       lib.optionals isInstall [
+        hyprpicker
         # Enable HEIC image previews in Nautilus
         libheif
         libheif.out
+        monitorets
         gnome.gnome-font-viewer
         gnome.nautilus  # file manager
         gnome.zenity
-        hyprpicker
         polkit_gnome
         wdisplays       # display configuration
         wlr-randr
