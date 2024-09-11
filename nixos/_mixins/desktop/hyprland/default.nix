@@ -23,13 +23,13 @@
         # Enable HEIC image previews in Nautilus
         libheif
         libheif.out
+        gnome.gnome-font-viewer
         gnome.nautilus  # file manager
+        gnome.zenity
         hyprpicker
-        overskride      # bluetooth manager
         polkit_gnome
         wdisplays       # display configuration
         wlr-randr
-        gnome.zenity
         unstable.catppuccin-cursors
       ];
   };
