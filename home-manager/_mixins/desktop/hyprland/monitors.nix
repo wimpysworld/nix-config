@@ -31,6 +31,19 @@ _: {
       "8, name:Fun, persistent:true, monitor:eDP-1"
     ];
   };
+  tanis = {
+    monitor = [ "eDP-1, 1920x1200@60Hz, auto, 1" ];
+    workspace = [
+      "1, name:Web, persistent:true, monitor:eDP-1"
+      "2, name:Work, persistent:true, monitor:eDP-1"
+      "3, name:Chat, persistent:true, monitor:eDP-1"
+      "4, name:Code, persistent:true, monitor:eDP-1"
+      "5, name:Term, persistent:true, monitor:eDP-1"
+      "6, name:Virt, persistent:true, monitor:eDP-1"
+      "7, name:Cast, persistent:true, monitor:eDP-1"
+      "8, name:Fun, persistent:true, monitor:eDP-1"
+    ];
+  };
   vader = {
     monitor = [
       "DP-1, 2560x2880@60Hz, 0x0, 1"

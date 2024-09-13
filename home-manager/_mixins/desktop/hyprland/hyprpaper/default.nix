@@ -18,6 +18,10 @@
           "/etc/backgrounds/Colorway-2560x2880.png"
           "/etc/backgrounds/Colorway-1920x1080.png"
         ]
+        else if hostname == "tanis" then
+        [
+          "/etc/backgrounds/Catppuccin-1920x1200.png"
+        ]
         else
         [
           "/etc/backgrounds/Catppuccin-1920x1080.png"
@@ -33,6 +37,10 @@
           "DP-1, /etc/backgrounds/Catppuccin-2560x2880.png"
           "DP-2, /etc/backgrounds/Colorway-2560x2880.png"
           "DP-3, /etc/backgrounds/Colorway-1920x1080.png"
+        ]
+        else if hostname == "tanis" then
+        [
+          "eDP-1, /etc/backgrounds/Catppuccin-1920x1200.png"
         ]
         else
         [
