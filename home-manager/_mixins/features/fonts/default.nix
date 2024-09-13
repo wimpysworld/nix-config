@@ -25,6 +25,7 @@ lib.mkIf (isDarwin || isOtherOS) {
         font-awesome
         liberation_ttf
         noto-fonts-emoji
+        noto-fonts-monochrome-emoji
         source-serif
         symbola
         work-sans
@@ -67,6 +68,7 @@ lib.mkIf (isDarwin || isOtherOS) {
         "Font Awesome 6 Free"
         "Font Awesome 6 Brands"
         "Symbola"
+        "Noto Emoji"
       ];
       emoji = [
         "Noto Color Emoji"
