@@ -72,6 +72,7 @@ in
         cpufetch # Terminal CPU info
         croc # Terminal file transfer
         curlie # Terminal HTTP client
+        cyme # Modern Unix `lsusb`
         dconf2nix # Nix code from Dconf files
         deadnix # Nix dead code finder
         difftastic # Modern Unix `diff`
