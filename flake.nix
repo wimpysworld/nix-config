@@ -102,7 +102,7 @@
         };
         "martin@tanis" = helper.mkHome {
           hostname = "tanis";
-          desktop = "gnome";
+          desktop = "hyprland";
         };
         "martin@momin" = helper.mkHome {
           hostname = "momin";
@@ -176,7 +176,7 @@
         };
         tanis = helper.mkNixos {
           hostname = "tanis";
-          desktop = "gnome";
+          desktop = "hyprland";
         };
         sidious = helper.mkNixos {
           hostname = "sidious";

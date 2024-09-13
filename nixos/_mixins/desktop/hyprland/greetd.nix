@@ -43,6 +43,8 @@ let
     "2560x2880"
   else if hostname == "phasma" then
     "3440x1440"
+  else if hostname == "tanis" then
+    "1920x1200"
   else "1920x1080";
 
   wallpapers = if hostname == "vader" then
@@ -56,6 +58,10 @@ let
     output DP-1 bg /etc/backgrounds/Catppuccin-3440x1440.png fill
     output HDMI-A-1 bg /etc/backgrounds/Colorway-2560x1600.png fill
     output DP-2 bg /etc/backgrounds/Colorway-1920x1080.png fill
+    ''
+  else if hostname == "tanis" then
+    ''
+    output eDP-1 bg /etc/backgrounds/Catppuccin-1920x1200.png fill
     ''
   else
     ''output * bg /etc/backgrounds/Catppuccin-1920x1080.png fill'';

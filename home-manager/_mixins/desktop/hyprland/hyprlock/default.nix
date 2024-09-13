@@ -1,5 +1,9 @@
 { hostname, lib, pkgs, ... }:
 let
+  passwordPrompt = if hostname == "tanis" then
+    "󰈷"
+  else
+    "󰌋";
   catSize = if hostname == "vader" then
     320
   else if hostname == "phasma" then
@@ -10,6 +14,8 @@ let
     "0, -1124"
   else if hostname == "phasma" then
     "0, -460"
+  else if hostname == "tanis" then
+    "0, -424"
   else
     "0, -316";
   catResolution = if hostname == "vader" then
@@ -22,7 +28,7 @@ let
     "DP-1"
   else if hostname == "phasma" then
     "DP-1"
-  else if hostname == "shaa" then
+  else if (hostname == "shaa" || hostname == "tanis") then
     "eDP-1"
   else
     "";
@@ -200,7 +206,7 @@ in
             dots_spacing = 0.25;
             dots_center = true;
             fade_on_empty = false;
-            placeholder_text = ''<span foreground="##f9e2af"><big>  󰌋  </big></span>'';
+            placeholder_text = ''<span foreground="##f9e2af"><big>  ${passwordPrompt}  </big></span>'';
             fail_text = ''<span foreground="##f38ba8">󰀧</span>  <i>$FAIL</i> <span foreground="##f38ba8"><b>($ATTEMPTS)</b></span>'';
             fail_timeout = 10000; # milliseconds before fail_text and fail_color disappears
             fail_transition = 250; # transition time in ms between normal outer_color and fail_color
