@@ -89,6 +89,7 @@ in
         frogmouth # Terminal mardown viewer
         glow # Terminal Markdown renderer
         gping # Modern Unix `ping`
+        unstable.git-igitt # Modern Unix git log/graph
         h # Modern Unix autojump for git projects
         hexyl # Modern Unix `hexedit`
         hr # Terminal horizontal rule
