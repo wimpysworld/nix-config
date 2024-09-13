@@ -21,6 +21,7 @@
           ];
         })
         fira
+        font-awesome
         liberation_ttf
         noto-fonts-emoji
         source-serif
@@ -42,7 +43,6 @@
         mocha-mattari-font
         poppins-font
         spaceport-2006-font
-        twitter-color-emoji
         ubuntu_font_family
         unscii
         zx-spectrum-7-font
@@ -53,18 +53,23 @@
       # Enable 32-bit support if driSupport32Bit is true
       cache32Bit = lib.mkForce config.hardware.opengl.driSupport32Bit;
       defaultFonts = {
-        serif = [ "Source Serif" ];
+        serif = [
+          "Source Serif"
+          "Noto Color Emoji"
+        ];
         sansSerif = [
           "Work Sans"
           "Fira Sans"
+          "Noto Color Emoji"
         ];
         monospace = [
-          "FiraCode Nerd Font Mono"
           "Symbols Nerd Font Mono"
+          "Font Awesome 6 Free"
+          "Font Awesome 6 Brands"
+          "Symbola"
         ];
         emoji = [
           "Noto Color Emoji"
-          "Twitter Color Emoji"
         ];
       };
       enable = true;
@@ -73,40 +78,6 @@
         enable = true;
         style = "slight";
       };
-      localConf = ''
-        <?xml version="1.0"?>
-        <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-        <fontconfig>
-          <alias binding="weak">
-            <family>monospace</family>
-            <prefer>
-              <family>emoji</family>
-            </prefer>
-          </alias>
-          <alias binding="weak">
-            <family>sans-serif</family>
-            <prefer>
-              <family>emoji</family>
-            </prefer>
-          </alias>
-          <alias binding="weak">
-            <family>serif</family>
-            <prefer>
-              <family>emoji</family>
-            </prefer>
-          </alias>
-          <!-- Block Symbola from the list of fallback fonts. -->
-          <selectfont>
-            <rejectfont>
-              <pattern>
-                <patelt name="family">
-                    <string>Symbola</string>
-                </patelt>
-              </pattern>
-            </rejectfont>
-          </selectfont>
-        </fontconfig>
-      '';
       subpixel = {
         rgba = "rgb";
         lcdfilter = "light";

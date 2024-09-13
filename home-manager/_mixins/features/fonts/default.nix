@@ -22,6 +22,7 @@ lib.mkIf (isDarwin || isOtherOS) {
           ];
         })
         fira
+        font-awesome
         liberation_ttf
         noto-fonts-emoji
         source-serif
@@ -43,7 +44,6 @@ lib.mkIf (isDarwin || isOtherOS) {
         mocha-mattari-font
         poppins-font
         spaceport-2006-font
-        twitter-color-emoji
         ubuntu_font_family
         unscii
         zx-spectrum-7-font
@@ -53,18 +53,23 @@ lib.mkIf (isDarwin || isOtherOS) {
   fonts.fontconfig = {
     enable = true;
     defaultFonts = {
-      serif = [ "Source Serif" ];
+      serif = [
+        "Source Serif"
+        "Noto Color Emoji"
+      ];
       sansSerif = [
         "Work Sans"
         "Fira Sans"
+        "Noto Color Emoji"
       ];
       monospace = [
-        "FiraCode Nerd Font Mono"
         "Symbols Nerd Font Mono"
+        "Font Awesome 6 Free"
+        "Font Awesome 6 Brands"
+        "Symbola"
       ];
       emoji = [
         "Noto Color Emoji"
-        "Twitter Color Emoji"
       ];
     };
   };
