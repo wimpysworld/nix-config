@@ -5,6 +5,21 @@
   pkgs,
   ...
 }:
+let
+  hyperlockPAM = if config.services.fprintd.enable then
+    ''
+      auth       sufficient   pam_unix.so       try_first_pass likeauth nullok
+      auth       sufficient   ${pkgs.fprintd}/lib/security/pam_fprintd.so
+      auth       required     pam_securetty.so
+      auth       requisite    pam_nologin.so
+      auth       include      system-local-login
+      account    include      system-local-login
+      session    include      system-local-login
+      password   include      system-local-login
+    ''
+  else
+    "";
+in
 {
   imports = [ ./greetd.nix ];
   environment = {
@@ -80,8 +95,12 @@
     seahorse.enable = isInstall;
     udevil.enable = true;
   };
+  # Allow login/authentication with fingerprint or password
   security = {
-    pam.services.hyprlock = { };
+    pam.services = {
+      hyprlock.text = hyperlockPAM;
+      login.fprintAuth = lib.mkIf config.services.fprintd.enable false;
+    };
     polkit = {
       enable = true;
     };
