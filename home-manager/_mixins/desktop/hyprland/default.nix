@@ -203,21 +203,22 @@ let
 
       function session_start() {
           systemctl --user restart dbus-broker
-          disrun waybar
-          sleep 4.5 && disrun trayscale --hide-window
-          sleep 6.5 && systemctl --user restart maestral-gui
-          bluetooth_devices connect
+          session_reload
       }
 
       function session_reload() {
           pkill trayscale
-          pkill waybar
+          systemctl --user kill waybar
           bluetooth_devices disconnect
+          for ACTION in stop start; do
+            for PORTAL in xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-desktop-portal; do
+                systemctl --user "$ACTION" "$PORTAL"
+            done;
+          done
           for AUDIO in pipewire pipewire-pulse wireplumber mpris-proxy; do
               systemctl --user restart "$AUDIO"
           done
-          disrun waybar
-          for DESKTOP_SHELL in polkit-gnome-authentication-agent-1 avizo cliphist-images cliphist hypridle hyprpaper swaync; do
+          for DESKTOP_SHELL in waybar polkit-gnome-authentication-agent-1 avizo cliphist-images cliphist hypridle hyprpaper swaync; do
               systemctl --user restart "$DESKTOP_SHELL"
           done
           for MISC in maestral-gui syncthingtray; do
@@ -232,7 +233,6 @@ let
           playerctl --all-players pause
           pkill trayscale
           session_clear
-          pkill waybar
       }
 
       OPT="help"

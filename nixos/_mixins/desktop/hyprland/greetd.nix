@@ -3,7 +3,7 @@ let
   hyprLaunch = pkgs.writeShellScriptBin "hypr-launch" ''
     systemd-run --user --scope --collect --quiet --unit="hypr-launch" \
       systemd-cat --identifier="hypr-launch" ${pkgs.hyprland}/bin/Hyprland $@
-    ${pkgs.hyprland}/bin/hyperctl dispatch exit
+    ${pkgs.hyprland}/bin/hyprctl dispatch exit
   '';
   regreetSway = pkgs.writeShellScriptBin "regreet-sway" ''
     # Check if a GPU is NVIDIA
