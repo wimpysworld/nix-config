@@ -9,6 +9,7 @@
         ];
       })
       fira
+      font-awesome
       liberation_ttf
       noto-fonts-emoji
       source-serif
@@ -28,7 +29,6 @@
       mocha-mattari-font
       poppins-font
       spaceport-2006-font
-      twitter-color-emoji
       ubuntu_font_family
       unscii
       zx-spectrum-7-font
