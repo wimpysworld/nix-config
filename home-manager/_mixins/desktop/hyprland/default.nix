@@ -195,10 +195,6 @@ let
                 systemctl --user "$ACTION" "$PORTAL"
             done;
           done
-          #for AUDIO in pipewire pipewire-pulse wireplumber mpris-proxy; do
-          #    systemctl --user restart "$AUDIO"
-          #done
-          sleep 2.5
           systemctl --user restart maestral-gui
           bluetooth_devices connect
           disrun trayscale --hide-window
