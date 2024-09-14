@@ -40,24 +40,6 @@ let
           return 1
       }
 
-      function block_on_app() {
-          local COUNT=0
-          local SLEEP=0.5
-          local LIMIT=15
-          local CLASS="$1"
-          echo " - Ignoring $CLASS..."
-          while app_is_running "$CLASS"; do
-              sleep "$SLEEP"
-              ((COUNT++))
-              if [ "$COUNT" -ge "$LIMIT" ]; then
-                  echo " - Ignored $CLASS for long enough"
-                  break
-              else
-                  echo " - Ignored $CLASS $COUNT times..."
-              fi
-          done
-      }
-
       function wait_for_app() {
           local COUNT=0
           local SLEEP=1
@@ -82,7 +64,6 @@ let
               echo -n " - Starting $APP on workspace $WORKSPACE: "
               hyprctl dispatch exec "[workspace $WORKSPACE silent]" "$APP"
               if [ "$APP" == "tenacity" ]; then
-                  #block_on_app "title: Tenacity is starting up..."
                   sleep 5
               fi
               wait_for_app "$CLASS"
@@ -202,29 +183,23 @@ let
       }
 
       function session_start() {
-          systemctl --user restart dbus-broker
           session_reload
       }
 
       function session_reload() {
           pkill trayscale
-          systemctl --user kill waybar
           bluetooth_devices disconnect
+          # Restart the desktop portal services in the correct order
           for ACTION in stop start; do
             for PORTAL in xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-desktop-portal; do
                 systemctl --user "$ACTION" "$PORTAL"
             done;
           done
-          for AUDIO in pipewire pipewire-pulse wireplumber mpris-proxy; do
-              systemctl --user restart "$AUDIO"
-          done
-          for DESKTOP_SHELL in waybar polkit-gnome-authentication-agent-1 avizo cliphist-images cliphist hypridle hyprpaper swaync; do
-              systemctl --user restart "$DESKTOP_SHELL"
-          done
-          for MISC in maestral-gui syncthingtray; do
-              systemctl --user restart "$MISC"
-          done
+          #for AUDIO in pipewire pipewire-pulse wireplumber mpris-proxy; do
+          #    systemctl --user restart "$AUDIO"
+          #done
           sleep 2.5
+          systemctl --user restart maestral-gui
           bluetooth_devices connect
           disrun trayscale --hide-window
       }

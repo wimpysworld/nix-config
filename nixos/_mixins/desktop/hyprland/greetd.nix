@@ -1,9 +1,11 @@
-{ config, hostname, lib, pkgs, ... }:
+{ config, hostname, lib, pkgs, username, ... }:
 let
   hyprLaunch = pkgs.writeShellScriptBin "hypr-launch" ''
-    systemd-run --user --scope --collect --quiet --unit="hypr-launch" \
-      systemd-cat --identifier="hypr-launch" ${pkgs.hyprland}/bin/Hyprland $@
+    ${pkgs.hyprland}/bin/Hyprland $@ &>/dev/null
+    # Correctly clean up the session
     ${pkgs.hyprland}/bin/hyprctl dispatch exit
+    systemctl --user --machine=${username}@.host stop dbus-broker
+    systemctl --user --machine=${username}@.host stop hyprland-session.target
   '';
   regreetSway = pkgs.writeShellScriptBin "regreet-sway" ''
     # Check if a GPU is NVIDIA
@@ -35,8 +37,7 @@ let
       done
       REGREET_SWAY+=" --unsupported-gpu"
     fi
-    systemd-run --user --scope --collect --quiet --unit="regreet-sway" \
-      systemd-cat --identifier="regreet-sway" $REGREET_SWAY
+    $REGREET_SWAY &>/dev/null
   '';
 
   wallpaperResolution = if hostname == "vader" then
