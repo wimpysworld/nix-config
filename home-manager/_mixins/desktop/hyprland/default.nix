@@ -7,30 +7,19 @@
 }:
 let
   monitors = (import ./monitors.nix { }).${hostname};
-  hyprSession = pkgs.writeShellApplication {
-    name = "hypr-session";
+  hyprActivity = pkgs.writeShellApplication {
+    name = "hypr-activity";
     runtimeInputs = with pkgs; [
-      bluez
       coreutils-full
+      gnugrep
       gnused
       obs-cmd
-      playerctl
       procps
     ];
     text = ''
       set +e  # Disable errexit
       set +u  # Disable nounset
       HOSTNAME=$(hostname -s)
-
-      function bluetooth_devices() {
-          case "$1" in
-              connect|disconnect)
-                  if [ "$HOSTNAME" == "phasma" ]; then
-                      bluetoothctl "$1" E4:50:EB:7D:86:22
-                  fi
-                  ;;
-          esac
-      }
 
       function app_is_running() {
           local CLASS="$1"
@@ -95,7 +84,7 @@ let
           fi
       }
 
-      function session_gsd() {
+      function activity_gsd() {
           start_app brave 1 "class: brave-browser"
           start_app wavebox 2 "class: wavebox"
           start_app discord 2 " - Discord"
@@ -120,7 +109,7 @@ let
           hyprctl dispatch forcerendererreload
       }
 
-      function session_linuxmatters() {
+      function activity_linuxmatters() {
           start_app tenacity 9 "class: tenacity"
           firefox -CreateProfile linuxmatters-stage
           start_app "firefox -P linuxmatters-stage -no-remote --new-window https://github.com/restfulmedia/linuxmatters_backstage" 9 "title: restfulmedia/linuxmatters_backstage"
@@ -139,7 +128,7 @@ let
           hyprctl dispatch forcerendererreload
       }
 
-      function session_wimpysworld() {
+      function activity_wimpysworld() {
           firefox -CreateProfile wimpysworld-studio
           start_app "firefox \
               -P wimpysworld-studio \
@@ -162,7 +151,7 @@ let
           hyprctl dispatch forcerendererreload
       }
 
-      function session_8bitversus() {
+      function activity_8bitversus() {
           firefox -CreateProfile 8bitversus-studio
           start_app "firefox \
             -P 8bitversus-studio \
@@ -174,36 +163,14 @@ let
           hyprctl dispatch forcerendererreload
       }
 
-      function session_clear() {
-          obs-cmd virtual-camera stop
+      function activity_clear() {
+          if pidof -q obs; then
+              obs-cmd virtual-camera stop
+          fi
           sleep 0.25
           hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl dispatch closewindow address:{}
           sleep 0.75
           hyprctl dispatch workspace 1 &>/dev/null
-      }
-
-      function session_start() {
-          session_reload
-      }
-
-      function session_reload() {
-          pkill trayscale
-          bluetooth_devices disconnect
-          # Restart the desktop portal services in the correct order
-          for ACTION in stop start; do
-            for PORTAL in xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-desktop-portal; do
-                systemctl --user "$ACTION" "$PORTAL"
-            done;
-          done
-          systemctl --user restart maestral-gui
-          bluetooth_devices connect
-          disrun trayscale --hide-window
-      }
-
-      function session_stop() {
-          playerctl --all-players pause
-          pkill trayscale
-          session_clear
       }
 
       OPT="help"
@@ -212,13 +179,113 @@ let
       fi
 
       case "$OPT" in
-          8bitversus) session_8bitversus;;
-          gsd) session_gsd;;
-          linuxmatters) session_linuxmatters;;
-          wimpysworld) session_wimpysworld;;
+          8bitversus) activity_8bitversus;;
+          clear) activity_clear;;
+          gsd) activity_gsd;;
+          linuxmatters) activity_linuxmatters;;
+          wimpysworld) activity_wimpysworld;;
+          *) echo "Usage: $(basename "$0") {clear|gsd|8bitversus|linuxmatters|wimpysworld}";
+            exit 1;;
+      esac
+    '';
+  };
+  hyprActivityMenu = pkgs.writeShellApplication {
+    name = "hypr-activity-menu";
+    runtimeInputs = with pkgs; [
+      fuzzel
+      notify-desktop
+    ];
+    text = ''
+      appname="hypr-sessionmenu"
+      gsd="💩 Get Shit Done"
+      record_linuxmatters="️🎙️ Record Linux Matters"
+      stream_wimpysworld="📹 Stream Wimpys's World"
+      stream_8bitversus="️🕹️ Stream 8-bit VS"
+      clear="🛑 Close Everything"
+      selected=$(
+        echo -e "$gsd\n$record_linuxmatters\n$stream_wimpysworld\n$stream_8bitversus\n$clear" |
+        fuzzel --dmenu --prompt "󱑞 " --lines 5)
+      case $selected in
+        "$clear")
+          notify-desktop "$clear" "Whelp! Here comes the desktop Thanos snap!" --app-name="$appname"
+          hypr-activity clear
+          ;;
+        "$gsd")
+          notify-desktop "$gsd" "Time to knuckle down. Here's comes the default session." --app-name="$appname"
+          hypr-activity gsd
+          notify-desktop "💩 Session is ready" "The desktop session is all set and ready to go." --app-name="$appname"
+          ;;
+        "$record_linuxmatters")
+          notify-desktop "$record_linuxmatters" "Get some Yerba Mate and clear your throat. Time to chat with Alan and Mark." --app-name="$appname"
+          hypr-activity linuxmatters
+          notify-desktop "🎙️ Session is ready" "Podcast studio session is initialised." --app-name="$appname"
+          ;;
+        "$stream_wimpysworld")
+          notify-desktop "$stream_wimpysworld" "Lights. Camera. Action. Setting up the session to stream to Wimpy's World." --app-name="$appname"
+          hypr-activity wimpysworld
+          notify-desktop "📹 Session is ready" "Streaming session is engaged and ready to go live." --app-name="$appname"
+          ;;
+        "$stream_8bitversus")
+          notify-desktop "$stream_8bitversus" "Two grown men reignite the ultimate playground fight of their pasts: which is better, the Commodore 64 or ZX Spectrum?" --app-name="$appname"
+          hypr-activity 8bitversus
+          notify-desktop "🕹️ Session is ready" "Dust of your cassette tapes, retro-gaming streaming is ready." --app-name="$appname"
+          ;;
+      esac
+    '';
+  };
+  hyprSession = pkgs.writeShellApplication {
+    name = "hypr-session";
+    runtimeInputs = with pkgs; [
+      bluez
+      coreutils-full
+      gnused
+      playerctl
+      procps
+    ];
+    text = ''
+      set +e  # Disable errexit
+      set +u  # Disable nounset
+      HOSTNAME=$(hostname -s)
+
+      function bluetooth_devices() {
+          case "$1" in
+              connect|disconnect)
+                  if [ "$HOSTNAME" == "phasma" ]; then
+                      bluetoothctl "$1" E4:50:EB:7D:86:22
+                  fi
+                  ;;
+          esac
+      }
+
+      function session_start() {
+          # Restart the desktop portal services in the correct order
+          for ACTION in stop start; do
+            for PORTAL in xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-desktop-portal; do
+                systemctl --user "$ACTION" "$PORTAL"
+            done;
+          done
+          bluetooth_devices connect
+          sleep 3.0
+          systemctl --user restart maestral-gui
+          trayscale --hide-window &
+          if ! pidof -q waybar; then
+              systemctl --user restart waybar
+          fi
+      }
+
+      function session_stop() {
+          playerctl --all-players pause
+          hypy-activity clear
+          pkill trayscale
+      }
+
+      OPT="help"
+      if [ -n "$1" ]; then
+          OPT="$1"
+      fi
+
+      case "$OPT" in
           start) session_start;;
-          reload) session_reload;;
-          clear) session_clear;;
           lock)
             pkill wlogout
             sleep 0.5
@@ -232,7 +299,7 @@ let
           shutdown)
             session_stop
             systemctl poweroff;;
-          *) echo "Usage: $(basename "$0") {start|reload|clear|logout|reboot|shutdown|8bitversus|gsd|linuxmatters|wimpysworld}";
+          *) echo "Usage: $(basename "$0") {start|lock|logout|reboot|shutdown}";
             exit 1;;
       esac
     '';
@@ -240,6 +307,8 @@ let
 in
 {
   home.packages = with pkgs; [
+    hyprActivity
+    hyprActivityMenu
     hyprSession
   ];
 

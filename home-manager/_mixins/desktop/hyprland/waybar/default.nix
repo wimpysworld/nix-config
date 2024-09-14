@@ -7,56 +7,6 @@ let
   else
     "";
   outputDisplay = if (hostname == "vader" || hostname == "phasma") then "DP-1" else "eDP-1";
-  hyprSessionMenu = pkgs.writeShellApplication {
-    name = "hypr-sessionmenu";
-    runtimeInputs = with pkgs; [
-      fuzzel
-      notify-desktop
-    ];
-    text = ''
-      appname="hypr-sessionmenu"
-      clear="🛑 Close Everything"
-      reload="️♻️ Reload Desktop"
-      gsd="💩 Get Shit Done"
-      record_linuxmatters="️🎙️ Record Linux Matters"
-      stream_wimpysworld="📹 Stream Wimpys's World"
-      stream_8bitversus="️🕹️ Stream 8-bit VS"
-      selected=$(
-        echo -e "$gsd\n$record_linuxmatters\n$stream_wimpysworld\n$stream_8bitversus\n$reload\n$clear" |
-        fuzzel --dmenu --prompt "󱑞 " --lines 6)
-      case $selected in
-        "$clear")
-          notify-desktop "$clear" "Whelp! Here comes the desktop Thanos snap!" --app-name="$appname"
-          hypr-session clear
-          ;;
-        "$reload")
-          hypr-session reload
-          sleep 5
-          notify-desktop "♻️ Desktop services are reloaded" "The desktop session has been refreshed and is ready to go." --app-name="$appname"
-          ;;
-        "$gsd")
-          notify-desktop "$gsd" "Time to knuckle down. Here's comes the default session." --app-name="$appname"
-          hypr-session gsd
-          notify-desktop "💩 Session is ready" "The desktop session is all set and ready to go." --app-name="$appname"
-          ;;
-        "$record_linuxmatters")
-          notify-desktop "$record_linuxmatters" "Get some Yerba Mate and clear your throat. Time to chat with Alan and Mark." --app-name="$appname"
-          hypr-session linuxmatters
-          notify-desktop "🎙️ Session is ready" "Podcast studio session is initialised." --app-name="$appname"
-          ;;
-        "$stream_wimpysworld")
-          notify-desktop "$stream_wimpysworld" "Lights. Camera. Action. Setting up the session to stream to Wimpy's World." --app-name="$appname"
-          hypr-session wimpysworld
-          notify-desktop "📹 Session is ready" "Streaming session is engaged and ready to go live." --app-name="$appname"
-          ;;
-        "$stream_8bitversus")
-          notify-desktop "$stream_8bitversus" "Two grown men reignite the ultimate playground fight of their pasts: which is better, the Commodore 64 or ZX Spectrum?" --app-name="$appname"
-          hypr-session 8bitversus
-          notify-desktop "🕹️ Session is ready" "Dust of your cassette tapes, retro-gaming streaming is ready." --app-name="$appname"
-          ;;
-      esac
-    '';
-  };
   bluetoothToggle = pkgs.writeShellApplication {
     name = "bluetooth-toggle";
     runtimeInputs = with pkgs; [
@@ -379,7 +329,7 @@ in
           "custom/launcher" = {
             format = "<big>󱄅</big>";
             on-click = "${lib.getExe rofiAppGrid}";
-            on-click-right = "${lib.getExe hyprSessionMenu}";
+            on-click-right = "hypr-activity-menu";
             tooltip-format = "  Applications Menu";
           };
           "hyprland/workspaces" = {
