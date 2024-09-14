@@ -1,5 +1,9 @@
 { hostname, lib, pkgs, ... }:
 let
+  passwordPrompt = if hostname == "tanis" then
+    "󰈷"
+  else
+    "󰌋";
   catSize = if hostname == "vader" then
     320
   else if hostname == "phasma" then
@@ -202,9 +206,9 @@ in
             dots_spacing = 0.25;
             dots_center = true;
             fade_on_empty = false;
-            placeholder_text = ''<span foreground="##f9e2af"><big>󰌋  $PROMPT</big></span>'';
+            placeholder_text = ''<span foreground="##f9e2af"><big>  ${passwordPrompt}  </big></span>'';
             fail_text = ''<span foreground="##f38ba8">󰀧</span>  <i>$FAIL</i> <span foreground="##f38ba8"><b>($ATTEMPTS)</b></span>'';
-            fail_timeout = 5000; # milliseconds before fail_text and fail_color disappears
+            fail_timeout = 10000; # milliseconds before fail_text and fail_color disappears
             fail_transition = 250; # transition time in ms between normal outer_color and fail_color
             hide_input = false;
             halign = "center";
