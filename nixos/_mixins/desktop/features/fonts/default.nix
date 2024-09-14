@@ -87,7 +87,7 @@
           <!-- Use Noto Emoji when other popular fonts are being specifically requested. -->
           <match target="pattern">
             <test qual="any" name="family"><string>Segoe UI Symbol</string></test>
-            <edit name="family" mode="preprend" binding="same"><string>Noto Emoji</string></edit>
+            <edit name="family" mode="assign" binding="same"><string>Noto Emoji</string></edit>
           </match>
           <match target="pattern">
             <test qual="any" name="family"><string>EmojiSymbols</string></test>
