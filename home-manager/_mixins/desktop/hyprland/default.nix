@@ -275,7 +275,7 @@ let
 
       function session_stop() {
           playerctl --all-players pause
-          hypy-activity clear
+          hypr-activity clear
           pkill trayscale
       }
 
