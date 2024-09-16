@@ -264,18 +264,19 @@ let
                 systemctl --user "$ACTION" "$PORTAL"
             done;
           done
+
+          bluetooth_devices connect
+          sleep 3.0
+          systemctl --user restart maestral-gui
+          trayscale --hide-window &
           if ! pidof -q waybar; then
               systemctl --user restart waybar
           fi
-          bluetooth_devices connect
-          sleep 2.5
-          systemctl --user restart maestral-gui
-          trayscale --hide-window &
       }
 
       function session_stop() {
           playerctl --all-players pause
-          hypy-activity clear
+          hypr-activity clear
           pkill trayscale
       }
 

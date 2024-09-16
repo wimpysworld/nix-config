@@ -11,6 +11,7 @@ pkgs: {
   obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
   wavebox = pkgs.callPackage ./wavebox { };
+  waybar = pkgs.callPackage ./waybar { };
   zoom-us = pkgs.callPackage ./zoom-us { };
 
   # https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
