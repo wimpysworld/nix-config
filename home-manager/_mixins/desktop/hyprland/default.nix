@@ -264,6 +264,7 @@ let
                 systemctl --user "$ACTION" "$PORTAL"
             done;
           done
+
           bluetooth_devices connect
           sleep 3.0
           systemctl --user restart maestral-gui
