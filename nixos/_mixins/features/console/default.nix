@@ -1,4 +1,5 @@
 {
+  desktop,
   hostname,
   isInstall,
   lib,
@@ -48,7 +49,7 @@ in
     kmscon = lib.mkIf isInstall {
       enable = true;
       extraOptions = "--gpus primary";
-      hwRender = false;
+      hwRender = if (desktop == null) then true else false;
       fonts = [
         {
           name = "FiraCode Nerd Font Mono";
