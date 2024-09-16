@@ -38,7 +38,6 @@
       "kvm-amd"
       "nvidia"
     ];
-    kernelPackages = lib.mkForce pkgs.linuxPackages_xanmod_latest;
     kernelParams = [
       "video=DP-1:3440x1440@60"
       "video=DP-2:1920x1080@60"
