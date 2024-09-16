@@ -52,7 +52,7 @@
   hardware = {
     mwProCapture.enable = true;
     nvidia = {
-      # NVIDIA driver FTBFS with Linux 6.10
+      # NVIDIA driver FTBFS with Linux 6.10 (upgrade-hint)
       # https://github.com/NixOS/nixpkgs/issues/332350
       # https://github.com/NVIDIA/open-gpu-kernel-modules/issues/642
       # https://discourse.nixos.org/t/builder-for-nvidia-x11-550-78-6-10-drv-failed-with-exit-code-2/49360

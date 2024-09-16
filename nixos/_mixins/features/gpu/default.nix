@@ -58,7 +58,7 @@ lib.mkIf isInstall {
     };
     nvidia = lib.mkIf hasNvidiaGPU { nvidiaSettings = lib.mkDefault isWorkstation; };
   };
-  # TODO: Change to this for >= 24.11
+  # TODO: upgrade-hint; Change to this for >= 24.11
   #hardware
   #  graphics = {
   #    enable = true;
