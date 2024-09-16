@@ -171,7 +171,6 @@
     # sops-nix options: https://dl.thalheim.io/
     secrets = {
       test-key = { };
-      homepage-env = { };
     };
   };
 

@@ -15,6 +15,14 @@ let
   ];
 in
 lib.mkIf (lib.elem "${hostname}" installOn) {
+  sops.secrets = {
+    homepage-env = {
+      mode = "0400";
+      owner = "root";
+      group = "root";
+      path = "/etc/homepage-dashboard/secrets.env";
+    };
+  };
   services = {
     homepage-dashboard = {
       enable = true;
