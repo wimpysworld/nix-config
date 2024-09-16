@@ -39,9 +39,9 @@
       "nvidia"
     ];
     kernelParams = [
-      "video=DP-1:3440x1440@60"
+      "video=DP-1:3440x1440@100"
       "video=DP-2:1920x1080@60"
-      "video=HDMI-A-1:2560x1600@60"
+      "video=HDMI-A-1:2560x1600@120"
     ];
     swraid = {
       enable = true;
