@@ -50,6 +50,7 @@
     #  });
     #});
 
+    # TODO: upgrade-hint; Remove this for >= 24.11
     openasar = prev.openasar.overrideAttrs (_old: rec {
       pname = "openasar";
       version = "0-unstable-2024-09-06";

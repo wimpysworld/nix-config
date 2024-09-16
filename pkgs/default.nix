@@ -1,20 +1,24 @@
 # Custom packages, that can be defined similarly to ones from nixpkgs
 # You can build them using 'nix build .#example'
 pkgs: {
+  # TODO upgrade-hint; Remove this following for >= 24.11
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
   gitkraken = pkgs.callPackage ./gitkraken { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
-  libcef = pkgs.callPackage ./libcef { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   monitorets = pkgs.callPackage ./monitorets { };
-  nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
-  obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
-  obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
   wavebox = pkgs.callPackage ./wavebox { };
   waybar = pkgs.callPackage ./waybar { };
   zoom-us = pkgs.callPackage ./zoom-us { };
+  libcef = pkgs.callPackage ./libcef { };
 
-  # https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
+  # Local packages being prepped for upstreaming
+  nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
+  obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
+  obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
+
+  # Local fonts
+  # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
   bebas-neue-2014-font = pkgs.callPackage ./fonts/bebas-neue-2014-font { };
   bebas-neue-2018-font = pkgs.callPackage ./fonts/bebas-neue-2018-font { };
   bebas-neue-pro-font = pkgs.callPackage ./fonts/bebas-neue-pro-font { };
