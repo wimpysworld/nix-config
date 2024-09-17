@@ -3,6 +3,7 @@
 pkgs: {
   # TODO upgrade-hint; Remove this following for >= 24.11
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
+  davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   gitkraken = pkgs.callPackage ./gitkraken { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
   lima-bin = pkgs.callPackage ./lima-bin { };
