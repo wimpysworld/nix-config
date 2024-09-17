@@ -452,7 +452,7 @@ in
             format = "<big>󰔠</big>";
             max-length = 2;
             on-click = "${lib.getExe pkgs.gnome.gnome-calendar}";
-            on-click-middle = "${lib.getExe pkgs.gnome.gnome-weather}";
+            on-click-middle = "${lib.getExe pkgs.mousam}";
             on-click-right = "${lib.getExe pkgs.gnome.gnome-clocks}";
             tooltip-format = "󰸗  Calendar (left-click)\n󰼳  Weather (middle-click)\n󱎫  Clock (right-click)";
           };
