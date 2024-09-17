@@ -88,6 +88,7 @@ in
         file # Terminal file info
         frogmouth # Terminal mardown viewer
         glow # Terminal Markdown renderer
+        girouette # Modern Unix weather
         gping # Modern Unix `ping`
         unstable.git-igitt # Modern Unix git log/graph
         h # Modern Unix autojump for git projects
@@ -127,7 +128,6 @@ in
         upterm # Terminal sharing
         wget # Terminal HTTP client
         wget2 # Terminal HTTP client
-        wthrr # Modern Unix weather
         wormhole-william # Terminal file transfer
         yq-go # Terminal `jq` for YAML
       ]
@@ -301,8 +301,8 @@ in
         top = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "${pkgs.eza}/bin/eza --tree";
         wormhole = "${pkgs.wormhole-william}/bin/wormhole-william";
-        weather = "${pkgs.wthrr}/bin/wthrr auto -u f,24h,c,mph -f d,w";
-        weather-home = "${pkgs.wthrr}/bin/wthrr basingstoke -u f,24h,c,mph -f d,w";
+        weather = "${lib.getExe pkgs.girouette} --quiet";
+        weather-home = "${lib.getExe pkgs.girouette} --quiet --location Basingstoke";
       };
     };
     fzf = {
