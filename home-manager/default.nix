@@ -121,8 +121,10 @@ in
         sd # Modern Unix `sed`
         speedtest-go # Terminal speedtest.net
         terminal-parrot # Terminal ASCII parrot
+        timer # Terminal timer
         tldr # Modern Unix `man`
         tokei # Modern Unix `wc` for code
+        tty-clock # Terminal clock
         ueberzugpp # Terminal image viewer integration
         unzip # Terminal ZIP extractor
         upterm # Terminal sharing
@@ -282,6 +284,7 @@ in
         banner-color = lib.mkIf isLinux "${pkgs.figlet}/bin/figlet $argv | ${pkgs.dotacat}/bin/dotacat";
         brg = "${pkgs.bat-extras.batgrep}/bin/batgrep";
         cat = "${pkgs.bat}/bin/bat --paging=never";
+        clock = ''${pkgs.tty-clock}/bin/tty-clock -B -c -C 4 -f "%a, %d %b"'';
         dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
         dmesg = "${pkgs.util-linux}/bin/dmesg --human --color=always";
         neofetch = "${pkgs.fastfetch}/bin/fastfetch";
