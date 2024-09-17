@@ -240,8 +240,11 @@ buildFHSEnv {
     mkdir -p ~/.local/share/DaVinciResolve/license || exit 1
   '';
 
+  # https://discourse.nixos.org/t/davinci-resolve-studio-install-issues/37699/44
   extraBwrapArgs = lib.optionals studioVariant [
     "--bind \"$HOME\"/.local/share/DaVinciResolve/license ${davinci}/.license"
+  ] ++ [
+    "--bind /run/opengl-driver/etc/OpenCL /etc/OpenCL"
   ];
 
   runScript = "${bash}/bin/bash ${
