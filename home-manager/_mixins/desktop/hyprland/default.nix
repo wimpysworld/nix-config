@@ -534,8 +534,9 @@ in
         "noshadow, floating:0"
         # make floating windows opaque
         "opacity 0.72, floating:1"
-        # do not make OBS Studio
+        # do not make OBS Studio or Davini Resolve windows opaque
         "opacity 1.0, class: com.obsproject.Studio"
+        "opacity 1.0, class: resolve"
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
