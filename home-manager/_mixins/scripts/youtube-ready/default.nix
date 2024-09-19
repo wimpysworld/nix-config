@@ -4,8 +4,11 @@ let
   shellApplication = pkgs.writeShellApplication {
     inherit name;
     runtimeInputs = with pkgs; [
+      bc
       coreutils-full
-      ffmpeg-headless
+      ffmpeg-full
+      gawk
+      gnugrep
     ];
     text = builtins.readFile ./${name}.sh;
   };
