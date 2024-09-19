@@ -5,7 +5,7 @@ set +u  # Disable nounset
 set +o pipefail  # Disable pipefail
 
 function usage() {
-    echo "Usage: $(basename "$0") video.mov [--aq] [--codec h264,h265] [--lookahead] [--multipass] [--preset p1-p7] [--qp 0-51] [--vmaf]"
+    echo "Usage: $(basename "$0") video.mov [--aq] [--codec h264_nvenc,h264_vaapi] [--lookahead] [--multipass] [--preset p1-p7] [--qp 0-51] [--vmaf]"
     exit 1
 }
 
@@ -22,6 +22,7 @@ FILE_IN="$1"
 shift
 
 CONTAINER_FLAGSNTAGS="-movflags +faststart"
+HW_ACCEL=""
 # Spatial and Temporal AQ is disabled by default
 # - It slows down the encoding process with a slight reduction in VMAF score
 # - It is beneficial for fast moving content, such as games
@@ -32,16 +33,16 @@ VIDEO_CODEC="h264_nvenc"
 # - H.264 average bit rate will be higher with lookahead enabled
 # - Has no effect on H.265 encoding performance or bit rate control
 VIDEO_EXTRA=""
+VIDEO_FILTER="-vf format=nv12"
 VIDEO_LOOKAHEAD=""
 # Multipass is disabled by default
 # - Slows down encode time with very little bitrate saving
 # - Also, very slightly lower VMAF score
 VIDEO_MULTIPASS=""
-# Preset P4 with QP 10 results in average VMAF of 97.7 for H264 and H265
-# with lows of 97.0 for both.
 # - https://ottverse.com/top-rung-of-encoding-bitrate-ladder-abr-video-streaming/
 VIDEO_PRESET="p4"
-VIDEO_QP="10"
+VIDEO_QP="20"
+VIDEO_RC_MODE="-rc constqp"
 VMAF=0
 
 # NVIDIA T600 file size and ecoding speed from 2min sample video 1080p@60fps:
@@ -69,8 +70,7 @@ while [ -n "$1" ]; do
         --codec)
             shift
             case "$1" in
-                265|h265|H265|hevc|HEVC) VIDEO_CODEC="hevc_nvenc";;
-                264|h264|H264) VIDEO_CODEC="h264_nvenc";;
+                h264_nvenc|h264_vaapi|hevc_nvenc|hevc_vaapi) VIDEO_CODEC="$1";;
                 *) usage;;
             esac
             ;;
@@ -96,30 +96,61 @@ done
 case "$VIDEO_CODEC" in
     hevc_nvenc)
       CONTAINER_FLAGSNTAGS+=" -tag:v hvc1"
+      VIDEO_EXTRA="-level 4.1 -profile main -strict_gop 1"
+      ;;
+    hevc_vaapi)
+      CONTAINER_FLAGSNTAGS+=" -tag:v hvc1"
+      VIDEO_EXTRA="-level 4.1 -profile main"
+      HW_ACCEL="-hwaccel vaapi -hwaccel_output_format vaapi -vaapi_device /dev/dri/renderD128"
+      VIDEO_FILTER+="|vaapi,hwupload"
+      VIDEO_RC_MODE="-rc_mode CQP -global_quality $VIDEO_QP"
+      # Not available for the VA-API encoder
+      VIDEO_AQ=""
+      VIDEO_LOOKAHEAD=""
+      VIDEO_MULTIPASS=""
+      VIDEO_PRESET=""
       ;;
     h264_nvenc)
-      VIDEO_EXTRA="-coder cabac -b_ref_mode middle"
+      VIDEO_EXTRA="-coder cabac -level 4.2 -profile high -b_ref_mode middle -strict_gop 1"
       # Enable Temporal AQ for H264; which is not available for H265
       if [ -n "$VIDEO_AQ" ]; then
           VIDEO_AQ+=" -temporal_aq 1"
       fi
       ;;
+    h264_vaapi)
+      HW_ACCEL="-hwaccel vaapi -hwaccel_output_format vaapi -vaapi_device /dev/dri/renderD128"
+      VIDEO_EXTRA="-coder cabac -level 4.2 -profile high"
+      VIDEO_FILTER+="|vaapi,hwupload"
+      VIDEO_RC_MODE="-rc_mode CQP -global_quality $VIDEO_QP"
+      # Not available for the VA-API encoder
+      VIDEO_AQ=""
+      VIDEO_LOOKAHEAD=""
+      VIDEO_MULTIPASS=""
+      VIDEO_PRESET=""
+      ;;
 esac
 
-FILE_OUT="${FILE_IN%.*}-$VIDEO_CODEC-$VIDEO_PRESET.mp4"
+FILE_EXT="mp4"
+FILE_OUT="${FILE_IN%.*}-$VIDEO_CODEC.$FILE_EXT"
+if [ -n "$VIDEO_PRESET" ]; then
+    FILE_OUT="${FILE_OUT%.*}-$VIDEO_PRESET.$FILE_EXT"
+fi
 if [ -n "$VIDEO_AQ" ]; then
-    FILE_OUT="${FILE_OUT%.*}-AQ.mp4"
+    FILE_OUT="${FILE_OUT%.*}-AQ.$FILE_EXT"
 fi
 if [ -n "$VIDEO_LOOKAHEAD" ]; then
-    FILE_OUT="${FILE_OUT%.*}-LAH.mp4"
+    FILE_OUT="${FILE_OUT%.*}-LAH.$FILE_EXT"
 fi
 if [ -n "$VIDEO_MULTIPASS" ]; then
-    FILE_OUT="${FILE_OUT%.*}-MP.mp4"
+    FILE_OUT="${FILE_OUT%.*}-MP.$FILE_EXT"
+fi
+
+if [ -n "$VIDEO_PRESET" ]; then
+    VIDEO_PRESET="-preset $VIDEO_PRESET"
 fi
 
 # Check if libfdk_aac is available
 FFMPEG_CHECK=$(ffmpeg -hide_banner -h encoder=libfdk_aac 2>&1 | tail -1)
-
 AUDIO_BITRATE="384k"
 AUDIO_CODEC="libfdk_aac"
 AUDIO_EXTRA="-profile:a aac_low -cutoff 20000"
@@ -130,7 +161,6 @@ fi
 
 # Export a video to H264/H265 with AAC-LC for YouTube
 # - https://support.google.com/youtube/answer/1722171
-# TODO: Add VA-API support: https://www.tauceti.blog/posts/linux-ffmpeg-amd-5700xt-hardware-video-encoding-hevc-h265-vaapi/
 # shellcheck disable=SC2086
 echo -e "\nEncoding: $FILE_OUT (qp: $VIDEO_QP)"
 ffmpeg \
@@ -138,17 +168,16 @@ ffmpeg \
     -hide_banner \
     -loglevel quiet \
     -stats \
+    $HW_ACCEL \
     -i "$FILE_IN" \
+    $VIDEO_FILTER \
     -c:v "$VIDEO_CODEC" $VIDEO_EXTRA \
-    -preset "$VIDEO_PRESET" \
-    -rc constqp \
+    $VIDEO_PRESET \
+    $VIDEO_RC_MODE \
     -qp "$VIDEO_QP" \
     $VIDEO_MULTIPASS \
     $VIDEO_AQ \
     $VIDEO_LOOKAHEAD \
-    -strict_gop 1 \
-    -rgb_mode yuv420 \
-    -pix_fmt yuv420p \
     -c:a "$AUDIO_CODEC" $AUDIO_EXTRA \
     -b:a "$AUDIO_BITRATE" \
     $CONTAINER_FLAGSNTAGS "$FILE_OUT" 2>&1
