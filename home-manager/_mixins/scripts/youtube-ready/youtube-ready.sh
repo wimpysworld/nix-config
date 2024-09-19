@@ -168,8 +168,10 @@ if [ "$VMAF" -eq 1 ]; then
     -i "$FILE_IN" \
     -lavfi libvmaf="n_threads=$THREADS_VMAF:log_fmt=csv:log_path=$FILE_OUT.csv" -f null - 2>&1
 
-  FILE_SIZE=$(du -h "$FILE_OUT" | awk '{print $1}')
-  echo " - File size:    $FILE_SIZE"
+  # Get the accurate file size of FILE_OUT in Megabytes and print it
+  FILE_SIZE=$(stat -c%s "$FILE_OUT")
+  FILE_SIZE_MB=$(echo "scale=0; $FILE_SIZE / 1024 / 1024" | bc)
+  echo " - File size:    $FILE_SIZE_MB MB"
   awk -F, '
     NR > 1 {
       sum += $13;
