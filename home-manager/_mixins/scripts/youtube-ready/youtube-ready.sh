@@ -5,7 +5,7 @@ set +u  # Disable nounset
 set +o pipefail  # Disable pipefail
 
 function usage() {
-    echo "Usage: $(basename "$0") video.mov [--aq] [--codec h264_nvenc,h264_vaapi] [--lookahead] [--multipass] [--preset p1-p7] [--qp 0-51] [--vmaf]"
+    echo "Usage: $(basename "$0") video.mov [--aq] [--bitrate 12M ] [--benchmark] [--codec h264_nvenc,h264_vaapi] [--lookahead] [--multipass] [--preset p1-p7] [--quality 20] [--vmaf]"
     exit 1
 }
 
@@ -21,12 +21,13 @@ fi
 FILE_IN="$1"
 shift
 
-CONTAINER_FLAGSNTAGS="-movflags +faststart"
+BENCHMARK=0
 HW_ACCEL=""
 # Spatial and Temporal AQ is disabled by default
 # - It slows down the encoding process with a slight reduction in VMAF score
 # - It is beneficial for fast moving content, such as games
 VIDEO_AQ=""
+VIDEO_BITRATE=""
 VIDEO_CODEC="h264_nvenc"
 # Lookahead is disabled by default
 # - It speeds up H.264 encoding process with a very slightly reduced VMAF score
@@ -41,8 +42,8 @@ VIDEO_LOOKAHEAD=""
 VIDEO_MULTIPASS=""
 # - https://ottverse.com/top-rung-of-encoding-bitrate-ladder-abr-video-streaming/
 VIDEO_PRESET="p4"
-VIDEO_QP="20"
-VIDEO_RC_MODE="-rc constqp"
+VIDEO_QUALITY=""
+VIDEO_RC_MODE=""
 VMAF=0
 
 # NVIDIA T600 file size and ecoding speed from 2min sample video 1080p@60fps:
@@ -67,6 +68,10 @@ VMAF=0
 while [ -n "$1" ]; do
     case "$1" in
         --aq) VIDEO_AQ="-spatial_aq 1";;
+        --benchmark) BENCHMARK=1;;
+        --bitrate)
+            shift
+            VIDEO_BITRATE="$1";;
         --codec)
             shift
             case "$1" in
@@ -83,25 +88,65 @@ while [ -n "$1" ]; do
                 *) usage;;
             esac
             ;;
-        --qp)
+        --quality)
             shift
-            VIDEO_QP="$1";;
+            VIDEO_QUALITY="$1";;
         --vmaf) VMAF=1;;
         *) usage;;
     esac
     shift
 done
 
+
+if [ -n "$VIDEO_QUALITY" ] && [ -n "$VIDEO_BITRATE" ]; then
+    echo "Error: --quality and --bitrate are mutually exclusive"
+    exit 1
+fi
+
+# Configure rate control
+if [ -n "$VIDEO_QUALITY" ]; then
+    case "$VIDEO_CODEC" in
+        *_nvenc) VIDEO_RC_MODE="-rc constqp -qp $VIDEO_QUALITY";;
+        *_vaapi) VIDEO_RC_MODE="-rc_mode CQP -qp $VIDEO_QUALITY";;
+    esac
+elif [ -n "$VIDEO_BITRATE" ]; then
+    # check that VIDEO_BITRATE is in the for of 12M
+    if ! echo "$VIDEO_BITRATE" | grep -qE "^[0-9]+[M]$"; then
+        echo "Error: --bitrate must be in the format of 12M"
+        exit 1
+    fi
+    case "$VIDEO_CODEC" in
+        *_nvenc)
+          VIDEO_RC_MODE="-rc cbr -cbr 1"
+          # Alerts the user that lookahead hugely improves *all* NVENC encoders when using CBR
+          if [ -z "$VIDEO_LOOKAHEAD" ]; then
+              echo "Warning:  '--lookahead' significantly improves video quality when using NVENC CBR "
+          fi
+          # hevc_nvenv only accepts lower case 'm' for the bitrate
+          if [ "$VIDEO_CODEC" == "hevc_nvenc" ]; then
+              VIDEO_EXTRA="-b:v ${VIDEO_BITRATE,,}"
+          else
+              VIDEO_EXTRA="-b:v $VIDEO_BITRATE"
+          fi
+          ;;
+        *_vaapi)
+          VIDEO_RC_MODE="-rc_mode CBR"
+          VIDEO_EXTRA="-b:v $VIDEO_BITRATE"
+          ;;
+    esac
+else
+    echo "Error: --quality or --bitrate is required"
+    exit 1
+fi
+
 # Set the video codec options
 case "$VIDEO_CODEC" in
     av1_nvenc)
-      VIDEO_EXTRA="-b_ref_mode middle  -strict_gop 1"
+      VIDEO_EXTRA+=" -b_ref_mode middle -strict_gop 1"
       ;;
     av1_vaapi)
-      #VIDEO_EXTRA="-level 4.1 -profile main"
       HW_ACCEL="-hwaccel vaapi -hwaccel_output_format vaapi -vaapi_device /dev/dri/renderD128"
       VIDEO_FILTER+="|vaapi,hwupload"
-      VIDEO_RC_MODE="-rc_mode CQP"
       # Not available for the VA-API encoder
       VIDEO_AQ=""
       VIDEO_LOOKAHEAD=""
@@ -109,15 +154,12 @@ case "$VIDEO_CODEC" in
       VIDEO_PRESET=""
       ;;
     hevc_nvenc)
-      CONTAINER_FLAGSNTAGS+=" -tag:v hvc1"
-      VIDEO_EXTRA="-level 4.1 -profile main -strict_gop 1"
+      VIDEO_EXTRA+=" -level:v 4.1 -profile:v main -tag:v hvc1 -strict_gop 1"
       ;;
     hevc_vaapi)
-      CONTAINER_FLAGSNTAGS+=" -tag:v hvc1"
-      VIDEO_EXTRA="-level 4.1 -profile main"
+      VIDEO_EXTRA+=" -level:v 4.1 -profile:v main -tag:v hvc1"
       HW_ACCEL="-hwaccel vaapi -hwaccel_output_format vaapi -vaapi_device /dev/dri/renderD128"
       VIDEO_FILTER+="|vaapi,hwupload"
-      VIDEO_RC_MODE="-rc_mode CQP"
       # Not available for the VA-API encoder
       VIDEO_AQ=""
       VIDEO_LOOKAHEAD=""
@@ -125,7 +167,7 @@ case "$VIDEO_CODEC" in
       VIDEO_PRESET=""
       ;;
     h264_nvenc)
-      VIDEO_EXTRA="-coder cabac -level 4.2 -profile high -b_ref_mode middle -strict_gop 1"
+      VIDEO_EXTRA+=" -coder:v cabac -level:v 4.2 -profile:v high -b_ref_mode middle -strict_gop 1"
       # Enable Temporal AQ for H264; which is not available for H265
       if [ -n "$VIDEO_AQ" ]; then
           VIDEO_AQ+=" -temporal_aq 1"
@@ -133,9 +175,8 @@ case "$VIDEO_CODEC" in
       ;;
     h264_vaapi)
       HW_ACCEL="-hwaccel vaapi -hwaccel_output_format vaapi -vaapi_device /dev/dri/renderD128"
-      VIDEO_EXTRA="-coder cabac -level 4.2 -profile high"
+      VIDEO_EXTRA+=" -coder:v cabac -level:v 4.2 -profile:v high"
       VIDEO_FILTER+="|vaapi,hwupload"
-      VIDEO_RC_MODE="-rc_mode CQP"
       # Not available for the VA-API encoder
       VIDEO_AQ=""
       VIDEO_LOOKAHEAD=""
@@ -166,8 +207,9 @@ fi
 # Check if libfdk_aac is available
 FFMPEG_CHECK=$(ffmpeg -hide_banner -h encoder=libfdk_aac 2>&1 | tail -1)
 AUDIO_BITRATE="384k"
+AUDIO_CUTOFF="20000"
 AUDIO_CODEC="libfdk_aac"
-AUDIO_EXTRA="-profile:a aac_low -cutoff 20000"
+AUDIO_EXTRA="-b:a $AUDIO_BITRATE -profile:a aac_low -cutoff $AUDIO_CUTOFF"
 # Fallback to native FFmpeg AAC encoder if libfdk_aac is not available
 if echo "$FFMPEG_CHECK" | grep -q "is not recognized by FFmpeg"; then
     AUDIO_CODEC="aac"
@@ -176,7 +218,7 @@ fi
 # Export a video to H264/H265 with AAC-LC for YouTube
 # - https://support.google.com/youtube/answer/1722171
 # shellcheck disable=SC2086
-echo -e "\nEncoding: $FILE_OUT (qp: $VIDEO_QP)"
+echo -e "Encoding: $FILE_OUT"
 ffmpeg \
     -y \
     -hide_banner \
@@ -188,13 +230,11 @@ ffmpeg \
     -c:v "$VIDEO_CODEC" $VIDEO_EXTRA \
     $VIDEO_PRESET \
     $VIDEO_RC_MODE \
-    -qp "$VIDEO_QP" \
     $VIDEO_MULTIPASS \
     $VIDEO_AQ \
     $VIDEO_LOOKAHEAD \
     -c:a "$AUDIO_CODEC" $AUDIO_EXTRA \
-    -b:a "$AUDIO_BITRATE" \
-    $CONTAINER_FLAGSNTAGS "$FILE_OUT" 2>&1
+    -movflags +faststart "$FILE_OUT" 2>&1
 
 if [ "$VMAF" -eq 1 ]; then
   # Get the number of processing units
@@ -230,4 +270,10 @@ if [ "$VMAF" -eq 1 ]; then
       }
     }
   ' "$FILE_OUT.csv"
+fi
+echo ""
+# Remove the output file if the benchmark flag is set
+if [ "$BENCHMARK" -eq 1 ]; then
+  rm -f "$FILE_OUT"
+  rm -f "$FILE_OUT.csv"
 fi
