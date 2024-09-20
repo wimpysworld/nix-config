@@ -71,7 +71,7 @@
           enable = true;
           enableOffloadCmd = true;
         };
-        # Make the Radeon RX6700 XT default; the NVIDIA T600 is for CUDA/NVENC
+        # Make the Radeon RX 7900 GRE default; the RTX 2000E Ada Generation is for CUDA/NVENC
         reverseSync.enable = true;
       };
     };
