@@ -70,7 +70,7 @@ while [ -n "$1" ]; do
         --codec)
             shift
             case "$1" in
-                h264_nvenc|h264_vaapi|hevc_nvenc|hevc_vaapi) VIDEO_CODEC="$1";;
+                av1_nvenc|av1_vaapi|h264_nvenc|h264_vaapi|hevc_nvenc|hevc_vaapi) VIDEO_CODEC="$1";;
                 *) usage;;
             esac
             ;;
@@ -94,6 +94,20 @@ done
 
 # Set the video codec options
 case "$VIDEO_CODEC" in
+    av1_nvenc)
+      VIDEO_EXTRA="-b_ref_mode middle  -strict_gop 1"
+      ;;
+    av1_vaapi)
+      #VIDEO_EXTRA="-level 4.1 -profile main"
+      HW_ACCEL="-hwaccel vaapi -hwaccel_output_format vaapi -vaapi_device /dev/dri/renderD128"
+      VIDEO_FILTER+="|vaapi,hwupload"
+      VIDEO_RC_MODE="-rc_mode CQP"
+      # Not available for the VA-API encoder
+      VIDEO_AQ=""
+      VIDEO_LOOKAHEAD=""
+      VIDEO_MULTIPASS=""
+      VIDEO_PRESET=""
+      ;;
     hevc_nvenc)
       CONTAINER_FLAGSNTAGS+=" -tag:v hvc1"
       VIDEO_EXTRA="-level 4.1 -profile main -strict_gop 1"
@@ -103,7 +117,7 @@ case "$VIDEO_CODEC" in
       VIDEO_EXTRA="-level 4.1 -profile main"
       HW_ACCEL="-hwaccel vaapi -hwaccel_output_format vaapi -vaapi_device /dev/dri/renderD128"
       VIDEO_FILTER+="|vaapi,hwupload"
-      VIDEO_RC_MODE="-rc_mode CQP -global_quality $VIDEO_QP"
+      VIDEO_RC_MODE="-rc_mode CQP"
       # Not available for the VA-API encoder
       VIDEO_AQ=""
       VIDEO_LOOKAHEAD=""
@@ -121,7 +135,7 @@ case "$VIDEO_CODEC" in
       HW_ACCEL="-hwaccel vaapi -hwaccel_output_format vaapi -vaapi_device /dev/dri/renderD128"
       VIDEO_EXTRA="-coder cabac -level 4.2 -profile high"
       VIDEO_FILTER+="|vaapi,hwupload"
-      VIDEO_RC_MODE="-rc_mode CQP -global_quality $VIDEO_QP"
+      VIDEO_RC_MODE="-rc_mode CQP"
       # Not available for the VA-API encoder
       VIDEO_AQ=""
       VIDEO_LOOKAHEAD=""
