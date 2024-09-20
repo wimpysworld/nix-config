@@ -223,6 +223,7 @@ ffmpeg \
     -y \
     -hide_banner \
     -loglevel quiet \
+    -progress "$FILE_OUT.log" \
     -stats \
     $HW_ACCEL \
     -i "$FILE_IN" \
@@ -236,12 +237,22 @@ ffmpeg \
     -c:a "$AUDIO_CODEC" $AUDIO_EXTRA \
     -movflags +faststart "$FILE_OUT" 2>&1
 
+# Get the last fps= value from the log file
+ENCODE_FPS=$(grep -oP "fps=\K[0-9.]+" "$FILE_OUT.log" | tail -1)
+ENCODE_BITRATE=$(grep -oP "bitrate=\K[0-9.]+" "$FILE_OUT.log" | tail -1)
+# Convert bitrate to megabits per second
+ENCODE_BITRATE=$(echo "scale=0; $ENCODE_BITRATE / 1024" | bc)
+ENCODE_SIZE=$(grep -oP "total_size=\K[0-9.]+" "$FILE_OUT.log" | tail -1)
+# Convert total size to megabytes
+ENCODE_SIZE=$(echo "scale=0; $ENCODE_SIZE / 1024 / 1024" | bc)
+ENCODE_SPEED=$(grep -oP "speed=\K[0-9.]+" "$FILE_OUT.log" | tail -1)
+
 if [ "$VMAF" -eq 1 ]; then
   # Get the number of processing units
   THREADS_ALL=$(nproc)
   # Calculate 75% of the number of processing units
   THREADS_VMAF=$(printf "%.0f" "$(echo "${THREADS_ALL} * 0.75" | bc)")
-  echo "VMAF quality comparison ($THREADS_VMAF threads)"
+  echo "Analysis: $FILE_OUT ($THREADS_VMAF threads)"
   ffmpeg \
     -y \
     -hide_banner \
@@ -251,29 +262,75 @@ if [ "$VMAF" -eq 1 ]; then
     -i "$FILE_IN" \
     -lavfi libvmaf="n_threads=$THREADS_VMAF:log_fmt=csv:log_path=$FILE_OUT.csv" -f null - 2>&1
 
-  # Get the accurate file size of FILE_OUT in Megabytes and print it
-  FILE_SIZE=$(stat -c%s "$FILE_OUT")
-  FILE_SIZE_MB=$(echo "scale=0; $FILE_SIZE / 1024 / 1024" | bc)
-  echo " - File size:    $FILE_SIZE_MB MB"
-  awk -F, '
+  # Parse the VMAF values
+  VMAF_OUTPUT=$(awk -F, '
     NR > 1 {
       sum += $13;
       count++;
+      vmaf_values[count] = $13;
       if (NR == 2 || $13 < min) min = $13;
     }
     END {
       if (count > 0) {
-        print " - VMAF Average: " sprintf("%.2f", sum / count);
-        print " - VMAF Lowest:  " sprintf("%.2f", min);
+        # Calculate the average and lowest VMAF
+        print "VMAF_AVERAGE=" sprintf("%.2f", sum / count);
+
+        # Sort the VMAF values
+        asort(vmaf_values);
+
+        # Calculate the 1% lows
+        one_percent_index = int(count * 0.01);
+        if (one_percent_index < 1) one_percent_index = 1;
+        one_percent_low = vmaf_values[one_percent_index];
+
+        print "VMAF_LOWS=" sprintf("%.2f", one_percent_low);
+        print "VMAF_LOWEST=" sprintf("%.2f", min);
       } else {
         print "No data";
       }
     }
-  ' "$FILE_OUT.csv"
+  ' "$FILE_OUT.csv")
+
+  # Extract the VMAF scores from the output
+  VMAF_AVERAGE=$(echo "$VMAF_OUTPUT" | grep "VMAF_AVERAGE" | cut -d'=' -f2)
+  VMAF_LOWS=$(echo "$VMAF_OUTPUT" | grep "VMAF_LOWS" | cut -d'=' -f2)
+  VMAF_LOWEST=$(echo "$VMAF_OUTPUT" | grep "VMAF_LOWEST" | cut -d'=' -f2)
+  echo " - Encode FPS:   $ENCODE_FPS fps"
+  echo " - Encode Speed: $ENCODE_SPEED x"
+  echo " - Bitrate:      $ENCODE_BITRATE Mbps"
+  echo " - Size:         $ENCODE_SIZE MB"
+  echo " - VMAF Average: $VMAF_AVERAGE"
+  echo " - VMAF 1% Lows: $VMAF_LOWS"
+  echo " - VMAF Lowest:  $VMAF_LOWEST"
 fi
 echo ""
 # Remove the output file if the benchmark flag is set
 if [ "$BENCHMARK" -eq 1 ]; then
+  if [ -n "${VIDEO_AQ}" ]; then
+      VIDEO_AQ="Y"
+  else
+      VIDEO_AQ="N"
+  fi
+  if [ -n "${VIDEO_LOOKAHEAD}" ]; then
+      VIDEO_LOOKAHEAD="Y"
+  else
+      VIDEO_LOOKAHEAD="N"
+  fi
+  if [ -n "${VIDEO_MULTIPASS}" ]; then
+      VIDEO_MULTIPASS="Y"
+  else
+      VIDEO_MULTIPASS="N"
+  fi
+  if [ -n "${VIDEO_PRESET}" ]; then
+      VIDEO_PRESET=$(echo "$VIDEO_PRESET" | cut -d' ' -f2)
+  else
+      VIDEO_PRESET=""
+  fi
+  VIDEO_RC_MODE=$(echo "$VIDEO_RC_MODE" | cut -d' ' -f2)
+
+  DATA="$FILE_IN,$VIDEO_CODEC,$VIDEO_RC_MODE,$VIDEO_PRESET,$VIDEO_QUALITY,$VIDEO_BITRATE,$VIDEO_AQ,$VIDEO_LOOKAHEAD,$VIDEO_MULTIPASS,$ENCODE_FPS,$ENCODE_SPEED,$ENCODE_BITRATE,$ENCODE_SIZE,$VMAF_AVERAGE,$VMAF_LOWS,$VMAF_LOWEST"
+  echo "$DATA" >> "$FILE_OUT.txt"
   rm -f "$FILE_OUT"
   rm -f "$FILE_OUT.csv"
+  rm -f "$FILE_OUT.log"
 fi
