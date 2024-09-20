@@ -118,10 +118,6 @@ elif [ -n "$VIDEO_BITRATE" ]; then
     case "$VIDEO_CODEC" in
         *_nvenc)
           VIDEO_RC_MODE="-rc cbr -cbr 1"
-          # Alerts the user that lookahead hugely improves *all* NVENC encoders when using CBR
-          if [ -z "$VIDEO_LOOKAHEAD" ]; then
-              echo "Warning:  '--lookahead' significantly improves video quality when using NVENC CBR "
-          fi
           # hevc_nvenv only accepts lower case 'm' for the bitrate
           if [ "$VIDEO_CODEC" == "hevc_nvenc" ]; then
               VIDEO_EXTRA="-b:v ${VIDEO_BITRATE,,}"
