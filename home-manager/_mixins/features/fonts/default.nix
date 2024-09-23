@@ -64,7 +64,7 @@ lib.mkIf (isDarwin || isOtherOS) {
         "Noto Color Emoji"
       ];
       monospace = [
-        "Symbols Nerd Font Mono"
+        "FiraCode Nerd Font Mono"
         "Font Awesome 6 Free"
         "Font Awesome 6 Brands"
         "Symbola"
