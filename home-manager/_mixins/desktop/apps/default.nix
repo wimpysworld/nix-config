@@ -6,7 +6,7 @@ let
   webBrowser = [ "brave-browser.desktop" ];
   documentViewer = [ "org.gnome.Papers.desktop" ];
   imageViewer = [ "org.gnome.Loupe.desktop" ];
-  videoPlayer = [ "com.github.rafostar.Clapper.desktop" ];
+  videoPlayer = [ "net.baseart.Glide.desktop" ];
 in
 {
   imports = [
@@ -25,7 +25,7 @@ in
     ./zed-editor
   ];
   home.packages = with pkgs; lib.optionals isLinux [
-    clapper                 # video player
+    glide-media-player      # video player
     unstable.decibels       # audio player
     gnome.gnome-calculator  # calcualtor
     loupe                   # image viewer
@@ -104,6 +104,7 @@ in
         "application/vnd.ms-xpsdocument" = documentViewer;
         "application/illustrator" = documentViewer;
 
+        #audio/3gpp;audio/3gpp2;audio/aac;audio/ac3;audio/AMR;audio/AMR-WB;audio/basic;audio/dv;audio/eac3;audio/flac;audio/m4a;audio/midi;audio/mp1;audio/mp2;audio/mp3;audio/mp4;audio/mpeg;audio/mpegurl;audio/mpg;audio/ogg;audio/opus;audio/prs.sid;audio/scpls;audio/vnd.rn-realaudio;audio/wav;audio/webm;audio/x-aac;audio/x-aiff;audio/x-ape;audio/x-flac;audio/x-gsm;audio/x-it;audio/x-m4a;audio/x-matroska;audio/x-mod;audio/x-mp1;audio/x-mp2;audio/x-mp3;audio/x-mpg;audio/x-mpeg;audio/x-mpegurl;audio/x-ms-asf;audio/x-ms-asx;audio/x-ms-wax;audio/x-ms-wma;audio/x-musepack;audio/x-pn-aiff;audio/x-pn-au;audio/x-pn-realaudio;audio/x-pn-realaudio-plugin;audio/x-pn-wav;audio/x-pn-windows-acm;audio/x-realaudio;audio/x-real-audio;audio/x-s3m;audio/x-sbc;audio/x-scpls;audio/x-shorten;audio/x-speex;audio/x-stm;audio/x-tta;audio/x-wav;audio/x-wavpack;audio/x-vorbis;audio/x-vorbis+ogg;audio/x-xm;
         "audio/mpeg" = audioPlayer;
         "audio/wav" = audioPlayer;
         "audio/x-aac" = audioPlayer;
@@ -148,29 +149,33 @@ in
         "image/heic" = imageViewer;
         "image/jxl" = imageViewer;
 
-        "application/claps" = videoPlayer;
-        "application/mpeg4-iod" = videoPlayer;
-        "application/mpeg4-muxcodetable" = videoPlayer;
         "application/mxf" = videoPlayer;
+        "application/ogg" = videoPlayer;
         "application/ram" = videoPlayer;
         "application/sdp" = videoPlayer;
-        "application/streamingmedia" = videoPlayer;
+        "application/smil" = videoPlayer;
+        "application/smil+xml" = videoPlayer;
         "application/vnd.apple.mpegurl" = videoPlayer;
         "application/vnd.ms-asf" = videoPlayer;
+        "application/vnd.ms-wpl" = videoPlayer;
         "application/vnd.rn-realmedia" = videoPlayer;
         "application/vnd.rn-realmedia-vbr" = videoPlayer;
         "application/x-extension-mp4" = videoPlayer;
         "application/x-flash-video" = videoPlayer;
         "application/x-matroska" = videoPlayer;
+        "application/x-netshow-channel" = videoPlayer;
         "application/x-ogg" = videoPlayer;
-        "application/x-streamingmedia" = videoPlayer;
+        "application/x-quicktime-media-link" = videoPlayer;
+        "application/x-quicktimeplayer" = videoPlayer;
+        "application/x-shorten" = videoPlayer;
+        "application/x-smil" = videoPlayer;
+        "application/xspf+xml" = videoPlayer;
         "video/3gp" = videoPlayer;
         "video/3gpp" = videoPlayer;
         "video/3gpp2" = videoPlayer;
-        "video/divx" = videoPlayer;
         "video/dv" = videoPlayer;
+        "video/divx" = videoPlayer;
         "video/fli" = videoPlayer;
-        "video/flv" = videoPlayer;
         "video/mp2t" = videoPlayer;
         "video/mp4" = videoPlayer;
         "video/mp4v-es" = videoPlayer;
@@ -179,35 +184,44 @@ in
         "video/msvideo" = videoPlayer;
         "video/ogg" = videoPlayer;
         "video/quicktime" = videoPlayer;
-        "video/vnd.mpegurl" = videoPlayer;
+        "video/vivo" = videoPlayer;
+        "video/vnd.divx" = videoPlayer;
         "video/vnd.rn-realvideo" = videoPlayer;
+        "video/vnd.vivo" = videoPlayer;
         "video/webm" = videoPlayer;
+        "video/x-anim" = videoPlayer;
         "video/x-avi" = videoPlayer;
         "video/x-flc" = videoPlayer;
         "video/x-fli" = videoPlayer;
+        "video/x-flic" = videoPlayer;
         "video/x-flv" = videoPlayer;
         "video/x-m4v" = videoPlayer;
         "video/x-matroska" = videoPlayer;
         "video/x-mpeg" = videoPlayer;
-        "video/x-mpeg-system" = videoPlayer;
         "video/x-mpeg2" = videoPlayer;
         "video/x-ms-asf" = videoPlayer;
+        "video/x-ms-asf-plugin" = videoPlayer;
+        "video/x-ms-asx" = videoPlayer;
+        "video/x-msvideo" = videoPlayer;
         "video/x-ms-wm" = videoPlayer;
         "video/x-ms-wmv" = videoPlayer;
         "video/x-ms-wmx" = videoPlayer;
-        "video/x-msvideo" = videoPlayer;
+        "video/x-ms-wvx" = videoPlayer;
         "video/x-nsv" = videoPlayer;
         "video/x-ogm+ogg" = videoPlayer;
         "video/x-theora" = videoPlayer;
         "video/x-theora+ogg" = videoPlayer;
-        "x-content/audio-cdda" = videoPlayer;
-        "x-content/audio-player" = videoPlayer;
+        "video/x-totem-stream" = videoPlayer;
         "x-content/video-dvd" = videoPlayer;
-        "x-scheme-handler/mms" = videoPlayer;
-        "x-scheme-handler/mmsh" = videoPlayer;
+        "x-content/video-vcd" = videoPlayer;
+        "x-content/video-svcd" = videoPlayer;
+        "x-scheme-handler/pnm" = videoPlayer;
+        "x-scheme-handler/net" = videoPlayer;
         "x-scheme-handler/rtmp" = videoPlayer;
-        "x-scheme-handler/rtp" = videoPlayer;
-        "x-scheme-handler/rtsp" = videoPlayer;
+        "x-scheme-handler/mmsh" = videoPlayer;
+        "x-scheme-handler/uvox" = videoPlayer;
+        "x-scheme-handler/icy" = videoPlayer;
+        "x-scheme-handler/icyx" = videoPlayer;
       };
       defaultApplications = {
         "audio/*" = audioPlayer;
