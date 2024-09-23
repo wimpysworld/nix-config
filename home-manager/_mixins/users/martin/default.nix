@@ -154,14 +154,6 @@ in
           "Player"
         ];
       };
-      heynote = {
-        name = "Heynote";
-        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Heynote.AppImage";
-        terminal = false;
-        icon = "${config.home.homeDirectory}/Apps/Hey/logo.png";
-        type = "Application";
-        categories = [ "Office" ];
-      };
     };
   };
 }

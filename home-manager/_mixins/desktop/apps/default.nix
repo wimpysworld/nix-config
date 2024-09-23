@@ -12,6 +12,7 @@ in
   imports = [
     ./audio-production
     ./gitkraken
+    ./heynote
     ./internet-chat
     ./joplin
     ./meld
