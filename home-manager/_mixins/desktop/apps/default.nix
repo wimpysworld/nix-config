@@ -14,6 +14,7 @@ in
     ./gitkraken
     ./heynote
     ./internet-chat
+    ./jan
     ./joplin
     ./meld
     ./obs-studio
