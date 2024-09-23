@@ -15,6 +15,7 @@ pkgs: {
 
   # Local packages being prepped for upstreaming
   heynote = pkgs.callPackage ./heynote { };
+  jan = pkgs.callPackage ./jan { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
   obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
