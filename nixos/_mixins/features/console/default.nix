@@ -1,4 +1,5 @@
 {
+  config,
   desktop,
   hostname,
   isInstall,
@@ -47,7 +48,7 @@ in
 
   services = {
     kmscon = lib.mkIf isInstall {
-      enable = true;
+      enable = !config.boot.plymouth.enable;
       extraOptions = "--gpus primary";
       hwRender = if (desktop == null) then true else false;
       fonts = [
