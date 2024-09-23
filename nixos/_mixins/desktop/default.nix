@@ -14,6 +14,7 @@
   boot = {
     kernelParams = [
       "quiet"
+      "loglevel=3"
       "vt.global_cursor_default=0"
       "mitigations=off"
     ];
