@@ -5,7 +5,7 @@ set +u  # Disable nounset
 set +o pipefail  # Disable pipefail
 
 function usage() {
-    echo "Usage: $(basename "$0") video.mov [--aq] [--bitrate 12M ] [--benchmark] [--codec h264_nvenc,h264_vaapi] [--lookahead] [--multipass] [--preset p1-p7] [--quality 20] [--vmaf]"
+    echo "Usage: $(basename "$0") video.mov [--aq] [--bitrate 20M ] [--benchmark] [--codec h264_nvenc,h264_vaapi] [--lookahead] [--multipass] [--preset p1-p7] [--quality 16] [--vmaf]"
     exit 1
 }
 
@@ -45,24 +45,6 @@ VIDEO_PRESET="p4"
 VIDEO_QUALITY=""
 VIDEO_RC_MODE=""
 VMAF=0
-
-# NVIDIA T600 file size and ecoding speed from 2min sample video 1080p@60fps:
-# H.264 (QP 10)
-# h264-p1 fps=536 q=9.0  size= 358M bitrate=25360.5kbits/s speed=8.94x vmaf_avg=97.78 vmaf_low=97.10
-# h264-p2 fps=533 q=9.0  size= 352M bitrate=24920.0kbits/s speed=8.88x vmaf_avg=97.78 vmaf_low=97.10
-# h264-p3 fps=470 q=11.0 size= 309M bitrate=21926.8kbits/s speed=7.84x vmaf_avg=97.78 vmaf_low=97.10
-# h264-p4 fps=369 q=13.0 size= 266M bitrate=18857.7kbits/s speed=6.15x vmaf_avg=97.77 vmaf_low=97.04
-# h264-p5 fps=369 q=13.0 size= 266M bitrate=18843.3kbits/s speed=6.15x vmaf_avg=97.77 vmaf_low=97.01
-# h264-p6 fps=379 q=13.0 size= 269M bitrate=19058.7kbits/s speed=6.32x vmaf_avg=97.77 vmaf_low=97.01
-# h264-p7 fps=369 q=13.0 size= 269M bitrate=19050.7kbits/s speed=6.14x vmaf_avg=97.77 vmaf_low=97.04
-# H.265
-# hevc-p1 fps=424 q=9.0  size= 328M bitrate=23259.7kbits/s speed=7.07x vmaf_avg=97.71 vmaf_low=96.96
-# hevc-p2 fps=419 q=9.0  size= 328M bitrate=23246.9kbits/s speed=6.98x vmaf_avg=97.71 vmaf_low=96.96
-# hevc-p3 fps=390 q=9.0  size= 320M bitrate=22659.7kbits/s speed= 6.5x vmaf_avg=97.72 vmaf_low=97.01
-# hevc-p4 fps=351 q=9.0  size= 303M bitrate=21450.5kbits/s speed=5.86x vmaf_avg=97.73 vmaf_low=97.01
-# hevc-p5 fps=346 q=9.0  size= 304M bitrate=21514.0kbits/s speed=5.77x vmaf_avg=97.73 vmaf_low=97.01
-# hevc-p6 fps=297 q=9.0  size= 303M bitrate=21440.4kbits/s speed=4.95x vmaf_avg=97.73 vmaf_low=96.99
-# hevc-p7 fps=212 q=9.0  size= 303M bitrate=21497.4kbits/s speed=3.54x vmaf_avg=97.74 vmaf_low=97.00
 
 # Parse options
 while [ -n "$1" ]; do
@@ -213,8 +195,8 @@ fi
 
 # Export a video to H264/H265 with AAC-LC for YouTube
 # - https://support.google.com/youtube/answer/1722171
-# shellcheck disable=SC2086
 echo -e "Encoding: $FILE_OUT"
+# shellcheck disable=SC2086
 ffmpeg \
     -y \
     -hide_banner \
@@ -280,7 +262,6 @@ if [ "$VMAF" -eq 1 ]; then
         one_percent_low = vmaf_values[one_percent_index];
 
         print "VMAF_LOWS=" sprintf("%.2f", one_percent_low);
-        print "VMAF_LOWEST=" sprintf("%.2f", min);
       } else {
         print "No data";
       }
@@ -290,14 +271,12 @@ if [ "$VMAF" -eq 1 ]; then
   # Extract the VMAF scores from the output
   VMAF_AVERAGE=$(echo "$VMAF_OUTPUT" | grep "VMAF_AVERAGE" | cut -d'=' -f2)
   VMAF_LOWS=$(echo "$VMAF_OUTPUT" | grep "VMAF_LOWS" | cut -d'=' -f2)
-  VMAF_LOWEST=$(echo "$VMAF_OUTPUT" | grep "VMAF_LOWEST" | cut -d'=' -f2)
   echo " - Encode FPS:   $ENCODE_FPS fps"
   echo " - Encode Speed: $ENCODE_SPEED x"
   echo " - Bitrate:      $ENCODE_BITRATE Mbps"
   echo " - Size:         $ENCODE_SIZE MB"
   echo " - VMAF Average: $VMAF_AVERAGE"
   echo " - VMAF 1% Lows: $VMAF_LOWS"
-  echo " - VMAF Lowest:  $VMAF_LOWEST"
 fi
 echo ""
 # Remove the output file if the benchmark flag is set
@@ -324,7 +303,7 @@ if [ "$BENCHMARK" -eq 1 ]; then
   fi
   VIDEO_RC_MODE=$(echo "$VIDEO_RC_MODE" | cut -d' ' -f2)
 
-  DATA="$FILE_IN,$VIDEO_CODEC,$VIDEO_RC_MODE,$VIDEO_PRESET,$VIDEO_QUALITY,$VIDEO_BITRATE,$VIDEO_AQ,$VIDEO_LOOKAHEAD,$VIDEO_MULTIPASS,$ENCODE_FPS,$ENCODE_SPEED,$ENCODE_BITRATE,$ENCODE_SIZE,$VMAF_AVERAGE,$VMAF_LOWS,$VMAF_LOWEST"
+  DATA="$FILE_IN,$VIDEO_CODEC,$VIDEO_RC_MODE,$VIDEO_PRESET,$VIDEO_QUALITY,$VIDEO_BITRATE,$VIDEO_AQ,$VIDEO_LOOKAHEAD,$VIDEO_MULTIPASS,$ENCODE_FPS,$ENCODE_SPEED,$ENCODE_BITRATE,$ENCODE_SIZE,$VMAF_AVERAGE,$VMAF_LOWS"
   echo "$DATA" >> "$FILE_OUT.txt"
   rm -f "$FILE_OUT"
   rm -f "$FILE_OUT.csv"
