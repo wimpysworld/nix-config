@@ -67,23 +67,6 @@ let
           fi
       }
 
-      function start_appimage() {
-          local APPIMAGE="$1"
-          local CLASS="$2"
-          local WORKSPACE="$3"
-          local SHORT_CLASS=""
-          SHORT_CLASS=$(echo "$2" | cut -d':' -f2 | sed 's/ //g')
-          if [ -e "$HOME/Apps/$APPIMAGE" ]; then
-              if ! app_is_running "$CLASS"; then
-                  disrun appimage-run "$HOME/Apps/$APPIMAGE" &>/dev/null
-                  wait_for_app "$CLASS"
-                  hyprctl dispatch movetoworkspacesilent "$WORKSPACE","$SHORT_CLASS"
-              else
-                  echo " - $APPIMAGE is already running"
-              fi
-          fi
-      }
-
       function activity_gsd() {
           start_app brave 1 "class: brave-browser"
           start_app wavebox 2 "class: wavebox"
@@ -94,18 +77,18 @@ let
           start_app code 4 "initialTitle: Visual Studio Code"
           start_app "gitkraken --no-show-splash-screen" 4 "title: GitKraken Desktop"
           start_app alacritty 5 "class: Alacritty"
+          start_app boxbuddy-rs 6 "class: io.github.dvlv.boxbuddyrs"
           start_app pods 6 "class: com.github.marhkb.Pods"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
               start_app "obs --disable-shutdown-check --collection 'VirtualCam' --profile 'VirtualCam' --scene 'VirtualCam-DetSys' --startvirtualcam" 7 "class: com.obsproject.Studio"
           fi
+          start_app cider 8 "class: Cider"
           firefox -CreateProfile meet-detsys
           start_app "firefox \
             -P meet-detsys \
             -no-remote \
             --new-window https://meet.google.com" 9 "title: Google Meet - Mozilla Firefox"
-
-          start_app cider "class: Cider" 8
-          start_app heynote "class: Heynote" 9
+          start_app heynote  9 "class: Heynote"
           hyprctl dispatch forcerendererreload
       }
 
