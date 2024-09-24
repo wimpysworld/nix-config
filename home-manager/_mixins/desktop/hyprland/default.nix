@@ -104,8 +104,8 @@ let
             -no-remote \
             --new-window https://meet.google.com" 9 "title: Google Meet - Mozilla Firefox"
 
-          start_appimage "Cider-linux-appimage-x64.AppImage" "class: Cider" 8
-          start_app "heynote" "class: Heynote" 9
+          start_app cider "class: Cider" 8
+          start_app heynote "class: Heynote" 9
           hyprctl dispatch forcerendererreload
       }
 

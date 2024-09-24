@@ -20,6 +20,9 @@ pkgs: {
   obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
 
+  # Non-redistributable packages
+  cider = pkgs.callPackage ./cider { };
+
   # Local fonts
   # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
   bebas-neue-2014-font = pkgs.callPackage ./fonts/bebas-neue-2014-font { };
