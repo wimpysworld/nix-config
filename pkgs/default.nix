@@ -9,7 +9,6 @@ pkgs: {
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   monitorets = pkgs.callPackage ./monitorets { };
-  wavebox = pkgs.callPackage ./wavebox { };
   waybar = pkgs.callPackage ./waybar { };
   zoom-us = pkgs.callPackage ./zoom-us { };
   libcef = pkgs.callPackage ./libcef { };
