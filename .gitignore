@@ -1,2 +1,3 @@
 .direnv*
 result/
+pkgs/cider/Cider-linux-appimage-x64.AppImage

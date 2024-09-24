@@ -9,6 +9,9 @@ let
 in
 lib.mkIf (builtins.elem username installFor) {
   home = {
-    packages = with pkgs; [ youtube-music ];
+    packages = with pkgs; [
+      cider
+      youtube-music
+    ];
   };
 }

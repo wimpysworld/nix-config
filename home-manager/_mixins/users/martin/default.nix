@@ -139,21 +139,4 @@ in
       };
     };
   };
-
-  xdg = lib.mkIf (isLinux && isWorkstation) {
-    desktopEntries = {
-      cider = {
-        name = "Cider";
-        exec = "${pkgs.appimage-run}/bin/appimage-run -- ${config.home.homeDirectory}/Apps/Cider-linux-appimage-x64.AppImage";
-        terminal = false;
-        icon = "${config.home.homeDirectory}/Apps/Cider/logo.png";
-        type = "Application";
-        categories = [
-          "AudioVideo"
-          "Audio"
-          "Player"
-        ];
-      };
-    };
-  };
 }

@@ -17,11 +17,11 @@ in
     ./jan
     ./joplin
     ./meld
+    ./music
     ./obs-studio
     ./rhythmbox
     ./ulauncher
     ./vscode
-    ./youtube-music
     ./zed-editor
   ];
   home.packages = with pkgs; lib.optionals isLinux [
