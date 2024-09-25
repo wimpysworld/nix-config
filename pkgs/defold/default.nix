@@ -5,6 +5,7 @@
   makeDesktopItem,
   makeWrapper,
   stdenv,
+  writeScript,
   freetype,
   jdk17,
   libGL,
@@ -47,6 +48,7 @@ stdenv.mkDerivation rec {
 
   installPhase = ''
     runHook preInstall
+    # Install Defold assets, but not the bundled JDK
     install -m 755 -D Defold $out/share/defold/Defold
     install -m 644 -D config $out/share/defold/config
     install -m 444 -D logo_blue.png $out/share/defold/logo_blue.png
@@ -57,6 +59,8 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
+  # TODO:
+  # - Add a launcher script so editor updates can be handled
   postFixup = ''
     # Devendor bundled JDK; it segfaults on NixOS
     ln -s ${jdk17} $out/share/defold/packages/${jdk17.name}
@@ -84,6 +88,16 @@ stdenv.mkDerivation rec {
     ];
     startupNotify = true;
   })];
+
+  passthru = {
+    updateScript = writeScript "update-defold.sh" ''
+      #!/usr/bin/env nix-shell
+      #!nix-shell -i bash -p nix-update curl gnugrep
+
+      version=$(curl -s https://api.github.com/repos/defold/defold/releases/latest | grep tag_name | grep -oP '(?<=": ")[^"]*')
+      nix-update defold --version "$version"
+    '';
+  };
 
   meta = {
     description = "A completely free to use game engine for development of desktop, mobile and web games.";
