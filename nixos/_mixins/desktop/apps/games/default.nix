@@ -3,6 +3,7 @@
   isInstall,
   isWorkstation,
   lib,
+  pkgs,
   platform,
   username,
   ...
@@ -12,6 +13,9 @@ let
 in
 lib.mkIf (lib.elem username installFor && isInstall && isWorkstation) {
   environment = {
-    systemPackages = with inputs; [ antsy-alien-attack-pico.packages.${platform}.default ];
+    systemPackages = [
+      inputs.antsy-alien-attack-pico.packages.${platform}.default
+      pkgs.pico8
+    ];
   };
 }

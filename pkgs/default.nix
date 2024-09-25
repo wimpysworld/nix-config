@@ -22,6 +22,7 @@ pkgs: {
 
   # Non-redistributable packages
   cider = pkgs.callPackage ./cider { };
+  pico8 = pkgs.callPackage ./pico8 { };
 
   # Local fonts
   # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
