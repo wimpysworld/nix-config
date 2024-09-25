@@ -15,6 +15,7 @@ lib.mkIf (lib.elem username installFor && isInstall && isWorkstation) {
   environment = {
     systemPackages = [
       inputs.antsy-alien-attack-pico.packages.${platform}.default
+      pkgs.defold
       pkgs.pico8
     ];
   };

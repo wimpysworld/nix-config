@@ -14,6 +14,7 @@ pkgs: {
   libcef = pkgs.callPackage ./libcef { };
 
   # Local packages being prepped for upstreaming
+  defold = pkgs.callPackage ./defold { };
   heynote = pkgs.callPackage ./heynote { };
   jan = pkgs.callPackage ./jan { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
