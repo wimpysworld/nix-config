@@ -19,7 +19,7 @@ appimageTools.wrapType2 rec {
 
       - https://cidercollective.itch.io/cider
 
-      Download the AppImage and use "nix-store --add-fixed sha256 ${name}" to
+      Download the AppImage and use "nix-store --add-fixed sha256 pkgs/cider/${name}" to
       add it to the Nix store.
     '';
   };
