@@ -7,6 +7,7 @@
   stdenv,
   writeScript,
   freetype,
+  git,
   jdk17,
   libGL,
   libX11,
@@ -32,6 +33,7 @@ stdenv.mkDerivation rec {
 
   buildInputs = [
     freetype
+    git
     jdk17
     libGL
     libX11
@@ -65,10 +67,13 @@ stdenv.mkDerivation rec {
     # Devendor bundled JDK; it segfaults on NixOS
     ln -s ${jdk17} $out/share/defold/packages/${jdk17.name}
     sed -i 's|packages/jdk-17.0.5+8|packages/${jdk17.name}|' $out/share/defold/config
-    # Wrap Defold with LD_LIBRARY_PATH so plugins in $HOME can load
+    # Wrap Defold:
+    # - LD_LIBRARY_PATH so plugins in $HOME can load
+    # - PATH so git is available for the editor
     mkdir -p $out/bin
     makeWrapper "$out/share/defold/Defold" "$out/bin/defold" \
-      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libGL libX11 libXtst libXxf86vm ]}"
+      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libGL libX11 libXtst libXxf86vm ]}" \
+      --suffix PATH            : "${lib.makeBinPath [ git ]}"
   '';
 
   desktopItems = [(makeDesktopItem rec {
