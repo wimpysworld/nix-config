@@ -19,8 +19,6 @@
   libdrm,
   libGL,
   libGLU,
-  libogg,
-  liboggz,
   libstdcxx5,
   libX11,
   libXcursor,
@@ -66,8 +64,6 @@ stdenv.mkDerivation rec {
     libdrm
     libGL
     libGLU
-    libogg
-    liboggz
     libstdcxx5
     libX11
     libXcursor
@@ -122,8 +118,6 @@ stdenv.mkDerivation rec {
           libdrm
           libGL
           libGLU
-          libogg
-          liboggz
           libstdcxx5
           libX11
           libXcursor
