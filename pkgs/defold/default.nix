@@ -84,9 +84,8 @@ stdenv.mkDerivation rec {
     sed -i 's|packages/jdk-17.0.5+8|packages/${jdk17.name}|' $out/share/defold/config
     # Disable editor updates; Nix will handle updates
     sed -i 's/\(channel = \).*/\1/' $out/share/defold/config
-    # Wrap Defold:
-    # - LD_LIBRARY_PATH so the unpacked libraries have satisfied dependencies
-    # - PATH so git is available for the editor
+    # LD_LIBRARY_PATH: Ensure unpacked libraries/assets in ~/.Defold can find dependencies
+    # PATH           : Ensure git is discovered by the Defold editor
     makeWrapper "$out/share/defold/Defold" "$out/bin/Defold" \
       --prefix LD_LIBRARY_PATH : "${
         lib.makeLibraryPath [
