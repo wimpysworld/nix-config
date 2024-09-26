@@ -1,4 +1,5 @@
 {
+  copyDesktopItems,
   fetchurl,
   lib,
   makeDesktopItem,
@@ -36,6 +37,7 @@ stdenv.mkDerivation rec {
   };
 
   nativeBuildInputs = [
+    copyDesktopItems
     gnused
     makeWrapper
   ];
@@ -112,7 +114,7 @@ stdenv.mkDerivation rec {
 
   desktopItems = [
     (makeDesktopItem rec {
-      name = "defold";
+      name = "defold-editor";
       desktopName = "Defold";
       keywords = [
         "Game"
