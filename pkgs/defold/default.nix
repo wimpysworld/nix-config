@@ -133,10 +133,10 @@ stdenv.mkDerivation rec {
   ];
 
   passthru = {
-    updateScript = writeScript "update-defold.sh" ''
+    updateScript = writeScript "update.sh" ''
       #!/usr/bin/env nix-shell
-      #!nix-shell -i bash -p github-release gnugrep gawk nix-update
-      version=$(github-release info -u defold -r defold | grep -v -E 'alpha|beta|X.Y.Z|tags:' | head -n 1 | awk '{print $2}')
+      #!nix-shell -i bash -p curl jq nix-update
+      version=$(curl -s https://d.defold.com/editor-alpha/info.json | jq -r .version)
       nix-update defold --version "$version"
     '';
   };
