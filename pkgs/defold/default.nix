@@ -97,9 +97,8 @@ stdenv.mkDerivation rec {
   passthru = {
     updateScript = writeScript "update-defold.sh" ''
       #!/usr/bin/env nix-shell
-      #!nix-shell -i bash -p nix-update curl gnugrep
-
-      version=$(curl -s https://api.github.com/repos/defold/defold/releases/latest | grep tag_name | grep -oP '(?<=": ")[^"]*')
+      #!nix-shell -i bash -p github-release gnugrep gawk nix-update
+      version=$(github-release info -u defold -r defold | grep -v -E 'alpha|beta|X.Y.Z|tags:' | head -n 1 | awk '{print $2}')
       nix-update defold --version "$version"
     '';
   };
