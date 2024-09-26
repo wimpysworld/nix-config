@@ -42,6 +42,15 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
+  passthru = {
+    updateScript = writeScript "update-defold-bob.sh" ''
+      #!/usr/bin/env nix-shell
+      #!nix-shell -i bash -p github-release gnugrep gawk nix-update
+      version=$(github-release info -u defold -r defold | grep -v -E 'alpha|beta|X.Y.Z|tags:' | head -n 1 | awk '{print $2}')
+      nix-update defold-bob --version "$version"
+    '';
+  };
+
   meta = {
     description = "Bob is a command line tool for building Defold projects outside of the normal editor workflow.";
     homepage = "https://defold.com/manuals/bob/";
