@@ -26,7 +26,11 @@
   libXxf86vm,
   openal,
   zlib,
+  uiScale ? "1.0",
 }:
+let
+  inherit (lib) optionalAttrs;
+in
 stdenv.mkDerivation rec {
   pname = "defold";
   version = "1.9.3";
@@ -87,6 +91,8 @@ stdenv.mkDerivation rec {
     sed -i "s|packages/$JDK_VER|packages/${jdk17.name}|" $out/share/defold/config
     # Disable editor updates; Nix will handle updates
     sed -i 's/\(channel = \).*/\1/' $out/share/defold/config
+    # Scale the UI
+    sed -i "s|^linux =|linux = -Dglass.gtk.uiScale=${uiScale}|" $out/share/defold/config
     # LD_LIBRARY_PATH: Ensure unpacked libraries/assets in ~/.Defold can find dependencies
     # PATH           : Ensure git is discovered by the Defold editor
     makeWrapper "$out/share/defold/Defold" "$out/bin/Defold" \
