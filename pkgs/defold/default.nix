@@ -60,7 +60,9 @@ stdenv.mkDerivation rec {
     glib
     gobject-introspection
     gtk3
-    jdk17
+    (jdk17.override {
+      enableJavaFX = true;
+    })
     libdrm
     libGL
     libGLU
