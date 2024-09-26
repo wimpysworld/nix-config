@@ -80,8 +80,9 @@ stdenv.mkDerivation rec {
 
   postFixup = ''
     # Devendor bundled JDK; it segfaults on NixOS
+    JDK_VER=$(sed -n 's/.*\/\(jdk-[^/]*\).*/\1/p' $out/share/defold/config)
     ln -s ${jdk17} $out/share/defold/packages/${jdk17.name}
-    sed -i 's|packages/jdk-17.0.5+8|packages/${jdk17.name}|' $out/share/defold/config
+    sed -i "s|packages/$JDK_VER|packages/${jdk17.name}|" $out/share/defold/config
     # Disable editor updates; Nix will handle updates
     sed -i 's/\(channel = \).*/\1/' $out/share/defold/config
     # LD_LIBRARY_PATH: Ensure unpacked libraries/assets in ~/.Defold can find dependencies
