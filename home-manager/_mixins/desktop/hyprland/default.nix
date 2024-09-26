@@ -517,9 +517,11 @@ in
         "noshadow, floating:0"
         # make floating windows opaque
         "opacity 0.72, floating:1"
-        # do not make OBS Studio or Davini Resolve windows opaque
+        # Some windows should never be opaque
         "opacity 1.0, class: com.obsproject.Studio"
         "opacity 1.0, class: resolve"
+        "opacity 1.0, class: com.defold.editor.Start"
+        "opacity 1.0, class: class: dmengine"
         "opacity 1.0, title: UNIGINE Engine"
 
         # make pop-up file dialogs floating, centred, and pinned
