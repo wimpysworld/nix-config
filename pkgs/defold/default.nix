@@ -6,9 +6,14 @@
   makeWrapper,
   stdenv,
   writeScript,
+  cairo,
+  fontconfig,
   freetype,
+  gdk-pixbuf,
   git,
+  glib,
   gnused,
+  gobject-introspection,
   gtk3,
   jdk17,
   libdrm,
@@ -26,6 +31,7 @@
   libXtst,
   libXxf86vm,
   openal,
+  pango,
   zlib,
   uiScale ? "1.0",
 }:
@@ -48,8 +54,13 @@ stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
+    cairo
+    fontconfig
     freetype
+    gdk-pixbuf
     git
+    glib
+    gobject-introspection
     gtk3
     jdk17
     libdrm
@@ -67,6 +78,7 @@ stdenv.mkDerivation rec {
     libXtst
     libXxf86vm
     openal
+    pango
     zlib
   ];
 
@@ -100,6 +112,12 @@ stdenv.mkDerivation rec {
     makeWrapper "$out/share/defold/Defold" "$out/bin/Defold" \
       --prefix LD_LIBRARY_PATH : "${
         lib.makeLibraryPath [
+          cairo
+          fontconfig
+          freetype
+          gdk-pixbuf
+          glib
+          gobject-introspection
           gtk3
           libdrm
           libGL
@@ -116,6 +134,7 @@ stdenv.mkDerivation rec {
           libXtst
           libXxf86vm
           openal
+          pango
         ]
       }" \
       --prefix XDG_DATA_DIRS   : "${gtk3}/share/gsettings-schemas/${gtk3.name}" \
