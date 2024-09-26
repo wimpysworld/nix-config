@@ -4,6 +4,7 @@
   makeWrapper,
   pkgs,
   stdenv,
+  writeScript,
   writeShellApplication,
   jdk17,
   libXext,
@@ -35,10 +36,8 @@ stdenv.mkDerivation rec {
   installPhase = ''
     runHook preInstall
     install -m 444 -D $src $out/bob.jar
-    mkdir -p $out/bin
-    echo "#!/usr/bin/env bash" > $out/bin/defold-bob
-    echo "exec ${jdk17}/bin/java -jar $out/bob.jar \$@" >> $out/bin/defold-bob
-    chmod 755 $out/bin/defold-bob
+    makeWrapper ${jdk17}/bin/java $out/bin/defold-bob \
+      --add-flags "-jar $out/bob.jar"
     runHook postInstall
   '';
 
