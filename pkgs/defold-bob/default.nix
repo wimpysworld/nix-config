@@ -2,7 +2,6 @@
   fetchurl,
   lib,
   makeWrapper,
-  pkgs,
   stdenv,
   writeScript,
   jdk17,
@@ -18,9 +17,7 @@ stdenv.mkDerivation rec {
     hash = "sha256-b/PFgm7IrSTaKTcwTzntoxGd5KtGsgWvq2ZTteLw6GA=";
   };
 
-  nativeBuildInputs = [
-    makeWrapper
-  ];
+  nativeBuildInputs = [ makeWrapper ];
 
   buildInputs = [
     jdk17

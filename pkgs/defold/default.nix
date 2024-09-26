@@ -1,5 +1,4 @@
 {
-  copyDesktopItems,
   fetchurl,
   lib,
   makeDesktopItem,
@@ -89,7 +88,8 @@ stdenv.mkDerivation rec {
     # - LD_LIBRARY_PATH so the unpacked libraries have satisfied dependencies
     # - PATH so git is available for the editor
     makeWrapper "$out/share/defold/Defold" "$out/bin/Defold" \
-      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [
+      --prefix LD_LIBRARY_PATH : "${
+        lib.makeLibraryPath [
           libdrm
           libGL
           libGLU
@@ -104,27 +104,31 @@ stdenv.mkDerivation rec {
           libXrender
           libXtst
           libXxf86vm
-          openal ]}" \
+          openal
+        ]
+      }" \
       --suffix PATH            : "${lib.makeBinPath [ git ]}"
   '';
 
-  desktopItems = [(makeDesktopItem rec {
-    name = "defold";
-    desktopName = "Defold";
-    keywords = [
-      "Game"
-      "Development"
-    ];
-    exec = "Defold";
-    terminal = false;
-    type = "Application";
-    icon = "defold";
-    categories = [
-      "Development"
-      "IDE"
-    ];
-    startupNotify = true;
-  })];
+  desktopItems = [
+    (makeDesktopItem rec {
+      name = "defold";
+      desktopName = "Defold";
+      keywords = [
+        "Game"
+        "Development"
+      ];
+      exec = "Defold";
+      terminal = false;
+      type = "Application";
+      icon = "defold";
+      categories = [
+        "Development"
+        "IDE"
+      ];
+      startupNotify = true;
+    })
+  ];
 
   passthru = {
     updateScript = writeScript "update-defold.sh" ''
