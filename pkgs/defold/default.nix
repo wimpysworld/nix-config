@@ -9,6 +9,7 @@
   freetype,
   git,
   gnused,
+  gtk3,
   jdk17,
   libdrm,
   libGL,
@@ -49,6 +50,7 @@ stdenv.mkDerivation rec {
   buildInputs = [
     freetype
     git
+    gtk3
     jdk17
     libdrm
     libGL
@@ -98,6 +100,7 @@ stdenv.mkDerivation rec {
     makeWrapper "$out/share/defold/Defold" "$out/bin/Defold" \
       --prefix LD_LIBRARY_PATH : "${
         lib.makeLibraryPath [
+          gtk3
           libdrm
           libGL
           libGLU
@@ -115,6 +118,7 @@ stdenv.mkDerivation rec {
           openal
         ]
       }" \
+      --prefix XDG_DATA_DIRS   : "${gtk3}/share/gsettings-schemas/${gtk3.name}" \
       --suffix PATH            : "${lib.makeBinPath [ git ]}"
   '';
 
