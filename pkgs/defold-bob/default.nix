@@ -5,7 +5,6 @@
   pkgs,
   stdenv,
   writeScript,
-  writeShellApplication,
   jdk17,
   libXext,
   libXtst,
