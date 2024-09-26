@@ -1,7 +1,7 @@
 # Custom packages, that can be defined similarly to ones from nixpkgs
 # You can build them using 'nix build .#example'
 pkgs: {
-  # TODO upgrade-hint; Remove this following for >= 24.11
+  # TODO upgrade-hint; Remove when upgrading to 24.11
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
   cpu-x = pkgs.callPackage ./cpu-x { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
