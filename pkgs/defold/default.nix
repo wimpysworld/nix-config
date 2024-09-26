@@ -8,10 +8,19 @@
   writeScript,
   freetype,
   git,
+  gnused,
   jdk17,
+  libdrm,
   libGL,
+  libGLU,
+  libogg,
+  liboggz,
+  libstdcxx5,
   libX11,
+  libXcursor,
+  libXext,
   libXi,
+  libXrandr,
   libXrender,
   libXtst,
   libXxf86vm,
@@ -28,6 +37,7 @@ stdenv.mkDerivation rec {
   };
 
   nativeBuildInputs = [
+    gnused
     makeWrapper
   ];
 
@@ -35,9 +45,17 @@ stdenv.mkDerivation rec {
     freetype
     git
     jdk17
+    libdrm
     libGL
+    libGLU
+    libogg
+    liboggz
+    libstdcxx5
     libX11
+    libXcursor
+    libXext
     libXi
+    libXrandr
     libXrender
     libXtst
     libXxf86vm
@@ -57,22 +75,36 @@ stdenv.mkDerivation rec {
     install -m 444 -D logo_blue.png \
         $out/share/icons/hicolor/512x512/apps/defold.png
     mkdir -p $out/share/defold/packages
-    cp -a packages/*.jar $out/share/defold/packages/
+    cp -a packages/defold-*.jar $out/share/defold/packages/
     runHook postInstall
   '';
 
-  # TODO:
-  # - Add a launcher script so editor updates can be handled
   postFixup = ''
     # Devendor bundled JDK; it segfaults on NixOS
     ln -s ${jdk17} $out/share/defold/packages/${jdk17.name}
     sed -i 's|packages/jdk-17.0.5+8|packages/${jdk17.name}|' $out/share/defold/config
+    # Disable editor updates; Nix will handle updates
+    sed -i 's/\(channel = \).*/\1/' $out/share/defold/config
     # Wrap Defold:
-    # - LD_LIBRARY_PATH so plugins in $HOME can load
+    # - LD_LIBRARY_PATH so the unpacked libraries have satisfied dependencies
     # - PATH so git is available for the editor
-    mkdir -p $out/bin
-    makeWrapper "$out/share/defold/Defold" "$out/bin/defold" \
-      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libGL libX11 libXtst libXxf86vm ]}" \
+    makeWrapper "$out/share/defold/Defold" "$out/bin/Defold" \
+      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [
+          libdrm
+          libGL
+          libGLU
+          libogg
+          liboggz
+          libstdcxx5
+          libX11
+          libXcursor
+          libXext
+          libXi
+          libXrandr
+          libXrender
+          libXtst
+          libXxf86vm
+          openal ]}" \
       --suffix PATH            : "${lib.makeBinPath [ git ]}"
   '';
 
@@ -83,7 +115,7 @@ stdenv.mkDerivation rec {
       "Game"
       "Development"
     ];
-    exec = "defold";
+    exec = "Defold";
     terminal = false;
     type = "Application";
     icon = "defold";
@@ -110,6 +142,6 @@ stdenv.mkDerivation rec {
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     maintainers = with lib.maintainers; [ flexiondotorg ];
     platforms = [ "x86_64-linux" ];
-    mainProgram = "defold";
+    mainProgram = "Defold";
   };
 }
