@@ -40,7 +40,7 @@
             cursor-theme = "catppuccin-mocha-blue-cursors";
             document-font-name = "Work Sans 12";
             font-name = "Work Sans 12";
-            gtk-theme = "catppuccin-mocha-blue-standard+default";
+            gtk-theme = "catppuccin-mocha-blue-standard";
             icon-theme = "Papirus-Dark";
             monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
             text-scaling-factor = mkDouble 1.0;
@@ -48,7 +48,7 @@
 
           "org/gnome/desktop/wm/preferences" = {
             button-layout = "close,minimize,maximize";
-            theme = "catppuccin-mocha-blue-standard+default";
+            theme = "catppuccin-mocha-blue-standard";
             titlebar-font = "Work Sans Semi-Bold 12";
             titlebar-uses-system-font = false;
           };
@@ -133,7 +133,7 @@
             document-font-name = "Work Sans 12";
             font-name = "Work Sans 12";
             gtk-decoration-layout = "close,minimize,maximize";
-            gtk-theme = "catppuccin-mocha-blue-standard+default";
+            gtk-theme = "catppuccin-mocha-blue-standard";
             gtk-color-scheme = "tooltip_fg_color:#ffffff\ntooltip_bg_color:#343434";
             icon-theme = "Papirus-Dark";
             monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
@@ -176,7 +176,7 @@
             center-new-windows = false;
             compositing-manager = true;
             show-tab-border = false;
-            theme = "catppuccin-mocha-blue-standard+default";
+            theme = "catppuccin-mocha-blue-standard";
             titlebar-font = "Work Sans Semi-Bold 12";
           };
 
@@ -366,7 +366,7 @@
           cursorTheme.size = 32;
           iconTheme.name = "Papirus-Dark";
           iconTheme.package = pkgs.catppuccin-papirus-folders;
-          theme.name = "catppuccin-mocha-blue-standard+default";
+          theme.name = "catppuccin-mocha-blue-standard";
           theme.package = pkgs.catppuccin-gtk;
           indicators = [
             "~session"

@@ -17,18 +17,18 @@ lib.mkIf isLinux {
       color-scheme = "prefer-dark";
       cursor-size = 48;
       cursor-theme = "catppuccin-mocha-blue-cursors";
-      gtk-theme = "catppuccin-mocha-blue-standard+default";
+      gtk-theme = "catppuccin-mocha-blue-standard";
       icon-theme = "Papirus-Dark";
     };
 
     "org/gnome/desktop/wm/preferences" = {
       button-layout = "${buttonLayout}";
-      theme = "catppuccin-mocha-blue-standard+default";
+      theme = "catppuccin-mocha-blue-standard";
     };
 
     "org/mate/desktop/interface" = {
       gtk-decoration-layout = "${buttonLayout}";
-      gtk-theme = "catppuccin-mocha-blue-standard+default";
+      gtk-theme = "catppuccin-mocha-blue-standard";
       icon-theme = "Papirus-Dark";
     };
 
@@ -39,7 +39,7 @@ lib.mkIf isLinux {
 
     "org/mate/marco/general" = {
       button-layout = "${buttonLayout}";
-      theme = "catppuccin-mocha-blue-standard+default";
+      theme = "catppuccin-mocha-blue-standard";
     };
 
     "org/pantheon/desktop/gala/appearance" = {
@@ -86,7 +86,7 @@ lib.mkIf isLinux {
       };
     };
     theme = {
-      name = "catppuccin-mocha-blue-standard+default";
+      name = "catppuccin-mocha-blue-standard";
       package = pkgs.catppuccin-gtk.override {
         accents = [ "blue" ];
         size = "standard";

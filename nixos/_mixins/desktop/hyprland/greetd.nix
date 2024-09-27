@@ -114,7 +114,7 @@ in
           cursor_theme_name = "catppuccin-mocha-blue-cursors";
           font_name = "Work Sans 16";
           icon_theme_name = "Papirus-Dark";
-          theme_name = "catppuccin-mocha-blue-standard+default";
+          theme_name = "catppuccin-mocha-blue-standard";
         };
         # cursorTheme = {
         #   name = "catppuccin-mocha-blue-cursors";
@@ -133,7 +133,7 @@ in
         #   };
         # };
         # theme = {
-        #   name = "catppuccin-mocha-blue-standard+default";
+        #   name = "catppuccin-mocha-blue-standard";
         #   package = pkgs.catppuccin-gtk.override {
         #     accents = [ "blue" ];
         #     size = "standard";
