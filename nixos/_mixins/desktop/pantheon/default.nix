@@ -125,7 +125,7 @@
             cursor-theme = "catppuccin-mocha-blue-cursors";
             document-font-name = "Work Sans 12";
             font-name = "Work Sans 12";
-            gtk-theme = "catppuccin-mocha-blue-standard+default";
+            gtk-theme = "catppuccin-mocha-blue-standard";
             gtk-enable-primary-paste = true;
             icon-theme = "Papirus-Dark";
             monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
