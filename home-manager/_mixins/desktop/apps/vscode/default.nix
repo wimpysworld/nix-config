@@ -90,6 +90,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.nico-castell.linux-desktop-file
           vscode-marketplace.pkief.material-product-icons
           vscode-marketplace.prince781.vala
+          vscode-marketplace.pollywoggames.pico8-ls
           vscode-marketplace.redhat.vscode-yaml
           vscode-marketplace.rogalmic.bash-debug
           vscode-marketplace.rust-lang.rust-analyzer
