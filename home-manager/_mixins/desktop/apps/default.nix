@@ -11,6 +11,7 @@ in
 {
   imports = [
     ./audio-production
+    ./game-dev
     ./gitkraken
     ./heynote
     ./internet-chat
