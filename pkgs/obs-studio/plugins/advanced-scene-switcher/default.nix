@@ -24,11 +24,6 @@
 
 stdenv.mkDerivation rec {
   pname = "advanced-scene-switcher";
-  # 1.25.1 worked
-  # 1.25.5 worked
-  # 1.26.4 segfaults
-  # 1.26.3 segfaults
-  # 1.26.2 worked
   version = "1.27.2";
 
   src = fetchFromGitHub {
