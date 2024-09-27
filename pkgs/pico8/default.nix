@@ -18,17 +18,9 @@ stdenv.mkDerivation rec {
   #};
   src = requireFile rec {
     name = "pico-8_${version}_amd64.zip";
+    url ="https://www.lexaloffle.com/pico-8.php";
     # sha256sum /nix/store/deadb33f-pico-8_0.2.6b_amd64.zip
     sha256 = "7ca8e9019f73771064859f71302bbc65c6e4042030605f4ee2f2c8c4e29b15d5";
-    message = ''
-      PICO-8 is a non-redistributable application. You must download the .zip
-      from the Lexaloffle website and place it in the same directory as this file.
-
-      - https://www.lexaloffle.com/pico-8.php
-
-      Download the .zip and use "nix-store --add-fixed sha256 pkgs/pico8/${name}"
-      to add it to the Nix store.
-    '';
   };
 
   unpackCmd = ''${unzip}/bin/unzip "$src"'';

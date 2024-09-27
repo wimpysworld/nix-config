@@ -11,17 +11,9 @@ appimageTools.wrapType2 rec {
 
   src = requireFile rec {
     name = "Cider-linux-appimage-x64.AppImage";
+    url= "https://cidercollective.itch.io/cider";
     # sha256sum /nix/store/deadb33f-Cider-linux-appimage-x64.AppImage
     sha256 = "1f07c1c98f1abf502f23eb7bc2768d6e10cb5c1c60cd129888b1b584f52da3da";
-    message = ''
-      Cider is a non-redistributable application. You must download the AppImage
-      from the Itch.io website and place it in the same directory as this file.
-
-      - https://cidercollective.itch.io/cider
-
-      Download the AppImage and use "nix-store --add-fixed sha256 pkgs/cider/${name}" to
-      add it to the Nix store.
-    '';
   };
 
   extraInstallCommands =
