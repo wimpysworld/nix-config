@@ -8,12 +8,10 @@
 let
   version = "1.8.0";
   pname = "heynote";
-  name = "${pname}-${version}";
   src = fetchurl {
     url = "https://github.com/heyman/heynote/releases/download/v${version}/Heynote_${version}_x86_64.AppImage";
     hash = "sha256-NzrXV8HmCPYE+D3tEwVv3rBkLF0/FKW6uJdqhKmH8uw=";
   };
-
   appimageContents = appimageTools.extractType2 {
     inherit pname version src;
   };
@@ -24,11 +22,11 @@ appimageTools.wrapType2 {
     source "${makeWrapper}/nix-support/setup-hook"
     wrapProgram $out/bin/${pname} \
         --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
-    install -m 444 -D ${appimageContents}/heynote.desktop \
-      $out/share/applications/heynote.desktop
-    install -m 444 -D ${appimageContents}/heynote.png \
-      $out/share/icons/hicolor/512x512/apps/heynote.png
-    substituteInPlace $out/share/applications/heynote.desktop \
+    install -m 444 -D ${appimageContents}/${pname}.desktop \
+      $out/share/applications/${pname}.desktop
+    install -m 444 -D ${appimageContents}/usr/share/icons/hicolor/0x0/apps/${pname}.png \
+      $out/share/icons/hicolor/512x512/apps/${pname}.png
+    substituteInPlace $out/share/applications/${pname}.desktop \
       --replace-fail 'Exec=AppRun' 'Exec=${pname}'
   '';
 
@@ -42,12 +40,14 @@ appimageTools.wrapType2 {
   };
 
   meta = {
+    changelog = "https://github.com/heyman/heynote/releases/tag/v${version}";
     description = "A dedicated scratchpad for developers";
-    homepage = "https://heynote.com/";
     downloadPage = "https://github.com/heyman/heynote/releases";
+    homepage = "https://heynote.com/";
     license = lib.licenses.commons-clause;
-    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    mainProgram = "heynote";
     maintainers = with lib.maintainers; [ flexiondotorg ];
     platforms = [ "x86_64-linux" ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
   };
 }
