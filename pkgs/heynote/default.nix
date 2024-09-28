@@ -3,6 +3,7 @@
   appimageTools,
   fetchurl,
   makeWrapper,
+  writeScript,
 }:
 let
   version = "1.8.0";
@@ -30,6 +31,16 @@ appimageTools.wrapType2 {
     substituteInPlace $out/share/applications/heynote.desktop \
       --replace-fail 'Exec=AppRun' 'Exec=${pname}'
   '';
+
+  passthru = {
+    updateScript = writeScript "update.sh" ''
+      #!/usr/bin/env nix-shell
+      #!nix-shell -i bash -p curl gnugrep nix-update
+      version=$(curl -s https://api.github.com/repos/heyman/heynote/releases/latest | grep -oP '"tag_name": "\K(v?)(.*)(?=")' | sed 's/^v//')
+      nix-update heynote --version "$version"
+    '';
+  };
+
   meta = {
     description = "A dedicated scratchpad for developers";
     homepage = "https://heynote.com/";
