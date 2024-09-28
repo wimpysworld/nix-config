@@ -42,7 +42,7 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     url = "https://github.com/defold/defold/releases/download/${version}/Defold-x86_64-linux.tar.gz";
-    hash = "sha256-JPPdiV4xP50i5Gq2QDqxpYjSrZ2ssGjft2w8vuQroKU=";
+    hash = "sha256-C/cUUe8BnedAkDtwvLE8lM3NQ7T6G2TMDjXw8salfhI=";
   };
 
   nativeBuildInputs = [
