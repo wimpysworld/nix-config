@@ -1,5 +1,5 @@
-# default.nix
-{ addDriverRunpath,
+{
+  addDriverRunpath,
   buildFHSEnv,
   copyDesktopItems,
   fetchurl,
@@ -34,7 +34,6 @@
   uiScale ? "1.0",
 }:
 let
-  inherit (lib) optionalAttrs;
   pname = "defold";
   version = "1.9.3";
 
@@ -54,9 +53,7 @@ let
       addDriverRunpath
       copyDesktopItems
       gnused
-      (jdk17.override {
-        enableJavaFX = true;
-      })
+      (jdk17.override { enableJavaFX = true; })
       makeWrapper
     ];
 
