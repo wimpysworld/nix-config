@@ -94,7 +94,7 @@ let
           "Game"
           "Development"
         ];
-        exec = "Defold";
+        exec = "defold";
         terminal = false;
         type = "Application";
         icon = "defold";
@@ -134,6 +134,15 @@ buildFHSEnv {
     zlib
   ];
   runScript = "Defold";
+
+  extraInstallCommands = ''
+    mkdir -p $out/share/applications $out/share/icons/hicolor/512x512/apps
+    ln -s ${defold}/share/applications/*.desktop \
+      $out/share/applications/
+    ln -s ${defold}/share/icons/hicolor/512x512/apps/defold.png \
+      $out/share/icons/hicolor/512x512/apps/defold.png
+  '';
+
   passthru = {
     updateScript = writeScript "update.sh" ''
       #!/usr/bin/env nix-shell
