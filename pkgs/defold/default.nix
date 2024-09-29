@@ -141,7 +141,7 @@ buildFHSEnv {
   '';
 
   passthru = {
-    updateScript = writeScript "update.sh" ''
+    updateScript = writeScript "update-defold" ''
       #!/usr/bin/env nix-shell
       #!nix-shell -i bash -p curl jq nix-update
       version=$(curl -s https://d.defold.com/editor-alpha/info.json | jq -r .version)
