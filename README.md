@@ -18,6 +18,7 @@ These computers are managed by this Nix flake ❄️
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
 | `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
 | `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
+| `grozbok`   | [Lima]                      | -                              | -     | -                           |                         | 🐄   | 🐧  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T400]           | ☁️   | ❄️  | 🚧    |
 | `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                         | 🧟   | 🧟  | 🧟    |
 | `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                         | 🧟   | 🧟  | 🧟    |
@@ -314,6 +315,7 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [GB-BXCEH-2955]: https://www.gigabyte.com/uk/Mini-PcBarebone/GB-BXCEH-2955-rev-10
 [GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
 [QEMU]: https://www.qemu.org/
+[Lima]: https://github.com/lima-vm/lima
 
 [Intel Core i9-9900K]: https://www.intel.com/content/www/us/en/products/sku/186605/intel-core-i99900k-processor-16m-cache-up-to-5-00-ghz/specifications.html
 [Intel Xeon E-2176M]: https://ark.intel.com/content/www/us/en/ark/products/134867/intel-xeon-e-2176m-processor-12m-cache-up-to-4-40-ghz.html

@@ -16,8 +16,4 @@ let
 in
 {
   home.packages = with pkgs; [ shellApplication ];
-  programs.fish.shellAliases = {
-    lima-create-builder = "lima-create builder";
-    lima-create-default = "lima-create default";
-  };
 }
