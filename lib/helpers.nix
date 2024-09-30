@@ -16,7 +16,7 @@
     let
       isISO = builtins.substring 0 4 hostname == "iso-";
       isInstall = !isISO;
-      isLima = builtins.substring 0 5 hostname == "lima-";
+      isLima = hostname == "grozbok";
       isWorkstation = builtins.isString desktop;
     in
     inputs.home-manager.lib.homeManagerConfiguration {
@@ -50,7 +50,6 @@
     let
       isISO = builtins.substring 0 4 hostname == "iso-";
       isInstall = !isISO;
-      isLima = builtins.substring 0 5 hostname == "lima-";
       isWorkstation = builtins.isString desktop;
     in
     inputs.nixpkgs.lib.nixosSystem {
@@ -64,7 +63,6 @@
           username
           stateVersion
           isInstall
-          isLima
           isISO
           isWorkstation
           ;
@@ -91,7 +89,6 @@
     let
       isISO = false;
       isInstall = true;
-      isLima = false;
       isWorkstation = true;
     in
     inputs.nix-darwin.lib.darwinSystem {
@@ -105,7 +102,6 @@
           username
           stateVersion
           isInstall
-          isLima
           isISO
           isWorkstation
           ;

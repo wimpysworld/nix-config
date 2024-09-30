@@ -128,13 +128,12 @@
           username = "deck";
         };
         # VMs
+        "martin@grozbok" = helper.mkHome { hostname = "grozbok"; };
         "martin@minimech" = helper.mkHome { hostname = "minimech"; };
         "martin@scrubber" = helper.mkHome {
           hostname = "scrubber";
           desktop = "pantheon";
         };
-        "martin@lima-builder" = helper.mkHome { hostname = "lima-builder"; };
-        "martin@lima-default" = helper.mkHome { hostname = "lima-default"; };
       };
       nixosConfigurations = {
         # .iso images

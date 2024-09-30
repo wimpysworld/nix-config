@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 
 function lima_create() {
-  if [ -z "${1}" ]; then
-    VM_NAME="default"
-  else
-    VM_NAME="${1}"
-  fi
+  local VM_NAME="default"
 
   if [ -d "${HOME}/.lima/${VM_NAME}" ]; then
     echo "lima ${VM_NAME} already exists."
@@ -17,20 +13,12 @@ function lima_create() {
     Linux)
       CPUS=$(nproc)
       MEMORY=$(free --giga -h | awk '/^Mem:/ {print $2}' | sed 's/[A-Z]//g')
-      if [ "${VM_NAME}" = "builder" ]; then
-        LIMA_OPTS="--arch=x86_64 --vm-type=qemu --mount-type=9p"
-      else
-        LIMA_OPTS="--vm-type=qemu --mount-type=9p"
-      fi
+      LIMA_OPTS="--vm-type=qemu --mount-type=9p --mount-writable"
       ;;
     Darwin)
       CPUS=$(sysctl -n hw.ncpu)
       MEMORY=$(echo "$(sysctl -n hw.memsize) / 1024 / 1024 / 1024" | bc)
-      if [ "${VM_NAME}" = "builder" ]; then
-        LIMA_OPTS="--arch=x86_64"
-      else
-        LIMA_OPTS="--vm-type=qemu"
-      fi
+      LIMA_OPTS="--vm-type=vz --rosetta --mount-type=virtiofs --mount-writable"
       ;;
   esac
 
@@ -50,13 +38,8 @@ function lima_create() {
     VM_MEMORY=$(echo "${MEMORY} / 2" | bc)
   fi
 
-  if [ "${VM_NAME}" = "builder" ]; then
-    TEMPLATE="ubuntu-lts"
-    VM_DISK=64
-  else
-    TEMPLATE="ubuntu"
-    VM_DISK=32
-  fi
+  TEMPLATE="ubuntu-lts"
+  VM_DISK=64
 
   # shellcheck disable=SC2086
   limactl create ${LIMA_OPTS} --cpus="${VM_CPUS}" --memory="${VM_MEMORY}" --disk="${VM_DISK}" --name="${VM_NAME}" --containerd=none --tty=false template://"${TEMPLATE}"
@@ -66,16 +49,27 @@ function lima_create() {
   cat << EOF > "/tmp/lima/lima-${VM_NAME}.sh"
 #!/usr/bin/env bash
 
+# The default Lima VM has a specific hostname
+sudo hostnamectl hostname grozbok
+
 # Upgrade
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y update
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade
 
-# Install apt-cacher-ng and devscripts
-if [ "\${HOSTNAME}" == "lima-builder" ]; then
-  sudo DEBIAN_FRONTEND=noninteractive apt-get -y install apt-cacher-ng devscripts
-  echo "DlMaxRetries: 32"       | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
-  echo "PassThroughPattern: .*" | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
-fi
+# Install apt-cacher-ng and dev tools
+sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
+  build-essential \
+  debootstrap \
+  debhelper \
+  devscripts \
+  germinate
+sudo DEBIAN_FRONTEND=noninteractive apt-get -y install apt-cacher-ng
+echo "DlMaxRetries: 32"       | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
+echo "PassThroughPattern: .*" | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
+sudo snap install snapcraft --classic
+sudo snap install lxd --channel=latest/stable
+# Add the user to the lxd group
+getent group lxd | grep -qwF "\${USER}" || sudo usermod -aG lxd "\${USER}"
 
 # Install Nix
 sudo mkdir -p "/nix/var/nix/profiles/per-user/\${USER}"
@@ -83,15 +77,21 @@ curl -sSfL https://install.determinate.systems/nix | sh -s -- install --no-confi
 echo "trusted-users = root \${USER}" | sudo tee -a /etc/nix/nix.conf
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
-# Clone my repos
+# Clone my Nix configuration
 git clone --quiet https://github.com/wimpysworld/nix-config "\${HOME}/Zero/nix-config"
-if [ "\${HOSTNAME}" == "lima-builder" ]; then
-  git clone --quiet https://github.com/wimpysworld/obs-studio-portable "\${HOME}/Development/github.com/wimpysworld/obs-studio-portable"
+
+# Configure sops-nix
+if [ -e "/home/\${USER}/.config/sops/age/keys.txt" ]; then
+  mkdir -p "\${HOME}/.config/sops/age"
+  cp "/home/\${USER}/.config/sops/age/keys.txt" "\${HOME}/.config/sops/age/keys.txt"
 fi
 
 # Activate home-manager configuration
 pushd "\${HOME}/Zero/nix-config"
 nix run nixpkgs#home-manager -- switch --flake "\${HOME}/Zero/nix-config"
+if [ -e "\${HOME}/.config/sops/age/keys.txt" ]; then
+  gpg-restore
+fi
 
 # Fake a fish login shell
 echo "fish --login" >> "\${HOME}/.bashrc"
