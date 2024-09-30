@@ -156,7 +156,10 @@ buildFHSEnv {
     longDescription = ''
       Defold is a completely free to use game engine for development of desktop, mobile, console and web games.
     '';
-    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    sourceProvenance = with lib.sourceTypes; [
+      binaryBytecode
+      binaryNativeCode
+    ];
     maintainers = with lib.maintainers; [ flexiondotorg ];
     platforms = [ "x86_64-linux" ];
     mainProgram = "defold";
