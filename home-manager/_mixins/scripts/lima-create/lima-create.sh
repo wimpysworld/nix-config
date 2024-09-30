@@ -73,7 +73,7 @@ getent group lxd | grep -qwF "\${USER}" || sudo usermod -aG lxd "\${USER}"
 
 # Install Nix
 sudo mkdir -p "/nix/var/nix/profiles/per-user/\${USER}"
-curl -sSfL https://install.determinate.systems/nix | sh -s -- install --no-confirm
+curl -sSfL https://install.determinate.systems/nix | sh -s -- install --determinate --no-confirm
 echo "trusted-users = root \${USER}" | sudo tee -a /etc/nix/nix.conf
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
