@@ -23,7 +23,7 @@ These computers are managed by this Nix flake ❄️
 | `krall`     | [Macbook Pro (Mid 2015)]    | Intel Core i7                  | 16GB  | Intel Iris Pro Graphics     |                            | 💻️   | 🍏  | ✅    |
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                            | 🎮️   | 🐧  | ✅    |
 | `crawler`   | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
-| `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
+| `dagger`    | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
 | `grozbok`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `zeta`      | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
@@ -150,10 +150,10 @@ Here's the directory structure I'm using:
 │  ├── iso-gnome -> iso-console
 │  ├── iso-mate -> iso-console
 │  ├── iso-pantheon -> iso-console
-│  ├── crawler -> scrubber
+│  ├── crawler -> dagger
 │  ├── phasma
 │  ├── revan
-│  ├── scrubber
+│  ├── dagger
 │  ├── sidious
 │  ├── tanis
 │  ├── vader
