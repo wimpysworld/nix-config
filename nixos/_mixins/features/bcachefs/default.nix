@@ -9,6 +9,7 @@ let
   installOn = [
     "crawler"
     "dagger"
+    "shaa"
     "sidious"
   ];
 in
