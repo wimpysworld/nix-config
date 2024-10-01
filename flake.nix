@@ -130,7 +130,7 @@
         # VMs
         "martin@grozbok" = helper.mkHome { hostname = "grozbok"; };
         "martin@zeta" = helper.mkHome { hostname = "zeta"; };
-        "martin@minimech" = helper.mkHome { hostname = "minimech"; };
+        "martin@crawler" = helper.mkHome { hostname = "crawler"; };
         "martin@scrubber" = helper.mkHome {
           hostname = "scrubber";
           desktop = "pantheon";
@@ -185,7 +185,7 @@
         # Servers
         revan = helper.mkNixos { hostname = "revan"; };
         # VMs
-        minimech = helper.mkNixos { hostname = "minimech"; };
+        crawler = helper.mkNixos { hostname = "crawler"; };
         scrubber = helper.mkNixos {
           hostname = "scrubber";
           desktop = "pantheon";

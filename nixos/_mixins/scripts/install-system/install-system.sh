@@ -143,7 +143,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
     # Rsync nix-config to the target install and set the remote origin to SSH.
     rsync -a --delete "$HOME/Zero/" "/mnt/home/$TARGET_USER/Zero/"
-    if [ "$TARGET_HOST" != "minimech" ] && [ "$TARGET_HOST" != "scrubber" ]; then
+    if [ "$TARGET_HOST" != "crawler" ] && [ "$TARGET_HOST" != "scrubber" ]; then
         pushd "/mnt/home/$TARGET_USER/Zero/nix-config"
         git remote set-url origin git@github.com:wimpysworld/nix-config.git
         popd

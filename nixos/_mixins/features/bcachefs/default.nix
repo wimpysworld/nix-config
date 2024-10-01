@@ -7,7 +7,7 @@
 }:
 let
   installOn = [
-    "minimech"
+    "crawler"
     "scrubber"
     "sidious"
   ];
