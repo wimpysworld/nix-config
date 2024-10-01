@@ -53,6 +53,8 @@ These computers are managed by this Nix flake ❄️
   - [Magic Nix Cache Action](https://github.com/marketplace/actions/magic-nix-cache)
   - [Flake Checker Action](https://github.com/marketplace/actions/nix-flake-checker)
   - [Update Flake Lock Action](https://github.com/marketplace/actions/update-flake-lock)
+- [darwin]: NmacOS configurations
+  - Includes full system configuration for a MacBook Air M2 15" and MacBook Pro (Mid 2015)
 - [home-manager]: Home Manager configurations
   - Sane defaults for shell and desktop
 - [nixos]: NixOS configurations
@@ -356,6 +358,7 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [VirGL]: https://docs.mesa3d.org/drivers/virgl.html
 
 [.github]: ./github/workflows
+[darwin]: ./darwin
 [home-manager]: ./home-manager
 [nixos]: ./nixos
 [nixos/_mixins]: ./nixos/_mixins
