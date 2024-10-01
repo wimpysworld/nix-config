@@ -19,6 +19,7 @@ These computers are managed by this Nix flake ❄️
 | `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
 | `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
 | `grozbok`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
+| `zeta`      | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
 | `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                            | 🧟   | 🧟  | 🧟    |
 | `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                            | 🧟   | 🧟  | 🧟    |
@@ -219,10 +220,12 @@ Things I currently need to do manually after installation.
 
 - [ ] On macOS run
   - `install-homebrew`.
-  - `create-lima`
+  - `create-grozbok`
+  - `create-zeta`
 - [ ] On Linux run
   - `incus admin init --minimal`
-  - `create-lima`
+  - `create-grozbok`
+  - `create-zeta`
 
 ### Themes
 
