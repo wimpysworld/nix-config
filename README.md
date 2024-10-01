@@ -1,8 +1,14 @@
-# Wimpy's [NixOS]  & [Home Manager] Configurations
+<div align="center">
+<img src=".github/logo.png" alt="Sith Happens" width="256" />
 
-This repository contains a [Nix Flake](https://zero-to-nix.com/concepts/flakes) for configuring my computers and/or home environment.
+# Wimpy's [NixOS], [nix-darwin] & [Home Manager] Configurations
+<b>Made with 💝 for <img src=".github/nixos.png" align="center" width="18" alt="NixOS"/> & <img src=".github/apple.png" align="center" width="16" alt="macOS"/></b>
+<br />
+</div>
+
+This repository contains a [Nix Flake](https://zero-to-nix.com/concepts/flakes) for configuring my computers and/or their home environment.
 It is not intended to be a drop in configuration for your computer, but you are welcome to use it as a reference or starting point for your own configuration.
-**If you are looking for a more generic NixOS configuration, I recommend [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs).** 👍️
+**If you are looking for a more generic NixOS configuration, I highly recommend [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs).** 👍️
 These computers are managed by this Nix flake ❄️
 
 |   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |        Secondary GPU       | Role | OS  | State |
@@ -27,6 +33,9 @@ These computers are managed by this Nix flake ❄️
 | `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                            | 🧟   | 🧟  | 🧟    |
 | `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                            | 🧟   | 🧟  | 🧟    |
 -->
+
+Workstation and server host names are Sith Lords and the virtual machines are named after TIE fighter series.
+Dual boot systems have the NixOS install named a Sith Lord and the *"other"* OS named after their public-facing persona.
 
 **Key**
 
@@ -53,7 +62,7 @@ These computers are managed by this Nix flake ❄️
   - [Magic Nix Cache Action](https://github.com/marketplace/actions/magic-nix-cache)
   - [Flake Checker Action](https://github.com/marketplace/actions/nix-flake-checker)
   - [Update Flake Lock Action](https://github.com/marketplace/actions/update-flake-lock)
-- [darwin]: NmacOS configurations
+- [darwin]: macOS configurations
   - Includes full system configuration for a MacBook Air M2 15" and MacBook Pro (Mid 2015)
 - [home-manager]: Home Manager configurations
   - Sane defaults for shell and desktop
@@ -312,10 +321,11 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [Matthew Croughan's nixcfg]: https://github.com/MatthewCroughan/nixcfg
 [Will Taylor's dotfiles]: https://github.com/wiltaylor/dotfiles
 [GitHub nixos configuration]: https://github.com/search?q=nixos+configuration
-[Disko]: https://github.com/nix-community/disko
 
 [NixOS]: https://nixos.org/
+[nix-darwin]: https://github.com/LnL7/nix-darwin
 [Home Manager]: https://github.com/nix-community/home-manager
+[Disko]: https://github.com/nix-community/disko
 
 [Z390-DESIGNARE]: https://www.gigabyte.com/Motherboard/Z390-DESIGNARE-rev-10#kf
 [MEG-X570-UNIFY]: https://www.msi.com/Motherboard/MEG-X570-UNIFY
@@ -333,7 +343,7 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [GB-BXCEH-2955]: https://www.gigabyte.com/uk/Mini-PcBarebone/GB-BXCEH-2955-rev-10
 [GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
 [QEMU]: https://www.qemu.org/
-[Lima]: https://github.com/lima-vm/lima
+[Lima]: https://lima-vm.io/
 
 [Intel Core i9-9900K]: https://www.intel.com/content/www/us/en/products/sku/186605/intel-core-i99900k-processor-16m-cache-up-to-5-00-ghz/specifications.html
 [Intel Xeon E-2176M]: https://ark.intel.com/content/www/us/en/ark/products/134867/intel-xeon-e-2176m-processor-12m-cache-up-to-4-40-ghz.html
@@ -367,9 +377,9 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [Modern Unix]: ./home-manager/default.nix
 [OpenSSH]: ./nixos/_mixins/services/ssh/default.nix
 
-[micro]: [https://micro-editor.github.io/]
-[sops-nix]: [https://github.com/Mic92/sops-nix]
-[Tailscale]: [https://tailscale.com/]
+[micro]: https://micro-editor.github.io/
+[sops-nix]: https://github.com/Mic92/sops-nix
+[Tailscale]: https://tailscale.com/
 [GNOME NixOS]: ./nixos/_mixins/desktop/gnome/default.nix
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
 [MATE NixOS]: ./nixos/_mixins/desktop/mate/default.nix
