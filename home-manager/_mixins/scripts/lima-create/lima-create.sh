@@ -78,6 +78,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade
 # Install apt-cacher-ng and dev tools
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
   build-essential \
+  curl \
   debootstrap \
   debhelper \
   devscripts \
@@ -111,6 +112,11 @@ nix run nixpkgs#home-manager -- switch --flake "\${HOME}/Zero/nix-config"
 if [ -e "\${HOME}/.config/sops/age/keys.txt" ]; then
   gpg-restore
 fi
+popd
+
+# Install Tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up --operator="\${USER}"
 
 # Fake a fish login shell
 echo "fish --login" >> "\${HOME}/.bashrc"
