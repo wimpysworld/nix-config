@@ -24,8 +24,8 @@ These computers are managed by this Nix flake ❄️
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                            | 🎮️   | 🐧  | ✅    |
 | `crawler`   | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
 | `dagger`    | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
-| `grozbok`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `defender`  | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
+| `fighter`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
 
 <!--
@@ -234,12 +234,12 @@ Things I currently need to do manually after installation.
 
 - [ ] On macOS run
   - `install-homebrew`.
-  - `create-grozbok`
   - `create-defender`
+  - `create-fighter`
 - [ ] On Linux run
   - `incus admin init --minimal`
-  - `create-grozbok`
   - `create-defender`
+  - `create-fighter`
 
 ### Themes
 
