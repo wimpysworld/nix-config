@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 
 function lima_create() {
-  local VM_NAME="default"
+  if [ -z "${1}" ]; then
+    VM_NAME="default"
+    HOSTNAME="grozbok"
+  elif [ "${1}" = "grozbok" ]; then
+    VM_NAME="default"
+    HOSTNAME="grozbok"
+  else
+    VM_NAME="${1}"
+    HOSTNAME="${VM_NAME}"
+  fi
 
   if [ -d "${HOME}/.lima/${VM_NAME}" ]; then
     echo "lima ${VM_NAME} already exists."
@@ -38,11 +47,24 @@ function lima_create() {
     VM_MEMORY=$(echo "${MEMORY} / 2" | bc)
   fi
 
-  TEMPLATE="ubuntu-lts"
-  VM_DISK=64
+  if [ "${VM_NAME}" = "default" ]; then
+    YAML="${HOME}/.lima/_templates/ubuntu-24.yml"
+    VM_DISK=64
+  elif [ "${VM_NAME}" = "zeta" ]; then
+    YAML="${HOME}/.lima/_templates/ubuntu-22.yml"
+    VM_DISK=64
+  else
+    TEMPLATE="ubuntu"
+    VM_DISK=32
+  fi
 
-  # shellcheck disable=SC2086
-  limactl create ${LIMA_OPTS} --cpus="${VM_CPUS}" --memory="${VM_MEMORY}" --disk="${VM_DISK}" --name="${VM_NAME}" --containerd=none --tty=false template://"${TEMPLATE}"
+  if [ -n "${YAML}" ]; then
+    # shellcheck disable=SC2086
+    limactl create ${LIMA_OPTS} --cpus="${VM_CPUS}" --memory="${VM_MEMORY}" --disk="${VM_DISK}" --name="${VM_NAME}" --containerd=none --tty=false "${YAML}"
+  else
+    # shellcheck disable=SC2086
+    limactl create ${LIMA_OPTS} --cpus="${VM_CPUS}" --memory="${VM_MEMORY}" --disk="${VM_DISK}" --name="${VM_NAME}" --containerd=none --tty=false template://"${TEMPLATE}"
+  fi
   limactl start "${VM_NAME}"
 
   # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
@@ -50,7 +72,7 @@ function lima_create() {
 #!/usr/bin/env bash
 
 # The default Lima VM has a specific hostname
-sudo hostnamectl hostname grozbok
+sudo hostnamectl hostname "${HOSTNAME}"
 
 # Upgrade
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y update
