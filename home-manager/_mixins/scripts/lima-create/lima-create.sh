@@ -71,9 +71,15 @@ function lima_create() {
 # The default Lima VM has a specific hostname
 sudo hostnamectl hostname "${HOSTNAME}"
 
+sudo DEBIAN_FRONTEND=noninteractive apt-get -y install apt-cacher-ng
+echo "DlMaxRetries: 32"       | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
+echo "PassThroughPattern: .*" | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
+sudo systemctl restart apt-cacher-ng
+
 # Upgrade
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y update
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade
+sudo snap refresh
 
 # Install apt-cacher-ng and dev tools
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
@@ -84,36 +90,6 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
   devscripts \
   germinate
 
-# Install the tools used to build Ubuntu MATE website
-# https://github.com/ubuntu-mate/ubuntu-mate.org#edit-locally
-if [ "${VM_NAME}" = "defender" ]; then
-  sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
-    ruby \
-    ruby-dev \
-    make \
-    g++ \
-    gcc \
-    python3-polib \
-    python3-requests \
-    python3-yaml \
-    rsync \
-    translate-toolkit \
-    transmission-cli \
-    webp \
-    zlib1g-dev
-  sudo gem install bundler --version 2.2.16
-  sudo gem install html-proofer
-  sudo gem install jekyll
-  git clone --quiet https://github.com/ubuntu-mate/ubuntu-mate.org.git "\${HOME}/ubuntu-mate.org"
-  pushd "\${HOME}/ubuntu-mate.org"
-  bundle install
-  git remote set-url origin git@github.com:ubuntu-mate/ubuntu-mate.org.git
-  popd
-fi
-
-sudo DEBIAN_FRONTEND=noninteractive apt-get -y install apt-cacher-ng
-echo "DlMaxRetries: 32"       | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
-echo "PassThroughPattern: .*" | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
 sudo snap install snapcraft --classic
 sudo snap install lxd --channel=latest/stable
 # Add the user to the lxd group
@@ -144,6 +120,35 @@ popd
 
 # Install Tailscale
 curl -fsSL https://tailscale.com/install.sh | sh
+
+# Install the tools used to build Ubuntu MATE website
+# https://github.com/ubuntu-mate/ubuntu-mate.org#edit-locally
+if [ "${VM_NAME}" = "defender" ]; then
+  sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
+    ruby \
+    ruby-dev \
+    make \
+    g++ \
+    gcc \
+    python3-polib \
+    python3-requests \
+    python3-yaml \
+    rsync \
+    translate-toolkit \
+    transmission-cli \
+    webp \
+    zlib1g-dev
+  sudo gem install bundler --version 2.2.16
+  sudo gem install html-proofer
+  sudo gem install jekyll
+  git clone --quiet https://github.com/ubuntu-mate/ubuntu-mate.org.git "\${HOME}/ubuntu-mate.org"
+  pushd "\${HOME}/ubuntu-mate.org"
+  bundle install
+  git remote set-url origin git@github.com:ubuntu-mate/ubuntu-mate.org.git
+  popd
+fi
+
+# Start Tailscale
 sudo tailscale up --operator="\${USER}"
 
 # Fake a fish login shell
