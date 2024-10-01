@@ -25,6 +25,8 @@ in
   programs.fish.shellAliases = {
     create-grozbok = "lima-create grozbok";
     create-zeta = "lima-create zeta";
+    grozbok = "limactl shell grozbok";
+    zeta = "limactl shell zeta";
   };
 
 }

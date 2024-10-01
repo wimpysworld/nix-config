@@ -3,10 +3,7 @@
 function lima_create() {
   if [ -z "${1}" ]; then
     VM_NAME="default"
-    HOSTNAME="grozbok"
-  elif [ "${1}" = "grozbok" ]; then
-    VM_NAME="default"
-    HOSTNAME="grozbok"
+    HOSTNAME="ubuntu"
   else
     VM_NAME="${1}"
     HOSTNAME="${VM_NAME}"
@@ -47,7 +44,7 @@ function lima_create() {
     VM_MEMORY=$(echo "${MEMORY} / 2" | bc)
   fi
 
-  if [ "${VM_NAME}" = "default" ]; then
+  if [ "${VM_NAME}" = "grozbok" ]; then
     YAML="${HOME}/.lima/_templates/ubuntu-24.yml"
     VM_DISK=64
   elif [ "${VM_NAME}" = "zeta" ]; then
