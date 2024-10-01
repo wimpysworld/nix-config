@@ -24,9 +24,9 @@ in
   };
   programs.fish.shellAliases = {
     create-grozbok = "lima-create grozbok";
-    create-zeta = "lima-create zeta";
+    create-defender = "lima-create defender";
     grozbok = "limactl shell grozbok";
-    zeta = "limactl shell zeta";
+    defender = "limactl shell defender";
   };
 
 }

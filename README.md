@@ -25,7 +25,7 @@ These computers are managed by this Nix flake ❄️
 | `crawler`   | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
 | `dagger`    | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
 | `grozbok`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
-| `zeta`      | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
+| `defender`  | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
 
 <!--
@@ -235,11 +235,11 @@ Things I currently need to do manually after installation.
 - [ ] On macOS run
   - `install-homebrew`.
   - `create-grozbok`
-  - `create-zeta`
+  - `create-defender`
 - [ ] On Linux run
   - `incus admin init --minimal`
   - `create-grozbok`
-  - `create-zeta`
+  - `create-defender`
 
 ### Themes
 

@@ -3,7 +3,7 @@
 function lima_create() {
   if [ -z "${1}" ]; then
     VM_NAME="default"
-    HOSTNAME="ubuntu"
+    HOSTNAME="recon"
   else
     VM_NAME="${1}"
     HOSTNAME="${VM_NAME}"
@@ -47,7 +47,7 @@ function lima_create() {
   if [ "${VM_NAME}" = "grozbok" ]; then
     YAML="${HOME}/.lima/_templates/ubuntu-24.yml"
     VM_DISK=64
-  elif [ "${VM_NAME}" = "zeta" ]; then
+  elif [ "${VM_NAME}" = "defender" ]; then
     YAML="${HOME}/.lima/_templates/ubuntu-22.yml"
     VM_DISK=64
   else

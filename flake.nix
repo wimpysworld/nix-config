@@ -129,7 +129,7 @@
         };
         # VMs
         "martin@grozbok" = helper.mkHome { hostname = "grozbok"; };
-        "martin@zeta" = helper.mkHome { hostname = "zeta"; };
+        "martin@defender" = helper.mkHome { hostname = "defender"; };
         "martin@crawler" = helper.mkHome { hostname = "crawler"; };
         "martin@dagger" = helper.mkHome {
           hostname = "dagger";
