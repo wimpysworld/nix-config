@@ -10,13 +10,16 @@
 let
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
-    ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
+    ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ]
+    ++ lib.optionals config.virtualisation.incus.enable [ "incusbr0" ];
 
   # Trust the lxd bridge interface, if lxd is enabled
+  # Trust the incus bridge interface, if incus is enabled
   # Trust the tailscale interface, if tailscale is enabled
   trustedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
-    ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ];
+    ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ]
+    ++ lib.optionals config.virtualisation.incus.enable [ "incusbr0" ];
 
   # Per-host firewall configuration; mostly for Syncthing which is configured via Home Manager
   allowedTCPPorts = {
@@ -100,6 +103,8 @@ in
       unmanaged = unmanagedInterfaces;
       wifi.backend = "iwd";
     };
+    # https://wiki.nixos.org/wiki/Incus
+    nftables.enable = lib.mkIf config.virtualisation.incus.enable true;
     useDHCP = lib.mkDefault true;
   };
   services = {

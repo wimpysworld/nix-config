@@ -5,24 +5,24 @@ It is not intended to be a drop in configuration for your computer, but you are 
 **If you are looking for a more generic NixOS configuration, I recommend [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs).** 👍️
 These computers are managed by this Nix flake ❄️
 
-|   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |      Secondary GPU      | Role | OS  | State |
-| :---------: | :-------------------------: | :----------------------------: | :---: | :-------------------------: | :---------------------: | :--: | :-: | :---: |
-| `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 6800]           | [NVIDIA T1000]          | 🖥️   | ❄️  | ✅    |
-| `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 6700 XT]        | [NVIDIA T600]           | 🖥️   | ❄️  | ✅    |
-| `palpatine` | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | 🪟  | ✅    |
-| `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630 | 💻️🎭️ | ❄️  | ✅    |
-| `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                         | 💻️   | ❄️  | ✅    |
-| `shaa`     | [ThinkPad T14s Gen 1]        | [AMD Ryzen 5 PRO 4650U]        | 16GB  | AMD Radeon RX Vega 6        |                         | 💻️   | ❄️  | ✅    |
-| `momin`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                         | 💻️   | 🍏  | ✅    |
-| `krall`     | [Macbook Pro (Mid 2015)]    | Intel Core i7                  | 16GB  | Intel Iris Pro Graphics     |                         | 💻️   | 🍏  | ✅    |
-| `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                         | 🎮️   | 🐧  | ✅    |
-| `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
-| `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                         | 🐄   | ❄️  | ✅    |
-| `grozbok`   | [Lima]                      | -                              | -     | -                           |                         | 🐄   | 🐧  | ✅    |
-| `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T400]           | ☁️   | ❄️  | 🚧    |
-| `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                         | 🧟   | 🧟  | 🧟    |
-| `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                         | 🧟   | 🧟  | 🧟    |
-| `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                         | 🧟   | 🧟  | 🧟    |
+|   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |        Secondary GPU       | Role | OS  | State |
+| :---------: | :-------------------------: | :----------------------------: | :---: | :-------------------------: | :------------------------: | :--: | :-: | :---: |
+| `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 7900 GRE]       | [RTX 2000E Ada Generation] | 🖥️   | ❄️  | ✅    |
+| `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 7900 GRE]       | [RTX 2000E Ada Generation] | 🖥️   | ❄️  | ✅    |
+| `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630    | 💻️🎭️ | ❄️  | ✅    |
+| `palpatine` | ⤴️                          | ⤴️                             | ⤴️    | ⤴️                          | ⤴️                         | 💻️🎭️ | 🪟  | ✅    |
+| `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                            | 💻️   | ❄️  | ✅    |
+| `shaa`      | [ThinkPad T14s Gen 1]       | [AMD Ryzen 5 PRO 4650U]        | 16GB  | AMD Radeon RX Vega 6        |                            | 💻️   | ❄️  | ✅    |
+| `momin`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                            | 💻️   | 🍏  | ✅    |
+| `krall`     | [Macbook Pro (Mid 2015)]    | Intel Core i7                  | 16GB  | Intel Iris Pro Graphics     |                            | 💻️   | 🍏  | ✅    |
+| `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                            | 🎮️   | 🐧  | ✅    |
+| `minimech`  | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
+| `scrubber`  | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
+| `grozbok`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
+| `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
+| `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                            | 🧟   | 🧟  | 🧟    |
+| `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                            | 🧟   | 🧟  | 🧟    |
+| `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                            | 🧟   | 🧟  | 🧟    |
 
 **Key**
 
@@ -188,10 +188,6 @@ GNOME 👣 MATE 🧉 and Pantheon 🏛️ desktop options are available. The fon
 
 Things I currently need to do manually after installation.
 
-### System
-
-- [ ] On macOS run `install-homebrew`.
-
 ### Secrets
 
 - [ ] Provision `~/.config/sops/age/keys.txt`. Optionally handled by `install-system`.
@@ -219,6 +215,15 @@ Things I currently need to do manually after installation.
 - [ ] VSCode - authenticate with GitHub enable sync
 - [ ] Wavebox - authenticate Google and restore profile
 
+### System
+
+- [ ] On macOS run
+  - `install-homebrew`.
+  - `create-lima`
+- [ ] On Linux run
+  - `incus admin init --minimal`
+  - `create-lima`
+
 ### Themes
 
 Some applications require manual configuration to apply the correct theme.
@@ -229,6 +234,11 @@ Some applications require manual configuration to apply the correct theme.
   - [ ] Chromium
   - [ ] Firefox
   - [ ] Wavebox
+- [ ] Cider
+  - Open Cider
+  - Menu → Marketplace → Themes
+  - Find Catppuccin and your favorite flavor
+  - Click Install
 - [ ] Discord OpenAsar
   - [ ] Add Catppuccin CSS
 ```css
@@ -330,6 +340,8 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [Intel Arc A770 16GB]: https://www.intel.com/content/www/us/en/products/sku/229151/intel-arc-a770-graphics-16gb/specifications.html
 [Fighter RX 6800]: https://www.powercolor.com/product?id=1606212415
 [Fighter RX 6700 XT]: https://www.powercolor.com/product?id=1612512944
+[Fighter RX 7900 GRE]: https://www.powercolor.com/product-detail186.htm
+[RTX 2000E Ada Generation]: https://www.pny.com/rtx-2000e-ada-generation
 [GeForce RTX 3090 GAMING OC]: https://www.gigabyte.com/uk/Graphics-Card/GV-N3090GAMING-OC-24GD#kf
 [NVIDIA Quadro P2000 Max-Q]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/quadro-pascal-p2000-data-sheet-us-nvidia-704443-r2-web.pdf
 [NVIDIA T1000]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/proviz-print-nvidia-T1000-datasheet-us-nvidia-1670054-r4-web.pdf
