@@ -44,11 +44,11 @@ function lima_create() {
     VM_MEMORY=$(echo "${MEMORY} / 2" | bc)
   fi
 
-  if [ "${VM_NAME}" = "grozbok" ]; then
-    YAML="${HOME}/.lima/_templates/ubuntu-24.yml"
-    VM_DISK=64
-  elif [ "${VM_NAME}" = "defender" ]; then
+  if [ "${VM_NAME}" = "defender" ]; then
     YAML="${HOME}/.lima/_templates/ubuntu-22.yml"
+    VM_DISK=64
+  elif [ "${VM_NAME}" = "fighter" ]; then
+    YAML="${HOME}/.lima/_templates/ubuntu-24.yml"
     VM_DISK=64
   else
     TEMPLATE="ubuntu"
