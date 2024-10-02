@@ -14,120 +14,112 @@ containerd:
 provision:
 - mode: system
   script: |
-    #!/usr/bin/env bash
-    set -eux -o pipefail
-    command -v apt-cacher-ng >/dev/null 2>&1 && exit 0
-    hostnamectl hostname blackace
-    sudo DEBIAN_FRONTEND=noninteractive apt-get -y update
-    sudo DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade
-    sudo snap refresh
-    DEBIAN_FRONTEND=noninteractive apt-get -y install apt-cacher-ng
-    echo "DlMaxRetries: 32"       | tee -a /etc/apt-cacher-ng/zzz_local.conf
-    echo "PassThroughPattern: .*" | tee -a /etc/apt-cacher-ng/zzz_local.conf
-    systemctl restart apt-cacher-ng
+    #!/bin/bash
+    if [ ! -e /etc/apt-cacher-ng/zzz_local.conf ]; then
+      hostnamectl hostname blackace
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get -y update
+      apt-get -y dist-upgrade
+      snap refresh
+      apt-get -y install apt-cacher-ng
+      echo "DlMaxRetries: 32"       | tee -a /etc/apt-cacher-ng/zzz_local.conf
+      echo "PassThroughPattern: .*" | tee -a /etc/apt-cacher-ng/zzz_local.conf
+      systemctl restart apt-cacher-ng
+    fi
 - mode: system
   script: |
-    #!/usr/bin/env bash
-    set -eux -o pipefail
-    command -v germinate >/dev/null 2>&1 && exit 0
-    # Install essential devtools
-    DEBIAN_FRONTEND=noninteractive apt-get -y install \
-      build-essential \
-      curl \
-      debootstrap \
-      debhelper \
-      devscripts \
-      germinate
+    #!/bin/bash
+    if ! command -v germinate; then
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get -y install --no-install-recommends \
+        build-essential \
+        curl \
+        debootstrap \
+        debhelper \
+        devscripts \
+        germinate
+    fi
 - mode: system
   script: |
-    #!/usr/bin/env bash
-    set -eux -o pipefail
-    command -v snapcraft >/dev/null 2>&1 && exit 0
-    snap install lxd --channel=latest/stable
-    #Add the user to the lxd group
-    getent group lxd | grep -qwF "{{.User}}" || usermod -aG lxd "{{.User}}"
-    snap install snapcraft --classic
+    #!/bin/bash
+    if ! command -v snapcraft; then
+      snap install lxd --channel=latest/stable
+      #Add the user to the lxd group
+      getent group lxd | grep -qwF "{{.User}}" || usermod -aG lxd "{{.User}}"
+      snap install snapcraft --classic
+    fi
 - mode: system
   script: |
-    #!/usr/bin/env bash
-    set -eux -o pipefail
-    command -v jekyll >/dev/null 2>&1 && exit 0
-    # Install the tools used to build Ubuntu MATE website
-    # https://github.com/ubuntu-mate/ubuntu-mate.org#edit-locally
-    DEBIAN_FRONTEND=noninteractive apt-get -y install \
-      ruby \
-      ruby-dev \
-      make \
-      g++ \
-      gcc \
-      python3-polib \
-      python3-requests \
-      python3-yaml \
-      rsync \
-      translate-toolkit \
-      transmission-cli \
-      webp \
-      zlib1g-dev
-    gem install bundler --version 2.2.16
-    gem install html-proofer
-    gem install jekyll
-#- mode: user
-#  script: |
-#    #!/usr/bin/env bash
-#    set -eux -o pipefail
-#    command -v jekyll >/dev/null 2>&1 && exit 0
-#    git clone --quiet https://github.com/ubuntu-mate/ubuntu-mate.org.git "{{.Home}}/ubuntu-mate.org"
-#    pushd "{{.Home}}/ubuntu-mate.org"
-#    bundle install
-#    git remote set-url origin git@github.com:ubuntu-mate/ubuntu-mate.org.git
-#    popd
+    #!/bin/bash
+    if ! command -v jekyll; then
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get -y install --no-install-recommends \
+        ruby \
+        ruby-dev \
+        make \
+        g++ \
+        gcc \
+        python3-polib \
+        python3-requests \
+        python3-yaml \
+        rsync \
+        translate-toolkit \
+        transmission-cli \
+        webp \
+        zlib1g-dev
+      gem install bundler --version 2.2.16
+      gem install html-proofer
+      gem install jekyll
+    fi
 - mode: system
   script: |
-    #!/usr/bin/env bash
-    set -eux -o pipefail
-    command -v tailscale >/dev/null 2>&1 && exit 0
-    # Install Tailscale
-    curl -fsSL https://tailscale.com/install.sh | sh
+    #!/bin/bash
+    if ! command -v tailscale; then
+      curl -fsSL https://tailscale.com/install.sh | sh
+    fi
 - mode: system
   script: |
-    #!/usr/bin/env bash
-    set -eux -o pipefail
-    command -v nix >/dev/null 2>&1 && exit 0
-    # Install Nix
-    sudo mkdir -p "/nix/var/nix/profiles/per-user/{{.User}}"
-    curl -sSfL https://install.determinate.systems/nix | sh -s -- install --determinate --no-confirm
-    echo "trusted-users = root {{.User}}" | sudo tee -a /etc/nix/nix.conf
-    #. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+    #!/bin/bash
+    if [ ! -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+      mkdir -p "/nix/var/nix/profiles/per-user/{{.User}}"
+      curl -sSfL https://install.determinate.systems/nix | sh -s -- install \
+        --determinate --no-confirm
+      echo "trusted-users = root {{.User}}" | tee -a /etc/nix/nix.conf
+    fi
 - mode: user
   script: |
-    #!/usr/bin/env bash
-    set -eux -o pipefail
-    command -v gpg-restore >/dev/null 2>&1 && exit 0
-    # Clone my Nix configuration
-    git clone --quiet https://github.com/wimpysworld/nix-config "{{.Home}}/Zero/nix-config"
-    # Configure sops-nix
-    if [ -e "/home/{{.User}}/.config/sops/age/keys.txt" ]; then
-      mkdir -p "{{.Home}}/.config/sops/age"
-      cp "/home/{{.User}}/.config/sops/age/keys.txt" "{{.Home}}/.config/sops/age/keys.txt"
+    #!/bin/bash
+    if [ ! -e {{.Home}}/.nix-profile/manifest.nix ]; then
+      . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+      git clone --quiet https://github.com/wimpysworld/nix-config "{{.Home}}/Zero/nix-config"
+      # Configure sops-nix
+      if [ -e "/home/{{.User}}/.config/sops/age/keys.txt" ]; then
+        mkdir -p "{{.Home}}/.config/sops/age"
+        cp "/home/{{.User}}/.config/sops/age/keys.txt" "{{.Home}}/.config/sops/age/keys.txt"
+      fi
+      # Activate home-manager configuration
+      pushd "{{.Home}}/Zero/nix-config"
+      nix run nixpkgs#home-manager -- switch --flake "{{.Home}}/Zero/nix-config"
+      if [ -e "{{.Home}}/.config/sops/age/keys.txt" ]; then
+        gpg-restore
+      fi
+      popd
     fi
-    # Activate home-manager configuration
-    pushd "{{.Home}}/Zero/nix-config"
-    nix run nixpkgs#home-manager -- switch --flake "{{.Home}}/Zero/nix-config"
-    if [ -e "{{.Home}}/.config/sops/age/keys.txt" ]; then
-      gpg-restore
-    fi
+- mode: user
+  script: |
+    #!/bin/bash
+    grep -q fish "{{.Home}}/.bashrc" && exit 0
+    git clone --quiet https://github.com/ubuntu-mate/ubuntu-mate.org.git "{{.Home}}/ubuntu-mate.org"
+    pushd "{{.Home}}/ubuntu-mate.org"
+    bundle install
+    git remote set-url origin git@github.com:ubuntu-mate/ubuntu-mate.org.git
     popd
-- mode: user
-  script: |
-    #!/usr/bin/env bash
-    # Make fish shell default
-    grep -q "$(which fish)" /etc/shells && exit 0
-    echo "$(which fish)" | sudo tee -a /etc/shells
-    sudo chsh --shell "$(which fish)" "{{.User}}"
+    echo "fish --login" >> "{{.Home}}/.bashrc"
+    echo "exit"         >> "{{.Home}}/.bashrc"
 probes:
 - description: "apt-cacher-ng"
   script: |
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eux -o pipefail
     if ! timeout 30s bash -c "until command -v apt-cacher-ng >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "apt-cacher-ng is not installed yet"
@@ -137,7 +129,7 @@ probes:
     See "/var/log/cloud-init-output.log" in the guest
 - description: "devtools"
   script: |
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eux -o pipefail
     if ! timeout 30s bash -c "until command -v germinate >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "devtools is not installed yet"
@@ -147,7 +139,7 @@ probes:
     See "/var/log/cloud-init-output.log" in the guest
 - description: "snapcraft"
   script: |
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eux -o pipefail
     if ! timeout 30s bash -c "until command -v snapcraft >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "snapcraft is not installed yet"
@@ -157,7 +149,7 @@ probes:
     See "/var/log/cloud-init-output.log" in the guest
 - description: "jekyll"
   script: |
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eux -o pipefail
     if ! timeout 30s bash -c "until command -v jekyll >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "jekyll is not installed yet"
@@ -167,7 +159,7 @@ probes:
     See "/var/log/cloud-init-output.log" in the guest
 - description: "tailscale"
   script: |
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eux -o pipefail
     if ! timeout 30s bash -c "until command -v tailscale >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "tailscale is not installed yet"
@@ -177,7 +169,7 @@ probes:
     See "/var/log/cloud-init-output.log" in the guest
 - description: "determinate-nixd"
   script: |
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eux -o pipefail
     if ! timeout 30s bash -c "until command -v determinate-nixd >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "determinate-nixd is not installed yet"
@@ -187,25 +179,27 @@ probes:
     See "/var/log/cloud-init-output.log" in the guest
 - description: "home-manager"
   script: |
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eux -o pipefail
-    if ! timeout 30s bash -c "until test -e /home/martin/Zero/nix-config/flake.nix >/dev/null 2>&1; do sleep 5; done"; then
-      echo >&2 "home-manager is not installed yet"
-      exit 1
-    fi
     if ! timeout 30s bash -c "until command -v home-manager >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "home-manager is not installed yet"
       exit 1
     fi
   hint: |
     See "/var/log/cloud-init-output.log" in the guest
-- description: "fish"
+- description: "user environment"
   script: |
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eux -o pipefail
-    if ! timeout 10s bash -c "until grep -q fish /etc/shells >/dev/null 2>&1; do sleep 2; done"; then
-      echo >&2 "fish is not configured yet"
+    if ! timeout 10s bash -c "until grep -q fish {{.Home}}/.bashrc >/dev/null 2>&1; do sleep 2; done"; then
+      echo >&2 "user environment is not configured yet"
       exit 1
     fi
   hint: |
     See "/var/log/cloud-init-output.log" in the guest
+message: |
+  Execute the following commands to finish the set-up:
+   - determinate-nixd login
+   - atuin login -u <user>
+   - atuin sync -f
+   - sudo tailscale up --operator={{.User}}
