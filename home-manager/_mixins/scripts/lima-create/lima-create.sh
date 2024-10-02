@@ -44,125 +44,28 @@ function lima_create() {
     VM_MEMORY=$(echo "${MEMORY} / 2" | bc)
   fi
 
-  if [ "${VM_NAME}" = "defender" ]; then
-    YAML="${HOME}/.lima/_templates/ubuntu-22.yml"
-    VM_DISK=64
-  elif [ "${VM_NAME}" = "fighter" ]; then
-    YAML="${HOME}/.lima/_templates/ubuntu-24.yml"
-    VM_DISK=64
-  else
-    TEMPLATE="ubuntu"
-    VM_DISK=32
-  fi
+  case "${VM_NAME}" in
+    blackace|defender|fighter)
+      YAML="${HOME}/.lima/_templates/${VM_NAME}.yaml"
+      VM_DISK=64
+      ;;
+    *)
+      TEMPLATE="ubuntu"
+      VM_DISK=32
+      ;;
+  esac
 
   if [ -n "${YAML}" ]; then
     # shellcheck disable=SC2086
-    limactl create ${LIMA_OPTS} --cpus="${VM_CPUS}" --memory="${VM_MEMORY}" --disk="${VM_DISK}" --name="${VM_NAME}" --containerd=none --tty=false "${YAML}"
+    limactl create ${LIMA_OPTS} --cpus="${VM_CPUS}" --memory="${VM_MEMORY}" --disk="${VM_DISK}" --name="${VM_NAME}" --tty=false "${YAML}"
   else
     # shellcheck disable=SC2086
     limactl create ${LIMA_OPTS} --cpus="${VM_CPUS}" --memory="${VM_MEMORY}" --disk="${VM_DISK}" --name="${VM_NAME}" --containerd=none --tty=false template://"${TEMPLATE}"
   fi
   limactl start "${VM_NAME}"
-
-  # Inject a "munged" bash script as a faux heredoc payload to /tmp/lima/
-  cat << EOF > "/tmp/lima/lima-${VM_NAME}.sh"
-#!/usr/bin/env bash
-
-# The default Lima VM has a specific hostname
-sudo hostnamectl hostname "${HOSTNAME}"
-
-sudo DEBIAN_FRONTEND=noninteractive apt-get -y install apt-cacher-ng
-echo "DlMaxRetries: 32"       | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
-echo "PassThroughPattern: .*" | sudo tee -a /etc/apt-cacher-ng/zzz_local.conf
-sudo systemctl restart apt-cacher-ng
-
-# Upgrade
-sudo DEBIAN_FRONTEND=noninteractive apt-get -y update
-sudo DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade
-sudo snap refresh
-
-# Install apt-cacher-ng and dev tools
-sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
-  build-essential \
-  curl \
-  debootstrap \
-  debhelper \
-  devscripts \
-  germinate
-
-sudo snap install snapcraft --classic
-sudo snap install lxd --channel=latest/stable
-# Add the user to the lxd group
-getent group lxd | grep -qwF "\${USER}" || sudo usermod -aG lxd "\${USER}"
-
-# Install Nix
-sudo mkdir -p "/nix/var/nix/profiles/per-user/\${USER}"
-curl -sSfL https://install.determinate.systems/nix | sh -s -- install --determinate --no-confirm
-echo "trusted-users = root \${USER}" | sudo tee -a /etc/nix/nix.conf
-. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-
-# Clone my Nix configuration
-git clone --quiet https://github.com/wimpysworld/nix-config "\${HOME}/Zero/nix-config"
-
-# Configure sops-nix
-if [ -e "/home/\${USER}/.config/sops/age/keys.txt" ]; then
-  mkdir -p "\${HOME}/.config/sops/age"
-  cp "/home/\${USER}/.config/sops/age/keys.txt" "\${HOME}/.config/sops/age/keys.txt"
-fi
-
-# Activate home-manager configuration
-pushd "\${HOME}/Zero/nix-config"
-nix run nixpkgs#home-manager -- switch --flake "\${HOME}/Zero/nix-config"
-if [ -e "\${HOME}/.config/sops/age/keys.txt" ]; then
-  gpg-restore
-fi
-popd
-
-# Install Tailscale
-curl -fsSL https://tailscale.com/install.sh | sh
-
-# Install the tools used to build Ubuntu MATE website
-# https://github.com/ubuntu-mate/ubuntu-mate.org#edit-locally
-if [ "${VM_NAME}" = "defender" ]; then
-  sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
-    ruby \
-    ruby-dev \
-    make \
-    g++ \
-    gcc \
-    python3-polib \
-    python3-requests \
-    python3-yaml \
-    rsync \
-    translate-toolkit \
-    transmission-cli \
-    webp \
-    zlib1g-dev
-  sudo gem install bundler --version 2.2.16
-  sudo gem install html-proofer
-  sudo gem install jekyll
-  git clone --quiet https://github.com/ubuntu-mate/ubuntu-mate.org.git "\${HOME}/ubuntu-mate.org"
-  pushd "\${HOME}/ubuntu-mate.org"
-  bundle install
-  git remote set-url origin git@github.com:ubuntu-mate/ubuntu-mate.org.git
-  popd
-fi
-
-# Start Tailscale
-sudo tailscale up --operator="\${USER}"
-
-# Fake a fish login shell
-echo "fish --login" >> "\${HOME}/.bashrc"
-echo "exit"         >> "\${HOME}/.bashrc"
-echo -e "\n\${HOSTNAME} is now configured\nRestarting...\n"
-EOF
-
-  chmod 755 "/tmp/lima/lima-${VM_NAME}.sh"
-  limactl shell --workdir "/home/${USER}.linux" "${VM_NAME}" "/tmp/lima/lima-${VM_NAME}.sh"
-  rm "/tmp/lima/lima-${VM_NAME}.sh"
   limactl stop "${VM_NAME}"
-  limactl start "${VM_NAME}"
   limactl list
+  limactl start "${VM_NAME}"
   limactl shell "${VM_NAME}"
 }
 

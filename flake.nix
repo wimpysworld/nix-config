@@ -128,6 +128,7 @@
           username = "deck";
         };
         # VMs
+        "martin@blackace" = helper.mkHome { hostname = "blackace"; };
         "martin@defender" = helper.mkHome { hostname = "defender"; };
         "martin@fighter" = helper.mkHome { hostname = "fighter"; };
         "martin@crawler" = helper.mkHome { hostname = "crawler"; };
