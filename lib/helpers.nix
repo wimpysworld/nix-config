@@ -16,7 +16,7 @@
     let
       isISO = builtins.substring 0 4 hostname == "iso-";
       isInstall = !isISO;
-      isLima = hostname == "defender" || hostname == "fighter";
+      isLima = hostname == "blackace" || hostname == "defender" || hostname == "fighter";
       isWorkstation = builtins.isString desktop;
     in
     inputs.home-manager.lib.homeManagerConfiguration {
