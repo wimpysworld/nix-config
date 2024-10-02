@@ -18,7 +18,10 @@ fi
 # Proceed if the nix-config directory exists
 if [ -e "${HOME}/Zero/nix-config" ]; then
     # Get the number of processing units
-    all_cores=$(nproc)
+    case "$(uname -s)" in
+        Linux)  all_cores=$(nproc);;
+        Darwin) all_cores=$(sysctl -n hw.logicalcpu);;
+    esac
     # Calculate 75% of the number of processing units
     build_cores=$(printf "%.0f" "$(echo "${all_cores} * 0.75" | bc)")
 
