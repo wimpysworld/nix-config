@@ -1,5 +1,4 @@
 images:
-# Hint: run `limactl prune` to invalidate the cache
 - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
   arch: "x86_64"
 - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
@@ -11,12 +10,16 @@ mounts:
 containerd:
   system: false
   user: false
+disk: "64GiB"
+rosetta:
+  enabled: true
 provision:
 - mode: system
   script: |
     #!/bin/bash
+    set -eux -o pipefail
     if [ ! -e /etc/apt-cacher-ng/zzz_local.conf ]; then
-      hostnamectl hostname defender
+      hostnamectl hostname blackace
       export DEBIAN_FRONTEND=noninteractive
       apt-get -y update
       apt-get -y dist-upgrade
@@ -29,6 +32,7 @@ provision:
 - mode: system
   script: |
     #!/bin/bash
+    set -eux -o pipefail
     if ! command -v germinate; then
       export DEBIAN_FRONTEND=noninteractive
       apt-get -y install --no-install-recommends \
@@ -42,6 +46,7 @@ provision:
 - mode: system
   script: |
     #!/bin/bash
+    set -eux -o pipefail
     if ! command -v snapcraft; then
       snap install lxd --channel=latest/stable
       #Add the user to the lxd group
@@ -51,21 +56,46 @@ provision:
 - mode: system
   script: |
     #!/bin/bash
+    set -eux -o pipefail
+    if ! command -v jekyll; then
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get -y install --no-install-recommends \
+        ruby \
+        ruby-dev \
+        make \
+        g++ \
+        gcc \
+        python3-polib \
+        python3-requests \
+        python3-yaml \
+        rsync \
+        translate-toolkit \
+        transmission-cli \
+        webp \
+        zlib1g-dev
+      gem install bundler --version 2.2.16
+      gem install html-proofer
+      gem install jekyll
+    fi
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
     if ! command -v tailscale; then
       curl -fsSL https://tailscale.com/install.sh | sh
     fi
 - mode: system
   script: |
     #!/bin/bash
+    set -eux -o pipefail
     if [ ! -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-      mkdir -p "/nix/var/nix/profiles/per-user/{{.User}}"
       curl -sSfL https://install.determinate.systems/nix | sh -s -- install \
         --determinate --no-confirm
-      echo "trusted-users = root {{.User}}" | tee -a /etc/nix/nix.conf
     fi
 - mode: user
   script: |
     #!/bin/bash
+    set -eux -o pipefail
     if [ ! -e {{.Home}}/.nix-profile/manifest.nix ]; then
       . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
       git clone --quiet https://github.com/wimpysworld/nix-config "{{.Home}}/Zero/nix-config"
@@ -76,23 +106,22 @@ provision:
       fi
       # Activate home-manager configuration
       pushd "{{.Home}}/Zero/nix-config"
-      nix run nixpkgs#home-manager -- switch --flake "{{.Home}}/Zero/nix-config"
+      nix run nixpkgs#home-manager -- switch --flake "{{.Home}}/Zero/nix-config" -L
       if [ -e "{{.Home}}/.config/sops/age/keys.txt" ]; then
         gpg-restore
       fi
       popd
+      echo "nix --version"              | tee -a "{{.Home}}/.profile"
+      echo "determinate-nixd --version" | tee -a "{{.Home}}/.profile"
+      echo "determinate-nixd status"    | tee -a "{{.Home}}/.profile"
+      echo "$(which fish) --login"      | tee -a "{{.Home}}/.profile"
+      echo "exit"                       | tee -a "{{.Home}}/.profile"
     fi
-- mode: user
-  script: |
-    #!/bin/bash
-    grep -q fish "{{.Home}}/.bashrc" && exit 0
-    echo "fish --login" >> "{{.Home}}/.bashrc"
-    echo "exit"         >> "{{.Home}}/.bashrc"
 probes:
 - description: "apt-cacher-ng"
   script: |
     #!/bin/bash
-    set -eux -o pipefail
+    set -euo pipefail
     if ! timeout 30s bash -c "until command -v apt-cacher-ng >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "apt-cacher-ng is not installed yet"
       exit 1
@@ -102,7 +131,7 @@ probes:
 - description: "devtools"
   script: |
     #!/bin/bash
-    set -eux -o pipefail
+    set -euo pipefail
     if ! timeout 30s bash -c "until command -v germinate >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "devtools is not installed yet"
       exit 1
@@ -112,7 +141,7 @@ probes:
 - description: "snapcraft"
   script: |
     #!/bin/bash
-    set -eux -o pipefail
+    set -euo pipefail
     if ! timeout 30s bash -c "until command -v snapcraft >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "snapcraft is not installed yet"
       exit 1
@@ -122,7 +151,7 @@ probes:
 - description: "tailscale"
   script: |
     #!/bin/bash
-    set -eux -o pipefail
+    set -euo pipefail
     if ! timeout 30s bash -c "until command -v tailscale >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "tailscale is not installed yet"
       exit 1
@@ -132,7 +161,7 @@ probes:
 - description: "determinate-nixd"
   script: |
     #!/bin/bash
-    set -eux -o pipefail
+    set -euo pipefail
     if ! timeout 30s bash -c "until command -v determinate-nixd >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "determinate-nixd is not installed yet"
       exit 1
@@ -142,26 +171,18 @@ probes:
 - description: "home-manager"
   script: |
     #!/bin/bash
-    set -eux -o pipefail
+    set -euo pipefail
     if ! timeout 30s bash -c "until command -v home-manager >/dev/null 2>&1; do sleep 5; done"; then
       echo >&2 "home-manager is not installed yet"
       exit 1
     fi
   hint: |
     See "/var/log/cloud-init-output.log" in the guest
-- description: "user environment"
-  script: |
-    #!/bin/bash
-    set -eux -o pipefail
-    if ! timeout 10s bash -c "until grep -q fish {{.Home}}/.bashrc >/dev/null 2>&1; do sleep 2; done"; then
-      echo >&2 "user environment is not configured yet"
-      exit 1
-    fi
-  hint: |
-    See "/var/log/cloud-init-output.log" in the guest
 message: |
-  Execute the following commands to finish the set-up:
-   - determinate-nixd login
-   - atuin login -u <user>
-   - atuin sync -f
-   - sudo tailscale up --operator={{.User}}
+  Run the following commands to complete the setup:
+  ------
+  determinate-nixd login
+  atuin login -u <username>
+  atuin sync -f
+  sudo tailscale up --operator="${USER}"
+  ------
