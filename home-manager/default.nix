@@ -293,6 +293,7 @@ in
         htop = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = lib.mkIf isLinux "${pkgs.iproute2}/bin/ip --color --brief";
         less = "${pkgs.bat}/bin/bat";
+        lm = "${pkgs.lima-bin}/bin/limactl";
         lolcat = "${pkgs.dotacat}/bin/dotacat";
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
         more = "${pkgs.bat}/bin/bat";
