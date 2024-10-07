@@ -23,14 +23,6 @@ provision:
       curl -sSfL https://install.determinate.systems/nix | sh -s -- install \
         --determinate --no-confirm
     fi
-- mode: user
-  script: |
-    #!/bin/bash
-    set -eux -o pipefail
-    grep -q determinate-nixd "{{.Home}}/.profile" && exit 0
-    echo "nix --version"              | tee -a "{{.Home}}/.profile"
-    echo "determinate-nixd --version" | tee -a "{{.Home}}/.profile"
-    echo "determinate-nixd status"    | tee -a "{{.Home}}/.profile"
 probes:
 - mode: readiness
   description: "determinate-nixd"
