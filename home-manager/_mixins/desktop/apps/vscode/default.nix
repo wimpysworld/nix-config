@@ -87,6 +87,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.ms-python.vscode-pylance
           vscode-marketplace.ms-vscode.cmake-tools
           vscode-marketplace.ms-vscode.hexeditor
+          vscode-marketplace.ms-vscode-remote.remote-ssh
           vscode-marketplace.nico-castell.linux-desktop-file
           vscode-marketplace.pkief.material-product-icons
           vscode-marketplace.prince781.vala
