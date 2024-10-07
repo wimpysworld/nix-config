@@ -111,11 +111,11 @@ provision:
         gpg-restore
       fi
       popd
-      echo "nix --version"              | tee -a "{{.Home}}/.profile"
-      echo "determinate-nixd --version" | tee -a "{{.Home}}/.profile"
-      echo "determinate-nixd status"    | tee -a "{{.Home}}/.profile"
-      echo "$(which fish) --login"      | tee -a "{{.Home}}/.profile"
-      echo "exit"                       | tee -a "{{.Home}}/.profile"
+      echo "nix --version"              | tee -a "{{.Home}}/.bashrc"
+      echo "determinate-nixd --version" | tee -a "{{.Home}}/.bashrc"
+      echo "determinate-nixd status"    | tee -a "{{.Home}}/.bashrc"
+      echo "$(which fish) --login"      | tee -a "{{.Home}}/.bashrc"
+      echo "exit"                       | tee -a "{{.Home}}/.bashrc"
     fi
 probes:
 - description: "apt-cacher-ng"
