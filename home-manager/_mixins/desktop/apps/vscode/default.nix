@@ -80,6 +80,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.jeroen-meijer.pubspec-assist
           vscode-marketplace.jnoortheen.nix-ide
           vscode-marketplace.mads-hartmann.bash-ide-vscode
+          vscode-marketplace.marp-team.marp-vscode
           vscode-marketplace.mechatroner.rainbow-csv
           vscode-marketplace.mkhl.direnv
           vscode-marketplace.ms-python.debugpy
