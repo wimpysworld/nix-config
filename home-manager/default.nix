@@ -103,7 +103,7 @@ in
         jiq # Modern Unix `jq`
         lastpass-cli # Terminal LastPass client
         lima-bin # Terminal VM manager
-        mdp # Terminal Markdown presenter
+        marp-cli # Terminal Markdown presenter
         mtr # Modern Unix `traceroute`
         neo-cowsay # Terminal ASCII cows
         netdiscover # Modern Unix `arp`
