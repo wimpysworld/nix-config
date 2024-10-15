@@ -26,22 +26,11 @@ let
   # Per-host firewall configuration; mostly for Syncthing which is configured via Home Manager
   allowedTCPPorts = {
     phasma = [ 22000 ];
-    sidious = [ 22000 ];
-    tanis = [ 22000 ];
     vader = [ 22000 ];
     revan = [ 22000 ];
-    malak = [ 22000 ];
   };
   allowedUDPPorts = {
     phasma = [
-      22000
-      21027
-    ];
-    sidious = [
-      22000
-      21027
-    ];
-    tanis = [
       22000
       21027
     ];
@@ -50,10 +39,6 @@ let
       21027
     ];
     revan = [
-      22000
-      21027
-    ];
-    malak = [
       22000
       21027
     ];
