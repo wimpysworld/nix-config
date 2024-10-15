@@ -29,12 +29,6 @@ These computers are managed by this Nix flake ❄️
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
 | `malak`     | [B360 HD3P-LM]              | [Intel Core i7-8700]           | 128GB | Intel UHD Graphics 630      | -             | ☁️   | ❄️  | 🚧    |
 
-<!--
-| `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                            | 🧟   | 🧟  | 🧟    |
-| `nuc`       | [NUC5i7RYH]                 | [Intel Core i7-5557U]          | 32GB  | Intel Iris Graphics 6100    |                            | 🧟   | 🧟  | 🧟    |
-| `brix`      | [GB-BXCEH-2955]             | [Intel Celeron 2955U]          | 16GB  | Intel HD Graphics           |                            | 🧟   | 🧟  | 🧟    |
--->
-
 Workstation and server host names are Sith Lords and the virtual machines are named after TIE fighter series.
 Dual boot systems have the NixOS install named a Sith Lord and the *"other"* OS named after their public-facing persona.
 
