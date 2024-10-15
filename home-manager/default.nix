@@ -307,6 +307,7 @@ in
         wormhole = "${pkgs.wormhole-william}/bin/wormhole-william";
         weather = "${lib.getExe pkgs.girouette} --quiet";
         weather-home = "${lib.getExe pkgs.girouette} --quiet --location Basingstoke";
+        where-am-i = "${pkgs.geoclue2}/libexec/geoclue-2.0/demos/where-am-i";
       };
     };
     fzf = {
