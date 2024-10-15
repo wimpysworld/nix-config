@@ -7,6 +7,7 @@ _: {
     automatic-timezoned.enable = true;
     geoclue2 = {
       enable = true;
+      enableNmea = false;
       # https://github.com/NixOS/nixpkgs/issues/321121
       geoProviderUrl = "https://beacondb.net/v1/geolocate";
       submissionNick = "geoclue";
