@@ -5,7 +5,7 @@
   ...
 }:
 let
-  installOn = [ "revan" ];
+  installOn = [ "malak" "revan" ];
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
 lib.mkIf (lib.elem config.networking.hostName installOn) {

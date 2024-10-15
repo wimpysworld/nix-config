@@ -27,6 +27,7 @@ These computers are managed by this Nix flake ❄️
 | `defender`  | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `fighter`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
+| `malak`     | [B360 HD3P-LM]              | [Intel Core i7-8700]           | 128GB | Intel UHD Graphics 630      | -             | ☁️   | ❄️  | 🚧    |
 
 <!--
 | `skull`     | [NUC6i7KYK]                 | [Intel Core i7-6770HQ]         | 64GB  | Intel Iris Pro Graphics 580 |                            | 🧟   | 🧟  | 🧟    |
@@ -84,6 +85,22 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
    - The `nixos-enter` command is used to automatically chroot into the new system and apply the Home Manager configuration.
 - Make a cuppa 🫖
 - Reboot 🥾
+
+### Installing to a remote host 🌍
+
+As [Disko] is used to declare the disk layout, all the NixOS configurations can be deployed to a remote server using [nixos-anywhere](https://github.com/nix-community/nixos-anywhere).
+
+For example, `malak` is a Hetzner dedicated server and it can be deployed to the Hetzner Rescue system using the following command from any of my systems with Nix installed:
+
+```bash
+nix run github:nix-community/nixos-anywhere -- --flake '.#malak' root@<ip-address>
+```
+
+When the deployment is complete, the remove host will be rebooted. SSH in to the remote host and deploy the Home Manager configuration:
+
+```bash
+home-manager switch -b backup --flake $HOME/Zero/nix-config
+```
 
 ## Applying Changes ✨
 
@@ -212,7 +229,7 @@ Things I currently need to do manually after installation.
 - [ ] Run `determinate-nixd login`
 - [ ] 1Password - authenticate
 - [ ] LastPass - authenticate
-- [ ] Tailscale - `sudo tailscale up`
+- [ ] Tailscale - `sudo tailscale up --operator=${USER}`
   - Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
 - [ ] Keybase - `keybase login`
 
@@ -335,6 +352,7 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [NUC6i7KYK]: https://ark.intel.com/content/www/us/en/ark/products/89187/intel-nuc-kit-nuc6i7kyk.html
 [TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10#kf
 [ROG Crosshair VIII Impact]: https://rog.asus.com/uk/motherboards/rog-crosshair/rog-crosshair-viii-impact-model/
+[B360 HD3P-LM]: https://www.gigabyte.com/Motherboard/B360-HD3P-rev-10
 [ThinkPad P1 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadp/thinkpad-p1/22ws2wpp101
 [ThinkPad Z13 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadz/thinkpad-z13-(13-inch-amd)/21d20012uk
 [ThinkPad T14s Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadt/t14s-amd-g1/22tpt144sa2
@@ -347,6 +365,7 @@ The [Disko] implementation and automated installation are chasing the ideas outl
 [Lima]: https://lima-vm.io/
 
 [Intel Core i9-9900K]: https://www.intel.com/content/www/us/en/products/sku/186605/intel-core-i99900k-processor-16m-cache-up-to-5-00-ghz/specifications.html
+[Intel Core i7-8700]: https://www.intel.com/content/www/us/en/products/sku/126686/intel-core-i78700-processor-12m-cache-up-to-4-60-ghz/specifications.html
 [Intel Xeon E-2176M]: https://ark.intel.com/content/www/us/en/ark/products/134867/intel-xeon-e-2176m-processor-12m-cache-up-to-4-40-ghz.html
 [Intel Core i7-5557U]: https://www.intel.com/content/www/us/en/products/sku/84993/intel-core-i75557u-processor-4m-cache-up-to-3-40-ghz/specifications.html
 [Intel Core i7-6770HQ]: https://ark.intel.com/content/www/us/en/ark/products/93341/intel-core-i7-6770hq-processor-6m-cache-up-to-3-50-ghz.html

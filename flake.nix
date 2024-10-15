@@ -121,6 +121,7 @@
           desktop = "gnome";
         };
         # Servers
+        "martin@malak" = helper.mkHome { hostname = "malak"; };
         "martin@revan" = helper.mkHome { hostname = "revan"; };
         # Steam Deck
         "deck@steamdeck" = helper.mkHome {
@@ -163,6 +164,7 @@
         #  - sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
         #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
         #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
+        #  - nix run github:nix-community/nixos-anywhere -- --flake '.#{hostname}' root@{ip-address}
         phasma = helper.mkNixos {
           hostname = "phasma";
           desktop = "hyprland";
@@ -184,6 +186,7 @@
           desktop = "gnome";
         };
         # Servers
+        malak = helper.mkNixos { hostname = "malak"; };
         revan = helper.mkNixos { hostname = "revan"; };
         # VMs
         crawler = helper.mkNixos { hostname = "crawler"; };

@@ -10,6 +10,7 @@ let
     "phasma"
     "tanis"
     "revan"
+    "malak"
     "sidious"
     "vader"
   ];
