@@ -16,6 +16,7 @@
     let
       isISO = builtins.substring 0 4 hostname == "iso-";
       isInstall = !isISO;
+      isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan" && hostname != "malak";
       isLima = hostname == "blackace" || hostname == "defender" || hostname == "fighter";
       isWorkstation = builtins.isString desktop;
     in
@@ -31,6 +32,7 @@
           username
           stateVersion
           isInstall
+          isLaptop
           isLima
           isISO
           isWorkstation
@@ -50,6 +52,7 @@
     let
       isISO = builtins.substring 0 4 hostname == "iso-";
       isInstall = !isISO;
+      isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan" && hostname != "malak";
       isWorkstation = builtins.isString desktop;
     in
     inputs.nixpkgs.lib.nixosSystem {
@@ -64,6 +67,7 @@
           stateVersion
           isInstall
           isISO
+          isLaptop
           isWorkstation
           ;
       };
@@ -89,6 +93,7 @@
     let
       isISO = false;
       isInstall = true;
+      isLaptop = true;
       isWorkstation = true;
     in
     inputs.nix-darwin.lib.darwinSystem {
@@ -103,6 +108,7 @@
           stateVersion
           isInstall
           isISO
+          isLaptop
           isWorkstation
           ;
       };
