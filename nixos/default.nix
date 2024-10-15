@@ -33,7 +33,7 @@
   ] ++ lib.optional isWorkstation ./_mixins/desktop;
 
   boot = {
-    consoleLogLevel = 0;
+    consoleLogLevel = lib.mkDefault 0;
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
     kernelParams = [ "udev.log_priority=3" ];

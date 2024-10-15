@@ -18,7 +18,7 @@
       openFirewall = !isLaptop;
       settings = {
         PasswordAuthentication = false;
-        PermitRootLogin = lib.mkDefault "no";
+        PermitRootLogin = lib.mkDefault "prohibit-password";
       };
     };
     sshguard = {

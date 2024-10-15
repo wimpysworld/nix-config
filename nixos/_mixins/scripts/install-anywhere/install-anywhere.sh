@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+set +e  # Disable errexit
+set +u  # Disable nounset
+set +o pipefail  # Disable pipefail
+
+function usage() {
+  echo "Usage: $(basename "$0") -h HOST -r REMOTE_ADDRESS [-k] [-t]"
+  echo "  -h HOST: NixOS configuration to install"
+  echo "  -r REMOTE_ADDRESS: Remote address to install NixOS on"
+  echo "  -k Keep disks"
+  echo "  -t Test in VM"
+  exit 1
+}
+
+EXTRA=""
+HOST=""
+KEEP_DISKS=0
+REMOTE_ADDRESS=""
+VM_TEST=1
+
+while getopts "k:h:r:t" opt; do
+  case $opt in
+    h ) HOST=$OPTARG;;
+    k ) KEEP_DISKS=1;;
+    r ) REMOTE_ADDRESS=$OPTARG;;
+    t ) VM_TEST=1;;
+    \? ) usage;;
+  esac
+done
+
+if [ -z "$HOST" ] || [ -z "$REMOTE_ADDRESS" ]; then
+  usage
+fi
+
+# Create a temporary directory
+FILES=$(mktemp -d)
+
+# Function to cleanup temporary directory on exit
+function cleanup() {
+  rm -rf "$FILES"
+}
+trap cleanup EXIT
+
+echo "Installing NixOS $HOST configuration on root@$REMOTE_ADDRESS..."
+
+if [ "$VM_TEST" -eq 1 ]; then
+  echo "- INFO: Testing in VM"
+  EXTRA+=" --vm-test"
+else
+  echo "- WARN! Production install"
+fi
+
+if [ "$KEEP_DISKS" -eq 1 ]; then
+  echo "- INFO: Keeping disks"
+  EXTRA+=" --disko-mode mount"
+else
+  echo "- WARN! Wiping disks"
+fi
+
+# https://github.com/nix-community/nixos-anywhere/blob/main/docs/howtos/secrets.md
+if [ -e "$HOME/.config/sops/age/keys.txt" ] && [ "$VM_TEST" -eq 0 ]; then
+  install -d -m755 "$FILES/$HOME/.config/sops/age"
+  cp "$HOME/.config/sops/age/keys.txt" "$FILES/$HOME/.config/sops/age/keys.txt"
+  EXTRA+=" --extra-files $FILES"
+  echo "- INFO: Sending SOPS keys"
+else
+  echo "- WARN! No SOPS keys found"
+fi
+
+REPLY="n"
+read -p "Proceed with remote install? [y/N]" -n 1 -r
+echo
+if [[ $REPLY =~ ^[Nn]$ ]]; then
+  echo "Installation aborted."
+  exit 1
+fi
+
+pushd "$HOME/Zero/nix-config" || exit 1
+# shellcheck disable=2086
+nix run github:nix-community/nixos-anywhere -- \
+  $EXTRA --flake ".#$HOST" "root@$REMOTE_ADDRESS"
+popd || true
