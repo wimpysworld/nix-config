@@ -1,6 +1,7 @@
 {
   config,
   hostname,
+  isLaptop,
   isWorkstation,
   lib,
   pkgs,
@@ -8,6 +9,7 @@
   ...
 }:
 let
+  useDoT = if isLaptop then "true" else "false";
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ]
@@ -126,7 +128,7 @@ in
     resolved = {
       enable = true;
       domains = [ "~." ];
-      dnsovertls = "true";
+      dnsovertls = useDoT;
       dnssec = "false";
       inherit fallbackDns;
     };
@@ -147,7 +149,7 @@ in
         '';
       };
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175
-  systemd.services.NetworkManager-wait-online.enable = false;
+  systemd.services.NetworkManager-wait-online.enable = lib.mkIf config.networking.networkmanager.enable false;
 
   users.users.${username}.extraGroups = lib.optionals config.networking.networkmanager.enable [
     "networkmanager"
