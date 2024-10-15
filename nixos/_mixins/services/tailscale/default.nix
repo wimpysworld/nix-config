@@ -13,6 +13,7 @@ let
     "phasma"
     "tanis"
     "revan"
+    "malak"
     "sidious"
     "shaa"
     "vader"

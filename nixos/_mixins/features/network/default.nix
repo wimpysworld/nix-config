@@ -28,6 +28,7 @@ let
     tanis = [ 22000 ];
     vader = [ 22000 ];
     revan = [ 22000 ];
+    malak = [ 22000 ];
   };
   allowedUDPPorts = {
     phasma = [
@@ -47,6 +48,10 @@ let
       21027
     ];
     revan = [
+      22000
+      21027
+    ];
+    malak = [
       22000
       21027
     ];

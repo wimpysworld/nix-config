@@ -8,7 +8,7 @@
 }:
 let
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
-  isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan";
+  isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan" && hostname != "malak";
   isThinkpad = hostname == "tanis" || hostname == "sidious" || hostname == "shaa";
   usePowerProfiles =
     config.programs.hyprland.enable
