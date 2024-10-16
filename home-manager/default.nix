@@ -547,13 +547,13 @@ in
     };
   };
 
+  # https://dl.thalheim.io/
   sops = lib.mkIf (username == "martin") {
     age = {
       keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
       generateKey = false;
     };
     defaultSopsFile = ../secrets/secrets.yaml;
-    # sops-nix options: https://dl.thalheim.io/
     secrets = {
       asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
       atuin_key.path = "${config.home.homeDirectory}/.local/share/atuin/key";
@@ -574,6 +574,12 @@ in
 
   # Nicely reload system units when changing configs
   systemd.user.startServices = lib.mkIf isLinux "sd-switch";
+  # Create age keys directory for SOPS
+  systemd.user.tmpfiles = lib.mkIf isLinux {
+    rules = [
+      "d ${config.home.homeDirectory}/.config/sops/age 0755 ${username} users - -"
+    ];
+  };
 
   xdg = {
     enable = isLinux;
