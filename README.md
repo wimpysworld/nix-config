@@ -260,7 +260,6 @@ Things I currently need to do manually after installation.
   - `incus admin init --minimal`
   - `create-defender`
   - `create-fighter`
-  - On `malak` create initrd keys: `sudo ssh-keygen -t ed25519 -C "" -N "" -f /etc/ssh/initrd_ssh_host_ed25519_key`
 - [ ] On macOS run
   - `install-homebrew`
 
