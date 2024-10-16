@@ -1,13 +1,16 @@
 # Make a user key
 # mkdir -p ~/.config/sops/age
 # age-keygen -o ~/.config/sops/age/keys.txt
-# chmod 600 ~/.config/sops/age/keys.txt
 
 # Display the user public key:
 # age-keygen -y ~/.config/sops/age/keys.txt
 
-# Make a host public key:
-# ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
+# Make a host key:
+# sudo mkdir -p /var/lib/private/sops/age
+# sudo age-keygen -o /var/lib/private/sops/age/keys.txt
+
+# Display the host public key:
+# sudo age-keygen -y /var/lib/private/sops/age/keys.txt
 
 # Add secrets
 # sops secrets/secrets.yaml
@@ -17,19 +20,13 @@
 keys:
   - &user_martin age1xfpzwdsz06243ndj39x4yr2qs4u3ja777r3xautdtm59j54wa3kssualcn
   - &user_backup age1v5c455hd0shs745dhd3gl7kzw6zaqflnyl4v96pq56j96xyvvc5sgse0za
-  - &host_phasma age15fmple5gj3u8ljt7xjxpn0frdw2psla37y9u9tskf2dncfl88fyqnv6lll
-  - &host_sidious age1wv5n63qt2jvlrap064j84sjvhpge0utaz36n7pm28aypx7qtagxs22qhqz
-  - &host_tanis age1kscrpd0rx7ud06y635rsdc6h2ehyuwakhs65w442wa70qc0ct5ps0t0h5j
-  - &host_vader age1xs0vlxts7dfa770kea0nyagq0j95nennmx79qml4ddfg6np2qefs9gah9e
-  - &host_revan age18qvgrnqftm43getj6m8qc09hg5cpwsyt6ac2zkl7w2r60d2gjajqz60n9w
+  - &host_prime age1pyd2u05gah05us62wf3msjktsgu2vgv80c9cag88wwsy64qp6gvqhlj55k
+  - &host_backup age1ueuse0p74zqh7jcm5n97ajfw4az2cpf7pjl9q6zv475jdcepeujq8xlv23
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|ini)$
     key_groups:
     - age:
       - *user_martin
       - *user_backup
-      - *host_phasma
-      - *host_sidious
-      - *host_tanis
-      - *host_vader
-      - *host_revan
+      - *host_prime
+      - *host_backup
