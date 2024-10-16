@@ -9,7 +9,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-            data = {
+            sda = {
               size = "100%";
               content = {
                 type = "mdraid";
@@ -25,7 +25,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-            data = {
+            sdb = {
               size = "100%";
               content = {
                 type = "mdraid";
@@ -43,7 +43,7 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-            data = {
+            primary = {
               size = "100%";
               content = {
                 type = "filesystem";
