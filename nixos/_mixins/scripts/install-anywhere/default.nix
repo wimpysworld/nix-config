@@ -10,6 +10,7 @@ let
     runtimeInputs = with pkgs; [
       coreutils-full
       git
+      tree
     ];
     text = builtins.readFile ./install-anywhere.sh;
   };

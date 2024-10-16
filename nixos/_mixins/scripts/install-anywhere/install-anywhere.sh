@@ -58,14 +58,34 @@ else
   echo "- WARN! Wiping disks"
 fi
 
+EXTRA_FILES=0
 # https://github.com/nix-community/nixos-anywhere/blob/main/docs/howtos/secrets.md
-if [ -e "$HOME/.config/sops/age/keys.txt" ] && [ "$VM_TEST" -eq 0 ]; then
+if [ -e "$HOME/.config/sops/age/keys.txt" ]; then
   install -d -m755 "$FILES/$HOME/.config/sops/age"
   cp "$HOME/.config/sops/age/keys.txt" "$FILES/$HOME/.config/sops/age/keys.txt"
-  EXTRA+=" --extra-files $FILES"
+  chmod 600 "$FILES/$HOME/.config/sops/age/keys.txt"
+  chown 1000:100 "$FILES/$HOME/.config/sops/age/keys.txt"
   echo "- INFO: Sending SOPS keys"
+  EXTRA_FILES=1
 else
   echo "- WARN! No SOPS keys found"
+fi
+
+if [ -e "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key" ]; then
+  install -d -m755 "$FILES/etc/ssh"
+  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key" "$FILES/etc/ssh/"
+  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key.pub" "$FILES/etc/ssh/"
+  chmod 600 "$FILES/etc/ssh/initrd_ssh_host_ed25519_key"
+  chmod 644 "$FILES/etc/ssh/initrd_ssh_host_ed25519_key.pub"
+  echo "- INFO: Sending initrd SSH keys"
+  EXTRA_FILES=1
+else
+  echo "- WARN! No initrd SSH keys found"
+fi
+
+if [ "$EXTRA_FILES" -eq 1 ]; then
+  EXTRA+=" --extra-files $FILES"
+  tree -a "$FILES"
 fi
 
 REPLY="n"
@@ -78,6 +98,6 @@ fi
 
 pushd "$HOME/Zero/nix-config" || exit 1
 # shellcheck disable=2086
-nix run github:nix-community/nixos-anywhere -- \
-  $EXTRA --flake ".#$HOST" "root@$REMOTE_ADDRESS"
+#nix run github:nix-community/nixos-anywhere -- \
+#  $EXTRA --flake ".#$HOST" "root@$REMOTE_ADDRESS"
 popd || true
