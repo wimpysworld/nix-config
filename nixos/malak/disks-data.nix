@@ -9,11 +9,11 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-            snapshot = {
+            data = {
               size = "100%";
               content = {
                 type = "mdraid";
-                name = "snapshot";
+                name = "data";
               };
             };
           };
@@ -25,11 +25,11 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-            snapshot = {
+            data = {
               size = "100%";
               content = {
                 type = "mdraid";
-                name = "snapshot";
+                name = "data";
               };
             };
           };
@@ -37,13 +37,13 @@ _: {
       };
     };
     mdadm = {
-      snapshot = {
+      data = {
         type = "mdadm";
-        level = 0;
+        level = 1;
         content = {
           type = "gpt";
           partitions = {
-            snapshot = {
+            data = {
               size = "100%";
               content = {
                 type = "filesystem";
