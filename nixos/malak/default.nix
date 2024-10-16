@@ -3,8 +3,8 @@
 # GPU:               Intel UHD Graphics 630
 # RAM:               128GB DDR4
 # NVME0:             512GB Samsung PM9A1 M.2 SSD NVMe (PCIe 4.0 x4) MZVL2512HCJQ-00B00
-# SATA1:             8TB Ultrastar DC HC510 7200RPM (SATA 3.2) HUH721008ALE600
-# SATA2:             8TB Ultrastar DC HC510 7200RPM (SATA 3.2) HUH721008ALE600
+# SATA1:             8TB Ultrastar DC HC510 7200RPM (SATA) HUH721008ALE600
+# SATA2:             8TB Ultrastar DC HC510 7200RPM (SATA) HUH721008ALE600
 {
   hostname,
   inputs,
