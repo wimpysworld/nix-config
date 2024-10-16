@@ -9,7 +9,7 @@
   ...
 }:
 let
-  useDoT = if isLaptop then "true" else "false";
+  useDoT = if isLaptop then "opportunistic" else "true";
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ]
@@ -46,16 +46,50 @@ let
 
   # Define DNS settings for specific users
   # - https://mullvad.net/en/help/dns-over-https-and-dns-over-tls
-  fallbackDns = [ "194.242.2.2#dns.mullvad.net" ];
+  mullvadDns = [
+    "194.242.2.2#dns.mullvad.net"
+    "2a07:e340::2#dns.mullvad.net"
+  ];
+  # adblock.dns.mullvad.net; ads, trackers
+  mullvadAdblockDns = [
+    "194.242.2.3#adblock.dns.mullvad.net"
+    "2a07:e340::3#adblock.dns.mullvad.net"
+  ];
+  # base.dns.mullvad.net; ads, trackers, malware
+  mullvadBaseDns = [
+    "194.242.2.4#base.dns.mullvad.net"
+    "2a07:e340::4#base.dns.mullvad.net"
+  ];
+  # family.dns.mullvad.net; ads, trackers, malware, adult, gambling
+  mullvadFamilyDns = [
+    "194.242.2.6#family.dns.mullvad.net"
+    "2a07:e340::6#family.dns.mullvad.net"
+  ];
+  # https://developers.cloudflare.com/1.1.1.1/ip-addresses/
+  cloudflareDns = [
+    "1.1.1.1"
+    "1.0.0.1"
+    "2606:4700:4700::1111"
+    "2606:4700:4700::1001"
+  ];
+  cloudflareBlockmalwareDns = [
+    "1.1.1.2"
+    "1.0.0.2"
+    "2606:4700:4700::1112"
+    "2606:4700:4700::1002"
+  ];
+  cloudflareFamilyDns = [
+    "1.1.1.3"
+    "1.0.0.3"
+    "2606:4700:4700::1113"
+    "2606:4700:4700::1003"
+  ];
+
+  fallbackDns = if useDoT != "true" then mullvadDns else cloudflareDns;
   userDns = {
-    # adblock.dns.mullvad.net; ads, trackers
-    martin = [ "194.242.2.3#adblock.dns.mullvad.net" ];
-
-    # base.dns.mullvad.net; ads, trackers, malware
-    louise = [ "194.242.2.4#base.dns.mullvad.net" ];
-
-    # family.dns.mullvad.net; ads, trackers, malware, adult, gambling
-    agatha = [ "194.242.2.6#family.dns.mullvad.net" ];
+    martin = if useDoT != "true" then mullvadAdblockDns else cloudflareBlockmalwareDns;
+    louise = if useDoT != "true" then mullvadBaseDns else cloudflareBlockmalwareDns;
+    agatha = if useDoT != "true" then mullvadFamilyDns else cloudflareFamilyDns;
   };
 in
 {

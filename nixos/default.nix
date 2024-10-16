@@ -77,6 +77,7 @@
         inputs.nixos-needtoreboot.packages.${platform}.default
         nvd
         nvme-cli
+        rsync
         smartmontools
         sops
       ];
