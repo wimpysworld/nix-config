@@ -95,6 +95,7 @@ When the deployment is complete, the remote host will be automatically rebooted.
 I keep my Home Manager configuration separate from my NixOS configuration, so after the NixOS configuration has been deployed, I SSH in to the remote host and activate the Home Manager configuration:
 
 ```bash
+sudo chown -Rv "$USER":users "$HOME/.config"
 git clone https://github.com/wimpysworld/nix-config "$HOME/Zero/nix-config"
 home-manager switch -b backup --flake "$HOME/Zero/nix-config"
 ```
