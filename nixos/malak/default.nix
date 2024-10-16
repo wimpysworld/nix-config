@@ -36,7 +36,7 @@
         enable = true;
         ssh = {
           enable = true;
-          hostKeys = [ "/etc/ssh/initrd_ssh_host_ed25519_key" ];
+          hostKeys = [ "/boot/initrd_ssh_host_ed25519_key" ];
           ignoreEmptyHostKeys = true;
           port = 2222;
         };

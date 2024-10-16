@@ -73,10 +73,10 @@ fi
 
 if [ -e "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key" ]; then
   install -d -m755 "$FILES/etc/ssh"
-  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key" "$FILES/etc/ssh/"
-  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key.pub" "$FILES/etc/ssh/"
-  chmod 600 "$FILES/etc/ssh/initrd_ssh_host_ed25519_key"
-  chmod 644 "$FILES/etc/ssh/initrd_ssh_host_ed25519_key.pub"
+  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key" "$FILES/boot/"
+  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key.pub" "$FILES/boot/"
+  chmod 600 "$FILES/boot/initrd_ssh_host_ed25519_key"
+  chmod 644 "$FILES/boot/initrd_ssh_host_ed25519_key.pub"
   echo "- INFO: Sending initrd SSH keys"
   EXTRA_FILES=1
 else
