@@ -162,23 +162,66 @@
     smartd.enable = isInstall;
   };
 
-  sops = lib.mkIf (isInstall && username == "martin") {
+  # https://dl.thalheim.io/
+  sops = lib.mkIf (isInstall) {
     age = {
-      keyFile = "/home/${username}/.config/sops/age/keys.txt";
+      keyFile = "/var/lib/private/sops/age/keys.txt";
       generateKey = false;
     };
     defaultSopsFile = ../secrets/secrets.yaml;
-    # sops-nix options: https://dl.thalheim.io/
     secrets = {
       test-key = { };
+      ssh_key = {
+        mode = "0600";
+        path = "/root/.ssh/id_rsa";
+      };
+      ssh_pub = {
+        mode = "0644";
+        path = "/root/.ssh/id_rsa.pub";
+      };
+      initrd_ssh_host_ed25519_key = {
+        mode = "0600";
+        path = "/etc/ssh/initrd_ssh_host_ed25519_key";
+        sopsFile = ../secrets/initrd.yaml;
+      };
+      initrd_ssh_host_ed25519_key_pub = {
+        mode = "0644";
+        path = "/etc/ssh/initrd_ssh_host_ed25519_key.pub";
+        sopsFile = ../secrets/initrd.yaml;
+      };
+      ssh_host_ed25519_key = {
+        mode = "0600";
+        path = "/etc/ssh/ssh_host_ed25519_key";
+        sopsFile = ../secrets/${hostname}.yaml;
+      };
+      ssh_host_ed25519_key_pub = {
+        mode = "0644";
+        path = "/etc/ssh/ssh_host_ed25519_key.pub";
+        sopsFile = ../secrets/${hostname}.yaml;
+      };
+      ssh_host_rsa_key = {
+        mode = "0600";
+        path = "/etc/ssh/ssh_host_rsa_key";
+        sopsFile = ../secrets/${hostname}.yaml;
+      };
+      ssh_host_rsa_key_pub = {
+        mode = "0644";
+        path = "/etc/ssh/ssh_host_rsa_key.pub";
+        sopsFile = ../secrets/${hostname}.yaml;
+      };
+      malak_enc.sopsFile = ../secrets/disks.yaml;
+      tanis_enc.sopsFile = ../secrets/disks.yaml;
+      shaa_enc.sopsFile = ../secrets/disks.yaml;
+      sidious_enc.sopsFile = ../secrets/disks.yaml;
     };
   };
 
   # Create symlink to /bin/bash
   # - https://github.com/lima-vm/lima/issues/2110
   systemd.tmpfiles.rules = [
-    "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
     "L+ /bin/bash - - - - ${pkgs.bash}/bin/bash"
+    "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
+    "d /var/lib/private/sops/age 0755 root root"
   ];
 
   system = {

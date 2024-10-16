@@ -224,16 +224,15 @@ Things I currently need to do manually after installation.
 
 ### Secrets
 
-- [ ] Provision `~/.config/sops/age/keys.txt`. Optionally handled by `install-system`.
-- [ ] Add `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub` to `.sops.yaml`.
-- [ ] Run `sops updatekeys secrets/secrets.yaml`
+- [ ] Provision `/var/lib/private/sops/age/keys.txt`
+- [ ] Provision `~/.config/sops/age/keys.txt`
 - [ ] Run `gpg-restore`
 - [ ] Run `determinate-nixd login`
-- [ ] 1Password - authenticate
-- [ ] LastPass - authenticate
+- [ ] Keybase - `keybase login`
 - [ ] Tailscale - `sudo tailscale up --operator="$USER"`
   - Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
-- [ ] Keybase - `keybase login`
+- [ ] 1Password - authenticate
+- [ ] LastPass - authenticate
 
 ### Accounts
 

@@ -75,7 +75,7 @@ if [ ! -e "$HOME/.config/sops/age/keys.txt" ]; then
     echo
     if [[ $REPLY =~ ^[Nn]$ ]]; then
         IP=$(ip route get 1.1.1.1 | awk '{print $7}' | head -n 1)
-        mkdir -p "$HOME/.config/sops/age"
+        mkdir -p "$HOME/.config/sops/age" 2>/dev/null || true
         echo "From a trusted host run:"
         echo "scp ~/.config/sops/age/keys.txt $USER@$IP:.config/sops/age/keys.txt"
         exit
