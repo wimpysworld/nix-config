@@ -18,7 +18,7 @@ EXTRA_FILES=0
 HOST=""
 KEEP_DISKS=0
 REMOTE_ADDRESS=""
-VM_TEST=1
+VM_TEST=0
 
 while getopts "k:h:r:t" opt; do
   case $opt in
