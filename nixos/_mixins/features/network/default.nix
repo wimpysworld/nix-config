@@ -56,7 +56,7 @@ let
     "2a07:e340::3#adblock.dns.mullvad.net"
   ];
   # base.dns.mullvad.net; ads, trackers, malware
-  mullvadBaseDns = [
+  mullvadBlockmalwareDns = [
     "194.242.2.4#base.dns.mullvad.net"
     "2a07:e340::4#base.dns.mullvad.net"
   ];
@@ -65,31 +65,31 @@ let
     "194.242.2.6#family.dns.mullvad.net"
     "2a07:e340::6#family.dns.mullvad.net"
   ];
-  # https://developers.cloudflare.com/1.1.1.1/ip-addresses/
-  cloudflareDns = [
-    "1.1.1.1"
-    "1.0.0.1"
-    "2606:4700:4700::1111"
-    "2606:4700:4700::1001"
+  # https://adguard-dns.io/en/public-dns.html
+  adguardDns = [
+    "94.140.14.140#unfiltered.adguard-dns.com"
+    "94.140.14.141#unfiltered.adguard-dns.com"
+    "2a10:50c0::1:ff#unfiltered.adguard-dns.com"
+    "2a10:50c0::2:ff#unfiltered.adguard-dns.com"
   ];
-  cloudflareBlockmalwareDns = [
-    "1.1.1.2"
-    "1.0.0.2"
-    "2606:4700:4700::1112"
-    "2606:4700:4700::1002"
+  adguardBlockmalwareDns = [
+    "94.140.14.14#dns.adguard-dns.com"
+    "94.140.15.15#dns.adguard-dns.com"
+    "2a10:50c0::ad1:ff#dns.adguard-dns.com"
+    "2a10:50c0::ad2:ff#dns.adguard-dns.com"
   ];
-  cloudflareFamilyDns = [
-    "1.1.1.3"
-    "1.0.0.3"
-    "2606:4700:4700::1113"
-    "2606:4700:4700::1003"
+  adguardFamilyDns = [
+    "94.140.14.15#family.adguard-dns.com"
+    "94.140.15.16#family.adguard-dns.com"
+    "2a10:50c0::bad1:ff#family.adguard-dns.com"
+    "2a10:50c0::bad2:ff#family.adguard-dns.com"
   ];
 
-  fallbackDns = if useDoT != "true" then mullvadDns else cloudflareDns;
+  fallbackDns = if useDoT == "true" then mullvadDns else adguardDns;
   userDns = {
-    martin = if useDoT != "true" then mullvadAdblockDns else cloudflareBlockmalwareDns;
-    louise = if useDoT != "true" then mullvadBaseDns else cloudflareBlockmalwareDns;
-    agatha = if useDoT != "true" then mullvadFamilyDns else cloudflareFamilyDns;
+    martin = if useDoT == "true" then mullvadBlockmalwareDns else adguardBlockmalwareDns;
+    louise = if useDoT == "true" then mullvadBlockmalwareDns else adguardBlockmalwareDns;
+    agatha = if useDoT == "true" then mullvadFamilyDns else adguardFamilyDns;
   };
 in
 {
