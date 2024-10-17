@@ -89,6 +89,7 @@ in
         frogmouth # Terminal mardown viewer
         glow # Terminal Markdown renderer
         girouette # Modern Unix weather
+        gocryptfs # Terminal encrypted filesystem
         gping # Modern Unix `ping`
         unstable.git-igitt # Modern Unix git log/graph
         h # Modern Unix autojump for git projects
@@ -308,6 +309,10 @@ in
         weather = "${lib.getExe pkgs.girouette} --quiet";
         weather-home = "${lib.getExe pkgs.girouette} --quiet --location Basingstoke";
         where-am-i = "${pkgs.geoclue2}/libexec/geoclue-2.0/demos/where-am-i";
+        lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
+        unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
+        lock-secrets = "fusermount -u ~/Vaults/Secrets";
+        unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
     };
     fzf = {

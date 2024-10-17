@@ -5,6 +5,7 @@
   isWorkstation,
   lib,
   pkgs,
+  username,
   ...
 }:
 let
@@ -138,5 +139,12 @@ in
         signByDefault = true;
       };
     };
+  };
+  systemd.user.tmpfiles = lib.mkIf isLinux{
+    rules = [
+      "d ${config.home.homeDirectory}/Crypt 0755 ${username} users - -"
+      "d ${config.home.homeDirectory}/Vaults/Armstrong 0755 ${username} users - -"
+      "d ${config.home.homeDirectory}/Vaults/Secrets 0755 ${username} users - -"
+    ];
   };
 }

@@ -22,6 +22,7 @@ in
     ./obs-studio
     ./rhythmbox
     ./ulauncher
+    ./vaults
     ./vscode
     ./zed-editor
   ];

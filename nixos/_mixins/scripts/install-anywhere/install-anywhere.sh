@@ -59,56 +59,60 @@ else
   echo "- WARN! Wiping disks"
 fi
 
-# https://github.com/nix-community/nixos-anywhere/blob/main/docs/howtos/secrets.md
-if [ -e "$HOME/Keybase/private/wimpress/Secrets/age/user/keys-$USER.txt" ]; then
-  install -d -m755 "$FILES/$HOME/.config/sops/age"
-  cp "$HOME/Keybase/private/wimpress/Secrets/age/user/keys-$USER.txt" \
-    "$FILES/$HOME/.config/sops/age/keys.txt"
-  chmod 600 "$FILES/$HOME/.config/sops/age/keys.txt"
-  chown 1000:100 "$FILES/$HOME/.config/sops/age/keys.txt"
-  echo "- INFO: Sending SOPS user keys"
-  EXTRA_FILES=1
-else
-  echo "- WARN! No SOPS user keys found"
-fi
+if [ -d "$HOME/Vaults/Secrets/ssh" ]; then
+  # https://github.com/nix-community/nixos-anywhere/blob/main/docs/howtos/secrets.md
+  if [ -e "$HOME/Vaults/Secrets/age/user/keys-$USER.txt" ]; then
+    install -d -m755 "$FILES/$HOME/.config/sops/age"
+    cp "$HOME/Vaults/Secrets/age/user/keys-$USER.txt" \
+      "$FILES/$HOME/.config/sops/age/keys.txt"
+    chmod 600 "$FILES/$HOME/.config/sops/age/keys.txt"
+    echo "- INFO: Sending SOPS user keys"
+    EXTRA_FILES=1
+  else
+    echo "- WARN! No SOPS user keys found"
+  fi
 
-if [ -e "$HOME/Keybase/private/wimpress/Secrets/age/host/keys-prime.txt" ]; then
-  install -d -m755 "$FILES/var/lib/private/sops/age"
-  cp "$HOME/Keybase/private/wimpress/Secrets/age/host/keys-prime.txt" \
-    "$FILES/var/lib/private/sops/age/keys.txt"
-  chmod 600 "$FILES/var/lib/private/sops/age/keys.txt"
-  echo "- INFO: Sending SOPS host keys"
-  EXTRA_FILES=1
-else
-  echo "- WARN! No SOPS host keys found"
-fi
+  if [ -e "$HOME/Vaults/Secrets/age/host/keys-prime.txt" ]; then
+    install -d -m755 "$FILES/var/lib/private/sops/age"
+    cp "$HOME/Vaults/Secrets/age/host/keys-prime.txt" \
+      "$FILES/var/lib/private/sops/age/keys.txt"
+    chmod 600 "$FILES/var/lib/private/sops/age/keys.txt"
+    echo "- INFO: Sending SOPS host keys"
+    EXTRA_FILES=1
+  else
+    echo "- WARN! No SOPS host keys found"
+  fi
 
-if [ -e "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key" ]; then
-  install -d -m755 "$FILES/etc/ssh"
-  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key" "$FILES/etc/ssh/"
-  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/initrd_ssh_host_ed25519_key.pub" "$FILES/etc/ssh/"
-  chmod 600 "$FILES/etc/ssh/initrd_ssh_host_ed25519_key"
-  chmod 644 "$FILES/etc/ssh/initrd_ssh_host_ed25519_key.pub"
-  echo "- INFO: Sending initrd SSH keys"
-  EXTRA_FILES=1
-else
-  echo "- WARN! No initrd SSH keys found"
-fi
+  if [ -e "$HOME/Vaults/Secrets/ssh/initrd_ssh_host_ed25519_key" ]; then
+    install -d -m755 "$FILES/etc/ssh"
+    cp "$HOME/Vaults/Secrets/ssh/initrd_ssh_host_ed25519_key" "$FILES/etc/ssh/"
+    cp "$HOME/Vaults/Secrets/ssh/initrd_ssh_host_ed25519_key.pub" "$FILES/etc/ssh/"
+    chmod 600 "$FILES/etc/ssh/initrd_ssh_host_ed25519_key"
+    chmod 644 "$FILES/etc/ssh/initrd_ssh_host_ed25519_key.pub"
+    echo "- INFO: Sending initrd SSH keys"
+    EXTRA_FILES=1
+  else
+    echo "- WARN! No initrd SSH keys found"
+  fi
 
-if [ -e "$HOME/Keybase/private/wimpress/Secrets/ssh/$HOST/ssh_host_ed25519_key" ]; then
-  install -d -m755 "$FILES/etc/ssh"
-  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/$HOST/ssh_host_ed25519_key" "$FILES/etc/ssh/"
-  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/$HOST/ssh_host_ed25519_key.pub" "$FILES/etc/ssh/"
-  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/$HOST/ssh_host_rsa_key" "$FILES/etc/ssh/"
-  cp "$HOME/Keybase/private/wimpress/Secrets/ssh/$HOST/ssh_host_rsa_key.pub" "$FILES/etc/ssh/"
-  chmod 600 "$FILES/etc/ssh/ssh_host_ed25519_key"
-  chmod 644 "$FILES/etc/ssh/ssh_host_ed25519_key.pub"
-  chmod 600 "$FILES/etc/ssh/ssh_host_rsa_key"
-  chmod 644 "$FILES/etc/ssh/ssh_host_rsa_key.pub"
-  echo "- INFO: Sending host SSH keys"
-  EXTRA_FILES=1
+  if [ -e "$HOME/Vaults/Secrets/ssh/$HOST/ssh_host_ed25519_key" ]; then
+    install -d -m755 "$FILES/etc/ssh"
+    cp "$HOME/Vaults/Secrets/ssh/$HOST/ssh_host_ed25519_key" "$FILES/etc/ssh/"
+    cp "$HOME/Vaults/Secrets/ssh/$HOST/ssh_host_ed25519_key.pub" "$FILES/etc/ssh/"
+    cp "$HOME/Vaults/Secrets/ssh/$HOST/ssh_host_rsa_key" "$FILES/etc/ssh/"
+    cp "$HOME/Vaults/Secrets/ssh/$HOST/ssh_host_rsa_key.pub" "$FILES/etc/ssh/"
+    chmod 600 "$FILES/etc/ssh/ssh_host_ed25519_key"
+    chmod 644 "$FILES/etc/ssh/ssh_host_ed25519_key.pub"
+    chmod 600 "$FILES/etc/ssh/ssh_host_rsa_key"
+    chmod 644 "$FILES/etc/ssh/ssh_host_rsa_key.pub"
+    echo "- INFO: Sending host SSH keys"
+    EXTRA_FILES=1
+  else
+    echo "- WARN! No host SSH keys found"
+  fi
 else
-  echo "- WARN! No host SSH keys found"
+  echo "ERROR: The Secrets Vaults is not mounted."
+  exit 1
 fi
 
 if [ "$EXTRA_FILES" -eq 1 ]; then
