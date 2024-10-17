@@ -88,6 +88,8 @@
     };
   };
 
+  powerManagement.cpuFreqGovernor = "powersave";
+
   services = {
     snapraid = {
       enable = true;
