@@ -1,6 +1,6 @@
 # Lenovo ThinkPad P1 Gen 1
 
-{ inputs, lib, ... }:
+{ config, inputs, lib, ... }:
 {
   imports = [
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-p1
