@@ -5,7 +5,7 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       coreutils-full
-      rsync
+      openssh
     ];
     text = builtins.readFile ./${name}.sh;
   };
