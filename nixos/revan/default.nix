@@ -91,8 +91,6 @@
   powerManagement.cpuFreqGovernor = "powersave";
 
   services = {
-    scrutiny.enable = true;
-    scrutiny.collector.enable = true;
     snapraid = {
       enable = true;
       exclude = [ "/.state_data/" ];
