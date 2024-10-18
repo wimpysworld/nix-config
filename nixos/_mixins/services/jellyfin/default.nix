@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, hostname, lib, ... }:
 let
   installOn = [ "revan" ];
 in

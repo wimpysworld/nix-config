@@ -32,7 +32,6 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
     extraUpFlags = [
       "--accept-routes"
       "--operator=${username}"
-      "--ssh"
     ] ++ lib.optional (lib.elem "${hostname}" tsExitNodes) "--advertise-exit-node";
     extraSetFlags = [
       "--operator=${username}"
