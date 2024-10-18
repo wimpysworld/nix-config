@@ -64,8 +64,6 @@
 
   powerManagement.cpuFreqGovernor = "performance";
 
-  services.scrutiny.enable = true;
-  services.scrutiny.collector.enable = true;
   # Something is enabling Samba; so disable it while I figure out what
   services.samba.enable = lib.mkForce false;
   services.samba-wsdd.enable = lib.mkForce false;
