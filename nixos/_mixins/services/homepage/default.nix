@@ -3,6 +3,7 @@
   hostname,
   lib,
   pkgs,
+  tailNet,
   ...
 }:
 let
@@ -17,6 +18,12 @@ let
 in
 lib.mkIf (lib.elem "${hostname}" installOn) {
   services = {
+    # Reverse proxy homepage-dashboard if Tailscale is enabled.
+    caddy.virtualHosts."${hostname}.${tailNet}".extraConfig = lib.mkIf
+    (config.services.homepage-dashboard.enable && config.services.tailscale.enable)
+      ''
+        reverse_proxy localhost:8082
+      '';
     homepage-dashboard = {
       enable = true;
       package = pkgs.unstable.homepage-dashboard;

@@ -54,6 +54,7 @@
       isInstall = !isISO;
       isLaptop = hostname != "vader" && hostname != "phasma" && hostname != "revan" && hostname != "malak";
       isWorkstation = builtins.isString desktop;
+      tailNet = "drongo-gamma.ts.net";
     in
     inputs.nixpkgs.lib.nixosSystem {
       specialArgs = {
@@ -69,6 +70,7 @@
           isISO
           isLaptop
           isWorkstation
+          tailNet
           ;
       };
       # If the hostname starts with "iso-", generate an ISO image
