@@ -8,11 +8,12 @@
 }:
 let
   installOn = [
-    "phasma"
-    "tanis"
-    "revan"
     "malak"
+    "phasma"
+    "revan"
+    "shaa"
     "sidious"
+    "tanis"
     "vader"
   ];
 in
@@ -27,235 +28,6 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
     homepage-dashboard = {
       enable = true;
       package = pkgs.unstable.homepage-dashboard;
-      bookmarks = [
-        {
-          Development = [
-            {
-              GitHub = [
-                {
-                  abbr = "GH";
-                  href = "https://github.com/flexiondotorg";
-                  icon = "github-light.png";
-                }
-              ];
-            }
-            {
-              GitLab = [
-                {
-                  abbr = "GL";
-                  href = "https://gitlab.com";
-                  icon = "gitlab.png";
-                }
-              ];
-            }
-            {
-              FlakeHub = [
-                {
-                  abbr = "FH";
-                  href = "https://flakehub.com";
-                  icon = "https://flakehub.com/favicon.png";
-                }
-              ];
-            }
-            {
-              Launchpad = [
-                {
-                  abbr = "LP";
-                  href = "https://launchpad.net/~flexiondotorg";
-                  icon = "https://launchpad.net/@@/favicon-32x32.png?v=2022";
-                }
-              ];
-            }
-          ];
-        }
-        {
-          NixOS = [
-            {
-              "NixOS Discourse" = [
-                {
-                  abbr = "ND";
-                  href = "https://discourse.nixos.org";
-                  icon = "https://discourse.nixos.org/uploads/default/original/2X/c/cb4fe584627b37e7c1d5424e9cec0bb30fdb6c4d.png";
-                }
-              ];
-            }
-            {
-              "Nixpkgs" = [
-                {
-                  abbr = "NP";
-                  href = "https://github.com/NixOS/nixpkgs";
-                  icon = "https://avatars.githubusercontent.com/u/487568?s=48&v=4";
-                }
-              ];
-            }
-            {
-              "NixOS Search" = [
-                {
-                  abbr = "NS";
-                  href = "https://search.nixos.org";
-                  icon = "https://search.nixos.org/images/nix-logo.png";
-                }
-              ];
-            }
-            {
-              "Home Manager" = [
-                {
-                  abbr = "HM";
-                  href = "https://nix-community.github.io/home-manager/options.xhtml";
-                  icon = "https://avatars.githubusercontent.com/u/33221035?s=200&v=4";
-                }
-              ];
-            }
-            {
-              "NixOS Wiki" = [
-                {
-                  abbr = "NW";
-                  href = "https://wiki.nixos.org";
-                  icon = "https://wiki.nixos.org/nixos.png";
-                }
-              ];
-            }
-          ];
-        }
-        {
-          Social = [
-            {
-              Mastodon = [
-                {
-                  abbr = "MD";
-                  href = "https://fosstodon.org/deck/@wimpy";
-                  icon = "mastodon.png";
-                }
-              ];
-            }
-            {
-              Bluesky = [
-                {
-                  abbr = "BS";
-                  href = "https://bsky.app/notifications";
-                  icon = "https://bsky.app/static/favicon-32x32.png";
-                }
-              ];
-            }
-            {
-              Instagram = [
-                {
-                  abbr = "IG";
-                  href = "https://www.instagram.com/";
-                  icon = "instagram.png";
-                }
-              ];
-            }
-            {
-              X = [
-                {
-                  abbr = "X";
-                  href = "https://x.com/flexiondotorg";
-                  icon = "x-light.png";
-                }
-              ];
-            }
-            {
-              LinkedIn = [
-                {
-                  abbr = "LI";
-                  href = "https://www.linkedin.com/in/martinwimpress/";
-                  icon = "linkedin.png";
-                }
-              ];
-            }
-          ];
-        }
-        {
-          Shopping = [
-            {
-              Amazon = [
-                {
-                  abbr = "AZ";
-                  href = "https://www.amazon.co.uk/";
-                  icon = "amazon-light.png";
-                }
-              ];
-            }
-            {
-              eBay = [
-                {
-                  abbr = "EB";
-                  href = "https://www.ebay.co.uk";
-                  icon = "ebay.png";
-                }
-              ];
-            }
-            {
-              Ocado = [
-                {
-                  abbr = "OC";
-                  href = "https://www.ocado.com/";
-                  icon = "https://www.ocado.com/webshop/static/images/7.4.99/favicon.png";
-                }
-              ];
-            }
-            {
-              Tesco = [
-                {
-                  abbr = "TS";
-                  href = "https://www.tesco.com/groceries";
-                  icon = "https://webautomation.io/static/images/domain_images/tescofav_2vycyUg.png";
-                }
-              ];
-            }
-            {
-              Scan = [
-                {
-                  abbr = "SC";
-                  href = "https://scan.co.uk";
-                  icon = "https://scan.co.uk/content/images/logo-192x192.png";
-                }
-              ];
-            }
-          ];
-        }
-        {
-          Productivity = [
-            {
-              ChatGPT = [
-                {
-                  abbr = "AI";
-                  href = "https://chatgpt.com/";
-                  icon = "https://cdn.oaistatic.com/_next/static/media/favicon-32x32.630a2b99.png";
-                }
-              ];
-            }
-            {
-              Calendar = [
-                {
-                  abbr = "CA";
-                  href = "https://calendar.google.com";
-                  icon = "https://ssl.gstatic.com/calendar/images/dynamiclogo_2020q4/calendar_31_2x.png";
-                }
-              ];
-            }
-            {
-              Gmail = [
-                {
-                  abbr = "GM";
-                  href = "https://mail.google.com";
-                  icon = "gmail.png";
-                }
-              ];
-            }
-            {
-              Notion = [
-                {
-                  abbr = "NT";
-                  href = "https://notion.so";
-                  icon = "notion.png";
-                }
-              ];
-            }
-          ];
-        }
-      ];
       services = [
         {
           Infra = [
@@ -280,7 +52,7 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
                 description = "Lights: Home";
                 icon = "diyhue.png";
                 href = "https://192.168.2.250";
-                siteMonitor = "https://192.168.2.250";
+                ping = "https://192.168.2.250";
               };
             }
             {
@@ -288,7 +60,7 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
                 description = "VoIP: Home";
                 icon = "voip-info.png";
                 href = "http://192.168.2.58";
-                siteMonitor = "http://192.168.2.58";
+                ping = "http://192.168.2.58";
               };
             }
             {
