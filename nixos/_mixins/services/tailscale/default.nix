@@ -19,9 +19,7 @@ let
     "vader"
   ];
   tsExitNodes = [
-    "phasma"
     "revan"
-    "vader"
   ];
 in
 lib.mkIf (lib.elem "${hostname}" installOn) {
@@ -30,7 +28,6 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
   services.tailscale = {
     enable = true;
     extraUpFlags = [
-      "--accept-routes"
       "--operator=${username}"
     ] ++ lib.optional (lib.elem "${hostname}" tsExitNodes) "--advertise-exit-node";
     extraSetFlags = [
