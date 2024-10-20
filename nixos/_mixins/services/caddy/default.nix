@@ -1,12 +1,14 @@
 { config, hostname, lib, tailNet, ... }:
 let
   basePath = "/syncthing";
+  # Only enables caddy if tailscale is enabled or the host is Malak
+  useCaddy = if (config.services.tailscale.enable || lib.elem hostname [ "malak" ])
+    then true else false;
 in
 {
   services = {
     caddy = {
-      # Only enables caddy if tailscale is enabled
-      inherit (config.services.tailscale) enable;
+      enable = useCaddy;
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
       virtualHosts."${hostname}.${tailNet}".extraConfig = lib.mkIf
         config.services.tailscale.enable

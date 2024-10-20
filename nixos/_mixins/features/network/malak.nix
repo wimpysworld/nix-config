@@ -19,6 +19,9 @@ in
   networking = {
     defaultGateway = "116.202.241.193";
     defaultGateway6 = { address = "fe80::1"; interface = "eth0"; };
+    firewall = {
+      allowedTCPPorts = [ 80 443 ];
+    };
     interfaces.eth0.ipv4.addresses = [
       {
         address = "116.202.241.253";
