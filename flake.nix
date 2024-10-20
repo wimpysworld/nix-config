@@ -208,6 +208,8 @@
       };
       # Custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };
+      # Custom NixOS modules
+      nixosModules = import ./modules/nixos;
       # Custom packages; acessible via 'nix build', 'nix shell', etc
       packages = helper.forAllSystems (system: import ./pkgs nixpkgs.legacyPackages.${system});
       # Formatter for .nix files, available via 'nix fmt'
