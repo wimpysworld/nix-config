@@ -4,8 +4,10 @@
   pkgs,
   ...
 }:
-{
-  imports = lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
+let
+  installOn = [ "none" ];
+in
+lib.mkIf (lib.elem hostname installOn) {
   services = {
     samba = {
       package = pkgs.samba4Full;
