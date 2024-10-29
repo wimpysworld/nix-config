@@ -16,6 +16,8 @@
       ] ++ lib.optionals (desktop == "pantheon") [
         pkgs.pantheon.xdg-desktop-portal-pantheon
         pkgs.xdg-desktop-portal-gtk
+      ] ++ lib.optionals (desktop == "lomiri") [
+      	lxqt.xdg-desktop-portal-lxqt
       ];
       config = {
         common = {
