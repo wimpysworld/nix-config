@@ -77,6 +77,12 @@
           username = "nixos";
           desktop = "gnome";
         };
+        "nixos@iso-lomiri" = helper.mkHome {
+          hostname = "iso-lomiri";
+          username = "nixos";
+          desktop = "lomiri";
+        };
+
         "nixos@iso-mate" = helper.mkHome {
           hostname = "iso-mate";
           username = "nixos";
@@ -150,6 +156,12 @@
           username = "nixos";
           desktop = "gnome";
         };
+        iso-lomiri = helper.mkNixos {
+          hostname = "iso-lomiri";
+          username = "nixos";
+          desktop = "lomiri";
+        };
+
         iso-mate = helper.mkNixos {
           hostname = "iso-mate";
           username = "nixos";
