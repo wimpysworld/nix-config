@@ -52,7 +52,7 @@ let
           if ! app_is_running "$CLASS"; then
               echo -n " - Starting $APP on workspace $WORKSPACE: "
               hyprctl dispatch exec "[workspace $WORKSPACE silent]" "$APP"
-              if [ "$APP" == "tenacity" ]; then
+              if [ "$APP" == "audacity" ]; then
                   sleep 5
               fi
               wait_for_app "$CLASS"
@@ -93,7 +93,7 @@ let
       }
 
       function activity_linuxmatters() {
-          start_app tenacity 9 "class: tenacity"
+          start_app audacity 9 "class: audacity"
           firefox -CreateProfile linuxmatters-stage
           start_app "firefox -P linuxmatters-stage -no-remote --new-window https://github.com/restfulmedia/linuxmatters_backstage" 9 "title: restfulmedia/linuxmatters_backstage"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
