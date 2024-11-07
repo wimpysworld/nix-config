@@ -10,11 +10,13 @@ let
     ];
     text = builtins.readFile ./${name}.sh;
   };
+  buildHome = pkgs.writeScriptBin "build-home" ''nh-home build'';
+  switchHome = pkgs.writeScriptBin "switch-home" ''nh-home switch'';
 in
 {
-  home.packages = with pkgs; [ shellApplication ];
-  programs.fish.shellAliases = {
-    build-home = "nh-home build";
-    switch-home = "nh-home switch";
-  };
+  home.packages = with pkgs; [
+    shellApplication
+    buildHome
+    switchHome
+  ];
 }

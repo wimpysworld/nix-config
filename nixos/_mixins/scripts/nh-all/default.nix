@@ -6,11 +6,13 @@ let
     runtimeInputs = with pkgs; [ coreutils-full ];
     text = builtins.readFile ./${name}.sh;
   };
+  buildAll = pkgs.writeScriptBin "build-all" ''nh-all build'';
+  switchAll = pkgs.writeScriptBin "switch-all" ''nh-all switch'';
 in
 {
-  environment.systemPackages = with pkgs; [ shellApplication ];
-  programs.fish.shellAliases = {
-    build-all = "nh-all build";
-    switch-all = "nh-all switch";
-  };
+  environment.systemPackages = with pkgs; [
+    shellApplication
+    buildAll
+    switchAll
+  ];
 }
