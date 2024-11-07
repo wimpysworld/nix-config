@@ -10,11 +10,13 @@ let
     ];
     text = builtins.readFile ./${name}.sh;
   };
+  buildHost = pkgs.writeScriptBin "build-host" ''nh-host build'';
+  switchHost = pkgs.writeScriptBin "switch-host" ''nh-host switch'';
 in
 {
-  environment.systemPackages = with pkgs; [ shellApplication ];
-  programs.fish.shellAliases = {
-    build-host = "nh-host build";
-    switch-host = "nh-host switch";
-  };
+  environment.systemPackages = with pkgs; [
+    shellApplication
+    buildHost
+    switchHost
+  ];
 }
