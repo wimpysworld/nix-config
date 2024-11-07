@@ -202,6 +202,19 @@ lib.mkIf (lib.elem hostname installOn) {
             }];
           }
           {
+            name = "Links";
+            group = "Wimpy's World";
+            url = "https://links.wimpys.world/";
+            interval = "30s";
+            conditions = [
+              "[STATUS] == 200"
+              "[BODY] == pat(*>Wimpy's Links 🔗</h1>*)"
+            ];
+            alerts = [{
+              type = "ntfy";
+            }];
+          }
+          {
             name = "Website";
             group = "Linux Matters";
             url = "https://linuxmatters.sh/";
