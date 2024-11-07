@@ -533,7 +533,7 @@ in
             format-on = "󰂯";
             format-off = "󰂲";
             on-click-middle = "${lib.getExe bluetoothToggle}";
-            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.blueberry}";
+            on-click-right = "hyprctl dispatch exec [workspace current] ${pkgs.blueberry}/bin/blueberry";
             tooltip-format = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected";
             tooltip-format-connected = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected\n{device_enumerate}";
             tooltip-format-disabled = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
