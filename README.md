@@ -120,6 +120,7 @@ The `build-iso` script is included that creates .iso images from this flake. The
 - `build-iso gnome` (*GNOME Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 - `build-iso mate` (*MATE Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 - `build-iso pantheon` (*Pantheon Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
+- `build-iso lomiri` (*Lomiri Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 
 Live images will be left in `$HOME/Zero/nix-config/result/iso/` and are also injected into `~/Quickemu/nixos-console` and `~/Quickemu/nixos-<desktop>` respectively.
 The console .iso image is also periodically built and published via [GitHub Actions](./.github/workflows) and is available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
@@ -165,6 +166,7 @@ Here's the directory structure I'm using:
 │  ├── iso-gnome -> iso-console
 │  ├── iso-mate -> iso-console
 │  ├── iso-pantheon -> iso-console
+│  ├── iso-lomiri -> iso-console
 │  ├── crawler -> dagger
 │  ├── dagger
 │  ├── malak
@@ -200,7 +202,7 @@ Useful shell scripts I used to keep in muddle of git repos are now migrated to [
 
 ### The Desktop 🖥️
 
-GNOME 👣 Hyprland 💧 MATE 🧉 and Pantheon 🏛️ desktop options are available.
+GNOME 👣 Hyprland 💧 MATE 🧉 Pantheon 🏛️ and Lomiri 📱 desktop options are available.
 The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code).
 The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
@@ -210,6 +212,7 @@ The usual creature comforts you'd expect to find in a Linux Desktop are integrat
 | 💧 Hyprland | [Hyprland NixOS]   | [Hyprland Home Manager]   | Catppuccin Mocha  |
 | 🧉 MATE     | [MATE NixOS]       | [MATE Home Manager]       | Catppuccin Mocha  |
 | 🏛️ Pantheon | [Pantheon NixOS]   | [Pantheon Home Manager]   | Catppuccin Mocha  |
+| 📱 Lomiri   | [Lomiri NixOS]     |                           | 🚧                |
 
 ## Eye Candy 👀🍬
 
@@ -421,6 +424,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
 [MATE NixOS]: ./nixos/_mixins/desktop/mate/default.nix
 [Pantheon NixOS]: ./nixos/_mixins/desktop/pantheon/default.nix
+[Lomiri NixOS]: ./nixos/_mixins/desktop/lomiri/default.nix
 [GNOME Home Manager]: ./home-manager/_mixins/desktop/gnome/default.nix
 [Hyprland Home Manager]: ./home-manager/_mixins/desktop/hyprland/default.nix
 [MATE Home Manager]: ./home-manager/_mixins/desktop/mate/default.nix
