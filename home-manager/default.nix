@@ -299,6 +299,7 @@ in
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
         more = "${pkgs.bat}/bin/bat";
         parrot = "${pkgs.terminal-parrot}/bin/terminal-parrot -delay 50 -loops 7";
+        pq = "${pkgs.pueue}/bin/pueue";
         ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
         screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
         speedtest = "${pkgs.speedtest-go}/bin/speedtest-go";
@@ -547,6 +548,7 @@ in
       settings = {
         daemon = {
           default_parallel_tasks = 1;
+          callback = "${pkgs.notify-desktop}/bin/notify-desktop \"Task {{ id }}\nCommand: {{ command }}\nPath: {{ path }}\nFinished with status '{{ result }}'\nTook: $(bc <<< \"{{end}} - {{start}}\") seconds\" --app-name=pueue";
         };
       };
     };
