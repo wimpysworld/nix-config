@@ -23,6 +23,9 @@ pkgs: {
   obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
 
+  # Local packages to prevent unintended upgrades
+  gotosocial = pkgs.callPackage ./gotosocial { };
+
   # Non-redistributable packages
   cider = pkgs.callPackage ./cider { };
   pico8 = pkgs.callPackage ./pico8 { };
