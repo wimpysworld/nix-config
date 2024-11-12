@@ -200,7 +200,7 @@ lib.mkIf (lib.elem hostname installOn) {
           {
             name = "Website";
             group = "Wimpy's World";
-            url = "https://wimpysworld.com/";
+            url = "https://wimpysworld.com";
             interval = "30s";
             conditions = [
               "[STATUS] == 200"
@@ -213,7 +213,7 @@ lib.mkIf (lib.elem hostname installOn) {
           {
             name = "Links";
             group = "Wimpy's World";
-            url = "https://links.wimpys.world/";
+            url = "https://wimpysworld.link";
             interval = "30s";
             conditions = [
               "[STATUS] == 200"
@@ -239,7 +239,7 @@ lib.mkIf (lib.elem hostname installOn) {
           {
             name = "Website";
             group = "Linux Matters";
-            url = "https://linuxmatters.sh/";
+            url = "https://linuxmatters.sh";
             interval = "30s";
             conditions = [
               "[STATUS] == 200"
@@ -252,7 +252,7 @@ lib.mkIf (lib.elem hostname installOn) {
           {
             name = "Domain and Certifcate Check";
             group = "Linux Matters";
-            url = "https://linuxmatters.sh/";
+            url = "https://linuxmatters.sh";
             interval = "3h";
             conditions = [
               "[CERTIFICATE_EXPIRATION] > 48h"
