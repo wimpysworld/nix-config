@@ -21,6 +21,9 @@ lib.mkIf (lib.elem hostname installOn) {
             file_server
           }
         '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/hugo.log
+        '';
         serverAliases = [
           "flexion.org"
           "wimpress.co.uk"
@@ -65,6 +68,9 @@ lib.mkIf (lib.elem hostname installOn) {
             file_server
           }
         '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/littlelink.log
+        '';
         serverAliases = [
           "links.wimpys.world"
           "wimpysworld.info"
@@ -77,14 +83,14 @@ lib.mkIf (lib.elem hostname installOn) {
         extraConfig = ''
           redir https://{labels.1}.{labels.0}{uri} permanent
         '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/hugo.log
+        '';
         serverAliases = [
           "www.flexion.org"
           "www.wimpress.com"
           "www.wimpress.io"
           "www.wimpress.org"
-          "www.wimpysworld.info"
-          "www.wimpysworld.io"
-          "www.wimpysworld.link"
           "www.wimpysworld.net"
           "www.wimpysworld.org"
           "www.wimpys.world"
@@ -94,6 +100,24 @@ lib.mkIf (lib.elem hostname installOn) {
         extraConfig = ''
           redir https://{labels.2}.{labels.1}.{labels.0}{uri} permanent
         '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/hugo.log
+        '';
+      };
+      virtualHosts."www.wimpysworld.link" = {
+        extraConfig = ''
+          redir https://{labels.1}.{labels.0}{uri} permanent
+          log {
+            output file /var/log/caddy/littlelink.log
+          }
+        '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/littlelink.log
+        '';
+        serverAliases = [
+          "www.wimpysworld.info"
+          "www.wimpysworld.io"
+        ];
       };
       # What is my IP?
       # - https://www.zellysnyder.com/posts/caddy-what-is-my-ip-service/
@@ -103,6 +127,9 @@ lib.mkIf (lib.elem hostname installOn) {
             body "{http.request.header.CF-Connecting-IP}"
             close
           }
+        '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/ip.log
         '';
         serverAliases = [
           "ip.flexion.org"

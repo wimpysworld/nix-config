@@ -31,11 +31,17 @@ lib.mkIf (lib.elem hostname installOn) {
             flush_interval -1
           }
         '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/gotosocial.log
+        '';
       };
       # Strip the www. and redirect to the apex domain
       virtualHosts."www.${config.services.gotosocial.settings.host}" = {
         extraConfig = ''
           redir https://${config.services.gotosocial.settings.host}{uri} permanent
+        '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/gotosocial.log
         '';
       };
     };

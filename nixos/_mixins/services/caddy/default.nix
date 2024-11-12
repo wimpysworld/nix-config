@@ -10,16 +10,20 @@ in
     caddy = {
       enable = useCaddy;
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
-      virtualHosts."${hostname}.${tailNet}".extraConfig = lib.mkIf
-        config.services.tailscale.enable
-        ''
-          redir ${basePath} ${basePath}/
-          handle_path ${basePath}/* {
-            reverse_proxy localhost:8384 {
-              header_up Host localhost
+      virtualHosts."${hostname}.${tailNet}" = lib.mkIf config.services.tailscale.enable
+      {
+        extraConfig = ''
+            redir ${basePath} ${basePath}/
+            handle_path ${basePath}/* {
+              reverse_proxy localhost:8384 {
+                header_up Host localhost
+              }
             }
-          }
+          '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/tailscale.log
         '';
+      };
     };
   };
 }
