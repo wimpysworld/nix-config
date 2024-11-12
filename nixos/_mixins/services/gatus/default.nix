@@ -20,10 +20,15 @@ lib.mkIf (lib.elem hostname installOn) {
     };
   };
   services = {
-    caddy.virtualHosts."status.wimpys.world" = {
-      extraConfig = lib.mkIf (config.services.gatus.enable) ''
-        reverse_proxy localhost:8181
-      '';
+    caddy = {
+      virtualHosts."status.wimpys.world" = {
+        extraConfig = lib.mkIf (config.services.gatus.enable) ''
+          reverse_proxy localhost:8181
+        '';
+        logFormat = lib.mkDefault ''
+          output file /var/log/caddy/gatus.log
+        '';
+      };
     };
     gatus = {
       enable = true;
