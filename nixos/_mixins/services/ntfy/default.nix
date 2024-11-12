@@ -1,8 +1,17 @@
-{ config, hostname, lib, tailNet, ... }:
+{ config, hostname, lib, pkgs, tailNet, ... }:
 let
   installOn = [ "malak" ];
 in
 lib.mkIf (lib.elem hostname installOn) {
+  environment = {
+    shellAliases = {
+      goaccess-ntfy = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/ntfy.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
+      ntfy-log = "journalctl _SYSTEMD_UNIT=ntfy-sh.service";
+    };
+    systemPackages = with pkgs; [
+      ntfy-sh
+    ];
+  };
   services = {
     # https://docs.ntfy.sh/config/#__tabbed_11_4
     # https://blog.alexsguardian.net/posts/2023/09/12/selfhosting-ntfy/
@@ -35,6 +44,24 @@ lib.mkIf (lib.elem hostname installOn) {
         #https://docs.ntfy.sh/config/#ios-instant-notifications
         upstream-base-url = "https://ntfy.sh";
       };
+    };
+  };
+
+  systemd.services.goaccess-ntfy = {
+    description = "Generate goaccess ntfy report";
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/ntfy.log --log-format=CADDY -o /mnt/data/www/goaccess/ntfy.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
+      User = "${config.services.caddy.user}";
+    };
+  };
+
+  systemd.timers.goaccess-ntfy = {
+    description = "Run goaccess ntfy report every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "1h";
+      RandomizedDelaySec = 300;
     };
   };
 }

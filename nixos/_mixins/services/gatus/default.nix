@@ -1,4 +1,4 @@
-{ config, hostname, lib, ... }:
+{ config, hostname, lib, pkgs, ... }:
 let
   installOn = [ "malak" ];
 in
@@ -6,6 +6,7 @@ lib.mkIf (lib.elem hostname installOn) {
   environment = {
     shellAliases = {
       gatus-log = "journalctl _SYSTEMD_UNIT=gatus.service";
+      goaccess-gatus = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/gatus.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
     };
   };
   sops = {
@@ -21,13 +22,16 @@ lib.mkIf (lib.elem hostname installOn) {
   };
   services = {
     caddy = {
-      virtualHosts."status.wimpys.world" = {
+      virtualHosts."gatus.wimpys.world" = {
         extraConfig = lib.mkIf (config.services.gatus.enable) ''
           reverse_proxy localhost:8181
         '';
         logFormat = lib.mkDefault ''
           output file /var/log/caddy/gatus.log
         '';
+        serverAliases = [
+          "status.wimpys.world"
+        ];
       };
     };
     gatus = {
@@ -259,6 +263,24 @@ lib.mkIf (lib.elem hostname installOn) {
           }
         ];
       };
+    };
+  };
+
+  systemd.services.goaccess-gatus = {
+    description = "Generate goaccess gatus report";
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/gatus.log --log-format=CADDY -o /mnt/data/www/goaccess/gatus.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
+      User = "${config.services.caddy.user}";
+    };
+  };
+
+  systemd.timers.goaccess-gatus = {
+    description = "Run goaccess gatus report every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "1h";
+      RandomizedDelaySec = 300;
     };
   };
 }
