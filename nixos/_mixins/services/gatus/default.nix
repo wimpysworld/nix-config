@@ -46,7 +46,7 @@ lib.mkIf (lib.elem hostname installOn) {
             default-alert = {
               description = "Gatus health check";
               send-on-resolved = true;
-              failure-threshold = 2;
+              failure-threshold = 5;
               success-threshold = 2;
             };
           };
