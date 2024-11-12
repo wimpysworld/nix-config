@@ -1,10 +1,11 @@
-{ config, hostname, lib, username, ... }:
+{ config, hostname, lib, pkgs, username, ... }:
 let
   installOn = [ "malak" ];
 in
 lib.mkIf (lib.elem hostname installOn) {
   environment = {
     shellAliases = {
+      goaccess-gotosocial = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/gotosocial.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
       gotosocial-log = "journalctl _SYSTEMD_UNIT=gotosocial.service";
     };
   };
@@ -66,6 +67,25 @@ lib.mkIf (lib.elem hostname installOn) {
       };
     };
   };
+
+  systemd.services.goaccess-gotosocial = {
+    description = "Generate goaccess gotosocial report";
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/gotosocial.log --log-format=CADDY -o /mnt/data/www/goaccess/gotosocial.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
+      User = "${config.services.caddy.user}";
+    };
+  };
+
+  systemd.timers.goaccess-gotosocial = {
+    description = "Run goaccess gotosocial report every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "1h";
+      RandomizedDelaySec = 300;
+    };
+  };
+
   systemd.tmpfiles.rules = [
     "d /mnt/data/gotosocial           0755 gotosocial gotosocial"
     "d /mnt/data/gotosocial/storage   0755 gotosocial gotosocial"

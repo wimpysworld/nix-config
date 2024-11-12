@@ -4,6 +4,11 @@ let
 in
 lib.mkIf (lib.elem hostname installOn) {
   environment = {
+    shellAliases = {
+      goaccess-hugo = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/hugo.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
+      goaccess-littlelink = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/littlelink.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
+      goaccess-ip = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/littlelink.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
+    };
     systemPackages = with pkgs; [
       caddy
     ];
@@ -148,6 +153,58 @@ lib.mkIf (lib.elem hostname installOn) {
       };
     };
   };
+
+  systemd.services.goaccess-hugo = {
+    description = "Generate goaccess hugo report";
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/hugo.log --log-format=CADDY -o /mnt/data/www/goaccess/hugo.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
+      User = "${config.services.caddy.user}";
+    };
+  };
+  systemd.timers.goaccess-hugo = {
+    description = "Run goaccess hugo report every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "1h";
+      RandomizedDelaySec = 300;
+    };
+  };
+
+  systemd.services.goaccess-ip = {
+    description = "Generate goaccess ip report";
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/ip.log --log-format=CADDY -o /mnt/data/www/goaccess/ip.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
+      User = "${config.services.caddy.user}";
+    };
+  };
+  systemd.timers.goaccess-ip = {
+    description = "Run goaccess ip every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "1h";
+      RandomizedDelaySec = 300;
+    };
+  };
+
+  systemd.services.goaccess-littlelink = {
+    description = "Generate goaccess littlelink report";
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/littlelink.log --log-format=CADDY -o /mnt/data/www/goaccess/littlelink.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
+      User = "${config.services.caddy.user}";
+    };
+  };
+  systemd.timers.goaccess-littlelink = {
+    description = "Run goaccess littlelink report every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "1h";
+      RandomizedDelaySec = 300;
+    };
+  };
+
   systemd.tmpfiles.rules = [
     "d /mnt/data/www/hugo       0755 ${username} users"
     "d /mnt/data/www/littlelink 0755 ${username} users"
