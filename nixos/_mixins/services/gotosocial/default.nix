@@ -37,6 +37,13 @@ lib.mkIf (lib.elem hostname installOn) {
             # Flush immediately, to prevent buffered response to the client
             flush_interval -1
           }
+          # https://docs.gotosocial.org/en/latest/advanced/healthchecks/
+          handle /livez {
+            respond 403
+          }
+          handle /readyz {
+            respond 403
+          }
         '';
         logFormat = lib.mkDefault ''
           output file /var/log/caddy/gotosocial.log
