@@ -8,37 +8,43 @@ set +e          # Disable errexit
 set +u          # Disable nounset
 set +o pipefail # Disable pipefail
 
+# Configuration
+# Root directory for backups
+BACKUP_ROOT="/mnt/data/backup/gotosocial"
+# Path to GoToSocial configuration file
+GTS_CONFIG="/etc/gotosocial/config.yaml"
+# Path to the GoToSocial SQLite database
+GTS_DB="/var/lib/gotosocial/database.sqlite"
+# Retention period in days
+RETENTION_DAYS=28
+
 # Ensure script is run as root
 if [ "$(id -u)" -ne 0 ]; then
     echo "Error: This script must be run as root" >&2
     exit 1
 fi
 
-# Configuration
-BACKUP_ROOT="/mnt/data/backup/gotosocial"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-CURRENT_DATE=$(date +%Y%m%d)
-LATEST_LINK="$BACKUP_ROOT/latest"
-BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
-LOGFILE="$BACKUP_ROOT/backup.log"
-DB_SOURCE="/var/lib/gotosocial/database.sqlite"
-DB_BACKUP="$BACKUP_DIR/database.sqlite"
-EXPORT_TEMP="/tmp/gotosocial_export_$TIMESTAMP.json"
-EXPORT_BACKUP="$BACKUP_DIR/export.json"
-# Default retention period in days
-RETENTION_DAYS=28
-# Default config path
-GTS_CONFIG_PATH="/etc/gotosocial/config.yaml"
+# No need to edit below this line
+STAMP=$(date +%Y%m%d_%H%M%S)
+TODAY=$(echo "${STAMP}" | cut -d'_' -f 1)
+BACKUP_DIR="${BACKUP_ROOT}/${STAMP}"
+DB_BACKUP="${BACKUP_DIR}/database.sqlite"
+EXPORT_BACKUP="${BACKUP_DIR}/export.json"
+EXPORT_TEMP="/tmp/gotosocial_export_${STAMP}.json"
+LATEST_LINK="${BACKUP_ROOT}/latest"
+LOGFILE="${BACKUP_ROOT}/backup.log"
+LOGLINES=4096
 
-# Allow override of retention period via environment variable
-if [ -n "${BACKUP_RETENTION_DAYS}" ]; then
-    if [[ "${BACKUP_RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
-        RETENTION_DAYS="${BACKUP_RETENTION_DAYS}"
-        log_message "Using custom retention period of ${RETENTION_DAYS} days"
-    else
-        log_message "Warning: Invalid BACKUP_RETENTION_DAYS value. Using default of ${RETENTION_DAYS} days"
+# Function to rotate log file
+function rotate_log() {
+    if [ -f "${LOGFILE}" ]; then
+        log_message "Rotating log file (keeping last ${LOGLINES} lines)"
+        local tmp_log="/tmp/backup_log_${STAMP}.tmp"
+        tail -n "${LOGLINES}" "${LOGFILE}" > "${tmp_log}"
+        mv "${tmp_log}" "${LOGFILE}"
+        chmod 600 "${LOGFILE}"
     fi
-fi
+}
 
 # Function to execute gotosocial admin
 # NixOS installs the gotosocial-admin helper, so use it if available
@@ -49,7 +55,7 @@ function gts_admin() {
     if [ -x /run/current-system/sw/bin/gotosocial-admin ]; then
         /run/current-system/sw/bin/gotosocial-admin "$command" "${@}"
     else
-        gotosocial --config-path "${GTS_CONFIG_PATH}" admin "${command}" "${@}"
+        gotosocial --config-path "${GTS_CONFIG}" admin "${command}" "${@}"
     fi
 }
 
@@ -69,9 +75,13 @@ function cleanup() {
     [ -f "${TMPFILE}" ] && rm -f "${TMPFILE}"
     [ -f "${EXPORT_TEMP}" ] && rm -f "${EXPORT_TEMP}"
     log_message "Cleanup completed"
+    # Rotate log file at the end of backup
+    rotate_log
 }
-# Set trap for cleanup on script exit
 trap cleanup EXIT
+
+# Rotate log file at the start of backup
+rotate_log
 
 # Check if running under sudo and warn about potential environment issues
 if [ -n "${SUDO_USER}" ]; then
@@ -82,7 +92,7 @@ fi
 if [ -x /run/current-system/sw/bin/gotosocial-admin ]; then
     log_message "Using gotosocial-admin"
 elif command -v gotosocial >/dev/null 2>&1; then
-    log_message "Using gotosocial with ${GTS_CONFIG_PATH}"
+    log_message "Using gotosocial with ${GTS_CONFIG}"
 else
     handle_error "gotosocial not found in the PATH"
 fi
@@ -96,19 +106,17 @@ mkdir -p "${BACKUP_DIR}" || handle_error "Failed to create backup directory"
 chmod 700 "${BACKUP_DIR}"
 
 # Check if source database exists and is readable
-if [ ! -r "${DB_SOURCE}" ]; then
-    handle_error "Database file ${DB_SOURCE} does not exist or is not readable"
+if [ ! -r "${GTS_DB}" ]; then
+    handle_error "Database file ${GTS_DB} does not exist or is not readable"
 fi
 
 # Export GoToSocial data
 log_message "Starting GoToSocial export"
 if gts_admin "export" "--path" "${EXPORT_TEMP}"; then
     log_message "GoToSocial export completed successfully"
-
     # Move export file to backup directory
     if mv "${EXPORT_TEMP}" "${EXPORT_BACKUP}"; then
         log_message "Export file moved to backup directory"
-
         # Compress the export file
         if gzip -f "${EXPORT_BACKUP}"; then
             log_message "Export file compressed successfully"
@@ -126,7 +134,7 @@ fi
 log_message "Starting database backup"
 
 # Create database backup with VACUUM
-if sqlite3 "${DB_SOURCE}" "VACUUM INTO '${DB_BACKUP}'"; then
+if sqlite3 "${GTS_DB}" "VACUUM INTO '${DB_BACKUP}'"; then
     log_message "Database backup created successfully"
 
     # Check database integrity
@@ -135,7 +143,6 @@ if sqlite3 "${DB_SOURCE}" "VACUUM INTO '${DB_BACKUP}'"; then
 
     if [ "${INTEGRITY_CHECK}" = "ok" ]; then
         log_message "Database integrity check passed"
-
         # Compress the database backup
         log_message "Compressing database backup"
         if gzip -f "${DB_BACKUP}"; then
@@ -217,15 +224,13 @@ if [ -s "${TMPFILE}" ]; then
             log_message "Looking for backups older than ${RETENTION_DAYS} days (excluding today's backups)"
             while read -r backup_dir; do
                 backup_date=$(basename "${backup_dir}" | cut -d'_' -f 1)
-                if [ "${backup_date}" != "${CURRENT_DATE}" ]; then
+                if [ "${backup_date}" != "${TODAY}" ]; then
                     log_message "Removing old backup: ${backup_dir}"
                     rm -rf "${backup_dir}"
                 else
                     log_message "Keeping today's backup: ${backup_dir}"
                 fi
             done < <(find "${BACKUP_ROOT}" -maxdepth 1 -type d -mtime "+${RETENTION_DAYS}" -name "20*")
-
-            # Log retention policy
             log_message "Retention policy: keeping backups for ${RETENTION_DAYS} days"
         else
             handle_error "Backup verification failed"
