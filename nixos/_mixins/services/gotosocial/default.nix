@@ -57,6 +57,7 @@ lib.mkIf (lib.elem hostname installOn) {
       enable = true;
       environmentFile = config.sops.secrets.gotosocial-env.path;
       settings = {
+        accounts-allow-custom-css = true;
         bind-address = "127.0.0.1";
         db-type = "sqlite";
         # https://docs.gotosocial.org/en/latest/advanced/replicating-sqlite/
