@@ -1,6 +1,19 @@
 { config, hostname, lib, pkgs, username, ... }:
 let
   installOn = [ "malak" ];
+  gotosocial-backup = pkgs.writeShellApplication {
+    name = "gotosocial-backup";
+    runtimeInputs = with pkgs; [
+      coreutils-full
+      findutils
+      gnugrep
+      gotosocial
+      gzip
+      rsync
+      sqlite
+    ];
+    text = builtins.readFile ./gotosocial-backup.sh;
+  };
 in
 lib.mkIf (lib.elem hostname installOn) {
   environment = {
@@ -8,6 +21,9 @@ lib.mkIf (lib.elem hostname installOn) {
       goaccess-gotosocial = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/gotosocial.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
       gotosocial-log = "journalctl _SYSTEMD_UNIT=gotosocial.service";
     };
+    systemPackages = with pkgs; [
+      gotosocial-backup
+    ];
   };
   sops = {
     secrets = {
@@ -93,6 +109,24 @@ lib.mkIf (lib.elem hostname installOn) {
     timerConfig = {
       OnBootSec = "5min";
       OnUnitActiveSec = "1h";
+      RandomizedDelaySec = 300;
+    };
+  };
+
+  systemd.services.gotosocial-backup = {
+    description = "Backup GotoSocial database and local media";
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash -c '${gotosocial-backup}/bin/gotosocial-backup'";
+      User = "root";
+    };
+  };
+
+  systemd.timers.gotosocial-backup = {
+    description = "Run GotoSocial backup every 4 hours";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "4h";
       RandomizedDelaySec = 300;
     };
   };
