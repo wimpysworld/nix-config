@@ -2,6 +2,7 @@
 let
   installOn = [ "malak" ];
   replicateGotosocial = config.services.litestream.enable && config.services.gotosocial.enable && config.services.gotosocial.settings.db-type == "sqlite";
+  ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
 lib.mkIf (lib.elem hostname installOn) {
   environment = {
@@ -36,11 +37,15 @@ lib.mkIf (lib.elem hostname installOn) {
   # https://nixos.org/manual/nixos/stable/#module-services-litestream
   systemd.services.gotosocial = lib.mkIf replicateGotosocial {
     serviceConfig.ExecStartPost = "+" + pkgs.writeShellScript "grant-gotosocial-permissions" ''
-      for ((i=10; i>0; i--)); do
-        [[ -f ${config.services.gotosocial.settings.db-address}-wal ]] && break
+      timeout=10
+      while [ ! -f ${config.services.gotosocial.settings.db-address}-wal ]; do
+        if [ "$timeout" -le 0 ]; then
+          echo "ERROR: Timeout while waiting for ${config.services.gotosocial.settings.db-address}"
+          exit 1
+        fi
         sleep 1
+        ((timeout--))
       done
-      [[ $i == 0 ]] && { echo "ERROR: Timeout while waiting for ${config.services.gotosocial.settings.db-address}" >&2; exit 1; }
       ${pkgs.findutils}/bin/find $(dirname "${config.services.gotosocial.settings.db-address}") -type d -exec chmod -v 775 {} + -o -type f -exec chmod -v 664 {} +
     '';
   };
@@ -51,7 +56,7 @@ lib.mkIf (lib.elem hostname installOn) {
 
   # Add litestream user to the gotosocial group
   users.users = lib.mkIf config.services.litestream.enable {
-    litestream.extraGroups = lib.optionals replicateGotosocial [
+    litestream.extraGroups = ifExists [
       "gotosocial"
     ];
   };
