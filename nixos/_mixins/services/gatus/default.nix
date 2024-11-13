@@ -58,9 +58,8 @@ lib.mkIf (lib.elem hostname installOn) {
           };
         };
         storage = {
-          # TODO: Use PostgreSQL when the Gatus configuration is complete.
           type = "sqlite";
-          path = "/tmp/gatus.db";
+          path = "/var/lib/gatus/gatus.db";
         };
         ui = {
           title = "Wimpy's World Status";
