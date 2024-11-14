@@ -28,22 +28,4 @@ in
       };
     };
   };
-
-  systemd.services.goaccess-tailscale = {
-    description = "Generate goaccess tailscale report";
-    serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/tailscale.log --log-format=CADDY -o /mnt/data/www/goaccess/tailscale.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
-      User = "${config.services.caddy.user}";
-    };
-  };
-
-  systemd.timers.goaccess-tailscale = {
-    description = "Run goaccess tailscale report every hour";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnBootSec = "5min";
-      OnUnitActiveSec = "1h";
-      RandomizedDelaySec = 300;
-    };
-  };
 }
