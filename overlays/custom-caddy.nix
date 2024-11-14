@@ -1,3 +1,6 @@
+# https://github.com/jnsgruk/nixos-config/blob/main/overlays/custom-caddy.nix
+# https://mdleom.com/blog/2021/12/27/caddy-plugins-nixos/#build-custom-plugins-with-xcaddy
+# https://vincent.bernat.ch/en/blog/2024-caddy-nix-plugins
 { pkgs, ... }:
 let
   inherit (pkgs)

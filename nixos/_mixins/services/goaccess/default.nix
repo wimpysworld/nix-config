@@ -56,6 +56,7 @@ lib.mkIf (lib.elem hostname installOn) {
     };
   };
 
+  # https://edouard.paris/notes/caddy-logs-and-goaccess/
   systemd.services.goaccess-self = {
     description = "Generate goaccess self report";
     serviceConfig = {
