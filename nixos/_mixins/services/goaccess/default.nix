@@ -18,7 +18,7 @@ lib.mkIf (lib.elem hostname installOn) {
           encode zstd gzip
           root * /mnt/data/www/goaccess
           file_server browse
-          basicauth {
+          basic_auth {
             ${username} $2a$14$aTTqvZOozMWiYBJ0IXkHxOiFuk0LeFHpt.7y0FPum4JO1v2u2KsJy
           }
         '';
