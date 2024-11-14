@@ -1,4 +1,4 @@
-{ config, hostname, lib, pkgs, tailNet, ... }:
+{ config, hostname, lib, pkgs, tailNet, username, ... }:
 let
   basePath = "/syncthing";
   # Only enables caddy if tailscale is enabled or the host is Malak
@@ -6,10 +6,24 @@ let
     then true else false;
 in
 {
-  environment.systemPackages = with pkgs; [ custom-caddy ];
+  environment = {
+    shellAliases = {
+      caddy-log = "journalctl _SYSTEMD_UNIT=caddy.service";
+    };
+    systemPackages = with pkgs; [ custom-caddy ];
+  };
   services = {
     caddy = {
       enable = useCaddy;
+      email = "${username}@wimpysworld.com";
+      globalConfig = ''
+        servers {
+          trusted_proxies cloudflare {
+            interval 12h
+            timeout 15s
+          }
+        }
+      '';
       package = pkgs.custom-caddy;
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
       virtualHosts."${hostname}.${tailNet}" = lib.mkIf config.services.tailscale.enable
