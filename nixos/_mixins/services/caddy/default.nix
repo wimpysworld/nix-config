@@ -6,9 +6,11 @@ let
     then true else false;
 in
 {
+  environment.systemPackages = with pkgs; [ custom-caddy ];
   services = {
     caddy = {
       enable = useCaddy;
+      package = pkgs.custom-caddy;
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
       virtualHosts."${hostname}.${tailNet}" = lib.mkIf config.services.tailscale.enable
       {
