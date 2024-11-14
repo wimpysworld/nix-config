@@ -2,16 +2,18 @@
 # You can build them using 'nix build .#example'
 pkgs: {
   # TODO upgrade-hint; Remove when upgrading to 24.11
+  caddy = pkgs.callPackage ./caddy { };
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
   cpu-x = pkgs.callPackage ./cpu-x { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   gitkraken = pkgs.callPackage ./gitkraken { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
+  libcef = pkgs.callPackage ./libcef { };
   lima-bin = pkgs.callPackage ./lima-bin { };
   monitorets = pkgs.callPackage ./monitorets { };
   waybar = pkgs.callPackage ./waybar { };
+  xcaddy = pkgs.callPackage ./xcaddy { };
   zoom-us = pkgs.callPackage ./zoom-us { };
-  libcef = pkgs.callPackage ./libcef { };
 
   # Local packages being prepped for upstreaming
   defold = pkgs.callPackage ./defold { };
