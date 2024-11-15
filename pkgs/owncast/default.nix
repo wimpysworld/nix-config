@@ -4,10 +4,9 @@
 , nixosTests
 , bash
 , which
-, ffmpeg
+, ffmpeg_4
 , makeBinaryWrapper
 }:
-
 let
   version = "0.1.3";
 in buildGoModule {
@@ -21,13 +20,13 @@ in buildGoModule {
   };
   vendorHash = "sha256-JitvKfCLSravW5WRE0QllJTrRPLaaBg1GxJi3kmtiIU=";
 
-  propagatedBuildInputs = [ ffmpeg ];
+  propagatedBuildInputs = [ ffmpeg_4 ];
 
   nativeBuildInputs = [ makeBinaryWrapper ];
 
   postInstall = ''
     wrapProgram $out/bin/owncast \
-      --prefix PATH : ${lib.makeBinPath [ bash which ffmpeg ]}
+      --prefix PATH : ${lib.makeBinPath [ bash which ffmpeg_4 ]}
   '';
 
   installCheckPhase = ''
