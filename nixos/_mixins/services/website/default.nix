@@ -145,6 +145,7 @@ lib.mkIf (lib.elem hostname installOn) {
           "ip.wimpysworld.info"
           "ip.wimpysworld.io"
           "ip.wimpysworld.link"
+          "ip.wimpysworld.live"
           "ip.wimpysworld.net"
           "ip.wimpysworld.org"
           "ip.wimpysworld.social"
