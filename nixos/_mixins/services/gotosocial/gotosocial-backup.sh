@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Backup script for GoToSocial
 # - exports data, backs up the SQLite database, and media files
+# - optionally encrypts sensitive data for secure offsite storage
 # - https://docs.gotosocial.org/en/latest/admin/backup_and_restore/
 # - https://litestream.io/alternatives/cron/
 
@@ -8,15 +9,33 @@ set +e          # Disable errexit
 set +u          # Disable nounset
 set +o pipefail # Disable pipefail
 
-# Configuration
-# Root directory for backups
-BACKUP_ROOT="/mnt/data/backup/gotosocial"
-# Path to GoToSocial configuration file
-GTS_CONFIG="/etc/gotosocial/config.yaml"
-# Path to the GoToSocial SQLite database
-GTS_DB="/var/lib/gotosocial/database.sqlite"
-# Retention period in days
-RETENTION_DAYS=28
+# Default configuration
+CONFIG_DEFAULTS=(
+    'BACKUP_ROOT=/mnt/data/backup/gotosocial'
+    'GTS_CONFIG=/etc/gotosocial/config.yaml'
+    'GTS_DB=/var/lib/gotosocial/database.sqlite'
+    'RETENTION_DAYS=28'
+    'PASSPHRASE='
+    'NTFY_SERVER='
+    'NTFY_TOPIC='
+)
+
+# Load configuration from file if it exists
+CONFIG_FILE="/etc/gotosocial-backup.conf"
+if [ -f "${CONFIG_FILE}" ]; then
+    # shellcheck source=/dev/null
+    source "${CONFIG_FILE}"
+fi
+
+# Set defaults for any unset variables
+for default in "${CONFIG_DEFAULTS[@]}"; do
+    var_name="${default%%=*}"
+    var_default="${default#*=}"
+    # Only set if not already set by environment or config file
+    if [ -z "${!var_name}" ]; then
+        declare "${var_name}=${var_default}"
+    fi
+done
 
 # Ensure script is run as root
 if [ "$(id -u)" -ne 0 ]; then
@@ -34,6 +53,47 @@ EXPORT_TEMP="/tmp/gotosocial_export_${STAMP}.json"
 LATEST_LINK="${BACKUP_ROOT}/latest"
 LOGFILE="${BACKUP_ROOT}/backup.log"
 LOGLINES=4096
+
+# Function to compress and optionally encrypt a file
+function process_backup() {
+    local input_file="${1}"
+    local remove_source="${2:-true}"
+
+    if [ ! -f "${input_file}" ]; then
+        handle_error "Input file ${input_file} not found"
+    fi
+
+    if [ -n "${PASSPHRASE}" ]; then
+        # Compress and encrypt in one pipeline
+        if gzip -c "${input_file}" | openssl enc -aes-256-cbc -salt -pbkdf2 -out "${input_file}.gz.enc" -pass "pass:${PASSPHRASE}"; then
+            log_message "Successfully compressed and encrypted ${input_file}"
+            # Remove the source file if requested
+            if [ "${remove_source}" = "true" ]; then
+                rm -f "${input_file}"
+            fi
+            return 0
+        else
+            handle_error "Failed to compress and encrypt ${input_file}"
+        fi
+    else
+        # Just compress the file
+        if gzip -f "${input_file}"; then
+            log_message "Successfully compressed ${input_file}"
+            return 0
+        else
+            handle_error "Failed to compress ${input_file}"
+        fi
+    fi
+}
+
+# Function to get the expected backup extension
+function get_backup_extension() {
+    if [ -n "${PASSPHRASE}" ]; then
+        echo "gz.enc"
+    else
+        echo "gz"
+    fi
+}
 
 # Function to rotate log file
 function rotate_log() {
@@ -59,6 +119,14 @@ function gts_admin() {
     fi
 }
 
+# Simple notification function
+function send_ntfy() {
+    local error_message="${1}"
+    if [ -n "${NTFY_SERVER}" ] && [ -n "${NTFY_TOPIC}" ]; then
+        curl -d "${error_message}" "https://${NTFY_SERVER}/${NTFY_TOPIC}"
+    fi
+}
+
 # Function to log messages
 function log_message() {
     echo "$(date '+%Y/%m/%d %H:%M:%S') ${1}" | tee -a "${LOGFILE}"
@@ -66,7 +134,8 @@ function log_message() {
 
 # Function to handle errors
 function handle_error() {
-    log_message "ERROR: ${1}" | tee -a "${LOGFILE}"
+    log_message "ERROR: ${1}"
+    send_ntfy "GoToSocial backup failed: ${1}"
     exit 1
 }
 
@@ -75,13 +144,19 @@ function cleanup() {
     [ -f "${TMPFILE}" ] && rm -f "${TMPFILE}"
     [ -f "${EXPORT_TEMP}" ] && rm -f "${EXPORT_TEMP}"
     log_message "Cleanup completed"
-    # Rotate log file at the end of backup
     rotate_log
 }
 trap cleanup EXIT
 
 # Rotate log file at the start of backup
 rotate_log
+
+# Log encryption status
+if [ -n "${PASSPHRASE}" ]; then
+    log_message "Encryption enabled - backups will be encrypted"
+else
+    log_message "Encryption disabled - backups will only be compressed"
+fi
 
 # Check if running under sudo and warn about potential environment issues
 if [ -n "${SUDO_USER}" ]; then
@@ -117,12 +192,8 @@ if gts_admin "export" "--path" "${EXPORT_TEMP}"; then
     # Move export file to backup directory
     if mv "${EXPORT_TEMP}" "${EXPORT_BACKUP}"; then
         log_message "Export file moved to backup directory"
-        # Compress the export file
-        if gzip -f "${EXPORT_BACKUP}"; then
-            log_message "Export file compressed successfully"
-        else
-            handle_error "Failed to compress export file"
-        fi
+        # Process the export file
+        process_backup "${EXPORT_BACKUP}"
     else
         handle_error "Failed to move export file to backup directory"
     fi
@@ -143,13 +214,8 @@ if sqlite3 "${GTS_DB}" "VACUUM INTO '${DB_BACKUP}'"; then
 
     if [ "${INTEGRITY_CHECK}" = "ok" ]; then
         log_message "Database integrity check passed"
-        # Compress the database backup
-        log_message "Compressing database backup"
-        if gzip -f "${DB_BACKUP}"; then
-            log_message "Database compressed successfully"
-        else
-            handle_error "Failed to compress database backup"
-        fi
+        # Process the database backup
+        process_backup "${DB_BACKUP}"
     else
         handle_error "Database integrity check failed: ${INTEGRITY_CHECK}"
     fi
@@ -194,26 +260,29 @@ if [ -s "${TMPFILE}" ]; then
         BACKUP_SIZE=$(du -sh "${BACKUP_DIR}" | cut -f 1)
         log_message "Total backup size: ${BACKUP_SIZE}"
 
-        # Verify the backup contents before cleaning up old backups
+        # Get the expected backup extension
+        BACKUP_EXT=$(get_backup_extension)
+
+        # Verify the backup contents
         log_message "Verifying backup contents"
-        if [ -f "${DB_BACKUP}.gz" ]; then
-            log_message "✓ Database backup present and compressed"
+        if [ -f "${DB_BACKUP}.${BACKUP_EXT}" ]; then
+            log_message "✓ Database backup present and processed"
         else
-            handle_error "Database backup missing or not compressed"
+            handle_error "Database backup missing or not processed"
         fi
 
-        if [ -f "${EXPORT_BACKUP}.gz" ]; then
-            log_message "✓ GoToSocial export present and compressed"
+        if [ -f "${EXPORT_BACKUP}.${BACKUP_EXT}" ]; then
+            log_message "✓ GoToSocial export present and processed"
         else
-            handle_error "GoToSocial export missing or not compressed"
+            handle_error "GoToSocial export missing or not processed"
         fi
 
-        # Count all files excluding the database backup and its compressed version
-        MEDIA_COUNT=$(find "${BACKUP_DIR}" -type f ! -name "$(basename "${DB_BACKUP}")" ! -name "$(basename "${DB_BACKUP}.gz")" ! -name "$(basename "${EXPORT_BACKUP}")" ! -name "$(basename "${EXPORT_BACKUP}.gz")" | wc -l)
+        # Count media files
+        MEDIA_COUNT=$(find "${BACKUP_DIR}" -type f ! -name "*.${BACKUP_EXT}" | wc -l)
         log_message "✓ Files backed up: ${MEDIA_COUNT}"
 
         # Only proceed with cleanup and latest link update if verification passed
-        if [ -f "${DB_BACKUP}.gz" ] && [ -f "${EXPORT_BACKUP}.gz" ] && [ "${MEDIA_COUNT}" -gt 0 ]; then
+        if [ -f "${DB_BACKUP}.${BACKUP_EXT}" ] && [ -f "${EXPORT_BACKUP}.${BACKUP_EXT}" ] && [ "${MEDIA_COUNT}" -gt 0 ]; then
             log_message "Backup verification completed successfully"
 
             # Update the 'latest' symlink
