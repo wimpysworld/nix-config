@@ -9,6 +9,7 @@ let
       gnugrep
       gotosocial
       gzip
+      openssl
       rsync
       sqlite
     ];
@@ -33,6 +34,13 @@ lib.mkIf (lib.elem hostname installOn) {
         owner = "gotosocial";
         path = "/mnt/data/gotosocial/secrets.env";
         sopsFile = ../../../../secrets/gotosocial.yaml;
+      };
+      gotosocial-backup = {
+        group = "root";
+        mode = "0640";
+        owner = "root";
+        path = "/etc/gotosocial-backup.conf";
+        sopsFile = ../../../../secrets/gotosocial-backup.yaml;
       };
     };
   };
