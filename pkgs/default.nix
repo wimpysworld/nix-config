@@ -25,8 +25,9 @@ pkgs: {
   obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
   obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
 
-  # Local packages to prevent unintended upgrades
+  # Local packages to prevent unintended upgrades or carrying patches
   gotosocial = pkgs.callPackage ./gotosocial { };
+  owncast = pkgs.callPackage ./owncast { };
 
   # Non-redistributable packages
   cider = pkgs.callPackage ./cider { };
