@@ -46,7 +46,8 @@ lib.mkIf isInstall {
       ++ lib.optionals config.hardware.amdgpu.opencl.enable [
         rocmPackages.rocminfo
         rocmPackages.rocm-smi
-      ];
+      ]
+      ++ lib.optionals hasIntelGPU [ intel-gpu-tools ];
   };
   hardware = {
     amdgpu = lib.mkIf hasAmdGPU { opencl.enable = isInstall; };
