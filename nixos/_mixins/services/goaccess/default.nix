@@ -1,6 +1,6 @@
 { config, hostname, lib, pkgs, username, ... }:
 let
-  installOn = [ "malak" ];
+  installOn = [ "malak" "phasma" "vader" ];
 in
 lib.mkIf (lib.elem hostname installOn) {
   environment = {

@@ -1,6 +1,9 @@
 { config, hostname, lib, pkgs, ... }:
 let
-  installOn = [ "malak" ];
+  installOn = prodOn ++ testOn;
+  prodOn = [ "malak" ];
+  testOn = [ "phasma" "vader" "revan" "tanis" ];
+  listen = if lib.elem hostname prodOn then "127.0.0.1" else "0.0.0.0";
 in
 lib.mkIf (lib.elem hostname installOn) {
   environment = {
@@ -13,7 +16,7 @@ lib.mkIf (lib.elem hostname installOn) {
     ];
   };
   services = {
-    caddy = lib.mkIf config.services.owncast.enable {
+    caddy = lib.mkIf (config.services.owncast.enable && lib.elem hostname prodOn) {
       # Reverse proxy to the GoToSocial instance
       virtualHosts."wimpysworld.live" = {
         extraConfig = ''
@@ -39,6 +42,7 @@ lib.mkIf (lib.elem hostname installOn) {
     };
     owncast = {
       enable = true;
+      inherit listen;
       openFirewall = true;
       port = 8383;
     };
