@@ -65,4 +65,9 @@ lib.mkIf (lib.elem hostname installOn) {
       RandomizedDelaySec = 300;
     };
   };
+
+  # https://owncast.online/docs/viewers/
+  systemd.tmpfiles.rules = lib.optionals config.services.geoipupdate.enable [
+    "L+ ${config.services.owncast.dataDir}/data/GeoLite2-City.mmdb - - - - ${config.services.geoipupdate.settings.DatabaseDirectory}/GeoLite2-City.mmdb"
+  ];
 }
