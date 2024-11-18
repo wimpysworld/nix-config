@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
-    - uses: DeterminateSystems/nix-installer-action@v15
+    - uses: DeterminateSystems/nix-installer-action@v16
     - uses: DeterminateSystems/magic-nix-cache-action@v8
     - name: Build 👷 ISO 💿️
       run: |
