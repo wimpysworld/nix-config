@@ -66,8 +66,11 @@ lib.mkIf (lib.elem hostname installOn) {
     };
   };
 
-  # https://owncast.online/docs/viewers/
-  systemd.tmpfiles.rules = lib.optionals config.services.geoipupdate.enable [
+  systemd.tmpfiles.rules = [
+    # Create the directory for the shader cache required by VA-API on AMD
+    "d /var/empty/.cache 0777 nobody users"
+  ] ++ lib.optionals config.services.geoipupdate.enable [
+    # https://owncast.online/docs/viewers/
     "L+ ${config.services.owncast.dataDir}/data/GeoLite2-City.mmdb - - - - ${config.services.geoipupdate.settings.DatabaseDirectory}/GeoLite2-City.mmdb"
   ];
 }

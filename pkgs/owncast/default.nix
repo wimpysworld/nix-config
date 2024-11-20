@@ -4,46 +4,36 @@
 , nixosTests
 , bash
 , which
-, ffmpeg
+, ffmpeg-full
 , makeBinaryWrapper
 }:
 let
-  version = "0.1.3";
+  version = "0.2.0";
 in buildGoModule {
   pname = "owncast";
   inherit version;
   src = fetchFromGitHub {
-    owner = "flexiondotorg";
+    owner = "owncast";
     repo = "owncast";
-
-    # owncast/0.1.3
     #rev = "v${version}";
-    #hash = "sha256-VoItAV/8hzrqj4bIgMum9Drr/kAafH63vXw3GO6nSOc=";
 
-    # ffmpeg6 testing
-    #rev = "gek/ffmpeg-6";
-    #hash = "sha256-Y5vfcNZsi+BRhFncR8rD4BK4lR4kgcIO+iAElXBBzQw=";
-
-    # flexiondotorg/ffmpeg6
-    rev = "ffmpeg6";
-    hash = "sha256-kSLYlC49g1S6lpj8NsfYzO3Q32J50si9STCJuQWviYA=";
+    rev = "49c07594fba75e7c098cb4914b8668b9fc081f8d";
+    hash = "sha256-YUi/M9fqwhC75n/YKooj5RqfMy+kdon1jsBvTMKvPw4=";
   };
-  # owncast/0.1.3
-  #vendorHash = "sha256-JitvKfCLSravW5WRE0QllJTrRPLaaBg1GxJi3kmtiIU=";
-
-  # owncast/develop
-  #vendorHash = "sha256-Mp7epsFqlJqBDcE61tS6eNSXiwt6rzMZdh3nJ33L3eA=";
-
-  # flexiondotorg/ffmpeg6
   vendorHash = "sha256-yxWXh16vZIND9QB3xb0G5OOVhA7iy2dWNUzQXNi6gEk=";
 
-  propagatedBuildInputs = [ ffmpeg ];
+  patches = [
+    ./4022.diff   # VA-API
+    ./4028.diff   # Quicksync
+  ];
+
+  propagatedBuildInputs = [ ffmpeg-full ];
 
   nativeBuildInputs = [ makeBinaryWrapper ];
 
   postInstall = ''
     wrapProgram $out/bin/owncast \
-      --prefix PATH : ${lib.makeBinPath [ bash which ffmpeg ]}
+      --prefix PATH : ${lib.makeBinPath [ bash which ffmpeg-full ]}
   '';
 
   installCheckPhase = ''
