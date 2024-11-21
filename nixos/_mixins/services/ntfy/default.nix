@@ -12,6 +12,17 @@ lib.mkIf (lib.elem hostname installOn) {
       ntfy-sh
     ];
   };
+  sops = {
+    secrets = {
+      ntfy-alert-env = {
+        group = "root";
+        mode = "0644";
+        owner = "root";
+        path = "/etc/ntfy-alert.env";
+        sopsFile = ../../../../secrets/ntfy-alert.yaml;
+      };
+    };
+  };
   services = {
     # https://docs.ntfy.sh/config/#__tabbed_11_4
     # https://blog.alexsguardian.net/posts/2023/09/12/selfhosting-ntfy/
