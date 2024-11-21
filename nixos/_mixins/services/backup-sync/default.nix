@@ -24,12 +24,12 @@ lib.mkIf (lib.elem hostname installOn) {
   };
   sops = {
     secrets = {
-      ntfy-alert-env = {
+      backup-sync-env = {
         group = "root";
         mode = "0644";
         owner = "root";
-        path = "/etc/ntfy-alert.env";
-        sopsFile = ../../../../secrets/ntfy-alert.yaml;
+        path = "/etc/backup-sync.env";
+        sopsFile = ../../../../secrets/backup-sync.yaml;
       };
     };
   };

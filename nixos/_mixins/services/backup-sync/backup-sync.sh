@@ -23,9 +23,9 @@ mkdir -p "${LOG_DIR}"
 function send_ntfy() {
     local error_message="${1}"
 
-    if [ -e "/etc/ntfy-alert.env" ]; then
+    if [ -e "/etc/backup-sync.env" ]; then
         # shellcheck disable=1091
-        source "/etc/ntfy-alert.env"
+        source "/etc/backup-sync.env"
         if [ -n "${NTFY_SERVER}" ] && [ -n "${NTFY_TOPIC}" ]; then
             curl -d "${error_message}" "https://${NTFY_SERVER}/${NTFY_TOPIC}"
         fi
