@@ -1,0 +1,33 @@
+diff --git a/core/transcoder/transcoder.go b/core/transcoder/transcoder.go
+index 36a5587a7f..d02b2f81e1 100644
+--- a/core/transcoder/transcoder.go
++++ b/core/transcoder/transcoder.go
+@@ -203,8 +203,9 @@ func (t *Transcoder) getString() string {
+ 		"-hide_banner",
+ 		"-loglevel warning",
+ 		t.codec.GlobalFlags(),
+-		"-fflags +genpts", // Generate presentation time stamp if missing
+-		"-flags +cgop",    // Force closed GOPs
++		"-fflags +nobuffer+genpts+igndts", // Do not buffer frame if possible. Generate presentation time stamp if missing
++		"-flags +global_header+cgop",      // Reduce header overhead by sending out-of-band. Force closed GOPs
++
+ 		"-i ", t.input,
+ 
+ 		t.getVariantsString(),
+@@ -221,6 +222,7 @@ func (t *Transcoder) getString() string {
+ 		// Video settings
+ 		t.codec.ExtraArguments(),
+ 		"-pix_fmt", t.codec.PixelFormat(),
++		"-movflags", "+faststart", // Stream optimization by moving metadata and offset information to the front of the file
+ 		"-sc_threshold", "0", // Disable scene change detection for creating segments
+ 
+ 		// Filenames
+@@ -230,7 +232,7 @@ func (t *Transcoder) getString() string {
+ 		"-max_muxing_queue_size", "400", // Workaround for Too many packets error: https://trac.ffmpeg.org/ticket/6375?cversion=0
+ 
+ 		"-method PUT",           // HLS results sent back to us will be over PUTs
+-		"-http_persistent", "1", // Ensures persistent HTTP connections
++		"-http_persistent", "0", // Close connection right after the data is transferred without waiting for an HTTP response
+ 
+ 		localListenerAddress + "/%v/stream.m3u8", // Send HLS playlists back to us over HTTP
+ 	}
