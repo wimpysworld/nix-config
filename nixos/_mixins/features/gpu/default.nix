@@ -51,21 +51,13 @@ lib.mkIf isInstall {
   };
   hardware = {
     amdgpu = lib.mkIf hasAmdGPU { opencl.enable = isInstall; };
-    opengl = {
+    graphics = {
       enable = true;
-      driSupport = true;
-      driSupport32Bit = lib.mkForce isInstall;
+      enable32Bit = lib.mkForce isInstall;
       extraPackages = with pkgs; lib.optionals hasIntelGPU [ intel-compute-runtime ];
     };
     nvidia = lib.mkIf hasNvidiaGPU { nvidiaSettings = lib.mkDefault isWorkstation; };
   };
-  # TODO: upgrade-hint; Change to this for >= 24.11
-  #hardware
-  #  graphics = {
-  #    enable = true;
-  #    enable32Bit = lib.mkForce isInstall;
-  #  };
-  #};
 
   # Allow power and thermal control for NVIDIA GPUs
   services.xserver = lib.mkIf hasNvidiaGPU {
@@ -84,5 +76,5 @@ lib.mkIf isInstall {
     wantedBy = [ "multi-user.target" ];
   };
 
-  users.users.${username}.extraGroups = lib.optional config.hardware.opengl.enable "video";
+  users.users.${username}.extraGroups = lib.optional config.hardware.graphics.enable "video";
 }

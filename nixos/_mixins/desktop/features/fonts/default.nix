@@ -51,8 +51,8 @@
 
     fontconfig = {
       antialias = true;
-      # Enable 32-bit support if driSupport32Bit is true
-      cache32Bit = lib.mkForce config.hardware.opengl.driSupport32Bit;
+      # Enable 32-bit support
+      cache32Bit = lib.mkForce config.hardware.graphics.enable32Bit;
       defaultFonts = {
         serif = [
           "Source Serif"
