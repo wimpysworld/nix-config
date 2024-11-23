@@ -276,7 +276,7 @@ in
         "--header"
       ];
       git = true;
-      icons = true;
+      icons = "auto";
     };
     fish = {
       catppuccin.enable = true;
