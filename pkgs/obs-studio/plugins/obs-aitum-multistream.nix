@@ -9,13 +9,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-aitum-multistream";
-  version = "1.0.3";
+  version = "1.0.5";
 
   src = fetchFromGitHub {
     owner = "Aitum";
     repo = "obs-aitum-multistream";
     rev = version;
-    sha256 = "sha256-A1TXhwJhCLVSGkY8HeZW4e1efGILJkfE0FxEEVq3XA4=";
+    sha256 = "sha256-2RQBUCRNFiPdkIO7fIvKBHA8hezspxpjKWmMFpR4Flg=";
   };
 
   nativeBuildInputs = [ cmake ];
