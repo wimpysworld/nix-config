@@ -46,7 +46,7 @@
     ];
     swraid = {
       enable = true;
-      mdadmConf = "PROGRAM=true";
+      mdadmConf = "MAILADDR=${username}@wimpys.world";
     };
   };
 
