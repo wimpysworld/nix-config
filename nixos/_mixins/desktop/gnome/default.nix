@@ -29,7 +29,7 @@
         gnomeExtensions.logo-menu
         gnomeExtensions.wireless-hid
         gnomeExtensions.wifi-qrcode
-        unstable.gnomeExtensions.workspace-switcher-manager
+        gnomeExtensions.workspace-switcher-manager
       ]
       ++ lib.optionals (username == "martin" && isInstall) [
         gnome-extension-manager
