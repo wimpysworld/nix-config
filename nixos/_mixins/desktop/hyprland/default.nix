@@ -25,9 +25,9 @@
         libheif
         libheif.out
         monitorets
-        gnome.gnome-font-viewer
-        gnome.nautilus  # file manager
-        gnome.zenity
+        gnome-font-viewer
+        nautilus  # file manager
+        zenity
         polkit_gnome
         wdisplays       # display configuration
         wlr-randr

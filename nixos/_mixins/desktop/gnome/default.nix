@@ -11,11 +11,11 @@
     gnome.excludePackages = with pkgs; [
       baobab
       gnome-text-editor
-      gnome.geary
-      gnome.gnome-system-monitor
-      gnome.epiphany
-      gnome.gnome-music
-      gnome.totem
+      geary
+      gnome-system-monitor
+      epiphany
+      gnome-music
+      totem
     ];
 
     systemPackages =
@@ -39,7 +39,7 @@
       ]
       ++ lib.optionals isInstall [
         eyedropper
-        gnome.gnome-tweaks
+        gnome-tweaks
         gnomeExtensions.freon
       ];
   };
@@ -302,15 +302,15 @@
       auth       required                    ${pkgs.fprintd}/lib/security/pam_fprintd.so
       auth       optional                    pam_permit.so
       auth       required                    pam_env.so
-      auth       [success=ok default=1]      ${pkgs.gnome.gdm}/lib/security/pam_gdm.so
-      auth       optional                    ${pkgs.gnome.gnome-keyring}/lib/security/pam_gnome_keyring.so
+      auth       [success=ok default=1]      ${pkgs.gdm}/lib/security/pam_gdm.so
+      auth       optional                    ${pkgs.gnome-keyring}/lib/security/pam_gnome_keyring.so
 
       account    include                     login
 
       password   required                    pam_deny.so
 
       session    include                     login
-      session    optional                    ${pkgs.gnome.gnome-keyring}/lib/security/pam_gnome_keyring.so auto_start
+      session    optional                    ${pkgs.gnome-keyring}/lib/security/pam_gnome_keyring.so auto_start
     '';
   };
   security.pam.services.gdm.enableGnomeKeyring = true;
@@ -324,7 +324,7 @@
       tracker.enable = true;
       tracker-miners.enable = true;
     };
-    udev.packages = with pkgs; [ gnome.gnome-settings-daemon ];
+    udev.packages = with pkgs; [ gnome-settings-daemon ];
     xserver = {
       enable = true;
       displayManager = {

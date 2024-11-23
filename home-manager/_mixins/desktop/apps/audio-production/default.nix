@@ -403,7 +403,7 @@ lib.mkIf (lib.elem hostname installOn) {
   };
 
   home.packages = with pkgs; [
-    gnome.gnome-sound-recorder
+    gnome-sound-recorder
     audacity
   ];
 

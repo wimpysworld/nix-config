@@ -20,7 +20,7 @@
       with pkgs;
       lib.optionals isInstall [
         evolutionWithPlugins
-        gnome.gucharmap
+        gucharmap
         gnome-firmware
       ];
   };
