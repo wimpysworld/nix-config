@@ -109,7 +109,7 @@ in
             "poweroff"
           ];
         };
-        GTK = {
+        GTK = lib.mkDefault {
           application_prefer_dark_theme = true;
           cursor_theme_name = "catppuccin-mocha-blue-cursors";
           font_name = "Work Sans 16";
