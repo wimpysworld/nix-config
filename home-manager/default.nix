@@ -249,7 +249,8 @@ in
     };
     cava = {
       catppuccin.enable = true;
-      enable = isLinux;
+      # TODO: Fix and enable
+      enable = false;
     };
     dircolors = {
       enable = true;
