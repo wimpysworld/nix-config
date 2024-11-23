@@ -39,7 +39,6 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
     homepage-dashboard = {
       enable = true;
       environmentFile = config.sops.secrets.homepage-env.path;
-      package = pkgs.unstable.homepage-dashboard;
       services = [
         {
           Services = [

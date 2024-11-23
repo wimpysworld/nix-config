@@ -91,7 +91,7 @@ in
         girouette # Modern Unix weather
         gocryptfs # Terminal encrypted filesystem
         gping # Modern Unix `ping`
-        unstable.git-igitt # Modern Unix git log/graph
+        git-igitt # Modern Unix git log/graph
         h # Modern Unix autojump for git projects
         hexyl # Modern Unix `hexedit`
         hr # Terminal horizontal rule

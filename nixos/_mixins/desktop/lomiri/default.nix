@@ -17,8 +17,8 @@
         lomiri.lomiri-camera-app
         lomiri.lomiri-calculator-app
         lomiri.teleports
-        unstable.lomiri.lomiri-gallery-app
-        unstable.lomiri.lomiri-docviewer-app
+        lomiri.lomiri-gallery-app
+        lomiri.lomiri-docviewer-app
       ];
   };
 

@@ -28,7 +28,7 @@ in
   ];
   home.packages = with pkgs; lib.optionals isLinux [
     glide-media-player      # video player
-    unstable.decibels       # audio player
+    decibels                # audio player
     gnome.gnome-calculator  # calcualtor
     loupe                   # image viewer
     papers                  # document viewer

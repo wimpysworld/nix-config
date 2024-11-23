@@ -31,7 +31,7 @@
         polkit_gnome
         wdisplays       # display configuration
         wlr-randr
-        unstable.catppuccin-cursors
+        catppuccin-cursors
       ];
   };
 
