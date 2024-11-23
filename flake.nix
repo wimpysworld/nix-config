@@ -65,6 +65,7 @@
       helper = import ./lib { inherit inputs outputs stateVersion; };
     in
     {
+      # home-manager build --flake $HOME/Zero/nix-config -L
       # home-manager switch -b backup --flake $HOME/Zero/nix-config
       # nix run nixpkgs#home-manager -- switch -b backup --flake "${HOME}/Zero/nix-config"
       homeConfigurations = {
@@ -147,7 +148,7 @@
       };
       nixosConfigurations = {
         # .iso images
-        #  - nix build .#nixosConfigurations.{iso-console|iso-desktop}.config.system.build.isoImage
+        #  - nix build .#nixosConfigurations.{iso-console|iso-gnome}.config.system.build.isoImage
         iso-console = helper.mkNixos {
           hostname = "iso-console";
           username = "nixos";
