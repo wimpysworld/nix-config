@@ -1,7 +1,8 @@
 {
   description = "Wimpy's NixOS, nix-darwin and Home Manager Configuration";
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/nixos/nixpkgs/0.2405.*";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    #nixpkgs.url = "https://flakehub.com/f/nixos/nixpkgs/0.2411.*";
     nixpkgs-unstable.url = "https://flakehub.com/f/DeterminateSystems/nixpkgs-weekly/0";
 
     auto-cpufreq.url = "github:AdnanHodzic/auto-cpufreq";
@@ -12,7 +13,7 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
-    home-manager.url = "github:nix-community/home-manager/release-24.05";
+    home-manager.url = "github:nix-community/home-manager/release-24.11";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
@@ -60,7 +61,7 @@
     let
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-      stateVersion = "24.05";
+      stateVersion = "24.11";
       helper = import ./lib { inherit inputs outputs stateVersion; };
     in
     {
