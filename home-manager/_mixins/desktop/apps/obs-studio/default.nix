@@ -34,37 +34,39 @@ lib.mkIf (lib.elem hostname installOn) {
     enable = true;
     plugins = with pkgs.obs-studio-plugins; [
       advanced-scene-switcher
-      obs-aitum-multistream
       obs-3d-effect
-      obs-advanced-masks
       obs-command-source
       obs-composite-blur
-      obs-dvd-screensaver
-      obs-freeze-filter
       obs-gradient-source
       obs-gstreamer
-      obs-markdown
       obs-move-transition
       obs-pipewire-audio-capture
-      obs-rgb-levels
-      obs-scale-to-sound
-      obs-scene-as-transition
       obs-shaderfilter
-      obs-source-clone
       obs-source-record
       obs-source-switcher
-      obs-stroke-glow-shadow
       obs-teleport
       obs-text-pthread
-      obs-transition-table
-      obs-urlsource
       obs-vaapi
-      obs-vertical-canvas
       obs-vintage-filter
-      obs-webkitgtk
       obs-websocket
-      pixel-art
       waveform
+    ] ++ [
+      pkgs.local-plugins.obs-advanced-masks
+      # FTBFS - Needs a find_qt patch
+      # https://github.com/sorayuki/obs-multi-rtmp/commit/a1289fdef404b08a7acbbf0d6d0f93da4c9fc087.patch
+      #pkgs.local-plugins.obs-aitum-multistream     #FTBFS
+      pkgs.local-plugins.obs-dvd-screensaver
+      pkgs.local-plugins.obs-markdown
+      pkgs.local-plugins.obs-rgb-levels
+      pkgs.local-plugins.obs-scale-to-sound
+      pkgs.local-plugins.obs-scene-as-transition
+      pkgs.local-plugins.obs-source-clone
+      pkgs.local-plugins.obs-stroke-glow-shadow
+      pkgs.local-plugins.obs-transition-table
+      #pkgs.local-plugins.obs-urlsource             #FTBFS
+      pkgs.local-plugins.obs-vertical-canvas
+      pkgs.local-plugins.obs-webkitgtk
+      pkgs.local-plugins.pixel-art
     ];
   };
 

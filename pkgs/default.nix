@@ -9,8 +9,7 @@ pkgs: {
   heynote = pkgs.callPackage ./heynote { };
   jan = pkgs.callPackage ./jan { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
-  obs-studio = pkgs.qt6Packages.callPackage ./obs-studio { };
-  obs-studio-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
+  local-plugins = pkgs.recurseIntoAttrs (pkgs.callPackage ./obs-studio/plugins { });
 
   # Local packages to prevent unintended upgrades or carrying patches
   gotosocial = pkgs.callPackage ./gotosocial { };
