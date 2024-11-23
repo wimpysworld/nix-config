@@ -87,7 +87,7 @@ in
     ];
   };
 
-  config.services.xserver = {
+  config.services  = {
     displayManager.autoLogin = lib.mkIf isWorkstationISO { user = "${username}"; };
   };
 
