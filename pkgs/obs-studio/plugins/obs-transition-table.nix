@@ -20,6 +20,10 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ cmake ];
   buildInputs = [ obs-studio qtbase ];
 
+  cmakeFlags = [
+    (lib.cmakeOptionType "string" "CMAKE_CXX_FLAGS" "-Wno-error=deprecated-declarations")
+  ];
+
   dontWrapQtApps = true;
 
   postInstall = ''
