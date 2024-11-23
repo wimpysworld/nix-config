@@ -51,22 +51,22 @@ lib.mkIf (lib.elem hostname installOn) {
       obs-websocket
       waveform
     ] ++ [
-      pkgs.local-plugins.obs-advanced-masks
+      pkgs.local-obs.obs-advanced-masks
       # FTBFS - Needs a find_qt patch
       # https://github.com/sorayuki/obs-multi-rtmp/commit/a1289fdef404b08a7acbbf0d6d0f93da4c9fc087.patch
-      #pkgs.local-plugins.obs-aitum-multistream     #FTBFS
-      pkgs.local-plugins.obs-dvd-screensaver
-      pkgs.local-plugins.obs-markdown
-      pkgs.local-plugins.obs-rgb-levels
-      pkgs.local-plugins.obs-scale-to-sound
-      pkgs.local-plugins.obs-scene-as-transition
-      pkgs.local-plugins.obs-source-clone
-      pkgs.local-plugins.obs-stroke-glow-shadow
-      pkgs.local-plugins.obs-transition-table
-      #pkgs.local-plugins.obs-urlsource             #FTBFS
-      pkgs.local-plugins.obs-vertical-canvas
-      pkgs.local-plugins.obs-webkitgtk
-      pkgs.local-plugins.pixel-art
+      #pkgs.local-obs.obs-aitum-multistream     #FTBFS
+      pkgs.local-obs.obs-dvd-screensaver
+      pkgs.local-obs.obs-markdown
+      pkgs.local-obs.obs-rgb-levels
+      pkgs.local-obs.obs-scale-to-sound
+      pkgs.local-obs.obs-scene-as-transition
+      pkgs.local-obs.obs-source-clone
+      pkgs.local-obs.obs-stroke-glow-shadow
+      pkgs.local-obs.obs-transition-table
+      #pkgs.local-obs.obs-urlsource             #FTBFS
+      pkgs.local-obs.obs-vertical-canvas
+      pkgs.local-obs.obs-webkitgtk
+      pkgs.local-obs.pixel-art
     ];
   };
 
