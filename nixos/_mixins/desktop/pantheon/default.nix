@@ -24,6 +24,7 @@
     systemPackages =
       with pkgs;
       lib.optionals isInstall [
+        pantheon-tweaks
         pick-colour-picker
       ];
   };
@@ -258,7 +259,6 @@
     ];
     evince.enable = false;
     gnome-disks.enable = isInstall;
-    pantheon-tweaks.enable = isInstall;
     seahorse.enable = isInstall;
   };
 
