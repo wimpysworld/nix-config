@@ -321,8 +321,8 @@
       games.enable = false;
       gnome-browser-connector.enable = isInstall;
       gnome-online-accounts.enable = isInstall;
-      tracker.enable = true;
-      tracker-miners.enable = true;
+      tinysparql.enable = true;
+      localsearch.enable = true;
     };
     udev.packages = with pkgs; [ gnome-settings-daemon ];
     xserver = {
