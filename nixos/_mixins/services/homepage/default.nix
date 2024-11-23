@@ -329,7 +329,7 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
             label = "Weather";
             latitude = "51.254383";
             longitude = "-0.939525";
-            timezone = "Europe/London";
+            #timezone = "Europe/London";
             units = "metric";
           };
         }
