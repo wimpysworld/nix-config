@@ -10,7 +10,7 @@ in
 lib.mkIf (builtins.elem username installFor) {
   environment.systemPackages = with pkgs; [
     cpu-x
-    gnome.dconf-editor
+    dconf-editor
     pika-backup
     squirreldisk
     usbimager

@@ -451,9 +451,9 @@ in
           "custom/calendar" = {
             format = "<big>󰔠</big>";
             max-length = 2;
-            on-click = "${lib.getExe pkgs.gnome.gnome-calendar}";
+            on-click = "${lib.getExe pkgs.gnome-calendar}";
             on-click-middle = "${lib.getExe pkgs.mousam}";
-            on-click-right = "${lib.getExe pkgs.gnome.gnome-clocks}";
+            on-click-right = "${lib.getExe pkgs.gnome-clocks}";
             tooltip-format = "󰸗  Calendar (left-click)\n󰼳  Weather (middle-click)\n󱎫  Clock (right-click)";
           };
           #https://haseebmajid.dev/posts/2024-03-15-til-how-to-get-swaync-to-play-nice-with-waybar/

@@ -8,7 +8,7 @@
   ...
 }:
 let
-  scanningApp = if (desktop == "plasma") then pkgs.kdePackages.skanpage else pkgs.gnome.simple-scan;
+  scanningApp = if (desktop == "plasma") then pkgs.kdePackages.skanpage else pkgs.simple-scan;
 in
 lib.mkIf isInstall {
   # Only enables auxilary scanning support/packages if
