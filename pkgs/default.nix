@@ -16,6 +16,7 @@ pkgs: {
   zoom-us = pkgs.callPackage ./zoom-us { };
 
   # Local packages being prepped for upstreaming
+  davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
