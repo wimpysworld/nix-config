@@ -7,8 +7,8 @@ lib.mkIf isLinux {
   home = {
     packages = with pkgs; [
       (catppuccin-kvantum.override {
-        accent = "Blue";
-        variant = "Mocha";
+        accent = "blue";
+        variant = "mocha";
       })
       libsForQt5.qtstyleplugin-kvantum
       libsForQt5.qt5ct
