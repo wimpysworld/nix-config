@@ -42,8 +42,8 @@ in
     pipewire = {
       enable = true;
       alsa.enable = true;
-      # Enable 32-bit support if driSupport32Bit is true
-      alsa.support32Bit = lib.mkForce config.hardware.opengl.driSupport32Bit;
+      # Enable 32-bit support
+      alsa.support32Bit = lib.mkForce config.hardware.graphics.enable32Bit;
       jack.enable = false;
       pulse.enable = true;
       wireplumber = {
