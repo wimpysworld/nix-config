@@ -21,7 +21,7 @@
           buttons-grid.actions = [
             {
               label = "󰹑";
-              command = "${lib.getExe pkgs.grimblast} save screen - | ${lib.getExe pkgs.swappy} -f -";
+              command = "${lib.getExe pkgs.hyprshot} --mode output --raw | ${lib.getExe pkgs.satty} --filename -";
             }
             {
               label = "󱩌";
