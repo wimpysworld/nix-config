@@ -249,7 +249,8 @@ in
     };
     cava = {
       catppuccin.enable = true;
-      # TODO: Fix and enable
+      # TODO: Enable when this is released:
+      # https://github.com/NixOS/nixpkgs/pull/356667
       enable = false;
     };
     dircolors = {
