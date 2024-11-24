@@ -533,9 +533,9 @@ in
         "float, class:(xdg-desktop-portal-gtk)"
         "center, class:(xdg-desktop-portal-gtk)"
         "pin, class:(xdg-desktop-portal-gtk)"
-        "float, class:^(code)$"
-        "center, class:^(code)$"
-        "pin, class:^(code)$"
+        "float, class:^(code)$, initialTitle:^((?!Visual Studio Code).)*$"
+        "center, class:^(code)$, initialTitle:^((?!Visual Studio Code).)*$"
+        "pin, class:^(code)$, initialTitle:^((?!Visual Studio Code).)*$"
 
         # Apps that should be floating
         "float, title:(Maestral Settings|MainPicker|overskride|Pipewire Volume Control|Trayscale)"
