@@ -427,14 +427,16 @@ in
         fullscreen_opacity = 1.0;
         dim_inactive = true;
         dim_strength = 0.025;
-        # Subtle shadows
-        "col.shadow" = "rgba(11111baf)";
-        "col.shadow_inactive" = "rgba(1e1e2eaf)";
-        drop_shadow = true;
-        shadow_range = 304;
-        shadow_render_power = 4;
-        shadow_offset = "0, 42";
-        shadow_scale = 0.9;
+        shadow = {
+          # Subtle shadows
+          color = "rgba(11111baf)";
+          color_inactive = "rgba(1e1e2eaf)";
+          enabled = true;
+          range = 304;
+          render_power = 4;
+          offset = "0, 42";
+          scale = 0.9;
+        };
         blur = {
           enabled = true;
           passes = 2;
