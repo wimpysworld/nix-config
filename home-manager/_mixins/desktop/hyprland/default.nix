@@ -301,9 +301,9 @@ in
   imports = [
     ./avizo        # on-screen display for audio and backlight
     ./fuzzel       # app launcher, emoji picker and clipboard manager
-    ./grimblast    # screenshot grabber and annotator
     ./hyprlock     # screen locker
     ./hyprpaper    # wallpaper setter
+    ./hyprshot     # screenshot grabber and annotator
     ./swaync       # notification center
     ./waybar       # status bar
     ./wlogout      # session menu
