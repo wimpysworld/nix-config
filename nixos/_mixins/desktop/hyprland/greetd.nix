@@ -89,7 +89,7 @@ in
   };
   programs = {
     regreet = {
-      enable = true;
+      enable = false;
       settings = {
         appearance = {
           greeting_msg = "This is ${hostname}!";
@@ -148,7 +148,11 @@ in
     enable = true;
     settings = {
       default_session = {
-        command = "regreet-sway";
+        #TODO: Fix regreet-sway
+        #command = "regreet-sway";
+        command = ''
+          ${lib.makeBinPath [ pkgs.greetd.tuigreet ]}/tuigreet -r --asterisks --time --cmd hypr-launch
+        '';
         user = "greeter";
       };
     };
