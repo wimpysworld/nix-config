@@ -38,6 +38,7 @@
       "kvm-amd"
       "nvidia"
     ];
+    kernelPackages = lib.mkForce pkgs.linuxPackages_6_11;
     kernelParams = [
       "video=DP-1:3440x1440@100"
       "video=DP-2:1920x1080@60"
