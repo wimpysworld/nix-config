@@ -1,9 +1,8 @@
 { config, hostname, lib, username, ... }:
 let
   domain = "wimpys.world";
-  installOn = [ "malak" "revan" ];
 in
-lib.mkIf (lib.elem hostname installOn) {
+{
   environment ={
     shellAliases = {
       mail-log = "journalctl _SYSTEMD_UNIT=nullmailer.service";
