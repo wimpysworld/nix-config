@@ -8,7 +8,6 @@ _: {
     ./graphics-production
     ./libreoffice
     ./steam
-    ./thunderbird
     ./utilities
     ./video-production
     ./web-browsers
