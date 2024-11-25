@@ -280,7 +280,6 @@
 
   services = {
     gnome = {
-      evolution-data-server.enable = lib.mkForce isInstall;
       gnome-online-accounts.enable = isInstall;
       gnome-keyring.enable = true;
     };
