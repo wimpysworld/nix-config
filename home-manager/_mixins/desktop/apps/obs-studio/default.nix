@@ -52,9 +52,7 @@ lib.mkIf (lib.elem hostname installOn) {
       waveform
     ] ++ [
       pkgs.local-obs.obs-advanced-masks
-      # FTBFS - Needs a find_qt patch
-      # https://github.com/sorayuki/obs-multi-rtmp/commit/a1289fdef404b08a7acbbf0d6d0f93da4c9fc087.patch
-      #pkgs.local-obs.obs-aitum-multistream     #FTBFS
+      pkgs.local-obs.obs-aitum-multistream
       pkgs.local-obs.obs-dvd-screensaver
       pkgs.local-obs.obs-markdown
       pkgs.local-obs.obs-rgb-levels
