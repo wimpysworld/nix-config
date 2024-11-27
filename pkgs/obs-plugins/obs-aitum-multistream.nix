@@ -1,10 +1,11 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, cmake
-, curl
-, obs-studio
-, qtbase
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  cmake,
+  curl,
+  obs-studio,
+  qtbase,
 }:
 
 stdenv.mkDerivation rec {
@@ -24,7 +25,11 @@ stdenv.mkDerivation rec {
   '';
 
   nativeBuildInputs = [ cmake ];
-  buildInputs = [ curl obs-studio qtbase ];
+  buildInputs = [
+    curl
+    obs-studio
+    qtbase
+  ];
 
   cmakeFlags = [
     (lib.cmakeOptionType "string" "CMAKE_CXX_FLAGS" "-Wno-error=deprecated-declarations")
@@ -36,6 +41,9 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/Aitum/obs-aitum-multistream";
     maintainers = with maintainers; [ flexiondotorg ];
     license = licenses.gpl2Plus;
-    platforms = [ "x86_64-linux" "i686-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "i686-linux"
+    ];
   };
 }
