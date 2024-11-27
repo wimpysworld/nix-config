@@ -7,6 +7,7 @@
 , pugixml
 , curl
 , qtbase
+, writeScript
 }:
 
 let
@@ -85,6 +86,15 @@ stdenv.mkDerivation rec {
     (lib.cmakeBool "USE_SYSTEM_PUGIXML" true)
     (lib.cmakeBool "CMAKE_COMPILE_WARNING_AS_ERROR" false)
   ];
+
+  passthru.updateScript = writeScript "update-${pname}" ''
+    #!/usr/bin/env nix-shell
+    #!nix-shell -i bash -p curl jq nix common-updater-scripts
+    set -eu -o pipefail
+
+    latestTag="$(curl -s https://api.github.com/repos/locaal-ai/obs-urlsource/releases/latest | jq -r .tag_name)"
+    update-source-version ${pname} "$latestTag"
+  '';
 
   meta = with lib; {
     description = "OBS plugin to fetch data from a URL or file, connect to an API or AI service, parse responses and display text, image or audio on scene";
