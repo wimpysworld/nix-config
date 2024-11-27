@@ -17,6 +17,27 @@
 
     custom-caddy = import ./custom-caddy.nix { pkgs = prev; };
 
+    gitkraken = prev.gitkraken.overrideAttrs (old: rec {
+      version = "10.5.0";
+
+      src = {
+        x86_64-linux = prev.fetchzip {
+          url = "https://release.axocdn.com/linux/GitKraken-v${version}.tar.gz";
+          hash = "sha256-zgzKwQCt1FoBgzVn1WrllANuBvYxKjPJNhVq0JqiXCM=";
+        };
+
+        x86_64-darwin = prev.fetchzip {
+          url = "https://release.axocdn.com/darwin/GitKraken-v${version}.zip";
+          hash = "sha256-H1rxvCGo0m8g5XSUcuREMfe+Im/QsL6nsDbPQDo09j4=";
+        };
+
+        aarch64-darwin = prev.fetchzip {
+          url = "https://release.axocdn.com/darwin-arm64/GitKraken-v${version}.zip";
+          hash = "sha256-OsCbTtGNo+heQQL6OEeUq64Dlbs86FUpfqEJ80PnV2o=";
+        };
+      }.${prev.stdenv.hostPlatform.system} or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
+    });
+
     linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
       mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
         pname = "mwprocapture";
