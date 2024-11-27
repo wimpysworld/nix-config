@@ -38,6 +38,12 @@
       }.${prev.stdenv.hostPlatform.system} or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
     });
 
+    hyprland = prev.hyprland.overrideAttrs (_old: rec {
+      postPatch = _old.postPatch + ''
+        sed -i 's|Exec=Hyprland|Exec=hypr-launch|' example/hyprland.desktop
+      '';
+    });
+
     linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
       mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
         pname = "mwprocapture";
@@ -57,12 +63,6 @@
           '' else ""}
         '';
       });
-    });
-
-    hyprland = prev.hyprland.overrideAttrs (_old: rec {
-      postPatch = _old.postPatch + ''
-        sed -i 's|Exec=Hyprland|Exec=hypr-launch|' example/hyprland.desktop
-      '';
     });
 
     wavebox = prev.wavebox.overrideAttrs (_old: rec {
