@@ -57,16 +57,9 @@ stdenv.mkDerivation rec {
   ];
   dontWrapQtApps = true;
 
-  NIX_CFLAGS_COMPILE = [
-    "-I${websocketpp}"
-    "-I${asio}/asio/include"
-  ];
-
+  # Update websocketpp and lexabor configurations to use pre-fetched sources
   postPatch = ''
-    # Update websocketpp configuration
     sed -i 's|URL .*|SOURCE_DIR "${websocketpp}"\n    DOWNLOAD_COMMAND ""|' cmake/FetchWebsocketpp.cmake
-
-    # Update lexbor configuration
     sed -i \
       -e 's|GIT_REPOSITORY .*|SOURCE_DIR "${lexbor}"|' \
       -e 's|GIT_TAG .*|DOWNLOAD_COMMAND ""\n    UPDATE_COMMAND ""|' \
@@ -77,33 +70,20 @@ stdenv.mkDerivation rec {
     rm -rf $out/lib/cmake
   '';
 
-  # Verify installation
-  postFixup = ''
-    # Verify plugin files exist
-    plugin_file="$out/lib/obs-plugins/obs-urlsource.so"
-    if [ ! -f "$plugin_file" ]; then
-      echo "Error: Plugin file not found at $plugin_file"
-      exit 1
-    fi
-  '';
+  NIX_CFLAGS_COMPILE = [
+    "-I${websocketpp}"
+    "-I${asio}/asio/include"
+  ];
 
   cmakeFlags = [
-    (lib.cmakeOptionType "string" "QT_VERSION" "6")
+    # Prevent deprecation warnings from failing the build
     (lib.cmakeOptionType "string" "CMAKE_CXX_FLAGS" "-Wno-error=deprecated-declarations")
     (lib.cmakeBool "ENABLE_QT" true)
     (lib.cmakeBool "USE_SYSTEM_CURL" true)
     (lib.cmakeBool "USE_SYSTEM_PUGIXML" true)
     (lib.cmakeBool "CMAKE_COMPILE_WARNING_AS_ERROR" false)
+    "-Wno-dev"
   ];
-
-  passthru.updateScript = writeScript "update-${pname}" ''
-    #!/usr/bin/env nix-shell
-    #!nix-shell -i bash -p curl jq nix common-updater-scripts
-    set -eu -o pipefail
-
-    latestTag="$(curl -s https://api.github.com/repos/locaal-ai/obs-urlsource/releases/latest | jq -r .tag_name)"
-    update-source-version ${pname} "$latestTag"
-  '';
 
   meta = with lib; {
     description = "OBS plugin to fetch data from a URL or file, connect to an API or AI service, parse responses and display text, image or audio on scene";
