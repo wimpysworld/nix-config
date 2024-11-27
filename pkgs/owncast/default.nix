@@ -25,7 +25,6 @@ in buildGoModule {
   patches = [
     ./4022.diff   # VA-API
     ./4028.diff   # Quicksync
-    ./ll.diff     # Low Latency
   ];
 
   propagatedBuildInputs = [ ffmpeg-full ];
