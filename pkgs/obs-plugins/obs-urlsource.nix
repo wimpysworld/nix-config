@@ -67,6 +67,16 @@ stdenv.mkDerivation rec {
     rm -rf $out/lib/cmake
   '';
 
+  # Verify installation
+  postFixup = ''
+    # Verify plugin files exist
+    plugin_file="$out/lib/obs-plugins/obs-urlsource.so"
+    if [ ! -f "$plugin_file" ]; then
+      echo "Error: Plugin file not found at $plugin_file"
+      exit 1
+    fi
+  '';
+
   cmakeFlags = [
     (lib.cmakeOptionType "string" "QT_VERSION" "6")
     (lib.cmakeOptionType "string" "CMAKE_CXX_FLAGS" "-Wno-error=deprecated-declarations")
