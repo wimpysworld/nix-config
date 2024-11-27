@@ -30,11 +30,12 @@ stdenv.mkDerivation rec {
     obs-studio
     qtbase
   ];
+  dontWrapQtApps = true;
 
   cmakeFlags = [
+    # Prevent deprecation warnings from failing the build
     (lib.cmakeOptionType "string" "CMAKE_CXX_FLAGS" "-Wno-error=deprecated-declarations")
   ];
-  dontWrapQtApps = true;
 
   meta = with lib; {
     description = "Plugin to stream everywhere from a single instance of OBS";
