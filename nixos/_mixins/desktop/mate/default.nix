@@ -19,7 +19,6 @@
     systemPackages =
       with pkgs;
       lib.optionals isInstall [
-        evolutionWithPlugins
         gucharmap
         gnome-firmware
       ];
@@ -51,13 +50,6 @@
             theme = "catppuccin-mocha-blue-standard";
             titlebar-font = "Work Sans Semi-Bold 12";
             titlebar-uses-system-font = false;
-          };
-
-          "org/gnome/evolution/mail" = {
-            monospace-font = "FiraCode Nerd Font Mono Medium 13";
-            search-gravatar-for-photo = true;
-            show-sender-photo = true;
-            variable-width-font = "Work Sans 12";
           };
 
           "org/gnome/evolution/plugin/external-editor" = {
@@ -339,7 +331,6 @@
         };
       }
     ];
-    evolution.enable = isInstall;
     gnome-disks.enable = isInstall;
     nm-applet = {
       enable = true;
@@ -352,7 +343,6 @@
   # Enable services to round out the desktop
   services = {
     blueman.enable = true;
-    gnome.evolution-data-server.enable = lib.mkForce isInstall;
     gnome.gnome-keyring.enable = true;
     gvfs.enable = true;
     xserver = {

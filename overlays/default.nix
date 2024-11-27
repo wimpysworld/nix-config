@@ -17,22 +17,52 @@
 
     custom-caddy = import ./custom-caddy.nix { pkgs = prev; };
 
-    #linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
-    #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
-    #    pname = "mwprocapture";
-    #    subVersion = "4390";
-    #    version = "1.3.0.${subVersion}";
-    #    src = prev.fetchurl {
-    #      url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${subVersion}.tar.gz";
-    #      sha256 = "sha256-a2cU7PYQh1KR5eeMhMNx2Sc3HHd7QvCG9+BoJyVPp1Y=";
-    #    };
-    #  });
-    #});
+    gitkraken = prev.gitkraken.overrideAttrs (old: rec {
+      version = "10.5.0";
+
+      src = {
+        x86_64-linux = prev.fetchzip {
+          url = "https://release.axocdn.com/linux/GitKraken-v${version}.tar.gz";
+          hash = "sha256-zgzKwQCt1FoBgzVn1WrllANuBvYxKjPJNhVq0JqiXCM=";
+        };
+
+        x86_64-darwin = prev.fetchzip {
+          url = "https://release.axocdn.com/darwin/GitKraken-v${version}.zip";
+          hash = "sha256-H1rxvCGo0m8g5XSUcuREMfe+Im/QsL6nsDbPQDo09j4=";
+        };
+
+        aarch64-darwin = prev.fetchzip {
+          url = "https://release.axocdn.com/darwin-arm64/GitKraken-v${version}.zip";
+          hash = "sha256-OsCbTtGNo+heQQL6OEeUq64Dlbs86FUpfqEJ80PnV2o=";
+        };
+      }.${prev.stdenv.hostPlatform.system} or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
+    });
 
     hyprland = prev.hyprland.overrideAttrs (_old: rec {
       postPatch = _old.postPatch + ''
         sed -i 's|Exec=Hyprland|Exec=hypr-launch|' example/hyprland.desktop
       '';
+    });
+
+    linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
+      mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
+        pname = "mwprocapture";
+        subVersion = "4407";
+        version = "1.3.0.${subVersion}";
+        src = prev.fetchurl {
+          url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${subVersion}.tar.gz";
+          sha256 = "sha256-wzOwnaxaD4Cm/cdc/sXHEzYZoN6b/kivDPvXRsC+Aig=";
+        };
+        postPatch = let
+          kernelVersion = lpsuper.kernel.version;
+          needsPatch = prev.lib.versionAtLeast kernelVersion "6.12";
+        in ''
+          ${old.postPatch or ""}
+          ${if needsPatch then ''
+            sed -i 's/no_llseek/noop_llseek/' src/sources/avstream/mw-event-dev.c
+          '' else ""}
+        '';
+      });
     });
 
     wavebox = prev.wavebox.overrideAttrs (_old: rec {

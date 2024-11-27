@@ -17,10 +17,10 @@ in buildGoModule {
     repo = "owncast";
     #rev = "v${version}";
 
-    rev = "49c07594fba75e7c098cb4914b8668b9fc081f8d";
-    hash = "sha256-YUi/M9fqwhC75n/YKooj5RqfMy+kdon1jsBvTMKvPw4=";
+    rev = "2c2bf2b5bbf49885f14f19c3f04dbbb0f3fbc5f2";
+    hash = "sha256-1ghdwAq+m2Kz4yy50+IU4KtyYBbtJz3vwfmCgja0LRE=";
   };
-  vendorHash = "sha256-yxWXh16vZIND9QB3xb0G5OOVhA7iy2dWNUzQXNi6gEk=";
+  vendorHash = "sha256-h17CzPyboCessk6oRHTurIzjhLgg7/jxfBPd5Vp3Vos=";
 
   patches = [
     ./4022.diff   # VA-API

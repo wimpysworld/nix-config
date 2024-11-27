@@ -317,7 +317,6 @@
 
   services = {
     gnome = {
-      evolution-data-server.enable = lib.mkForce isInstall;
       games.enable = false;
       gnome-browser-connector.enable = isInstall;
       gnome-online-accounts.enable = isInstall;
