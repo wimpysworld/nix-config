@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+STAMP=$(date +%Y%m%d-%H%M%S)
+
 function usage() {
     echo "Usage: ${0} {build|switch}"
     exit 1
@@ -28,7 +30,7 @@ if [ -e "${HOME}/Zero/nix-config" ]; then
     echo "${1^}ing Home Manager 🏠️ with ${build_cores} cores"
     case $1 in
         build) nh home build "${HOME}/Zero/nix-config/" -- --cores "${build_cores}";;
-        switch) nh home switch --backup-extension backup "${HOME}/Zero/nix-config/" -- --cores "${build_cores}";;
+        switch) nh home switch --backup-extension "${STAMP}" "${HOME}/Zero/nix-config/" -- --cores "${build_cores}";;
     esac
 else
     echo "ERROR! No nix-config found in ${HOME}/Zero/nix-config"
