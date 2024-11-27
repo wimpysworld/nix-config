@@ -22,10 +22,8 @@ let
     repo = "lexbor";
     rev = "v2.3.0";
     sha256 = "sha256-s5fZWBhXC0fuHIUk1YX19bHagahOtSLlKQugyHCIlgI=";
-
   };
 
-  # Also need asio
   asio = fetchFromGitHub {
     owner = "chriskohlhoff";
     repo = "asio";
@@ -54,86 +52,19 @@ stdenv.mkDerivation rec {
     "-I${asio}/asio/include"
   ];
 
-  preConfigure = ''
-    # Create FetchWebsocketpp.cmake
-    cat > cmake/FetchWebsocketpp.cmake << EOF
-    include(FetchContent)
+  postPatch = ''
+    # Update websocketpp configuration
+    sed -i 's|URL .*|SOURCE_DIR "${websocketpp}"\n    DOWNLOAD_COMMAND ""|' cmake/FetchWebsocketpp.cmake
 
-    # Setup websocketpp
-    add_library(websocketpp INTERFACE)
-    target_include_directories(websocketpp INTERFACE "${websocketpp}")
-    add_library(websocketpp::websocketpp ALIAS websocketpp)
+    # Update lexbor configuration
+    sed -i \
+      -e 's|GIT_REPOSITORY .*|SOURCE_DIR "${lexbor}"|' \
+      -e 's|GIT_TAG .*|DOWNLOAD_COMMAND ""\n    UPDATE_COMMAND ""|' \
+      cmake/BuildLexbor.cmake
+  '';
 
-    # Setup asio
-    add_library(asio INTERFACE)
-    target_include_directories(asio INTERFACE
-      "${asio}/asio/include"
-    )
-
-    FetchContent_Declare(
-      websocketpp
-      SOURCE_DIR "${websocketpp}"
-      DOWNLOAD_COMMAND ""
-    )
-
-    FetchContent_Declare(
-      asio
-      SOURCE_DIR "${asio}"
-      DOWNLOAD_COMMAND ""
-    )
-
-    FetchContent_MakeAvailable(websocketpp asio)
-    EOF
-
-    # Create BuildLexbor.cmake
-    cat > cmake/BuildLexbor.cmake << 'EOF'
-    include(ExternalProject)
-
-    if(APPLE)
-      set(LEXBOR_CMAKE_PLATFORM_OPTIONS -DCMAKE_OSX_ARCHITECTURES=x86_64$<SEMICOLON>arm64)
-    else()
-      if(WIN32)
-        add_compile_definitions(LEXBOR_STATIC=1)
-        set(LEXBOR_CMAKE_PLATFORM_OPTIONS "-DCMAKE_C_FLAGS=/W3 /utf-8 /MP" "-DCMAKE_CXX_FLAGS=/W3 /utf-8 /MP")
-      else()
-        set(LEXBOR_CMAKE_PLATFORM_OPTIONS -DCMAKE_SYSTEM_NAME=Linux)
-      endif()
-    endif()
-
-    set(lexbor_lib_filename "''${CMAKE_STATIC_LIBRARY_PREFIX}lexbor_static''${CMAKE_STATIC_LIBRARY_SUFFIX}")
-
-    ExternalProject_Add(
-      lexbor_build
-      SOURCE_DIR "@lexbor@"
-      DOWNLOAD_COMMAND ""
-      UPDATE_COMMAND ""
-      CMAKE_GENERATOR "''${CMAKE_GENERATOR}"
-      BUILD_BYPRODUCTS <INSTALL_DIR>/lib/''${lexbor_lib_filename} INSTALL_BYPRODUCTS <INSTALL_DIR>/include
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-                 -DLEXBOR_BUILD_SHARED=OFF
-                 -DLEXBOR_BUILD_STATIC=ON
-                 -DLEXBOR_BUILD_TESTS_CPP=OFF
-                 -DCMAKE_BUILD_TYPE=''${CMAKE_BUILD_TYPE}
-                 -DCMAKE_CXX_COMPILER=''${CMAKE_CXX_COMPILER}
-                 -DCMAKE_C_COMPILER=''${CMAKE_C_COMPILER}
-                 -DCMAKE_LINKER=''${CMAKE_LINKER}
-                 -DCMAKE_INSTALL_MESSAGE=NEVER
-                 ''${LEXBOR_CMAKE_PLATFORM_OPTIONS})
-
-    ExternalProject_Get_Property(lexbor_build INSTALL_DIR)
-    set(lexbor_lib_location "''${INSTALL_DIR}/lib/''${lexbor_lib_filename}")
-    add_library(lexbor_internal STATIC IMPORTED)
-    add_dependencies(lexbor_internal lexbor_build)
-    set_target_properties(lexbor_internal PROPERTIES IMPORTED_LOCATION "''${lexbor_lib_location}")
-    target_include_directories(lexbor_internal INTERFACE "''${INSTALL_DIR}/include")
-
-    add_library(liblexbor_internal INTERFACE)
-    add_dependencies(liblexbor_internal lexbor_internal lexbor_build)
-    target_link_libraries(liblexbor_internal INTERFACE lexbor_internal)
-    EOF
-
-    substituteInPlace cmake/BuildLexbor.cmake \
-      --subst-var-by lexbor ${lexbor}
+  postInstall = ''
+    rm -rf $out/lib/cmake
   '';
 
   cmakeFlags = [
