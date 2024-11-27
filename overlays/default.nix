@@ -17,17 +17,26 @@
 
     custom-caddy = import ./custom-caddy.nix { pkgs = prev; };
 
-    #linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
-    #  mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
-    #    pname = "mwprocapture";
-    #    subVersion = "4390";
-    #    version = "1.3.0.${subVersion}";
-    #    src = prev.fetchurl {
-    #      url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${subVersion}.tar.gz";
-    #      sha256 = "sha256-a2cU7PYQh1KR5eeMhMNx2Sc3HHd7QvCG9+BoJyVPp1Y=";
-    #    };
-    #  });
-    #});
+    linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
+      mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
+        pname = "mwprocapture";
+        subVersion = "4407";
+        version = "1.3.0.${subVersion}";
+        src = prev.fetchurl {
+          url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${subVersion}.tar.gz";
+          sha256 = "sha256-wzOwnaxaD4Cm/cdc/sXHEzYZoN6b/kivDPvXRsC+Aig=";
+        };
+        postPatch = let
+          kernelVersion = lpsuper.kernel.version;
+          needsPatch = prev.lib.versionAtLeast kernelVersion "6.12";
+        in ''
+          ${old.postPatch or ""}
+          ${if needsPatch then ''
+            sed -i 's/no_llseek/noop_llseek/' src/sources/avstream/mw-event-dev.c
+          '' else ""}
+        '';
+      });
+    });
 
     hyprland = prev.hyprland.overrideAttrs (_old: rec {
       postPatch = _old.postPatch + ''
