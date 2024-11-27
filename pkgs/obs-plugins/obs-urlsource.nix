@@ -1,13 +1,14 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, cmake
-, git
-, obs-studio
-, pugixml
-, curl
-, qtbase
-, writeScript
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  cmake,
+  curl,
+  git,
+  obs-studio,
+  pugixml,
+  qtbase,
+  writeScript,
 }:
 
 let
@@ -44,8 +45,16 @@ stdenv.mkDerivation rec {
     fetchSubmodules = true;
   };
 
-  nativeBuildInputs = [ cmake git ];
-  buildInputs = [ curl obs-studio pugixml qtbase ];
+  nativeBuildInputs = [
+    cmake
+    git
+  ];
+  buildInputs = [
+    curl
+    obs-studio
+    pugixml
+    qtbase
+  ];
   dontWrapQtApps = true;
 
   NIX_CFLAGS_COMPILE = [
@@ -101,6 +110,9 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/locaal-ai/obs-urlsource";
     maintainers = with maintainers; [ flexiondotorg ];
     license = licenses.gpl2Only;
-    platforms = [ "x86_64-linux" "i686-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "i686-linux"
+    ];
   };
 }
