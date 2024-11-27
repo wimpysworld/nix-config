@@ -63,7 +63,7 @@ lib.mkIf (lib.elem hostname installOn) {
       pkgs.local-obs.obs-source-clone
       pkgs.local-obs.obs-stroke-glow-shadow
       pkgs.local-obs.obs-transition-table
-      #pkgs.local-obs.obs-urlsource             #FTBFS
+      pkgs.local-obs.obs-urlsource
       pkgs.local-obs.obs-vertical-canvas
       pkgs.local-obs.obs-webkitgtk
       pkgs.local-obs.pixel-art
