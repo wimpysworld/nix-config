@@ -18,9 +18,17 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-2RQBUCRNFiPdkIO7fIvKBHA8hezspxpjKWmMFpR4Flg=";
   };
 
+  # Fix FTBFS with Qt >= 6.8
+  prePatch = ''
+    sed -i 's/find_qt(COMPONENTS Widgets Core)/find_package(Qt6 REQUIRED COMPONENTS Core Widgets)/' CMakeLists.txt
+  '';
+
   nativeBuildInputs = [ cmake ];
   buildInputs = [ curl obs-studio qtbase ];
 
+  cmakeFlags = [
+    (lib.cmakeOptionType "string" "CMAKE_CXX_FLAGS" "-Wno-error=deprecated-declarations")
+  ];
   dontWrapQtApps = true;
 
   meta = with lib; {
