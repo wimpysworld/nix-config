@@ -1,5 +1,8 @@
 { config, hostname, lib, pkgs, username, ... }:
 let
+  sithLord =
+    (lib.strings.toUpper (builtins.substring 0 1 username)) +
+    (builtins.substring 1 (builtins.stringLength username) username);
   hyprLaunch = pkgs.writeShellScriptBin "hypr-launch" ''
     ${pkgs.hyprland}/bin/Hyprland $@ &>/dev/null
     # Correctly clean up the session
@@ -89,10 +92,10 @@ in
   };
   programs = {
     regreet = {
-      enable = false;
+      enable = true;
       settings = {
         appearance = {
-          greeting_msg = "This is ${hostname}!";
+          greeting_msg = "May the ${sithLord} serve you well";
         };
         # https://docs.gtk.org/gtk4/enum.ContentFit.html
         background = {
@@ -109,37 +112,13 @@ in
             "poweroff"
           ];
         };
-        GTK = lib.mkDefault {
+        GTK = lib.mkForce {
           application_prefer_dark_theme = true;
           cursor_theme_name = "catppuccin-mocha-blue-cursors";
           font_name = "Work Sans 16";
           icon_theme_name = "Papirus-Dark";
           theme_name = "catppuccin-mocha-blue-standard";
         };
-        # cursorTheme = {
-        #   name = "catppuccin-mocha-blue-cursors";
-        #   package = pkgs.catppuccin-cursors.mochaBlue;
-        # };
-        # font = {
-        #   name = "Work Sans";
-        #   package = pkgs.work-sans;
-        #   size = 24;
-        # };
-        # iconTheme = {
-        #   name = "Papirus-Dark";
-        #   package = pkgs.catppuccin-papirus-folders.override {
-        #     flavor = "mocha";
-        #     accent = "blue";
-        #   };
-        # };
-        # theme = {
-        #   name = "catppuccin-mocha-blue-standard";
-        #   package = pkgs.catppuccin-gtk.override {
-        #     accents = [ "blue" ];
-        #     size = "standard";
-        #     variant = "mocha";
-        #   };
-        # };
       };
     };
   };
@@ -148,11 +127,7 @@ in
     enable = true;
     settings = {
       default_session = {
-        #TODO: Fix regreet-sway
-        #command = "regreet-sway";
-        command = ''
-          ${lib.makeBinPath [ pkgs.greetd.tuigreet ]}/tuigreet -r --asterisks --time --cmd hypr-launch
-        '';
+        command = "regreet-sway";
         user = "greeter";
       };
     };
