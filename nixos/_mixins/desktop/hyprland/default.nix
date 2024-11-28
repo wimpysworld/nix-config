@@ -16,7 +16,7 @@
       # - https://github.com/hyprwm/Hyprland/issues/7854
       GDK_DISABLE = "vulkan";
       # Make sure the cursor size is the same in all environments
-      HYPRCURSOR_SIZE = 48;
+      HYPRCURSOR_SIZE = 32;
       HYPRCURSOR_THEME = "catppuccin-mocha-blue-cursors";
       NIXOS_OZONE_WL = 1;
       QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
@@ -46,7 +46,7 @@
           "org/gnome/desktop/interface" = {
             clock-format = "24h";
             color-scheme = "prefer-dark";
-            cursor-size = mkInt32 48;
+            cursor-size = mkInt32 32;
             cursor-theme = "catppuccin-mocha-blue-cursors";
             document-font-name = "Work Sans 12";
             font-name = "Work Sans 12";

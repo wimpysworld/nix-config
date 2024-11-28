@@ -132,7 +132,7 @@
           };
 
           "org/mate/desktop/peripherals/mouse" = {
-            cursor-size = mkInt32 48;
+            cursor-size = mkInt32 32;
             cursor-theme = "catppuccin-mocha-blue-cursors";
           };
 
