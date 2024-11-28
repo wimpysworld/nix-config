@@ -410,6 +410,122 @@ in
         scrollspeed = 1;
       };
     };
+  neovim = {
+      enable = true;
+      catppuccin.enable = true;
+      plugins = with pkgs.vimPlugins; [
+        vim-rsi
+        packer-nvim
+      ];
+      extraLuaConfig = ''
+      -- Force insert mode and hide mode display
+      vim.api.nvim_create_autocmd({"VimEnter", "BufRead", "BufNewFile", "BufEnter", "ModeChanged"}, {
+        pattern = "*",
+        callback = function()
+          vim.cmd('startinsert')
+          vim.api.nvim_set_option('showmode', false)
+        end
+      })
+
+      -- Make sure visual mode always returns to insert
+      vim.api.nvim_create_autocmd('ModeChanged', {
+        pattern = '[vV\x16]*:*',
+        callback = function()
+          vim.cmd('startinsert')
+        end
+      })
+
+      -- Force insert mode on mode switch attempts
+      vim.keymap.set('n', '<Esc>', 'i', { noremap = true })
+      vim.keymap.set('v', '<Esc>', 'i', { noremap = true })
+      vim.keymap.set('n', 'i', 'i', { noremap = true })
+      vim.keymap.set('n', 'a', 'i', { noremap = true })
+
+      -- CUA keybindings with forced quit
+      local opts = { noremap = true, silent = true }
+      vim.keymap.set('i', '<C-s>', '<Cmd>w<CR>', opts)
+      -- Quit, but check for unsaved changes
+      vim.keymap.set('i', '<C-q>', function()
+          if vim.fn.getbufinfo('%')[1].changed == 1 then
+              local choice = vim.fn.confirm("Save changes before quitting?", "&Yes\n&No\n&Cancel", 1)
+              if choice == 1 then     -- Yes
+                  vim.cmd('wa')
+                  vim.cmd('qa')
+              elseif choice == 2 then -- No
+                  vim.cmd('qa!')
+              end
+              -- If choice == 3 (Cancel), do nothing
+          else
+              vim.cmd('qa')
+          end
+      end, opts)
+      vim.keymap.set('i', '<C-z>', '<C-o>u', opts)
+      vim.keymap.set('i', '<C-y>', '<C-o><C-r>', opts)
+      vim.keymap.set('i', '<C-v>', '<C-r>+', opts)
+      -- Replace the Ctrl+C mappings with:
+      vim.keymap.set('i', '<C-c>', '<C-o>yy<Esc>i', opts)
+      vim.keymap.set('v', '<C-c>', 'y<Esc>i', opts)
+      vim.keymap.set('i', '<C-x>', 'd', opts)
+
+      -- Shift + Arrow selection
+      vim.keymap.set('i', '<S-Left>', '<C-o>v0', opts)
+      vim.keymap.set('i', '<S-Right>', '<C-o>v$', opts)
+      vim.keymap.set('i', '<S-Up>', '<Up><C-o>v', opts)
+      vim.keymap.set('i', '<S-Down>', '<Down><C-o>v', opts)
+      vim.keymap.set('v', '<S-Left>', '<Left>', opts)
+      vim.keymap.set('v', '<S-Right>', '<Right>', opts)
+      vim.keymap.set('v', '<S-Up>', '<Up>', opts)
+      vim.keymap.set('v', '<S-Down>', '<Down>', opts)
+      -- Make sure Escape returns to insert mode
+      vim.keymap.set('v', '<Esc>', '<Esc>i', opts)
+
+      -- Disable Shift + Arrow page movement
+      vim.keymap.set('i', '<S-PageUp>', '<PageUp>', opts)
+      vim.keymap.set('i', '<S-PageDown>', '<PageDown>', opts)
+      vim.keymap.set('i', '<S-Up>', '<Up><C-o>v', opts) -- Ensure these only do selection
+      vim.keymap.set('i', '<S-Down>', '<Down><C-o>v', opts)
+
+      -- Map actual page movement to PageUp/PageDown
+      vim.keymap.set('i', '<PageUp>', '<C-o><C-b>', opts)
+      vim.keymap.set('i', '<PageDown>', '<C-o><C-f>', opts)
+
+      -- Search functionality (Ctrl+F)
+      vim.keymap.set('i', '<C-f>', function()
+          local current_pos = vim.fn.getcurpos()
+          vim.cmd('normal! i')  -- Ensure we're in insert mode
+          vim.fn.feedkeys('/', 'n')  -- Start search mode
+          -- Setup autocmd to return to insert mode when search is done
+          vim.api.nvim_create_autocmd('CmdlineLeave', {
+              pattern = '/',
+              once = true,
+              callback = function()
+                  vim.schedule(function()
+                      vim.cmd('startinsert')
+                      -- Restore cursor position if search was cancelled
+                      if vim.fn.mode() == 'n' then
+                          vim.fn.setpos('.', current_pos)
+                          vim.cmd('startinsert')
+                      end
+                  end)
+              end
+          })
+      end, opts)
+
+      -- Make sure search highlighting can be cleared
+      vim.keymap.set('i', '<Esc>', function()
+          vim.cmd('nohlsearch')
+          vim.cmd('startinsert')
+      end, opts)
+
+      -- Basic settings
+      vim.opt.mouse = 'a'
+      vim.opt.mousemodel = 'popup'
+      vim.opt.number = true
+      vim.opt.relativenumber = false
+      vim.opt.wrap = false
+      vim.opt.clipboard = 'unnamedplus'
+      '';
+    };
     nix-index.enable = true;
     powerline-go = {
       enable = true;
