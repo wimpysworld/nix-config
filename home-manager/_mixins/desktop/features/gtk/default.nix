@@ -15,7 +15,7 @@ lib.mkIf isLinux {
   dconf.settings = with lib.hm.gvariant; {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
-      cursor-size = 48;
+      cursor-size = 32;
       cursor-theme = "catppuccin-mocha-blue-cursors";
       gtk-theme = "catppuccin-mocha-blue-standard";
       icon-theme = "Papirus-Dark";
@@ -33,8 +33,8 @@ lib.mkIf isLinux {
     };
 
     "org/mate/desktop/peripherals/mouse" = {
-      cursor-size = mkInt32 48;
-      cursor-theme = "Catppuccin-Mocha-Blue-Cursors";
+      cursor-size = mkInt32 32;
+      cursor-theme = "catppuccin-mocha-blue-cursors";
     };
 
     "org/mate/marco/general" = {
@@ -51,7 +51,7 @@ lib.mkIf isLinux {
     cursorTheme = {
       name = "catppuccin-mocha-blue-cursors";
       package = pkgs.catppuccin-cursors.mochaBlue;
-      size = 48;
+      size = 32;
     };
     enable = true;
     font = {
@@ -99,7 +99,7 @@ lib.mkIf isLinux {
     pointerCursor = {
       name = "catppuccin-mocha-blue-cursors";
       package = pkgs.catppuccin-cursors.mochaBlue;
-      size = 48;
+      size = 32;
       gtk.enable = true;
       x11.enable = true;
     };

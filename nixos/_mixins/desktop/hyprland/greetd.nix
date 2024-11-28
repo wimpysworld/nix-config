@@ -81,7 +81,7 @@ in
       output * scale 1
       output * bg #1E1E2D solid_color
       ${wallpapers}
-      seat seat0 xcursor_theme catppuccin-mocha-blue-cursors 48
+      seat seat0 xcursor_theme catppuccin-mocha-blue-cursors 32
       xwayland disable
       exec "${pkgs.greetd.regreet}/bin/regreet; ${pkgs.sway}/bin/swaymsg exit"
     '';

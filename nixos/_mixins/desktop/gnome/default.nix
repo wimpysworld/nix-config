@@ -65,7 +65,7 @@
             clock-format = "24h";
             clock-show-weekday = true;
             color-scheme = "prefer-dark";
-            cursor-size = mkInt32 48;
+            cursor-size = mkInt32 32;
             cursor-theme = "catppuccin-mocha-blue-cursors";
             document-font-name = "Work Sans 12";
             enable-hot-corners = false;
