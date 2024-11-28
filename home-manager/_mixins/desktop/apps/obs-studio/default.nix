@@ -32,6 +32,7 @@ lib.mkIf (lib.elem hostname installOn) {
 
   programs.obs-studio = {
     enable = true;
+    catppuccin.enable = true;
     plugins = with pkgs.obs-studio-plugins; [
       advanced-scene-switcher
       obs-3d-effect
