@@ -42,7 +42,6 @@ let
     fi
     $REGREET_SWAY &>/dev/null
   '';
-
   wallpaperResolution = if hostname == "vader" then
     "2560x2880"
   else if hostname == "phasma" then
@@ -127,7 +126,7 @@ in
     enable = true;
     settings = {
       default_session = {
-        command = "regreet-sway";
+        command = "${pkgs.cage}/bin/cage -s ${pkgs.greetd.regreet}/bin/regreet";
         user = "greeter";
       };
     };
