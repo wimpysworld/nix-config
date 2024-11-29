@@ -9,8 +9,8 @@
   },
   "display": {
     "separator": "",
-    "binaryPrefix": "si",
     "size": {
+      "binaryPrefix": "si",
       "ndigits": 0
     },
     "percent": {
@@ -20,7 +20,9 @@
       "charElapsed": "",
       "charTotal": " "
     },
-    "keyWidth": 6
+    "key": {
+      "width": 6
+    }
   },
   "modules": [
     {
