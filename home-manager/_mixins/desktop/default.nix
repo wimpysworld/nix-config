@@ -7,7 +7,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  inherit (pkgs.stdenv) isLinux isDarwin;
 in
 {
   # import the DE specific configuration and any user specific desktop configuration
@@ -27,7 +27,7 @@ in
   };
 
   programs = lib.mkIf (username == "martin") {
-    alacritty = {
+    alacritty = lib.mkIf (desktop != "hyprland") {
       catppuccin.enable = isLinux;
       enable = true;
       settings = {
@@ -83,6 +83,24 @@ in
           };
           opacity = 1.0;
           blur = false;
+        };
+      };
+    };
+    foot = lib.mkIf isLinux {
+      enable = true;
+      catppuccin.enable = true;
+      # https://codeberg.org/dnkl/foot/src/branch/master/foot.ini
+      server.enable = false;
+      settings = {
+        main = {
+          font = "FiraCode Nerd Font Mono:size=16";
+        };
+        cursor = {
+          style = "block";
+          blink = "yes";
+        };
+        scrollback = {
+          lines = 10240;
         };
       };
     };

@@ -79,7 +79,7 @@
     };
     nautilus-open-any-terminal = {
       enable = true;
-      terminal = "alacritty";
+      terminal = "foot";
     };
     nm-applet = lib.mkIf config.networking.networkmanager.enable {
       enable = true;

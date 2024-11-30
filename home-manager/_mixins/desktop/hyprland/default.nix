@@ -76,7 +76,7 @@ let
           start_app halloy 3 "class: org.squidowl.halloy"
           start_app code 4 "initialTitle: Visual Studio Code"
           start_app "gitkraken --no-show-splash-screen" 4 "title: GitKraken Desktop"
-          start_app alacritty 5 "class: Alacritty"
+          start_app foot 5 "class: foot"
           start_app boxbuddy-rs 6 "class: io.github.dvlv.boxbuddyrs"
           start_app pods 6 "class: com.github.marhkb.Pods"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
@@ -124,7 +124,7 @@ let
           start_app discord 9 " - Discord"
           start_app code 10 "initialTitle: Visual Studio Code"
           start_app gitkraken 10 "title: GitKraken Desktop"
-          start_app alacritty 10 "class: Alacritty"
+          start_app foot 10 "class: foot"
           firefox -CreateProfile wimpysworld-stage
           start_app "firefox \
               -P wimpysworld-stage \
@@ -355,7 +355,7 @@ in
           "$mod, Q, killactive"
           # Launch applications
           "$mod, E, exec, nautilus --new-window"
-          "$mod, T, exec, alacritty"
+          "$mod, T, exec, foot"
           # Move focus
           "ALT, Tab, cyclenext"
           "ALT, Tab, bringactivetotop"
