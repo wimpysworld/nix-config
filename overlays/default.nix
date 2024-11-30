@@ -65,6 +65,23 @@
       });
     });
 
+    resources = prev.resources.overrideAttrs (_old: rec {
+      pname = "resources";
+      version = "1.7.0";
+      src = prev.fetchFromGitHub {
+        owner = "nokyan";
+        repo = "resources";
+        rev = "refs/tags/v${version}";
+        hash = "sha256-mnOpWVJTNGNdGd6fMIZl3AOF4NbtMm1XS8QFqfAF/18=";
+      };
+
+      cargoDeps = prev.rustPlatform.fetchCargoTarball {
+        inherit src;
+        name = "resources-${version}";
+        hash = "sha256-vIqtKJxKQ/mHFcB6IxfX27Lk2ID/W+M4hQnPB/aExa4=";
+      };
+    });
+
     wavebox = prev.wavebox.overrideAttrs (_old: rec {
       pname = "wavebox";
       version = "10.131.15-2";
