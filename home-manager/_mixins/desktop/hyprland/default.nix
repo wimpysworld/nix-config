@@ -525,6 +525,7 @@ in
         "opacity 1.0, class: com.defold.editor.Start"
         "opacity 1.0, class: class: dmengine"
         "opacity 1.0, title: UNIGINE Engine"
+        "opacity 1.0, title: Steam Big Picture Mode"
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
