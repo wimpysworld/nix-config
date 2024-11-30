@@ -1,0 +1,296 @@
+/* Style for rendered Markdown */
+
+:root {
+	--ctp-mocha-rosewater: #f5e0dc;
+	--ctp-mocha-flamingo: #f2cdcd;
+	--ctp-mocha-pink: #f5c2e7;
+	--ctp-mocha-mauve: #cba6f7;
+	--ctp-mocha-red: #f38ba8;
+	--ctp-mocha-maroon: #eba0ac;
+	--ctp-mocha-peach: #fab387;
+	--ctp-mocha-yellow: #f9e2af;
+	--ctp-mocha-green: #a6e3a1;
+	--ctp-mocha-teal: #94e2d5;
+	--ctp-mocha-sky: #89dceb;
+	--ctp-mocha-sapphire: #74c7ec;
+	--ctp-mocha-blue: #87b0f9;
+	--ctp-mocha-lavender: #b4befe;
+	--ctp-mocha-text: #c6d0f5;
+	--ctp-mocha-subtext1: #b3bcdf;
+	--ctp-mocha-subtext0: #a1a8c9;
+	--ctp-mocha-overlay2: #8e95b3;
+	--ctp-mocha-overlay1: #7b819d;
+	--ctp-mocha-overlay0: #696d86;
+	--ctp-mocha-surface2: #565970;
+	--ctp-mocha-surface1: #43465a;
+	--ctp-mocha-surface0: #313244;
+	--ctp-mocha-base: #1e1e2e;
+	--ctp-mocha-mantle: #181825;
+	--ctp-mocha-crust: #11111b;
+  --white: #D9E0EE;
+  --black: #000000;
+  --light: #C9CFFF;
+  --lighter-grey: #C3BAC6;
+  --light-grey: #988BA2;
+
+  --font-face: "Work Sans", Arial, Helvetica, sans-serif;
+  --font-mono: "FiraCode Nerd Font Mono", Courier, monospace;
+  --font-size: 16px;
+  --icon-size: 16px;
+
+  --regular: 400;
+  --bolder: 600;
+
+  --scroll-radius: 3px;
+
+  --opacity-0-8: 0.8;
+}
+
+#rendered-md, body, th, td {
+  background-color: var(--ctp-mocha-base) !important;
+  font-family: var(--font-face) !important;
+}
+
+p, ul, ol, li {
+  color: var(--ctp-mocha-text) !important;
+}
+
+strong {
+  color: var(--ctp-mocha-text) !important;
+}
+
+hr {
+  border: none;
+  border-bottom: 1px solid var(--ctp-mocha-base) !important;
+  margin: 2.5em 0 !important;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar-thumb {
+  background-color: var(--ctp-mocha-base) !important;
+  border-radius: var(--scroll-radius) !important;
+}
+
+/*********************************************************************************
+* TITLES
+*********************************************************************************/
+
+h1 {
+  border-bottom: 1px solid var(--ctp-mocha-base) !important;
+  font-weight: var(--bolder) !important;
+}
+
+h2, h3, h4, h5, h6 {
+  border-bottom: 0 !important;
+  font-weight: var(--regular) !important;
+}
+
+/*********************************************************************************
+* LINKS
+*********************************************************************************/
+
+a {
+  color: var(--ctp-mocha-rosewater) !important;
+  text-decoration: underline !important;
+}
+
+a:hover {
+  text-decoration: underline !important;
+}
+
+/* Joplin icon in Joplin link */
+.resource-icon {
+  background-color: var(--ctp-mocha-rosewater) !important;
+}
+
+/*********************************************************************************
+* CODE BLOCK
+*********************************************************************************/
+
+pre, .hljs {
+  background-color: var(--ctp-mocha-mantle) !important;
+  font-family: var(--font-mono) !important;
+  padding: 10px !important;
+  color: var(--ctp-mocha-text) !important;
+  font-size: 14px !important;
+  overflow: scroll !important;
+}
+
+/* Inline code */
+.inline-code {
+  background-color: transparent !important;
+  border: 0 !important;
+  font-family: var(--font-mono) !important;
+  color: var(--ctp-mocha-yellow) !important;
+  font-size: 14px !important;
+}
+
+/*********************************************************************************
+* BLOCKQUOTE
+*********************************************************************************/
+
+blockquote {
+  background-color: var(--ctp-mocha-surface0) !important;
+  padding: 10px !important;
+  color: var(--light) !important;
+  font-size: 14px !important;
+  font-style: italic !important;
+  border: 0 !important;
+  border-left: 5px solid var(--ctp-mocha-mantle) !important;
+}
+
+/*********************************************************************************
+* TABLES
+*********************************************************************************/
+
+th {
+  border: 1px solid var(--ctp-mocha-text) !important;
+  color: var(--ctp-mocha-text) !important;
+  border-bottom: 1px solid var(--ctp-mocha-text) !important;
+}
+
+td {
+  border: 1px solid var(--ctp-mocha-text) !important;
+  color: var(--ctp-mocha-text) !important;
+  border-bottom: 1px solid var(--ctp-mocha-text) !important;
+}
+
+/*********************************************************************************
+* HIGHLIGHTING
+*********************************************************************************/
+
+::selection {
+	background-color: var(--ctp-mocha-blue) !important;
+  color: var(--ctp-mocha-crust) !important;
+}
+
+mark, mark strong {
+  background: var(--ctp-mocha-yellow) !important;
+  color: var(--ctp-mocha-crust) !important;
+}
+
+/* Highlighted searched item */
+mark[data-markjs] {
+  background-color: var(--ctp-mocha-blue) !important;
+}
+
+/*********************************************************************************
+* PLUGINS
+*********************************************************************************/
+
+/* SPOILERS (https://github.com/martinkorelic/joplin-plugin-spoilers) */
+
+/* Container for spoiler blocks */
+.spoiler-block {
+  border: 0 !important;
+  border-radius: 0px;
+}
+
+/* Container for spoiler title */
+#spoiler-block-title {
+  font-family: var(--font-face) !important;
+  color: var(--ctp-mocha-text) !important;
+  background-color: var(--ctp-mocha-mantle) !important;
+  border-radius: 0px;
+}
+
+/* Container for spoiler body */
+#spoiler-block-body {
+  font-family: var(--font-face) !important;
+  color: var(--light) !important;
+  background-color: var(--ctp-mocha-mantle) !important;
+  border-radius: 0px;
+}
+
+/* Styling of the spoiler block body */
+.summary-content {
+  background-color: var(--ctp-mocha-mantle) !important;
+}
+
+.summary-title:before {
+  color: var(--ctp-mocha-blue) !important;
+}
+
+/*********************************************************************************
+* PRINT VERSION
+*********************************************************************************/
+
+@media print {
+
+  #rendered-md, body, th, td {
+    /* background-color: var(--white) !important; */
+    background-color: #ffffff !important;
+    font-family: var(--font-face) !important;
+  }
+
+  p, ul, ol, li {
+    color: var(--black) !important;
+  }
+
+  strong {
+    color: var(--black) !important;
+  }
+
+th {
+  border: 1px solid var(--black) !important;
+  color: var(--black) !important;
+  border-bottom: 1px solid var(--black) !important;
+}
+
+td {
+  border: 1px solid var(--black) !important;
+  color: var(--black) !important;
+  border-bottom: 1px solid var(--black) !important;
+}
+
+  h1 {
+    border-bottom: 1px solid var(--black) !important;
+    font-weight: var(--bolder) !important;
+  }
+
+  h2, h3, h4, h5, h6 {
+    border-bottom: 0 !important;
+    font-weight: var(--bolder) !important;
+  }
+
+  hr {
+    border: none;
+    border-bottom: 1px solid var(--black) !important;
+    margin: 2.5em 0 !important;
+  }
+
+  a {
+    color: var(--ctp-mocha-red) !important;
+    text-decoration: underline !important;
+  }
+
+/* Inline code */
+.inline-code {
+  background-color: #F8F8F8 !important;
+  border: 0 !important;
+  font-family: var(--font-mono) !important;
+  /* color: var(--ctp-mocha-yellow) !important; */
+  /* color: # !important; */
+  font-size: 14px !important;
+}
+
+pre, .hljs {
+  background-color: #F8F8F8 !important;
+  font-family: var(--font-mono) !important;
+  padding: 10px !important;
+  color: var(--ctp-mocha-crust) !important;
+  font-size: 14px !important;
+  overflow: scroll !important;
+}
+
+blockquote {
+  background-color: #F8F8F8 !important;
+  padding: 10px !important;
+  color: var(--ctp-mocha-crust) !important;
+  font-size: 14px !important;
+  font-style: italic !important;
+  border: 0 !important;
+  border-left: 5px solid #E8E8E8 !important;
+}
+
+}
