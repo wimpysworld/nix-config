@@ -7,8 +7,6 @@ in
   home = {
     packages = with pkgs; [
       bemoji
-      wl-clipboard-rs
-      wtype
     ];
     sessionVariables = {
       BEMOJI_PICKER_CMD = "${lib.getExe pkgs.fuzzel} --dmenu --width 48";
@@ -48,7 +46,7 @@ in
       bindr = [ "$mod, $mod_L, exec, ${pkgs.procps}/bin/pkill fuzzel || fuzzel --prompt '󱓞 '" ];
       bind = [
         "$mod, SPACE, exec, fuzzel --prompt '󰌧 ' --show-actions"
-        "CTRL ALT, H, exec, cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | wl-copy --primary --regular --trim-newline"
+        "CTRL ALT, H, exec, cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | ${pkgs.wl-clipboard-rs}/bin/wl-copy --primary --regular --trim-newline"
         "CTRL ALT, E, exec, ${lib.getExe pkgs.bemoji} --clip --noline --type --hist-limit 8"
         "CTRL ALT, R, exec, $SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | ${pkgs.wl-clipboard-rs}/bin/wl-copy --primary --regular --trim-newline"
       ];

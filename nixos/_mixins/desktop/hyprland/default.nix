@@ -35,6 +35,8 @@
         polkit_gnome
         wdisplays       # display configuration
         wlr-randr
+        wl-clipboard
+        wtype
         catppuccin-cursors
       ];
   };
