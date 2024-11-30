@@ -18,10 +18,8 @@
       {
         settings = with lib.gvariant; {
           "org/gnome/evolution/mail" = {
-            monospace-font = "FiraCode Nerd Font Mono Medium 13";
             search-gravatar-for-photo = true;
             show-sender-photo = true;
-            variable-width-font = "Work Sans 12";
             send-recv-all-on-start = true;
             junk-check-incoming = false;
             junk-lookup-addressbook = true;
@@ -39,9 +37,16 @@
             forward-style = mkUint32 2;
             reply-style-name = "quoted";
             reply-style = mkUint32 0;
+            preview-unset-html-colors = true;
             load-http-images = mkUint32 2;
             notify-remote-content = false;
             show-attachment-bar = false;
+            use-custom-font = true;
+            monospace-font = "FiraCode Nerd Font Mono Medium 16";
+            variable-width-font = "Work Sans 16";
+          };
+          "org/gnome/evolution/shell" = {
+            webkit-minimum-font-size = mkUint32 16;
           };
           "org/gnome/evolution/calendar" = {
             use-24hour-format = true;
