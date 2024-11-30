@@ -77,8 +77,8 @@ let
           start_app code 4 "initialTitle: Visual Studio Code"
           start_app "gitkraken --no-show-splash-screen" 4 "title: GitKraken Desktop"
           start_app foot 5 "class: foot"
-          start_app boxbuddy-rs 6 "class: io.github.dvlv.boxbuddyrs"
-          start_app pods 6 "class: com.github.marhkb.Pods"
+          #start_app boxbuddy-rs 6 "class: io.github.dvlv.boxbuddyrs"
+          #start_app pods 6 "class: com.github.marhkb.Pods"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
               start_app "obs --disable-shutdown-check --collection 'VirtualCam' --profile 'VirtualCam' --scene 'VirtualCam-DetSys' --startvirtualcam" 7 "class: com.obsproject.Studio"
           fi
