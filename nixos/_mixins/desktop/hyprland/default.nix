@@ -28,7 +28,7 @@
         # Enable HEIC image previews in Nautilus
         libheif
         libheif.out
-        monitorets
+        resources
         gnome-font-viewer
         nautilus  # file manager
         zenity
