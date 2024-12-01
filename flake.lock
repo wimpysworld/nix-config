@@ -41,11 +41,11 @@
     },
     "catppuccin": {
       "locked": {
-        "lastModified": 1732947104,
-        "narHash": "sha256-AMVSa4H73IAp12Zwpa+2/mE9sFirxxg8gv6gDvADzQI=",
+        "lastModified": 1733001911,
+        "narHash": "sha256-uX/9m0TbdhEzuWA0muM5mI/AaWcLiDLjCCyu5Qr9MRk=",
         "owner": "catppuccin",
         "repo": "nix",
-        "rev": "7a6e695bbf6220af2b1a6941613d9df1160a32cd",
+        "rev": "a817009ebfd2cca7f70a77884e5098d0a8c83f8e",
         "type": "github"
       },
       "original": {
@@ -141,11 +141,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1732919362,
-        "narHash": "sha256-3SxlMD3nSI90+pHOF27SuLEt3+wew8xl+sUJaJMeHOI=",
+        "lastModified": 1732988076,
+        "narHash": "sha256-2uMaVAZn7fiyTUGhKgleuLYe5+EAAYB/diKxrM7g3as=",
         "owner": "nix-community",
         "repo": "disko",
-        "rev": "b71e3faca99b40fb801f03fd950fbefbbba691a4",
+        "rev": "2814a5224a47ca19e858e027f7e8bff74a8ea9f1",
         "type": "github"
       },
       "original": {
@@ -554,11 +554,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1732931481,
-        "narHash": "sha256-W4FRZVN3ExbjEQLoRijmmCu0vWJ5sYMRLzFCCsfDHhU=",
+        "lastModified": 1733018907,
+        "narHash": "sha256-e34A6rHd5LO3mHY5USeRf36x0czcpHt1CD9ZyS5Eu7A=",
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "ad53e4155149d1d69e45bc0ade1d9695d81a05b6",
+        "rev": "9bc3dde891ada1aa00f29bc6a64473f53d57547e",
         "type": "github"
       },
       "original": {
@@ -606,24 +606,22 @@
         "type": "github"
       }
     },
-    "nixos-needtoreboot": {
+    "nixos-needsreboot": {
       "inputs": {
         "nixpkgs": [
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1715010630,
-        "narHash": "sha256-zOMZDSAd3w1Dd5Jcs3nYae7aNomb3qfMJmCQl2ucZok=",
-        "owner": "thefossguy",
-        "repo": "nixos-needsreboot",
-        "rev": "8a3f64cc3c246cc6311485ad96ee9db0989c1377",
-        "type": "github"
+        "lastModified": 1714932872,
+        "narHash": "sha256-C+oxZthPMuqEEiioPsqeWZ+xFlt2Y4yz5S2Cg4dtG08=",
+        "rev": "c00f7e0eb0d35bce9351173ed73a99454d57a8b6",
+        "type": "tarball",
+        "url": "https://codeberg.org/api/v1/repos/Mynacol/nixos-needsreboot/archive/c00f7e0eb0d35bce9351173ed73a99454d57a8b6.tar.gz"
       },
       "original": {
-        "owner": "thefossguy",
-        "repo": "nixos-needsreboot",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://codeberg.org/Mynacol/nixos-needsreboot/archive/0.2.2.tar.gz"
       }
     },
     "nixpkgs": {
@@ -688,12 +686,12 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1732238832,
-        "narHash": "sha256-sQxuJm8rHY20xq6Ah+GwIUkF95tWjGRd1X8xF+Pkk38=",
-        "rev": "8edf06bea5bcbee082df1b7369ff973b91618b8d",
-        "revCount": 711046,
+        "lastModified": 1732937961,
+        "narHash": "sha256-B5pYT+IVaqcrfOekkwKvx/iToDnuQWzc2oyDxzzBDc4=",
+        "rev": "4703b8d2c708e13a8cab03d865f90973536dcdf5",
+        "revCount": 714486,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/nixpkgs-weekly/0.1.711046%2Brev-8edf06bea5bcbee082df1b7369ff973b91618b8d/019366f9-30a0-7cd4-b5a3-b47513aca739/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/nixpkgs-weekly/0.1.714486%2Brev-4703b8d2c708e13a8cab03d865f90973536dcdf5/01937ed6-ab5d-70c6-9cd3-3fdf29985206/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -746,16 +744,14 @@
       "locked": {
         "lastModified": 1732824227,
         "narHash": "sha256-fYNXgpu1AEeLyd3fQt4Ym0tcVP7cdJ8wRoqJ+CtTRyY=",
-        "owner": "nixos",
-        "repo": "nixpkgs",
         "rev": "c71ad5c34d51dcbda4c15f44ea4e4aa6bb6ac1e9",
-        "type": "github"
+        "revCount": 709933,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/nixos/nixpkgs/0.2411.709933%2Brev-c71ad5c34d51dcbda4c15f44ea4e4aa6bb6ac1e9/01937ed9-0a91-7f3b-8248-d78f7c3cc678/source.tar.gz"
       },
       "original": {
-        "owner": "nixos",
-        "ref": "nixos-24.11",
-        "repo": "nixpkgs",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/nixos/nixpkgs/0.2411.%2A"
       }
     },
     "quickemu": {
@@ -836,7 +832,7 @@
         "nix-snapd": "nix-snapd",
         "nix-vscode-extensions": "nix-vscode-extensions",
         "nixos-hardware": "nixos-hardware",
-        "nixos-needtoreboot": "nixos-needtoreboot",
+        "nixos-needsreboot": "nixos-needsreboot",
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "quickemu": "quickemu",
