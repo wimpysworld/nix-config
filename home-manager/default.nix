@@ -528,7 +528,7 @@ in
     };
     nix-index.enable = true;
     powerline-go = {
-      enable = true;
+      enable = false;
       settings = {
         cwd-max-depth = 5;
         cwd-max-dir-size = 12;
@@ -543,6 +543,190 @@ in
         "--smart-case"
       ];
       enable = true;
+    };
+    starship = {
+      enable = true;
+      enableBashIntegration = true;
+      enableFishIntegration = true;
+      catppuccin.enable = true;
+      # https://github.com/etrigan63/Catppuccin-starship
+      # TODO: sudo, shlvl,status, ssh, hostname
+      settings = {
+        format = lib.concatStrings [
+          "[](blue)"
+          "$os"
+          "$username"
+          "[$hostname](fg:crust bg:blue)"
+          "[](bg:text fg:blue)"
+          "$directory"
+          "[](fg:text bg:yellow)"
+          "$git_branch"
+          "$git_status"
+          "[](fg:yellow bg:mauve)"
+          "$c"
+          "$elixir"
+          "$elm"
+          "$golang"
+          "$haskell"
+          "$java"
+          "$julia"
+          "$nodejs"
+          "$nix_shell"
+          "$rust"
+          "[](fg:mauve bg:#a6e3a1)"
+          "$docker_context"
+          "[](fg:#a6e3a1 bg:blue)"
+          "$time"
+          "[ ](fg:blue)"
+        ];
+
+        # Disable the blank line at the start of the prompt
+        add_newline = false;
+
+        command_timeout = 1000;
+
+        # You can also replace your username with a neat symbol like  to save some space
+        username = {
+          show_always = true;
+          style_user = "fg:crust bg:blue";
+          style_root = "fg:crust bg:red";
+          format = ''[$user ]($style)'';
+        };
+
+        os = {
+          style = "fg:crust bg:blue";
+          disabled = false;
+          format = ''[$symbol]($style)'';
+        };
+
+        os.symbols = {
+          AlmaLinux = " ";
+          Alpine = " ";
+          Amazon = " ";
+          Android = "󰀲 ";
+          Arch = "󰣇 ";
+          Artix = " ";
+          CentOS = " ";
+          Debian = " ";
+          DragonFly = " ";
+          EndeavourOS = " ";
+          Fedora = " ";
+          FreeBSD = " ";
+          Garuda = " ";
+          Gentoo = " ";
+          Illumos = " ";
+          Kali = " ";
+          Linux = " ";
+          Macos = " ";
+          Manjaro = " ";
+          Mint = "󰣭 ";
+          NixOS = " ";
+          OpenBSD = " ";
+          openSUSE = " ";
+          Pop = " ";
+          Raspbian = " ";
+          Redhat = " ";
+          RedHatEnterprise = " ";
+          RockyLinux = " ";
+          Solus = " ";
+          SUSE = " ";
+          Ubuntu = " ";
+          Unknown = " ";
+          Void = "  ";
+          Windows = "󰖳 ";
+        };
+
+        directory = {
+          style = "fg:crust bg:text";
+          format = "[ $path ]($style)";
+          truncation_length = 3;
+          truncation_symbol = "…/";
+        };
+
+        # Here is how you can shorten some long paths by text replacement
+        # similar to mapped_locations in Oh My Posh:
+        directory.substitutions = {
+          "Documents" = "󰈙 ";
+          "Downloads" = " ";
+          "Music" = " ";
+          "Pictures" = " ";
+          # Keep in mind that the order matters. For example:
+          # "Important Documents" = "  "
+          # will not be replaced, because "Documents" was already substituted before.
+          # So either put "Important Documents" before "Documents" or use the substituted version:
+          # "Important  " = "  "
+        };
+        c = {
+          symbol = " ";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        docker_context = {
+          symbol = " ";
+          style = "fg:crust bg:#a6e3a1";
+          format = ''[[ $symbol $context ](fg:crust bg:#a6e3a1)]($style) $path'';
+        };
+        elixir = {
+          symbol = " ";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        elm = {
+          symbol = " ";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        git_branch = {
+          symbol = "";
+          style = "fg:crust bg:yellow";
+          format = ''[[ $symbol $branch ](fg:crust bg:yellow)]($style)'';
+        };
+        git_status = {
+          style = "fg:crust bg:yellow";
+          format = ''[[($all_status$ahead_behind )](fg:crust bg:yellow)]($style)'';
+        };
+        golang = {
+          symbol = "";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        haskell = {
+          symbol = "";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        java = {
+          symbol = "";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        julia = {
+          symbol = "";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        nodejs = {
+          symbol = "";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        nix_shell = {
+          symbol = "󱄅";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        rust = {
+          symbol = "";
+          style = "fg:crust bg:mauve";
+          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+        };
+        time = {
+          disabled = true;
+          time_format = "%R"; # Hour:Minute Format
+          style = "fg:crust bg:blue";
+          format = ''[[ $time ](fg:crust bg:blue)]($style)'';
+        };
+      };
     };
     tmate.enable = true;
     tmux = {
