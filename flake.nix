@@ -18,8 +18,8 @@
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
-    nixos-needtoreboot.url = "github:thefossguy/nixos-needsreboot";
-    nixos-needtoreboot.inputs.nixpkgs.follows = "nixpkgs";
+    nixos-needsreboot.url = "https://codeberg.org/Mynacol/nixos-needsreboot/archive/0.2.2.tar.gz";
+    nixos-needsreboot.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
