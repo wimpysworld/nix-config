@@ -1,8 +1,8 @@
 {
   description = "Wimpy's NixOS, nix-darwin and Home Manager Configuration";
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
-    #nixpkgs.url = "https://flakehub.com/f/nixos/nixpkgs/0.2411.*";
+    #nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs.url = "https://flakehub.com/f/nixos/nixpkgs/0.2411.*";
     nixpkgs-unstable.url = "https://flakehub.com/f/DeterminateSystems/nixpkgs-weekly/0";
 
     auto-cpufreq.url = "github:AdnanHodzic/auto-cpufreq";
