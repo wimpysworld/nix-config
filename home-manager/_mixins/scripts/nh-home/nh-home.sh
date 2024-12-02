@@ -27,7 +27,7 @@ if [ -e "${HOME}/Zero/nix-config" ]; then
     # Calculate 75% of the number of processing units
     build_cores=$(printf "%.0f" "$(echo "${all_cores} * 0.75" | bc)")
 
-    echo "${1^}ing Home Manager 🏠️ with ${build_cores} cores"
+    echo "${1^}ing Home Manager  with ${build_cores} cores"
     case $1 in
         build) nh home build "${HOME}/Zero/nix-config/" -- --cores "${build_cores}";;
         switch) nh home switch --backup-extension "${STAMP}" "${HOME}/Zero/nix-config/" -- --cores "${build_cores}";;
