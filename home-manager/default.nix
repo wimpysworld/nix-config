@@ -550,19 +550,19 @@ in
       enableFishIntegration = true;
       catppuccin.enable = true;
       # https://github.com/etrigan63/Catppuccin-starship
-      # TODO: sudo, shlvl,status, ssh, hostname
+      # TODO: cmd_durection and status
       settings = {
         format = lib.concatStrings [
-          "[](blue)"
+          "[](surface1)"
           "$os"
+          "[](bg:surface2 fg:surface1)"
           "$username"
-          "[$hostname](fg:crust bg:blue)"
-          "[](bg:text fg:blue)"
+          "$sudo"
+          "[](bg:overlay0 fg:surface2)"
+          "$hostname"
+          "[](bg:mauve fg:overlay0)"
           "$directory"
-          "[](fg:text bg:yellow)"
-          "$git_branch"
-          "$git_status"
-          "[](fg:yellow bg:mauve)"
+          "[](fg:mauve bg:peach)"
           "$c"
           "$elixir"
           "$elm"
@@ -573,158 +573,235 @@ in
           "$nodejs"
           "$nix_shell"
           "$rust"
-          "[](fg:mauve bg:#a6e3a1)"
+          "$git_branch"
+          "[](fg:peach bg:yellow)"
+          "$git_status"
+          "[](fg:yellow bg:teal)"
           "$docker_context"
-          "[](fg:#a6e3a1 bg:blue)"
-          "$time"
-          "[ ](fg:blue)"
+          "$shlvl"
+          "$character"
         ];
 
         # Disable the blank line at the start of the prompt
         add_newline = false;
-
         command_timeout = 1000;
 
-        # You can also replace your username with a neat symbol like  to save some space
-        username = {
-          show_always = true;
-          style_user = "fg:crust bg:blue";
-          style_root = "fg:crust bg:red";
-          format = ''[$user ]($style)'';
+        status = {
+          disabled = false;
+          format = "[$symbol $common_meaning: $status]($style)";
+          style = "fg:base bg:pink";
+          symbol = "[](fg:mauve bg:pink)[]";
+          success_symbol = "";
+          not_executable_symbol = "[](fg:mauve bg:pink)";
+          not_found_symbol = "󰩌";
+          sigint_symbol = "";
+          signal_symbol = "⚡";
+        };
+
+        shlvl = {
+          disabled = false;
+          format = "[ $symbol]($style)";
+          repeat = true;
+          repeat_offset = 2;
+          style = "fg:yellow bg:teal";
+          symbol = "";
+          threshold = 2;
         };
 
         os = {
-          style = "fg:crust bg:blue";
           disabled = false;
-          format = ''[$symbol]($style)'';
+          format = "[$symbol ]($style)";
+          style = "fg:sapphire bg:surface1";
         };
 
         os.symbols = {
-          AlmaLinux = " ";
-          Alpine = " ";
-          Amazon = " ";
-          Android = "󰀲 ";
-          Arch = "󰣇 ";
-          Artix = " ";
-          CentOS = " ";
-          Debian = " ";
-          DragonFly = " ";
-          EndeavourOS = " ";
-          Fedora = " ";
-          FreeBSD = " ";
-          Garuda = " ";
-          Gentoo = " ";
-          Illumos = " ";
-          Kali = " ";
-          Linux = " ";
-          Macos = " ";
-          Manjaro = " ";
-          Mint = "󰣭 ";
-          NixOS = " ";
-          OpenBSD = " ";
-          openSUSE = " ";
-          Pop = " ";
-          Raspbian = " ";
-          Redhat = " ";
-          RedHatEnterprise = " ";
-          RockyLinux = " ";
-          Solus = " ";
-          SUSE = " ";
-          Ubuntu = " ";
-          Unknown = " ";
-          Void = "  ";
-          Windows = "󰖳 ";
+          AlmaLinux = "";
+          Alpine = "";
+          Amazon = "";
+          Android = "󰀲";
+          Arch = "󰣇";
+          Artix = "";
+          CentOS = "";
+          Debian = "";
+          DragonFly = "";
+          EndeavourOS = "";
+          Fedora = "";
+          FreeBSD = "";
+          Garuda = "";
+          Gentoo = "";
+          Illumos = "";
+          Kali = "";
+          Linux = "";
+          Macos = "";
+          Manjaro = "";
+          Mint = "󰣭";
+          NixOS = "";
+          OpenBSD = "";
+          openSUSE = "";
+          Pop = "";
+          Raspbian = "";
+          Redhat = "";
+          RedHatEnterprise = "";
+          RockyLinux = "";
+          Solus = "";
+          SUSE = "";
+          Ubuntu = "";
+          Unknown = "";
+          Void = "";
+          Windows = "󰖳";
+        };
+
+        username = {
+          show_always = true;
+          style_user = "fg:green bg:surface2";
+          style_root = "fg:red bg:surface2";
+          format = "[ $user]($style)";
+          aliases = {
+            "${username}" = "󰝴";
+            "root" = "󰱯";
+          };
+        };
+
+        sudo = {
+          disabled = false;
+          format = "[ $symbol]($style)";
+          style = "fg:rosewater bg:surface2";
+          symbol = "󰌋";
+        };
+
+        hostname = {
+          disabled = false;
+          style = "bg:overlay0 fg:red";
+          ssh_only = false;
+          ssh_symbol = " 󰖈";
+          format = "[ $hostname]($style)[$ssh_symbol](bg:overlay0 fg:maroon)";
         };
 
         directory = {
-          style = "fg:crust bg:text";
-          format = "[ $path ]($style)";
+          format = "[ $path]($style)[$read_only]($read_only_style)";
+          home_symbol = "";
+          read_only = " 󰈈";
+          read_only_style = "bold fg:crust bg:mauve";
+          style = "fg:base bg:mauve";
           truncation_length = 3;
           truncation_symbol = "…/";
         };
 
-        # Here is how you can shorten some long paths by text replacement
-        # similar to mapped_locations in Oh My Posh:
+        # Shorten long paths by text replacement. Order matters
         directory.substitutions = {
-          "Documents" = "󰈙 ";
-          "Downloads" = " ";
-          "Music" = " ";
-          "Pictures" = " ";
-          # Keep in mind that the order matters. For example:
-          # "Important Documents" = "  "
-          # will not be replaced, because "Documents" was already substituted before.
-          # So either put "Important Documents" before "Documents" or use the substituted version:
-          # "Important  " = "  "
+          "Apps" = "󰵆";
+          "Audio" = "";
+          "Crypt" = "󰌾";
+          "Desktop" = "";
+          "Development" = "";
+          "Documents" = "󰈙";
+          "Downloads" = "󰉍";
+          "Dropbox" = "";
+          "Games" = "󰊴";
+          "Keybase" = "󰯄";
+          "Music" = "󰎄";
+          "Pictures" = "";
+          "Public" = "";
+          "Studio" = "󰡇";
+          "Vaults" = "󰌿";
+          "Videos" = "";
+          "Volatile" = "󱪃";
+          "Websites" = "󰖟";
+          "nix-config" = "󱄅";
+          "Zero" = "󰎡";
         };
-        c = {
-          symbol = " ";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+
+        git_branch = {
+          format = "[ $symbol $branch]($style)";
+          ignore_branches = [ "master" "main" ];
+          style = "fg:base bg:peach";
+          symbol = "";
         };
+
+        git_status = {
+          format = "[ $all_status$ahead_behind]($style)";
+          conflicted = "󰳤 ";
+          untracked = " ";
+          stashed = " ";
+          modified = " ";
+          staged = " ";
+          renamed = " ";
+          deleted = " ";
+          typechanged = " ";
+
+          # $ahead_behind is just one of these
+          ahead = "󰜹";
+          behind = "󰜰";
+          diverged = "";
+          up_to_date = "󰤓";
+          style = "fg:base bg:yellow";
+        };
+
         docker_context = {
-          symbol = " ";
-          style = "fg:crust bg:#a6e3a1";
-          format = ''[[ $symbol $context ](fg:crust bg:#a6e3a1)]($style) $path'';
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:teal";
+          symbol = "󰡨";
+        };
+
+        c = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
         };
         elixir = {
-          symbol = " ";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
         };
         elm = {
-          symbol = " ";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
-        };
-        git_branch = {
-          symbol = "";
-          style = "fg:crust bg:yellow";
-          format = ''[[ $symbol $branch ](fg:crust bg:yellow)]($style)'';
-        };
-        git_status = {
-          style = "fg:crust bg:yellow";
-          format = ''[[($all_status$ahead_behind )](fg:crust bg:yellow)]($style)'';
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
         };
         golang = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
           symbol = "";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
         };
         haskell = {
-          symbol = "";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "󰲒";
         };
         java = {
-          symbol = "";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "󰬷";
         };
         julia = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
           symbol = "";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
         };
         nodejs = {
-          symbol = "";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
         };
         nix_shell = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
           symbol = "󱄅";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
         };
         rust = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
           symbol = "";
-          style = "fg:crust bg:mauve";
-          format = ''[[ $symbol ($version) ](fg:crust bg:mauve)]($style)'';
         };
         time = {
           disabled = true;
-          time_format = "%R"; # Hour:Minute Format
-          style = "fg:crust bg:blue";
-          format = ''[[ $time ](fg:crust bg:blue)]($style)'';
+        };
+
+        character = {
+          disabled = false;
+          format = "$symbol";
+          error_symbol = "[](fg:teal bg:pink)[ ](fg:red bg:pink)[](fg:pink) ";
+          success_symbol = "[](fg:teal bg:blue)[](fg:blue) ";
         };
       };
     };
