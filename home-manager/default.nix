@@ -693,6 +693,7 @@ in
           "Music" = "󰎄";
           "Pictures" = "";
           "Public" = "";
+          "Quickemu" = "";
           "Studio" = "󰡇";
           "Vaults" = "󰌿";
           "Videos" = "";
