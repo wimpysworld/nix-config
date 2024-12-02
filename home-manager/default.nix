@@ -896,6 +896,7 @@ in
           disabled = false;
           format = "$symbol";
           map_symbol = true;
+          pipestatus = false;
           style = "";
           symbol = "[](fg:teal bg:pink)[  $status](fg:red bg:pink)";
           success_symbol = "[](fg:teal bg:blue)";
