@@ -194,7 +194,7 @@ Here's the directory structure I'm using:
 
 ### The Shell 🐚
 
-Fish shell 🐟️ with [powerline-go](https://github.com/justjanne/powerline-go) and a collection of tools that deliver a *"[Modern Unix]"* experience.
+Fish shell 🐟️ with [Starship](https://starship.rs/) 🚀 and a collection of tools that deliver a *"[Modern Unix]"* experience.
 The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], [Distrobox](./nixos/_mixins/features/distrobox/default.nix) and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
 Useful shell scripts I used to keep in muddle of git repos are now migrated to [NixOS scripts](./nixos/_mixins/scripts) and [Home Manager scripts](./home-manager/_mixins/scripts) to provide a declarative, reproducible and `shellcheck` validated toolbox 🧰
 

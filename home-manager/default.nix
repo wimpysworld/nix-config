@@ -550,8 +550,12 @@ in
       enableFishIntegration = true;
       catppuccin.enable = true;
       # https://github.com/etrigan63/Catppuccin-starship
-      # TODO: cmd_durection and status
       settings = {
+        add_newline = false;
+        command_timeout = 1000;
+        time = {
+          disabled = true;
+        };
         format = lib.concatStrings [
           "[](surface1)"
           "$os"
@@ -564,56 +568,48 @@ in
           "$directory"
           "[](fg:mauve bg:peach)"
           "$c"
+          "$dart"
+          "$dotnet"
           "$elixir"
           "$elm"
+          "$erlang"
           "$golang"
           "$haskell"
+          "$haxe"
           "$java"
           "$julia"
+          "$kotlin"
+          "$lua"
+          "$nim"
           "$nodejs"
-          "$nix_shell"
+          "$rlang"
+          "$ruby"
           "$rust"
+          "$perl"
+          "$php"
+          "$python"
+          "$scala"
+          "$swift"
+          "$zig"
+          "$package"
           "$git_branch"
           "[](fg:peach bg:yellow)"
           "$git_status"
           "[](fg:yellow bg:teal)"
-          "$docker_context"
+          "$container"
+          "$direnv"
+          "$nix_shell"
+          "$cmd_duration"
+          "$jobs"
           "$shlvl"
+          "$status"
           "$character"
         ];
-
-        # Disable the blank line at the start of the prompt
-        add_newline = false;
-        command_timeout = 1000;
-
-        status = {
-          disabled = false;
-          format = "[$symbol $common_meaning: $status]($style)";
-          style = "fg:base bg:pink";
-          symbol = "[](fg:mauve bg:pink)[]";
-          success_symbol = "";
-          not_executable_symbol = "[](fg:mauve bg:pink)";
-          not_found_symbol = "󰩌";
-          sigint_symbol = "";
-          signal_symbol = "⚡";
-        };
-
-        shlvl = {
-          disabled = false;
-          format = "[ $symbol]($style)";
-          repeat = true;
-          repeat_offset = 2;
-          style = "fg:yellow bg:teal";
-          symbol = "";
-          threshold = 2;
-        };
-
         os = {
           disabled = false;
           format = "[$symbol ]($style)";
           style = "fg:sapphire bg:surface1";
         };
-
         os.symbols = {
           AlmaLinux = "";
           Alpine = "";
@@ -650,25 +646,22 @@ in
           Void = "";
           Windows = "󰖳";
         };
-
         username = {
+          aliases = {
+            "martin" = "󰝴";
+            "root" = "󰱯";
+          };
+          format = "[ $user]($style)";
           show_always = true;
           style_user = "fg:green bg:surface2";
           style_root = "fg:red bg:surface2";
-          format = "[ $user]($style)";
-          aliases = {
-            "${username}" = "󰝴";
-            "root" = "󰱯";
-          };
         };
-
         sudo = {
           disabled = false;
           format = "[ $symbol]($style)";
           style = "fg:rosewater bg:surface2";
           symbol = "󰌋";
         };
-
         hostname = {
           disabled = false;
           style = "bg:overlay0 fg:red";
@@ -676,7 +669,6 @@ in
           ssh_symbol = " 󰖈";
           format = "[ $hostname]($style)[$ssh_symbol](bg:overlay0 fg:maroon)";
         };
-
         directory = {
           format = "[ $path]($style)[$read_only]($read_only_style)";
           home_symbol = "";
@@ -686,7 +678,6 @@ in
           truncation_length = 3;
           truncation_symbol = "…/";
         };
-
         # Shorten long paths by text replacement. Order matters
         directory.substitutions = {
           "Apps" = "󰵆";
@@ -710,43 +701,21 @@ in
           "nix-config" = "󱄅";
           "Zero" = "󰎡";
         };
-
-        git_branch = {
-          format = "[ $symbol $branch]($style)";
-          ignore_branches = [ "master" "main" ];
-          style = "fg:base bg:peach";
-          symbol = "";
-        };
-
-        git_status = {
-          format = "[ $all_status$ahead_behind]($style)";
-          conflicted = "󰳤 ";
-          untracked = " ";
-          stashed = " ";
-          modified = " ";
-          staged = " ";
-          renamed = " ";
-          deleted = " ";
-          typechanged = " ";
-
-          # $ahead_behind is just one of these
-          ahead = "󰜹";
-          behind = "󰜰";
-          diverged = "";
-          up_to_date = "󰤓";
-          style = "fg:base bg:yellow";
-        };
-
-        docker_context = {
-          format = "[ $symbol]($style)";
-          style = "fg:base bg:teal";
-          symbol = "󰡨";
-        };
-
+        # Languages
         c = {
           format = "[ $symbol]($style)";
           style = "fg:base bg:peach";
           symbol = "";
+        };
+        dart = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
+        dotnet = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
         };
         elixir = {
           format = "[ $symbol]($style)";
@@ -758,6 +727,11 @@ in
           style = "fg:base bg:peach";
           symbol = "";
         };
+        erlang = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
         golang = {
           format = "[ $symbol]($style)";
           style = "fg:base bg:peach";
@@ -767,6 +741,11 @@ in
           format = "[ $symbol]($style)";
           style = "fg:base bg:peach";
           symbol = "󰲒";
+        };
+        haxe = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
         };
         java = {
           format = "[ $symbol]($style)";
@@ -778,30 +757,157 @@ in
           style = "fg:base bg:peach";
           symbol = "";
         };
+        kotlin = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
+        lua = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
+        nim = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
         nodejs = {
           format = "[ $symbol]($style)";
           style = "fg:base bg:peach";
           symbol = "";
         };
-        nix_shell = {
+        perl = {
           format = "[ $symbol]($style)";
           style = "fg:base bg:peach";
-          symbol = "󱄅";
+          symbol = "";
+        };
+        php = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "󰌟";
+        };
+        python = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
+        rlang = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
+        ruby = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
         };
         rust = {
           format = "[ $symbol]($style)";
           style = "fg:base bg:peach";
           symbol = "";
         };
-        time = {
-          disabled = true;
+        scala = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
         };
-
+        swift = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
+        zig = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
+        package = {
+          format = "[ $version]($style)";
+          style = "fg:base bg:peach";
+          version_format = "$raw";
+        };
+        git_branch = {
+          format = "[ $symbol $branch]($style)";
+          style = "fg:base bg:peach";
+          symbol = "";
+        };
+        git_status = {
+          format = "[ $all_status$ahead_behind]($style)";
+          conflicted = "󰳤 ";
+          untracked = " ";
+          stashed = " ";
+          modified = " ";
+          staged = " ";
+          renamed = " ";
+          deleted = " ";
+          typechanged = " ";
+          # $ahead_behind is just one of these
+          ahead = "󰜹";
+          behind = "󰜰";
+          diverged = "";
+          up_to_date = "󰤓";
+          style = "fg:base bg:yellow";
+        };
+        # "Shells"
+        container = {
+          format = "[ $symbol $name]($style)";
+          style = "fg:base bg:teal";
+          symbol = "󱋩";
+        };
+        direnv = {
+          disabled = false;
+          format = "[ $loaded]($style)";
+          allowed_msg = "";
+          not_allowed_msg = "";
+          denied_msg = "";
+          loaded_msg = "󰐍";
+          unloaded_msg = "󰙧";
+          style = "fg:base bg:teal";
+          symbol = "";
+        };
+        nix_shell = {
+          format = "[ $symbol]($style)";
+          style = "fg:base bg:teal";
+          symbol = "󱄅";
+        };
+        cmd_duration = {
+          format = "[  $duration]($style)";
+          min_time = 2500;
+          min_time_to_notify = 60000;
+          show_notifications = false;
+          style = "fg:base bg:teal";
+        };
+        jobs = {
+          format = "[ $symbol $number]($style)";
+          style = "fg:base bg:teal";
+          symbol = "󰣖";
+        };
+        shlvl = {
+          disabled = false;
+          format = "[ $symbol]($style)";
+          repeat = false;
+          style = "fg:surface1 bg:teal";
+          symbol = "󱆃";
+          threshold = 3;
+        };
+        status = {
+          disabled = false;
+          format = "$symbol";
+          map_symbol = true;
+          style = "";
+          symbol = "[](fg:teal bg:pink)[  $status](fg:red bg:pink)";
+          success_symbol = "[](fg:teal bg:blue)";
+          not_executable_symbol = "[](fg:teal bg:pink)[  $common_meaning](fg:red bg:pink)";
+          not_found_symbol = "[](fg:teal bg:pink)[ 󰩌 $common_meaning](fg:red bg:pink)";
+          sigint_symbol = "[](fg:teal bg:pink)[  $signal_name](fg:red bg:pink)";
+          signal_symbol = "[](fg:teal bg:pink)[ ⚡ $signal_name](fg:red bg:pink)";
+        };
         character = {
           disabled = false;
           format = "$symbol";
-          error_symbol = "[](fg:teal bg:pink)[ ](fg:red bg:pink)[](fg:pink) ";
-          success_symbol = "[](fg:teal bg:blue)[](fg:blue) ";
+          error_symbol = "(fg:red bg:pink)[](fg:pink) ";
+          success_symbol = "[](fg:blue) ";
         };
       };
     };
