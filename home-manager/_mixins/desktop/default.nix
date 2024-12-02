@@ -94,6 +94,7 @@ in
       settings = {
         main = {
           font = "FiraCode Nerd Font Mono:size=16";
+          term = "xterm-256color";
         };
         cursor = {
           style = "block";
