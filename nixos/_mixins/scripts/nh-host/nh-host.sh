@@ -18,7 +18,7 @@ fi
 if [ -e "${HOME}/Zero/nix-config" ]; then
     all_cores=$(nproc)
     build_cores=$(printf "%.0f" "$(echo "${all_cores} * 0.75" | bc)")
-    echo "${1^}ing NixOS ❄️  with ${build_cores} cores"
+    echo "${1^}ing NixOS  with ${build_cores} cores"
     nh os "${1}" "${HOME}/Zero/nix-config/" -- --cores "${build_cores}"
 else
     echo "ERROR! No nix-config found in ${HOME}/Zero/nix-config"
