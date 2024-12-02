@@ -38,6 +38,7 @@ in
           "--ozone-platform-hint=auto"
         ];
       })
+      station
       # Workaround for log spam on video calls: https://issues.chromium.org/issues/331796411
       (wavebox.override {
         commandLineArgs = [
