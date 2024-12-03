@@ -112,16 +112,32 @@ let
       }
 
       function activity_wimpysworld() {
+          # Workspace 7
+          hyprctl dispatch workspace 7 &>/dev/null
+          start_app "obs --disable-shutdown-check --collection 'Wimpys World' --profile Dev-Local --scene Collage" 7 "class: com.obsproject.Studio"
+          # Workspace 8
+          start_app rhythmbox 8 "class: rhythmbox"
+          # Workspace 9
+          hyprctl dispatch workspace 9 &>/dev/null
           firefox -CreateProfile wimpysworld-studio
           start_app "firefox \
               -P wimpysworld-studio \
               -no-remote \
               --new-window https://dashboard.twitch.tv/u/wimpysworld/stream-manager \
+              --new-tab https://wimpysworld.live \
               --new-tab https://streamelements.com \
               --new-tab https://botrix.live" 9 "title: Twitch — Mozilla Firefox"
-          start_app "obs --disable-shutdown-check --collection 'Wimpys World' --profile Dev-Local --scene Collage" 7 "class: com.obsproject.Studio"
-          start_app chatterino 7 "chatterino"
-          start_app discord 9 " - Discord"
+          case "$HOSTNAME" in
+              phasma)
+                start_app discord 7 " - Discord"
+                start_app chatterino 7 "chatterino"
+                ;;
+              vader)
+                start_app chatterino 9 "chatterino"
+                start_app discord 9 " - Discord"
+                ;;
+          esac
+          # Workspace 10
           start_app code 10 "initialTitle: Visual Studio Code"
           start_app gitkraken 10 "title: GitKraken Desktop"
           start_app foot 10 "class: foot"
@@ -129,7 +145,7 @@ let
           start_app "firefox \
               -P wimpysworld-stage \
               -no-remote \
-              --new-window https://wimpysworld.com
+              --new-window https://wimpysworld.com \
               --new-tab https://github.com/wimpysworld" 10 "title: Wimpy's World — Mozilla Firefox"
           hyprctl dispatch forcerendererreload
       }
@@ -140,9 +156,11 @@ let
             -P 8bitversus-studio \
             -no-remote \
             --new-window https://dashboard.twitch.tv/u/8bitversus/stream-manager" 9 "title: Twitch — Mozilla Firefox"
+          start_app discord 9 " - Discord"
+          hyprctl dispatch workspace 9 &>/dev/null
           start_app "obs --disable-shutdown-check --collection 8-bit-VS --profile 8-bit-VS-Local --scene Hosts" 7 "class: com.obsproject.Studio"
           start_app chatterino 7 "chatterino"
-          start_app discord 9 " - Discord"
+          hyprctl dispatch workspace 7 &>/dev/null
           hyprctl dispatch forcerendererreload
       }
 
