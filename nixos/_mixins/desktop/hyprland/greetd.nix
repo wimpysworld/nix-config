@@ -10,83 +10,65 @@ let
     systemctl --user --machine=${username}@.host stop dbus-broker
     systemctl --user --machine=${username}@.host stop hyprland-session.target
   '';
-  regreetSway = pkgs.writeShellScriptBin "regreet-sway" ''
-    # Check if a GPU is NVIDIA
-    function is_nvidia() {
-        local card=$1
-        if [ -f "/sys/class/drm/$card/device/vendor" ]; then
-            vendor=$(cat "/sys/class/drm/$card/device/vendor")
-            # NVIDIA vendor ID is 0x10de
-            if [ "$vendor" = "0x10de" ]; then
-                # It is NVIDIA
-                return 0
-            fi
-        fi
-        # It is not NVIDIA
-        return 1
+  # Reference for setting display configuration for cage
+  # - https://github.com/cage-kiosk/cage/issues/304
+  # - https://github.com/cage-kiosk/cage/issues/257
+  regreetCage = pkgs.writeShellScriptBin "regreet-cage" ''
+    # Start regreet in a Wayland kiosk using Cage
+    function cleanup() {
+      ${pkgs.procps}/bin/pkill kanshi || true
     }
-    REGREET_SWAY="${pkgs.sway}/bin/sway --config /etc/greetd/regreet-sway"
-    # Prevent Sway from starting on NVIDIA GPUs; they are for compute only
-    NVIDIA_MODULE_COUNT=$(lsmod | grep -w ^nvidia | wc -l)
-    if [ $NVIDIA_MODULE_COUNT -gt 0 ]; then
-      # Iterate through GPU devices
-      for gpu in /dev/dri/card*; do
-        # Extract the card name
-        card=$(basename "$gpu")
-        # Check if the GPU is not NVIDIA
-        if ! is_nvidia "$card"; then
-          export WLR_DRM_DEVICES=$gpu
-        fi
-      done
-      REGREET_SWAY+=" --unsupported-gpu"
+    trap cleanup EXIT
+
+    # If there is a kanshi profile for regreet, use it.
+    KANSHI_REGREET="$(${pkgs.coreutils-full}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
+    if [ -n "$KANSHI_REGREET" ]; then
+      ${pkgs.cage}/bin/cage -m last -s -- sh -c \
+        '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
+         ${pkgs.greetd.regreet}/bin/regreet'
+    else
+      ${pkgs.cage}/bin/cage -m last -s ${pkgs.greetd.regreet}/bin/regreet
     fi
-    $REGREET_SWAY &>/dev/null
   '';
+  # TODO: Make this an attribute set
   wallpaperResolution = if hostname == "vader" then
     "2560x2880"
   else if hostname == "phasma" then
     "3440x1440"
   else if hostname == "tanis" then
     "1920x1200"
-  else "1920x1080";
-
-  wallpapers = if hostname == "vader" then
-    ''
-    output DP-1 bg /etc/backgrounds/Catppuccin-2560x2880.png fill
-    output DP-2 bg /etc/backgrounds/Colorway-2560x2880.png fill
-    output DP-3 bg /etc/backgrounds/Colorway-1920x1080.png fill
-    ''
-  else if hostname == "phasma" then
-    ''
-    output DP-1 bg /etc/backgrounds/Catppuccin-3440x1440.png fill
-    output HDMI-A-1 bg /etc/backgrounds/Colorway-2560x1600.png fill
-    output DP-2 bg /etc/backgrounds/Colorway-1920x1080.png fill
-    ''
-  else if hostname == "tanis" then
-    ''
-    output eDP-1 bg /etc/backgrounds/Catppuccin-1920x1200.png fill
-    ''
   else
-    ''output * bg /etc/backgrounds/Catppuccin-1920x1080.png fill'';
+    "1920x1080";
 in
 {
   # Use a minimal Sway to run regreet
   environment = {
-    etc."greetd/regreet-sway".text = ''
-      input type:touchpad {
-        tap enabled
-        natural_scroll enabled
-      }
-      output * scale 1
-      output * bg #1E1E2D solid_color
-      ${wallpapers}
-      seat seat0 xcursor_theme catppuccin-mocha-blue-cursors 32
-      xwayland disable
-      exec "${pkgs.greetd.regreet}/bin/regreet; ${pkgs.sway}/bin/swaymsg exit"
-    '';
+    etc = {
+      # Kanshi profiles just for regreet that just enables the primary display
+      # - Order is important
+      # - The last output to be enabled is what cage will use via `-m last`
+      "kanshi/regreet".text = if hostname == "phasma" then
+        ''
+          profile {
+            output DP-2 disable
+            output HDMI-A-1 disable
+            output DP-1 enable mode 3440x1440@100Hz position 0,1280 scale 1
+          }
+        ''
+      else if hostname == "vader" then
+        ''
+          profile {
+            output DP-3 disable
+            output DP-2 disable
+            output DP-1 enable mode 2560x2880@60Hz position 0,0 scale 1
+          }
+        ''
+      else
+        "";
+    };
     systemPackages = [
       hyprLaunch
-      regreetSway
+      regreetCage
     ];
   };
   programs = {
@@ -94,7 +76,7 @@ in
       enable = true;
       settings = {
         appearance = {
-          greeting_msg = "May the ${sithLord} serve you well";
+          greeting_msg = "May ${sithLord} serve you well";
         };
         # https://docs.gtk.org/gtk4/enum.ContentFit.html
         background = {
@@ -102,14 +84,8 @@ in
           fit = "Cover";
         };
         commands = {
-          reboot = [
-            "${pkgs.systemd}/bin/systemctl"
-            "reboot"
-          ];
-          poweroff = [
-            "${pkgs.systemd}/bin/systemctl"
-            "poweroff"
-          ];
+          reboot = [ "${pkgs.systemd}/bin/systemctl" "reboot" ];
+          poweroff = [ "${pkgs.systemd}/bin/systemctl" "poweroff" ];
         };
         GTK = lib.mkForce {
           application_prefer_dark_theme = true;
@@ -126,10 +102,10 @@ in
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.cage}/bin/cage -s ${pkgs.greetd.regreet}/bin/regreet";
+        command = "regreet-cage";
         user = "greeter";
       };
     };
-    vt = 7;
+    vt = 1;
   };
 }
