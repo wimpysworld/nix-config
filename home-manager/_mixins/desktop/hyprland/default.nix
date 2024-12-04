@@ -95,7 +95,10 @@ let
       function activity_linuxmatters() {
           start_app audacity 9 "class: audacity"
           firefox -CreateProfile linuxmatters-stage
-          start_app "firefox -P linuxmatters-stage -no-remote --new-window https://github.com/restfulmedia/linuxmatters_backstage" 9 "title: restfulmedia/linuxmatters_backstage"
+          start_app "firefox \
+              -P linuxmatters-stage \
+              -no-remote \
+              --new-window https://github.com/restfulmedia/linuxmatters_backstage" 9 "title: restfulmedia/linuxmatters_backstage"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
               start_app "obs --disable-shutdown-check --collection VirtualCam --profile VirtualCam --scene VirtualCam-LinuxMatters --startvirtualcam" 9 "class: com.obsproject.Studio"
           fi
