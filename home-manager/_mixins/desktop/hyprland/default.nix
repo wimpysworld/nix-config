@@ -414,6 +414,8 @@ in
           "$mod ALT, 7, movetoworkspace, 7"
           "CTRL ALT, 8, workspace, 8"
           "$mod ALT, 8, movetoworkspace, 8"
+          "CTRL ALT, 9, workspace, 9"
+          "$mod ALT, 9, movetoworkspace, 9"
       ];
       # https://wiki.hyprland.org/Configuring/Variables/#animations
       animations = {
