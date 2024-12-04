@@ -26,7 +26,7 @@ _: {
       "3, name:Chat, persistent:true, monitor:eDP-1"
       "4, name:Code, persistent:true, monitor:eDP-1"
       "5, name:Term, persistent:true, monitor:eDP-1"
-      "6, name:Virt, persistent:true, monitor:eDP-1"
+      "6, name:Note, persistent:true, monitor:eDP-1"
       "7, name:Cast, persistent:true, monitor:eDP-1"
       "8, name:Fun, persistent:true, monitor:eDP-1"
     ];
@@ -39,7 +39,7 @@ _: {
       "3, name:Chat, persistent:true, monitor:eDP-1"
       "4, name:Code, persistent:true, monitor:eDP-1"
       "5, name:Term, persistent:true, monitor:eDP-1"
-      "6, name:Virt, persistent:true, monitor:eDP-1"
+      "6, name:Note, persistent:true, monitor:eDP-1"
       "7, name:Cast, persistent:true, monitor:eDP-1"
       "8, name:Fun, persistent:true, monitor:eDP-1"
     ];
@@ -51,16 +51,16 @@ _: {
       "DP-3, 1920x1080@60Hz, 320x2880, 1"
     ];
     workspace = [
-      "1, name:Web, persistent:true, monitor:DP-1"
+      "1, name:Web, persistent:true, monitor:DP-1, default:true"
       "2, name:Work, persistent:true, monitor:DP-1"
       "3, name:Chat, persistent:true, monitor:DP-2"
-      "4, name:Code, persistent:true, monitor:DP-2"
+      "4, name:Code, persistent:true, monitor:DP-2, default:true"
       "5, name:Term, persistent:true, monitor:DP-2"
-      "6, name:Virt, persistent:true, monitor:DP-2"
+      "6, name:Note, persistent:true, monitor:DP-2"
       "7, name:Cast, persistent:true, monitor:DP-1"
       "8, name:Fun, persistent:true, monitor:DP-1"
       "9, name:Camera, persistent:true, monitor:DP-2"
-      "10,name:Stream, persistent:true, monitor:DP-3"
+      "10,name:Stream, persistent:true, monitor:DP-3, default:true"
     ];
   };
 }
