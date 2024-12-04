@@ -421,7 +421,7 @@ in
       # https://wiki.hyprland.org/Configuring/Variables/#animations
       animations = {
         enabled = true;
-        first_launch_animation = false;
+        first_launch_animation = true;
       };
       # https://wiki.hyprland.org/Configuring/Animations/
       animation = [
