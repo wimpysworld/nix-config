@@ -6,16 +6,16 @@ _: {
       "HDMI-A-1, 2560x1600@120Hz, 1920x0, 1.25"
     ];
     workspace = [
-      "1, name:Web, persistent:true, monitor:DP-1"
+      "1, name:Web, persistent:true, monitor:DP-1, default:true"
       "2, name:Work, persistent:true, monitor:DP-1"
       "3, name:Chat, persistent:true, monitor:DP-1"
       "4, name:Code, persistent:true, monitor:DP-1"
       "5, name:Term, persistent:true, monitor:DP-1"
-      "6, name:Virt, persistent:true, monitor:DP-1"
+      "6, name:Note, persistent:true, monitor:DP-1"
       "7, name:Cast, persistent:true, monitor:DP-1"
       "8, name:Fun, persistent:true, monitor:DP-1"
-      "9, name:Camera, persistent:true, monitor:HDMI-A-1, layoutopt:orientation:left"
-      "10,name:Stream, persistent:true, monitor:DP-2"
+      "9, name:Camera, persistent:true, monitor:HDMI-A-1, layoutopt:orientation:left, default:true"
+      "10,name:Stream, persistent:true, monitor:DP-2, default:true"
     ];
   };
   shaa = {
