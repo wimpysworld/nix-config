@@ -573,6 +573,15 @@ in
         "size 960 640 initialTitle:(Polychromatic)"
         "size 880 1010, title:(overskride)"
         "size 886 960, title:(Trayscale)"
+
+        # Apps for streaming from dummy workspace
+        "float, onworkspace:10"
+        "opacity 1.0 0.6 1.0, onworkspace:10"
+        "size 1596 1076, onworkspace:10"
+        "maxsize 1596 1076, onworkspace:10"
+        "minsize 1596 1076, onworkspace:10"
+        "move 322 2, onworkspace:10"
+        "noshadow, onworkspace:10"
       ];
       layerrule = [
         "blur, launcher" # fuzzel
