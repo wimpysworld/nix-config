@@ -129,12 +129,12 @@ let
               --new-tab https://botrix.live" 9 "title: Twitch — Mozilla Firefox"
           case "$HOSTNAME" in
               phasma)
-                start_app discord 7 " - Discord"
+                start_app discord 9 " - Discord"
                 start_app chatterino 7 "chatterino"
                 ;;
               vader)
-                start_app chatterino 9 "chatterino"
                 start_app discord 9 " - Discord"
+                start_app chatterino 9 "chatterino"
                 ;;
           esac
           # Workspace 10
