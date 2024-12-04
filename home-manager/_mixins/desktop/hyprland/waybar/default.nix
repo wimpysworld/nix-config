@@ -334,7 +334,7 @@ in
           };
           "hyprland/workspaces" = {
             active-only = false;
-            all-outputs = false;
+            all-outputs = true;
             format = "<big>{icon}</big>";
             format-icons = {
               "1" = "󰖟";
