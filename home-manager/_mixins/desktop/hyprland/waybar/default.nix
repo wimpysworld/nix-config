@@ -463,11 +463,11 @@ in
               none = "";
               notification = "<span foreground='#f5c2e7'>󱅫</span>";
               dnd-none = "󰂠";
-              dnd-notification = "󰂞";
+              dnd-notification = "󱅫";
               inhibited-none = "";
               inhibited-notification = "<span foreground='#f5c2e7'>󰅸</span>";
               dnd-inhibited-none = "󰪓";
-              dnd-inhibited-notification = "󰂟";
+              dnd-inhibited-notification = "󰅸";
             };
             max-length = 3;
             return-type = "json";
