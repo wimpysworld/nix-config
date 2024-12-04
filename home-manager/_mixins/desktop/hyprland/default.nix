@@ -51,7 +51,11 @@ let
           local CLASS="$3"
           if ! app_is_running "$CLASS"; then
               echo -n " - Starting $APP on workspace $WORKSPACE: "
-              hyprctl dispatch exec "[workspace $WORKSPACE silent]" "$APP"
+              if [ "$WORKSPACE" == "10" ]; then
+                hyprctl dispatch exec "[workspace $WORKSPACE silent; float; size 1596 1076]" "$APP"
+              else
+                hyprctl dispatch exec "[workspace $WORKSPACE silent]" "$APP"
+              fi
               if [ "$APP" == "audacity" ]; then
                   sleep 5
               fi
@@ -141,9 +145,6 @@ let
                 ;;
           esac
           # Workspace 10
-          start_app code 10 "initialTitle: Visual Studio Code"
-          start_app gitkraken 10 "title: GitKraken Desktop"
-          start_app foot 10 "class: foot"
           firefox -CreateProfile wimpysworld-stage
           start_app "firefox \
               -P wimpysworld-stage \
