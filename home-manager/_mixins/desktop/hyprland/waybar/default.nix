@@ -334,7 +334,7 @@ in
           };
           "hyprland/workspaces" = {
             active-only = false;
-            all-outputs = true;
+            all-outputs = false;
             format = "<big>{icon}</big>";
             format-icons = {
               "1" = "󰖟";
@@ -396,13 +396,13 @@ in
                     else if (hostname == "vader") then
                       [ "DP-2" ]
                     else
-                      [ "*" ];
+                      [ ];
               "10" = if (hostname == "phasma") then
                       [ "DP-2" ]
                     else if (hostname == "vader") then
                       [ "DP-3" ]
                     else
-                      [ "*" ];
+                      [ ];
             };
             on-click = "activate";
           };
