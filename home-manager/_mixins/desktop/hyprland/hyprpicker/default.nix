@@ -1,5 +1,4 @@
 {
-  config,
   lib,
   pkgs,
   ...
@@ -14,7 +13,7 @@
   wayland.windowManager.hyprland = {
     settings = {
       bind = [
-        bind = $mod, P, exec, hyprpicker | wl-copy --primary --regular --trim-newline
+        "CTRL ALT, P, exec, ${lib.getExe pkgs.hyprpicker} --autocopy"
       ];
     };
   };
