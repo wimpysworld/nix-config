@@ -6,11 +6,11 @@
   writeScript,
 }:
 let
-  version = "0.5.9";
+  version = "0.5.11";
   pname = "jan";
   src = fetchurl {
     url = "https://github.com/janhq/jan/releases/download/v${version}/jan-linux-x86_64-${version}.AppImage";
-    hash = "sha256-PhrRI1pMTUWuX9sjJS7Oiabm3JITX7h0Aqy3DYZNjSg=";
+    hash = "sha256-dIXo7roUTu8wLdnqs1bCA9eVBC+UQMZtqSMwql9egWk=";
   };
   appimageContents = appimageTools.extractType2 {
     inherit pname version src;
