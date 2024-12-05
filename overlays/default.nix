@@ -44,6 +44,16 @@
       '';
     });
 
+    hyprpicker = prev.hyprpicker.overrideAttrs (_old: rec {
+      # https://github.com/hyprwm/hyprpicker/issues/92
+      patches = (_old.patches or []) ++ [
+          (prev.fetchpatch {
+            url = "https://github.com/hyprwm/hyprpicker/commit/17e1ebe9dcb4157f1d3866f55d7fe55f20d979d0.diff";
+            sha256 = "sha256-iXuBeJ2uz9DH1iYKWjvxZ+Q5hx4tHyfAkyO66g6zmDI=";
+          })
+        ];
+    });
+
     linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
       mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
         pname = "mwprocapture";
