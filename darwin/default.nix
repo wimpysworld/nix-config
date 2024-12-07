@@ -65,17 +65,29 @@
     ];
   };
 
-  nix = {
-    optimise.automatic = true;
-    settings = {
-      auto-optimise-store = true;
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-      warn-dirty = false;
+  nix =
+    let
+      flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
+    in
+    {
+      settings = {
+        experimental-features = "flakes nix-command";
+        # Disable global registry
+        flake-registry = "";
+        # Workaround for https://github.com/NixOS/nix/issues/9574
+        nix-path = config.nix.nixPath;
+        trusted-users = [
+          "root"
+          "${username}"
+        ];
+        warn-dirty = false;
+      };
+      # Disable channels
+      channel.enable = false;
+      # Make flake registry and nix path match flake inputs
+      registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
+      nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
     };
-  };
 
   networking.hostName = hostname;
   networking.computerName = hostname;
@@ -108,11 +120,9 @@
     stateVersion = 5;
     # activationScripts run every time you boot the system or execute `darwin-rebuild`
     activationScripts = {
-      diff = {
+      nixos-needsreboot = {
         supportsDryActivation = true;
-        text = ''
-          ${pkgs.nvd}/bin/nvd --nix-bin-dir=${pkgs.nix}/bin diff /run/current-system "$systemConfig"
-        '';
+        text = "${lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default} \"$systemConfig\" || true";
       };
       # reload the settings and apply them without the need to logout/login
       postUserActivation.text = ''
