@@ -1,11 +1,15 @@
 name: Build 🏗️ Packages ️📦
 
 on:
-  workflow_dispatch:
   push:
     branches:
-    - main
-    tags: ['*']
+      - main
+    paths:
+      - 'pkgs/**'
+  # Runs at 13:37 UTC every Tuesday
+  schedule:
+    - cron: '37 13 * * TUE'
+  workflow_dispatch:
 
 jobs:
   build-local-packages:
