@@ -1,6 +1,10 @@
 # Custom packages, that can be defined similarly to ones from nixpkgs
 # You can build them using 'nix build .#example'
-pkgs: {
+pkgs:
+let
+  isCI = builtins.getEnv "CI" == "true";
+in
+{
   # Local packages being prepped for upstreaming
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   defold = pkgs.callPackage ./defold { };
@@ -17,7 +21,7 @@ pkgs: {
   gotosocial = pkgs.callPackage ./gotosocial { };
   owncast = pkgs.callPackage ./owncast { };
 
-  # Non-redistributable packages
-  cider = pkgs.callPackage ./cider { };
-  pico8 = pkgs.callPackage ./pico8 { };
+  # Non-redistributable packages - only evaluated outside CI
+  cider = if !isCI then pkgs.callPackage ./cider { } else {};
+  pico8 = if !isCI then pkgs.callPackage ./pico8 { } else {};
 }
