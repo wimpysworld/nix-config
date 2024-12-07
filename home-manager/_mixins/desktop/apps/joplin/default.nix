@@ -12,7 +12,7 @@ let
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
-    file = lib.optionals (platform != "x86_64-darwin") {
+    file = {
       # Customised Catppuccin Mocha Blue theme for Joplin
       # - https://github.com/catppuccin/joplin
       # - https://joplinapp.org/help/apps/custom_css
@@ -20,7 +20,9 @@ lib.mkIf (lib.elem username installFor) {
       "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text = builtins.readFile ./userstyle.css;
     };
     # Jopin CLI fails to build on x86_64-darwin
-    packages = lib.optionals (platform != "x86_64-darwin") [ pkgs.joplin ];
+    packages = with pkgs; [
+      (lib.mkIf (platform != "x86_64-darwin") joplin)
+    ];
   };
 
   programs.joplin-desktop = {
