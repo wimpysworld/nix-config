@@ -30,21 +30,21 @@
         work-sans
       ]
       ++ lib.optionals isInstall [
-        local-fonts.bebas-neue-2014-font
-        local-fonts.bebas-neue-pro-font
-        local-fonts.bebas-neue-rounded-font
-        local-fonts.bebas-neue-semi-rounded-font
-        local-fonts.boycott-font
-        local-fonts.commodore-64-pixelized-font
-        local-fonts.digital-7-font
-        local-fonts.dirty-ego-font
-        local-fonts.fixedsys-core-font
-        local-fonts.fixedsys-excelsior-font
-        local-fonts.impact-label-font
-        local-fonts.mocha-mattari-font
-        local-fonts.poppins-font
-        local-fonts.spaceport-2006-font
-        local-fonts.zx-spectrum-7-font
+        bebas-neue-2014-font
+        bebas-neue-pro-font
+        bebas-neue-rounded-font
+        bebas-neue-semi-rounded-font
+        boycott-font
+        commodore-64-pixelized-font
+        digital-7-font
+        dirty-ego-font
+        fixedsys-core-font
+        fixedsys-excelsior-font
+        impact-label-font
+        mocha-mattari-font
+        poppins-font
+        spaceport-2006-font
+        zx-spectrum-7-font
         ubuntu_font_family
         unscii
       ];
