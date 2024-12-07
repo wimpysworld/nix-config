@@ -1,0 +1,72 @@
+name: Build 🏗️ Packages ️📦
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - main
+    tags: ['*']
+
+jobs:
+  build-local-packages:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        package:
+          - heynote
+          - jan
+          - station
+          - gotosocial
+          - owncast
+          - obs-aitum-multistream
+          - obs-advanced-masks
+          - obs-browser-transition
+          - obs-dir-watch-media
+          - obs-dvd-screensaver
+          - obs-freeze-filter
+          - obs-markdown
+          - obs-media-controls
+          - obs-mute-filter
+          - obs-noise
+          - obs-recursion-effect
+          - obs-replay-source
+          - obs-retro-effects
+          - obs-rgb-levels
+          - obs-scale-to-sound
+          - obs-scene-as-transition
+          - obs-source-clone
+          - obs-stroke-glow-shadow
+          - obs-transition-table
+          - obs-urlsource
+          - obs-vertical-canvas
+          - obs-vnc
+          - obs-webkitgtk
+          - pixel-art
+          - bebas-neue-2014-font
+          - bebas-neue-2018-font
+          - bebas-neue-pro-font
+          - bebas-neue-rounded-font
+          - bebas-neue-semi-rounded-font
+          - boycott-font
+          - commodore-64-pixelized-font
+          - digital-7-font
+          - dirty-ego-font
+          - fixedsys-core-font
+          - fixedsys-excelsior-font
+          - impact-label-font
+          - mocha-mattari-font
+          - poppins-font
+          - spaceport-2006-font
+          - zx-spectrum-7-font
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: DeterminateSystems/nix-installer-action@v16
+      with:
+        determinate: true
+    - uses: DeterminateSystems/magic-nix-cache-action@v8
+    - name: Building 👷 ${{ matrix.package }} 📦
+      run: |
+        nix build .#${{ matrix.package }} -L
