@@ -1042,7 +1042,7 @@ in
   };
 
   # https://dl.thalheim.io/
-  sops = lib.mkIf (username == "martin") {
+  sops = {
     age = {
       keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
       generateKey = false;
