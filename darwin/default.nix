@@ -105,6 +105,7 @@
   };
 
   system = {
+    stateVersion = 5;
     # activationScripts run every time you boot the system or execute `darwin-rebuild`
     activationScripts = {
       diff = {
