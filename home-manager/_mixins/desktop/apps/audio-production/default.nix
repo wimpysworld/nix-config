@@ -11,6 +11,7 @@ let
     "phasma"
     "vader"
   ];
+  inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf (lib.elem hostname installOn) {
   dconf.settings = with lib.hm.gvariant; {
@@ -412,7 +413,7 @@ lib.mkIf (lib.elem hostname installOn) {
     preset = "mic-${hostname}-oktava";
   };
 
-  systemd.user.tmpfiles.rules = [
+  systemd.user.tmpfiles.rules = lib.mkIf isLinux [
     "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
     "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
   ];

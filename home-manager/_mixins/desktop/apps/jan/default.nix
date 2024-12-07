@@ -10,13 +10,13 @@ let
   installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (lib.elem username installFor && isLinux) {
   home = {
-    packages = [ pkgs.jan ];
+    packages = with pkgs; [ jan ];
   };
 
   # Sync Jan application state using the Syncthing backed App directory
-  systemd.user.tmpfiles.rules = [
+  systemd.user.tmpfiles.rules = lib.mkIf isLinux [
     "d ${config.home.homeDirectory}/Apps/Jan/settings 0755 ${username} users - -"
     "L+ ${config.home.homeDirectory}/.config/Jan/data/assistants/ - - - - ${config.home.homeDirectory}/Apps/Jan/assistants/"
     "L+ ${config.home.homeDirectory}/.config/Jan/data/engines/ - - - - ${config.home.homeDirectory}/Apps/Jan/engines/"
