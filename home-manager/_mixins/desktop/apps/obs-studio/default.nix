@@ -52,20 +52,20 @@ lib.mkIf (lib.elem hostname installOn) {
       obs-websocket
       waveform
     ] ++ [
-      pkgs.local-obs.obs-advanced-masks
-      pkgs.local-obs.obs-aitum-multistream
-      pkgs.local-obs.obs-dvd-screensaver
-      pkgs.local-obs.obs-markdown
-      pkgs.local-obs.obs-rgb-levels
-      pkgs.local-obs.obs-scale-to-sound
-      pkgs.local-obs.obs-scene-as-transition
-      pkgs.local-obs.obs-source-clone
-      pkgs.local-obs.obs-stroke-glow-shadow
-      pkgs.local-obs.obs-transition-table
-      pkgs.local-obs.obs-urlsource
-      pkgs.local-obs.obs-vertical-canvas
-      pkgs.local-obs.obs-webkitgtk
-      pkgs.local-obs.pixel-art
+      pkgs.obs-advanced-masks
+      pkgs.obs-aitum-multistream
+      pkgs.obs-dvd-screensaver
+      pkgs.obs-markdown
+      pkgs.obs-rgb-levels
+      pkgs.obs-scale-to-sound
+      pkgs.obs-scene-as-transition
+      pkgs.obs-source-clone
+      pkgs.obs-stroke-glow-shadow
+      pkgs.obs-transition-table
+      pkgs.obs-urlsource
+      pkgs.obs-vertical-canvas
+      pkgs.obs-webkitgtk
+      pkgs.pixel-art
     ];
   };
 
