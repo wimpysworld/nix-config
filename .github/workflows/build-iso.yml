@@ -7,9 +7,14 @@ on:
 jobs:
   build-console-iso:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      id-token: write
     steps:
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@v16
+      with:
+        determinate: true
     - uses: DeterminateSystems/magic-nix-cache-action@v8
     - name: Build 👷 ISO 💿️
       run: |
