@@ -2,6 +2,7 @@
   autoPatchelfHook,
   fetchurl,
   lib,
+  makeWrapper,
   stdenv,
   writeScript,
   libGL,
