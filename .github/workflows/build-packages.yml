@@ -10,7 +10,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-local-packages:
+  build-applications:
+    name: Build applications 📦
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -18,10 +19,52 @@ jobs:
           - defold
           - heynote
           - jan
-          - nerd-font-patcher
           - station
           - gotosocial
           - owncast
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.package }} 📦
+        uses: ./.github/actions/build-package
+        with:
+          package: ${{ matrix.package }}
+
+  build-fonts:
+    name: Build fonts 🔤
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        package:
+          - nerd-font-patcher
+          - bebas-neue-2014-font
+          - bebas-neue-2018-font
+          - bebas-neue-pro-font
+          - bebas-neue-rounded-font
+          - bebas-neue-semi-rounded-font
+          - boycott-font
+          - commodore-64-pixelized-font
+          - digital-7-font
+          - dirty-ego-font
+          - fixedsys-core-font
+          - fixedsys-excelsior-font
+          - impact-label-font
+          - mocha-mattari-font
+          - poppins-font
+          - spaceport-2006-font
+          - zx-spectrum-7-font
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.package }} 🔤
+        uses: ./.github/actions/build-package
+        with:
+          package: ${{ matrix.package }}
+
+  build-obs-plugins:
+    name: Build OBS Plugins 🔌
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        package:
           - obs-aitum-multistream
           - obs-advanced-masks
           - obs-browser-transition
@@ -46,39 +89,9 @@ jobs:
           - obs-vnc
           - obs-webkitgtk
           - pixel-art
-          - bebas-neue-2014-font
-          - bebas-neue-2018-font
-          - bebas-neue-pro-font
-          - bebas-neue-rounded-font
-          - bebas-neue-semi-rounded-font
-          - boycott-font
-          - commodore-64-pixelized-font
-          - digital-7-font
-          - dirty-ego-font
-          - fixedsys-core-font
-          - fixedsys-excelsior-font
-          - impact-label-font
-          - mocha-mattari-font
-          - poppins-font
-          - spaceport-2006-font
-          - zx-spectrum-7-font
-    permissions:
-      contents: read
-      id-token: write
     steps:
-    - uses: actions/checkout@v4
-    - uses: DeterminateSystems/nix-installer-action@v16
-      with:
-        determinate: true
-    - uses: DeterminateSystems/magic-nix-cache-action@v8
-    - name: Building 👷 ${{ matrix.package }} 📦
-      run: |
-        # Try to get license info
-        if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
-          echo "⚠️ No license found, enabling unfree packages"
-          export NIXPKGS_ALLOW_UNFREE=1
-          nix build .#${{ matrix.package }} -L --impure
-        else
-          echo "✅ License found, building normally"
-          nix build .#${{ matrix.package }} -L
-        fi
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.package }} 🔌
+        uses: ./.github/actions/build-package
+        with:
+          package: ${{ matrix.package }}
