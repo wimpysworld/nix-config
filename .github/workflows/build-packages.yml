@@ -15,8 +15,10 @@ jobs:
     strategy:
       matrix:
         package:
+          - defold
           - heynote
           - jan
+          - nerd-font-patcher
           - station
           - gotosocial
           - owncast
