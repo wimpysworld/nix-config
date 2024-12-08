@@ -98,6 +98,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.rust-lang.rust-analyzer
           vscode-marketplace.ryu1kn.partial-diff
           vscode-marketplace.s3anmorrow.openwithkraken
+          vscode-marketplace.saoudrizwan.claude-dev
           vscode-marketplace.streetsidesoftware.code-spell-checker
           vscode-marketplace.tamasfe.even-better-toml
           vscode-marketplace.timonwong.shellcheck
