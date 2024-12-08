@@ -1,41 +1,70 @@
 name: Build 🏗️ and Publish 📀
 
 on:
-  push:
-    tags: ['*']
+  workflow_dispatch:
 
 jobs:
-  build-console-iso:
+  build-iso:
+    name: Build ISO 💿️
     runs-on: ubuntu-22.04
+    outputs:
+      ver: ${{ steps.build-iso.outputs.ver }}
+    permissions:
+      contents: write
+      id-token: write
     steps:
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@v16
+      with:
+        determinate: true
     - uses: DeterminateSystems/magic-nix-cache-action@v8
-    - name: Build 👷 ISO 💿️
+    - name: Nix Build ️❄️
+      id: build-iso
       run: |
         nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
         mkdir iso || true
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
+        VER=$(head -n1 result/nix-support/hydra-build-products | cut -d'-' -f3 | cut -d'.' -f1-3)
+        # Set output variable
+        echo "ver=v${VER}" >> $GITHUB_OUTPUT
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
-    - name: Draft release ✍️
+    - name: Draft Release ✍️
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release create "${{ github.ref }}" --draft --generate-notes
-    - name: Upload ⤴️ ISO 💿️
+        gh release create "${{ steps.build-iso.outputs.ver }}" --draft --generate-notes
+    - name: Upload ISO 📤
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         for artefact in "iso/"*; do
-          gh release upload "${{ github.ref }}" "${artefact}" --clobber
+          gh release upload "${{ steps.build-iso.outputs.ver }}" "${artefact}" --clobber
         done
-    - name: Publish release 🎁
+    - name: Publish Release 🎁
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        if [ "$(gh release view "${{ github.ref }}" --json assets --template '{{len .assets}}')" -lt 0 ]; then
+        if [ "$(gh release view "${{ steps.build-iso.outputs.ver }}" --json assets --template '{{len .assets}}')" -lt 0 ]; then
           exit 1
         fi
-        gh release edit "${{ github.ref }}" --draft=false
+        gh release edit "${{ steps.build-iso.outputs.ver }}" --draft=false
+
+  publish-flakehub:
+    needs: [build-iso]
+    name: "Publish FlakeHub ❄️"
+    runs-on: "ubuntu-22.04"
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "DeterminateSystems/nix-installer-action@v16"
+        with:
+          determinate: true
+      - uses: "DeterminateSystems/magic-nix-cache-action@v8"
+      - uses: "DeterminateSystems/flakehub-push@v5"
+        with:
+          tag: ${{ needs.build-iso.outputs.ver }}
+          visibility: "public"
