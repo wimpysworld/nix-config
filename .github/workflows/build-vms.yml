@@ -1,6 +1,11 @@
 name: Build 🏗️ VMs 👻
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'flake.lock'
   workflow_dispatch:
 
 jobs:

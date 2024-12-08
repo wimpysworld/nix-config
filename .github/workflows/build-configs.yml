@@ -1,6 +1,11 @@
 name: Build 🏗️ Configs ️❄️
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'flake.lock'
   workflow_dispatch:
 
 jobs:
