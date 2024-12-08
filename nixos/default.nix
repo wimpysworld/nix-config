@@ -231,7 +231,7 @@
 
   system = {
     activationScripts = {
-      nixos-needsreboot = {
+      nixos-needsreboot = lib.mkIf (isInstall) {
         supportsDryActivation = true;
         text = "${lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default} \"$systemConfig\" || true";
       };
