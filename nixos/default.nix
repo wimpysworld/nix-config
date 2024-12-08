@@ -183,6 +183,7 @@
         mode = "0644";
         path = "/root/.ssh/id_rsa.pub";
       };
+      # Use `make-host-keys` to enroll new host keys.
       initrd_ssh_host_ed25519_key = {
         mode = "0600";
         path = "/etc/ssh/initrd_ssh_host_ed25519_key";
