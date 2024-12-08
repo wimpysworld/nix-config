@@ -1,6 +1,7 @@
 { lib
 , buildGoModule
 , fetchFromGitHub
+, fetchpatch
 , nixosTests
 , bash
 , which
@@ -8,7 +9,7 @@
 , makeBinaryWrapper
 }:
 let
-  version = "0.2.0";
+  version = "0.2.0-unstable-2024-12-06";
 in buildGoModule {
   pname = "owncast";
   inherit version;
@@ -17,14 +18,23 @@ in buildGoModule {
     repo = "owncast";
     #rev = "v${version}";
 
-    rev = "2c2bf2b5bbf49885f14f19c3f04dbbb0f3fbc5f2";
-    hash = "sha256-1ghdwAq+m2Kz4yy50+IU4KtyYBbtJz3vwfmCgja0LRE=";
+    rev = "4f1c1ec683fd257e729285aad13e5bfea5f93a5d";
+    hash = "sha256-0m2w5CReDbwTqG+uQcooTVeQRPR0unZRL+3FG4fxQe0=";
   };
-  vendorHash = "sha256-h17CzPyboCessk6oRHTurIzjhLgg7/jxfBPd5Vp3Vos=";
+  vendorHash = "sha256-asJNRqyMEYpyzHzj5huepDeXj5fkoM9lm0nhAG4bDwU=";
 
+  # Add my patches
   patches = [
-    ./4022.diff   # VA-API
-    ./4028.diff   # Quicksync
+    (fetchpatch {
+      # VA-API
+      url = "https://patch-diff.githubusercontent.com/raw/owncast/owncast/pull/4022.diff";
+      sha256 = "sha256-fyloQSlDbNWwXcC12wba9HJiqQCT5PztosAjbGl2tw4=";
+    })
+    (fetchpatch {
+      # Quicksync
+      url = "https://patch-diff.githubusercontent.com/raw/owncast/owncast/pull/4028.diff";
+      sha256 = "sha256-Hwy11C3Fu43qFc0hX2vbhSpEpS7KXHiP0xTmidbBq58=";
+    })
   ];
 
   propagatedBuildInputs = [ ffmpeg-full ];
