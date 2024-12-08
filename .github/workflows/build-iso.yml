@@ -1,11 +1,10 @@
 name: Build 🏗️ and Publish 📀
 
 on:
-  push:
-    tags: ['*']
+  workflow_dispatch:
 
 jobs:
-  build-console-iso:
+  build-iso:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -21,6 +20,9 @@ jobs:
         nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
         mkdir iso || true
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
+        VER=$(head -n1 result/nix-support/hydra-build-products | cut -d'-' -f3 | cut -d'.' -f1-3)
+        # Set output variable
+        echo "ver=v${VER}" >> $GITHUB_OUTPUT
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
@@ -28,19 +30,38 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release create "${{ github.ref }}" --draft --generate-notes
+        gh release create "${{ needs.build-iso.outputs.ver }}" --draft --generate-notes
     - name: Upload ⤴️ ISO 💿️
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         for artefact in "iso/"*; do
-          gh release upload "${{ github.ref }}" "${artefact}" --clobber
+          gh release upload "${{ needs.build-iso.outputs.ver }}" "${artefact}" --clobber
         done
     - name: Publish release 🎁
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        if [ "$(gh release view "${{ github.ref }}" --json assets --template '{{len .assets}}')" -lt 0 ]; then
+        if [ "$(gh release view "${{ needs.build-iso.outputs.ver }}" --json assets --template '{{len .assets}}')" -lt 0 ]; then
           exit 1
         fi
-        gh release edit "${{ github.ref }}" --draft=false
+        gh release edit "${{ needs.build-iso.outputs.ver }}" --draft=false
+
+  publish-flakehub:
+    needs: [build-iso]
+    name: "Publish FlakeHub ❄️"
+    runs-on: "ubuntu-22.04"
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "DeterminateSystems/nix-installer-action@v16"
+        with:
+          determinate: true
+      - uses: "DeterminateSystems/magic-nix-cache-action@v8"
+      - uses: "DeterminateSystems/flakehub-push@v5"
+        with:
+          include-output-paths: true
+          tag: ${{ needs.build-iso.outputs.ver }}  # Use the output here
+          visibility: "public"
