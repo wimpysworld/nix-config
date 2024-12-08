@@ -55,6 +55,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.budparr.language-hugo-vscode
           vscode-marketplace.catppuccin.catppuccin-vsc-icons
           vscode-marketplace.codezombiech.gitignore
+          vscode-marketplace.continue.continue
           vscode-marketplace.coolbear.systemd-unit-file
           vscode-marketplace.dart-code.dart-code
           vscode-marketplace.dart-code.flutter
