@@ -1,8 +1,8 @@
 { config, hostname, lib, pkgs, username, ... }:
 let
   sithLord =
-    (lib.strings.toUpper (builtins.substring 0 1 username)) +
-    (builtins.substring 1 (builtins.stringLength username) username);
+    (lib.strings.toUpper (builtins.substring 0 1 hostname)) +
+    (builtins.substring 1 (builtins.stringLength hostname) hostname);
   hyprLaunch = pkgs.writeShellScriptBin "hypr-launch" ''
     ${pkgs.hyprland}/bin/Hyprland $@ &>/dev/null
     # Correctly clean up the session
