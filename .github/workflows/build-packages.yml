@@ -22,6 +22,9 @@ jobs:
           - station
           - gotosocial
           - owncast
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Build ${{ matrix.package }} 📦
@@ -52,6 +55,9 @@ jobs:
           - poppins-font
           - spaceport-2006-font
           - zx-spectrum-7-font
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Build ${{ matrix.package }} 🔤
@@ -89,6 +95,9 @@ jobs:
           - obs-vnc
           - obs-webkitgtk
           - pixel-art
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Build ${{ matrix.package }} 🔌
