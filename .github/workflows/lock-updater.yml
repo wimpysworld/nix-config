@@ -11,12 +11,11 @@ jobs:
     name: Flake Lock Updater
     runs-on: ubuntu-22.04
     permissions:
-      contents: read
+      contents: write
       id-token: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: DeterminateSystems/nix-installer-action@v16
         with:
           determinate: true
