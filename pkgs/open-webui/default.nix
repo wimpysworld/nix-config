@@ -2,6 +2,7 @@
   lib,
   buildNpmPackage,
   fetchFromGitHub,
+  ffmpeg,
   python312,
   nixosTests,
 }:
@@ -51,6 +52,10 @@ python312.pkgs.buildPythonApplication rec {
     substituteInPlace pyproject.toml \
       --replace-fail ', build = "open_webui/frontend"' ""
   '';
+
+  propagatedBuildInputs = [
+    ffmpeg
+  ];
 
   env.HATCH_BUILD_NO_HOOKS = true;
 
@@ -148,7 +153,10 @@ python312.pkgs.buildPythonApplication rec {
 
   pythonImportsCheck = [ "open_webui" ];
 
-  makeWrapperArgs = [ "--set FRONTEND_BUILD_DIR ${frontend}/share/open-webui" ];
+  makeWrapperArgs = [
+    "--set FRONTEND_BUILD_DIR ${frontend}/share/open-webui"
+    "--prefix PATH : ${lib.makeBinPath [ ffmpeg ]}"  # Ensure ffmpeg is in PATH
+  ];
 
   passthru = {
     tests = {
