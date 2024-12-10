@@ -1,9 +1,6 @@
 # Custom packages, that can be defined similarly to ones from nixpkgs
 # You can build them using 'nix build .#example'
 pkgs:
-let
-  isCI = builtins.getEnv "CI" == "true";
-in
 {
   # Local packages being prepped for upstreaming
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
@@ -65,7 +62,7 @@ in
   spaceport-2006-font = pkgs.callPackage ./fonts/spaceport-2006-font { };
   zx-spectrum-7-font = pkgs.callPackage ./fonts/zx-spectrum-7-font { };
 
-  # Non-redistributable packages - only evaluated outside CI
-  cider = if !isCI then pkgs.callPackage ./cider { } else {};
-  pico8 = if !isCI then pkgs.callPackage ./pico8 { } else {};
+  # Non-redistributable packages
+  cider = pkgs.callPackage ./cider { };
+  pico8 = pkgs.callPackage ./pico8 { };
 }

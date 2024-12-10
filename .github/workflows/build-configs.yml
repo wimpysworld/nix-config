@@ -50,4 +50,11 @@ jobs:
     - uses: DeterminateSystems/magic-nix-cache-action@v8
     - name: Building 👷 ${{ matrix.home }} 🏠
       run: |
+        # Disable non-redist packages
+        for NON_REDIST in cider pico8; do
+          if [ -d "pkgs/${NON_REDIST}" ]; then
+            mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
+            mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
+          fi
+        done
         nix run nixpkgs#home-manager -- build --flake .#${{ matrix.home }} -L
