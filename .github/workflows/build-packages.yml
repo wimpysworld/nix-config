@@ -19,6 +19,8 @@ jobs:
           - defold
           - heynote
           - jan
+          - ollama
+          - open-webui
           - station
           - gotosocial
           - owncast
