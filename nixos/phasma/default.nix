@@ -43,6 +43,10 @@
       "video=DP-1:3440x1440@100"
       "video=DP-2:1920x1080@60"
       "video=HDMI-A-1:2560x1600@120"
+      # Required to make OpenCL (and Davinci Resolve) work
+      # https://github.com/NixOS/nixpkgs/issues/325378#issuecomment-2212732797
+      # https://github.com/NixOS/nixpkgs/issues/324252#issuecomment-2205385051
+      "nvidia.NVreg_EnableGpuFirmware=0"
     ];
     swraid = {
       enable = true;
