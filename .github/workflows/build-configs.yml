@@ -29,6 +29,13 @@ jobs:
     - uses: DeterminateSystems/magic-nix-cache-action@v8
     - name: Building 👷 ${{ matrix.host }} 🐧
       run: |
+        # Disable non-redist packages
+        for NON_REDIST in cider pico8; do
+          if [ -d "pkgs/${NON_REDIST}" ]; then
+            mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
+            mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
+          fi
+        done
         nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel -L
   build-home:
     runs-on: blacksmith-2vcpu-ubuntu-2204
