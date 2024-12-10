@@ -16,7 +16,6 @@ jobs:
     strategy:
       matrix:
         package:
-          - davinci-resolve
           - defold
           - heynote
           - jan
@@ -36,9 +35,27 @@ jobs:
         with:
           package: ${{ matrix.package }}
 
+  build-large-applications:
+    name: Build large applications
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        package:
+          - davinci-resolve
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.package }} 🎒
+        uses: ./.github/actions/build-package
+        continue-on-error: true
+        with:
+          package: ${{ matrix.package }}
+
   build-fonts:
     name: Build fonts 🔤
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         package:
