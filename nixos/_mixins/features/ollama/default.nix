@@ -58,7 +58,6 @@ in
         ENABLE_SEARCH_QUERY = "true";
         ENABLE_SIGNUP = "true";
         ENABLE_LOGIN_FORM = "true";
-        IMAGE_GENERATION_ENGINE = "openai";
         RAG_EMBEDDING_ENGINE = "ollama";
         RAG_EMBEDDING_MODEL = "nomic-embed-text:latest";
         RAG_WEB_SEARCH_ENGINE = "brave";
@@ -85,7 +84,7 @@ in
     };
     chromadb = {
       enable = installOpenWebUI;
-      dbpath = "/srv/chromadb"
+      dbpath = "/srv/chromadb";
     };
     tika.enable = installOpenWebUI;
   };

@@ -25,6 +25,7 @@
         "DefaultSearchProviderSuggestURL" = "https://kagi.com/api/autosuggest?q={searchTerms}";
         "HomePageLocation" = "https://kagi.com";
         "NewTabPageLocation" = "https://kagi.com";
+        "PromptForDownloadLocation" = true;
       };
     };
     firefox = {
@@ -79,6 +80,7 @@
         "Homepage" = {
           "URL" = "https://kagi.com";
         };
+        "PromptForDownloadLocation" = true;
         "SearchEngines" = {
           "Add" = [
             {
