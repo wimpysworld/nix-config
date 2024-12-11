@@ -8,11 +8,7 @@
 }:
 let
   installOn = [
-    "malak"
-    "revan"
-    "shaa"
-    "sidious"
-    "tanis"
+    "none"
   ];
 in
 lib.mkIf (lib.elem "${hostname}" installOn) {
