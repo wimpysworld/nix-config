@@ -83,5 +83,8 @@ lib.mkIf isInstall {
     wantedBy = [ "multi-user.target" ];
   };
 
-  users.users.${username}.extraGroups = lib.optional config.hardware.graphics.enable "video";
+  users.users.${username}.extraGroups = lib.optionals config.hardware.graphics.enable [
+    "render"
+  	"video"
+  ];
 }
