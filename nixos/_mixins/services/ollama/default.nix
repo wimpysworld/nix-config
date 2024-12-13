@@ -52,13 +52,12 @@ in
         "llama3-chatqa:8b"              #8k     RAG
         "llama3.2-vision:11b"
         "llama3.1:8b"                   #128k
-        "mistral-nemo:12b"              #128k
         "mistral-small:22b"             #128k
         "nemotron-mini:4b"              #4k     RAG
         "nomic-embed-text:latest"
         "phi3:14b"                      #128k
         "qwen2.5-coder:14b"             #128k
-        #"solar-pro:22b"                 #4k-32k
+        "solar-pro:22b"                 #4k
       ];
     };
     open-webui = {
@@ -84,11 +83,11 @@ in
         IMAGE_GENERATION_ENGINE = "openai";
         MODEL_FILTER_LIST = "nemotron-mini:4b;codegemma:7b;codestral:22b;gemma2:9b;llama3-chatqa:8b;llama3.2-vision:11b;llama3.1:8b;mistral-nemo:12b;mistral-small:22b;nemotron-mini:4b;phi3:14b;qwen2.5-coder:14b;gpt-4;gpt-4o;gpt-4o-mini;o1-mini;claude-3-5-haiku-latest;claude-3-5-sonnet-latest";
         OLLAMA_BASE_URLS = baseUrls;
-        RAG_EMBEDDING_BATCH_SIZE = "8";
+        RAG_EMBEDDING_BATCH_SIZE = "16";
         RAG_EMBEDDING_ENGINE = "ollama";
         RAG_EMBEDDING_MODEL = "nomic-embed-text:latest";
         # https://github.com/open-webui/open-webui/issues/7333#issuecomment-2512287381
-        RAG_OLLAMA_BASE_URL = "http://vader:${toString config.services.ollama.port}";
+        RAG_OLLAMA_BASE_URL = "http://${toString config.services.ollama.host}:${toString config.services.ollama.port}";
         RAG_TEXT_SPLITTER = "token";
         RAG_WEB_SEARCH_ENGINE = "brave";
         RAG_WEB_SEARCH_RESULT_COUNT = "5";
