@@ -22,9 +22,21 @@ let
     (lib.filter (host: host != "revan") (builtins.attrNames accelerationMap)));
 in
 {
-  environment.systemPackages = lib.mkIf hasAcceleration (with pkgs; [
-    gollama
-  ]);
+  environment = {
+    shellAliases = lib.mkMerge [
+      (lib.optionalAttrs hasAcceleration {
+        ollama-log = "journalctl _SYSTEMD_UNIT=ollama.service";
+      })
+      (lib.optionalAttrs installOpenWebUI {
+        chromadb-log = "journalctl _SYSTEMD_UNIT=chromadb.service";
+        open-webui-log = "journalctl _SYSTEMD_UNIT=open-webui.service";
+        tika-log = "journalctl _SYSTEMD_UNIT=tika.service";
+      })
+    ];
+    systemPackages = lib.mkIf hasAcceleration (with pkgs; [
+      gollama
+    ]);
+  };
   services = {
     ollama = {
       acceleration = lib.mkIf hasAcceleration accelerationMap.${hostname};
