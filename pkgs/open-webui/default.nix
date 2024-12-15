@@ -119,6 +119,7 @@ python312.pkgs.buildPythonApplication rec {
     pgvector
     psutil
     psycopg2-binary
+    pydantic
     pydub
     pyjwt
     pymdown-extensions
@@ -127,7 +128,6 @@ python312.pkgs.buildPythonApplication rec {
     pymysql
     pypandoc
     pypdf
-    python-dotenv
     python-jose
     python-multipart
     python-pptx
@@ -140,6 +140,7 @@ python312.pkgs.buildPythonApplication rec {
     redis
     requests
     sentence-transformers
+    sentencepiece
     soundfile
     tiktoken
     unstructured
