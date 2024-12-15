@@ -24,7 +24,7 @@ lib.mkIf (lib.elem hostname installOn) {
     caddy = {
       virtualHosts."gatus.wimpys.world" = {
         extraConfig = lib.mkIf (config.services.gatus.enable) ''
-          reverse_proxy localhost:8181
+          reverse_proxy localhost:${toString config.services.gatus.settings.web.port}
         '';
         logFormat = lib.mkDefault ''
           output file /var/log/caddy/gatus.log

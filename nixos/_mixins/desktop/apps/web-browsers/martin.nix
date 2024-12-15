@@ -23,8 +23,9 @@
         "DefaultSearchProviderName" = "Kagi";
         "DefaultSearchProviderSearchURL" = "https://kagi.com/search?q={searchTerms}";
         "DefaultSearchProviderSuggestURL" = "https://kagi.com/api/autosuggest?q={searchTerms}";
-        "HomePageLocation" = "https://${hostname}.drongo-gamma.ts.net";
-        "NewTabPageLocation" = "https://${hostname}.drongo-gamma.ts.net";
+        "HomePageLocation" = "https://kagi.com";
+        "NewTabPageLocation" = "https://kagi.com";
+        "PromptForDownloadLocation" = true;
       };
     };
     firefox = {
@@ -77,8 +78,9 @@
           };
         };
         "Homepage" = {
-          "URL" = "https://${hostname}.drongo-gamma.ts.net";
+          "URL" = "https://kagi.com";
         };
+        "PromptForDownloadLocation" = true;
         "SearchEngines" = {
           "Add" = [
             {
