@@ -79,8 +79,8 @@ let
           start_app fractal 3 "class: org.gnome.Fractal"
           start_app halloy 3 "class: org.squidowl.halloy"
           start_app code 4 "initialTitle: Visual Studio Code"
-          start_app "gitkraken --no-show-splash-screen" 4 "title: GitKraken Desktop"
           start_app foot 5 "class: foot"
+          start_app "gitkraken --no-show-splash-screen" 5 "title: GitKraken Desktop"
           start_app jan 6 "class: jan"
           start_app joplin-desktop 6 "class: @joplin/app-desktop"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
