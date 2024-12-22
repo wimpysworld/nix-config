@@ -6,13 +6,13 @@
   requireFile,
 }:
 let
-  version = "2.5.0";
+  version = "2.6.0";
   pname = "cider";
   src = requireFile rec {
-    name = "Cider-linux-appimage-x64.AppImage";
+    name = "cider-linux-x64.AppImage";
     url= "https://cidercollective.itch.io/cider";
-    # sha256sum /nix/store/deadb33f-Cider-linux-appimage-x64.AppImage
-    sha256 = "1f07c1c98f1abf502f23eb7bc2768d6e10cb5c1c60cd129888b1b584f52da3da";
+    # sha256sum /nix/store/deadb33f-cider-linux-x64.AppImage
+    sha256 = "05b4ba6e938327242ed35376da3e2d899f2a31d9cd33018b96d6c51689397ea1";
   };
   appimageContents = appimageTools.extractType2 {
     inherit pname version src;
@@ -24,12 +24,12 @@ appimageTools.wrapType2 {
     source "${makeWrapper}/nix-support/setup-hook"
       wrapProgram $out/bin/${pname} \
         --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
-      install -m 444 -D ${appimageContents}/${pname}.desktop \
-        $out/share/applications/${pname}.desktop
-      install -m 444 -D ${appimageContents}/usr/share/icons/hicolor/1024x1024/apps/${pname}.png \
-        $out/share/icons/hicolor/1024x1024/apps/${pname}.png
-      substituteInPlace $out/share/applications/${pname}.desktop \
-        --replace-fail 'Exec=AppRun' 'Exec=${pname}'
+      install -m 444 -D ${appimageContents}/Cider.desktop \
+        $out/share/applications/Cider.desktop
+      install -m 444 -D ${appimageContents}/cider-linux----arch-------version---.png \
+        $out/share/icons/hicolor/256x256/apps/cider-genten-client.png
+      substituteInPlace $out/share/applications/Cider.desktop \
+        --replace-fail 'Exec=Cider' 'Exec=cider'
   '';
 
   meta = {
