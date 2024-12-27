@@ -16,6 +16,7 @@ lib.mkIf (lib.elem "${username}" installFor) {
     systemPackages =
       with pkgs;
       [
+        act
         distrobox
         fuse-overlayfs
       ]
