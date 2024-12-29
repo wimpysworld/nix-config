@@ -94,7 +94,6 @@ in
   programs = {
     waybar = {
       enable = true;
-      catppuccin.enable = true;
       style = ''
         * {
           font-family: FiraCode Nerd Font Mono;

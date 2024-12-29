@@ -19,10 +19,6 @@ lib.mkIf (lib.elem hostname installOn) {
   home = {
     file = {
       "/Studio/OBS/config/obs-studio/.keep".text = "";
-      "/Studio/OBS/config/obs-studio/themes" = {
-        source = themes;
-        recursive = true;
-      };
     };
     packages = with pkgs; [
       inputs.stream-sprout.packages.${platform}.default
@@ -33,7 +29,6 @@ lib.mkIf (lib.elem hostname installOn) {
 
   programs.obs-studio = {
     enable = true;
-    catppuccin.enable = true;
     plugins = with pkgs.obs-studio-plugins; [
       advanced-scene-switcher
       obs-3d-effect

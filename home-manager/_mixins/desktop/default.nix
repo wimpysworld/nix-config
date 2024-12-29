@@ -21,6 +21,16 @@ in
       ./. + "/${desktop}/${username}/default.nix"
     )) ./${desktop}/${username};
 
+  # Enable the Catppuccin theme
+  catppuccin = {
+    alacritty.enable = config.programs.alacritty.enable && isLinux;
+    foot.enable = config.programs.foot.enable;
+    fuzzel.enable = config.programs.fuzzel.enable;
+    hyprland.enable = config.wayland.windowManager.hyprland.enable;
+    waybar.enable = config.programs.waybar.enable;
+    obs.enable = config.programs.obs-studio.enable;
+  };
+
   # Authrorize X11 access in Distrobox
   home.file = lib.mkIf isLinux {
     ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
@@ -28,7 +38,6 @@ in
 
   programs = lib.mkIf (username == "martin") {
     alacritty = lib.mkIf (desktop != "hyprland") {
-      catppuccin.enable = isLinux;
       enable = true;
       settings = {
         cursor = {
@@ -88,7 +97,6 @@ in
     };
     foot = lib.mkIf isLinux {
       enable = true;
-      catppuccin.enable = true;
       # https://codeberg.org/dnkl/foot/src/branch/master/foot.ini
       server.enable = false;
       settings = {

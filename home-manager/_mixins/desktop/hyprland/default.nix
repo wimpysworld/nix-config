@@ -354,7 +354,6 @@ in
 
   wayland.windowManager.hyprland = {
     enable = true;
-    catppuccin.enable = true;
     plugins = with pkgs; [ hyprlandPlugins.hyprtrails ];
     settings = {
       inherit (monitors) monitor workspace;
