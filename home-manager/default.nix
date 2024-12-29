@@ -28,9 +28,22 @@ in
     ./_mixins/users
   ] ++ lib.optional isWorkstation ./_mixins/desktop;
 
+  # Enable the Catppuccin theme
   catppuccin = {
     accent = "blue";
     flavor = "mocha";
+    bat.enable = config.programs.bat.enable;
+    bottom.enable = config.programs.bottom.enable;
+    cava.enable = config.programs.cava.enable;
+    fish.enable = config.programs.fish.enable;
+    fzf.enable = config.programs.fzf.enable;
+    gh-dash.enable = config.programs.gh.extensions.gh-dash;
+    gitui.enable = config.programs.gitui.enable;
+    micro.enable = config.programs.micro.enable;
+    nvim.enable = config.programs.neovim.enable;
+    starship.enable = config.programs.starship.enable;
+    tmux.enable = config.programs.tmux.enable;
+    yazi.enable = config.programs.yazi.enable;
   };
 
   home = {
@@ -46,7 +59,6 @@ in
 
     file = {
       "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./_mixins/configs/fastfetch.jsonc;
-      "${config.xdg.configHome}/gh-dash/config.yml".text = builtins.readFile ./_mixins/configs/gh-dash-catppuccin-mocha-blue.yml;
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./_mixins/configs/yazi-keymap.toml;
       "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./_mixins/configs/help.fish;
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./_mixins/configs/h.fish;
@@ -215,7 +227,6 @@ in
       };
     };
     bat = {
-      catppuccin.enable = true;
       enable = true;
       extraPackages = with pkgs.bat-extras; [
         batgrep
@@ -227,7 +238,6 @@ in
       };
     };
     bottom = {
-      catppuccin.enable = true;
       enable = true;
       settings = {
         disk_filter = {
@@ -248,10 +258,7 @@ in
       };
     };
     cava = {
-      catppuccin.enable = true;
-      # TODO: Enable when this is released:
-      # https://github.com/NixOS/nixpkgs/pull/356667
-      enable = false;
+      enable = true;
     };
     dircolors = {
       enable = true;
@@ -280,7 +287,6 @@ in
       icons = "auto";
     };
     fish = {
-      catppuccin.enable = true;
       enable = true;
       shellAliases = {
         banner = lib.mkIf isLinux "${pkgs.figlet}/bin/figlet";
@@ -319,7 +325,6 @@ in
       };
     };
     fzf = {
-      catppuccin.enable = true;
       enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
@@ -387,7 +392,6 @@ in
       ];
     };
     gitui = {
-      catppuccin.enable = true;
       enable = true;
     };
     gpg.enable = true;
@@ -395,7 +399,6 @@ in
     info.enable = true;
     jq.enable = true;
     micro = {
-      catppuccin.enable = true;
       enable = true;
       settings = {
         autosu = true;
@@ -412,7 +415,6 @@ in
     };
   neovim = {
       enable = true;
-      catppuccin.enable = true;
       plugins = with pkgs.vimPlugins; [
         vim-rsi
         packer-nvim
@@ -548,7 +550,6 @@ in
       enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
-      catppuccin.enable = true;
       # https://github.com/etrigan63/Catppuccin-starship
       settings = {
         add_newline = false;
@@ -917,7 +918,6 @@ in
     tmux = {
       aggressiveResize = true;
       baseIndex = 1;
-      catppuccin.enable = true;
       clock24 = true;
       historyLimit = 50000;
       enable = true;
@@ -987,7 +987,6 @@ in
       enableBashIntegration = true;
       enableFishIntegration = true;
       enableZshIntegration = true;
-      catppuccin.enable = true;
       settings = {
         manager = {
           show_hidden = false;

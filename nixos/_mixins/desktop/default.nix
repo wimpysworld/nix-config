@@ -1,4 +1,5 @@
 {
+  config,
   desktop,
   isInstall,
   lib,
@@ -19,10 +20,11 @@
       "mitigations=off"
     ];
     plymouth = {
-      catppuccin.enable = true;
       enable = true;
     };
   };
+
+  catppuccin.plymouth.enable = config.boot.plymouth.enable;
 
   environment.etc = {
     "backgrounds/Cat-1920px.png".source = ../configs/backgrounds/Cat-1920px.png;
