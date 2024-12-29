@@ -42,7 +42,6 @@ in
     micro.enable = config.programs.micro.enable;
     nvim.enable = config.programs.neovim.enable;
     starship.enable = config.programs.starship.enable;
-    tmux.enable = config.programs.tmux.enable;
     yazi.enable = config.programs.yazi.enable;
   };
 
@@ -915,73 +914,6 @@ in
       };
     };
     tmate.enable = true;
-    tmux = {
-      aggressiveResize = true;
-      baseIndex = 1;
-      clock24 = true;
-      historyLimit = 50000;
-      enable = true;
-      escapeTime = 0;
-      extraConfig = ''
-        set -g @catppuccin_window_status_icon_enable "yes"
-        set -g @catppuccin_icon_window_last "󰖰"
-        set -g @catppuccin_icon_window_current "󰖯"
-        set -g @catppuccin_icon_window_zoom "󰁌"
-        set -g @catppuccin_icon_window_mark "󰃀"
-        set -g @catppuccin_icon_window_silent "󰂛"
-        set -g @catppuccin_icon_window_activity "󱅫"
-        set -g @catppuccin_icon_window_bell "󰂞"
-        set -g @catppuccin_status_background "theme"
-
-        set -g @catppuccin_window_left_separator ""
-        set -g @catppuccin_window_right_separator " "
-        set -g @catppuccin_window_middle_separator " █"
-        set -g @catppuccin_window_number_position "right"
-
-        set -g @catppuccin_window_default_fill "number"
-        set -g @catppuccin_window_default_text "#W"
-
-        set -g @catppuccin_window_current_fill "number"
-        set -g @catppuccin_window_current_text "#W"
-
-        set -g @catppuccin_status_modules_right "directory user host session"
-        set -g @catppuccin_status_left_separator  " "
-        set -g @catppuccin_status_right_separator ""
-        set -g @catppuccin_status_fill "icon"
-        set -g @catppuccin_status_connect_separator "no"
-
-        set -g @catppuccin_directory_text "#{pane_current_path}"
-        # Status at the top
-        set -g status on
-        set -g status-position top
-        # Increase tmux messages display duration from 750ms to 4s
-        set -g display-time 4000
-        # Refresh 'status-left' and 'status-right' more often, from every 15s to 5s
-        set -g status-interval 5
-        # Focus events enabled for terminals that support them
-        set -g focus-events on
-        # | and - for splitting panes:
-        bind | split-window -h
-        bind "\\" split-window -fh
-        bind - split-window -v
-        bind _ split-window -fv
-        unbind '"'
-        unbind %
-        # reload config file
-        bind r source-file ~/.config/tmux/tmux.conf
-        # Fast pant-switching using Alt-arrow without prefix
-        bind -n M-Left select-pane -L
-        bind -n M-Right select-pane -R
-        bind -n M-Up select-pane -U
-        bind -n M-Down select-pane -D
-      '';
-      keyMode = "emacs";
-      mouse = true;
-      newSession = false;
-      #sensibleOnTop = true;
-      shortcut = "a";
-      terminal = "tmux-256color";
-    };
     yazi = {
       enable = true;
       enableBashIntegration = true;
