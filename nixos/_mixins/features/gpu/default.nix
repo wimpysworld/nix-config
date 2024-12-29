@@ -14,8 +14,6 @@ let
     "i915"
     "xe"
   ];
-  kernelVersion = lib.versions.majorMinor config.boot.kernelPackages.kernel.version;
-  useNvidiaBeta = lib.versionAtLeast kernelVersion "6.12";
 in
 lib.mkIf isInstall {
 
@@ -60,9 +58,6 @@ lib.mkIf isInstall {
     };
     nvidia = lib.mkIf hasNvidiaGPU {
       nvidiaSettings = lib.mkDefault isWorkstation;
-      # Use the NVIDIA beta on kernel 6.12 as there's a bug requiring a patch for 560
-      # - https://github.com/NixOS/nixpkgs/issues/353636
-      package = lib.mkIf useNvidiaBeta config.boot.kernelPackages.nvidiaPackages.beta;
     };
   };
 
