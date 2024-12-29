@@ -412,15 +412,6 @@ in
       };
     };
     nix-index.enable = true;
-    powerline-go = {
-      enable = false;
-      settings = {
-        cwd-max-depth = 5;
-        cwd-max-dir-size = 12;
-        theme = "gruvbox";
-        max-width = 60;
-      };
-    };
     ripgrep = {
       arguments = [
         "--colors=line:style:bold"
