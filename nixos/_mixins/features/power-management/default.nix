@@ -37,7 +37,7 @@ lib.mkIf isInstall {
 
   powerManagement.powertop.enable = lib.mkDefault false;
 
-  programs = {
+  services = {
     auto-cpufreq = {
       enable = !usePowerProfiles && isLaptop;
       settings = {
@@ -58,9 +58,6 @@ lib.mkIf isInstall {
         };
       };
     };
-  };
-
-  services = {
     # Only enable power-profiles-daemon if the desktop environment supports it
     power-profiles-daemon.enable = usePowerProfiles;
     # Only enable thermald on Intel CPUs

@@ -18,7 +18,6 @@
     # Use module this flake exports; from modules/nixos
     #outputs.nixosModules.my-module
     # Use modules from other flakes
-    inputs.auto-cpufreq.nixosModules.default
     inputs.catppuccin.nixosModules.catppuccin
     inputs.determinate.nixosModules.default
     inputs.disko.nixosModules.disko
