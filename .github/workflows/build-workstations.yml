@@ -1,4 +1,4 @@
-name: Build 🏗️ Configs ️❄️
+name: Build 🏗️ Workstations ️️🖥️
 
 on:
   push:
@@ -14,9 +14,7 @@ jobs:
     strategy:
       matrix:
         host:
-          - malak
           - phasma
-          - revan
           - vader
     permissions:
       contents: read
@@ -42,9 +40,7 @@ jobs:
     strategy:
       matrix:
         home:
-          - martin@malak
           - martin@phasma
-          - martin@revan
           - martin@vader
     permissions:
       contents: read

@@ -1,0 +1,63 @@
+name: Build 🏗️ Servers ️💁
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'flake.lock'
+  workflow_dispatch:
+
+jobs:
+  build-host:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        host:
+          - malak
+          - revan
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: DeterminateSystems/nix-installer-action@v16
+      with:
+        determinate: true
+    - uses: DeterminateSystems/magic-nix-cache-action@v8
+    - name: Building 👷 ${{ matrix.host }} 🐧
+      run: |
+        # Disable non-redist packages
+        for NON_REDIST in cider pico8; do
+          if [ -d "pkgs/${NON_REDIST}" ]; then
+            mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
+            mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
+          fi
+        done
+        nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel -L
+  build-home:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        home:
+          - martin@malak
+          - martin@revan
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: DeterminateSystems/nix-installer-action@v16
+      with:
+        determinate: true
+    - uses: DeterminateSystems/magic-nix-cache-action@v8
+    - name: Building 👷 ${{ matrix.home }} 🏠
+      run: |
+        # Disable non-redist packages
+        for NON_REDIST in cider pico8; do
+          if [ -d "pkgs/${NON_REDIST}" ]; then
+            mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
+            mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
+          fi
+        done
+        nix run nixpkgs#home-manager -- build --flake .#${{ matrix.home }} -L
