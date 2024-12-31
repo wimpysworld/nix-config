@@ -855,6 +855,11 @@ in
     };
     defaultSopsFile = ../secrets/secrets.yaml;
     secrets = {
+      act-env = {
+        path = "${config.home.homeDirectory}/.config/act/secrets";
+        sopsFile = ../secrets/act.yaml;
+        mode = "0660";
+      };
       asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
       atuin_key.path = "${config.home.homeDirectory}/.local/share/atuin/key";
       gh_token = { };
