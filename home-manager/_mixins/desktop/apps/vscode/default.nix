@@ -104,6 +104,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.slevesque.shader
           vscode-marketplace.streetsidesoftware.code-spell-checker
           vscode-marketplace.sumneko.lua
+          vscode-marketplace.SanjulaGanepola.github-local-actions
           vscode-marketplace.tamasfe.even-better-toml
           vscode-marketplace.timonwong.shellcheck
           vscode-marketplace.tomblind.local-lua-debugger-vscode
