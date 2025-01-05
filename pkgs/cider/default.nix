@@ -20,10 +20,14 @@ let
 in
 appimageTools.wrapType2 {
   inherit pname version src;
+  # Disable UseMultiPlaneFormatForSoftwareVideo on Wayland
+  # https://github.com/Legcord/Legcord/issues/741
+  # Disable GPU memory buffer for video frames
+  # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1077345#10
   extraInstallCommands = ''
     source "${makeWrapper}/nix-support/setup-hook"
       wrapProgram $out/bin/${pname} \
-        --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
+        --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --disable-features=UseMultiPlaneFormatForSoftwareVideo --disable-gpu-memory-buffer-video-frames}}"
       install -m 444 -D ${appimageContents}/Cider.desktop \
         $out/share/applications/Cider.desktop
       install -m 444 -D ${appimageContents}/cider-linux----arch-------version---.png \
