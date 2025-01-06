@@ -12,7 +12,7 @@ let
     name = "cider-linux-x64.AppImage";
     url= "https://cidercollective.itch.io/cider";
     # sha256sum /nix/store/deadb33f-cider-linux-x64.AppImage
-    sha256 = "05b4ba6e938327242ed35376da3e2d899f2a31d9cd33018b96d6c51689397ea1";
+    sha256 = "5ddc96d8ee4b0befdd1a8b12615cf92240318b6b5a541ad75c74db59908d9e7f";
   };
   appimageContents = appimageTools.extractType2 {
     inherit pname version src;
@@ -30,10 +30,8 @@ appimageTools.wrapType2 {
         --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --disable-features=UseMultiPlaneFormatForSoftwareVideo --disable-gpu-memory-buffer-video-frames}}"
       install -m 444 -D ${appimageContents}/Cider.desktop \
         $out/share/applications/Cider.desktop
-      install -m 444 -D ${appimageContents}/cider-linux----arch-------version---.png \
-        $out/share/icons/hicolor/256x256/apps/cider-genten-client.png
-      substituteInPlace $out/share/applications/Cider.desktop \
-        --replace-fail 'Exec=Cider' 'Exec=cider'
+      install -m 444 -D ${appimageContents}/cider.png \
+        $out/share/icons/hicolor/256x256/apps/cider.png
   '';
 
   meta = {
