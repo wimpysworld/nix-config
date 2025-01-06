@@ -19,10 +19,6 @@ lib.mkIf (lib.elem username installFor) {
       "${config.home.homeDirectory}/.config/joplin-desktop/userchrome.css".text = builtins.readFile ./userchrome.css;
       "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text = builtins.readFile ./userstyle.css;
     };
-    # Jopin CLI fails to build on x86_64-darwin
-    packages = with pkgs; [
-      (lib.mkIf (platform != "x86_64-darwin") joplin)
-    ];
   };
 
   programs.joplin-desktop = {

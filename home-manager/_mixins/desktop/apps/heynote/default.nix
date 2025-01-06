@@ -10,7 +10,7 @@ let
   inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf (lib.elem username installFor) {
-  home = {
+  home = lib.mkIf isLinux {
     packages = [ pkgs.heynote ];
   };
 }

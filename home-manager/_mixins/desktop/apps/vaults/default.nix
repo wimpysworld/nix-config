@@ -11,7 +11,5 @@ in
 lib.mkIf (lib.elem username installFor) {
   home.packages = with pkgs; lib.optionals isLinux [
     vaults
-  ] ++ lib.optionals isDarwin [
-    sirikali
   ];
 }

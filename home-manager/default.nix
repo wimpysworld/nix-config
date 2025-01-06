@@ -135,7 +135,6 @@ in
         timer # Terminal timer
         tldr # Modern Unix `man`
         tokei # Modern Unix `wc` for code
-        tty-clock # Terminal clock
         ueberzugpp # Terminal image viewer integration
         unzip # Terminal ZIP extractor
         upterm # Terminal sharing
@@ -153,6 +152,7 @@ in
         ramfetch # Terminal system info
         s-tui # Terminal CPU stress test
         stress-ng # Terminal CPU stress test
+        tty-clock # Terminal clock
         usbutils # Terminal USB info
         wavemon # Terminal WiFi monitor
         writedisk # Modern Unix `dd`
@@ -291,7 +291,7 @@ in
         banner-color = lib.mkIf isLinux "${pkgs.figlet}/bin/figlet $argv | ${pkgs.dotacat}/bin/dotacat";
         brg = "${pkgs.bat-extras.batgrep}/bin/batgrep";
         cat = "${pkgs.bat}/bin/bat --paging=never";
-        clock = ''${pkgs.tty-clock}/bin/tty-clock -B -c -C 4 -f "%a, %d %b"'';
+        clock = if isLinux then ''${pkgs.tty-clock}/bin/tty-clock -B -c -C 4 -f "%a, %d %b"'' else "";
         dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
         dmesg = "${pkgs.util-linux}/bin/dmesg --human --color=always";
         neofetch = "${pkgs.fastfetch}/bin/fastfetch";
@@ -835,7 +835,7 @@ in
       enableSshSupport = true;
       pinentryPackage = pkgs.pinentry-curses;
     };
-    pueue = {
+    pueue = lib.mkIf isLinux {
       enable = isLinux;
       # https://github.com/Nukesor/pueue/wiki/Configuration
       settings = {
