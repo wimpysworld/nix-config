@@ -1,14 +1,14 @@
 {
   description = "Wimpy's NixOS, nix-darwin and Home Manager Configuration";
   inputs = {
-  	determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/0";
-  	fh.url = "https://flakehub.com/f/DeterminateSystems/fh/0";
-	home-manager.url = "github:nix-community/home-manager/release-24.11";
+    determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/0";
+    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/0";
+    home-manager.url = "github:nix-community/home-manager/release-24.11";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     #nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
     nixpkgs.url = "https://flakehub.com/f/nixos/nixpkgs/0.2411.*";
     nixpkgs-unstable.url = "https://flakehub.com/f/DeterminateSystems/nixpkgs-weekly/0";
-	nix-darwin.url = "github:LnL7/nix-darwin";
+    nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
     antsy-alien-attack-pico.url = "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/*";
