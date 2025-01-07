@@ -11,6 +11,7 @@
 }:
 {
   imports = [
+    inputs.nix-homebrew.darwinModules.nix-homebrew
     inputs.nix-index-database.darwinModules.nix-index
     ./${hostname}
     ./_mixins/desktop
@@ -50,6 +51,14 @@
       upgrade = true;
       cleanup = "zap";
     };
+  };
+
+  nix-homebrew = {
+    enable = true;
+    enableRosetta = true;
+    autoMigrate = true;
+    user = "${username}";
+    mutableTaps = true;
   };
 
   nixpkgs = {
