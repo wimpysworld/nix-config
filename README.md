@@ -265,6 +265,7 @@ Things I currently need to do manually after installation.
   - `create-fighter`
 - [ ] On macOS run
   - `install-homebrew`
+  - Run Podman Desktop to create podman machine
 
 #### Malak
 
