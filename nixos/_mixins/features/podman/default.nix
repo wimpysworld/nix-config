@@ -19,10 +19,11 @@ lib.mkIf (lib.elem "${username}" installFor) {
         act
         distrobox
         fuse-overlayfs
+        podman-compose
+        podman-tui
       ]
-      ++ lib.optionals (isWorkstation && true == false) [
-        boxbuddy
-        pods
+      ++ lib.optionals (isWorkstation) [
+        podman-desktop
       ];
   };
 
@@ -30,6 +31,7 @@ lib.mkIf (lib.elem "${username}" installFor) {
 
   virtualisation = {
     containers.enable = true;
+    oci-containers.backend = "podman";
     podman = {
       defaultNetwork.settings = {
         dns_enabled = true;
