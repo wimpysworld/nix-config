@@ -256,7 +256,7 @@ in
       };
     };
     cava = {
-      enable = true;
+      enable = isLinux;
     };
     dircolors = {
       enable = true;
