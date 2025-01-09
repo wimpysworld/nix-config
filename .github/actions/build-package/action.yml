@@ -25,3 +25,7 @@ runs:
         echo "✅ License found, building normally"
         nix build .#${{ inputs.package }} -L
       fi
+  - uses: "DeterminateSystems/flakehub-push@v5"
+    with:
+      include-output-paths: true
+      visibility: "public"

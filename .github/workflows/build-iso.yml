@@ -72,4 +72,5 @@ jobs:
       - uses: "DeterminateSystems/flakehub-push@v5"
         with:
           tag: ${{ needs.build-iso.outputs.ver }}
+          include-output-paths: true
           visibility: "public"
