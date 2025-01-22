@@ -12,7 +12,7 @@ let
     name = "cider-linux-x64.AppImage";
     url= "https://cidercollective.itch.io/cider";
     # sha256sum /nix/store/deadb33f-cider-linux-x64.AppImage
-    sha256 = "5ddc96d8ee4b0befdd1a8b12615cf92240318b6b5a541ad75c74db59908d9e7f";
+    sha256 = "ca16d4deeddc59c7be6b55c0d671d2f8590d3576c29c3afb0c1da8ba54fd7776";
   };
   appimageContents = appimageTools.extractType2 {
     inherit pname version src;
