@@ -22,7 +22,7 @@ jobs:
     - uses: DeterminateSystems/nix-installer-action@v16
       with:
         determinate: true
-    - uses: DeterminateSystems/magic-nix-cache-action@v8
+    - uses: DeterminateSystems/flakehub-cache-action@v1
     - name: Nix Build ️❄️
       id: build-iso
       run: |
@@ -58,18 +58,18 @@ jobs:
 
   publish-flakehub:
     needs: [build-iso]
-    name: "Publish FlakeHub ❄️"
-    runs-on: "ubuntu-22.04"
+    name: Publish FlakeHub ❄️
+    runs-on: ubuntu-22.04
     permissions:
-      id-token: "write"
-      contents: "read"
+      id-token: write
+      contents: read
     steps:
-      - uses: "actions/checkout@v4"
-      - uses: "DeterminateSystems/nix-installer-action@v16"
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v16
         with:
           determinate: true
-      - uses: "DeterminateSystems/magic-nix-cache-action@v8"
-      - uses: "DeterminateSystems/flakehub-push@v5"
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - uses: DeterminateSystems/flakehub-push@v5
         with:
           tag: ${{ needs.build-iso.outputs.ver }}
           include-output-paths: true

@@ -18,7 +18,6 @@ jobs:
         package:
           - defold
           - heynote
-          - jan
           - ollama
           - open-webui
           - station
