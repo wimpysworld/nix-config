@@ -8,7 +8,6 @@ pkgs:
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
   heynote = pkgs.callPackage ./heynote { };
-  jan = pkgs.callPackage ./jan { };
   ollama = pkgs.callPackage ./ollama { };
   open-webui = pkgs.callPackage ./open-webui { };
   station = pkgs.callPackage ./station { };
