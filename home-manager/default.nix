@@ -70,21 +70,17 @@ in
       [
         asciicam # Terminal webcam
         asciinema-agg # Convert asciinema to .gif
-        asciinema # Terminal recorder
         bc # Terminal calculator
         bandwhich # Modern Unix `iftop`
         bmon # Modern Unix `iftop`
         breezy # Terminal bzr client
-        #butler # Terminal Itch.io API client
         chafa # Terminal image viewer
-        chroma # Code syntax highlighter
         clinfo # Terminal OpenCL info
         cpufetch # Terminal CPU info
         croc # Terminal file transfer
         curlie # Terminal HTTP client
         cyme # Modern Unix `lsusb`
         dconf2nix # Nix code from Dconf files
-        deadnix # Nix dead code finder
         difftastic # Modern Unix `diff`
         dogdns # Modern Unix `dig`
         dotacat # Modern Unix lolcat
@@ -96,7 +92,7 @@ in
         fastfetch # Modern Unix system info
         fd # Modern Unix `find`
         file # Terminal file info
-        frogmouth # Terminal mardown viewer
+        frogmouth # Terminal markdown viewer
         glow # Terminal Markdown renderer
         girouette # Modern Unix weather
         gocryptfs # Terminal encrypted filesystem
