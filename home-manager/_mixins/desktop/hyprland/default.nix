@@ -81,7 +81,6 @@ let
           start_app code 4 "initialTitle: Visual Studio Code"
           start_app foot 5 "class: foot"
           start_app "gitkraken --no-show-splash-screen" 5 "title: GitKraken Desktop"
-          start_app jan 6 "class: jan"
           start_app joplin-desktop 6 "class: @joplin/app-desktop"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
               start_app "obs --disable-shutdown-check --collection 'VirtualCam' --profile 'VirtualCam' --scene 'VirtualCam-DetSys' --startvirtualcam" 7 "class: com.obsproject.Studio"
