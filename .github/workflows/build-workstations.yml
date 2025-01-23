@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-host:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         host:
@@ -41,7 +41,7 @@ jobs:
         visibility: "public"
 
   build-home:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         home:
