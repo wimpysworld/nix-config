@@ -127,7 +127,7 @@
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/nix-community/disko/1.10.0.tar.gz"
+        "url": "https://flakehub.com/f/nix-community/disko/1.11.0.tar.gz"
       }
     },
     "fenix": {
