@@ -11,8 +11,6 @@
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    antsy-alien-attack-pico.url = "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/*";
-    antsy-alien-attack-pico.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "https://flakehub.com/f/catppuccin/nix/*";
     catppuccin-vsc.url = "https://flakehub.com/f/catppuccin/vscode/*";
     catppuccin-vsc.inputs.nixpkgs.follows = "nixpkgs";
