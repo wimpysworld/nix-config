@@ -36,7 +36,7 @@ jobs:
 
   build-large-applications:
     name: Build large applications
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         package:
