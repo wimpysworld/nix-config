@@ -9,7 +9,7 @@
 , makeBinaryWrapper
 }:
 let
-  version = "0.2.0-unstable-2024-12-06";
+  version = "0.2.1-unstable-2025-01-23";
 in buildGoModule {
   pname = "owncast";
   inherit version;
@@ -18,24 +18,10 @@ in buildGoModule {
     repo = "owncast";
     #rev = "v${version}";
 
-    rev = "4f1c1ec683fd257e729285aad13e5bfea5f93a5d";
-    hash = "sha256-0m2w5CReDbwTqG+uQcooTVeQRPR0unZRL+3FG4fxQe0=";
+    rev = "11af286501c44359982f60324b5b727cb40e07d2";
+    hash = "sha256-wcDJPCzzJClp15gO3XcbRgrZMHsm61+JnfnNFUcbui4=";
   };
-  vendorHash = "sha256-asJNRqyMEYpyzHzj5huepDeXj5fkoM9lm0nhAG4bDwU=";
-
-  # Add my patches
-  patches = [
-    (fetchpatch {
-      # VA-API
-      url = "https://patch-diff.githubusercontent.com/raw/owncast/owncast/pull/4022.diff";
-      sha256 = "sha256-fyloQSlDbNWwXcC12wba9HJiqQCT5PztosAjbGl2tw4=";
-    })
-    (fetchpatch {
-      # Quicksync
-      url = "https://patch-diff.githubusercontent.com/raw/owncast/owncast/pull/4028.diff";
-      sha256 = "sha256-Hwy11C3Fu43qFc0hX2vbhSpEpS7KXHiP0xTmidbBq58=";
-    })
-  ];
+  vendorHash = "sha256-jK450HEQ/P7u/wFW1zLYWosOZ2A7GdC+twzQkAdXjMU=";
 
   propagatedBuildInputs = [ ffmpeg-full ];
 
