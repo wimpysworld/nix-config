@@ -12,7 +12,7 @@ runs:
   - uses: DeterminateSystems/nix-installer-action@v16
     with:
       determinate: true
-  - uses: DeterminateSystems/magic-nix-cache-action@v8
+  - uses: DeterminateSystems/flakehub-cache-action@v1
   - name: Building 👷 ${{ inputs.package }} 📦
     shell: bash
     run: |
@@ -25,7 +25,3 @@ runs:
         echo "✅ License found, building normally"
         nix build .#${{ inputs.package }} -L
       fi
-  - uses: "DeterminateSystems/flakehub-push@v5"
-    with:
-      include-output-paths: true
-      visibility: "public"

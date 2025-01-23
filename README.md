@@ -54,7 +54,7 @@ Dual boot systems have the NixOS install named a Sith Lord and the *"other"* OS 
 
 - [.github]: GitHub CI/CD workflows Nix ❄️ supercharged ⚡️ by [**Determinate Systems**](https://determinate.systems)
   - [Nix Installer Action](https://github.com/marketplace/actions/the-determinate-nix-installer)
-  - [Magic Nix Cache Action](https://github.com/marketplace/actions/magic-nix-cache)
+  - [FlakeHub Cache Action](https://github.com/marketplace/actions/flakehub-cache)
   - [Flake Checker Action](https://github.com/marketplace/actions/nix-flake-checker)
   - [Update Flake Lock Action](https://github.com/marketplace/actions/update-flake-lock)
 - [darwin]: macOS configurations
