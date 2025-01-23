@@ -71,6 +71,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.github.vscode-github-actions
           vscode-marketplace.github.vscode-pull-request-github
           vscode-marketplace.golang.go
+          vscode-marketplace.griimick.vhs
           vscode-marketplace.hoovercj.vscode-power-mode
           vscode-marketplace.jdemille.debian-control-vscode
           vscode-marketplace.jeff-hykin.better-csv-syntax

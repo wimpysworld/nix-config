@@ -150,6 +150,7 @@ in
         stress-ng # Terminal CPU stress test
         tty-clock # Terminal clock
         usbutils # Terminal USB info
+        vhs # Terminal GIF recorder
         wavemon # Terminal WiFi monitor
         writedisk # Modern Unix `dd`
         zsync # Terminal file sync; FTBFS on aarch64-darwin
