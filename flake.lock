@@ -1,24 +1,5 @@
 {
   "nodes": {
-    "antsy-alien-attack-pico": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1,
-        "narHash": "sha256-PkU4WXrt/9eJOohFU36mI4PNhDs+nnpkaLRZoEJq6ak=",
-        "rev": "6d2b9c418d232fe37277829695a5a65bd84ae586",
-        "revCount": 582,
-        "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/wimpysworld/antsy-alien-attack-pico/1.23.23418/018a1e81-66ff-7a64-ae49-1f6a3634b494/source.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://flakehub.com/f/wimpysworld/antsy-alien-attack-pico/%2A"
-      }
-    },
     "brew-src": {
       "flake": false,
       "locked": {
@@ -472,11 +453,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1737162735,
-        "narHash": "sha256-5T+HkouTMGaRm0rh3kgD4Z1O7ONKfgjyoPQH5rSyreU=",
+        "lastModified": 1737504076,
+        "narHash": "sha256-/B4XJnzYU/6K1ZZOBIgsa3K4pqDJrnC2579c44c+4rI=",
         "owner": "LnL7",
         "repo": "nix-darwin",
-        "rev": "87131f51f8256952d1a306b5521cedc2dc61aa08",
+        "rev": "65cc1fa8e36ceff067daf6cfb142331f02f524d3",
         "type": "github"
       },
       "original": {
@@ -587,11 +568,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1737337847,
-        "narHash": "sha256-1j7wMhzpTUIkfXnsgTDr4c6dIKAHAAXDr3ojgs0n3HE=",
+        "lastModified": 1737596814,
+        "narHash": "sha256-hfMz2iTGrM95jvnxgFD3kQmCBr4qvLtoJxT7pU20QN0=",
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "83e447a2ae38dc584ce572d0d80847e3d53fac90",
+        "rev": "2dc18aa9f519bb9c7f908c38a141562619ce01fb",
         "type": "github"
       },
       "original": {
@@ -625,12 +606,12 @@
     },
     "nixos-hardware": {
       "locked": {
-        "lastModified": 1737359802,
-        "narHash": "sha256-utplyRM6pqnN940gfaLFBb9oUCSzkan86IvmkhsVlN8=",
-        "rev": "61c79181e77ef774ab0468b28a24bc2647d498d6",
-        "revCount": 2090,
+        "lastModified": 1737590910,
+        "narHash": "sha256-qM/y6Dtpu9Wmf5HqeZajQdn+cS0aljdYQQQnrvx+LJE=",
+        "rev": "9368027715d8dde4b84c79c374948b5306fdd2db",
+        "revCount": 2094,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixos-hardware/0.1.2090%2Brev-61c79181e77ef774ab0468b28a24bc2647d498d6/019482b7-599b-7175-8cfd-9e6a4120a926/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixos-hardware/0.1.2094%2Brev-9368027715d8dde4b84c79c374948b5306fdd2db/0194907d-ce21-7632-99f9-c4c61205a74c/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -878,7 +859,6 @@
     },
     "root": {
       "inputs": {
-        "antsy-alien-attack-pico": "antsy-alien-attack-pico",
         "catppuccin": "catppuccin",
         "catppuccin-vsc": "catppuccin-vsc",
         "determinate": "determinate",
