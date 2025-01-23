@@ -54,7 +54,7 @@
         ];
     });
 
-    linuxPackages_latest = prev.linuxPackages_latest.extend (_lpself: lpsuper: {
+    linuxPackages_6_12 = prev.linuxPackages_6_12.extend (_lpself: lpsuper: {
       mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
         pname = "mwprocapture";
         subVersion = "4407";

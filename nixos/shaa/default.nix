@@ -29,7 +29,6 @@
       "amdgpu"
       "kvm-amd"
     ];
-    kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
     # Force use of the thinkpad_acpi driver for backlight control.
     # This allows the backlight save/load systemd service to work.
     # Thinkpad T14s AMD Gen 1 does not wake up from suspend using 'deep' sleep.
