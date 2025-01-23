@@ -14,7 +14,7 @@
     catppuccin.url = "https://flakehub.com/f/catppuccin/nix/*";
     catppuccin-vsc.url = "https://flakehub.com/f/catppuccin/vscode/*";
     catppuccin-vsc.inputs.nixpkgs.follows = "nixpkgs";
-    disko.url = "https://flakehub.com/f/nix-community/disko/1.10.0.tar.gz";
+    disko.url = "https://flakehub.com/f/nix-community/disko/1.11.0.tar.gz";
     disko.inputs.nixpkgs.follows = "nixpkgs";
     nixos-hardware.url = "https://flakehub.com/f/NixOS/nixos-hardware/*";
     nixos-needsreboot.url = "https://codeberg.org/Mynacol/nixos-needsreboot/archive/0.2.2.tar.gz";
