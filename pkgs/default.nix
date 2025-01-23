@@ -14,6 +14,7 @@ pkgs:
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
 
   # Local packages to prevent unintended upgrades or carrying patches
+  hyprpicker = pkgs.callPackage ./hyprpicker { };
   gotosocial = pkgs.callPackage ./gotosocial { };
   owncast = pkgs.callPackage ./owncast { };
 
