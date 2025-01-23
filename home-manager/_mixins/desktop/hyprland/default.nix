@@ -544,6 +544,7 @@ in
         "opacity 1.0, class: class: dmengine"
         "opacity 1.0, title: UNIGINE Engine"
         "opacity 1.0, title: Steam Big Picture Mode"
+        "opacity 1.0, class: Gimp"
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
