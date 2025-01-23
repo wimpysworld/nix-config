@@ -33,7 +33,7 @@ in
       })
     ];
     systemPackages = lib.mkIf hasAcceleration (with pkgs; [
-      gollama
+      unstable.gollama
     ]);
   };
   services = {
@@ -41,6 +41,7 @@ in
       acceleration = lib.mkIf hasAcceleration accelerationMap.${hostname};
       enable = hasAcceleration;
       host = if hostname == "revan" then "127.0.0.1" else "0.0.0.0";
+      package = pkgs.unstable.ollama;
       loadModels = if hostname == "revan" then [
         "nemotron-mini:4b"
         "nomic-embed-text:latest"
