@@ -15,17 +15,6 @@ lib.mkIf (lib.elem username installFor) {
     inputs.nix-vscode-extensions.overlays.default
   ];
 
-  home = {
-    packages = with pkgs; [
-      # cross platform dev tools
-      black
-      nodePackages.prettier
-      rustfmt
-      shellcheck
-      shfmt
-    ];
-  };
-
   # NOTE! I avoid using home-manager to configure settings.json because it
   #       makes it settings.json immutable. I prefer to use the Code settings
   #       sync extension to sync across machines.

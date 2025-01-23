@@ -147,6 +147,7 @@ in
         psmisc # Traditional `ps`
         ramfetch # Terminal system info
         s-tui # Terminal CPU stress test
+        shellcheck # Terminal shell linter
         stress-ng # Terminal CPU stress test
         tty-clock # Terminal clock
         usbutils # Terminal USB info
