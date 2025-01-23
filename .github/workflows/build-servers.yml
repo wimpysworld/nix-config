@@ -35,10 +35,6 @@ jobs:
           fi
         done
         nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel -L
-    - uses: "DeterminateSystems/flakehub-push@v5"
-      with:
-        include-output-paths: true
-        visibility: "public"
 
   build-home:
     runs-on: ubuntu-22.04
@@ -55,7 +51,7 @@ jobs:
     - uses: DeterminateSystems/nix-installer-action@v16
       with:
         determinate: true
-    - uses: DeterminateSystems/magic-nix-cache-action@v8
+    - uses: DeterminateSystems/flakehub-cache-action@v1
     - name: Building 👷 ${{ matrix.home }} 🏠
       run: |
         # Disable non-redist packages
@@ -66,7 +62,3 @@ jobs:
           fi
         done
         nix run nixpkgs#home-manager -- build --flake .#${{ matrix.home }} -L
-    - uses: "DeterminateSystems/flakehub-push@v5"
-      with:
-        include-output-paths: true
-        visibility: "public"
