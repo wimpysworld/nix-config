@@ -625,15 +625,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1714932872,
-        "narHash": "sha256-C+oxZthPMuqEEiioPsqeWZ+xFlt2Y4yz5S2Cg4dtG08=",
-        "rev": "c00f7e0eb0d35bce9351173ed73a99454d57a8b6",
+        "lastModified": 1737648426,
+        "narHash": "sha256-1e92V1lnF4NLjxQ+ZF/2uiIGwB8ONu4bLsFQUcFPK4k=",
+        "rev": "346d7a1c0d7c84bea74174b65dc0a76d5509c78f",
+        "revCount": 47,
         "type": "tarball",
-        "url": "https://codeberg.org/api/v1/repos/Mynacol/nixos-needsreboot/archive/c00f7e0eb0d35bce9351173ed73a99454d57a8b6.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/wimpysworld/nixos-needsreboot/0.2.3/019493ec-093b-7964-9f36-685be48b44f4/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://codeberg.org/Mynacol/nixos-needsreboot/archive/0.2.2.tar.gz"
+        "url": "https://flakehub.com/f/wimpysworld/nixos-needsreboot/0.2.3.tar.gz"
       }
     },
     "nixpkgs": {
