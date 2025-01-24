@@ -19,7 +19,6 @@ in
     ++ lib.optionals (builtins.elem username installFor && isInstall) [
       brave
       chromium
-      station
       wavebox
     ];
 
