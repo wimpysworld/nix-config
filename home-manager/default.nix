@@ -503,10 +503,14 @@ in
           Linux = "[](fg:yellow bg:surface1)";
           Macos = "[](fg:text bg:surface1)";
           Manjaro = "[](fg:green bg:surface1)";
+          Mariner = "[](fg:sky bg:surface1)";
+          MidnightBSD = "[](fg:yellow bg:surface1)";
           Mint = "[󰣭](fg:teal bg:surface1)";
+          NetBSD = "[](fg:peach bg:surface1)";
           NixOS = "[](fg:sky bg:surface1)";
           OpenBSD = "[](fg:yellow bg:surface1)";
           openSUSE = "[](fg:green bg:surface1)";
+          OracleLinux = "[󰌷](fg:red bg:surface1)";
           Pop = "[](fg:sapphire bg:surface1)";
           Raspbian = "[](fg:maroon bg:surface1)";
           Redhat = "[](fg:red bg:surface1)";
