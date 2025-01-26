@@ -1,14 +1,14 @@
 { lib, ... }:
 {
   networking = {
-    defaultGateway = "192.168.2.1";
+    defaultGateway = "10.10.10.10";
     firewall = {
       trustedInterfaces = [ "eth0" ];
     };
     interfaces.eth0.mtu = 1462;
     interfaces.eth0.ipv4.addresses = [
       {
-        address = "192.168.2.18";
+        address = "10.10.10.1";
         prefixLength = 24;
       }
     ];
