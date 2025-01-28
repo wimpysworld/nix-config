@@ -41,23 +41,20 @@ in
       enable = hasAcceleration;
       host = if hostname == "revan" then "127.0.0.1" else "0.0.0.0";
       package = pkgs.unstable.ollama;
-      # https://medium.com/timescale/finding-the-best-open-source-embedding-model-for-rag-929d1656d331
       loadModels = if hostname == "revan" then [
-        "mxbai-embed-large:335m"        #Embedding
-        "nemotron-mini:4b"              #4k     RAG
-        "nomic-embed-text:latest"       #Embedding
+        "mxbai-embed-large:335m"
+        "nemotron-mini:4b"
+        "nomic-embed-text:latest"
       ] else [
         "codestral:22b"                 #32k
         "deepseek-r1:14b"               #128k
-        "gemma2:27b"					#8K
-        "llama3-chatqa:8b"              #8k     RAG
         "llama3.2-vision:11b"
-        "llama3.1:8b"                   #128k
         "mistral-nemo:12b"              #128k
-        "mxbai-embed-large:335m"        #Embedding
-        "nemotron-mini:4b"              #4k     RAG
-        "nomic-embed-text:latest"       #Embedding
+        "mxbai-embed-large:335m"
+        "nemotron-mini:4b"
+        "nomic-embed-text:latest"
         "phi4:14b"                      #16K
+        "phi4:14b-q8_0"                 #16K
         "qwen2.5-coder:14b"             #128k
       ];
     };
@@ -68,7 +65,7 @@ in
         CHUNK_SIZE = "1536";
         CHUNK_OVERLAP = "128";
         #CONTENT_EXTRACTION_ENGINE = "tika";
-        DEFAULT_MODELS = "llama3.1:8b";
+        DEFAULT_MODELS = "phi4:14b";
         DEFAULT_USER_ROLE = "user";
         ENABLE_EVALUATION_ARENA_MODELS = "false";
         ENABLE_IMAGE_GENERATION = "true";
@@ -80,11 +77,11 @@ in
         ENABLE_SEARCH_QUERY = "true";
         ENABLE_SIGNUP = "true";
         IMAGE_GENERATION_ENGINE = "openai";
-        MODEL_FILTER_LIST = "codestral:22b;deepseek-r1:14b;llama3-chatqa:8b;llama3.2-vision:11b;llama3.1:8b;mistral-nemo:12b;nemotron-mini:4b;phi4:14b;qwen2.5-coder:14b;gpt-4;gpt-4o;gpt-4o-mini;o1-mini;claude-3-5-haiku-latest;claude-3-5-sonnet-latest";
+        MODEL_FILTER_LIST = "codestral:22b;deepseek-r1:14b;llama3.2-vision:11b;mistral-nemo:12b;nemotron-mini:4b;phi4:14b;phi4:14b-q8_0;qwen2.5-coder:14b;gpt-4;gpt-4o;gpt-4o-mini;o1-mini;claude-3-5-haiku-latest;claude-3-5-sonnet-latest";
         OLLAMA_BASE_URLS = baseUrls;
         RAG_EMBEDDING_BATCH_SIZE = "16";
         RAG_EMBEDDING_ENGINE = "ollama";
-        RAG_EMBEDDING_MODEL = "nomic-embed-text:latest";
+        RAG_EMBEDDING_MODEL = "mxbai-embed-large:335m";
         # https://github.com/open-webui/open-webui/issues/7333#issuecomment-2512287381
         RAG_OLLAMA_BASE_URL = "http://config.services.ollama.host}:${toString config.services.ollama.port}";
         RAG_TEXT_SPLITTER = "token";
@@ -92,7 +89,7 @@ in
         RAG_WEB_SEARCH_RESULT_COUNT = "5";
         RAG_WEB_SEARCH_CONCURRENT_REQUESTS = "2";
         RESET_CONFIG_ON_START = "true";
-        TASK_MODEL = "llama3.1:8b";
+        TASK_MODEL = "phi4:14b";
         TIKA_SERVER_URL = "http://${config.services.tika.listenAddress}:${toString config.services.tika.port}";
         USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OpenWebUI/${pkgs.open-webui.version} Chrome/131.0.0.0 Safari/537.36";
         WEBUI_NAME = "${sithLord} Chat";
