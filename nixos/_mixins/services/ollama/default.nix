@@ -43,14 +43,13 @@ in
       package = pkgs.unstable.ollama;
       # https://medium.com/timescale/finding-the-best-open-source-embedding-model-for-rag-929d1656d331
       loadModels = if hostname == "revan" then [
-        "bge-m3:567m"                   #Embedding
         "mxbai-embed-large:335m"        #Embedding
         "nemotron-mini:4b"              #4k     RAG
         "nomic-embed-text:latest"       #Embedding
       ] else [
-        "bge-m3:567m"                   #Embedding
         "codestral:22b"                 #32k
         "deepseek-r1:14b"               #128k
+        "gemma2:27b"					#8K
         "llama3-chatqa:8b"              #8k     RAG
         "llama3.2-vision:11b"
         "llama3.1:8b"                   #128k
