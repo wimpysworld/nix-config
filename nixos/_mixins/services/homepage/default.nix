@@ -101,11 +101,11 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
         {
           Infra = [
             {
-              "tp-link AX6000" = {
+              "tp-link Deco BE85" = {
                 description = "Router: Home";
                 icon = "tp-link.png";
-                href = "http://192.168.2.1";
-                siteMonitor = "http://192.168.2.1";
+                href = "http://10.10.10.1";
+                siteMonitor = "http://10.10.10.1";
               };
             }
             {
@@ -128,24 +128,24 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
               "Philips Hue Bridge" = {
                 description = "Lights: Home";
                 icon = "diyhue.png";
-                href = "http://192.168.2.250";
-                siteMonitor = "http://192.168.2.250";
+                href = "http://10.10.10.19";
+                siteMonitor = "http://10.10.10.19";
               };
             }
             {
               "Grandstream HT801" = {
                 description = "VoIP: Home";
                 icon = "voip-info.png";
-                href = "http://192.168.2.58";
-                siteMonitor = "http://192.168.2.58/cgi-bin/login/";
+                href = "http://10.10.10.12";
+                siteMonitor = "http://10.10.10.12/cgi-bin/login/";
               };
             }
             {
               "HP Color LaserJet Pro MFP M283fdw" = {
                 description = "Printer: Home";
                 icon = "hp.png";
-                href = "http://192.168.2.11";
-                siteMonitor = "http://192.168.2.11";
+                href = "http://10.10.10.11";
+                siteMonitor = "http://10.10.10.11";
               };
             }
           ];

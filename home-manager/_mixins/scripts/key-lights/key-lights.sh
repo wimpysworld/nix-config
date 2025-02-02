@@ -36,7 +36,7 @@ EOF
 function get_json() {
     for LIGHT in 20 21; do
         echo "${LIGHT}:"
-        curl --silent --location --request GET "http://http://192.168.2.${LIGHT}:9123/elgato/lights" | jq .
+        curl --silent --location --request GET "http://10.10.10.${LIGHT}:9123/elgato/lights" | jq .
     done
     exit
 }
@@ -44,7 +44,7 @@ function get_json() {
 function put_json() {
     for LIGHT in 20 21; do
         echo "${LIGHT}:"
-        curl --silent --location --request PUT "http://192.168.2.${LIGHT}:9123/elgato/lights" \
+        curl --silent --location --request PUT "http://10.10.10.${LIGHT}:9123/elgato/lights" \
             --header "Content-Type: application/json" \
             --data-raw "$(make_json)"
         echo
@@ -53,7 +53,7 @@ function put_json() {
 
 function get_info() {
   for LIGHT in left right; do
-    curl --silent --request GET "http://192.168.2.${LIGHT}:9123/elgato/accessory-info" | jq .
+    curl --silent --request GET "http://10.10.10.${LIGHT}:9123/elgato/accessory-info" | jq .
   done
   exit
 }

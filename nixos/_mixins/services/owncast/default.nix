@@ -2,7 +2,7 @@
 let
   installOn = prodOn ++ testOn;
   prodOn = [ "malak" ];
-  testOn = [ "phasma" "vader" "revan" "tanis" ];
+  testOn = [ "phasma" ];
   listen = if lib.elem hostname prodOn then "127.0.0.1" else "0.0.0.0";
 in
 lib.mkIf (lib.elem hostname installOn) {
