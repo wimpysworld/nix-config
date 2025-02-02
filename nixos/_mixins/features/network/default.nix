@@ -97,18 +97,20 @@ in
 
   networking = {
     extraHosts = ''
-      192.168.2.1     router
-      192.168.2.6     vader-wifi
-      192.168.2.7     vader-lan
-      192.168.2.11    printer
-      192.168.2.20    keylight-left key-left Elgato_Key_Light_Air_DAD4
-      192.168.2.21    keylight-right key-right Elgato_Key_Light_Air_EEE9
-      192.168.2.23    moodlamp
-      192.168.2.30    chimeraos-lan
-      192.168.2.31    chimeraos-wifi chimeraos
-      192.168.2.58    vonage Vonage-HT801
-      192.168.2.184   lametric LaMetric-LM2144
-      192.168.2.250   hue-bridge
+      10.10.10.1     router
+      10.10.10.2     re550
+      10.10.10.3     tv-living-room
+      10.10.10.4     tv-main-bedroom
+      10.10.10.6     echo-kitchen
+      10.10.10.7     echo-office
+      10.10.10.8     echo-agatha
+      10.10.10.12    Vonage-HT801 vonage
+      10.10.10.13    LaMetric-LM2144 lametric
+      10.10.10.19    Hue-Bridge-Office hue-bridge-office
+      10.10.10.20    Elgato_Key_Light_Air_DAD4 keylight-left key-left
+      10.10.10.21    Elgato_Key_Light_Air_EEE9 keylight-right key-right
+      10.10.10.22    moodlamp
+      10.10.10.23    small-lamp-bulb
     '';
     firewall = {
       enable = true;
