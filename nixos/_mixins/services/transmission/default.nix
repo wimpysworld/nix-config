@@ -30,8 +30,8 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
       blocklist-url = "https://github.com/Naunter/BT_BlockLists/raw/master/bt_blocklists.gz";
       download-dir = "${config.services.transmission.home}/Downloads";
       encryption = 2;
-      idle-seeding-limit = 5;
-      idle-seeding-limit-enabled = true;
+      idle-seeding-limit = 60;
+      idle-seeding-limit-enabled = false;
       incomplete-dir = "${config.services.transmission.home}/Incomplete";
       incomplete-dir-enabled = true;
       openFirewall = false;
@@ -42,7 +42,7 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
       peer-port-random-on-start = true;
       peer-port-random-low = 49152;
       peer-port-random-high = 65535;
-      ratio-limit = 1.5000;
+      ratio-limit = 2.0000;
       ratio-limit-enabled = true;
       rpc-authentication-required = true;
       rpc-enabled = true;
