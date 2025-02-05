@@ -1,6 +1,6 @@
 { config, hostname, lib, ... }:
 let
-  installOn = [ "revan" ];
+  installOn = [ ];
 in
 lib.mkIf (lib.elem config.networking.hostName installOn) {
   services = {
