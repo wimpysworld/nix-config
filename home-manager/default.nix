@@ -125,6 +125,7 @@ in
         quilt # Terminal patch manager
         rclone # Modern Unix `rsync`
         rsync # Traditional `rsync`
+        rustmission # Modern Unix Transmission client
         sd # Modern Unix `sed`
         speedtest-go # Terminal speedtest.net
         terminal-parrot # Terminal ASCII parrot
