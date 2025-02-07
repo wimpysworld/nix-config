@@ -112,13 +112,11 @@ in
         lima-bin # Terminal VM manager
         marp-cli # Terminal Markdown presenter
         mtr # Modern Unix `traceroute`
-        neo-cowsay # Terminal ASCII cows
         netdiscover # Modern Unix `arp`
         nixfmt-rfc-style # Nix code formatter
         nixpkgs-review # Nix code review
         nix-prefetch-scripts # Nix code fetcher
         nurl # Nix URL fetcher
-        nyancat # Terminal rainbow spewing feline
         onefetch # Terminal git project info
         optipng # Terminal PNG optimizer
         procs # Modern Unix `ps`
@@ -128,7 +126,6 @@ in
         rustmission # Modern Unix Transmission client
         sd # Modern Unix `sed`
         speedtest-go # Terminal speedtest.net
-        terminal-parrot # Terminal ASCII parrot
         timer # Terminal timer
         tldr # Modern Unix `man`
         tokei # Modern Unix `wc` for code
@@ -303,7 +300,6 @@ in
         lolcat = "${pkgs.dotacat}/bin/dotacat";
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
         more = "${pkgs.bat}/bin/bat";
-        parrot = "${pkgs.terminal-parrot}/bin/terminal-parrot -delay 50 -loops 7";
         pq = "${pkgs.pueue}/bin/pueue";
         ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
         screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
