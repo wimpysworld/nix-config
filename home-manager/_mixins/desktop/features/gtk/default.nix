@@ -26,22 +26,6 @@ lib.mkIf isLinux {
       theme = "catppuccin-mocha-blue-standard";
     };
 
-    "org/mate/desktop/interface" = {
-      gtk-decoration-layout = "${buttonLayout}";
-      gtk-theme = "catppuccin-mocha-blue-standard";
-      icon-theme = "Papirus-Dark";
-    };
-
-    "org/mate/desktop/peripherals/mouse" = {
-      cursor-size = mkInt32 32;
-      cursor-theme = "catppuccin-mocha-blue-cursors";
-    };
-
-    "org/mate/marco/general" = {
-      button-layout = "${buttonLayout}";
-      theme = "catppuccin-mocha-blue-standard";
-    };
-
     "org/pantheon/desktop/gala/appearance" = {
       button-layout = "${buttonLayout}";
     };

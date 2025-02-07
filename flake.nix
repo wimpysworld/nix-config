@@ -62,12 +62,6 @@
           username = "nixos";
           desktop = "lomiri";
         };
-
-        "nixos@iso-mate" = helper.mkHome {
-          hostname = "iso-mate";
-          username = "nixos";
-          desktop = "mate";
-        };
         "nixos@iso-pantheon" = helper.mkHome {
           hostname = "iso-pantheon";
           username = "nixos";
@@ -140,12 +134,6 @@
           hostname = "iso-lomiri";
           username = "nixos";
           desktop = "lomiri";
-        };
-
-        iso-mate = helper.mkNixos {
-          hostname = "iso-mate";
-          username = "nixos";
-          desktop = "mate";
         };
         iso-pantheon = helper.mkNixos {
           hostname = "iso-pantheon";

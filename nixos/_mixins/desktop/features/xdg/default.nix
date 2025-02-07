@@ -10,9 +10,6 @@
       ] ++ lib.optionals (desktop == "hyprland") [
         pkgs.xdg-desktop-portal-hyprland
         pkgs.xdg-desktop-portal-gtk
-      ] ++ lib.optionals (desktop == "mate") [
-        pkgs.xdg-desktop-portal-xapp
-        pkgs.xdg-desktop-portal-gtk
       ] ++ lib.optionals (desktop == "pantheon") [
         pkgs.pantheon.xdg-desktop-portal-pantheon
         pkgs.xdg-desktop-portal-gtk
@@ -29,10 +26,6 @@
         };
         hyprland = lib.mkIf (desktop == "hyprland") {
           default = [ "hyprland" "gtk" ];
-          "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
-        };
-        x-cinnamon = lib.mkIf (desktop == "mate") {
-          default = [ "xapp" "gtk" ];
           "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
         };
         pantheon = lib.mkIf (desktop == "pantheon") {
