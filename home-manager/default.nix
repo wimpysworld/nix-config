@@ -92,7 +92,6 @@ in
         fd # Modern Unix `find`
         file # Terminal file info
         frogmouth # Terminal markdown viewer
-        glow # Terminal Markdown renderer
         girouette # Modern Unix weather
         gocryptfs # Terminal encrypted filesystem
         gping # Modern Unix `ping`
@@ -290,7 +289,7 @@ in
         dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
         dmesg = "${pkgs.util-linux}/bin/dmesg --human --color=always";
         neofetch = "${pkgs.fastfetch}/bin/fastfetch";
-        glow = "${pkgs.glow}/bin/glow --pager";
+        glow = "${pkgs.frogmouth}/bin/frogmouth";
         hr = ''${pkgs.hr}/bin/hr "─━"'';
         htop = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         ip = lib.mkIf isLinux "${pkgs.iproute2}/bin/ip --color --brief";
