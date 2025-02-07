@@ -299,20 +299,6 @@
         "url": "https://flakehub.com/f/DeterminateSystems/flake-schemas/%2A.tar.gz"
       }
     },
-    "flake-schemas_4": {
-      "locked": {
-        "lastModified": 1721078157,
-        "narHash": "sha256-c2AZH9cOnSpPXV8Lwy19/I8EgW7G+E+Zh6YQBZZwzxI=",
-        "rev": "29e53dd33b1a38f235ef073e768c62821cb6146e",
-        "revCount": 66,
-        "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/flake-schemas/0.1.3/0190b841-54d3-7b7a-8550-24942bc38caf/source.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://flakehub.com/f/DeterminateSystems/flake-schemas/%2A.tar.gz"
-      }
-    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -860,8 +846,7 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "quickemu": "quickemu",
         "quickgui": "quickgui",
-        "sops-nix": "sops-nix",
-        "stream-sprout": "stream-sprout"
+        "sops-nix": "sops-nix"
       }
     },
     "rust-analyzer-src": {
@@ -898,26 +883,6 @@
       "original": {
         "type": "tarball",
         "url": "https://flakehub.com/f/Mic92/sops-nix/0.1.887.tar.gz"
-      }
-    },
-    "stream-sprout": {
-      "inputs": {
-        "flake-schemas": "flake-schemas_4",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1721975507,
-        "narHash": "sha256-b7NTKenvUhoptDQjo00vDAPM34S/zSIfzML4reDmVMk=",
-        "rev": "198c807a076c81b57fe6fd7c02c6253ce3a138ab",
-        "revCount": 79,
-        "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/wimpysworld/stream-sprout/0.1.5/0190edc1-1e63-7d66-8d7b-1a945411f70a/source.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://flakehub.com/f/wimpysworld/stream-sprout/%2A"
       }
     },
     "systems": {

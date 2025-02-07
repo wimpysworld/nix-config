@@ -21,7 +21,6 @@ lib.mkIf (lib.elem hostname installOn) {
       "/Studio/OBS/config/obs-studio/.keep".text = "";
     };
     packages = with pkgs; [
-      inputs.stream-sprout.packages.${platform}.default
       obs-cli
       obs-cmd
     ];
