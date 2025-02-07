@@ -6,7 +6,7 @@ let
   webBrowser = [ "brave-browser.desktop" ];
   documentViewer = [ "org.gnome.Papers.desktop" ];
   imageViewer = [ "org.gnome.Loupe.desktop" ];
-  videoPlayer = [ "net.baseart.Glide.desktop" ];
+  videoPlayer = [ "io.github.celluloid_player.Celluloid.desktop" ];
 in
 {
   imports = [
@@ -26,7 +26,7 @@ in
     ./zed-editor
   ];
   home.packages = with pkgs; lib.optionals isLinux [
-    glide-media-player      # video player
+    celluloid               # video player
     decibels                # audio player
     gnome-calculator        # calcualtor
     loupe                   # image viewer
