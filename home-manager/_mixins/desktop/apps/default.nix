@@ -13,6 +13,7 @@ in
     ./audio-production
     ./game-dev
     ./gitkraken
+    ./graphics-production
     ./heynote
     ./internet-chat
     ./joplin
