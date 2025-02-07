@@ -85,7 +85,6 @@ in
         dua # Modern Unix `du`
         duf # Modern Unix `df`
         du-dust # Modern Unix `du`
-        editorconfig-core-c # EditorConfig Core
         entr # Modern Unix `watch`
         fastfetch # Modern Unix system info
         fd # Modern Unix `find`
