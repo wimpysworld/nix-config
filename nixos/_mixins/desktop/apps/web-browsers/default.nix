@@ -6,19 +6,21 @@
   ...
 }:
 let
-  installFor = [ "martin" ];
+  forFamily = [ "agatha" "louise" ];
+  forMartin = [ "martin" ];
 in
 {
   imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
   environment.systemPackages =
     with pkgs;
-    lib.optionals isInstall [
+    lib.optionals (builtins.elem username forFamily && isInstall) [
       google-chrome
       microsoft-edge
     ]
-    ++ lib.optionals (builtins.elem username installFor && isInstall) [
+    ++ lib.optionals (builtins.elem username forMartin && isInstall) [
       brave
       chromium
+      mullvad-browser
       wavebox
     ];
 
