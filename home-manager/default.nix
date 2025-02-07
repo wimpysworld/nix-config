@@ -291,7 +291,7 @@ in
         neofetch = "${pkgs.fastfetch}/bin/fastfetch";
         glow = "${pkgs.frogmouth}/bin/frogmouth";
         hr = ''${pkgs.hr}/bin/hr "─━"'';
-        htop = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
+        htop = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker";
         ip = lib.mkIf isLinux "${pkgs.iproute2}/bin/ip --color --brief";
         less = "${pkgs.bat}/bin/bat";
         lm = "${pkgs.lima-bin}/bin/limactl";
