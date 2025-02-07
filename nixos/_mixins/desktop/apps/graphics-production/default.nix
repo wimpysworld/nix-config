@@ -9,8 +9,6 @@ let
 in
 lib.mkIf (lib.elem username installFor) {
   environment.systemPackages = with pkgs; [
-    gimp
     inkscape
-
   ];
 }
