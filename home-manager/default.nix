@@ -74,7 +74,6 @@ in
         bmon # Modern Unix `iftop`
         breezy # Terminal bzr client
         chafa # Terminal image viewer
-        clinfo # Terminal OpenCL info
         cpufetch # Terminal CPU info
         croc # Terminal file transfer
         curlie # Terminal HTTP client
