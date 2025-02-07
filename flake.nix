@@ -52,11 +52,6 @@
           hostname = "iso-console";
           username = "nixos";
         };
-        "nixos@iso-gnome" = helper.mkHome {
-          hostname = "iso-gnome";
-          username = "nixos";
-          desktop = "gnome";
-        };
         "nixos@iso-lomiri" = helper.mkHome {
           hostname = "iso-lomiri";
           username = "nixos";
@@ -98,7 +93,7 @@
         "martin@palpatine" = helper.mkHome { hostname = "palpatine"; };
         "martin@sidious" = helper.mkHome {
           hostname = "sidious";
-          desktop = "gnome";
+          desktop = "pantheon";
         };
         # Servers
         "martin@malak" = helper.mkHome { hostname = "malak"; };
@@ -120,15 +115,10 @@
       };
       nixosConfigurations = {
         # .iso images
-        #  - nix build .#nixosConfigurations.{iso-console|iso-gnome}.config.system.build.isoImage
+        #  - nix build .#nixosConfigurations.{iso-console|iso-pantheon}.config.system.build.isoImage
         iso-console = helper.mkNixos {
           hostname = "iso-console";
           username = "nixos";
-        };
-        iso-gnome = helper.mkNixos {
-          hostname = "iso-gnome";
-          username = "nixos";
-          desktop = "gnome";
         };
         iso-lomiri = helper.mkNixos {
           hostname = "iso-lomiri";
@@ -163,7 +153,7 @@
         };
         sidious = helper.mkNixos {
           hostname = "sidious";
-          desktop = "gnome";
+          desktop = "pantheon";
         };
         # Servers
         malak = helper.mkNixos { hostname = "malak"; };

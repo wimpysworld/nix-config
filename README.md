@@ -117,7 +117,6 @@ gh repo clone wimpysworld/nix-config "$HOME/Zero/nix-config"
 The `build-iso` script is included that creates .iso images from this flake. The following modes are available:
 
 - `build-iso console` (*terminal environment*): Includes `install-system` for automated installation.
-- `build-iso gnome` (*GNOME Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 - `build-iso pantheon` (*Pantheon Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 - `build-iso lomiri` (*Lomiri Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 
@@ -162,7 +161,6 @@ Here's the directory structure I'm using:
 │  │  ├── services
 │  │  └── users
 │  ├── iso-console
-│  ├── iso-gnome -> iso-console
 │  ├── iso-pantheon -> iso-console
 │  ├── iso-lomiri -> iso-console
 │  ├── crawler -> dagger
@@ -200,13 +198,12 @@ Useful shell scripts I used to keep in muddle of git repos are now migrated to [
 
 ### The Desktop 🖥️
 
-GNOME 👣 Hyprland 💧 Pantheon 🏛️ and Lomiri 📱 desktop options are available.
+Hyprland 💧 Pantheon 🏛️ and Lomiri 📱 desktop options are available.
 The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code).
 The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
 |   Desktops  |        NixOS       |       Home Manager        |       Theme       |
 | :---------: | :----------------: | :-----------------------: | :---------------: |
-| 👣 GNOME    | [GNOME NixOS]      | [GNOME Home Manager]      | Catppuccin Mocha  |
 | 💧 Hyprland | [Hyprland NixOS]   | [Hyprland Home Manager]   | Catppuccin Mocha  |
 | 🏛️ Pantheon | [Pantheon NixOS]   | [Pantheon Home Manager]   | Catppuccin Mocha  |
 | 📱 Lomiri   | [Lomiri NixOS]     |                           | 🚧                |
@@ -418,10 +415,8 @@ My use of [Disko] and automated installation script were inspired by the these b
 
 [micro]: https://micro-editor.github.io/
 [Tailscale]: https://tailscale.com/
-[GNOME NixOS]: ./nixos/_mixins/desktop/gnome/default.nix
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
 [Pantheon NixOS]: ./nixos/_mixins/desktop/pantheon/default.nix
 [Lomiri NixOS]: ./nixos/_mixins/desktop/lomiri/default.nix
-[GNOME Home Manager]: ./home-manager/_mixins/desktop/gnome/default.nix
 [Hyprland Home Manager]: ./home-manager/_mixins/desktop/hyprland/default.nix
 [Pantheon Home Manager]: ./home-manager/_mixins/desktop/pantheon/default/.nix

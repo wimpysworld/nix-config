@@ -8,7 +8,7 @@
 let
   installFor = [ "martin" ];
 in
-lib.mkIf (lib.elem username installFor || desktop == "gnome" || desktop == "pantheon") {
+lib.mkIf (lib.elem username installFor || desktop == "pantheon") {
   services = {
     flatpak = lib.mkIf isInstall {
       enable = true;
