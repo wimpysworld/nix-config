@@ -69,7 +69,6 @@ in
       with pkgs;
       [
         asciicam # Terminal webcam
-        asciinema-agg # Convert asciinema to .gif
         bc # Terminal calculator
         bandwhich # Modern Unix `iftop`
         bmon # Modern Unix `iftop`
