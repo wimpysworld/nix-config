@@ -5,9 +5,7 @@
       configPackages = [ ] ++ lib.optionals (desktop == "hyprland") [
         pkgs.hyprland
       ];
-      extraPortals = lib.optionals (desktop == "gnome") [
-        pkgs.xdg-desktop-portal-gnome
-      ] ++ lib.optionals (desktop == "hyprland") [
+      extraPortals = lib.optionals (desktop == "hyprland") [
         pkgs.xdg-desktop-portal-hyprland
         pkgs.xdg-desktop-portal-gtk
       ] ++ lib.optionals (desktop == "pantheon") [
@@ -19,10 +17,6 @@
       config = {
         common = {
           default = [ "gtk" ];
-        };
-        gnome = lib.mkIf (desktop == "gnome") {
-          default = [ "gnome" "gtk" ];
-          "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
         };
         hyprland = lib.mkIf (desktop == "hyprland") {
           default = [ "hyprland" "gtk" ];

@@ -63,17 +63,6 @@ in
         iso="nixos-console/nixos.iso"
       '';
     };
-    file."Quickemu/nixos-gnome.conf" = lib.mkIf (!isLima) {
-      text = ''
-        #!/run/current-system/sw/bin/quickemu --vm
-        guest_os="linux"
-        disk_img="nixos-gnome/disk.qcow2"
-        disk_size="96G"
-        iso="nixos-gnome/nixos.iso"
-        width="1920"
-        height="1080"
-      '';
-    };
     file."Quickemu/nixos-pantheon.conf" = lib.mkIf (!isLima) {
       text = ''
         #!/run/current-system/sw/bin/quickemu --vm
@@ -88,7 +77,6 @@ in
     file."/Development/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."/Games/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."/Quickemu/nixos-console/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."/Quickemu/nixos-gnome/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."/Quickemu/nixos-pantheon/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."/Scripts/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."/Websites/.keep" = lib.mkIf (!isLima) { text = ""; };

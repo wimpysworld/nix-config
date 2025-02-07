@@ -12,7 +12,6 @@ let
   isThinkpad = hostname == "tanis" || hostname == "sidious" || hostname == "shaa";
   usePowerProfiles =
     config.programs.hyprland.enable
-    || config.services.xserver.desktopManager.gnome.enable
     || config.services.xserver.desktopManager.pantheon.enable;
 in
 lib.mkIf isInstall {
@@ -23,17 +22,10 @@ lib.mkIf isInstall {
   # - Always disable TLP and Powertop because they conflict with auto-cpufreq or agressively suspend USB devices
   # - Disable USB autosuspend on desktop workstations
   # - Enable thermald on Intel CPUs
-  # - Thinkpads have a battery threshold charging either via the GNOME extension or auto-cpufreq
+  # - Thinkpads have a battery threshold charging via auto-cpufreq
 
   # Disable USB autosuspend on desktop always on power workstations
   boot.kernelParams = lib.optionals (!isLaptop) [ "usbcore.autosuspend=-1" ];
-
-  # Install Battery Threshold GNOME extensions for Thinkpads
-  environment.systemPackages =
-    with pkgs;
-    lib.optionals (isThinkpad && config.services.xserver.desktopManager.gnome.enable) [
-      gnomeExtensions.thinkpad-battery-threshold
-    ];
 
   powerManagement.powertop.enable = lib.mkDefault false;
 
