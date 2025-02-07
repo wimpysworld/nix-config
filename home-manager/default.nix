@@ -189,13 +189,6 @@ in
 
   nix = {
     package = pkgs.nixVersions.latest;
-    settings = {
-      experimental-features = "flakes nix-command";
-      trusted-users = [
-        "root"
-        "${username}"
-      ];
-    };
   };
 
   programs = {
