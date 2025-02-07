@@ -17,10 +17,8 @@ lib.mkIf (lib.elem hostname installOn) {
       (defold.override {
         uiScale = "1.25";
       })
-      luajit
       love
       pico8
-      zip
     ];
   };
 }
