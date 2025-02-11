@@ -7,6 +7,9 @@ let
   else
     "";
   outputDisplay = if (hostname == "vader" || hostname == "phasma") then "DP-1" else "eDP-1";
+  hwmonPath = if (hostname == "vader" || hostname == "phasma") then "/sys/class/hwmon/hwmon4/temp1_input"
+    else if hostname == "tanis" then "/sys/class/hwmon/hwmon3/temp1_input"
+    else "/sys/class/hwmon/hwmon0/temp1_input";
   bluetoothToggle = pkgs.writeShellApplication {
     name = "bluetooth-toggle";
     runtimeInputs = with pkgs; [
@@ -571,19 +574,22 @@ in
             tooltip-format = "  Power profile: {profile}\n󰒓  Driver: {driver}";
           };
           temperature = {
-            thermal-zone = 0;
-            critical-threshold = 80;
+            hwmon-path = "${hwmonPath}";
+            critical-threshold = 90;
             format = "<big>{icon}</big>";
             format-alt = "<big>{icon}</big> <small>{temperatureC}󰔄</small>";
-            format-critical = "<big>󰸁</big> <small>{temperatureC}󰔄</small>";
+            format-critical = "<big></big> <small>{temperatureC}󰔄</small>";
             format-icons = [
-              ""
-              "󱃃"
-              "󱃃"
-              "󰔏"
-              "󰔏"
-              "󰔏"
-              "󱃂"
+              ""
+              ""
+              ""
+              ""
+              ""
+              ""
+              ""
+              ""
+              ""
+              ""
             ];
             tooltip-format = "󰔐  CPU {temperatureC}󰔄";
           };
