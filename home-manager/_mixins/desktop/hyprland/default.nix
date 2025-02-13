@@ -91,7 +91,7 @@ let
             -P meet-detsys \
             -no-remote \
             --new-window https://meet.google.com" 9 "title: Google Meet - Mozilla Firefox"
-          start_app heynote 9 "class: Heynote"
+          start_app heynote 6 "class: Heynote"
           hyprctl dispatch forcerendererreload
       }
 

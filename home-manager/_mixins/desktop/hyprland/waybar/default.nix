@@ -351,61 +351,6 @@ in
               "10" = "󰐯";
               default = "";
             };
-            persistent-workspaces = {
-              # https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#persistent-workspaces
-              "1" = if (hostname == "phasma" || hostname == "vader") then
-                      [ "DP-1" ]
-                    else
-                      [ "eDP-1" ];
-              "2" = if (hostname == "phasma" || hostname == "vader") then
-                      [ "DP-1" ]
-                    else
-                      [ "eDP-1" ];
-              "3" = if (hostname == "phasma") then
-                      [ "DP-1" ]
-                    else if (hostname == "vader") then
-                      [ "DP-2" ]
-                    else
-                      [ "eDP-1" ];
-              "4" = if (hostname == "phasma") then
-                      [ "DP-1" ]
-                    else if (hostname == "vader") then
-                      [ "DP-2" ]
-                    else
-                      [ "eDP-1" ];
-              "5" = if (hostname == "phasma") then
-                      [ "DP-1" ]
-                    else if (hostname == "vader") then
-                      [ "DP-2" ]
-                    else
-                      [ "eDP-1" ];
-              "6" = if (hostname == "phasma") then
-                      [ "DP-1" ]
-                    else if (hostname == "vader") then
-                      [ "DP-2" ]
-                    else
-                      [ "eDP-1" ];
-              "7" = if (hostname == "phasma" || hostname == "vader") then
-                      [ "DP-1" ]
-                    else
-                      [ "eDP-1" ];
-              "8" = if (hostname == "phasma" || hostname == "vader") then
-                      [ "DP-1" ]
-                    else
-                      [ "eDP-1" ];
-              "9" = if (hostname == "phasma") then
-                      [ "HDMI-A-1" ]
-                    else if (hostname == "vader") then
-                      [ "DP-2" ]
-                    else
-                      [ ];
-              "10" = if (hostname == "phasma") then
-                      [ "DP-2" ]
-                    else if (hostname == "vader") then
-                      [ "DP-3" ]
-                    else
-                      [ ];
-            };
             on-click = "activate";
           };
           idle_inhibitor = {

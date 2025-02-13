@@ -6,7 +6,7 @@ _: {
       "HDMI-A-1, 2560x1600@120Hz, 1920x0, 1.25"
     ];
     workspace = [
-      "1, name:Web, persistent:true, monitor:DP-1, default:true"
+      "1, name:Web, persistent:true, monitor:DP-1"
       "2, name:Work, persistent:true, monitor:DP-1"
       "3, name:Chat, persistent:true, monitor:DP-1"
       "4, name:Code, persistent:true, monitor:DP-1"
@@ -14,8 +14,8 @@ _: {
       "6, name:Note, persistent:true, monitor:DP-1"
       "7, name:Cast, persistent:true, monitor:DP-1"
       "8, name:Fun, persistent:true, monitor:DP-1"
-      "9, name:Camera, persistent:true, monitor:HDMI-A-1, layoutopt:orientation:left, default:true"
-      "10,name:Stream, persistent:true, monitor:DP-2, default:true"
+      "9, name:Camera, persistent:true, monitor:HDMI-A-1, layoutopt:orientation:left"
+      "10,name:Stream, persistent:true, monitor:DP-2"
     ];
   };
   shaa = {
@@ -51,16 +51,16 @@ _: {
       "DP-3, 1920x1080@60Hz, 320x2880, 1"
     ];
     workspace = [
-      "1, name:Web, persistent:true, monitor:DP-1, default:true"
+      "1, name:Web, persistent:true, monitor:DP-1"
       "2, name:Work, persistent:true, monitor:DP-1"
       "3, name:Chat, persistent:true, monitor:DP-2"
-      "4, name:Code, persistent:true, monitor:DP-2, default:true"
+      "4, name:Code, persistent:true, monitor:DP-2"
       "5, name:Term, persistent:true, monitor:DP-2"
       "6, name:Note, persistent:true, monitor:DP-2"
       "7, name:Cast, persistent:true, monitor:DP-1"
       "8, name:Fun, persistent:true, monitor:DP-1"
       "9, name:Camera, persistent:true, monitor:DP-2"
-      "10,name:Stream, persistent:true, monitor:DP-3, default:true"
+      "10,name:Stream, persistent:true, monitor:DP-3"
     ];
   };
 }
