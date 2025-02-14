@@ -212,7 +212,7 @@ in
 
         #tray,
         #wireplumber,
-        #pulseaudio,
+        #pulseaudio.input,
         #bluetooth,
         #network,
         #battery,
@@ -228,7 +228,7 @@ in
         }
 
         #wireplumber:hover,
-        #pulseaudio:hover,
+        #pulseaudio.input:hover,
         #bluetooth:hover,
         #network:hover,
         #battery:hover,
@@ -246,7 +246,7 @@ in
           margin-left: 1rem;
         }
 
-        #pulseaudio {
+        #pulseaudio.input {
           border-radius: 0;
           color: @mauve;
         }
@@ -326,7 +326,7 @@ in
           modules-right = [
             "tray"
             "wireplumber"
-            "pulseaudio"
+            "pulseaudio#input"
             "bluetooth"
             "network"
             "battery"
@@ -454,7 +454,7 @@ in
             on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -u down 2";
             tooltip-format = "󰓃  {volume}󰏰\n󰒓  {node_name}";
           };
-          pulseaudio = {
+          "pulseaudio#input" = {
             format = "<big>{format_source}</big>";
             format-alt = "<big>{format_source}</big> <small>{source_volume}󰏰</small>";
             format-source = "󰍬";
