@@ -217,6 +217,7 @@ in
         #network,
         #battery,
         #backlight,
+        #cpu,
         #temperature,
         #power-profiles-daemon,
         #custom-session {
@@ -232,6 +233,7 @@ in
         #network:hover,
         #battery:hover,
         #backlight:hover,
+        #cpu:hover,
         #temperature:hover,
         #power-profiles-daemon:hover,
         #custom-session:hover {
@@ -275,6 +277,11 @@ in
         #backlight {
           border-radius: 0;
           color: @yellow;
+        }
+
+        #cpu {
+          border-radius: 0;
+          color: @teal;
         }
 
         #temperature {
@@ -324,6 +331,7 @@ in
             "network"
             "battery"
             "backlight"
+            "cpu"
             "temperature"
             "power-profiles-daemon"
             "custom/session"
@@ -517,6 +525,20 @@ in
               power-saver = "󰴻";
             };
             tooltip-format = "  Power profile: {profile}\n󰒓  Driver: {driver}";
+          };
+          cpu = {
+            interval = 2;
+            format = "<big>{icon}</big>";
+            format-alt = "<big></big> <small>{usage}󱉸</small>";
+            format-icons = [
+              "󰫃"
+              "󰫄"
+              "󰫅"
+              "󰫆"
+              "󰫇"
+              "󰫈"
+            ];
+            on-click-right = "${pkgs.resources}/bin/resources --open-tab-id cpu";
           };
           temperature = {
             hwmon-path = "${hwmonPath}";
