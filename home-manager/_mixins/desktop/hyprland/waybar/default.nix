@@ -450,10 +450,10 @@ in
               ];
             };
             max-volume = 100;
-            on-click-middle = "${pkgs.avizo}/bin/volumectl toggle-mute";
+            on-click-middle = "${pkgs.avizo}/bin/volumectl -d -u toggle-mute";
             on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
-            on-scroll-up = "${pkgs.avizo}/bin/volumectl -u up 2";
-            on-scroll-down = "${pkgs.avizo}/bin/volumectl -u down 2";
+            on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -u up 2";
+            on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -u down 2";
             tooltip-format = "󰓃  {volume}󰏰\n󰒓  {node_name}";
           };
           pulseaudio = {
@@ -461,10 +461,10 @@ in
             format-alt = "<big>{format_source}</big> <small>{source_volume}󰏰</small>";
             format-source = "󰍰";
             format-source-muted = "󰍱";
-            on-click-middle = "${pkgs.avizo}/bin/volumectl -m toggle-mute";
+            on-click-middle = "${pkgs.avizo}/bin/volumectl -d -m toggle-mute";
             on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
-            on-scroll-up = "${pkgs.avizo}/bin/volumectl -m up 2";
-            on-scroll-down = "${pkgs.avizo}/bin/volumectl -m down 2";
+            on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -m up 2";
+            on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -m down 2";
             tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
           };
           network = {
@@ -511,9 +511,9 @@ in
               ""
               ""
             ];
-            on-click-middle = "${pkgs.avizo}/bin/lightctl set 50";
-            on-scroll-up = "${pkgs.avizo}/bin/lightctl up 2";
-            on-scroll-down = "${pkgs.avizo}/bin/lightctl down 2";
+            on-click-middle = "${pkgs.avizo}/bin/lightctl -d set 50";
+            on-scroll-up = "${pkgs.avizo}/bin/lightctl -d up 2";
+            on-scroll-down = "${pkgs.avizo}/bin/lightctl -d down 2";
             tooltip-format = "󰃠  {percent}󰏰";
           };
           power-profiles-daemon = {
