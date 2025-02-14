@@ -67,27 +67,27 @@
 
     resources = prev.resources.overrideAttrs (_old: rec {
       pname = "resources";
-      version = "1.7.0";
+      version = "1.7.1";
       src = prev.fetchFromGitHub {
         owner = "nokyan";
         repo = "resources";
         rev = "refs/tags/v${version}";
-        hash = "sha256-mnOpWVJTNGNdGd6fMIZl3AOF4NbtMm1XS8QFqfAF/18=";
+        hash = "sha256-SHawaH09+mDovFiznZ+ZkUgUbv5tQGcXBgUGrdetOcA=";
       };
 
       cargoDeps = prev.rustPlatform.fetchCargoTarball {
         inherit src;
         name = "resources-${version}";
-        hash = "sha256-vIqtKJxKQ/mHFcB6IxfX27Lk2ID/W+M4hQnPB/aExa4=";
+        hash = "sha256-tUD+gx9nQiGWKKRPcR7OHbPvU2j1dQjYck7FF9vYqSQ=";
       };
     });
 
     wavebox = prev.wavebox.overrideAttrs (_old: rec {
       pname = "wavebox";
-      version = "10.131.15-2";
+      version = "10.132.2-2";
       src = prev.fetchurl {
         url = "https://download.wavebox.app/stable/linux/deb/amd64/wavebox_${version}_amd64.deb";
-        sha256 = "sha256-rGMkXs5w/NrIYOKPArCLBMUDoMnvQqggo91viyJUfj4=";
+        sha256 = "sha256-PPeYU8VN1tr2fpSnq/e1/OmWCjJEicdb3NVb+oFVD14=";
       };
     });
   };
