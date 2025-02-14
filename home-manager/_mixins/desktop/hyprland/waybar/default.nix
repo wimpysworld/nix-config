@@ -399,8 +399,6 @@ in
             format = "<big>{:%H:%M}</big>";
             format-alt = "{:%a, %d %b %R}";
             interval = 60;
-            #timezone = "Europe/London";
-            #timezones = [ "Europe/London" "Europe/Amsterdam" "America/Boston" "America/Los_Angeles" "Africa/Lagos" ];
             tooltip-format = "<tt><small>{calendar}</small></tt>";
           };
           "custom/calendar" = {
