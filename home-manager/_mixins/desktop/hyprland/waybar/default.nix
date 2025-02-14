@@ -466,6 +466,10 @@ in
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -m up 2";
             on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -m down 2";
             tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
+            ignored-sinks = [
+              "Easy Effects Sink"
+              "INZONE Buds Analog Stereo"
+            ];
           };
           network = {
             format = "<big>{icon}</big>";
