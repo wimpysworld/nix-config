@@ -459,8 +459,8 @@ in
           pulseaudio = {
             format = "<big>{format_source}</big>";
             format-alt = "<big>{format_source}</big> <small>{source_volume}󰏰</small>";
-            format-source = "󰍰";
-            format-source-muted = "󰍱";
+            format-source = "󰍬";
+            format-source-muted = "󰍭";
             on-click-middle = "${pkgs.avizo}/bin/volumectl -d -m toggle-mute";
             on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -m up 2";
