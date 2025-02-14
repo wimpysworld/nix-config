@@ -519,12 +519,12 @@ in
           power-profiles-daemon = {
             format = "<big>{icon}</big>";
             format-icons = {
-              default = "";
+              default = "󱐋";
               performance = "󰤇";
               balanced = "󰗑";
               power-saver = "󰴻";
             };
-            tooltip-format = "  Power profile: {profile}\n󰒓  Driver: {driver}";
+            tooltip-format = "󱐋  Power profile: {profile}\n󰒓  Driver: {driver}";
           };
           cpu = {
             interval = 2;
