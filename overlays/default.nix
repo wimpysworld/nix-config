@@ -18,22 +18,22 @@
     custom-caddy = import ./custom-caddy.nix { pkgs = prev; };
 
     gitkraken = prev.gitkraken.overrideAttrs (old: rec {
-      version = "10.6.2";
+      version = "10.7.0";
 
       src = {
         x86_64-linux = prev.fetchzip {
           url = "https://release.axocdn.com/linux/GitKraken-v${version}.tar.gz";
-          hash = "sha256-E/9BR4PE5QF075+NgJZTtgDoShHEqeRcoICnMLt3RuY=";
+          hash = "sha256-fNx3mZnoMkEd1RlvcEmnncX0cLJhRjbf2t4CfB5eRl4=";
         };
 
         x86_64-darwin = prev.fetchzip {
           url = "https://release.axocdn.com/darwin/GitKraken-v${version}.zip";
-          hash = "sha256-gCiZN+ivXEF5KLas7eZn9iWfXcDGwf1gXK1ejY2C4xs=";
+          hash = "sha256-FLNzB1MvW943DDBs5EmxOWx31CMm2KWXrXp6EjfkPeQ=";
         };
 
         aarch64-darwin = prev.fetchzip {
           url = "https://release.axocdn.com/darwin-arm64/GitKraken-v${version}.zip";
-          hash = "sha256-1zd57Kqi5iKHw/dNqLQ7jVAkNFvkFeqQbZPN32kF9IU=";
+          hash = "sha256-+uEpm9A9zkTMWL2XccWFTkuhFdZMJUZHSD3FinNsRyA=";
         };
       }.${prev.stdenv.hostPlatform.system} or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
     });
