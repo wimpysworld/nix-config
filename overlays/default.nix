@@ -52,12 +52,6 @@
       }.${prev.stdenv.hostPlatform.system} or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
     });
 
-    hyprland = prev.hyprland.overrideAttrs (_old: rec {
-      postPatch = _old.postPatch + ''
-        sed -i 's|Exec=Hyprland|Exec=hypr-launch|' example/hyprland.desktop
-      '';
-    });
-
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (_lpself: lpsuper: {
       mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
         pname = "mwprocapture";
