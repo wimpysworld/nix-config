@@ -161,6 +161,7 @@ in
       (
         lib.isBool config.networking.networkmanager.wifi.powersave
         && config.networking.networkmanager.wifi.powersave
+        && isLaptop
       )
       {
         wantedBy = [ "multi-user.target" ];
