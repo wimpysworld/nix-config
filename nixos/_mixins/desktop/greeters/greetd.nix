@@ -14,7 +14,7 @@ let
     trap cleanup EXIT
 
     # If there is a kanshi profile for regreet, use it.
-    KANSHI_REGREET="$(${pkgs.coreutils-full}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
+    KANSHI_REGREET="$(${pkgs.coreutils}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
     if [ -n "$KANSHI_REGREET" ]; then
       ${pkgs.cage}/bin/cage -m last -s -- sh -c \
         '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
@@ -23,41 +23,39 @@ let
       ${pkgs.cage}/bin/cage -m last -s ${pkgs.greetd.regreet}/bin/regreet
     fi
   '';
-  # TODO: Make this an attribute set
-  wallpaperResolution = if hostname == "vader" then
-    "2560x2880"
-  else if hostname == "phasma" then
-    "3440x1440"
-  else if hostname == "tanis" then
-    "1920x1200"
-  else
-    "1920x1080";
+  wallpaperResolutions = {
+    vader = "2560x2880";
+    phasma = "3440x1440";
+    tanis = "1920x1200";
+    default = "1920x1080";
+  };
+  wallpaperResolution = wallpaperResolutions.${hostname} or wallpaperResolutions.default;
+  # Kanshi profiles for regreet that just enable the primary display:
+  # - Order is important
+  # - The last enabled output is what cage will use via `-m last`
+  kanshiProfiles = {
+    phasma = ''
+      profile {
+        output DP-2 disable
+        output HDMI-A-1 disable
+        output DP-1 enable mode 3440x1440@100Hz position 0,1280 scale 1
+      }
+    '';
+    vader = ''
+      profile {
+        output DP-3 disable
+        output DP-2 disable
+        output DP-1 enable mode 2560x2880@60Hz position 0,0 scale 1
+      }
+    '';
+    default = "";
+  };
 in
 {
   # Use Cage to run regreet
   environment = {
     etc = {
-      # Kanshi profiles just for regreet that just enables the primary display
-      # - Order is important
-      # - The last output to be enabled is what cage will use via `-m last`
-      "kanshi/regreet".text = if hostname == "phasma" then
-        ''
-          profile {
-            output DP-2 disable
-            output HDMI-A-1 disable
-            output DP-1 enable mode 3440x1440@100Hz position 0,1280 scale 1
-          }
-        ''
-      else if hostname == "vader" then
-        ''
-          profile {
-            output DP-3 disable
-            output DP-2 disable
-            output DP-1 enable mode 2560x2880@60Hz position 0,0 scale 1
-          }
-        ''
-      else
-        "";
+      "kanshi/regreet".text = kanshiProfiles.${hostname} or kanshiProfiles.default;
     };
     systemPackages = [
       regreetCage
@@ -76,8 +74,8 @@ in
           fit = "Cover";
         };
         commands = {
-          reboot = [ "${pkgs.systemd}/bin/systemctl" "reboot" ];
-          poweroff = [ "${pkgs.systemd}/bin/systemctl" "poweroff" ];
+          reboot = [ "/run/current-system/sw/bin/systemctl" "reboot" ];
+          poweroff = [ "/run/current-system/sw/bin/systemctl" "poweroff" ];
         };
         GTK = lib.mkForce {
           application_prefer_dark_theme = true;
@@ -90,16 +88,14 @@ in
     };
   };
   security.pam.services.greetd.enableGnomeKeyring = true;
-  services ={
-    greetd = {
-      enable = true;
-      settings = {
-        default_session = {
-          command = "regreet-cage";
-          user = "greeter";
-        };
+  services.greetd = {
+    enable = true;
+    settings = {
+      default_session = {
+        command = "regreet-cage";
+        user = "greeter";
       };
-      vt = 1;
     };
+    vt = 1;
   };
 }
