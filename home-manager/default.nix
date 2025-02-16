@@ -34,6 +34,7 @@ in
     flavor = "mocha";
     bat.enable = config.programs.bat.enable;
     bottom.enable = config.programs.bottom.enable;
+    btop.enable = config.programs.btop.enable;
     cava.enable = config.programs.cava.enable;
     fish.enable = config.programs.fish.enable;
     fzf.enable = config.programs.fzf.enable;
@@ -238,6 +239,13 @@ in
           mem_as_value = true;
           tree = true;
         };
+      };
+    };
+    btop = {
+      enable = true;
+      package = pkgs.btop.override {
+        cudaSupport = true;
+        rocmSupport = true;
       };
     };
     cava = {
