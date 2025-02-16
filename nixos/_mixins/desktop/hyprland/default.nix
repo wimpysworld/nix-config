@@ -7,6 +7,11 @@
   ...
 }:
 let
+  mkHiddenWaylandSession = name: pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''
+    [Desktop Entry]
+    Name="Hidden-${name}"
+    NoDisplay=true
+  '';
   dbusService = if config.services.dbus.implementation == "broker"
     then "dbus-broker.service"
     else "dbus.service";
@@ -93,16 +98,8 @@ in
       QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
       # The the desktop sessions provide by the Hyprland package
       XDG_DATA_DIRS = [
-        "${pkgs.writeTextDir "share/wayland-sessions/hyprland.desktop" ''
-        [Desktop Entry]
-        Name=Hyprland
-        NoDisplay=true
-        ''}/share"
-        "${pkgs.writeTextDir "share/wayland-sessions/hyprland-systemd.desktop" ''
-        [Desktop Entry]
-        Name=Hyprland (systemd session)
-        NoDisplay=true
-        ''}/share"
+        "${mkHiddenWaylandSession "hyprland"}/share"
+        "${mkHiddenWaylandSession "hyprland-systemd"}/share"
       ];
     };
     systemPackages =
