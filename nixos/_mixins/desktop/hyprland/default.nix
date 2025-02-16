@@ -80,7 +80,7 @@ in
   imports = [ ./greetd.nix ];
   environment = {
     # Enable HEIC image previews in Nautilus
-    pathsToLink = [ "share/thumbnailers" ];
+    pathsToLink = [ "/share" "share/thumbnailers" ];
     sessionVariables = {
       # Workaround GTK4 bug:
       # - https://gitlab.gnome.org/GNOME/gtk/-/issues/7022
@@ -91,6 +91,19 @@ in
       HYPRCURSOR_THEME = "catppuccin-mocha-blue-cursors";
       NIXOS_OZONE_WL = 1;
       QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
+      # The the desktop sessions provide by the Hyprland package
+      XDG_DATA_DIRS = [
+        "${pkgs.writeTextDir "share/wayland-sessions/hyprland.desktop" ''
+        [Desktop Entry]
+        Name=Hyprland
+        NoDisplay=true
+        ''}/share"
+        "${pkgs.writeTextDir "share/wayland-sessions/hyprland-systemd.desktop" ''
+        [Desktop Entry]
+        Name=Hyprland (systemd session)
+        NoDisplay=true
+        ''}/share"
+      ];
     };
     systemPackages =
       with pkgs;
