@@ -77,7 +77,7 @@ let
   };
 in
 {
-  imports = [ ./greetd.nix ];
+  imports = [ ../greeters/greetd.nix ];
   environment = {
     # Enable HEIC image previews in Nautilus
     pathsToLink = [ "/share" "share/thumbnailers" ];
