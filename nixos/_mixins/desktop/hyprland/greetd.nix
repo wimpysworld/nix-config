@@ -1,15 +1,8 @@
-{ config, hostname, lib, pkgs, username, ... }:
+{ config, hostname, lib, pkgs, ... }:
 let
   sithLord =
     (lib.strings.toUpper (builtins.substring 0 1 hostname)) +
     (builtins.substring 1 (builtins.stringLength hostname) hostname);
-  hyprLaunch = pkgs.writeShellScriptBin "hypr-launch" ''
-    ${pkgs.hyprland}/bin/Hyprland $@ &>/dev/null
-    # Correctly clean up the session
-    ${pkgs.hyprland}/bin/hyprctl dispatch exit
-    systemctl --user --machine=${username}@.host stop dbus-broker
-    systemctl --user --machine=${username}@.host stop hyprland-session.target
-  '';
   # Reference for setting display configuration for cage
   # - https://github.com/cage-kiosk/cage/issues/304
   # - https://github.com/cage-kiosk/cage/issues/257
@@ -41,7 +34,7 @@ let
     "1920x1080";
 in
 {
-  # Use a minimal Sway to run regreet
+  # Use Cage to run regreet
   environment = {
     etc = {
       # Kanshi profiles just for regreet that just enables the primary display
@@ -67,7 +60,6 @@ in
         "";
     };
     systemPackages = [
-      hyprLaunch
       regreetCage
     ];
   };
@@ -98,14 +90,16 @@ in
     };
   };
   security.pam.services.greetd.enableGnomeKeyring = true;
-  services.greetd = {
-    enable = true;
-    settings = {
-      default_session = {
-        command = "regreet-cage";
-        user = "greeter";
+  services ={
+    greetd = {
+      enable = true;
+      settings = {
+        default_session = {
+          command = "regreet-cage";
+          user = "greeter";
+        };
       };
+      vt = 1;
     };
-    vt = 1;
   };
 }
