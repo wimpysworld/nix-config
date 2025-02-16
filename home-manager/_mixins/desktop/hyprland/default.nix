@@ -3,6 +3,7 @@
   hostname,
   lib,
   pkgs,
+  username,
   ...
 }:
 let
@@ -169,11 +170,11 @@ let
 
       function activity_clear() {
           if pidof -q obs; then
-              obs-cmd virtual-camera stop
+            obs-cmd virtual-camera stop
           fi
           sleep 0.25
-          hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl dispatch closewindow address:{}
-          sleep 0.75
+          hyprctl clients -j | jq -r ".[].address" | xargs -I {} sh -c 'hyprctl dispatch closewindow "address:{}"; sleep 0.1'
+          sleep 0.25
           hyprctl dispatch workspace 1 &>/dev/null
       }
 
@@ -252,60 +253,65 @@ let
       HOSTNAME=$(hostname -s)
 
       function bluetooth_devices() {
-          case "$1" in
-              connect|disconnect)
-                  if [ "$HOSTNAME" == "phasma" ]; then
-                      bluetoothctl "$1" E4:50:EB:7D:86:22
-                  fi
-                  ;;
-          esac
+        case "$1" in
+          connect|disconnect)
+            if [ "$HOSTNAME" == "phasma" ]; then
+              bluetoothctl "$1" E4:50:EB:7D:86:22
+            fi
+            ;;
+        esac
       }
 
       function session_start() {
-          # Restart the desktop portal services in the correct order
-          for ACTION in stop start; do
-            for PORTAL in xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-desktop-portal; do
-                systemctl --user "$ACTION" "$PORTAL"
-            done;
-          done
-
-          bluetooth_devices connect
-          sleep 3.0
-          systemctl --user restart maestral-gui
-          trayscale --hide-window &
-          if ! pidof -q waybar; then
-              systemctl --user restart waybar
+        # Restart the desktop portal services in the correct order
+        for ACTION in stop start; do
+          for PORTAL in xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-desktop-portal; do
+            systemctl --user "$ACTION" "$PORTAL"
+          done;
+        done
+        for INDICATOR in udiskie syncthingtray maestral-gui nm-applet; do
+          if systemctl --user list-unit-files "$INDICATOR.service" &>/dev/null; then
+            if ! systemctl --user is-active "$INDICATOR" &>/dev/null; then
+              echo "Service $INDICATOR exists but not running - restarting"
+              systemctl --user restart "$INDICATOR"
+            else
+              echo "Service $INDICATOR already running"
+            fi
           fi
+        done
+        if ! pgrep -u "${username}" -f trayscale &>/dev/null; then
+          trayscale --hide-window &
+        fi
+        bluetooth_devices connect
       }
 
       function session_stop() {
-          playerctl --all-players pause
-          hypr-activity clear
-          pkill trayscale
+        playerctl --all-players pause
+        hypr-activity clear
       }
 
       OPT="help"
       if [ -n "$1" ]; then
-          OPT="$1"
+        OPT="$1"
       fi
 
       case "$OPT" in
-          start) session_start;;
-          lock)
-            pkill wlogout
-            sleep 0.5
-            hyprlock --immediate;;
-          logout)
-            session_stop
-            hyprctl dispatch exit;;
-          reboot)
-            session_stop
-            systemctl reboot;;
-          shutdown)
-            session_stop
-            systemctl poweroff;;
-          *) echo "Usage: $(basename "$0") {start|lock|logout|reboot|shutdown}";
-            exit 1;;
+        start) session_start;;
+        lock)
+          pkill -u "${username}" wlogout
+          sleep 0.5
+          hyprlock --immediate;;
+        logout)
+          session_stop
+          hyprctl dispatch exit;;
+        reboot)
+          session_stop
+          systemctl reboot;;
+        shutdown)
+          session_stop
+          systemctl poweroff;;
+        *) echo "Usage: $(basename "$0") {start|lock|logout|reboot|shutdown}";
+          exit 1;;
       esac
     '';
   };
