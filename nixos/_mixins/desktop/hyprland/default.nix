@@ -164,6 +164,9 @@ in
       enable = true;
       systemd.setPath.enable = true;
     };
+    iio-hyprland = {
+      enable = true;
+    };
     nautilus-open-any-terminal = {
       enable = true;
       terminal = "foot";
