@@ -480,22 +480,20 @@ in
         "col.inactive_border" = "rgb(45475a) rgb(313244) rgb(45475a) rgb(313244) 270deg";
         resize_on_border = true;
         extend_border_grab_area = 10;
-        layout = "master";
+        layout = if hostname == "phasma" then "master" else "dwindle";
       };
       #https://wiki.hyprland.org/Configuring/Master-Layout/
       master = {
-        mfact = if (hostname == "vader" || hostname == "phasma") then 0.5 else 0.55;
-        orientation = if hostname == "vader" then
-          "top"
-        else if hostname == "phasma" then
+        mfact = if hostname == "phasma" then 0.5 else 0.55;
+        orientation = if hostname == "phasma" then
           "center"
         else
           "left";
       };
       # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
       dwindle = {
-        force_split = 1;
         preserve_split = true;
+        use_active_for_splits = false;
       };
       gestures = {
         workspace_swipe = true;
