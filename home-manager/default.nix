@@ -110,7 +110,6 @@ in
         marp-cli # Terminal Markdown presenter
         mtr # Modern Unix `traceroute`
         netdiscover # Modern Unix `arp`
-        nixfmt-rfc-style # Nix code formatter
         nixpkgs-review # Nix code review
         nix-prefetch-scripts # Nix code fetcher
         nurl # Nix URL fetcher
