@@ -15,6 +15,19 @@ lib.mkIf (lib.elem username installFor) {
     inputs.nix-vscode-extensions.overlays.default
   ];
 
+  # Packages that are used by some of the extensions below
+  home.packages = with pkgs; [
+    bash-language-server
+    go
+    gopls
+    lua-language-server
+    nil
+    nixfmt-rfc-style
+    nodePackages.prettier
+    shellcheck
+    shfmt
+  ];
+
   # NOTE! I avoid using home-manager to configure settings.json because it
   #       makes it settings.json immutable. I prefer to use the Code settings
   #       sync extension to sync across machines.
@@ -70,7 +83,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.jeff-hykin.polacode-2019
           vscode-marketplace.jeroen-meijer.pubspec-assist
           vscode-marketplace.jnoortheen.nix-ide
-          vscode-marketplace.mads-hartmann.bash-ide-vscode
+          #vscode-marketplace.mads-hartmann.bash-ide-vscode
           vscode-marketplace.marp-team.marp-vscode
           vscode-marketplace.mechatroner.rainbow-csv
           vscode-marketplace.mkhl.direnv
