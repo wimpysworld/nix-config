@@ -20,6 +20,8 @@ lib.mkIf (lib.elem username installFor) {
     bash-language-server
     go
     gopls
+    luaformatter
+    luajit
     lua-language-server
     nil
     nixfmt-rfc-style
@@ -117,6 +119,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.viktorzetterstrom.non-breaking-space-highlighter
           vscode-marketplace.vscode-icons-team.vscode-icons
           vscode-marketplace.xyc.vscode-mdx-preview
+          vscode-marketplace.yinfei.luahelper
           vscode-marketplace.yzhang.markdown-all-in-one
         ]
         ++ lib.optionals isLinux [
