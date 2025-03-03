@@ -131,4 +131,5 @@ lib.mkIf (lib.elem username installFor) {
       package = pkgs.vscode;
     };
   };
+  services.vscode-server.enable = true;
 }

@@ -10,6 +10,8 @@
     nixpkgs-unstable.url = "https://flakehub.com/f/DeterminateSystems/nixpkgs-weekly/0";
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    vscode-server.url = "github:nix-community/nixos-vscode-server";
+    vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
     catppuccin.url = "https://flakehub.com/f/catppuccin/nix/*";
     catppuccin-vsc.url = "https://flakehub.com/f/catppuccin/vscode/*";
