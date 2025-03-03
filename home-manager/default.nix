@@ -161,6 +161,7 @@ in
       MANROFFOPT = "-c";
       MICRO_TRUECOLOR = "1";
       PAGER = "bat";
+      SUDO_EDITOR = "micro";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
     };
@@ -294,6 +295,7 @@ in
         less = "${pkgs.bat}/bin/bat";
         lm = "${pkgs.lima-bin}/bin/limactl";
         lolcat = "${pkgs.dotacat}/bin/dotacat";
+        lsusb = "${pkgs.cyme}/bin/cyme --headings";
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
         more = "${pkgs.bat}/bin/bat";
         pq = "${pkgs.pueue}/bin/pueue";
@@ -312,6 +314,9 @@ in
         lock-secrets = "fusermount -u ~/Vaults/Secrets";
         unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
+      shellInit = ''
+        set fish_greeting ""
+      '';
     };
     fzf = {
       enable = true;
