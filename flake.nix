@@ -1,7 +1,9 @@
 {
   description = "Wimpy's NixOS, nix-darwin and Home Manager Configuration";
   inputs = {
+    nix-priv.url = "https://flakehub.com/f/DeterminateSystems/nix-priv/0.38.1.tar.gz";
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/0";
+    determinate.inputs."nix".follows = "nix-priv";
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/0";
     home-manager.url = "github:nix-community/home-manager/release-24.11";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
