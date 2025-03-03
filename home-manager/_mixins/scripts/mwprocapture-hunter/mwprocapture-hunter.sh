@@ -5,9 +5,10 @@ set +u  # Disable nounset
 set +o pipefail  # Disable pipefail
 
 # Base URL for Magewell downloads
-BASE_URL="https://www.magewell.com/files/drivers/ProCaptureForLinux_"
+BASE_URL="https://www.magewell.com/files/drivers/ProCaptureForLinux"
 #START_VERSION=4390
-START_VERSION=4407
+#START_VERSION=4407
+START_VERSION=4418
 END_VERSION=$((START_VERSION + 100))
 
 # Function to check if URL exists using curl
@@ -24,7 +25,7 @@ check_url() {
     if [ "$http_code" = "200" ]; then
         echo "✅ Version $version is available at: $url"
     else
-        echo "❌ Version $version not found (HTTP $http_code)"
+        echo "❌ Version $version not found at: $url"
     fi
     # Add a small delay to be nice to the server
     sleep 0.5
@@ -36,7 +37,11 @@ echo "----------------------------------------"
 
 # Main loop
 for version in $(seq $START_VERSION $END_VERSION); do
-    url="${BASE_URL}${version}.tar.gz"
+    if [ "$version" -le 4407 ]; then
+        url="${BASE_URL}_${version}.tar.gz"
+    else
+        url="${BASE_URL}_1.3.${version}.tar.gz"
+    fi
     check_url "$url" "$version"
 done
 
