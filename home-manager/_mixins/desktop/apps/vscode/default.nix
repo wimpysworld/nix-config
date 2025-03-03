@@ -28,6 +28,7 @@ lib.mkIf (lib.elem username installFor) {
     nodePackages.prettier
     shellcheck
     shfmt
+    stylua
   ];
 
   # NOTE! I avoid using home-manager to configure settings.json because it
@@ -83,9 +84,9 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.jeff-hykin.better-nix-syntax
           vscode-marketplace.jeff-hykin.better-shellscript-syntax
           vscode-marketplace.jeff-hykin.polacode-2019
-          vscode-marketplace.jep-a.lua-plus
           vscode-marketplace.jeroen-meijer.pubspec-assist
           vscode-marketplace.jnoortheen.nix-ide
+          vscode-marketplace.johnnymorganz.stylua
           #vscode-marketplace.mads-hartmann.bash-ide-vscode
           vscode-marketplace.marp-team.marp-vscode
           vscode-marketplace.mechatroner.rainbow-csv
