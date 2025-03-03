@@ -59,7 +59,6 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.budparr.language-hugo-vscode
           vscode-marketplace.catppuccin.catppuccin-vsc-icons
           vscode-marketplace.codezombiech.gitignore
-          #vscode-marketplace.continue.continue
           vscode-marketplace.coolbear.systemd-unit-file
           vscode-marketplace.dart-code.dart-code
           vscode-marketplace.dart-code.flutter
@@ -77,12 +76,14 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.golang.go
           vscode-marketplace.griimick.vhs
           vscode-marketplace.hoovercj.vscode-power-mode
+          vscode-marketplace.ismoh-games.second-local-lua-debugger-vscode
           vscode-marketplace.jdemille.debian-control-vscode
           vscode-marketplace.jeff-hykin.better-csv-syntax
           vscode-marketplace.jeff-hykin.better-dockerfile-syntax
           vscode-marketplace.jeff-hykin.better-nix-syntax
           vscode-marketplace.jeff-hykin.better-shellscript-syntax
           vscode-marketplace.jeff-hykin.polacode-2019
+          vscode-marketplace.jep-a.lua-plus
           vscode-marketplace.jeroen-meijer.pubspec-assist
           vscode-marketplace.jnoortheen.nix-ide
           #vscode-marketplace.mads-hartmann.bash-ide-vscode
@@ -109,10 +110,8 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.saoudrizwan.claude-dev
           vscode-marketplace.slevesque.shader
           vscode-marketplace.streetsidesoftware.code-spell-checker
-          vscode-marketplace.sumneko.lua
           vscode-marketplace.tamasfe.even-better-toml
           vscode-marketplace.timonwong.shellcheck
-          vscode-marketplace.tomblind.local-lua-debugger-vscode
           vscode-marketplace.trond-snekvik.simple-rst
           vscode-marketplace.twxs.cmake
           vscode-marketplace.unifiedjs.vscode-mdx
