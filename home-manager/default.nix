@@ -22,6 +22,7 @@ in
     inputs.catppuccin.homeManagerModules.catppuccin
     inputs.sops-nix.homeManagerModules.sops
     inputs.nix-index-database.hmModules.nix-index
+    inputs.vscode-server.nixosModules.home
     ./_mixins/features
     ./_mixins/scripts
     ./_mixins/services
@@ -141,7 +142,6 @@ in
         psmisc # Traditional `ps`
         ramfetch # Terminal system info
         s-tui # Terminal CPU stress test
-        shellcheck # Terminal shell linter
         stress-ng # Terminal CPU stress test
         tty-clock # Terminal clock
         usbutils # Terminal USB info
