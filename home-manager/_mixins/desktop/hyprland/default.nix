@@ -83,17 +83,11 @@ let
           start_app foot 5 "class: foot"
           start_app "gitkraken --no-show-splash-screen" 5 "title: GitKraken Desktop"
           start_app joplin-desktop 6 "class: @joplin/app-desktop"
+          start_app heynote 6 "class: Heynote"
           if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
               start_app "obs --disable-shutdown-check --collection 'VirtualCam' --profile 'VirtualCam' --scene 'VirtualCam-DetSys' --startvirtualcam" 7 "class: com.obsproject.Studio"
           fi
-          start_app cider 8 "class: Cider"
-          firefox -CreateProfile meet-detsys
-          start_app "firefox \
-            -P meet-detsys \
-            -no-remote \
-            --new-window https://meet.google.com" 9 "title: Google Meet - Mozilla Firefox"
-          start_app heynote 6 "class: Heynote"
-          hyprctl dispatch forcerendererreload
+          start_app Cider 8 "class: Cider"
       }
 
       function activity_linuxmatters() {
@@ -115,7 +109,6 @@ let
           start_app telegram-desktop 7 "initialTitle: Telegram"
           start_app "nautilus -w $HOME/Audio" 7 "title: Audio"
           hyprctl dispatch workspace 7 &>/dev/null
-          hyprctl dispatch forcerendererreload
       }
 
       function activity_wimpysworld() {
@@ -151,7 +144,6 @@ let
               -no-remote \
               --new-window https://wimpysworld.com \
               --new-tab https://github.com/wimpysworld" 10 "title: Wimpy's World — Mozilla Firefox"
-          hyprctl dispatch forcerendererreload
       }
 
       function activity_8bitversus() {
@@ -165,7 +157,6 @@ let
           start_app "obs --disable-shutdown-check --collection 8-bit-VS --profile 8-bit-VS-Local --scene Hosts" 7 "class: com.obsproject.Studio"
           start_app chatterino 7 "chatterino"
           hyprctl dispatch workspace 7 &>/dev/null
-          hyprctl dispatch forcerendererreload
       }
 
       function activity_clear() {
