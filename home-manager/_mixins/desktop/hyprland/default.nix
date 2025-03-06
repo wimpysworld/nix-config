@@ -471,7 +471,7 @@ in
         "col.inactive_border" = "rgb(45475a) rgb(313244) rgb(45475a) rgb(313244) 270deg";
         resize_on_border = true;
         extend_border_grab_area = 10;
-        layout = if hostname == "phasma" then "master" else "dwindle";
+        layout = "dwindle";
       };
       #https://wiki.hyprland.org/Configuring/Master-Layout/
       master = {
@@ -484,7 +484,6 @@ in
       # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
       dwindle = {
         preserve_split = true;
-        use_active_for_splits = false;
       };
       gestures = {
         workspace_swipe = true;
