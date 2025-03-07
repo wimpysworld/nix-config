@@ -423,11 +423,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1741112248,
-        "narHash": "sha256-Y340xoE1Vgo0eCDJi4srVjuwlr50vYSoyJrZeXHw3n0=",
+        "lastModified": 1741229100,
+        "narHash": "sha256-0HwrTDXp9buEwal/1ymK9uQmzUD5ozIA7CJGqnT/gLs=",
         "owner": "LnL7",
         "repo": "nix-darwin",
-        "rev": "991bb2f6d46fc2ff7990913c173afdb0318314cb",
+        "rev": "adf5c88ba1fe21af5c083b4d655004431f20c5ab",
         "type": "github"
       },
       "original": {
@@ -552,12 +552,12 @@
     },
     "nixos-hardware": {
       "locked": {
-        "lastModified": 1740646007,
-        "narHash": "sha256-dMReDQobS3kqoiUCQIYI9c0imPXRZnBubX20yX/G5LE=",
-        "rev": "009b764ac98a3602d41fc68072eeec5d24fc0e49",
-        "revCount": 2145,
+        "lastModified": 1741325094,
+        "narHash": "sha256-RUAdT8dZ6k/486vnu3tiNRrNW6+Q8uSD2Mq7gTX4jlo=",
+        "rev": "b48cc4dab0f9711af296fc367b6108cf7b8ccb16",
+        "revCount": 2151,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/NixOS/nixos-hardware/0.1.2145%2Brev-009b764ac98a3602d41fc68072eeec5d24fc0e49/01954697-5dd4-7b94-8e58-aa85ce53f8a2/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixos-hardware/0.1.2151%2Brev-b48cc4dab0f9711af296fc367b6108cf7b8ccb16/01956f10-b6bc-7f42-98c8-23cbe090f32f/source.tar.gz"
       },
       "original": {
         "type": "tarball",
@@ -571,16 +571,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1739274396,
-        "narHash": "sha256-nrQ+depCSUXw+/XWZ87P+sARm9kuacm9Og8/hwTNrjQ=",
-        "rev": "b4afd88e54e4225672292bffdb9e57757375015d",
-        "revCount": 49,
+        "lastModified": 1739282017,
+        "narHash": "sha256-6uHM5M/D9byHeToSeoMx1pJ0hfs1HCUkzi6B7o2oPtA=",
+        "rev": "181836fbecc324e115bbb88e131ba79c431bf07d",
+        "revCount": 50,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/wimpysworld/nixos-needsreboot/0.2.5/0194f4d6-2ea6-7f51-bc73-79f58e4184be/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/wimpysworld/nixos-needsreboot/0.2.6/01956b95-6965-7e28-977a-28e436dd60c6/source.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://flakehub.com/f/wimpysworld/nixos-needsreboot/0.2.5.tar.gz"
+        "url": "https://flakehub.com/f/wimpysworld/nixos-needsreboot/0.2.6.tar.gz"
       }
     },
     "nixpkgs": {
@@ -716,12 +716,12 @@
     },
     "nixpkgs_6": {
       "locked": {
-        "lastModified": 1741048562,
-        "narHash": "sha256-W4YZ3fvWZiFYYyd900kh8P8wU6DHSiwaH0j4+fai1Sk=",
-        "rev": "6af28b834daca767a7ef99f8a7defa957d0ade6f",
-        "revCount": 715262,
+        "lastModified": 1741196730,
+        "narHash": "sha256-0Sj6ZKjCpQMfWnN0NURqRCQn2ob7YtXTAOTwCuz7fkA=",
+        "rev": "48913d8f9127ea6530a2a2f1bd4daa1b8685d8a3",
+        "revCount": 715344,
         "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/nixos/nixpkgs/0.2411.715262%2Brev-6af28b834daca767a7ef99f8a7defa957d0ade6f/019565c6-d751-7b7f-b11d-a13025ac645a/source.tar.gz"
+        "url": "https://api.flakehub.com/f/pinned/nixos/nixpkgs/0.2411.715344%2Brev-48913d8f9127ea6530a2a2f1bd4daa1b8685d8a3/01956c72-2ea6-7c5e-91c0-e2b2e520cfa9/source.tar.gz"
       },
       "original": {
         "type": "tarball",
