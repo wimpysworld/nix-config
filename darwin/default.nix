@@ -81,17 +81,15 @@
     in
     {
       settings = {
-        experimental-features = "flakes nix-command";
         # Disable global registry
-        flake-registry = "";
+        flake-regisstry = "";
         # Workaround for https://github.com/NixOS/nix/issues/9574
         nix-path = config.nix.nixPath;
-        trusted-users = [
-          "root"
-          "${username}"
-        ];
         warn-dirty = false;
       };
+      # Determinate uses its own daemon to manage the Nix installation that
+      # conflicts with nix-darwin’s native Nix management.
+      enable = false;
       # Disable channels
       channel.enable = false;
       # Make flake registry and nix path match flake inputs
@@ -121,7 +119,6 @@
   security.pam.enableSudoTouchIdAuth = true;
 
   services = {
-    nix-daemon.enable = true;
     tailscale.enable = true;
   };
 
@@ -244,8 +241,8 @@
       menuExtraClock = {
         ShowAMPM = false;
         ShowDate = 1; # Always
-        Show24Hour = true;
         ShowSeconds = false;
+        Show24Hour = true;
       };
       screensaver = {
         askForPassword = true;
