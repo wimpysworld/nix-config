@@ -244,8 +244,8 @@ in
     btop = {
       enable = true;
       package = pkgs.btop.override {
-        cudaSupport = true;
-        rocmSupport = true;
+        cudaSupport = isLinux;
+        rocmSupport = isLinux;
       };
     };
     cava = {
