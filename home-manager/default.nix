@@ -39,8 +39,6 @@ in
     cava.enable = config.programs.cava.enable;
     fish.enable = config.programs.fish.enable;
     fzf.enable = config.programs.fzf.enable;
-    gh-dash.enable = config.programs.gh.extensions.gh-dash;
-    gitui.enable = config.programs.gitui.enable;
     micro.enable = config.programs.micro.enable;
     starship.enable = config.programs.starship.enable;
     yazi.enable = config.programs.yazi.enable;
@@ -61,7 +59,6 @@ in
       "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./_mixins/configs/fastfetch.jsonc;
       "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./_mixins/configs/yazi-keymap.toml;
       "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./_mixins/configs/help.fish;
-      "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ./_mixins/configs/h.fish;
       ".hidden".text = ''snap'';
     };
 
@@ -74,14 +71,12 @@ in
         bc # Terminal calculator
         bandwhich # Modern Unix `iftop`
         bmon # Modern Unix `iftop`
-        breezy # Terminal bzr client
         chafa # Terminal image viewer
         cpufetch # Terminal CPU info
         croc # Terminal file transfer
         curlie # Terminal HTTP client
         cyme # Modern Unix `lsusb`
         dconf2nix # Nix code from Dconf files
-        difftastic # Modern Unix `diff`
         dogdns # Modern Unix `dig`
         dotacat # Modern Unix lolcat
         dua # Modern Unix `du`
@@ -95,8 +90,6 @@ in
         girouette # Modern Unix weather
         gocryptfs # Terminal encrypted filesystem
         gping # Modern Unix `ping`
-        git-igitt # Modern Unix git log/graph
-        h # Modern Unix autojump for git projects
         hexyl # Modern Unix `hexedit`
         hr # Terminal horizontal rule
         httpie # Terminal HTTP client
@@ -114,10 +107,8 @@ in
         nixpkgs-review # Nix code review
         nix-prefetch-scripts # Nix code fetcher
         nurl # Nix URL fetcher
-        onefetch # Terminal git project info
         optipng # Terminal PNG optimizer
         procs # Modern Unix `ps`
-        quilt # Terminal patch manager
         rclone # Modern Unix `rsync`
         rsync # Traditional `rsync`
         rustmission # Modern Unix Transmission client
@@ -125,7 +116,6 @@ in
         speedtest-go # Terminal speedtest.net
         timer # Terminal timer
         tldr # Modern Unix `man`
-        tokei # Modern Unix `wc` for code
         ueberzugpp # Terminal image viewer integration
         unzip # Terminal ZIP extractor
         upterm # Terminal sharing
@@ -322,71 +312,6 @@ in
       enable = true;
       enableBashIntegration = true;
       enableFishIntegration = true;
-    };
-    gh = {
-      enable = true;
-      extensions = with pkgs; [
-        gh-dash
-        gh-markdown-preview
-      ];
-      settings = {
-        editor = "micro";
-        git_protocol = "ssh";
-        prompt = "enabled";
-      };
-    };
-    git = {
-      enable = true;
-      aliases = {
-        ci = "commit";
-        cl = "clone";
-        co = "checkout";
-        purr = "pull --rebase";
-        dlog = "!f() { GIT_EXTERNAL_DIFF=difft git log -p --ext-diff $@; }; f";
-        dshow = "!f() { GIT_EXTERNAL_DIFF=difft git show --ext-diff $@; }; f";
-        fucked = "reset --hard";
-        graph = "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
-      };
-      difftastic = {
-        display = "side-by-side-show-both";
-        enable = true;
-      };
-      extraConfig = {
-        advice = {
-          statusHints = false;
-        };
-        color = {
-          branch = false;
-          diff = false;
-          interactive = true;
-          log = false;
-          status = true;
-          ui = false;
-        };
-        core = {
-          pager = "bat";
-        };
-        push = {
-          default = "matching";
-        };
-        pull = {
-          rebase = false;
-        };
-        init = {
-          defaultBranch = "main";
-        };
-      };
-      ignores = [
-        "*.log"
-        "*.out"
-        ".DS_Store"
-        "bin/"
-        "dist/"
-        "result"
-      ];
-    };
-    gitui = {
-      enable = true;
     };
     gpg.enable = true;
     home-manager.enable = true;
@@ -855,14 +780,8 @@ in
     };
     defaultSopsFile = ../secrets/secrets.yaml;
     secrets = {
-      act-env = {
-        path = "${config.home.homeDirectory}/.config/act/secrets";
-        sopsFile = ../secrets/act.yaml;
-        mode = "0660";
-      };
       asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
       atuin_key.path = "${config.home.homeDirectory}/.local/share/atuin/key";
-      gh_token = { };
       gpg_private = { };
       gpg_public = { };
       gpg_ownertrust = { };
