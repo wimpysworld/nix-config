@@ -1,10 +1,12 @@
-{ config, lib, ... }:
+{ config, hostname, lib, ... }:
 let
   locale = "en_GB.utf8";
-  xkbLayout = "gb";
+  xkbLayout = if (hostname == "phasma" || hostname == "vader") then "us" else "gb";
 in
 {
-  console.keyMap = lib.mkIf (config.console.font != null) "uk";
+  console = lib.mkIf (config.console.font != null) {
+    useXkbConfig =  true;
+  };
   i18n = {
     defaultLocale = locale;
     extraLocaleSettings = {
@@ -19,12 +21,9 @@ in
       LC_TIME = locale;
     };
   };
-
   services = {
     kmscon = lib.mkIf config.services.kmscon.enable {
-      extraConfig = ''
-        xkb-layout=${xkbLayout}
-      '';
+      useXkbConfig = true;
     };
     xserver.xkb.layout = xkbLayout;
   };
