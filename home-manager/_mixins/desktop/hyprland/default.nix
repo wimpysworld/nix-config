@@ -497,7 +497,6 @@ in
         };
       };
       input = {
-        kb_layout = "gb";
         follow_mouse = 2;
         repeat_rate = 30;
         repeat_delay = 300;
