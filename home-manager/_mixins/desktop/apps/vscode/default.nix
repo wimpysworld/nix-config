@@ -43,14 +43,12 @@ lib.mkIf (lib.elem username installFor) {
           # All the Catppuccin theme options are available as overrides
           (catppuccin-vsc.override {
             accent = "blue";
-            boldKeywords = true;
+            boldKeywords = false;
             italicComments = true;
-            italicKeywords = true;
+            italicKeywords = false;
             extraBordersEnabled = false;
             workbenchMode = "default";
             bracketMode = "rainbow";
-            colorOverrides = { };
-            customUIColors = { };
           })
           vscode-marketplace.aaron-bond.better-comments
           vscode-marketplace.alefragnani.project-manager
