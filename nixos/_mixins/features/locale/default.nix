@@ -1,7 +1,7 @@
 { config, hostname, lib, ... }:
 let
   locale = "en_GB.utf8";
-  xkbLayout = if (hostname == "phasma" || hostname == "vader") then "us" else "gb";
+  xkbLayout = if (hostname == "phasma") then "us" else "gb";
 in
 {
   console = lib.mkIf (config.console.font != null) {
