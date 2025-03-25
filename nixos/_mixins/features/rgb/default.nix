@@ -10,16 +10,24 @@
 let
   hostRGB = {
     phasma = "amd";
+    vader = "amd";
+  };
+  ratbagMice = {
+    "phasma" = [
+      "g305"
+    ];
+    "vader" = [
+      "g305"
+    ];
   };
   razerPeripherals = {
-    phasma = [
+    phasma-disable = [
       "keyboard"
       "mouse"
     ];
-    vader = [
+    vader-disable = [
       "keyboard"
       "mouse"
-      "controller"
     ];
   };
 in
@@ -27,7 +35,8 @@ lib.mkIf isInstall {
   environment = {
     systemPackages =
       with pkgs;
-      lib.optionals (builtins.hasAttr hostname razerPeripherals && isWorkstation) [ polychromatic ];
+      lib.optionals (builtins.hasAttr hostname razerPeripherals && isWorkstation) [ polychromatic ]
+      ++lib.optionals (builtins.hasAttr hostname ratbagMice && isWorkstation) [ piper ];
   };
   hardware = {
     openrazer = lib.mkIf (builtins.hasAttr hostname razerPeripherals) {
@@ -40,6 +49,9 @@ lib.mkIf isInstall {
     };
   };
   services = {
+    ratbagd = lib.mkIf (builtins.hasAttr hostname ratbagMice) {
+      enable = true;
+    };
     hardware.openrgb = lib.mkIf (builtins.hasAttr hostname hostRGB) {
       enable = true;
       motherboard = if builtins.hasAttr hostname hostRGB then hostRGB.${hostname} else null;
