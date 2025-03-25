@@ -34,7 +34,7 @@
     "catppuccin-vsc": {
       "inputs": {
         "nixpkgs": [
-          "nixpkgs"
+          "nixpkgs-unstable"
         ]
       },
       "locked": {
@@ -538,11 +538,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1742781383,
-        "narHash": "sha256-g+TAGMNkJ669vLl6nq4O0aHNa/KT4H2g8e3kzDmnssk=",
+        "lastModified": 1742867685,
+        "narHash": "sha256-JfJRD3eOlNndfyzjFN8PRSHXH8O80+ABgFzm/WGABK8=",
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "8d45d9226f50d7affbe1052d8b15591796445214",
+        "rev": "02d54a24976e5acccd25bacae916725500fd39f9",
         "type": "github"
       },
       "original": {
