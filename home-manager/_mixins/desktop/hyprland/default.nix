@@ -7,6 +7,7 @@
   ...
 }:
 let
+  xkbLayout = if (hostname == "phasma") then "us" else "gb";
   monitors = (import ./monitors.nix { }).${hostname};
   hyprActivity = pkgs.writeShellApplication {
     name = "hypr-activity";
@@ -498,6 +499,7 @@ in
       };
       input = {
         follow_mouse = 2;
+        kb_layout = xkbLayout;
         repeat_rate = 30;
         repeat_delay = 300;
         touchpad = {
