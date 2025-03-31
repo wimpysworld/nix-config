@@ -95,6 +95,13 @@ in
 {
   imports = lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
 
+  programs.captive-browser = lib.mkIf isLaptop {
+    enable = true;
+    browser = ''
+      env XDG_CONFIG_HOME="$PREV_CONFIG_HOME" ${pkgs.chromium}/bin/chromium --user-data-dir=$HOME/.local/share/chromium-captive --proxy-server="socks5://$PROXY" --host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE localhost" --no-first-run --new-window --incognito -no-default-browser-check http://neverssl.com
+    '';
+  };
+
   networking = {
     extraHosts = ''
       10.10.10.1     router
@@ -130,6 +137,11 @@ in
       enable = true;
       unmanaged = unmanagedInterfaces;
       wifi.backend = "iwd";
+      extraConfig = lib.mkIf isLaptop ''
+        [connectivity]
+        uri = http://google.cn/generate_204
+        response =
+      '';
     };
     # https://wiki.nixos.org/wiki/Incus
     nftables.enable = lib.mkIf config.virtualisation.incus.enable true;

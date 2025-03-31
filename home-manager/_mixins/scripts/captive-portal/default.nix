@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ isLaptop, lib, pkgs, ... }:
 let
   inherit (pkgs.stdenv) isLinux;
   name = builtins.baseNameOf (builtins.toString ./.);
@@ -13,4 +13,4 @@ let
     text = builtins.readFile ./${name}.sh;
   };
 in
-lib.mkIf isLinux { home.packages = with pkgs; [ shellApplication ]; }
+lib.mkIf (isLaptop && isLinux) { home.packages = with pkgs; [ shellApplication ]; }
