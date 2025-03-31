@@ -21,6 +21,7 @@ lib.mkIf (isDarwin || isOtherOS) {
             "NerdFontsSymbolsOnly"
           ];
         })
+        corefonts
         fira
         font-awesome
         liberation_ttf

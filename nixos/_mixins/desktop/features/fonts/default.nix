@@ -9,7 +9,7 @@
   # https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
   fonts = {
     # Enable a basic set of fonts providing several font styles and families and reasonable coverage of Unicode.
-    enableDefaultPackages = false;
+    enableDefaultPackages = true;
     fontDir.enable = true;
     packages =
       with pkgs;
@@ -20,6 +20,7 @@
             "NerdFontsSymbolsOnly"
           ];
         })
+        corefonts
         fira
         font-awesome
         liberation_ttf
@@ -82,7 +83,7 @@
       };
       localConf = ''
         <?xml version="1.0"?>
-        <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+        <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
         <fontconfig>
           <!-- Use Noto Emoji when other popular fonts are being specifically requested. -->
           <match target="pattern">
