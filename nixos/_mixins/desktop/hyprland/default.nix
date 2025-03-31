@@ -7,17 +7,17 @@
   ...
 }:
 let
+  dbusService = if config.services.dbus.implementation == "broker"
+    then "dbus-broker.service"
+    else "dbus.service";
   mkHiddenWaylandSession = name: pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''
     [Desktop Entry]
     Name="Hidden-${name}"
     NoDisplay=true
   '';
-  dbusService = if config.services.dbus.implementation == "broker"
-    then "dbus-broker.service"
-    else "dbus.service";
-  # Create a simple Wayland session that starts Hyprland and cleans up after itself
-  hyprlandSession = pkgs.symlinkJoin {
-    name = "hyprland-session";
+  # Create a Wayland session that starts Hyprland and cleans up after itself
+  hyprShim = pkgs.symlinkJoin {
+    name = "hyprshim";
     paths = [
       (pkgs.writeShellScriptBin "Hyprshim" ''
         # Ensure log directory exists
@@ -38,9 +38,7 @@ let
         # Run Hyprland and log output
         ${pkgs.expect}/bin/unbuffer /run/current-system/sw/bin/Hyprland $@ 2>&1 | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE" &>/dev/null
         # Log the exit code here
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Hyprland exited with code $?" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
-        # Clean up the session
-        pkill -u "${username}" trayscale
+        echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Hyprland exited with code $?" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
         UNITS=(
           xdg-desktop-portal-hyprland.service
           xdg-desktop-portal-gtk.service
@@ -50,21 +48,21 @@ let
           hyprland-session.target
         )
         for UNIT in "''${UNITS[@]}"; do
-          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking $UNIT" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+          echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Checking $UNIT" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
           if /run/current-system/sw/bin/systemctl --user --machine=${username}@.host list-unit-files "$UNIT" &>/dev/null; then
             if /run/current-system/sw/bin/systemctl --user --machine=${username}@.host is-active "$UNIT" &>/dev/null; then
-              echo "[$(date '+%Y-%m-%d %H:%M:%S')] Stopping $UNIT" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+              echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Stopping $UNIT" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
               /run/current-system/sw/bin/systemctl --user --machine=${username}@.host stop "$UNIT"
             else
-              echo "[$(date '+%Y-%m-%d %H:%M:%S')] $UNIT is not running" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+              echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] $UNIT is not running" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
             fi
           else
-            echo "[$(date '+%Y-%m-%d %H:%M:%S')] $UNIT not found" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+            echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] $UNIT not found" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
           fi
         done
       '')
       (pkgs.writeTextFile {
-        name = "hyprland-session-desktop";
+        name = "hyprshim-desktop";
         destination = "/share/wayland-sessions/Hyprshim.desktop";
         text = ''
           [Desktop Entry]
@@ -105,8 +103,7 @@ in
     systemPackages =
       with pkgs;
       lib.optionals isInstall [
-        hyprlandSession
-        hyprpicker
+        hyprShim
         # Enable HEIC image previews in Nautilus
         libheif
         libheif.out
@@ -189,7 +186,7 @@ in
     };
     devmon.enable = true;
     displayManager = {
-      sessionPackages = [ hyprlandSession ];
+      sessionPackages = [ hyprShim ];
     };
     gnome = {
       gnome-keyring.enable = isInstall;
