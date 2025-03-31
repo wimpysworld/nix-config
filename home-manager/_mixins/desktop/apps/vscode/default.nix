@@ -126,7 +126,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.vadimcn.vscode-lldb
         ];
       mutableExtensionsDir = true;
-      package = pkgs.vscode;
+      package = pkgs.unstable.vscode;
     };
   };
   services.vscode-server.enable = true;
