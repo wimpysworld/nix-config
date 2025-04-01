@@ -25,6 +25,7 @@
         ghbackup # Backup GitHub repositories
         ghorg # Clone all repositories in a GitHub organization
         git-igitt # git log/graph
+        gk-cli # GitKraken CLI
         h # autojump for git projects
         onefetch # fetch git project info
         quilt # patch manager
