@@ -23,12 +23,14 @@ let
       if [[ $state == 'yes' ]]; then
         bluetoothctl discoverable off
         bluetoothctl power off
+        notify-desktop "Bluetooth disconnected" "Your Bluetooth devices have been disconnected." --urgency=low --app-name="Bluetooth Toggle" --icon=bluetooth-disabled
       else
         bluetoothctl power on
         bluetoothctl discoverable on
         if [ "$HOSTNAME" == "phasma" ]; then
-            bluetoothctl connect E4:50:EB:7D:86:22
+          bluetoothctl connect E4:50:EB:7D:86:22
         fi
+        notify-desktop "Bluetooth connected" "Your Bluetooth devices have been connected." --urgency=low --app-name="Bluetooth Toggle" --icon=bluetooth-active
       fi
     '';
   };
