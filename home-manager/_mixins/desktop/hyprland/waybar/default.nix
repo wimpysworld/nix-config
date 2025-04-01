@@ -1,4 +1,4 @@
-{ config, hostname, lib, pkgs, ... }:
+{ config, hostname, lib, pkgs, username, ... }:
 let
   wlogoutMargins = if hostname == "vader" then
     "--margin-top 960 --margin-bottom 960"
@@ -87,6 +87,64 @@ let
       rofi \
         -show drun \
         -theme "${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi"
+    '';
+  };
+  tailscaleCheck = pkgs.writeShellApplication {
+    name = "tailscale-check";
+    runtimeInputs = with pkgs; [
+      jq
+      tailscale
+    ];
+    text = ''
+      TS_JSON="$XDG_RUNTIME_DIR/tailscale-status.json"
+      if tailscale status --json > "$TS_JSON"; then
+        version="$(jq -r '.Version' "$TS_JSON")"
+        if [[ "$(jq -r '.BackendState' "$TS_JSON")" == "Running" ]]; then
+          dnsname="$(jq -r '.Self.DNSName' "$TS_JSON")"
+          if [[ "$(jq -r '.ExitNodeStatus.Online' "$TS_JSON")" == "true" ]]; then
+            exitnode="$(jq -r '.ExitNodeStatus.TailscaleIPs[0]' "$TS_JSON")"
+            echo -en "󰒄\n󰖂  Tailscale (v$version) connected via $exitnode as $dnsname\nexitnode"
+          else
+            tailnet="$(jq -r '.Self.CurrentTailnet.Name' "$TS_JSON")"
+            echo -en "󰱓\n󰖂  Tailscale (v$version) connected to $tailnet as $dnsname\nconnected"
+          fi
+        else
+          echo -en "󰅛\n󰖂  Tailscale (v$version) is disconnected\ndisconnected"
+        fi
+      else
+        echo -en "󰅛\n󰖂  Tailscale is not available\ndisconnected"
+      fi
+    '';
+  };
+  tailscaleToggle = pkgs.writeShellApplication {
+    name = "tailscale-toggle";
+    runtimeInputs = with pkgs; [
+      jq
+      notify-desktop
+      tailscale
+    ];
+    text = ''
+      case "$1" in
+        toggle)
+          if [[ "$(tailscale status --json | jq -r '.BackendState')" == "Stopped" ]]; then
+            tailscale up --operator=${username} --reset
+            notify-desktop "Tailscale connected" "Your Tailscale connection has been established successfully. You are now connected to your tailnet." --urgency=low --app-name="Tailscale Toggle" --icon=network-connect
+          else
+            tailscale down
+            notify-desktop "Tailscale disconnected" "Your Tailscale connection has been terminated. You are no longer connected to your tailnet." --urgency=low --app-name="Tailscale Toggle" --icon=network-disconnect
+          fi
+          ;;
+        toggle-mullvad)
+          if [[ "$(tailscale status --json | jq -r '.ExitNodeStatus.Online')" == "true" ]]; then
+            tailscale set --exit-node=
+            notify-desktop "Mullvad VPN disconnected" "Tailscale connection has been disconnected from Mullvad VPN." --urgency=low --app-name="Tailscale Toggle" --icon=changes-allow
+          else
+            SUGGESTED="$(tailscale exit-node suggest | head -n 1 | cut -d':' -f 2 | sed s'/ //g')"
+            tailscale set --exit-node="$SUGGESTED"
+            notify-desktop "Mullvad VPN connected" "Tailscale connection has been disconnected from Mullvad VPN." --urgency=low --app-name="Tailscale Toggle" --icon=changes-prevent
+          fi
+          ;;
+      esac
     '';
   };
 in
@@ -215,6 +273,7 @@ in
         #pulseaudio.input,
         #bluetooth,
         #network,
+        #custom-vpn,
         #battery,
         #backlight,
         #cpu,
@@ -231,6 +290,7 @@ in
         #pulseaudio.input:hover,
         #bluetooth:hover,
         #network:hover,
+        #custom-vpn:hover,
         #battery:hover,
         #backlight:hover,
         #cpu:hover,
@@ -259,6 +319,11 @@ in
         #network {
           border-radius: 0;
           color: @sapphire;
+        }
+
+        #custom-vpn {
+          border-radius: 0;
+          color: @sky;
         }
 
         #battery {
@@ -329,6 +394,7 @@ in
             "pulseaudio#input"
             "bluetooth"
             "network"
+            "custom/vpn"
             "battery"
             "backlight"
             "cpu"
@@ -482,6 +548,13 @@ in
             tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-disconnected = "󱚵  disconnected";
+          "custom/vpn" = {
+            format = "<big>{}</big>";
+            exec = "${lib.getExe tailscaleCheck}";
+            on-click = "${lib.getExe tailscaleToggle} toggle";
+            on-click-middle = "${lib.getExe tailscaleToggle} toggle-mullvad";
+            on-click-right = "xdg-open https://login.tailscale.com/admin/machines";
+            interval = 2;
           };
           bluetooth = {
             format = "<big>{icon}</big>";
