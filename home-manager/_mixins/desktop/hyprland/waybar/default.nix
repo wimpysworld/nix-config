@@ -539,7 +539,7 @@ in
             format = "<big>{icon}</big>";
             format-alt = " <small>{bandwidthDownBits}</small>  <small>{bandwidthUpBits}</small>";
             format-ethernet = "󰈀";
-            format-disconnected = "󱚵";
+            format-disconnected = "󰲜";
             format-linked = "";
             format-wifi = "󰖩";
             interval = 2;
@@ -547,7 +547,8 @@ in
             tooltip-format = "  {ifname}\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
-            tooltip-format-disconnected = "󱚵  disconnected";
+            tooltip-format-disconnected = "󰲜  disconnected";
+          };
           "custom/vpn" = {
             format = "<big>{}</big>";
             exec = "${lib.getExe tailscaleCheck}";
