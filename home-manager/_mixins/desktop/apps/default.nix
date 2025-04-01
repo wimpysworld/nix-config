@@ -24,12 +24,13 @@ in
     ./ulauncher
     ./vaults
     ./vscode
+    ./windsurf
     ./zed-editor
   ];
   home.packages = with pkgs; lib.optionals isLinux [
     celluloid               # video player
     decibels                # audio player
-    gnome-calculator        # calcualtor
+    gnome-calculator        # calculator
     loupe                   # image viewer
     papers                  # document viewer
   ];
