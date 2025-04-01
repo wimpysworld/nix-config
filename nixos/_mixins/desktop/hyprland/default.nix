@@ -161,10 +161,6 @@ in
       enable = true;
       terminal = "foot";
     };
-    nm-applet = lib.mkIf config.networking.networkmanager.enable {
-      enable = true;
-      indicator = true;
-    };
     seahorse.enable = isInstall;
     udevil.enable = true;
   };
