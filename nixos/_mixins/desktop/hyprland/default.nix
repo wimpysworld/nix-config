@@ -90,7 +90,7 @@ in
       HYPRCURSOR_THEME = "catppuccin-mocha-blue-cursors";
       NIXOS_OZONE_WL = 1;
       QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
-      # The the desktop sessions provide by the Hyprland package
+      # The the desktop sessions provided by the Hyprland package
       XDG_DATA_DIRS = [
         "${mkHiddenWaylandSession "hyprland"}/share"
         "${mkHiddenWaylandSession "hyprland-systemd"}/share"
@@ -99,20 +99,20 @@ in
     systemPackages =
       with pkgs;
       lib.optionals isInstall [
+        catppuccin-cursors
+        gnome-font-viewer
         hyprShim
         # Enable HEIC image previews in Nautilus
         libheif
         libheif.out
-        resources
-        gnome-font-viewer
-        nautilus  # file manager
-        zenity
+        nautilus
         polkit_gnome
-        wdisplays       # display configuration
+        resources
+        wdisplays
         wlr-randr
         wl-clipboard
         wtype
-        catppuccin-cursors
+        zenity
       ];
   };
 
