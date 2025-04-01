@@ -85,10 +85,6 @@ in
     # Enable HEIC image previews in Nautilus
     pathsToLink = [ "/share" "share/thumbnailers" ];
     sessionVariables = {
-      # Workaround GTK4 bug:
-      # - https://gitlab.gnome.org/GNOME/gtk/-/issues/7022
-      # - https://github.com/hyprwm/Hyprland/issues/7854
-      GDK_DISABLE = "vulkan";
       # Make sure the cursor size is the same in all environments
       HYPRCURSOR_SIZE = 32;
       HYPRCURSOR_THEME = "catppuccin-mocha-blue-cursors";
