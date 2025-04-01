@@ -27,17 +27,11 @@ function session_start() {
             fi
         fi
     done
-    if ! pgrep -u "$USER" -f trayscale &>/dev/null; then
-        trayscale --hide-window &
-    fi
     bluetooth_devices connect
 }
 
 function session_stop() {
     playerctl --all-players pause
-    if pgrep -u "$USER" -f trayscale &>/dev/null; then
-        pkill -u "$USER" trayscale
-    fi
     hypr-activity clear
 }
 
