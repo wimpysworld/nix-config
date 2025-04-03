@@ -1,6 +1,12 @@
-{ hostname, lib, pkgs, ... }:
+{ hostname, inputs, pkgs, ... }:
 let
   fontSize = if (hostname == "phasma" || hostname =="vader") then "30" else "18";
+  fuzzelBluetooth = pkgs.writeShellApplication {
+    name = "fuzzel-bluetooth";
+    text = ''
+      bzmenu --menu fuzzel"
+    '';
+  };
   # Workaround Nix failing to evaluate the DATA in fuzzel-emoji
   fuzzelEmoji = pkgs.writeTextFile {
     name = "fuzzel-emoji";
@@ -24,6 +30,8 @@ in
   # Fuzzel menus for app launcher, emoji picker, wifi manager, clipboard manager, etc
   home = {
     packages = with pkgs; [
+      inputs.bzmenu.packages.${pkgs.system}.default
+      fuzzelBluetooth
       fuzzelEmoji
       fuzzelWifi
       wl-clipboard
@@ -63,6 +71,7 @@ in
       bindr = [ "$mod, $mod_L, exec, ${pkgs.procps}/bin/pkill fuzzel || fuzzel --prompt '󱓞 '" ];
       bind = [
         "$mod, SPACE, exec, fuzzel --prompt '󰌧 ' --show-actions"
+        "CTRL ALT, B, exec, fuzzel-bluetooth"
         "CTRL ALT, H, exec, cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | ${pkgs.wl-clipboard-rs}/bin/wl-copy --primary --regular --trim-newline"
         "CTRL ALT, E, exec, fuzzel-emoji"
         "CTRL ALT, R, exec, $SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | ${pkgs.wl-clipboard-rs}/bin/wl-copy --primary --regular --trim-newline"

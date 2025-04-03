@@ -13,6 +13,8 @@
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
+    bzmenu.url = "github:e-tho/bzmenu";
+    bzmenu.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "https://flakehub.com/f/catppuccin/nix/*";
     catppuccin-vsc.url = "https://flakehub.com/f/catppuccin/vscode/*";
     catppuccin-vsc.inputs.nixpkgs.follows = "nixpkgs-unstable";
