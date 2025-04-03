@@ -17,22 +17,7 @@ let
       gawk
       gnugrep
     ];
-    text = ''
-      HOSTNAME=$(hostname -s)
-      state=$(bluetoothctl show | grep 'Powered:' | awk '{ print $2 }')
-      if [[ $state == 'yes' ]]; then
-        bluetoothctl discoverable off
-        bluetoothctl power off
-        notify-desktop "Bluetooth disconnected" "Your Bluetooth devices have been disconnected." --urgency=low --app-name="Bluetooth Toggle" --icon=bluetooth-disabled
-      else
-        bluetoothctl power on
-        bluetoothctl discoverable on
-        if [ "$HOSTNAME" == "phasma" ]; then
-          bluetoothctl connect E4:50:EB:7D:86:22
-        fi
-        notify-desktop "Bluetooth connected" "Your Bluetooth devices have been connected." --urgency=low --app-name="Bluetooth Toggle" --icon=bluetooth-active
-      fi
-    '';
+    text = builtins.readFile ./bluetooth-toggle.sh;
   };
   eyecandyCheck = pkgs.writeShellApplication {
     name = "eyecandy-check";
@@ -41,18 +26,7 @@ let
       gawk
       jq
     ];
-    text = ''
-      HYPR_ANIMATIONS=$(hyprctl getoption animations:enabled | awk 'NR==1{print $2}')
-      if [ "$HYPR_ANIMATIONS" -eq 1 ] ; then
-        echo -en "󱥰\n󱥰  Hyprland eye-candy is enabled\nactive"
-      else
-        echo -en "󱥱\n󱥱  Hyprland eye-candy is disabled\ninactive"
-        # Disable opacity on all clients every 4 seconds
-        if [ $(( $(date +%S) % 4 )) -eq 0 ]; then
-          hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl setprop address:{} forceopaque 1 lock
-        fi
-      fi
-    '';
+    text = builtins.readFile ./eyecandy-check.sh;
   };
   eyecandyToggle = pkgs.writeShellApplication {
     name = "eyecandy-toggle";
@@ -63,32 +37,14 @@ let
       notify-desktop
     ];
     # https://github.com/hyprwm/Hyprland/issues/3655#issuecomment-1784217814
-    text = ''
-      HYPR_ANIMATIONS=$(hyprctl getoption animations:enabled | awk 'NR==1{print $2}')
-      if [ "$HYPR_ANIMATIONS" -eq 1 ] ; then
-        hyprctl --batch "\
-          keyword animations:enabled 0;\
-          keyword decoration:drop_shadow 0;\
-          keyword decoration:blur:enabled 0;\
-          keyword layerrule:blur:enabled 0"
-          # Disable opacity on all clients
-          hyprctl clients -j | jq -r ".[].address" | xargs -I {} hyprctl setprop address:{} forceopaque 1 lock
-        notify-desktop "🍬🛑 Eye candy disabled" "Hyprland animations, shadows and blur effects have been disabled." --urgency=low --app-name="Hypr Candy"
-      else
-        hyprctl reload
-        notify-desktop "🍬👀 Eye candy enabled" "Hyprland animations, shadows and blur effects have been restored." --urgency=low --app-name="Hypr Candy"
-      fi
-    '';
+    text = builtins.readFile ./eyecandy-toggle.sh;
   };
   rofiAppGrid = pkgs.writeShellApplication {
     name = "rofi-appgrid";
     runtimeInputs = with pkgs; [
       rofi-wayland
     ];
-    text = ''
-      rofi \
-        -show drun \
-        -theme "${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi"
+    text = ''rofi -show drun -theme "${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi"
     '';
   };
   tailscaleCheck = pkgs.writeShellApplication {
@@ -97,26 +53,7 @@ let
       jq
       tailscale
     ];
-    text = ''
-      TS_JSON="$XDG_RUNTIME_DIR/tailscale-status.json"
-      if tailscale status --json > "$TS_JSON"; then
-        version="$(jq -r '.Version' "$TS_JSON")"
-        if [[ "$(jq -r '.BackendState' "$TS_JSON")" == "Running" ]]; then
-          dnsname="$(jq -r '.Self.DNSName' "$TS_JSON")"
-          if [[ "$(jq -r '.ExitNodeStatus.Online' "$TS_JSON")" == "true" ]]; then
-            exitnode="$(jq -r '.ExitNodeStatus.TailscaleIPs[0]' "$TS_JSON")"
-            echo -en "󰦝\n󰖂  Tailscale (v$version) connected via $exitnode as $dnsname\nexitnode"
-          else
-            tailnet="$(jq -r '.CurrentTailnet.Name' "$TS_JSON")"
-            echo -en "󰴳\n󰖂  Tailscale (v$version) connected to $tailnet as $dnsname\nconnected"
-          fi
-        else
-          echo -en "󰦞\n󰖂  Tailscale (v$version) is disconnected\ndisconnected"
-        fi
-      else
-        echo -en "󰻌\n󰖂  Tailscale is not available\ndisconnected"
-      fi
-    '';
+    text = builtins.readFile ./tailscale-check.sh;
   };
   tailscaleToggle = pkgs.writeShellApplication {
     name = "tailscale-toggle";
@@ -125,29 +62,7 @@ let
       notify-desktop
       tailscale
     ];
-    text = ''
-      case "$1" in
-        toggle)
-          if [[ "$(tailscale status --json | jq -r '.BackendState')" == "Stopped" ]]; then
-            tailscale up --operator=${username} --reset
-            notify-desktop "Tailscale connected" "Your Tailscale connection has been established successfully. You are now connected to your tailnet." --urgency=low --app-name="Tailscale Toggle" --icon=network-connect
-          else
-            tailscale down
-            notify-desktop "Tailscale disconnected" "Your Tailscale connection has been terminated. You are no longer connected to your tailnet." --urgency=low --app-name="Tailscale Toggle" --icon=network-disconnect
-          fi
-          ;;
-        toggle-mullvad)
-          if [[ "$(tailscale status --json | jq -r '.ExitNodeStatus.Online')" == "true" ]]; then
-            tailscale set --exit-node=
-            notify-desktop "Mullvad VPN disconnected" "Tailscale connection has been disconnected from Mullvad VPN." --urgency=low --app-name="Tailscale Toggle" --icon=changes-allow
-          else
-            SUGGESTED="$(tailscale exit-node suggest | head -n 1 | cut -d':' -f 2 | sed s'/ //g')"
-            tailscale set --exit-node="$SUGGESTED"
-            notify-desktop "Mullvad VPN connected" "Tailscale has been connected to Mullvad VPN." --urgency=low --app-name="Tailscale Toggle" --icon=changes-prevent
-          fi
-          ;;
-      esac
-    '';
+    text = builtins.readFile ./tailscale-toggle.sh;
   };
 in
 {
