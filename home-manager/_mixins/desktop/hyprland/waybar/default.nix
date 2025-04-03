@@ -534,7 +534,7 @@ in
             format-source = "󰍬";
             format-source-muted = "󰍭";
             on-click-middle = "${pkgs.avizo}/bin/volumectl -d -m toggle-mute";
-            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
+            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.easyeffects}";
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -m up 2";
             on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -m down 2";
             tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
@@ -551,8 +551,8 @@ in
             format-linked = "";
             format-wifi = "󰖩";
             interval = 2;
-            on-click-middle = "fuzzel-wifi";
-            on-click-right = "hyprctl dispatch exec [workspace current] ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
+            on-click-middle = "hyprctl dispatch exec [workspace current] ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
+            on-click-right = "fuzzel-wifi";
             tooltip-format = "  {ifname}\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
