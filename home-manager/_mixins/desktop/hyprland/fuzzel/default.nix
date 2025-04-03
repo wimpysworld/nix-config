@@ -16,14 +16,9 @@ let
   };
   fuzzelWifi = pkgs.writeShellApplication {
     name = "fuzzel-wifi";
-    runtimeInputs = with pkgs; [
-      gawk
-      gnugrep
-      gnused
-      notify-desktop
-      networkmanager
-    ];
-    text = builtins.readFile ./fuzzel-wifi.sh;
+    text = ''
+      iwmenu --menu fuzzel"
+    '';
   };
 in
 {
@@ -31,6 +26,7 @@ in
   home = {
     packages = with pkgs; [
       inputs.bzmenu.packages.${pkgs.system}.default
+      inputs.iwmenu.packages.${pkgs.system}.default
       fuzzelBluetooth
       fuzzelEmoji
       fuzzelWifi

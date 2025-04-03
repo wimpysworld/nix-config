@@ -15,6 +15,8 @@
 
     bzmenu.url = "github:e-tho/bzmenu";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
+    iwmenu.url = "github:e-tho/iwmenu";
+    iwmenu.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "https://flakehub.com/f/catppuccin/nix/*";
     catppuccin-vsc.url = "https://flakehub.com/f/catppuccin/vscode/*";
     catppuccin-vsc.inputs.nixpkgs.follows = "nixpkgs-unstable";
