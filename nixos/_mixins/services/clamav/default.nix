@@ -9,8 +9,8 @@ with lib;
 let
   # Declare which hosts have AV scanning enabled.
   installOn = [
-    "phasma"
-    "vader"
+    "phasmaX"
+    "vaderX"
   ];
   sus-user-dirs = [ "Downloads" ];
   all-normal-users = attrsets.filterAttrs (_username: config: config.isNormalUser) config.users.users;
