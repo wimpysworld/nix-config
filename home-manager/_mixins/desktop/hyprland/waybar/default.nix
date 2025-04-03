@@ -108,7 +108,7 @@ let
             echo -en "󰦝\n󰖂  Tailscale (v$version) connected via $exitnode as $dnsname\nexitnode"
           else
             tailnet="$(jq -r '.CurrentTailnet.Name' "$TS_JSON")"
-            echo -en "󰕥\n󰖂  Tailscale (v$version) connected to $tailnet as $dnsname\nconnected"
+            echo -en "󰴳\n󰖂  Tailscale (v$version) connected to $tailnet as $dnsname\nconnected"
           fi
         else
           echo -en "󰦞\n󰖂  Tailscale (v$version) is disconnected\ndisconnected"
@@ -143,7 +143,7 @@ let
           else
             SUGGESTED="$(tailscale exit-node suggest | head -n 1 | cut -d':' -f 2 | sed s'/ //g')"
             tailscale set --exit-node="$SUGGESTED"
-            notify-desktop "Mullvad VPN connected" "Tailscale connection has been disconnected from Mullvad VPN." --urgency=low --app-name="Tailscale Toggle" --icon=changes-prevent
+            notify-desktop "Mullvad VPN connected" "Tailscale has been connected to Mullvad VPN." --urgency=low --app-name="Tailscale Toggle" --icon=changes-prevent
           fi
           ;;
       esac
