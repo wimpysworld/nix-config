@@ -1,11 +1,17 @@
-{ hostname, inputs, pkgs, ... }:
+{ config, hostname, inputs, lib, pkgs, ... }:
 let
   fontSize = if (hostname == "phasma" || hostname =="vader") then "30" else "18";
+  fuzzelActions = pkgs.writeShellApplication {
+    name = "fuzzel-actions";
+    text = "fuzzel --prompt '󰌧 ' --show-actions";
+  };
   fuzzelBluetooth = pkgs.writeShellApplication {
     name = "fuzzel-bluetooth";
-    text = ''
-      bzmenu --menu fuzzel"
-    '';
+    text = ''bzmenu --menu custom --menu-command "fuzzel --dmenu --prompt '󰂯 '"'';
+  };
+  fuzzelClipboard = pkgs.writeShellApplication {
+    name = "fuzzel-clipboard";
+    text = "cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | wl-copy --primary --trim-newline";
   };
   # Workaround Nix failing to evaluate the DATA in fuzzel-emoji
   fuzzelEmoji = pkgs.writeTextFile {
@@ -14,11 +20,17 @@ let
     destination = "/bin/fuzzel-emoji";
     text = builtins.readFile ./fuzzel-emoji.sh;
   };
+  fuzzelHistory = pkgs.writeShellApplication {
+    name = "fuzzel-history";
+    text = "$SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | wl-copy --primary --trim-newline";
+  };
+  fuzzelLauncher = pkgs.writeShellApplication {
+    name = "fuzzel-launcher";
+    text = "fuzzel --prompt '󱓞 '";
+  };
   fuzzelWifi = pkgs.writeShellApplication {
     name = "fuzzel-wifi";
-    text = ''
-      iwmenu --menu fuzzel"
-    '';
+    text = ''iwmenu --menu custom --menu-command "fuzzel --dmenu --prompt '󱚾 ' --width=40 {password_flag:--prompt '󱚿 ' --placeholder='{placeholder}' --password --lines 0}"'';
   };
 in
 {
@@ -27,8 +39,12 @@ in
     packages = with pkgs; [
       inputs.bzmenu.packages.${pkgs.system}.default
       inputs.iwmenu.packages.${pkgs.system}.default
+      fuzzelActions
       fuzzelBluetooth
+      fuzzelClipboard
       fuzzelEmoji
+      fuzzelHistory
+      fuzzelLauncher
       fuzzelWifi
       wl-clipboard
       wtype
@@ -62,15 +78,15 @@ in
       systemdTarget = "hyprland-session.target";
     };
   };
-  wayland.windowManager.hyprland = {
+  wayland.windowManager.hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
     settings = {
-      bindr = [ "$mod, $mod_L, exec, ${pkgs.procps}/bin/pkill fuzzel || fuzzel --prompt '󱓞 '" ];
+      bindr = [ "$mod, $mod_L, exec, ${pkgs.procps}/bin/pkill fuzzel || fuzzel-launcher" ];
       bind = [
-        "$mod, SPACE, exec, fuzzel --prompt '󰌧 ' --show-actions"
+        "$mod, SPACE, exec, fuzzel-actions"
         "CTRL ALT, B, exec, fuzzel-bluetooth"
-        "CTRL ALT, H, exec, cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | ${pkgs.wl-clipboard-rs}/bin/wl-copy --primary --regular --trim-newline"
         "CTRL ALT, E, exec, fuzzel-emoji"
-        "CTRL ALT, R, exec, $SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | ${pkgs.wl-clipboard-rs}/bin/wl-copy --primary --regular --trim-newline"
+        "CTRL ALT, P, exec, fuzzel-clipboard"
+        "CTRL ALT, R, exec, fuzzel-history"
         "CTRL ALT, W, exec, fuzzel-wifi"
       ];
     };
