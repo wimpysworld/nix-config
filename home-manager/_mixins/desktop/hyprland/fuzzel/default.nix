@@ -8,12 +8,24 @@ let
     destination = "/bin/fuzzel-emoji";
     text = builtins.readFile ./fuzzel-emoji.sh;
   };
+  fuzzelWifi = pkgs.writeShellApplication {
+    name = "fuzzel-wifi";
+    runtimeInputs = with pkgs; [
+      gawk
+      gnugrep
+      gnused
+      notify-desktop
+      networkmanager
+    ];
+    text = builtins.readFile ./fuzzel-wifi.sh;
+  };
 in
 {
   # Fuzzel menus for app launcher, emoji picker, wifi manager, clipboard manager, etc
   home = {
     packages = with pkgs; [
       fuzzelEmoji
+      fuzzelWifi
       wl-clipboard
       wtype
     ];
@@ -54,6 +66,7 @@ in
         "CTRL ALT, H, exec, cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | ${pkgs.wl-clipboard-rs}/bin/wl-copy --primary --regular --trim-newline"
         "CTRL ALT, E, exec, fuzzel-emoji"
         "CTRL ALT, R, exec, $SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | ${pkgs.wl-clipboard-rs}/bin/wl-copy --primary --regular --trim-newline"
+        "CTRL ALT, W, exec, fuzzel-wifi"
       ];
     };
   };
