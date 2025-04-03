@@ -156,6 +156,9 @@
   services = {
     fwupd.enable = isInstall;
     hardware.bolt.enable = true;
+    irqbalance = lib.mkIf (! config.services.qemuGuest.enable) {
+      enable = true;
+    };
     smartd.enable = isInstall;
   };
 
