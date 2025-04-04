@@ -7,7 +7,7 @@
   ...
 }:
 let
-  xkbLayout = if (hostname == "phasma") then "us" else "gb";
+  xkbLayout = "gb";
   monitors = (import ./monitors.nix { }).${hostname};
 in
 {
