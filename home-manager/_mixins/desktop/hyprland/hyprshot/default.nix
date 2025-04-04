@@ -43,10 +43,9 @@
   wayland.windowManager.hyprland = {
     settings = {
       bind = [
-        ", Print, exec, ${lib.getExe pkgs.hyprshot} --mode output --raw | ${lib.getExe pkgs.satty} --filename -"
-        "ALT, Print, exec, ${lib.getExe pkgs.hyprshot} --mode window --raw | ${lib.getExe pkgs.satty} --filename -"
+        "ALT, Print, exec, ${lib.getExe pkgs.hyprshot} --mode active --mode window --raw | ${lib.getExe pkgs.satty} --filename -"
         "SHIFT, Print, exec, ${lib.getExe pkgs.hyprshot} --mode region --raw | ${lib.getExe pkgs.satty} --filename -"
-        "CTRL ALT, Print, exec, ${lib.getExe pkgs.hyprshot} --mode active --raw | ${lib.getExe pkgs.satty} --filename -"
+        "CTRL ALT, Print, exec, ${lib.getExe pkgs.hyprshot} --mode active --mode output --raw | ${lib.getExe pkgs.satty} --filename -"
       ];
     };
   };
