@@ -24,6 +24,14 @@ let
     name = "fuzzel-history";
     text = "$SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | wl-copy --primary --trim-newline";
   };
+  fuzzelHyprpicker = pkgs.writeShellApplication {
+    name = "fuzzel-hyprpicker";
+    runtimeInputs = with pkgs; [
+      hyprpicker
+      notify-desktop
+    ];
+    text = builtins.readFile ./fuzzel-hyprpicker.sh;
+  };
   fuzzelHyprshot = pkgs.writeShellApplication {
     name = "fuzzel-hyprshot";
     runtimeInputs = with pkgs; [
@@ -53,6 +61,7 @@ in
       fuzzelClipboard
       fuzzelEmoji
       fuzzelHistory
+      fuzzelHyprpicker
       fuzzelHyprshot
       fuzzelLauncher
       fuzzelWifi
@@ -96,6 +105,7 @@ in
         "$mod, SPACE, exec, fuzzel-actions"
         "CTRL ALT, B, exec, fuzzel-bluetooth"
         "CTRL ALT, E, exec, fuzzel-emoji"
+        "CTRL ALT, K, exec, fuzzel-hyprpicker"
         "CTRL ALT, P, exec, fuzzel-clipboard"
         "CTRL ALT, R, exec, fuzzel-history"
         "CTRL ALT, W, exec, fuzzel-wifi"
