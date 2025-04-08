@@ -8,7 +8,7 @@ NOTIFY="notify-desktop --app-name=$APP_NAME --icon=org.gnome.design.Palette"
 # Set up the storage directory and file
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/$APP_NAME"
 HISTORY_FILE="$CONFIG_DIR/colors.txt"
-ICONS_DIR=$CONFIG_DIR/icons
+ICONS_DIR="$CONFIG_DIR/icons"
 
 # Create directories and history if they don't exist
 mkdir -p "$ICONS_DIR"
