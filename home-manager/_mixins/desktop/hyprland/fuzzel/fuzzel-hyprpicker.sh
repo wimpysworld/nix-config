@@ -42,7 +42,7 @@ function add_color_to_history() {
     echo "$color" > "$HISTORY_FILE.new"
     cat "$HISTORY_FILE" >> "$HISTORY_FILE.new"
     # Limit history to 16 entries
-    head -n 16 "$HISTORY_FILE.new" > "$HISTORY_FILE"
+    head -n 16 "$HISTORY_FILE.new" > "$HISTORY_FILE" && rm "$HISTORY_FILE.new"
   fi
 }
 
@@ -64,10 +64,8 @@ EOF
 # Function to pick a color from screen
 function pick_color() {
   color=$(hyprpicker --format=hex --no-fancy --autocopy)
-  $NOTIFY "Color Picker" "Color <span color=\"$color\">󰝤 $color</span> copied to clipboard."
-
-  # Check if a color was picked (user didn't cancel)
   if [ -n "$color" ]; then
+    $NOTIFY "Color Picker" "Color <span color=\"$color\">󰝤 $color</span> copied to clipboard."
     # Remove leading # if present
     color="${color#\#}"
     generate_svg_icon "$color"
@@ -81,23 +79,23 @@ function build_menu() {
   # Add history items if they exist
   if [ -s "$HISTORY_FILE" ]; then
     while read -r color; do
+      # If the preview icon doesn't exist, generate it
+      if [ ! -e "$ICONS_DIR/$color.svg" ]; then
+        generate_svg_icon "$color"
+      fi
       # Display the color with a preview
       echo -e "#$color\0icon\x1f$ICONS_DIR/$color.svg"
     done < "$HISTORY_FILE"
   fi
 }
 
-function main() {
-  create_eye_dropper_svg
-  selection=$(build_menu | fuzzel --dmenu --prompt="󰏘 " --lines=16 --width=24)
-  [[ -z "$selection" ]] && exit 0
+create_eye_dropper_svg
+selection=$(build_menu | fuzzel --dmenu --prompt="󰏘 " --lines=16 --width=24)
+[[ -z "$selection" ]] && exit 0
 
-  if [[ "$selection" == "Pick a color"* ]]; then
-    pick_color
-  else
-    echo "$selection" | wl-copy --trim-newline
-    $NOTIFY "Color Picker" "Color <span color=\"$selection\">󰝤 $selection</span> copied to clipboard."
-  fi
-}
-
-main
+if [[ "$selection" == "Pick a color"* ]]; then
+  pick_color
+else
+  echo "$selection" | wl-copy --trim-newline
+  $NOTIFY "Color Picker" "Color <span color=\"$selection\">󰝤 $selection</span> copied to clipboard."
+fi
