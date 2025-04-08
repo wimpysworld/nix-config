@@ -29,15 +29,20 @@ let
     runtimeInputs = with pkgs; [
       hyprpicker
       notify-desktop
+      wl-clipboard
     ];
     text = builtins.readFile ./fuzzel-hyprpicker.sh;
   };
   fuzzelHyprshot = pkgs.writeShellApplication {
     name = "fuzzel-hyprshot";
     runtimeInputs = with pkgs; [
+      gnugrep
       hyprshot
       jq
+      pulseaudio
       satty
+      slurp
+      wl-screenrec
     ];
     text = builtins.readFile ./fuzzel-hyprshot.sh;
   };
