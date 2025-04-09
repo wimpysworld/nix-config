@@ -11,7 +11,6 @@ let
 in
 lib.mkIf (lib.elem username installFor) {
   nixpkgs.overlays = [
-    inputs.catppuccin-vsc.overlays.default
     inputs.nix-vscode-extensions.overlays.default
   ];
 
@@ -40,16 +39,6 @@ lib.mkIf (lib.elem username installFor) {
       extensions =
         with pkgs;
         [
-          # All the Catppuccin theme options are available as overrides
-          (catppuccin-vsc.override {
-            accent = "blue";
-            boldKeywords = false;
-            italicComments = true;
-            italicKeywords = false;
-            extraBordersEnabled = false;
-            workbenchMode = "default";
-            bracketMode = "rainbow";
-          })
           vscode-marketplace.aaron-bond.better-comments
           vscode-marketplace.alefragnani.project-manager
           vscode-marketplace.alexgb.nelua

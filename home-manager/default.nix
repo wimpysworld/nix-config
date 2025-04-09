@@ -19,7 +19,7 @@ in
     # outputs.homeManagerModules.example
 
     # Modules exported from other flakes:
-    inputs.catppuccin.homeManagerModules.catppuccin
+    inputs.catppuccin.homeModules.catppuccin
     inputs.sops-nix.homeManagerModules.sops
     inputs.nix-index-database.hmModules.nix-index
     inputs.vscode-server.nixosModules.home
@@ -41,6 +41,7 @@ in
     fzf.enable = config.programs.fzf.enable;
     micro.enable = config.programs.micro.enable;
     starship.enable = config.programs.starship.enable;
+    vscode.enable = config.programs.vscode.enable;
     yazi.enable = config.programs.yazi.enable;
   };
 
