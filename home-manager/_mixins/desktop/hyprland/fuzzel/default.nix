@@ -108,6 +108,7 @@ in
       bind = [
         ", Print, exec, fuzzel-hyprshot"
         "$mod, SPACE, exec, fuzzel-actions"
+        "CTRL ALT, SPACE, exec, hypr-activity-menu"
         "CTRL ALT, B, exec, fuzzel-bluetooth"
         "CTRL ALT, E, exec, fuzzel-emoji"
         "CTRL ALT, K, exec, fuzzel-hyprpicker"
