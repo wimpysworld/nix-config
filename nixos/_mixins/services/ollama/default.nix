@@ -41,20 +41,22 @@ in
       enable = hasAcceleration;
       host = if hostname == "revan" then "127.0.0.1" else "0.0.0.0";
       loadModels = [
-        "gemma3:12b"                #128k (multi-modal)
-        "mxbai-embed-large:335m"
+        "falcon3:7b"                  #32k  (task)
+        "gemma3:12b"                  #128k (multi-modal)
+        "mxbai-embed-large:latest"
         "nomic-embed-text:latest"
-        "phi4-mini:3.8b"            #128k (task)
+        "phi4-mini:3.8b"              #128k (task)
       ] ++ lib.optionals (hostname == "revan") [
-        #"deepseek-r1:32b"          #128k
+        #"deepseek-r1:32b"            #128k
         #"qwq:latest"                    
       ] ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
-        "codestral:22b"             #32k  (code)
-        "deepcoder:14b"             #128k (code) 
-        "deepseek-r1:14b"           #128k (code)
-        "mistral-small3.1:latest"   #128k (multi-modal)
-        "phi4:14b"                  #16k  (general)
-        "qwen2.5-coder:14b"         #128k (code)
+        "codestral:22b"               #32k  (code)
+        "deepcoder:14b"               #128k (code) 
+        "deepseek-r1:14b"             #128k (code)
+        "mistral-small3.1:latest"     #128k (multi-modal)
+        "vanilj/phi-4-unsloth:latest" #128k (general)
+        "qwen2.5:14b-instruct"        #128k (general)
+        "qwen2.5-coder:14b"           #128k (code)
       ];
     };
     open-webui = {
@@ -76,18 +78,16 @@ in
         ENABLE_SEARCH_QUERY = "true";
         ENABLE_SIGNUP = "true";
         IMAGE_GENERATION_ENGINE = "openai";
-        MODEL_FILTER_LIST = if hostname == "revan" 
-          then "gemma3:12b;phi4-mini:3.8b"
-          else "codestral:22b;deepcoder:14b;deepseek-r1:14b;gemma3:12b:mistral-small3.1:latest;phi4:14b;phi4-mini:3.8b;qwen2.5-coder:14b";
+        MODEL_FILTER_LIST = "codestral:22b;deepcoder:14b;deepseek-r1:14b;falcon3:7b;gemma3:12b:mistral-small3.1:latest;vanilj/phi-4-unsloth:latest;phi4-mini:3.8b;qwen2.5:14b-instruct;qwen2.5-coder:14b";
         OLLAMA_BASE_URLS = baseUrls;
         RAG_EMBEDDING_BATCH_SIZE = "16";
         RAG_EMBEDDING_ENGINE = "ollama";
-        RAG_EMBEDDING_MODEL = "mxbai-embed-large:335m";
+        RAG_EMBEDDING_MODEL = "nomic-embed-text:latest";
         # https://github.com/open-webui/open-webui/issues/7333#issuecomment-2512287381
         RAG_OLLAMA_BASE_URL = "http://config.services.ollama.host}:${toString config.services.ollama.port}";
         RAG_TEXT_SPLITTER = "token";
         RAG_WEB_SEARCH_ENGINE = "brave";
-        RAG_WEB_SEARCH_RESULT_COUNT = "5";
+        RAG_WEB_SEARCH_RESULT_COUNT = "10";
         RAG_WEB_SEARCH_CONCURRENT_REQUESTS = "2";
         RESET_CONFIG_ON_START = "true";
         TASK_MODEL = "phi4-mini:latest";
