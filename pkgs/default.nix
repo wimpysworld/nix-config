@@ -14,6 +14,7 @@ pkgs:
   # Local packages to prevent unintended upgrades or carrying patches
   hyprpicker = pkgs.callPackage ./hyprpicker { };
   gotosocial = pkgs.callPackage ./gotosocial { };
+  ollama = pkgs.unstable.callPackage ./ollama { };
   open-webui = pkgs.unstable.callPackage ./open-webui { };
   owncast = pkgs.callPackage ./owncast { };
 

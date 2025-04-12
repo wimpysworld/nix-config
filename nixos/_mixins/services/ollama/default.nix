@@ -40,7 +40,6 @@ in
       acceleration = lib.mkIf hasAcceleration accelerationMap.${hostname};
       enable = hasAcceleration;
       host = if hostname == "revan" then "127.0.0.1" else "0.0.0.0";
-      package = pkgs.unstable.ollama;
       loadModels = [
         "gemma3:12b"                #128k (multi-modal)
         "mxbai-embed-large:335m"
@@ -53,7 +52,7 @@ in
         "codestral:22b"             #32k  (code)
         "deepcoder:14b"             #128k (code) 
         "deepseek-r1:14b"           #128k (code)
-        #"mistral-small3.1:latest"   #128k (multi-modal)
+        "mistral-small3.1:latest"   #128k (multi-modal)
         "phi4:14b"                  #16k  (general)
         "qwen2.5-coder:14b"         #128k (code)
       ];

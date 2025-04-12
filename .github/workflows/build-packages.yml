@@ -19,6 +19,7 @@ jobs:
           - defold
           - heynote
           - hyprpicker
+          - ollama
           - open-webui
           - station
           - gotosocial
