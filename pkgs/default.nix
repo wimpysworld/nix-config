@@ -8,13 +8,13 @@ pkgs:
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
   heynote = pkgs.callPackage ./heynote { };
-  open-webui = pkgs.callPackage ./open-webui { };
   station = pkgs.callPackage ./station { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
 
   # Local packages to prevent unintended upgrades or carrying patches
   hyprpicker = pkgs.callPackage ./hyprpicker { };
   gotosocial = pkgs.callPackage ./gotosocial { };
+  open-webui = pkgs.unstable.callPackage ./open-webui { };
   owncast = pkgs.callPackage ./owncast { };
 
   obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };
