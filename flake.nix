@@ -186,7 +186,23 @@
       # Custom NixOS modules
       nixosModules = import ./modules/nixos;
       # Custom packages; acessible via 'nix build', 'nix shell', etc
-      packages = helper.forAllSystems (system: import ./pkgs nixpkgs.legacyPackages.${system});
+      packages = helper.forAllSystems (system:
+        let
+          # Import nixpkgs for the target system, applying overlays directly
+          pkgsWithOverlays = import nixpkgs {
+             inherit system;
+             config = { allowUnfree = true; }; # Ensure consistent config
+             # Pass the list of overlay functions directly
+             overlays = builtins.attrValues self.overlays;
+          };
+          # Import the function from pkgs/default.nix
+          pkgsFunction = import ./pkgs;
+          # Call the function with the fully overlaid package set
+          customPkgs = pkgsFunction pkgsWithOverlays;
+        in
+        # Return the set of custom packages
+        customPkgs
+      );
       # Formatter for .nix files, available via 'nix fmt'
       formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
     };
