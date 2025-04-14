@@ -43,17 +43,25 @@ in
       loadModels = [
         "falcon3:7b"                  #32k  (task)
         "gemma3:12b"                  #128k (multi-modal)
-        "mxbai-embed-large:latest"
-        "nomic-embed-text:latest"
+        "mxbai-embed-large:latest"    #     (embedding)
+        "nomic-embed-text:latest"     #     (embedding)
         "phi4-mini:3.8b"              #128k (task)
       ] ++ lib.optionals (hostname == "revan") [
-        #"deepseek-r1:32b"            #128k
-        #"qwq:latest"                    
+        #"codestral:22b"               #32k  (code)
+        #"cogito:32b"                  #128k (stem)
+        #"deepcoder:14b"               #128k (code) 
+        #"deepseek-r1:32b"             #128k (reasoning)
+        #"mistral-small3.1:24b"        #128k (multi-modal)
+        #"phi-4:14b"                   #16k  (general)
+        #"qwen2.5:32b-instruct"        #128k (general)
+        #"qwen2.5-coder:32b"           #128k (code)
+        #"qwq:latest"                  #128k (reasoning)
       ] ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
         "codestral:22b"               #32k  (code)
+        "cogito:14b"                  #128k (stem)
         "deepcoder:14b"               #128k (code) 
-        "deepseek-r1:14b"             #128k (code)
-        "mistral-small3.1:latest"     #128k (multi-modal)
+        "deepseek-r1:14b"             #128k (reasoning)
+        "mistral-small3.1:24b"        #128k (multi-modal)
         "phi-4:14b"                   #16k  (general)
         "qwen2.5:14b-instruct"        #128k (general)
         "qwen2.5-coder:14b"           #128k (code)
