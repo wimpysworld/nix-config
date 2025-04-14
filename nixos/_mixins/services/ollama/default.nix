@@ -54,7 +54,7 @@ in
         "deepcoder:14b"               #128k (code) 
         "deepseek-r1:14b"             #128k (code)
         "mistral-small3.1:latest"     #128k (multi-modal)
-        "vanilj/phi-4-unsloth:latest" #128k (general)
+        "phi-4:14b"                   #16k  (general)
         "qwen2.5:14b-instruct"        #128k (general)
         "qwen2.5-coder:14b"           #128k (code)
       ];
