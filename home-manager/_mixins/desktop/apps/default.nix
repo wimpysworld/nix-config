@@ -24,7 +24,6 @@ in
     ./ulauncher
     ./vaults
     ./vscode
-    ./windsurf
     ./zed-editor
   ];
   home.packages = with pkgs; lib.optionals isLinux [
