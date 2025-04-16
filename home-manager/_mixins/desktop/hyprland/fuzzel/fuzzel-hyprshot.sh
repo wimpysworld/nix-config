@@ -161,7 +161,7 @@ case "$selection" in
     hyprctl dispatch focuswindow "address:$window_address"
 
     # Wait a moment to ensure any transitions are complete
-    sleep 0.5
+    sleep 0.75
     hyprshot --mode active --mode window --raw --silent | satty --filename - &
     # Wait a moment for satty to initialize
     sleep 0.25
@@ -183,9 +183,7 @@ case "$selection" in
     # Extract monitor name from selection - get everything before the first space or parenthesis
     monitor_name=$(echo "$monitor_selection" | grep --only-matching '^[^ (]*')
 
-    # Wait a moment to ensure any transitions are complete
-    sleep 0.5
-
+    countdown
     hyprshot --mode output --mode "$monitor_name" --raw --silent | satty --filename -
     ;;
   "󰾊 Stop Recording") stop_recording;;
