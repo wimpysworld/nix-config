@@ -42,12 +42,13 @@
         fixedsys-core-font
         fixedsys-excelsior-font
         impact-label-font
+        lato
         mocha-mattari-font
         poppins-font
         spaceport-2006-font
-        zx-spectrum-7-font
         ubuntu_font_family
         unscii
+        zx-spectrum-7-font
       ];
 
     fontconfig = {

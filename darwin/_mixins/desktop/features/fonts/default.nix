@@ -8,6 +8,7 @@
           "NerdFontsSymbolsOnly"
         ];
       })
+      corefonts
       fira
       font-awesome
       liberation_ttf
@@ -27,6 +28,7 @@
       fixedsys-core-font
       fixedsys-excelsior-font
       impact-label-font
+      lato
       mocha-mattari-font
       poppins-font
       spaceport-2006-font
