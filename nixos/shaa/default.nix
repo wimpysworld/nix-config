@@ -34,7 +34,6 @@
     # Thinkpad T14s AMD Gen 1 does not wake up from suspend using 'deep' sleep.
     kernelParams = [
       "acpi_backlight=native"
-      "mem_sleep_default=s2idle"
     ];
   };
 
