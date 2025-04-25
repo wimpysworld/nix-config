@@ -17,6 +17,7 @@ pkgs:
   ollama = pkgs.unstable.callPackage ./ollama { };
   open-webui = pkgs.unstable.callPackage ./open-webui { };
   owncast = pkgs.callPackage ./owncast { };
+  podman-desktop = pkgs.callPackage ./podman-desktop { };
 
   obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };
   obs-advanced-masks = pkgs.callPackage ./obs-plugins/obs-advanced-masks.nix { };
