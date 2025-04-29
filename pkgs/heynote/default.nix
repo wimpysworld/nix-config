@@ -6,11 +6,11 @@
   writeScript,
 }:
 let
-  version = "2.1.1";
+  version = "2.2.1";
   pname = "heynote";
   src = fetchurl {
     url = "https://github.com/heyman/heynote/releases/download/v${version}/Heynote_${version}_x86_64.AppImage";
-    hash = "sha256-qiNQtCBERmGyJh9bRmOQEfkjYyZmPrAjAJl+839jO3M=";
+    hash = "sha256-IUy5EAtUk5+e64DC4VXXTgkyrG3mNJiItf1d4DR/fms=";
   };
   appimageContents = appimageTools.extractType2 {
     inherit pname version src;
@@ -24,7 +24,7 @@ appimageTools.wrapType2 {
         --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
     install -m 444 -D ${appimageContents}/${pname}.desktop \
       $out/share/applications/${pname}.desktop
-    install -m 444 -D ${appimageContents}/usr/share/icons/hicolor/0x0/apps/${pname}.png \
+    install -m 444 -D ${appimageContents}/usr/share/icons/hicolor/512x512/apps/${pname}.png \
       $out/share/icons/hicolor/512x512/apps/${pname}.png
     substituteInPlace $out/share/applications/${pname}.desktop \
       --replace-fail 'Exec=AppRun' 'Exec=${pname}'
