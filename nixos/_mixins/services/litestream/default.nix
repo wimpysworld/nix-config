@@ -1,7 +1,8 @@
 { config, hostname, lib, pkgs, username, ... }:
 let
   installOn = [ "malak" ];
-  replicateGotosocial = config.services.litestream.enable && config.services.gotosocial.enable && config.services.gotosocial.settings.db-type == "sqlite";
+  #replicateGotosocial = config.services.litestream.enable && config.services.gotosocial.enable && config.services.gotosocial.settings.db-type == "sqlite";
+  replicateGotosocial = false;
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
 lib.mkIf (lib.elem hostname installOn) {
@@ -20,7 +21,7 @@ lib.mkIf (lib.elem hostname installOn) {
   ];
   services = {
     litestream = {
-      enable = true;
+      enable = false;
       settings = {
         dbs = lib.optionals replicateGotosocial [{
           path = "${config.services.gotosocial.settings.db-address}";
