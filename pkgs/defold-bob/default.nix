@@ -4,23 +4,23 @@
   makeWrapper,
   stdenv,
   writeScript,
-  jdk17,
+  jdk21,
   libXext,
   libXtst,
 }:
 stdenv.mkDerivation rec {
   pname = "defold-bob";
-  version = "1.9.3";
+  version = "1.10.0";
 
   src = fetchurl {
     url = "https://github.com/defold/defold/releases/download/${version}/bob.jar";
-    hash = "sha256-b/PFgm7IrSTaKTcwTzntoxGd5KtGsgWvq2ZTteLw6GA=";
+    hash = "sha256-fxqgj8KLphgrNZGSP/yDU1dhLNNRy2fZJdB0kJFYvMg=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
 
   buildInputs = [
-    jdk17
+    jdk21
     libXext
     libXtst
   ];
@@ -32,7 +32,7 @@ stdenv.mkDerivation rec {
   installPhase = ''
     runHook preInstall
     install -m 444 -D $src $out/bob.jar
-    makeWrapper ${jdk17}/bin/java $out/bin/defold-bob \
+    makeWrapper ${jdk21}/bin/java $out/bin/defold-bob \
       --add-flags "-jar $out/bob.jar"
     runHook postInstall
   '';
