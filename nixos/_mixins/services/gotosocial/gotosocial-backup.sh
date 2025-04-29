@@ -45,7 +45,6 @@ fi
 
 # No need to edit below this line
 STAMP=$(date +%Y%m%d_%H%M%S)
-TODAY=$(echo "${STAMP}" | cut -d'_' -f 1)
 BACKUP_DIR="${BACKUP_ROOT}/${STAMP}"
 DB_BACKUP="${BACKUP_DIR}/database.sqlite"
 EXPORT_BACKUP="${BACKUP_DIR}/export.json"
@@ -289,18 +288,27 @@ if [ -s "${TMPFILE}" ]; then
             rm -f "${LATEST_LINK}"
             ln -s "${BACKUP_DIR}" "${LATEST_LINK}"
 
-            # Clean up old backups
-            log_message "Looking for backups older than ${RETENTION_DAYS} days (excluding today's backups)"
-            while read -r backup_dir; do
-                backup_date=$(basename "${backup_dir}" | cut -d'_' -f 1)
-                if [ "${backup_date}" != "${TODAY}" ]; then
-                    log_message "Removing old backup: ${backup_dir}"
-                    rm -rf "${backup_dir}"
-                else
-                    log_message "Keeping today's backup: ${backup_dir}"
-                fi
-            done < <(find "${BACKUP_ROOT}" -maxdepth 1 -type d -mtime "+${RETENTION_DAYS}" -name "20*")
-            log_message "Retention policy: keeping backups for ${RETENTION_DAYS} days"
+			# Clean up old backups based on directory name, not filesystem date
+			log_message "Cleaning up backups older than ${RETENTION_DAYS} days"
+
+			# Calculate cutoff date in format YYYYMMDD
+			CUTOFF_DATE=$(date -d "${RETENTION_DAYS} days ago" +%Y%m%d)
+			log_message "Cutoff date for retention: ${CUTOFF_DATE}"
+
+			# Find all backup directories and check against the cutoff date
+			find "${BACKUP_ROOT}" -maxdepth 1 -type d -name "20*" | while read -r backup_dir; do
+			    dir_name=$(basename "${backup_dir}")
+			    backup_date=${dir_name%%_*}  # Extract date part before the underscore
+
+			    # Only remove if the directory date is older than the cutoff date
+			    if [[ "${backup_date}" < "${CUTOFF_DATE}" ]]; then
+			        log_message "Removing old backup: ${backup_dir} (date: ${backup_date})"
+			        rm -rf "${backup_dir}"
+			    else
+			        log_message "Keeping backup: ${backup_dir} (date: ${backup_date})"
+			    fi
+			done
+			log_message "Retention policy: keeping backups for ${RETENTION_DAYS} days"
         else
             handle_error "Backup verification failed"
         fi
