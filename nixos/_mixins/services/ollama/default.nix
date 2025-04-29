@@ -46,16 +46,16 @@ in
         "mxbai-embed-large:latest"    #     (embedding)
         "nomic-embed-text:latest"     #     (embedding)
         "phi4-mini:3.8b"              #128k (task)
-        "qwen3:4b"                    #32k  (task)
+        "qwen3:4b"                    #40k  (task)
       ] ++ lib.optionals (hostname == "revan") [
         #"cogito:32b"                  #128k (stem)
         #"gemma3:27b-it-qat"           #128k (multi-modal)
         #"phi-4:14b"                   #16k  (general)
-        #"qwen3:32b"                   #128k (general)
+        #"qwen3:32b"                   #40k  (general)
       ] ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
         "cogito:14b"                  #128k (stem)
         "phi-4:14b"                   #16k  (general)
-        "qwen3:14b"                   #128k (general)
+        "qwen3:14b"                   #40k  (general)
       ];
     };
     open-webui = {
