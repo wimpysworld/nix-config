@@ -41,13 +41,15 @@ in
       enable = hasAcceleration;
       host = if hostname == "revan" then "127.0.0.1" else "0.0.0.0";
       loadModels = [
-        "gemma3:12b"                  #128k (multi-modal)
+        "gemma3:4b-it-qat"            #32k  (task)
+        "gemma3:12b-it-qat"           #128k (multi-modal)
         "mxbai-embed-large:latest"    #     (embedding)
         "nomic-embed-text:latest"     #     (embedding)
         "phi4-mini:3.8b"              #128k (task)
         "qwen3:4b"                    #32k  (task)
       ] ++ lib.optionals (hostname == "revan") [
         #"cogito:32b"                  #128k (stem)
+        #"gemma3:27b-it-qat"           #128k (multi-modal)
         #"phi-4:14b"                   #16k  (general)
         #"qwen3:32b"                   #128k (general)
       ] ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
@@ -63,7 +65,7 @@ in
         CHUNK_SIZE = "1536";
         CHUNK_OVERLAP = "128";
         #CONTENT_EXTRACTION_ENGINE = "tika";
-        DEFAULT_MODELS = "gemma3:12b";
+        DEFAULT_MODELS = "gemma3:12b-it-qat";
         DEFAULT_USER_ROLE = "user";
         ENABLE_EVALUATION_ARENA_MODELS = "false";
         ENABLE_IMAGE_GENERATION = "true";
@@ -75,7 +77,7 @@ in
         ENABLE_SEARCH_QUERY = "true";
         ENABLE_SIGNUP = "true";
         IMAGE_GENERATION_ENGINE = "openai";
-        MODEL_FILTER_LIST = "cogito:14b;gemma3:12b;phi-4:14b;phi4-mini:3.8b;qwen3:4b;qwen3:14b";
+        MODEL_FILTER_LIST = "cogito:14b;gemma3:4b-it-qat;gemma3:12b-it-qat;phi-4:14b;phi4-mini:3.8b;qwen3:4b;qwen3:14b";
         OLLAMA_BASE_URLS = baseUrls;
         RAG_EMBEDDING_BATCH_SIZE = "16";
         RAG_EMBEDDING_ENGINE = "ollama";
