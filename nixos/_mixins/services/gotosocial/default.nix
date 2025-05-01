@@ -82,17 +82,25 @@ lib.mkIf (lib.elem hostname installOn) {
       environmentFile = config.sops.secrets.gotosocial-env.path;
       settings = {
         accounts-allow-custom-css = true;
+        accounts-custom-css-length = 16384;
+        advanced-rate-limit-exceptions = [
+          "62.31.16.153/29"
+          "80.209.186.64/28"
+        ];
         bind-address = "127.0.0.1";
         db-type = "sqlite";
         # https://docs.gotosocial.org/en/latest/advanced/replicating-sqlite/
         db-sqlite-journal-mode = "WAL";
         db-sqlite-synchronous = "NORMAL";
+        media-emoji-local-max-size = "200KiB";
+        media-emoji-remote-max-size = "200KiB";
         host = "wimpysworld.social";
         instance-expose-public-timeline = true;
         instance-inject-mastodon-version = true;
         instance-languages = [ "en" ];
-        landing-page-user = "${username}";
+        landing-page-user = "martin";
         letsencrypt-enabled = false;
+        media-description-max-chars = 1500;
         media-ffmpeg-pool-size = 4;
         port = 8282;
         statuses-max-chars = 1000;
