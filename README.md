@@ -19,6 +19,7 @@ These computers are managed by this Nix flake ❄️
 | `palpatine` | ⤴️                          | ⤴️                             | ⤴️    | ⤴️                          | ⤴️                         | 💻️🎭️ | 🪟  | ✅    |
 | `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                            | 💻️   | ❄️  | ✅    |
 | `shaa`      | [ThinkPad T14s Gen 1]       | [AMD Ryzen 5 PRO 4650U]        | 16GB  | AMD Radeon RX Vega 6        |                            | 💻️   | ❄️  | ✅    |
+| `atrius`    | [ThinkPad T495s]            | [AMD Ryzen 7 3700U]            | 16GB  | AMD Radeon Vega 10          |                            | 💻️   | ❄️  | 🚧    |
 | `momin`     | [Macbook Air M2 15"]        | Apple M2 8-core CPU            | 24GB  | Apple M2 10-core GPU        |                            | 💻️   | 🍏  | ✅    |
 | `krall`     | [Macbook Pro (Mid 2015)]    | Intel Core i7                  | 16GB  | Intel Iris Pro Graphics     |                            | 💻️   | 🍏  | ✅    |
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                            | 🎮️   | 🐧  | ✅    |
@@ -27,7 +28,7 @@ These computers are managed by this Nix flake ❄️
 | `defender`  | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `fighter`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
-| `malak`     | [B360 HD3P-LM]              | [Intel Core i7-8700]           | 128GB | Intel UHD Graphics 630      | -             | ☁️   | ❄️  | 🚧    |
+| `malak`     | [B360 HD3P-LM]              | [Intel Core i7-8700]           | 128GB | Intel UHD Graphics 630      | -                          | ☁️   | ❄️  | 🚧    |
 
 Workstation and server host names are Sith Lords and the virtual machines are named after TIE fighter series.
 Dual boot systems have the NixOS install named a Sith Lord and the *"other"* OS named after their public-facing persona.
@@ -372,6 +373,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [ThinkPad P1 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadp/thinkpad-p1/22ws2wpp101
 [ThinkPad Z13 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadz/thinkpad-z13-(13-inch-amd)/21d20012uk
 [ThinkPad T14s Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadt/t14s-amd-g1/22tpt144sa2
+[ThinkPad T495s]: https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/t495s/22tp2tt495s
 [Macbook Air M2 15"]: https://www.apple.com/uk/macbook-air-13-and-15-m2/
 [Macbook Pro (Mid 2015)]: https://support.apple.com/en-us/111955
 [Steam Deck 64GB LCD]: https://store.steampowered.com/steamdeck
@@ -390,6 +392,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [AMD Ryzen 9 5900X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5900x
 [AMD Ryzen 5 PRO 6650U]: https://www.amd.com/en/products/apu/amd-ryzen-5-pro-6650u
 [AMD Ryzen 5 PRO 4650U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen-pro/ryzen-pro-4000-series/amd-ryzen-5-pro-4650u.html
+[AMD Ryzen 7 3700U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen/ryzen-3000-series/amd-ryzen-7-3700u.html#amd_support_product_spec
 [AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/support/cpu/amd-ryzen-processors/amd-ryzen-threadripper-processors/amd-ryzen-threadripper-3970x
 [Intel Arc A770 16GB]: https://www.intel.com/content/www/us/en/products/sku/229151/intel-arc-a770-graphics-16gb/specifications.html
 [Fighter RX 6800]: https://www.powercolor.com/product?id=1606212415

@@ -9,7 +9,7 @@
 }:
 let
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
-  isThinkpad = hostname == "tanis" || hostname == "sidious" || hostname == "shaa";
+  isThinkpad = hostname == "tanis" || hostname == "sidious" || hostname == "shaa" || hostname == "atrius";
   usePowerProfiles =
     config.programs.hyprland.enable
     || config.services.xserver.desktopManager.pantheon.enable;

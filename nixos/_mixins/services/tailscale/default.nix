@@ -16,6 +16,7 @@ let
     "malak"
     "sidious"
     "shaa"
+    "atrius"
     "vader"
   ];
   tsExitNodes = [

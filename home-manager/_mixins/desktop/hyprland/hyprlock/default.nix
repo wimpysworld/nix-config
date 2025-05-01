@@ -28,7 +28,7 @@ let
     "DP-1"
   else if hostname == "phasma" then
     "DP-1"
-  else if (hostname == "shaa" || hostname == "tanis") then
+  else if (hostname == "shaa" || hostname == "tanis" || hostname == "atrius") then
     "eDP-1"
   else
     "";
