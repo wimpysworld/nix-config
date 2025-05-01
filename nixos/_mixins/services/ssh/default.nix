@@ -5,6 +5,10 @@
   pkgs,
   ...
 }:
+let
+  # Don't open the firewall for SSH on laptops; Tailscale will handle it.
+  openSSHFirewall = if (isInstall && isLaptop) then false else true;
+in
 {
   environment = lib.mkIf isInstall { systemPackages = with pkgs; [ ssh-to-age ]; };
   programs = {
@@ -14,8 +18,7 @@
   services = {
     openssh = {
       enable = true;
-      # Don't open the firewall on for SSH on laptops; Tailscale will handle it.
-      openFirewall = !isLaptop;
+      openFirewall = openSSHFirewall;
       settings = {
         PasswordAuthentication = false;
         PermitRootLogin = lib.mkDefault "prohibit-password";
