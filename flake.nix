@@ -78,6 +78,10 @@
           hostname = "shaa";
           desktop = "hyprland";
         };
+        "martin@atrius" = helper.mkHome {
+          hostname = "atrius";
+          desktop = "hyprland";
+        };
         "martin@tanis" = helper.mkHome {
           hostname = "tanis";
           desktop = "hyprland";
@@ -148,6 +152,10 @@
         };
         shaa = helper.mkNixos {
           hostname = "shaa";
+          desktop = "hyprland";
+        };
+        atrius = helper.mkNixos {
+          hostname = "atrius";
           desktop = "hyprland";
         };
         tanis = helper.mkNixos {

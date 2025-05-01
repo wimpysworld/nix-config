@@ -212,6 +212,7 @@
       malak_enc.sopsFile = ../secrets/disks.yaml;
       tanis_enc.sopsFile = ../secrets/disks.yaml;
       shaa_enc.sopsFile = ../secrets/disks.yaml;
+      atrius_enc.sopsFile = ../secrets/disks.yaml;
       sidious_enc.sopsFile = ../secrets/disks.yaml;
     };
   };
