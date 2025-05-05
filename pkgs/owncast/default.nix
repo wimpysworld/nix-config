@@ -9,19 +9,17 @@
 , makeBinaryWrapper
 }:
 let
-  version = "0.2.1-unstable-2025-01-23";
+  version = "0.2.2";
 in buildGoModule {
   pname = "owncast";
   inherit version;
   src = fetchFromGitHub {
     owner = "owncast";
     repo = "owncast";
-    #rev = "v${version}";
-
-    rev = "11af286501c44359982f60324b5b727cb40e07d2";
-    hash = "sha256-wcDJPCzzJClp15gO3XcbRgrZMHsm61+JnfnNFUcbui4=";
+    rev = "v${version}";
+    hash = "sha256-LVlbp1jE5HLAwznYb9nAzh+Nn23Hb+YXrNV8mQQ3THc=";
   };
-  vendorHash = "sha256-jK450HEQ/P7u/wFW1zLYWosOZ2A7GdC+twzQkAdXjMU=";
+  vendorHash = "sha256-0DhBISZLI51rBTS7D4EBeYDc56wFgnmiTDiXunvuKtE=";
 
   propagatedBuildInputs = [ ffmpeg-full ];
 
@@ -45,7 +43,7 @@ in buildGoModule {
     homepage = "https://owncast.online";
     license = licenses.mit;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ MayNiklas ];
+    maintainers = with maintainers; [ flexiondotorg MayNiklas ];
     mainProgram = "owncast";
   };
 }

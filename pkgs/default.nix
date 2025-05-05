@@ -16,7 +16,7 @@ pkgs:
   gotosocial = pkgs.callPackage ./gotosocial { };
   ollama = pkgs.unstable.callPackage ./ollama { };
   open-webui = pkgs.unstable.callPackage ./open-webui { };
-  owncast = pkgs.callPackage ./owncast { };
+  owncast = pkgs.unstable.callPackage ./owncast { };
   podman-desktop = pkgs.callPackage ./podman-desktop { };
 
   obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };
