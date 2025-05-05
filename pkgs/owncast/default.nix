@@ -19,11 +19,17 @@ in buildGoModule {
     rev = "v${version}";
     hash = "sha256-LVlbp1jE5HLAwznYb9nAzh+Nn23Hb+YXrNV8mQQ3THc=";
   };
-  vendorHash = "sha256-0DhBISZLI51rBTS7D4EBeYDc56wFgnmiTDiXunvuKtE=";
+  vendorHash = "sha256-FuynEBoPS0p1bRgmaeCxn1RPqbYHcltZpQ9SE71xHEE=";
 
   propagatedBuildInputs = [ ffmpeg-full ];
 
   nativeBuildInputs = [ makeBinaryWrapper ];
+
+  # lefthook is included as a tool in go.mod for a pre-commit hook, but causes the build to fail
+  preBuild = ''
+    # Remove lefthook from tools section in go.mod
+    sed -i '/tool (/,/)/{ /[[:space:]]*github.com\/evilmartians\/lefthook[[:space:]]*$/d; }' go.mod
+  '';
 
   postInstall = ''
     wrapProgram $out/bin/owncast \
