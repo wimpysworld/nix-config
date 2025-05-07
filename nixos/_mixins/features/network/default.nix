@@ -95,6 +95,10 @@ in
 {
   imports = lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
 
+  environment.systemPackages = with pkgs; lib.optionals config.networking.networkmanager.enable [
+    ifwifi
+  ];
+
   programs.captive-browser = lib.mkIf isLaptop {
     enable = true;
     browser = ''
