@@ -1,6 +1,5 @@
 _: {
   imports = [
-    ./1password
     ./blender
     #./celluloid
     ./evolution

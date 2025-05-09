@@ -230,7 +230,6 @@ Things I currently need to do manually after installation.
 - [ ] Keybase - `keybase login`
 - [ ] Tailscale - `sudo tailscale up --operator="$USER"`
   - Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
-- [ ] 1Password - authenticate
 - [ ] LastPass - authenticate
 
 ### Accounts
