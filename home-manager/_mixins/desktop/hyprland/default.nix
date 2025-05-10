@@ -213,6 +213,7 @@ in
         background_color = "rgb(30, 30, 46)";
         disable_hyprland_logo = true;
         disable_splash_rendering = true;
+        focus_on_activate = true;
         key_press_enables_dpms = true;
         mouse_move_enables_dpms = true;
         vfr = true;

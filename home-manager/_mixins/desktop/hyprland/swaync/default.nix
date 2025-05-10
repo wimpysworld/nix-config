@@ -1,4 +1,19 @@
 { lib, pkgs, ... }:
+let
+  swayncRun = pkgs.writeShellApplication {
+    name = "swaync-run";
+    text = ''
+      # Execute all arguments as a single command
+      # Check if any arguments were provided
+      if [ $# -ge 1 ]; then
+        # Close the swaync panel
+        swaync-client --close-panel --skip-wait
+        # Execute all arguments as a single command
+        exec "$@"
+      fi
+    '';
+  };
+in
 {
   # swaync is a notification daemon
   services = {
@@ -6,52 +21,149 @@
       enable = true;
       settings = {
         "$schema" = "${pkgs.swaynotificationcenter}/etc/xdg/swaync/configSchema.json";
-        notification-inline-replies = true;
+        notification-2fa-action = false;
+        notification-inline-replies = false;
         positionX = "right";
         positionY = "top";
         widgets = [
-          #"buttons-grid" #disable for now, not sure I like the extra clutter
+          "menubar"
+          "buttons-grid"
+          "backlight"
+          "volume"
+          "mpris"
           "title"
           "dnd"
           "notifications"
-          "mpris"
-          "volume"
         ];
         widget-config = {
+          menubar = {
+            "menu#screenshot-buttons" = {
+              label = "󰄀";
+              position = "left";
+              actions = [ 
+                {
+                  label = "󰹑  Screenshot  ";
+                  command = "${lib.getExe swayncRun} fuzzel-hyprshot";
+                }
+                {
+                  label = "󰏘  Color Picker";
+                  command = "${lib.getExe swayncRun} fuzzel-hyprpicker";
+                }
+              ];
+            };
+            "menu#powermode-buttons" = {
+              label = "󱐋";
+              position = "right";
+              actions = [ 
+                {
+                  label = "󰤇  Performance";
+                  command = "powerprofilesctl set performance";
+                }
+                {
+                  label = "󰗑  Balanced   ";
+                  command = "powerprofilesctl set balanced";
+                }
+                {
+                  label = "󰴻  Power-saver";
+                  command = "powerprofilesctl set power-saver";
+                }
+              ];
+            };
+            "menu#power-buttons" = {
+              label = "󰐦";
+              position = "right";
+              actions = [ 
+                {
+                  label = "󰌾  Lock    ";
+                  command = "${lib.getExe swayncRun} hypr-session lock";
+                }
+                {
+                  label = "󰗽  Logout  ";
+                  command = "${lib.getExe swayncRun} hypr-session logout";
+                }
+                {
+                  label = "󱍷  Reboot  ";
+                  command = "${lib.getExe swayncRun} hypr-session reboot";
+                }
+                {
+                  label = "󰤄  Suspend ";
+                  command = "${lib.getExe swayncRun} systemctl suspend";
+                }
+                {
+                  label = "  Shutdown";
+                  command = "${lib.getExe swayncRun} hypr-session shutdown";
+                }
+              ];
+            };
+          };
           buttons-grid.actions = [
             {
-              label = "󰹑";
-              command = "${lib.getExe pkgs.hyprshot} --mode output --raw | ${lib.getExe pkgs.satty} --filename -";
+              label = "󰕾";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.pwvucontrol}";
             }
             {
-              label = "󱩌";
-              command = "notify-desktop NightLight";
+              label = "󱑽";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.easyeffects}";
             }
             {
-              label = "󰍹";
-              command = "${lib.getExe pkgs.wdisplays}";
+              label = "";
+              command = "${lib.getExe swayncRun} fuzzel-bluetooth";
             }
             {
-              label = "";
-              command = "${lib.getExe pkgs.gnome-usage}";
+              label = "󰈀";
+              command = "${lib.getExe swayncRun} ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
             }
             {
-              label = "󰀝";
-              command = "notify-desktop AirplaneMode";
+              label = "󰖩";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.iwgtk}";
             }
-            # 󰀞
             {
-              label = "󰐥";
-              command = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 --no-span";
+              label = "󰴳";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.trayscale}";
+            }
+            {
+              label = "󱁗";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.system-config-printer}";
+            }
+            {
+              label = "󱋆";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.wdisplays}";
+            }
+            {
+              label = "󰧹";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.input-remapper}";
+            }
+            {
+              label = "";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.piper}";
+            }
+            {
+              label = "󰋊";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.gnome-disk-utility}";
+            }
+            {
+              label = "󱊞";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.usbimager}";
+            }
+            {
+              label = "";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.cpu-x}";
+            }
+            {
+              label = "󰉁";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.gnome-firmware}";
             }
           ];
           title = {
             text = "Notifications";
             clear-all-button = true;
-            button-text = "󰩹";
+            button-text = " 󰩹 ";
           };
           dnd = {
             text = "Do Not Disturb";
+          };
+          backlight = {
+            label = "󰃟";
           };
           mpris = {
             blur = true;
@@ -68,7 +180,7 @@
         * {
           all: unset;
           font-size: 20px;
-          font-family: "Work Sans";
+          font-family: "FiraCode Nerd Font Mono";
           transition: 250ms;
         }
 
@@ -112,14 +224,20 @@
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .summary {
           color: #cdd6f4;
+          font-family: "Work Sans";
+          font-size: 1.2rem;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .time {
           color: #a6adc8;
+          font-family: "Work Sans";
+          font-size: 0.8rem;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .body {
           color: #cdd6f4;
+          font-family: "Work Sans";
+          font-size: 1rem;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * {
@@ -176,6 +294,7 @@
 
         .control-center .widget-title > label {
           color: #cdd6f4;
+          font-family: "Work Sans";
           font-size: 1.3em;
         }
 
@@ -222,14 +341,20 @@
 
         .control-center .notification-row .notification-background .notification .notification-content .summary {
           color: #cdd6f4;
+          font-family: "Work Sans";
+          font-size: 1.2rem;
         }
 
         .control-center .notification-row .notification-background .notification .notification-content .time {
           color: #a6adc8;
+          font-family: "Work Sans";
+          font-size: 0.8rem;
         }
 
         .control-center .notification-row .notification-background .notification .notification-content .body {
           color: #cdd6f4;
+          font-family: "Work Sans";
+          font-size: 1rem;
         }
 
         .control-center .notification-row .notification-background .notification > *:last-child > * {
@@ -318,6 +443,7 @@
 
         .widget-dnd {
           margin: 0px;
+          font-family: "Work Sans";
           font-size: 1.1rem;
         }
 
@@ -345,20 +471,27 @@
         }
 
         .widget-mpris .widget-mpris-title {
+          font-family: "Work Sans";
           font-size: 1.2rem;
         }
 
         .widget-mpris .widget-mpris-subtitle {
+          font-family: "Work Sans";
           font-size: 0.8rem;
         }
 
         .widget-menubar > box > .menu-button-bar > button > label {
-          font-size: 3rem;
-          padding: 0.5rem 2rem;
+          font-size: 1.5rem;
+          padding: 0 1rem;
+        }
+
+        .widget-menubar > box > .menu-button-bar > :nth-last-child(2) {
+          color: #f9e2af;
         }
 
         .widget-menubar > box > .menu-button-bar > :last-child {
           color: #f38ba8;
+          padding: 0 0;
         }
 
         .power-buttons button:hover,
@@ -373,16 +506,20 @@
         }
 
         .widget-buttons-grid {
-          padding-top: 1rem;
+          padding-top: 0.5rem;
         }
 
         .widget-buttons-grid > flowbox > flowboxchild > button label {
-          font-family: "FiraCode Nerd Font Mono";
-          font-size: 2rem;
+          font-size: 2.5rem;
+        }
+
+        .widget-buttons-grid > flowbox > flowboxchild > button:hover label {
+          color: #89b4fa;
         }
 
         .widget-volume {
           padding-top: 1rem;
+          padding-bottom: 1rem;
         }
 
         .widget-volume label {
@@ -404,6 +541,7 @@
         }
 
         .widget-backlight .KB {
+          padding-top: 1rem;
           padding-bottom: 1rem;
         }
 

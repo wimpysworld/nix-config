@@ -438,7 +438,6 @@ in
             };
             max-volume = 100;
             on-click-middle = "${pkgs.avizo}/bin/volumectl -d -u toggle-mute";
-            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.pwvucontrol}";
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -u up 2";
             on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -u down 2";
             tooltip-format = "󰓃  {volume}󰏰\n󰒓  {node_name}";
@@ -449,7 +448,6 @@ in
             format-source = "󰍬";
             format-source-muted = "󰍭";
             on-click-middle = "${pkgs.avizo}/bin/volumectl -d -m toggle-mute";
-            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.easyeffects}";
             on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -m up 2";
             on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -m down 2";
             tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
@@ -466,8 +464,8 @@ in
             format-linked = "";
             format-wifi = "󰖩";
             interval = 2;
-            on-click-middle = "hyprctl dispatch exec [workspace current] ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
-            on-click-right = "fuzzel-wifi";
+            # todo: add toggle netowrk on/off
+            #on-click-middle = "hyprctl dispatch exec [workspace current] ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
             tooltip-format = "  {ifname}\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
@@ -476,9 +474,8 @@ in
           "custom/vpn" = {
             format = "<big>{}</big>";
             exec = "${lib.getExe tailscaleCheck}";
-            on-click = "${lib.getExe tailscaleToggle} toggle";
-            on-click-middle = "${lib.getExe tailscaleToggle} toggle-mullvad";
-            on-click-right = "hyprctl dispatch exec [workspace current] ${lib.getExe pkgs.trayscale}";
+            on-click-middle = "${lib.getExe tailscaleToggle} toggle";
+            on-click-right = "${lib.getExe tailscaleToggle} toggle-mullvad";
             interval = 2;
           };
           bluetooth = {
@@ -488,7 +485,6 @@ in
             format-on = "󰂯";
             format-off = "󰂲";
             on-click-middle = "${lib.getExe bluetoothToggle}";
-            on-click-right = "fuzzel-bluetooth";
             tooltip-format = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected";
             tooltip-format-connected = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected\n{device_enumerate}";
             tooltip-format-disabled = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
@@ -497,6 +493,7 @@ in
             tooltip-format-off = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
           };
           backlight = {
+            # TODO: configure this to use the correct device
             device = "thinkpad_acpi";
             format = "<big>{icon}</big>";
             format-alt = "<big>{icon}</big> <small>{percent}󰏰</small>";
@@ -525,6 +522,7 @@ in
               power-saver = "󰴻";
             };
             tooltip-format = "󱐋  Power profile: {profile}\n󰒓  Driver: {driver}";
+            #TODO: add power profile menu on middle click
           };
           cpu = {
             interval = 2;
@@ -538,7 +536,7 @@ in
               "󰫇"
               "󰫈"
             ];
-            on-click-right = "${pkgs.resources}/bin/resources --open-tab-id cpu";
+            on-click-middle = "${pkgs.resources}/bin/resources --open-tab-id cpu";
           };
           temperature = {
             hwmon-path = "${hwmonPath}";
@@ -585,6 +583,7 @@ in
               "󰁹"
             ];
             tooltip-format = "󱊣  {time} ({capacity}󰏰)";
+            on-click-middle = "${pkgs.powersupply}/bin/powersupply";
           };
           "custom/session" = {
             format = "<big>󰐥</big>";
