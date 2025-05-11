@@ -1,5 +1,8 @@
 { pkgs, ... }:
 {
+  environment.systemPackages = with pkgs; [
+    bluetui
+  ];
   hardware = {
     # https://nixos.wiki/wiki/Bluetooth
     bluetooth = {
