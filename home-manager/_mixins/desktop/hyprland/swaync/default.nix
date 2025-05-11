@@ -107,7 +107,7 @@ in
             }
             {
               label = "";
-              command = "${lib.getExe swayncRun} fuzzel-bluetooth";
+              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.overskride}";
             }
             {
               label = "󰈀";
@@ -123,7 +123,7 @@ in
             }
             {
               label = "󱁗";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.system-config-printer}";
+              command = "${lib.getExe swayncRun} ${pkgs.system-config-printer}/bin/system-config-printer";
             }
             {
               label = "󱋆";
