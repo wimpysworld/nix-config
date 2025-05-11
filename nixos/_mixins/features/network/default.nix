@@ -118,6 +118,7 @@ in
       10.10.10.8     echo-agatha
       10.10.10.12    Vonage-HT801 vonage
       10.10.10.13    LaMetric-LM2144 lametric
+      10.10.10.15    chimeraos
       10.10.10.19    Hue-Bridge-Office hue-bridge-office
       10.10.10.20    Elgato_Key_Light_Air_DAD4 keylight-left key-left
       10.10.10.21    Elgato_Key_Light_Air_EEE9 keylight-right key-right
