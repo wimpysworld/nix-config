@@ -10,6 +10,8 @@ let
   installOn = [
     "phasma"
     "vader"
+    "shaa"
+    "atrius"
   ];
   inherit (pkgs.stdenv) isLinux;
 in
