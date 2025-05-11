@@ -1,9 +1,5 @@
 { hostname, lib, pkgs, ... }:
 let
-  passwordPrompt = if hostname == "tanis" then
-    "󰈷"
-  else
-    "󰌋";
   catSize = if hostname == "vader" then
     320
   else if hostname == "phasma" then
@@ -101,9 +97,9 @@ in
             monitor = monitor;
             text = ''cmd[update:1800000] ${lib.getExe pkgs.curl} -sLq "wttr.in?format=%c+%t"'';
             color = "rgba(205, 214, 244, 0.9)";
-            font_size = 14;
-            font_family = "Work Sans Bold";
-            position = "0, 420";
+            font_size = 16;
+            font_family = "FiraCode Nerd Font Propo Bold";
+            position = "0, 390";
             halign = "center";
             valign = "center";
           }
@@ -170,10 +166,10 @@ in
           {
             # Username
             monitor = monitor;
-            text = ''<span foreground="##a6e3a1"></span>  $DESC'';
+            text = ''<span foreground="##a6e3a1">󰝴</span> $DESC'';
             color = "rgba(147, 153, 178, 1.0)";
             font_size = 18;
-            font_family = "Work Sans";
+            font_family = "FiraCode Nerd Font Propo";
             position = "0, -130";
             halign = "center";
             valign = "center";
@@ -206,7 +202,7 @@ in
             dots_spacing = 0.25;
             dots_center = true;
             fade_on_empty = false;
-            placeholder_text = ''<span foreground="##f9e2af"><big>  ${passwordPrompt}  </big></span>'';
+            placeholder_text = ''<span foreground="##f9e2af"><big>  󰌋  </big></span>'';
             fail_text = ''<span foreground="##f38ba8">󰀧</span>  <i>$FAIL</i> <span foreground="##f38ba8"><b>($ATTEMPTS)</b></span>'';
             fail_timeout = 3000; # milliseconds before fail_text and fail_color disappears
             fail_transition = 500; # transition time in ms between normal outer_color and fail_color
