@@ -1,4 +1,4 @@
-name: Build 🏗️ and Publish 📀
+name: Build 🏗️ ISO 📀
 
 on:
   push:
@@ -19,10 +19,10 @@ jobs:
       id-token: write
     steps:
     - uses: actions/checkout@v4
-    - uses: DeterminateSystems/nix-installer-action@v17
+    - uses: DeterminateSystems/nix-installer-action@main
       with:
         determinate: true
-    - uses: DeterminateSystems/flakehub-cache-action@v1
+    - uses: DeterminateSystems/flakehub-cache-action@main
     - name: Nix Build ️❄️
       id: build-iso
       run: |
@@ -60,11 +60,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v17
+      - uses: DeterminateSystems/nix-installer-action@main
         with:
           determinate: true
-      - uses: DeterminateSystems/flakehub-cache-action@v1
-      - uses: DeterminateSystems/flakehub-push@v5
+      - uses: DeterminateSystems/flakehub-cache-action@main
+      - uses: DeterminateSystems/flakehub-push@main
         with:
           tag: ${{ needs.build-iso.outputs.ver }}
           include-output-paths: true
