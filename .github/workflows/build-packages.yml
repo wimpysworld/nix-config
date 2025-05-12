@@ -19,21 +19,31 @@ jobs:
           - defold
           - heynote
           - hyprpicker
-          - ollama
           - open-webui
           - station
           - gotosocial
           - owncast
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      - name: Build ${{ matrix.package }} 📦
-        uses: ./.github/actions/build-package
-        continue-on-error: true
+      - uses: DeterminateSystems/nix-installer-action@v17
         with:
-          package: ${{ matrix.package }}
+          determinate: true
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - name: Building ${{ matrix.package }} 📦
+        continue-on-error: true
+        run: |
+          # Try to get license info
+          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
+            echo "⚠️ Unfree license detected"
+            export NIXPKGS_ALLOW_UNFREE=1
+            nix build .#${{ matrix.package }} -L --impure
+          else
+            echo "✅ Free license detected"
+            nix build .#${{ matrix.package }} -L
+          fi
 
   build-large-applications:
     name: Build large applications
@@ -42,16 +52,28 @@ jobs:
       matrix:
         package:
           - davinci-resolve
+          - ollama
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      - name: Build ${{ matrix.package }} 🎒
-        uses: ./.github/actions/build-package
-        continue-on-error: true
+      - uses: DeterminateSystems/nix-installer-action@v17
         with:
-          package: ${{ matrix.package }}
+          determinate: true
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - name: Building ${{ matrix.package }} 🎒
+        continue-on-error: true
+        run: |
+          # Try to get license info
+          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
+            echo "⚠️ Unfree license detected"
+            export NIXPKGS_ALLOW_UNFREE=1
+            nix build .#${{ matrix.package }} -L --impure
+          else
+            echo "✅ Free license detected"
+            nix build .#${{ matrix.package }} -L
+          fi
 
   build-fonts:
     name: Build fonts 🔤
@@ -77,15 +99,26 @@ jobs:
           - spaceport-2006-font
           - zx-spectrum-7-font
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      - name: Build ${{ matrix.package }} 🔤
-        uses: ./.github/actions/build-package
-        continue-on-error: true
+      - uses: DeterminateSystems/nix-installer-action@v17
         with:
-          package: ${{ matrix.package }}
+          determinate: true
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - name: Building ${{ matrix.package }} 🔤
+        continue-on-error: true
+        run: |
+          # Try to get license info
+          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
+            echo "⚠️ Unfree license detected"
+            export NIXPKGS_ALLOW_UNFREE=1
+            nix build .#${{ matrix.package }} -L --impure
+          else
+            echo "✅ Free license detected"
+            nix build .#${{ matrix.package }} -L
+          fi
 
   build-obs-plugins:
     name: Build OBS Plugins 🔌
@@ -118,12 +151,23 @@ jobs:
           - obs-webkitgtk
           - pixel-art
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      - name: Build ${{ matrix.package }} 🔌
-        uses: ./.github/actions/build-package
-        continue-on-error: true
+      - uses: DeterminateSystems/nix-installer-action@v17
         with:
-          package: ${{ matrix.package }}
+          determinate: true
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - name: Building ${{ matrix.package }} 🔌
+        continue-on-error: true
+        run: |
+          # Try to get license info
+          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
+            echo "⚠️ Unfree license detected"
+            export NIXPKGS_ALLOW_UNFREE=1
+            nix build .#${{ matrix.package }} -L --impure
+          else
+            echo "✅ Free license detected"
+            nix build .#${{ matrix.package }} -L
+          fi

@@ -27,10 +27,6 @@ jobs:
     - name: Building 👷 ${{ matrix.host }} ️🧟
       run: |
         nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel -L
-    - uses: "DeterminateSystems/flakehub-push@v5"
-      with:
-        include-output-paths: true
-        visibility: "public"
 
   build-home:
     runs-on: ubuntu-22.04
@@ -49,4 +45,4 @@ jobs:
     - uses: DeterminateSystems/flakehub-cache-action@v1
     - name: Building 👷 ${{ matrix.home }} 🏚️
       run: |
-        nix run nixpkgs#home-manager -- build --flake .#${{ matrix.home }} -L
+        nix build '.#homeConfigurations."${{ matrix.home }}".activationPackage' -L

@@ -35,26 +35,21 @@ jobs:
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
-    - name: Draft Release ✍️
+    - name: Release ISO 🎁
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release create "${{ steps.build-iso.outputs.ver }}" --draft --generate-notes
-    - name: Upload ISO 📤
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        for artefact in "iso/"*; do
-          gh release upload "${{ steps.build-iso.outputs.ver }}" "${artefact}" --clobber
-        done
-    - name: Publish Release 🎁
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        if [ "$(gh release view "${{ steps.build-iso.outputs.ver }}" --json assets --template '{{len .assets}}')" -lt 0 ]; then
+        ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
+        if [ -f "iso/console-${ISO}" ]; then
+          gh release create "${{ steps.build-iso.outputs.ver }}" --draft --generate-notes
+          for artefact in "iso/"*; do
+            gh release upload "${{ steps.build-iso.outputs.ver }}" "${artefact}" --clobber
+          done  
+          gh release edit "${{ steps.build-iso.outputs.ver }}" --draft=false
+        else
+          echo "No ISO found, failing the job"
           exit 1
         fi
-        gh release edit "${{ steps.build-iso.outputs.ver }}" --draft=false
 
   publish-flakehub:
     needs: [build-iso]

@@ -61,4 +61,4 @@ jobs:
             mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
           fi
         done
-        nix run nixpkgs#home-manager -- build --flake .#${{ matrix.home }} -L
+        nix build '.#homeConfigurations."${{ matrix.home }}".activationPackage' -L
