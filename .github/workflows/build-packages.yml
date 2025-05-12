@@ -1,6 +1,7 @@
 name: Build 🏗️ Packages ️📦
 
 on:
+  pull_request:
   push:
     branches:
       - main
@@ -8,6 +9,10 @@ on:
       - 'flake.lock'
       - 'pkgs/**'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-applications:
