@@ -104,21 +104,13 @@
     };
   };
 
-  nix =
-    let
-      flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-    in
-    {
-      settings = {
-        # Disable global registry
-        flake-registry = "";
-        # Workaround for https://github.com/NixOS/nix/issues/9574
-        nix-path = config.nix.nixPath;
-        warn-dirty = false;
-      };
-      # Disable channels
-      channel.enable = false;
+  nix = {
+    settings = {
+      # Workaround for https://github.com/NixOS/nix/issues/9574
+      nix-path = config.nix.nixPath;
+      warn-dirty = false;
     };
+  };
 
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 
