@@ -19,7 +19,6 @@ jobs:
     strategy:
       matrix:
         host:
-          - phasma
           - vader
     permissions:
       contents: read
@@ -46,7 +45,6 @@ jobs:
     strategy:
       matrix:
         home:
-          - martin@phasma
           - martin@vader
     permissions:
       contents: read
