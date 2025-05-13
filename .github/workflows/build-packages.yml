@@ -51,7 +51,7 @@ jobs:
           fi
 
   build-large-applications:
-    name: Build large applications
+    name: Build large applications 🎒
     runs-on: ubuntu-22.04
     strategy:
       matrix:
