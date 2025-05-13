@@ -16,7 +16,7 @@
     iwmenu.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "github:catppuccin/nix";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
-    disko.url = "https://github.com/nix-community/disko/archive/refs/tags/v1.12.0.tar.gz";
+    disko.url = "https://flakehub.com/f/nix-community/disko/1.12.0.tar.gz";
     disko.inputs.nixpkgs.follows = "nixpkgs";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     nixos-needsreboot.url = "https://flakehub.com/f/wimpysworld/nixos-needsreboot/0.2.8.tar.gz";
@@ -25,7 +25,7 @@
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     nix-vscode-extensions.url = "github:nix-community/nix-vscode-extensions";
     nix-vscode-extensions.inputs.nixpkgs.follows = "nixpkgs";
-    nix-flatpak.url = "https://github.com/gmodena/nix-flatpak/archive/refs/tags/v0.6.0.tar.gz";
+    nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.6.0.tar.gz";
     quickemu.url = "https://flakehub.com/f/quickemu-project/quickemu/*";
     quickemu.inputs.nixpkgs.follows = "nixpkgs";
     quickgui.url = "https://flakehub.com/f/quickemu-project/quickgui/*";
