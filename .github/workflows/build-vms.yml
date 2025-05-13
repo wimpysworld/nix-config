@@ -16,8 +16,6 @@ jobs:
       matrix:
         host:
           - crawler
-    # Only run this job when the workflow is triggered by a tag
-    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       id-token: write
@@ -37,8 +35,6 @@ jobs:
       matrix:
         home:
           - martin@crawler
-    # Only run this job when the workflow is triggered by a tag
-    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       id-token: write

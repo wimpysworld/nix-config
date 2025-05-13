@@ -17,8 +17,6 @@ jobs:
         host:
           - malak
           - revan
-    # Only run this job when the workflow is triggered by a tag
-    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       id-token: write
@@ -46,8 +44,6 @@ jobs:
         home:
           - martin@malak
           - martin@revan
-    # Only run this job when the workflow is triggered by a tag
-    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       id-token: write
