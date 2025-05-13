@@ -6,8 +6,11 @@ on:
     branches:
       - main
     paths:
+      - 'flake.nix'
       - 'flake.lock'
+      - 'lib/**'
       - 'pkgs/**'
+      - 'overlays/**'
   workflow_dispatch:
 
 concurrency:
