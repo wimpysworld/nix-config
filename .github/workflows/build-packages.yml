@@ -2,6 +2,12 @@ name: Build 🏗️ Packages ️📦
 
 on:
   pull_request:
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'lib/**'
+      - 'pkgs/**'
+      - 'overlays/**'
   push:
     branches:
       - main
@@ -18,19 +24,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-applications:
-    name: Build applications 📦
-    runs-on: ubuntu-22.04
+  build-linux-apps:
+    name: Build 🐧 apps 📦
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         package:
-          - defold
-          - heynote
-          - hyprpicker
-          - open-webui
-          - station
-          - gotosocial
-          - owncast
+          - '.#bzmenu.packages.x86_64-linux.default'
+          - '.#iwmenu.packages.x86_64-linux.default'
+          - '.#nixosConfigurations.vader.pkgs.caddy'
+          - '.#nixosConfigurations.vader.pkgs.defold'
+          - '.#nixosConfigurations.vader.pkgs.gitkraken'
+          - '.#nixosConfigurations.vader.pkgs.gotosocial'
+          - '.#nixosConfigurations.vader.pkgs.heynote'
+          - '.#nixosConfigurations.vader.pkgs.hyprpicker'
+          - '.#nixosConfigurations.vader.pkgs.linuxPackages.mwprocapture'
+          - '.#nixosConfigurations.vader.pkgs.ollama'
+          - '.#nixosConfigurations.vader.pkgs.open-webui'
+          - '.#nixosConfigurations.vader.pkgs.owncast'
+          - '.#nixosConfigurations.vader.pkgs.podman-desktop'
+          - '.#nixosConfigurations.vader.pkgs.station'
+          - '.#nixosConfigurations.vader.pkgs.wavebox'
     permissions:
       contents: read
       id-token: write
@@ -43,24 +57,40 @@ jobs:
       - name: Building ${{ matrix.package }} 📦
         continue-on-error: true
         run: |
-          # Try to get license info
-          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
-            echo "⚠️ Unfree license detected"
-            export NIXPKGS_ALLOW_UNFREE=1
-            nix build .#${{ matrix.package }} -L --impure
-          else
-            echo "✅ Free license detected"
-            nix build .#${{ matrix.package }} -L
-          fi
+          nix build ${{ matrix.package }} -L
 
-  build-large-applications:
+  build-large-linux-apps:
     name: Build large applications 🎒
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         package:
-          - davinci-resolve
-          - ollama
+          - '.#nixosConfigurations.vader.pkgs.davinci-resolve'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v17
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - name: Building ${{ matrix.package }} 🎒
+        continue-on-error: true
+        run: |
+          export NIXPKGS_ALLOW_UNFREE=1
+          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
+            nix build ${{ matrix.package }} -L --impure
+          else
+            nix build ${{ matrix.package }} -L
+          fi
+
+  build-darwin-apps:
+    name: Build 🍏 apps 📦
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        package:
+          - '.#darwinConfigurations.momin.pkgs.gitkraken'
+          - '.#darwinConfigurations.momin.pkgs.podman-desktop'
     permissions:
       contents: read
       id-token: write
@@ -70,22 +100,14 @@ jobs:
         with:
           determinate: true
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: Building ${{ matrix.package }} 🎒
+      - name: Building ${{ matrix.package }} 📦
         continue-on-error: true
         run: |
-          # Try to get license info
-          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
-            echo "⚠️ Unfree license detected"
-            export NIXPKGS_ALLOW_UNFREE=1
-            nix build .#${{ matrix.package }} -L --impure
-          else
-            echo "✅ Free license detected"
-            nix build .#${{ matrix.package }} -L
-          fi
+          nix build ${{ matrix.package }} -L
 
   build-fonts:
     name: Build fonts 🔤
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         package:
@@ -118,19 +140,11 @@ jobs:
       - name: Building ${{ matrix.package }} 🔤
         continue-on-error: true
         run: |
-          # Try to get license info
-          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
-            echo "⚠️ Unfree license detected"
-            export NIXPKGS_ALLOW_UNFREE=1
-            nix build .#${{ matrix.package }} -L --impure
-          else
-            echo "✅ Free license detected"
-            nix build .#${{ matrix.package }} -L
-          fi
+          nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
 
   build-obs-plugins:
     name: Build OBS Plugins 🔌
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         package:
@@ -170,12 +184,4 @@ jobs:
       - name: Building ${{ matrix.package }} 🔌
         continue-on-error: true
         run: |
-          # Try to get license info
-          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
-            echo "⚠️ Unfree license detected"
-            export NIXPKGS_ALLOW_UNFREE=1
-            nix build .#${{ matrix.package }} -L --impure
-          else
-            echo "✅ Free license detected"
-            nix build .#${{ matrix.package }} -L
-          fi
+          nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L

@@ -6,6 +6,7 @@ let
     runtimeInputs = with pkgs; [
       bc
       coreutils-full
+      nix-output-monitor
     ];
     text = builtins.readFile ./${name}.sh;
   };

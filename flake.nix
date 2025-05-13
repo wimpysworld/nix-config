@@ -209,5 +209,8 @@
       );
       # Formatter for .nix files, available via 'nix fmt'
       formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
+      
+      # Expose input packages directly
+      inherit (inputs) bzmenu iwmenu;
     };
 }

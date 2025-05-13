@@ -23,4 +23,4 @@ esac
 build_cores=$(printf "%.0f" "$(echo "${all_cores} * 0.75" | bc)")
 
 echo "Building $1 󰏗 with ${build_cores} cores"
-nix build .#"${platform}"Configurations."$(hostname -s)".pkgs."${1}" --cores "${build_cores}" -L
+nom build .#"${platform}"Configurations."$(hostname -s)".pkgs."${1}" --cores "${build_cores}"
