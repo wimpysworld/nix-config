@@ -25,22 +25,22 @@
     custom-caddy = import ./custom-caddy.nix { pkgs = prev; };
 
     gitkraken = prev.gitkraken.overrideAttrs (old: rec {
-      version = "11.0.0";
+      version = "11.1.0";
 
       src = {
         x86_64-linux = prev.fetchzip {
           url = "https://release.axocdn.com/linux/GitKraken-v${version}.tar.gz";
-          hash = "sha256-rUOBCxquTw5wh5cK0AEGmIMq808tZQe5E90V7lGRuNY=";
+          hash = "sha256-42NP+23PlyIiqzwjpktz8ipJ5tjzbbszSB9qkeE5jVU=";
         };
 
         x86_64-darwin = prev.fetchzip {
           url = "https://release.axocdn.com/darwin/GitKraken-v${version}.zip";
-          hash = "";
+          hash = "sha256-/GiHFVz9RyC/bliA8m2YwCwnUQfxT9C0qR+YPr6zdqQ=";
         };
 
         aarch64-darwin = prev.fetchzip {
           url = "https://release.axocdn.com/darwin-arm64/GitKraken-v${version}.zip";
-          hash = "";
+          hash = "sha256-CfhloCczC2z1AHNh0vGXk9Np+BnFI0U/QrPIFBWsYjs=";
         };
       }.${prev.stdenv.hostPlatform.system} or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
     });
