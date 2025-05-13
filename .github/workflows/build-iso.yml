@@ -1,5 +1,4 @@
 name: Build 🏗️ ISO 📀
-
 on:
   push:
     branches:
