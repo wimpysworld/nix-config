@@ -16,10 +16,12 @@ jobs:
       matrix:
         host:
           - crawler
+          - dagger
     permissions:
       contents: read
       id-token: write
     steps:
+    - uses: lucasew/action-i-only-care-about-nix@v1
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@v17
       with:
@@ -35,10 +37,12 @@ jobs:
       matrix:
         home:
           - martin@crawler
+          - martin@dagger
     permissions:
       contents: read
       id-token: write
     steps:
+    - uses: lucasew/action-i-only-care-about-nix@v1
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@v17
       with:
