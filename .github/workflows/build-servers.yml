@@ -16,6 +16,7 @@ jobs:
       matrix:
         host:
           - revan
+          - malak
     permissions:
       contents: read
       id-token: write
@@ -43,6 +44,7 @@ jobs:
       matrix:
         home:
           - martin@revan
+          - martin@malak
     permissions:
       contents: read
       id-token: write

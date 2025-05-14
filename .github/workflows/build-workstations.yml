@@ -16,6 +16,10 @@ jobs:
       matrix:
         host:
           - vader
+          - phasma
+          - tanis
+          - shaa
+          - atrius
     permissions:
       contents: read
       id-token: write
@@ -43,6 +47,10 @@ jobs:
       matrix:
         home:
           - martin@vader
+          - martin@phasma
+          - martin@tanis
+          - martin@shaa
+          - martin@atrius
     permissions:
       contents: read
       id-token: write
