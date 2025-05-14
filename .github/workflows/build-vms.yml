@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   build-vm:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         host:
@@ -21,8 +21,8 @@ jobs:
       contents: read
       id-token: write
     steps:
-    - uses: lucasew/action-i-only-care-about-nix@v1
     - uses: actions/checkout@v4
+    - uses: wimpysworld/nothing-but-nix@main
     - uses: DeterminateSystems/nix-installer-action@v17
       with:
         determinate: true
@@ -32,7 +32,7 @@ jobs:
         nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel -L
 
   build-home:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         home:
@@ -42,8 +42,8 @@ jobs:
       contents: read
       id-token: write
     steps:
-    - uses: lucasew/action-i-only-care-about-nix@v1
     - uses: actions/checkout@v4
+    - uses: wimpysworld/nothing-but-nix@main
     - uses: DeterminateSystems/nix-installer-action@v17
       with:
         determinate: true

@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build-iso:
     name: Build ISO 💿️
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       ver: ${{ steps.build-iso.outputs.ver }}
     permissions:
@@ -21,6 +21,7 @@ jobs:
       id-token: write
     steps:
     - uses: actions/checkout@v4
+    - uses: wimpysworld/nothing-but-nix@main
     - uses: DeterminateSystems/nix-installer-action@v17
       with:
         determinate: true

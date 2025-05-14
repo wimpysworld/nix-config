@@ -50,6 +50,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/nix-installer-action@v17
         with:
           determinate: true
@@ -71,6 +72,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/nix-installer-action@v17
       - uses: DeterminateSystems/flakehub-cache-action@v1
       - name: Building ${{ matrix.package }} 🎒
@@ -133,6 +135,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/nix-installer-action@v17
         with:
           determinate: true
@@ -177,6 +180,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/nix-installer-action@v17
         with:
           determinate: true
