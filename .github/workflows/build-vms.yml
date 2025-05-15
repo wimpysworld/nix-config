@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        host:
+        vm:
           - crawler
           - dagger
     permissions:
@@ -27,7 +27,7 @@ jobs:
       with:
         determinate: true
     - uses: DeterminateSystems/flakehub-cache-action@v1
-    - name: Building 👷 ${{ matrix.host }} ️🧟
+    - name: Building 👷 ${{ matrix.vm }} ️🧟
       run: |
         # Disable non-redist packages
         for NON_REDIST in cider pico8; do
@@ -36,34 +36,6 @@ jobs:
             mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
           fi
         done
-        nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel -L
-        sudo df -h
-
-  build-home:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        home:
-          - martin@crawler
-          - martin@dagger
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-    - uses: actions/checkout@v4
-    - uses: wimpysworld/nothing-but-nix@main
-    - uses: DeterminateSystems/nix-installer-action@v17
-      with:
-        determinate: true
-    - uses: DeterminateSystems/flakehub-cache-action@v1
-    - name: Building 👷 ${{ matrix.home }} 🏚️
-      run: |
-        # Disable non-redist packages
-        for NON_REDIST in cider pico8; do
-          if [ -d "pkgs/${NON_REDIST}" ]; then
-            mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
-            mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
-          fi
-        done
-        nix build '.#homeConfigurations."${{ matrix.home }}".activationPackage' -L
+        nix build '.#homeConfigurations."martin@${{ matrix.vm }}".activationPackage' -L
+        nix build .#nixosConfigurations.${{ matrix.vm }}.config.system.build.toplevel -L
         sudo df -h

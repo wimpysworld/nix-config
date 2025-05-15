@@ -1,4 +1,4 @@
-name: Build 🏗️ Workstations ️️🖥️
+name: Build 🏗️ Laptops 💻
 on:
   push:
     tags:
@@ -10,13 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-workstation:
+  build-laptop:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        workstation:
-          - vader
-          - phasma
+        laptop:
+          - tanis
+          - shaa
+          - atrius
+          - sidious
     permissions:
       contents: read
       id-token: write
@@ -27,7 +29,7 @@ jobs:
       with:
         determinate: true
     - uses: DeterminateSystems/flakehub-cache-action@v1
-    - name: Building 👷 ${{ matrix.workstation }} 🐧
+    - name: Building 👷 ${{ matrix.laptop }} 🐧
       run: |
         # Disable non-redist packages
         for NON_REDIST in cider pico8; do
@@ -36,6 +38,6 @@ jobs:
             mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
           fi
         done
-        nix build '.#homeConfigurations."martin@${{ matrix.workstation }}".activationPackage' -L
-        nix build .#nixosConfigurations.${{ matrix.workstation }}.config.system.build.toplevel -L
+        nix build '.#homeConfigurations."martin@${{ matrix.laptop }}".activationPackage' -L
+        nix build .#nixosConfigurations.${{ matrix.laptop }}.config.system.build.toplevel -L
         sudo df -h
