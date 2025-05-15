@@ -9,16 +9,14 @@ on:
 jobs:
   lock-updater:
     name: Flake Lock Updater
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v17
-        with:
-          determinate: true
+      - uses: DeterminateSystems/determinate-nix-action@main
       - uses: DeterminateSystems/flakehub-cache-action@v1
       - uses: DeterminateSystems/update-flake-lock@v24
         with:

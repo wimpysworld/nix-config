@@ -1,30 +1,23 @@
 name: Flake ❄️ Publish 📤
 on:
+  workflow_dispatch:
+  pull_request:
   push:
+    branches:
+    - main
     tags:
     - "v?[0-9]+.[0-9]+.[0-9]+*"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  publish-flakehub:
-    name: Publish Flake ❄️
-    runs-on: ubuntu-22.04
-    # Only run this job when the workflow is triggered by a tag
-    if: startsWith(github.ref, 'refs/tags/')
+  DeterminateCI:
+    name: Determinate CI
+    uses: DeterminateSystems/ci/.github/workflows/workflow.yml@main
     permissions:
       id-token: write
       contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v17
-        with:
-          determinate: true
-      - uses: DeterminateSystems/flakehub-cache-action@v1
-      - uses: DeterminateSystems/flakehub-push@v5
-        with:
-          tag: ${{ github.ref }}
-          include-output-paths: true
-          visibility: "public"
+    with:
+      visibility: true

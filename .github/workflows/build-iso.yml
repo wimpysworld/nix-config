@@ -51,3 +51,21 @@ jobs:
           echo "No ISO found, failing the job"
           exit 1
         fi
+
+  publish-flakehub:
+    needs: [build-iso]
+    name: Publish FlakeHub ❄️
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: wimpysworld/nothing-but-nix@main
+    - uses: DeterminateSystems/determinate-nix-action@main
+    - uses: DeterminateSystems/flakehub-cache-action@v1
+    - uses: DeterminateSystems/flakehub-push@v5
+      with:
+        tag: ${{ needs.build-iso.outputs.ver }}
+        include-output-paths: true
+        visibility: "public"        
