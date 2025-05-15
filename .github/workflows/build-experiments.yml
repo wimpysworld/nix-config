@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         package:
-          - '.#nixosConfigurations.vader.pkgs.davinci-resolve'
+          - '.#davinci-resolve'
     permissions:
       contents: read
       id-token: write
