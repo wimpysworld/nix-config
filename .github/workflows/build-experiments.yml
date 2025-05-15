@@ -1,0 +1,35 @@
+name: Build 🏗️ Experiments ️‍🧑‍🔬
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux-experiments:
+    name: Build experiments
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - '.#nixosConfigurations.vader.pkgs.davinci-resolve'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: wimpysworld/nothing-but-nix@main
+      - uses: DeterminateSystems/nix-installer-action@v17
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - name: Building ${{ matrix.package }} 🧪
+        continue-on-error: true
+        run: |
+          export NIXPKGS_ALLOW_UNFREE=1
+          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
+            nix build ${{ matrix.package }} -L --impure
+          else
+            nix build ${{ matrix.package }} -L
+          fi
+          sudo df -h
