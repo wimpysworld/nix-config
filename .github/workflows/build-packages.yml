@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   build-linux-apps:
-    name: Build 🐧 apps 📦
+    name: 🐧
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -33,17 +33,18 @@ jobs:
           - '.#bzmenu.packages.x86_64-linux.default'
           - '.#iwmenu.packages.x86_64-linux.default'
           - '.#nixosConfigurations.vader.pkgs.caddy'
-          - '.#nixosConfigurations.vader.pkgs.defold'
+          - '.#cider'
+          - '.#defold'
           - '.#nixosConfigurations.vader.pkgs.gitkraken'
-          - '.#nixosConfigurations.vader.pkgs.gotosocial'
-          - '.#nixosConfigurations.vader.pkgs.heynote'
-          - '.#nixosConfigurations.vader.pkgs.hyprpicker'
+          - '.#gotosocial'
+          - '.#heynote'
+          - '.#hyprpicker'
           - '.#nixosConfigurations.vader.pkgs.linuxPackages.mwprocapture'
-          - '.#nixosConfigurations.vader.pkgs.ollama'
-          - '.#nixosConfigurations.vader.pkgs.open-webui'
-          - '.#nixosConfigurations.vader.pkgs.owncast'
-          - '.#nixosConfigurations.vader.pkgs.podman-desktop'
-          - '.#nixosConfigurations.vader.pkgs.station'
+          - '.#ollama'
+          - '.#open-webui'
+          - '.#owncast'
+          - '.#podman-desktop'
+          - '.#station'
           - '.#nixosConfigurations.vader.pkgs.wavebox'
     permissions:
       contents: read
@@ -53,13 +54,12 @@ jobs:
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@main
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: Building ${{ matrix.package }} 📦
+      - name: ${{ matrix.package }}
         run: |
           nix build ${{ matrix.package }} -L
-          sudo df -h
 
   build-darwin-apps:
-    name: Build 🍏 apps 📦
+    name: 🍏
     runs-on: macos-latest
     strategy:
       matrix:
@@ -73,34 +73,33 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@main
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: Building ${{ matrix.package }} 📦
+      - name: ${{ matrix.package }}
         run: |
           nix build ${{ matrix.package }} -L
-          sudo df -h
 
   build-fonts:
-    name: Build fonts 🔤
+    name: 🔤
     runs-on: ubuntu-latest
     strategy:
       matrix:
         package:
-          - nerd-font-patcher
-          - bebas-neue-2014-font
-          - bebas-neue-2018-font
-          - bebas-neue-pro-font
-          - bebas-neue-rounded-font
-          - bebas-neue-semi-rounded-font
-          - boycott-font
-          - commodore-64-pixelized-font
-          - digital-7-font
-          - dirty-ego-font
-          - fixedsys-core-font
-          - fixedsys-excelsior-font
-          - impact-label-font
-          - mocha-mattari-font
-          - poppins-font
-          - spaceport-2006-font
-          - zx-spectrum-7-font
+          - '.#nerd-font-patcher'
+          - '.#bebas-neue-2014-font'
+          - '.#bebas-neue-2018-font'
+          - '.#bebas-neue-pro-font'
+          - '.#bebas-neue-rounded-font'
+          - '.#bebas-neue-semi-rounded-font'
+          - '.#boycott-font'
+          - '.#commodore-64-pixelized-font'
+          - '.#digital-7-font'
+          - '.#dirty-ego-font'
+          - '.#fixedsys-core-font'
+          - '.#fixedsys-excelsior-font'
+          - '.#impact-label-font'
+          - '.#mocha-mattari-font'
+          - '.#poppins-font'
+          - '.#spaceport-2006-font'
+          - '.#zx-spectrum-7-font'
     permissions:
       contents: read
       id-token: write
@@ -109,41 +108,40 @@ jobs:
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@main
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: Building ${{ matrix.package }} 🔤
+      - name: ${{ matrix.package }}
         run: |
-          nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
-          sudo df -h
+          nix build ${{ matrix.package }} -L
 
   build-obs-plugins:
-    name: Build OBS Plugins 🔌
+    name: 🔌
     runs-on: ubuntu-latest
     strategy:
       matrix:
         package:
-          - obs-aitum-multistream
-          - obs-advanced-masks
-          - obs-browser-transition
-          - obs-dir-watch-media
-          - obs-dvd-screensaver
-          - obs-freeze-filter
-          - obs-markdown
-          - obs-media-controls
-          - obs-mute-filter
-          - obs-noise
-          - obs-recursion-effect
-          - obs-replay-source
-          - obs-retro-effects
-          - obs-rgb-levels
-          - obs-scale-to-sound
-          - obs-scene-as-transition
-          - obs-source-clone
-          - obs-stroke-glow-shadow
-          - obs-transition-table
-          - obs-urlsource
-          - obs-vertical-canvas
-          - obs-vnc
-          - obs-webkitgtk
-          - pixel-art
+          - '.#obs-aitum-multistream'
+          - '.#obs-advanced-masks'
+          - '.#obs-browser-transition'
+          - '.#obs-dir-watch-media'
+          - '.#obs-dvd-screensaver'
+          - '.#obs-freeze-filter'
+          - '.#obs-markdown'
+          - '.#obs-media-controls'
+          - '.#obs-mute-filter'
+          - '.#obs-noise'
+          - '.#obs-recursion-effect'
+          - '.#obs-replay-source'
+          - '.#obs-retro-effects'
+          - '.#obs-rgb-levels'
+          - '.#obs-scale-to-sound'
+          - '.#obs-scene-as-transition'
+          - '.#obs-source-clone'
+          - '.#obs-stroke-glow-shadow'
+          - '.#obs-transition-table'
+          - '.#obs-urlsource'
+          - '.#obs-vertical-canvas'
+          - '.#obs-vnc'
+          - '.#obs-webkitgtk'
+          - '.#pixel-art'
     permissions:
       contents: read
       id-token: write
@@ -152,7 +150,6 @@ jobs:
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@main
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: Building ${{ matrix.package }} 🔌
+      - name: ${{ matrix.package }}
         run: |
-          nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
-          sudo df -h
+          nix build ${{ matrix.package }} -L

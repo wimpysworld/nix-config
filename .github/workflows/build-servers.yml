@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   build-server:
+    name: 💁
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -29,13 +30,8 @@ jobs:
     - uses: wimpysworld/nothing-but-nix@main
     - uses: DeterminateSystems/determinate-nix-action@main
     - uses: DeterminateSystems/flakehub-cache-action@v1
-    - name: Building 👷 ${{ matrix.config }} 🐧
+    - name: ${{ matrix.config }}
       run: |
-        for NON_REDIST in cider pico8; do
-          if [ -d "pkgs/${NON_REDIST}" ]; then
-            mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
-            mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
-          fi
-        done
+        mv -v "pkgs/pico8" "pkgs/pico8-disabled"
+        mv -v pkgs/pico8-ci pkgs/pico8
         nix build ${{ matrix.config }} -L
-        sudo df -h

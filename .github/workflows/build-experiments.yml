@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   build-linux-experiments:
-    name: Build experiments
+    name: 🧪
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,7 +23,7 @@ jobs:
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@main
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: Building ${{ matrix.package }} 🧪
+      - name: ${{ matrix.package }}
         continue-on-error: true
         run: |
           export NIXPKGS_ALLOW_UNFREE=1
@@ -32,4 +32,3 @@ jobs:
           else
             nix build ${{ matrix.package }} -L
           fi
-          sudo df -h
