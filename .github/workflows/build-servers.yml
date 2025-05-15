@@ -1,8 +1,10 @@
 name: Build 🏗️ Servers ️💁
 on:
   push:
-    tags:
-    - "v?[0-9]+.[0-9]+.[0-9]+*"
+    branches:
+      - main
+    paths:
+      - 'flake.lock'
   workflow_dispatch:
 
 concurrency:
@@ -14,28 +16,26 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        server:
-          - revan
-          - malak
+        config:
+          - '.#nixosConfigurations.malak.config.system.build.toplevel'
+          - '.#homeConfigurations."martin@malak".activationPackage'
+          - '.#nixosConfigurations.revan.config.system.build.toplevel'
+          - '.#homeConfigurations."martin@revan".activationPackage'
     permissions:
       contents: read
       id-token: write
     steps:
     - uses: actions/checkout@v4
     - uses: wimpysworld/nothing-but-nix@main
-    - uses: DeterminateSystems/nix-installer-action@v17
-      with:
-        determinate: true
+    - uses: DeterminateSystems/determinate-nix-action@main
     - uses: DeterminateSystems/flakehub-cache-action@v1
-    - name: Building 👷 ${{ matrix.server }} 🐧
+    - name: Building 👷 ${{ matrix.config }} 🐧
       run: |
-        # Disable non-redist packages
         for NON_REDIST in cider pico8; do
           if [ -d "pkgs/${NON_REDIST}" ]; then
             mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
             mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
           fi
         done
-        nix build '.#homeConfigurations."martin@${{ matrix.server }}".activationPackage' -L
-        nix build .#nixosConfigurations.${{ matrix.server }}.config.system.build.toplevel -L
+        nix build ${{ matrix.config }} -L
         sudo df -h
