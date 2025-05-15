@@ -38,6 +38,7 @@ jobs:
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
+        sudo df -h
     - name: Release ISO 🎁
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

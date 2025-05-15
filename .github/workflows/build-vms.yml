@@ -29,7 +29,15 @@ jobs:
     - uses: DeterminateSystems/flakehub-cache-action@v1
     - name: Building 👷 ${{ matrix.host }} ️🧟
       run: |
+        # Disable non-redist packages
+        for NON_REDIST in cider pico8; do
+          if [ -d "pkgs/${NON_REDIST}" ]; then
+            mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
+            mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
+          fi
+        done
         nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel -L
+        sudo df -h
 
   build-home:
     runs-on: ubuntu-latest
@@ -50,4 +58,12 @@ jobs:
     - uses: DeterminateSystems/flakehub-cache-action@v1
     - name: Building 👷 ${{ matrix.home }} 🏚️
       run: |
+        # Disable non-redist packages
+        for NON_REDIST in cider pico8; do
+          if [ -d "pkgs/${NON_REDIST}" ]; then
+            mv -v "pkgs/${NON_REDIST}" "pkgs/${NON_REDIST}-disabled"
+            mv -v pkgs/${NON_REDIST}-ci pkgs/${NON_REDIST}
+          fi
+        done
         nix build '.#homeConfigurations."${{ matrix.home }}".activationPackage' -L
+        sudo df -h

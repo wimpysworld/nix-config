@@ -37,6 +37,7 @@ jobs:
           fi
         done
         nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel -L
+        sudo df -h
 
   build-home:
     runs-on: ubuntu-latest
@@ -65,3 +66,4 @@ jobs:
           fi
         done
         nix build '.#homeConfigurations."${{ matrix.home }}".activationPackage' -L
+        sudo df -h

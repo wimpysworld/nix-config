@@ -59,6 +59,7 @@ jobs:
         continue-on-error: true
         run: |
           nix build ${{ matrix.package }} -L
+          sudo df -h
 
   build-large-linux-apps:
     name: Build large applications 🎒
@@ -84,6 +85,7 @@ jobs:
           else
             nix build ${{ matrix.package }} -L
           fi
+          sudo df -h
 
   build-darwin-apps:
     name: Build 🍏 apps 📦
@@ -106,6 +108,7 @@ jobs:
         continue-on-error: true
         run: |
           nix build ${{ matrix.package }} -L
+          sudo df -h
 
   build-fonts:
     name: Build fonts 🔤
@@ -144,6 +147,7 @@ jobs:
         continue-on-error: true
         run: |
           nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
+          sudo df -h
 
   build-obs-plugins:
     name: Build OBS Plugins 🔌
@@ -189,3 +193,4 @@ jobs:
         continue-on-error: true
         run: |
           nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
+          sudo df -h
