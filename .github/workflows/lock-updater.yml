@@ -3,7 +3,7 @@ name: Flake ❄️ Lock 🔒️ Updater ✨
 on:
   schedule:
     # Pi o'clock
-    - cron: '3 14 * * 1,5'
+    - cron: '14 3 * * *'
   workflow_dispatch:
 
 jobs:
