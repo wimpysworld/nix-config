@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         package:
-          - '.#davinci-resolve'
+          - davinci-resolve
     permissions:
       contents: read
       id-token: write
@@ -22,13 +22,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          extra-conf:
+            lazy-trees = true
       - uses: DeterminateSystems/flakehub-cache-action@v1
       - name: ${{ matrix.package }}
         continue-on-error: true
         run: |
           export NIXPKGS_ALLOW_UNFREE=1
           if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
-            nix build ${{ matrix.package }} -L --impure
+            nix build .#${{ matrix.package }} -L --impure
           else
-            nix build ${{ matrix.package }} -L
+            nix build .#${{ matrix.package }} -L
           fi

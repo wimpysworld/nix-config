@@ -54,10 +54,10 @@ Dual boot systems have the NixOS install named a Sith Lord and the *"other"* OS 
 ## Structure
 
 - [.github]: GitHub CI/CD workflows Nix ❄️ supercharged ⚡️ by [**Determinate Systems**](https://determinate.systems)
-  - [Nix Installer Action](https://github.com/marketplace/actions/the-determinate-nix-installer)
+  - [Install Determinate Nix Action](https://github.com/marketplace/actions/install-determinate-nix)
   - [FlakeHub Cache Action](https://github.com/marketplace/actions/flakehub-cache)
   - [Flake Checker Action](https://github.com/marketplace/actions/nix-flake-checker)
-  - [Update Flake Lock Action](https://github.com/marketplace/actions/update-flake-lock)
+  - [Update Flake Lock Action](https://github.com/marketplace/actions/update-nix-flake-lock)
 - [darwin]: macOS configurations
   - Includes full system configuration for a MacBook Air M2 15" and MacBook Pro (Mid 2015)
 - [home-manager]: Home Manager configurations
