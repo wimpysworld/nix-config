@@ -24,28 +24,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-linux-apps:
-    name: 🐧
+  build-fuzzel-menus:
+    name: 📄
     runs-on: ubuntu-latest
     strategy:
       matrix:
         package:
-          - '.#bzmenu.packages.x86_64-linux.default'
-          - '.#iwmenu.packages.x86_64-linux.default'
-          - '.#nixosConfigurations.vader.pkgs.caddy'
-          - '.#cider'
-          - '.#defold'
-          - '.#nixosConfigurations.vader.pkgs.gitkraken'
-          - '.#gotosocial'
-          - '.#heynote'
-          - '.#hyprpicker'
-          - '.#nixosConfigurations.vader.pkgs.linuxPackages.mwprocapture'
-          - '.#ollama'
-          - '.#open-webui'
-          - '.#owncast'
-          - '.#podman-desktop'
-          - '.#station'
-          - '.#nixosConfigurations.vader.pkgs.wavebox'
+          - bzmenu
+          - iwmenu
+        lazy-trees: [true, false]
     permissions:
       contents: read
       id-token: write
@@ -53,10 +40,75 @@ jobs:
       - uses: actions/checkout@v4
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          extra-conf:
+            lazy-trees = ${{ matrix.lazy-trees }}
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: ${{ matrix.package }}
+      - name: ${{ matrix.package }} (lazy-trees ${{ matrix.lazy-trees }})
         run: |
-          nix build ${{ matrix.package }} -L
+            nix build .#${{ matrix.package }}.packages.x86_64-linux.default -L
+
+  build-overlays:
+    name: 🧥
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - caddy
+          - linuxPackages.mwprocapture
+        lazy-trees: [true, false]
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: wimpysworld/nothing-but-nix@main
+      - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          extra-conf:
+            lazy-trees = ${{ matrix.lazy-trees }}
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - name: ${{ matrix.package }} (lazy-trees ${{ matrix.lazy-trees }})
+        run: |
+            nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
+
+  build-linux-apps:
+    name: 🐧
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - cider
+          - defold
+          - gitkraken
+          - gotosocial
+          - heynote
+          - hyprpicker
+          - ollama
+          - open-webui
+          - owncast
+          - podman-desktop
+          - station
+          - wavebox
+        lazy-trees: [true, false]
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: wimpysworld/nothing-but-nix@main
+      - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          extra-conf:
+            lazy-trees = ${{ matrix.lazy-trees }}
+      - uses: DeterminateSystems/flakehub-cache-action@v1
+      - name: ${{ matrix.package }} (lazy-trees ${{ matrix.lazy-trees }})
+        run: |
+          if ! nix eval ".#${{ matrix.package }}.meta.license.spdxId" --raw 2>/dev/null; then
+            nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
+          else
+            nix build .#${{ matrix.package }} -L
+          fi
 
   build-darwin-apps:
     name: 🍏
@@ -64,18 +116,22 @@ jobs:
     strategy:
       matrix:
         package:
-          - '.#darwinConfigurations.momin.pkgs.gitkraken'
-          - '.#darwinConfigurations.momin.pkgs.podman-desktop'
+          - gitkraken
+          - podman-desktop
+        lazy-trees: [true, false]
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          extra-conf:
+            lazy-trees = ${{ matrix.lazy-trees }}
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: ${{ matrix.package }}
+      - name: ${{ matrix.package }} (lazy-trees ${{ matrix.lazy-trees }})
         run: |
-          nix build ${{ matrix.package }} -L
+          nix build .#darwinConfigurations.momin.pkgs.${{ matrix.package }} -L
 
   build-fonts:
     name: 🔤
@@ -83,23 +139,24 @@ jobs:
     strategy:
       matrix:
         package:
-          - '.#nerd-font-patcher'
-          - '.#bebas-neue-2014-font'
-          - '.#bebas-neue-2018-font'
-          - '.#bebas-neue-pro-font'
-          - '.#bebas-neue-rounded-font'
-          - '.#bebas-neue-semi-rounded-font'
-          - '.#boycott-font'
-          - '.#commodore-64-pixelized-font'
-          - '.#digital-7-font'
-          - '.#dirty-ego-font'
-          - '.#fixedsys-core-font'
-          - '.#fixedsys-excelsior-font'
-          - '.#impact-label-font'
-          - '.#mocha-mattari-font'
-          - '.#poppins-font'
-          - '.#spaceport-2006-font'
-          - '.#zx-spectrum-7-font'
+          - nerd-font-patcher
+          - bebas-neue-2014-font
+          - bebas-neue-2018-font
+          - bebas-neue-pro-font
+          - bebas-neue-rounded-font
+          - bebas-neue-semi-rounded-font
+          - boycott-font
+          - commodore-64-pixelized-font
+          - digital-7-font
+          - dirty-ego-font
+          - fixedsys-core-font
+          - fixedsys-excelsior-font
+          - impact-label-font
+          - mocha-mattari-font
+          - poppins-font
+          - spaceport-2006-font
+          - zx-spectrum-7-font
+        lazy-trees: [true, false]
     permissions:
       contents: read
       id-token: write
@@ -107,10 +164,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          extra-conf:
+            lazy-trees = ${{ matrix.lazy-trees }}
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: ${{ matrix.package }}
+      - name: ${{ matrix.package }} (lazy-trees ${{ matrix.lazy-trees }})
         run: |
-          nix build ${{ matrix.package }} -L
+          nix build .#${{ matrix.package }} -L
 
   build-obs-plugins:
     name: 🔌
@@ -118,30 +178,31 @@ jobs:
     strategy:
       matrix:
         package:
-          - '.#obs-aitum-multistream'
-          - '.#obs-advanced-masks'
-          - '.#obs-browser-transition'
-          - '.#obs-dir-watch-media'
-          - '.#obs-dvd-screensaver'
-          - '.#obs-freeze-filter'
-          - '.#obs-markdown'
-          - '.#obs-media-controls'
-          - '.#obs-mute-filter'
-          - '.#obs-noise'
-          - '.#obs-recursion-effect'
-          - '.#obs-replay-source'
-          - '.#obs-retro-effects'
-          - '.#obs-rgb-levels'
-          - '.#obs-scale-to-sound'
-          - '.#obs-scene-as-transition'
-          - '.#obs-source-clone'
-          - '.#obs-stroke-glow-shadow'
-          - '.#obs-transition-table'
-          - '.#obs-urlsource'
-          - '.#obs-vertical-canvas'
-          - '.#obs-vnc'
-          - '.#obs-webkitgtk'
-          - '.#pixel-art'
+          - obs-aitum-multistream
+          - obs-advanced-masks
+          - obs-browser-transition
+          - obs-dir-watch-media
+          - obs-dvd-screensaver
+          - obs-freeze-filter
+          - obs-markdown
+          - obs-media-controls
+          - obs-mute-filter
+          - obs-noise
+          - obs-recursion-effect
+          - obs-replay-source
+          - obs-retro-effects
+          - obs-rgb-levels
+          - obs-scale-to-sound
+          - obs-scene-as-transition
+          - obs-source-clone
+          - obs-stroke-glow-shadow
+          - obs-transition-table
+          - obs-urlsource
+          - obs-vertical-canvas
+          - obs-vnc
+          - obs-webkitgtk
+          - pixel-art
+        lazy-trees: [true, false]
     permissions:
       contents: read
       id-token: write
@@ -149,7 +210,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@main
+        with:
+          extra-conf:
+            lazy-trees = ${{ matrix.lazy-trees }}
       - uses: DeterminateSystems/flakehub-cache-action@v1
-      - name: ${{ matrix.package }}
+      - name: ${{ matrix.package }} (lazy-trees ${{ matrix.lazy-trees }})
         run: |
-          nix build ${{ matrix.package }} -L
+          nix build .#${{ matrix.package }} -L

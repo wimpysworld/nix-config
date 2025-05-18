@@ -17,11 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        config:
-          - '.#nixosConfigurations.phasma.config.system.build.toplevel'
-          - '.#homeConfigurations."martin@phasma".activationPackage'
-          - '.#nixosConfigurations.vader.config.system.build.toplevel'
-          - '.#homeConfigurations."martin@vader".activationPackage'
+        host:
+          - phasma
+          - vader
+        config-type:
+          - type: 'nixos'
+            path: '.#nixosConfigurations.{host}.config.system.build.toplevel'
+          - type: 'home'
+            path: '.#homeConfigurations."martin@{host}".activationPackage'          
     permissions:
       contents: read
       id-token: write
@@ -29,11 +32,14 @@ jobs:
     - uses: actions/checkout@v4
     - uses: wimpysworld/nothing-but-nix@main
     - uses: DeterminateSystems/determinate-nix-action@main
+      with:
+        extra-conf:
+          lazy-trees = true    
     - uses: DeterminateSystems/flakehub-cache-action@v1
-    - name: ${{ matrix.config }}
+    - name: ${{ matrix.host }} - ${{ matrix.config-type.type }}
       run: |
-        mv -v "pkgs/pico8" "pkgs/pico8-disabled"
-        mv -v pkgs/pico8-ci pkgs/pico8
-        sed -i 's|"phasma"|#"phasma"|' nixos/_mixins/desktop/apps/video-production/default.nix
-        sed -i 's|"vader"|#"vader"|' nixos/_mixins/desktop/apps/video-production/default.nix
-        nix build ${{ matrix.config }} -L
+        sed -i 's|"${{ matrix.host }}"|#"${{ matrix.host }}"|' nixos/_mixins/desktop/apps/video-production/default.nix
+        sed -i 's|pico8|#pico8|' home-manager/_mixins/desktop/apps/game-dev/default.nix
+        FLAKEREF="${{ matrix.config-type.path }}"
+        FLAKEREF="${FLAKEREF/\{host\}/${{ matrix.host }}}"
+        nix build ${FLAKEREF} -L
