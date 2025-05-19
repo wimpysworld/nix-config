@@ -10,13 +10,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-aitum-multistream";
-  version = "1.0.5";
+  version = "1.0.7";
 
   src = fetchFromGitHub {
     owner = "Aitum";
     repo = "obs-aitum-multistream";
     rev = version;
-    sha256 = "sha256-2RQBUCRNFiPdkIO7fIvKBHA8hezspxpjKWmMFpR4Flg=";
+    sha256 = "sha256-TqddyTBRWLyfwYi9I0nQE8Z19YL2RwkZqUwi7F9XpwQ=";
   };
 
   # Fix FTBFS with Qt >= 6.8
