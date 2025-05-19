@@ -37,15 +37,10 @@ pkgs:
   pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { };
 
   # Check my local modification are in the upstream packages
-  obs-advanced-masks = pkgs.callPackage ./obs-plugins/obs-advanced-masks.nix { }; 
-  obs-freeze-filter = pkgs.qt6Packages.callPackage ./obs-plugins/obs-freeze-filter.nix { };
-  obs-mute-filter = pkgs.callPackage ./obs-plugins/obs-mute-filter.nix { };
-  obs-replay-source = pkgs.qt6Packages.callPackage ./obs-plugins/obs-replay-source.nix { };
-  obs-source-clone = pkgs.callPackage ./obs-plugins/obs-source-clone.nix { };
-  obs-scale-to-sound = pkgs.callPackage ./obs-plugins/obs-scale-to-sound.nix { };
-  obs-transition-table = pkgs.qt6Packages.callPackage ./obs-plugins/obs-transition-table.nix { };
-  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
-  obs-webkitgtk = pkgs.callPackage ./obs-plugins/obs-webkitgtk.nix { };
+  obs-advanced-masks = pkgs.callPackage ./obs-plugins/obs-advanced-masks.nix { }; # remove after 25.05
+  obs-replay-source = pkgs.qt6Packages.callPackage ./obs-plugins/obs-replay-source.nix { }; # upstream fixes
+  obs-source-clone = pkgs.callPackage ./obs-plugins/obs-source-clone.nix { }; # remove after 25.05
+  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { }; #upstream fixes
 
   # Local fonts
   # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/

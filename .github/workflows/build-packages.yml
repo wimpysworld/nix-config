@@ -182,28 +182,22 @@ jobs:
       matrix:
         package:
           - obs-aitum-multistream
-          - obs-advanced-masks
           - obs-browser-transition
           - obs-dir-watch-media
           - obs-dvd-screensaver
-          - obs-freeze-filter
           - obs-markdown
           - obs-media-controls
-          - obs-mute-filter
           - obs-noise
           - obs-recursion-effect
           - obs-replay-source
           - obs-retro-effects
           - obs-rgb-levels
-          - obs-scale-to-sound
           - obs-scene-as-transition
           - obs-source-clone
           - obs-stroke-glow-shadow
-          - obs-transition-table
           - obs-urlsource
           - obs-vertical-canvas
           - obs-vnc
-          - obs-webkitgtk
           - pixel-art
     permissions:
       contents: read
