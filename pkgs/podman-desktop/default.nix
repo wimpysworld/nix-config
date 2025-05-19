@@ -17,7 +17,7 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "podman-desktop";
-  version = "1.18.0";
+  version = "1.18.1";
 
   passthru.updateScript = nix-update-script { };
 
@@ -25,7 +25,7 @@ stdenv.mkDerivation (finalAttrs: {
     owner = "containers";
     repo = "podman-desktop";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-u3Irn+hSyTNTLl8QenMZbISE5aFhb58mOSOooVoijKw="; # Keep original hash
+    hash = "sha256-GYdetO/WiEQAvVSvu81tKqkOH7YUgkB7RVW0Crd/2ww=";
   };
 
   # NOTE: You might need to update this hash if the upstream dependencies changed
@@ -33,7 +33,7 @@ stdenv.mkDerivation (finalAttrs: {
   # Re-run the build once, let it fail on the hash mismatch, and copy the expected hash.
   pnpmDeps = pnpm_9.fetchDeps {
     inherit (finalAttrs) pname version src;
-    hash = "sha256-2k0BbE9FkWEErsTuCECjy+iI3u1Biv1MF9hI7Oq3Aus="; # Keep original hash
+    hash = "sha256-2k0BbE9FkWEErsTuCECjy+iI3u1Biv1MF9hI7Oq3Aus=";
   };
 
   patches = [
