@@ -20,29 +20,31 @@ pkgs:
   podman-desktop = pkgs.callPackage ./podman-desktop { };
 
   obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };
-  obs-advanced-masks = pkgs.callPackage ./obs-plugins/obs-advanced-masks.nix { };
   obs-browser-transition = pkgs.callPackage ./obs-plugins/obs-browser-transition.nix { };
   obs-dir-watch-media = pkgs.callPackage ./obs-plugins/obs-dir-watch-media.nix { };
   obs-dvd-screensaver = pkgs.callPackage ./obs-plugins/obs-dvd-screensaver.nix { };
-  obs-freeze-filter = pkgs.qt6Packages.callPackage ./obs-plugins/obs-freeze-filter.nix { };
   obs-markdown = pkgs.callPackage ./obs-plugins/obs-markdown.nix { };
   obs-media-controls = pkgs.callPackage ./obs-plugins/obs-media-controls.nix { };
-  obs-mute-filter = pkgs.callPackage ./obs-plugins/obs-mute-filter.nix { };
   obs-noise = pkgs.callPackage ./obs-plugins/obs-noise.nix { };
   obs-recursion-effect = pkgs.qt6Packages.callPackage ./obs-plugins/obs-recursion-effect.nix { };
-  obs-replay-source = pkgs.qt6Packages.callPackage ./obs-plugins/obs-replay-source.nix { };
   obs-retro-effects = pkgs.callPackage ./obs-plugins/obs-retro-effects.nix { };
   obs-rgb-levels = pkgs.callPackage ./obs-plugins/obs-rgb-levels.nix { };
-  obs-scale-to-sound = pkgs.callPackage ./obs-plugins/obs-scale-to-sound.nix { };
   obs-scene-as-transition = pkgs.callPackage ./obs-plugins/obs-scene-as-transition.nix { };
-  obs-source-clone = pkgs.callPackage ./obs-plugins/obs-source-clone.nix { };
   obs-stroke-glow-shadow = pkgs.callPackage ./obs-plugins/obs-stroke-glow-shadow.nix { };
-  obs-transition-table = pkgs.qt6Packages.callPackage ./obs-plugins/obs-transition-table.nix { };
   obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };
-  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
   obs-vnc = pkgs.callPackage ./obs-plugins/obs-vnc.nix { };
-  obs-webkitgtk = pkgs.callPackage ./obs-plugins/obs-webkitgtk.nix { };
   pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { };
+
+  # Check my local modification are in the upstream packages
+  obs-advanced-masks = pkgs.callPackage ./obs-plugins/obs-advanced-masks.nix { }; 
+  obs-freeze-filter = pkgs.qt6Packages.callPackage ./obs-plugins/obs-freeze-filter.nix { };
+  obs-mute-filter = pkgs.callPackage ./obs-plugins/obs-mute-filter.nix { };
+  obs-replay-source = pkgs.qt6Packages.callPackage ./obs-plugins/obs-replay-source.nix { };
+  obs-source-clone = pkgs.callPackage ./obs-plugins/obs-source-clone.nix { };
+  obs-scale-to-sound = pkgs.callPackage ./obs-plugins/obs-scale-to-sound.nix { };
+  obs-transition-table = pkgs.qt6Packages.callPackage ./obs-plugins/obs-transition-table.nix { };
+  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
+  obs-webkitgtk = pkgs.callPackage ./obs-plugins/obs-webkitgtk.nix { };
 
   # Local fonts
   # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/

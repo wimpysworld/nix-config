@@ -8,13 +8,13 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-media-controls";
-  version = "0.4.0-unstable-2024-01-10";
+  version = "0.4.1";
 
   src = fetchFromGitHub {
     owner = "exeldro";
     repo = "obs-media-controls";
-    rev = "6a186e7ee6abb008436c8c1f5f9187c6dc55e298";
-    sha256 = "sha256-j/TsIf4BoEU/U8/d5GukbHJNCQ53uzXs+TymvHUDpzk=";
+    rev = version;
+    sha256 = "sha256-r9fqpg0G9rzGSqq5FUS8ul58rj0796aGZIND8PCJ9jk=";
   };
 
   nativeBuildInputs = [ cmake ];
