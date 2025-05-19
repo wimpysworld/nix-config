@@ -9,7 +9,7 @@
 , makeBinaryWrapper
 }:
 let
-  version = "0.2.2";
+  version = "0.2.3";
 in buildGoModule {
   pname = "owncast";
   inherit version;
@@ -17,7 +17,7 @@ in buildGoModule {
     owner = "owncast";
     repo = "owncast";
     rev = "v${version}";
-    hash = "sha256-LVlbp1jE5HLAwznYb9nAzh+Nn23Hb+YXrNV8mQQ3THc=";
+    hash = "sha256-JCIB4G3cOSkEEO/jcsj4mUP+HeQfgn0jX4OL8NX9/C0=";
   };
   vendorHash = "sha256-FuynEBoPS0p1bRgmaeCxn1RPqbYHcltZpQ9SE71xHEE=";
 
