@@ -3,6 +3,7 @@
 pkgs:
 {
   # Local packages being prepped for upstreaming
+  cider = pkgs.callPackage ./cider { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
@@ -66,6 +67,5 @@ pkgs:
   zx-spectrum-7-font = pkgs.callPackage ./fonts/zx-spectrum-7-font { };
 
   # Non-redistributable packages
-  cider = pkgs.callPackage ./cider { };
   pico8 = pkgs.callPackage ./pico8 { };
 }
