@@ -6,11 +6,11 @@
   writeScript,
 }:
 let
-  version = "2.2.1";
+  version = "2.2.2";
   pname = "heynote";
   src = fetchurl {
     url = "https://github.com/heyman/heynote/releases/download/v${version}/Heynote_${version}_x86_64.AppImage";
-    hash = "sha256-IUy5EAtUk5+e64DC4VXXTgkyrG3mNJiItf1d4DR/fms=";
+    hash = "sha256-DFJ7j8eFElbsU7EiIZuH9DdkuBVmmDQ66tkRDYBApCc=";
   };
   appimageContents = appimageTools.extractType2 {
     inherit pname version src;
