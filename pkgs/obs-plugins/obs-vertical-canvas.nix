@@ -10,7 +10,7 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-vertical-canvas";
-  version = "1.4.10";
+  version = "1.5.0";
 
   src = fetchFromGitHub {
     owner = "Aitum";
@@ -34,8 +34,7 @@ stdenv.mkDerivation rec {
   dontWrapQtApps = true;
 
   postInstall = ''
-    rm -rf $out/data
-    rm -rf $out/obs-plugins
+    rm -rf $out/data $out/obs-plugins
   '';
 
   meta = {

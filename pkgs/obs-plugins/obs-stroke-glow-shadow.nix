@@ -7,24 +7,19 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-stroke-glow-shadow";
-  version = "v1.0.2";
+  version = "v1.5.2";
 
   src = fetchFromGitHub {
     owner = "FiniteSingularity";
     repo = "obs-stroke-glow-shadow";
     rev = version;
-    sha256 = "sha256-aYt3miY71aikIq0SqHXglC/c/tI8yGkIo1i1wXxiTek=";
+    sha256 = "sha256-+2hb4u+6UG7IV9pAvPjp4wvDYhYnxe98U5QQjUcdD/k=";
   };
 
   nativeBuildInputs = [ cmake ];
   buildInputs = [ obs-studio ];
 
-  cmakeFlags = [
-    "-DCMAKE_C_FLAGS=-Wno-stringop-overflow"
-  ];
-
   postFixup = ''
-    mv $out/data/obs-plugins/${pname}/shaders $out/share/obs/obs-plugins/${pname}/
     rm -rf $out/obs-plugins
     rm -rf $out/data
   '';
