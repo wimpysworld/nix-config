@@ -36,7 +36,7 @@ lib.mkIf (lib.elem username installFor) {
   programs = {
     vscode = {
       enable = true;
-      extensions =
+      profiles.default.extensions =
         with pkgs;
         [
           vscode-marketplace.aaron-bond.better-comments

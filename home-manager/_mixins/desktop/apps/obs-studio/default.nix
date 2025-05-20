@@ -31,35 +31,35 @@ lib.mkIf (lib.elem hostname installOn) {
     plugins = with pkgs.obs-studio-plugins; [
       advanced-scene-switcher
       obs-3d-effect
+      obs-advanced-masks
       obs-command-source
       obs-composite-blur
       obs-gradient-source
       obs-gstreamer
       obs-move-transition
       obs-pipewire-audio-capture
+      obs-scale-to-sound
       obs-shaderfilter
+      obs-source-clone
       obs-source-record
       obs-source-switcher
       obs-teleport
+      obs-transition-table
       obs-text-pthread
       obs-vaapi
       obs-vintage-filter
+      obs-webkitgtk
       obs-websocket
       waveform
     ] ++ [
-      pkgs.obs-advanced-masks
       pkgs.obs-aitum-multistream
       pkgs.obs-dvd-screensaver
       pkgs.obs-markdown
       pkgs.obs-rgb-levels
-      pkgs.obs-scale-to-sound
       pkgs.obs-scene-as-transition
-      pkgs.obs-source-clone
       pkgs.obs-stroke-glow-shadow
-      pkgs.obs-transition-table
       pkgs.obs-urlsource
       pkgs.obs-vertical-canvas
-      pkgs.obs-webkitgtk
       pkgs.pixel-art
     ];
   };

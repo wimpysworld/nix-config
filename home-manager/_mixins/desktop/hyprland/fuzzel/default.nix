@@ -99,7 +99,7 @@ in
   services = {
     cliphist = {
       enable = true;
-      systemdTarget = "hyprland-session.target";
+      systemdTargets = "hyprland-session.target";
     };
   };
   wayland.windowManager.hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {

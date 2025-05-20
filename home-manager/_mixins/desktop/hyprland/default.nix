@@ -27,7 +27,7 @@ in
     ./wlogout      # session menu
   ];
   services = {
-    gpg-agent.pinentryPackage = lib.mkForce pkgs.pinentry-gnome3;
+    gpg-agent.pinentry.package = lib.mkForce pkgs.pinentry-gnome3;
     udiskie = {
       enable = true;
       automount = false;

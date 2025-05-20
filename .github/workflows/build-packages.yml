@@ -84,10 +84,6 @@ jobs:
           - defold
           - gitkraken
           - gotosocial
-          - heynote
-          - hyprpicker
-          - ollama
-          - open-webui
           - owncast
           - podman-desktop
           - station
@@ -193,7 +189,6 @@ jobs:
           - obs-retro-effects
           - obs-rgb-levels
           - obs-scene-as-transition
-          - obs-source-clone
           - obs-stroke-glow-shadow
           - obs-urlsource
           - obs-vertical-canvas
