@@ -33,16 +33,16 @@
     dconf.profiles.user.databases = [
       {
         settings = with lib.gvariant; {
-          "com/github/stsdc/monitor/settings" = {
-            background-state = true;
-            indicator-state = true;
-            indicator-cpu-state = false;
-            indicator-gpu-state = false;
-            indicator-memory-state = false;
-            indicator-network-download-state = true;
-            indicator-network-upload-state = true;
-            indicator-temperature-state = true;
-          };
+          # "com/github/stsdc/monitor/settings" = {
+          #   background-state = true;
+          #   indicator-state = true;
+          #   indicator-cpu-state = false;
+          #   indicator-gpu-state = false;
+          #   indicator-memory-state = false;
+          #   indicator-network-download-state = true;
+          #   indicator-network-upload-state = true;
+          #   indicator-temperature-state = true;
+          # };
 
           "desktop/ibus/panel" = {
             show-icon-on-systray = false;
@@ -299,7 +299,7 @@
           enable = true;
           extraWingpanelIndicators = with pkgs; [
             wingpanel-indicator-ayatana
-            monitor
+            #monitor
           ];
         };
       };
