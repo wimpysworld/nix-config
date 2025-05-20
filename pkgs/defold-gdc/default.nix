@@ -7,7 +7,6 @@
   writeScript,
   libGL,
   libGLU,
-  libstdcxx5,
   libX11,
   libXext,
   libXi,
@@ -32,7 +31,6 @@ stdenv.mkDerivation rec {
     libXi
     libGL
     libGLU
-    libstdcxx5
   ];
 
   dontBuild = true;
