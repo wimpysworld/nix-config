@@ -50,7 +50,6 @@ in
 
   wayland.windowManager.hyprland = {
     enable = true;
-    plugins = with pkgs; [ hyprlandPlugins.hyprtrails ];
     settings = {
       inherit (monitors) monitor workspace;
       "$mod" = "SUPER";
