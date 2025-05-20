@@ -366,10 +366,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1747331121,
+        "lastModified": 1747688870,
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "1eec32f0efe3b830927989767a9e6ece0d82d608",
+        "rev": "d5f1f641b289553927b3801580598d200a501863",
         "type": "github"
       },
       "original": {
@@ -537,10 +537,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1747620192,
+        "lastModified": 1747706401,
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "bbf31d3238d455910c2187a671b164861611704e",
+        "rev": "d096058275e83be4133081e53dcd53e029a5ad80",
         "type": "github"
       },
       "original": {
@@ -551,10 +551,10 @@
     },
     "nixos-hardware": {
       "locked": {
-        "lastModified": 1747129300,
+        "lastModified": 1747684167,
         "owner": "NixOS",
         "repo": "nixos-hardware",
-        "rev": "e81fd167b33121269149c57806599045fd33eeed",
+        "rev": "e8f38b2c19c0647e39021c3d47172ff5469af8a9",
         "type": "github"
       },
       "original": {
