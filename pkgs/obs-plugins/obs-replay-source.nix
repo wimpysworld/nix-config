@@ -1,8 +1,9 @@
-{ stdenv
-, lib
-, fetchFromGitHub
-, cmake
-, obs-studio
+{
+  stdenv,
+  lib,
+  fetchFromGitHub,
+  cmake,
+  obs-studio,
 }:
 
 stdenv.mkDerivation rec {
@@ -28,6 +29,9 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/exeldro/obs-replay-source";
     license = licenses.gpl2Only;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ flexiondotorg pschmitt ];
+    maintainers = with maintainers; [
+      flexiondotorg
+      pschmitt
+    ];
   };
 }

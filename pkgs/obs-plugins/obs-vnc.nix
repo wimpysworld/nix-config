@@ -1,10 +1,11 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, cmake
-, obs-studio
-, pkg-config
-, libvncserver
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  cmake,
+  obs-studio,
+  pkg-config,
+  libvncserver,
 }:
 
 stdenv.mkDerivation rec {
@@ -18,8 +19,14 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-eTvKACeVFFw6DOFAiWaG/m14jYyzZc61e79S8oVWrCs=";
   };
 
-  nativeBuildInputs = [ cmake pkg-config ];
-  buildInputs = [ libvncserver obs-studio ];
+  nativeBuildInputs = [
+    cmake
+    pkg-config
+  ];
+  buildInputs = [
+    libvncserver
+    obs-studio
+  ];
 
   postInstall = ''
     mkdir $out/lib $out/share
@@ -33,6 +40,9 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/norihiro/obs-vnc";
     maintainers = with maintainers; [ flexiondotorg ];
     license = licenses.gpl2Only;
-    platforms = [ "x86_64-linux" "i686-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "i686-linux"
+    ];
   };
 }

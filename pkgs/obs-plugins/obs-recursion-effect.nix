@@ -1,9 +1,10 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, fetchpatch
-, cmake
-, obs-studio
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  fetchpatch,
+  cmake,
+  obs-studio,
 }:
 
 stdenv.mkDerivation rec {
@@ -37,6 +38,9 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/exeldro/obs-recursion-effect";
     maintainers = with maintainers; [ flexiondotorg ];
     license = licenses.gpl2Only;
-    platforms = [ "x86_64-linux" "i686-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "i686-linux"
+    ];
   };
 }

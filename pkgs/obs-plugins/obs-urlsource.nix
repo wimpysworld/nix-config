@@ -8,7 +8,6 @@
   obs-studio,
   pugixml,
   qtbase,
-  writeScript,
 }:
 
 let
