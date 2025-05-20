@@ -20,7 +20,6 @@ in
       openFirewall = openSSHFirewall;
       settings = {
         PasswordAuthentication = false;
-        PermitRootLogin = lib.mkDefault "prohibit-password";
       };
     };
     sshguard = {
