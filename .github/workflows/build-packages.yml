@@ -56,7 +56,7 @@ jobs:
       matrix:
         package:
           - caddy
-          - linuxPackages.mwprocapture
+          - linuxPackages_6_12.mwprocapture
     permissions:
       contents: read
       id-token: write
