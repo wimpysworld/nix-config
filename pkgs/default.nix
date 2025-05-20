@@ -8,9 +8,11 @@ pkgs:
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
-  heynote = pkgs.callPackage ./heynote { };
   station = pkgs.callPackage ./station { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
+
+  # Now upstreamed to nixpkgs
+  heynote = pkgs.callPackage ./heynote { };
 
   # Local packages to prevent unintended upgrades or carrying patches
   hyprpicker = pkgs.callPackage ./hyprpicker { };
@@ -40,7 +42,7 @@ pkgs:
   obs-advanced-masks = pkgs.callPackage ./obs-plugins/obs-advanced-masks.nix { }; # remove after 25.05
   obs-replay-source = pkgs.qt6Packages.callPackage ./obs-plugins/obs-replay-source.nix { }; # upstream fixes
   obs-source-clone = pkgs.callPackage ./obs-plugins/obs-source-clone.nix { }; # remove after 25.05
-  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { }; #upstream fixes
+  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { }; #remove when upstream updates available
 
   # Local fonts
   # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
