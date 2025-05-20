@@ -86,12 +86,7 @@ in
       fonts = [
         {
           name = "FiraCode Nerd Font Mono";
-          package = pkgs.nerdfonts.override {
-            fonts = [
-              "FiraCode"
-              "NerdFontsSymbolsOnly"
-            ];
-          };
+          package = pkgs.nerd-fonts.fira-mono;
         }
       ];
       extraConfig = kmsconExtraConfig;

@@ -32,7 +32,7 @@ in
       })
     ];
     systemPackages = lib.mkIf hasAcceleration (with pkgs; [
-      unstable.gollama
+      gollama
     ]);
   };
   services = {

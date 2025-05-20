@@ -28,8 +28,6 @@ in
     ]
     ++ lib.optionals (isInstall && isWorkstation) [ pwvucontrol ];
 
-  hardware.pulseaudio.enable = lib.mkForce false;
-
   services = {
     # https://nixos.wiki/wiki/PipeWire
     # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
@@ -115,6 +113,7 @@ in
         };
       };
     };
+    pulseaudio.enable = lib.mkForce false;
   };
 
   # Allow members of the "audio" group to set RT priorities

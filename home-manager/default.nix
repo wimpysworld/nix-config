@@ -758,7 +758,7 @@ in
     gpg-agent = lib.mkIf isLinux {
       enable = isLinux;
       enableSshSupport = true;
-      pinentryPackage = pkgs.pinentry-curses;
+      pinentry.package = pkgs.pinentry-curses;
     };
     pueue = lib.mkIf isLinux {
       enable = isLinux;

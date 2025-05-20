@@ -10,7 +10,7 @@ in
     shellAliases = {
       caddy-log = "journalctl _SYSTEMD_UNIT=caddy.service";
     };
-    systemPackages = with pkgs; [ custom-caddy ];
+    systemPackages = with pkgs; [ caddy ];
   };
   services = {
     caddy = {
@@ -24,7 +24,12 @@ in
           }
         }
       '';
-      package = pkgs.custom-caddy;
+      package = pkgs.caddy.withPlugins {
+        plugins = [
+          "github.com/WeidiDeng/caddy-cloudflare-ip@v0.0.0-20231130002422-f53b62aa13cb"
+        ];
+        hash = "sha256-ntYZso4gaTMdQ3AkX0dk/EpfR924tdaaMdgbXvwX3Yo=";
+      };
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
       virtualHosts."${hostname}.${tailNet}" = lib.mkIf config.services.tailscale.enable
       {

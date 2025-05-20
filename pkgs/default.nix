@@ -11,38 +11,31 @@ pkgs:
   station = pkgs.callPackage ./station { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
 
-  # Now upstreamed to nixpkgs
-  heynote = pkgs.callPackage ./heynote { };
-
   # Local packages to prevent unintended upgrades or carrying patches
-  hyprpicker = pkgs.callPackage ./hyprpicker { };
   gotosocial = pkgs.callPackage ./gotosocial { };
-  ollama = pkgs.unstable.callPackage ./ollama { };
-  open-webui = pkgs.unstable.callPackage ./open-webui { };
   owncast = pkgs.unstable.callPackage ./owncast { };
   podman-desktop = pkgs.callPackage ./podman-desktop { };
 
+  # In my OBS Studio Configuration and in review upstream
   obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };
-  obs-browser-transition = pkgs.callPackage ./obs-plugins/obs-browser-transition.nix { };
-  obs-dir-watch-media = pkgs.callPackage ./obs-plugins/obs-dir-watch-media.nix { };
   obs-dvd-screensaver = pkgs.callPackage ./obs-plugins/obs-dvd-screensaver.nix { };
   obs-markdown = pkgs.callPackage ./obs-plugins/obs-markdown.nix { };
-  obs-media-controls = pkgs.callPackage ./obs-plugins/obs-media-controls.nix { };
-  obs-noise = pkgs.callPackage ./obs-plugins/obs-noise.nix { };
-  obs-recursion-effect = pkgs.qt6Packages.callPackage ./obs-plugins/obs-recursion-effect.nix { };
-  obs-retro-effects = pkgs.callPackage ./obs-plugins/obs-retro-effects.nix { };
   obs-rgb-levels = pkgs.callPackage ./obs-plugins/obs-rgb-levels.nix { };
   obs-scene-as-transition = pkgs.callPackage ./obs-plugins/obs-scene-as-transition.nix { };
   obs-stroke-glow-shadow = pkgs.callPackage ./obs-plugins/obs-stroke-glow-shadow.nix { };
   obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };
+  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
+
+  # In review upstream
+  obs-browser-transition = pkgs.callPackage ./obs-plugins/obs-browser-transition.nix { };
+  obs-dir-watch-media = pkgs.callPackage ./obs-plugins/obs-dir-watch-media.nix { };
+  obs-media-controls = pkgs.callPackage ./obs-plugins/obs-media-controls.nix { };
+  obs-noise = pkgs.callPackage ./obs-plugins/obs-noise.nix { };
+  obs-recursion-effect = pkgs.qt6Packages.callPackage ./obs-plugins/obs-recursion-effect.nix { };
+  obs-replay-source = pkgs.qt6Packages.callPackage ./obs-plugins/obs-replay-source.nix { };
+  obs-retro-effects = pkgs.callPackage ./obs-plugins/obs-retro-effects.nix { };
   obs-vnc = pkgs.callPackage ./obs-plugins/obs-vnc.nix { };
   pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { };
-
-  # Check my local modification are in the upstream packages
-  obs-advanced-masks = pkgs.callPackage ./obs-plugins/obs-advanced-masks.nix { }; # remove after 25.05
-  obs-replay-source = pkgs.qt6Packages.callPackage ./obs-plugins/obs-replay-source.nix { }; # upstream fixes
-  obs-source-clone = pkgs.callPackage ./obs-plugins/obs-source-clone.nix { }; # remove after 25.05
-  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { }; #remove when upstream updates available
 
   # Local fonts
   # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/

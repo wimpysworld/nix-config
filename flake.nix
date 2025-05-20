@@ -3,11 +3,11 @@
   inputs = {
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
-    home-manager.url = "github:nix-community/home-manager/release-24.11";
+    home-manager.url = "github:nix-community/home-manager/release-25.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-24.11";
+    nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-25.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.2.1.tar.gz";

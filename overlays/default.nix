@@ -22,8 +22,6 @@
       };
     });
 
-    custom-caddy = import ./custom-caddy.nix { pkgs = prev; };
-
     gitkraken = prev.gitkraken.overrideAttrs (old: rec {
       version = "11.1.0";
 
@@ -55,23 +53,6 @@
           sha256 = "sha256-ZUqJkARhaMo9aZOtUMEdiHEbEq10lJO6MkGjEDnfx1g=";
         };
       });
-    });
-
-    resources = prev.resources.overrideAttrs (_old: rec {
-      pname = "resources";
-      version = "1.7.1";
-      src = prev.fetchFromGitHub {
-        owner = "nokyan";
-        repo = "resources";
-        rev = "refs/tags/v${version}";
-        hash = "sha256-SHawaH09+mDovFiznZ+ZkUgUbv5tQGcXBgUGrdetOcA=";
-      };
-
-      cargoDeps = prev.rustPlatform.fetchCargoTarball {
-        inherit src;
-        name = "resources-${version}";
-        hash = "sha256-tUD+gx9nQiGWKKRPcR7OHbPvU2j1dQjYck7FF9vYqSQ=";
-      };
     });
 
     wavebox = prev.wavebox.overrideAttrs (_old: rec {
