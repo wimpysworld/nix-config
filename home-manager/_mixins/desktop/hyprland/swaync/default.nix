@@ -225,19 +225,19 @@ in
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .summary {
           color: #cdd6f4;
           font-family: "Work Sans";
-          font-size: 1.2rem;
+          font-size: 1.4rem;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .time {
           color: #a6adc8;
           font-family: "Work Sans";
-          font-size: 0.8rem;
+          font-size: 1.0rem;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .body {
           color: #cdd6f4;
           font-family: "Work Sans";
-          font-size: 1rem;
+          font-size: 1.2rem;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * {
@@ -342,19 +342,19 @@ in
         .control-center .notification-row .notification-background .notification .notification-content .summary {
           color: #cdd6f4;
           font-family: "Work Sans";
-          font-size: 1.2rem;
+          font-size: 1.4rem;
         }
 
         .control-center .notification-row .notification-background .notification .notification-content .time {
           color: #a6adc8;
           font-family: "Work Sans";
-          font-size: 0.8rem;
+          font-size: 1.0rem;
         }
 
         .control-center .notification-row .notification-background .notification .notification-content .body {
           color: #cdd6f4;
           font-family: "Work Sans";
-          font-size: 1rem;
+          font-size: 1.2rem;
         }
 
         .control-center .notification-row .notification-background .notification > *:last-child > * {
