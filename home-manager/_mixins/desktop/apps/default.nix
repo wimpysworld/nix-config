@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ desktop, lib, pkgs, ... }:
 let
   inherit (pkgs.stdenv) isLinux;
   audioPlayer = [ "org.gnome.Decibels.desktop" ];
@@ -26,6 +26,12 @@ in
     ./vscode
     ./zed-editor
   ];
+  dconf.settings = lib.mkIf isLinux {
+    "io/github/celluloid-player/celluloid" = with lib.hm.gvariant; {
+      csd-enable = if (desktop == "pantheon") then false else true;
+      dark-theme-enable = true;
+    };
+  };
   home.packages = with pkgs; lib.optionals isLinux [
     celluloid               # video player
     decibels                # audio player

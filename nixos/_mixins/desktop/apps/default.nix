@@ -1,9 +1,7 @@
 _: {
   imports = [
     ./blender
-    #./celluloid
     ./evolution
-    ./games
     ./graphics-production
     ./libreoffice
     ./steam
