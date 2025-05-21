@@ -117,6 +117,7 @@ jobs:
       matrix:
         package:
           - gitkraken
+          - wavebox
     permissions:
       contents: read
       id-token: write
