@@ -87,7 +87,6 @@ jobs:
           - halloy
           - joplin-desktop
           - owncast
-          - podman-desktop
           - station
           - wavebox
     permissions:
@@ -118,7 +117,6 @@ jobs:
       matrix:
         package:
           - gitkraken
-          - podman-desktop
           - wavebox
     permissions:
       contents: read
