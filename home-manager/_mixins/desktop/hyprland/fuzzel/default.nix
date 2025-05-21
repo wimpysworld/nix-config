@@ -52,7 +52,7 @@ let
   };
   fuzzelWifi = pkgs.writeShellApplication {
     name = "fuzzel-wifi";
-    text = ''iwmenu --menu custom --menu-command "fuzzel --dmenu --prompt '󱚾 ' --width=40 {password_flag:--prompt '󱚿 ' --placeholder='{placeholder}' --password --lines 0}"'';
+    text = ''iwmenu --launcher custom --launcher-command "fuzzel --dmenu --width=40 --prompt '󱚾 ' {password_flag:--password}"'';
   };
 in
 {
