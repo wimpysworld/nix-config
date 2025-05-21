@@ -13,6 +13,7 @@ pkgs:
 
   # Local packages to prevent unintended upgrades or carrying patches
   gotosocial = pkgs.callPackage ./gotosocial { };
+  joplin-desktop = pkgs.callPackage ./joplin-desktop { };
   owncast = pkgs.unstable.callPackage ./owncast { };
   podman-desktop = pkgs.callPackage ./podman-desktop { };
 
