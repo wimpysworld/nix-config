@@ -84,6 +84,7 @@ jobs:
           - defold
           - gitkraken
           - gotosocial
+          - joplin-desktop
           - owncast
           - podman-desktop
           - station
