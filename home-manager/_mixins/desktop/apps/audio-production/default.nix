@@ -19,9 +19,11 @@ lib.mkIf (lib.elem hostname installOn) {
   dconf.settings = with lib.hm.gvariant; {
     "com/github/wwmm/easyeffects" = {
       bypass = false;
+      inactivity-timer-enable = false;
       process-all-inputs = false;
       process-all-outputs = false;
       show-native-plugin-ui = true;
+      shutdown-on-window-close = false;
       use-cubic-volumes = false;
     };
 
