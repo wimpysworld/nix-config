@@ -11,7 +11,6 @@ else
     HYPRCTL="hyprctl"
 fi
 
-
 function app_is_running() {
     local CLASS="$1"
     if $HYPRCTL clients | grep "$CLASS" &>/dev/null; then
@@ -74,7 +73,7 @@ function activity_gsd() {
     start_app joplin-desktop 6 "class: @joplin/app-desktop"
     start_app heynote 6 "class: Heynote"
     if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
-        start_app "obs --disable-shutdown-check --collection 'VirtualCam' --profile 'VirtualCam' --scene 'VirtualCam-DetSys' --startvirtualcam" 7 "class: com.obsproject.Studio"
+        start_app "obs --disable-shutdown-check --collection VirtualCam --profile VirtualCam --scene Work-VirtualCam --startvirtualcam" 7 "class: com.obsproject.Studio"
     fi
     start_app Cider 8 "class: Cider"
 }
@@ -87,7 +86,7 @@ function activity_linuxmatters() {
         -no-remote \
         --new-window https://github.com/restfulmedia/linuxmatters_backstage" 9 "title: restfulmedia/linuxmatters_backstage"
     if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "vader" ]; then
-        start_app "obs --disable-shutdown-check --collection VirtualCam --profile VirtualCam --scene VirtualCam-LinuxMatters --startvirtualcam" 9 "class: com.obsproject.Studio"
+        start_app "obs --disable-shutdown-check --collection VirtualCam --profile VirtualCam --scene Podcast-VirtualCam --startvirtualcam" 9 "class: com.obsproject.Studio"
     fi
     $HYPRCTL dispatch workspace 9 &>/dev/null
     firefox -CreateProfile linuxmatters-studio
