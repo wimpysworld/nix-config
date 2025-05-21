@@ -537,10 +537,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1747706401,
+        "lastModified": 1747792810,
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "d096058275e83be4133081e53dcd53e029a5ad80",
+        "rev": "fb28e3221f0c052e94d956f44bbbc88ff4a8bbec",
         "type": "github"
       },
       "original": {
@@ -551,10 +551,10 @@
     },
     "nixos-hardware": {
       "locked": {
-        "lastModified": 1747684167,
+        "lastModified": 1747723695,
         "owner": "NixOS",
         "repo": "nixos-hardware",
-        "rev": "e8f38b2c19c0647e39021c3d47172ff5469af8a9",
+        "rev": "6ac6ec6fcb410e15a60ef5ec94b8a2b35b5dd282",
         "type": "github"
       },
       "original": {
@@ -631,10 +631,10 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1747542820,
+        "lastModified": 1747744144,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "292fa7d4f6519c074f0a50394dbbe69859bb6043",
+        "rev": "2795c506fe8fb7b03c36ccb51f75b6df0ab2553f",
         "type": "github"
       },
       "original": {
@@ -750,10 +750,10 @@
     },
     "nixpkgs_9": {
       "locked": {
-        "lastModified": 1747485343,
+        "lastModified": 1747676747,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "9b5ac7ad45298d58640540d0323ca217f32a6762",
+        "rev": "72841a4a8761d1aed92ef6169a636872c986c76d",
         "type": "github"
       },
       "original": {
