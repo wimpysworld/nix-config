@@ -119,6 +119,7 @@ jobs:
         package:
           - gitkraken
           - podman-desktop
+          - wavebox
     permissions:
       contents: read
       id-token: write
