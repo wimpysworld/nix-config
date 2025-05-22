@@ -116,7 +116,6 @@ jobs:
     strategy:
       matrix:
         package:
-          - gitkraken
           - wavebox
     permissions:
       contents: read
