@@ -6,6 +6,11 @@ on:
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+  security-events: write
 
 jobs:
   build-linux-experiments:
@@ -15,9 +20,6 @@ jobs:
       matrix:
         package:
           - davinci-resolve
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: wimpysworld/nothing-but-nix@main
