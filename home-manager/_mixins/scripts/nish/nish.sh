@@ -24,4 +24,5 @@ done
 
 # Execute the command
 echo "Executing: ${cmd}" >&2
+pushd "${HOME}/Zero/nix-config"
 exec ${cmd} -L
