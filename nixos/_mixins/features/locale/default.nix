@@ -1,6 +1,6 @@
 { config, hostname, lib, ... }:
 let
-  locale = "en_GB.utf8";
+  locale = "en_GB.UTF-8";
   consoleKeymap = if (hostname == "phasma") then "us" else "uk";
   xkbLayout = if (hostname == "phasma") then "us" else "gb";
 in
