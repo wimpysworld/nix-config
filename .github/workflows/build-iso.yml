@@ -35,7 +35,8 @@ jobs:
         nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
         mkdir iso || true
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
-        VER=$(head -n1 result/nix-support/hydra-build-products | cut -d'-' -f4 | cut -d'.' -f1-3)
+        # Make semver compatible
+        VER=$(head -n1 result/nix-support/hydra-build-products | cut -d'-' -f4 | cut -d'.' -f1-3 | sed -E 's/\b0+([1-9])/\1/g')
         # Set output variable
         echo "ver=v${VER}" >> $GITHUB_OUTPUT
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
