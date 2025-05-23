@@ -10,10 +10,8 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 permissions:
-  actions: read
-  contents: read
+  contents: write
   id-token: write
-  security-events: write
 
 jobs:
   build-iso:
