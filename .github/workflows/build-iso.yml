@@ -37,14 +37,14 @@ jobs:
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
         VER=$(head -n1 result/nix-support/hydra-build-products | cut -d'-' -f4 | cut -d'.' -f1-3)
         # Set output variable
-        echo "ver=v${VER}" >> $GITHUB_OUTPUT
+        echo "ver=${VER}" >> $GITHUB_OUTPUT
         sudo mv "result/iso/${ISO}" iso/console-${ISO}
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
         sudo df -h
     - name: sbomnix
       run: |
-        name="${{ github.job }}-${{ matrix.package }}"
+        name="${{ github.job }}"
         nix run github:tiiuae/sbomnix#sbomnix -- \
           --csv "${name}.sbom.csv" \
           --cdx "${name}.sbom.cdx.json" \
@@ -72,9 +72,9 @@ jobs:
       run: |
         ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
         if [ -f "iso/console-${ISO}" ]; then
-          gh release create "${{ steps.build-iso.outputs.ver }}" --draft=false --generate-notes
+          gh release create "v${{ steps.build-iso.outputs.ver }}" --draft=false --generate-notes
           for artefact in "iso/"*; do
-            gh release upload "${{ steps.build-iso.outputs.ver }}" "${artefact}" --clobber
+            gh release upload "v${{ steps.build-iso.outputs.ver }}" "${artefact}" --clobber
           done
         else
           echo "No ISO found, failing the job"
