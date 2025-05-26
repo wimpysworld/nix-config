@@ -5,7 +5,7 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       bluez
-      coreutils-full
+      uutils-coreutils-noprefix
       gnused
       hyprlock
       playerctl

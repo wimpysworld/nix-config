@@ -4,7 +4,7 @@ let
   backup-sqlite = pkgs.writeShellApplication {
     name = "backup-sqlite";
     runtimeInputs = with pkgs; [
-      coreutils-full
+      uutils-coreutils-noprefix
       curl
       findutils
       gzip

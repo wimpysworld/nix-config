@@ -3,7 +3,10 @@ let
   name = builtins.baseNameOf (builtins.toString ./.);
   shellApplication = pkgs.writeShellApplication {
     inherit name;
-    runtimeInputs = with pkgs; [ coreutils-full gnugrep ];
+    runtimeInputs = with pkgs; [
+      gnugrep
+      uutils-coreutils-noprefix
+    ];
     text = builtins.readFile ./${name}.sh;
   };
 in

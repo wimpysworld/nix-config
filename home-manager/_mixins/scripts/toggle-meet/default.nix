@@ -5,7 +5,7 @@ let
   shellApplication = pkgs.writeShellApplication {
     inherit name;
     runtimeInputs = with pkgs; [
-      coreutils-full
+      uutils-coreutils-noprefix
       xdotool
     ];
     text = builtins.readFile ./${name}.sh;
