@@ -265,6 +265,7 @@ in
       extraOptions = [
         "--group-directories-first"
         "--header"
+        "--time-style=long-iso"
       ];
       git = true;
       icons = "auto";
