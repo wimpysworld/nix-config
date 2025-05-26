@@ -74,7 +74,6 @@ in
         chafa # Terminal image viewer
         cpufetch # Terminal CPU info
         croc # Terminal file transfer
-        curlie # Terminal HTTP client
         cyme # Modern Unix `lsusb`
         dconf2nix # Nix code from Dconf files
         dogdns # Modern Unix `dig`
@@ -87,12 +86,12 @@ in
         fd # Modern Unix `find`
         file # Terminal file info
         frogmouth # Terminal markdown viewer
+        fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
         gocryptfs # Terminal encrypted filesystem
         gping # Modern Unix `ping`
         hexyl # Modern Unix `hexedit`
         hr # Terminal horizontal rule
-        httpie # Terminal HTTP client
         hueadm # Terminal Philips Hue client
         hyperfine # Terminal benchmarking
         iperf3 # Terminal network benchmarking
@@ -101,13 +100,16 @@ in
         jiq # Modern Unix `jq`
         lastpass-cli # Terminal LastPass client
         lima-bin # Terminal VM manager
+        magic-wormhole-rs # Terminal file transfer
         marp-cli # Terminal Markdown presenter
+        mprocs # Terminal parallel process runner
         mtr # Modern Unix `traceroute`
         netdiscover # Modern Unix `arp`
         nixpkgs-review # Nix code review
         nix-prefetch-scripts # Nix code fetcher
         nurl # Nix URL fetcher
         optipng # Terminal PNG optimizer
+        presenterm # Terminal Markdown presenter
         procs # Modern Unix `ps`
         rclone # Modern Unix `rsync`
         rsync # Traditional `rsync`
@@ -121,7 +123,7 @@ in
         upterm # Terminal sharing
         wget # Terminal HTTP client
         wget2 # Terminal HTTP client
-        wormhole-william # Terminal file transfer
+        xh # Terminal HTTP client
         yq-go # Terminal `jq` for YAML
       ]
       ++ lib.optionals isLinux [
@@ -295,7 +297,7 @@ in
         store-path = "${pkgs.uutils-coreutils-noprefix}/bin/readlink (${pkgs.which}/bin/which $argv)";
         top = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "${pkgs.eza}/bin/eza --tree";
-        wormhole = "${pkgs.wormhole-william}/bin/wormhole-william";
+        wormhole = "${pkgs.wormhole-rs}/bin/wormhole-rs";
         weather = "${lib.getExe pkgs.girouette} --quiet";
         weather-home = "${lib.getExe pkgs.girouette} --quiet --location Basingstoke";
         where-am-i = "${pkgs.geoclue2}/libexec/geoclue-2.0/demos/where-am-i";
