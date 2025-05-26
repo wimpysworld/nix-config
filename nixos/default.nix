@@ -61,7 +61,7 @@
     defaultPackages =
       with pkgs;
       lib.mkForce [
-        coreutils-full
+        (lib.hiPrio pkgs.uutils-coreutils-noprefix)
         micro
       ];
 
