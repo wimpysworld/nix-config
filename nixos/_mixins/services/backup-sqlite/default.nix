@@ -4,12 +4,12 @@ let
   backup-sqlite = pkgs.writeShellApplication {
     name = "backup-sqlite";
     runtimeInputs = with pkgs; [
-      uutils-coreutils-noprefix
       curl
-      findutils
       gzip
       openssl
       sqlite
+      uutils-coreutils-noprefix
+      uutils-findutils
     ];
     text = builtins.readFile ./backup-sqlite.sh;
   };

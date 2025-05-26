@@ -11,7 +11,6 @@ let
     runtimeInputs = with pkgs; [
       inputs.disko.packages.${platform}.default
       keyutils
-      findutils
       gawk
       gnugrep
       git
@@ -20,6 +19,7 @@ let
       rsync
       util-linux
       uutils-coreutils-noprefix
+      uutils-findutils
     ];
     text = builtins.readFile ./install-system.sh;
   };

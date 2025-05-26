@@ -62,6 +62,7 @@
       with pkgs;
       lib.mkForce [
         (lib.hiPrio pkgs.uutils-coreutils-noprefix)
+        (lib.hiPrio pkgs.uutils-findutils)
         micro
       ];
 

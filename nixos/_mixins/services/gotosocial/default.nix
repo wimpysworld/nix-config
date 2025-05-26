@@ -4,14 +4,14 @@ let
   gotosocial-backup = pkgs.writeShellApplication {
     name = "gotosocial-backup";
     runtimeInputs = with pkgs; [
-      uutils-coreutils-noprefix
-      findutils
       gnugrep
       gotosocial
       gzip
       openssl
       rsync
       sqlite
+      uutils-coreutils-noprefix
+      uutils-findutils
     ];
     text = builtins.readFile ./gotosocial-backup.sh;
   };

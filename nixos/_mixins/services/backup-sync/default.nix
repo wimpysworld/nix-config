@@ -4,14 +4,14 @@ let
   backup-sync = pkgs.writeShellApplication {
     name = "backup-sync";
     runtimeInputs = with pkgs; [
-      uutils-coreutils-noprefix
       curl
-      findutils
       gawk
       gnused
       openssh
       rsync
       util-linux
+      uutils-coreutils-noprefix
+      uutils-findutils
     ];
     text = builtins.readFile ./backup-sync.sh;
   };
