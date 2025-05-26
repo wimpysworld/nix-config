@@ -64,6 +64,7 @@
         (lib.hiPrio pkgs.uutils-coreutils-noprefix)
         (lib.hiPrio pkgs.uutils-findutils)
         (lib.hiPrio pkgs.uutils-diffutils)
+        (lib.hiPrio pkgs.sudo-rs)
         micro
       ];
 
@@ -140,6 +141,13 @@
         # Add any missing dynamic libraries for unpackaged
         # programs here, NOT in environment.systemPackages
       ];
+    };
+  };
+
+  security = {
+    sudo.enable = false;
+    sudo-rs = {
+      enable = lib.mkDefault true;
     };
   };
 
