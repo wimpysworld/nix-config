@@ -19,7 +19,7 @@ in
     enable = true;
     wantedBy = [ "basic.target" ];
     script = ''
-      ${pkgs.coreutils-full}/bin/echo 1000 > /sys/kernel/mm/lru_gen/min_ttl_ms
+      ${pkgs.uutils-coreutils-noprefix}/bin/echo 1000 > /sys/kernel/mm/lru_gen/min_ttl_ms
     '';
     serviceConfig = {
       Type = "oneshot";

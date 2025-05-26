@@ -4,7 +4,7 @@ let
   gotosocial-backup = pkgs.writeShellApplication {
     name = "gotosocial-backup";
     runtimeInputs = with pkgs; [
-      coreutils-full
+      uutils-coreutils-noprefix
       findutils
       gnugrep
       gotosocial

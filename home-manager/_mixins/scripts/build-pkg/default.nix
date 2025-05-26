@@ -5,7 +5,7 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       bc
-      coreutils-full
+      uutils-coreutils-noprefix
       nix-output-monitor
     ];
     text = builtins.readFile ./${name}.sh;

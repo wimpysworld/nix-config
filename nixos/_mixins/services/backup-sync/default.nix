@@ -4,7 +4,7 @@ let
   backup-sync = pkgs.writeShellApplication {
     name = "backup-sync";
     runtimeInputs = with pkgs; [
-      coreutils-full
+      uutils-coreutils-noprefix
       curl
       findutils
       gawk

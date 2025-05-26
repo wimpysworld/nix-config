@@ -36,9 +36,9 @@ let
           mv "$LOG_FILE" "$LOG_FILE.1"
         fi
         # Run Hyprland and log output
-        ${pkgs.expect}/bin/unbuffer /run/current-system/sw/bin/Hyprland $@ 2>&1 | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE" &>/dev/null
+        ${pkgs.expect}/bin/unbuffer /run/current-system/sw/bin/Hyprland $@ 2>&1 | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE" &>/dev/null
         # Log the exit code here
-        echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Hyprland exited with code $?" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+        echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] Hyprland exited with code $?" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
         UNITS=(
           xdg-desktop-portal-hyprland.service
           xdg-desktop-portal-gtk.service
@@ -48,16 +48,16 @@ let
           hyprland-session.target
         )
         for UNIT in "''${UNITS[@]}"; do
-          echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Checking $UNIT" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+          echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] Checking $UNIT" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
           if /run/current-system/sw/bin/systemctl --user --machine=${username}@.host list-unit-files "$UNIT" &>/dev/null; then
             if /run/current-system/sw/bin/systemctl --user --machine=${username}@.host is-active "$UNIT" &>/dev/null; then
-              echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Stopping $UNIT" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+              echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] Stopping $UNIT" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
               /run/current-system/sw/bin/systemctl --user --machine=${username}@.host stop "$UNIT"
             else
-              echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] $UNIT is not running" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+              echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] $UNIT is not running" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
             fi
           else
-            echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] $UNIT not found" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
+            echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] $UNIT not found" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
           fi
         done
       '')

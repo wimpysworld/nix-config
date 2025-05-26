@@ -4,7 +4,7 @@ let
   shellApplication = pkgs.writeShellApplication {
     inherit name;
     runtimeInputs = with pkgs; [
-      coreutils-full
+      uutils-coreutils-noprefix
       util-linux
     ];
     text = builtins.readFile ./${name}.sh;

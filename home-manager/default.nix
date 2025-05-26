@@ -292,7 +292,7 @@ in
         ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
         screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
         speedtest = "${pkgs.speedtest-go}/bin/speedtest-go";
-        store-path = "${pkgs.coreutils-full}/bin/readlink (${pkgs.which}/bin/which $argv)";
+        store-path = "${pkgs.uutils-coreutils-noprefix}/bin/readlink (${pkgs.which}/bin/which $argv)";
         top = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "${pkgs.eza}/bin/eza --tree";
         wormhole = "${pkgs.wormhole-william}/bin/wormhole-william";
