@@ -143,7 +143,7 @@ in
       ++ lib.optionals isDarwin [
         m-cli # Terminal Swiss Army Knife for macOS
         nh
-        coreutils
+        uutils-coreutils-noprefix
       ];
     sessionVariables = {
       EDITOR = "micro";
