@@ -478,10 +478,10 @@
         "brew-src": "brew-src"
       },
       "locked": {
-        "lastModified": 1748209380,
+        "lastModified": 1748305448,
         "owner": "zhaofengli",
         "repo": "nix-homebrew",
-        "rev": "09c0111fe03a69efbbfaf4a614c9469891fd34c0",
+        "rev": "6f94d412d389a7ff8c0b3e295e34558ee6381890",
         "type": "github"
       },
       "original": {
@@ -517,10 +517,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1748225039,
+        "lastModified": 1748311254,
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "cde730cb9dc2759104d7c8c27cb36d73189be1e2",
+        "rev": "0e0e608563707c9ee3919b3d1cab83beef984ad7",
         "type": "github"
       },
       "original": {
@@ -611,10 +611,10 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1748026106,
+        "lastModified": 1748190013,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "063f43f2dbdef86376cc29ad646c45c46e93234c",
+        "rev": "62b852f6c6742134ade1abdd2a21685fd617a291",
         "type": "github"
       },
       "original": {
