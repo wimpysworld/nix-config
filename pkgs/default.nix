@@ -20,24 +20,21 @@ pkgs:
 
   # In my OBS Studio Configuration and in review upstream
   obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };
-  obs-dvd-screensaver = pkgs.callPackage ./obs-plugins/obs-dvd-screensaver.nix { };
+  obs-dvd-screensaver = pkgs.callPackage ./obs-plugins/obs-dvd-screensaver.nix { };						#merged
   obs-markdown = pkgs.callPackage ./obs-plugins/obs-markdown.nix { };
-  obs-rgb-levels = pkgs.callPackage ./obs-plugins/obs-rgb-levels.nix { };
-  obs-scene-as-transition = pkgs.callPackage ./obs-plugins/obs-scene-as-transition.nix { };
-  obs-stroke-glow-shadow = pkgs.callPackage ./obs-plugins/obs-stroke-glow-shadow.nix { };
-  obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };
+  obs-rgb-levels = pkgs.callPackage ./obs-plugins/obs-rgb-levels.nix { }; 								#merged
+  obs-scene-as-transition = pkgs.callPackage ./obs-plugins/obs-scene-as-transition.nix { };				#merged
+  obs-stroke-glow-shadow = pkgs.callPackage ./obs-plugins/obs-stroke-glow-shadow.nix { };				#merged
+  obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };						#merged
   obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
+  pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { };											#merged
+
 
   # In review upstream
   obs-browser-transition = pkgs.callPackage ./obs-plugins/obs-browser-transition.nix { };
   obs-dir-watch-media = pkgs.callPackage ./obs-plugins/obs-dir-watch-media.nix { };
-  obs-media-controls = pkgs.callPackage ./obs-plugins/obs-media-controls.nix { };
-  obs-noise = pkgs.callPackage ./obs-plugins/obs-noise.nix { };
-  obs-recursion-effect = pkgs.qt6Packages.callPackage ./obs-plugins/obs-recursion-effect.nix { };
-  obs-replay-source = pkgs.qt6Packages.callPackage ./obs-plugins/obs-replay-source.nix { };
   obs-retro-effects = pkgs.callPackage ./obs-plugins/obs-retro-effects.nix { };
   obs-vnc = pkgs.callPackage ./obs-plugins/obs-vnc.nix { };
-  pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { };
 
   # Local fonts
   # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
