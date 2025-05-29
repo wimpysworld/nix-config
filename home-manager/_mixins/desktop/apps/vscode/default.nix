@@ -74,7 +74,6 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.jeroen-meijer.pubspec-assist
           vscode-marketplace.jnoortheen.nix-ide
           vscode-marketplace.johnnymorganz.stylua
-          #vscode-marketplace.mads-hartmann.bash-ide-vscode
           vscode-marketplace.marp-team.marp-vscode
           vscode-marketplace.mechatroner.rainbow-csv
           vscode-marketplace.mkhl.direnv
@@ -83,7 +82,7 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.ms-python.vscode-pylance
           vscode-marketplace.ms-vscode.cmake-tools
           vscode-marketplace.ms-vscode.hexeditor
-          vscode-marketplace.ms-vscode-remote.remote-ssh
+          vscode-extensions.ms-vscode-remote.vscode-remote-extensionpack
           vscode-marketplace.nico-castell.linux-desktop-file
           vscode-marketplace.pixelbyte-studios.pixelbyte-love2d
           vscode-marketplace.pkief.material-product-icons
@@ -111,8 +110,8 @@ lib.mkIf (lib.elem username installFor) {
         ]
         ++ lib.optionals isLinux [
           vscode-extensions.ms-vscode.cpptools-extension-pack
-          vscode-marketplace.ms-vsliveshare.vsliveshare
-          vscode-marketplace.vadimcn.vscode-lldb
+          vscode-extensions.ms-vsliveshare.vsliveshare
+          vscode-extensions.vadimcn.vscode-lldb
         ];
       mutableExtensionsDir = true;
       package = pkgs.unstable.vscode;
