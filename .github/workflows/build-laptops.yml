@@ -33,8 +33,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: wimpysworld/nothing-but-nix@main
-      with:
-        hatchet-protocol: 'holster'
     - uses: DeterminateSystems/determinate-nix-action@v3
       with:
         extra-conf: |
