@@ -35,7 +35,7 @@ jobs:
       with:
         extra-conf: |
           lazy-trees = true
-    - uses: DeterminateSystems/flakehub-cache-action@v1
+    - uses: DeterminateSystems/flakehub-cache-action@v2
     - name: ${{ matrix.host }}
       run: |
         sed -i 's|"${{ matrix.host }}"|#"${{ matrix.host }}"|' nixos/_mixins/desktop/apps/video-production/default.nix
