@@ -23,4 +23,4 @@ jobs:
           extra-conf: |
             lazy-trees = true
       - uses: DeterminateSystems/flakehub-cache-action@v2
-      - uses: DeterminateSystems/flake-checker-action@v9
+      - uses: DeterminateSystems/flake-checker-action@v10
