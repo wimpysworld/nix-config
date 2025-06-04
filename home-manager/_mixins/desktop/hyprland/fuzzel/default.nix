@@ -77,6 +77,7 @@ in
   programs = {
     fuzzel = {
       enable = true;
+      package = (pkgs.fuzzel.override { svgBackend = "librsvg"; });
       settings = {
         main = {
           filter-desktop = true;
