@@ -41,21 +41,25 @@ in
       enable = hasAcceleration;
       host = if hostname == "revan" then "127.0.0.1" else "0.0.0.0";
       loadModels = [
-        "gemma3:4b-it-qat"            #32k  (task)
-        "gemma3:12b-it-qat"           #128k (multi-modal)
-        "mxbai-embed-large:latest"    #     (embedding)
-        "nomic-embed-text:latest"     #     (embedding)
-        "phi4-mini:3.8b"              #128k (task)
+        "deepseek-r1:8b"              #128k (reasoning)  
+        "gemma3:12b-it-qat"           #128k (multimodal)
+        "granite3.3:8b"               #128k (instruct)
+        "granite-embedding:278m"      #512  (embedding)
+        "mxbai-embed-large:335m"      #512  (embedding)
+        "nomic-embed-text:latest"     #2K   (embedding)
+        "phi4-mini:3.8b"              #128k (task/reasoning)
+        "qwen2.5-coder:3b"            #32k  (code reasoning)
         "qwen3:4b"                    #40k  (task)
       ] ++ lib.optionals (hostname == "revan") [
         #"cogito:32b"                  #128k (stem)
         #"gemma3:27b-it-qat"           #128k (multi-modal)
-        #"phi-4:14b"                   #16k  (general)
+        #"phi4:14b"                    #32k  (general)
+        #"qwen2.5-coder:32b"           #32k  (code reasoning)
         #"qwen3:32b"                   #40k  (general)
       ] ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
         "cogito:14b"                  #128k (stem)
-        "phi-4:14b"                   #16k  (general)
-        "qwen3:14b"                   #40k  (general)
+        "phi4:14b"                    #32k  (general)
+        "qwen3:14b"                   #40k  (cot)
       ];
     };
     open-webui = {
