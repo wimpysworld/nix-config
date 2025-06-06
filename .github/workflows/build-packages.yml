@@ -279,10 +279,8 @@ jobs:
         package:
           - obs-aitum-multistream
           - obs-browser-transition
-          - obs-dir-watch-media
           - obs-dvd-screensaver
           - obs-markdown
-          - obs-retro-effects
           - obs-rgb-levels
           - obs-scene-as-transition
           - obs-stroke-glow-shadow
