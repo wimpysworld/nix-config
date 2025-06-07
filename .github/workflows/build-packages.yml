@@ -128,7 +128,6 @@ jobs:
           - halloy
           - joplin-desktop
           - owncast
-          - station
           - wavebox
     steps:
       - uses: actions/checkout@v4
