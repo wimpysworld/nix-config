@@ -18,6 +18,8 @@
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     disko.url = "https://flakehub.com/f/nix-community/disko/1.12.0.tar.gz";
     disko.inputs.nixpkgs.follows = "nixpkgs";
+    kolide-launcher.url = "github:/kolide/nix-agent/main";
+    kolide-launcher.inputs.nixpkgs.follows = "nixpkgs";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     nixos-needsreboot.url = "https://flakehub.com/f/wimpysworld/nixos-needsreboot/0.2.8.tar.gz";
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
