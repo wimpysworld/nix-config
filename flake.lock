@@ -497,10 +497,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1748751003,
+        "lastModified": 1749354255,
         "owner": "Mic92",
         "repo": "nix-index-database",
-        "rev": "2860bee699248d828c2ed9097a1cd82c2f991b43",
+        "rev": "b5ce0fe6af9af80e622974a8003ea275d5348522",
         "type": "github"
       },
       "original": {
@@ -517,10 +517,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1749261690,
+        "lastModified": 1749348702,
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "5af3052a092b3b097f243d70a66b0484e000b423",
+        "rev": "2b366d855b02896ca2a65ce8e5352b62f1a7a6f3",
         "type": "github"
       },
       "original": {
