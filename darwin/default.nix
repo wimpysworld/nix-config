@@ -40,6 +40,7 @@
 
     variables = {
       EDITOR = "micro";
+      SHELL = "${pkgs.fish}/bin/fish";
       SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
     };
@@ -82,8 +83,9 @@
     in
     {
       settings = {
+        experimental-features = "nix-command flakes";
         # Disable global registry
-        flake-regisstry = "";
+        flake-registry = "";
         # Workaround for https://github.com/NixOS/nix/issues/9574
         nix-path = config.nix.nixPath;
         warn-dirty = false;
@@ -132,17 +134,6 @@
         supportsDryActivation = true;
         text = "${lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default} \"$systemConfig\" || true";
       };
-      # reload the settings and apply them without the need to logout/login
-      #postUserActivation.text = ''
-      #  /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
-      #'';
-      # https://github.com/LnL7/nix-darwin/issues/811
-      setFishAsShell.text = ''
-        dscl . -create /Users/${username} UserShell /run/current-system/sw/bin/fish
-      '';
-    };
-    checks = {
-      #verifyNixChannels = false;
     };
     defaults = {
       CustomUserPreferences = {

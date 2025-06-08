@@ -80,6 +80,12 @@ in
           history = 50000;
           multiplier = 3;
         };
+        terminal = lib.mkIf isDarwin {
+          shell = {
+            program = "${pkgs.fish}/bin/fish";
+            args = [ "--interactive" ];
+          };
+        };
         window = {
           decorations = if config.wayland.windowManager.hyprland.enable then "None" else "Full";
           dimensions = {
