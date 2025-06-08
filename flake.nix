@@ -28,6 +28,8 @@
     nix-vscode-extensions.url = "github:nix-community/nix-vscode-extensions";
     nix-vscode-extensions.inputs.nixpkgs.follows = "nixpkgs";
     nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.6.0.tar.gz";
+    mac-app-util.url = "github:hraban/mac-app-util";
+    mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
     quickemu.url = "https://flakehub.com/f/quickemu-project/quickemu/*";
     quickemu.inputs.nixpkgs.follows = "nixpkgs";
     quickgui.url = "https://flakehub.com/f/quickemu-project/quickgui/*";
