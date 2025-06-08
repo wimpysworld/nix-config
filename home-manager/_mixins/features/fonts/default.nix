@@ -15,12 +15,9 @@ lib.mkIf (isDarwin || isOtherOS) {
     packages =
       with pkgs;
       [
-        (nerdfonts.override {
-          fonts = [
-            "FiraCode"
-            "NerdFontsSymbolsOnly"
-          ];
-        })
+        nerd-fonts.fira-code
+        nerd-fonts.fira-mono
+        nerd-fonts.symbols-only
         corefonts
         fira
         font-awesome
