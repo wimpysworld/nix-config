@@ -89,6 +89,12 @@
           platform = "aarch64-darwin";
           desktop = "aqua";
         };
+        "martin.wimpress@bane" = helper.mkHome {
+          username = "martin.wimpress";
+          hostname = "bane";
+          platform = "aarch64-darwin";
+          desktop = "aqua";
+	    };
         "martin@krall" = helper.mkHome {
           hostname = "krall";
           platform = "x86_64-darwin";
@@ -177,6 +183,10 @@
       #nix run nix-darwin -- switch --flake ~/Zero/nix-config
       #nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
       darwinConfigurations = {
+      	bane = helper.mkDarwin {
+      	  username = "martin.wimpress";
+          hostname = "bane";
+        };
         momin = helper.mkDarwin {
           hostname = "momin";
         };
@@ -209,7 +219,7 @@
       );
       # Formatter for .nix files, available via 'nix fmt'
       formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
-      
+
       # Expose input packages directly
       inherit (inputs) bzmenu iwmenu;
     };
