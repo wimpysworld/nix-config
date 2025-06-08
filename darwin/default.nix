@@ -116,13 +116,14 @@
   };
 
   # Enable TouchID for sudo authentication
-  security.pam.enableSudoTouchIdAuth = true;
+  security.pam.services.sudo_local.touchIdAuth = true;
 
   services = {
     tailscale.enable = true;
   };
 
   system = {
+    primaryUser = "${username}";
     stateVersion = 5;
     # activationScripts run every time you boot the system or execute `darwin-rebuild`
     activationScripts = {
@@ -131,16 +132,16 @@
         text = "${lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default} \"$systemConfig\" || true";
       };
       # reload the settings and apply them without the need to logout/login
-      postUserActivation.text = ''
-        /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
-      '';
+      #postUserActivation.text = ''
+      #  /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+      #'';
       # https://github.com/LnL7/nix-darwin/issues/811
       setFishAsShell.text = ''
         dscl . -create /Users/${username} UserShell /run/current-system/sw/bin/fish
       '';
     };
     checks = {
-      verifyNixChannels = false;
+      #verifyNixChannels = false;
     };
     defaults = {
       CustomUserPreferences = {
