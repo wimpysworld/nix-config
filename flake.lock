@@ -398,6 +398,27 @@
         "url": "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.2.0.tar.gz"
       }
     },
+    "kolide-launcher": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1746473343,
+        "narHash": "sha256-F0YpvaRbAjh4qKrBGip+CxvAkCIY3yKVKGitK1gsqkk=",
+        "owner": "kolide",
+        "repo": "nix-agent",
+        "rev": "73d5caa7acefdf77d77fcee5ef4e482dbcaf8e47",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kolide",
+        "ref": "main",
+        "repo": "nix-agent",
+        "type": "github"
+      }
+    },
     "naersk": {
       "inputs": {
         "nixpkgs": [
@@ -785,6 +806,7 @@
         "fh": "fh",
         "home-manager": "home-manager",
         "iwmenu": "iwmenu",
+        "kolide-launcher": "kolide-launcher",
         "nix-darwin": "nix-darwin",
         "nix-flatpak": "nix-flatpak",
         "nix-homebrew": "nix-homebrew",

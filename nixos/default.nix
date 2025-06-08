@@ -21,6 +21,7 @@
     inputs.catppuccin.nixosModules.catppuccin
     inputs.determinate.nixosModules.default
     inputs.disko.nixosModules.disko
+    inputs.kolide-launcher.nixosModules.kolide-launcher
     inputs.nix-flatpak.nixosModules.nix-flatpak
     inputs.nix-index-database.nixosModules.nix-index
     inputs.sops-nix.nixosModules.sops
