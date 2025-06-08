@@ -455,7 +455,7 @@ in
         };
         username = {
           aliases = {
-            "martin" = "󰝴";
+            "${username}" = "󰝴";
             "root" = "󰱯";
           };
           format = "[ $user]($style)";

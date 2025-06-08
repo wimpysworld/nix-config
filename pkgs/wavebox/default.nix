@@ -268,7 +268,7 @@ let
 
     src = fetchurl {
       url = "https://download.wavebox.app/stable/macuniversal/Install%20Wavebox%20${finalAttrs.version}.dmg";
-      hash = "sha256-7U43Rh2wz2/RpCAGJXkkQUt9skruNiL9Ch+HTj+QAu4=";
+      hash = "sha256-3gvYyZa6zAY1Jp2J6YdcdVF8qZ7bg12NRKVmmCTSxLU=";
     };
 
     dontPatch = true;

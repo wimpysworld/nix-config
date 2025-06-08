@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+export NH_NO_CHECKS=1
+
 # Build home-manager, using the best available command
 if command -v nh-home &> /dev/null; then
     nh-home build
