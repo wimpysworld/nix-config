@@ -36,7 +36,7 @@ in
     ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
   };
 
-  programs = lib.mkIf (username == "martin") {
+  programs = lib.mkIf (username == "martin" || username == "martin.wimpress") {
     alacritty = lib.mkIf (desktop != "hyprland") {
       enable = true;
       settings = {

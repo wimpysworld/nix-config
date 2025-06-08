@@ -32,13 +32,13 @@
         };
 
         x86_64-darwin = prev.fetchzip {
-          url = "https://api.gitkraken.dev/releases/production/darwin/x64/${version}/installGitKraken.dmg";
-          hash = "";
+          url = "https://api.gitkraken.dev/releases/production/darwin/x64/${version}/GitKraken-v${version}.zip";
+          hash = "sha256-CNJ5EOFTGerzCQg7E23bPTPn11c41/AYP0PHHyrpUDA=";
         };
 
         aarch64-darwin = prev.fetchzip {
-          url = "https://api.gitkraken.dev/releases/production/darwin/arm64/${version}/installGitKraken.dmg";
-          hash = "";
+          url = "https://api.gitkraken.dev/releases/production/darwin/arm64/${version}/GitKraken-v${version}.zip";
+          hash = "sha256-5R106QjzDLDesiOaZMMLHhissvBtOQv0hgnCmVgApUc=";
         };
       }.${prev.stdenv.hostPlatform.system} or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
     });

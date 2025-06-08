@@ -6,7 +6,7 @@
   ...
 }:
 let
-  installFor = [ "martin" ];
+  installFor = [ "martin" "martin.wimpress" ];
   inherit (pkgs.stdenv) isLinux;
 in
 {

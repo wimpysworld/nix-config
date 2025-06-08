@@ -21,6 +21,7 @@ in
     # Modules exported from other flakes:
     inputs.catppuccin.homeModules.catppuccin
     inputs.sops-nix.homeManagerModules.sops
+    inputs.mac-app-util.homeManagerModules.default
     inputs.nix-index-database.hmModules.nix-index
     inputs.vscode-server.nixosModules.home
     ./_mixins/features
