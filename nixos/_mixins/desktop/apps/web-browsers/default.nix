@@ -20,6 +20,7 @@ in
     ++ lib.optionals (builtins.elem username forMartin && isInstall) [
       brave
       chromium
+      google-chrome
       mullvad-browser
       wavebox
     ];
