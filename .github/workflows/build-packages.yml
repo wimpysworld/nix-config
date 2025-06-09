@@ -127,6 +127,7 @@ jobs:
           - gotosocial
           - halloy
           - joplin-desktop
+          - nh
           - owncast
           - wavebox
     steps:

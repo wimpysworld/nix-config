@@ -15,6 +15,7 @@ pkgs:
   gotosocial = pkgs.callPackage ./gotosocial { };
   halloy = pkgs.callPackage ./halloy { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
+  nh = pkgs.callPackage ./nh { };
   owncast = pkgs.unstable.callPackage ./owncast { };
 
   # In my OBS Studio Configuration and in review upstream

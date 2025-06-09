@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-export NH_NO_CHECKS=1
-
 if [ -e "${HOME}/Zero/nix-config/flake.nix" ]; then
     all_cores=$(sysctl -n hw.logicalcpu)
     build_cores=$(printf "%.0f" "$(echo "${all_cores} * 0.75" | bc)")

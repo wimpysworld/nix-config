@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-export NH_NO_CHECKS=1
-
 function usage() {
     echo "Usage: ${0} {build|switch}"
     exit 1
