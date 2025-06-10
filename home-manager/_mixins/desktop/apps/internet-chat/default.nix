@@ -22,12 +22,12 @@ in
       ++ lib.optionals (lib.elem username installFor) [
         chatterino2
         (discord.override { withOpenASAR = true; })
-        slack
       ]
       # Halloy is installed via homebrew on Darwin
       ++ lib.optionals (lib.elem username installFor && isLinux) [
         fractal
         halloy
+        slack
       ];
   };
 
