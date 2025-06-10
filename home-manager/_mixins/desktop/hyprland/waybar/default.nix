@@ -455,8 +455,9 @@ in
           "custom/virtualcam" = {
             format = "<big>{}</big>";
             exec = "${lib.getExe virtualcamCheck}";
-            on-click-middle = "${lib.getExe virtualcamToggle}";
-            interval = 2;
+            on-click = "${lib.getExe virtualcamToggle}";
+            interval = 1;
+            max-length = 2;
           };
           wireplumber = {
             scroll-step = 5;
