@@ -64,6 +64,23 @@ let
     ];
     text = builtins.readFile ./tailscale-toggle.sh;
   };
+  virtualcamCheck = pkgs.writeShellApplication {
+    name = "virtualcam-check";
+    runtimeInputs = with pkgs; [
+      gnugrep
+      uutils-coreutils
+    ];
+    text = builtins.readFile ./virtualcam-check.sh;
+  };
+  virtualcamToggle = pkgs.writeShellApplication {
+    name = "virtualcam-toggle";
+    runtimeInputs = with pkgs; [
+      gnugrep
+      notify-desktop
+      uutils-coreutils
+    ];
+    text = builtins.readFile ./virtualcam-toggle.sh;
+  };
 in
 {
   # Just use trayscale as a UI
@@ -192,6 +209,7 @@ in
         }
 
         #tray,
+        #custom-virtualcam,
         #wireplumber,
         #pulseaudio.input,
         #bluetooth,
@@ -209,6 +227,7 @@ in
           opacity: 0.9;
         }
 
+        #custom-virtualcam:hover,
         #wireplumber:hover,
         #pulseaudio.input:hover,
         #bluetooth:hover,
@@ -223,6 +242,7 @@ in
           background-color: #242536;
         }
 
+        
         #wireplumber {
           color: @mauve;
           border-radius: 0.75rem 0 0 0.75rem;
@@ -230,6 +250,11 @@ in
         }
 
         #pulseaudio.input {
+          border-radius: 0;
+          color: @mauve;
+        }
+
+        #custom-virtualcam {
           border-radius: 0;
           color: @mauve;
         }
@@ -315,6 +340,9 @@ in
             "tray"
             "wireplumber"
             "pulseaudio#input"
+          ]
+          ++ lib.optional (hostname == "vader" || hostname == "phasma") "custom/virtualcam"
+          ++ [
             "bluetooth"
             "network"
             "custom/vpn"
@@ -423,6 +451,12 @@ in
           tray = {
             icon-size = 22;
             spacing = 12;
+          };
+          "custom/virtualcam" = {
+            format = "<big>{}</big>";
+            exec = "${lib.getExe virtualcamCheck}";
+            on-click-middle = "${lib.getExe virtualcamToggle}";
+            interval = 2;
           };
           wireplumber = {
             scroll-step = 5;
