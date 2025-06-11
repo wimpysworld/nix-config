@@ -68,6 +68,7 @@ in
     packages =
       with pkgs;
       [
+        _1password-cli # 1Password CLI
         asciicam # Terminal webcam
         bc # Terminal calculator
         bandwhich # Modern Unix `iftop`
@@ -126,6 +127,7 @@ in
         wget2 # Terminal HTTP client
         xh # Terminal HTTP client
         yq-go # Terminal `jq` for YAML
+        yubikey-manager # Terminal YubiKey manager
       ]
       ++ lib.optionals isLinux [
         figlet # Terminal ASCII banners

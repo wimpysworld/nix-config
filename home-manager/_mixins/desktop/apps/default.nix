@@ -21,6 +21,7 @@ in
     ./music
     ./obs-studio
     ./rhythmbox
+    ./security
     ./ulauncher
     ./vaults
     ./vscode
