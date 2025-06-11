@@ -5,10 +5,10 @@ _: {
     ./graphics-production
     ./internet-chat
     ./keybase
-    ./lastpass
     ./notes
     ./maestral
     ./obs-studio
+    ./security
     ./utilities
     ./web-browsers
     ./zoom
