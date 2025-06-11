@@ -11,6 +11,9 @@
         "fdpohaocaechififmbbbbbknoalclacl" # GoFullPage
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
         "cdglnehniifkbagbbombnjghhcihifij" # Kagi
+        "dpaefegpjhgeplnkomgbcmmlffkijbgp" # Kagi Summariser
+        "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
+        "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
         "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
         "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
       ];

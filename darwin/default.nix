@@ -199,11 +199,13 @@
         orientation = "left";
         # TODO: Make this user-specific
         persistent-apps = [
-          "/Applications/Brave Browser.app"
-          "/Applications/Wavebox.app"
+          "/Applications/Brave Browser.app"         
+          "/Users/${username}/Applications/Home Manager Apps/Wavebox.app"
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"
+        ] ++ lib.optionals (username == "martin.wimpress") [
           "/Applications/Slack.app"
+        ] ++ [
           "/Applications/Halloy.app"
           "/Users/${username}/Applications/Home Manager Apps/Visual Studio Code.app"
           "/Users/${username}/Applications/Home Manager Apps/GitKraken.app"
