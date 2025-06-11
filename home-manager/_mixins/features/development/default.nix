@@ -29,6 +29,7 @@
         ghorg # Clone all repositories in a GitHub organization
         git-igitt # git log/graph
         gk-cli # GitKraken CLI
+        google-cloud-sdk # Google Cloud CLI
         unstable.grype # Vulnerability scanner
         h # autojump for git projects
         kind # Kubernetes in Docker
