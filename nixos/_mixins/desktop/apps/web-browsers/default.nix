@@ -20,8 +20,6 @@ in
     ++ lib.optionals (builtins.elem username forMartin && isInstall) [
       brave
       chromium
-      google-chrome
-      mullvad-browser
       wavebox
     ];
 
@@ -36,6 +34,7 @@ in
       enable = isInstall;
       extensions = [
         "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
+        "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password 
       ];
       extraOpts = {
         # Misc; privacy and data collection prevention

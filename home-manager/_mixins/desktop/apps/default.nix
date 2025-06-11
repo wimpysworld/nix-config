@@ -24,6 +24,7 @@ in
     ./ulauncher
     ./vaults
     ./vscode
+    ./web-browsers
     ./zed-editor
   ];
   dconf.settings = lib.mkIf isLinux {
