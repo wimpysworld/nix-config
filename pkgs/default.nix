@@ -12,6 +12,7 @@ pkgs:
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
 
   # Local packages to prevent unintended upgrades or carrying patches
+  chainctl = pkgs.callPackage ./chainctl { };
   gotosocial = pkgs.callPackage ./gotosocial { };
   halloy = pkgs.callPackage ./halloy { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };

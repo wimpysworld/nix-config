@@ -21,6 +21,7 @@
       with pkgs;
       [
         unstable.apko # Declarative container images
+        chainctl # Chainguard Platform CLI
         crane # Container registry client
         dive # Explore container images
         difftastic # Modern Unix `diff`
