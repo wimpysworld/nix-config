@@ -20,16 +20,23 @@
     packages =
       with pkgs;
       [
-        breezy # bzr client
+        unstable.apko # Declarative container images
+        crane # Container registry client
+        dive # Explore container images
         difftastic # Modern Unix `diff`
         ghbackup # Backup GitHub repositories
         ghorg # Clone all repositories in a GitHub organization
         git-igitt # git log/graph
         gk-cli # GitKraken CLI
+        unstable.grype # Vulnerability scanner
         h # autojump for git projects
+        kind # Kubernetes in Docker
+        unstable.melange # Declarative package manager
         onefetch # fetch git project info
         quilt # patch manager
+        terraform # Infrastructure as code tool
         tokei # Modern Unix `wc` for code
+        unstable.syft # SBOM scanner
       ];
   };
 
