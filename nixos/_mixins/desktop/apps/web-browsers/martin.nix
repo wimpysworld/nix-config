@@ -14,6 +14,7 @@
         "dpaefegpjhgeplnkomgbcmmlffkijbgp" # Kagi Summariser
         "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
         "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
+        "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
         "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
         "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
       ];

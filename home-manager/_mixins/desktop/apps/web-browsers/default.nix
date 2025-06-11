@@ -34,6 +34,7 @@ in
         { id = "dpaefegpjhgeplnkomgbcmmlffkijbgp"; }  # Kagi Summariser
         { id = "mdkgfdijbhbcbajcdlebbodoppgnmhab"; }  # GoLinks
         { id = "glnpjglilkicbckjpbgcfkogebgllemb"; }  # Okta
+        { id = "cfpdompphcacgpjfbonkdokgjhgabpij"; }  # Glean
       ];
     };
   };
