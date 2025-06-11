@@ -35,6 +35,7 @@ in
         { id = "mdkgfdijbhbcbajcdlebbodoppgnmhab"; }  # GoLinks
         { id = "glnpjglilkicbckjpbgcfkogebgllemb"; }  # Okta
         { id = "cfpdompphcacgpjfbonkdokgjhgabpij"; }  # Glean
+        { id = "idefohglmnkliiadgfofeokcpjobdeik"; }  # Ramp
       ];
     };
   };

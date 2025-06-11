@@ -15,6 +15,7 @@
         "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
         "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
         "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
+        "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
         "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
         "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
       ];
