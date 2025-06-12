@@ -39,6 +39,7 @@
         terraform # Infrastructure as code tool
         tokei # Modern Unix `wc` for code
         unstable.syft # SBOM scanner
+        wolfictl # Wolfi OSS project CLI
       ];
   };
 

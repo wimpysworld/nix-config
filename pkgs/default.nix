@@ -18,6 +18,7 @@ pkgs:
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
   nh = pkgs.callPackage ./nh { };
   owncast = pkgs.unstable.callPackage ./owncast { };
+  wolfictl = pkgs.callPackage ./wolfictl { };
 
   # In my OBS Studio Configuration and in review upstream
   obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };   #merged
