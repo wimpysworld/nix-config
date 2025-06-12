@@ -28,7 +28,8 @@ in
       '';
     };
     file.".face".source = ./face.png;
-    file."Development/salsa.debian.org/.envrc" = lib.mkIf (!isLima) {
+    file."Development/.keep" = lib.mkIf (!isLima) { text = ""; };
+    file."Development/salsa/.envrc" = lib.mkIf (!isLima) {
       text = ''export DEB_VENDOR=Debian'';
     };
     file."Development/launchpad/.envrc" = lib.mkIf (!isLima) {
@@ -40,6 +41,8 @@ in
     file."Development/ubuntu-mate/.envrc" = lib.mkIf (!isLima) {
       text = ''export DEB_VENDOR=Ubuntu'';
     };
+    file."Games/.keep" = lib.mkIf (!isLima) { text = ""; };
+    file."Quickemu/nixos-console/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."Quickemu/nixos-console.conf" = lib.mkIf (!isLima) {
       text = ''
         #!/run/current-system/sw/bin/quickemu --vm
@@ -49,6 +52,7 @@ in
         iso="nixos-console/nixos.iso"
       '';
     };
+    file."Quickemu/nixos-pantheon/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."Quickemu/nixos-pantheon.conf" = lib.mkIf (!isLima) {
       text = ''
         #!/run/current-system/sw/bin/quickemu --vm
@@ -60,18 +64,12 @@ in
         height="1080"
       '';
     };
-    file."/Development/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."/Games/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."/Quickemu/nixos-console/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."/Quickemu/nixos-pantheon/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."/Scripts/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."/Websites/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."/Zero/.keep".text = "";
+    file."Websites/.keep" = lib.mkIf (!isLima) { text = ""; };
+    file."Zero/.keep".text = "";
     file.".ssh/allowed_signers".text = ''
       martin@wimpress.org ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAywaYwPN4LVbPqkc+kUc7ZVazPBDy4LCAud5iGJdr7g9CwLYoudNjXt/98Oam5lK7ai6QPItK6ECj5+33x/iFpWb3Urr9SqMc/tH5dU1b9N/9yWRhE2WnfcvuI0ms6AXma8QGp1pj/DoLryPVQgXvQlglHaDIL1qdRWFqXUO2u30X5tWtDdOoR02UyAtYBttou4K0rG7LF9rRaoLYP9iCBLxkMJbCIznPD/pIYa6Fl8V8/OVsxYiFy7l5U0RZ7gkzJv8iNz+GG8vw2NX4oIJfAR4oIk3INUvYrKvI2NSMSw5sry+z818fD1hK+soYLQ4VZ4hHRHcf4WV4EeVa5ARxdw== Martin Wimpress
     '';
     sessionVariables = {
-      BZR_EMAIL = "Martin Wimpress <code@wimpress.io>";
       DEBFULLNAME = "Martin Wimpress";
       DEBEMAIL = "code@wimpress.io";
       DEBSIGN_KEYID = "8F04688C17006782143279DA61DF940515E06DA3";
