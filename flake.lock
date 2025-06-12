@@ -541,10 +541,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1748373722,
+        "lastModified": 1749622275,
         "owner": "LnL7",
         "repo": "nix-darwin",
-        "rev": "75b99daa12b1fffd646d6c3cf13b06f1fa5cef63",
+        "rev": "294d18da177b1e454104af7cd3c7002e34293209",
         "type": "github"
       },
       "original": {
@@ -612,10 +612,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1749607503,
+        "lastModified": 1749693852,
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "06a79e7e0edfcbe28b3e60c78d91c9f75998a8f3",
+        "rev": "8219bf5f17f590d277ec7054b657b1370c7b7fc0",
         "type": "github"
       },
       "original": {
