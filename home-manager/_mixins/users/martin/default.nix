@@ -27,31 +27,17 @@ in
         StartupNotify=false
       '';
     };
-    file.".bazaar/authentication.conf".text = "
-      [Launchpad]
-      host = .launchpad.net
-      scheme = ssh
-      user = flexiondotorg
-    ";
-    file.".bazaar/bazaar.conf".text = "
-      [DEFAULT]
-      email = Martin Wimpress <code@wimpress.io>
-      launchpad_username = flexiondotorg
-      mail_client = default
-      tab_width = 4
-      [ALIASES]
-    ";
     file.".face".source = ./face.png;
     file."Development/salsa.debian.org/.envrc" = lib.mkIf (!isLima) {
       text = ''export DEB_VENDOR=Debian'';
     };
-    file."Development/git.launchpad.net/.envrc" = lib.mkIf (!isLima) {
+    file."Development/launchpad/.envrc" = lib.mkIf (!isLima) {
       text = ''export DEB_VENDOR=Ubuntu'';
     };
-    file."Development/github.com/ubuntu/.envrc" = lib.mkIf (!isLima) {
+    file."Development/ubuntu/.envrc" = lib.mkIf (!isLima) {
       text = ''export DEB_VENDOR=Ubuntu'';
     };
-    file."Development/github.com/ubuntu-mate/.envrc" = lib.mkIf (!isLima) {
+    file."Development/ubuntu-mate/.envrc" = lib.mkIf (!isLima) {
       text = ''export DEB_VENDOR=Ubuntu'';
     };
     file."Quickemu/nixos-console.conf" = lib.mkIf (!isLima) {
