@@ -28,6 +28,7 @@
         ghbackup # Backup GitHub repositories
         ghorg # Clone all repositories in a GitHub organization
         git-igitt # git log/graph
+        gitsign # Sign git commits and tags
         gk-cli # GitKraken CLI
         google-cloud-sdk # Google Cloud CLI
         unstable.grype # Vulnerability scanner
@@ -35,6 +36,7 @@
         kind # Kubernetes in Docker
         unstable.melange # Declarative package manager
         onefetch # fetch git project info
+        pre-commit # Git pre-commit hooks
         quilt # patch manager
         terraform # Infrastructure as code tool
         tokei # Modern Unix `wc` for code
