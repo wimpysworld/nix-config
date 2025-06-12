@@ -52,7 +52,7 @@ lib.mkIf (lib.elem username installFor && !isLima) {
         Wants = [ "graphical-session-pre.target" ];
       };
     };
-    user.services.syncthingtray = {
+    user.services.syncthingtray = lib.mkIf isWorkstation {
       Service.ExecStart = lib.mkForce "${pkgs.syncthingtray}/bin/syncthingtray --wait";
     };
   };
