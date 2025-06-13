@@ -7,6 +7,13 @@
 }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
+  chainctlAuthDocker = pkgs.writeShellApplication {
+    name = "chainctl-auth-docker";
+    runtimeInputs = with pkgs; [
+      chainctl
+    ];
+    text = ''chainctl auth configure-docker --headless'';
+  };
   gitsignXdgOpen = inputs.xdg-override.lib.proxyPkg { 
     inherit pkgs; 
     nameMatch = [
@@ -26,7 +33,6 @@ let
     runtimeInputs = with pkgs; [
       git
       gitsign
-      
     ];
     text = ''[ -d .git ] && git commit --amend --signoff --no-edit'';
   };
@@ -76,6 +82,7 @@ in
     packages =
       with pkgs;
       [
+        chainctlAuthDocker
         gitsignSetup
         gitsignOff
         gitsignVerify
