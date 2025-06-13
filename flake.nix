@@ -246,7 +246,6 @@
               inputs.determinate.packages.${system}.default
               inputs.disko.packages.${system}.default
               inputs.fh.packages.${system}.default
-              inputs.nixos-needsreboot.packages.${system}.default
               micro
               nh
               nixpkgs-fmt
@@ -255,6 +254,8 @@
               nvd
               sops
               just
+            ] ++ lib.optionals pkgs.stdenv.isLinux [
+              inputs.nixos-needsreboot.packages.${system}.default
             ];
             shellHook = ''
               export NH_NO_CHECKS=1
