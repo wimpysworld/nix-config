@@ -98,7 +98,7 @@
           hostname = "bane";
           platform = "aarch64-darwin";
           desktop = "aqua";
-	    };
+	      };
         "martin@krall" = helper.mkHome {
           hostname = "krall";
           platform = "x86_64-darwin";
@@ -223,6 +223,42 @@
       );
       # Formatter for .nix files, available via 'nix fmt'
       formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
+
+      # Creates a devshell for working with this flake via direnv.
+      devShells =
+        let
+          supportedSystems = [ "x86_64-linux" "aarch64-darwin" "x86_64-darwin" ];
+          forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
+            pkgs = import nixpkgs {
+              inherit system;
+              config.allowUnfree = true;
+            };
+          });
+        in
+        forEachSupportedSystem ({ pkgs }: {
+          default = pkgs.mkShell {
+            packages = with pkgs; [
+              bc
+              git
+              home-manager
+              inputs.determinate.packages.${system}.default
+              inputs.disko.packages.${system}.default
+              inputs.fh.packages.${system}.default
+              inputs.nixos-needsreboot.packages.${system}.default
+              micro
+              nh
+              nixpkgs-fmt
+              nixd
+              nix-output-monitor
+              nvd
+              sops
+              just
+            ];
+            shellHook = ''
+              export NH_NO_CHECKS=1
+            '';
+          };
+        });
 
       # Expose input packages directly
       inherit (inputs) bzmenu iwmenu;
