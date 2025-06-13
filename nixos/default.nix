@@ -226,6 +226,8 @@
       shaa_enc.sopsFile = ../secrets/disks.yaml;
       atrius_enc.sopsFile = ../secrets/disks.yaml;
       sidious_enc.sopsFile = ../secrets/disks.yaml;
+      phasma_enc.sopsFile = ../secrets/disks.yaml;
+      vader_enc.sopsFile = ../secrets/disks.yaml;
     };
   };
 
