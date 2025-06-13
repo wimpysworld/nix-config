@@ -20,7 +20,16 @@ let
       gitsign
     ];
     text = builtins.readFile ./gitsign-setup.sh;
-  };  
+  };
+  gitsignOff = pkgs.writeShellApplication {
+    name = "gitsign-off";
+    runtimeInputs = with pkgs; [
+      git
+      gitsign
+      
+    ];
+    text = ''[ -d .git ] && git commit --amend --signoff --no-edit'';
+  };
   gitsignVerify = pkgs.writeShellApplication {
     name = "gitsign-verify";
     runtimeInputs = with pkgs; [
@@ -68,6 +77,7 @@ in
       with pkgs;
       [
         gitsignSetup
+        gitsignOff
         gitsignVerify
         precommitSetup
         unstable.apko # Declarative container images
