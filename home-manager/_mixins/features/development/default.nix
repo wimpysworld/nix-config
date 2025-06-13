@@ -1,8 +1,24 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
+let
+  inherit (pkgs.stdenv) isDarwin isLinux;
+  gitsignSetup = pkgs.writeShellApplication {
+    name = "gitsign-setup";
+    runtimeInputs = with pkgs; [
+      git
+      gitsign
+    ];
+    text = builtins.readFile ./gitsign-setup.sh;
+  };  
+  gitsignCredentialCache = if isLinux then
+    "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
+  else
+    "${config.home.homeDirectory}/.cache/sigstore/gitsign/cache.sock";
+in
 {
   # Enable the Catppuccin theme
   catppuccin = {
@@ -14,12 +30,16 @@
     file = {
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ../../../_mixins/configs/h.fish;
     };
+    sessionVariables = {
+      GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
+    };
 
     # A Modern Unix experience
     # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages =
       with pkgs;
       [
+        gitsignSetup
         unstable.apko # Declarative container images
         chainctl # Chainguard Platform CLI
         crane # Container registry client
@@ -124,6 +144,61 @@
         mode = "0660";
       };
       gh_token = { };
+    };
+  };
+
+  systemd.user = lib.mkIf isLinux {
+    services.gitsign-credential-cache = {
+      Unit = {
+        Description = "GitSign credential cache";
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${pkgs.gitsign}/bin/gitsign-credential-cache";
+      };
+      Install = {
+        WantedBy = [ "default.target" ];
+      };
+    };
+
+    sockets.gitsign-credential-cache = {
+      Unit = {
+        Description = "GitSign credential cache socket";
+      };
+      Socket = {
+        ListenStream = "${gitsignCredentialCache}";
+        DirectoryMode = "0700";
+      };
+      Install = {
+        WantedBy = [ "default.target" ];
+      };
+    };
+
+    # Enable and start the socket by default
+    targets.gitsign-credential-cache = {
+      Unit = {
+        Description = "Start gitsign-credential-cache socket";
+        Requires = [ "gitsign-credential-cache.socket" ];
+      };
+      Install = {
+        WantedBy = [ "default.target" ];
+      };
+    };
+  };
+
+  launchd.agents = lib.mkIf isDarwin {
+    gitsign-credential-cache = {
+      enable = true;
+      config = {
+        Label = "org.sigstore.gitsign-credential-cache";
+        ProgramArguments = [
+          "${pkgs.gitsign}/bin/gitsign-credential-cache"
+          "-socket"
+          "${gitsignCredentialCache}"
+        ];
+        KeepAlive = true;
+        RunAtLoad = true;
+      };
     };
   };
 }
