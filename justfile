@@ -48,23 +48,23 @@ update:
 # Build Home configuration
 build-home username=current_username hostname=current_hostname:
   @echo "Home Manager  Building: {{username}}@{{hostname}}"
-  nh home build --configuration {{username}}@{{hostname}}
-  
+  nh home build . --configuration "{{username}}@{{hostname}}"
+
 # Switch Home configuration
 switch-home username=current_username hostname=current_hostname:
   @echo "Home Manager  Switching: {{username}}@{{hostname}}"
-  nh home switch --configuration {{username}}@{{hostname}}
+  nh home switch . --configuration "{{username}}@{{hostname}}"
 
 # Build OS configuration
 build-host hostname=current_hostname:
   @if [ "$(uname)" = "Linux" ]; then \
     echo "NixOS  Building: {{hostname}}"; \
-    nh os build --hostname {{hostname}} -- \
+    nh os build . --hostname "{{hostname}}" -- \
       --option extra-substituters https://install.determinate.systems \
       --option extra-trusted-public-keys cache.flakehub.com-3:hJuILl5sVK4iKm86JzgdXW12Y2Hwd5G07qKtHTOcDCM=; \
   elif [ "$(uname)" = "Darwin" ]; then \
     echo "nix-darwin 󰀵 Building: {{hostname}}"; \
-    nh darwin build --hostname {{hostname}} -- \
+    nh darwin build . --hostname "{{hostname}}" -- \
       --option extra-substituters https://install.determinate.systems \
       --option extra-trusted-public-keys cache.flakehub.com-3:hJuILl5sVK4iKm86JzgdXW12Y2Hwd5G07qKtHTOcDCM=; \
   else \
@@ -75,10 +75,10 @@ build-host hostname=current_hostname:
 switch-host hostname=current_hostname:
   @if [ "$(uname)" = "Linux" ]; then \
     echo "NixOS  Switching: {{hostname}}"; \
-    nh os switch --hostname {{hostname}}; \
+    nh os switch . --hostname "{{hostname}}"; \
   elif [ "$(uname)" = "Darwin" ]; then \
     echo "nix-darwin 󰀵 Switching: {{hostname}}"; \
-    nh darwin switch --hostname {{hostname}}; \
+    nh darwin switch . --hostname "{{hostname}}"; \
   else \
     echo "Unsupported OS: $(uname)"; \
   fi
