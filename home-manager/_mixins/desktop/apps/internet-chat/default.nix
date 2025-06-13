@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   username,
@@ -8,6 +9,12 @@
 let
   installFor = [ "martin" "martin.wimpress" ];
   inherit (pkgs.stdenv) isLinux;
+
+  slackWavebox = (inputs.xdg-override.lib.wrapPackage { 
+    nameMatch = [
+      { case = "^https?://"; command = "wavebox"; }
+    ];
+  } pkgs.slack);
 in
 {
   home = {
@@ -27,7 +34,7 @@ in
       ++ lib.optionals (lib.elem username installFor && isLinux) [
         fractal
         halloy
-        slack
+        slackWavebox
       ];
   };
 

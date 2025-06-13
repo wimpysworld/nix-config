@@ -1,11 +1,18 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
 }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
+  gitsignXdgOpen = inputs.xdg-override.lib.proxyPkg { 
+    inherit pkgs; 
+    nameMatch = [
+      { case = "^https?://accounts.google.com/"; command = "wavebox"; }
+    ];
+  };
   gitsignSetup = pkgs.writeShellApplication {
     name = "gitsign-setup";
     runtimeInputs = with pkgs; [
@@ -29,6 +36,12 @@ in
   home = {
     file = {
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ../../../_mixins/configs/h.fish;
+    };
+    file."Development/chainguard/.envrc" = {
+      text = ''
+        export BROWSER=wavebox
+        export GITSIGN_CREDENTIAL_CACHE="${gitsignCredentialCache}"
+      '';
     };
     sessionVariables = {
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
@@ -62,6 +75,8 @@ in
         tokei # Modern Unix `wc` for code
         unstable.syft # SBOM scanner
         wolfictl # Wolfi OSS project CLI
+      ] ++ lib.optionals isLinux [
+        gitsignXdgOpen # Use Wavebox to open Google accounts
       ];
   };
 

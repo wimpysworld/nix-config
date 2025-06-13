@@ -143,6 +143,7 @@ in
         vhs # Terminal GIF recorder
         wavemon # Terminal WiFi monitor
         writedisk # Modern Unix `dd`
+        inputs.xdg-override.packages.${system}.default # Override XDG variables
         zsync # Terminal file sync; FTBFS on aarch64-darwin
       ]
       ++ lib.optionals isDarwin [
