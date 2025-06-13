@@ -44,6 +44,7 @@
       },
       "locked": {
         "lastModified": 1749223974,
+        "narHash": "sha256-/GAQYRW1duU81KG//2wI9ax8EkHVG/e1UOD97NdwLOY=",
         "owner": "catppuccin",
         "repo": "nix",
         "rev": "3a42cd79c647360ee8742659e42aeec0947dd3b4",
@@ -244,6 +245,24 @@
         "url": "https://flakehub.com/f/hercules-ci/flake-parts/0.1"
       }
     },
+    "flake-parts_2": {
+      "inputs": {
+        "nixpkgs-lib": "nixpkgs-lib"
+      },
+      "locked": {
+        "lastModified": 1719994518,
+        "narHash": "sha256-pQMhCCHyQGRzdfAkdJ4cIWiw+JNuWsTX7f0ZYSyz0VY=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "9227223f6d922fee3c7b190b2cc238a99527bbb7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
     "flake-schemas": {
       "locked": {
         "lastModified": 1721999734,
@@ -426,6 +445,7 @@
       },
       "locked": {
         "lastModified": 1749154018,
+        "narHash": "sha256-gjN3j7joRvT3a8Zgcylnd4NFsnXeDBumqiu4HmY1RIg=",
         "owner": "nix-community",
         "repo": "home-manager",
         "rev": "7aae0ee71a17b19708b93b3ed448a1a0952bf111",
@@ -465,6 +485,7 @@
       },
       "locked": {
         "lastModified": 1746473343,
+        "narHash": "sha256-F0YpvaRbAjh4qKrBGip+CxvAkCIY3yKVKGitK1gsqkk=",
         "owner": "kolide",
         "repo": "nix-agent",
         "rev": "73d5caa7acefdf77d77fcee5ef4e482dbcaf8e47",
@@ -489,6 +510,7 @@
       },
       "locked": {
         "lastModified": 1742156590,
+        "narHash": "sha256-aTM/2CrNN5utdVEQGsOA+kl4UozgH7VPLBQL5OXtBrg=",
         "owner": "hraban",
         "repo": "mac-app-util",
         "rev": "341ede93f290df7957047682482c298e47291b4d",
@@ -549,6 +571,7 @@
       },
       "locked": {
         "lastModified": 1749744770,
+        "narHash": "sha256-MEM9XXHgBF/Cyv1RES1t6gqAX7/tvayBC1r/KPyK1ls=",
         "owner": "LnL7",
         "repo": "nix-darwin",
         "rev": "536f951efb1ccda9b968e3c9dee39fbeb6d3fdeb",
@@ -581,6 +604,7 @@
       },
       "locked": {
         "lastModified": 1749519004,
+        "narHash": "sha256-alxmYUeHT/rKYKuHuOHDazQqCIYdbEsaEpc1uMGosfM=",
         "owner": "zhaofengli",
         "repo": "nix-homebrew",
         "rev": "e048b6646bc275341e0a854fa06168cec4c33962",
@@ -600,6 +624,7 @@
       },
       "locked": {
         "lastModified": 1749355504,
+        "narHash": "sha256-L17CdJMD+/FCBOHjREQLXbe2VUnc3rjffenBbu2Kwpc=",
         "owner": "Mic92",
         "repo": "nix-index-database",
         "rev": "40a6e15e44b11fbf8f2b1df9d64dbfc117625e94",
@@ -620,6 +645,7 @@
       },
       "locked": {
         "lastModified": 1749780284,
+        "narHash": "sha256-at8sCy3IXlgo1zV0j0Wowhn/dHXqBkb2huSdJ2Jt+mo=",
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
         "rev": "6ec5e3e4a11887ae47d55ece1b83a0ed8082cddf",
@@ -633,10 +659,11 @@
     },
     "nixos-hardware": {
       "locked": {
-        "lastModified": 1749195551,
+        "lastModified": 1749808356,
+        "narHash": "sha256-VQ2HFRVz0VxjYYFtdRTlAq/PuOT+j876YTWubk0WLJM=",
         "owner": "NixOS",
         "repo": "nixos-hardware",
-        "rev": "4602f7e1d3f197b3cb540d5accf5669121629628",
+        "rev": "b328aa7871068d9f98b656d8f6829b39a541a114",
         "type": "github"
       },
       "original": {
@@ -697,6 +724,18 @@
         "type": "github"
       }
     },
+    "nixpkgs-lib": {
+      "locked": {
+        "lastModified": 1719876945,
+        "narHash": "sha256-Fm2rDDs86sHy0/1jxTOKB1118Q0O3Uc7EC0iXvXKpbI=",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/5daf0514482af3f97abaefc78a6606365c9108e2.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/5daf0514482af3f97abaefc78a6606365c9108e2.tar.gz"
+      }
+    },
     "nixpkgs-regression": {
       "locked": {
         "lastModified": 1643052045,
@@ -716,6 +755,7 @@
     "nixpkgs-unstable": {
       "locked": {
         "lastModified": 1749285348,
+        "narHash": "sha256-frdhQvPbmDYaScPFiCnfdh3B/Vh81Uuoo0w5TkWmmjU=",
         "owner": "nixos",
         "repo": "nixpkgs",
         "rev": "3e3afe5174c561dee0df6f2c2b2236990146329f",
@@ -804,6 +844,7 @@
     "nixpkgs_7": {
       "locked": {
         "lastModified": 1749727998,
+        "narHash": "sha256-mHv/yeUbmL91/TvV95p+mBVahm9mdQMJoqaTVTALaFw=",
         "owner": "nixos",
         "repo": "nixpkgs",
         "rev": "fd487183437963a59ba763c0cc4f27e3447dd6dd",
@@ -901,7 +942,8 @@
         "quickemu": "quickemu",
         "quickgui": "quickgui",
         "sops-nix": "sops-nix",
-        "vscode-server": "vscode-server"
+        "vscode-server": "vscode-server",
+        "xdg-override": "xdg-override"
       }
     },
     "rust-analyzer-src": {
@@ -985,6 +1027,7 @@
       },
       "locked": {
         "lastModified": 1749592509,
+        "narHash": "sha256-VunQzfZFA+Y6x3wYi2UE4DEQ8qKoAZZCnZPUlSoqC+A=",
         "owner": "Mic92",
         "repo": "sops-nix",
         "rev": "50754dfaa0e24e313c626900d44ef431f3210138",
@@ -1080,6 +1123,7 @@
       },
       "locked": {
         "lastModified": 1729422940,
+        "narHash": "sha256-DlvJv33ml5UTKgu4b0HauOfFIoDx6QXtbqUF3vWeRCY=",
         "owner": "nix-community",
         "repo": "nixos-vscode-server",
         "rev": "8b6db451de46ecf9b4ab3d01ef76e59957ff549f",
@@ -1088,6 +1132,27 @@
       "original": {
         "owner": "nix-community",
         "repo": "nixos-vscode-server",
+        "type": "github"
+      }
+    },
+    "xdg-override": {
+      "inputs": {
+        "flake-parts": "flake-parts_2",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1723463209,
+        "narHash": "sha256-DYK2McUrn2mEpYfi5ig0poJEzAUUSoSYSzjI5CirOO8=",
+        "owner": "koiuo",
+        "repo": "xdg-override",
+        "rev": "a3509346bb4f8542e4824b0e949c400c8d396207",
+        "type": "github"
+      },
+      "original": {
+        "owner": "koiuo",
+        "repo": "xdg-override",
         "type": "github"
       }
     }
