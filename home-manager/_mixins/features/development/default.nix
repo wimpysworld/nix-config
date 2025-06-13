@@ -82,6 +82,7 @@ in
         precommitSetup
         unstable.apko # Declarative container images
         chainctl # Chainguard Platform CLI
+        cosign # Sign and verify container images
         crane # Container registry client
         dive # Explore container images
         difftastic # Modern Unix `diff`
