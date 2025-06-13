@@ -58,7 +58,6 @@
   documentation.doc.enable = false;
 
   environment = {
-    # Eject nano and perl from the system
     defaultPackages =
       with pkgs;
       lib.mkForce [
@@ -73,6 +72,7 @@
       with pkgs;
       [
         git
+        just
         nix-output-monitor
       ]
       ++ lib.optionals isInstall [

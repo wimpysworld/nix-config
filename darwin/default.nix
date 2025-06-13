@@ -30,8 +30,10 @@
     shells = [ pkgs.fish ];
     systemPackages = with pkgs; [
       git
+      just
       m-cli
       mas
+      nh
       nix-output-monitor
       nvd
       plistwatch
