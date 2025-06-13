@@ -21,6 +21,13 @@ let
     ];
     text = builtins.readFile ./gitsign-setup.sh;
   };  
+  precommitSetup = pkgs.writeShellApplication {
+    name = "pre-commit-setup";
+    runtimeInputs = with pkgs; [
+      pre-commit
+    ];
+    text = builtins.readFile ./pre-commit-setup.sh;
+  };
   gitsignCredentialCache = if isLinux then
     "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
   else
@@ -53,6 +60,7 @@ in
       with pkgs;
       [
         gitsignSetup
+        precommitSetup
         unstable.apko # Declarative container images
         chainctl # Chainguard Platform CLI
         crane # Container registry client
