@@ -21,6 +21,13 @@ let
     ];
     text = builtins.readFile ./gitsign-setup.sh;
   };  
+  gitsignVerify = pkgs.writeShellApplication {
+    name = "gitsign-verify";
+    runtimeInputs = with pkgs; [
+      gitsign
+    ];
+    text = ''[ -d .git ] && gitsign verify --certificate-identity=martin.wimpress@chainguard.dev --certificate-oidc-issuer=https://accounts.google.com HEAD'';
+  };
   precommitSetup = pkgs.writeShellApplication {
     name = "pre-commit-setup";
     runtimeInputs = with pkgs; [
@@ -47,11 +54,12 @@ in
     file."Development/chainguard/.envrc" = {
       text = ''
         export BROWSER=wavebox
+        export GITSIGN_CONNECTOR_ID="https://accounts.google.com";
         export GITSIGN_CREDENTIAL_CACHE="${gitsignCredentialCache}"
       '';
     };
     sessionVariables = {
-      GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
+      GITSIGN_CREDENTIAL_CACHE="${gitsignCredentialCache}";
     };
 
     # A Modern Unix experience
@@ -60,6 +68,7 @@ in
       with pkgs;
       [
         gitsignSetup
+        gitsignVerify
         precommitSetup
         unstable.apko # Declarative container images
         chainctl # Chainguard Platform CLI
