@@ -108,21 +108,30 @@ I clone this repo to `~/Zero/nix-config`. NixOS and Home Manager changes are app
 
 ```bash
 gh repo clone wimpysworld/nix-config "$HOME/Zero/nix-config"
+cd "$HOME/Zero/nix-config"
 ```
 
-- ❄️ **NixOS & macOS:**  A `build-host` and `switch-host` aliases are provided that build the NixOS or nix-darwin configuration and switch to it respectively.
-- 🏠️ **Home Manager:**  A `build-home` and `switch-home` aliases are provided that build the Home Manager configuration and switch to it respectively.
-- 🌍️ **All:** There are also `build-all` and `switch-all` aliases that build and switch to both the NixOS/nix-darwin and Home Manager configurations.
+This flake includes a [justfile](./justfile) that provides convenient commands for building and applying configurations.
+
+- ❄️ **NixOS & macOS:** Use `just host` to build and switch the NixOS or nix-darwin configuration.
+  - `just build-host` to only build.
+  - `just switch-host` to only switch.
+- 🏠️ **Home Manager:** Use `just home` to build and switch the Home Manager configuration.
+  - `just build-home` to only build.
+  - `just switch-home` to only switch.
+- 🌍️ **All:**
+  - `just build` to build both NixOS/nix-darwin and Home Manager configurations.
+  - `just switch` to switch to both NixOS/nix-darwin and Home Manager configurations.
 
 ### ISO 📀
 
-The `build-iso` script is included that creates .iso images from this flake. The following modes are available:
+The `just iso <iso_name>` command creates .iso images from this flake. The following modes are available:
 
-- `build-iso console` (*terminal environment*): Includes `install-system` for automated installation.
-- `build-iso pantheon` (*Pantheon Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
-- `build-iso lomiri` (*Lomiri Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
+- `just iso console` (*terminal environment*): Includes `install-system` for automated installation.
+- `just iso pantheon` (*Pantheon Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
+- `just iso lomiri` (*Lomiri Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 
-Live images will be left in `$HOME/Zero/nix-config/result/iso/` and are also injected into `~/Quickemu/nixos-console` and `~/Quickemu/nixos-<desktop>` respectively.
+Live images will be left in `result/iso/` and are also injected into `~/Quickemu/nixos-iso-<iso_name>/nixos.iso` respectively.
 The console .iso image is also periodically built and published via [GitHub Actions](./.github/workflows) and is available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
 ## What's in the box? 🎁
@@ -180,7 +189,8 @@ Here's the directory structure I'm using:
 │  └── default.nix
 ├── secrets
 │  └── secrets.yaml
-└── flake.nix
+├── flake.nix
+└── justfile
 ```
 
 - The NixOS, macOS (darwin) and Home Manager configurations are in the `nixos`, `darwin` and `home-manager` directories respectively, they are structured in a similar way with `_mixins` directories that contain the configurations applied via mixin pattern that compose the final configuration.
