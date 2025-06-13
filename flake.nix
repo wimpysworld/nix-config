@@ -38,6 +38,8 @@
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
+    xdg-override.url = "github:koiuo/xdg-override";
+    xdg-override.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
     { self, nix-darwin, nixpkgs, ... }@inputs:
