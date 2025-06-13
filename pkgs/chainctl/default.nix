@@ -47,6 +47,7 @@ stdenv.mkDerivation rec {
     runHook preInstall
     mkdir -p $out/bin
     install -Dm755 $src $out/bin/chainctl
+    ln -s $out/bin/chainctl $out/bin/docker-credential-cgr
     runHook postInstall
   '';
 
