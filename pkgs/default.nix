@@ -43,6 +43,7 @@ pkgs:
   bebas-neue-rounded-font = pkgs.callPackage ./fonts/bebas-neue-rounded-font { };
   bebas-neue-semi-rounded-font = pkgs.callPackage ./fonts/bebas-neue-semi-rounded-font { };
   boycott-font = pkgs.callPackage ./fonts/boycott-font { };
+  bw-fusiona-font = pkgs.callPackage ./fonts/bw-fusiona-font { };
   commodore-64-pixelized-font = pkgs.callPackage ./fonts/commodore-64-pixelized-font { };
   digital-7-font = pkgs.callPackage ./fonts/digital-7-font { };
   dirty-ego-font = pkgs.callPackage ./fonts/dirty-ego-font { };
