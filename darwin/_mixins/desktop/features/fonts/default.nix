@@ -2,13 +2,16 @@
 {
   fonts = {
     packages = with pkgs; [
-      nerd-fonts.fira-code
-      nerd-fonts.fira-mono
-      nerd-fonts.symbols-only
+      bw-fusiona-font
       corefonts
       fira
       font-awesome
+      lato
       liberation_ttf
+      nerd-fonts.fira-code
+      nerd-fonts.fira-mono
+      nerd-fonts.space-mono
+      nerd-fonts.symbols-only
       noto-fonts-emoji
       noto-fonts-monochrome-emoji
       source-serif

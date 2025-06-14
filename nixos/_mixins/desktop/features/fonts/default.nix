@@ -30,6 +30,7 @@
         bebas-neue-pro-font
         bebas-neue-rounded-font
         bebas-neue-semi-rounded-font
+        bw-fusiona-font
         boycott-font
         commodore-64-pixelized-font
         digital-7-font
@@ -39,6 +40,7 @@
         impact-label-font
         lato
         mocha-mattari-font
+        nerd-fonts.space-mono
         poppins-font
         spaceport-2006-font
         ubuntu_font_family
