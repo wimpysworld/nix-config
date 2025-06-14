@@ -9,6 +9,7 @@ let
       gnused
       obs-cmd
       procps
+      wlogout
     ];
     text = builtins.readFile ./${name}.sh;
   };
