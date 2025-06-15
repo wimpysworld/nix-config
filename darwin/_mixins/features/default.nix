@@ -1,8 +1,5 @@
 { pkgs, ... }:
 {
-  imports = [
-    ./docker
-  ];
-
+  imports = [ ];
   environment.systemPackages = with pkgs; [ ];
 }
