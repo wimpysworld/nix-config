@@ -126,6 +126,7 @@
       experimental-features = "nix-command flakes";
       # Disable global registry
       flake-registry = "";
+      lazy-trees = true;
       # Workaround for https://github.com/NixOS/nix/issues/9574
       nix-path = config.nix.nixPath;
       warn-dirty = false;
