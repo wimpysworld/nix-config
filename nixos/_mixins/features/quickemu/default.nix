@@ -13,6 +13,7 @@ in
 lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   environment = {
     systemPackages = with pkgs; [
+      qemu
       inputs.quickemu.packages.${platform}.default
       # TODO: Fix and enable
       #inputs.quickgui.packages.${platform}.default

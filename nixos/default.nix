@@ -35,6 +35,15 @@
   ] ++ lib.optional isWorkstation ./_mixins/desktop;
 
   boot = {
+    binfmt = {
+      emulatedSystems = [
+        "riscv64-linux"
+      ] ++ lib.optionals (platform == "x86_64-linux") [
+        "aarch64-linux"
+      ] ++ lib.optionals (platform == "aarch64-linux") [
+        "x86_64-linux"
+      ];
+    };
     consoleLogLevel = lib.mkDefault 0;
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];

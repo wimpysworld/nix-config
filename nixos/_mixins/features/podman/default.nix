@@ -7,14 +7,14 @@
   ...
 }:
 let
-  installFor = [ "martin" ];
+  installFor = [ "none" ];
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
 lib.mkIf (lib.elem "${username}" installFor) {
   #https://nixos.org/wiki/Podman
   boot.binfmt = {
-    emulatedSystems = [ "aarch64-linux" ];
-    preferStaticEmulators = true; # required to work with podman
+    # required to work with podman
+    preferStaticEmulators = true;
   };
 
   environment = {

@@ -1,7 +1,7 @@
-{ pkgs, username, ... }:
+{ pkgs, ... }:
 {
   imports = [
-    ./podman
+    ./docker
   ];
 
   environment.systemPackages = with pkgs; [ ];
