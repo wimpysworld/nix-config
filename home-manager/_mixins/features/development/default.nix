@@ -52,6 +52,8 @@ let
   };
   gitsignCredentialCache = if isLinux then
     "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
+  else if isDarwin then
+    "${config.home.homeDirectory}/Library/Caches/sigstore/gitsign/cache.sock"
   else
     "${config.home.homeDirectory}/.cache/sigstore/gitsign/cache.sock";
 in
