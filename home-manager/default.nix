@@ -127,7 +127,6 @@ in
         wget2 # Terminal HTTP client
         xh # Terminal HTTP client
         yq-go # Terminal `jq` for YAML
-        yubikey-manager # Terminal YubiKey manager
       ]
       ++ lib.optionals isLinux [
         figlet # Terminal ASCII banners
@@ -323,7 +322,14 @@ in
       enableBashIntegration = true;
       enableFishIntegration = true;
     };
-    gpg.enable = true;
+    gpg = {
+      enable = true;
+      # Prevent the PCSC-Lite conflicting with gpg-agent
+      # https://wiki.nixos.org/wiki/Yubikey#Smartcard_mode
+      scdaemonSettings = {
+        disable-ccid = true;
+      };
+    };
     home-manager.enable = true;
     info.enable = true;
     jq.enable = true;

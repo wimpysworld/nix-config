@@ -7,6 +7,28 @@
 }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
+  keysSopsFile = ../../../../secrets/keys.yaml;
+  # Helper function to generate SSH key secret definitions
+  mkSshKeySecrets = keyNamePrefix: sshBaseName: {
+    "${keyNamePrefix}_${sshBaseName}" = {
+      sopsFile = keysSopsFile;
+      path = "${config.home.homeDirectory}/.ssh/${keyNamePrefix}_${sshBaseName}";
+    };
+    "${keyNamePrefix}_${sshBaseName}_pub" = {
+      sopsFile = keysSopsFile;
+      path = "${config.home.homeDirectory}/.ssh/${keyNamePrefix}_${sshBaseName}.pub";
+      mode = "0644";
+    };
+  };
+  # List of ed25519_sk base names
+  ed25519SkKeyIdentifiers = [
+    "vader"
+  ];
+  # Generate the attribute set for all ed25519_sk key secrets
+  allEd25519SkSecrets = lib.foldl lib.recursiveUpdate {} (
+    map (baseName: mkSshKeySecrets "id_ed25519_sk" baseName) ed25519SkKeyIdentifiers
+  );
+
   chainctlAuthDocker = pkgs.writeShellApplication {
     name = "chainctl-auth-docker";
     runtimeInputs = with pkgs; [
@@ -214,7 +236,7 @@ in
       gh_read_only = {
         sopsFile = ../../../../secrets/github.yaml;
       };
-    };
+    } // allEd25519SkSecrets;
   };
 
   systemd.user = lib.mkIf isLinux {
