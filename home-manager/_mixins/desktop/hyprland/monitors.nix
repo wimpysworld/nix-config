@@ -10,12 +10,12 @@ _: {
       "2, name:Work, persistent:true, monitor:DP-1"
       "3, name:Chat, persistent:true, monitor:DP-1"
       "4, name:Code, persistent:true, monitor:DP-1"
-      "5, name:Term, persistent:true, monitor:DP-1"
+      "5, name:Git, persistent:true, monitor:DP-1"
       "6, name:Note, persistent:true, monitor:DP-1"
-      "7, name:Cast, persistent:true, monitor:DP-1"
+      "7, name:Make, persistent:true, monitor:DP-1"
       "8, name:Fun, persistent:true, monitor:DP-1"
-      "9, name:Camera, persistent:true, monitor:HDMI-A-1, layoutopt:orientation:left"
-      "10,name:Stream, persistent:true, monitor:DP-2"
+      "9, name:Shell, persistent:true, monitor:HDMI-A-1, layoutopt:orientation:left"
+      "10,name:Dummy, persistent:true, monitor:DP-2"
     ];
   };
   shaa = {
@@ -25,9 +25,9 @@ _: {
       "2, name:Work, persistent:true, monitor:eDP-1"
       "3, name:Chat, persistent:true, monitor:eDP-1"
       "4, name:Code, persistent:true, monitor:eDP-1"
-      "5, name:Term, persistent:true, monitor:eDP-1"
+      "5, name:Git, persistent:true, monitor:eDP-1"
       "6, name:Note, persistent:true, monitor:eDP-1"
-      "7, name:Cast, persistent:true, monitor:eDP-1"
+      "7, name:Make, persistent:true, monitor:eDP-1"
       "8, name:Fun, persistent:true, monitor:eDP-1"
     ];
   };
@@ -38,9 +38,9 @@ _: {
       "2, name:Work, persistent:true, monitor:eDP-1"
       "3, name:Chat, persistent:true, monitor:eDP-1"
       "4, name:Code, persistent:true, monitor:eDP-1"
-      "5, name:Term, persistent:true, monitor:eDP-1"
+      "5, name:Git, persistent:true, monitor:eDP-1"
       "6, name:Note, persistent:true, monitor:eDP-1"
-      "7, name:Cast, persistent:true, monitor:eDP-1"
+      "7, name:Make, persistent:true, monitor:eDP-1"
       "8, name:Fun, persistent:true, monitor:eDP-1"
     ];
   };
@@ -51,9 +51,9 @@ _: {
       "2, name:Work, persistent:true, monitor:eDP-1"
       "3, name:Chat, persistent:true, monitor:eDP-1"
       "4, name:Code, persistent:true, monitor:eDP-1"
-      "5, name:Term, persistent:true, monitor:eDP-1"
+      "5, name:Git, persistent:true, monitor:eDP-1"
       "6, name:Note, persistent:true, monitor:eDP-1"
-      "7, name:Cast, persistent:true, monitor:eDP-1"
+      "7, name:Make, persistent:true, monitor:eDP-1"
       "8, name:Fun, persistent:true, monitor:eDP-1"
     ];
   };
@@ -68,12 +68,12 @@ _: {
       "2, name:Work, persistent:true, monitor:DP-1"
       "3, name:Chat, persistent:true, monitor:DP-2"
       "4, name:Code, persistent:true, monitor:DP-2"
-      "5, name:Term, persistent:true, monitor:DP-2"
+      "5, name:Git, persistent:true, monitor:DP-2"
       "6, name:Note, persistent:true, monitor:DP-2"
-      "7, name:Cast, persistent:true, monitor:DP-1"
+      "7, name:Make, persistent:true, monitor:DP-1"
       "8, name:Fun, persistent:true, monitor:DP-1"
-      "9, name:Camera, persistent:true, monitor:DP-2"
-      "10,name:Stream, persistent:true, monitor:DP-3"
+      "9, name:Shell, persistent:true, monitor:DP-1"
+      "10,name:Dummy, persistent:true, monitor:DP-3"
     ];
   };
 }
