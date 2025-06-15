@@ -237,14 +237,13 @@ Things I currently need to do manually after installation.
 
 - [ ] Provision `/var/lib/private/sops/age/keys.txt`
 - [ ] Provision `~/.config/sops/age/keys.txt`
-- [ ] Run `gpg-restore`
-- [ ] Run `determinate-nixd login`
-- [ ] Keybase - `keybase login`
-- [ ] Tailscale - `sudo tailscale up --operator="$USER"`
-  - Fast switching - <https://tailscale.com/kb/1225/fast-user-switching>
 - [ ] 1Password - authenticate
 - [ ] LastPass - authenticate
-
+- [ ] Run `determinate-nixd login`
+- [ ] Run `gh auth login -p ssh`
+- [ ] Tailscale - `sudo tailscale up --operator="$USER"`
+- [ ] Run `gpg-restore`
+- [ ] Keybase - `keybase login`
 
 ### Accounts
 
@@ -254,7 +253,10 @@ Things I currently need to do manually after installation.
 - [ ] Brave - enroll sync
 - [ ] Chatterino - authenticate
 - [ ] Discord - authenticate
-- [ ] GitKraken - authenticate with GitHub
+- [ ] GitKraken
+  - [ ] Authenticate with GitHub
+  - [ ] Create Personal Profile
+  - [ ] Create Work Profile
 - [ ] Grammarly - authenticate
 - [ ] Maelstral - `maestral_qt`
 - [ ] Matrix - authenticate
@@ -269,12 +271,12 @@ Things I currently need to do manually after installation.
 `defender` and `fighter` are Ubuntu virtual machines run under [Lima] for my Ubuntu MATE development and testing environments.
 
 - [ ] On Linux run
-  - `incus admin init --minimal`
   - `create-defender`
   - `create-fighter`
 - [ ] On macOS run
   - `install-homebrew`
-  - Run Podman Desktop to create podman machine
+  - `install-docker`
+  - Run Docker Desktop to complete the setup.
 
 #### Malak
 

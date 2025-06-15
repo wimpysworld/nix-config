@@ -1,5 +1,6 @@
 {
   config,
+  hostname,
   inputs,
   lib,
   pkgs,
@@ -7,13 +8,6 @@
 }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
-  chainctlAuthDocker = pkgs.writeShellApplication {
-    name = "chainctl-auth-docker";
-    runtimeInputs = with pkgs; [
-      chainctl
-    ];
-    text = ''chainctl auth configure-docker --headless'';
-  };
   gitsignXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
@@ -68,18 +62,9 @@ in
     file = {
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ../../../_mixins/configs/h.fish;
     };
-    file."Development/chainguard/.envrc" = {
-      text = ''
-        export BROWSER=wavebox
-        export GITSIGN_CONNECTOR_ID="https://accounts.google.com";
-        export GITSIGN_CREDENTIAL_CACHE="${gitsignCredentialCache}"
-      '';
-    };
-
     sessionPath = [
       "${config.home.homeDirectory}/.local/go/bin"
     ];
-
     sessionVariables = {
       GHORG_CLONE_PROTOCOL = "ssh";
       GHORG_ABSOLUTE_PATH_TO_CLONE_TO = "${config.home.homeDirectory}/Development";
@@ -88,15 +73,14 @@ in
       GHORG_SKIP_ARCHIVED = "true";
       GHORG_SKIP_FORKS = "true";
       GHORG_GITHUB_TOKEN = "${config.sops.secrets.gh_read_only.path}";
+      GITSIGN_CONNECTOR_ID = "https://accounts.google.com";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
       GOPATH = "${config.home.homeDirectory}/.local/go";
       GOCACHE = "${config.home.homeDirectory}/.local/go/cache";
     };
-
     packages =
       with pkgs;
       [
-        chainctlAuthDocker
         gitsignSetup
         gitsignOff
         gitsignVerify
@@ -131,6 +115,13 @@ in
   };
 
   programs = {
+    fish = {
+      shellAliases = {
+        chainctl-auth-docker = "chainctl auth configure-docker --headless";
+        gh-auth = "${pkgs.gh}/bin/gh auth login -p ssh";
+        key-add = "${pkgs.openssh}/bin/ssh-add $HOME/.ssh/id_ed25519_sk_${hostname}";
+      };
+    };
     gh = {
       enable = true;
       # TODO: Package https://github.com/DevAtDawn/gh-fish
