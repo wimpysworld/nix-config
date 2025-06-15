@@ -14,8 +14,8 @@ let
     ];
     text = ''chainctl auth configure-docker --headless'';
   };
-  gitsignXdgOpen = inputs.xdg-override.lib.proxyPkg { 
-    inherit pkgs; 
+  gitsignXdgOpen = inputs.xdg-override.lib.proxyPkg {
+    inherit pkgs;
     nameMatch = [
       { case = "^https?://accounts.google.com/"; command = "wavebox"; }
     ];
@@ -75,12 +75,24 @@ in
         export GITSIGN_CREDENTIAL_CACHE="${gitsignCredentialCache}"
       '';
     };
+
+    sessionPath = [
+      "${config.home.homeDirectory}/.local/go/bin"
+    ];
+
     sessionVariables = {
-      GITSIGN_CREDENTIAL_CACHE="${gitsignCredentialCache}";
+      GHORG_CLONE_PROTOCOL = "ssh"; ### https (default) or ssh?
+      GHORG_ABSOLUTE_PATH_TO_CLONE_TO = "${config.home.homeDirectory}/Development";
+      GHORG_INCLUDE_SUBMODULES = "true";
+      GHORG_COLOR = "enabled";
+      GHORG_SKIP_ARCHIVED = "true";
+      GHORG_SKIP_FORKS = "true";
+      GHORG_GITHUB_TOKEN = "${config.sops.secrets.gh_read_only.path}";
+      GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
+      GOPATH = "${config.home.homeDirectory}/.local/go";
+      GOCACHE = "${config.home.homeDirectory}/.local/go/cache";
     };
 
-    # A Modern Unix experience
-    # https://jvns.ca/blog/2022/04/12/a-list-of-new-ish--command-line-tools/
     packages =
       with pkgs;
       [
@@ -100,6 +112,7 @@ in
         git-igitt # git log/graph
         gitsign # Sign git commits and tags
         gk-cli # GitKraken CLI
+        go # Go programming language
         google-cloud-sdk # Google Cloud CLI
         unstable.grype # Vulnerability scanner
         h # autojump for git projects
@@ -195,7 +208,12 @@ in
         sopsFile = ../../../../secrets/act.yaml;
         mode = "0660";
       };
-      gh_token = { };
+      gh_token = {
+        sopsFile = ../../../../secrets/github.yaml;
+      };
+      gh_read_only = {
+        sopsFile = ../../../../secrets/github.yaml;
+      };
     };
   };
 
