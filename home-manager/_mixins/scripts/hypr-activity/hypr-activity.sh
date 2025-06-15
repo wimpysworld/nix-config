@@ -53,7 +53,7 @@ function move_app() {
             echo " - Moved client with $KEY_TYPE '$KEY_VALUE' (Address: $CLIENT_ADDRESS) to workspace $WORKSPACE"
             return 0
         else
-            echo " - Waiting for client ($KEY_TYPE: $KEY_VALUE): attempt $i/10"
+            echo " - Waiting for client ($KEY_TYPE: $KEY_VALUE): attempt $i/30"
             sleep 0.5
         fi
     done
