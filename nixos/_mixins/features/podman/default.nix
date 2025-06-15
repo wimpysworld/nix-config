@@ -12,6 +12,11 @@ let
 in
 lib.mkIf (lib.elem "${username}" installFor) {
   #https://nixos.org/wiki/Podman
+  boot.binfmt = {
+    emulatedSystems = [ "aarch64-linux" ];
+    preferStaticEmulators = true; # required to work with podman
+  };
+
   environment = {
     systemPackages =
       with pkgs;
