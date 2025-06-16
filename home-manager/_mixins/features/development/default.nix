@@ -12,6 +12,7 @@ let
     inherit pkgs;
     nameMatch = [
       { case = "^https?://accounts.google.com/"; command = "wavebox"; }
+      { case = "^https?://github.com/login/device/"; command = "wavebox"; }
     ];
   };
   gitsignSetup = pkgs.writeShellApplication {
@@ -110,7 +111,7 @@ in
         unstable.syft # SBOM scanner
         wolfictl # Wolfi OSS project CLI
       ] ++ lib.optionals isLinux [
-        gitsignXdgOpen # Use Wavebox to open Google accounts
+        gitsignXdgOpen # Integrate Wavebox with Slack, GitHub, etc.
       ];
   };
 
