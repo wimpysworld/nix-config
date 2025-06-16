@@ -66,7 +66,7 @@ in
       "${config.home.homeDirectory}/.local/go/bin"
     ];
     sessionVariables = {
-      GHORG_CLONE_PROTOCOL = "ssh";
+      GHORG_CLONE_PROTOCOL = "https";
       GHORG_ABSOLUTE_PATH_TO_CLONE_TO = "${config.home.homeDirectory}/Development";
       GHORG_INCLUDE_SUBMODULES = "true";
       GHORG_COLOR = "enabled";
@@ -118,13 +118,32 @@ in
     fish = {
       shellAliases = {
         chainctl-auth-docker = "chainctl auth configure-docker --headless";
-        gh-login = "${pkgs.gh}/bin/gh auth login -p ssh";
+        gh-login = "${pkgs.gh}/bin/gh auth login -p https";
+        gh-refresh = "${pkgs.gh}/bin/gh auth refresh";
         gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
-        gh-token = "set GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
         key-add = "${pkgs.openssh}/bin/ssh-add $HOME/.ssh/id_ed25519_sk_${hostname}";
       };
+      shellInitLast = ''
+        function gh-token
+          # Capture status output
+          set -l auth_status (${pkgs.gh}/bin/gh auth status 2>&1)
+          set -l status_code $status
+
+          if test $status_code -eq 0
+            set -gx GH_TOKEN (${pkgs.gh}/bin/gh auth token)
+            set -gx GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
+          else if string match -q "*SAML*" $auth_status
+            echo "󰊤 GitHub SAML session expired. Run 'gh auth refresh'"
+            return 1
+          else
+            echo "󰊤 GitHub not authenticated. Run 'gh auth login'"
+            return 1
+          end
+        end
+        gh-token
+      '';
     };
     gh = {
       enable = true;
@@ -137,7 +156,7 @@ in
       ];
       settings = {
         editor = "micro";
-        git_protocol = "ssh";
+        git_protocol = "https";
         prompt = "enabled";
       };
     };

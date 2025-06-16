@@ -76,10 +76,6 @@ in
     };
   };
   programs = {
-    #fish.interactiveShellInit = ''
-    #  set -x GH_TOKEN (gh auth token)
-    #  set -x GITHUB_TOKEN (gh auth token)
-    #'';
     fish.loginShellInit = ''
       ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
     '';
