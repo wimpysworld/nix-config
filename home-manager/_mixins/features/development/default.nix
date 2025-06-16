@@ -118,7 +118,9 @@ in
     fish = {
       shellAliases = {
         chainctl-auth-docker = "chainctl auth configure-docker --headless";
-        gh-auth = "${pkgs.gh}/bin/gh auth login -p ssh";
+        gh-login = "${pkgs.gh}/bin/gh auth login -p ssh";
+        gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
+        gh-token = "set GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
         key-add = "${pkgs.openssh}/bin/ssh-add $HOME/.ssh/id_ed25519_sk_${hostname}";
