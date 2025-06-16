@@ -73,7 +73,7 @@ in
       GHORG_COLOR = "enabled";
       GHORG_SKIP_ARCHIVED = "true";
       GHORG_SKIP_FORKS = "true";
-      GHORG_GITHUB_TOKEN = "${config.sops.secrets.gh_read_only.path}";
+      GHORG_GITHUB_TOKEN = "$(${pkgs.gh}/bin/gh auth status)";
       GITSIGN_CONNECTOR_ID = "https://accounts.google.com";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
       GOPATH = "${config.home.homeDirectory}/.local/go";
@@ -121,7 +121,9 @@ in
         chainctl-auth-docker = "chainctl auth configure-docker --headless";
         gh-login = "${pkgs.gh}/bin/gh auth login -p https";
         gh-refresh = "${pkgs.gh}/bin/gh auth refresh";
+        gh-status = "${pkgs.gh}/bin/gh auth status";
         gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
+        gh-unset = "set -u GH_TOKEN GITHUB_TOKEN";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
         key-add = "${pkgs.openssh}/bin/ssh-add $HOME/.ssh/id_ed25519_sk_${hostname}";
@@ -222,6 +224,11 @@ in
         path = "${config.home.homeDirectory}/.config/act/secrets";
         sopsFile = ../../../../secrets/act.yaml;
         mode = "0660";
+      };
+      cg-repos = {
+        path = "${config.home.homeDirectory}/.config/cg-repos";
+        sopsFile = ../../../../secrets/cg-repos.yaml;
+        mode = "0644";
       };
       gh_token = {
         sopsFile = ../../../../secrets/github.yaml;
