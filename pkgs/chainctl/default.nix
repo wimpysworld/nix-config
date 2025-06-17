@@ -6,7 +6,7 @@
 
 stdenv.mkDerivation rec {
   pname = "chainctl";
-  version = "0.2.88";
+  version = "0.2.90";
 
   src = fetchurl (
     let
@@ -25,10 +25,10 @@ stdenv.mkDerivation rec {
       # SHA256 sums derived from the Homebrew formula
       # https://github.com/chainguard-dev/homebrew-tap/blob/main/Formula/chainctl.rb
       sha256s = {
-        "darwin_x86_64" = "9692dad7b6cb00c11a7dd22cf1de5d11a1cbf73ed69ea252598be55e5beb5851";
-        "darwin_arm64" = "0a5be77a442f0aa5aa87bab6f486bd89faa9b4795f1567f592025c1e30c2604a";
-        "linux_x86_64" = "8d4094c8dc7b09af5ae6080194d1ad39363d4aba009b8d5752bad807b0b35461";
-        "linux_arm64" = "689901c0c7c79aff2ca520549b2d830368ec5e3e103306d65fc9374d750637c3";
+        "darwin_x86_64" = "fd78f2b32bb8157d49b3cdd16a983c560b5a313c3bd2be7f0fbea4b6b53ad8f0";
+        "darwin_arm64" = "9b4c2daa06414c45ac34fd4737ec9182461e12f9432b561506a3c828e97eb7ab";
+        "linux_x86_64" = "01e5f5c5d2b7310b21c0095d08dad624f12b575303eed55425c822c2931ac09b";
+        "linux_arm64" = "b6d27904b5cd45bbb32d51602d159a2e1cf5873779c258e035c4833ea56636d5";
       };
       platformKey = "${currentSystem}_${archSuffix}";
     in
