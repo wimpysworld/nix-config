@@ -8,11 +8,12 @@
 }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
-  gitsignXdgOpen = inputs.xdg-override.lib.proxyPkg {
+  waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
       { case = "^https?://accounts.google.com/"; command = "wavebox"; }
-      { case = "^https?://github.com/login/device/"; command = "wavebox"; }
+      { case = "^https?://github.com/login/device"; command = "wavebox"; }
+      { case = "^https?://auth.chainguard.dev/activate"; command = "wavebox"; }
     ];
   };
   gitsignSetup = pkgs.writeShellApplication {
@@ -112,10 +113,12 @@ in
         git-igitt # git log/graph
         gitsign # Sign git commits and tags
         gk-cli # GitKraken CLI
+        gnumake # GNU Make
         go # Go programming language
         google-cloud-sdk # Google Cloud CLI
         unstable.grype # Vulnerability scanner
         h # autojump for git projects
+        k3d # Lightweight Kubernetes
         kind # Kubernetes in Docker
         unstable.melange # Declarative package manager
         onefetch # fetch git project info
@@ -126,14 +129,14 @@ in
         unstable.syft # SBOM scanner
         wolfictl # Wolfi OSS project CLI
       ] ++ lib.optionals isLinux [
-        gitsignXdgOpen # Integrate Wavebox with Slack, GitHub, etc.
+        waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
       ];
   };
 
   programs = {
     fish = {
       shellAliases = {
-        chainctl-auth-docker = "chainctl auth configure-docker --headless";
+        docker-auth = "chainctl auth configure-docker";
         gh-login = "${pkgs.gh}/bin/gh auth login -p https";
         gh-refresh = "${pkgs.gh}/bin/gh auth refresh";
         gh-status = "${pkgs.gh}/bin/gh auth status";
@@ -141,7 +144,9 @@ in
         gh-unset = "set -u GH_TOKEN GITHUB_TOKEN";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
+        install-wolfi-package-status = "go install github.com:philroche/wolfi-package-status@latest";
         key-add = "${pkgs.openssh}/bin/ssh-add $HOME/.ssh/id_ed25519_sk_${hostname}";
+        mal = "docker run -it cgr.dev/chainguard/malcontent:latest";
       };
       shellInitLast = ''
         function gh-token
@@ -194,6 +199,7 @@ in
         ci = "commit";
         cl = "clone";
         co = "checkout";
+        puff = "pull --ff-only";
         purr = "pull --rebase";
         dlog = "!f() { GIT_EXTERNAL_DIFF=difft git log -p --ext-diff $@; }; f";
         dshow = "!f() { GIT_EXTERNAL_DIFF=difft git show --ext-diff $@; }; f";
