@@ -44,6 +44,7 @@ let
     name = "cg-tokens";
     runtimeInputs = with pkgs; [
       coreutils-full
+      jq
     ];
     text = builtins.readFile ./cg-tokens.sh;
   };
