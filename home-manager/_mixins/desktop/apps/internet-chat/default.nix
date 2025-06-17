@@ -10,7 +10,7 @@ let
   installFor = [ "martin" "martin.wimpress" ];
   inherit (pkgs.stdenv) isLinux;
 
-  slackWavebox = (inputs.xdg-override.lib.wrapPackage { 
+  slackWavebox = (inputs.xdg-override.lib.wrapPackage {
     nameMatch = [
       { case = "^https?://"; command = "wavebox"; }
     ];
@@ -25,7 +25,7 @@ in
 
     packages =
       with pkgs;
-      [ unstable.telegram-desktop ]
+      [ telegram-desktop ]
       ++ lib.optionals (lib.elem username installFor) [
         chatterino2
         (discord.override { withOpenASAR = true; })
