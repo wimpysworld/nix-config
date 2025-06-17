@@ -40,21 +40,13 @@ let
     ];
     text = ''[ -d .git ] && gitsign verify --certificate-identity=martin.wimpress@chainguard.dev --certificate-oidc-issuer=https://accounts.google.com HEAD'';
   };
-  loginImages = (pkgs.writeShellApplication {
-    name = "login-images";
+  cgTokens = pkgs.writeShellApplication {
+    name = "cg-tokens";
     runtimeInputs = with pkgs; [
-      # login-images works with coreutils or busybox
       coreutils-full
     ];
-    text = builtins.readFile ./login-images;
-  }).overrideAttrs (oldAttrs: {
-    # Override checkPhase to disable shellcheck
-    checkPhase = ''
-      runHook preCheck
-      true
-      runHook postCheck
-    '';
-  });
+    text = builtins.readFile ./cg-tokens.sh;
+  };
   precommitSetup = pkgs.writeShellApplication {
     name = "pre-commit-setup";
     runtimeInputs = with pkgs; [
@@ -98,10 +90,10 @@ in
     packages =
       with pkgs;
       [
+        cgTokens
         gitsignSetup
         gitsignOff
         gitsignVerify
-        loginImages
         precommitSetup
         unstable.apko # Declarative container images
         chainctl # Chainguard Platform CLI
@@ -174,9 +166,9 @@ in
           gh-token
           set h (date --utc +%H)
           if test $h -ge 7 -a $h -le 19
-            login-images --until="19:00"
+            cg-tokens --no-headless
           else
-            echo "󱎬 Outside office hours, no login-images for you!"
+            echo "󱎬 Outside office hours, no tokens for you!"
           end
         end
       '';
