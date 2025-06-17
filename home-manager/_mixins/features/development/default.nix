@@ -145,7 +145,7 @@ in
         gh-unset = "set -u GH_TOKEN GH_USER GITHUB_TOKEN";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
-        install-wolfi-package-status = "go install github.com:philroche/wolfi-package-status@latest";
+        install-wolfi-package-status = "go install github.com/philroche/wolfi-package-status@latest";
         key-add = "${pkgs.openssh}/bin/ssh-add $HOME/.ssh/id_ed25519_sk_${hostname}";
         mal = "docker run -it cgr.dev/chainguard/malcontent:latest";
       };
