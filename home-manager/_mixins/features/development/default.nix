@@ -43,8 +43,8 @@ let
   cgTokens = pkgs.writeShellApplication {
     name = "cg-tokens";
     runtimeInputs = with pkgs; [
-      coreutils-full
       jq
+      uutils-coreutils-noprefix
     ];
     text = builtins.readFile ./cg-tokens.sh;
   };
@@ -167,7 +167,7 @@ in
           gh-token
           set h (date --utc +%H)
           if test $h -ge 7 -a $h -le 19
-            cg-tokens --no-headless
+            cg-tokens --headless no
           else
             echo "󱎬 Outside office hours, no tokens for you!"
           end

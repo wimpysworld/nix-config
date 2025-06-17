@@ -2,60 +2,86 @@
 # Inspired by: https://gist.github.com/smoser/568f03b41efe80f57cea4605beec71ac
 set -euo pipefail
 
-# --- Configuration ---
-VERSION="0.1.1"
-# - 0.1.1: Added support for BusyBox date and set auth.mode
-# - 0.1.0: Initial version
+if [[ "${BASH_VERSINFO[0]}" -lt 4 || ( "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -lt 4 ) ]]; then
+    echo "✗ ERROR! This script requires Bash version 4.4 or higher." >&2
+    exit 1
+fi
+
+# Check for required commands
+for cmd in chainctl jq date base64; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "✗ ERROR! Required command '$cmd' not found in PATH." >&2
+        exit 1
+    fi
+done
+
 AUDIENCES=(
     "https://console-api.enforce.dev"
     "apk.cgr.dev"
     "cgr.dev"
 )
+# Global variables to store TTLs, populated by get_current_ttls
+CURRENT_TOKEN_TTL_SEC=0
+CURRENT_REFRESH_TTL_SEC=0
+# Global variable to track date command type and label, populated by detect_date_type
+DATE_TYPE=""
+DATE_LABEL=""
+# Default headless mode
+HEADLESS=yes
+# Default operation mode
+OPERATION=refresh
+OPERATION_TITLE="◉ Ensuring tokens are fresh..."
+# Default refresh threshold; 30 mins
+TTL_THRESHOLD_SEC=$((30 * 60))
+VERSION="0.1.2"
 
-# --- Helper Functions ---
 usage() {
     cat <<EOF
-$(basename "${0}") version ${VERSION}
+$(basename "${0}") v${VERSION}
 Refreshes Chainguard tokens if they are close to expiring.
 
 USAGE:
     $(basename "${0}") [OPTIONS]
 
 OPTIONS:
-    --headless              Enable headless operation (default).
-    --no-headless           Disable headless operation (interactive).
-    --logout                Log out from all configured audiences.
-    --ttl-minutes <minutes> Set desired token TTL in minutes (default: 30).
-    --help                  Show this help message and exit.
-    --version               Show script version and exit.
+    --headless <yes|no>       Enable or disable headless operation (default: yes).
+    --ttl-threshold <minutes> Set token refresh threshold in minutes (default: 30, min: 5, max: 60).
+    --logout                  Log out from all configured audiences.
+    --help                    Show this help message and exit.
+    --version                 Show version and exit.
 EOF
 }
 
-_IS_BUSYBOX_DATE_RESULT=""
-_IS_COREUTILS_DATE_RESULT=""
-
-# Checks if 'date' command is from BusyBox
-is_busybox_date() {
-    if [ -z "$_IS_BUSYBOX_DATE_RESULT" ]; then
+# Detect date command type and set global DATE_TYPE variable
+detect_date_type() {
+    if [ -z "$DATE_TYPE" ]; then
         if date --help 2>&1 | grep -q "BusyBox v"; then
-            _IS_BUSYBOX_DATE_RESULT="true"
+            DATE_LABEL="BusyBox"
+            DATE_TYPE="busybox"
+        elif date --help 2>&1 | grep -q "coreutils"; then
+            DATE_LABEL="GNU Core Utilities"
+            DATE_TYPE="coreutils"
+        elif [[ "$(uname)" == "Darwin" ]]; then
+            DATE_LABEL="BSDCoreUtils (macOS)"
+            DATE_TYPE="bsd"
         else
-            _IS_BUSYBOX_DATE_RESULT="false"
+            DATE_LABEL="Unknown"
+            DATE_TYPE="unknown"
         fi
     fi
-    [ "$_IS_BUSYBOX_DATE_RESULT" = "true" ]
 }
 
-# Checks if 'date' command is from GNU coreutils
-is_coreutils_date() {
-    if [ -z "$_IS_COREUTILS_DATE_RESULT" ]; then
-        if date --help 2>&1 | grep -q "coreutils"; then
-            _IS_COREUTILS_DATE_RESULT="true"
-        else
-            _IS_COREUTILS_DATE_RESULT="false"
-        fi
+# Helper function to try date parsing
+try_date_parse() {
+    local cmd_args=("$@")
+    local ts=""
+
+    ts=$(LC_ALL=C "${cmd_args[@]}" 2>/dev/null)
+    if [[ "$ts" =~ ^[0-9]+$ ]]; then
+        echo "$ts"
+    else
+        echo ""
     fi
-    [ "$_IS_COREUTILS_DATE_RESULT" = "true" ]
 }
 
 # Convert a date string to a Unix timestamp
@@ -63,75 +89,55 @@ is_coreutils_date() {
 tounix() {
     local date_str="$1"
     local ts=""
+    detect_date_type
 
-    if is_coreutils_date; then
-        # GNU date:
-        # Attempt 1: Strip timezone abbreviation (e.g., BST, PDT) as it can sometimes confuse GNU date.
-        local cleaned_date_str_gnu="${date_str% [A-Z][A-Z][A-Z]}"
-        ts=$(LC_ALL=C date --date="$cleaned_date_str_gnu" "+%s" 2>/dev/null)
+    # Strip timezone abbreviation (e.g., BST, PDT) as it can sometimes confuse date parsers
+    local cleaned_date_str="${date_str% [A-Z][A-Z][A-Z]}"
 
-        # Attempt 2: If stripping failed, try with the original string. GNU date is often flexible.
-        if ! [[ "$ts" =~ ^[0-9]+$ ]]; then
-            ts=$(LC_ALL=C date --date="$date_str" "+%s" 2>/dev/null)
+    # Treat unknown date type like coreutils. Works for uutils.
+    if [[ "$DATE_TYPE" == "coreutils" ]] || [[ "$DATE_TYPE" == "unknown" ]]; then
+        ts=$(try_date_parse date --date="$cleaned_date_str" "+%s")
+        if [[ -z "$ts" ]]; then
+            # If stripping failed, try with the original string.
+            ts=$(try_date_parse date --date="$date_str" "+%s")
         fi
-    elif is_busybox_date; then
-        # BusyBox date:
-        # Attempt 1: Strip timezone abbreviation
-        local cleaned_date_str_busybox="${date_str% [A-Z][A-Z][A-Z]}"
-        ts=$(LC_ALL=C date -d "$cleaned_date_str_busybox" "+%s" 2>/dev/null)
-
-        # Attempt 2: If stripping failed, try with the original string.
-        if ! [[ "$ts" =~ ^[0-9]+$ ]]; then
-            ts=$(LC_ALL=C date -d "$date_str" "+%s" 2>/dev/null)
+    elif [[ "$DATE_TYPE" == "busybox" ]]; then
+        ts=$(try_date_parse date -d "$cleaned_date_str" "+%s")
+        if [[ -z "$ts" ]]; then
+            # If stripping failed, try with the original string.
+            ts=$(try_date_parse date -d "$date_str" "+%s")
         fi
-    elif [[ "$(uname)" == "Darwin" ]]; then
+    elif [[ "$DATE_TYPE" == "bsd" ]]; then
         # BSD date (macOS specific): requires -j and -f for parsing arbitrary date strings.
-        # Attempt 1: With timezone abbreviation
-        ts=$(LC_ALL=C date -jf "%Y-%m-%d %H:%M:%S %z %Z" "$date_str" "+%s" 2>/dev/null)
-
-        if ! [[ "$ts" =~ ^[0-9]+$ ]]; then
-            # Attempt 2: Without timezone abbreviation, if the first failed
-            local cleaned_date_str_bsd="${date_str% [A-Z][A-Z][A-Z]}"
-            ts=$(LC_ALL=C date -jf "%Y-%m-%d %H:%M:%S %z" "$cleaned_date_str_bsd" "+%s" 2>/dev/null)
+        # Try original string, with full format, BSD needs exact format match
+        ts=$(try_date_parse date -jf "%Y-%m-%d %H:%M:%S %z %Z" "$date_str" "+%s")
+        if [[ -z "$ts" ]]; then
+            # Try cleaned string with simpler format (fallback for missing timezone)
+            ts=$(try_date_parse date -jf "%Y-%m-%d %H:%M:%S %z" "$cleaned_date_str" "+%s")
         fi
-    # If not a supported 'date', 'ts' will likely remain empty.
-    # The check below will catch this and report an error.
     fi
 
-    if ! [[ "$ts" =~ ^[0-9]+$ ]]; then
-        echo "Error: Failed to parse date string '$date_str' to Unix timestamp." >&2
-        local date_type_for_msg
-        # _IS_COREUTILS_DATE_RESULT is set by the is_coreutils_date call above
-        if [[ "$_IS_COREUTILS_DATE_RESULT" == "true" ]]; then
-            date_type_for_msg="GNU coreutils"
-        elif [[ "$(uname)" == "Darwin" ]]; then
-            date_type_for_msg="macOS (BSD)"
-        else
-            date_type_for_msg="non-GNU/non-macOS (unknown type)"
-        fi
-        echo "⚑ DEBUG! Date parsing failed. Detected/Attempted date type: $date_type_for_msg. Input: '$date_str'" >&2
+    # If 'ts' is empty, catch and report an error.
+    if [[ -z "$ts" ]]; then
+        echo "✗ ERROR! Failed to parse date string '$date_str' to Unix timestamp." >&2
+        echo "⚑ DEBUG! Date parsing failed using: ${DATE_LABEL}" >&2
         return 1
     fi
     echo "$ts"
 }
 
-# Global variables to store TTLs, populated by get_current_ttls
-_CURRENT_TOKEN_TTL_SEC=0
-_CURRENT_REFRESH_TTL_SEC=0
-
 # Get current token TTL and refresh token TTL for a given audience
-# Populates _CURRENT_TOKEN_TTL_SEC and _CURRENT_REFRESH_TTL_SEC
+# Populates CURRENT_TOKEN_TTL_SEC and CURRENT_REFRESH_TTL_SEC
 get_current_ttls() {
     local audience="$1"
-    _CURRENT_TOKEN_TTL_SEC=0
-    _CURRENT_REFRESH_TTL_SEC=0
+    CURRENT_TOKEN_TTL_SEC=0
+    CURRENT_REFRESH_TTL_SEC=0
     local now_ts
     now_ts=$(date "+%s")
 
-    # Get token expiry from chainctl auth status
     local status_json
-    # If the authentication has expired, this will trigger a re-authentication.
-    # So the output can not be suppressed.
+    # Get token expiry from chainctl auth status. If the token has expired, this
+    # will trigger a re-authentication so the output can not be suppressed.
     status_json=$(chainctl auth status --output=json --audience="$audience" || echo "{}")
 
     local expiry_date_str
@@ -141,17 +147,21 @@ get_current_ttls() {
         local expiry_ts
         expiry_ts=$(tounix "$expiry_date_str")
         if [[ $? -eq 0 && -n "$expiry_ts" ]]; then
-            _CURRENT_TOKEN_TTL_SEC=$((expiry_ts - now_ts))
+            CURRENT_TOKEN_TTL_SEC=$((expiry_ts - now_ts))
             # Ensure TTL is not negative
-            if [[ $_CURRENT_TOKEN_TTL_SEC -lt 0 ]]; then _CURRENT_TOKEN_TTL_SEC=0; fi
+            if [[ $CURRENT_TOKEN_TTL_SEC -lt 0 ]]; then CURRENT_TOKEN_TTL_SEC=0; fi
         fi
     fi
 
+    # Cache directory for chainctl refresh tokens
+    local CHAINCTL_CACHE_DIR="${HOME}/.cache/chainguard"
+    if [[ "$(uname)" == "Darwin" ]]; then
+        CHAINCTL_CACHE_DIR="${HOME}/Library/Caches/chainguard"
+    fi
     # Get refresh token expiry from cache file
     # Sanitize audience for use in file path (replace / with -)
     local audsafe="${audience//\//-}"
     local refresh_token_file="${CHAINCTL_CACHE_DIR}/${audsafe}/refresh-token"
-
     if [[ -f "$refresh_token_file" ]]; then
         local refresh_data_b64
         refresh_data_b64=$(cat "$refresh_token_file")
@@ -161,109 +171,31 @@ get_current_ttls() {
 
         if [[ -n "$refresh_exp_ts_str" && "$refresh_exp_ts_str" != "null" && "$refresh_exp_ts_str" =~ ^[0-9]+$ ]]; then
             # The .exp field in refresh token is already a Unix timestamp
-            _CURRENT_REFRESH_TTL_SEC=$((refresh_exp_ts_str - now_ts))
+            CURRENT_REFRESH_TTL_SEC=$((refresh_exp_ts_str - now_ts))
             # Ensure TTL is not negative
-            if [[ $_CURRENT_REFRESH_TTL_SEC -lt 0 ]]; then _CURRENT_REFRESH_TTL_SEC=0; fi
+            if [[ $CURRENT_REFRESH_TTL_SEC -lt 0 ]]; then CURRENT_REFRESH_TTL_SEC=0; fi
         fi
     fi
 }
 
-# --- Sanity Checks for required commands ---
-for cmd in chainctl jq date base64; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        echo "✗ ERROR! Required command '$cmd' not found in PATH." >&2
-        exit 1
+logout_audience() {
+    local audience="$1"
+    if chainctl auth logout --audience="$audience" --output=none >/dev/null 2>&1; then
+        echo "✔ Logged out: $audience"
+    else
+        echo "⚑ NOTE! $audience failed to log out. This is not critical."
     fi
-done
+}
 
-# Option parsing
-HEADLESS_OPT="--headless"
-WANTED_TTL_SECONDS=$((30 * 60)) # Default TTL: 30 minutes
-LOGOUT_MODE=false
-
-if [[ $# -gt 0 ]]; then
-    # Loop through all arguments
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --help)
-                usage
-                exit 0
-                ;;
-            --version)
-                echo "${VERSION}"
-                exit 0
-                ;;
-            --headless)
-                HEADLESS_OPT="--headless"
-                shift
-                ;;
-            --no-headless)
-                HEADLESS_OPT=""
-                shift
-                ;;
-            --ttl-minutes)
-                if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
-                    WANTED_TTL_SECONDS=$(($2 * 60))
-                    shift 2
-                else
-                    echo "✗ ERROR! --ttl-minutes requires a numeric argument." >&2
-                    usage
-                    exit 1
-                fi
-                ;;
-            --logout)
-                LOGOUT_MODE=true
-                shift
-                ;;
-            *)
-                echo "✗ ERROR! Unknown option or unexpected argument: $1" >&2
-                usage
-                exit 1
-                ;;
-        esac
-    done
-fi
-
-# Cache directory for chainguard refresh tokens
-CHAINCTL_CACHE_DIR="${HOME}/.cache/chainguard"
-if [[ "$(uname)" == "Darwin" ]]; then
-    CHAINCTL_CACHE_DIR="${HOME}/Library/Caches/chainguard"
-fi
-
-if [[ -z "${HEADLESS_OPT}" ]]; then
-    chainctl config unset auth.mode >/dev/null 2>&1
-else
-    chainctl config set auth.mode headless >/dev/null 2>&1
-fi
-
-if [[ "${LOGOUT_MODE}" == "true" ]]; then
-    echo "↩ Logging out from configured audiences..."
-    for audience in "${AUDIENCES[@]}"; do
-        if chainctl auth logout --audience="$audience" --output=none >/dev/null 2>&1; then
-            echo "✔ Logged out: $audience"
-        else
-            echo "⚑ NOTE! $audience failed to log out. This is not critical."
-        fi
-    done
-    exit 0
-fi
-
-# --- Main Logic ---
-echo "◉ Ensuring tokens for selected audiences have at least $((WANTED_TTL_SECONDS / 60)) minutes TTL."
-for audience in "${AUDIENCES[@]}"; do
+refresh_audience() {
+    local audience="$1"
     get_current_ttls "$audience"
-
-    current_token_ttl_min=$((_CURRENT_TOKEN_TTL_SEC / 60))
-    current_refresh_ttl_min=$((_CURRENT_REFRESH_TTL_SEC / 60))
-    wanted_ttl_min=$((WANTED_TTL_SECONDS / 60))
-
-    # Determine if action (login/refresh) is needed
-    if [[ $_CURRENT_TOKEN_TTL_SEC -lt $WANTED_TTL_SECONDS || $_CURRENT_REFRESH_TTL_SEC -lt $WANTED_TTL_SECONDS ]]; then
-        # If the current refresh token's remaining life is less than our desired token lifetime,
-        # it's better to logout first. This ensures that the subsequent login can establish
-        # a new, potentially longer-lived refresh token.
-        if [[ $_CURRENT_REFRESH_TTL_SEC -lt $WANTED_TTL_SECONDS ]]; then
-            echo "◍ $audience: Refresh token TTL (${current_refresh_ttl_min}m) is less than desired new token TTL (${wanted_ttl_min}m)."
+    # Determine if any token refresh is needed
+    if [[ $CURRENT_TOKEN_TTL_SEC -lt $TTL_THRESHOLD_SEC || $CURRENT_REFRESH_TTL_SEC -lt $TTL_THRESHOLD_SEC ]]; then
+        # If the refresh token's remaining life is less than the refresh threshold,
+        # logout first and login to obtain a new, potentially longer-lived refresh token.
+        if [[ $CURRENT_REFRESH_TTL_SEC -lt $TTL_THRESHOLD_SEC ]]; then
+            echo "◍ $audience: Refresh token TTL ($((CURRENT_REFRESH_TTL_SEC / 60)) mins) is less than desired new token TTL ($((TTL_THRESHOLD_SEC / 60)) mins)."
             echo "↻ Logging out and logging in to refresh tokens."
             # Suppress error if logout fails, as it's not critical.
             chainctl auth logout --audience="$audience" >/dev/null 2>&1 || true
@@ -271,7 +203,6 @@ for audience in "${AUDIENCES[@]}"; do
                 echo "✔ Authenticated."
             else
                 echo "✗ ERROR! Failed to reauthenticate."
-                continue
             fi
         else
             echo -n "♽ Refreshing token "
@@ -279,16 +210,72 @@ for audience in "${AUDIENCES[@]}"; do
                 echo -n "✔ "
             else
                 echo "✗ ERROR! Failed to refresh token."
-                continue
             fi
         fi
-
-        # Get updated TTLs and report final status
         get_current_ttls "$audience"
-        current_token_ttl_min=$((_CURRENT_TOKEN_TTL_SEC / 60))
-        current_refresh_ttl_min=$((_CURRENT_REFRESH_TTL_SEC / 60))
-        echo "TTL is ${current_token_ttl_min}m with a refresh TTL of ${current_refresh_ttl_min}m: $audience"
+        echo "TTL is $((CURRENT_TOKEN_TTL_SEC / 60)) mins with a refresh TTL of $((CURRENT_REFRESH_TTL_SEC / 60)) mins: $audience"
     else
-        echo "✔ TTL of ${current_token_ttl_min}m, wanted ${wanted_ttl_min}m: $audience"
+        echo "✔ TTL is $((CURRENT_TOKEN_TTL_SEC / 60)) mins. Refresh threshold is $((TTL_THRESHOLD_SEC / 60)) mins: $audience"
     fi
+}
+
+# Process audiences based on the operation type
+process_audiences() {
+    echo "${OPERATION_TITLE}"
+    for audience in "${AUDIENCES[@]}"; do
+        case "${OPERATION}" in
+            logout) logout_audience "$audience";;
+            refresh) refresh_audience "$audience";;
+            *) echo "✗ ERROR! Unknown operation type: ${OPERATION}" >&2;;
+        esac
+    done
+}
+
+# Helper function for option parsing errors
+option_error() {
+    echo "✗ ERROR! $1" >&2
+    usage
+    exit 1
+}
+
+# Validate and normalize TTL threshold value
+validate_ttl_threshold() {
+    local ttl_minutes="$1"
+    local note_prefix="⚑ NOTE! TTL threshold of ${ttl_minutes}m is"
+    [[ $ttl_minutes -lt 5 ]] && echo "${note_prefix} too low, capping to 5m." >&2 && ttl_minutes=5
+    [[ $ttl_minutes -gt 60 ]] && echo "${note_prefix} too high, capping to 60m." >&2 && ttl_minutes=60
+    echo $((ttl_minutes * 60))
+}
+
+# Option parsing
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --help)
+            usage
+            exit 0;;
+        --version)
+            echo "${VERSION}"
+            exit 0;;
+        --headless)
+            case "${2,,}" in
+                yes|no) HEADLESS="${2,,}"; shift 2;;
+                *) option_error "--headless requires an argument: 'yes' or 'no'.";;
+            esac;;
+        --ttl-threshold)
+            [[ -n "$2" && "$2" =~ ^[0-9]+$ ]] || option_error "--ttl-threshold requires a numeric argument."
+            TTL_THRESHOLD_SEC=$(validate_ttl_threshold "$2")
+            shift 2;;
+        --logout)
+            OPERATION="logout"
+            OPERATION_TITLE="↩ Logging out..."
+            shift;;
+        *) option_error "Unknown option or unexpected argument: $1";;
+    esac
 done
+
+case "${HEADLESS}" in
+    no) chainctl config unset auth.mode >/dev/null 2>&1;;
+    *)  chainctl config set auth.mode headless >/dev/null 2>&1
+esac
+
+process_audiences
