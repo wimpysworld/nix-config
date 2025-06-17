@@ -14,6 +14,7 @@ let
       { case = "^https?://accounts.google.com/"; command = "wavebox"; }
       { case = "^https?://github.com/login/device"; command = "wavebox"; }
       { case = "^https?://auth.chainguard.dev/activate"; command = "wavebox"; }
+      { case = "^https?://issuer.enforce.dev"; command = "wavebox"; }
     ];
   };
   gitsignSetup = pkgs.writeShellApplication {
@@ -172,7 +173,7 @@ in
         if status is-interactive
           gh-token
           set h (date --utc +%H)
-          if test $h -ge 9 -a $h -le 19
+          if test $h -ge 7 -a $h -le 19
             login-images --until="19:00"
           else
             echo "󱎬 Outside office hours, no login-images for you!"
