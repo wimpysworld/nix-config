@@ -1,0 +1,404 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2015,SC2039,SC2166,SC3043
+VERBOSITY=${VERBOSITY:-1}
+HEADLESS="--headless"
+DEF_WANT_TTL=$((30*60))
+STATED="$HOME/.cache/login-images-keepalive"
+_IS_COREUTILS_DATE=""
+
+# https://gist.github.com/smoser/568f03b41efe80f57cea4605beec71ac
+# Last modified: 2025-06-12
+
+Usage() {
+    cat <<EOF
+Usage: ${0##*/} [ options ] [audience1 [...]]
+
+   Use chainctl to get a token for audience.
+
+   options:
+      -u | --until TIME    ensure you have a token until DATE
+      -f | --for   MINUTES ensure you have access for MINUTES minutes
+
+   Examples:
+
+     * Make sure you have tokens for default audiences until quitting time.
+
+       ${0##*/} --until="6:00 PM"
+
+       # note that if you have busybox date, the above wont work.
+       # you can use "22:00"
+       #
+
+    * logout
+
+      ${0##*/} --logout
+
+    * check/print the existing token for cgr.dev
+
+      ${0##*/} --check cgr.dev
+EOF
+
+}
+
+# rf - run-or-fail. run the successfully or exit
+rf() {
+    "$@" || fail "failed [$?]:" "$@"
+}
+
+fail() { [ $# -eq 0 ] || stderr "$@"; exit 1; }
+stderr() { echo "$@" 1>&2; }
+stderrf() { printf "$@" 1>&2; }
+debug() { [ $VERBOSITY -lt 1 ] || stderr "$@"; }
+
+bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || stderr "$@"; return 1; }
+
+is_coreutils_date() {
+    if [ -z "$_IS_COREUTILS_DATE" ]; then
+        date --help 2>&1 | grep -q "coreutils" &&
+            _IS_COREUTILS_DATE=true || _IS_COREUTILS_DATE=false
+    fi
+    case "$_IS_COREUTILS_DATE" in
+        true) return 0;;
+        false) return 1;;
+    esac
+}
+
+unix2utc() {
+    date --utc "--date=@$1" +"%Y-%m-%d %H:%M:%S %z %Z"
+}
+
+tounix() {
+    local date="$1"
+    if is_coreutils_date; then
+        # sometimes chainctl token output has both TZ (ETD) and offset (-0400)
+        # That seems to tick off gnu date. so drop the TZ
+        date=${date% [A-Z][A-Z][A-Z]}
+        rf date --date="$date" "+%s"
+    else
+        rf date -d"$date" -D"%Y-%m-%d %H:%M:%S %z %Z" "+%s"
+    fi
+}
+
+get_refresh_expire() {
+    local audience="$1" audsafe="" cached="" f="" out=""
+
+    audsafe=${audience//\//-}
+    [ -d ~/Library/Caches ] &&
+        cached=$(echo ~/Library/Caches) ||
+        cached="$HOME/.cache"
+
+    f="$cached/chainguard/$audsafe/refresh-token"
+    [ -f "$f" ] || { unix2utc "$(date +%s)"; return; }
+    out=$(base64 -d < "$f") || {
+        stderr "get_refresh_expire: failed: base64 -d '$f' failed"
+        return 1;
+    }
+
+    # this is in unix timestamp
+    exp=$(echo "$out" | jq .exp) && [ -n "$exp" ] || {
+        stderr "jq of base64 decoded '$f' returned $? had exp='$exp'"
+        return 1
+    }
+
+    unix2utc "$exp"
+}
+
+keepalive_killed() {
+    [ -z "$SLEEPKID" ] || kill "$SLEEPKID"
+    echo "$(date -R): $$ killed, exiting"
+    exit
+}
+
+keepalive_sighup() {
+    # I thought this was called on parent shell exiting
+    # I'm not sure if this is actually received.
+    # I think it is not, since we're called with no output to a terminal.
+    local d=""
+    d=$(date -R)
+    echo "$d: $$ received sighup, ignoring"
+    # we receive and ignore the SIGHUP, but the sleep will not.
+    # the wait on sleepkid will return non-zero, so we have to ignore it.
+    [ -z "$SLEEPKID" ] || SIGHUPPED=true
+}
+
+keepalive() {
+    # will write pid to fd 3.
+    local naplen=29m
+    local lfail=false
+    local d=""
+    SLEEPKID=""
+    SIGHUPPED=false
+    trap keepalive_killed TERM
+    trap keepalive_sighup HUP
+    echo "$$" >&3
+    exec 3<&-
+    echo "$(date -R): $$ started, sleeping $naplen"
+    while :; do
+        sleep "$naplen" &
+        SLEEPKID="$!"
+        wait || {
+            if [ "$SIGHUPPED" = "false" ]; then
+                fail "sleep failed"
+            fi
+            SIGHUPPED=false
+        }
+        SLEEPKID=""
+        d=$(date -R) || fail "date failed."
+        echo "$d: $$ running refresh"
+        if "$0" --refresh "$@"; then
+            lfail=false
+        elif [ "$lfail" = "true" ]; then
+            fail "refresh failed 2 times in a row. good bye."
+        fi
+    done
+}
+
+keepalive_is_running() {
+    local pidf="$STATED/pid" opid=""
+    [ -f "$pidf" ] || return 1
+    read -r opid < "$pidf" ||
+        { stderr "ERROR: failed to read from existing file $pidf"; return 1; }
+
+    [ -d "/proc/$opid" ] || return 1
+    echo "$opid"
+}
+
+_keepalive() {
+    local opid="" pidf="$STATED/pid"
+    mkdir -p "$STATED" || fail "failed to create stated '$stated'"
+
+    if opid=$(keepalive_is_running); then
+        echo "keepalive - killing old pid $opid"
+        kill "$opid" || fail "failed killing old pid $opid"
+    fi
+
+    set +m # job control mode - so exit doesnt kill the child.
+    "$0" keepalive "$@" </dev/null >"$STATED/log" 2>&1 3>"$pidf" &
+    echo "keepalive daemonized in $!"
+}
+
+getttl() {
+    local audience="$1" rc="" stout=""
+    set -- chainctl auth status --quick --output=json --audience="$audience"
+    stout=$("$@")
+    rc=$?
+    if [ $rc -ne 0 -a $rc -ne 1 ]; then
+        stderr "failed execute[$rc]: $*"
+        [ -z "$stout" ] || stderr "output: ${stout}"
+        return $rc
+    fi
+    local valid=""
+    valid=$(echo "$stout" | jq -r .valid) || {
+        stderr "fail execute[$rc]: $*"
+        stderr "produced invalid json output"
+        return 1
+    }
+
+    [ "$valid" = "true" -o "$valid" = "false" ] ||
+        { stderr "unexpected output from $*. valid='$valid'"; return 1; }
+
+    [ "$valid" = "false" ] && {
+        _RET=0
+        _RET_ref=0
+        _RET_tok_exp=0
+        _RET_ref_exp=0
+        _RET_OUT="$stout"
+        return 0
+    }
+
+    set -- chainctl auth status --output=json --audience="$audience"
+    stout=$("$@") || {
+        rc=$?
+        stderr "fail execute[$rc] (passed with --quick): $*"
+        [ -z "$stout" ] || stderr "output: ${stout}"
+        return 1
+    }
+    local expire="" exps="" refexpire="" refexps="" nows=""
+    expire=$(echo "$stout" | jq -r .expiry) &&
+        [ -n "$expire" ] || {
+            stderr "failed to get expiry info from status"
+            return 1
+        }
+    exps=$(tounix "$expire") || {
+        stderr "failed to convert $expire for audience=$audience"
+        return 1
+    }
+
+    refexpire=$(get_refresh_expire "$audience") || {
+        stderr "failed to get refresh expire for $audience"
+        return 1
+    }
+
+    refexps=$(tounix "$refexpire")
+
+    nows=$(date "+%s") || fail "date +%s failed"
+    #email=$(echo "$stout" | jq -r .email)
+    #stderr "$audience [$email] good for $(((exps-nows)/60))m"
+    _RET=$((exps-nows))
+    _RET_ref=$((refexps-nows))
+    _RET_tok_exp="$expire"
+    _RET_ref_exp="$refexps"
+    _RET_OUT="$stout"
+}
+
+tok_with_ttl() {
+    local audience="$1" wantttl="$2" refresh_only=false
+    case "$3" in
+        true|false) refresh_only=$3;;
+        *) stderr "invalid parameter '$3' to tok_with_ttl"; return 1;;
+    esac
+
+    local rttl="" ttl="" out=""
+    getttl "$audience" || return 1
+    rttl="$_RET_ref"
+    ttl="$_RET"
+    # if refresh is valid: refresh, it should be free
+    if [ "$rttl" -gt "$wantttl" ]; then
+        out=$(chainctl auth login ${HEADLESS:+"$HEADLESS"} --audience="$audience" 2>&1) || return
+        getttl "$audience" || return 1
+        rttl="$_RET_ref"
+        ttl="$_RET"
+    elif [ "$refresh_only" = "true" ]; then
+        echo "$audience - could not refresh. ttl=$((ttl/60))m refresh=$((rttl/60))m want=$((wantttl/60))m"
+        return
+    fi
+
+    if [ $ttl -gt $wantttl -a $rttl -gt $wantttl ]; then
+        echo "$audience - good for $((ttl/60))m refresh=$((rttl/60))m"
+        return 0
+    fi
+    debug "$audience had ttl=$((ttl/60))m rttl=$((rttl/60))m wanted $((wantttl/60))m"
+    if [ "$wantttl" -gt "$rttl" ]; then
+        chainctl auth logout "--audience=$audience" || return
+    fi
+    chainctl auth login ${HEADLESS:+"$HEADLESS"} --audience="$audience" || return
+    getttl "$audience" || return
+    echo "$audience - good for $((_RET/60))m refresh=$((_RET_ref/60))m"
+}
+
+sanity_check() {
+    #[ $# -lt 3 ] && { bad_Usage "must provide 3 args"; return; }
+    ## CHAINGUARD_IDENTITY gets set. hmm... not sure where.
+    command -v chainctl >/dev/null 2>&1 ||
+        { stderr "no chainctl in PATH"; exit 1; }
+
+    # you probably always want google, so just tell it that.
+    if ! chainctl config view | grep -q "social-login: google-oauth2" ; then
+        stderr "Probably you want: chainctl config set default.social-login google-oauth2"
+        exit 1
+    fi
+
+    if [ -f ~/.docker/config.json ]; then
+        out=$(jq -r '.credHelpers."cgr.dev"' < ~/.docker/config.json)
+        [ $? -eq 0 ] || exit 1
+        if [ "$out" != "cgr" ]; then
+            rf chainctl auth configure-docker ${HEADLESS:+"${HEADLESS}"}
+        fi
+    fi
+}
+
+
+main() {
+    local sopts="hcHkvfOru"
+    local lopts="help,check,logout,login,for:,until:,headless,keepalive,no-headless,refresh,verbose"
+    local out=""
+    out=$(getopt --name "${0##*/}" \
+        --options "${sopts}" --long "${lopts}" -- "$@") &&
+        eval set -- "${out}" ||
+        { bad_Usage; return; }
+
+    local cur="" next="" until_in="" until="" want_ttl="$DEF_WANT_TTL" mode=login keepalive=false
+
+    while [ $# -ne 0 ]; do
+        # shellcheck disable=SC2034
+        { cur="$1"; next="$2"; }
+        case "$cur" in
+            -h|--help) Usage ; exit 0;;
+            -c|--check) mode=check;;
+            -r|--refresh) mode=refresh;;
+            -O|--logout) mode=logout;;
+               --login) mode=login;;
+               --no-headless) HEADLESS="";;
+               --headless) HEADLESS="--headless";;
+            -k|--keepalive) keepalive=true;;
+            -u|--until) until_in="$2"; shift 2;;
+            -f|--for) want_ttl=$((60*$2));;
+            -v|--verbose) VERBOSITY=$((VERBOSITY+1));;
+            --) shift; break;;
+        esac
+        shift;
+    done
+
+    if [ $# -eq 0 ]; then
+        # cgr.dev - created by chainctl auth configure-docker
+        # https://console-api.enforce.dev - created by chainctl --output=json img repos list --parent=
+        # apk.cgr.dev - created by enterprise-packages 'make apk-token'
+        set -- https://console-api.enforce.dev apk.cgr.dev cgr.dev
+    fi
+
+    local audience
+    if [ "$mode" = "logout" ]; then
+        local rc="" fails=0
+        for audience in "$@"; do
+            stderrf "%s: " "$audience"
+            out=$(chainctl auth logout "$audience" 2>&1)
+            rc=$?
+            case "$rc:$out" in
+                0:*successful*) stderrf "%s\n" "$out";;
+                *:*) stderrf "FAIL [%d]: %s\n" "$out";;
+            esac
+        done
+        return $fails
+    fi
+
+    sanity_check
+
+    local until="" now=""
+    if [ -n "${until_in}" ]; then
+        until=$(date "+%s" --date="$until_in") &&
+            now=$(date "+%s") ||
+            fail "failed to convert until date '$until_in'"
+        if [ $now -gt $until ]; then
+            fail "provided --until date '$until_in' is in the past"
+        fi
+        #debug "want token until $(unix2utc $until)"
+        want_ttl=$((until-now))
+    fi
+
+    if [ "$mode" = "check" ]; then
+        for audience in "$@"; do
+            rf getttl "$audience"
+            #id=$(echo "$_RET_OUT" | jq --raw .identity)
+            #extra=$(echo "$_RET_OUT" | jq -r '. | .email + " / " + .identity')
+            extra=$(echo "$_RET_OUT" | jq -r '. | .email')
+            echo "$audience - $((_RET/60))m refresh=$((_RET_ref/60))m${extra:+ ${extra}}"
+        done
+        exit
+    fi
+
+    local refresh_only=false
+    [ "$mode" = "refresh" ] && refresh_only=true
+
+    if [ "$keepalive" = "true" ] && keepalive_is_running >/dev/null; then
+        return 0
+    fi
+
+    for audience in "$@"; do
+        rf tok_with_ttl "$audience" "$want_ttl" "$refresh_only"
+    done
+
+    if [ "$keepalive" = "true" ]; then
+        "$0" _keepalive "$@" </dev/null 2>&1 ||
+            fail "keepalive failed"
+    fi
+}
+
+case "$1" in
+    keepalive|_keepalive)
+        n=$1
+        shift
+        "$n" "$@"
+        exit;;
+esac
+
+main "$@"

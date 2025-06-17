@@ -38,6 +38,21 @@ let
     ];
     text = ''[ -d .git ] && gitsign verify --certificate-identity=martin.wimpress@chainguard.dev --certificate-oidc-issuer=https://accounts.google.com HEAD'';
   };
+  loginImages = (pkgs.writeShellApplication {
+    name = "login-images";
+    runtimeInputs = with pkgs; [
+      # login-images works with coreutils or busybox
+      coreutils-full
+    ];
+    text = builtins.readFile ./login-images;
+  }).overrideAttrs (oldAttrs: {
+    # Override checkPhase to disable shellcheck
+    checkPhase = ''
+      runHook preCheck
+      true
+      runHook postCheck
+    '';
+  });
   precommitSetup = pkgs.writeShellApplication {
     name = "pre-commit-setup";
     runtimeInputs = with pkgs; [
@@ -73,7 +88,6 @@ in
       GHORG_COLOR = "enabled";
       GHORG_SKIP_ARCHIVED = "true";
       GHORG_SKIP_FORKS = "true";
-      GHORG_GITHUB_TOKEN = "$(${pkgs.gh}/bin/gh auth status)";
       GITSIGN_CONNECTOR_ID = "https://accounts.google.com";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
       GOPATH = "${config.home.homeDirectory}/.local/go";
@@ -85,6 +99,7 @@ in
         gitsignSetup
         gitsignOff
         gitsignVerify
+        loginImages
         precommitSetup
         unstable.apko # Declarative container images
         chainctl # Chainguard Platform CLI
@@ -135,6 +150,7 @@ in
           set -l status_code $status
 
           if test $status_code -eq 0
+            echo "󰊤 GitHub authenticated"
             set -gx GH_TOKEN (${pkgs.gh}/bin/gh auth token)
             set -gx GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
           else if string match -q "*SAML*" $auth_status
@@ -145,7 +161,16 @@ in
             return 1
           end
         end
-        gh-token
+
+        if status is-interactive
+          gh-token
+          set h (date --utc +%H)
+          if test $h -ge 9 -a $h -le 19
+            login-images --until="19:00"
+          else
+            echo "󱎬 Outside office hours, no login-images for you!"
+          end
+        end
       '';
     };
     gh = {
