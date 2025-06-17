@@ -135,7 +135,7 @@ in
         gh-refresh = "${pkgs.gh}/bin/gh auth refresh";
         gh-status = "${pkgs.gh}/bin/gh auth status";
         gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
-        gh-unset = "set -u GH_TOKEN GH_USER GITHUB_TOKEN";
+        gh-unset = "set -u GH_TOKEN; set -u GITHUB_TOKEN; set -u GHORG_GITHUB_TOKEN";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
         install-wolfi-package-status = "go install github.com/philroche/wolfi-package-status@latest";
