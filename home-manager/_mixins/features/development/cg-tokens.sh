@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# Inspired by: https://gist.github.com/smoser/568f03b41efe80f57cea4605beec71ac
 set -euo pipefail
 
 if [[ "${BASH_VERSINFO[0]}" -lt 4 || ( "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -lt 4 ) ]]; then
-    echo "✗ ERROR! This script requires Bash version 4.4 or higher." >&2
+    echo "✘ ERROR! This script requires Bash version 4.4 or higher." >&2
     exit 1
 fi
 
 # Check for required commands
 for cmd in chainctl jq date base64; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
-        echo "✗ ERROR! Required command '$cmd' not found in PATH." >&2
+        echo "✘ ERROR! Required command '$cmd' not found in PATH." >&2
         exit 1
     fi
 done
@@ -127,12 +126,12 @@ refresh_audience() {
             # In browser mode, redirect output to hide messages.
             if [[ "${AUTH_MODE}" == "browser" ]]; then
                 if ! chainctl auth login --audience="$audience" >/dev/null 2>&1; then
-                    echo "✗ ERROR! Failed to reauthenticate $audience" >&2
+                    echo "✘ ERROR! Failed to reauthenticate $audience" >&2
                     return 1
                 fi
             else
                 if ! chainctl auth login --audience="$audience"; then
-                    echo "✗ ERROR! Failed to reauthenticate $audience" >&2
+                    echo "✘ ERROR! Failed to reauthenticate $audience" >&2
                     return 1
                 fi
             fi
@@ -140,7 +139,7 @@ refresh_audience() {
             # The access token needs a simple, non-interactive refresh.
             echo "♽ $audience refreshing token... "
             if ! chainctl auth login --audience="$audience" >/dev/null 2>&1; then
-                echo "✗ ERROR! Failed to refresh token for $audience."
+                echo "✘ ERROR! Failed to refresh token for $audience."
                 return 1
             fi
         fi
@@ -160,14 +159,14 @@ process_audiences() {
         case "${OPERATION}" in
             logout) logout_audience "$audience";;
             refresh) refresh_audience "$audience";;
-            *) echo "✗ ERROR! Unknown operation type: ${OPERATION}" >&2;;
+            *) echo "✘ ERROR! Unknown operation type: ${OPERATION}" >&2;;
         esac
     done
 }
 
 # Helper function for option parsing errors
 option_error() {
-    echo "✗ ERROR! $1" >&2
+    echo "✘ ERROR! $1" >&2
     usage
     exit 1
 }
@@ -200,7 +199,7 @@ update_docker_config() {
     # including both Docker and Podman.
     echo "⚑ Chainguard credential helper not configured. Attempting to configure now..." >&2
     if ! chainctl auth configure-docker >/dev/null 2>&1; then
-        echo "✗ ERROR! Failed to automatically configure Chainguard credential helper." >&2
+        echo "✘ ERROR! Failed to automatically configure Chainguard credential helper." >&2
         echo "  Please try running 'chainctl auth configure-docker' manually." >&2
         return 1
     else
@@ -211,7 +210,7 @@ update_docker_config() {
 # Check that chainctl is configured for the expected social login provider.
 check_social_login() {
     if ! chainctl config view | grep -q "social-login: google-oauth2"; then
-        echo "✗ ERROR! Chainguard social login provider is not 'google-oauth2'." >&2
+        echo "✘ ERROR! Chainguard social login provider is not 'google-oauth2'." >&2
         echo "  This script expects 'google-oauth2' for non-interactive operation." >&2
         echo "  Please run the following command to configure it:" >&2
         echo "  chainctl config set default.social-login google-oauth2" >&2
