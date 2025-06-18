@@ -31,6 +31,21 @@ echo "Starting repository processing..."
 echo " Base directory for clones: ${BASE_DIR}"
 echo ""
 
+gitsign_setup() {
+    target_repo_dir="$1"
+    pushd "${target_repo_dir}" > /dev/null || return 1
+    if [ -d .git ]; then
+        git config --local commit.gpgsign true
+        git config --local tag.gpgsign true
+        git config --local gpg.x509.program gitsign
+        git config --local gpg.format x509
+        git config --local gitsign.connectorID https://accounts.google.com
+    else
+        echo "No Git repository found in ${BASE_DIR}. Skipping Gitsign setup."
+    fi
+    popd
+}
+
 for item in "${CG_REPOS[@]}"; do
     repo_full_path_for_gh=""
     org=""
@@ -82,6 +97,8 @@ for item in "${CG_REPOS[@]}"; do
         # shellcheck disable=SC2181
         if [ $? -ne 0 ]; then
             echo " ERROR! updating ${target_repo_dir}."
+        else
+            gitsign_setup "${target_repo_dir}"
         fi
     else
         echo " Cloning https://github.com/${repo_full_path_for_gh}.git into ${org_dir} (will create ${repo_name} subdirectory)..."
@@ -93,6 +110,8 @@ for item in "${CG_REPOS[@]}"; do
         # shellcheck disable=SC2181
         if [ $? -ne 0 ]; then
             echo " ERROR! cloning ${repo_full_path_for_gh}."
+        else
+            gitsign_setup "${org_dir}/${repo_name}"
         fi
     fi
     echo "Finished processing ${org}/${repo_name}."
