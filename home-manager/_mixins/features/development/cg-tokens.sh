@@ -126,12 +126,10 @@ tounix() {
     echo "$ts"
 }
 
-# Get current token TTL and refresh token TTL for a given audience
-# Populates CURRENT_TOKEN_TTL_SEC and CURRENT_REFRESH_TTL_SEC
-get_current_ttls() {
+# Get the token TTL and populate CURRENT_TOKEN_TTL_SEC
+get_token_ttl() {
     local audience="$1"
     CURRENT_TOKEN_TTL_SEC=0
-    CURRENT_REFRESH_TTL_SEC=0
     local now_ts
     now_ts=$(date "+%s")
 
@@ -152,6 +150,14 @@ get_current_ttls() {
             if [[ $CURRENT_TOKEN_TTL_SEC -lt 0 ]]; then CURRENT_TOKEN_TTL_SEC=0; fi
         fi
     fi
+}
+
+# Get the refresh TTL and populate CURRENT_REFRESH_TTL_SEC
+get_refresh_ttl() {
+    local audience="$1"
+    CURRENT_REFRESH_TTL_SEC=0
+    local now_ts
+    now_ts=$(date "+%s")
 
     # Cache directory for chainctl refresh tokens
     local CHAINCTL_CACHE_DIR="${HOME}/.cache/chainguard"
@@ -176,6 +182,12 @@ get_current_ttls() {
             if [[ $CURRENT_REFRESH_TTL_SEC -lt 0 ]]; then CURRENT_REFRESH_TTL_SEC=0; fi
         fi
     fi
+}
+
+get_current_ttls() {
+    local audience="$1"
+    get_token_ttl "$audience"
+    get_refresh_ttl "$audience"
 }
 
 logout_audience() {
@@ -242,8 +254,8 @@ option_error() {
 validate_ttl_threshold() {
     local ttl_minutes="$1"
     local note_prefix="⚑ NOTE! TTL threshold of ${ttl_minutes}m is"
-    [[ $ttl_minutes -lt 5 ]] && echo "${note_prefix} too low, capping to 5m." >&2 && ttl_minutes=5
-    [[ $ttl_minutes -gt 60 ]] && echo "${note_prefix} too high, capping to 60m." >&2 && ttl_minutes=60
+    [[ $ttl_minutes -lt 5 ]] && echo "${note_prefix} too low, capping to 5 mins." >&2 && ttl_minutes=5
+    [[ $ttl_minutes -gt 60 ]] && echo "${note_prefix} too high, capping to 60 mins." >&2 && ttl_minutes=60
     echo $((ttl_minutes * 60))
 }
 
