@@ -11,7 +11,7 @@ let
   waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
-      { case = "^https?://accounts.google.com/"; command = "wavebox"; }
+      { case = "^https?://accounts.google.com"; command = "wavebox"; }
       { case = "^https?://github.com/login/device"; command = "wavebox"; }
       { case = "^https?://auth.chainguard.dev/activate"; command = "wavebox"; }
       { case = "^https?://issuer.enforce.dev"; command = "wavebox"; }
