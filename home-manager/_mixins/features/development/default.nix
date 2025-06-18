@@ -40,6 +40,15 @@ let
     ];
     text = ''[ -d .git ] && gitsign verify --certificate-identity=martin.wimpress@chainguard.dev --certificate-oidc-issuer=https://accounts.google.com HEAD'';
   };
+  ghToken = pkgs.writeShellApplication {
+    name = "gh-token";
+    runtimeInputs = with pkgs; [
+      gh
+      procps
+      uutils-coreutils-noprefix
+    ];
+    text = builtins.readFile ./gh-token.sh;
+  };
   cgTokens = pkgs.writeShellApplication {
     name = "cg-tokens";
     runtimeInputs = with pkgs; [
@@ -93,6 +102,7 @@ in
       with pkgs;
       [
         cgTokens
+        ghToken
         gitsignSetup
         gitsignOff
         gitsignVerify
@@ -131,12 +141,7 @@ in
   programs = {
     fish = {
       shellAliases = {
-        docker-auth = "chainctl auth configure-docker";
-        gh-login = "${pkgs.gh}/bin/gh auth login -p https";
-        gh-refresh = "${pkgs.gh}/bin/gh auth refresh";
-        gh-status = "${pkgs.gh}/bin/gh auth status";
-        gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
-        gh-unset = "set -u GH_TOKEN; set -u GITHUB_TOKEN; set -u GHORG_GITHUB_TOKEN";
+        gh-unset = "set -e GH_TOKEN; set -e GITHUB_TOKEN; set -e GHORG_GITHUB_TOKEN";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
         install-wolfi-package-status = "go install github.com/philroche/wolfi-package-status@latest";
@@ -144,32 +149,12 @@ in
         mal = "docker run -it cgr.dev/chainguard/malcontent:latest";
       };
       shellInitLast = ''
-        function gh-token
-          # Capture status output
-          set -l auth_status (${pkgs.gh}/bin/gh auth status 2>&1)
-          set -l status_code $status
-
-          if test $status_code -eq 0
-            echo " GitHub authenticated"
-            set -gx GH_TOKEN (${pkgs.gh}/bin/gh auth token)
-            set -gx GH_USER flexiondotorg
-            set -gx GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
-            set -gx GHORG_GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
-          else if string match -q "*SAML*" $auth_status
-            echo " GitHub SAML session expired. Run 'gh auth refresh'"
-            return 1
-          else
-            echo " GitHub not authenticated. Run 'gh auth login'"
-            return 1
-          end
-        end
-
         if status is-interactive
           set h (date --utc +%H)
           if test $h -ge 7 -a $h -le 19
             cg-tokens --browser
           end
-          gh-token
+          gh-token --refresh
         end
       '';
     };
