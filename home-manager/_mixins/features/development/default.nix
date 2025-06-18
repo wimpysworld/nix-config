@@ -43,6 +43,7 @@ let
   cgTokens = pkgs.writeShellApplication {
     name = "cg-tokens";
     runtimeInputs = with pkgs; [
+      gnugrep
       jq
       uutils-coreutils-noprefix
     ];
@@ -149,28 +150,26 @@ in
           set -l status_code $status
 
           if test $status_code -eq 0
-            echo "󰊤 GitHub authenticated"
+            echo " GitHub authenticated"
             set -gx GH_TOKEN (${pkgs.gh}/bin/gh auth token)
             set -gx GH_USER flexiondotorg
             set -gx GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
             set -gx GHORG_GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
           else if string match -q "*SAML*" $auth_status
-            echo "󰊤 GitHub SAML session expired. Run 'gh auth refresh'"
+            echo " GitHub SAML session expired. Run 'gh auth refresh'"
             return 1
           else
-            echo "󰊤 GitHub not authenticated. Run 'gh auth login'"
+            echo " GitHub not authenticated. Run 'gh auth login'"
             return 1
           end
         end
 
         if status is-interactive
-          gh-token
           set h (date --utc +%H)
           if test $h -ge 7 -a $h -le 19
-            cg-tokens --headless no
-          else
-            echo "󱎬 Outside office hours, no tokens for you!"
+            cg-tokens --browser
           end
+          gh-token
         end
       '';
     };

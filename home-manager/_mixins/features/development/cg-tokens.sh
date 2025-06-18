@@ -21,13 +21,13 @@ AUDIENCES=(
     "cgr.dev"
 )
 # Default headless mode
-HEADLESS=yes
+AUTH_MODE=headless
 # Default operation mode
 OPERATION=refresh
-OPERATION_TITLE="◉ Ensuring tokens are fresh..."
+OPERATION_TITLE="⊚ Ensuring tokens are fresh..."
 # Default refresh threshold; 30 mins
 TTL_THRESHOLD_SEC=$((30 * 60))
-VERSION="0.1.2"
+VERSION="0.1.3"
 
 usage() {
     cat <<EOF
@@ -38,7 +38,8 @@ USAGE:
     $(basename "${0}") [OPTIONS]
 
 OPTIONS:
-    --headless <yes|no>       Enable or disable headless operation (default: yes).
+    --headless                Use headless authentication (default).
+    --browser                 Use browser-based authentication.
     --ttl-threshold <minutes> Set token refresh threshold in minutes (default: 30, min: 5, max: 60).
     --logout                  Log out from all configured audiences.
     --help                    Show this help message and exit.
@@ -123,14 +124,17 @@ refresh_audience() {
             chainctl auth logout --audience="$audience" >/dev/null 2>&1 || true
             echo "↻ $audience performing full re-authentication..."
 
-            # Build the login command. In interactive mode, redirect output to hide browser messages.
-            local login_cmd="chainctl auth login --audience=\"$audience\""
-            if [[ "${HEADLESS}" != "yes" ]]; then
-                login_cmd+=" >/dev/null 2>&1"
-            fi
-            if ! eval "$login_cmd"; then
-                echo "✗ ERROR! Failed to reauthenticate $audience" >&2
-                return 1
+            # In browser mode, redirect output to hide messages.
+            if [[ "${AUTH_MODE}" == "browser" ]]; then
+                if ! chainctl auth login --audience="$audience" >/dev/null 2>&1; then
+                    echo "✗ ERROR! Failed to reauthenticate $audience" >&2
+                    return 1
+                fi
+            else
+                if ! chainctl auth login --audience="$audience"; then
+                    echo "✗ ERROR! Failed to reauthenticate $audience" >&2
+                    return 1
+                fi
             fi
         else
             # The access token needs a simple, non-interactive refresh.
@@ -181,6 +185,40 @@ validate_ttl_threshold() {
     echo $((ttl_minutes * 60))
 }
 
+# Ensure Docker/Podman are configured with the Chainguard credential helper.
+update_docker_config() {
+    local docker_config="${HOME}/.docker/config.json"
+
+    # First, check if the configuration is already correct.
+    if [[ -f "$docker_config" ]] && [[ "$(jq -r '.credHelpers."cgr.dev" // "null"' < "$docker_config")" == "cgr" ]]; then
+        echo "✪ Chainguard credential helper for Docker is configured"
+        return 0
+    fi
+
+    # The 'chainctl' command is idempotent and will only make changes if needed.
+    # This configures authentication for any tool that reads ~/.docker/config.json,
+    # including both Docker and Podman.
+    echo "⚑ Chainguard credential helper not configured. Attempting to configure now..." >&2
+    if ! chainctl auth configure-docker >/dev/null 2>&1; then
+        echo "✗ ERROR! Failed to automatically configure Chainguard credential helper." >&2
+        echo "  Please try running 'chainctl auth configure-docker' manually." >&2
+        return 1
+    else
+        echo "✪ Chainguard credential helper for Docker is configured"
+    fi
+}
+
+# Check that chainctl is configured for the expected social login provider.
+check_social_login() {
+    if ! chainctl config view | grep -q "social-login: google-oauth2"; then
+        echo "✗ ERROR! Chainguard social login provider is not 'google-oauth2'." >&2
+        echo "  This script expects 'google-oauth2' for non-interactive operation." >&2
+        echo "  Please run the following command to configure it:" >&2
+        echo "  chainctl config set default.social-login google-oauth2" >&2
+        exit 1
+    fi
+}
+
 # Option parsing
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -191,11 +229,11 @@ while [[ $# -gt 0 ]]; do
             echo "${VERSION}"
             exit 0;;
         --headless)
-            [[ -z "$2" ]] && option_error "--headless requires an argument: 'yes' or 'no'."
-            case "${2,,}" in
-                yes|no) HEADLESS="${2,,}"; shift 2;;
-                *) option_error "Invalid argument for --headless: '$2'. Use 'yes' or 'no'.";;
-            esac;;
+            AUTH_MODE="headless"
+            shift;;
+        --browser)
+            AUTH_MODE="browser"
+            shift;;
         --ttl-threshold)
             [[ -n "$2" && "$2" =~ ^[0-9]+$ ]] || option_error "--ttl-threshold requires a numeric argument."
             TTL_THRESHOLD_SEC=$(validate_ttl_threshold "$2")
@@ -209,8 +247,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Set auth mode via an environment variable to avoid changing global config.
-if [[ "${HEADLESS}" == "yes" ]]; then
-    export CHAINGUARD_AUTH_MODE=headless
-fi
+export CHAINGUARD_AUTH_MODE="${AUTH_MODE}"
 
+check_social_login
+update_docker_config
 process_audiences
