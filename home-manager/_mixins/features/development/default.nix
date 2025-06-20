@@ -320,8 +320,6 @@ in
         Label = "org.sigstore.gitsign-credential-cache";
         ProgramArguments = [
           "${pkgs.gitsign}/bin/gitsign-credential-cache"
-          "-socket"
-          "${gitsignCredentialCache}"
         ];
         KeepAlive = true;
         RunAtLoad = true;
