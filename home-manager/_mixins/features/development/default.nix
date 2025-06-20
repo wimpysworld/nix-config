@@ -26,6 +26,35 @@ let
     ];
     text = builtins.readFile ./cg-tokens.sh;
   };
+  # https://github.com/chainguard-dev/image-fulfillment-sandbox/blob/main/phil.roche/download-package.sh
+  downloadPackage = pkgs.writeShellApplication {
+    name = "download-package";
+    runtimeInputs = with pkgs; [
+      curl
+      jq
+      uutils-coreutils-noprefix
+    ];
+    text = builtins.readFile ./download-package.sh;
+  };
+  # https://github.com/chainguard-dev/image-fulfillment-sandbox/blob/main/phil.roche/extract-package.sh
+  extractPackage = pkgs.writeShellApplication {
+    name = "extract-package";
+    runtimeInputs = with pkgs; [
+      gnutar
+      uutils-coreutils-noprefix
+    ];
+    text = builtins.readFile ./extract-package.sh;
+  };
+  # https://github.com/chainguard-dev/image-fulfillment-sandbox/blob/main/phil.roche/package-dependency-graph.sh
+  graphPackage = pkgs.writeShellApplication {
+    name = "graph-package";
+    runtimeInputs = with pkgs; [
+      apko
+      graphviz
+      uutils-coreutils-noprefix
+    ];
+    text = builtins.readFile ./graph-package.sh;
+  };
   gitsignSetup = pkgs.writeShellApplication {
     name = "gitsign-setup";
     runtimeInputs = with pkgs; [
@@ -102,6 +131,9 @@ in
       with pkgs;
       [
         cgTokens
+        downloadPackage
+        extractPackage
+        graphPackage
         installChainctl
         gitsignSetup
         gitsignOff
