@@ -46,7 +46,6 @@ let
       done
     '';
   };
-  # https://github.com/chainguard-dev/image-fulfillment-sandbox/blob/main/phil.roche/download-package.sh
   downloadPackage = pkgs.writeShellApplication {
     name = "download-package";
     runtimeInputs = with pkgs; [
@@ -56,7 +55,6 @@ let
     ];
     text = builtins.readFile ./download-package.sh;
   };
-  # https://github.com/chainguard-dev/image-fulfillment-sandbox/blob/main/phil.roche/extract-package.sh
   extractPackage = pkgs.writeShellApplication {
     name = "extract-package";
     runtimeInputs = with pkgs; [
@@ -65,7 +63,16 @@ let
     ];
     text = builtins.readFile ./extract-package.sh;
   };
-  # https://github.com/chainguard-dev/image-fulfillment-sandbox/blob/main/phil.roche/package-dependency-graph.sh
+  graphImage = pkgs.writeShellApplication {
+    name = "graph-image";
+    runtimeInputs = with pkgs; [
+      apko
+      crane
+      graphviz
+      uutils-coreutils-noprefix
+    ];
+    text = builtins.readFile ./graph-image.sh;
+  };
   graphPackage = pkgs.writeShellApplication {
     name = "graph-package";
     runtimeInputs = with pkgs; [
@@ -74,6 +81,16 @@ let
       uutils-coreutils-noprefix
     ];
     text = builtins.readFile ./graph-package.sh;
+  };
+  sbomInspect = pkgs.writeShellApplication {
+    name = "sbom-inspect";
+    runtimeInputs = with pkgs; [
+      crane
+      gnutar
+      jq
+      uutils-coreutils-noprefix
+    ];
+    text = builtins.readFile ./sbom-inspect.sh;
   };
   gitsignSetup = pkgs.writeShellApplication {
     name = "gitsign-setup";
@@ -154,7 +171,9 @@ in
         dockerPurge
         downloadPackage
         extractPackage
+        graphImage
         graphPackage
+        sbomInspect
         installChainctl
         gitsignSetup
         gitsignOff
