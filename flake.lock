@@ -637,10 +637,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1750212334,
+        "lastModified": 1750385101,
         "owner": "nix-community",
         "repo": "nix-vscode-extensions",
-        "rev": "33d4864b366ab1ca7657221fb13f82ea2308e5af",
+        "rev": "9631817b593f6e2a0f1a9de667ad26fbc5edb085",
         "type": "github"
       },
       "original": {
@@ -833,10 +833,10 @@
     },
     "nixpkgs_7": {
       "locked": {
-        "lastModified": 1750133334,
+        "lastModified": 1750259320,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "36ab78dab7da2e4e27911007033713bab534187b",
+        "rev": "9ba04bda9249d5d5e5238303c9755de5a49a79c5",
         "type": "github"
       },
       "original": {
@@ -1110,10 +1110,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1729422940,
+        "lastModified": 1750353031,
         "owner": "nix-community",
         "repo": "nixos-vscode-server",
-        "rev": "8b6db451de46ecf9b4ab3d01ef76e59957ff549f",
+        "rev": "4ec4859b12129c0436b0a471ed1ea6dd8a317993",
         "type": "github"
       },
       "original": {
