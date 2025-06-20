@@ -102,9 +102,6 @@
       nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
     };
 
-  networking.hostName = hostname;
-  networking.computerName = hostname;
-
   programs = {
     fish = {
       enable = true;
@@ -201,7 +198,7 @@
         orientation = "left";
         # TODO: Make this user-specific
         persistent-apps = [
-          "/Applications/Brave Browser.app"         
+          "/Applications/Brave Browser.app"
           "/Users/${username}/Applications/Home Manager Apps/Wavebox.app"
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"

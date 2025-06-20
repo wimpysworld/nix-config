@@ -1,5 +1,7 @@
 { pkgs, ... }:
 {
-  imports = [ ];
+  imports = [
+    ./network
+  ];
   environment.systemPackages = with pkgs; [ ];
 }
