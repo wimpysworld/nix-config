@@ -109,6 +109,7 @@ in
 
   networking = {
     extraHosts = ''
+      127.0.0.3      k3d-k3d.localhost
       10.10.10.1     router
       10.10.10.2     re550
       10.10.10.3     tv-living-room
