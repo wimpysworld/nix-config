@@ -35,10 +35,9 @@ let
     text = builtins.readFile ./gitsign-setup.sh;
   };
   gitsignOff = pkgs.writeShellApplication {
-    name = "gitsign-off";
+    name = "git-signoff";
     runtimeInputs = with pkgs; [
       git
-      gitsign
     ];
     text = ''[ -d .git ] && git commit --amend --signoff --no-edit'';
   };
@@ -81,6 +80,8 @@ in
   home = {
     file = {
       "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ../../../_mixins/configs/h.fish;
+      # Symlink ~/.gitconfig to ~/.config/git/config to prevent config divergence
+      ".gitconfig".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/git/config";
     };
     sessionPath = [
       "${config.home.homeDirectory}/.local/go/bin"
@@ -139,12 +140,12 @@ in
   programs = {
     fish = {
       shellAliases = {
-        docker-auth = "chainctl auth configure-docker";
         gh-login = "${pkgs.gh}/bin/gh auth login -p https";
         gh-refresh = "${pkgs.gh}/bin/gh auth refresh";
         gh-status = "${pkgs.gh}/bin/gh auth status";
         gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
         gh-unset = "set -u GH_TOKEN; set -u GITHUB_TOKEN; set -u GHORG_GITHUB_TOKEN";
+        gitso = "${pkgs.git}/bin/git --signoff";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
         install-wolfi-package-status = "go install github.com/philroche/wolfi-package-status@latest";
