@@ -26,7 +26,7 @@ OPERATION=refresh
 OPERATION_TITLE="⊚ Ensuring tokens are fresh..."
 # Default refresh threshold; 30 mins
 TTL_THRESHOLD_SEC=$((30 * 60))
-VERSION="0.1.3"
+VERSION="0.1.4"
 
 usage() {
     cat <<EOF
@@ -207,15 +207,12 @@ update_docker_config() {
     fi
 }
 
-# Check that chainctl is configured for the expected social login provider.
-check_social_login() {
-    if ! chainctl config view | grep -q "social-login: google-oauth2"; then
-        echo "✘ ERROR! Chainguard social login provider is not 'google-oauth2'." >&2
-        echo "  This script expects 'google-oauth2' for non-interactive operation." >&2
-        echo "  Please run the following command to configure it:" >&2
-        echo "  chainctl config set default.social-login google-oauth2" >&2
-        exit 1
-    fi
+# Configure chainctl for use at Chainguard
+configure_chainctl() {
+    chainctl config set default.autoclose true >/dev/null 2>&1
+    chainctl config set default.autoclose-timeout 2 >/dev/null 2>&1
+    chainctl config set default.use-refresh-token true >/dev/null 2>&1
+    chainctl config set default.social-login google-oauth2 >/dev/null 2>&1
 }
 
 # Option parsing
@@ -248,6 +245,6 @@ done
 # Set auth mode via an environment variable to avoid changing global config.
 export CHAINGUARD_AUTH_MODE="${AUTH_MODE}"
 
-check_social_login
+configure_chainctl
 update_docker_config
 process_audiences

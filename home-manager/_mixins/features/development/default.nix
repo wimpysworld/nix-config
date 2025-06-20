@@ -144,7 +144,7 @@ in
         gh-refresh = "${pkgs.gh}/bin/gh auth refresh";
         gh-status = "${pkgs.gh}/bin/gh auth status";
         gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
-        gh-unset = "set -u GH_TOKEN; set -u GITHUB_TOKEN; set -u GHORG_GITHUB_TOKEN";
+        gh-unset = "set -e GH_TOKEN; set -e GITHUB_TOKEN; set -e GHORG_GITHUB_TOKEN; set -e HOMEBREW_GITHUB_API_TOKEN";
         gitso = "${pkgs.git}/bin/git --signoff";
         install-cdebug = "go install github.com/iximiuz/cdebug@latest";
         install-yam = "go install github.com/chainguard-dev/yam@latest";
@@ -164,6 +164,7 @@ in
             set -gx GH_USER flexiondotorg
             set -gx GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
             set -gx GHORG_GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
+            set -gx HOMEBREW_GITHUB_API_TOKEN (${pkgs.gh}/bin/gh auth token)
           else if string match -q "*SAML*" $auth_status
             echo " GitHub SAML session expired. Run 'gh auth refresh'"
             return 1
