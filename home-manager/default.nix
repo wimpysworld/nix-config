@@ -297,6 +297,7 @@ in
         lsusb = "${pkgs.cyme}/bin/cyme --headings";
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
         more = "${pkgs.bat}/bin/bat";
+        nish = "nosh";
         pq = "${pkgs.pueue}/bin/pueue";
         ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
         screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
@@ -307,7 +308,7 @@ in
         wormhole = "${pkgs.wormhole-rs}/bin/wormhole-rs";
         weather = "${lib.getExe pkgs.girouette} --quiet";
         weather-home = "${lib.getExe pkgs.girouette} --quiet --location Basingstoke";
-        where-am-i = "${pkgs.geoclue2}/libexec/geoclue-2.0/demos/where-am-i";
+        where-am-i = "${pkgs.geoclue2}/libexec/geoclue-2.0/demos/where-am-i --timeout=0 --accuracy=8";
         lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
         unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
         lock-secrets = "fusermount -u ~/Vaults/Secrets";
