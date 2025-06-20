@@ -17,6 +17,15 @@ let
       { case = "^https?://issuer.enforce.dev"; command = "wavebox"; }
     ];
   };
+  cgTokens = pkgs.writeShellApplication {
+    name = "cg-tokens";
+    runtimeInputs = with pkgs; [
+      gnugrep
+      jq
+      uutils-coreutils-noprefix
+    ];
+    text = builtins.readFile ./cg-tokens.sh;
+  };
   gitsignSetup = pkgs.writeShellApplication {
     name = "gitsign-setup";
     runtimeInputs = with pkgs; [
@@ -40,21 +49,20 @@ let
     ];
     text = ''[ -d .git ] && gitsign verify --certificate-identity=martin.wimpress@chainguard.dev --certificate-oidc-issuer=https://accounts.google.com HEAD'';
   };
-  cgTokens = pkgs.writeShellApplication {
-    name = "cg-tokens";
-    runtimeInputs = with pkgs; [
-      gnugrep
-      jq
-      uutils-coreutils-noprefix
-    ];
-    text = builtins.readFile ./cg-tokens.sh;
-  };
   precommitSetup = pkgs.writeShellApplication {
     name = "pre-commit-setup";
     runtimeInputs = with pkgs; [
       pre-commit
     ];
     text = builtins.readFile ./pre-commit-setup.sh;
+  };
+  installChainctl = pkgs.writeShellApplication {
+    name = "install-chainctl";
+    runtimeInputs = with pkgs; [
+      curl
+      uutils-coreutils-noprefix
+    ];
+    text = builtins.readFile ./install-chainctl.sh;
   };
   gitsignCredentialCache = if isLinux then
     "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
@@ -93,12 +101,12 @@ in
       with pkgs;
       [
         cgTokens
+        installChainctl
         gitsignSetup
         gitsignOff
         gitsignVerify
         precommitSetup
         unstable.apko # Declarative container images
-        chainctl # Chainguard Platform CLI
         cosign # Sign and verify container images
         crane # Container registry client
         dive # Explore container images
