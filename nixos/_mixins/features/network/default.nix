@@ -1,6 +1,8 @@
 {
   config,
   hostname,
+  isInstall,
+  isISO,
   isLaptop,
   isWorkstation,
   lib,
@@ -10,6 +12,7 @@
 }:
 let
   useDoT = if isLaptop then "opportunistic" else "true";
+  useNetworkManager = if (isWorkstation || isISO || hostname  == "maul") then true else false;
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ]
@@ -28,6 +31,7 @@ let
     phasma = [ 22000 ];
     vader = [ 22000 ];
     revan = [ 22000 ];
+    maul = [ 22000 ];
   };
   allowedUDPPorts = {
     phasma = [
@@ -39,6 +43,10 @@ let
       21027
     ];
     revan = [
+      22000
+      21027
+    ];
+    maul = [
       22000
       21027
     ];
@@ -138,7 +146,7 @@ in
     };
     hostName = hostname;
     nameservers = if builtins.hasAttr username userDns then userDns.${username} else fallbackDns;
-    networkmanager = lib.mkIf isWorkstation {
+    networkmanager = lib.mkIf useNetworkManager {
       # A NetworkManager dispatcher script to open a browser window when a captive portal is detected
       dispatcherScripts = [{
         source = pkgs.writeText "captivePortal" ''
@@ -189,6 +197,7 @@ in
       enable = true;
       unmanaged = unmanagedInterfaces;
       wifi.backend = "iwd";
+      wifi.powersave = !isLaptop;
       settings.connectivity = lib.mkIf isLaptop {
         uri = "http://google.cn/generate_204";
         response = "";
@@ -197,6 +206,10 @@ in
     # https://wiki.nixos.org/wiki/Incus
     nftables.enable = lib.mkIf config.virtualisation.incus.enable true;
     useDHCP = lib.mkDefault true;
+    # Forcibly disable wireless networking on ISO images, as they now use NetworkManager/iwd
+    wireless = lib.mkIf isISO {
+      enable = lib.mkForce false;
+    };
   };
   services = {
     avahi = {
@@ -218,13 +231,22 @@ in
     };
   };
 
+  sops = lib.mkIf (isInstall) {
+    secrets = {
+      psk = lib.mkIf config.networking.networkmanager.enable {
+        mode = "0600";
+        path = "/var/lib/iwd/SoroSuub Centroplex.psk";
+        sopsFile = ../../../../secrets/iwd.yaml;
+      };
+    };
+  };
+
   # Belt and braces disable WiFi power saving
   systemd.services.disable-wifi-powersave =
     lib.mkIf
       (
         lib.isBool config.networking.networkmanager.wifi.powersave
         && config.networking.networkmanager.wifi.powersave
-        && isLaptop
       )
       {
         wantedBy = [ "multi-user.target" ];

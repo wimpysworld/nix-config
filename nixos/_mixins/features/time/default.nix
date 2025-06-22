@@ -4,7 +4,7 @@
   ...
 }:
 let
-  isServer = hostname == "malak" || hostname == "revan";
+  isServer = hostname == "malak" || hostname == "maul" || hostname == "revan";
   useGeoclue = !isServer;
 in
 {

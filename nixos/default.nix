@@ -2,6 +2,7 @@
   config,
   hostname,
   isInstall,
+  isISO,
   isWorkstation,
   inputs,
   lib,
@@ -13,6 +14,19 @@
   username,
   ...
 }:
+let
+  coreUtils = if isISO then [
+    pkgs.coreutils-full
+    pkgs.diffutils
+    pkgs.findutils
+    pkgs.sudo
+  ] else [
+    (lib.hiPrio pkgs.uutils-coreutils-noprefix)
+    (lib.hiPrio pkgs.uutils-diffutils)
+    (lib.hiPrio pkgs.uutils-findutils)
+    (lib.hiPrio pkgs.sudo-rs)
+  ];
+in
 {
   imports = [
     # Use module this flake exports; from modules/nixos
@@ -35,7 +49,7 @@
   ] ++ lib.optional isWorkstation ./_mixins/desktop;
 
   boot = {
-    binfmt = {
+    binfmt = lib.mkIf isInstall {
       emulatedSystems = [
         "riscv64-linux"
       ] ++ lib.optionals (platform == "x86_64-linux") [
@@ -67,33 +81,25 @@
   documentation.doc.enable = false;
 
   environment = {
-    defaultPackages =
-      with pkgs;
-      lib.mkForce [
-        (lib.hiPrio pkgs.uutils-coreutils-noprefix)
-        (lib.hiPrio pkgs.uutils-findutils)
-        (lib.hiPrio pkgs.uutils-diffutils)
-        (lib.hiPrio pkgs.sudo-rs)
-        micro
-      ];
-
     systemPackages =
       with pkgs;
       [
-        git
-        just
-        nix-output-monitor
-      ]
-      ++ lib.optionals isInstall [
         inputs.determinate.packages.${platform}.default
         inputs.fh.packages.${platform}.default
         inputs.nixos-needsreboot.packages.${platform}.default
+        git
+        just
+        micro
+        nix-output-monitor
+        sops
+      ]
+      ++ lib.optionals isInstall [
         nvd
         nvme-cli
         rsync
         smartmontools
-        sops
-      ];
+
+      ] ++ coreUtils;
 
     variables = {
       EDITOR = "micro";
@@ -151,7 +157,7 @@
     nano.enable = lib.mkDefault false;
     nh = {
       clean = {
-        enable = true;
+        enable = isInstall;
         extraArgs = "--keep-since 15d --keep 10";
       };
       enable = true;
@@ -167,7 +173,8 @@
     };
   };
 
-  security = {
+  # Only enable sudo-rs on installs, not live media (.ISO images)
+  security = lib.mkIf isInstall {
     sudo.enable = false;
     sudo-rs = {
       enable = lib.mkDefault true;
@@ -232,6 +239,7 @@
         sopsFile = ../secrets/${hostname}.yaml;
       };
       malak_enc.sopsFile = ../secrets/disks.yaml;
+      maul_enc.sopsFile = ../secrets/disks.yaml;
       tanis_enc.sopsFile = ../secrets/disks.yaml;
       shaa_enc.sopsFile = ../secrets/disks.yaml;
       atrius_enc.sopsFile = ../secrets/disks.yaml;

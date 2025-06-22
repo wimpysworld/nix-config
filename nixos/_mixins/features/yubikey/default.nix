@@ -7,8 +7,8 @@
   environment.systemPackages = with pkgs; lib.optionals isWorkstation [
     yubioath-flutter
   ];
-  programs.yubikey-touch-detector.enable = true;
-  programs.yubikey-touch-detector.libnotify = true;
+  programs.yubikey-touch-detector.enable = isWorkstation;
+  programs.yubikey-touch-detector.libnotify = isWorkstation;
   #security.pam.u2f.enable = true;
   #security.pam.yubico.control = "required";
   services = {

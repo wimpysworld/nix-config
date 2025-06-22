@@ -2,7 +2,7 @@
 # https://github.com/kolide/nix-agent/blob/main/modules/kolide-launcher/default.nix
 { config, hostname, inputs, lib, ... }:
 let
-  installOn = [ "phasma" "vader" ];
+  installOn = [ "maul" ];
 in
 lib.mkIf (lib.elem hostname installOn) {
 

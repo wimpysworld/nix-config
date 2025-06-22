@@ -20,7 +20,7 @@ KEEP_DISKS=0
 REMOTE_ADDRESS=""
 VM_TEST=0
 
-while getopts "k:h:r:t" opt; do
+while getopts "kh:r:t" opt; do
   case $opt in
     h ) HOST=$OPTARG;;
     k ) KEEP_DISKS=1;;
@@ -66,6 +66,7 @@ if [ -d "$HOME/Vaults/Secrets/ssh" ]; then
     cp "$HOME/Vaults/Secrets/age/user/keys-$USER.txt" \
       "$FILES/$HOME/.config/sops/age/keys.txt"
     chmod 600 "$FILES/$HOME/.config/sops/age/keys.txt"
+    chown -R 1000:100 "$FILES/$HOME/.config"
     echo "- INFO: Sending SOPS user keys"
     EXTRA_FILES=1
   else
@@ -110,6 +111,32 @@ if [ -d "$HOME/Vaults/Secrets/ssh" ]; then
   else
     echo "- WARN! No host SSH keys found"
   fi
+
+  if [ $KEEP_DISKS -eq 0 ]; then
+    if grep -q "data.passwordFile" "nixos/$HOST/disks.nix"; then
+      # If the machine we're provisioning expects a password to unlock a disk, prompt for it.
+      while true; do
+          # Prompt for the password, input is hidden
+          read -rsp "Enter disk encryption password:   " password
+          echo
+          # Prompt for the password again for confirmation
+          read -rsp "Confirm disk encryption password: " password_confirm
+          echo
+          # Check if both entered passwords match
+          if [ "$password" == "$password_confirm" ]; then
+              break
+          else
+              echo "Passwords do not match, please try again."
+              exit 1
+          fi
+      done
+
+      # Write the password to /tmp/data.passwordFile with no trailing newline
+      echo -n "$password" > /tmp/data.passwordFile
+      EXTRA+=" --disk-encryption-keys /tmp/data.passwordFile /tmp/data.passwordFile"
+    fi
+  fi
+
 else
   echo "ERROR: The Secrets Vaults is not mounted."
   exit 1

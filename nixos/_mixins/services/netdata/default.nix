@@ -8,7 +8,7 @@
 }:
 let
   basePath = "/netdata";
-  installOn = [ "malak" "revan" ];
+  installOn = [ "malak" "maul" "revan" ];
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
 lib.mkIf (lib.elem config.networking.hostName installOn) {

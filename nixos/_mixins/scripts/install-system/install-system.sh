@@ -97,10 +97,10 @@ if grep -q "data.passwordFile" "nixos/$TARGET_HOST/disks.nix"; then
     # If the machine we're provisioning expects a password to unlock a disk, prompt for it.
     while true; do
         # Prompt for the password, input is hidden
-        read -rsp "Enter password:   " password
+        read -rsp "Enter disk encryption password:   " password
         echo
         # Prompt for the password again for confirmation
-        read -rsp "Confirm password: " password_confirm
+        read -rsp "Confirm disk encryption password: " password_confirm
         echo
         # Check if both entered passwords match
         if [ "$password" == "$password_confirm" ]; then
@@ -143,11 +143,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
     # Rsync nix-config to the target install and set the remote origin to SSH.
     rsync -a --delete "$HOME/Zero/" "/mnt/home/$TARGET_USER/Zero/"
-    if [ "$TARGET_HOST" != "crawler" ] && [ "$TARGET_HOST" != "dagger" ]; then
-        pushd "/mnt/home/$TARGET_USER/Zero/nix-config"
-        git remote set-url origin git@github.com:wimpysworld/nix-config.git
-        popd
-    fi
 
     # Copy the sops keys.txt to the target install
     if [ -e "$HOME/.config/sops/age/keys.txt" ]; then

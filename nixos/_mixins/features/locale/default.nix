@@ -1,4 +1,4 @@
-{ config, hostname, lib, ... }:
+{ config, lib, ... }:
 let
   locale = "en_GB.UTF-8";
   consoleKeymap = "uk";

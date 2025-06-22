@@ -114,6 +114,7 @@
         };
         # Servers
         "martin@malak" = helper.mkHome { hostname = "malak"; };
+        "martin@maul"  = helper.mkHome { hostname = "maul"; };
         "martin@revan" = helper.mkHome { hostname = "revan"; };
         # Steam Deck
         "deck@steamdeck" = helper.mkHome {
@@ -178,6 +179,7 @@
         };
         # Servers
         malak = helper.mkNixos { hostname = "malak"; };
+        maul = helper.mkNixos { hostname = "maul"; };
         revan = helper.mkNixos { hostname = "revan"; };
         # VMs
         crawler = helper.mkNixos { hostname = "crawler"; };
