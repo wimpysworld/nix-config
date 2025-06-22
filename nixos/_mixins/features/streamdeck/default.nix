@@ -1,5 +1,5 @@
-{ pkgs, username, ... }:
-{
+{ isInstall, lib, pkgs, username, ... }:
+lib.mkIf isInstall {
   environment.systemPackages = with pkgs; [ deckmaster ];
   services = {
     # Provides users with access to all Elgato StreamDecks.

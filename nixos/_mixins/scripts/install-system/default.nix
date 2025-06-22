@@ -10,16 +10,16 @@ let
     name = "install-system";
     runtimeInputs = with pkgs; [
       inputs.disko.packages.${platform}.default
-      keyutils
+      coreutils-full
+      findutils
       gawk
       gnugrep
       git
       home-manager
       iproute2
+      keyutils
       rsync
       util-linux
-      uutils-coreutils-noprefix
-      uutils-findutils
     ];
     text = builtins.readFile ./install-system.sh;
   };

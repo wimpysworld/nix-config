@@ -30,6 +30,8 @@ These computers are managed by this Nix flake ❄️
 | `fighter`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
 | `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
 | `malak`     | [B360 HD3P-LM]              | [Intel Core i7-8700]           | 128GB | Intel UHD Graphics 630      | -                          | ☁️   | ❄️  | 🚧    |
+| `maul`      | [TRX40-DESIGNARE]           | [AMD Ryzen Threadripper 3970X] | 256GB | NVIDIA RTX 3090             | NVIDIA RTX 2080Ti (22GB)   | ☁️   | ❄️  | 🚧    |
+
 
 Workstation and server host names are Sith Lords and the virtual machines are named after TIE fighter series.
 Dual boot systems have the NixOS install named a Sith Lord and the *"other"* OS named after their public-facing persona.
@@ -149,6 +151,7 @@ Here's the directory structure I'm using:
 │  │  ├── desktop
 │  │  ├── scripts
 │  │  └── users
+│  ├── bane
 │  ├── momin
 │  ├── krall
 │  └── default.nix
@@ -177,6 +180,7 @@ Here's the directory structure I'm using:
 │  ├── crawler -> dagger
 │  ├── dagger
 │  ├── malak
+│  ├── maul
 │  ├── phasma
 │  ├── revan
 │  ├── sidious
@@ -270,6 +274,11 @@ Things I currently need to do manually after installation.
 
 `defender` and `fighter` are Ubuntu virtual machines run under [Lima] for my Ubuntu MATE development and testing environments.
 
+- [ ] Tools
+  - `install-cdebug`
+  - `install-chainctl`
+  - `install-wolfi-package-status`
+  - `install-yam`
 - [ ] On Linux run
   - `create-defender`
   - `create-fighter`
@@ -378,6 +387,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [nixos-anywhere]: https://github.com/nix-community/nixos-anywhere
 [sops-nix]: https://github.com/Mic92/sops-nix
 
+[TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10
 [Z390-DESIGNARE]: https://www.gigabyte.com/Motherboard/Z390-DESIGNARE-rev-10#kf
 [MEG-X570-UNIFY]: https://www.msi.com/Motherboard/MEG-X570-UNIFY
 [MEG-X570-ACE]: https://www.msi.com/Motherboard/MEG-X570-ACE
@@ -404,6 +414,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [Intel Core i7-5557U]: https://www.intel.com/content/www/us/en/products/sku/84993/intel-core-i75557u-processor-4m-cache-up-to-3-40-ghz/specifications.html
 [Intel Core i7-6770HQ]: https://ark.intel.com/content/www/us/en/ark/products/93341/intel-core-i7-6770hq-processor-6m-cache-up-to-3-50-ghz.html
 [Intel Celeron 2955U]: https://www.intel.com/content/www/us/en/products/sku/75608/intel-celeron-processor-2955u-2m-cache-1-40-ghz/specifications.html
+[AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/newsroom/press-releases/2019-11-7-amd-introduces-world-s-fastest-high-end-desktop-pr.html
 [AMD Ryzen 9 5950X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5950x
 [AMD Ryzen 9 5900X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5900x
 [AMD Ryzen 5 PRO 6650U]: https://www.amd.com/en/products/apu/amd-ryzen-5-pro-6650u

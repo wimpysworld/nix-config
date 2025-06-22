@@ -18,6 +18,7 @@ let
     "shaa"
     "atrius"
     "vader"
+    "maul"
   ];
   tsExitNodes = [
     "revan"

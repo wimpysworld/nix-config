@@ -21,6 +21,7 @@ jobs:
     strategy:
       matrix:
         host:
+          - maul
           - malak
           - revan
         config-type:

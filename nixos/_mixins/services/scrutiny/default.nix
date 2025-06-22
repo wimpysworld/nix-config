@@ -1,7 +1,7 @@
 { config, hostname, lib, tailNet, ... }:
 let
   basePath = "/scrutiny";
-  installOn = [ "malak" "revan" "phasma" "vader" ];
+  installOn = [ "malak" "maul" "revan" "phasma" "vader" ];
 in
 lib.mkIf (lib.elem hostname installOn) {
   services = {

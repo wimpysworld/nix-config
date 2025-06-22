@@ -180,6 +180,7 @@ in
         gitsignVerify
         precommitSetup
         unstable.apko # Declarative container images
+        unstable.claude-code # Claude Code CLI
         cosign # Sign and verify container images
         crane # Container registry client
         dive # Explore container images
@@ -248,8 +249,18 @@ in
 
         if status is-interactive
           set h (date --utc +%H)
-          if test $h -ge 7 -a $h -le 19
-            cg-tokens --browser
+          set dow (date --utc +%u)
+          if test $h -ge 7 -a $h -le 19 -a $dow -le 5
+            if test (uname) = Darwin
+              cg-tokens --browser
+            else
+              # Linux - check for display server
+              if test -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY"
+                cg-tokens --browser
+              else
+                cg-tokens --headless
+              end
+            end
           end
           gh-token
         end
