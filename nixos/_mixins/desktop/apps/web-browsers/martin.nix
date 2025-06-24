@@ -18,6 +18,7 @@
         "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
         "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
         "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
+        "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
       ];
       # - https://help.kagi.com/kagi/getting-started/setting-default.html
       extraOpts = {
