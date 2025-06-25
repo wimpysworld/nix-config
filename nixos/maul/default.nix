@@ -6,6 +6,9 @@
   username,
   ...
 }:
+let
+  fido2Enrolled = false;
+in
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
@@ -33,29 +36,13 @@
         # This tells it to look for a FIDO2 device and gives it a 30-second
         # timeout before falling back to other methods (like a password prompt,
         # if one were configured as a fallback).
-        devices."p0" = {
-          crypttabExtraOpts = [
-            "fido2-device=auto"
-            "token-timeout=30"
-          ];
-        };
-        devices."p1" = {
-          crypttabExtraOpts = [
-            "fido2-device=auto"
-            "token-timeout=30"
-          ];
-        };
-        devices."p2" = {
-          crypttabExtraOpts = [
-            "fido2-device=auto"
-            "token-timeout=30"
-          ];
-        };
-        devices."p3" = {
-          crypttabExtraOpts = [
-            "fido2-device=auto"
-            "token-timeout=30"
-          ];
+        devices = {
+          "access" = {
+            crypttabExtraOpts = lib.optionals fido2Enrolled [
+              "--fido2-device=auto"
+              "--timeout=30"
+            ];
+          };
         };
         # This is counter-intuitive but REQUIRED.
         # The native systemd-cryptenroll support replaces this older module.

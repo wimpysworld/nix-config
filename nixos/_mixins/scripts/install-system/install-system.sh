@@ -114,10 +114,11 @@ if grep -q "data.passwordFile" "nixos/$TARGET_HOST/disks.nix"; then
     echo -n "$password" > /tmp/data.passwordFile
 fi
 
-if grep -q "data.keyFile" "nixos/$TARGET_HOST/disks.nix"; then
+if grep -q "keyFile" "nixos/$TARGET_HOST/disks.nix"; then
     # Check if the machine we're provisioning expects a keyfile to unlock a disk.
     # If it does, generate a new key, and write to a known location.
-    echo -n "$(head -c32 /dev/random | base64)" > /tmp/data.keyFile
+    dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
+    chmod 600 /tmp/luks.key
 fi
 
 run_disko "nixos/$TARGET_HOST/disks.nix"
@@ -151,15 +152,19 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         chmod 600 "/mnt/home/$TARGET_USER/.config/sops/age/keys.txt"
     fi
 
+    # If there is a keyfile for a another disk, put copy it to the /vault
+    # partition and ensure the permissions are set appropriately.
+    if [[ -f "/tmp/luks.key" ]]; then
+        if ! mountpoint -q /mnt/vault; then
+            echo "ERROR! /mnt/vault is not mounted; make sure the disk preparation was successful."
+            exit 1
+        fi
+        sudo cp /tmp/luks.key /mnt/vault/luks.key
+        sudo chmod 400 /mnt/vault/luks.key
+    fi
+
     # Enter to the new install and apply the home-manager configuration.
     sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
     sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config; env USER=$TARGET_USER HOME=/home/$TARGET_USER home-manager switch --flake \".#$TARGET_USER@$TARGET_HOST\""
     sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
-
-    # If there is a keyfile for a data disk, put copy it to the root partition and
-    # ensure the permissions are set appropriately.
-    if [[ -f "/tmp/data.keyFile" ]]; then
-        sudo cp /tmp/data.keyFile /mnt/etc/data.keyFile
-        sudo chmod 0400 /mnt/etc/data.keyFile
-    fi
 fi

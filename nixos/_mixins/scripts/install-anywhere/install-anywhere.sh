@@ -13,17 +13,23 @@ function usage() {
   exit 1
 }
 
+DISKO_MODE="disko"
 EXTRA=""
 EXTRA_FILES=0
 HOST=""
 KEEP_DISKS=0
+LUKS_KEY=""
+LUKS_PASS=""
 REMOTE_ADDRESS=""
 VM_TEST=0
 
 while getopts "kh:r:t" opt; do
   case $opt in
     h ) HOST=$OPTARG;;
-    k ) KEEP_DISKS=1;;
+    k )
+      KEEP_DISKS=1
+      DISKO_MODE="mount"
+      ;;
     r ) REMOTE_ADDRESS=$OPTARG;;
     t ) VM_TEST=1;;
     \? ) usage;;
@@ -133,10 +139,28 @@ if [ -d "$HOME/Vaults/Secrets/ssh" ]; then
 
       # Write the password to /tmp/data.passwordFile with no trailing newline
       echo -n "$password" > /tmp/data.passwordFile
-      EXTRA+=" --disk-encryption-keys /tmp/data.passwordFile /tmp/data.passwordFile"
+      LUKS_PASS=" --disk-encryption-keys /tmp/data.passwordFile /tmp/data.passwordFile"
     fi
-  fi
 
+    if [ -e "$HOME/Vaults/Secrets/luks/$HOST.key" ]; then
+        install -d -m700 "$FILES/vault"
+        cp "$HOME/Vaults/Secrets/luks/$HOST.key" "$FILES/vault/luks.key"
+        chmod 400 "$FILES/vault/luks.key"
+        echo "- INFO: Sending LUKS key"
+
+        cp -v "$HOME/Vaults/Secrets/luks/$HOST.key" /tmp/luks.key
+        LUKS_KEY=" --disk-encryption-keys /tmp/luks.key /tmp/luks.key"
+        # Switch the LUKS keyFile to /tmp for the install phase
+        for DISK in nixos/"$HOST"/disk*.nix; do
+          if grep -q "keyFile" "$DISK"; then
+            echo "- INFO: Found keyFile in $DISK, updating to /tmp/luks.key"
+            sed -i 's|/vault/luks|/tmp/luks|' "$DISK"
+          fi
+        done
+      else
+        echo "- WARN! No LUKS key found"
+      fi
+    fi
 else
   echo "ERROR: The Secrets Vaults is not mounted."
   exit 1
@@ -158,5 +182,20 @@ fi
 pushd "$HOME/Zero/nix-config" || exit 1
 # shellcheck disable=2086
 nix run github:nix-community/nixos-anywhere -- \
-  $EXTRA --flake ".#$HOST" "root@$REMOTE_ADDRESS"
+  $LUKS_PASS $LUKS_KEY --print-build-logs --flake ".#$HOST" --disko-mode "${DISKO_MODE}" --phases kexec,disko "root@$REMOTE_ADDRESS"
+
+rm -f /tmp/luks.key
+# Switch the LUKS keyFile to the vault location if it was set
+if [ -n "$LUKS_PASS" ]; then
+  for DISK in nixos/"$HOST"/disk*.nix; do
+    if grep -q "keyFile" "$DISK"; then
+      echo "- INFO: Found keyFile in $DISK, updating to /vault/luks.key"
+      sed -i 's|/tmp/luks|/vault/luks|' "$DISK"
+    fi
+  done
+fi
+
+# shellcheck disable=2086
+nix run github:nix-community/nixos-anywhere -- \
+  $EXTRA --print-build-logs --chown /home/$USER/.config 1000:100 --flake ".#$HOST" --disko-mode mount --phases disko,install "root@$REMOTE_ADDRESS"
 popd || true

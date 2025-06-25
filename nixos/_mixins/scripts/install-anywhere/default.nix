@@ -8,9 +8,10 @@ let
   install-anywhere = pkgs.writeShellApplication {
     name = "install-anywhere";
     runtimeInputs = with pkgs; [
-      git
-      tree
       coreutils-full
+      git
+      openssh
+      tree
     ];
     text = builtins.readFile ./install-anywhere.sh;
   };

@@ -1,6 +1,3 @@
-# nvme0n1 2TB:   NixOS
-# nvme1n1 4TB:   Home RAID-0
-# nvme2n1 4TB:   Home RAID-0
 # sda     4TB:   Backup RAID-0
 # sdb     4TB:   Backup RAID-0
 # sdc     4TB:   Backup RAID-0
@@ -13,12 +10,23 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-            snapshot-sda = {
-              start = "0%";
-              end = "100%";
+            snapshot_p1 = {
+              size = "100%";
               content = {
-                type = "mdraid";
-                name = "snapshot";
+                type = "luks";
+                name = "snapshot_p1";
+                settings = {
+                  allowDiscards = true;
+                  keyFile = "/vault/luks.key";
+                };
+                extraFormatArgs = [
+                  "--cipher=aes-xts-plain64"
+                  "--hash=sha256"
+                  "--iter-time=1000"
+                  "--key-size=256"
+                  "--pbkdf-memory=262144"
+                  "--sector-size=4096"
+                ];
               };
             };
           };
@@ -30,12 +38,23 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-            snapshot-sdb = {
-              start = "0%";
-              end = "100%";
+            snapshot_p2 = {
+              size = "100%";
               content = {
-                type = "mdraid";
-                name = "snapshot";
+                type = "luks";
+                name = "snapshot_p2";
+                settings = {
+                  allowDiscards = true;
+                  keyFile = "/vault/luks.key";
+                };
+                extraFormatArgs = [
+                  "--cipher=aes-xts-plain64"
+                  "--hash=sha256"
+                  "--iter-time=1000"
+                  "--key-size=256"
+                  "--pbkdf-memory=262144"
+                  "--sector-size=4096"
+                ];
               };
             };
           };
@@ -47,35 +66,43 @@ _: {
         content = {
           type = "gpt";
           partitions = {
-            snapshot-sdc = {
-              start = "0%";
-              end = "100%";
+            snapshot_p3 = {
+              size = "100%";
               content = {
-                type = "mdraid";
-                name = "snapshot";
-              };
-            };
-          };
-        };
-      };
-    };
-    mdadm = {
-      snapshot = {
-        type = "mdadm";
-        level = 0;
-        content = {
-          type = "gpt";
-          partitions = {
-            snapshot = {
-              start = "0%";
-              end = "100%";
-              content = {
-                type = "filesystem";
-                # Overwirte the existing filesystem
-                extraArgs = [ "-f" ];
-                format = "xfs";
-                mountpoint = "/mnt/snapshot";
-                mountOptions = [ "defaults" ];
+                type = "luks";
+                name = "snapshot_p3";
+                settings = {
+                  allowDiscards = true;
+                  keyFile = "/vault/luks.key";
+                };
+                extraFormatArgs = [
+                  "--cipher=aes-xts-plain64"
+                  "--hash=sha256"
+                  "--iter-time=1000"
+                  "--key-size=256"
+                  "--pbkdf-memory=262144"
+                  "--sector-size=4096"
+                ];
+                content = {
+                  type = "btrfs";
+                  # --data     raid0    Stripes data across all four drives for max performance/capacity.
+                  # --metadata raid1c3  Creates 3 copies of metadata (one on each drive) for max integrity.
+                  extraArgs = [
+                    "--force"
+                    "--data raid0"
+                    "--label snapshot"
+                    "--metadata raid1c3"
+                    "--sectorsize 4096"
+                    "/dev/mapper/snapshot_p1" # Use decrypted mapped device, 'name' as defined in sda
+                    "/dev/mapper/snapshot_p2" # Use decrypted mapped device, 'name' as defined in sdb
+                  ];
+                  subvolumes = {
+                    "/snapshot" = {
+                      mountpoint = "/mnt/snapshot";
+                      mountOptions = [ "rw" "compress=zstd:3" "noatime" "ssd" ];
+                    };
+                  };
+                };
               };
             };
           };
