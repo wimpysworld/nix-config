@@ -13,52 +13,32 @@
 #   Before making any changes, create a backup of the LUKS header for each encrypted device.
 #   This backup is a file that contains all key slots and metadata, and it is the ultimate recovery tool if the header on the disk becomes corrupted.
 
-#   sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914446-part2 --header-backup-file ~/Vaults/Secrets/LUKS/maul-nvme0-header-backup.img
-#   sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914317-part2 --header-backup-file ~/Vaults/Secrets/LUKS/maul-nvme1-header-backup.img
-#   sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914316-part2 --header-backup-file ~/Vaults/Secrets/LUKS/maul-nvme2-header-backup.img
-#   sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914315-part2 --header-backup-file ~/Vaults/Secrets/LUKS/maul-nvme3-header-backup.img
+#   sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914446-part3 --header-backup-file ~/Vaults/Secrets/LUKS/maul-nvme0-header-backup.img
+#   sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914317-part3 --header-backup-file ~/Vaults/Secrets/LUKS/maul-nvme1-header-backup.img
+#   sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914316-part3 --header-backup-file ~/Vaults/Secrets/LUKS/maul-nvme2-header-backup.img
+#   sudo cryptsetup luksHeaderBackup /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914315-part3 --header-backup-file ~/Vaults/Secrets/LUKS/maul-nvme3-header-backup.img
 
 # - Enroll the Primary Yubikey: With the primary Yubikey plugged in, run the enrollment command.
 #   This will prompt for the Yubikey's PIN and require a touch confirmation. systemd-cryptenroll
 #   will automatically find and use the first available LUKS key slot.
-
 #   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914446-part2 --fido2-device=auto
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914317-part2 --fido2-device=auto
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914316-part2 --fido2-device=auto
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914315-part2 --fido2-device=auto
 
 # - Enroll the Backup Yubikey: For redundancy, a second, backup Yubikey should be enrolled.
 #   Unplug the primary key, insert the backup key, and run the exact same command again for each of the four partitions.
 #   systemd-cryptenroll is intelligent enough to detect that the first FIDO2 slot is in use and will enroll the new key in the next available slot.[22]
-
 #   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914446-part2 --fido2-device=auto
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914317-part2 --fido2-device=auto
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914316-part2 --fido2-device=auto
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914315-part2 --fido2-device=auto
 
 # - Create a Recovery Key: For a worst-case scenario where both Yubikeys are lost or destroyed,
 #   a high-entropy recovery key (essentially a very long, randomly generated password) should be created.
 #   This key should be printed or written down and stored in a physically secure location:
-
 #   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914446-part2 --recovery-key
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914317-part2 --recovery-key
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914316-part2 --recovery-key
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914315-part2 --recovery-key
 
 # - Enroll a Traditional Passphrase (Optional but Recommended):
 #   As a final fallback, it is wise to have a memorable passphrase enrolled as well.
-
 #   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914446-part2 --password
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914317-part2 --password
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914316-part2 --password
-#   sudo systemd-cryptenroll /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914315-part2 --password
 
 # - Verify Key Slots: After enrollment, use the luksDump command to inspect the LUKS header and verify that all the keys (FIDO2, recovery, passphrase) have been successfully added to their respective slots.
-
 #   sudo cryptsetup luksDump /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914446-part2
-#   sudo cryptsetup luksDump /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914317-part2
-#   sudo cryptsetup luksDump /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914316-part2
-#   sudo cryptsetup luksDump /dev/disk/by-id/nvme-GIGABYTE_GP-ASM2NE6200TTTD_SN202808914315-part2
 _:
 let
   # Use ls -la /dev/disk/by-id to find the correct names.
@@ -80,28 +60,26 @@ in
           type = "gpt";
           partitions = {
             ESP = {
-              size = "1024M";
+              size = "2000M";
               type = "EF00";
               content = {
                 format = "vfat";
-                mountOptions = [
-                  "defaults"
-                  "umask=0077"
-                ];
+                mountOptions = [ "umask=0077" ];
                 mountpoint = "/boot";
                 type = "filesystem";
               };
             };
-            crypt_p0 = {
-              size = "100%";
+            vault = {
+              start = "2000M";
+              end = "2048M";
               content = {
                 type = "luks";
-                name = "p0";
+                name = "vault";
                 passwordFile = "/tmp/data.passwordFile";
                 settings = {
                   allowDiscards = true;
                 };
-                # AES-XTS with 256-bit keys provides optimal security-performance balance.
+                # AES-XTS with 512-bit keys provides optimal security-performance balance.
                 # Key size selection impacts performance. 256-bit keys (AES-128 equivalent)
                 # provide 20% better performance than 512-bit keys (AES-256 equivalent)
                 # with minimal security trade-offs.
@@ -109,9 +87,46 @@ in
                 # provides 8x more efficient AES-NI instruction usage and better alignment
                 # with SSD internals.
                 extraFormatArgs = [
+                  "--cipher=serpent-xts-plain64"
+                  "--hash=sha512"
+                  "--iter-time=3000"
+                  "--key-size=256"
+                  "--pbkdf-memory=4194304"
+                  "--sector-size=4096"
+                ];
+                content = {
+                  format = "ext2";
+                  type = "filesystem";
+                  extraArgs = [
+                    "-F"
+                    "-L vault"
+                    "-m 0"
+                    "-N 128"
+                    "-b 4096"
+                  ];
+                  mountpoint = "/vault";
+                  # Add "ro" to prevent accidental writes once the system is running.
+                  # Disable periodic checks
+                  # tune2fs -c 0 -i 0 /dev/mapper/vault
+                  mountOptions = [ "noatime" "errors=remount-ro" ];
+                };
+              };
+            };
+            crypt_p0 = {
+              size = "100%";
+              content = {
+                type = "luks";
+                name = "p0";
+                settings = {
+                  allowDiscards = true;
+                  keyFile = "/vault/luks.key";
+                };
+                extraFormatArgs = [
                   "--cipher=aes-xts-plain64"
                   "--hash=sha256"
+                  "--iter-time=1000"
                   "--key-size=256"
+                  "--pbkdf-memory=262144"
                   "--sector-size=4096"
                 ];
               };
@@ -125,28 +140,22 @@ in
         content = {
           type = "gpt";
           partitions = {
-            ESP = {
-              size = "1024M";
-              type = "EF00";
-              content = {
-                format = "vfat";
-                # A redundant ESP. Not mounted, but available for recovery.
-                type = "filesystem";
-              };
-            };
             crypt_p1 = {
+              start = "2048M";
               size = "100%";
               content = {
                 type = "luks";
                 name = "p1";
-                passwordFile = "/tmp/data.passwordFile";
                 settings = {
                   allowDiscards = true;
+                  keyFile = "/vault/luks.key";
                 };
                 extraFormatArgs = [
                   "--cipher=aes-xts-plain64"
                   "--hash=sha256"
+                  "--iter-time=1000"
                   "--key-size=256"
+                  "--pbkdf-memory=262144"
                   "--sector-size=4096"
                 ];
               };
@@ -160,28 +169,22 @@ in
         content = {
           type = "gpt";
           partitions = {
-            ESP = {
-              size = "1024M";
-              type = "EF00";
-              content = {
-                format = "vfat";
-                # A redundant ESP. Not mounted, but available for recovery.
-                type = "filesystem";
-              };
-            };
             crypt_p2 = {
+              start = "2048M";
               size = "100%";
               content = {
                 type = "luks";
                 name = "p2";
-                passwordFile = "/tmp/data.passwordFile";
                 settings = {
                   allowDiscards = true;
+                  keyFile = "/vault/luks.key";
                 };
                 extraFormatArgs = [
                   "--cipher=aes-xts-plain64"
                   "--hash=sha256"
+                  "--iter-time=1000"
                   "--key-size=256"
+                  "--pbkdf-memory=262144"
                   "--sector-size=4096"
                 ];
               };
@@ -195,28 +198,22 @@ in
         content = {
           type = "gpt";
           partitions = {
-            ESP = {
-              size = "1024M";
-              type = "EF00";
-              content = {
-                format = "vfat";
-                # A redundant ESP. Not mounted, but available for recovery.
-                type = "filesystem";
-              };
-            };
             crypt_p3 = {
+              start = "2048M";
               size = "100%";
               content = {
                 type = "luks";
                 name = "p3";
-                passwordFile = "/tmp/data.passwordFile";
                 settings = {
                   allowDiscards = true;
+                  keyFile = "/vault/luks.key";
                 };
                 extraFormatArgs = [
                   "--cipher=aes-xts-plain64"
                   "--hash=sha256"
+                  "--iter-time=1000"
                   "--key-size=256"
+                  "--pbkdf-memory=262144"
                   "--sector-size=4096"
                 ];
                 content = {
@@ -236,7 +233,14 @@ in
                   subvolumes = {
                     "/root" = {
                       mountpoint = "/";
-                      mountOptions = [ "rw" "compress-force=zstd:1" "noatime" "ssd" ];
+                      mountOptions = [
+                        "compress=zstd:1"
+                        "discard=async"
+                        "noatime"
+                        "rw"
+                        "space_cache=v2"
+                        "ssd"
+                      ];
                     };
                   };
                 };

@@ -84,6 +84,16 @@ if [ -d "$HOME/Vaults/Secrets/ssh" ]; then
     echo "- WARN! No SOPS host keys found"
   fi
 
+  if [ -e "$HOME/Vaults/Secrets/luks/$HOST.key" ]; then
+    install -d -m700 "$FILES/vault"
+    cp "$HOME/Vaults/Secrets/luks/$HOST.key" "$FILES/vault/luks.key"
+    chmod 400 "$FILES/vault/luks.key"
+    echo "- INFO: Sending LUKS key"
+    EXTRA_FILES=1
+  else
+    echo "- WARN! No LUKS key found"
+  fi
+
   if [ -e "$HOME/Vaults/Secrets/ssh/initrd_ssh_host_ed25519_key" ]; then
     install -d -m755 "$FILES/etc/ssh"
     cp "$HOME/Vaults/Secrets/ssh/initrd_ssh_host_ed25519_key" "$FILES/etc/ssh/"
@@ -160,3 +170,5 @@ pushd "$HOME/Zero/nix-config" || exit 1
 nix run github:nix-community/nixos-anywhere -- \
   $EXTRA --flake ".#$HOST" "root@$REMOTE_ADDRESS"
 popd || true
+# shellcheck disable=SC2029
+ssh root@"$REMOTE_ADDRESS" "chown -R 1000:100 /home/$USER/.config"
