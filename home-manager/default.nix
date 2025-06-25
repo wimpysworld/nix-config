@@ -299,6 +299,8 @@ in
         more = "${pkgs.bat}/bin/bat";
         nish = "nosh";
         pq = "${pkgs.pueue}/bin/pueue";
+        rsync-copy = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --human-readable --info=progress2 --inplace --no-compress --partial --stats";
+        rsync-mirror = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --delete --human-readable --info=progress2 --no-compress --inplace --partial --stats";
         ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
         screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
         speedtest = "${pkgs.speedtest-go}/bin/speedtest-go";
