@@ -65,11 +65,11 @@ in
     # Only enable the systemd-boot on installs, not live media (.ISO images)
     loader = lib.mkIf isInstall {
       efi.canTouchEfiVariables = true;
-      systemd-boot.configurationLimit = 10;
+      systemd-boot.configurationLimit = lib.mkDefault 10;
       systemd-boot.consoleMode = "max";
       systemd-boot.enable = true;
       systemd-boot.memtest86.enable = true;
-      timeout = 10;
+      timeout = lib.mkDefault 10;
     };
   };
 
@@ -182,7 +182,7 @@ in
   };
 
   services = {
-    fwupd.enable = isInstall;
+    fwupd.enable = isWorkstation;
     hardware.bolt.enable = true;
     irqbalance = lib.mkIf (! config.services.qemuGuest.enable) {
       enable = true;

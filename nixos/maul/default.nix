@@ -6,9 +6,6 @@
   username,
   ...
 }:
-let
-  fido2Enrolled = false;
-in
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
@@ -29,35 +26,10 @@ in
         "usb_storage"
         "sd_mod"
       ];
-
-      # Configure the LUKS devices for the initrd.
-      luks = {
-        # Pass options to systemd-cryptsetup in the initrd.
-        # This tells it to look for a FIDO2 device and gives it a 30-second
-        # timeout before falling back to other methods (like a password prompt,
-        # if one were configured as a fallback).
-        devices = {
-          "access" = {
-            crypttabExtraOpts = lib.optionals fido2Enrolled [
-              "--fido2-device=auto"
-              "--timeout=30"
-            ];
-          };
-        };
-        # This is counter-intuitive but REQUIRED.
-        # The native systemd-cryptenroll support replaces this older module.
-        fido2Support = false;
-      };
       kernelModules = [
         "kvm-amd"
         "nvidia"
       ];
-
-      # Enable support for the Btrfs filesystem.
-      supportedFilesystems = [ "btrfs" ];
-      # Use the systemd-based initrd, which is required for modern
-      # LUKS unlocking features like FIDO2.
-      systemd.enable = true;
     };
   };
 
@@ -69,11 +41,6 @@ in
   };
 
   services = {
-    btrfs.autoScrub = {
-      fileSystems = [ "/" ];
-      enable = true;
-      interval = "monthly";
-    };
     xserver.videoDrivers = [
       "nvidia"
     ];
