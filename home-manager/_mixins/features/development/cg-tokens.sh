@@ -19,8 +19,11 @@ AUDIENCES=(
     "apk.cgr.dev"
     "cgr.dev"
 )
-# Default headless mode
+# Intelligently set default AUTH_MODE based on display server availability
 AUTH_MODE=headless
+if [[ "$(uname)" == "Darwin" ]] || [[ -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ]]; then
+    AUTH_MODE=browser
+fi
 # Default operation mode
 OPERATION=refresh
 OPERATION_TITLE="⊚ Ensuring tokens are fresh..."
@@ -37,12 +40,17 @@ USAGE:
     $(basename "${0}") [OPTIONS]
 
 OPTIONS:
-    --headless                Use headless authentication (default).
+    --headless                Use headless authentication.
     --browser                 Use browser-based authentication.
     --ttl-threshold <minutes> Set token refresh threshold in minutes (default: 30, min: 5, max: 60).
     --logout                  Log out from all configured audiences.
     --help                    Show this help message and exit.
     --version                 Show version and exit.
+
+NOTES:
+    If no authentication mode is specified, the script automatically detects whether
+    a display server (X11 or Wayland) is available or if running on macOS, and defaults
+    to --browser mode if found, otherwise uses --headless mode.
 EOF
 }
 
@@ -124,23 +132,22 @@ refresh_audience() {
             echo "↻ $audience performing full re-authentication..."
 
             # In browser mode, redirect output to hide messages.
+	        local cmd="chainctl auth login --audience=${audience}"
             if [[ "${AUTH_MODE}" == "browser" ]]; then
-                if ! chainctl auth login --audience="$audience" >/dev/null 2>&1; then
-                    echo "✘ ERROR! Failed to reauthenticate $audience" >&2
-                    return 1
+                if ! $cmd >/dev/null 2>&1; then
+                    command_error "Failed to reauthenticate $audience" "${cmd}"
                 fi
             else
-                if ! chainctl auth login --audience="$audience"; then
-                    echo "✘ ERROR! Failed to reauthenticate $audience" >&2
-                    return 1
+                if ! $cmd; then
+                    command_error "Failed to reauthenticate $audience" "${cmd}"
                 fi
             fi
         else
             # The access token needs a simple, non-interactive refresh.
             echo "♽ $audience refreshing token... "
-            if ! chainctl auth login --audience="$audience" >/dev/null 2>&1; then
-                echo "✘ ERROR! Failed to refresh token for $audience."
-                return 1
+	        local cmd="chainctl auth login --audience=$audience"
+            if ! $cmd >/dev/null 2>&1; then
+                command_error "Failed to refresh token for $audience." "${cmd}"
             fi
         fi
         # Re-fetch TTLs to report the new values.
@@ -166,8 +173,18 @@ process_audiences() {
 
 # Helper function for option parsing errors
 option_error() {
-    echo "✘ ERROR! $1" >&2
+    echo "✗ ERROR! $1" >&2
     usage
+    exit 1
+}
+
+# Helper function for errors on command exeuction.
+# Arguments:
+# 1: The error message
+# 2: The command that failed
+command_error() {
+    echo "✘ ERROR! $1" >&2
+    echo "  Please try running '$2' manually." >&2
     exit 1
 }
 
@@ -197,11 +214,10 @@ update_docker_config() {
     # The 'chainctl' command is idempotent and will only make changes if needed.
     # This configures authentication for any tool that reads ~/.docker/config.json,
     # including both Docker and Podman.
+    local cmd="chainctl auth configure-docker"
     echo "⚑ Chainguard credential helper not configured. Attempting to configure now..." >&2
-    if ! chainctl auth configure-docker >/dev/null 2>&1; then
-        echo "✘ ERROR! Failed to automatically configure Chainguard credential helper." >&2
-        echo "  Please try running 'chainctl auth configure-docker' manually." >&2
-        return 1
+    if ! $cmd >/dev/null 2>&1; then
+        command_error "Failed to automatically configure Chainguard credential helper." "${cmd}"
     else
         echo "✪ Chainguard credential helper for Docker is configured"
     fi

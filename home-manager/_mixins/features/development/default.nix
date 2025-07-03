@@ -251,16 +251,7 @@ in
           set h (date --utc +%H)
           set dow (date --utc +%u)
           if test $h -ge 7 -a $h -le 19 -a $dow -le 5
-            if test (uname) = Darwin
-              cg-tokens --browser
-            else
-              # Linux - check for display server
-              if test -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY"
-                cg-tokens --browser
-              else
-                cg-tokens --headless
-              end
-            end
+            cg-tokens
           end
           gh-token
         end
