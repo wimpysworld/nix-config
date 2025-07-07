@@ -42,7 +42,7 @@ in
     fzf.enable = config.programs.fzf.enable;
     micro.enable = config.programs.micro.enable;
     starship.enable = config.programs.starship.enable;
-    vscode.enable = config.programs.vscode.enable;
+    vscode.profiles.default.enable = config.programs.vscode.enable;
     yazi.enable = config.programs.yazi.enable;
   };
 
