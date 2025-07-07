@@ -90,11 +90,6 @@
           hostname = "tanis";
           desktop = "hyprland";
         };
-        "martin@momin" = helper.mkHome {
-          hostname = "momin";
-          platform = "aarch64-darwin";
-          desktop = "aqua";
-        };
         "martin.wimpress@bane" = helper.mkHome {
           username = "martin.wimpress";
           hostname = "bane";
@@ -191,12 +186,9 @@
       #nix run nix-darwin -- switch --flake ~/Zero/nix-config
       #nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
       darwinConfigurations = {
-      	bane = helper.mkDarwin {
-      	  username = "martin.wimpress";
+        bane = helper.mkDarwin {
+          username = "martin.wimpress";
           hostname = "bane";
-        };
-        momin = helper.mkDarwin {
-          hostname = "momin";
         };
         krall = helper.mkDarwin {
           hostname = "krall";

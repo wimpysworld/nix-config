@@ -186,7 +186,7 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v2
       - name: ${{ matrix.package }}
         run: |
-          nix build .#darwinConfigurations.momin.pkgs.${{ matrix.package }} -L
+          nix build .#darwinConfigurations.bane.pkgs.${{ matrix.package }} -L
       - name: sbomnix
         run: |
           name="${{ github.job }}-${{ matrix.package }}"

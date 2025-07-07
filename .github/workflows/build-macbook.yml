@@ -24,15 +24,9 @@ jobs:
           - name: bane
             type: darwin
             path: '.#darwinConfigurations.bane.config.system.build.toplevel'
-          - name: momin
-            type: darwin
-            path: '.#darwinConfigurations.momin.config.system.build.toplevel'
           - name: bane
             type: home
             path: '.#homeConfigurations.\"martin.wimpress@bane\".activationPackage'
-          - name: momin
-            type: home
-            path: '.#homeConfigurations."martin@momin".activationPackage'
     steps:
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/determinate-nix-action@v3
@@ -41,7 +35,7 @@ jobs:
           lazy-trees = true
     - uses: DeterminateSystems/flakehub-cache-action@v2
     - name: ${{ matrix.flake.name }}-${{ matrix.flake.type }}
-      run: |          
+      run: |
         sed -i '' 's|pico8|#pico8|' home-manager/_mixins/desktop/apps/game-dev/default.nix
         nix build ${{ matrix.flake.path }} -L
     - name: sbomnix
