@@ -1,8 +1,5 @@
 {
-  config,
   inputs,
-  lib,
-  pkgs,
   username,
   ...
 }:
@@ -13,18 +10,10 @@
     inputs.nixos-hardware.nixosModules.common-gpu-nvidia
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
-    ./disks.nix
-    ./disks-home.nix
-    ./disks-snapshot.nix
+    ./old/disks.nix
+    ./old/disks-home.nix
+    ./old/disks-snapshot.nix
   ];
-
-  # TODO: Remove this if/when machine is reinstalled.
-  # This is a workaround for the legacy -> gpt tables disko format.
-  fileSystems = {
-    "/".device = lib.mkForce "/dev/disk/by-partlabel/root";
-    "/boot".device = lib.mkForce "/dev/disk/by-partlabel/ESP";
-  };
-
   boot = {
     initrd.availableKernelModules = [
       "nvme"
@@ -44,10 +33,6 @@
       "video=DP-2:2560x2880@60"
       "video=DP-3:1920x1080@60"
     ];
-    swraid = {
-      enable = true;
-      mdadmConf = "MAILADDR=${username}@wimpys.world";
-    };
   };
 
   hardware = {
