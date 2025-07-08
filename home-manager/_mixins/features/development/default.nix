@@ -11,20 +11,11 @@ let
   waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
-      { case = "^https?://accounts.google.com/o/oauth2"; command = "wavebox"; }
+      { case = "^https?://accounts.google.com"; command = "wavebox"; }
       { case = "^https?://github.com/login/device"; command = "wavebox"; }
       { case = "^https?://auth.chainguard.dev/activate"; command = "wavebox"; }
       { case = "^https?://issuer.enforce.dev"; command = "wavebox"; }
     ];
-  };
-  cgTokens = pkgs.writeShellApplication {
-    name = "cg-tokens";
-    runtimeInputs = with pkgs; [
-      gnugrep
-      jq
-      uutils-coreutils-noprefix
-    ];
-    text = builtins.readFile ./cg-tokens.sh;
   };
   dockerPurge = pkgs.writeShellApplication {
     name = "docker-purge";
@@ -46,88 +37,12 @@ let
       done
     '';
   };
-  downloadPackage = pkgs.writeShellApplication {
-    name = "download-package";
-    runtimeInputs = with pkgs; [
-      curl
-      jq
-      uutils-coreutils-noprefix
-    ];
-    text = builtins.readFile ./download-package.sh;
-  };
-  extractPackage = pkgs.writeShellApplication {
-    name = "extract-package";
-    runtimeInputs = with pkgs; [
-      gnutar
-      uutils-coreutils-noprefix
-    ];
-    text = builtins.readFile ./extract-package.sh;
-  };
-  graphImage = pkgs.writeShellApplication {
-    name = "graph-image";
-    runtimeInputs = with pkgs; [
-      apko
-      crane
-      graphviz
-      uutils-coreutils-noprefix
-    ];
-    text = builtins.readFile ./graph-image.sh;
-  };
-  graphPackage = pkgs.writeShellApplication {
-    name = "graph-package";
-    runtimeInputs = with pkgs; [
-      apko
-      graphviz
-      uutils-coreutils-noprefix
-    ];
-    text = builtins.readFile ./graph-package.sh;
-  };
-  sbomInspect = pkgs.writeShellApplication {
-    name = "sbom-inspect";
-    runtimeInputs = with pkgs; [
-      crane
-      gnutar
-      jq
-      uutils-coreutils-noprefix
-    ];
-    text = builtins.readFile ./sbom-inspect.sh;
-  };
-  gitsignSetup = pkgs.writeShellApplication {
-    name = "gitsign-setup";
-    runtimeInputs = with pkgs; [
-      git
-      gitsign
-    ];
-    text = builtins.readFile ./gitsign-setup.sh;
-  };
-  gitsignOff = pkgs.writeShellApplication {
-    name = "git-signoff";
-    runtimeInputs = with pkgs; [
-      git
-    ];
-    text = ''[ -d .git ] && git commit --amend --signoff --no-edit'';
-  };
-  gitsignVerify = pkgs.writeShellApplication {
-    name = "gitsign-verify";
-    runtimeInputs = with pkgs; [
-      gitsign
-    ];
-    text = ''[ -d .git ] && gitsign verify --certificate-identity=martin.wimpress@chainguard.dev --certificate-oidc-issuer=https://accounts.google.com HEAD'';
-  };
   precommitSetup = pkgs.writeShellApplication {
     name = "pre-commit-setup";
     runtimeInputs = with pkgs; [
       pre-commit
     ];
     text = builtins.readFile ./pre-commit-setup.sh;
-  };
-  installChainctl = pkgs.writeShellApplication {
-    name = "install-chainctl";
-    runtimeInputs = with pkgs; [
-      curl
-      uutils-coreutils-noprefix
-    ];
-    text = builtins.readFile ./install-chainctl.sh;
   };
   gitsignCredentialCache = if isLinux then
     "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
@@ -167,44 +82,20 @@ in
     packages =
       with pkgs;
       [
-        cgTokens
         dockerPurge
-        downloadPackage
-        extractPackage
-        graphImage
-        graphPackage
-        sbomInspect
-        installChainctl
-        gitsignSetup
-        gitsignOff
-        gitsignVerify
         precommitSetup
-        unstable.apko # Declarative container images
         unstable.claude-code # Claude Code CLI
-        cosign # Sign and verify container images
-        crane # Container registry client
-        dive # Explore container images
         difftastic # Modern Unix `diff`
         ghbackup # Backup GitHub repositories
         ghorg # Clone all repositories in a GitHub organization
         git-igitt # git log/graph
-        gitsign # Sign git commits and tags
+        gitsign # Sign Git commits and tags with Sigstore
         gk-cli # GitKraken CLI
-        gnumake # GNU Make
-        go # Go programming language
-        google-cloud-sdk # Google Cloud CLI
-        unstable.grype # Vulnerability scanner
         h # autojump for git projects
-        k3d # Lightweight Kubernetes
-        kind # Kubernetes in Docker
-        unstable.melange # Declarative package manager
         onefetch # fetch git project info
         pre-commit # Git pre-commit hooks
         quilt # patch manager
-        terraform # Infrastructure as code tool
         tokei # Modern Unix `wc` for code
-        unstable.syft # SBOM scanner
-        wolfictl # Wolfi OSS project CLI
       ] ++ lib.optionals isLinux [
         waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
       ];
@@ -219,11 +110,7 @@ in
         gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
         gh-unset = "set -e GH_TOKEN; set -e GITHUB_TOKEN; set -e GHORG_GITHUB_TOKEN; set -e HOMEBREW_GITHUB_API_TOKEN";
         gitso = "${pkgs.git}/bin/git --signoff";
-        install-cdebug = "go install github.com/iximiuz/cdebug@latest";
-        install-yam = "go install github.com/chainguard-dev/yam@latest";
-        install-wolfi-package-status = "go install github.com/philroche/wolfi-package-status@latest";
         key-add = "${pkgs.openssh}/bin/ssh-add $HOME/.ssh/id_ed25519_sk_${hostname}";
-        mal = "docker run -it cgr.dev/chainguard/malcontent:latest";
       };
       shellInitLast = ''
         function gh-token
@@ -248,11 +135,6 @@ in
         end
 
         if status is-interactive
-          set h (date --utc +%H)
-          set dow (date --utc +%u)
-          if test $h -ge 7 -a $h -le 19 -a $dow -le 5
-            cg-tokens
-          end
           gh-token
         end
       '';
