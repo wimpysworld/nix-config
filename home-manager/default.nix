@@ -22,7 +22,7 @@ in
     inputs.catppuccin.homeModules.catppuccin
     inputs.sops-nix.homeManagerModules.sops
     inputs.mac-app-util.homeManagerModules.default
-    inputs.nix-index-database.hmModules.nix-index
+    inputs.nix-index-database.homeModules.nix-index
     inputs.vscode-server.nixosModules.home
     ./_mixins/features
     ./_mixins/scripts
