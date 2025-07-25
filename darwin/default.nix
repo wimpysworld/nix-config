@@ -209,7 +209,11 @@
           "/Users/${username}/Applications/Home Manager Apps/Visual Studio Code.app"
           "/Users/${username}/Applications/Home Manager Apps/GitKraken.app"
           "/Users/${username}/Applications/Home Manager Apps/Alacritty.app"
+        ] ++ lib.optionals (username == "martin.wimpress") [
+          "/Applications/Cider.app"
+        ] ++ lib.optionals (username == "martin") [
           "/System/Applications/Music.app"
+        ] ++ [
           "/Applications/Heynote.app"
           "/Applications/Joplin.app"
           "/System/Applications/Launchpad.app"
