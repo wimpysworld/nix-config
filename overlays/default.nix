@@ -46,11 +46,11 @@
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (_lpself: lpsuper: {
       mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
         pname = "mwprocapture";
-        subVersion = "4418";
+        subVersion = "4479";
         version = "1.3.${subVersion}";
         src = prev.fetchurl {
-          url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${version}.tar.gz";
-          sha256 = "sha256-ZUqJkARhaMo9aZOtUMEdiHEbEq10lJO6MkGjEDnfx1g=";
+          url = "https://www.magewell.com/files/drivers/ProCaptureForLinuxPUBLIC_${version}.tar.gz";
+          sha256 = "sha256-jol3Ws3k8n6fyprqb4pgh7zOg6PJmXRpzZOQ3WALA2o=";
         };
       });
     });
