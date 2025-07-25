@@ -16,6 +16,9 @@ lib.mkIf (lib.elem username installFor) {
   ];
 
   homebrew = {
-    casks = [ "balenaetcher" ];
+    casks = [
+      "balenaetcher"
+      "beyond-compare"
+    ];
   };
 }
