@@ -172,11 +172,11 @@ let
 
   linux = stdenv.mkDerivation (finalAttrs: {
     inherit pname meta passthru;
-    version = "10.137.12-2";
+    version = "10.138.14-2";
 
     src = fetchurl {
       url = "https://download.wavebox.app/stable/linux/deb/amd64/wavebox_${finalAttrs.version}_amd64.deb";
-      hash = "sha256-hijSbNmiO+veUcal/50WopbSnNpDkHO0gxCPjrB0Kas=";
+      hash = "sha256-MyVrlUFrGhnMlHRPSI4gq4fBUzgUNtJfzB8oWGLzkmg=";
     };
 
     # With strictDeps on, some shebangs were not being patched correctly
@@ -264,11 +264,11 @@ let
 
   darwin = stdenvNoCC.mkDerivation (finalAttrs: {
     inherit pname meta passthru;
-    version = "10.137.12.2";
+    version = "10.138.14.2";
 
     src = fetchurl {
       url = "https://download.wavebox.app/stable/macuniversal/Install%20Wavebox%20${finalAttrs.version}.dmg";
-      hash = "sha256-PclTKITgJfSAdo7uc69jFZ5Ls35Yv4LXjG0jEC0oepE=";
+      hash = "sha256-r6ScEXgVbnCKKWZvNx3gDU8VpfaBI8novpKs308bJE8=";
     };
 
     dontPatch = true;
