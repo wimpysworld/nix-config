@@ -20,7 +20,7 @@ lib.mkIf (lib.elem username installFor && !isLima) {
   programs.fish.shellAliases = {
     stc = "${pkgs.stc-cli}/bin/stc -homedir \"${config.home.homeDirectory}/Syncthing/Devices/${hostname}\"";
   };
-  services.syncthing = {
+  services.syncthing = lib.mkIf (isLinux) {
     enable = true;
     extraOptions = [
       "--config=${config.home.homeDirectory}/Syncthing/Devices/${hostname}"

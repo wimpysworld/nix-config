@@ -19,6 +19,7 @@ lib.mkIf (lib.elem username installFor) {
     casks = [
       "balenaetcher"
       "beyond-compare"
+      "syncthing-app"
     ];
   };
 }
