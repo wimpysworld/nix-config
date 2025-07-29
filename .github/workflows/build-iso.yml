@@ -96,7 +96,7 @@ jobs:
         hatchet-protocol: 'holster'
     - uses: DeterminateSystems/determinate-nix-action@v3
     - uses: DeterminateSystems/flakehub-cache-action@v2
-    - uses: DeterminateSystems/flakehub-push@v5
+    - uses: DeterminateSystems/flakehub-push@v6
       with:
         tag: ${{ needs.build-iso.outputs.ver }}
         include-output-paths: true
