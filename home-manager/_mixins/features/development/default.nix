@@ -25,7 +25,7 @@ let
       uutils-coreutils-noprefix
     ];
     text = ''
-      echo "⬢ WARNING: This will stop and remove all Docker images/containers on your system."
+      echo "⬢ WARNING: This will stop and remove *all* Docker resources on your system."
       # shellcheck disable=SC2162
       read -p "Are you sure you want to continue? (y/N): " confirm
       if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
@@ -35,6 +35,13 @@ let
         docker stop "$(docker ps -aq --filter ancestor="$ID")" || true
         docker rmi -f "$ID" || true
       done
+      for ID in $(docker ps -aq); do
+        docker container kill "$ID" || true
+        docker container rm "$ID" || true
+      done
+      docker network prune --force || true
+      docker volume prune --force || true
+      docker system prune --all --volumes --force || true
     '';
   };
   precommitSetup = pkgs.writeShellApplication {
