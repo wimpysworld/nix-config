@@ -28,7 +28,7 @@ jobs:
             type: home
             path: '.#homeConfigurations.\"martin.wimpress@bane\".activationPackage'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: DeterminateSystems/determinate-nix-action@v3
       with:
         extra-conf: |
