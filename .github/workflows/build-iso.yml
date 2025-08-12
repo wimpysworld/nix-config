@@ -20,7 +20,7 @@ jobs:
     outputs:
       ver: ${{ steps.build-iso.outputs.ver }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: wimpysworld/nothing-but-nix@main
       with:
         hatchet-protocol: 'holster'
@@ -90,7 +90,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: wimpysworld/nothing-but-nix@main
       with:
         hatchet-protocol: 'holster'

@@ -31,7 +31,7 @@ jobs:
           - type: 'home'
             path: '.#homeConfigurations."martin@{host}".activationPackage'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: wimpysworld/nothing-but-nix@main
       with:
         hatchet-protocol: 'holster'
