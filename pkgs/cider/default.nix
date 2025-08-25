@@ -5,11 +5,11 @@
   makeWrapper,
 }:
 let
-  version = "3.0.2";
+  version = "3.1.0";
   pname = "Cider";
   src = fetchurl {
     url = "https://warez.wimpys.world/cider-v${version}-linux-x64.AppImage";
-    hash = "sha256-XVBhMgSNJAYTRpx5GGroteeOx0APIzuHCbf+kINT2eU=";
+    hash = "sha256-vjwfpKm02f8jePWMnhlPN/OIhB3UUjnon8LUjBWMX0Q=";
   };
   appimageContents = appimageTools.extractType2 {
     inherit pname version src;
@@ -27,8 +27,8 @@ appimageTools.wrapType2 {
         --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --disable-features=UseMultiPlaneFormatForSoftwareVideo --disable-gpu-memory-buffer-video-frames}}"
       install -m 444 -D ${appimageContents}/Cider.desktop \
         $out/share/applications/Cider.desktop
-      install -m 444 -D ${appimageContents}/cider.png \
-        $out/share/icons/hicolor/256x256/apps/cider.png
+      install -m 444 -D ${appimageContents}/Cider.png \
+        $out/share/icons/hicolor/256x256/apps/Cider.png
   '';
 
   meta = {
