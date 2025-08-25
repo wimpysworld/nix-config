@@ -33,7 +33,7 @@ in
       # Halloy is installed via homebrew on Darwin
       ++ lib.optionals (lib.elem username installFor && isLinux) [
         fractal
-        halloy
+        unstable.halloy
         slackWavebox
       ];
   };
