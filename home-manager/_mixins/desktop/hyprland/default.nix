@@ -9,7 +9,6 @@
 let
   xkbLayout = "gb";
   monitors = (import ./monitors.nix { }).${hostname};
-  wayvncEnabled = false;
 in
 {
   home.packages = with pkgs; [
@@ -36,14 +35,15 @@ in
       tray = "auto";
       notify = true;
     };
-    wayvnc = {
-      autoStart = wayvncEnabled;
-      enable = wayvncEnabled;
-      settings = {
-        address = "0.0.0.0";
-        port = 5900;
-      };
-    };
+    # Not in home-manager 25.04
+    #wayvnc = {
+    #  autoStart = true;
+    #  enable = true;
+    #  settings = {
+    #    address = "0.0.0.0";
+    #    port = 5900;
+    #  };
+    #};
   };
 
   systemd.user.services.polkit-gnome-authentication-agent-1 = {
