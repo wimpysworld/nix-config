@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -14,21 +15,33 @@ lib.mkIf (lib.elem username installFor) {
     inputs.nix-vscode-extensions.overlays.default
   ];
 
-  # Packages that are used by some of the extensions below
-  home.packages = with pkgs; [
-    bash-language-server
-    go
-    gopls
-    luaformatter
-    luajit
-    lua-language-server
-    nil
-    nixfmt-rfc-style
-    nodePackages.prettier
-    shellcheck
-    shfmt
-    stylua
-  ];
+  home = {
+    file = {
+      "${config.xdg.configHome}/Code/User/mcp.json".text = builtins.readFile ./mcp.json;
+      "${config.xdg.configHome}/Code/User/prompts/copilot.instructions.md".text = builtins.readFile ./global.instructions.md;
+    };
+    # Packages that are used by some of the extensions below
+    packages = with pkgs; [
+      bash-language-server
+      unstable.claude-code
+      unstable.github-mcp-server
+      go
+      gopls
+      luaformatter
+      luajit
+      lua-language-server
+      unstable.mcp-nixos
+      nil
+      nixfmt-rfc-style
+      nodePackages.prettier
+      nodejs_24
+      python3Full
+      uv
+      shellcheck
+      shfmt
+      stylua
+    ];
+  };
 
   programs = {
     vscode = {
@@ -37,6 +50,9 @@ lib.mkIf (lib.elem username installFor) {
         enableExtensionUpdateCheck = false;
         enableUpdateCheck = false;
         userSettings = {
+          "chat.mcp.autostart" = "newAndOutdated";
+          "chat.mcp.discovery.enabled" = true;
+          "chat.mcp.enabled" = true;
           "cline.chromeExecutablePath" = "/run/current-system/sw/bin/brave";
           "cSpell.userWords" = [
             "distro"
@@ -98,6 +114,9 @@ lib.mkIf (lib.elem username installFor) {
           "[dart]"."editor.wordBasedSuggestions" = "off";
           "[dockerfile]"."editor.quickSuggestions.strings" = true;
           "[lua]"."editor.defaultFormatter" = "JohnnyMorganz.stylua";
+          "[nix]"."editor.defaultFormatter" = "jnoortheen.nix-ide";
+          "[nix]"."editor.formatOnSave" = true;
+          "[nix]"."editor.tabSize" = 2;
           "[python]"."editor.formatOnType" = true;
           "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
           "files.insertFinalNewline" = true;
@@ -108,12 +127,14 @@ lib.mkIf (lib.elem username installFor) {
           "githubPullRequests.pullBranch" = "never";
           "markdown.preview.breaks" = true;
           "nix.enableLanguageServer" = true;
+          "nix.serverPath" = "nil";
           "partialDiff.enableTelemetry" = false;
           "projectManager.git" = {
             baseFolders = [
+              "~/Chainguard"
               "~/Development"
-              "~/Zero"
               "~/Websites"
+              "~/Zero"
             ];
             maxDepthRecursion = 5;
           };
@@ -206,6 +227,7 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.alefragnani.project-manager
             vscode-marketplace.alexgb.nelua
             vscode-marketplace.anthropic.claude-code
+            vscode-marketplace.automatalabs.copilot-mcp
             vscode-marketplace.bmalehorn.shell-syntax
             vscode-marketplace.bmalehorn.vscode-fish
             vscode-marketplace.budparr.language-hugo-vscode

@@ -1,0 +1,95 @@
+{
+  "servers": {
+    "brave-search-mcp-server": {
+      "command": "npx",
+      "args": ["-y", "@brave/brave-search-mcp-server","--transport","stdio"],
+      "env": {
+        "BRAVE_API_KEY": "${input:braveSearchApiKey}"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y","@upstash/context7-mcp","--api-key","${input:context7ApiKey}"
+      ]
+    },
+    "firecrawl-mcp": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": "${input:firecrawlApiKey}"
+      }
+    },
+    "github": {
+      "command": "github-mcp-server",
+      "args": [
+        "stdio"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:githubToken}"
+      }
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MEMORY_FILE_PATH": "${input:memoryFilePath}"
+      }
+    },
+    "nixos": {
+      "command": "mcp-nixos"
+    },
+    "Ref": {
+      "type": "http",
+      "url": "https://api.ref.tools/mcp?apiKey=${input:refApiKey}"
+    },
+    "sequentialthinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "time": {
+      "command": "uvx",
+      "args": ["mcp-server-time"]
+    }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "braveSearchApiKey",
+      "description": "Brave Search API Key",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "context7ApiKey",
+      "description": "Context7 API Key",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "firecrawlApiKey",
+      "description": "Firecrawl API Key",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "githubToken",
+      "description": "GitHub Personal Access Token",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "memoryFilePath",
+      "description": "Memory File Path",
+      "password": false
+    },
+    {
+      "type": "promptString",
+      "id": "refApiKey",
+      "description": "Ref API Key",
+      "password": true
+    }
+  ]
+}
