@@ -49,6 +49,20 @@
         "@modelcontextprotocol/server-sequential-thinking"
       ]
     },
+    "serper-search": {
+      "command": "npx",
+      "args": ["-y", "serper-search-scrape-mcp-server"],
+      "env": {
+        "SERPER_API_KEY": "${input:serperApiKey}"
+      }
+    },
+    "tavily": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "${input:tavilyApiKey}"
+      }
+    },
     "time": {
       "command": "uvx",
       "args": ["mcp-server-time"]
@@ -89,6 +103,18 @@
       "type": "promptString",
       "id": "refApiKey",
       "description": "Ref API Key",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "serperApiKey",
+      "description": "Serper API Key",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "tavilyApiKey",
+      "description": "Tavily API Key",
       "password": true
     }
   ]
