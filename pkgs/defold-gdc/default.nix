@@ -13,11 +13,11 @@
 }:
 stdenv.mkDerivation rec {
   pname = "defold-gdc";
-  version = "1.10.1";
+  version = "1.10.4";
 
   src = fetchurl {
     url = "https://github.com/defold/defold/releases/download/${version}/gdc-linux";
-    hash = "sha256-s67CLYoeU11ws2Mr5SjKbVhxkCLNUCA6qONU/nbuQZA=";
+    hash = "sha256-8Lxya1U2kjSkRBBDu4w70fkqlGAY9J5KQbXwAHTxKLA=";
   };
 
   nativeBuildInputs = [
