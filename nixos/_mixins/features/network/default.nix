@@ -28,8 +28,8 @@ let
 
   # Per-host firewall configuration; mostly for Syncthing which is configured via Home Manager
   allowedTCPPorts = {
-    phasma = [ 22000 ];
-    vader = [ 22000 ];
+    phasma = [ 5900 22000 ];
+    vader = [ 5900 22000 ];
     revan = [ 22000 ];
     maul = [ 22000 ];
   };

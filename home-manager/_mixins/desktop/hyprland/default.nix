@@ -9,10 +9,12 @@
 let
   xkbLayout = "gb";
   monitors = (import ./monitors.nix { }).${hostname};
+  wayvncEnabled = false;
 in
 {
   home.packages = with pkgs; [
     hyprpicker
+    wayvnc
   ];
   # Hyprland is a Wayland compositor and dynamic tiling window manager
   # Additional applications are required to create a full desktop shell
@@ -33,6 +35,14 @@ in
       automount = false;
       tray = "auto";
       notify = true;
+    };
+    wayvnc = {
+      autoStart = wayvncEnabled;
+      enable = wayvncEnabled;
+      settings = {
+        address = "0.0.0.0";
+        port = 5900;
+      };
     };
   };
 
@@ -160,6 +170,7 @@ in
       };
       exec-once = [
         "hypr-session start"
+        #"wayvnc 0.0.0.0"
       ];
       general = {
         gaps_in = 5;
