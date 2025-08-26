@@ -21,9 +21,7 @@
     },
     "github": {
       "command": "github-mcp-server",
-      "args": [
-        "stdio"
-      ],
+      "args": ["stdio"],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:githubToken}"
       }
@@ -44,10 +42,7 @@
     },
     "sequentialthinking": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     },
     "serper-search": {
       "command": "npx",
