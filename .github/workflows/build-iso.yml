@@ -43,30 +43,6 @@ jobs:
         sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
         sudo df -h
-    - name: sbomnix
-      run: |
-        name="${{ github.job }}-${{ matrix.package }}"
-        nix run github:tiiuae/sbomnix#sbomnix -- \
-          --csv "${name}.sbom.csv" \
-          --cdx "${name}.sbom.cdx.json" \
-          --spdx "${name}.sbom.spdx.json" \
-          ./result
-    - name: vulnxscan
-      run: |
-        name="Console-ISO"
-        nix run github:tiiuae/sbomnix#vulnxscan -- \
-          --triage \
-          --sbom "${name}.sbom.cdx.json"
-        if [ -e vulns.triage.csv ]; then
-          grep -v -E "not_vulnerable|fix_not_available" vulns.triage.csv > cve.csv
-          if [ $(wc -l < cve.csv) -gt 1 ]; then
-            nix run github:nixos/nixpkgs#csv2md -- --columns "0-7,9" cve.csv | tee "${name}.vulnxscan.md"
-            echo "### Vulnerability Scan Results for ${name}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            cat "${name}.vulnxscan.md" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-        fi
     - name: Release ISO 🎁
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
