@@ -16,7 +16,7 @@ case "${HOST}" in
 esac
 
 # Pause all audio players
-playerctl -p cider pause || true
+ciderctl pause || true
 playerctl -p Lodge_iPad pause || true
 
 rhythmbox-client --no-start --set-volume 0

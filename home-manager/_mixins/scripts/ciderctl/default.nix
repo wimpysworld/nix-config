@@ -14,12 +14,9 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       bc
+      curl
+      jq
       uutils-coreutils-noprefix
-      gnugrep
-      gnused
-      playerctl
-      pulseaudio
-      pulsemixer
     ];
     text = builtins.readFile ./${name}.sh;
   };
