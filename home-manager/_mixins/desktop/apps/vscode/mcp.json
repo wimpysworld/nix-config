@@ -26,6 +26,14 @@
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:githubToken}"
       }
     },
+    "google-search": {
+      "command": "npx",
+      "args": ["-y", "@adenot/mcp-google-search"],
+      "env": {
+        "GOOGLE_API_KEY": "${input:googleSearchApiKey}",
+        "GOOGLE_SEARCH_ENGINE_ID": "${input:googleSearchEngineID}"
+      }
+    },
     "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
@@ -86,6 +94,18 @@
       "type": "promptString",
       "id": "githubToken",
       "description": "GitHub Personal Access Token",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "googleSearchApiKey",
+      "description": "Google Search API Key",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "googleSearchEngineID",
+      "description": "Google Search Engine ID",
       "password": true
     },
     {
