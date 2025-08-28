@@ -21,18 +21,24 @@ elif [ "$1" = "mute" ]; then
     echo "Muted"
 elif [ "$1" = "vol" ]; then
     if [ -z "${2:-}" ]; then
-        # Check if music is playing first
+        # First check if Cider is running at all
         #shellcheck disable=SC2086
-        IS_PLAYING=$(curl $TIMEOUT -s "$API_BASE/is-playing" | jq -r '.is_playing // false')
-
-        if [ "$IS_PLAYING" = "false" ]; then
+        if ! curl $TIMEOUT -s "$API_BASE/active" >/dev/null 2>&1; then
             echo "--"
         else
-            # Get current volume as percentage
+            # Check if music is playing
             #shellcheck disable=SC2086
-            VOLUME=$(curl $TIMEOUT -s "$API_BASE/volume" | jq -r '.volume // 0')
-            # shellcheck disable=SC2046
-            echo "$(printf "%.0f" $(echo "$VOLUME * 100" | bc -l))%"
+            IS_PLAYING=$(curl $TIMEOUT -s "$API_BASE/is-playing" | jq -r '.is_playing // false')
+
+            if [ "$IS_PLAYING" = "false" ]; then
+                echo "--"
+            else
+                # Get current volume as percentage
+                #shellcheck disable=SC2086
+                VOLUME=$(curl $TIMEOUT -s "$API_BASE/volume" | jq -r '.volume // 0')
+                # shellcheck disable=SC2046
+                echo "$(printf "%.0f" $(echo "$VOLUME * 100" | bc -l))%"
+            fi
         fi
     else
         # Check for increment/decrement syntax
