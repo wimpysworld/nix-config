@@ -18,7 +18,15 @@ lib.mkIf (lib.elem username installFor) {
   home = {
     file = {
       "${config.xdg.configHome}/Code/User/mcp.json".text = builtins.readFile ./mcp.json;
-      "${config.xdg.configHome}/Code/User/prompts/copilot.instructions.md".text = builtins.readFile ./global.instructions.md;
+      "${config.xdg.configHome}/Code/User/prompts/dilbert.chatmode.md".text = builtins.readFile ./dilbert.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/penry.chatmode.md".text = builtins.readFile ./penry.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/copilot.instructions.md".text = builtins.readFile ./copilot.instructions.md;
+      "${config.xdg.configHome}/Code/User/prompts/code-review.prompt.md".text = builtins.readFile ./code-review.prompt.md;
+      "${config.xdg.configHome}/Code/User/prompts/memory-load.prompt.md".text = builtins.readFile ./memory-load.prompt.md;
+      "${config.xdg.configHome}/Code/User/prompts/memory-save.prompt.md".text = builtins.readFile ./memory-save.prompt.md;
+      "${config.xdg.configHome}/Code/User/prompts/offboard.prompt.md".text = builtins.readFile ./offboard.prompt.md;
+      "${config.xdg.configHome}/Code/User/prompts/onboard.prompt.md".text = builtins.readFile ./onboard.prompt.md;
+      "${config.xdg.configHome}/Code/User/prompts/orientate.prompt.md".text = builtins.readFile ./orientate.prompt.md;
     };
     # Packages that are used by some of the extensions below
     packages = with pkgs; [
