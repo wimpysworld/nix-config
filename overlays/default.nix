@@ -46,11 +46,23 @@
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (_lpself: lpsuper: {
       mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
         pname = "mwprocapture";
-        subVersion = "4479";
+        subVersion = "4420";
+        version = "1.3.${subVersion}";
+        src = prev.fetchurl {
+          url = "http://www.magewell.com/files/support/ProCaptureForLinux_${version}.tar.gz";
+          sha256 = "sha256-aX8vhousQQ48QPgfLjESGbBw26egDB46AmSkruUaM5g=";
+        };
+      });
+    });
+
+    linuxPackages = prev.linuxPackages.extend (_lpself: lpsuper: {
+      mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
+        pname = "mwprocapture";
+        subVersion = "4490";
         version = "1.3.${subVersion}";
         src = prev.fetchurl {
           url = "https://www.magewell.com/files/drivers/ProCaptureForLinuxPUBLIC_${version}.tar.gz";
-          sha256 = "sha256-jol3Ws3k8n6fyprqb4pgh7zOg6PJmXRpzZOQ3WALA2o=";
+          sha256 = "sha256-W/HqTQsJKnIUMC13bFuwdMiNABftmKv0qLSFU3bCFAc=";
         };
       });
     });
