@@ -19,7 +19,13 @@ lib.mkIf (lib.elem username installFor) {
     file = {
       "${config.xdg.configHome}/Code/User/mcp.json".text = builtins.readFile ./mcp.json;
       "${config.xdg.configHome}/Code/User/prompts/dilbert.chatmode.md".text = builtins.readFile ./dilbert.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/gonzales.chatmode.md".text = builtins.readFile ./gonzales.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/linus.chatmode.md".text = builtins.readFile ./linus.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/luthor.chatmode.md".text = builtins.readFile ./luthor.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/nixpert.chatmode.md".text = builtins.readFile ./nixpert.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/otto.chatmode.md".text = builtins.readFile ./otto.chatmode.md;
       "${config.xdg.configHome}/Code/User/prompts/penry.chatmode.md".text = builtins.readFile ./penry.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/velma.chatmode.md".text = builtins.readFile ./velma.chatmode.md;
       "${config.xdg.configHome}/Code/User/prompts/copilot.instructions.md".text = builtins.readFile ./copilot.instructions.md;
       "${config.xdg.configHome}/Code/User/prompts/code-review.prompt.md".text = builtins.readFile ./code-review.prompt.md;
       "${config.xdg.configHome}/Code/User/prompts/memory-load.prompt.md".text = builtins.readFile ./memory-load.prompt.md;
