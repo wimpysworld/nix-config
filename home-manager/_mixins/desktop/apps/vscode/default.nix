@@ -40,6 +40,7 @@ lib.mkIf (lib.elem username installFor) {
       "${config.xdg.configHome}/Code/User/prompts/review-code.prompt.md".text = builtins.readFile ./review-code.prompt.md;
       "${config.xdg.configHome}/Code/User/prompts/review-naming.prompt.md".text = builtins.readFile ./review-naming.prompt.md;
       "${config.xdg.configHome}/Code/User/prompts/review-performance.prompt.md".text = builtins.readFile ./review-performance.prompt.md;
+      "${config.xdg.configHome}/Code/User/prompts/review-pull-request-feedback.prompt.md".text = builtins.readFile ./review-pull-request-feedback.prompt.md;
       "${config.xdg.configHome}/Code/User/prompts/review-tests.prompt.md".text = builtins.readFile ./review-tests.prompt.md;
       "${config.xdg.configHome}/Code/User/prompts/update-docs.prompt.md".text = builtins.readFile ./update-docs.prompt.md;
     };
