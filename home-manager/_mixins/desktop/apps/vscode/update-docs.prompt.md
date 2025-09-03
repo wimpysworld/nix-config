@@ -1,6 +1,6 @@
 ---
 mode: 'velma'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'context7', 'memory', 'Ref', 'sequentialthinking', 'time']
+tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'runTests', 'editFiles', 'runNotebooks', 'search', 'runCommands', 'runTasks', 'context7', 'memory', 'Ref', 'sequentialthinking', 'time']
 description: 'Documentation update request'
 ---
 You've just completed implementing new features and fixes in ${input:variableName:#codebase}. Please update the project documentation to reflect these changes.

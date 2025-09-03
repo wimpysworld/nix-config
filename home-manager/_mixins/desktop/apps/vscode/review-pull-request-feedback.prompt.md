@@ -1,6 +1,6 @@
 ---
 mode: 'dilbert'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'runTests', 'editFiles', 'search', 'runCommands', 'memory', 'sequentialthinking', 'time']
+tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'runTests', 'editFiles', 'runNotebooks', 'search', 'runCommands', 'runTasks', 'github', 'memory', 'sequentialthinking', 'time']
 description: 'GitHub Copilot PR Review Assessment & Implementation'
 ---
 I need you to systematically evaluate and implement (or explicitly decline with rationale) the feedback from GitHub Copilot's pull request review. Your goal is to improve code quality whilst maintaining development velocity and avoiding over-engineering.

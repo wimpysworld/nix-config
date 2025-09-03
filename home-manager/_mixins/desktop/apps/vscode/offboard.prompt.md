@@ -1,11 +1,11 @@
 ---
-mode: 'agent'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'search', 'new', 'google-search', 'memory', 'sequentialthinking', 'time']
-description: 'Offboard 📤'
+mode: 'penry'
+tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'runTests', 'editFiles', 'runNotebooks', 'search', 'runCommands', 'runTasks', 'github', 'google-search', 'memory', 'sequentialthinking', 'time']
+description: 'AI Engineer Handover Request'
 ---
 ## AI Engineer Handover Request
 
-I need you to create a thorough handover document, called ${input:variableName:PLAN.md}, for the next AI engineer who will continue work on this project. This document should enable them to seamlessly pick up where we've left off without needing to reverse-engineer our decisions or rediscover limitations we've already identified.
+I need you to create a thorough handover document for the next AI engineer who will continue work on this project. This document should enable them to seamlessly pick up where we've left off without needing to reverse-engineer our decisions or rediscover limitations we've already identified.
 
 Please structure your handover document with the following sections:
 

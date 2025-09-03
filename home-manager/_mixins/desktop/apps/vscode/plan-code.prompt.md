@@ -1,6 +1,6 @@
 ---
 mode: 'dilbert'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'editFiles', 'runNotebooks', 'search', 'runCommands', 'runTasks', 'context7', 'memory', 'Ref', 'sequentialthinking', 'time']
+tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'runTests', 'editFiles', 'runNotebooks', 'search', 'runCommands', 'runTasks', 'context7', 'github', 'google-search', 'memory', 'Ref', 'sequentialthinking', 'time']
 description: 'Implementation Plan Request'
 ---
 Now that you've reviewed the handover document and we've clarified any questions, please create a detailed implementation plan optimised for AI-assisted development.

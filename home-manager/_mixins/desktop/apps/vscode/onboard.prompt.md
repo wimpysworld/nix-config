@@ -1,7 +1,7 @@
 ---
-mode: 'agent'
-tools: ['codebase', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'search', 'memory', 'sequentialthinking', 'time']
-description: 'Onboard 📥'
+mode: 'dilbert'
+tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'extensions', 'runTests', 'editFiles', 'runNotebooks', 'search', 'runCommands', 'runTasks', 'github', 'memory', 'sequentialthinking', 'time']
+description: 'Project Onboarding & Handover Review'
 ---
 ## Project Onboarding & Handover Review
 

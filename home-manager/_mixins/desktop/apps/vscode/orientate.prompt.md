@@ -1,6 +1,6 @@
 ---
 mode: 'penry'
-tools: ['codebase', 'usages', 'think', 'changes', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'search', 'runCommands', 'firecrawl-mcp', 'memory', 'sequentialthinking', 'time']
+tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'runTests', 'editFiles', 'runNotebooks', 'search', 'runCommands', 'runTasks', 'firecrawl-mcp', 'github', 'google-search', 'memory', 'sequentialthinking', 'time']
 description: 'Orientate 🧭'
 ---
 ## Project Orientation & Context Loading
