@@ -1,11 +1,11 @@
 ---
-mode: 'agent'
+mode: 'penry'
 tools: ['codebase', 'usages', 'think', 'changes', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'search', 'runCommands', 'firecrawl-mcp', 'memory', 'sequentialthinking', 'time']
 description: 'Orientate 🧭'
 ---
 ## Project Orientation & Context Loading
 
-I need you to orient yourself with the #codebase before we begin work. Please follow these steps systematically to ensure you have full context:
+I need you to orient yourself with ${input:variableName:#codebase} before we begin work. Please follow these steps systematically to ensure you have full context:
 
 ### 1. **Establish Temporal Context**
 - Note the current date and time
