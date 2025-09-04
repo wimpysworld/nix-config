@@ -1,6 +1,6 @@
 ---
 mode: 'penry'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'runTests', 'editFiles', 'runNotebooks', 'search', 'runCommands', 'runTasks', 'github', 'google-search', 'memory', 'sequentialthinking', 'time']
+tools: ['codebase', 'usages', 'think', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'editFiles', 'search', 'runCommands', 'github', 'memory', 'sequentialthinking', 'time', 'git_branch', 'git_checkout', 'git_create_branch', 'git_diff', 'git_diff_staged', 'git_diff_unstaged', 'git_log', 'git_show', 'git_status']
 description: 'AI Engineer Handover Request'
 ---
 ## AI Engineer Handover Request

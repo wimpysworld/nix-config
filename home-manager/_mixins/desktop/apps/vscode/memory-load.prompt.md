@@ -1,6 +1,6 @@
 ---
 mode: 'agent'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'search', 'memory', 'sequentialthinking', 'time']
+tools: ['codebase', 'usages', 'think', 'changes', 'terminalSelection', 'terminalLastCommand', 'fetch', 'searchResults', 'search', 'runCommands', 'memory', 'sequentialthinking', 'time', 'mcp-google-cse']
 description: 'Memory Context Retrieval'
 ---
 Please use your memory graph tool to recall all relevant context for this project/conversation.
