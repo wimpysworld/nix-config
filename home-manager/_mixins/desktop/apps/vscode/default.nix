@@ -26,6 +26,7 @@ lib.mkIf (lib.elem username installFor) {
       "${config.xdg.configHome}/Code/User/prompts/nixpert.chatmode.md".text = builtins.readFile ./nixpert.chatmode.md;
       "${config.xdg.configHome}/Code/User/prompts/otto.chatmode.md".text = builtins.readFile ./otto.chatmode.md;
       "${config.xdg.configHome}/Code/User/prompts/penry.chatmode.md".text = builtins.readFile ./penry.chatmode.md;
+      "${config.xdg.configHome}/Code/User/prompts/tessl.chatmode.md".text = builtins.readFile ./tessl.chatmode.md;
       "${config.xdg.configHome}/Code/User/prompts/velma.chatmode.md".text = builtins.readFile ./velma.chatmode.md;
       "${config.xdg.configHome}/Code/User/prompts/create-code.prompt.md".text = builtins.readFile ./create-code.prompt.md;
       "${config.xdg.configHome}/Code/User/prompts/create-conventional-commit.prompt.md".text = builtins.readFile ./create-conventional-commit.prompt.md;
