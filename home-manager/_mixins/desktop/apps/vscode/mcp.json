@@ -1,23 +1,31 @@
 {
   "servers": {
-    "brave-search-mcp-server": {
-      "command": "npx",
-      "args": ["-y", "@brave/brave-search-mcp-server","--transport","stdio"],
-      "env": {
-        "BRAVE_API_KEY": "${input:braveSearchApiKey}"
-      }
-    },
+    //"brave-search-mcp-server": {
+    //  "command": "npx",
+    //  "args": ["-y", "@brave/brave-search-mcp-server","--transport","stdio"],
+    //  "env": {
+    //    "BRAVE_API_KEY": "${input:braveSearchApiKey}"
+    //  }
+    //},
     "context7": {
       "command": "npx",
       "args": ["-y","@upstash/context7-mcp","--api-key","${input:context7ApiKey}"
       ]
     },
-    "firecrawl-mcp": {
-      "command": "npx",
-      "args": ["-y", "firecrawl-mcp"],
-      "env": {
-        "FIRECRAWL_API_KEY": "${input:firecrawlApiKey}"
-      }
+    //"fetch": {
+    //  "command": "uvx",
+    //  "args": ["mcp-server-fetch"]
+    //},
+    //"firecrawl-mcp": {
+    //  "command": "npx",
+    //  "args": ["-y", "firecrawl-mcp"],
+    //  "env": {
+    //    "FIRECRAWL_API_KEY": "${input:firecrawlApiKey}"
+    //  }
+    //},
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
     },
     "github": {
       "command": "github-mcp-server",
@@ -26,12 +34,12 @@
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:githubToken}"
       }
     },
-    "google-search": {
-      "command": "npx",
-      "args": ["-y", "@adenot/mcp-google-search"],
+    "mcp-google-cse": {
+      "command": "uvx",
+      "args": ["mcp-google-cse"],
       "env": {
-        "GOOGLE_API_KEY": "${input:googleSearchApiKey}",
-        "GOOGLE_SEARCH_ENGINE_ID": "${input:googleSearchEngineID}"
+        "API_KEY": "${input:googleSearchApiKey}",
+        "ENGINE_ID": "${input:googleSearchEngineID}"
       }
     },
     "memory": {
@@ -44,27 +52,25 @@
     "nixos": {
       "command": "mcp-nixos"
     },
-    "Ref": {
-      "type": "http",
-      "url": "https://api.ref.tools/mcp?apiKey=${input:refApiKey}"
-    },
+    //"Ref": {
+    //  "type": "http",
+    //  "url": "https://api.ref.tools/mcp?apiKey=${input:refApiKey}"
+    //},
     "sequentialthinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     },
-    "serper-search": {
-      "command": "npx",
-      "args": ["-y", "serper-search-scrape-mcp-server"],
-      "env": {
-        "SERPER_API_KEY": "${input:serperApiKey}"
-      }
-    },
-    "tavily": {
-      "command": "npx",
-      "args": ["-y", "tavily-mcp@latest"],
-      "env": {
-        "TAVILY_API_KEY": "${input:tavilyApiKey}"
-      }
+    //"tavily": {
+    //  "command": "npx",
+    //  "args": ["-y", "tavily-mcp@latest"],
+    //  "env": {
+    //    "TAVILY_API_KEY": "${input:tavilyApiKey}"
+    //  }
+    //},
+    "tessl": {
+      "type": "stdio",
+      "command": "tessl",
+      "args": ["mcp"]
     },
     "time": {
       "command": "uvx",
@@ -72,24 +78,24 @@
     }
   },
   "inputs": [
-    {
-      "type": "promptString",
-      "id": "braveSearchApiKey",
-      "description": "Brave Search API Key",
-      "password": true
-    },
+    //{
+    //  "type": "promptString",
+    //  "id": "braveSearchApiKey",
+    //  "description": "Brave Search API Key",
+    //  "password": true
+    //},
     {
       "type": "promptString",
       "id": "context7ApiKey",
       "description": "Context7 API Key",
       "password": true
     },
-    {
-      "type": "promptString",
-      "id": "firecrawlApiKey",
-      "description": "Firecrawl API Key",
-      "password": true
-    },
+    //{
+    //  "type": "promptString",
+    //  "id": "firecrawlApiKey",
+    //  "description": "Firecrawl API Key",
+    //  "password": true
+    //},
     {
       "type": "promptString",
       "id": "githubToken",
@@ -113,24 +119,18 @@
       "id": "memoryFilePath",
       "description": "Memory File Path",
       "password": false
-    },
-    {
-      "type": "promptString",
-      "id": "refApiKey",
-      "description": "Ref API Key",
-      "password": true
-    },
-    {
-      "type": "promptString",
-      "id": "serperApiKey",
-      "description": "Serper API Key",
-      "password": true
-    },
-    {
-      "type": "promptString",
-      "id": "tavilyApiKey",
-      "description": "Tavily API Key",
-      "password": true
     }
+    //{
+    //  "type": "promptString",
+    //  "id": "refApiKey",
+    //  "description": "Ref API Key",
+    //  "password": true
+    //},
+    //{
+    //  "type": "promptString",
+    // "id": "tavilyApiKey",
+    //  "description": "Tavily API Key",
+    //  "password": true
+    //}
   ]
 }

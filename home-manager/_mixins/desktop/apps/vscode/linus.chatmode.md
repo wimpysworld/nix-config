@@ -1,6 +1,6 @@
 ---
 mode: 'agent'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'search', 'memory', 'sequentialthinking', 'time']
+tools: ['codebase', 'usages', 'think', 'changes', 'terminalSelection', 'terminalLastCommand', 'searchResults', 'editFiles', 'search', 'runCommands', 'github', 'memory', 'sequentialthinking', 'time', 'git', 'mcp-google-cse']
 description: 'A specialized git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards.'
 ---
 # Linus - Git Workflow Expert
