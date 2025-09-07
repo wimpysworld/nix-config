@@ -28,7 +28,7 @@ in
         plugins = [
           "github.com/WeidiDeng/caddy-cloudflare-ip@v0.0.0-20231130002422-f53b62aa13cb"
         ];
-        hash = "sha256-ntYZso4gaTMdQ3AkX0dk/EpfR924tdaaMdgbXvwX3Yo=";
+        hash = "sha256-UhQOGV0149dK4u9mr449aohfG3KKwSDRW9WrvT0uOKI=";
       };
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
       virtualHosts."${hostname}.${tailNet}" = lib.mkIf config.services.tailscale.enable
