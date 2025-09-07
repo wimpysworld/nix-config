@@ -131,7 +131,9 @@
     activationScripts = {
       nixos-needsreboot = {
         supportsDryActivation = true;
-        text = "${lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default} \"$systemConfig\" || true";
+        text = "${
+          lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default
+        } \"$systemConfig\" || true";
       };
     };
     defaults = {
@@ -202,18 +204,23 @@
           "/Users/${username}/Applications/Home Manager Apps/Wavebox.app"
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"
-        ] ++ lib.optionals (username == "martin.wimpress") [
+        ]
+        ++ lib.optionals (username == "martin.wimpress") [
           "/Applications/Slack.app"
-        ] ++ [
+        ]
+        ++ [
           "/Applications/Halloy.app"
           "/Users/${username}/Applications/Home Manager Apps/Visual Studio Code.app"
           "/Users/${username}/Applications/Home Manager Apps/GitKraken.app"
           "/Users/${username}/Applications/Home Manager Apps/Alacritty.app"
-        ] ++ lib.optionals (username == "martin.wimpress") [
+        ]
+        ++ lib.optionals (username == "martin.wimpress") [
           "/Applications/Cider.app"
-        ] ++ lib.optionals (username == "martin") [
+        ]
+        ++ lib.optionals (username == "martin") [
           "/System/Applications/Music.app"
-        ] ++ [
+        ]
+        ++ [
           "/Applications/Heynote.app"
           "/Applications/Joplin.app"
           "/System/Applications/Launchpad.app"

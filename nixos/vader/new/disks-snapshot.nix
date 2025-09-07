@@ -99,7 +99,12 @@ _: {
                   subvolumes = {
                     "/snapshot" = {
                       mountpoint = "/mnt/snapshot";
-                      mountOptions = [ "rw" "compress=zstd:3" "noatime" "ssd" ];
+                      mountOptions = [
+                        "rw"
+                        "compress=zstd:3"
+                        "noatime"
+                        "ssd"
+                      ];
                     };
                   };
                 };

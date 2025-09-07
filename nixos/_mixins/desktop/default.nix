@@ -10,7 +10,8 @@
   imports = [
     ./apps
     ./features
-  ] ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
+  ]
+  ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
   boot = {
     consoleLogLevel = 0;

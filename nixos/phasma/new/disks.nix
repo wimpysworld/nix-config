@@ -79,7 +79,10 @@ _: {
                   # Disable periodic checks
                   # tune2fs -c 0 -i 0 /dev/mapper/vault
                   # Add "ro" to prevent accidental writes once the system is running.
-                  mountOptions = [ "noatime" "errors=remount-ro" ];
+                  mountOptions = [
+                    "noatime"
+                    "errors=remount-ro"
+                  ];
                 };
               };
             };
@@ -113,11 +116,21 @@ _: {
                   subvolumes = {
                     "/root" = {
                       mountpoint = "/";
-                      mountOptions = [ "rw" "compress=zstd:3" "noatime" "ssd" ];
+                      mountOptions = [
+                        "rw"
+                        "compress=zstd:3"
+                        "noatime"
+                        "ssd"
+                      ];
                     };
                     "/nix" = {
                       mountpoint = "/nix";
-                      mountOptions = [ "rw" "compress=zstd:1" "noatime" "ssd" ];
+                      mountOptions = [
+                        "rw"
+                        "compress=zstd:1"
+                        "noatime"
+                        "ssd"
+                      ];
                     };
                   };
                 };

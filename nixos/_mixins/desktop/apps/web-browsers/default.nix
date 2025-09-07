@@ -6,7 +6,10 @@
   ...
 }:
 let
-  forFamily = [ "agatha" "louise" ];
+  forFamily = [
+    "agatha"
+    "louise"
+  ];
   forMartin = [ "martin" ];
 in
 {
@@ -34,7 +37,7 @@ in
       enable = isInstall;
       extensions = [
         "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-        "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password 
+        "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
       ];
       extraOpts = {
         # Misc; privacy and data collection prevention

@@ -1,4 +1,10 @@
-{ isInstall, lib, pkgs, username, ... }:
+{
+  isInstall,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 lib.mkIf isInstall {
   environment.systemPackages = with pkgs; [ deckmaster ];
   services = {

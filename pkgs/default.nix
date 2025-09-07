@@ -1,7 +1,6 @@
 # Custom packages, that can be defined similarly to ones from nixpkgs
 # You can build them using 'nix build .#example'
-pkgs:
-{
+pkgs: {
   # Local packages being prepped for upstreaming
   cider = pkgs.callPackage ./cider { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
@@ -19,15 +18,15 @@ pkgs:
   wolfictl = pkgs.callPackage ./wolfictl { };
 
   # Remove when upgrading to NixOS 25.11
-  obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };   #merged
-  obs-dvd-screensaver = pkgs.callPackage ./obs-plugins/obs-dvd-screensaver.nix { };						        #merged
-  obs-markdown = pkgs.callPackage ./obs-plugins/obs-markdown.nix { };                                 #merged
-  obs-rgb-levels = pkgs.callPackage ./obs-plugins/obs-rgb-levels.nix { }; 								            #merged
-  obs-scene-as-transition = pkgs.callPackage ./obs-plugins/obs-scene-as-transition.nix { };				    #merged
-  obs-stroke-glow-shadow = pkgs.callPackage ./obs-plugins/obs-stroke-glow-shadow.nix { };				      #merged
-  obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };						        #merged
-  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };       #merged
-  pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { };											                  #merged
+  obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { }; # merged
+  obs-dvd-screensaver = pkgs.callPackage ./obs-plugins/obs-dvd-screensaver.nix { }; # merged
+  obs-markdown = pkgs.callPackage ./obs-plugins/obs-markdown.nix { }; # merged
+  obs-rgb-levels = pkgs.callPackage ./obs-plugins/obs-rgb-levels.nix { }; # merged
+  obs-scene-as-transition = pkgs.callPackage ./obs-plugins/obs-scene-as-transition.nix { }; # merged
+  obs-stroke-glow-shadow = pkgs.callPackage ./obs-plugins/obs-stroke-glow-shadow.nix { }; # merged
+  obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { }; # merged
+  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { }; # merged
+  pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { }; # merged
 
   # In review upstream
   obs-browser-transition = pkgs.callPackage ./obs-plugins/obs-browser-transition.nix { };

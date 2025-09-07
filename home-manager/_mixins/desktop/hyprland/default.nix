@@ -18,14 +18,14 @@ in
   # Hyprland is a Wayland compositor and dynamic tiling window manager
   # Additional applications are required to create a full desktop shell
   imports = [
-    ./avizo        # on-screen display for audio and backlight
-    ./fuzzel       # app launcher, emoji picker and clipboard manager
-    ./hyprlock     # screen locker
-    ./hyprpaper    # wallpaper setter
-    ./hyprshot     # screenshot grabber and annotator
-    ./swaync       # notification center
-    ./waybar       # status bar
-    ./wlogout      # session menu
+    ./avizo # on-screen display for audio and backlight
+    ./fuzzel # app launcher, emoji picker and clipboard manager
+    ./hyprlock # screen locker
+    ./hyprpaper # wallpaper setter
+    ./hyprshot # screenshot grabber and annotator
+    ./swaync # notification center
+    ./waybar # status bar
+    ./wlogout # session menu
   ];
   services = {
     gpg-agent.pinentry.package = lib.mkForce pkgs.pinentry-gnome3;
@@ -75,51 +75,50 @@ in
         "$mod, mouse:272, movewindow"
         "Mod5, mouse:272, movewindow"
       ];
-      bind =
-        [
-          # Process management
-          "$mod, Q, killactive"
-          # Launch applications
-          "$mod, E, exec, nautilus --new-window"
-          "$mod, T, exec, foot"
-          # Move focus
-          "ALT, Tab, cyclenext"
-          "ALT, Tab, bringactivetotop"
-          "ALT SHIFT, Tab, cyclenext, prev"
-          "ALT SHIFT, Tab, bringactivetotop"
-          # Move focus with SHIFT + arrow keys
-          "ALT, left, movefocus, l"
-          "ALT, right, movefocus, r"
-          "ALT, up, movefocus, u"
-          "ALT, down, movefocus, d"
-          "ALT $mod, left, swapwindow, l"
-          "ALT $mod, right, swapwindow, r"
-          "ALT $mod, up, swapwindow, u"
-          "ALT $mod, down, swapwindow, d"
-          "$mod, up, fullscreen, 1"
-          "$mod, down, togglefloating"
-          "$mod, P, pseudo"
-          # Switch workspace
-          "CTRL ALT, left, workspace, e-1"
-          "CTRL ALT, right, workspace, e+1"
-          "CTRL ALT, 1, workspace, 1"
-          "$mod ALT, 1, movetoworkspace, 1"
-          "CTRL ALT, 2, workspace, 2"
-          "$mod ALT, 2, movetoworkspace, 2"
-          "CTRL ALT, 3, workspace, 3"
-          "$mod ALT, 3, movetoworkspace, 3"
-          "CTRL ALT, 4, workspace, 4"
-          "$mod ALT, 4, movetoworkspace, 4"
-          "CTRL ALT, 5, workspace, 5"
-          "$mod ALT, 5, movetoworkspace, 5"
-          "CTRL ALT, 6, workspace, 6"
-          "$mod ALT, 6, movetoworkspace, 6"
-          "CTRL ALT, 7, workspace, 7"
-          "$mod ALT, 7, movetoworkspace, 7"
-          "CTRL ALT, 8, workspace, 8"
-          "$mod ALT, 8, movetoworkspace, 8"
-          "CTRL ALT, 9, workspace, 9"
-          "$mod ALT, 9, movetoworkspace, 9"
+      bind = [
+        # Process management
+        "$mod, Q, killactive"
+        # Launch applications
+        "$mod, E, exec, nautilus --new-window"
+        "$mod, T, exec, foot"
+        # Move focus
+        "ALT, Tab, cyclenext"
+        "ALT, Tab, bringactivetotop"
+        "ALT SHIFT, Tab, cyclenext, prev"
+        "ALT SHIFT, Tab, bringactivetotop"
+        # Move focus with SHIFT + arrow keys
+        "ALT, left, movefocus, l"
+        "ALT, right, movefocus, r"
+        "ALT, up, movefocus, u"
+        "ALT, down, movefocus, d"
+        "ALT $mod, left, swapwindow, l"
+        "ALT $mod, right, swapwindow, r"
+        "ALT $mod, up, swapwindow, u"
+        "ALT $mod, down, swapwindow, d"
+        "$mod, up, fullscreen, 1"
+        "$mod, down, togglefloating"
+        "$mod, P, pseudo"
+        # Switch workspace
+        "CTRL ALT, left, workspace, e-1"
+        "CTRL ALT, right, workspace, e+1"
+        "CTRL ALT, 1, workspace, 1"
+        "$mod ALT, 1, movetoworkspace, 1"
+        "CTRL ALT, 2, workspace, 2"
+        "$mod ALT, 2, movetoworkspace, 2"
+        "CTRL ALT, 3, workspace, 3"
+        "$mod ALT, 3, movetoworkspace, 3"
+        "CTRL ALT, 4, workspace, 4"
+        "$mod ALT, 4, movetoworkspace, 4"
+        "CTRL ALT, 5, workspace, 5"
+        "$mod ALT, 5, movetoworkspace, 5"
+        "CTRL ALT, 6, workspace, 6"
+        "$mod ALT, 6, movetoworkspace, 6"
+        "CTRL ALT, 7, workspace, 7"
+        "$mod ALT, 7, movetoworkspace, 7"
+        "CTRL ALT, 8, workspace, 8"
+        "$mod ALT, 8, movetoworkspace, 8"
+        "CTRL ALT, 9, workspace, 9"
+        "$mod ALT, 9, movetoworkspace, 9"
       ];
       # https://wiki.hyprland.org/Configuring/Variables/#animations
       animations = {
@@ -177,7 +176,8 @@ in
         gaps_out = 5;
         border_size = 2;
         # https://wiki.hyprland.org/Configuring/Variables/#variable-types for info about colors
-        "col.active_border" = "rgb(cba6f7) rgb(f38ba8) rgb(eba0ac) rgb(fab387) rgb(f9e2af) rgb(a6e3a1) rgb(94e2d5) rgb(89dceb) rgb(89b4fa) rgb(b4befe) 270deg";
+        "col.active_border" =
+          "rgb(cba6f7) rgb(f38ba8) rgb(eba0ac) rgb(fab387) rgb(f9e2af) rgb(a6e3a1) rgb(94e2d5) rgb(89dceb) rgb(89b4fa) rgb(b4befe) 270deg";
         "col.inactive_border" = "rgb(45475a) rgb(313244) rgb(45475a) rgb(313244) 270deg";
         resize_on_border = true;
         extend_border_grab_area = 10;
@@ -186,10 +186,7 @@ in
       #https://wiki.hyprland.org/Configuring/Master-Layout/
       master = {
         mfact = if hostname == "phasma" then 0.5 else 0.55;
-        orientation = if hostname == "phasma" then
-          "center"
-        else
-          "left";
+        orientation = if hostname == "phasma" then "center" else "left";
       };
       # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
       dwindle = {
@@ -231,10 +228,10 @@ in
       plugin = {
         hyprtrails = {
           color = "rgba(a6e3a1aa)";
-          bezier_step = 0.025; #0.025
-          points_per_step = 2; #2
-          history_points = 12; #20
-          history_step = 2;    #2
+          bezier_step = 0.025; # 0.025
+          points_per_step = 2; # 2
+          history_points = 12; # 20
+          history_step = 2; # 2
         };
       };
       windowrulev2 = [
@@ -252,7 +249,6 @@ in
         "opacity 1.0, class: Gimp"
         "opacity 1.0, class: love"
         "opacity 1.0, title: ^QEMU"
-
 
         # make pop-up file dialogs floating, centred, and pinned
         "float, title:(Open|Progress|Save File)"
@@ -317,7 +313,10 @@ in
   xdg.portal = {
     config = {
       common = {
-        default = [ "hyprland" "gtk" ];
+        default = [
+          "hyprland"
+          "gtk"
+        ];
         "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
       };
     };

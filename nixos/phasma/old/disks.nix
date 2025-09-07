@@ -8,7 +8,8 @@
   lib,
   username,
   ...
-}: {
+}:
+{
   boot = {
     swraid = {
       enable = true;

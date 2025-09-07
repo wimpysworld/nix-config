@@ -1,6 +1,8 @@
-_: { imports = [
+_: {
+  imports = [
     ./ai
-  ./development
-  ./fonts
-  ./yubikey
-]; }
+    ./development
+    ./fonts
+    ./yubikey
+  ];
+}

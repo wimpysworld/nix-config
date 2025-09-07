@@ -1,4 +1,10 @@
-{ config, hostname, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
   installOn = prodOn ++ testOn;
   prodOn = [ "malak" ];
@@ -69,7 +75,8 @@ lib.mkIf (lib.elem hostname installOn) {
   systemd.tmpfiles.rules = [
     # Create the directory for the shader cache required by VA-API on AMD
     "d /var/empty/.cache 0777 nobody users"
-  ] ++ lib.optionals config.services.geoipupdate.enable [
+  ]
+  ++ lib.optionals config.services.geoipupdate.enable [
     # https://owncast.online/docs/viewers/
     "L+ ${config.services.owncast.dataDir}/data/GeoLite2-City.mmdb - - - - ${config.services.geoipupdate.settings.DatabaseDirectory}/GeoLite2-City.mmdb"
   ];

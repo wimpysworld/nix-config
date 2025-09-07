@@ -8,18 +8,22 @@
 }:
 let
   basePath = "/netdata";
-  installOn = [ "malak" "maul" "revan" ];
+  installOn = [
+    "malak"
+    "maul"
+    "revan"
+  ];
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
 lib.mkIf (lib.elem config.networking.hostName installOn) {
   services = {
     # Reverse proxy netdata if Tailscale is enabled.
-    caddy.virtualHosts."${hostname}.${tailNet}".extraConfig = lib.mkIf
-      (config.services.netdata.enable && config.services.tailscale.enable)
-      ''
-        redir ${basePath} ${basePath}/
-        reverse_proxy ${basePath}/* localhost:19999
-      '';
+    caddy.virtualHosts."${hostname}.${tailNet}".extraConfig =
+      lib.mkIf (config.services.netdata.enable && config.services.tailscale.enable)
+        ''
+          redir ${basePath} ${basePath}/
+          reverse_proxy ${basePath}/* localhost:19999
+        '';
     netdata = {
       # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present
       configDir = lib.mkIf hasNvidiaGPU {

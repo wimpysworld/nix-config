@@ -1,18 +1,30 @@
-{ config, hostname, lib, tailNet, ... }:
+{
+  config,
+  hostname,
+  lib,
+  tailNet,
+  ...
+}:
 let
   basePath = "/scrutiny";
-  installOn = [ "malak" "maul" "revan" "phasma" "vader" ];
+  installOn = [
+    "malak"
+    "maul"
+    "revan"
+    "phasma"
+    "vader"
+  ];
 in
 lib.mkIf (lib.elem hostname installOn) {
   services = {
     # Reverse proxy scrutiny if Tailscale is enabled.
     # https://github.com/AnalogJ/scrutiny/blob/master/docs/TROUBLESHOOTING_REVERSE_PROXY.md?plain=1#L62
-    caddy.virtualHosts."${hostname}.${tailNet}".extraConfig = lib.mkIf
-      (config.services.scrutiny.enable && config.services.tailscale.enable)
-      ''
-        redir ${basePath} ${basePath}/
-        reverse_proxy ${basePath}/* localhost:8080
-      '';
+    caddy.virtualHosts."${hostname}.${tailNet}".extraConfig =
+      lib.mkIf (config.services.scrutiny.enable && config.services.tailscale.enable)
+        ''
+          redir ${basePath} ${basePath}/
+          reverse_proxy ${basePath}/* localhost:8080
+        '';
     scrutiny = {
       enable = true;
       collector = {

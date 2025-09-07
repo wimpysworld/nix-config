@@ -7,20 +7,30 @@
   ...
 }:
 let
-  installFor = [ "martin" "martin.wimpress" ];
+  installFor = [
+    "martin"
+    "martin.wimpress"
+  ];
   inherit (pkgs.stdenv) isLinux;
 
-  slackWavebox = (inputs.xdg-override.lib.wrapPackage {
-    nameMatch = [
-      { case = "^https?://"; command = "wavebox"; }
-    ];
-  } pkgs.slack);
+  slackWavebox = (
+    inputs.xdg-override.lib.wrapPackage {
+      nameMatch = [
+        {
+          case = "^https?://";
+          command = "wavebox";
+        }
+      ];
+    } pkgs.slack
+  );
 in
 {
   home = {
     file = lib.mkIf (lib.elem username installFor) {
-      "${config.home.homeDirectory}/.local/share/chatterino/Themes/mocha-blue.json".text = builtins.readFile ./chatterino-mocha-blue.json;
-      "${config.home.homeDirectory}/.config/halloy/themes/catppuccin-mocha.toml".text = builtins.readFile ./halloy-catppuccin-mocha.toml;
+      "${config.home.homeDirectory}/.local/share/chatterino/Themes/mocha-blue.json".text =
+        builtins.readFile ./chatterino-mocha-blue.json;
+      "${config.home.homeDirectory}/.config/halloy/themes/catppuccin-mocha.toml".text =
+        builtins.readFile ./halloy-catppuccin-mocha.toml;
     };
 
     packages =

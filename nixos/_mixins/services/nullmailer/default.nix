@@ -1,9 +1,15 @@
-{ config, hostname, lib, username, ... }:
+{
+  config,
+  hostname,
+  lib,
+  username,
+  ...
+}:
 let
   domain = "wimpys.world";
 in
 {
-  environment ={
+  environment = {
     shellAliases = {
       mail-log = "journalctl _SYSTEMD_UNIT=nullmailer.service";
     };

@@ -1,4 +1,11 @@
-{ config, hostname, lib, pkgs, username, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   installOn = [ "malak" ];
   #replicateGotosocial = config.services.litestream.enable && config.services.gotosocial.enable && config.services.gotosocial.settings.db-type == "sqlite";
@@ -23,12 +30,16 @@ lib.mkIf (lib.elem hostname installOn) {
     litestream = {
       enable = false;
       settings = {
-        dbs = lib.optionals replicateGotosocial [{
-          path = "${config.services.gotosocial.settings.db-address}";
-          replicas = [{
-            path = "/mnt/data/litestream/gotosocial/database.sqlite";
-          }];
-        }];
+        dbs = lib.optionals replicateGotosocial [
+          {
+            path = "${config.services.gotosocial.settings.db-address}";
+            replicas = [
+              {
+                path = "/mnt/data/litestream/gotosocial/database.sqlite";
+              }
+            ];
+          }
+        ];
       };
     };
   };
@@ -37,18 +48,20 @@ lib.mkIf (lib.elem hostname installOn) {
   # Litestream has read/write access to the database
   # https://nixos.org/manual/nixos/stable/#module-services-litestream
   systemd.services.gotosocial = lib.mkIf replicateGotosocial {
-    serviceConfig.ExecStartPost = "+" + pkgs.writeShellScript "grant-gotosocial-permissions" ''
-      timeout=10
-      while [ ! -f ${config.services.gotosocial.settings.db-address}-wal ]; do
-        if [ "$timeout" -le 0 ]; then
-          echo "ERROR: Timeout while waiting for ${config.services.gotosocial.settings.db-address}"
-          exit 1
-        fi
-        sleep 1
-        ((timeout--))
-      done
-      ${pkgs.uutils-findutils}/bin/find $(dirname "${config.services.gotosocial.settings.db-address}") -type d -exec chmod -v 775 {} + -o -type f -exec chmod -v 664 {} +
-    '';
+    serviceConfig.ExecStartPost =
+      "+"
+      + pkgs.writeShellScript "grant-gotosocial-permissions" ''
+        timeout=10
+        while [ ! -f ${config.services.gotosocial.settings.db-address}-wal ]; do
+          if [ "$timeout" -le 0 ]; then
+            echo "ERROR: Timeout while waiting for ${config.services.gotosocial.settings.db-address}"
+            exit 1
+          fi
+          sleep 1
+          ((timeout--))
+        done
+        ${pkgs.uutils-findutils}/bin/find $(dirname "${config.services.gotosocial.settings.db-address}") -type d -exec chmod -v 775 {} + -o -type f -exec chmod -v 664 {} +
+      '';
   };
 
   systemd.tmpfiles.rules = [

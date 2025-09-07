@@ -13,7 +13,8 @@ lib.mkIf (lib.elem username installFor) {
   # Install meld for Linux and macOS but only apply configuration to Linux.
   home = {
     file = lib.mkIf isLinux {
-      "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text = builtins.readFile ./gedit-catppuccin-mocha.xml;
+      "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text =
+        builtins.readFile ./gedit-catppuccin-mocha.xml;
     };
     packages = with pkgs; [ meld ];
   };

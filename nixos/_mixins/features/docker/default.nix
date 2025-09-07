@@ -14,18 +14,16 @@ in
 lib.mkIf (lib.elem "${username}" installFor) {
   # https://wiki.nixos.org/wiki/Docker
   environment = {
-    systemPackages =
-      with pkgs;
-      [
-        act
-        distrobox
-        docker-color-output
-        docker-compose
-        docker-init
-        docker-sbom
-        fuse-overlayfs
-        lazydocker
-      ];
+    systemPackages = with pkgs; [
+      act
+      distrobox
+      docker-color-output
+      docker-compose
+      docker-init
+      docker-sbom
+      fuse-overlayfs
+      lazydocker
+    ];
   };
   # TODO: Add docker-desktop https://github.com/NixOS/nixpkgs/issues/228972
 

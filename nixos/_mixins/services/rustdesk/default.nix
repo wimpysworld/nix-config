@@ -1,6 +1,14 @@
-{ hostname, lib, pkgs, ... }:
+{
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
-  installOn = [ "vader" "phasma" ];
+  installOn = [
+    "vader"
+    "phasma"
+  ];
 in
 lib.mkIf (lib.elem hostname installOn) {
   services.rustdesk-server = {
@@ -8,6 +16,9 @@ lib.mkIf (lib.elem hostname installOn) {
     openFirewall = true;
     relay.enable = true;
     signal.enable = true;
-    signal.relayHosts = [ "vader" "phasma" ];
+    signal.relayHosts = [
+      "vader"
+      "phasma"
+    ];
   };
 }

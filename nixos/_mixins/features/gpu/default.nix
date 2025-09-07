@@ -80,6 +80,6 @@ lib.mkIf isInstall {
 
   users.users.${username}.extraGroups = lib.optionals config.hardware.graphics.enable [
     "render"
-  	"video"
+    "video"
   ];
 }

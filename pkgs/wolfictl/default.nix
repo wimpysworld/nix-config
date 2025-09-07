@@ -12,7 +12,7 @@ stdenv.mkDerivation rec {
     let
       # Determine system and architecture
       currentSystem = stdenv.hostPlatform.parsed.kernel.name; # "linux", "darwin"
-      currentArch = stdenv.hostPlatform.parsed.cpu.name;      # "x86_64", "aarch64"
+      currentArch = stdenv.hostPlatform.parsed.cpu.name; # "x86_64", "aarch64"
       # Map Nix architecture names to suffixes used in the URL
       archSuffix =
         if currentArch == "aarch64" then

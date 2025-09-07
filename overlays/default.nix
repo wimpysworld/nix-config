@@ -22,61 +22,67 @@
       };
     });
 
-    gitkraken = prev.gitkraken.overrideAttrs (old: rec {
+    gitkraken = prev.gitkraken.overrideAttrs (_old: rec {
       version = "11.2.1";
 
-      src = {
-        x86_64-linux = prev.fetchzip {
-          url = "https://api.gitkraken.dev/releases/production/linux/x64/${version}/gitkraken-amd64.tar.gz";
-          hash = "sha256-nxYWcw8A/lIVyjiUJOmcjmTblbxiLSxMUjo7KnlAMzs=";
-        };
+      src =
+        {
+          x86_64-linux = prev.fetchzip {
+            url = "https://api.gitkraken.dev/releases/production/linux/x64/${version}/gitkraken-amd64.tar.gz";
+            hash = "sha256-nxYWcw8A/lIVyjiUJOmcjmTblbxiLSxMUjo7KnlAMzs=";
+          };
 
-        x86_64-darwin = prev.fetchzip {
-          url = "https://api.gitkraken.dev/releases/production/darwin/x64/${version}/GitKraken-v${version}.zip";
-          hash = "sha256-7I3yAEarGGhFs/PvcqvoDx8MbJ/zEuNN/s0o357M1vc=";
-        };
+          x86_64-darwin = prev.fetchzip {
+            url = "https://api.gitkraken.dev/releases/production/darwin/x64/${version}/GitKraken-v${version}.zip";
+            hash = "sha256-7I3yAEarGGhFs/PvcqvoDx8MbJ/zEuNN/s0o357M1vc=";
+          };
 
-        aarch64-darwin = prev.fetchzip {
-          url = "https://api.gitkraken.dev/releases/production/darwin/arm64/${version}/GitKraken-v${version}.zip";
-          hash = "sha256-pDPdi+cRMqhxu/84u6ojxteIi1VHfN3qy/NTruHVt8U=";
-        };
-      }.${prev.stdenv.hostPlatform.system} or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
+          aarch64-darwin = prev.fetchzip {
+            url = "https://api.gitkraken.dev/releases/production/darwin/arm64/${version}/GitKraken-v${version}.zip";
+            hash = "sha256-pDPdi+cRMqhxu/84u6ojxteIi1VHfN3qy/NTruHVt8U=";
+          };
+        }
+        .${prev.stdenv.hostPlatform.system}
+          or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
     });
 
-    linuxPackages_6_12 = prev.linuxPackages_6_12.extend (_lpself: lpsuper: {
-      mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
-        pname = "mwprocapture";
-        subVersion = "4420";
-        version = "1.3.${subVersion}";
-        src = prev.fetchurl {
-          url = "http://www.magewell.com/files/support/ProCaptureForLinux_${version}.tar.gz";
-          sha256 = "sha256-aX8vhousQQ48QPgfLjESGbBw26egDB46AmSkruUaM5g=";
-        };
-      });
-    });
+    linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
+      _lpself: lpsuper: {
+        mwprocapture = lpsuper.mwprocapture.overrideAttrs (_old: rec {
+          pname = "mwprocapture";
+          subVersion = "4420";
+          version = "1.3.${subVersion}";
+          src = prev.fetchurl {
+            url = "http://www.magewell.com/files/support/ProCaptureForLinux_${version}.tar.gz";
+            sha256 = "sha256-aX8vhousQQ48QPgfLjESGbBw26egDB46AmSkruUaM5g=";
+          };
+        });
+      }
+    );
 
-    linuxPackages = prev.linuxPackages.extend (_lpself: lpsuper: {
-      mwprocapture = lpsuper.mwprocapture.overrideAttrs ( old: rec {
-        pname = "mwprocapture";
-        subVersion = "4490";
-        version = "1.3.${subVersion}";
-        src = prev.fetchurl {
-          url = "https://www.magewell.com/files/drivers/ProCaptureForLinuxPUBLIC_${version}.tar.gz";
-          sha256 = "sha256-W/HqTQsJKnIUMC13bFuwdMiNABftmKv0qLSFU3bCFAc=";
-        };
-      });
-    });
+    linuxPackages = prev.linuxPackages.extend (
+      _lpself: lpsuper: {
+        mwprocapture = lpsuper.mwprocapture.overrideAttrs (_old: rec {
+          pname = "mwprocapture";
+          subVersion = "4490";
+          version = "1.3.${subVersion}";
+          src = prev.fetchurl {
+            url = "https://www.magewell.com/files/drivers/ProCaptureForLinuxPUBLIC_${version}.tar.gz";
+            sha256 = "sha256-W/HqTQsJKnIUMC13bFuwdMiNABftmKv0qLSFU3bCFAc=";
+          };
+        });
+      }
+    );
 
     # https://github.com/tailscale/tailscale/issues/16966#issuecomment-3239543750
     tailscale = prev.tailscale.overrideAttrs (old: {
-      checkFlags =
-        builtins.map (
-          flag:
-            if prev.lib.hasPrefix "-skip=" flag
-            then flag + "|^TestGetList$|^TestIgnoreLocallyBoundPorts$|^TestPoller$"
-            else flag
-        )
-        old.checkFlags;
+      checkFlags = builtins.map (
+        flag:
+        if prev.lib.hasPrefix "-skip=" flag then
+          flag + "|^TestGetList$|^TestIgnoreLocallyBoundPorts$|^TestPoller$"
+        else
+          flag
+      ) old.checkFlags;
     });
   };
 

@@ -1,8 +1,14 @@
-{ config, hostname, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
   sithLord =
-    (lib.strings.toUpper (builtins.substring 0 1 hostname)) +
-    (builtins.substring 1 (builtins.stringLength hostname) hostname);
+    (lib.strings.toUpper (builtins.substring 0 1 hostname))
+    + (builtins.substring 1 (builtins.stringLength hostname) hostname);
   # Reference for setting display configuration for cage
   # - https://github.com/cage-kiosk/cage/issues/304
   # - https://github.com/cage-kiosk/cage/issues/257
@@ -74,8 +80,14 @@ in
           fit = "Cover";
         };
         commands = {
-          reboot = [ "/run/current-system/sw/bin/systemctl" "reboot" ];
-          poweroff = [ "/run/current-system/sw/bin/systemctl" "poweroff" ];
+          reboot = [
+            "/run/current-system/sw/bin/systemctl"
+            "reboot"
+          ];
+          poweroff = [
+            "/run/current-system/sw/bin/systemctl"
+            "poweroff"
+          ];
         };
         GTK = lib.mkForce {
           application_prefer_dark_theme = true;

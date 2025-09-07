@@ -72,7 +72,12 @@ _: {
                   subvolumes = {
                     "/home" = {
                       mountpoint = "/home";
-                      mountOptions = [ "rw" "compress=zstd:1" "noatime" "ssd" ];
+                      mountOptions = [
+                        "rw"
+                        "compress=zstd:1"
+                        "noatime"
+                        "ssd"
+                      ];
                     };
                   };
                 };

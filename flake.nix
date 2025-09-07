@@ -44,7 +44,12 @@
     xdg-override.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
-    { self, nix-darwin, nixpkgs, ... }@inputs:
+    {
+      self,
+      nix-darwin,
+      nixpkgs,
+      ...
+    }@inputs:
     let
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
@@ -111,7 +116,7 @@
         };
         # Servers
         "martin@malak" = helper.mkHome { hostname = "malak"; };
-        "martin@maul"  = helper.mkHome { hostname = "maul"; };
+        "martin@maul" = helper.mkHome { hostname = "maul"; };
         "martin@revan" = helper.mkHome { hostname = "revan"; };
         # Steam Deck
         "deck@steamdeck" = helper.mkHome {
@@ -202,14 +207,17 @@
       # Custom NixOS modules
       nixosModules = import ./modules/nixos;
       # Custom packages; acessible via 'nix build', 'nix shell', etc
-      packages = helper.forAllSystems (system:
+      packages = helper.forAllSystems (
+        system:
         let
           # Import nixpkgs for the target system, applying overlays directly
           pkgsWithOverlays = import nixpkgs {
-             inherit system;
-             config = { allowUnfree = true; }; # Ensure consistent config
-             # Pass the list of overlay functions directly
-             overlays = builtins.attrValues self.overlays;
+            inherit system;
+            config = {
+              allowUnfree = true;
+            }; # Ensure consistent config
+            # Pass the list of overlay functions directly
+            overlays = builtins.attrValues self.overlays;
           };
           # Import the function from pkgs/default.nix
           pkgsFunction = import ./pkgs;
@@ -225,37 +233,53 @@
       # Creates a devshell for working with this flake via direnv.
       devShells =
         let
-          supportedSystems = [ "x86_64-linux" "aarch64-darwin" "x86_64-darwin" ];
-          forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
-            pkgs = import nixpkgs {
-              inherit system;
-              config.allowUnfree = true;
-            };
-          });
+          supportedSystems = [
+            "x86_64-linux"
+            "aarch64-darwin"
+            "x86_64-darwin"
+          ];
+          forEachSupportedSystem =
+            f:
+            nixpkgs.lib.genAttrs supportedSystems (
+              system:
+              f {
+                pkgs = import nixpkgs {
+                  inherit system;
+                  config.allowUnfree = true;
+                };
+              }
+            );
         in
-        forEachSupportedSystem ({ pkgs }: {
-          default = pkgs.mkShell {
-            packages = with pkgs; [
-              bc
-              git
-              home-manager
+        forEachSupportedSystem (
+          { pkgs }:
+          {
+            default = pkgs.mkShell {
+              packages =
+                with pkgs;
+                [
+                  bc
+                  git
+                  home-manager
                   inputs.determinate.packages.${system}.default
                   inputs.disko.packages.${system}.default
                   inputs.fh.packages.${system}.default
                   just
                   micro
                   nh
+                  nixfmt-tree
                   nixpkgs-fmt
                   nixd
                   nix-output-monitor
-              nvd
-              sops
-              tree
-            ] ++ lib.optionals pkgs.stdenv.isLinux [
-              inputs.nixos-needsreboot.packages.${system}.default
-            ];
-          };
-        });
+                  nvd
+                  sops
+                  tree
+                ]
+                ++ lib.optionals pkgs.stdenv.isLinux [
+                  inputs.nixos-needsreboot.packages.${system}.default
+                ];
+            };
+          }
+        );
 
       # Expose input packages directly
       inherit (inputs) bzmenu iwmenu;

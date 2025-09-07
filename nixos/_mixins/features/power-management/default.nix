@@ -9,10 +9,10 @@
 }:
 let
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
-  isThinkpad = hostname == "tanis" || hostname == "sidious" || hostname == "shaa" || hostname == "atrius";
+  isThinkpad =
+    hostname == "tanis" || hostname == "sidious" || hostname == "shaa" || hostname == "atrius";
   usePowerProfiles =
-    config.programs.hyprland.enable
-    || config.services.xserver.desktopManager.pantheon.enable;
+    config.programs.hyprland.enable || config.services.xserver.desktopManager.pantheon.enable;
 in
 lib.mkIf isInstall {
   # Power Management strategy:

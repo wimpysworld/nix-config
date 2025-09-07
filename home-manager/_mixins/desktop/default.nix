@@ -11,15 +11,14 @@ let
 in
 {
   # import the DE specific configuration and any user specific desktop configuration
-  imports =
-    [
-      ./apps
-      ./features
-    ]
-    ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
-    ++ lib.optional (builtins.pathExists (
-      ./. + "/${desktop}/${username}/default.nix"
-    )) ./${desktop}/${username};
+  imports = [
+    ./apps
+    ./features
+  ]
+  ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
+  ++ lib.optional (builtins.pathExists (
+    ./. + "/${desktop}/${username}/default.nix"
+  )) ./${desktop}/${username};
 
   # Enable the Catppuccin theme
   catppuccin = {

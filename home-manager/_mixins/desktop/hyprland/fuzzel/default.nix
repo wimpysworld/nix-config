@@ -1,6 +1,13 @@
-{ config, hostname, inputs, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 let
-  fontSize = if (hostname == "phasma" || hostname =="vader") then "30" else "18";
+  fontSize = if (hostname == "phasma" || hostname == "vader") then "30" else "18";
   fuzzelActions = pkgs.writeShellApplication {
     name = "fuzzel-actions";
     text = "fuzzel --prompt '󰌧 ' --show-actions";

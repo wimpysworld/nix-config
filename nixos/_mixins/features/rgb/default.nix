@@ -36,7 +36,7 @@ lib.mkIf isInstall {
     systemPackages =
       with pkgs;
       lib.optionals (builtins.hasAttr hostname razerPeripherals && isWorkstation) [ polychromatic ]
-      ++lib.optionals (builtins.hasAttr hostname ratbagMice && isWorkstation) [ piper ];
+      ++ lib.optionals (builtins.hasAttr hostname ratbagMice && isWorkstation) [ piper ];
   };
   hardware = {
     openrazer = lib.mkIf (builtins.hasAttr hostname razerPeripherals) {

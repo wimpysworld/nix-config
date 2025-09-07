@@ -1,6 +1,12 @@
 # https://github.com/kolide/nix-agent
 # https://github.com/kolide/nix-agent/blob/main/modules/kolide-launcher/default.nix
-{ config, hostname, inputs, lib, ... }:
+{
+  config,
+  hostname,
+  inputs,
+  lib,
+  ...
+}:
 let
   installOn = [ "maul" ];
 in

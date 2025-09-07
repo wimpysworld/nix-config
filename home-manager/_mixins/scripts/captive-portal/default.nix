@@ -1,4 +1,9 @@
-{ isLaptop, lib, pkgs, ... }:
+{
+  isLaptop,
+  lib,
+  pkgs,
+  ...
+}:
 let
   inherit (pkgs.stdenv) isLinux;
   name = builtins.baseNameOf (builtins.toString ./.);

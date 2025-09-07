@@ -7,7 +7,10 @@
   ...
 }:
 let
-  installFor = [ "martin" "martin.wimpress" ];
+  installFor = [
+    "martin"
+    "martin.wimpress"
+  ];
   inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf (lib.elem username installFor) {
@@ -16,8 +19,10 @@ lib.mkIf (lib.elem username installFor) {
       # Customised Catppuccin Mocha Blue theme for Joplin
       # - https://github.com/catppuccin/joplin
       # - https://joplinapp.org/help/apps/custom_css
-      "${config.home.homeDirectory}/.config/joplin-desktop/userchrome.css".text = builtins.readFile ./userchrome.css;
-      "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text = builtins.readFile ./userstyle.css;
+      "${config.home.homeDirectory}/.config/joplin-desktop/userchrome.css".text =
+        builtins.readFile ./userchrome.css;
+      "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text =
+        builtins.readFile ./userstyle.css;
     };
   };
 

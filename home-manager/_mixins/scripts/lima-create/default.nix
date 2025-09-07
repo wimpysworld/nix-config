@@ -17,9 +17,12 @@ in
 {
   home = {
     file = {
-      "${config.home.homeDirectory}/.lima/_templates/blackace.yaml".text = builtins.readFile ./blackace.yaml;
-      "${config.home.homeDirectory}/.lima/_templates/defender.yaml".text = builtins.readFile ./defender.yaml;
-      "${config.home.homeDirectory}/.lima/_templates/fighter.yaml".text = builtins.readFile ./fighter.yaml;
+      "${config.home.homeDirectory}/.lima/_templates/blackace.yaml".text =
+        builtins.readFile ./blackace.yaml;
+      "${config.home.homeDirectory}/.lima/_templates/defender.yaml".text =
+        builtins.readFile ./defender.yaml;
+      "${config.home.homeDirectory}/.lima/_templates/fighter.yaml".text =
+        builtins.readFile ./fighter.yaml;
     };
     packages = with pkgs; [ shellApplication ];
   };

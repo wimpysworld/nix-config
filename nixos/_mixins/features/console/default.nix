@@ -17,11 +17,11 @@ let
     (
       if (builtins.hasAttr hostname kmsconFontSize) then
         ''
-        font-size=${kmsconFontSize.${hostname}}
+          font-size=${kmsconFontSize.${hostname}}
         ''
       else
         ''
-        font-size=14
+          font-size=14
         ''
     )
     + ''

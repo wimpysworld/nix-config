@@ -26,7 +26,7 @@ lib.mkIf (isDarwin || isOtherOS) {
         noto-fonts-monochrome-emoji
         source-serif
         symbola
-        work-sans      
+        work-sans
       ]
       ++ lib.optionals isInstall [
         bebas-neue-2014-font

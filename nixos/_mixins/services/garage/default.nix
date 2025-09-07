@@ -1,6 +1,15 @@
-{ config, hostname, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
-  installOn = [ "malak" "revan" ];
+  installOn = [
+    "malak"
+    "revan"
+  ];
   mountPath = if hostname == "malak" then "data" else "snapshot";
 in
 lib.mkIf (lib.elem hostname installOn) {

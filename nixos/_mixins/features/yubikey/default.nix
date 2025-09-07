@@ -4,9 +4,11 @@
   ...
 }:
 {
-  environment.systemPackages = with pkgs; lib.optionals isWorkstation [
-    yubioath-flutter
-  ];
+  environment.systemPackages =
+    with pkgs;
+    lib.optionals isWorkstation [
+      yubioath-flutter
+    ];
   programs.yubikey-touch-detector.enable = isWorkstation;
   programs.yubikey-touch-detector.libnotify = isWorkstation;
   #security.pam.u2f.enable = true;

@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   name = builtins.baseNameOf (builtins.toString ./.);
   shellApplication = pkgs.writeShellApplication {

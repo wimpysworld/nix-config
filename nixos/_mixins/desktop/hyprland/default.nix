@@ -7,14 +7,15 @@
   ...
 }:
 let
-  dbusService = if config.services.dbus.implementation == "broker"
-    then "dbus-broker.service"
-    else "dbus.service";
-  mkHiddenWaylandSession = name: pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''
-    [Desktop Entry]
-    Name="Hidden-${name}"
-    NoDisplay=true
-  '';
+  dbusService =
+    if config.services.dbus.implementation == "broker" then "dbus-broker.service" else "dbus.service";
+  mkHiddenWaylandSession =
+    name:
+    pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''
+      [Desktop Entry]
+      Name="Hidden-${name}"
+      NoDisplay=true
+    '';
   # Create a Wayland session that starts Hyprland and cleans up after itself
   hyprShim = pkgs.symlinkJoin {
     name = "hyprshim";
@@ -83,7 +84,10 @@ in
   imports = [ ../greeters/greetd.nix ];
   environment = {
     # Enable HEIC image previews in Nautilus
-    pathsToLink = [ "/share" "share/thumbnailers" ];
+    pathsToLink = [
+      "/share"
+      "share/thumbnailers"
+    ];
     sessionVariables = {
       # Make sure the cursor size is the same in all environments
       HYPRCURSOR_SIZE = 32;

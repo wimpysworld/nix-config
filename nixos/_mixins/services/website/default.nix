@@ -1,4 +1,11 @@
-{ config, hostname, lib, pkgs, username, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   installOn = [ "malak" ];
 in

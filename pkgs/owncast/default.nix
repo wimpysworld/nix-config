@@ -1,16 +1,18 @@
-{ lib
-, buildGoModule
-, fetchFromGitHub
-, fetchpatch
-, nixosTests
-, bash
-, which
-, ffmpeg-full
-, makeBinaryWrapper
+{
+  lib,
+  buildGoModule,
+  fetchFromGitHub,
+  fetchpatch,
+  nixosTests,
+  bash,
+  which,
+  ffmpeg-full,
+  makeBinaryWrapper,
 }:
 let
   version = "0.2.3";
-in buildGoModule {
+in
+buildGoModule {
   pname = "owncast";
   inherit version;
   src = fetchFromGitHub {
@@ -33,7 +35,13 @@ in buildGoModule {
 
   postInstall = ''
     wrapProgram $out/bin/owncast \
-      --prefix PATH : ${lib.makeBinPath [ bash which ffmpeg-full ]}
+      --prefix PATH : ${
+        lib.makeBinPath [
+          bash
+          which
+          ffmpeg-full
+        ]
+      }
   '';
 
   installCheckPhase = ''
@@ -49,7 +57,10 @@ in buildGoModule {
     homepage = "https://owncast.online";
     license = licenses.mit;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ flexiondotorg MayNiklas ];
+    maintainers = with maintainers; [
+      flexiondotorg
+      MayNiklas
+    ];
     mainProgram = "owncast";
   };
 }

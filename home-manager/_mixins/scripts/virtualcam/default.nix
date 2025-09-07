@@ -4,7 +4,7 @@ let
   name = builtins.baseNameOf (builtins.toString ./.);
   shellApplication = pkgs.writeShellApplication {
     inherit name;
-    runtimeInputs = with pkgs; [ 
+    runtimeInputs = with pkgs; [
       ffmpeg
       gnugrep
       kmod

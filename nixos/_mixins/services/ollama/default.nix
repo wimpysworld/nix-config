@@ -15,32 +15,34 @@ let
   hasAcceleration = builtins.hasAttr hostname accelerationMap;
   installOpenWebUI = if hostname == "maul" then true else false;
   sithLord =
-    (lib.strings.toUpper (builtins.substring 0 1 hostname)) +
-    (builtins.substring 1 (builtins.stringLength hostname) hostname);
+    (lib.strings.toUpper (builtins.substring 0 1 hostname))
+    + (builtins.substring 1 (builtins.stringLength hostname) hostname);
 
-  defaultModel = if hostname == "maul" then "gemma3:27b-it-qat" else "gemma3:12b-it-qat"; #128k (multi-modal)
-  embeddingModel = "nomic-embed-text:latest"; #2K   (embedding)
-  taskModel = "qwen3:4b"; #40k  (task)
+  defaultModel = if hostname == "maul" then "gemma3:27b-it-qat" else "gemma3:12b-it-qat"; # 128k (multi-modal)
+  embeddingModel = "nomic-embed-text:latest"; # 2K   (embedding)
+  taskModel = "qwen3:4b"; # 40k  (task)
   embeddingModels = [
     embeddingModel
-    "granite-embedding:278m"      #512  (embedding)
-    "mxbai-embed-large:335m"      #512  (embedding)
+    "granite-embedding:278m" # 512  (embedding)
+    "mxbai-embed-large:335m" # 512  (embedding)
   ];
   generalModels = [
     defaultModel
     taskModel
-    "granite3.3:8b"               #128k (instruct)
-    "phi4:14b"                    #32k  (general)
-    "phi4-mini:3.8b"              #128k (task/reasoning)
-    "qwen2.5-coder:7b"            #32k  (code reasoning)
-  ] ++ lib.optionals (hostname == "maul") [
-    "cogito:32b"                  #128k (stem)
-    "qwen2.5-coder:32b"           #32k  (code reasoning)
-    "qwen3:32b"                   #40k  (general)
-  ] ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
-    "cogito:14b"                  #128k (stem)
-    "qwen2.5-coder:14"            #32k  (code reasoning)
-    "qwen3:14b"                   #40k  (cot)
+    "granite3.3:8b" # 128k (instruct)
+    "phi4:14b" # 32k  (general)
+    "phi4-mini:3.8b" # 128k (task/reasoning)
+    "qwen2.5-coder:7b" # 32k  (code reasoning)
+  ]
+  ++ lib.optionals (hostname == "maul") [
+    "cogito:32b" # 128k (stem)
+    "qwen2.5-coder:32b" # 32k  (code reasoning)
+    "qwen3:32b" # 40k  (general)
+  ]
+  ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
+    "cogito:14b" # 128k (stem)
+    "qwen2.5-coder:14" # 32k  (code reasoning)
+    "qwen3:14b" # 40k  (cot)
   ];
   # Transform defaultModels into a ; separated string for Open WebUI filter
   modelFilterList = lib.concatStringsSep ";" (generalModels);
@@ -55,9 +57,12 @@ in
         open-webui-log = "journalctl _SYSTEMD_UNIT=open-webui.service";
       })
     ];
-    systemPackages = lib.mkIf config.services.ollama.enable (with pkgs; [
-      gollama
-    ]);
+    systemPackages = lib.mkIf config.services.ollama.enable (
+      with pkgs;
+      [
+        gollama
+      ]
+    );
   };
   services = {
     ollama = {
@@ -85,7 +90,7 @@ in
         ENABLE_SEARCH_QUERY = "true";
         ENABLE_SIGNUP = "true";
         IMAGE_GENERATION_ENGINE = "openai";
-        MODEL_FILTER_LIST =  modelFilterList;
+        MODEL_FILTER_LIST = modelFilterList;
         OLLAMA_BASE_URLS = "http://127.0.0.1:${toString config.services.ollama.port}";
         RAG_EMBEDDING_BATCH_SIZE = "16";
         RAG_EMBEDDING_ENGINE = "ollama";
@@ -101,7 +106,8 @@ in
         TIKA_SERVER_URL = "http://${config.services.tika.listenAddress}:${toString config.services.tika.port}";
         USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OpenWebUI/${pkgs.open-webui.version} Chrome/131.0.0.0 Safari/537.36";
         WEBUI_NAME = "${sithLord} Chat";
-        WEBUI_URL = if (config.services.tailscale.enable && config.services.caddy.enable) then
+        WEBUI_URL =
+          if (config.services.tailscale.enable && config.services.caddy.enable) then
             "https://${hostname}.${tailNet}/"
           else
             "http://localhost:${toString config.services.open-webui.port}";
@@ -113,8 +119,8 @@ in
     caddy = lib.mkIf config.services.caddy.enable {
       virtualHosts."${hostname}.${tailNet}" = lib.mkIf config.services.tailscale.enable {
         extraConfig = ''
-            reverse_proxy ${config.services.open-webui.host}:${toString config.services.open-webui.port}
-          '';
+          reverse_proxy ${config.services.open-webui.host}:${toString config.services.open-webui.port}
+        '';
       };
     };
     tika.enable = config.services.open-webui.enable;

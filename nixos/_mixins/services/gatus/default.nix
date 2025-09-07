@@ -1,4 +1,10 @@
-{ config, hostname, lib, pkgs, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  ...
+}:
 let
   installOn = [ "malak" ];
 in
@@ -78,9 +84,11 @@ lib.mkIf (lib.elem hostname installOn) {
             conditions = [
               "[STATUS] == 200"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Domain and Certifcate Check";
@@ -91,9 +99,11 @@ lib.mkIf (lib.elem hostname installOn) {
               "[CERTIFICATE_EXPIRATION] > 48h"
               "[DOMAIN_EXPIRATION] > 168h"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Website";
@@ -103,9 +113,11 @@ lib.mkIf (lib.elem hostname installOn) {
             conditions = [
               "[STATUS] == 200"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Domain and Certifcate Check";
@@ -116,9 +128,11 @@ lib.mkIf (lib.elem hostname installOn) {
               "[CERTIFICATE_EXPIRATION] > 48h"
               "[DOMAIN_EXPIRATION] > 168h"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Start Page";
@@ -128,9 +142,11 @@ lib.mkIf (lib.elem hostname installOn) {
             conditions = [
               "[STATUS] == 200"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Discourse";
@@ -140,9 +156,11 @@ lib.mkIf (lib.elem hostname installOn) {
             conditions = [
               "[STATUS] == 200"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Domain and Certifcate Check";
@@ -153,9 +171,11 @@ lib.mkIf (lib.elem hostname installOn) {
               "[CERTIFICATE_EXPIRATION] > 48h"
               "[DOMAIN_EXPIRATION] > 168h"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Node - Machester";
@@ -166,9 +186,11 @@ lib.mkIf (lib.elem hostname installOn) {
             conditions = [
               "[RESPONSE_TIME] < 300"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Node - York";
@@ -179,9 +201,11 @@ lib.mkIf (lib.elem hostname installOn) {
             conditions = [
               "[RESPONSE_TIME] < 300"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Fibre Router";
@@ -192,9 +216,11 @@ lib.mkIf (lib.elem hostname installOn) {
             conditions = [
               "[RESPONSE_TIME] < 300"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Website";
@@ -205,9 +231,11 @@ lib.mkIf (lib.elem hostname installOn) {
               "[STATUS] == 200"
               "[BODY] == pat(*Martin Wimpress</h1>*)"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Links";
@@ -218,9 +246,11 @@ lib.mkIf (lib.elem hostname installOn) {
               "[STATUS] == 200"
               "[BODY] == pat(*>Wimpy's Links 🔗</h1>*)"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "GotoSocial";
@@ -231,9 +261,11 @@ lib.mkIf (lib.elem hostname installOn) {
               "[STATUS] == 200"
               "[BODY] == pat(*>Profile for martin</h2>*)"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Website";
@@ -244,9 +276,11 @@ lib.mkIf (lib.elem hostname installOn) {
               "[STATUS] == 200"
               "[BODY] == pat(*A new episode every two weeks covering terminal productivity, desktop experience, development, gaming, hosting, hardware, community, cloud-native and all the Linux Matters that matter.*)"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Domain and Certifcate Check";
@@ -257,9 +291,11 @@ lib.mkIf (lib.elem hostname installOn) {
               "[CERTIFICATE_EXPIRATION] > 48h"
               "[DOMAIN_EXPIRATION] > 168h"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
           {
             name = "Ping";
@@ -269,9 +305,11 @@ lib.mkIf (lib.elem hostname installOn) {
             conditions = [
               "[RESPONSE_TIME] < 300"
             ];
-            alerts = [{
-              type = "ntfy";
-            }];
+            alerts = [
+              {
+                type = "ntfy";
+              }
+            ];
           }
         ];
       };

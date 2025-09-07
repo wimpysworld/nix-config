@@ -28,7 +28,8 @@ in
     ./_mixins/scripts
     ./_mixins/services
     ./_mixins/users
-  ] ++ lib.optional isWorkstation ./_mixins/desktop;
+  ]
+  ++ lib.optional isWorkstation ./_mixins/desktop;
 
   # Enable the Catppuccin theme
   catppuccin = {
@@ -58,9 +59,12 @@ in
         "/home/${username}";
 
     file = {
-      "${config.xdg.configHome}/fastfetch/config.jsonc".text = builtins.readFile ./_mixins/configs/fastfetch.jsonc;
-      "${config.xdg.configHome}/yazi/keymap.toml".text = builtins.readFile ./_mixins/configs/yazi-keymap.toml;
-      "${config.xdg.configHome}/fish/functions/help.fish".text = builtins.readFile ./_mixins/configs/help.fish;
+      "${config.xdg.configHome}/fastfetch/config.jsonc".text =
+        builtins.readFile ./_mixins/configs/fastfetch.jsonc;
+      "${config.xdg.configHome}/yazi/keymap.toml".text =
+        builtins.readFile ./_mixins/configs/yazi-keymap.toml;
+      "${config.xdg.configHome}/fish/functions/help.fish".text =
+        builtins.readFile ./_mixins/configs/help.fish;
     };
 
     # A Modern Unix experience
@@ -799,7 +803,8 @@ in
       gpg_ownertrust = { };
       hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
       obs_secrets = { };
-      ssh_config.path = if isLinux then
+      ssh_config.path =
+        if isLinux then
           "${config.home.homeDirectory}/.ssh/config"
         else
           "${config.home.homeDirectory}/.ssh/local_config";

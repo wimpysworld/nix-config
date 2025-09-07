@@ -15,17 +15,21 @@
   ...
 }:
 let
-  coreUtils = if isISO then [
-    pkgs.coreutils-full
-    pkgs.diffutils
-    pkgs.findutils
-    pkgs.sudo
-  ] else [
-    (lib.hiPrio pkgs.uutils-coreutils-noprefix)
-    (lib.hiPrio pkgs.uutils-diffutils)
-    (lib.hiPrio pkgs.uutils-findutils)
-    (lib.hiPrio pkgs.sudo-rs)
-  ];
+  coreUtils =
+    if isISO then
+      [
+        pkgs.coreutils-full
+        pkgs.diffutils
+        pkgs.findutils
+        pkgs.sudo
+      ]
+    else
+      [
+        (lib.hiPrio pkgs.uutils-coreutils-noprefix)
+        (lib.hiPrio pkgs.uutils-diffutils)
+        (lib.hiPrio pkgs.uutils-findutils)
+        (lib.hiPrio pkgs.sudo-rs)
+      ];
 in
 {
   imports = [
@@ -46,15 +50,18 @@ in
     ./_mixins/scripts
     ./_mixins/services
     ./_mixins/users
-  ] ++ lib.optional isWorkstation ./_mixins/desktop;
+  ]
+  ++ lib.optional isWorkstation ./_mixins/desktop;
 
   boot = {
     binfmt = lib.mkIf isInstall {
       emulatedSystems = [
         "riscv64-linux"
-      ] ++ lib.optionals (platform == "x86_64-linux") [
+      ]
+      ++ lib.optionals (platform == "x86_64-linux") [
         "aarch64-linux"
-      ] ++ lib.optionals (platform == "aarch64-linux") [
+      ]
+      ++ lib.optionals (platform == "aarch64-linux") [
         "x86_64-linux"
       ];
     };
@@ -99,7 +106,8 @@ in
         rsync
         smartmontools
 
-      ] ++ coreUtils;
+      ]
+      ++ coreUtils;
 
     variables = {
       EDITOR = "micro";
@@ -128,21 +136,21 @@ in
       flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
     in
     {
-    settings = {
-      experimental-features = "nix-command flakes";
-      # Disable global registry
-      flake-registry = "";
-      lazy-trees = true;
-      # Workaround for https://github.com/NixOS/nix/issues/9574
-      nix-path = config.nix.nixPath;
-      warn-dirty = false;
+      settings = {
+        experimental-features = "nix-command flakes";
+        # Disable global registry
+        flake-registry = "";
+        lazy-trees = true;
+        # Workaround for https://github.com/NixOS/nix/issues/9574
+        nix-path = config.nix.nixPath;
+        warn-dirty = false;
+      };
+      # Disable channels
+      channel.enable = false;
+      # Make flake registry and nix path match flake inputs
+      registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
+      nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
     };
-    # Disable channels
-    channel.enable = false;
-    # Make flake registry and nix path match flake inputs
-    registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
-    nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
-  };
 
   nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 
@@ -184,7 +192,7 @@ in
   services = {
     fwupd.enable = isWorkstation;
     hardware.bolt.enable = true;
-    irqbalance = lib.mkIf (! config.services.qemuGuest.enable) {
+    irqbalance = lib.mkIf (!config.services.qemuGuest.enable) {
       enable = true;
     };
     smartd.enable = isInstall;
@@ -264,7 +272,9 @@ in
     activationScripts = {
       nixos-needsreboot = lib.mkIf (isInstall) {
         supportsDryActivation = true;
-        text = "${lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default} \"$systemConfig\" || true";
+        text = "${
+          lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default
+        } \"$systemConfig\" || true";
       };
     };
     nixos.label = lib.mkIf isInstall "-";

@@ -11,10 +11,22 @@ let
   waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
-      { case = "^https?://accounts.google.com"; command = "wavebox"; }
-      { case = "^https?://github.com/login/device"; command = "wavebox"; }
-      { case = "^https?://auth.chainguard.dev/activate"; command = "wavebox"; }
-      { case = "^https?://issuer.enforce.dev"; command = "wavebox"; }
+      {
+        case = "^https?://accounts.google.com";
+        command = "wavebox";
+      }
+      {
+        case = "^https?://github.com/login/device";
+        command = "wavebox";
+      }
+      {
+        case = "^https?://auth.chainguard.dev/activate";
+        command = "wavebox";
+      }
+      {
+        case = "^https?://issuer.enforce.dev";
+        command = "wavebox";
+      }
     ];
   };
   dockerPurge = pkgs.writeShellApplication {
@@ -51,12 +63,13 @@ let
     ];
     text = builtins.readFile ./pre-commit-setup.sh;
   };
-  gitsignCredentialCache = if isLinux then
-    "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
-  else if isDarwin then
-    "${config.home.homeDirectory}/Library/Caches/sigstore/gitsign/cache.sock"
-  else
-    "${config.home.homeDirectory}/.cache/sigstore/gitsign/cache.sock";
+  gitsignCredentialCache =
+    if isLinux then
+      "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
+    else if isDarwin then
+      "${config.home.homeDirectory}/Library/Caches/sigstore/gitsign/cache.sock"
+    else
+      "${config.home.homeDirectory}/.cache/sigstore/gitsign/cache.sock";
 in
 {
   # Enable the Catppuccin theme
@@ -67,7 +80,8 @@ in
 
   home = {
     file = {
-      "${config.xdg.configHome}/fish/functions/h.fish".text = builtins.readFile ../../../_mixins/configs/h.fish;
+      "${config.xdg.configHome}/fish/functions/h.fish".text =
+        builtins.readFile ../../../_mixins/configs/h.fish;
       # Symlink ~/.gitconfig to ~/.config/git/config to prevent config divergence
       ".gitconfig".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/git/config";
     };
@@ -102,7 +116,8 @@ in
         pre-commit # Git pre-commit hooks
         quilt # patch manager
         tokei # Modern Unix `wc` for code
-      ] ++ lib.optionals isLinux [
+      ]
+      ++ lib.optionals isLinux [
         waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
       ];
   };

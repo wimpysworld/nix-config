@@ -6,7 +6,10 @@
   ...
 }:
 let
-  installFor = [ "martin" "martin.wimpress" ];
+  installFor = [
+    "martin"
+    "martin.wimpress"
+  ];
   inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf (lib.elem username installFor) {

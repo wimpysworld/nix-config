@@ -93,7 +93,6 @@ stdenv.mkDerivation {
     runHook postInstall
   '';
 
-
   # Enhanced GPU acceleration and driver path setup
   postInstall = ''
     # Add driver paths to the binary for GPU acceleration
@@ -102,9 +101,11 @@ stdenv.mkDerivation {
 
   postFixup = ''
     # Create comprehensive library path for OpenGL/Vulkan support
-    libPath="${lib.makeLibraryPath [
-      libglvnd
-    ]}"
+    libPath="${
+      lib.makeLibraryPath [
+        libglvnd
+      ]
+    }"
 
     # Enhanced wrapper with proper OpenGL environment
     wrapProgram $out/lib/cider/Cider \

@@ -36,8 +36,8 @@
       '';
     };
     packages = with pkgs; [
-      hyprshot        # screenshot grabber
-      satty           # screenshot editor
+      hyprshot # screenshot grabber
+      satty # screenshot editor
     ];
   };
   wayland.windowManager.hyprland = {

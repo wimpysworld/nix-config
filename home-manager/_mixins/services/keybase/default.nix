@@ -7,7 +7,10 @@
   ...
 }:
 let
-  installOn = [ "phasma" "vader" ];
+  installOn = [
+    "phasma"
+    "vader"
+  ];
 in
 lib.mkIf (lib.elem hostname installOn) {
   home.file = {

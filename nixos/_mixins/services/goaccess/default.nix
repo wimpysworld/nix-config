@@ -1,6 +1,17 @@
-{ config, hostname, lib, pkgs, username, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
-  installOn = [ "malak" "phasma" "vader" ];
+  installOn = [
+    "malak"
+    "phasma"
+    "vader"
+  ];
 in
 lib.mkIf (lib.elem hostname installOn) {
   environment = {
@@ -39,14 +50,16 @@ lib.mkIf (lib.elem hostname installOn) {
           "GeoLite2-City"
           "GeoLite2-Country"
         ];
-        LicenseKey = { _secret = "${config.sops.secrets.maxmind_key.path}"; };
+        LicenseKey = {
+          _secret = "${config.sops.secrets.maxmind_key.path}";
+        };
       };
     };
   };
 
   sops = {
     secrets = {
-       maxmind_key = {
+      maxmind_key = {
         group = "root";
         mode = "0644";
         owner = "root";

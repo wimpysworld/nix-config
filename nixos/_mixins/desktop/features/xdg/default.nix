@@ -1,32 +1,47 @@
-{ desktop, lib, pkgs, ... }:
+{
+  desktop,
+  lib,
+  pkgs,
+  ...
+}:
 {
   xdg = {
     portal = {
       # Add xset to satisfy xdg-screensaver requirements
       configPackages = [
         pkgs.xorg.xset
-      ] ++ lib.optionals (desktop == "hyprland") [
+      ]
+      ++ lib.optionals (desktop == "hyprland") [
         pkgs.hyprland
       ];
-      extraPortals = lib.optionals (desktop == "hyprland") [
-        pkgs.xdg-desktop-portal-hyprland
-        pkgs.xdg-desktop-portal-gtk
-      ] ++ lib.optionals (desktop == "pantheon") [
-        pkgs.pantheon.xdg-desktop-portal-pantheon
-        pkgs.xdg-desktop-portal-gtk
-      ] ++ lib.optionals (desktop == "lomiri") [
-      	pkgs.lxqt.xdg-desktop-portal-lxqt
-      ];
+      extraPortals =
+        lib.optionals (desktop == "hyprland") [
+          pkgs.xdg-desktop-portal-hyprland
+          pkgs.xdg-desktop-portal-gtk
+        ]
+        ++ lib.optionals (desktop == "pantheon") [
+          pkgs.pantheon.xdg-desktop-portal-pantheon
+          pkgs.xdg-desktop-portal-gtk
+        ]
+        ++ lib.optionals (desktop == "lomiri") [
+          pkgs.lxqt.xdg-desktop-portal-lxqt
+        ];
       config = {
         common = {
           default = [ "gtk" ];
         };
         hyprland = lib.mkIf (desktop == "hyprland") {
-          default = [ "hyprland" "gtk" ];
+          default = [
+            "hyprland"
+            "gtk"
+          ];
           "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
         };
         pantheon = lib.mkIf (desktop == "pantheon") {
-          default = [ "pantheon" "gtk" ];
+          default = [
+            "pantheon"
+            "gtk"
+          ];
           "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
         };
       };

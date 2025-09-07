@@ -18,7 +18,7 @@ stdenv.mkDerivation rec {
   #};
   src = requireFile rec {
     name = "pico-8_${version}_amd64.zip";
-    url ="https://www.lexaloffle.com/pico-8.php";
+    url = "https://www.lexaloffle.com/pico-8.php";
     # sha256sum /nix/store/deadb33f-pico-8_0.2.6b_amd64.zip
     sha256 = "7ca8e9019f73771064859f71302bbc65c6e4042030605f4ee2f2c8c4e29b15d5";
   };
@@ -47,31 +47,33 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  desktopItems = [(makeDesktopItem rec {
-    name = "pico-8";
-    desktopName = "PICO-8";
-    keywords = [
-      "Game"
-      "Retro"
-      "Development"
-    ];
-    exec = "pico8";
-    terminal = false;
-    type = "Application";
-    icon = "pico8";
-    categories = [
-      "Development"
-      "IDE"
-      "Game"
-    ];
-    startupNotify = true;
-    actions = {
-      "Windowed" = {
-        name = "Open windowed";
-        exec = "pico8 -windowed 1";
+  desktopItems = [
+    (makeDesktopItem rec {
+      name = "pico-8";
+      desktopName = "PICO-8";
+      keywords = [
+        "Game"
+        "Retro"
+        "Development"
+      ];
+      exec = "pico8";
+      terminal = false;
+      type = "Application";
+      icon = "pico8";
+      categories = [
+        "Development"
+        "IDE"
+        "Game"
+      ];
+      startupNotify = true;
+      actions = {
+        "Windowed" = {
+          name = "Open windowed";
+          exec = "pico8 -windowed 1";
+        };
       };
-    };
-  })];
+    })
+  ];
 
   meta = {
     description = "PICO-8 is a fantasy console for making, sharing and playing tiny games and other computer programs.";

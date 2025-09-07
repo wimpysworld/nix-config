@@ -40,7 +40,7 @@ in
             "menu#screenshot-buttons" = {
               label = "󰄀";
               position = "left";
-              actions = [ 
+              actions = [
                 {
                   label = "󰹑  Screenshot  ";
                   command = "${lib.getExe swayncRun} fuzzel-hyprshot";
@@ -54,7 +54,7 @@ in
             "menu#powermode-buttons" = {
               label = "󱐋";
               position = "right";
-              actions = [ 
+              actions = [
                 {
                   label = "󰤇  Performance";
                   command = "powerprofilesctl set performance";
@@ -72,7 +72,7 @@ in
             "menu#power-buttons" = {
               label = "󰐦";
               position = "right";
-              actions = [ 
+              actions = [
                 {
                   label = "󰌾  Lock    ";
                   command = "${lib.getExe swayncRun} hypr-session lock";

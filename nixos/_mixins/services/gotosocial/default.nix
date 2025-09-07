@@ -1,4 +1,11 @@
-{ config, hostname, lib, pkgs, username, ... }:
+{
+  config,
+  hostname,
+  lib,
+  pkgs,
+  username,
+  ...
+}:
 let
   installOn = [ "malak" ];
   gotosocial-backup = pkgs.writeShellApplication {

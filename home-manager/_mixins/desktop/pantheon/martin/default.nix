@@ -42,26 +42,25 @@
       command = "alacritty";
     };
 
-    "org/gnome/desktop/background" =
-      {
-        picture-options = "zoom";
-      }
-      // lib.optionalAttrs (hostname == "phasma") {
-        picture-uri = "file:///etc/backgrounds/Catppuccin-3440x1440.png";
-        picture-uri-dark = "file:///etc/backgrounds/Catppuccin-3440x1440.png";
-      }
-      // lib.optionalAttrs (hostname == "sidious") {
-        picture-uri = "file:///etc/backgrounds/Catppuccin-3840x2160.png";
-        picture-uri-dark = "file:///etc/backgrounds/Catppuccin-3840x2160.png";
-      }
-      // lib.optionalAttrs (hostname == "tanis") {
-        picture-uri = "file:///etc/backgrounds/Catppuccin-1920x1200.png";
-        picture-uri-dark = "file:///etc/backgrounds/Catppuccin-1920x1200.png";
-      }
-      // lib.optionalAttrs (hostname == "vader") {
-        picture-uri = "file:///etc/backgrounds/Catppuccin-2560x2880.png";
-        picture-uri-dark = "file:///etc/backgrounds/Catppuccin-2560x2880.png";
-      };
+    "org/gnome/desktop/background" = {
+      picture-options = "zoom";
+    }
+    // lib.optionalAttrs (hostname == "phasma") {
+      picture-uri = "file:///etc/backgrounds/Catppuccin-3440x1440.png";
+      picture-uri-dark = "file:///etc/backgrounds/Catppuccin-3440x1440.png";
+    }
+    // lib.optionalAttrs (hostname == "sidious") {
+      picture-uri = "file:///etc/backgrounds/Catppuccin-3840x2160.png";
+      picture-uri-dark = "file:///etc/backgrounds/Catppuccin-3840x2160.png";
+    }
+    // lib.optionalAttrs (hostname == "tanis") {
+      picture-uri = "file:///etc/backgrounds/Catppuccin-1920x1200.png";
+      picture-uri-dark = "file:///etc/backgrounds/Catppuccin-1920x1200.png";
+    }
+    // lib.optionalAttrs (hostname == "vader") {
+      picture-uri = "file:///etc/backgrounds/Catppuccin-2560x2880.png";
+      picture-uri-dark = "file:///etc/backgrounds/Catppuccin-2560x2880.png";
+    };
 
     "org/gnome/desktop/screensaver" = {
       picture-uri = "file://etc/backgrounds/Catppuccin-3840x2160.png";
