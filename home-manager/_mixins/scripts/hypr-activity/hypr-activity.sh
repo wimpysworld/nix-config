@@ -46,7 +46,7 @@ function move_app() {
     for i in {1..30}; do # Wait up to 15 seconds (30 * 0.5s)
         # Attempt to find the client address using hyprctl and jq
         CLIENT_ADDRESS=$($HYPRCTL clients -j | jq -r --arg kt "$KEY_TYPE" --arg kv "$KEY_VALUE" '.[] | select(.[$kt] != null and .[$kt] == $kv) | .address' | head -n 1)
-        
+
         if [[ -n "$CLIENT_ADDRESS" ]]; then
             echo " - Found client with $KEY_TYPE '$KEY_VALUE', address: $CLIENT_ADDRESS"
             $HYPRCTL dispatch movetoworkspacesilent "$WORKSPACE,address:$CLIENT_ADDRESS" &>/dev/null
@@ -67,14 +67,14 @@ function activity_work() {
 
     # Order is import and optimised based on app startup times
     start_app "gitkraken --no-show-splash-screen"
-    start_app joplin-desktop    
+    start_app joplin-desktop
     start_app fractal
-    start_app Cider
+    start_app cider
     start_app brave
     start_app wavebox
     start_app slack
-    start_app halloy    
-    start_app telegram-desktop    
+    start_app halloy
+    start_app telegram-desktop
     start_app code
     start_app heynote
     start_app foot
@@ -96,15 +96,15 @@ function activity_work() {
     move_app 3 initialClass discord
 }
 
-function activity_play() {    
+function activity_play() {
     $HYPRCTL dispatch workspace 1 &>/dev/null
-    
+
     # Order is import and optimised based on app startup times
     start_app "gitkraken --no-show-splash-screen"
-    start_app joplin-desktop    
+    start_app joplin-desktop
     start_app fractal
-    start_app Cider
-    start_app brave    
+    start_app cider
+    start_app brave
     start_app halloy
     start_app telegram-desktop
     start_app code
@@ -113,10 +113,10 @@ function activity_play() {
     start_app discord
 
     # GitKraken takes ages to start, so we move it last
-    move_app 5 initialClass GitKraken    
+    move_app 5 initialClass GitKraken
     move_app 2 initialTitle Telegram
     move_app 3 class org.gnome.Fractal
-    move_app 3 class org.squidowl.halloy    
+    move_app 3 class org.squidowl.halloy
     move_app 4 initialClass code
     move_app 6 class Heynote
     move_app 6 class "@joplin/app-desktop"
@@ -134,7 +134,7 @@ function activity_podcast() {
     start_app audacity
     start_app telegram-desktop
     start_app "nautilus -w $HOME/Audio"
-    
+
     disrun firefox \
         -P linuxmatters-stage \
         -no-remote \
@@ -143,7 +143,7 @@ function activity_podcast() {
         -P linuxmatters-studio \
         -no-remote \
         --new-window https://talky.io/linux-matters-studio
-        
+
     move_app 7 title "Talky — Mozilla Firefox"
     move_app 7 initialTitle Telegram
     move_app 7 title Audio
@@ -201,14 +201,14 @@ function activity_retro() {
     disrun firefox \
         -P 8bitversus-studio \
         -no-remote \
-        --new-window https://dashboard.twitch.tv/u/8bitversus/stream-manager    
+        --new-window https://dashboard.twitch.tv/u/8bitversus/stream-manager
 
     move_app 9 initialTitle "Mozilla Firefox"
     move_app 9 initialClass discord
 
     move_app 7 class com.obsproject.Studio
     move_app 7 class com.chatterino.
-    
+
     $HYPRCTL dispatch workspace 9 &>/dev/null
     $HYPRCTL dispatch workspace 7 &>/dev/null
 }
