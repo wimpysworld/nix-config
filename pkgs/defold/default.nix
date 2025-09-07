@@ -106,7 +106,7 @@ let
 in
 buildFHSEnv {
   name = pname;
-  targetPkgs = pkgs: [
+  targetPkgs = _pkgs: [
     cairo
     defold
     fontconfig

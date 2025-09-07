@@ -2,7 +2,6 @@
   config,
   hostname,
   isLima,
-  isWorkstation,
   lib,
   pkgs,
   username,

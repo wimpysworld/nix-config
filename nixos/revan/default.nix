@@ -13,7 +13,6 @@
 # Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
 
 {
-  config,
   inputs,
   pkgs,
   username,

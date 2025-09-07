@@ -1,10 +1,8 @@
 {
   config,
   hostname,
-  inputs,
   lib,
   pkgs,
-  platform,
   ...
 }:
 let
@@ -13,7 +11,6 @@ let
     "vader"
   ];
   inherit (pkgs.stdenv) isLinux;
-  themes = pkgs.lib.cleanSource ./themes;
 in
 lib.mkIf (lib.elem hostname installOn) {
   home = {

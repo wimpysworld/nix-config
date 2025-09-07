@@ -1,7 +1,6 @@
 {
   autoPatchelfHook,
   copyDesktopItems,
-  fetchzip,
   lib,
   makeDesktopItem,
   requireFile,

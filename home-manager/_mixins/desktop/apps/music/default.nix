@@ -6,7 +6,7 @@
 }:
 let
   installFor = [ "martin" ];
-  inherit (pkgs.stdenv) isDarwin isLinux;
+  inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf (builtins.elem username installFor) {
   home.packages =

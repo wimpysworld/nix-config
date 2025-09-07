@@ -1,6 +1,4 @@
 {
-  config,
-  desktop,
   hostname,
   isInstall,
   lib,

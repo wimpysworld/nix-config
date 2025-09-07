@@ -4,7 +4,6 @@
   isInstall,
   isLaptop,
   lib,
-  pkgs,
   ...
 }:
 let

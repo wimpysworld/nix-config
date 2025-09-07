@@ -3,7 +3,6 @@
   hostname,
   lib,
   pkgs,
-  tailNet,
   ...
 }:
 let

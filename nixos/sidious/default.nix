@@ -1,7 +1,6 @@
 # Lenovo ThinkPad P1 Gen 1
 
 {
-  config,
   inputs,
   lib,
   ...

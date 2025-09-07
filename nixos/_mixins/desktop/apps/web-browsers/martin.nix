@@ -1,4 +1,4 @@
-{ hostname, ... }:
+{ ... }:
 {
   programs = {
     chromium = {

@@ -1,9 +1,7 @@
 {
-  config,
   hostname,
   lib,
   pkgs,
-  username,
   ...
 }:
 let

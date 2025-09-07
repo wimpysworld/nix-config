@@ -1,5 +1,4 @@
 {
-  config,
   isInstall,
   lib,
   pkgs,

@@ -1,7 +1,6 @@
 # https://github.com/kolide/nix-agent
 # https://github.com/kolide/nix-agent/blob/main/modules/kolide-launcher/default.nix
 {
-  config,
   hostname,
   inputs,
   lib,
