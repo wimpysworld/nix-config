@@ -52,7 +52,7 @@ lib.mkIf (lib.elem hostname installOn) {
       obs-websocket
       waveform
     ] ++ [
-      pkgs.unstable.obs-aitum-multistream
+      pkgs.obs-aitum-multistream
       pkgs.obs-dvd-screensaver
       pkgs.obs-markdown
       pkgs.obs-rgb-levels
