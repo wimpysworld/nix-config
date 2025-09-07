@@ -22,6 +22,7 @@ in
     ./hyprlock # screen locker
     ./hyprpaper # wallpaper setter
     ./hyprshot # screenshot grabber and annotator
+    ./rofi # application launcher
     ./swaync # notification center
     ./waybar # status bar
     ./wlogout # session menu

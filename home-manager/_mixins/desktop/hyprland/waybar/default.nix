@@ -50,15 +50,6 @@ let
     # https://github.com/hyprwm/Hyprland/issues/3655#issuecomment-1784217814
     text = builtins.readFile ./eyecandy-toggle.sh;
   };
-  rofiAppGrid = pkgs.writeShellApplication {
-    name = "rofi-appgrid";
-    runtimeInputs = with pkgs; [
-      rofi-wayland
-    ];
-    text = ''
-      rofi -show drun -theme "${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi"
-    '';
-  };
   tailscaleCheck = pkgs.writeShellApplication {
     name = "tailscale-check";
     runtimeInputs = with pkgs; [
@@ -100,9 +91,6 @@ in
     "dev/deedles/Trayscale" = {
       tray-icon = false;
     };
-  };
-  home = {
-    file."${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi".source = ./style.rasi;
   };
   programs = {
     waybar = {
@@ -367,7 +355,7 @@ in
           ];
           "custom/launcher" = {
             format = "<big>󱄅</big>";
-            on-click = "${lib.getExe rofiAppGrid}";
+            on-click = "rofi-appgrid";
             on-click-right = "hypr-activity-menu";
             tooltip-format = "  Applications Menu";
           };
