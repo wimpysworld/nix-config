@@ -26,7 +26,7 @@ pkgs:
   obs-scene-as-transition = pkgs.callPackage ./obs-plugins/obs-scene-as-transition.nix { };				    #merged
   obs-stroke-glow-shadow = pkgs.callPackage ./obs-plugins/obs-stroke-glow-shadow.nix { };				      #merged
   obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };						        #merged
-  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
+  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };       #merged
   pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { };											                  #merged
 
   # In review upstream

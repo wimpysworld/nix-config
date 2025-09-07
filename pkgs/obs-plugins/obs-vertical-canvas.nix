@@ -19,6 +19,9 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-rwIhmrkj+jLjSOAmFqD/hZ9/BPL5npGehSdumBoWows=";
   };
 
+  # Remove after https://github.com/Aitum/obs-vertical-canvas/pull/25 is released :)
+  patches = [ ./obs-vertical-canvas.diff ];
+
   nativeBuildInputs = [ cmake ];
 
   buildInputs = [

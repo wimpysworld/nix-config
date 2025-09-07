@@ -59,7 +59,7 @@ lib.mkIf (lib.elem hostname installOn) {
       pkgs.obs-scene-as-transition
       pkgs.obs-stroke-glow-shadow
       pkgs.obs-urlsource
-      #pkgs.obs-vertical-canvas #TODO: fix this plugin
+      pkgs.obs-vertical-canvas
       pkgs.pixel-art
     ];
   };
