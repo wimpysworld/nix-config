@@ -153,6 +153,18 @@ lib.mkIf (lib.elem username installFor) {
           "markdown.preview.breaks" = true;
           "nix.enableLanguageServer" = true;
           "nix.serverPath" = "nil";
+          "nix.serverSettings" = {
+            "nil" = {
+              "formatting" = {
+                "command" = ["nixfmt"];
+              };
+            };
+            "nixd" = {
+              "formatting" = {
+                "command" = ["nixfmt"];
+              };
+            };
+          };
           "partialDiff.enableTelemetry" = false;
           "projectManager.git" = {
             baseFolders = [
