@@ -54,6 +54,7 @@ jobs:
       matrix:
         package:
           - caddy
+          - linuxPackages.mwprocapture
           - linuxPackages_6_12.mwprocapture
     steps:
       - uses: actions/checkout@v5
