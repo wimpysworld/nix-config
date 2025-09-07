@@ -18,7 +18,7 @@ pkgs:
   owncast = pkgs.unstable.callPackage ./owncast { };
   wolfictl = pkgs.callPackage ./wolfictl { };
 
-  # In my OBS Studio Configuration and in review upstream
+  # Remove when upgrading to NixOS 25.11
   obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { };   #merged
   obs-dvd-screensaver = pkgs.callPackage ./obs-plugins/obs-dvd-screensaver.nix { };						        #merged
   obs-markdown = pkgs.callPackage ./obs-plugins/obs-markdown.nix { };                                 #merged
