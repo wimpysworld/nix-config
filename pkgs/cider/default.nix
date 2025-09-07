@@ -27,7 +27,7 @@
   xorg,
 }:
 let
-  version = "3.1.0";
+  version = "3.1.2";
   pname = "cider";
 in
 stdenv.mkDerivation {
@@ -35,7 +35,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://warez.wimpys.world/cider-v${version}-linux-x64.deb";
-    hash = "sha256-3+I5yahVcvK4YyhMfWJIpLeq1uCrhWmrzuH7/cgLwuI=";
+    hash = "sha256-iD4ZJ4hZLIZH6d2rPgD04kydLLgeWXMp6UQ372APgo0=";
   };
 
   nativeBuildInputs = [
