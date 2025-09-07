@@ -1,5 +1,4 @@
 {
-  config,
   hostname,
   lib,
   pkgs,
@@ -445,19 +444,11 @@ in
             exec-if = "which ${pkgs.swaynotificationcenter}/bin/swaync-client";
             exec = "${pkgs.swaynotificationcenter}/bin/swaync-client --subscribe-waybar";
             on-click = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
-            on-click-middle = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-dnd --skip-wait";
             tooltip-format = "󰵚  {} notification(s)";
           };
           tray = {
             icon-size = 22;
             spacing = 12;
-          };
-          "custom/virtualcam" = {
-            format = "<big>{}</big>";
-            exec = "${lib.getExe virtualcamCheck}";
-            on-click = "${lib.getExe virtualcamToggle}";
-            interval = 1;
-            max-length = 2;
           };
           wireplumber = {
             scroll-step = 5;
@@ -491,27 +482,12 @@ in
               "INZONE Buds Analog Stereo"
             ];
           };
-          network = {
-            format = "<big>{icon}</big>";
-            format-alt = " <small>{bandwidthDownBits}</small>  <small>{bandwidthUpBits}</small>";
-            format-ethernet = "󰈀";
-            format-disconnected = "󰲜";
-            format-linked = "";
-            format-wifi = "󰖩";
-            interval = 2;
-            # todo: add toggle netowrk on/off
-            #on-click-middle = "hyprctl dispatch exec [workspace current] ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
-            tooltip-format = "  {ifname}\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
-            tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
-            tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
-            tooltip-format-disconnected = "󰲜  disconnected";
-          };
-          "custom/vpn" = {
+          "custom/virtualcam" = {
             format = "<big>{}</big>";
-            exec = "${lib.getExe tailscaleCheck}";
-            on-click-middle = "${lib.getExe tailscaleToggle} toggle";
-            on-click-right = "${lib.getExe tailscaleToggle} toggle-mullvad";
-            interval = 2;
+            exec = "${lib.getExe virtualcamCheck}";
+            on-click-middle = "${lib.getExe virtualcamToggle}";
+            interval = 1;
+            max-length = 2;
           };
           bluetooth = {
             format = "<big>{icon}</big>";
@@ -526,6 +502,25 @@ in
             tooltip-format-enumerate-connected = "󰂱  {device_alias}\t󰿀  {device_address}";
             tooltip-format-enumerate-connected-battery = "󰂱  {device_alias}\t󰿀  {device_address} (󰥉  {device_battery_percentage}󰏰)";
             tooltip-format-off = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
+          };
+          network = {
+            format = "<big>{icon}</big>";
+            format-alt = " <small>{bandwidthDownBits}</small>  <small>{bandwidthUpBits}</small>";
+            format-ethernet = "󰈀";
+            format-disconnected = "󰲜";
+            format-linked = "";
+            format-wifi = "󰖩";
+            interval = 2;
+            tooltip-format = "  {ifname}\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+            tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+            tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+            tooltip-format-disconnected = "󰲜  disconnected";
+          };
+          "custom/vpn" = {
+            format = "<big>{}</big>";
+            exec = "${lib.getExe tailscaleCheck}";
+            on-click-middle = "${lib.getExe tailscaleToggle} toggle";
+            interval = 2;
           };
           backlight = {
             # TODO: configure this to use the correct device
@@ -547,17 +542,6 @@ in
             on-scroll-up = "${pkgs.avizo}/bin/lightctl -d up 2";
             on-scroll-down = "${pkgs.avizo}/bin/lightctl -d down 2";
             tooltip-format = "󰃠  {percent}󰏰";
-          };
-          power-profiles-daemon = {
-            format = "<big>{icon}</big>";
-            format-icons = {
-              default = "󱐋";
-              performance = "󰤇";
-              balanced = "󰗑";
-              power-saver = "󰴻";
-            };
-            tooltip-format = "󱐋  Power profile: {profile}\n󰒓  Driver: {driver}";
-            #TODO: add power profile menu on middle click
           };
           cpu = {
             interval = 2;
@@ -592,6 +576,17 @@ in
               ""
             ];
             tooltip-format = "󰔐  CPU {temperatureC}󰔄";
+          };
+          power-profiles-daemon = {
+            format = "<big>{icon}</big>";
+            format-icons = {
+              default = "󱐋";
+              performance = "󰤇";
+              balanced = "󰗑";
+              power-saver = "󰴻";
+            };
+            tooltip-format = "󱐋  Power profile: {profile}\n󰒓  Driver: {driver}";
+            #TODO: add power profile menu on middle click
           };
           battery = {
             states = {
