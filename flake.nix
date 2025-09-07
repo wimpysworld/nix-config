@@ -10,6 +10,8 @@
     nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-25.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
+    nix-ai-tools.url = "github:numtide/nix-ai-tools";
+    nix-ai-tools.inputs.nixpkgs.follows = "nixpkgs-unstable";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.2.1.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
     iwmenu.url = "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.2.0.tar.gz";
@@ -95,7 +97,7 @@
           hostname = "bane";
           platform = "aarch64-darwin";
           desktop = "aqua";
-	      };
+        };
         "martin@krall" = helper.mkHome {
           hostname = "krall";
           platform = "x86_64-darwin";
@@ -237,15 +239,15 @@
               bc
               git
               home-manager
-              inputs.determinate.packages.${system}.default
-              inputs.disko.packages.${system}.default
-              inputs.fh.packages.${system}.default
-              just
-              micro
-              nh
-              nixpkgs-fmt
-              nixd
-              nix-output-monitor
+                  inputs.determinate.packages.${system}.default
+                  inputs.disko.packages.${system}.default
+                  inputs.fh.packages.${system}.default
+                  just
+                  micro
+                  nh
+                  nixpkgs-fmt
+                  nixd
+                  nix-output-monitor
               nvd
               sops
               tree

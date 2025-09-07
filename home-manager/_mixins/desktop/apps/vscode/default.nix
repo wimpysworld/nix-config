@@ -48,7 +48,6 @@ lib.mkIf (lib.elem username installFor) {
     # Packages that are used by some of the extensions below
     packages = with pkgs; [
       bash-language-server
-      unstable.claude-code
       unstable.github-mcp-server
       go
       gopls
@@ -156,12 +155,7 @@ lib.mkIf (lib.elem username installFor) {
           "nix.serverSettings" = {
             "nil" = {
               "formatting" = {
-                "command" = ["nixfmt"];
-              };
-            };
-            "nixd" = {
-              "formatting" = {
-                "command" = ["nixfmt"];
+                "command" = [ "nixfmt" ];
               };
             };
           };

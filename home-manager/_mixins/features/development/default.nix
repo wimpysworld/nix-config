@@ -91,7 +91,6 @@ in
       [
         dockerPurge
         precommitSetup
-        unstable.claude-code # Claude Code CLI
         difftastic # Modern Unix `diff`
         ghbackup # Backup GitHub repositories
         ghorg # Clone all repositories in a GitHub organization
