@@ -10,6 +10,7 @@
 }:
 {
   imports = [
+    inputs.determinate.darwinModules.default
     inputs.mac-app-util.darwinModules.default
     inputs.nix-homebrew.darwinModules.nix-homebrew
     inputs.nix-index-database.darwinModules.nix-index
@@ -77,18 +78,27 @@
     ];
   };
 
+  # Determinate Nix darwin module configuration
+  determinate-nix = {
+    customSettings = {
+      experimental-features = "nix-command flakes";
+      extra-experimental-features = "parallel-eval";
+      # Disable global registry
+      flake-registry = "";
+      lazy-trees = true;
+      eval-cores = 0; # Enable parallel evaluation across all cores
+      warn-dirty = false;
+    };
+  };
+
   nix =
     let
       flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
     in
     {
       settings = {
-        experimental-features = "nix-command flakes";
-        # Disable global registry
-        flake-registry = "";
         # Workaround for https://github.com/NixOS/nix/issues/9574
         nix-path = config.nix.nixPath;
-        warn-dirty = false;
       };
       # Determinate uses its own daemon to manage the Nix installation that
       # conflicts with nix-darwin’s native Nix management.

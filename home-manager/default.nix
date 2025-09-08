@@ -187,9 +187,9 @@ in
   };
 
   nix = {
-    package = pkgs.nixVersions.latest;
+    package = pkgs.nix;
     settings = {
-      experimental-features = "flakes nix-command";
+      experimental-features = "nix-command flakes";
     };
   };
 

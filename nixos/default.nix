@@ -104,7 +104,6 @@ in
         nvme-cli
         rsync
         smartmontools
-
       ]
       ++ coreUtils;
 
@@ -137,9 +136,11 @@ in
     {
       settings = {
         experimental-features = "nix-command flakes";
+        extra-experimental-features = "parallel-eval";
         # Disable global registry
         flake-registry = "";
         lazy-trees = true;
+        eval-cores = 0; # Enable parallel evaluation across all cores
         # Workaround for https://github.com/NixOS/nix/issues/9574
         nix-path = config.nix.nixPath;
         warn-dirty = false;
