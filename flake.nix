@@ -277,9 +277,9 @@
                 just
                 micro
                 nh
+                nil
                 nixfmt-tree
                 nixpkgs-fmt
-                nixd
                 nix-output-monitor
                 nvd
                 sops
