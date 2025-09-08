@@ -35,6 +35,7 @@ in
   catppuccin = {
     accent = "blue";
     flavor = "mocha";
+    atuin.enable = config.programs.atuin.enable;
     bat.enable = config.programs.bat.enable;
     bottom.enable = config.programs.bottom.enable;
     btop.enable = config.programs.btop.enable;

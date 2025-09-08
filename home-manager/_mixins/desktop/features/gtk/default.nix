@@ -16,14 +16,14 @@ lib.mkIf isLinux {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
       cursor-size = 32;
-      cursor-theme = "catppuccin-mocha-blue-cursors";
-      gtk-theme = "catppuccin-mocha-blue-standard";
+      cursor-theme = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-cursors";
+      gtk-theme = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
       icon-theme = "Papirus-Dark";
     };
 
     "org/gnome/desktop/wm/preferences" = {
       button-layout = "${buttonLayout}";
-      theme = "catppuccin-mocha-blue-standard";
+      theme = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
     };
 
     "org/pantheon/desktop/gala/appearance" = {
@@ -33,7 +33,7 @@ lib.mkIf isLinux {
 
   gtk = {
     cursorTheme = {
-      name = "catppuccin-mocha-blue-cursors";
+      name = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-cursors";
       package = pkgs.catppuccin-cursors.mochaBlue;
       size = 32;
     };
@@ -65,23 +65,23 @@ lib.mkIf isLinux {
     iconTheme = {
       name = "Papirus-Dark";
       package = pkgs.catppuccin-papirus-folders.override {
-        flavor = "mocha";
-        accent = "blue";
+        flavor = config.catppuccin.flavor;
+        accent = config.catppuccin.accent;
       };
     };
     theme = {
-      name = "catppuccin-mocha-blue-standard";
+      name = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
       package = pkgs.catppuccin-gtk.override {
-        accents = [ "blue" ];
+        accents = [ "${config.catppuccin.accent}" ];
         size = "standard";
-        variant = "mocha";
+        variant = config.catppuccin.flavor;
       };
     };
   };
   home = {
     packages = with pkgs; [ papirus-folders ];
     pointerCursor = {
-      name = "catppuccin-mocha-blue-cursors";
+      name = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-cursors";
       package = pkgs.catppuccin-cursors.mochaBlue;
       size = 32;
       gtk.enable = true;

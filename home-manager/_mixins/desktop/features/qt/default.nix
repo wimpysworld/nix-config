@@ -1,14 +1,23 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf isLinux {
+  catppuccin = {
+    kvantum.enable = config.qt.enable;
+  };
+
   # https://discourse.nixos.org/t/struggling-to-configure-gtk-qt-theme-on-laptop/42268/
   home = {
     packages = with pkgs; [
       (catppuccin-kvantum.override {
-        accent = "blue";
-        variant = "mocha";
+        accent = config.catppuccin.accent;
+        variant = config.catppuccin.flavor;
       })
       libsForQt5.qtstyleplugin-kvantum
       libsForQt5.qt5ct
@@ -17,7 +26,7 @@ lib.mkIf isLinux {
 
   qt = {
     enable = true;
-    platformTheme.name = "gtk";
+    platformTheme.name = "kvantum";
     style = {
       name = "kvantum";
     };
@@ -28,10 +37,6 @@ lib.mkIf isLinux {
   };
 
   xdg.configFile = {
-    kvantum = {
-      target = "Kvantum/kvantum.kvconfig";
-      text = lib.generators.toINI { } { General.theme = "catppuccin-mocha-blue"; };
-    };
     qt5ct = {
       target = "qt5ct/qt5ct.conf";
       text = lib.generators.toINI { } {
