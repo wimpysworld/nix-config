@@ -208,30 +208,28 @@
       # Generated system configurations
       nixosConfigurations =
         let
-          workstations = helper.generateConfigs "workstation" systems typeDefaults;
-          servers = helper.generateConfigs "server" systems typeDefaults;
-          vms = helper.generateConfigs "vm" systems typeDefaults;
-          isos = helper.generateConfigs "iso" systems typeDefaults;
-          allNixos = workstations // servers // vms // isos;
+          allNixos =
+            helper.generateConfigs "workstation" systems typeDefaults
+            // helper.generateConfigs "server" systems typeDefaults
+            // helper.generateConfigs "vm" systems typeDefaults
+            // helper.generateConfigs "iso" systems typeDefaults;
         in
         nixpkgs.lib.mapAttrs (name: config: helper.mkNixos config) allNixos;
 
-      darwinConfigurations =
-        let
-          darwinSystems = helper.generateConfigs "darwin" systems typeDefaults;
-        in
-        nixpkgs.lib.mapAttrs (name: config: helper.mkDarwin config) darwinSystems;
+      darwinConfigurations = nixpkgs.lib.mapAttrs (name: config: helper.mkDarwin config) (
+        helper.generateConfigs "darwin" systems typeDefaults
+      );
 
       homeConfigurations =
         let
-          workstations = helper.generateConfigs "workstation" systems typeDefaults;
-          servers = helper.generateConfigs "server" systems typeDefaults;
-          vms = helper.generateConfigs "vm" systems typeDefaults;
-          lima = helper.generateConfigs "lima" systems typeDefaults;
-          darwin = helper.generateConfigs "darwin" systems typeDefaults;
-          wsl = helper.generateConfigs "wsl" systems typeDefaults;
-          gaming = helper.generateConfigs "gaming" systems typeDefaults;
-          allHomes = workstations // servers // vms // lima // darwin // wsl // gaming;
+          allHomes =
+            helper.generateConfigs "workstation" systems typeDefaults
+            // helper.generateConfigs "server" systems typeDefaults
+            // helper.generateConfigs "vm" systems typeDefaults
+            // helper.generateConfigs "lima" systems typeDefaults
+            // helper.generateConfigs "darwin" systems typeDefaults
+            // helper.generateConfigs "wsl" systems typeDefaults
+            // helper.generateConfigs "gaming" systems typeDefaults;
         in
         nixpkgs.lib.mapAttrs' (
           name: config: nixpkgs.lib.nameValuePair "${config.username}@${name}" (helper.mkHome config)
@@ -240,26 +238,17 @@
       overlays = import ./overlays { inherit inputs; };
       # Custom NixOS modules
       nixosModules = import ./modules/nixos;
-      # Custom packages; acessible via 'nix build', 'nix shell', etc
+      # Custom packages; accessible via 'nix build', 'nix shell', etc
       packages = helper.forAllSystems (
         system:
         let
-          # Import nixpkgs for the target system, applying overlays directly
-          pkgsWithOverlays = import nixpkgs {
+          pkgs = import nixpkgs {
             inherit system;
-            config = {
-              allowUnfree = true;
-            }; # Ensure consistent config
-            # Pass the list of overlay functions directly
+            config.allowUnfree = true;
             overlays = builtins.attrValues self.overlays;
           };
-          # Import the function from pkgs/default.nix
-          pkgsFunction = import ./pkgs;
-          # Call the function with the fully overlaid package set
-          customPkgs = pkgsFunction pkgsWithOverlays;
         in
-        # Return the set of custom packages
-        customPkgs
+        import ./pkgs pkgs
       );
       # Formatter for .nix files, available via 'nix fmt'
       formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
