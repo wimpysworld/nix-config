@@ -17,6 +17,87 @@ build:
 check:
     @nix flake check --show-trace
 
+# Evaluate configurations without building
+eval:
+    @just eval-flake
+    @just eval-configs
+
+# Evaluate flake syntax and structure
+eval-flake:
+    @echo "Flake 󱄅 Evaluation: syntax and structure"
+    @nix flake show --allow-import-from-derivation
+
+# Evaluate all configurations for syntax errors
+eval-configs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "Configurations 󱄅 Evaluation: all systems"
+
+    # Evaluate NixOS configurations
+    echo "  NixOS configurations:"
+    if [[ "$(grep ^ID= /etc/os-release | cut -d'=' -f2)" == "nixos" ]]; then
+        for config in $(nix eval .#nixosConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
+            echo "    Evaluating nixosConfigurations.${config}..."
+            nix eval .#nixosConfigurations.${config}.config.system.name --quiet >/dev/null
+        done
+    else
+        echo "    Skipping NixOS configurations (not on NixOS)"
+        for config in $(nix eval .#nixosConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
+            echo "    Found nixosConfigurations.${config} (evaluation skipped on non-NixOS)"
+        done
+    fi
+
+    # Evaluate Darwin configurations (only on macOS or with --impure for cross-evaluation)
+    echo "  Darwin configurations:"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        for config in $(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
+            echo "    Evaluating darwinConfigurations.${config}..."
+            nix eval .#darwinConfigurations.${config}.config.system.name --quiet >/dev/null
+        done
+    else
+        echo "    Skipping Darwin configurations (not on macOS)"
+        for config in $(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
+            echo "    Found darwinConfigurations.${config} (evaluation skipped on Linux)"
+        done
+    fi
+
+    # Evaluate Home Manager configurations
+    echo "  Home Manager configurations:"
+
+    # Get lists of available system configurations for filtering
+    nixos_configs=$(nix eval .#nixosConfigurations --apply builtins.attrNames --json | jq -r '.[]' | tr '\n' ' ')
+    darwin_configs=$(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]' | tr '\n' ' ')
+
+    for config in $(nix eval .#homeConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
+        # Extract hostname from home config (e.g., "martin.wimpress@bane" -> "bane")
+        hostname=$(echo "$config" | sed 's/.*@//')
+
+        # Check if this home config is for a system we can evaluate on this platform
+        should_evaluate=false
+
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+            # On macOS, evaluate home configs for Darwin systems
+            if echo "$darwin_configs" | grep -q "\b$hostname\b"; then
+                should_evaluate=true
+            fi
+        else
+            # On Linux, evaluate home configs for NixOS systems
+            if echo "$nixos_configs" | grep -q "\b$hostname\b"; then
+                should_evaluate=true
+            fi
+        fi
+
+        if $should_evaluate; then
+            echo "    Evaluating homeConfigurations.${config}..."
+            nix eval .#homeConfigurations.${config}.config.home.username --quiet >/dev/null
+        else
+            echo "    Skipping homeConfigurations.${config} (cross-platform)"
+        fi
+    done
+
+    echo "🗹 All configurations evaluated successfully"
+
 # Switch OS and Home configurations
 switch:
     @just switch-home
