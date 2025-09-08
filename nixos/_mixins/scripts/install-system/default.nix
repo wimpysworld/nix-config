@@ -2,14 +2,13 @@
   isISO,
   inputs,
   pkgs,
-  platform,
   ...
 }:
 let
   install-system = pkgs.writeShellApplication {
     name = "install-system";
     runtimeInputs = with pkgs; [
-      inputs.disko.packages.${platform}.default
+      inputs.disko.packages.${pkgs.system}.default
       coreutils-full
       findutils
       gawk

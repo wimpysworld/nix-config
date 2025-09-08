@@ -3,7 +3,6 @@
   isWorkstation,
   lib,
   pkgs,
-  platform,
   username,
   ...
 }:
@@ -14,9 +13,9 @@ lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   environment = {
     systemPackages = with pkgs; [
       qemu
-      inputs.quickemu.packages.${platform}.default
+      inputs.quickemu.packages.${pkgs.system}.default
       # TODO: Fix and enable
-      #inputs.quickgui.packages.${platform}.default
+      #inputs.quickgui.packages.${pkgs.system}.default
     ];
   };
   virtualisation = {

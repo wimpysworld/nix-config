@@ -9,7 +9,6 @@
   modulesPath,
   outputs,
   pkgs,
-  platform,
   stateVersion,
   username,
   ...
@@ -58,10 +57,10 @@ in
       emulatedSystems = [
         "riscv64-linux"
       ]
-      ++ lib.optionals (platform == "x86_64-linux") [
+      ++ lib.optionals (pkgs.system == "x86_64-linux") [
         "aarch64-linux"
       ]
-      ++ lib.optionals (platform == "aarch64-linux") [
+      ++ lib.optionals (pkgs.system == "aarch64-linux") [
         "x86_64-linux"
       ];
     };
@@ -91,9 +90,9 @@ in
     systemPackages =
       with pkgs;
       [
-        inputs.determinate.packages.${platform}.default
-        inputs.fh.packages.${platform}.default
-        inputs.nixos-needsreboot.packages.${platform}.default
+        inputs.determinate.packages.${pkgs.system}.default
+        inputs.fh.packages.${pkgs.system}.default
+        inputs.nixos-needsreboot.packages.${pkgs.system}.default
         git
         just
         micro
@@ -151,8 +150,6 @@ in
       registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
       nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
     };
-
-  nixpkgs.hostPlatform = lib.mkDefault "${platform}";
 
   programs = {
     command-not-found.enable = false;

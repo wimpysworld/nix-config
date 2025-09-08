@@ -33,7 +33,6 @@ rec {
           outputs
           desktop
           hostname
-          platform
           username
           stateVersion
           isInstall
@@ -67,13 +66,13 @@ rec {
       tailNet = "drongo-gamma.ts.net";
     in
     inputs.nixpkgs.lib.nixosSystem {
+      system = platform;
       specialArgs = {
         inherit
           inputs
           outputs
           desktop
           hostname
-          platform
           username
           stateVersion
           isInstall
@@ -109,13 +108,13 @@ rec {
       isWorkstation = true;
     in
     inputs.nix-darwin.lib.darwinSystem {
+      system = platform;
       specialArgs = {
         inherit
           inputs
           outputs
           desktop
           hostname
-          platform
           username
           isInstall
           isISO
