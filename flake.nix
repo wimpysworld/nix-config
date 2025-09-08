@@ -314,8 +314,5 @@
             };
           }
         );
-
-      # Expose input packages directly
-      inherit (inputs) bzmenu iwmenu;
     };
 }
