@@ -13,6 +13,10 @@ build:
     @just build-home
     @just build-host
 
+# Build OS and Home configurations
+check:
+    @nix flake check --show-trace
+
 # Switch OS and Home configurations
 switch:
     @just switch-home
