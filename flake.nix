@@ -265,56 +265,42 @@
       formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
 
       # Creates a devshell for working with this flake via direnv.
-      devShells =
+      devShells = helper.forAllSystems (
+        system:
         let
-          supportedSystems = [
-            "aarch64-linux"
-            "x86_64-linux"
-            "aarch64-darwin"
-            "x86_64-darwin"
-          ];
-          forEachSupportedSystem =
-            f:
-            nixpkgs.lib.genAttrs supportedSystems (
-              system:
-              f {
-                pkgs = import nixpkgs {
-                  inherit system;
-                  config.allowUnfree = true;
-                };
-              }
-            );
+          pkgs = import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+          };
         in
-        forEachSupportedSystem (
-          { pkgs }:
-          {
-            default = pkgs.mkShell {
-              packages =
-                with pkgs;
-                [
-                  bc
-                  git
-                  home-manager
-                  inputs.determinate.packages.${system}.default
-                  inputs.disko.packages.${system}.default
-                  inputs.fh.packages.${system}.default
-                  jq
-                  just
-                  micro
-                  nh
-                  nixfmt-tree
-                  nixpkgs-fmt
-                  nixd
-                  nix-output-monitor
-                  nvd
-                  sops
-                  tree
-                ]
-                ++ lib.optionals pkgs.stdenv.isLinux [
-                  inputs.nixos-needsreboot.packages.${system}.default
-                ];
-            };
-          }
-        );
+        {
+          default = pkgs.mkShell {
+            packages =
+              with pkgs;
+              [
+                bc
+                git
+                home-manager
+                inputs.determinate.packages.${system}.default
+                inputs.disko.packages.${system}.default
+                inputs.fh.packages.${system}.default
+                jq
+                just
+                micro
+                nh
+                nixfmt-tree
+                nixpkgs-fmt
+                nixd
+                nix-output-monitor
+                nvd
+                sops
+                tree
+              ]
+              ++ lib.optionals pkgs.stdenv.isLinux [
+                inputs.nixos-needsreboot.packages.${system}.default
+              ];
+          };
+        }
+      );
     };
 }
