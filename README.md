@@ -135,6 +135,36 @@ The `just iso <iso_name>` command creates .iso images from this flake. The follo
 Live images will be left in `result/iso/` and are also injected into `~/Quickemu/nixos-iso-<iso_name>/nixos.iso` respectively.
 The console .iso image is also periodically built and published via [GitHub Actions](./.github/workflows) and is available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
+### Building without just
+
+If `nh`, `nom`, `just` and `home-manager` are not available here are traditional ways to build and switch.
+
+**NixOS**
+```shell
+sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
+sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
+nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
+nix run github:nix-community/nixos-anywhere -- --flake '.#{hostname}' root@{ip-address}
+```
+
+**nix-darwin**
+```shell
+nix run nix-darwin -- switch --flake ~/Zero/nix-config
+nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
+```
+
+**Home Manager**
+```shell
+home-manager build --flake $HOME/Zero/nix-config -L
+home-manager switch -b backup --flake $HOME/Zero/nix-config
+nix run nixpkgs#home-manager -- switch -b backup --flake "${HOME}/Zero/nix-config"
+```
+
+**ISO**
+```shell
+nix build .#nixosConfigurations.{iso-console|iso-pantheon}.config.system.build.isoImage
+```
+
 ## What's in the box? 🎁
 
 Nix is configured with [flake support](https://zero-to-nix.com/concepts/flakes) and the [unified CLI](https://zero-to-nix.com/concepts/nix#unified-cli) enabled.

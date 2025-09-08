@@ -13,5 +13,7 @@ in
     mkHome
     mkNixos
     forAllSystems
+    mkSystemConfig
+    generateConfigs
     ;
 }

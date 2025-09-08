@@ -55,153 +55,187 @@
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "24.11";
       helper = import ./lib { inherit inputs outputs stateVersion; };
-    in
-    {
-      # home-manager build --flake $HOME/Zero/nix-config -L
-      # home-manager switch -b backup --flake $HOME/Zero/nix-config
-      # nix run nixpkgs#home-manager -- switch -b backup --flake "${HOME}/Zero/nix-config"
-      homeConfigurations = {
-        # .iso images
-        "nixos@iso-console" = helper.mkHome {
-          hostname = "iso-console";
+
+      # System registry - central definition of all systems and their properties
+      systems = {
+        # ISO Images
+        iso-console = {
+          type = "iso";
           username = "nixos";
         };
-        "nixos@iso-lomiri" = helper.mkHome {
-          hostname = "iso-lomiri";
+        iso-lomiri = {
+          type = "iso";
           username = "nixos";
           desktop = "lomiri";
         };
-        "nixos@iso-pantheon" = helper.mkHome {
-          hostname = "iso-pantheon";
+        iso-pantheon = {
+          type = "iso";
           username = "nixos";
           desktop = "pantheon";
         };
+
         # Workstations
-        "martin@phasma" = helper.mkHome {
-          hostname = "phasma";
+        phasma = {
+          type = "workstation";
           desktop = "hyprland";
         };
-        "martin@vader" = helper.mkHome {
-          hostname = "vader";
+        vader = {
+          type = "workstation";
           desktop = "hyprland";
         };
-        "martin@shaa" = helper.mkHome {
-          hostname = "shaa";
+        shaa = {
+          type = "workstation";
           desktop = "hyprland";
         };
-        "martin@atrius" = helper.mkHome {
-          hostname = "atrius";
+        atrius = {
+          type = "workstation";
           desktop = "hyprland";
         };
-        "martin@tanis" = helper.mkHome {
-          hostname = "tanis";
+        tanis = {
+          type = "workstation";
           desktop = "hyprland";
         };
-        "martin.wimpress@bane" = helper.mkHome {
+        sidious = {
+          type = "workstation";
+          desktop = "pantheon";
+        };
+
+        # Darwin systems
+        bane = {
+          type = "darwin";
           username = "martin.wimpress";
-          hostname = "bane";
           platform = "aarch64-darwin";
           desktop = "aqua";
         };
-        "martin@krall" = helper.mkHome {
-          hostname = "krall";
+        krall = {
+          type = "darwin";
           platform = "x86_64-darwin";
           desktop = "aqua";
         };
-        # palpatine/sidious are dual boot hosts, WSL2/Ubuntu and NixOS respectively.
-        "martin@palpatine" = helper.mkHome { hostname = "palpatine"; };
-        "martin@sidious" = helper.mkHome {
-          hostname = "sidious";
-          desktop = "pantheon";
+
+        # Dual boot (WSL/Ubuntu variant)
+        palpatine = {
+          type = "wsl";
         };
+
         # Servers
-        "martin@malak" = helper.mkHome { hostname = "malak"; };
-        "martin@maul" = helper.mkHome { hostname = "maul"; };
-        "martin@revan" = helper.mkHome { hostname = "revan"; };
+        malak = {
+          type = "server";
+        };
+        maul = {
+          type = "server";
+        };
+        revan = {
+          type = "server";
+        };
+
         # Steam Deck
-        "deck@steamdeck" = helper.mkHome {
-          hostname = "steamdeck";
+        steamdeck = {
+          type = "gaming";
           username = "deck";
         };
-        # VMs
-        "martin@blackace" = helper.mkHome { hostname = "blackace"; };
-        "martin@defender" = helper.mkHome { hostname = "defender"; };
-        "martin@fighter" = helper.mkHome { hostname = "fighter"; };
-        "martin@crawler" = helper.mkHome { hostname = "crawler"; };
-        "martin@dagger" = helper.mkHome {
-          hostname = "dagger";
+
+        # VMs (NixOS)
+        crawler = {
+          type = "vm";
+        };
+        dagger = {
+          type = "vm";
           desktop = "pantheon";
+        };
+
+        # VMs (Lima/Home Manager only)
+        blackace = {
+          type = "lima";
+        };
+        defender = {
+          type = "lima";
+        };
+        fighter = {
+          type = "lima";
         };
       };
-      nixosConfigurations = {
-        # .iso images
-        #  - nix build .#nixosConfigurations.{iso-console|iso-pantheon}.config.system.build.isoImage
-        iso-console = helper.mkNixos {
-          hostname = "iso-console";
+
+      # Type defaults for different system types
+      typeDefaults = {
+        iso = {
           username = "nixos";
+          platform = "x86_64-linux";
+          desktop = null;
         };
-        iso-lomiri = helper.mkNixos {
-          hostname = "iso-lomiri";
-          username = "nixos";
-          desktop = "lomiri";
-        };
-        iso-pantheon = helper.mkNixos {
-          hostname = "iso-pantheon";
-          username = "nixos";
-          desktop = "pantheon";
-        };
-        # Workstations
-        #  - sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
-        #  - sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
-        #  - nix build .#nixosConfigurations.{hostname}.config.system.build.toplevel
-        #  - nix run github:nix-community/nixos-anywhere -- --flake '.#{hostname}' root@{ip-address}
-        phasma = helper.mkNixos {
-          hostname = "phasma";
+        workstation = {
+          username = "martin";
+          platform = "x86_64-linux";
           desktop = "hyprland";
         };
-        vader = helper.mkNixos {
-          hostname = "vader";
-          desktop = "hyprland";
+        server = {
+          username = "martin";
+          platform = "x86_64-linux";
+          desktop = null;
         };
-        shaa = helper.mkNixos {
-          hostname = "shaa";
-          desktop = "hyprland";
+        vm = {
+          username = "martin";
+          platform = "x86_64-linux";
+          desktop = null;
         };
-        atrius = helper.mkNixos {
-          hostname = "atrius";
-          desktop = "hyprland";
+        lima = {
+          username = "martin";
+          platform = "x86_64-linux";
+          desktop = null;
         };
-        tanis = helper.mkNixos {
-          hostname = "tanis";
-          desktop = "hyprland";
+        darwin = {
+          username = "martin";
+          platform = "aarch64-darwin";
+          desktop = "aqua";
         };
-        sidious = helper.mkNixos {
-          hostname = "sidious";
-          desktop = "pantheon";
+        wsl = {
+          username = "martin";
+          platform = "x86_64-linux";
+          desktop = null;
         };
-        # Servers
-        malak = helper.mkNixos { hostname = "malak"; };
-        maul = helper.mkNixos { hostname = "maul"; };
-        revan = helper.mkNixos { hostname = "revan"; };
-        # VMs
-        crawler = helper.mkNixos { hostname = "crawler"; };
-        dagger = helper.mkNixos {
-          hostname = "dagger";
-          desktop = "pantheon";
+        gaming = {
+          username = "deck";
+          platform = "x86_64-linux";
+          desktop = "gamescope";
         };
       };
-      #nix run nix-darwin -- switch --flake ~/Zero/nix-config
-      #nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
-      darwinConfigurations = {
-        bane = helper.mkDarwin {
-          username = "martin.wimpress";
-          hostname = "bane";
-        };
-        krall = helper.mkDarwin {
-          hostname = "krall";
-          platform = "x86_64-darwin";
-        };
-      };
+
+    in
+    {
+      # Expose lib so it can be used by the helper functions
+      lib = helper;
+
+      # Generated system configurations
+      nixosConfigurations =
+        let
+          workstations = helper.generateConfigs "workstation" systems typeDefaults;
+          servers = helper.generateConfigs "server" systems typeDefaults;
+          vms = helper.generateConfigs "vm" systems typeDefaults;
+          isos = helper.generateConfigs "iso" systems typeDefaults;
+          allNixos = workstations // servers // vms // isos;
+        in
+        nixpkgs.lib.mapAttrs (name: config: helper.mkNixos config) allNixos;
+
+      darwinConfigurations =
+        let
+          darwinSystems = helper.generateConfigs "darwin" systems typeDefaults;
+        in
+        nixpkgs.lib.mapAttrs (name: config: helper.mkDarwin config) darwinSystems;
+
+      homeConfigurations =
+        let
+          workstations = helper.generateConfigs "workstation" systems typeDefaults;
+          servers = helper.generateConfigs "server" systems typeDefaults;
+          vms = helper.generateConfigs "vm" systems typeDefaults;
+          lima = helper.generateConfigs "lima" systems typeDefaults;
+          darwin = helper.generateConfigs "darwin" systems typeDefaults;
+          wsl = helper.generateConfigs "wsl" systems typeDefaults;
+          gaming = helper.generateConfigs "gaming" systems typeDefaults;
+          allHomes = workstations // servers // vms // lima // darwin // wsl // gaming;
+        in
+        nixpkgs.lib.mapAttrs' (
+          name: config: nixpkgs.lib.nameValuePair "${config.username}@${name}" (helper.mkHome config)
+        ) allHomes;
       # Custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };
       # Custom NixOS modules

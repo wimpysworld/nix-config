@@ -4,7 +4,7 @@
   stateVersion,
   ...
 }:
-{
+rec {
   # Helper function for generating home-manager configs
   mkHome =
     {
@@ -134,4 +134,30 @@
     "aarch64-darwin"
     "x86_64-darwin"
   ];
+
+  # Helper function to create system configurations based on type
+  mkSystemConfig =
+    name: config: typeDefaults:
+    let
+      # Get type-specific defaults
+      defaults = typeDefaults.${config.type} or { };
+      # Merge system config with defaults
+      finalConfig = defaults // config;
+      # Filter config to only include parameters expected by helper functions
+      helperConfig = {
+        hostname = name;
+        username = finalConfig.username;
+        desktop = finalConfig.desktop;
+        platform = finalConfig.platform;
+      };
+    in
+    helperConfig;
+
+  # Generate configurations for each type
+  generateConfigs =
+    configType: systems: typeDefaults:
+    let
+      filteredSystems = inputs.nixpkgs.lib.filterAttrs (name: config: config.type == configType) systems;
+    in
+    inputs.nixpkgs.lib.mapAttrs (name: config: mkSystemConfig name config typeDefaults) filteredSystems;
 }
