@@ -90,7 +90,6 @@ in
           filter-desktop = true;
           font = "FiraCode Nerd Font Mono:size=${fontSize}";
           lines = 16;
-          terminal = "foot";
           tabs = 2;
           width = 32;
           horizontal-pad = 32;

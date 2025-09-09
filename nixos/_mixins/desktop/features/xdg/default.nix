@@ -48,7 +48,7 @@
     terminal-exec = {
       enable = true;
       settings = {
-        default = if desktop == "hyprland" then [ "foot.desktop" ] else [ "Alacritty.desktop" ];
+        default = [ "kitty.desktop" ];
       };
     };
   };

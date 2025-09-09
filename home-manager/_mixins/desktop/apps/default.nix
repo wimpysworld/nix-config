@@ -27,6 +27,7 @@ in
     ./obs-studio
     ./rhythmbox
     ./security
+    ./terminal
     ./ulauncher
     ./vaults
     ./vscode

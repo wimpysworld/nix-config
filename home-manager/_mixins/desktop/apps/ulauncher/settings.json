@@ -7,6 +7,6 @@
     "render-on-screen": "default-monitor",
     "show-indicator-icon": true,
     "show-recent-apps": "0",
-    "terminal-command": "alacritty --command",
+    "terminal-command": "kitty -e",
     "theme-name": "Catppuccin-Mocha-Blue"
 }

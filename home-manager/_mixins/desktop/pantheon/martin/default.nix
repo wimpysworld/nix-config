@@ -19,8 +19,6 @@
     "org/gnome/settings-daemon/plugins/media-keys" = {
       custom-keybindings = [
         "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
       ];
     };
 
@@ -28,18 +26,6 @@
       binding = "<Super>e";
       name = "File Manager";
       command = "io.elementary.files -n ~/";
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
-      binding = "<Super>t";
-      name = "Terminal";
-      command = "alacritty";
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
-      binding = "<Primary><Alt>t";
-      name = "Terminal";
-      command = "alacritty";
     };
 
     "org/gnome/desktop/background" = {
@@ -89,11 +75,6 @@
 
     "io/elementary/terminal/settings" = {
       unsafe-paste-alert = false;
-    };
-
-    "org/gnome/desktop/default/applications/terminal" = {
-      exec = "alacritty";
-      exec-arg = "--command";
     };
   };
 }

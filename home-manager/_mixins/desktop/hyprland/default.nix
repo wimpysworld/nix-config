@@ -80,7 +80,6 @@ in
         "$mod, Q, killactive"
         # Launch applications
         "$mod, E, exec, nautilus --new-window"
-        "$mod, T, exec, foot"
         # Move focus
         "ALT, Tab, cyclenext"
         "ALT, Tab, bringactivetotop"

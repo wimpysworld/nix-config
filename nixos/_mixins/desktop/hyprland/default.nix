@@ -163,7 +163,7 @@ in
     };
     nautilus-open-any-terminal = {
       enable = true;
-      terminal = "foot";
+      terminal = "kitty";
     };
     seahorse.enable = isInstall;
     udevil.enable = true;

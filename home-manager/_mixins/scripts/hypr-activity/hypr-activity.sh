@@ -77,7 +77,7 @@ function activity_work() {
     start_app telegram-desktop
     start_app code
     start_app heynote
-    start_app foot
+    start_app kitty
     start_app discord
 
     move_app 5 initialClass GitKraken
@@ -91,7 +91,7 @@ function activity_work() {
     move_app 6 class Heynote
     move_app 6 class "@joplin/app-desktop"
     move_app 8 class Cider
-    move_app 9 initialClass foot
+    move_app 9 initialClass kitty
     # Move discord last because it doesn't honor silent move
     move_app 3 initialClass discord
 }
@@ -109,7 +109,7 @@ function activity_play() {
     start_app telegram-desktop
     start_app code
     start_app heynote
-    start_app foot
+    start_app kitty
     start_app discord
 
     # GitKraken takes ages to start, so we move it last
@@ -121,7 +121,7 @@ function activity_play() {
     move_app 6 class Heynote
     move_app 6 class "@joplin/app-desktop"
     move_app 8 class Cider
-    move_app 9 initialClass foot
+    move_app 9 initialClass kitty
     # Move discord last because it doesn't honor silent move
     move_app 2 initialClass discord
 }
