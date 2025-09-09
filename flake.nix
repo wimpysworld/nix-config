@@ -270,6 +270,7 @@
                 bc
                 git
                 home-manager
+                hyperfine
                 inputs.determinate.packages.${system}.default
                 inputs.disko.packages.${system}.default
                 inputs.fh.packages.${system}.default

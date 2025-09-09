@@ -8,6 +8,83 @@ backup_ext := `date +%Y%m%d-%H%M`
 default:
     @just --list --unsorted
 
+# Benchmark Determinate Nix performance features
+benchmark hostname=current_hostname:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Detect platform and set appropriate configuration
+    case "$(uname -s)" in
+        Linux)
+            config_path=".#nixosConfigurations.{{ hostname }}.config.system.build.etc.drvPath"
+            config_name="NixOS ({{ hostname }})"
+            ;;
+        Darwin)
+            config_path=".#darwinConfigurations.{{ hostname }}.config.system.build.etc.drvPath"
+            config_name="Darwin ({{ hostname }})"
+            ;;
+        *)
+            echo "❌ Unsupported OS: $(uname -s)"
+            exit 1
+            ;;
+    esac
+
+    echo "📏 Benchmarking Determinate Nix Performance for $config_name..."
+
+    # Create temporary nix configs
+    temp_dir=$(mktemp -d)
+    trap "rm -rf $temp_dir" EXIT
+
+    # Standard Nix config
+    echo "experimental-features = nix-command flakes"  >  "$temp_dir/nix-standard.conf"
+    echo "extra-experimental-features = "              >> "$temp_dir/nix-standard.conf"
+    echo "eval-cores = 1"                              >> "$temp_dir/nix-standard.conf"
+    echo "lazy-trees = false"                          >> "$temp_dir/nix-standard.conf"
+
+    # Determinate Nix config
+    echo "experimental-features = nix-command flakes"  >  "$temp_dir/nix-determinate.conf"
+    echo "extra-experimental-features = parallel-eval" >> "$temp_dir/nix-determinate.conf"
+    echo "eval-cores = 0"                              >> "$temp_dir/nix-determinate.conf"
+    echo "lazy-trees = true"                           >> "$temp_dir/nix-determinate.conf"
+
+    echo "   - Standard Nix:    eval-cores=1, lazy-trees disabled, parallel-eval off"
+    echo "   - Determinate Nix: eval-cores=0, lazy-trees enabled,  parallel-eval on"
+    echo ""
+
+    # Build nix eval command for evaluation benchmark
+    nix_cmd="nix eval $config_path --quiet --option eval-cache false 2>/dev/null"
+
+    # Run hyperfine benchmark with isolated configurations
+    hyperfine \
+        --warmup 1 \
+        --runs 3 \
+        --export-markdown "$temp_dir/nix-benchmark-results.md" \
+        --export-json "$temp_dir/nix-benchmark-results.json" \
+        --command-name "Standard Nix" \
+        "NIX_CONFIG=\$(cat $temp_dir/nix-standard.conf) $nix_cmd" \
+        --command-name "Determinate Nix" \
+        "NIX_CONFIG=\$(cat $temp_dir/nix-determinate.conf) $nix_cmd"
+
+    echo ""
+    echo "📊 Results Summary:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    # Extract and display key metrics from JSON results
+    if command -v jq >/dev/null 2>&1 && [ -f "$temp_dir/nix-benchmark-results.json" ]; then
+        standard_mean=$(jq -r '.results[0].mean' $temp_dir/nix-benchmark-results.json)
+        determinate_mean=$(jq -r '.results[1].mean' $temp_dir/nix-benchmark-results.json)
+
+        # Calculate speedup using bc
+        speedup=$(echo "scale=2; $standard_mean / $determinate_mean" | bc)
+        percent_faster=$(echo "scale=1; ($standard_mean - $determinate_mean) / $standard_mean * 100" | bc)
+
+        printf "❄️ Standard Nix:    %.3f seconds\n" "$standard_mean"
+        printf "🚀 Determinate Nix: %.3f seconds\n" "$determinate_mean"
+        printf "📈 Speedup:         %.2fx faster (%.1f%% improvement)\n" "$speedup" "$percent_faster"
+    else
+        echo "⚠️  Could not parse results (jq not available or results file missing)"
+    fi
+
 # Build OS and Home configurations
 build:
     @just build-home
