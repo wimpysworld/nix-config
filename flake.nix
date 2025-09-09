@@ -63,11 +63,6 @@
           type = "iso";
           username = "nixos";
         };
-        iso-lomiri = {
-          type = "iso";
-          username = "nixos";
-          desktop = "lomiri";
-        };
         iso-pantheon = {
           type = "iso";
           username = "nixos";

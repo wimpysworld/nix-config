@@ -130,7 +130,6 @@ The `just iso <iso_name>` command creates .iso images from this flake. The follo
 
 - `just iso console` (*terminal environment*): Includes `install-system` for automated installation.
 - `just iso pantheon` (*Pantheon Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
-- `just iso lomiri` (*Lomiri Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 
 Live images will be left in `result/iso/` and are also injected into `~/Quickemu/nixos-iso-<iso_name>/nixos.iso` respectively.
 The console .iso image is also periodically built and published via [GitHub Actions](./.github/workflows) and is available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
@@ -204,7 +203,6 @@ Here's the directory structure I'm using:
 │  │  └── users
 │  ├── iso-console
 │  ├── iso-pantheon -> iso-console
-│  ├── iso-lomiri -> iso-console
 │  ├── crawler -> dagger
 │  ├── dagger
 │  ├── malak
@@ -243,7 +241,7 @@ Useful shell scripts I used to keep in muddle of git repos are now migrated to [
 
 ### The Desktop 🖥️
 
-Hyprland 💧 Pantheon 🏛️ and Lomiri 📱 desktop options are available.
+Hyprland 💧 and Pantheon 🏛️ desktop options are available.
 The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code).
 The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
@@ -251,7 +249,6 @@ The usual creature comforts you'd expect to find in a Linux Desktop are integrat
 | :---------: | :----------------: | :-----------------------: | :---------------: |
 | 💧 Hyprland | [Hyprland NixOS]   | [Hyprland Home Manager]   | Catppuccin Mocha  |
 | 🏛️ Pantheon | [Pantheon NixOS]   | [Pantheon Home Manager]   | Catppuccin Mocha  |
-| 📱 Lomiri   | [Lomiri NixOS]     |                           | 🚧                |
 
 ## Eye Candy 👀🍬
 
@@ -475,6 +472,5 @@ My use of [Disko] and automated installation script were inspired by the these b
 [Tailscale]: https://tailscale.com/
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
 [Pantheon NixOS]: ./nixos/_mixins/desktop/pantheon/default.nix
-[Lomiri NixOS]: ./nixos/_mixins/desktop/lomiri/default.nix
 [Hyprland Home Manager]: ./home-manager/_mixins/desktop/hyprland/default.nix
 [Pantheon Home Manager]: ./home-manager/_mixins/desktop/pantheon/default/.nix
