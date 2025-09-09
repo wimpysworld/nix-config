@@ -103,6 +103,12 @@ lib.mkIf (lib.elem username installFor) {
         enableExtensionUpdateCheck = false;
         enableUpdateCheck = false;
         userSettings = {
+          # Set to `true` to disable folding arrows next to folder icons.
+          "catppuccin-icons.hidesExplorerArrows" = false;
+          # Set to `false` to only use the default folder icon.
+          "catppuccin-icons.specificFolders" = true;
+          # Set to `true` to only use the `text` fill color for all icons.
+          "catppuccin-icons.monochrome" = false;
           "chat.mcp.autostart" = "newAndOutdated";
           "chat.mcp.discovery.enabled" = true;
           "chat.mcp.enabled" = true;
@@ -216,11 +222,11 @@ lib.mkIf (lib.elem username installFor) {
           "terminal.integrated.cursorBlinking" = true;
           "update.mode" = "none";
           "vsicons.dontShowNewVersionMessage" = true;
+          "window.controlsStyle" =
+            if config.wayland.windowManager.hyprland.enable then "hidden" else "native";
           "workbench.tree.indent" = 20;
           "workbench.startupEditor" = "none";
           "workbench.editor.empty.hint" = "hidden";
-          #"workbench.preferredLightColorTheme": "Catppuccin Frappé",
-          #"workbench.iconTheme": "catppuccin-mocha",
           "github.copilot.chat.commitMessageGeneration.instructions.text" = ''
             You will act as a git commit message generator. When receiving a git diff, you will ONLY output the commit message itself, nothing else. No explanations, no questions, no additional comments.
 
