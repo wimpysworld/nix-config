@@ -17,6 +17,7 @@
         "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
         "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
         "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
+        "lnjaiaapbakfhlbjenjkhffcdpoompki" # Catppuccin Web file explorer icons
         "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
         "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
       ];
@@ -76,6 +77,10 @@
           };
           "{2adf0361-e6d8-4b74-b3bc-3f450e8ebb69}" = {
             install_url = "https://addons.mozilla.org/firefox/downloads/latest/catppuccin-mocha-blue-git/latest.xpi";
+            installation_mode = "force_installed";
+          };
+          "{bbb880ce-43c9-47ae-b746-c3e0096c5b76}" = {
+            install_url = "https://addons.mozilla.org/firefox/download/latest/catppuccin-web-file-icons/";
             installation_mode = "force_installed";
           };
           "{7a7a4a92-a2a0-41d1-9fd7-1e92480d612d}" = {
