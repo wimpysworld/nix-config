@@ -78,7 +78,6 @@ in
         bc # Terminal calculator
         bandwhich # Modern Unix `iftop`
         bmon # Modern Unix `iftop`
-        chafa # Terminal image viewer
         cpufetch # Terminal CPU info
         croc # Terminal file transfer
         cyme # Modern Unix `lsusb`
@@ -125,7 +124,6 @@ in
         speedtest-go # Terminal speedtest.net
         timer # Terminal timer
         tldr # Modern Unix `man`
-        ueberzugpp # Terminal image viewer integration
         unzip # Terminal ZIP extractor
         upterm # Terminal sharing
         wget # Terminal HTTP client

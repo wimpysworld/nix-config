@@ -53,7 +53,7 @@ in
         size = 16;
       };
       settings = {
-        cursor_blink_interval = 1;
+        cursor_blink_interval = 0.75;
         cursor_shape = "block";
         cursor_shape_unfocused = "hollow";
         cursor_stop_blinking_after = 0;
@@ -61,12 +61,20 @@ in
         scrollback_indicator_opacity = 0.50;
         scrollback_lines = 65536;
         shell = lib.mkIf isDarwin "${pkgs.fish}/bin/fish --interactive";
+        draw_minimal_borders = "yes";
+        window_border_width = "0pt";
+        window_margin_width = 0;
+        single_window_margin_width = 0;
+        sync_to_monitor = "yes";
         term = "xterm-256color";
         # Mouse
         copy_on_select = true;
         mouse_hide_wait = 0;
         strip_trailing_spaces = "smart";
         wheel_scroll_multiplier = 2;
+        # Bell
+        enable_audio_bell = "no";
+        visual_bell = 0.25;
       };
       shellIntegration = {
         enableBashIntegration = false;
