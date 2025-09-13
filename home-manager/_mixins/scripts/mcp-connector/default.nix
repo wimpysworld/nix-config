@@ -16,7 +16,7 @@ let
       nodejs_24
       pm2
       pnpm
-      python3Full
+      python3
       tailscale
       unstable.terraform-mcp-server
       uutils-coreutils-noprefix

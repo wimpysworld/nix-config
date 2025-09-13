@@ -88,7 +88,7 @@ lib.mkIf (lib.elem username installFor) {
       nixfmt-rfc-style
       nodePackages.prettier
       nodejs_24
-      python3Full
+      python3
       uv
       shellcheck
       shfmt
