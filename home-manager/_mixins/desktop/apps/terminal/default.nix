@@ -11,7 +11,7 @@ in
 {
   # Enable the Catppuccin theme
   catppuccin = {
-    kitty.enable = config.programs.kitty.enable && isLinux;
+    kitty.enable = config.programs.kitty.enable;
   };
 
   # User specific dconf terminal-related settings
