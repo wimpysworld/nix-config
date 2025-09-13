@@ -14,7 +14,7 @@ let
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
-    file = lib.mkIf isLinux {
+    file = {
       # https://github.com/catppuccin/gitkraken
       #  - I used the now 404: https://github.com/davi19/gitkraken
       "${config.home.homeDirectory}/.gitkraken/themes/catppuccin_mocha.jsonc".text =
