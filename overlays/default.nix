@@ -75,15 +75,19 @@
     );
 
     # https://github.com/tailscale/tailscale/issues/16966#issuecomment-3239543750
-    tailscale = prev.tailscale.overrideAttrs (old: {
-      checkFlags = builtins.map (
-        flag:
-        if prev.lib.hasPrefix "-skip=" flag then
-          flag + "|^TestGetList$|^TestIgnoreLocallyBoundPorts$|^TestPoller$"
-        else
-          flag
-      ) old.checkFlags;
-    });
+    tailscale =
+      if prev.stdenv.isLinux then
+        prev.tailscale.overrideAttrs (old: {
+          checkFlags = builtins.map (
+            flag:
+            if prev.lib.hasPrefix "-skip=" flag then
+              flag + "|^TestGetList$|^TestIgnoreLocallyBoundPorts$|^TestPoller$"
+            else
+              flag
+          ) old.checkFlags;
+        })
+      else
+        prev.tailscale;
   };
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
