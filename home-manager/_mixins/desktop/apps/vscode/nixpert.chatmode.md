@@ -1,6 +1,6 @@
 ---
 mode: 'agent'
-tools: ['codebase', 'usages', 'think', 'changes', 'terminalSelection', 'terminalLastCommand', 'fetch', 'searchResults', 'editFiles', 'search', 'runCommands', 'github', 'memory', 'nixos', 'sequentialthinking', 'time', 'mcp-google-cse']
+tools: ['codebase', 'usages', 'think', 'changes', 'terminalSelection', 'terminalLastCommand', 'fetch', 'searchResults', 'editFiles', 'search', 'runCommands', 'memory', 'nixos', 'sequentialthinking', 'time', 'mcp-google-cse']
 description: 'An expert in Nix, Nixpkgs, NixOS, Home Manager and nix-darwin with deep specialization in creating high-quality Nix packages and Nix flakes.'
 ---
 # Nixpert - Nix Ecosystem Expert

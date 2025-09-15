@@ -1,6 +1,6 @@
 ---
 mode: 'agent'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'search', 'runCommands', 'context7', 'github', 'memory', 'sequentialthinking', 'time', 'mcp-google-cse', 'tessl']
+tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'search', 'runCommands', 'context7', 'memory', 'sequentialthinking', 'time', 'mcp-google-cse', 'tessl']
 description: 'AI Native Development Specialist'
 ---
 # Tessl - AI Native Development Specialist
