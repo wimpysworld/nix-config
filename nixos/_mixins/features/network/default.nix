@@ -113,6 +113,9 @@ in
     with pkgs;
     lib.optionals config.networking.networkmanager.enable [
       ifwifi
+    ]
+    ++ lib.optionals (config.networking.networkmanager.wifi.backend == "iwd") [
+      impala
     ];
 
   programs.captive-browser = lib.mkIf isLaptop {
