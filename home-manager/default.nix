@@ -64,8 +64,6 @@ in
         builtins.readFile ./_mixins/configs/fastfetch.jsonc;
       "${config.xdg.configHome}/yazi/keymap.toml".text =
         builtins.readFile ./_mixins/configs/yazi-keymap.toml;
-      "${config.xdg.configHome}/fish/functions/help.fish".text =
-        builtins.readFile ./_mixins/configs/help.fish;
     };
 
     # A Modern Unix experience
@@ -300,14 +298,12 @@ in
         lsusb = "${pkgs.cyme}/bin/cyme --headings";
         moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
         more = "${pkgs.bat}/bin/bat";
-        nish = "nosh";
         pq = "${pkgs.pueue}/bin/pueue";
         rsync-copy = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --human-readable --info=progress2 --inplace --no-compress --partial --stats";
         rsync-mirror = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --delete --human-readable --info=progress2 --no-compress --inplace --partial --stats";
         ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
         screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
         speedtest = "${pkgs.speedtest-go}/bin/speedtest-go";
-        store-path = "${pkgs.uutils-coreutils-noprefix}/bin/readlink (${pkgs.which}/bin/which $argv)";
         top = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker --mem_as_value";
         tree = "${pkgs.eza}/bin/eza --tree";
         wormhole = "${pkgs.wormhole-rs}/bin/wormhole-rs";

@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
+# Exit on error, undefined variable, and error in pipes
+set -euo pipefail
+
 # Function to display usage
 function usage() {
     echo "Usage: $(basename "${0}") <program> [args...]"
+    echo "Launch a program detached from the current session"
     exit 1
 }
 
@@ -21,15 +25,5 @@ if ! command -v "${PROGRAM}" &> /dev/null; then
     exit 1
 fi
 
-# Execute the program with all remaining arguments and capture its PID
-"${PROGRAM}" "$@" &
-PID=$!
-
-# Verify the PID is running
-if kill -0 "${PID}" &> /dev/null; then
-    disown ${PID}
-    echo "${PROGRAM}: disowned ${PID}."
-else
-    echo "${PROGRAM}: process ${PID} is not running."
-    exit 1
-fi
+# Use setsid to run the program in a new session, fully detached
+setsid --fork "${PROGRAM}" "$@" &>/dev/null

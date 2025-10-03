@@ -80,8 +80,6 @@ in
 
   home = {
     file = {
-      "${config.xdg.configHome}/fish/functions/h.fish".text =
-        builtins.readFile ../../../_mixins/configs/h.fish;
       # Symlink ~/.gitconfig to ~/.config/git/config to prevent config divergence
       ".gitconfig".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/git/config";
     };
