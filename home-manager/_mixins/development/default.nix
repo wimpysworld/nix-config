@@ -90,19 +90,19 @@ in
     secrets = {
       act-env = {
         path = "${config.home.homeDirectory}/.config/act/secrets";
-        sopsFile = ../../../../secrets/act.yaml;
+        sopsFile = ../../../secrets/act.yaml;
         mode = "0660";
       };
       cg-repos = {
         path = "${config.home.homeDirectory}/.config/cg-repos";
-        sopsFile = ../../../../secrets/cg-repos.yaml;
+        sopsFile = ../../../secrets/cg-repos.yaml;
         mode = "0644";
       };
       #gh_token = {
-      #  sopsFile = ../../../../secrets/github.yaml;
+      #  sopsFile = ../../../secrets/github.yaml;
       #};
       #gh_read_only = {
-      #  sopsFile = ../../../../secrets/github.yaml;
+      #  sopsFile = ../../../secrets/github.yaml;
       #};
     };
   };

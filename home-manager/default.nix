@@ -24,11 +24,14 @@ in
     inputs.mac-app-util.homeManagerModules.default
     inputs.nix-index-database.homeModules.nix-index
     inputs.vscode-server.nixosModules.home
-    ./_mixins/features
+    ./_mixins/ai
+    ./_mixins/development
+    ./_mixins/fonts
     ./_mixins/scripts
     ./_mixins/services
     ./_mixins/terminal
     ./_mixins/users
+    ./_mixins/yubikey
   ]
   ++ lib.optional isWorkstation ./_mixins/desktop;
 

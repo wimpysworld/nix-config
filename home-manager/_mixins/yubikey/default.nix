@@ -11,7 +11,7 @@ let
     "martin"
     "martin.wimpress"
   ];
-  keysSopsFile = ../../../../secrets/keys.yaml;
+  keysSopsFile = ../../../secrets/keys.yaml;
   # Helper function to generate SSH key secret definitions
   mkSshKeySecrets = keyNamePrefix: sshBaseName: {
     "${keyNamePrefix}_${sshBaseName}" = {
