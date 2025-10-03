@@ -20,6 +20,9 @@ lib.mkIf (lib.elem username installFor) {
       "${config.home.homeDirectory}/.gitkraken/themes/catppuccin_mocha.jsonc".text =
         builtins.readFile ./gitkraken-catppuccin-mocha-blue-upstream.json;
     };
-    packages = with pkgs; [ gitkraken ];
+    packages = with pkgs; [
+      gitkraken
+      gk-cli
+    ];
   };
 }

@@ -25,6 +25,10 @@ lib.mkIf (lib.elem username installFor) {
     inputs.nix-vscode-extensions.overlays.default
   ];
 
+  catppuccin = {
+    vscode.profiles.default.enable = config.programs.vscode.enable;
+  };
+
   home = {
     file = {
       "${vscodeUserDir}/mcp.json".text = builtins.readFile ./mcp.json;

@@ -61,7 +61,6 @@ lib.mkIf (isDarwin || isOtherOS) {
       ];
       sansSerif = [
         "Work Sans"
-        "Fira Sans"
         "Noto Color Emoji"
       ];
       monospace = [
