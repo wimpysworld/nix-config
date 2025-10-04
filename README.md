@@ -179,7 +179,6 @@ Here's the directory structure I'm using:
 │  │  ├── desktop
 │  │  ├── scripts
 │  │  └── users
-│  ├── bane
 │  ├── krall
 │  └── default.nix
 ├── home-manager
@@ -269,7 +268,7 @@ Things I currently need to do manually after installation.
 - [ ] 1Password - authenticate
 - [ ] LastPass - authenticate
 - [ ] Run `determinate-nixd login`
-- [ ] Run `gh auth login -p ssh`
+- [ ] Run `gh auth login`
 - [ ] Tailscale - `sudo tailscale up --operator="$USER"`
 - [ ] Run `gpg-restore`
 - [ ] Keybase - `keybase login`
@@ -474,4 +473,4 @@ My use of [Disko] and automated installation script were inspired by the these b
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
 [Pantheon NixOS]: ./nixos/_mixins/desktop/pantheon/default.nix
 [Hyprland Home Manager]: ./home-manager/_mixins/desktop/hyprland/default.nix
-[Pantheon Home Manager]: ./home-manager/_mixins/desktop/pantheon/default/.nix
+[Pantheon Home Manager]: ./home-manager/_mixins/desktop/pantheon/default.nix
