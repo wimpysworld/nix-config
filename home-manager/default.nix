@@ -70,10 +70,10 @@ in
 
   nixpkgs = {
     overlays = [
-      # Add overlays your own flake exports (from overlays and pkgs dir):
-      outputs.overlays.additions
-      outputs.overlays.modifications
-      outputs.overlays.unstable-packages
+      # Overlays defined via overlays/default.nix and pkgs/default.nix
+      outputs.overlays.localPackages
+      outputs.overlays.modifiedPackages
+      outputs.overlays.unstablePackages
     ];
     # Configure your nixpkgs instance
     config = {
