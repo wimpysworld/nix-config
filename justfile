@@ -147,7 +147,7 @@ eval-configs:
     darwin_configs=$(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]' | tr '\n' ' ')
 
     for config in $(nix eval .#homeConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
-        # Extract hostname from home config (e.g., "martin.wimpress@bane" -> "bane")
+        # Extract hostname from home config (e.g., "martin@bane" -> "bane")
         hostname=$(echo "$config" | sed 's/.*@//')
 
         # Check if this home config is for a system we can evaluate on this platform

@@ -17,10 +17,10 @@ These computers are managed by this Nix flake ❄️
 | `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 7900 GRE]       | [RTX 2000E Ada Generation] | 🖥️   | ❄️  | ✅    |
 | `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630    | 💻️🎭️ | ❄️  | ✅    |
 | `palpatine` | ⤴️                          | ⤴️                             | ⤴️    | ⤴️                          | ⤴️                         | 💻️🎭️ | 🪟  | ✅    |
+| `bane`      | [Framework 16]"             | AMD Ryzen 7 7840HS             | 96GB  | AMD Radeon 780M             |                            | 💻️   | ❄️  | 🚧    |
 | `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                            | 💻️   | ❄️  | ✅    |
 | `shaa`      | [ThinkPad T14s Gen 1]       | [AMD Ryzen 5 PRO 4650U]        | 16GB  | AMD Radeon RX Vega 6        |                            | 💻️   | ❄️  | ✅    |
 | `atrius`    | [ThinkPad T495s]            | [AMD Ryzen 7 3700U]            | 16GB  | AMD Radeon Vega 10          |                            | 💻️   | ❄️  | 🚧    |
-| `bane`      | Macbook Pro M3 14"          | Apple M3 12-core CPU           | 36GB  | Apple M3 Pro 18-core GPU    |                            | 💻️   | 🍏  | ✅    |
 | `krall`     | [Macbook Pro (Mid 2015)]    | Intel Core i7                  | 16GB  | Intel Iris Pro Graphics     |                            | 💻️   | 🍏  | ✅    |
 | `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                            | 🎮️   | 🐧  | ✅    |
 | `crawler`   | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
@@ -421,6 +421,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10#kf
 [ROG Crosshair VIII Impact]: https://rog.asus.com/uk/motherboards/rog-crosshair/rog-crosshair-viii-impact-model/
 [B360 HD3P-LM]: https://www.gigabyte.com/Motherboard/B360-HD3P-rev-10
+[Framework 16]: https://frame.work/gb/en/laptop16
 [ThinkPad P1 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadp/thinkpad-p1/22ws2wpp101
 [ThinkPad Z13 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadz/thinkpad-z13-(13-inch-amd)/21d20012uk
 [ThinkPad T14s Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadt/t14s-amd-g1/22tpt144sa2

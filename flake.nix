@@ -70,6 +70,10 @@
         };
 
         # Workstations
+        bane = {
+          type = "workstation";
+          desktop = "hyprland";
+        };
         phasma = {
           type = "workstation";
           desktop = "hyprland";
@@ -96,12 +100,6 @@
         };
 
         # Darwin systems
-        bane = {
-          type = "darwin";
-          username = "martin.wimpress";
-          platform = "aarch64-darwin";
-          desktop = "aqua";
-        };
         krall = {
           type = "darwin";
           platform = "x86_64-darwin";
