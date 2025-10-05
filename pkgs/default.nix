@@ -13,6 +13,8 @@ pkgs: {
   # Local packages to prevent unintended upgrades or carrying patches
   gotosocial = pkgs.callPackage ./gotosocial { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
+  kmscon = pkgs.callPackage ./kmscon { };
+  libtsm = pkgs.callPackage ./libtsm { };
   nh = pkgs.callPackage ./nh { };
   owncast = pkgs.unstable.callPackage ./owncast { };
   wolfictl = pkgs.callPackage ./wolfictl { };

@@ -1,0 +1,23 @@
+From fb7ea8fa7ab7bf09c407291f6764b3bbc1bde36f Mon Sep 17 00:00:00 2001
+From: Martin Wimpress <304639+flexiondotorg@users.noreply.github.com>
+Date: Sun, 5 Oct 2025 11:16:11 +0100
+Subject: [PATCH] fix: update systemd dependencies to auto-configure keyboard
+ layout
+
+---
+ docs/kmsconvt@.service.in | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/docs/kmsconvt@.service.in b/docs/kmsconvt@.service.in
+index a496e26..70cd64a 100644
+--- a/docs/kmsconvt@.service.in
++++ b/docs/kmsconvt@.service.in
+@@ -31,6 +31,8 @@ Documentation=man:kmscon(1)
+ After=systemd-user-sessions.service
+ After=plymouth-quit-wait.service
+ After=rc-local.service
++After=dbus.service
++After=systemd-localed.service
+ Before=getty.target
+ Conflicts=getty@%i.service
+ OnFailure=getty@%i.service

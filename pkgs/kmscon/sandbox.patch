@@ -1,0 +1,23 @@
+From ebf0f4f003094301491afa7347ff9168c24a8e81 Mon Sep 17 00:00:00 2001
+From: Martin Wimpress <304639+flexiondotorg@users.noreply.github.com>
+Date: Sun, 5 Oct 2025 11:06:08 +0100
+Subject: [PATCH] fix: compatibility patch for NixOS
+
+Generate system units where they should be (nix store) instead of /etc/systemd/system
+---
+ meson.build | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/meson.build b/meson.build
+index 63f4944..d830ae7 100644
+--- a/meson.build
++++ b/meson.build
+@@ -39,7 +39,7 @@ mandir = get_option('mandir')
+ moduledir = get_option('libdir') / meson.project_name()
+
+ systemd_deps = dependency('systemd', required: false)
+-systemdsystemunitdir = systemd_deps.get_variable('systemdsystemunitdir', default_value: 'lib/systemd/system')
++systemdsystemunitdir = get_option('libdir') / 'systemd'
+
+ #
+ # Required dependencies
