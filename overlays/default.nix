@@ -24,7 +24,6 @@
 
     gitkraken = prev.gitkraken.overrideAttrs (_old: rec {
       version = "11.2.1";
-
       src =
         {
           x86_64-linux = prev.fetchzip {
@@ -74,6 +73,14 @@
       }
     );
 
+    # Override rofi-unwrapped to remove desktop entries (this is where they come from!)
+    rofi-unwrapped = prev.rofi-unwrapped.overrideAttrs (oldAttrs: {
+      postInstall = (oldAttrs.postInstall or "") + ''
+        rm -f $out/share/applications/rofi.desktop
+        rm -f $out/share/applications/rofi-theme-selector.desktop
+      '';
+    });
+
     # https://github.com/tailscale/tailscale/issues/16966#issuecomment-3239543750
     tailscale =
       if prev.stdenv.isLinux then
@@ -96,6 +103,17 @@
     unstable = import inputs.nixpkgs-unstable {
       inherit (final) system;
       config.allowUnfree = true;
+      overlays = [
+        # Apply the same rofi-unwrapped modification to unstable packages
+        (_final: _prev: {
+          rofi-unwrapped = _prev.rofi-unwrapped.overrideAttrs (oldAttrs: {
+            postInstall = (oldAttrs.postInstall or "") + ''
+              rm -f $out/share/applications/rofi.desktop
+              rm -f $out/share/applications/rofi-theme-selector.desktop
+            '';
+          });
+        })
+      ];
     };
   };
 }
