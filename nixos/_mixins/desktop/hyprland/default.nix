@@ -1,14 +1,10 @@
 {
-  config,
   isInstall,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  dbusService =
-    if config.services.dbus.implementation == "broker" then "dbus-broker.service" else "dbus.service";
   mkHiddenWaylandSession =
     name:
     pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''
@@ -40,27 +36,6 @@ let
         ${pkgs.expect}/bin/unbuffer /run/current-system/sw/bin/Hyprland $@ 2>&1 | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE" &>/dev/null
         # Log the exit code here
         echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] Hyprland exited with code $?" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
-        UNITS=(
-          xdg-desktop-portal-hyprland.service
-          xdg-desktop-portal-gtk.service
-          xdg-desktop-portal.service
-          waybar.service
-          ${dbusService}
-          hyprland-session.target
-        )
-        for UNIT in "''${UNITS[@]}"; do
-          echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] Checking $UNIT" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
-          if /run/current-system/sw/bin/systemctl --user --machine=${username}@.host list-unit-files "$UNIT" &>/dev/null; then
-            if /run/current-system/sw/bin/systemctl --user --machine=${username}@.host is-active "$UNIT" &>/dev/null; then
-              echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] Stopping $UNIT" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
-              /run/current-system/sw/bin/systemctl --user --machine=${username}@.host stop "$UNIT"
-            else
-              echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] $UNIT is not running" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
-            fi
-          else
-            echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] $UNIT not found" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
-          fi
-        done
       '')
       (pkgs.writeTextFile {
         name = "hyprshim-desktop";

@@ -81,10 +81,15 @@ lib.mkIf isLinux {
   home = {
     packages = with pkgs; [ papirus-folders ];
     pointerCursor = {
+      dotIcons.enable = true;
+      gtk.enable = true;
+      hyprcursor = {
+        enable = config.wayland.windowManager.hyprland.enable;
+        size = 32;
+      };
       name = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-cursors";
       package = pkgs.catppuccin-cursors.mochaBlue;
       size = 32;
-      gtk.enable = true;
       x11.enable = true;
     };
   };

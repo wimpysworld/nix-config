@@ -19,38 +19,55 @@ lib.mkIf isLinux {
         accent = config.catppuccin.accent;
         variant = config.catppuccin.flavor;
       })
-      libsForQt5.qtstyleplugin-kvantum
+      kdePackages.qt6ct
+      kdePackages.qtstyleplugin-kvantum
       libsForQt5.qt5ct
+      libsForQt5.qtstyleplugin-kvantum
     ];
+    sessionVariables = {
+      QT_STYLE_OVERRIDE = "kvantum";
+    };
   };
 
   qt = {
     enable = true;
-    platformTheme.name = "kvantum";
+    platformTheme.name = config.qt.style.name;
     style = {
       name = "kvantum";
     };
   };
 
-  systemd.user.sessionVariables = {
-    QT_STYLE_OVERRIDE = "kvantum";
-  };
-
-  xdg.configFile = {
-    qt5ct = {
-      target = "qt5ct/qt5ct.conf";
-      text = lib.generators.toINI { } {
-        Appearance = {
-          icon_theme = "Papirus-Dark";
+  xdg = {
+    configFile = {
+      qt5ct = {
+        target = "qt5ct/qt5ct.conf";
+        text = lib.generators.toINI { } {
+          Appearance = {
+            icon_theme = config.gtk.iconTheme.name;
+          };
+        };
+      };
+      qt6ct = {
+        target = "qt6ct/qt6ct.conf";
+        text = lib.generators.toINI { } {
+          Appearance = {
+            icon_theme = config.gtk.iconTheme.name;
+          };
         };
       };
     };
-    qt6ct = {
-      target = "qt6ct/qt6ct.conf";
-      text = lib.generators.toINI { } {
-        Appearance = {
-          icon_theme = "Papirus-Dark";
-        };
+    desktopEntries = {
+      kvantummanager = {
+        name = "Kvantum Manager";
+        noDisplay = true;
+      };
+      qt5ct = {
+        name = "Qt5 Settings";
+        noDisplay = true;
+      };
+      qt6ct = {
+        name = "Qt6 Settings";
+        noDisplay = true;
       };
     };
   };

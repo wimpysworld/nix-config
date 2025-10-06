@@ -23,9 +23,9 @@ let
     if [ -n "$KANSHI_REGREET" ]; then
       ${pkgs.cage}/bin/cage -m last -s -- sh -c \
         '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
-         ${pkgs.greetd.regreet}/bin/regreet'
+         ${pkgs.dbus}/bin/dbus-run-session ${pkgs.greetd.regreet}/bin/regreet'
     else
-      ${pkgs.cage}/bin/cage -m last -s ${pkgs.greetd.regreet}/bin/regreet
+      ${pkgs.cage}/bin/cage -m last -s -- ${pkgs.dbus}/bin/dbus-run-session ${pkgs.greetd.regreet}/bin/regreet
     fi
   '';
   wallpaperResolutions = {

@@ -15,15 +15,6 @@ function bluetooth_devices() {
 }
 
 function session_start() {
-  # Restart the desktop portal services in the correct order
-  restart-portals
-  for INDICATOR in udiskie syncthingtray maestral-gui; do
-    if /run/current-system/sw/bin/systemctl --user list-unit-files "$INDICATOR.service" &>/dev/null; then
-      if ! /run/current-system/sw/bin/systemctl --user is-active "$INDICATOR" &>/dev/null; then
-        /run/current-system/sw/bin/systemctl --user restart "$INDICATOR"
-      fi
-    fi
-  done
   bluetooth_devices connect
 }
 
