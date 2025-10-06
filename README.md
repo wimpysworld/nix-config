@@ -91,7 +91,7 @@ For example, `malak` is a Hetzner dedicated server.
 To deploy it, enable the Hetzner Rescue system and then execute the following command from one of my workstations:
 
 ```bash
-install-anywhere malak <ip-address>
+install-anywhere -h malak -r <ip-address>
 ```
 
 When the deployment is complete, the remote host will be automatically rebooted.

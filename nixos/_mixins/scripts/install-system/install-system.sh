@@ -47,7 +47,7 @@ if [ ! -d "$HOME/Zero/nix-config/.git" ]; then
     git clone https://github.com/wimpysworld/nix-config.git "$HOME/Zero/nix-config"
 fi
 
-pushd "$HOME/Zero/nix-config"
+pushd "$HOME/Zero/nix-config" || exit 1
 
 if [[ -n "$TARGET_BRANCH" ]]; then
     git checkout "$TARGET_BRANCH"
@@ -114,7 +114,7 @@ if grep -q "data.passwordFile" "nixos/$TARGET_HOST/disks.nix"; then
     echo -n "$password" > /tmp/data.passwordFile
 fi
 
-if grep -q "keyFile" "nixos/$TARGET_HOST/disks.nix"; then
+if grep -q "keyFile" nixos/"$TARGET_HOST"/disk*.nix; then
     # Check if the machine we're provisioning expects a keyfile to unlock a disk.
     # If it does, generate a new key, and write to a known location.
     dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
@@ -152,15 +152,11 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         chmod 600 "/mnt/home/$TARGET_USER/.config/sops/age/keys.txt"
     fi
 
-    # If there is a keyfile for a another disk, put copy it to the /vault
+    # If there is a keyfile for a another disk, put copy it to the root
     # partition and ensure the permissions are set appropriately.
     if [[ -f "/tmp/luks.key" ]]; then
-        if ! mountpoint -q /mnt/vault; then
-            echo "ERROR! /mnt/vault is not mounted; make sure the disk preparation was successful."
-            exit 1
-        fi
-        sudo cp /tmp/luks.key /mnt/vault/luks.key
-        sudo chmod 400 /mnt/vault/luks.key
+        sudo cp /tmp/luks.key /mnt/etc/luks.key
+        sudo chmod 400 /mnt/etc/luks.key
     fi
 
     # Enter to the new install and apply the home-manager configuration.
