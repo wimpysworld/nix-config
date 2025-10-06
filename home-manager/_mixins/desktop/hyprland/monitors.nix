@@ -44,6 +44,19 @@ _: {
       "8, name:Fun, persistent:true, monitor:eDP-1"
     ];
   };
+  bane = {
+    monitor = [ "eDP-1, 2560x1600@60Hz, auto, 1" ];
+    workspace = [
+      "1, name:Web, persistent:true, monitor:eDP-1"
+      "2, name:Work, persistent:true, monitor:eDP-1"
+      "3, name:Chat, persistent:true, monitor:eDP-1"
+      "4, name:Code, persistent:true, monitor:eDP-1"
+      "5, name:Git, persistent:true, monitor:eDP-1"
+      "6, name:Note, persistent:true, monitor:eDP-1"
+      "7, name:Make, persistent:true, monitor:eDP-1"
+      "8, name:Fun, persistent:true, monitor:eDP-1"
+    ];
+  };
   tanis = {
     monitor = [ "eDP-1, 1920x1200@60Hz, auto, 1" ];
     workspace = [

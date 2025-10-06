@@ -142,25 +142,18 @@ if [ -d "$HOME/Vaults/Secrets/ssh" ]; then
       LUKS_PASS=" --disk-encryption-keys /tmp/data.passwordFile /tmp/data.passwordFile"
     fi
 
-    if [ -e "$HOME/Vaults/Secrets/luks/$HOST.key" ]; then
-        install -d -m700 "$FILES/vault"
-        cp "$HOME/Vaults/Secrets/luks/$HOST.key" "$FILES/vault/luks.key"
-        chmod 400 "$FILES/vault/luks.key"
-        echo "- INFO: Sending LUKS key"
-
-        cp -v "$HOME/Vaults/Secrets/luks/$HOST.key" /tmp/luks.key
-        LUKS_KEY=" --disk-encryption-keys /tmp/luks.key /tmp/luks.key"
-        # Switch the LUKS keyFile to /tmp for the install phase
-        for DISK in nixos/"$HOST"/disk*.nix; do
-          if grep -q "keyFile" "$DISK"; then
-            echo "- INFO: Found keyFile in $DISK, updating to /tmp/luks.key"
-            sed -i 's|/vault/luks|/tmp/luks|' "$DISK"
-          fi
-        done
-      else
-        echo "- WARN! No LUKS key found"
-      fi
+    if grep -q "keyFile" nixos/"$HOST"/disk*.nix; then
+      # Check if the machine we're provisioning expects a keyfile to unlock a disk.
+      # If it does, generate a new key, and write to a known location.
+      dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
+      chmod 600 /tmp/luks.key
+      install -d -m700 "$FILES/etc"
+      cp "/tmp/luks.key" "$FILES/etc/luks.key"
+      chmod 400 "$FILES/etc/luks.key"
+      echo "- INFO: Sending LUKS key"
+      LUKS_KEY=" --disk-encryption-keys /tmp/luks.key /tmp/luks.key"
     fi
+  fi
 else
   echo "ERROR: The Secrets Vaults is not mounted."
   exit 1
@@ -182,18 +175,7 @@ fi
 pushd "$HOME/Zero/nix-config" || exit 1
 # shellcheck disable=2086
 nix run github:nix-community/nixos-anywhere -- \
-  $LUKS_PASS $LUKS_KEY --print-build-logs --flake ".#$HOST" --disko-mode "${DISKO_MODE}" --phases kexec,disko "root@$REMOTE_ADDRESS"
-
-rm -f /tmp/luks.key
-# Switch the LUKS keyFile to the vault location if it was set
-if [ -n "$LUKS_PASS" ]; then
-  for DISK in nixos/"$HOST"/disk*.nix; do
-    if grep -q "keyFile" "$DISK"; then
-      echo "- INFO: Found keyFile in $DISK, updating to /vault/luks.key"
-      sed -i 's|/tmp/luks|/vault/luks|' "$DISK"
-    fi
-  done
-fi
+  "$LUKS_PASS" "$LUKS_KEY" --print-build-logs --flake ".#$HOST" --disko-mode "${DISKO_MODE}" --phases kexec,disko "root@$REMOTE_ADDRESS"
 
 # shellcheck disable=2086
 nix run github:nix-community/nixos-anywhere -- \
