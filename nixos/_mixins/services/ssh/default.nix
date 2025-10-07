@@ -23,7 +23,7 @@ in
       };
     };
     sshguard = {
-      enable = true;
+      enable = isInstall;
       whitelist = [
         "10.10.10.0/24"
         "62.31.16.153/29"

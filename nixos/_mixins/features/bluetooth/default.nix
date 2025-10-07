@@ -1,12 +1,17 @@
-{ pkgs, ... }:
 {
-  environment.systemPackages = with pkgs; [
-    bluetui
+  isInstall,
+  lib,
+  pkgs,
+  ...
+}:
+{
+  environment.systemPackages = lib.optionals isInstall [
+    pkgs.bluetui
   ];
   hardware = {
     # https://nixos.wiki/wiki/Bluetooth
     bluetooth = {
-      enable = true;
+      enable = isInstall;
       package = pkgs.bluez;
       settings = {
         General = {
