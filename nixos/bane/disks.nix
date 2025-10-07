@@ -41,7 +41,6 @@ in
             keyFile = lib.mkDefault "/etc/luks.key";
           };
         };
-        reusePassphrases = true;
       };
       # Enable support for the Btrfs filesystem.
       supportedFilesystems = [ "btrfs" ];
@@ -116,7 +115,7 @@ in
                 passwordFile = "/tmp/data.passwordFile";
                 settings = {
                   allowDiscards = true;
-                  #keyXFile = "/tmp/luks.key";
+                  #keyFile = "/tmp/luks.key";
                 };
                 extraFormatArgs = defaultExtraFormatArgs;
                 content = {
