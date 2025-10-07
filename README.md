@@ -17,7 +17,7 @@ These computers are managed by this Nix flake ❄️
 | `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 7900 GRE]       | [RTX 2000E Ada Generation] | 🖥️   | ❄️  | ✅    |
 | `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630    | 💻️🎭️ | ❄️  | ✅    |
 | `palpatine` | ⤴️                          | ⤴️                             | ⤴️    | ⤴️                          | ⤴️                         | 💻️🎭️ | 🪟  | ✅    |
-| `bane`      | [Framework 16]"             | AMD Ryzen 7 7840HS             | 96GB  | AMD Radeon 780M             |                            | 💻️   | ❄️  | 🚧    |
+| `bane`      | [Framework 16]              | [AMD Ryzen 7 7940HS]             | 96GB  | AMD Radeon 780M             |                            | 💻️   | ❄️  | 🚧    |
 | `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                            | 💻️   | ❄️  | ✅    |
 | `shaa`      | [ThinkPad T14s Gen 1]       | [AMD Ryzen 5 PRO 4650U]        | 16GB  | AMD Radeon RX Vega 6        |                            | 💻️   | ❄️  | ✅    |
 | `atrius`    | [ThinkPad T495s]            | [AMD Ryzen 7 3700U]            | 16GB  | AMD Radeon Vega 10          |                            | 💻️   | ❄️  | 🚧    |
@@ -442,6 +442,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/newsroom/press-releases/2019-11-7-amd-introduces-world-s-fastest-high-end-desktop-pr.html
 [AMD Ryzen 9 5950X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5950x
 [AMD Ryzen 9 5900X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5900x
+[AMD Ryzen 7 7940HS]: https://www.amd.com/en/products/processors/laptop/ryzen/7000-series/amd-ryzen-9-7940hs.html
 [AMD Ryzen 5 PRO 6650U]: https://www.amd.com/en/products/apu/amd-ryzen-5-pro-6650u
 [AMD Ryzen 5 PRO 4650U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen-pro/ryzen-pro-4000-series/amd-ryzen-5-pro-4650u.html
 [AMD Ryzen 7 3700U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen/ryzen-3000-series/amd-ryzen-7-3700u.html#amd_support_product_spec
