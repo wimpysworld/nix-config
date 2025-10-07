@@ -1,4 +1,5 @@
 {
+  isInstall,
   hostname,
   lib,
   ...
@@ -7,7 +8,7 @@ let
   isServer = hostname == "malak" || hostname == "maul" || hostname == "revan";
   useGeoclue = !isServer;
 in
-{
+lib.mkIf isInstall {
   location = {
     provider = "geoclue2";
   };
