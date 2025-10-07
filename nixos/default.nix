@@ -182,7 +182,7 @@ in
   };
 
   services = {
-    fwupd.enable = isInstall && isWorkstation;
+    fwupd.enable = lib.mkDefault isWorkstation;
     hardware.bolt.enable = isInstall;
     irqbalance = lib.mkIf (!config.services.qemuGuest.enable) {
       enable = true;

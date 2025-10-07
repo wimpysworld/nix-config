@@ -29,21 +29,10 @@ let
   ];
 in
 {
-  boot = {
-    initrd = {
-      luks = {
-        devices = {
-          "crypt0" = {
-            allowDiscards = true;
-          };
-          "crypt1" = {
-            allowDiscards = true;
-            keyFile = lib.mkDefault "/etc/luks.key";
-          };
-        };
-      };
-      # Enable support for the Btrfs filesystem.
-      supportedFilesystems = [ "btrfs" ];
+  boot.initrd.luks.devices = {
+    # Priority ensures cryptroot is unlocked before crypthome.
+    cryptroot = {
+      device = "/dev/disk/by-partlabel/disk-nvme0-cryptroot";
     };
   };
 
@@ -68,11 +57,11 @@ in
                 type = "filesystem";
               };
             };
-            crypt0 = {
+            cryptroot = {
               size = "100%";
               content = {
                 type = "luks";
-                name = "crypt0";
+                name = "cryptroot";
                 passwordFile = "/tmp/data.passwordFile";
                 settings = {
                   allowDiscards = true;
@@ -107,15 +96,14 @@ in
         content = {
           type = "gpt";
           partitions = {
-            crypt1 = {
+            crypthome = {
               size = "100%";
               content = {
                 type = "luks";
-                name = "crypt1";
+                name = "crypthome";
                 passwordFile = "/tmp/data.passwordFile";
                 settings = {
                   allowDiscards = true;
-                  #keyFile = "/tmp/luks.key";
                 };
                 extraFormatArgs = defaultExtraFormatArgs;
                 content = {

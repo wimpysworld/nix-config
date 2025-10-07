@@ -7,7 +7,6 @@ let
   inherit (pkgs.stdenv) isLinux isDarwin;
   # https://github.com/numtide/nix-ai-tools
   aiPackagesLinux = [
-    inputs.nix-ai-tools.packages.${pkgs.system}.backlog-md
     inputs.nix-ai-tools.packages.${pkgs.system}.catnip
     inputs.nix-ai-tools.packages.${pkgs.system}.claude-code
     inputs.nix-ai-tools.packages.${pkgs.system}.claudebox

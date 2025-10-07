@@ -1,6 +1,7 @@
 {
   config,
   isInstall,
+  isWorkstation,
   lib,
   pkgs,
   ...
@@ -9,7 +10,7 @@
   # https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
   fonts = {
     # Enable a basic set of fonts providing several font styles and families and reasonable coverage of Unicode.
-    enableDefaultPackages = true;
+    enableDefaultPackages = isInstall;
     fontDir.enable = true;
     packages =
       with pkgs;
@@ -27,7 +28,7 @@
         symbola
         work-sans
       ]
-      ++ lib.optionals isInstall [
+      ++ lib.optionals isWorkstation [
         bebas-neue-2014-font
         bebas-neue-pro-font
         bebas-neue-rounded-font

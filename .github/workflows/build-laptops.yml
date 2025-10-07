@@ -22,6 +22,7 @@ jobs:
       matrix:
         host:
           - atrius
+          - bane
           - shaa
           - sidious
           - tanis

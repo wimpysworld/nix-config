@@ -11,6 +11,7 @@ TARGET_BRANCH="${3:-main}"
 function run_disko() {
     local DISKO_CONFIG="$1"
     local REPLY="n"
+    local DISKO_MODE="mount"
 
     # If the requested config doesn't exist, skip it.
     if [ ! -e "$DISKO_CONFIG" ]; then
@@ -30,9 +31,12 @@ function run_disko() {
         # - https://nixos.wiki/wiki/Bcachefs#NixOS_installation_on_bcachefs
         # - https://github.com/NixOS/nixpkgs/issues/32279
         sudo keyctl link @u @s
-        sudo disko --mode disko "$DISKO_CONFIG"
+        DISKO_MODE="disko"
+    fi
+    if command -v disko >/dev/null 2>&1; then
+        sudo disko --mode "$DISKO_MODE" "$DISKO_CONFIG"
     else
-        sudo disko --mode mount "$DISKO_CONFIG"
+        sudo nix run github:nix-community/disko/latest -- --mode "$DISKO_MODE" "$DISKO_CONFIG"
     fi
 }
 
@@ -139,6 +143,14 @@ echo
 read -p "Are you sure? [y/N]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # If there is a keyfile for a another disk, put copy it to the root
+    # partition and ensure the permissions are set appropriately.
+    if [[ -f "/tmp/luks.key" ]]; then
+        sudo mkdir -p /mnt/etc
+        sudo cp /tmp/luks.key /mnt/etc/luks.key
+        sudo chmod 400 /mnt/etc/luks.key
+    fi
+
     # Copy the sops keys.txt to the target install
     sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
 
@@ -150,13 +162,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         mkdir -p "/mnt/home/$TARGET_USER/.config/sops/age"
         cp "$HOME/.config/sops/age/keys.txt" "/mnt/home/$TARGET_USER/.config/sops/age/keys.txt"
         chmod 600 "/mnt/home/$TARGET_USER/.config/sops/age/keys.txt"
-    fi
-
-    # If there is a keyfile for a another disk, put copy it to the root
-    # partition and ensure the permissions are set appropriately.
-    if [[ -f "/tmp/luks.key" ]]; then
-        sudo cp /tmp/luks.key /mnt/etc/luks.key
-        sudo chmod 400 /mnt/etc/luks.key
     fi
 
     # Enter to the new install and apply the home-manager configuration.
