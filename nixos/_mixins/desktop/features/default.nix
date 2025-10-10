@@ -7,6 +7,5 @@ _: {
     ./print
     ./scan
     ./v4l2loopback
-    ./xdg
   ];
 }
