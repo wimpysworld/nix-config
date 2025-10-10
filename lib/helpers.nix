@@ -24,6 +24,7 @@ rec {
         && hostname != "maul";
       isLima = hostname == "blackace" || hostname == "defender" || hostname == "fighter";
       isWorkstation = builtins.isString desktop;
+      isServer = desktop == null && !isLima && !isISO;
     in
     inputs.home-manager.lib.homeManagerConfiguration {
       pkgs = inputs.nixpkgs.legacyPackages.${platform};
@@ -39,6 +40,7 @@ rec {
           isLaptop
           isLima
           isISO
+          isServer
           isWorkstation
           ;
       };
@@ -62,7 +64,9 @@ rec {
         && hostname != "revan"
         && hostname != "malak"
         && hostname != "maul";
+      isLima = hostname == "blackace" || hostname == "defender" || hostname == "fighter";
       isWorkstation = builtins.isString desktop;
+      isServer = desktop == null && !isLima && !isISO;
       tailNet = "drongo-gamma.ts.net";
     in
     inputs.nixpkgs.lib.nixosSystem {
@@ -78,6 +82,7 @@ rec {
           isInstall
           isISO
           isLaptop
+          isServer
           isWorkstation
           tailNet
           ;
@@ -106,6 +111,7 @@ rec {
       isInstall = true;
       isLaptop = true;
       isWorkstation = true;
+      isServer = false;
     in
     inputs.nix-darwin.lib.darwinSystem {
       system = platform;
@@ -119,6 +125,7 @@ rec {
           isInstall
           isISO
           isLaptop
+          isServer
           isWorkstation
           ;
       };

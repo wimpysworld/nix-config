@@ -2,29 +2,19 @@
   config,
   hostname,
   isWorkstation,
+  isServer,
   lib,
   pkgs,
   username,
   ...
 }:
 let
-  # Declare which hosts have Tailscale enabled.
-  installOn = [
-    "phasma"
-    "tanis"
-    "revan"
-    "malak"
-    "sidious"
-    "shaa"
-    "atrius"
-    "vader"
-    "maul"
-  ];
   tsExitNodes = [
+    "maul"
     "revan"
   ];
 in
-lib.mkIf (lib.elem "${hostname}" installOn) {
+lib.mkIf (isWorkstation || isServer) {
   environment.systemPackages = with pkgs; lib.optionals isWorkstation [ trayscale ];
 
   services.tailscale = {
