@@ -11,8 +11,9 @@
   ...
 }:
 let
+  isServer = hostname == "revan" || hostname == "malak";
   useDoT = if isLaptop then "opportunistic" else "true";
-  useNetworkManager = if (isWorkstation || isISO || hostname == "maul") then true else false;
+  useNetworkManager = if (isISO || !isServer) then true else false;
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ]
@@ -108,15 +109,6 @@ let
 in
 {
   imports = lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
-
-  environment.systemPackages =
-    with pkgs;
-    lib.optionals config.networking.networkmanager.enable [
-      ifwifi
-    ]
-    ++ lib.optionals (config.networking.networkmanager.wifi.backend == "iwd") [
-      impala
-    ];
 
   programs.captive-browser = lib.mkIf isLaptop {
     enable = true;
