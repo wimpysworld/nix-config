@@ -9,7 +9,7 @@ stdenvNoCC.mkDerivation rec {
   version = "1.000";
 
   src = fetchzip {
-    url = "https://ifonts.xyz/core/ifonts-files/downloads/559747/bw-fusiona-font-family.zip";
+    url = "https://ifonts.xyz/wp-content/ifonts-files/downloads/559747/bw-fusiona-font-family.zip";
     hash = "sha256-8FNKeTJTumpkGqj1aIvuXdkODPhWg2D0rF6k137/IOI=";
     stripRoot = false;
   };
