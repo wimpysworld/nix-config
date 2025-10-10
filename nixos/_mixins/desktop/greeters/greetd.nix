@@ -29,6 +29,7 @@ let
     fi
   '';
   wallpaperResolutions = {
+    bane = "2560x1600";
     vader = "2560x2880";
     phasma = "3440x1440";
     tanis = "1920x1200";
