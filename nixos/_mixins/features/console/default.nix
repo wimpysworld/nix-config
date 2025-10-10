@@ -1,6 +1,6 @@
 {
   hostname,
-  isInstall,
+  isISO,
   lib,
   pkgs,
   ...
@@ -19,7 +19,7 @@ let
         ''
       else
         ''
-          font-size=14
+          font-size=16
         ''
     )
     + ''
@@ -70,15 +70,10 @@ in
   };
 
   services = {
-    # TODO: Build from this patch branch that has mouse support
-    # - https://github.com/MacSlow/kmscon/tree/add-kmscon.conf-manpage
-    # - https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/km/kmscon/package.nix
-    # TODO: Replace `login -p` with maybe `fish -l`
-    # TODO: Is this DRM patch helpful?
-    # - https://github.com/Aetf/kmscon/pull/66
     # TODO: Does compiling without fbterm help by odd sized displays?
     # - https://github.com/Aetf/kmscon/issues/18#issuecomment-612003371
-    kmscon = lib.mkIf isInstall {
+    kmscon = {
+      autologinUser = if isISO then "nixos" else null;
       enable = true;
       hwRender = false;
       fonts = [

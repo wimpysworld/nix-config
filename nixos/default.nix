@@ -46,6 +46,7 @@ in
     ./${hostname}
     ./_mixins/configs
     ./_mixins/features
+    ./_mixins/fonts
     ./_mixins/scripts
     ./_mixins/services
     ./_mixins/users

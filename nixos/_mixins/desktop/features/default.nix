@@ -2,7 +2,6 @@ _: {
   imports = [
     ./appimage
     ./flatpak
-    ./fonts
     ./input-remapper
     ./pipewire
     ./print

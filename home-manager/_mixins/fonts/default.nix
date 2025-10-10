@@ -1,16 +1,10 @@
 {
-  isInstall,
+  isWorkstation,
   lib,
   pkgs,
   ...
 }:
-let
-  inherit (pkgs.stdenv) isDarwin;
-  isOtherOS =
-    if builtins.isString (builtins.getEnv "__NIXOS_SET_ENVIRONMENT_DONE") then false else true;
-in
-lib.mkIf (isDarwin || isOtherOS) {
-  # https://yildiz.dev/posts/packing-custom-fonts-for-nixos/
+{
   home = {
     file.".config/fontconfig/fonts.conf".text = ''
       <?xml version="1.0"?>
@@ -35,23 +29,43 @@ lib.mkIf (isDarwin || isOtherOS) {
         </match>
       </fontconfig>
     '';
-    packages = with pkgs; [
-      corefonts
-      fira
-      font-awesome
-      lato
-      liberation_ttf
-      nerd-fonts.fira-code
-      nerd-fonts.space-mono
-      nerd-fonts.symbols-only
-      noto-fonts-emoji
-      noto-fonts-monochrome-emoji
-      poppins
-      source-serif
-      symbola
-      ubuntu_font_family
-      work-sans
-    ];
+    packages =
+      with pkgs;
+      [
+        nerd-fonts.fira-code
+        font-awesome
+        noto-fonts-emoji
+        noto-fonts-monochrome-emoji
+        symbola
+        work-sans
+      ]
+      ++ lib.optionals isWorkstation [
+        bebas-neue-2014-font
+        bebas-neue-pro-font
+        bebas-neue-rounded-font
+        bebas-neue-semi-rounded-font
+        bw-fusiona-font
+        boycott-font
+        commodore-64-pixelized-font
+        corefonts
+        digital-7-font
+        dirty-ego-font
+        fira
+        fixedsys-core-font
+        fixedsys-excelsior-font
+        impact-label-font
+        lato
+        liberation_ttf
+        mocha-mattari-font
+        nerd-fonts.space-mono
+        nerd-fonts.symbols-only
+        poppins-font
+        source-serif
+        spaceport-2006-font
+        ubuntu_font_family
+        unscii
+        zx-spectrum-7-font
+      ];
   };
 
   fonts = {
