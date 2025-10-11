@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   isInstall,
   lib,
   pkgs,
@@ -112,7 +113,7 @@
             icon-size = mkInt32 48;
             pinned-only = false;
             position = "left";
-            theme = "Catppuccin-mocha";
+            theme = "Catppuccin-${catppuccinPalette.flavor}";
           };
 
           "org/gnome/desktop/datetime" = {
@@ -121,14 +122,14 @@
 
           "org/gnome/desktop/interface" = {
             clock-format = "24h";
-            color-scheme = "prefer-dark";
+            color-scheme = "${catppuccinPalete.preferShade}";
             cursor-size = mkInt32 32;
-            cursor-theme = "catppuccin-mocha-blue-cursors";
+            cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
             document-font-name = "Work Sans 12";
             font-name = "Work Sans 12";
-            gtk-theme = "catppuccin-mocha-blue-standard";
+            gtk-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
             gtk-enable-primary-paste = true;
-            icon-theme = "Papirus-Dark";
+            icon-theme = "Papirus${catppuccinPalete.themeShade}";
             monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
             text-scaling-factor = mkDouble 1.0;
           };

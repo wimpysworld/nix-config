@@ -32,19 +32,6 @@
 
   catppuccin.plymouth.enable = config.boot.plymouth.enable;
 
-  environment.systemPackages = with pkgs; [
-    catppuccin-cursors.mochaBlue
-    (catppuccin-gtk.override {
-      accents = [ "blue" ];
-      size = "standard";
-      variant = "mocha";
-    })
-    (catppuccin-papirus-folders.override {
-      flavor = "mocha";
-      accent = "blue";
-    })
-  ];
-
   programs = {
     # https://wiki.nixos.org/w/index.php?title=Appimage
     # https://nixos.org/manual/nixpkgs/stable/#sec-pkgs-appimageTools

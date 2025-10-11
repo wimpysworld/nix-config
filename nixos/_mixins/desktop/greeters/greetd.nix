@@ -1,10 +1,22 @@
 {
+  catppuccinPalette,
   hostname,
   lib,
   pkgs,
   ...
 }:
 let
+  cursorPackage =
+    pkgs.catppuccin-cursors."${catppuccinPalette.flavor}${
+      lib.toUpper (builtins.substring 0 1 catppuccinPalette.accent)
+    }${builtins.substring 1 (-1) catppuccinPalette.accent}";
+  gtkThemePackage = (
+    pkgs.catppuccin-gtk.override {
+      accents = [ "${catppuccinPalette.accent}" ];
+      variant = catppuccinPalette.flavor;
+    }
+  );
+  iconTheme = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
   sithLord =
     (lib.strings.toUpper (builtins.substring 0 1 hostname))
     + (builtins.substring 1 (builtins.stringLength hostname) hostname);
@@ -17,6 +29,11 @@ let
       ${pkgs.procps}/bin/pkill kanshi || true
     }
     trap cleanup EXIT
+
+    export GTK_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard"
+    export XCURSOR_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors"
+    export XCURSOR_SIZE="32"
+    export XDG_DATA_DIRS="${gtkThemePackage}/share:${cursorPackage}/share:${pkgs.papirus-icon-theme}/share:$XDG_DATA_DIRS"
 
     # If there is a kanshi profile for regreet, use it.
     KANSHI_REGREET="$(${pkgs.uutils-coreutils-noprefix}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
@@ -64,6 +81,9 @@ in
       "kanshi/regreet".text = kanshiProfiles.${hostname} or kanshiProfiles.default;
     };
     systemPackages = [
+      cursorPackage
+      gtkThemePackage
+      pkgs.papirus-icon-theme
       regreetCage
     ];
   };
@@ -90,11 +110,11 @@ in
           ];
         };
         GTK = lib.mkForce {
-          application_prefer_dark_theme = true;
-          cursor_theme_name = "catppuccin-mocha-blue-cursors";
+          application_prefer_dark_theme = catppuccinPalette.isDark;
+          cursor_theme_name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
           font_name = "Work Sans 16";
-          icon_theme_name = "Papirus-Dark";
-          theme_name = "catppuccin-mocha-blue-standard";
+          icon_theme_name = iconTheme;
+          theme_name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
         };
       };
     };

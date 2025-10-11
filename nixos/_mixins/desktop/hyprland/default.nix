@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   isInstall,
   lib,
   pkgs,
@@ -66,7 +67,7 @@ in
     sessionVariables = {
       # Make sure the cursor size is the same in all environments
       HYPRCURSOR_SIZE = 32;
-      HYPRCURSOR_THEME = "catppuccin-mocha-blue-cursors";
+      HYPRCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
       NIXOS_OZONE_WL = 1;
       QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
       # The the desktop sessions provided by the Hyprland package
@@ -78,20 +79,11 @@ in
     systemPackages =
       with pkgs;
       lib.optionals isInstall [
-        catppuccin-cursors
-        gnome-font-viewer
         hyprShim
         # Enable HEIC image previews in Nautilus
         libheif
         libheif.out
         nautilus
-        polkit_gnome
-        resources
-        wdisplays
-        wlr-randr
-        wl-clipboard
-        wtype
-        zenity
       ];
   };
 
@@ -101,14 +93,14 @@ in
         settings = with lib.gvariant; {
           "org/gnome/desktop/interface" = {
             clock-format = "24h";
-            color-scheme = "prefer-dark";
+            color-scheme = "${catppuccinPalette.preferShade}";
             cursor-size = mkInt32 32;
-            cursor-theme = "catppuccin-mocha-blue-cursors";
+            cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
             document-font-name = "Work Sans 12";
             font-name = "Work Sans 12";
-            gtk-theme = "catppuccin-mocha-blue-standard";
+            gtk-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
             gtk-enable-primary-paste = true;
-            icon-theme = "Papirus-Dark";
+            icon-theme = "Papirus${catppuccinPalette.themeShade}";
             monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
             text-scaling-factor = mkDouble 1.0;
           };
