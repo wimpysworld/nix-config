@@ -1,4 +1,7 @@
-{ ... }:
+{
+  catppuccinPalette,
+  ...
+}:
 {
   programs = {
     chromium = {
@@ -76,7 +79,7 @@
             installation_mode = "force_installed";
           };
           "{2adf0361-e6d8-4b74-b3bc-3f450e8ebb69}" = {
-            install_url = "https://addons.mozilla.org/firefox/downloads/latest/catppuccin-mocha-blue-git/latest.xpi";
+            install_url = "https://addons.mozilla.org/firefox/downloads/latest/catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-git/latest.xpi";
             installation_mode = "force_installed";
           };
           "{bbb880ce-43c9-47ae-b746-c3e0096c5b76}" = {
