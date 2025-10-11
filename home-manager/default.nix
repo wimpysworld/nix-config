@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   inputs,
   isLima,
@@ -37,8 +38,8 @@ in
 
   # Enable the Catppuccin theme
   catppuccin = {
-    accent = "blue";
-    flavor = "mocha";
+    accent = catppuccinPalette.accent;
+    flavor = catppuccinPalette.flavor;
     fish.enable = config.programs.fish.enable;
     zsh-syntax-highlighting.enable = config.programs.zsh.enable;
   };

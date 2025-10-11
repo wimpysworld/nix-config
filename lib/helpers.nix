@@ -39,7 +39,7 @@ rec {
         isDark
         ;
       colors = palette;
-      selectedAccent = accent;
+      accent = accent;
       flavor = flavor;
     };
 

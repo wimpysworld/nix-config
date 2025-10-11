@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   hostname,
   isInstall,
@@ -82,8 +83,8 @@ in
   };
 
   catppuccin = {
-    accent = "blue";
-    flavor = "mocha";
+    accent = catppuccinPalette.accent;
+    flavor = catppuccinPalette.flavor;
   };
 
   # Only install the docs I use
