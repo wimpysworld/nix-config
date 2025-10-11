@@ -50,7 +50,8 @@
         corefonts
         digital-7-font
         dirty-ego-font
-        fira
+        fira-go
+        fira-sans
         fixedsys-core-font
         fixedsys-excelsior-font
         impact-label-font

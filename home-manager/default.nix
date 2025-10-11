@@ -63,8 +63,6 @@ in
     };
   };
 
-  fonts.fontconfig.enable = true;
-
   # Workaround home-manager bug with flakes
   # - https://github.com/nix-community/home-manager/issues/2033
   news.display = "silent";
