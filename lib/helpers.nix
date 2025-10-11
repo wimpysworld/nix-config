@@ -65,12 +65,7 @@ rec {
       isServer = desktop == null && !isLima && !isISO;
 
       # Generate the Catppuccin palette for this system
-      catppuccinPalette = mkCatppuccinPalette {
-        inherit platform;
-        # Default flavor and accent - these match your current home-manager/default.nix settings
-        flavor = "mocha";
-        accent = "blue";
-      };
+      catppuccinPalette = mkCatppuccinPalette { system = platform; };
     in
     inputs.home-manager.lib.homeManagerConfiguration {
       pkgs = inputs.nixpkgs.legacyPackages.${platform};
@@ -117,11 +112,7 @@ rec {
       tailNet = "drongo-gamma.ts.net";
 
       # Generate the Catppuccin palette for this system
-      catppuccinPalette = mkCatppuccinPalette {
-        system = platform;
-        flavor = "mocha";
-        accent = "blue";
-      };
+      catppuccinPalette = mkCatppuccinPalette { system = platform; };
     in
     inputs.nixpkgs.lib.nixosSystem {
       system = platform;
@@ -169,11 +160,7 @@ rec {
       isServer = false;
 
       # Generate the Catppuccin palette for this system
-      catppuccinPalette = mkCatppuccinPalette {
-        system = platform;
-        flavor = "mocha";
-        accent = "blue";
-      };
+      catppuccinPalette = mkCatppuccinPalette { system = platform; };
     in
     inputs.nix-darwin.lib.darwinSystem {
       system = platform;
