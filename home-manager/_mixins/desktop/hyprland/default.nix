@@ -10,6 +10,10 @@ let
   monitors = (import ./monitors.nix { }).${hostname};
 in
 {
+  catppuccin = {
+    hyprland.enable = config.wayland.windowManager.hyprland.enable;
+  };
+
   home.packages = with pkgs; [
     hyprpicker
     wayvnc

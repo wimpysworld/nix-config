@@ -13,6 +13,11 @@ let
   inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf (lib.elem hostname installOn) {
+
+  catppuccin = {
+    obs.enable = config.programs.obs-studio.enable;
+  };
+
   home = {
     file = {
       "/Studio/OBS/config/obs-studio/.keep".text = "";

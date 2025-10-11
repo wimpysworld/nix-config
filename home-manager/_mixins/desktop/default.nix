@@ -20,14 +20,6 @@ in
     ./. + "/${desktop}/${username}/default.nix"
   )) ./${desktop}/${username};
 
-  # Enable the Catppuccin theme
-  catppuccin = {
-    fuzzel.enable = config.programs.fuzzel.enable;
-    hyprland.enable = config.wayland.windowManager.hyprland.enable;
-    waybar.enable = config.programs.waybar.enable;
-    obs.enable = config.programs.obs-studio.enable;
-  };
-
   # Authrorize X11 access in Distrobox
   home = {
     file = lib.mkIf isLinux {

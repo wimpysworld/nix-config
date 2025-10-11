@@ -1,4 +1,5 @@
 {
+  config,
   hostname,
   lib,
   pkgs,
@@ -85,6 +86,10 @@ let
   };
 in
 {
+  catppuccin = {
+    waybar.enable = config.programs.waybar.enable;
+  };
+
   # Just use trayscale as a UI
   dconf.settings = with lib.hm.gvariant; {
     "dev/deedles/Trayscale" = {

@@ -63,6 +63,10 @@ let
   };
 in
 {
+  catppuccin = {
+    fuzzel.enable = config.programs.fuzzel.enable;
+  };
+
   # Fuzzel menus for app launcher, emoji picker, wifi manager, clipboard manager, etc
   home = {
     packages = with pkgs; [
