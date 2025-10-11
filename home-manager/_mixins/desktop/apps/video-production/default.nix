@@ -11,7 +11,7 @@ let
   ];
 in
 lib.mkIf (lib.elem hostname installOn) {
-  environment.systemPackages = with pkgs; [
+  home.packages = with pkgs; [
     (davinci-resolve.override {
       studioVariant = true;
     })

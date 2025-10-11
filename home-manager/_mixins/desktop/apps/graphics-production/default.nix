@@ -9,5 +9,6 @@ in
 lib.mkIf (isLinux) {
   home.packages = with pkgs; [
     gimp3
+    inkscape
   ];
 }

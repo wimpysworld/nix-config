@@ -22,6 +22,7 @@ in
     ./heynote
     ./internet-chat
     ./joplin
+    ./libreoffice
     ./meld
     ./music
     ./obs-studio
@@ -29,10 +30,13 @@ in
     ./security
     ./terminal
     ./ulauncher
+    ./utilities
     ./vaults
+    ./video-production
     ./vscode
     ./web-browsers
     ./zed-editor
+    ./zoom
   ];
   dconf.settings = lib.mkIf isLinux {
     "io/github/celluloid-player/celluloid" = with lib.hm.gvariant; {
