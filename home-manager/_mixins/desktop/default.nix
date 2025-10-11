@@ -29,8 +29,13 @@ in
   };
 
   # Authrorize X11 access in Distrobox
-  home.file = lib.mkIf isLinux {
-    ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
+  home = {
+    file = lib.mkIf isLinux {
+      ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
+    };
+    packages = [
+      pkgs.notify-desktop
+    ];
   };
 
   # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
