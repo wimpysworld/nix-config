@@ -5,6 +5,44 @@
   ...
 }:
 rec {
+  # Generate Catppuccin palette with helper functions
+  # This reads the palette JSON and provides convenient color access functions
+  mkCatppuccinPalette =
+    {
+      flavor ? "mocha",
+      accent ? "blue",
+      system ? "x86_64-linux",
+    }:
+    let
+      paletteJson = builtins.fromJSON (
+        builtins.readFile "${inputs.catppuccin.packages.${system}.palette}/palette.json"
+      );
+      palette = paletteJson.${flavor}.colors;
+
+      # Helper functions for palette access
+      getColor = colorName: palette.${colorName}.hex;
+      getRGB = colorName: palette.${colorName}.rgb;
+      getHSL = colorName: palette.${colorName}.hsl;
+
+      # Hyprland-specific helper that removes # from hex colors
+      getHyprlandColor = colorName: builtins.substring 1 (-1) palette.${colorName}.hex;
+
+      # Determine if this is a dark theme
+      isDark = flavor != "latte";
+    in
+    {
+      inherit
+        getColor
+        getRGB
+        getHSL
+        getHyprlandColor
+        isDark
+        ;
+      colors = palette;
+      selectedAccent = accent;
+      flavor = flavor;
+    };
+
   # Helper function for generating home-manager configs
   mkHome =
     {
@@ -25,6 +63,14 @@ rec {
       isLima = hostname == "blackace" || hostname == "defender" || hostname == "fighter";
       isWorkstation = builtins.isString desktop;
       isServer = desktop == null && !isLima && !isISO;
+
+      # Generate the Catppuccin palette for this system
+      catppuccinPalette = mkCatppuccinPalette {
+        inherit platform;
+        # Default flavor and accent - these match your current home-manager/default.nix settings
+        flavor = "mocha";
+        accent = "blue";
+      };
     in
     inputs.home-manager.lib.homeManagerConfiguration {
       pkgs = inputs.nixpkgs.legacyPackages.${platform};
@@ -42,6 +88,7 @@ rec {
           isISO
           isServer
           isWorkstation
+          catppuccinPalette
           ;
       };
       modules = [ ../home-manager ];
@@ -68,6 +115,13 @@ rec {
       isWorkstation = builtins.isString desktop;
       isServer = desktop == null && !isLima && !isISO;
       tailNet = "drongo-gamma.ts.net";
+
+      # Generate the Catppuccin palette for this system
+      catppuccinPalette = mkCatppuccinPalette {
+        system = platform;
+        flavor = "mocha";
+        accent = "blue";
+      };
     in
     inputs.nixpkgs.lib.nixosSystem {
       system = platform;
@@ -85,6 +139,7 @@ rec {
           isServer
           isWorkstation
           tailNet
+          catppuccinPalette
           ;
       };
       # If the hostname starts with "iso-", generate an ISO image
@@ -112,6 +167,13 @@ rec {
       isLaptop = true;
       isWorkstation = true;
       isServer = false;
+
+      # Generate the Catppuccin palette for this system
+      catppuccinPalette = mkCatppuccinPalette {
+        system = platform;
+        flavor = "mocha";
+        accent = "blue";
+      };
     in
     inputs.nix-darwin.lib.darwinSystem {
       system = platform;
@@ -127,6 +189,7 @@ rec {
           isLaptop
           isServer
           isWorkstation
+          catppuccinPalette
           ;
       };
       modules = [
