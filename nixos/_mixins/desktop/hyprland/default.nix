@@ -145,9 +145,6 @@ in
   };
   security = {
     pam.services.hyprlock = { };
-    polkit = {
-      enable = true;
-    };
   };
 
   services = {
@@ -163,7 +160,5 @@ in
       gnome-keyring.enable = isInstall;
       sushi.enable = isInstall;
     };
-    gvfs.enable = true;
-    udisks2.enable = true;
   };
 }

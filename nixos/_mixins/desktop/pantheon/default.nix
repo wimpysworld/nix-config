@@ -283,7 +283,6 @@
       gnome-online-accounts.enable = isInstall;
       gnome-keyring.enable = true;
     };
-    gvfs.enable = true;
     xserver = {
       enable = true;
       displayManager = {

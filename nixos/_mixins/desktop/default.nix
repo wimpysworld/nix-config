@@ -9,7 +9,7 @@
 {
   imports = [
     ./apps
-    ./features
+    ./backgrounds
   ]
   ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
@@ -32,27 +32,6 @@
 
   catppuccin.plymouth.enable = config.boot.plymouth.enable;
 
-  environment.etc = {
-    "backgrounds/Cat-1920px.png".source = ../configs/backgrounds/Cat-1920px.png;
-    "backgrounds/Cat-2560px.png".source = ../configs/backgrounds/Cat-2560px.png;
-    "backgrounds/Cat-3440px.png".source = ../configs/backgrounds/Cat-3440px.png;
-    "backgrounds/Cat-3840px.png".source = ../configs/backgrounds/Cat-3840px.png;
-    "backgrounds/Catppuccin-1920x1080.png".source = ../configs/backgrounds/Catppuccin-1920x1080.png;
-    "backgrounds/Catppuccin-1920x1200.png".source = ../configs/backgrounds/Catppuccin-1920x1200.png;
-    "backgrounds/Catppuccin-2560x1440.png".source = ../configs/backgrounds/Catppuccin-2560x1440.png;
-    "backgrounds/Catppuccin-2560x1600.png".source = ../configs/backgrounds/Catppuccin-2560x1600.png;
-    "backgrounds/Catppuccin-2560x2880.png".source = ../configs/backgrounds/Catppuccin-2560x2880.png;
-    "backgrounds/Catppuccin-3440x1440.png".source = ../configs/backgrounds/Catppuccin-3440x1440.png;
-    "backgrounds/Catppuccin-3840x2160.png".source = ../configs/backgrounds/Catppuccin-3840x2160.png;
-    "backgrounds/Colorway-1920x1080.png".source = ../configs/backgrounds/Colorway-1920x1080.png;
-    "backgrounds/Colorway-1920x1200.png".source = ../configs/backgrounds/Colorway-1920x1200.png;
-    "backgrounds/Colorway-2560x1440.png".source = ../configs/backgrounds/Colorway-2560x1440.png;
-    "backgrounds/Colorway-2560x1600.png".source = ../configs/backgrounds/Colorway-2560x1600.png;
-    "backgrounds/Colorway-2560x2880.png".source = ../configs/backgrounds/Colorway-2560x2880.png;
-    "backgrounds/Colorway-3440x1440.png".source = ../configs/backgrounds/Colorway-3440x1440.png;
-    "backgrounds/Colorway-3840x2160.png".source = ../configs/backgrounds/Colorway-3840x2160.png;
-  };
-
   environment.systemPackages =
     with pkgs;
     [
@@ -73,9 +52,38 @@
       xdotool
       ydotool
     ];
-  programs.dconf.enable = true;
+
+  programs = {
+    # https://wiki.nixos.org/w/index.php?title=Appimage
+    # https://nixos.org/manual/nixpkgs/stable/#sec-pkgs-appimageTools
+    appimage = {
+      enable = isInstall;
+      binfmt = isInstall;
+    };
+    dconf = {
+      enable = true;
+    };
+  };
+  security.polkit.enable = true;
   services = {
     dbus.enable = true;
+    flatpak = lib.mkIf isInstall {
+      enable = true;
+      # By default nix-flatpak will add the flathub remote;
+      # Therefore Appcenter is only added when the desktop is Pantheon
+      remotes = lib.mkIf (desktop == "pantheon") [
+        {
+          name = "appcenter";
+          location = "https://flatpak.elementary.io/repo.flatpakrepo";
+        }
+      ];
+      update.auto = {
+        enable = true;
+        onCalendar = "weekly";
+      };
+    };
+    gvfs.enable = true;
+    udisks2.enable = true;
     usbmuxd.enable = true;
     xserver = {
       # Disable xterm

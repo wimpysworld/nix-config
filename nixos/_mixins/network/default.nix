@@ -16,6 +16,7 @@ let
   useNetworkManager = if (isISO || !isServer) then true else false;
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
+    ++ lib.optionals config.virtualisation.docker.enable [ "docker0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ]
     ++ lib.optionals config.virtualisation.incus.enable [ "incusbr0" ];
 
@@ -24,6 +25,7 @@ let
   # Trust the tailscale interface, if tailscale is enabled
   trustedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
+    ++ lib.optionals config.virtualisation.docker.enable [ "docker0" ]
     ++ lib.optionals config.virtualisation.lxd.enable [ "lxd0" ]
     ++ lib.optionals config.virtualisation.incus.enable [ "incusbr0" ];
 
@@ -108,7 +110,12 @@ let
   };
 in
 {
-  imports = lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
+  imports = [
+    ./nullmailer
+    ./ssh
+    ./tailscale
+  ]
+  ++ lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
 
   programs.captive-browser = lib.mkIf isLaptop {
     enable = true;
@@ -241,7 +248,7 @@ in
       psk = lib.mkIf config.networking.networkmanager.enable {
         mode = "0600";
         path = "/var/lib/iwd/SoroSuub Centroplex.psk";
-        sopsFile = ../../../../secrets/iwd.yaml;
+        sopsFile = ../../../secrets/iwd.yaml;
       };
     };
   };

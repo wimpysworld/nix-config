@@ -8,6 +8,7 @@
 let
   # Declare which hosts have Maestral (Dropbox) enabled.
   installOn = [
+    "bane"
     "phasma"
     "tanis"
     "revan"

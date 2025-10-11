@@ -10,5 +10,4 @@
       "v4l2loopback"
     ];
   };
-  security.polkit.enable = true;
 }

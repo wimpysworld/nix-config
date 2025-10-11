@@ -1,11 +1,15 @@
 {
   hostname,
   isISO,
+  isServer,
   lib,
   pkgs,
   ...
 }:
 let
+  consoleKeymap = "uk";
+  locale = "en_GB.UTF-8";
+  xkbLayout = "gb";
   kmsconFontSize = {
     sidious = "24";
     tanis = "18";
@@ -48,6 +52,7 @@ let
       palette-background=30,30,46
       sb-size=10240
     '';
+  useGeoclue = !isServer;
 in
 {
   boot = {
@@ -59,19 +64,67 @@ in
     ];
   };
 
-  catppuccin = {
-    accent = "blue";
-    flavor = "mocha";
-  };
-
   console = {
     font = "${pkgs.tamzen}/share/consolefonts/TamzenForPowerline10x20.psf";
+    keyMap = consoleKeymap;
     packages = with pkgs; [ tamzen ];
   };
 
+  fonts = {
+    fontDir.enable = true;
+    packages = with pkgs; [
+      nerd-fonts.fira-code
+      noto-fonts-monochrome-emoji
+      symbola
+      work-sans
+    ];
+    fontconfig = {
+      antialias = true;
+      enable = true;
+      hinting = {
+        autohint = false;
+        enable = true;
+        style = "slight";
+      };
+      subpixel = {
+        rgba = "rgb";
+        lcdfilter = "light";
+      };
+    };
+  };
+
+  i18n = {
+    defaultLocale = locale;
+    extraLocaleSettings = {
+      LC_ADDRESS = locale;
+      LC_IDENTIFICATION = locale;
+      LC_MEASUREMENT = locale;
+      LC_MONETARY = locale;
+      LC_NAME = locale;
+      LC_NUMERIC = locale;
+      LC_PAPER = locale;
+      LC_TELEPHONE = locale;
+      LC_TIME = locale;
+    };
+  };
+
+  location = {
+    provider = "geoclue2";
+  };
+
   services = {
+    automatic-timezoned.enable = useGeoclue;
+    geoclue2 = {
+      enable = true;
+      # https://github.com/NixOS/nixpkgs/issues/321121
+      geoProviderUrl = "https://api.positon.xyz/v1/geolocate?key=test";
+      submissionUrl = "https://api.positon.xyz/v2/geosubmit?key=test";
+      submitData = false;
+    };
+    localtimed.enable = useGeoclue;
     # TODO: Does compiling without fbterm help by odd sized displays?
     # - https://github.com/Aetf/kmscon/issues/18#issuecomment-612003371
+
     kmscon = {
       autologinUser = if isISO then "nixos" else null;
       enable = true;
@@ -83,6 +136,18 @@ in
         }
       ];
       extraConfig = kmsconExtraConfig;
+      useXkbConfig = true;
     };
+    xserver.xkb.layout = xkbLayout;
+  };
+
+  # Prevent "Failed to open /etc/geoclue/conf.d/:" errors
+  systemd.tmpfiles.rules = [
+    "d /etc/geoclue/conf.d 0755 root root"
+  ];
+
+  time = {
+    hardwareClockInLocalTime = true;
+    timeZone = lib.mkIf isServer "UTC";
   };
 }

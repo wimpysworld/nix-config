@@ -1,18 +1,20 @@
 {
   config,
+  inputs,
+  isWorkstation,
   lib,
   pkgs,
   username,
   ...
 }:
 let
-  installFor = [ "martin" ];
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
+  installFor = [ "martin" ];
   rootlessMode = false;
 in
-lib.mkIf (lib.elem "${username}" installFor) {
-  # https://wiki.nixos.org/wiki/Docker
+lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   environment = {
+    # https://wiki.nixos.org/wiki/Docker
     systemPackages = with pkgs; [
       act
       distrobox
@@ -22,11 +24,16 @@ lib.mkIf (lib.elem "${username}" installFor) {
       docker-sbom
       fuse-overlayfs
       lazydocker
+      qemu
+      inputs.quickemu.packages.${pkgs.system}.default
     ];
   };
-  # TODO: Add docker-desktop https://github.com/NixOS/nixpkgs/issues/228972
 
   hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
+
+  users.users.${username} = {
+    extraGroups = lib.optional config.virtualisation.docker.enable "docker";
+  };
 
   virtualisation = {
     containers.enable = true;
@@ -38,9 +45,6 @@ lib.mkIf (lib.elem "${username}" installFor) {
       };
     };
     oci-containers.backend = "docker";
-  };
-
-  users.users.${username} = {
-    extraGroups = lib.optional config.virtualisation.docker.enable "docker";
+    spiceUSBRedirection.enable = true;
   };
 }

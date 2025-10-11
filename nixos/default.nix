@@ -44,12 +44,13 @@ in
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./${hostname}
-    ./_mixins/configs
-    ./_mixins/features
-    ./_mixins/fonts
+    ./_mixins/console
+    ./_mixins/hardware
+    ./_mixins/network
     ./_mixins/scripts
-    ./_mixins/services
+    ./_mixins/server
     ./_mixins/users
+    ./_mixins/virtualisation
   ]
   ++ lib.optional isWorkstation ./_mixins/desktop;
 
@@ -78,6 +79,11 @@ in
       systemd-boot.memtest86.enable = true;
       timeout = lib.mkDefault 10;
     };
+  };
+
+  catppuccin = {
+    accent = "blue";
+    flavor = "mocha";
   };
 
   # Only install the docs I use
@@ -180,15 +186,6 @@ in
     sudo-rs = {
       enable = lib.mkDefault true;
     };
-  };
-
-  services = {
-    fwupd.enable = lib.mkDefault isWorkstation;
-    hardware.bolt.enable = isInstall;
-    irqbalance = lib.mkIf (!config.services.qemuGuest.enable) {
-      enable = true;
-    };
-    smartd.enable = isInstall;
   };
 
   # https://dl.thalheim.io/
