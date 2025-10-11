@@ -17,6 +17,7 @@ in
   home.packages = with pkgs; [
     hyprpicker
     wayvnc
+    wdisplays
   ];
   # Hyprland is a Wayland compositor and dynamic tiling window manager
   # Additional applications are required to create a full desktop shell
@@ -32,7 +33,9 @@ in
     ./wlogout # session menu
   ];
   services = {
-    gpg-agent.pinentry.package = lib.mkForce pkgs.pinentry-gnome3;
+    polkit-gnome = {
+      enable = true;
+    };
     udiskie = {
       enable = true;
       automount = false;
@@ -48,18 +51,6 @@ in
     #    port = 5900;
     #  };
     #};
-  };
-
-  systemd.user.services.polkit-gnome-authentication-agent-1 = {
-    Unit.Description = "polkit-gnome-authentication-agent-1";
-    Install.WantedBy = [ "hyprland-session.target" ];
-    Service = {
-      Type = "simple";
-      ExecStart = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
-      Restart = "on-failure";
-      RestartSec = 1;
-      TimeoutStopSec = 10;
-    };
   };
 
   wayland.windowManager.hyprland = {

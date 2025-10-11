@@ -50,8 +50,10 @@ in
       celluloid # video player
       decibels # audio player
       gnome-calculator # calculator
+      gnome-font-viewer
       loupe # image viewer
       papers # document viewer
+      resources # monitor system resources
     ];
   xdg = lib.mkIf isLinux {
     enable = true;

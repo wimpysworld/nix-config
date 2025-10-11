@@ -27,11 +27,17 @@ in
     };
     packages = [
       pkgs.notify-desktop
+      pkgs.wlr-randr
+      pkgs.wl-clipboard
+      pkgs.wtype
     ];
   };
 
-  # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
-  services.mpris-proxy.enable = isLinux;
+  services = lib.mkIf isLinux {
+    gpg-agent.pinentry.package = lib.mkForce pkgs.pinentry-gnome3;
+    # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
+    mpris-proxy.enable = true;
+  };
 
   xdg = {
     portal = {

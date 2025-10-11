@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   pkgs,
   ...
 }:
@@ -18,10 +17,6 @@
       Categories=
       Terminal=false
       StartupNotify=false'';
-  };
-
-  services = {
-    gpg-agent.pinentry.package = lib.mkForce pkgs.pinentry-gnome3;
   };
 
   systemd.user.services = {
