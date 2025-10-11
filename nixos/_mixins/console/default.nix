@@ -61,15 +61,39 @@ let
       sb-size=16384
     '';
   useGeoclue = !isServer;
+
+  # Use centralized VT color mapping from palette
+  vtColorMap = catppuccinPalette.vtColorMap;
+
+  # Helper to extract RGB values for VT kernel parameters
+  getRGBForVT = colorName: catppuccinPalette.getRGB colorName;
+
+  # Generate VT kernel parameters with dynamic Catppuccin colors
+  vtKernelParams =
+    let
+      # Get RGB values for all 16 colors
+      rgbValues = map getRGBForVT vtColorMap;
+
+      # Extract red, green, blue components separately
+      reds = map (rgb: toString rgb.r) rgbValues;
+      greens = map (rgb: toString rgb.g) rgbValues;
+      blues = map (rgb: toString rgb.b) rgbValues;
+
+      # Join with commas for kernel parameters
+      redParams = builtins.concatStringsSep "," reds;
+      greenParams = builtins.concatStringsSep "," greens;
+      blueParams = builtins.concatStringsSep "," blues;
+    in
+    [
+      "vt.default_red=${redParams}"
+      "vt.default_grn=${greenParams}"
+      "vt.default_blu=${blueParams}"
+    ];
 in
 {
   boot = {
     # Catppuccin theme
-    kernelParams = [
-      "vt.default_red=30,243,166,249,137,245,148,186,88,243,166,249,137,245,148,166"
-      "vt.default_grn=30,139,227,226,180,194,226,194,91,139,227,226,180,194,226,173"
-      "vt.default_blu=46,168,161,175,250,231,213,222,112,168,161,175,250,231,213,200"
-    ];
+    kernelParams = vtKernelParams;
   };
 
   console = {

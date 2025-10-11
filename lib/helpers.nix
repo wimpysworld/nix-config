@@ -29,6 +29,28 @@ rec {
 
       # Determine if this is a dark theme
       isDark = flavor != "latte";
+
+      # VT color mapping (16 ANSI colors: 0-15)
+      # Standard ANSI colors followed by bright variants
+      # Note: Index 0 is used as default background, so it must be "base"
+      vtColorMap = [
+        "base" # 0: black (also used as default background)
+        "red" # 1: red
+        "green" # 2: green
+        "yellow" # 3: yellow
+        "blue" # 4: blue
+        "pink" # 5: magenta
+        "teal" # 6: cyan
+        "subtext0" # 7: light grey
+        "surface1" # 8: dark grey (bright black)
+        "red" # 9: bright red
+        "green" # 10: bright green
+        "yellow" # 11: bright yellow
+        "blue" # 12: bright blue
+        "pink" # 13: bright magenta
+        "teal" # 14: bright cyan
+        "text" # 15: white
+      ];
     in
     {
       inherit
@@ -37,6 +59,7 @@ rec {
         getHSL
         getHyprlandColor
         isDark
+        vtColorMap
         ;
       colors = palette;
       accent = accent;
