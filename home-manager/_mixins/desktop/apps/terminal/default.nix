@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   desktop,
   lib,
@@ -7,6 +8,8 @@
 }:
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
+  # Helper function to get color as hex string
+  getColor = colorName: catppuccinPalette.getColor colorName;
 in
 {
   # Enable the Catppuccin theme
@@ -101,36 +104,36 @@ in
   };
 
   xresources.properties = {
-    "*background" = "#1E1E2E";
-    "*foreground" = "#CDD6F4";
+    "*background" = getColor "base";
+    "*foreground" = getColor "text";
     # black
-    "*color0" = "#45475A";
-    "*color8" = "#585B70";
+    "*color0" = getColor "surface1";
+    "*color8" = getColor "surface2";
     # red
-    "*color1" = "#F38BA8";
-    "*color9" = "#F38BA8";
+    "*color1" = getColor "red";
+    "*color9" = getColor "red";
     # green
-    "*color2" = "#A6E3A1";
-    "*color10" = "#A6E3A1";
+    "*color2" = getColor "green";
+    "*color10" = getColor "green";
     # yellow
-    "*color3" = "#F9E2AF";
-    "*color11" = "#F9E2AF";
+    "*color3" = getColor "yellow";
+    "*color11" = getColor "yellow";
     # blue
-    "*color4" = "#89B4FA";
-    "*color12" = "#89B4FA";
+    "*color4" = getColor "blue";
+    "*color12" = getColor "blue";
     #magenta
-    "*color5" = "#F5C2E7";
-    "*color13" = "#F5C2E7";
+    "*color5" = getColor "pink";
+    "*color13" = getColor "pink";
     #cyan
-    "*color6" = "#94E2D5";
-    "*color14" = "#94E2D5";
+    "*color6" = getColor "teal";
+    "*color14" = getColor "teal";
     #white
-    "*color7" = "#BAC2DE";
-    "*color15" = "#A6ADC8";
+    "*color7" = getColor "subtext1";
+    "*color15" = getColor "subtext0";
 
     # Xterm Appearance
-    "XTerm*background" = "#1E1E2E";
-    "XTerm*foreground" = "#CDD6F4";
+    "XTerm*background" = getColor "base";
+    "XTerm*foreground" = getColor "text";
     "XTerm*letterSpace" = 0;
     "XTerm*lineSpace" = 0;
     "XTerm*geometry" = "132x50";
