@@ -259,6 +259,10 @@ in
         name = "Kvantum Manager";
         noDisplay = true;
       };
+      nvtop = {
+        name = "nvtop";
+        noDisplay = true;
+      };
       qt5ct = {
         name = "Qt5 Settings";
         noDisplay = true;
