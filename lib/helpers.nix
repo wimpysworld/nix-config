@@ -29,9 +29,9 @@ rec {
 
       # Determine if this is a dark theme
       isDark = flavor != "latte";
+      isDarkAsIntString = if isDark then "1" else "0";
       themeShade = if isDark then "-Dark" else "-Light";
       preferShade = if isDark then "prefer-dark" else "prefer-light";
-      preferDarkAsStrInt = if isDark then "1" else "0";
 
       # VT color mapping (16 ANSI colors: 0-15)
       # Standard ANSI colors followed by bright variants
@@ -62,9 +62,9 @@ rec {
         getHSL
         getHyprlandColor
         isDark
+        isDarkAsIntString
         themeShade
         preferShade
-        preferDarkAsStrInt
         vtColorMap
         ;
       colors = palette;

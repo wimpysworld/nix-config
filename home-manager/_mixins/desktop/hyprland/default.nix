@@ -34,15 +34,6 @@ in
     ./wlogout # session menu
   ];
   services = {
-    polkit-gnome = {
-      enable = true;
-    };
-    udiskie = {
-      enable = true;
-      automount = false;
-      tray = "auto";
-      notify = true;
-    };
     # Not in home-manager 25.04
     #wayvnc = {
     #  autoStart = true;
@@ -303,5 +294,19 @@ in
       variables = [ "--all" ];
     };
     xwayland.enable = true;
+  };
+  # https://github.com/hyprwm/hyprland-wiki/issues/409
+  # https://github.com/nix-community/home-manager/pull/4707
+  xdg = {
+    portal = {
+      config = {
+        common = {
+          # Hyprland-specific interfaces
+          "org.freedesktop.impl.portal.ScreenCast" = [ "hyprland" ];
+          "org.freedesktop.impl.portal.Screenshot" = [ "hyprland" ];
+        };
+      };
+      configPackages = [ config.wayland.windowManager.hyprland.package ];
+    };
   };
 }

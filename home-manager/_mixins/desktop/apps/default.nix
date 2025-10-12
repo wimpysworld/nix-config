@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   desktop,
   lib,
   pkgs,
@@ -41,7 +42,7 @@ in
   dconf.settings = lib.mkIf isLinux {
     "io/github/celluloid-player/celluloid" = with lib.hm.gvariant; {
       csd-enable = if (desktop == "pantheon") then false else true;
-      dark-theme-enable = true;
+      dark-theme-enable = catppuccinPalette.isDark;
     };
   };
   home.packages =
