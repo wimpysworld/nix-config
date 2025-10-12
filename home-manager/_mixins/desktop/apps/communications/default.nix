@@ -24,16 +24,10 @@ in
 {
   catppuccin.halloy.enable = true;
   home = {
-    file = lib.mkIf (lib.elem username installFor) {
-      "${config.home.homeDirectory}/.local/share/chatterino/Themes/mocha-blue.json".text =
-        builtins.readFile ./chatterino-mocha-blue.json;
-    };
-
     packages =
       with pkgs;
       [ telegram-desktop ]
       ++ lib.optionals (lib.elem username installFor) [
-        chatterino2
         (discord.override { withOpenASAR = true; })
       ]
       # Halloy is installed via homebrew on Darwin
@@ -41,6 +35,7 @@ in
         fractal
         unstable.halloy
         slackWavebox
+        zoom-us
       ];
   };
 

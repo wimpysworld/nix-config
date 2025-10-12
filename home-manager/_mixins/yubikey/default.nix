@@ -7,10 +7,7 @@
 }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
-  installFor = [
-    "martin"
-    "martin.wimpress"
-  ];
+  installFor = [ "martin" ];
   keysSopsFile = ../../../secrets/keys.yaml;
   # Helper function to generate SSH key secret definitions
   mkSshKeySecrets = keyNamePrefix: sshBaseName: {

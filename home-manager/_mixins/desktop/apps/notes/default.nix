@@ -6,10 +6,7 @@
   ...
 }:
 let
-  installFor = [
-    "martin"
-    "martin.wimpress"
-  ];
+  installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 in
 lib.mkIf (lib.elem username installFor) {
@@ -23,6 +20,7 @@ lib.mkIf (lib.elem username installFor) {
       "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text =
         builtins.readFile ./userstyle.css;
     };
+    packages = [ pkgs.heynote ];
   };
 
   programs.joplin-desktop = {

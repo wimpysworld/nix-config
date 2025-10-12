@@ -1,12 +1,34 @@
 {
   config,
-  hostname,
   inputs,
+  isWorkstation,
   lib,
   pkgs,
   ...
 }:
 let
+  inherit (pkgs.stdenv) isLinux isDarwin;
+  # https://github.com/numtide/nix-ai-tools
+  aiPackagesLinux = [
+    inputs.nix-ai-tools.packages.${pkgs.system}.catnip
+    inputs.nix-ai-tools.packages.${pkgs.system}.claude-code
+    inputs.nix-ai-tools.packages.${pkgs.system}.claudebox
+    inputs.nix-ai-tools.packages.${pkgs.system}.codex
+    inputs.nix-ai-tools.packages.${pkgs.system}.crush
+    inputs.nix-ai-tools.packages.${pkgs.system}.gemini-cli
+    inputs.nix-ai-tools.packages.${pkgs.system}.opencode
+    inputs.nix-ai-tools.packages.${pkgs.system}.qwen-code
+  ];
+  aiPackagesDarwin = [
+    pkgs.unstable.claude-code
+  ];
+  aiPackages =
+    if isLinux then
+      aiPackagesLinux
+    else if isDarwin then
+      aiPackagesDarwin
+    else
+      [ ];
   waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
@@ -63,9 +85,8 @@ let
     ];
     text = builtins.readFile ./pre-commit-setup.sh;
   };
-
 in
-{
+lib.mkIf isWorkstation {
   home = {
     sessionPath = [
       "${config.home.homeDirectory}/.local/go/bin"
@@ -83,7 +104,8 @@ in
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
-      ];
+      ]
+      ++ aiPackages;
   };
   # https://dl.thalheim.io/
   sops = {

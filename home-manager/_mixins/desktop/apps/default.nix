@@ -33,28 +33,18 @@ let
 in
 {
   imports = [
-    ./audio-production
-    ./game-dev
-    ./gitkraken
-    ./graphics-production
-    ./heynote
-    ./internet-chat
-    ./joplin
+    ./communications
+    ./development
+    ./game-development
     ./libreoffice
-    ./meld
+    ./live-streaming
+    ./media-production
     ./music
-    ./obs-studio
-    ./rhythmbox
-    ./security
+    ./notes
     ./terminal
     ./ulauncher
     ./utilities
-    ./vaults
-    ./video-production
-    ./vscode
     ./web-browsers
-    ./zed-editor
-    ./zoom
   ];
 
   dbus = {

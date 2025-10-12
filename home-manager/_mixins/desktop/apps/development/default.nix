@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   inputs,
   lib,
@@ -27,7 +28,24 @@ lib.mkIf (lib.elem username installFor) {
 
   catppuccin = {
     vscode.profiles.default.enable = config.programs.vscode.enable;
+    zed.enable = config.programs.zed-editor.enable;
   };
+
+  # User specific dconf settings; only intended as override for NixOS dconf profile user database
+  dconf.settings =
+    with lib.hm.gvariant;
+    lib.mkIf isLinux {
+      "org/gnome/meld" = {
+        custom-font = "FiraCode Nerd Font Mono Medium 13";
+        indent-width = mkInt32 4;
+        insert-spaces-instead-of-tabs = true;
+        highlight-current-line = true;
+        show-line-numbers = true;
+        prefer-dark-theme = true;
+        highlight-syntax = true;
+        style-scheme = "catppuccin_${catppuccinPalette.flavor}";
+      };
+    };
 
   home = {
     file = {
@@ -64,17 +82,26 @@ lib.mkIf (lib.elem username installFor) {
         builtins.readFile ./review-pull-request-feedback.prompt.md;
       "${vscodeUserDir}/prompts/review-tests.prompt.md".text = builtins.readFile ./review-tests.prompt.md;
       "${vscodeUserDir}/prompts/update-docs.prompt.md".text = builtins.readFile ./update-docs.prompt.md;
+      # https://github.com/catppuccin/gitkraken
+      #  - I used the now 404: https://github.com/davi19/gitkraken
+      "${config.home.homeDirectory}/.gitkraken/themes/catppuccin_mocha.jsonc".text =
+        builtins.readFile ./gitkraken-catppuccin-mocha-blue-upstream.json;
+      "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text =
+        builtins.readFile ./gedit-catppuccin-mocha.xml;
     };
     # Packages that are used by some of the extensions below
     packages = with pkgs; [
       bash-language-server
       unstable.github-mcp-server
+      unstable.gitkraken
+      gk-cli
       go
       gopls
       luaformatter
       luajit
       lua-language-server
       unstable.mcp-nixos
+      meld
       nil
       nixfmt-rfc-style
       nodePackages.prettier
@@ -365,6 +392,43 @@ lib.mkIf (lib.elem username installFor) {
       };
       mutableExtensionsDir = true;
       package = pkgs.unstable.vscode;
+    };
+    zed-editor = {
+      enable = true;
+      extensions = [
+        "github-actions"
+        "lua"
+        "nix"
+      ];
+      package = pkgs.unstable.zed-editor;
+      userSettings = {
+        "languages" = {
+          "Nix" = {
+            "formatter" = {
+              "external" = {
+                "command" = "nixfmt";
+                "arguments" = [
+                  "--quiet"
+                  "--"
+                ];
+              };
+            };
+            "language_servers" = [
+              "nil"
+              "!nixd"
+            ];
+          };
+        };
+        "lsp" = {
+          "nil" = {
+            "settings" = {
+              "diagnostics" = {
+                "ignored" = [ "unused_binding" ];
+              };
+            };
+          };
+        };
+      };
     };
   };
   services.vscode-server.enable = true;

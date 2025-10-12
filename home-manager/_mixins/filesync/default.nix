@@ -11,26 +11,49 @@
 let
   installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
+  keybasePackages =
+    if isWorkstation then
+      [
+        pkgs.keybase
+        pkgs.keybase-gui
+      ]
+    else
+      [ pkgs.keybase ];
 in
 lib.mkIf (lib.elem username installFor && !isLima) {
   home = {
     file."/Syncthing/.keep".text = "";
-    packages = with pkgs; [ stc-cli ];
+    file."${config.xdg.configHome}/keybase/autostart_created".text = ''
+      This file is created the first time Keybase starts, along with
+      ~/.config/autostart/keybase_autostart.desktop. As long as this
+      file exists, the autostart file won't be automatically recreated.
+    '';
+    packages = with pkgs; [ stc-cli ] ++ lib.optionals (hostname != "bane") keybasePackages;
   };
   programs.fish.shellAliases = {
     stc = "${pkgs.stc-cli}/bin/stc -homedir \"${config.home.homeDirectory}/Syncthing/Devices/${hostname}\"";
   };
-  services.syncthing = lib.mkIf (isLinux) {
-    enable = true;
-    extraOptions = [
-      "--config=${config.home.homeDirectory}/Syncthing/Devices/${hostname}"
-      "--data=${config.home.homeDirectory}/Syncthing/DB/${hostname}"
-      "--no-default-folder"
-      "--no-browser"
-    ];
-    tray = lib.mkIf isWorkstation {
-      enable = isLinux;
-      package = pkgs.syncthingtray;
+
+  services = {
+    kbfs = lib.mkIf (hostname != "bane") {
+      enable = true;
+      mountPoint = "Keybase";
+    };
+    keybase = lib.mkIf (hostname != "bane") {
+      enable = true;
+    };
+    syncthing = lib.mkIf (isLinux) {
+      enable = true;
+      extraOptions = [
+        "--config=${config.home.homeDirectory}/Syncthing/Devices/${hostname}"
+        "--data=${config.home.homeDirectory}/Syncthing/DB/${hostname}"
+        "--no-default-folder"
+        "--no-browser"
+      ];
+      tray = lib.mkIf isWorkstation {
+        enable = isLinux;
+        package = pkgs.syncthingtray;
+      };
     };
   };
 
