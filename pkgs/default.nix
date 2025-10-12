@@ -11,6 +11,7 @@ pkgs: {
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
 
   # Local packages to prevent unintended upgrades or carrying patches
+  catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
   gotosocial = pkgs.callPackage ./gotosocial { };
   joplin-desktop = pkgs.callPackage ./joplin-desktop { };
   kmscon = pkgs.callPackage ./kmscon { };
