@@ -100,7 +100,6 @@ in
       [
         inputs.determinate.packages.${pkgs.system}.default
         inputs.fh.packages.${pkgs.system}.default
-        inputs.nixos-needsreboot.packages.${pkgs.system}.default
         git
         just
         micro
@@ -108,6 +107,7 @@ in
         sops
       ]
       ++ lib.optionals isInstall [
+        inputs.nixos-needsreboot.packages.${pkgs.system}.default
         nvd
         nvme-cli
         rsync
