@@ -1,6 +1,6 @@
 * {
   font:  "Work Sans 18";
-  text-color:  #cdd6f4FF;
+  text-color:  @text_color@;
 }
 
 configuration {
@@ -25,7 +25,7 @@ window {
   padding:           0px;
   border:            0px solid;
   border-radius:     0px;
-  background-color:  #1e1e2eaf;
+  background-color:  @background_color@;
   cursor:            "default";
 }
 
@@ -46,9 +46,9 @@ inputbar {
   margin:            0% 25%;
   padding:           16px;
   border:            2px solid;
-  border-color:      #89b4fa;
+  border-color:      @accent_color@;
   border-radius:     8px;
-  background-color:  #6c7086af;
+  background-color:  @surface_color@;
   children:          [ "prompt", "entry" ];
 }
 
@@ -110,7 +110,7 @@ element normal.normal {
 }
 
 element selected.normal {
-  background-color:  #89b4faaf;
+  background-color:  @accent_color_alpha@;
 }
 
 element-icon {
