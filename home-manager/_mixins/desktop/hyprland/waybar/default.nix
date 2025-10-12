@@ -35,17 +35,17 @@ let
     runtimeInputs = with pkgs; [
       gawk
       jq
-      uutils-findutils
+      findutils
     ];
     text = builtins.readFile ./eyecandy-check.sh;
   };
   eyecandyToggle = pkgs.writeShellApplication {
     name = "eyecandy-toggle";
     runtimeInputs = with pkgs; [
+      findutils
       gawk
       jq
       notify-desktop
-      uutils-findutils
     ];
     # https://github.com/hyprwm/Hyprland/issues/3655#issuecomment-1784217814
     text = builtins.readFile ./eyecandy-toggle.sh;
@@ -70,17 +70,17 @@ let
   virtualcamCheck = pkgs.writeShellApplication {
     name = "virtualcam-check";
     runtimeInputs = with pkgs; [
+      coreutils
       gnugrep
-      uutils-coreutils
     ];
     text = builtins.readFile ./virtualcam-check.sh;
   };
   virtualcamToggle = pkgs.writeShellApplication {
     name = "virtualcam-toggle";
     runtimeInputs = with pkgs; [
+      coreutils
       gnugrep
       notify-desktop
-      uutils-coreutils
     ];
     text = builtins.readFile ./virtualcam-toggle.sh;
   };

@@ -5,8 +5,8 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       gnupg
-      uutils-coreutils-noprefix
-      uutils-findutils
+      coreutils
+      findutils
     ];
     text = builtins.readFile ./${name}.sh;
   };

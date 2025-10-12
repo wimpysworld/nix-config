@@ -13,8 +13,8 @@ let
       gzip
       openssl
       sqlite
-      uutils-coreutils-noprefix
-      uutils-findutils
+      coreutils
+      findutils
     ];
     text = builtins.readFile ./backup-sqlite.sh;
   };

@@ -59,7 +59,7 @@ lib.mkIf (lib.elem hostname installOn) {
           sleep 1
           ((timeout--))
         done
-        ${pkgs.uutils-findutils}/bin/find $(dirname "${config.services.gotosocial.settings.db-address}") -type d -exec chmod -v 775 {} + -o -type f -exec chmod -v 664 {} +
+        ${pkgs.findutils}/bin/find $(dirname "${config.services.gotosocial.settings.db-address}") -type d -exec chmod -v 775 {} + -o -type f -exec chmod -v 664 {} +
       '';
   };
 

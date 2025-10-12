@@ -4,7 +4,7 @@ let
   shellApplication = pkgs.writeShellApplication {
     inherit name;
     runtimeInputs = with pkgs; [
-      uutils-coreutils-noprefix
+      coreutils
       rsync
     ];
     text = builtins.readFile ./${name}.sh;

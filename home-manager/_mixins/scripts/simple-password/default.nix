@@ -3,7 +3,7 @@ let
   name = builtins.baseNameOf (builtins.toString ./.);
   shellApplication = pkgs.writeShellApplication {
     inherit name;
-    runtimeInputs = with pkgs; [ uutils-coreutils-noprefix ];
+    runtimeInputs = with pkgs; [ coreutils ];
     text = builtins.readFile ./${name}.sh;
   };
 in

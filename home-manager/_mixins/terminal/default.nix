@@ -124,7 +124,7 @@ in
       ]
       ++ lib.optionals pkgs.stdenv.isDarwin [
         m-cli # Terminal Swiss Army Knife for macOS
-        uutils-coreutils-noprefix
+        coreutils
       ];
   };
 

@@ -14,23 +14,6 @@
   username,
   ...
 }:
-let
-  coreUtils =
-    if isISO then
-      [
-        pkgs.coreutils-full
-        pkgs.diffutils
-        pkgs.findutils
-        pkgs.sudo
-      ]
-    else
-      [
-        (lib.hiPrio pkgs.uutils-coreutils-noprefix)
-        (lib.hiPrio pkgs.uutils-diffutils)
-        (lib.hiPrio pkgs.uutils-findutils)
-        (lib.hiPrio pkgs.sudo-rs)
-      ];
-in
 {
   imports = [
     # Use module this flake exports; from modules/nixos
@@ -112,8 +95,7 @@ in
         nvme-cli
         rsync
         smartmontools
-      ]
-      ++ coreUtils;
+      ];
 
     variables = {
       EDITOR = "micro";

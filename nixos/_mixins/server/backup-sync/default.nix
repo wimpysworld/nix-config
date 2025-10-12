@@ -15,8 +15,8 @@ let
       openssh
       rsync
       util-linux
-      uutils-coreutils-noprefix
-      uutils-findutils
+      coreutils
+      findutils
     ];
     text = builtins.readFile ./backup-sync.sh;
   };

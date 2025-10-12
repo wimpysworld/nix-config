@@ -36,7 +36,7 @@ let
     export XDG_DATA_DIRS="${gtkThemePackage}/share:${cursorPackage}/share:${pkgs.papirus-icon-theme}/share:$XDG_DATA_DIRS"
 
     # If there is a kanshi profile for regreet, use it.
-    KANSHI_REGREET="$(${pkgs.uutils-coreutils-noprefix}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
+    KANSHI_REGREET="$(${pkgs.coreutils}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
     if [ -n "$KANSHI_REGREET" ]; then
       ${pkgs.cage}/bin/cage -m last -s -- sh -c \
         '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \

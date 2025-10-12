@@ -5,7 +5,7 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       bc
-      uutils-coreutils-noprefix
+      coreutils
       gawk
       gnused
       lima-bin

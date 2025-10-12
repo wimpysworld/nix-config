@@ -33,7 +33,7 @@ let
     runtimeInputs = with pkgs; [
       docker
       jq
-      uutils-coreutils-noprefix
+      coreutils
     ];
     text = ''
       echo "⬢ WARNING: This will stop and remove *all* Docker resources on your system."

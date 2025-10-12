@@ -16,7 +16,7 @@ let
       bc
       curl
       jq
-      uutils-coreutils-noprefix
+      coreutils
     ];
     text = builtins.readFile ./${name}.sh;
   };

@@ -34,9 +34,9 @@ let
           mv "$LOG_FILE" "$LOG_FILE.1"
         fi
         # Run Hyprland and log output
-        ${pkgs.expect}/bin/unbuffer /run/current-system/sw/bin/Hyprland $@ 2>&1 | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE" &>/dev/null
+        ${pkgs.expect}/bin/unbuffer /run/current-system/sw/bin/Hyprland $@ 2>&1 | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE" &>/dev/null
         # Log the exit code here
-        echo "[$(${pkgs.uutils-coreutils-noprefix}/bin/date '+%Y-%m-%d %H:%M:%S')] Hyprland exited with code $?" | ${pkgs.uutils-coreutils-noprefix}/bin/tee -a "$LOG_FILE"
+        echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Hyprland exited with code $?" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
       '')
       (pkgs.writeTextFile {
         name = "hyprshim-desktop";

@@ -169,8 +169,8 @@ in
                 $LOGGER "Dispatcher script triggered on connectivity change: $CONNECTIVITY_STATE"
                 if [ "$CONNECTIVITY_STATE" == "PORTAL" ]; then
                   $LOGGER "Captive portal detected"
-                  USER_ID=$(${pkgs.uutils-coreutils-noprefix}/bin/id -u "${username}")
-                  USER_SESSION=$(/run/current-system/sw/bin/loginctl list-sessions --no-legend | ${pkgs.gawk}/bin/awk -v uid="$USER_ID" '$3 == uid {print $1}' | ${pkgs.uutils-coreutils-noprefix}/bin/head -n 1)
+                  USER_ID=$(${pkgs.coreutils}/bin/id -u "${username}")
+                  USER_SESSION=$(/run/current-system/sw/bin/loginctl list-sessions --no-legend | ${pkgs.gawk}/bin/awk -v uid="$USER_ID" '$3 == uid {print $1}' | ${pkgs.coreutils}/bin/head -n 1)
                   XDG_RUNTIME_DIR="/run/user/$USER_ID"
                   if [ -z "$USER_SESSION" ]; then
                     $LOGGER "No active session found for user '${username}'"
@@ -180,7 +180,7 @@ in
                   fi
 
                   # Get display variables for X11/Wayland
-                  DISPLAY=$(/run/current-system/sw/bin/loginctl show-session "$USER_SESSION" -p Display | ${pkgs.uutils-coreutils-noprefix}/bin/cut -d'=' -f 2)
+                  DISPLAY=$(/run/current-system/sw/bin/loginctl show-session "$USER_SESSION" -p Display | ${pkgs.coreutils}/bin/cut -d'=' -f 2)
                   WAYLAND_DISPLAY=$(/run/current-system/sw/bin/loginctl show-session "$USER_SESSION" -p Type | ${pkgs.gnugrep}/bin/grep -q "wayland" && \
                     ls -1 $XDG_RUNTIME_DIR | ${pkgs.gnugrep}/bin/grep -m1 "^wayland-[0-9]$" || echo "")
                   # Build environment string based on available display server
@@ -194,7 +194,7 @@ in
                     $LOGGER "Wayland: $WAYLAND_DISPLAY"
                   fi
                   $LOGGER "Running browser as '${username}'"
-                  TIMEOUT_CMD="${pkgs.uutils-coreutils-noprefix}/bin/timeout 30"
+                  TIMEOUT_CMD="${pkgs.coreutils}/bin/timeout 30"
                   ${pkgs.util-linux}/bin/runuser -l "${username}" -c "$ENV_VARS $TIMEOUT_CMD ${pkgs.xdg-utils}/bin/xdg-open \"http://neverssl.com\""
                 fi
                 ;;

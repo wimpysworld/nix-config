@@ -19,7 +19,7 @@ let
       python3
       tailscale
       unstable.terraform-mcp-server
-      uutils-coreutils-noprefix
+      coreutils
       uv
     ];
     text = builtins.readFile ./${name}.sh;

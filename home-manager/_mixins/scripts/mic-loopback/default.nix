@@ -13,7 +13,7 @@ let
   shellApplication = pkgs.writeShellApplication {
     inherit name;
     runtimeInputs = with pkgs; [
-      uutils-coreutils-noprefix
+      coreutils
       gnugrep
       gnused
       pipewire

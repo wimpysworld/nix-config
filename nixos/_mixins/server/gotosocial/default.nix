@@ -16,8 +16,8 @@ let
       openssl
       rsync
       sqlite
-      uutils-coreutils-noprefix
-      uutils-findutils
+      coreutils
+      findutils
     ];
     text = builtins.readFile ./gotosocial-backup.sh;
   };

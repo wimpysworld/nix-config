@@ -9,7 +9,7 @@ let
       gnugrep
       kmod
       procps
-      uutils-coreutils-noprefix
+      coreutils
     ];
     text = builtins.readFile ./${name}.sh;
   };
