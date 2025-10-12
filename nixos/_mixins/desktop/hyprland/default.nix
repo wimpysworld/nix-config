@@ -119,8 +119,6 @@ in
         };
       }
     ];
-    file-roller.enable = isInstall;
-    gnome-disks.enable = isInstall;
     hyprland = {
       enable = true;
       systemd.setPath.enable = true;
@@ -132,7 +130,6 @@ in
       enable = true;
       terminal = "kitty";
     };
-    seahorse.enable = isInstall;
     udevil.enable = true;
   };
   security = {
@@ -140,17 +137,9 @@ in
   };
 
   services = {
-    dbus = {
-      implementation = "broker";
-      packages = with pkgs; [ gcr ];
-    };
     devmon.enable = true;
     displayManager = {
       sessionPackages = [ hyprShim ];
-    };
-    gnome = {
-      gnome-keyring.enable = isInstall;
-      sushi.enable = isInstall;
     };
   };
 }

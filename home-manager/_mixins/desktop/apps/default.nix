@@ -13,6 +13,15 @@ let
   documentViewer = [ "org.gnome.Papers.desktop" ];
   imageViewer = [ "org.gnome.Loupe.desktop" ];
   videoPlayer = [ "io.github.celluloid_player.Celluloid.desktop" ];
+  # Packages whose D-Bus configuration files should be included in the
+  # configuration of the D-Bus session-wide message bus.
+  dbusPackages = with pkgs; [
+    file-roller
+    gcr
+    gnome-disk-utility
+    seahorse
+    sushi
+  ];
 in
 {
   imports = [
@@ -39,6 +48,11 @@ in
     ./zed-editor
     ./zoom
   ];
+
+  dbus = {
+    packages = dbusPackages;
+  };
+
   dconf.settings = lib.mkIf isLinux {
     "io/github/celluloid-player/celluloid" = with lib.hm.gvariant; {
       csd-enable = if (desktop == "pantheon") then false else true;
@@ -55,7 +69,8 @@ in
       loupe # image viewer
       papers # document viewer
       resources # monitor system resources
-    ];
+    ]
+    ++ dbusPackages;
   xdg = lib.mkIf isLinux {
     enable = true;
     mime.enable = true;
