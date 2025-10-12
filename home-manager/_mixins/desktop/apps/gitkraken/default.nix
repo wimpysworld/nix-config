@@ -6,11 +6,7 @@
   ...
 }:
 let
-  installFor = [
-    "martin"
-    "martin.wimpress"
-  ];
-  inherit (pkgs.stdenv) isLinux;
+  installFor = [ "martin" ];
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
@@ -21,7 +17,7 @@ lib.mkIf (lib.elem username installFor) {
         builtins.readFile ./gitkraken-catppuccin-mocha-blue-upstream.json;
     };
     packages = with pkgs; [
-      gitkraken
+      unstable.gitkraken
       gk-cli
     ];
   };
