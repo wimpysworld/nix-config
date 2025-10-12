@@ -181,8 +181,16 @@ in
     };
   };
 
+  services = {
+    dbus = {
+      enable = true;
+      implementation = "broker";
+    };
+  };
+
   # Only enable sudo-rs on installs, not live media (.ISO images)
   security = lib.mkIf isInstall {
+    polkit.enable = true;
     sudo.enable = false;
     sudo-rs = {
       enable = lib.mkDefault true;

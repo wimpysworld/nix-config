@@ -43,9 +43,7 @@
       enable = true;
     };
   };
-  security.polkit.enable = true;
   services = {
-    dbus.enable = true;
     flatpak = lib.mkIf isInstall {
       enable = true;
       # By default nix-flatpak will add the flathub remote;
