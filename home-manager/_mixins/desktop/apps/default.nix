@@ -16,9 +16,17 @@ let
   # Packages whose D-Bus configuration files should be included in the
   # configuration of the D-Bus session-wide message bus.
   dbusPackages = with pkgs; [
+    celluloid # video player
+    decibels # audio player
     file-roller
     gcr
+    gnome-calculator
     gnome-disk-utility
+    gnome-font-viewer
+    loupe # image viewer
+    nautilus # file manager
+    papers # document viewer
+    resources # monitor system resources
     seahorse
     sushi
   ];
@@ -59,18 +67,19 @@ in
       dark-theme-enable = catppuccinPalette.isDark;
     };
   };
-  home.packages =
-    with pkgs;
-    lib.optionals isLinux [
-      celluloid # video player
-      decibels # audio player
-      gnome-calculator # calculator
-      gnome-font-viewer
-      loupe # image viewer
-      papers # document viewer
-      resources # monitor system resources
-    ]
-    ++ dbusPackages;
+  home = {
+    packages =
+      with pkgs;
+      lib.optionals isLinux [
+        nautilus-python
+        nautilus-open-any-terminal
+      ]
+      ++ dbusPackages;
+    sessionVariables = {
+      NAUTILUS_4_EXTENSION_DIR = "${pkgs.nautilus-python}/lib/nautilus/extensions-4";
+    };
+  };
+
   xdg = lib.mkIf isLinux {
     enable = true;
     mime.enable = true;

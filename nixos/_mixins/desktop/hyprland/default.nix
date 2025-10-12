@@ -59,11 +59,6 @@ in
 {
   imports = [ ../greeters/greetd.nix ];
   environment = {
-    # Enable HEIC image previews in Nautilus
-    pathsToLink = [
-      "/share"
-      "share/thumbnailers"
-    ];
     sessionVariables = {
       # Make sure the cursor size is the same in all environments
       HYPRCURSOR_SIZE = 32;
@@ -80,10 +75,6 @@ in
       with pkgs;
       lib.optionals isInstall [
         hyprShim
-        # Enable HEIC image previews in Nautilus
-        libheif
-        libheif.out
-        nautilus
       ];
   };
 
@@ -125,10 +116,6 @@ in
     };
     iio-hyprland = {
       enable = true;
-    };
-    nautilus-open-any-terminal = {
-      enable = true;
-      terminal = "kitty";
     };
     udevil.enable = true;
   };

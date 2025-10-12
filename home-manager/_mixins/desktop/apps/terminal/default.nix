@@ -19,6 +19,9 @@ in
 
   # User specific dconf terminal-related settings
   dconf.settings = with lib.hm.gvariant; {
+    "com/github/stunkymonkey/nautilus-open-any-terminal" = {
+      terminal = "kitty";
+    };
     "org/gnome/settings-daemon/plugins/media-keys" = lib.mkIf (desktop == "pantheon") {
       custom-keybindings = [
         "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
