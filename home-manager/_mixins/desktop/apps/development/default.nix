@@ -93,7 +93,7 @@ lib.mkIf (lib.elem username installFor) {
     packages = with pkgs; [
       bash-language-server
       unstable.github-mcp-server
-      unstable.gitkraken
+      gitkraken
       gk-cli
       go
       gopls
