@@ -336,7 +336,7 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.github.vscode-pull-request-github
             vscode-marketplace.golang.go
             vscode-marketplace.griimick.vhs
-            vscode-marketplace.hashicorp.terraform
+            #vscode-marketplace.hashicorp.terraform
             vscode-marketplace.hoovercj.vscode-power-mode
             vscode-marketplace.ismoh-games.second-local-lua-debugger-vscode
             vscode-marketplace.jdemille.debian-control-vscode
