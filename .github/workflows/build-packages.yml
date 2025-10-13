@@ -115,7 +115,7 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v2
       - name: ${{ matrix.package }}
         run: |
-          nix build .#darwinConfigurations.bane.pkgs.${{ matrix.package }} -L
+          nix build .#darwinConfigurations.krall.pkgs.${{ matrix.package }} -L
 
   build-fonts:
     name: 🔤
