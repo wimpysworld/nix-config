@@ -1,6 +1,7 @@
 {
   config,
   hostname,
+  isLima,
   lib,
   pkgs,
   username,
@@ -405,13 +406,17 @@ in
         };
   };
 
-  home.packages = with pkgs; [
-    audacity
-    davinciResolve
-    gimp3
-    gnome-sound-recorder
-    inkscape
-  ];
+  home.packages =
+    with pkgs;
+    [
+      audacity
+      gimp3
+      gnome-sound-recorder
+      inkscape
+    ]
+    ++ lib.optionals (!isLima) [
+      davinciResolve
+    ];
 
   services.easyeffects = lib.mkIf (hostname == "vader" || hostname == "phasma") {
     enable = true;
