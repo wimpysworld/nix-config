@@ -11,6 +11,5 @@ _: {
     ./security
     ./utilities
     ./web-browsers
-    ./zoom
   ];
 }
