@@ -3,6 +3,7 @@
 {
   inputs,
   lib,
+  pkgs,
   ...
 }:
 {
