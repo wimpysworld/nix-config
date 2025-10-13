@@ -40,7 +40,7 @@ jobs:
     - uses: DeterminateSystems/flakehub-cache-action@v2
     - name: ${{ matrix.host }}
       run: |
-        sed -i 's|pico8|#pico8|' home-manager/_mixins/desktop/apps/game-dev/default.nix
+        sed -i 's|pico8|#pico8|' home-manager/_mixins/desktop/apps/game-development/default.nix
         FLAKEREF="${{ matrix.config-type.path }}"
         FLAKEREF="${FLAKEREF/\{host\}/${{ matrix.host }}}"
         nix build ${FLAKEREF} -L
