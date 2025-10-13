@@ -122,14 +122,14 @@
 
           "org/gnome/desktop/interface" = {
             clock-format = "24h";
-            color-scheme = "${catppuccinPalete.preferShade}";
+            color-scheme = "${catppuccinPalette.preferShade}";
             cursor-size = mkInt32 32;
             cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
             document-font-name = "Work Sans 12";
             font-name = "Work Sans 12";
             gtk-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
             gtk-enable-primary-paste = true;
-            icon-theme = "Papirus${catppuccinPalete.themeShade}";
+            icon-theme = "Papirus${catppuccinPalette.themeShade}";
             monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
             text-scaling-factor = mkDouble 1.0;
           };
