@@ -1,39 +1,117 @@
 {
+  catppuccinPalette,
   lib,
   pkgs,
   ...
 }:
 {
+  #TODO: IPC tooling for wayfire
+  # https://github.com/killown/wayfire-rs
+  # https://github.com/AR-CADE/wayfire-ipc
+  # https://github.com/bluebyt/Wayfire-dots/tree/main/.config/ipc-scripts
+
   wayland.windowManager.wayfire = {
     enable = true;
+    plugins = with pkgs.wayfirePlugins; [
+      wcm
+      wayfire-plugins-extra
+    ];
     settings = {
-      # Core plugins - essential window management functionality
+      # Window animations
+      animate = {
+        open_animation = "zoom";
+        close_animation = "zoom";
+        duration = 300;
+      };
+      autostart = {
+        # Disable wf-shell autostart, we're using waybar et al instead
+        autostart_wf_shell = false;
+      };
+      command = {
+        # Super+E launches the file manager
+        binding_files = "<super> KEY_E";
+        command_files = "${lib.getExe pkgs.nautilus} --new-window";
+        # Media controls
+        binding_play_pause = "XF86AudioPlay";
+        command_play_pause = "${lib.getExe pkgs.playerctl} play-pause";
+        binding_previous = "XF86AudioPrev";
+        command_previous = "${lib.getExe pkgs.playerctl} previous";
+        binding_next = "XF86AudioNext";
+        command_next = "${lib.getExe pkgs.playerctl} next";
+      };
       core = {
-        plugins = "autostart command vswitch move resize grid wm-actions decoration place animate";
-        # Virtual desktop configuration - 8 workspaces in a single row
+        plugins = "animate autostart blur command decoration grid move place resize switcher vswitch wm-actions wobbly";
         vwidth = 8;
         vheight = 1;
       };
+      # Window decorations (title bars, borders)
+      decoration = {
+        # Active window: use crust colour for visibility against surface
+        active_color =
+          let
+            hex = catppuccinPalette.getColor "crust";
+            r = builtins.substring 1 2 hex;
+            g = builtins.substring 3 2 hex;
+            b = builtins.substring 5 2 hex;
+            toFloat = hexStr: toString (builtins.div (builtins.fromTOML "x=0x${hexStr}").x 255.0);
+          in
+          "${toFloat r} ${toFloat g} ${toFloat b} 1.0";
 
-      # Autostart configuration
-      autostart = {
-        # Launch rofi on startup (hidden, ready for Super to show)
-        rofi = false; # We'll trigger rofi via keybinding instead
-        autostart_wf_shell = false;
-        background = "wf-background";
+        # Inactive window: use surface1 for subtle, recessed appearance
+        inactive_color =
+          let
+            hex = catppuccinPalette.getColor "surface1";
+            r = builtins.substring 1 2 hex;
+            g = builtins.substring 3 2 hex;
+            b = builtins.substring 5 2 hex;
+            toFloat = hexStr: toString (builtins.div (builtins.fromTOML "x=0x${hexStr}").x 255.0);
+          in
+          "${toFloat r} ${toFloat g} ${toFloat b} 1.0";
+        font = "Work Sans 12";
+        border_size = 4;
+        title_height = 30;
       };
-
-      # Command bindings - Super+T for terminal, Super for rofi
-      command = {
-        # Super+T launches kitty terminal
-        binding_terminal = "<super> KEY_T";
-        command_terminal = "${lib.getExe pkgs.kitty}";
-
-        # Super key toggles rofi launcher
-        binding_launcher = "<super>";
-        command_launcher = "${lib.getExe pkgs.unstable.rofi} -show drun";
+      # Grid snapping - position windows in screen regions
+      grid = {
+        duration = 300;
+        type = "crossfade";
+        # Slot keybindings for window positioning
+        slot_l = "<super> <alt> KEY_LEFT"; # Snap to left half
+        slot_r = "<super> <alt> KEY_RIGHT"; # Snap to right half
+        slot_t = "<super> <alt> KEY_UP"; # Snap to top half
+        slot_b = "<super> <alt> KEY_DOWN"; # Snap to bottom half
+        #slot_c = "<super> KEY_C"; # Center/maximize
+        #slot_tl = "<super> <shift> KEY_UP"; # Top-left quarter
+        #slot_tr = "<super> <ctrl> KEY_UP"; # Top-right quarter
+        #slot_bl = "<super> <shift> KEY_DOWN"; # Bottom-left quarter
+        #slot_br = "<super> <ctrl> KEY_DOWN"; # Bottom-right quarter
+        restore = "<super> KEY_DOWN"; # Restore original size
       };
-
+      input = {
+        xkb_layout = "gb";
+        repeat_delay = 300;
+        repeat_rate = 30;
+      };
+      # Window movement - Super+Left Mouse to drag windows
+      move = {
+        activate = "<super> BTN_LEFT";
+        enable_snap = true;
+        enable_snap_off = true;
+        snap_threshold = 10;
+        snap_off_threshold = 10;
+      };
+      # Window placement for new windows
+      place = {
+        mode = "center";
+      };
+      # Window resizing - Super+Right Mouse to resize windows
+      resize = {
+        activate = "<super> BTN_RIGHT";
+      };
+      switcher = {
+        next_view = "<alt> KEY_TAB";
+        prev_view = "<alt> <shift> KEY_TAB";
+      };
       # Virtual desktop switching with Ctrl+Alt+[1-8]
       vswitch = {
         binding_1 = "<ctrl> <alt> KEY_1";
@@ -44,39 +122,17 @@
         binding_6 = "<ctrl> <alt> KEY_6";
         binding_7 = "<ctrl> <alt> KEY_7";
         binding_8 = "<ctrl> <alt> KEY_8";
+        binding_left = "<ctrl> <alt> KEY_LEFT";
+        binding_right = "<ctrl> <alt> KEY_RIGHT";
+        with_win_1 = "<super> <alt> KEY_1";
+        with_win_2 = "<super> <alt> KEY_2";
+        with_win_3 = "<super> <alt> KEY_3";
+        with_win_4 = "<super> <alt> KEY_4";
+        with_win_5 = "<super> <alt> KEY_5";
+        with_win_6 = "<super> <alt> KEY_6";
+        with_win_7 = "<super> <alt> KEY_7";
+        with_win_8 = "<super> <alt> KEY_8";
       };
-
-      # Window movement - Super+Left Mouse to drag windows
-      move = {
-        activate = "<super> BTN_LEFT";
-        enable_snap = true;
-        enable_snap_off = true;
-        snap_threshold = 10;
-        snap_off_threshold = 10;
-      };
-
-      # Window resizing - Super+Right Mouse to resize windows
-      resize = {
-        activate = "<super> BTN_RIGHT";
-      };
-
-      # Grid snapping - position windows in screen regions
-      grid = {
-        duration = 300;
-        type = "crossfade";
-        # Slot keybindings for window positioning
-        slot_l = "<super> KEY_LEFT"; # Snap to left half
-        slot_r = "<super> KEY_RIGHT"; # Snap to right half
-        #slot_t = "<super> KEY_UP"; # Snap to top half
-        #slot_b = "<super> KEY_DOWN"; # Snap to bottom half
-        #slot_c = "<super> KEY_C"; # Center/maximize
-        #slot_tl = "<super> <shift> KEY_UP"; # Top-left quarter
-        #slot_tr = "<super> <ctrl> KEY_UP"; # Top-right quarter
-        #slot_bl = "<super> <shift> KEY_DOWN"; # Bottom-left quarter
-        #slot_br = "<super> <ctrl> KEY_DOWN"; # Bottom-right quarter
-        restore = "<super> KEY_BACKSPACE"; # Restore original size
-      };
-
       # Window management actions
       wm-actions = {
         #toggle_fullscreen = "<super> KEY_F";
@@ -84,26 +140,6 @@
         #minimize = "<super> KEY_N";
         #toggle_always_on_top = "<super> KEY_A";
         #toggle_sticky = "<super> KEY_S";
-      };
-
-      # Window placement for new windows
-      place = {
-        mode = "center"; # Center new windows
-      };
-
-      # Window animations
-      animate = {
-        open_animation = "zoom";
-        close_animation = "zoom";
-        duration = 300;
-      };
-
-      # Window decorations (title bars, borders)
-      decoration = {
-        active_color = "0.6 0.6 0.6 1.0";
-        inactive_color = "0.3 0.3 0.3 1.0";
-        border_size = 4;
-        title_height = 30;
       };
     };
     xwayland.enable = true;
