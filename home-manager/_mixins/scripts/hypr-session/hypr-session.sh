@@ -15,7 +15,13 @@ function bluetooth_devices() {
 }
 
 function session_start() {
+  local LAYOUT=""
   bluetooth_devices connect
+  LAYOUT="$(localectl | grep "X11 Layout" | cut -d':' -f2 | sed 's/ //g')"
+  if [ -z "$LAYOUT" ]; then
+    LAYOUT="gb"
+  fi
+  hyprctl keyword input:kb_layout "${LAYOUT}"
 }
 
 function session_stop() {
