@@ -9,7 +9,10 @@
   # https://github.com/killown/wayfire-rs
   # https://github.com/AR-CADE/wayfire-ipc
   # https://github.com/bluebyt/Wayfire-dots/tree/main/.config/ipc-scripts
-
+  # TODO: pixdecor
+  # https://github.com/soreau/pixdecor
+  # https://github.com/NixOS/nixpkgs/pull/355376
+  # https://github.com/NixOS/nixpkgs/pull/355376#issuecomment-3290317610
   wayland.windowManager.wayfire = {
     enable = true;
     plugins = with pkgs.wayfirePlugins; [
