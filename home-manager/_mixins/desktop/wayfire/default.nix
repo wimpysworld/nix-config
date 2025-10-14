@@ -108,4 +108,15 @@
     };
     xwayland.enable = true;
   };
+  #xdg = {
+  #  portal = {
+  #    config = {
+  #      common = {
+  #        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+  #        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+  #      };
+  #    };
+  #    configPackages = [ config.wayland.windowManager.wayfire.package ];
+  #  };
+  #};
 }

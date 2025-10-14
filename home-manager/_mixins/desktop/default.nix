@@ -308,6 +308,9 @@ in
       ]
       ++ lib.optionals config.wayland.windowManager.hyprland.enable [
         pkgs.xdg-desktop-portal-hyprland
+      ]
+      ++ lib.optionals config.wayland.windowManager.wayfire.enable [
+        pkgs.xdg-desktop-portal-wlr
       ];
       xdgOpenUsePortal = true;
     };
