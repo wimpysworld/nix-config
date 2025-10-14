@@ -60,7 +60,9 @@ in
       bindm = [
         # Move windows with AltGr + LMB (for lefties) and $mod + LMB
         "$mod, mouse:272, movewindow"
+        "$mod, mouse:273, resizewindow"
         "Mod5, mouse:272, movewindow"
+        "Mod5, mouse:273, resizewindow"
       ];
       bind = [
         # Process management
