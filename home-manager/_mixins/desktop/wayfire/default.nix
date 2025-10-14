@@ -19,6 +19,8 @@
       autostart = {
         # Launch rofi on startup (hidden, ready for Super to show)
         rofi = false; # We'll trigger rofi via keybinding instead
+        autostart_wf_shell = false;
+        background = "wf-background";
       };
 
       # Command bindings - Super+T for terminal, Super for rofi
