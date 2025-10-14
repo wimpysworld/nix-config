@@ -22,6 +22,7 @@ function session_start() {
     LAYOUT="gb"
   fi
   hyprctl keyword input:kb_layout "${LAYOUT}"
+  dconf write /org/gnome/desktop/wm/preferences/button-layout "':appmenu'"
 }
 
 function session_stop() {

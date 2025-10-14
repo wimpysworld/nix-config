@@ -26,6 +26,7 @@
       autostart = {
         # Disable wf-shell autostart, we're using waybar et al instead
         autostart_wf_shell = false;
+        button_layout = "dconf write /org/gnome/desktop/wm/preferences/button-layout \"':close,minimize,maximize'\"";
       };
       command = {
         # Super+E launches the file manager
@@ -91,6 +92,7 @@
         xkb_layout = "gb";
         repeat_delay = 300;
         repeat_rate = 30;
+        cursor_size = 32;
       };
       # Window movement - Super+Left Mouse to drag windows
       move = {
