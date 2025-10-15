@@ -58,17 +58,11 @@
 
       # System registry - central definition of all systems and their properties
       systems = {
-        # ISO Images
+        # ISO Image
         iso-console = {
           type = "iso";
           username = "nixos";
         };
-        iso-pantheon = {
-          type = "iso";
-          username = "nixos";
-          desktop = "pantheon";
-        };
-
         # Workstations
         bane = {
           type = "workstation";
@@ -96,7 +90,7 @@
         };
         sidious = {
           type = "workstation";
-          desktop = "pantheon";
+          desktop = "hyprland";
         };
 
         # Darwin systems
@@ -134,7 +128,7 @@
         };
         dagger = {
           type = "vm";
-          desktop = "pantheon";
+          desktop = "hyprland";
         };
 
         # VMs (Lima/Home Manager only)

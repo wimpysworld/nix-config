@@ -42,7 +42,6 @@ in
     ./music
     ./notes
     ./terminal
-    ./ulauncher
     ./utilities
     ./web-browsers
   ];
@@ -53,7 +52,7 @@ in
 
   dconf.settings = lib.mkIf isLinux {
     "io/github/celluloid-player/celluloid" = with lib.hm.gvariant; {
-      csd-enable = if (desktop == "pantheon") then false else true;
+      csd-enable = false;
       dark-theme-enable = catppuccinPalette.isDark;
     };
   };

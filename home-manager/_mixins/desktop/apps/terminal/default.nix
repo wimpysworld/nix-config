@@ -22,33 +22,6 @@ in
     "com/github/stunkymonkey/nautilus-open-any-terminal" = {
       terminal = "kitty";
     };
-    "org/gnome/settings-daemon/plugins/media-keys" = lib.mkIf (desktop == "pantheon") {
-      custom-keybindings = [
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
-      ];
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" =
-      lib.mkIf (desktop == "pantheon")
-        {
-          binding = "<Super>t";
-          name = "Terminal";
-          command = "kitty";
-        };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" =
-      lib.mkIf (desktop == "pantheon")
-        {
-          binding = "<Primary><Alt>t";
-          name = "Terminal";
-          command = "kitty";
-        };
-
-    "org/gnome/desktop/default/applications/terminal" = lib.mkIf (desktop == "pantheon") {
-      exec = "kitty";
-      exec-arg = "-e";
-    };
   };
 
   programs = {

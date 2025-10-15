@@ -125,10 +125,6 @@ in
     "org/gtk/Settings/FileChooser" = {
       clock-format = clockFormat;
     };
-
-    "org/pantheon/desktop/gala/appearance" = {
-      button-layout = "${buttonLayout}";
-    };
   };
 
   # Authrorize X11 access in Distrobox

@@ -126,10 +126,9 @@ This flake includes a [justfile](./justfile) that provides convenient commands f
 
 ### ISO 📀
 
-The `just iso <iso_name>` command creates .iso images from this flake. The following modes are available:
+The `just iso <iso_name>` command creates an .iso image from this flake:
 
 - `just iso console` (*terminal environment*): Includes `install-system` for automated installation.
-- `just iso pantheon` (*Pantheon Desktop environment*): Includes `install-system` and [Calamares](https://calamares.io/) installation.
 
 Live images will be left in `result/iso/` and are also injected into `~/Quickemu/nixos-iso-<iso_name>/nixos.iso` respectively.
 The console .iso image is also periodically built and published via [GitHub Actions](./.github/workflows) and is available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
@@ -161,7 +160,7 @@ nix run nixpkgs#home-manager -- switch -b backup --flake "${HOME}/Zero/nix-confi
 
 **ISO**
 ```shell
-nix build .#nixosConfigurations.{iso-console|iso-pantheon}.config.system.build.isoImage
+nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
 ```
 
 ## What's in the box? 🎁
@@ -201,7 +200,6 @@ Here's the directory structure I'm using:
 │  │  ├── services
 │  │  └── users
 │  ├── iso-console
-│  ├── iso-pantheon -> iso-console
 │  ├── crawler -> dagger
 │  ├── dagger
 │  ├── malak
@@ -240,22 +238,19 @@ Useful shell scripts I used to keep in muddle of git repos are now migrated to [
 
 ### The Desktop 🖥️
 
-Hyprland 💧 and Pantheon 🏛️ desktop options are available.
+Hyprland 💧 and Wayfire 🔥 desktop options are available.
 The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code).
 The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
 |   Desktops  |        NixOS       |       Home Manager        |       Theme       |
 | :---------: | :----------------: | :-----------------------: | :---------------: |
 | 💧 Hyprland | [Hyprland NixOS]   | [Hyprland Home Manager]   | Catppuccin Mocha  |
-| 🏛️ Pantheon | [Pantheon NixOS]   | [Pantheon Home Manager]   | Catppuccin Mocha  |
+| 🔥 Wayfire  | [Wayfire NixOS]    | [Wayfire Home Manager]    | Catppuccin Mocha  |
 
 ## Eye Candy 👀🍬
 
 ![Hyprland on Shaa](.github/screenshots/hyprland.png)
 <div align="center"><small>Hyprland on Shaa; <i>a work in progress; soon to be daily driver</i></small></div>
-
-![Pantheon on Phasma](.github/screenshots/pantheon.png)
-<div align="center"><small>Pantheon on Phasma; <i>daily driver</i></small></div>
 
 ## Post-install Checklist
 
@@ -472,6 +467,6 @@ My use of [Disko] and automated installation script were inspired by the these b
 [micro]: https://micro-editor.github.io/
 [Tailscale]: https://tailscale.com/
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
-[Pantheon NixOS]: ./nixos/_mixins/desktop/pantheon/default.nix
+[Wayfire NixOS]: ./nixos/_mixins/desktop/wayfire/default.nix
 [Hyprland Home Manager]: ./home-manager/_mixins/desktop/hyprland/default.nix
-[Pantheon Home Manager]: ./home-manager/_mixins/desktop/pantheon/default.nix
+[Wayfire Home Manager]: ./home-manager/_mixins/desktop/wayfire/default.nix
