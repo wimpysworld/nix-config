@@ -336,7 +336,7 @@ in
             "hyprland/workspaces"
           ]
           ++ lib.optionals (config.wayland.windowManager.wayfire.enable) [
-            "wlr/workspaces"
+            "wayfire/workspaces"
           ];
           modules-center = [
             "idle_inhibitor"
@@ -389,7 +389,7 @@ in
             on-click = "activate";
             sort-by-number = true;
           };
-          "wlr/workspaces" = lib.mkIf config.wayland.windowManager.wayfire.enable {
+          "wayfire/workspaces" = lib.mkIf config.wayland.windowManager.wayfire.enable {
             #active-only = false;
             #all-outputs = true;
             format = "<big>{icon}</big>";
@@ -419,7 +419,7 @@ in
             tooltip-format-activated = "󰅶  Caffeination {status}";
             tooltip-format-deactivated = "󰾪  Caffeination {status}";
           };
-          "custom/eyecandy" = lib.mkif config.wayland.windowManager.hyprland.enable {
+          "custom/eyecandy" = lib.mkIf config.wayland.windowManager.hyprland.enable {
             format = "<big>{}</big>";
             max-length = 2;
             interval = 1;
