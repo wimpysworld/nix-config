@@ -331,7 +331,12 @@ in
           position = "top";
           modules-left = [
             "custom/launcher"
+          ]
+          ++ lib.optionals (config.wayland.windowManager.hyprland.enable) [
             "hyprland/workspaces"
+          ]
+          ++ lib.optionals (config.wayland.windowManager.wayfire.enable) [
+            "wlr/workspaces"
           ];
           modules-center = [
             "idle_inhibitor"
@@ -363,7 +368,8 @@ in
             on-click-right = "hypr-activity-menu";
             tooltip-format = "  Applications Menu";
           };
-          "hyprland/workspaces" = {
+          # https://github.com/bluebyt/Wayfire-dots/blob/main/.config/waybar/config_wayfire_now.ini#L162
+          "hyprland/workspaces" = lib.mkIf config.wayland.windowManager.hyprland.enable {
             active-only = false;
             all-outputs = true;
             format = "<big>{icon}</big>";
@@ -381,6 +387,27 @@ in
               default = "";
             };
             on-click = "activate";
+            sort-by-number = true;
+          };
+          "wlr/workspaces" = lib.mkIf config.wayland.windowManager.wayfire.enable {
+            #active-only = false;
+            #all-outputs = true;
+            format = "<big>{icon}</big>";
+            format-icons = {
+              "1" = "󰖟";
+              "2" = "󱒔";
+              "3" = "";
+              "4" = "";
+              "5" = "󰊢";
+              "6" = "󰠮";
+              "7" = "󰙴";
+              "8" = "";
+              "9" = "󱆃";
+              "10" = "";
+              default = "";
+            };
+            on-click = "activate";
+            sort-by-number = true;
           };
           idle_inhibitor = {
             format = "<big>{icon}</big>";
@@ -392,7 +419,7 @@ in
             tooltip-format-activated = "󰅶  Caffeination {status}";
             tooltip-format-deactivated = "󰾪  Caffeination {status}";
           };
-          "custom/eyecandy" = {
+          "custom/eyecandy" = lib.mkif config.wayland.windowManager.hyprland.enable {
             format = "<big>{}</big>";
             max-length = 2;
             interval = 1;
