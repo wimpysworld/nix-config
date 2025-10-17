@@ -8,10 +8,7 @@
   ...
 }:
 let
-  installFor = [
-    "martin"
-    "martin.wimpress"
-  ];
+  installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux isDarwin;
   vscodeUserDir =
     if isLinux then

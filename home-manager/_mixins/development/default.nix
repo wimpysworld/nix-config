@@ -8,10 +8,15 @@
 }:
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
+  claudePackage =
+    if isLinux then
+      inputs.nix-ai-tools.packages.${pkgs.system}.claude-code
+    else
+      pkgs.unstable.claude-code;
   # https://github.com/numtide/nix-ai-tools
   aiPackagesLinux = [
+    claudePackage
     inputs.nix-ai-tools.packages.${pkgs.system}.catnip
-    inputs.nix-ai-tools.packages.${pkgs.system}.claude-code
     inputs.nix-ai-tools.packages.${pkgs.system}.claudebox
     inputs.nix-ai-tools.packages.${pkgs.system}.codex
     inputs.nix-ai-tools.packages.${pkgs.system}.crush
@@ -20,7 +25,12 @@ let
     inputs.nix-ai-tools.packages.${pkgs.system}.qwen-code
   ];
   aiPackagesDarwin = [
-    pkgs.unstable.claude-code
+    claudePackage
+    inputs.nix-ai-tools.packages.${pkgs.system}.codex
+    inputs.nix-ai-tools.packages.${pkgs.system}.crush
+    inputs.nix-ai-tools.packages.${pkgs.system}.gemini-cli
+    inputs.nix-ai-tools.packages.${pkgs.system}.opencode
+    inputs.nix-ai-tools.packages.${pkgs.system}.qwen-code
   ];
   aiPackages =
     if isLinux then
@@ -107,6 +117,17 @@ lib.mkIf isWorkstation {
       ]
       ++ aiPackages;
   };
+
+  #programs = {
+  #  claude-code = {
+  #    enable = true;
+  #    commands = {
+  #      fix-issue = ./fips-compliance-source-code-analysis.md;
+  #    };
+  #    package = claudePackage;
+  #  };
+  #};
+
   # https://dl.thalheim.io/
   sops = {
     secrets = {
