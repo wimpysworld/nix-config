@@ -47,7 +47,7 @@
         command_next = "${lib.getExe pkgs.playerctl} next";
       };
       core = {
-        plugins = "animate autostart blur command decoration grid move place resize switcher vswitch wm-actions wobbly";
+        plugins = "animate autostart blur command decoration foreign-toplevel grid gtk-shell idle ipc ipc-rules move place resize session-lock switcher vswitch wm-actions wobbly xdg-activation";
         vwidth = 8;
         vheight = 1;
       };
