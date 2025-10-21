@@ -68,7 +68,7 @@ in
         # Process management
         "$mod, Q, killactive"
         # Launch applications
-        "$mod, E, exec, nautilus --new-window"
+        "$mod, E, exec, ${pkgs.nautilus}/bin/nautilus --new-window"
         # Move focus
         "ALT, Tab, cyclenext"
         "ALT, Tab, bringactivetotop"
@@ -187,8 +187,8 @@ in
       };
       group = {
         groupbar = {
-          font_family = "Work Sans";
-          font_size = 12;
+          font_family = config.gtk.font.name or "Work Sans";
+          font_size = config.gtk.font.size or 13;
           gradients = true;
         };
       };

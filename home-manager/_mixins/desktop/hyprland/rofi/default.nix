@@ -6,6 +6,8 @@
   ...
 }:
 let
+  palette = catppuccinPalette;
+
   # Read template file and substitute colors
   templateContent = builtins.readFile ./rofi-appgrid.rasi.template;
 
@@ -13,12 +15,12 @@ let
   rofiAppGridRasi = pkgs.writeText "rofi-appgrid.rasi" (
     lib.replaceStrings
       [ "@text_color@" "@background_color@" "@accent_color@" "@surface_color@" "@accent_color_alpha@" ]
-      [
-        "${catppuccinPalette.getColor "text"}FF" # text with full opacity
-        "${catppuccinPalette.getColor "base"}af" # base background with transparency
-        "${catppuccinPalette.getColor "${catppuccinPalette.accent}"}" # user's selected accent color
-        "${catppuccinPalette.getColor "overlay0"}af" # surface with transparency
-        "${catppuccinPalette.getColor "${catppuccinPalette.accent}"}af" # accent color with transparency
+      [ 
+        "${palette.getColor "text"}FF"  # text with full opacity
+        "${palette.getColor "base"}af"   # base background with transparency
+        "${palette.selectedAccent}"     # user's selected accent color
+        "${palette.getColor "overlay0"}af"  # surface with transparency  
+        "${palette.selectedAccent}af"   # accent color with transparency
       ]
       templateContent
   );
