@@ -15,12 +15,12 @@ let
   rofiAppGridRasi = pkgs.writeText "rofi-appgrid.rasi" (
     lib.replaceStrings
       [ "@text_color@" "@background_color@" "@accent_color@" "@surface_color@" "@accent_color_alpha@" ]
-      [ 
-        "${palette.getColor "text"}FF"  # text with full opacity
-        "${palette.getColor "base"}af"   # base background with transparency
-        "${palette.selectedAccent}"     # user's selected accent color
-        "${palette.getColor "overlay0"}af"  # surface with transparency  
-        "${palette.selectedAccent}af"   # accent color with transparency
+      [
+        "${palette.getColor "text"}FF" # text with full opacity
+        "${palette.getColor "base"}af" # base background with transparency
+        "${palette.accent}" # user's selected accent color
+        "${palette.getColor "overlay0"}af" # surface with transparency
+        "${palette.accent}af" # accent color with transparency
       ]
       templateContent
   );
