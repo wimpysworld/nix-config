@@ -12,10 +12,12 @@
 
     nix-ai-tools.url = "github:numtide/nix-ai-tools";
     nix-ai-tools.inputs.nixpkgs.follows = "nixpkgs-unstable";
-    bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.2.1.tar.gz";
+    bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.3.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
-    iwmenu.url = "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.2.0.tar.gz";
+    iwmenu.url = "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.3.0.tar.gz";
     iwmenu.inputs.nixpkgs.follows = "nixpkgs";
+    pwmenu.url = "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.3.0.tar.gz";
+    pwmenu.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "github:catppuccin/nix?rev=751b99dca72c7f9df5475c67dcf1059893564e32";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     disko.url = "https://flakehub.com/f/nix-community/disko/1.12.0.tar.gz";
