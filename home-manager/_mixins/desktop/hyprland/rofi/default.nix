@@ -18,9 +18,9 @@ let
       [
         "${palette.getColor "text"}FF" # text with full opacity
         "${palette.getColor "base"}af" # base background with transparency
-        "${palette.accent}" # user's selected accent color
+        "${palette.getColor "${palette.accent}"}" # user's selected accent color
         "${palette.getColor "overlay0"}af" # surface with transparency
-        "${palette.accent}af" # accent color with transparency
+        "${palette.getColor "${palette.accent}"}af" # accent color with transparency
       ]
       templateContent
   );
