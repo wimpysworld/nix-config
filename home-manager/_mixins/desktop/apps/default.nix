@@ -17,18 +17,20 @@ let
   # configuration of the D-Bus session-wide message bus.
   dbusPackages = with pkgs; [
     celluloid # video player
+    dconf-editor # dconf GUI editor
     decibels # audio player
-    file-roller
-    gcr
-    gnome-calculator
-    gnome-disk-utility
-    gnome-font-viewer
+    file-roller # archive manager
+    gcr # pinentry-gnome3 may not work on non-GNOME systems, without gcr registered on D-Bus
+    gnome-calculator # calculator
+    gnome-disk-utility # disk utility
+    gnome-font-viewer # font viewer
     loupe # image viewer
     nautilus # file manager
     papers # document viewer
     resources # monitor system resources
-    seahorse
-    sushi
+    seahorse # encryption and key manager
+    sushi # file previewer
+    system-config-printer # printer configuration
   ];
 in
 {
