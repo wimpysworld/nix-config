@@ -364,7 +364,7 @@ in
           ];
           "custom/launcher" = {
             format = "<big>󱄅</big>";
-            on-click = "rofi-appgrid";
+            on-click = "${pkgs.unstable.rofi}/bin/rofi -theme ${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi -show drun";
             on-click-right = "hypr-activity-menu";
             tooltip-format = "  Applications Menu";
           };
