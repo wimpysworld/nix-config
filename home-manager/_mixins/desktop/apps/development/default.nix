@@ -128,35 +128,7 @@ lib.mkIf (lib.elem username installFor) {
           "chat.mcp.discovery.enabled" = true;
           "chat.mcp.enabled" = true;
           "cline.chromeExecutablePath" = "/run/current-system/sw/bin/brave";
-          "cSpell.userWords" = [
-            "distro"
-            "distrobox"
-            "distroboxrc"
-            "distros"
-            "dkms"
-            "Flatpak"
-            "gphoto"
-            "Keyer"
-            "libnvidia"
-            "localuser"
-            "NVENC"
-            "Pango"
-            "Pipewire"
-            "Quickemu"
-            "quickget"
-            "quickreport"
-            "reqwest"
-            "RIST"
-            "RTMP"
-            "RTSP"
-            "shellcheck"
-            "Syncthing"
-            "ublue"
-            "Vulkan"
-            "Wimpress"
-            "xhost"
-            "Xwayland"
-          ];
+          "cSpell.diagnosticLevel" = "Hint";
           "dart.updateDevTools" = false;
           "dart.checkForSdkUpdates" = false;
           "editor.bracketPairColorization.independentColorPoolPerBracketType" = true;
