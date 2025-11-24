@@ -36,7 +36,7 @@ jobs:
           - bzmenu
           - iwmenu
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -57,7 +57,7 @@ jobs:
           - linuxPackages.mwprocapture
           - linuxPackages_6_12.mwprocapture
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -84,7 +84,7 @@ jobs:
           - owncast
           - wavebox
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -107,7 +107,7 @@ jobs:
         package:
           - wavebox
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
@@ -142,7 +142,7 @@ jobs:
           - spaceport-2006-font
           - zx-spectrum-7-font
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
         with:
           hatchet-protocol: 'holster'
@@ -172,7 +172,7 @@ jobs:
           - obs-vnc
           - pixel-art
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
