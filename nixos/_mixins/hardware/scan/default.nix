@@ -1,6 +1,7 @@
 {
   config,
   desktop,
+  isWorkstation,
   isInstall,
   lib,
   pkgs,
@@ -14,7 +15,9 @@ lib.mkIf isInstall {
   # Only enables auxilary scanning support/packages if
   # config.hardware.sane.enable is true; the master control
   # - https://wiki.nixos.org/wiki/Scanners
-  environment = lib.mkIf config.hardware.sane.enable { systemPackages = [ scanningApp ]; };
+  environment = lib.mkIf (config.hardware.sane.enable && isWorkstation) {
+    systemPackages = [ scanningApp ];
+  };
 
   hardware.sane = {
     # Hide duplicate backends
