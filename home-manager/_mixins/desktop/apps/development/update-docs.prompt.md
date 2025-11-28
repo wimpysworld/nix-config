@@ -1,6 +1,5 @@
 ---
 mode: 'velma'
-tools: ['codebase', 'usages', 'think', 'changes', 'terminalSelection', 'terminalLastCommand', 'fetch', 'searchResults', 'editFiles', 'search', 'runCommands', 'context7', 'github', 'memory', 'sequentialthinking', 'time', 'mcp-google-cse']
 description: 'Documentation update request'
 ---
 You've just completed implementing new features and fixes in ${input:variableName:#codebase}. Please update the project documentation to reflect these changes.

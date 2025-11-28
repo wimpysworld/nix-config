@@ -56,15 +56,12 @@ lib.mkIf (lib.elem username installFor) {
       "${vscodeUserDir}/prompts/nixpert.chatmode.md".text = builtins.readFile ./nixpert.chatmode.md;
       "${vscodeUserDir}/prompts/otto.chatmode.md".text = builtins.readFile ./otto.chatmode.md;
       "${vscodeUserDir}/prompts/penry.chatmode.md".text = builtins.readFile ./penry.chatmode.md;
-      "${vscodeUserDir}/prompts/tessl.chatmode.md".text = builtins.readFile ./tessl.chatmode.md;
       "${vscodeUserDir}/prompts/velma.chatmode.md".text = builtins.readFile ./velma.chatmode.md;
       "${vscodeUserDir}/prompts/create-code.prompt.md".text = builtins.readFile ./create-code.prompt.md;
       "${vscodeUserDir}/prompts/create-conventional-commit.prompt.md".text =
         builtins.readFile ./create-conventional-commit.prompt.md;
       "${vscodeUserDir}/prompts/create-readme.prompt.md".text =
         builtins.readFile ./create-readme.prompt.md;
-      "${vscodeUserDir}/prompts/memory-load.prompt.md".text = builtins.readFile ./memory-load.prompt.md;
-      "${vscodeUserDir}/prompts/memory-save.prompt.md".text = builtins.readFile ./memory-save.prompt.md;
       "${vscodeUserDir}/prompts/offboard.prompt.md".text = builtins.readFile ./offboard.prompt.md;
       "${vscodeUserDir}/prompts/onboard.prompt.md".text = builtins.readFile ./onboard.prompt.md;
       "${vscodeUserDir}/prompts/orientate.prompt.md".text = builtins.readFile ./orientate.prompt.md;
@@ -89,7 +86,6 @@ lib.mkIf (lib.elem username installFor) {
     # Packages that are used by some of the extensions below
     packages = with pkgs; [
       bash-language-server
-      unstable.github-mcp-server
       gitkraken
       gk-cli
       go

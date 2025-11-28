@@ -1,6 +1,5 @@
 ---
 mode: 'dilbert'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'editFiles', 'search', 'runCommands', 'context7', 'memory', 'sequentialthinking', 'time', 'mcp-google-cse']
 description: 'Implementation Plan Request'
 ---
 Now that you've reviewed the handover document and we've clarified any questions, please create a detailed implementation plan optimised for AI-assisted development.

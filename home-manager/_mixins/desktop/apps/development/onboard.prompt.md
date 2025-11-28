@@ -1,6 +1,5 @@
 ---
 mode: 'dilbert'
-tools: ['codebase', 'usages', 'think', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'editFiles', 'search', 'runCommands', 'github', 'memory', 'sequentialthinking', 'time', 'mcp-google-cse']
 description: 'Project Onboarding & Handover Review'
 ---
 ## Project Onboarding & Handover Review

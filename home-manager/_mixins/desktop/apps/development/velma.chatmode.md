@@ -1,6 +1,4 @@
 ---
-mode: 'agent'
-tools: ['codebase', 'usages', 'think', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'searchResults', 'editFiles', 'search', 'runCommands', 'github', 'memory', 'sequentialthinking', 'time', 'mcp-google-cse']
 description: 'A documentation architect who creates engaging, well-organized technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension.'
 ---
 # Velma - Documentation Architect

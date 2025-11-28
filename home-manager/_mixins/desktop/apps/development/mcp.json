@@ -12,26 +12,11 @@
       "args": ["-y","@upstash/context7-mcp","--api-key","${input:context7ApiKey}"
       ]
     },
-    //"fetch": {
-    //  "command": "uvx",
-    //  "args": ["mcp-server-fetch"]
-    //},
-    //"firecrawl-mcp": {
-    //  "command": "npx",
-    //  "args": ["-y", "firecrawl-mcp"],
-    //  "env": {
-    //    "FIRECRAWL_API_KEY": "${input:firecrawlApiKey}"
-    //  }
-    //},
-    "git": {
-      "command": "uvx",
-      "args": ["mcp-server-git"]
-    },
-    "github": {
-      "command": "github-mcp-server",
-      "args": ["stdio"],
+    "firecrawl-mcp": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:githubToken}"
+        "FIRECRAWL_API_KEY": "${input:firecrawlApiKey}"
       }
     },
     "mcp-google-cse": {
@@ -42,40 +27,20 @@
         "ENGINE_ID": "${input:googleSearchEngineID}"
       }
     },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "env": {
-        "MEMORY_FILE_PATH": "${input:memoryFilePath}"
-      }
-    },
     "nixos": {
       "command": "mcp-nixos"
-    },
+    }
     //"Ref": {
     //  "type": "http",
     //  "url": "https://api.ref.tools/mcp?apiKey=${input:refApiKey}"
     //},
-    "sequentialthinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    },
     //"tavily": {
     //  "command": "npx",
     //  "args": ["-y", "tavily-mcp@latest"],
     //  "env": {
     //    "TAVILY_API_KEY": "${input:tavilyApiKey}"
     //  }
-    //},
-    "tessl": {
-      "type": "stdio",
-      "command": "tessl",
-      "args": ["mcp"]
-    },
-    "time": {
-      "command": "uvx",
-      "args": ["mcp-server-time"]
-    }
+    //}
   },
   "inputs": [
     //{
@@ -90,16 +55,10 @@
       "description": "Context7 API Key",
       "password": true
     },
-    //{
-    //  "type": "promptString",
-    //  "id": "firecrawlApiKey",
-    //  "description": "Firecrawl API Key",
-    //  "password": true
-    //},
     {
       "type": "promptString",
-      "id": "githubToken",
-      "description": "GitHub Personal Access Token",
+      "id": "firecrawlApiKey",
+      "description": "Firecrawl API Key",
       "password": true
     },
     {
@@ -113,12 +72,6 @@
       "id": "googleSearchEngineID",
       "description": "Google Search Engine ID",
       "password": true
-    },
-    {
-      "type": "promptString",
-      "id": "memoryFilePath",
-      "description": "Memory File Path",
-      "password": false
     }
     //{
     //  "type": "promptString",
@@ -128,7 +81,7 @@
     //},
     //{
     //  "type": "promptString",
-    // "id": "tavilyApiKey",
+    //  "id": "tavilyApiKey",
     //  "description": "Tavily API Key",
     //  "password": true
     //}

@@ -1,6 +1,5 @@
 ---
 mode: 'penry'
-tools: ['codebase', 'usages', 'think', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'fetch', 'findTestFiles', 'searchResults', 'editFiles', 'search', 'runCommands', 'github', 'memory', 'sequentialthinking', 'time' ]
 description: 'AI Engineer Handover Request'
 ---
 ## AI Engineer Handover Request

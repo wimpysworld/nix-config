@@ -16,21 +16,13 @@ let
   # https://github.com/numtide/nix-ai-tools
   aiPackagesLinux = [
     claudePackage
-    inputs.nix-ai-tools.packages.${pkgs.system}.catnip
-    inputs.nix-ai-tools.packages.${pkgs.system}.claudebox
-    inputs.nix-ai-tools.packages.${pkgs.system}.codex
     inputs.nix-ai-tools.packages.${pkgs.system}.crush
-    inputs.nix-ai-tools.packages.${pkgs.system}.gemini-cli
-    inputs.nix-ai-tools.packages.${pkgs.system}.opencode
-    inputs.nix-ai-tools.packages.${pkgs.system}.qwen-code
+    inputs.nix-ai-tools.packages.${pkgs.system}.spec-kit
   ];
   aiPackagesDarwin = [
     claudePackage
-    inputs.nix-ai-tools.packages.${pkgs.system}.codex
     inputs.nix-ai-tools.packages.${pkgs.system}.crush
-    inputs.nix-ai-tools.packages.${pkgs.system}.gemini-cli
-    inputs.nix-ai-tools.packages.${pkgs.system}.opencode
-    inputs.nix-ai-tools.packages.${pkgs.system}.qwen-code
+    inputs.nix-ai-tools.packages.${pkgs.system}.spec-kit
   ];
   aiPackages =
     if isLinux then
