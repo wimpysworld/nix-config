@@ -155,7 +155,8 @@ nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
 ```shell
 home-manager build --flake $HOME/Zero/nix-config -L
 home-manager switch -b backup --flake $HOME/Zero/nix-config
-nix run nixpkgs#home-manager -- switch -b backup --flake "${HOME}/Zero/nix-config"
+nix run nixpkgs#home-manager -- build --flake "$HOME/Zero/nix-config"
+nix run nixpkgs#home-manager -- switch -b backup --flake "$HOME/Zero/nix-config"
 ```
 
 **ISO**
