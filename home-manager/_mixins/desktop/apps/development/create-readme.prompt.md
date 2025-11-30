@@ -1,5 +1,9 @@
 ---
-mode: 'velma'
-description: 'Write a README.md for a project'
+agent: 'velma'
+description: 'Create README 📄'
 ---
-Write a README.md for #codebase.
+## Create README
+
+Write a README.md for ${input:codebase:#codebase}.
+
+Lead with value. Keep it tight—every section must earn its place.

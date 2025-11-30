@@ -1,5 +1,9 @@
 ---
-mode: 'penry'
-description: 'Conduct a code review'
+agent: 'penry'
+description: 'Review Code 🔍'
 ---
-Conduct a meticulous code review of the #codebase to identify practical maintainability improvements through simplification and deduplication while ensuring all changes are small, safe, and preserve exact functionality.
+## Code Review
+
+Review ${input:codebase:#codebase} for maintainability improvements.
+
+Prioritise by impact. Output as specified in your agent format.

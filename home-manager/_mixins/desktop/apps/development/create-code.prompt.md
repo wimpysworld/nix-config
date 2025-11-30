@@ -1,5 +1,9 @@
 ---
-mode: 'dilbert'
-description: 'Implements code changes defined in a plan document'
+agent: 'dilbert'
+description: 'Implement Code 🔨'
 ---
-Methodically and precisely implement the code changes following the plan step-by-step while maintaining existing style, verifying tests pass, and seeking clarification when obstacles arise.
+## Implement Code
+
+Implement the changes defined in the attached plan for ${input:codebase:#codebase}.
+
+Work step-by-step. Seek clarification on obstacles rather than assuming.

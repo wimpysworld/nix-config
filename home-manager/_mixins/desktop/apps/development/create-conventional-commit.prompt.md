@@ -1,5 +1,5 @@
 ---
-mode: 'linus'
+agent: 'linus'
 description: 'Creates a Conventional Commits 1.0.0 compliant commit message from recent implementation changes'
 ---
 Write a conventional commit message summarising the final outcome of what we've just been working on.

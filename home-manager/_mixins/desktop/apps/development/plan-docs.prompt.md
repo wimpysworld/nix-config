@@ -1,5 +1,14 @@
 ---
-mode: 'velma'
-description: 'Review project documentation and propose improvements'
+agent: 'velma'
+description: 'Plan Docs 📋'
 ---
-Review the current state of the documentation and information architecture in ${input:variableName:#codebase} and create a plan to improve or better organize the technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension.
+## Documentation Plan
+
+Review documentation and information architecture in ${input:codebase:#codebase}.
+
+**Produce:**
+1. Current state assessment (what exists, what's missing, what's stale)
+2. Prioritised improvement plan with rationale
+3. Proposed structure/reorganisation if needed
+
+Focus on gaps that actually hurt users. Skip improvements that are nice-to-have.

@@ -1,5 +1,9 @@
 ---
-mode: 'gonzales'
-description: 'Conducts a pragmatic code performance analysis of a project'
+agent: 'gonzales'
+description: 'Review Performance ⚡'
 ---
-Conduct a pragmatic performance analysis of #codebase that identifies high-impact optimizations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements
+## Performance Review
+
+Analyse ${input:codebase:#codebase} for optimisation opportunities.
+
+Focus on user-perceivable impact. Output as specified in your agent format.

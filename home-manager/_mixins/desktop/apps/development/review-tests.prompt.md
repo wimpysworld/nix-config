@@ -1,5 +1,9 @@
 ---
-mode: 'otto'
-description: 'Conducts a test case analysis'
+agent: 'otto'
+description: 'Review Tests 🧪'
 ---
-Conduct a pragmatic test case analysis of the code and coverage reports in #codebase to suggest high-impact unit tests that catch real bugs while following existing patterns and maintaining simplicity.
+## Test Review
+
+Analyse ${input:codebase:#codebase} for high-value test additions.
+
+Focus on bug prevention, not coverage metrics. Output as specified in your agent format.

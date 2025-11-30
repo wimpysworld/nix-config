@@ -1,5 +1,9 @@
 ---
-mode: 'luthor'
-description: 'Conduct a code naming convention review'
+agent: 'luthor'
+description: 'Review Naming 🏷️'
 ---
-Conduct a meticulous naming convention review of #codebase to improve code clarity through descriptive, consistent naming while respecting project conventions and ensuring all identifiers clearly communicate their purpose.
+## Naming Review
+
+Review ${input:codebase:#codebase} for naming clarity improvements.
+
+Prioritise by impact. Output as specified in your agent format.
