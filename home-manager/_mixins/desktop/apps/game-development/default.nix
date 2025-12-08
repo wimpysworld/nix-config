@@ -17,7 +17,7 @@ lib.mkIf (lib.elem hostname installOn) {
         uiScale = "1.25";
       })
       love
-      pico8
+      #pico8
     ];
   };
 }
