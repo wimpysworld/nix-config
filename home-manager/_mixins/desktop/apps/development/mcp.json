@@ -1,23 +1,19 @@
 {
   "servers": {
-    //"brave-search-mcp-server": {
-    //  "command": "npx",
-    //  "args": ["-y", "@brave/brave-search-mcp-server","--transport","stdio"],
-    //  "env": {
-    //    "BRAVE_API_KEY": "${input:braveSearchApiKey}"
-    //  }
-    //},
     "context7": {
-      "command": "npx",
-      "args": ["-y","@upstash/context7-mcp","--api-key","${input:context7ApiKey}"
-      ]
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${input:context7ApiKey}"
+      }
+    },
+    "docfork": {
+      "type": "http",
+      "url": "http://mcp.docfork.com/mcp"
     },
     "firecrawl-mcp": {
-      "command": "npx",
-      "args": ["-y", "firecrawl-mcp"],
-      "env": {
-        "FIRECRAWL_API_KEY": "${input:firecrawlApiKey}"
-      }
+      "type": "http",
+      "url": "https://mcp.firecrawl.dev/${input:context7ApiKey}/v2/mcp"
     },
     "mcp-google-cse": {
       "command": "uvx",
@@ -29,26 +25,17 @@
     },
     "nixos": {
       "command": "mcp-nixos"
+    },
+    "Ref": {
+      "type": "http",
+      "url": "https://api.ref.tools/mcp?apiKey=${input:refApiKey}"
+    },
+    "tavily": {
+      "type": "http",
+      "url": "https://mcp.tavily.com/mcp/?tavilyApiKey=${input:tavilyApiKey}"
     }
-    //"Ref": {
-    //  "type": "http",
-    //  "url": "https://api.ref.tools/mcp?apiKey=${input:refApiKey}"
-    //},
-    //"tavily": {
-    //  "command": "npx",
-    //  "args": ["-y", "tavily-mcp@latest"],
-    //  "env": {
-    //    "TAVILY_API_KEY": "${input:tavilyApiKey}"
-    //  }
-    //}
   },
   "inputs": [
-    //{
-    //  "type": "promptString",
-    //  "id": "braveSearchApiKey",
-    //  "description": "Brave Search API Key",
-    //  "password": true
-    //},
     {
       "type": "promptString",
       "id": "context7ApiKey",
@@ -72,18 +59,18 @@
       "id": "googleSearchEngineID",
       "description": "Google Search Engine ID",
       "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "refApiKey",
+      "description": "Ref API Key",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "tavilyApiKey",
+      "description": "Tavily API Key",
+      "password": true
     }
-    //{
-    //  "type": "promptString",
-    //  "id": "refApiKey",
-    //  "description": "Ref API Key",
-    //  "password": true
-    //},
-    //{
-    //  "type": "promptString",
-    //  "id": "tavilyApiKey",
-    //  "description": "Tavily API Key",
-    //  "password": true
-    //}
   ]
 }

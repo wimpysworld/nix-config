@@ -2,7 +2,7 @@
 agent: 'linus'
 description: 'Creates a Conventional Commits 1.0.0 compliant commit message from recent implementation changes'
 ---
-Write a conventional commit message summarising the final outcome of what we've just been working on.
+Write a conventional commit message summarising the final outcome of what we've just been working on, focus on the staged changes in the git repository if there are any.
 
 Please create a commit message that:
 - Follows Conventional Commits 1.0.0 specification exactly

@@ -49,6 +49,7 @@ lib.mkIf (lib.elem username installFor) {
       "${vscodeUserDir}/mcp.json".text = builtins.readFile ./mcp.json;
       "${vscodeUserDir}/prompts/copilot.instructions.md".text =
         builtins.readFile ./copilot.instructions.md;
+      "${vscodeUserDir}/prompts/dummy.prompt.md".text = builtins.readFile ./copilot.instructions.md;
       "${vscodeUserDir}/prompts/dilbert.agent.md".text = builtins.readFile ./dilbert.agent.md;
       "${vscodeUserDir}/prompts/gonzales.agent.md".text = builtins.readFile ./gonzales.agent.md;
       "${vscodeUserDir}/prompts/linus.agent.md".text = builtins.readFile ./linus.agent.md;

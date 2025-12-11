@@ -1,5 +1,4 @@
 ---
-agent: 'penry'
 description: 'Orientate 🧭'
 ---
 ## Project Orientation
