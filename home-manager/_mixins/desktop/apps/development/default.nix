@@ -128,7 +128,6 @@ lib.mkIf (lib.elem username installFor) {
           "chat.mcp.autostart" = "newAndOutdated";
           "chat.mcp.discovery.enabled" = true;
           "chat.mcp.enabled" = true;
-          "cline.chromeExecutablePath" = "/run/current-system/sw/bin/brave";
           "cSpell.diagnosticLevel" = "Hint";
           "dart.updateDevTools" = false;
           "dart.checkForSdkUpdates" = false;
@@ -332,7 +331,6 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.ryu1kn.partial-diff
             vscode-marketplace.s3anmorrow.openwithkraken
             vscode-marketplace.sanjulaganepola.github-local-actions
-            vscode-marketplace.saoudrizwan.claude-dev
             vscode-marketplace.slevesque.shader
             vscode-marketplace.streetsidesoftware.code-spell-checker
             vscode-marketplace.tamasfe.even-better-toml
