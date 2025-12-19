@@ -276,7 +276,6 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.alefragnani.project-manager
             vscode-marketplace.alexgb.nelua
             vscode-marketplace.anthropic.claude-code
-            vscode-marketplace.automatalabs.copilot-mcp
             vscode-marketplace.bmalehorn.shell-syntax
             vscode-marketplace.bmalehorn.vscode-fish
             vscode-marketplace.budparr.language-hugo-vscode
