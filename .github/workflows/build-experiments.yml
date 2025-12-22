@@ -25,7 +25,7 @@ jobs:
         with:
           extra-conf: |
             lazy-trees = true
-      - uses: DeterminateSystems/flakehub-cache-action@v2
+      - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: ${{ matrix.package }}
         continue-on-error: true
         run: |
