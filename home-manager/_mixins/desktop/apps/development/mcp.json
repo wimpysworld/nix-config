@@ -30,6 +30,10 @@
       "type": "http",
       "url": "https://api.ref.tools/mcp?apiKey=${input:refApiKey}"
     },
+    "svelte": {
+      "type": "http",
+      "url": "https://mcp.svelte.dev/mcp"
+    },
     "tavily": {
       "type": "http",
       "url": "https://mcp.tavily.com/mcp/?tavilyApiKey=${input:tavilyApiKey}"
