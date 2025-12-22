@@ -6,7 +6,7 @@ description: 'Orientate 🧭'
 Orient yourself with ${input:variableName:#codebase} before we begin.
 
 ### 1. Review Documentation
-In order: README → CONTRIBUTING → ARCHITECTURE → PRD/GDD → CLAUDE.md/AGENTS.md → .cursorrules
+In order: README → CONTRIBUTING → ARCHITECTURE → PRD/GDD → CLAUDE.md/AGENTS.md → .github/copilot-instructions.md → .cursorrules
 
 ### 2. Analyse Codebase
 - Directory structure and module organisation

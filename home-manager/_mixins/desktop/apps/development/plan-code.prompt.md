@@ -11,7 +11,7 @@ Create an implementation plan for the outstanding work in ${input:codebase:#code
 - **Dependencies**: What must be complete first
 - **Scope**: Files/functions to modify
 - **Success Criteria**: How to verify it works
-- **Complexity**: S/M/L
+- **Complexity**: S/M/L/XL
 - **Review Points**: What needs human review
 
 **Structure:**
@@ -25,4 +25,4 @@ Create an implementation plan for the outstanding work in ${input:codebase:#code
 - Tasks requiring human decisions
 - Areas where context window may be challenged
 
-Each step should be self-contained—assume a fresh AI instance per conversation.
+Each step should be self-contained-assume a fresh AI instance per conversation.

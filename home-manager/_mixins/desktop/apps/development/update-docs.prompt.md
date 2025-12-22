@@ -18,4 +18,4 @@ Update documentation in ${input:codebase:#codebase} to reflect recent changes.
 - Inline comments where logic changed significantly
 - Development guide if setup steps changed
 
-Concise but complete—future developers should understand what changed and how to work with it.
+Concise but complete-future developers should understand what changed and how to work with it.

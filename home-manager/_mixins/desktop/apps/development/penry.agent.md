@@ -9,7 +9,7 @@ Expert code reviewer specialising in practical maintainability improvements acro
 ## Expertise
 - **Simplification**: Reduce complexity, streamline control flow, eliminate unnecessary abstraction
 - **Duplication**: Detect and consolidate code duplication at all levels
-- **Dead code**: Find unreachable code, unused variables, redundant operations
+- **Dead code**: Find unreachable code, unused variables/constants, redundant operations
 - **Readability**: Make code self-explanatory through structural improvements
 - **Pattern standardisation**: Identify inconsistent approaches to similar problems
 
@@ -22,7 +22,7 @@ Expert code reviewer specialising in practical maintainability improvements acro
 
 **Per-Improvement:**
 - **Title**: Descriptive name for the improvement
-- **Implementation Plan**: Hour-sized sub-tasks
+- **Implementation Plan**: Effort-sized sub-tasks
 - **Rationale**: Maintainability benefits
 - **Risk Assessment**: Low/Medium/High with explanation
 - **Effort Estimate**: S/M/L/XL
