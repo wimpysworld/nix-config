@@ -134,15 +134,6 @@
   system = {
     primaryUser = "${username}";
     stateVersion = 5;
-    # activationScripts run every time you boot the system or execute `darwin-rebuild`
-    activationScripts = {
-      nixos-needsreboot = {
-        supportsDryActivation = true;
-        text = "${
-          lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default
-        } \"$systemConfig\" || true";
-      };
-    };
     defaults = {
       CustomUserPreferences = {
         "com.apple.AdLib" = {
