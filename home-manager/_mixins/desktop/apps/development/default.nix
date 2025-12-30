@@ -25,7 +25,6 @@ lib.mkIf (lib.elem username installFor) {
 
   catppuccin = {
     vscode.profiles.default.enable = config.programs.vscode.enable;
-    zed.enable = config.programs.zed-editor.enable;
   };
 
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
@@ -352,43 +351,6 @@ lib.mkIf (lib.elem username installFor) {
       };
       mutableExtensionsDir = true;
       package = pkgs.unstable.vscode;
-    };
-    zed-editor = {
-      enable = true;
-      extensions = [
-        "github-actions"
-        "lua"
-        "nix"
-      ];
-      package = pkgs.unstable.zed-editor;
-      userSettings = {
-        "languages" = {
-          "Nix" = {
-            "formatter" = {
-              "external" = {
-                "command" = "nixfmt";
-                "arguments" = [
-                  "--quiet"
-                  "--"
-                ];
-              };
-            };
-            "language_servers" = [
-              "nil"
-              "!nixd"
-            ];
-          };
-        };
-        "lsp" = {
-          "nil" = {
-            "settings" = {
-              "diagnostics" = {
-                "ignored" = [ "unused_binding" ];
-              };
-            };
-          };
-        };
-      };
     };
   };
   services.vscode-server.enable = true;
