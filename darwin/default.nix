@@ -182,12 +182,6 @@
         "com.apple.TimeMachine".DoNotOfferNewDisksForBackup = true;
         # Turn on app auto-update
         "com.apple.commerce".AutoUpdate = true;
-        "com.apple.driver.AppleBluetoothMultitouch.trackpad" = {
-          TrackpadThreeFingerHorizSwipeGesture = 2; # Enable three finger swipe between full screen apps
-        };
-        "com.apple.AppleMultitouchTrackpad" = {
-          TrackpadThreeFingerHorizSwipeGesture = 2; # Enable three finger swipe between full screen apps
-        };
       };
       NSGlobalDomain = {
         AppleICUForce24HourTime = true;
@@ -258,7 +252,6 @@
       trackpad = {
         Clicking = true;
         TrackpadRightClick = true; # enable two finger right click
-        TrackpadThreeFingerDrag = false; # disable three finger drag
       };
     };
   };
