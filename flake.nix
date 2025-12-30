@@ -99,9 +99,10 @@
         krall = {
           type = "darwin";
           platform = "x86_64-darwin";
-          desktop = "aqua";
         };
-
+        momin = {
+          type = "darwin";
+        };
         # Dual boot (WSL/Ubuntu variant)
         palpatine = {
           type = "wsl";

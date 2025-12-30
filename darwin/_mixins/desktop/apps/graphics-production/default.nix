@@ -6,8 +6,7 @@
 }:
 let
   installFor = [
-    "martin"
-    "martin.wimpress"
+    "none"
   ];
 in
 lib.mkIf (lib.elem username installFor) {

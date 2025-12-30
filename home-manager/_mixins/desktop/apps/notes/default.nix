@@ -20,7 +20,7 @@ lib.mkIf (lib.elem username installFor) {
       "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text =
         builtins.readFile ./userstyle.css;
     };
-    packages = [ pkgs.heynote ];
+    packages = lib.optionals isLinux [ pkgs.heynote ];
   };
 
   programs.joplin-desktop = {

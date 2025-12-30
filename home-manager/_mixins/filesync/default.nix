@@ -20,7 +20,7 @@ let
     else
       [ pkgs.keybase ];
 in
-lib.mkIf (lib.elem username installFor && !isLima) {
+lib.mkIf (lib.elem username installFor && !isLima && isLinux) {
   home = {
     file."/Syncthing/.keep".text = "";
     file."${config.xdg.configHome}/keybase/autostart_created".text = ''

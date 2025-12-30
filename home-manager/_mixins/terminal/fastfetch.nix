@@ -1,9 +1,11 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
 let
+  inherit (pkgs.stdenv) isLinux;
   shellAliases = {
     neofetch = "${pkgs.fastfetch}/bin/fastfetch";
     screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
@@ -194,8 +196,9 @@ in
       fastfetch
       foodfetch
       ipfetch
-      microfetch
       onefetch
+    ] ++ lib.optionals isLinux [
+      microfetch
       ramfetch
     ];
   };

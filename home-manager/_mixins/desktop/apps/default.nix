@@ -48,7 +48,7 @@ in
     ./web-browsers
   ];
 
-  dbus = {
+  dbus = lib.mkIf isLinux {
     packages = dbusPackages;
   };
 
@@ -58,10 +58,8 @@ in
       dark-theme-enable = catppuccinPalette.isDark;
     };
   };
-  home = {
-    packages =
-      with pkgs;
-      lib.optionals isLinux [
+  home = lib.mkIf isLinux {
+    packages = with pkgs; [
         nautilus-python
         nautilus-open-any-terminal
       ]

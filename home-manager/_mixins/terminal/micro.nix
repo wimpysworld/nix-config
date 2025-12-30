@@ -1,7 +1,12 @@
 {
   config,
+  lib,
+  pkgs,
   ...
 }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
 {
   catppuccin.micro.enable = config.programs.micro.enable;
 
@@ -31,7 +36,7 @@
     };
   };
 
-  xdg = {
+  xdg = lib.mkIf isLinux {
     desktopEntries = {
       micro = {
         name = "Micro";

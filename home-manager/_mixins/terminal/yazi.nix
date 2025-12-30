@@ -1,7 +1,12 @@
 {
   config,
+  lib,
+  pkgs,
   ...
 }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
 {
   catppuccin.yazi.enable = config.programs.yazi.enable;
   home = {
@@ -320,7 +325,7 @@
     };
   };
 
-  xdg = {
+  xdg = lib.mkIf isLinux {
     desktopEntries = {
       yazi = {
         name = "Yazi";

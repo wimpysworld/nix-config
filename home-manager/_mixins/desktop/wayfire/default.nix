@@ -4,7 +4,10 @@
   pkgs,
   ...
 }:
-{
+let
+  inherit (pkgs.stdenv) isLinux;  
+in
+lib.mkIf isLinux {
   #TODO: IPC tooling for wayfire
   # https://github.com/killown/wayfire-rs
   # https://github.com/AR-CADE/wayfire-ipc

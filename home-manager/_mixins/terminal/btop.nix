@@ -1,8 +1,12 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
+let
+  inherit (pkgs.stdenv) isLinux;
+in
 {
   catppuccin.btop.enable = config.programs.btop.enable;
 
@@ -10,13 +14,13 @@
     btop = {
       enable = true;
       package = pkgs.btop.override {
-        cudaSupport = true;
-        rocmSupport = true;
+        cudaSupport = isLinux;
+        rocmSupport = isLinux;
       };
     };
   };
 
-  xdg = {
+  xdg = lib.mkIf isLinux {
     desktopEntries = {
       btop = {
         name = "btop++";

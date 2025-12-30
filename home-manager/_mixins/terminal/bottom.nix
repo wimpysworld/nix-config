@@ -5,6 +5,7 @@
   ...
 }:
 let
+  inherit (pkgs.stdenv) isLinux;
   shellAliases = {
     htop = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker";
     top = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker";
@@ -39,7 +40,7 @@ in
     zsh.shellAliases = lib.mkIf config.programs.bottom.enable shellAliases;
   };
 
-  xdg = {
+  xdg = lib.mkIf isLinux {
     desktopEntries = {
       bottom = {
         name = "bottom";

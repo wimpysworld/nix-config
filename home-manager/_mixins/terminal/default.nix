@@ -4,10 +4,11 @@
   ...
 }:
 let
+  inherit (pkgs.stdenv) isLinux;
   shellAliases = {
     banner = "${pkgs.figlet}/bin/figlet";
     banner-color = "${pkgs.figlet}/bin/figlet $argv | ${pkgs.dotacat}/bin/dotacat";
-    clock = ''${pkgs.tty-clock}/bin/tty-clock -B -c -C 4 -f "%a, %d %b"'';
+    clock = if (isLinux) then ''${pkgs.tty-clock}/bin/tty-clock -B -c -C 4 -f "%a, %d %b"'' else "date";
     dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
     dmesg = "${pkgs.util-linux}/bin/dmesg --human --color=always";
     egrep = "${pkgs.gnugrep}/bin/egrep --color=auto";
@@ -15,7 +16,7 @@ let
     glow = "${pkgs.frogmouth}/bin/frogmouth";
     grep = "${pkgs.gnugrep}/bin/grep --color=auto";
     hr = ''${pkgs.hr}/bin/hr "─━"'';
-    ip = "${pkgs.iproute2}/bin/ip --color --brief";
+    ip = if (isLinux) then "${pkgs.iproute2}/bin/ip --color --brief" else "ipconfig getifaddr en0";
     lolcat = "${pkgs.dotacat}/bin/dotacat";
     lsusb = "${pkgs.cyme}/bin/cyme --headings";
     moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
@@ -64,7 +65,6 @@ in
       [
         bc # Terminal calculator
         bandwhich # Modern Unix `iftop`
-        batmon # Terminal battery monitor
         bmon # Modern Unix `iftop`
         croc # Terminal file transfer
         cyme # Modern Unix `lsusb`
@@ -88,7 +88,6 @@ in
         iperf3 # Terminal network benchmarking
         jpegoptim # Terminal JPEG optimizer
         lima-bin # Terminal VM manager
-        lurk # Modern Unix `strace`
         magic-wormhole-rs # Terminal file transfer
         marp-cli # Terminal Markdown presenter
         mprocs # Terminal parallel process runner
@@ -98,7 +97,6 @@ in
         pciutils # Terminal PCI info
         presenterm # Terminal Markdown presenter
         procs # Modern Unix `ps`
-        psmisc # Traditional `ps`
         rsync # Traditional `rsync`
         rustmission # Terminal Transmission Torrent client
         sd # Modern Unix `sed`
@@ -112,8 +110,11 @@ in
         yq-go # Terminal `jq` for YAML
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
+        batmon # Terminal battery monitor
         figlet # Terminal ASCII banners
         iw # Terminal WiFi info
+        lurk # Modern Unix strace
+        psmisc # Traditional `ps`
         s-tui # Terminal CPU stress test
         stress-ng # Terminal CPU stress test
         tty-clock # Terminal clock

@@ -74,10 +74,10 @@ let
     tweaks = [ "catppuccin" ];
   };
   iconThemeName = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
-  iconThemePackage = pkgs.catppuccin-papirus-folders.override {
+  iconThemePackage = if (isLinux) then pkgs.catppuccin-papirus-folders.override {
     flavor = config.catppuccin.flavor;
     accent = config.catppuccin.accent;
-  };
+  } else null;
 in
 {
   # import the DE specific configuration and any user specific desktop configuration
@@ -91,11 +91,12 @@ in
   )) ./${desktop}/${username};
 
   catppuccin = {
-    cursors.enable = true;
+    cursors.enable = isLinux;
     kvantum.enable = config.qt.enable;
   };
 
-  dconf.settings = with lib.hm.gvariant; {
+  dconf = lib.mkIf isLinux {
+   settings = with lib.hm.gvariant; {
     "org/gnome/desktop/interface" = {
       color-scheme = catppuccinPalette.preferShade;
       clock-format = clockFormat;
@@ -125,11 +126,12 @@ in
     "org/gtk/Settings/FileChooser" = {
       clock-format = clockFormat;
     };
+   };
   };
 
   # Authrorize X11 access in Distrobox
-  home = {
-    file = lib.mkIf isLinux {
+  home = lib.mkIf isLinux {
+    file = {
       ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
     };
     packages = [
@@ -199,7 +201,7 @@ in
     };
   };
 
-  qt = {
+  qt = lib.mkIf isLinux {
     enable = true;
     platformTheme = {
       name = config.qt.style.name;
@@ -251,7 +253,7 @@ in
         };
       };
     };
-    desktopEntries = {
+    desktopEntries = lib.mkIf isLinux {
       kvantummanager = {
         name = "Kvantum Manager";
         noDisplay = true;
@@ -269,7 +271,7 @@ in
         noDisplay = true;
       };
     };
-    portal = {
+    portal = lib.mkIf isLinux {
       config = {
         common = {
           default =

@@ -43,7 +43,6 @@
     variables = {
       EDITOR = "micro";
       SHELL = "${pkgs.fish}/bin/fish";
-      SYSTEMD_EDITOR = "micro";
       VISUAL = "micro";
     };
   };
@@ -71,9 +70,9 @@
     # You can add overlays here
     overlays = [
       # Add overlays your own flake exports (from overlays and pkgs dir):
-      outputs.overlays.additions
-      outputs.overlays.modifications
-      outputs.overlays.unstable-packages
+      outputs.overlays.localPackages
+      outputs.overlays.modifiedPackages
+      outputs.overlays.unstablePackages
       # Add overlays exported from other flakes:
     ];
   };
@@ -218,23 +217,11 @@
           "/Users/${username}/Applications/Home Manager Apps/Wavebox.app"
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"
-        ]
-        ++ lib.optionals (username == "martin.wimpress") [
-          "/Applications/Slack.app"
-        ]
-        ++ [
           "/Applications/Halloy.app"
           "/Users/${username}/Applications/Home Manager Apps/Visual Studio Code.app"
           "/Users/${username}/Applications/Home Manager Apps/GitKraken.app"
           "/Users/${username}/Applications/Home Manager Apps/Kitty.app"
-        ]
-        ++ lib.optionals (username == "martin.wimpress") [
-          "/Applications/Cider.app"
-        ]
-        ++ lib.optionals (username == "martin") [
           "/System/Applications/Music.app"
-        ]
-        ++ [
           "/Applications/Heynote.app"
           "/Applications/Joplin.app"
           "/System/Applications/Launchpad.app"

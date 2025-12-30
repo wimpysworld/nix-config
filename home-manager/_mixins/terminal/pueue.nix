@@ -1,13 +1,15 @@
 {
+  lib,
   pkgs,
   ...
 }:
 let
+  inherit (pkgs.stdenv) isLinux;
   shellAliases = {
     pq = "${pkgs.pueue}/bin/pueue";
   };
 in
-{
+lib.mkIf isLinux {
   programs = {
     bash.shellAliases = shellAliases;
     fish.shellAliases = shellAliases;

@@ -12,7 +12,8 @@ let
   davinciResolve = (pkgs.davinci-resolve.override { studioVariant = true; });
 in
 {
-  dconf.settings = with lib.hm.gvariant; {
+  dconf = lib.mkIf isLinux { 
+   settings = with lib.hm.gvariant; {
     "com/github/wwmm/easyeffects" = {
       bypass = false;
       inactivity-timer-enable = false;
@@ -45,6 +46,7 @@ in
       audio-channel = "mono";
       audio-profile = "flac";
     };
+   };
   };
 
   home.file = {
@@ -410,11 +412,13 @@ in
     with pkgs;
     [
       audacity
-      gimp3
-      gnome-sound-recorder
       inkscape
     ]
-    ++ lib.optionals (!isLima) [
+    ++ lib.optionals isLinux [
+      gimp3
+      gnome-sound-recorder
+    ]
+    ++ lib.optionals (!isLima && isLinux) [
       davinciResolve
     ];
 
