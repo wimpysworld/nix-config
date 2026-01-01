@@ -260,7 +260,7 @@ in
         "size 395 496, class:(org.gnome.Calculator)"
         "size 700 500, class:(nm-connection-editor)"
         "size 1134 880, title:(Pipewire Volume Control)"
-        "size 960 640 initialTitle:(Polychromatic)"
+        "size 960 640, initialTitle:(Polychromatic)"
         "size 880 1010, title:(overskride)"
         "size 886 960, title:(Trayscale)"
 
