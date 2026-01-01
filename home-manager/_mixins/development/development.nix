@@ -84,7 +84,6 @@ lib.mkIf isWorkstation {
       [
         dockerPurge
         precommitSetup
-        tokei # Modern Unix `wc` for code
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.

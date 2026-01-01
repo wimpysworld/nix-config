@@ -68,7 +68,6 @@ in
         bmon # Modern Unix `iftop`
         croc # Terminal file transfer
         cyme # Modern Unix `lsusb`
-        dconf2nix # Nix code from Dconf files
         dogdns # Modern Unix `dig`
         dotacat # Modern Unix lolcat
         dua # Modern Unix `du`
@@ -107,7 +106,6 @@ in
         wget # Terminal HTTP client
         wget2 # Terminal HTTP client
         xh # Terminal HTTP client
-        yq-go # Terminal `jq` for YAML
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         batmon # Terminal battery monitor
