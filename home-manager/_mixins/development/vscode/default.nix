@@ -91,8 +91,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "chat.mcp.discovery.enabled" = true;
           "chat.mcp.enabled" = true;
           "cSpell.diagnosticLevel" = "Hint";
-          "dart.updateDevTools" = false;
-          "dart.checkForSdkUpdates" = false;
           "editor.bracketPairColorization.independentColorPoolPerBracketType" = true;
           "editor.fontSize" = 16;
           "editor.fontFamily" = "FiraCode Nerd Font Mono";
@@ -115,14 +113,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "editor.semanticHighlighting.enabled" = true;
           "explorer.confirmDragAndDrop" = false;
           "extensions.ignoreRecommendations" = true;
-          "[dart]"."editor.formatOnSave" = true;
-          "[dart]"."editor.formatOnType" = true;
-          "[dart]"."editor.rulers" = [ 80 ];
-          "[dart]"."editor.selectionHighlight" = false;
-          "[dart]"."editor.suggest.snippetsPreventQuickSuggestions" = false;
-          "[dart]"."editor.suggestSelection" = "first";
-          "[dart]"."editor.tabCompletion" = "onlySnippets";
-          "[dart]"."editor.wordBasedSuggestions" = "off";
           "[dockerfile]"."editor.quickSuggestions.strings" = true;
           "[python]"."editor.formatOnType" = true;
           "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
@@ -183,8 +173,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.budparr.language-hugo-vscode
             vscode-marketplace.catppuccin.catppuccin-vsc-icons
             vscode-marketplace.coolbear.systemd-unit-file
-            vscode-marketplace.dart-code.dart-code
-            vscode-marketplace.dart-code.flutter
             vscode-marketplace.dotjoshjohnson.xml
             vscode-marketplace.editorconfig.editorconfig
             vscode-marketplace.eliostruyf.vscode-front-matter

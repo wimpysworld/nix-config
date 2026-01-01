@@ -7,6 +7,7 @@
     ./development.nix
     ./direnv # Modern Unix `env`
     ./claude-code
+    #./dart
     ./defold
     ./gh # Terminal GitHub client`
     ./git # Terminal Git client
