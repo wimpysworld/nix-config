@@ -53,14 +53,21 @@ in
     packages = dbusPackages;
   };
 
-  dconf.settings = lib.mkIf isLinux {
-    "io/github/celluloid-player/celluloid" = with lib.hm.gvariant; {
-      csd-enable = false;
-      dark-theme-enable = catppuccinPalette.isDark;
+  dconf = lib.mkIf isLinux {
+    settings = with lib.hm.gvariant; {
+      "ca/desrt/dconf-editor" = {
+        show-warning = false;
+      };
+      "io/github/celluloid-player/celluloid" = {
+        csd-enable = false;
+        dark-theme-enable = catppuccinPalette.isDark;
+      };
     };
   };
   home = lib.mkIf isLinux {
-    packages = with pkgs; [
+    packages =
+      with pkgs;
+      [
         nautilus-python
         nautilus-open-any-terminal
       ]
