@@ -45,7 +45,6 @@ in
     ./terminal
     ./utilities
     ./web-browsers
-    ./zed-editor
   ];
 
   dbus = lib.mkIf isLinux {

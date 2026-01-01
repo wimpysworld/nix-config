@@ -5,5 +5,6 @@ _: {
     ./love
     ./meld
     ./vscode
+    ./zed-editor
   ];
 }
