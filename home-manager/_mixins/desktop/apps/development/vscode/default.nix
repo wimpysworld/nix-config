@@ -70,9 +70,6 @@ lib.mkIf (lib.elem username installFor) {
       delve
       go
       gopls
-      luaformatter
-      luajit
-      lua-language-server
       mcp-nixos
       nil
       nixfmt-rfc-style
@@ -82,7 +79,6 @@ lib.mkIf (lib.elem username installFor) {
       uv
       shellcheck
       shfmt
-      stylua
       svelte-check
       svelte-language-server
       tsx
@@ -141,7 +137,6 @@ lib.mkIf (lib.elem username installFor) {
           "[dart]"."editor.tabCompletion" = "onlySnippets";
           "[dart]"."editor.wordBasedSuggestions" = "off";
           "[dockerfile]"."editor.quickSuggestions.strings" = true;
-          "[lua]"."editor.defaultFormatter" = "JohnnyMorganz.stylua";
           "[nix]"."editor.defaultFormatter" = "jnoortheen.nix-ide";
           "[nix]"."editor.formatOnSave" = true;
           "[nix]"."editor.tabSize" = 2;
@@ -218,7 +213,6 @@ lib.mkIf (lib.elem username installFor) {
           [
             vscode-marketplace.aaron-bond.better-comments
             vscode-marketplace.alefragnani.project-manager
-            vscode-marketplace.alexgb.nelua
             vscode-marketplace.anthropic.claude-code
             vscode-marketplace.bmalehorn.shell-syntax
             vscode-marketplace.bmalehorn.vscode-fish
@@ -242,7 +236,6 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.golang.go
             vscode-marketplace.griimick.vhs
             #vscode-marketplace.hashicorp.terraform
-            vscode-marketplace.ismoh-games.second-local-lua-debugger-vscode
             vscode-marketplace.jdemille.debian-control-vscode
             vscode-marketplace.jeff-hykin.better-csv-syntax
             vscode-marketplace.jeff-hykin.better-dockerfile-syntax
@@ -251,7 +244,6 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.jeff-hykin.polacode-2019
             vscode-marketplace.jeroen-meijer.pubspec-assist
             vscode-marketplace.jnoortheen.nix-ide
-            vscode-marketplace.johnnymorganz.stylua
             vscode-marketplace.marp-team.marp-vscode
             vscode-marketplace.mechatroner.rainbow-csv
             vscode-marketplace.mkhl.direnv
@@ -264,7 +256,6 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.nefrob.vscode-just-syntax
             vscode-marketplace.nhoizey.gremlins
             vscode-marketplace.nico-castell.linux-desktop-file
-            vscode-marketplace.pixelbyte-studios.pixelbyte-love2d
             vscode-marketplace.pkief.material-product-icons
             vscode-marketplace.prince781.vala
             vscode-marketplace.pollywoggames.pico8-ls
@@ -284,7 +275,6 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.unifiedjs.vscode-mdx
             vscode-marketplace.vscode-icons-team.vscode-icons
             vscode-marketplace.xyc.vscode-mdx-preview
-            vscode-marketplace.yinfei.luahelper
             vscode-marketplace.yzhang.markdown-all-in-one
           ]
           ++ lib.optionals isLinux [
