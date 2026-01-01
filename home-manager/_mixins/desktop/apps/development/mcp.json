@@ -13,7 +13,7 @@
     },
     "firecrawl-mcp": {
       "type": "http",
-      "url": "https://mcp.firecrawl.dev/${input:context7ApiKey}/v2/mcp"
+      "url": "https://mcp.firecrawl.dev/${input:firecrawlApiKey}/v2/mcp"
     },
     "mcp-google-cse": {
       "command": "uvx",
