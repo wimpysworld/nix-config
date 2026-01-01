@@ -159,6 +159,7 @@ in
         #"wayvnc 0.0.0.0"
       ];
       general = {
+        gesture = "3, horizontal, workspace";
         gaps_in = 5;
         gaps_out = 5;
         border_size = 2;
@@ -179,10 +180,6 @@ in
       # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
       dwindle = {
         preserve_split = true;
-      };
-      gestures = {
-        workspace_swipe = true;
-        workspace_swipe_forever = false;
       };
       group = {
         groupbar = {
