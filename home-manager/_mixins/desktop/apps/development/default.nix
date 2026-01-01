@@ -226,56 +226,17 @@ lib.mkIf (lib.elem username installFor) {
           "github.copilot.chat.commitMessageGeneration.instructions.text" = ''
             # Git Commit Message Generator
 
-            Output ONLY the commit message. No explanations, no questions, no commentary.
+            Write a conventional commit message summarising the final outcome of what we've just been working on, focus on the staged changes in the git repository if there are any.
 
-            ## Format
-            ```
-            <type>(<optional scope>): <description>
+            Please create a commit message that:
+            - Follows Conventional Commits 1.0.0 specification exactly
+            - Uses appropriate type (feat, fix, build, chore, ci, docs, perf, refactor, etc.)
+            - Includes proper scope if applicable
+            - Has clear, imperative mood description under 72 characters
+            - Includes body with bullet points if needed
+            - Adds footers for breaking changes or issue references if relevant
 
-            <body>
-
-            [optional footer(s)]
-            ```
-
-            ## Types
-
-            - **feat**: New features (MINOR version)
-            - **fix**: Bug fixes (PATCH version)
-            - **build**: Build system or dependencies
-            - **chore**: Maintenance tasks
-            - **ci**: CI/CD configuration
-            - **docs**: Documentation
-            - **i18n**: Internationalisation/localisation
-            - **perf**: Performance improvements
-            - **refactor**: Code restructuring (no behaviour change)
-            - **revert**: Undo previous commits
-            - **style**: Formatting/whitespace (no logic change)
-            - **test**: Test cases or infrastructure
-
-            ## Constraints
-
-            **Description:**
-            - Maximum 72 characters
-            - Imperative mood ("add feature" not "added feature")
-            - Lowercase, no trailing period
-            - Do not repeat the type as first word
-
-            **Body:**
-            - Blank line after description
-            - Explain what changed and why
-            - Small changes: one sentence
-            - Large changes: bulleted list using "-"
-
-            **Breaking Changes:**
-            - Indicate with `!` before colon: `feat!: remove deprecated API`
-            - Or as footer: `BREAKING CHANGE: description`
-            - BREAKING CHANGE must be uppercase
-
-            **Footers:**
-            - One blank line after body
-            - Format: `Token: value` or `Token #value`
-            - Use hyphens in multi-word tokens (e.g., `Acked-by`)
-            - Exception: BREAKING CHANGE (space allowed)
+            Output only the commit message, ready for `git commit -m`.
           '';
         };
         extensions =
