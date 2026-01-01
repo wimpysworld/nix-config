@@ -17,6 +17,7 @@
     ./love
     ./meld
     ./nix
+    ./python
     ./shell
     ./svelte
     ./typescript

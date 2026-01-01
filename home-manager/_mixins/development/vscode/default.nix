@@ -69,8 +69,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     packages = with pkgs; [
       prettier
       nodejs_24
-      python3
-      uv
     ];
   };
 
@@ -114,7 +112,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "explorer.confirmDragAndDrop" = false;
           "extensions.ignoreRecommendations" = true;
           "[dockerfile]"."editor.quickSuggestions.strings" = true;
-          "[python]"."editor.formatOnType" = true;
           "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
           "files.insertFinalNewline" = true;
           "files.trimTrailingWhitespace" = true;
@@ -192,9 +189,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.jeroen-meijer.pubspec-assist
             vscode-marketplace.marp-team.marp-vscode
             vscode-marketplace.mechatroner.rainbow-csv
-            vscode-marketplace.ms-python.debugpy
-            vscode-marketplace.ms-python.python
-            vscode-marketplace.ms-python.vscode-pylance
             vscode-marketplace.ms-vscode.cmake-tools
             vscode-marketplace.ms-vscode.hexeditor
             vscode-extensions.ms-vscode-remote.vscode-remote-extensionpack
@@ -208,7 +202,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.sanjulaganepola.github-local-actions
             vscode-marketplace.streetsidesoftware.code-spell-checker
             vscode-marketplace.tamasfe.even-better-toml
-            vscode-marketplace.trond-snekvik.simple-rst
             vscode-marketplace.twxs.cmake
             vscode-marketplace.tobiashochguertel.just-formatter
             vscode-marketplace.unifiedjs.vscode-mdx
