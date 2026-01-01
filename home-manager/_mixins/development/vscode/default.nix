@@ -71,9 +71,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
       delve
       go
       gopls
-      mcp-nixos
-      nil
-      nixfmt-rfc-style
       prettier
       nodejs_24
       python3
@@ -138,9 +135,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "[dart]"."editor.tabCompletion" = "onlySnippets";
           "[dart]"."editor.wordBasedSuggestions" = "off";
           "[dockerfile]"."editor.quickSuggestions.strings" = true;
-          "[nix]"."editor.defaultFormatter" = "jnoortheen.nix-ide";
-          "[nix]"."editor.formatOnSave" = true;
-          "[nix]"."editor.tabSize" = 2;
           "[python]"."editor.formatOnType" = true;
           "[svelte]"."editor.defaultFormatter" = "svelte.svelte-vscode";
           "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
@@ -152,15 +146,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "githubPullRequests.pullBranch" = "never";
           "gopls.ui.semanticTokens" = true;
           "markdown.preview.breaks" = true;
-          "nix.enableLanguageServer" = true;
-          "nix.serverPath" = "nil";
-          "nix.serverSettings" = {
-            "nil" = {
-              "formatting" = {
-                "command" = [ "nixfmt" ];
-              };
-            };
-          };
           "partialDiff.enableTelemetry" = false;
           "projectManager.git" = {
             baseFolders = [
@@ -239,11 +224,9 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.jdemille.debian-control-vscode
             vscode-marketplace.jeff-hykin.better-csv-syntax
             vscode-marketplace.jeff-hykin.better-dockerfile-syntax
-            vscode-marketplace.jeff-hykin.better-nix-syntax
             vscode-marketplace.jeff-hykin.better-shellscript-syntax
             vscode-marketplace.jeff-hykin.polacode-2019
             vscode-marketplace.jeroen-meijer.pubspec-assist
-            vscode-marketplace.jnoortheen.nix-ide
             vscode-marketplace.marp-team.marp-vscode
             vscode-marketplace.mechatroner.rainbow-csv
             vscode-marketplace.ms-python.debugpy

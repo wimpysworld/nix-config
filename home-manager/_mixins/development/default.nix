@@ -14,6 +14,7 @@
     ./jq # Terminal JSON processor
     ./love
     ./meld
+    ./nix
     ./vscode
     ./zed-editor
   ];

@@ -18,36 +18,10 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
       extensions = [
         "github-actions"
         "lua"
-        "nix"
       ];
       package = pkgs.unstable.zed-editor;
       userSettings = {
-        "languages" = {
-          "Nix" = {
-            "formatter" = {
-              "external" = {
-                "command" = "nixfmt";
-                "arguments" = [
-                  "--quiet"
-                  "--"
-                ];
-              };
-            };
-            "language_servers" = [
-              "nil"
-              "!nixd"
-            ];
-          };
-        };
-        "lsp" = {
-          "nil" = {
-            "settings" = {
-              "diagnostics" = {
-                "ignored" = [ "unused_binding" ];
-              };
-            };
-          };
-        };
+        # Configure zed here
       };
     };
   };
