@@ -107,6 +107,17 @@ in
     gitui = {
       enable = true;
     };
+    vscode = lib.mkIf config.programs.vscode.enable {
+      profiles.default = {
+        userSettings = {
+          "git.openRepositoryInParentFolders" = "always";
+        };
+        extensions = with pkgs; [
+          vscode-marketplace.codezombiech.gitignore
+        ];
+      };
+    };
+
     zsh = {
       inherit shellAliases;
     };
