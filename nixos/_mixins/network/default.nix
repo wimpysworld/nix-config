@@ -249,20 +249,6 @@ in
     };
   };
 
-  # Belt and braces disable WiFi power saving
-  systemd.services.disable-wifi-powersave =
-    lib.mkIf
-      (
-        lib.isBool config.networking.networkmanager.wifi.powersave
-        && config.networking.networkmanager.wifi.powersave
-      )
-      {
-        wantedBy = [ "multi-user.target" ];
-        path = [ pkgs.iw ];
-        script = ''
-          iw dev wlan0 set power_save off
-        '';
-      };
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175
   systemd.services.NetworkManager-wait-online.enable = lib.mkIf config.networking.networkmanager.enable false;
 
