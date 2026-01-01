@@ -74,9 +74,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
       uv
       shellcheck
       shfmt
-      tsx
-      typescript
-      typescript-language-server
     ];
   };
 

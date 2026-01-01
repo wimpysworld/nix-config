@@ -17,6 +17,7 @@
     ./meld
     ./nix
     ./svelte
+    ./typescript
     ./vscode
     ./zed-editor
   ];
