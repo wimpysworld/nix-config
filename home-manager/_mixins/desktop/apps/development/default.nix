@@ -111,6 +111,9 @@ lib.mkIf (lib.elem username installFor) {
       stylua
       svelte-check
       svelte-language-server
+      tsx
+      typescript
+      typescript-language-server
     ];
   };
 
