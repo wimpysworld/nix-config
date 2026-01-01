@@ -320,6 +320,7 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.ms-vscode.hexeditor
             vscode-extensions.ms-vscode-remote.vscode-remote-extensionpack
             vscode-marketplace.nefrob.vscode-just-syntax
+            vscode-marketplace.nhoizey.gremlins
             vscode-marketplace.nico-castell.linux-desktop-file
             vscode-marketplace.pixelbyte-studios.pixelbyte-love2d
             vscode-marketplace.pkief.material-product-icons
@@ -339,7 +340,6 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.twxs.cmake
             vscode-marketplace.tobiashochguertel.just-formatter
             vscode-marketplace.unifiedjs.vscode-mdx
-            vscode-marketplace.viktorzetterstrom.non-breaking-space-highlighter
             vscode-marketplace.vscode-icons-team.vscode-icons
             vscode-marketplace.xyc.vscode-mdx-preview
             vscode-marketplace.yinfei.luahelper
