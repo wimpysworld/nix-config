@@ -109,6 +109,8 @@ lib.mkIf (lib.elem username installFor) {
       shellcheck
       shfmt
       stylua
+      svelte-check
+      svelte-language-server
     ];
   };
 
@@ -167,6 +169,7 @@ lib.mkIf (lib.elem username installFor) {
           "[nix]"."editor.formatOnSave" = true;
           "[nix]"."editor.tabSize" = 2;
           "[python]"."editor.formatOnType" = true;
+          "[svelte]"."editor.defaultFormatter" = "svelte.svelte-vscode";
           "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
           "files.insertFinalNewline" = true;
           "files.trimTrailingWhitespace" = true;
@@ -199,6 +202,8 @@ lib.mkIf (lib.elem username installFor) {
           "security.workspace.trust.untrustedFiles" = "open";
           "shellcheck.run" = "onSave";
           "shellformat.useEditorConfig" = true;
+          "svelte.enable-ts-plugin" = true;
+          "svelte.language-server.ls-path" = "${pkgs.svelte-language-server}/bin/svelte-language-server";
           "telemetry.feedback.enabled" = false;
           "telemetry.telemetryLevel" = "off";
           "terminal.integrated.fontSize" = 16;
@@ -333,6 +338,7 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.sanjulaganepola.github-local-actions
             vscode-marketplace.slevesque.shader
             vscode-marketplace.streetsidesoftware.code-spell-checker
+            vscode-marketplace.svelte.svelte-vscode
             vscode-marketplace.tamasfe.even-better-toml
             vscode-marketplace.timonwong.shellcheck
             vscode-marketplace.trond-snekvik.simple-rst
