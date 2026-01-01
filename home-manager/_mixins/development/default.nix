@@ -16,6 +16,7 @@
     ./love
     ./meld
     ./nix
+    ./shell
     ./svelte
     ./typescript
     ./vscode

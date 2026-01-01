@@ -67,13 +67,10 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     };
     # Packages that are used by some of the extensions below
     packages = with pkgs; [
-      bash-language-server
       prettier
       nodejs_24
       python3
       uv
-      shellcheck
-      shfmt
     ];
   };
 
@@ -161,8 +158,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             maxDepthRecursion = 5;
           };
           "security.workspace.trust.untrustedFiles" = "open";
-          "shellcheck.run" = "onSave";
-          "shellformat.useEditorConfig" = true;
           "telemetry.feedback.enabled" = false;
           "telemetry.telemetryLevel" = "off";
           "terminal.integrated.fontSize" = 16;
@@ -185,8 +180,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           [
             vscode-marketplace.aaron-bond.better-comments
             vscode-marketplace.alefragnani.project-manager
-            vscode-marketplace.bmalehorn.shell-syntax
-            vscode-marketplace.bmalehorn.vscode-fish
             vscode-marketplace.budparr.language-hugo-vscode
             vscode-marketplace.catppuccin.catppuccin-vsc-icons
             vscode-marketplace.coolbear.systemd-unit-file
@@ -198,7 +191,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.esbenp.prettier-vscode
             vscode-marketplace.evan-buss.font-switcher
             vscode-marketplace.fill-labs.dependi
-            vscode-marketplace.foxundermoon.shell-format
             vscode-marketplace.github.copilot
             vscode-marketplace.github.copilot-chat
             vscode-marketplace.github.vscode-github-actions
@@ -208,7 +200,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.jdemille.debian-control-vscode
             vscode-marketplace.jeff-hykin.better-csv-syntax
             vscode-marketplace.jeff-hykin.better-dockerfile-syntax
-            vscode-marketplace.jeff-hykin.better-shellscript-syntax
             vscode-marketplace.jeff-hykin.polacode-2019
             vscode-marketplace.jeroen-meijer.pubspec-assist
             vscode-marketplace.marp-team.marp-vscode
@@ -224,13 +215,11 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.nico-castell.linux-desktop-file
             vscode-marketplace.pkief.material-product-icons
             vscode-marketplace.prince781.vala
-            vscode-marketplace.rogalmic.bash-debug
             vscode-marketplace.rust-lang.rust-analyzer
             vscode-marketplace.ryu1kn.partial-diff
             vscode-marketplace.sanjulaganepola.github-local-actions
             vscode-marketplace.streetsidesoftware.code-spell-checker
             vscode-marketplace.tamasfe.even-better-toml
-            vscode-marketplace.timonwong.shellcheck
             vscode-marketplace.trond-snekvik.simple-rst
             vscode-marketplace.twxs.cmake
             vscode-marketplace.tobiashochguertel.just-formatter
