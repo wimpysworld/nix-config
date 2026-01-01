@@ -35,5 +35,10 @@ lib.mkIf (lib.elem hostname installOn) {
         ];
       };
     };
+    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+      extensions = [
+        "lua"
+      ];
+    };
   };
 }

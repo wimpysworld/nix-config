@@ -17,7 +17,6 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
       enable = true;
       extensions = [
         "github-actions"
-        "lua"
       ];
       package = pkgs.unstable.zed-editor;
       userSettings = {
