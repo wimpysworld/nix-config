@@ -68,9 +68,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     # Packages that are used by some of the extensions below
     packages = with pkgs; [
       bash-language-server
-      delve
-      go
-      gopls
       prettier
       nodejs_24
       python3
@@ -144,7 +141,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "github.copilot.chat.agent.thinkingTool" = true;
           "github.copilot.chat.codesearch.enabled" = true;
           "githubPullRequests.pullBranch" = "never";
-          "gopls.ui.semanticTokens" = true;
           "markdown.preview.breaks" = true;
           "partialDiff.enableTelemetry" = false;
           "projectManager.git" = {
@@ -218,7 +214,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.github.copilot-chat
             vscode-marketplace.github.vscode-github-actions
             vscode-marketplace.github.vscode-pull-request-github
-            vscode-marketplace.golang.go
             vscode-marketplace.griimick.vhs
             #vscode-marketplace.hashicorp.terraform
             vscode-marketplace.jdemille.debian-control-vscode

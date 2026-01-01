@@ -11,6 +11,7 @@
     ./gh # Terminal GitHub client`
     ./git # Terminal Git client
     ./gitkraken
+    ./go
     ./jq # Terminal JSON processor
     ./love
     ./meld

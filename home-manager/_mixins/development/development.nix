@@ -62,13 +62,6 @@ let
 in
 {
   home = {
-    sessionPath = [
-      "${config.home.homeDirectory}/.local/go/bin"
-    ];
-    sessionVariables = {
-      GOPATH = "${config.home.homeDirectory}/.local/go";
-      GOCACHE = "${config.home.homeDirectory}/.local/go/cache";
-    };
     packages =
       with pkgs;
       [
