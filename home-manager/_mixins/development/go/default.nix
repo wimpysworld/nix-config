@@ -13,14 +13,16 @@ lib.mkIf (lib.elem username installFor) {
     packages = with pkgs; [
       delve
       go
+      golangci-lint
       gopls
     ];
     sessionPath = [
       "${config.home.homeDirectory}/.local/go/bin"
     ];
     sessionVariables = {
-      GOPATH = "${config.home.homeDirectory}/.local/go";
+      GOBIN = "${config.home.homeDirectory}/.local/go/bin";
       GOCACHE = "${config.home.homeDirectory}/.local/go/cache";
+      GOPATH = "${config.home.homeDirectory}/.local/go";
     };
   };
 
@@ -34,6 +36,12 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.golang.go
         ];
       };
+    };
+    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+      extensions = [
+        "golangci-lint"
+        "gosum"
+      ];
     };
   };
 }
