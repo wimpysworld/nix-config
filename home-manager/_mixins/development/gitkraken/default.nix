@@ -1,5 +1,6 @@
 {
   config,
+  isWorkstation,
   lib,
   pkgs,
   username,
@@ -8,7 +9,7 @@
 let
   installFor = [ "martin" ];
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (lib.elem username installFor && isWorkstation) {
   home = {
     file = {
       # https://github.com/catppuccin/gitkraken

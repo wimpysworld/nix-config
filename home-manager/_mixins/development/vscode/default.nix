@@ -1,6 +1,7 @@
 {
   config,
   inputs,
+  isWorkstation,
   lib,
   pkgs,
   username,
@@ -17,7 +18,7 @@ let
     else
       throw "Unsupported platform";
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (lib.elem username installFor && isWorkstation) {
   nixpkgs.overlays = [
     inputs.nix-vscode-extensions.overlays.default
   ];

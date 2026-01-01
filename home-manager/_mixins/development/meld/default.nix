@@ -1,6 +1,7 @@
 {
   catppuccinPalette,
   config,
+  isWorkstation,
   lib,
   pkgs,
   username,
@@ -10,7 +11,7 @@ let
   installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (lib.elem username installFor && isWorkstation) {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;

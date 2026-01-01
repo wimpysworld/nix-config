@@ -70,7 +70,7 @@ let
     text = builtins.readFile ./pre-commit-setup.sh;
   };
 in
-lib.mkIf isWorkstation {
+{
   home = {
     sessionPath = [
       "${config.home.homeDirectory}/.local/go/bin"
