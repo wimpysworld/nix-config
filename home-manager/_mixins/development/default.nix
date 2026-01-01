@@ -16,6 +16,7 @@
     ./love
     ./meld
     ./nix
+    ./svelte
     ./vscode
     ./zed-editor
   ];

@@ -74,8 +74,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
       uv
       shellcheck
       shfmt
-      svelte-check
-      svelte-language-server
       tsx
       typescript
       typescript-language-server
@@ -133,7 +131,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "[dart]"."editor.wordBasedSuggestions" = "off";
           "[dockerfile]"."editor.quickSuggestions.strings" = true;
           "[python]"."editor.formatOnType" = true;
-          "[svelte]"."editor.defaultFormatter" = "svelte.svelte-vscode";
           "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
           "files.insertFinalNewline" = true;
           "files.trimTrailingWhitespace" = true;
@@ -170,8 +167,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "security.workspace.trust.untrustedFiles" = "open";
           "shellcheck.run" = "onSave";
           "shellformat.useEditorConfig" = true;
-          "svelte.enable-ts-plugin" = true;
-          "svelte.language-server.ls-path" = "${pkgs.svelte-language-server}/bin/svelte-language-server";
           "telemetry.feedback.enabled" = false;
           "telemetry.telemetryLevel" = "off";
           "terminal.integrated.fontSize" = 16;
@@ -239,7 +234,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.ryu1kn.partial-diff
             vscode-marketplace.sanjulaganepola.github-local-actions
             vscode-marketplace.streetsidesoftware.code-spell-checker
-            vscode-marketplace.svelte.svelte-vscode
             vscode-marketplace.tamasfe.even-better-toml
             vscode-marketplace.timonwong.shellcheck
             vscode-marketplace.trond-snekvik.simple-rst
