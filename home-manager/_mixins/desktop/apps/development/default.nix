@@ -97,11 +97,11 @@ lib.mkIf (lib.elem username installFor) {
       luaformatter
       luajit
       lua-language-server
-      unstable.mcp-nixos
+      mcp-nixos
       meld
       nil
       nixfmt-rfc-style
-      nodePackages.prettier
+      prettier
       nodejs_24
       python3
       uv

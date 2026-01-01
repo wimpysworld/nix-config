@@ -1,4 +1,5 @@
 {
+  config,
   isInstall,
   isLaptop,
   lib,
@@ -12,7 +13,8 @@ in
 {
   environment = lib.mkIf isInstall { systemPackages = with pkgs; [ ssh-to-age ]; };
   programs = {
-    ssh.startAgent = true;
+    # Only start the SSH agent if no other keyring is managing keys
+    ssh.startAgent = !config.services.gnome.gnome-keyring.enable;
   };
   services = {
     openssh = {

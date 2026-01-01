@@ -1,11 +1,11 @@
 {
   lib,
-  stdenv,
+  stdenvNoCC,
   fetchurl,
   makeWrapper,
   addDriverRunpath,
   autoPatchelfHook,
-  wrapGAppsHook,
+  wrapGAppsHook3,
   alsa-lib,
   cairo,
   cups,
@@ -25,12 +25,13 @@
   pango,
   vulkan-loader,
   xorg,
+  zstd,
 }:
 let
   version = "3.1.2";
   pname = "cider";
 in
-stdenv.mkDerivation {
+stdenvNoCC.mkDerivation {
   inherit pname version;
 
   src = fetchurl {
@@ -41,8 +42,9 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     makeWrapper
     autoPatchelfHook
-    wrapGAppsHook
+    wrapGAppsHook3
     addDriverRunpath
+    zstd
   ];
 
   buildInputs = [

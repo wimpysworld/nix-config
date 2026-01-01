@@ -10,16 +10,16 @@
 
 stdenv.mkDerivation rec {
   pname = "obs-vertical-canvas";
-  version = "1.5.2";
+  version = "1.6.1";
 
   src = fetchFromGitHub {
     owner = "Aitum";
     repo = "obs-vertical-canvas";
     rev = version;
-    sha256 = "sha256-rwIhmrkj+jLjSOAmFqD/hZ9/BPL5npGehSdumBoWows=";
+    sha256 = "sha256-tvoNdv0HkGch8FZCiK7S4BR7iWOqLvTj0blFxyyUjQE=";
   };
 
-  # Remove after https://github.com/Aitum/obs-vertical-canvas/pull/25 is released :)
+  # Remove after https://github.com/Aitum/obs-vertical-canvas/pull/26 is released :)
   patches = [ ./obs-vertical-canvas.diff ];
 
   nativeBuildInputs = [ cmake ];
@@ -30,25 +30,26 @@ stdenv.mkDerivation rec {
     qtbase
   ];
 
+  cmakeFlags = [
+    "-DBUILD_OUT_OF_TREE=On"
+    ''-DCMAKE_CXX_FLAGS="-Wno-error=deprecated-declarations"''
+  ];
+
   dontWrapQtApps = true;
 
-  # Fix CMakeLists.txt to use new find_package syntax
-  preConfigure = ''
-    sed -i 's|find_qt(|find_package(Qt6 |' CMakeLists.txt
-  '';
-
   postInstall = ''
-    rm -rf $out/data $out/obs-plugins
+    rm -rf $out/data
+    rm -rf $out/obs-plugins
   '';
 
   meta = {
     description = "Plugin for OBS Studio to add vertical canvas";
     homepage = "https://github.com/Aitum/obs-vertical-canvas";
-    maintainers = with lib.maintainers; [ flexiondotorg ];
-    license = lib.licenses.gpl2Plus;
-    platforms = [
-      "x86_64-linux"
-      "i686-linux"
+    maintainers = with lib.maintainers; [
+      flexiondotorg
+      jonhermansen
     ];
+    license = lib.licenses.gpl2Plus;
+    inherit (obs-studio.meta) platforms;
   };
 }

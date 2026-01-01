@@ -77,36 +77,36 @@ lib.mkIf (lib.elem hostname installOn) {
         advanced-scene-switcher
         obs-3d-effect
         obs-advanced-masks
+        obs-aitum-multistream
         obs-command-source
         obs-composite-blur
+        obs-dvd-screensaver
         obs-gradient-source
         obs-gstreamer
+        obs-markdown
         obs-move-transition
         obs-pipewire-audio-capture
+        obs-rgb-levels
         obs-scale-to-sound
+        obs-scene-as-transition
         obs-shaderfilter
         obs-source-clone
         obs-source-record
         obs-source-switcher
+        obs-stroke-glow-shadow
         obs-teleport
         obs-transition-table
         obs-text-pthread
         obs-vaapi
         obs-vintage-filter
-        obs-webkitgtk
         obs-websocket
+        pixel-art
         waveform
       ]
       ++ [
-        pkgs.obs-aitum-multistream
-        pkgs.obs-dvd-screensaver
-        pkgs.obs-markdown
-        pkgs.obs-rgb-levels
-        pkgs.obs-scene-as-transition
-        pkgs.obs-stroke-glow-shadow
         pkgs.obs-urlsource
         pkgs.obs-vertical-canvas
-        pkgs.pixel-art
+        pkgs.obs-webkitgtk
       ];
   };
 

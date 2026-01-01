@@ -1,38 +1,24 @@
 # Custom packages, that can be defined similarly to ones from nixpkgs
 # You can build them using 'nix build .#example'
 pkgs: {
-  # Local packages being prepped for upstreaming
+  # Local packages
   cider = pkgs.callPackage ./cider { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
-  wavebox = pkgs.callPackage ./wavebox { };
   nerd-font-patcher = pkgs.callPackage ./nerd-font-patcher { };
+  obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };
+  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
+  obs-webkitgtk = pkgs.callPackage ./obs-plugins/obs-webkitgtk.nix { };
+  wavebox = pkgs.callPackage ./wavebox { };
 
-  # Local packages to prevent unintended upgrades or carrying patches
+  # Local package overrides
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
   gotosocial = pkgs.callPackage ./gotosocial { };
-  joplin-desktop = pkgs.callPackage ./joplin-desktop { };
   kmscon = pkgs.callPackage ./kmscon { };
   libtsm = pkgs.callPackage ./libtsm { };
-  owncast = pkgs.unstable.callPackage ./owncast { };
   wolfictl = pkgs.callPackage ./wolfictl { };
-
-  # Remove when upgrading to NixOS 25.11
-  obs-aitum-multistream = pkgs.qt6Packages.callPackage ./obs-plugins/obs-aitum-multistream.nix { }; # merged
-  obs-dvd-screensaver = pkgs.callPackage ./obs-plugins/obs-dvd-screensaver.nix { }; # merged
-  obs-markdown = pkgs.callPackage ./obs-plugins/obs-markdown.nix { }; # merged
-  obs-rgb-levels = pkgs.callPackage ./obs-plugins/obs-rgb-levels.nix { }; # merged
-  obs-scene-as-transition = pkgs.callPackage ./obs-plugins/obs-scene-as-transition.nix { }; # merged
-  obs-stroke-glow-shadow = pkgs.callPackage ./obs-plugins/obs-stroke-glow-shadow.nix { }; # merged
-  obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { }; # merged
-  obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { }; # merged
-  pixel-art = pkgs.callPackage ./obs-plugins/pixel-art.nix { }; # merged
-
-  # In review upstream
-  obs-browser-transition = pkgs.callPackage ./obs-plugins/obs-browser-transition.nix { };
-  obs-vnc = pkgs.callPackage ./obs-plugins/obs-vnc.nix { };
 
   # Local fonts
   # - https://yildiz.dev/posts/packing-custom-fonts-for-nixos/

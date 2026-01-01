@@ -67,16 +67,20 @@ in
       ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
     '';
     git = {
-      extraConfig = {
-        gpg = {
-          format = "ssh";
-          ssh = {
+      settings = {
+        extraConfig = {
+          gpg = {
+            format = "ssh";
+            #ssh = {
             allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
+            #};
           };
         };
+        user = {
+          email = "martin@wimpress.org";
+          name = "Martin Wimpress";
+        };
       };
-      userEmail = "martin@wimpress.org";
-      userName = "Martin Wimpress";
       signing = {
         key = "${config.home.homeDirectory}/.ssh/id_rsa";
         signByDefault = true;

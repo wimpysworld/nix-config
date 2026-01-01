@@ -73,7 +73,7 @@ in
         dotacat # Modern Unix lolcat
         dua # Modern Unix `du`
         duf # Modern Unix `df`
-        du-dust # Modern Unix `du`
+        dust # Modern Unix `du`
         entr # Modern Unix `watch`
         file # Terminal file info
         frogmouth # Terminal markdown viewer
@@ -87,7 +87,7 @@ in
         hyperfine # Terminal benchmarking
         iperf3 # Terminal network benchmarking
         jpegoptim # Terminal JPEG optimizer
-        lima-bin # Terminal VM manager
+        lima # Terminal VM manager
         magic-wormhole-rs # Terminal file transfer
         marp-cli # Terminal Markdown presenter
         mprocs # Terminal parallel process runner

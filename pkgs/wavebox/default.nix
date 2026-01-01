@@ -3,8 +3,9 @@
   lib,
   makeWrapper,
   patchelf,
-  stdenv,
   stdenvNoCC,
+  bintools,
+  zstd,
   writeScript,
 
   # Linked dynamic libraries.
@@ -169,13 +170,13 @@ let
     qt6.qtwayland
   ];
 
-  linux = stdenv.mkDerivation (finalAttrs: {
+  linux = stdenvNoCC.mkDerivation (finalAttrs: {
     inherit pname meta passthru;
-    version = "10.139.23-2";
+    version = "10.143.21-2";
 
     src = fetchurl {
       url = "https://download.wavebox.app/stable/linux/deb/amd64/wavebox_${finalAttrs.version}_amd64.deb";
-      hash = "sha256-qP3gHEg6ZbrKoqLmQAlZdqPpu67OXoYK/fcur2pdyAk=";
+      hash = "sha256-5EopvEmbZPy7Qcd+Iv//w1PxrubFt3aEZeA4G1HxvyU=";
     };
 
     # With strictDeps on, some shebangs were not being patched correctly
@@ -185,6 +186,7 @@ let
     nativeBuildInputs = [
       makeWrapper
       patchelf
+      zstd
     ];
 
     buildInputs = [
@@ -199,8 +201,8 @@ let
 
     unpackPhase = ''
       runHook preUnpack
-      ar x $src
-      tar xf data.tar.xz
+      ${lib.getExe' bintools "ar"} x $src
+      tar xf data.tar.zst
       runHook postUnpack
     '';
 
@@ -224,9 +226,6 @@ let
         --replace-fail 'CHROME_WRAPPER' 'WRAPPER'
       substituteInPlace $out/share/applications/wavebox.desktop \
         --replace-fail /opt/wavebox.io/wavebox/wavebox-launcher $exe
-      substituteInPlace $out/share/menu/wavebox.menu \
-        --replace-fail /opt $out/share \
-        --replace-fail $out/share/wavebox.io/wavebox/wavebox $exe
 
       for icon_file in $out/share/wavebox.io/wavebox/product_logo_[0-9]*.png; do
         num_and_suffix="''${icon_file##*logo_}"
@@ -237,16 +236,18 @@ let
         mv "$icon_file" "$logo_output_path/wavebox.png"
       done
 
+      # "--simulate-outdated-no-au" disables auto updates and browser outdated popup
       makeWrapper "$out/share/wavebox.io/wavebox/wavebox" "$exe" \
         --prefix QT_PLUGIN_PATH  : "${qt6.qtbase}/lib/qt-6/plugins" \
         --prefix QT_PLUGIN_PATH  : "${qt6.qtwayland}/lib/qt-6/plugins" \
         --prefix NIXPKGS_QT6_QML_IMPORT_PATH : "${qt6.qtwayland}/lib/qt-6/qml" \
         --prefix LD_LIBRARY_PATH : "$rpath" \
-        --prefix PATH            : "${lib.makeBinPath deps}" \
+        --prefix PATH            : "$binpath" \
         --suffix PATH            : "${lib.makeBinPath [ xdg-utils ]}" \
         --prefix XDG_DATA_DIRS   : "$XDG_ICON_DIRS:$GSETTINGS_SCHEMAS_PATH:${addDriverRunpath.driverLink}/share" \
         --set CHROME_WRAPPER "wavebox" \
         --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --enable-wayland-ime=true}}" \
+        --add-flags "--simulate-outdated-no-au='Tue, 31 Dec 2099 23:59:59 GMT'" \
         --add-flags ${lib.escapeShellArg commandLineArgs}
 
       # Make sure that libGL and libvulkan are found by ANGLE libGLESv2.so
@@ -254,7 +255,7 @@ let
 
       for elf in $out/share/wavebox.io/wavebox/{wavebox,chrome-sandbox,chrome_crashpad_handler}; do
         patchelf --set-rpath $rpath $elf
-        patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $elf
+        patchelf --set-interpreter ${bintools.dynamicLinker} $elf
       done
 
       runHook postInstall
@@ -263,11 +264,11 @@ let
 
   darwin = stdenvNoCC.mkDerivation (finalAttrs: {
     inherit pname meta passthru;
-    version = "10.139.23.2";
+    version = "10.143.21.2";
 
     src = fetchurl {
       url = "https://download.wavebox.app/stable/macuniversal/Install%20Wavebox%20${finalAttrs.version}.dmg";
-      hash = "sha256-r+SvjePwZze21JXYntetMN1ai462pl9iK3UQlO6xL9w=";
+      hash = "";
     };
 
     dontPatch = true;
@@ -290,7 +291,9 @@ let
 
       mkdir -p $out/bin
 
+      # "--simulate-outdated-no-au" disables auto updates and browser outdated popup
       makeWrapper $out/Applications/Wavebox.app/Contents/MacOS/Wavebox $out/bin/wavebox \
+        --add-flags "--simulate-outdated-no-au='Tue, 31 Dec 2099 23:59:59 GMT'" \
         --add-flags ${lib.escapeShellArg commandLineArgs}
       runHook postInstall
     '';
@@ -341,4 +344,9 @@ let
     mainProgram = "wavebox";
   };
 in
-if stdenvNoCC.hostPlatform.isDarwin then darwin else linux
+if stdenvNoCC.hostPlatform.isDarwin then
+  darwin
+else if stdenvNoCC.hostPlatform.isLinux then
+  linux
+else
+  throw "Unsupported platform ${stdenvNoCC.hostPlatform.system}"

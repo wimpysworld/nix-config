@@ -14,23 +14,10 @@ let
     else
       pkgs.unstable.claude-code;
   # https://github.com/numtide/nix-ai-tools
-  aiPackagesLinux = [
-    claudePackage
+  aiPackages = [
     inputs.nix-ai-tools.packages.${pkgs.system}.crush
     inputs.nix-ai-tools.packages.${pkgs.system}.spec-kit
   ];
-  aiPackagesDarwin = [
-    claudePackage
-    inputs.nix-ai-tools.packages.${pkgs.system}.crush
-    inputs.nix-ai-tools.packages.${pkgs.system}.spec-kit
-  ];
-  aiPackages =
-    if isLinux then
-      aiPackagesLinux
-    else if isDarwin then
-      aiPackagesDarwin
-    else
-      [ ];
   waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
@@ -110,15 +97,15 @@ lib.mkIf isWorkstation {
       ++ aiPackages;
   };
 
-  #programs = {
-  #  claude-code = {
-  #    enable = true;
-  #    commands = {
-  #      fix-issue = ./fips-compliance-source-code-analysis.md;
-  #    };
-  #    package = claudePackage;
-  #  };
-  #};
+  programs = {
+    claude-code = {
+      enable = true;
+      #commands = {
+      #  fix-issue = ./fips-compliance-source-code-analysis.md;
+      #};
+      package = claudePackage;
+    };
+  };
 
   # https://dl.thalheim.io/
   sops = {

@@ -3,11 +3,11 @@
   inputs = {
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
     fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
-    home-manager.url = "github:nix-community/home-manager/release-25.05";
+    home-manager.url = "github:nix-community/home-manager/release-25.11";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-25.05";
+    nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-25.11";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-ai-tools.url = "github:numtide/nix-ai-tools";
@@ -18,7 +18,7 @@
     iwmenu.inputs.nixpkgs.follows = "nixpkgs";
     pwmenu.url = "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.3.0.tar.gz";
     pwmenu.inputs.nixpkgs.follows = "nixpkgs";
-    catppuccin.url = "github:catppuccin/nix?rev=751b99dca72c7f9df5475c67dcf1059893564e32";
+    catppuccin.url = "github:catppuccin/nix";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     disko.url = "https://flakehub.com/f/nix-community/disko/1.12.0.tar.gz";
     disko.inputs.nixpkgs.follows = "nixpkgs";
@@ -34,10 +34,6 @@
     nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.6.0.tar.gz";
     mac-app-util.url = "github:hraban/mac-app-util";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
-    quickemu.url = "https://flakehub.com/f/quickemu-project/quickemu/*";
-    quickemu.inputs.nixpkgs.follows = "nixpkgs";
-    quickgui.url = "https://flakehub.com/f/quickemu-project/quickgui/*";
-    quickgui.inputs.nixpkgs.follows = "nixpkgs";
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
     vscode-server.url = "github:nix-community/nixos-vscode-server";
@@ -55,7 +51,7 @@
     let
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-      stateVersion = "24.11";
+      stateVersion = "25.11";
       helper = import ./lib { inherit inputs outputs stateVersion; };
 
       # System registry - central definition of all systems and their properties

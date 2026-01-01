@@ -18,7 +18,7 @@ let
 in
 {
   catppuccin = {
-    delta.enable = config.programs.git.delta.enable;
+    delta.enable = config.programs.delta.enable;
     gitui.enable = config.programs.gitui.enable;
   };
 
@@ -42,43 +42,46 @@ in
     bash = {
       inherit shellAliases;
     };
+    delta = {
+      enable = true;
+      enableGitIntegration = config.programs.git.enable;
+      options = {
+        hyperlinks = true;
+        line-numbers = true;
+        side-by-side = true;
+      };
+    };
     fish = {
       inherit shellAliases;
     };
     git = {
       enable = true;
-      aliases = {
-        ci = "commit";
-        cl = "clone";
-        co = "checkout";
-        puff = "pull --ff-only";
-        purr = "pull --rebase";
-        fucked = "reset --hard";
-        graph = "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
-      };
-      delta = {
-        enable = true;
-        options = {
-          hyperlinks = true;
-          line-numbers = true;
-          side-by-side = true;
+      settings = {
+        aliases = {
+          ci = "commit";
+          cl = "clone";
+          co = "checkout";
+          puff = "pull --ff-only";
+          purr = "pull --rebase";
+          fucked = "reset --hard";
+          graph = "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
         };
-      };
-      extraConfig = {
-        advice = {
-          statusHints = false;
-        };
-        diff = {
-          colorMoved = "default";
-        };
-        push = {
-          default = "matching";
-        };
-        pull = {
-          rebase = false;
-        };
-        init = {
-          defaultBranch = "main";
+        extraConfig = {
+          advice = {
+            statusHints = false;
+          };
+          diff = {
+            colorMoved = "default";
+          };
+          push = {
+            default = "matching";
+          };
+          pull = {
+            rebase = false;
+          };
+          init = {
+            defaultBranch = "main";
+          };
         };
       };
       ignores = [

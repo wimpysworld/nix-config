@@ -80,7 +80,7 @@ in
       [
         nerd-fonts.fira-code
         font-awesome
-        noto-fonts-emoji
+        noto-fonts-color-emoji
         noto-fonts-monochrome-emoji
         symbola
         work-sans
@@ -109,7 +109,7 @@ in
         poppins-font
         source-serif
         spaceport-2006-font
-        ubuntu_font_family
+        ubuntu-classic
         unscii
         zx-spectrum-7-font
       ];

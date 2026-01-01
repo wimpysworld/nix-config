@@ -34,13 +34,13 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "obs-urlsource";
-  version = "0.3.7";
+  version = "0.4.0";
 
   src = fetchFromGitHub {
-    owner = "locaal-ai";
+    owner = "royshil";
     repo = "obs-urlsource";
     rev = version;
-    sha256 = "sha256-ZWwD8jJkL1rAUeanD4iChcgpnJaC5pPo36Ot36XOSx8=";
+    sha256 = "sha256-5eb1RYfnkOIuB+Z3xReILLUSmeFTUtyCI3l25rSLHi8=";
     fetchSubmodules = true;
   };
 
@@ -81,6 +81,7 @@ stdenv.mkDerivation rec {
     (lib.cmakeBool "USE_SYSTEM_CURL" true)
     (lib.cmakeBool "USE_SYSTEM_PUGIXML" true)
     (lib.cmakeBool "CMAKE_COMPILE_WARNING_AS_ERROR" false)
+    (lib.cmakeOptionType "string" "CMAKE_POLICY_VERSION_MINIMUM" "3.5")
     "-Wno-dev"
   ];
 

@@ -25,7 +25,7 @@ lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
       fuse-overlayfs
       lazydocker
       qemu
-      inputs.quickemu.packages.${pkgs.system}.default
+      quickemu
     ];
   };
 

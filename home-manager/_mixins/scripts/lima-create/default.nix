@@ -8,7 +8,7 @@ let
       coreutils
       gawk
       gnused
-      lima-bin
+      lima
       procps
     ];
     text = builtins.readFile ./${name}.sh;
