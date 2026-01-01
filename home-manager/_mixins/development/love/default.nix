@@ -19,6 +19,7 @@ lib.mkIf (lib.elem hostname installOn) {
       luajit
       lua-language-server
       stylua
+      tree-sitter-grammars.tree-sitter-lua
     ];
   };
   programs = {
@@ -31,6 +32,7 @@ lib.mkIf (lib.elem hostname installOn) {
           vscode-marketplace.ismoh-games.second-local-lua-debugger-vscode
           vscode-marketplace.johnnymorganz.stylua
           vscode-marketplace.pixelbyte-studios.pixelbyte-love2d
+          vscode-marketplace.slevesque.shader
           vscode-marketplace.yinfei.luahelper
         ];
       };

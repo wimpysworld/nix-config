@@ -235,13 +235,11 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.nico-castell.linux-desktop-file
             vscode-marketplace.pkief.material-product-icons
             vscode-marketplace.prince781.vala
-            vscode-marketplace.pollywoggames.pico8-ls
             vscode-marketplace.redhat.vscode-yaml
             vscode-marketplace.rogalmic.bash-debug
             vscode-marketplace.rust-lang.rust-analyzer
             vscode-marketplace.ryu1kn.partial-diff
             vscode-marketplace.sanjulaganepola.github-local-actions
-            vscode-marketplace.slevesque.shader
             vscode-marketplace.streetsidesoftware.code-spell-checker
             vscode-marketplace.svelte.svelte-vscode
             vscode-marketplace.tamasfe.even-better-toml
