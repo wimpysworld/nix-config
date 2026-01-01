@@ -12,9 +12,18 @@ let
       "${config.home.homeDirectory}/Library/Caches/sigstore/gitsign/cache.sock"
     else
       "${config.home.homeDirectory}/.cache/sigstore/gitsign/cache.sock";
+  precommitSetup = pkgs.writeShellApplication {
+    name = "pre-commit-setup";
+    runtimeInputs = with pkgs; [
+      nixpkgs-review
+      pre-commit
+    ];
+    text = builtins.readFile ./pre-commit-setup.sh;
+  };
   shellAliases = {
     gitso = "${pkgs.git}/bin/git --signoff";
   };
+
 in
 {
   catppuccin = {
@@ -31,6 +40,7 @@ in
       git-igitt # git log/graph
       gitsign # Sign Git commits and tags with Sigstore
       pre-commit # Git pre-commit hooks
+      precommitSetup
     ];
     sessionVariables = {
       GITSIGN_CONNECTOR_ID = "https://accounts.google.com";

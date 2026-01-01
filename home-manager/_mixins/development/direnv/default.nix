@@ -1,5 +1,7 @@
 {
   config,
+  lib,
+  pkgs,
   ...
 }:
 {
@@ -16,6 +18,13 @@
       enableZshIntegration = config.programs.zsh.enable;
       nix-direnv = {
         enable = true;
+      };
+    };
+    vscode = lib.mkIf config.programs.vscode.enable {
+      profiles.default = {
+        extensions = with pkgs; [
+          vscode-marketplace.mkhl.direnv
+        ];
       };
     };
   };

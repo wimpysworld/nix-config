@@ -5,9 +5,13 @@
 {
   imports = [
     ./development.nix
+    ./direnv # Modern Unix `env`
     ./claude-code
     ./defold
+    ./gh # Terminal GitHub client`
+    ./git # Terminal Git client
     ./gitkraken
+    ./jq # Terminal JSON processor
     ./love
     ./meld
     ./vscode

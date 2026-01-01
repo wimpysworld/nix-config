@@ -1,13 +1,11 @@
 {
   config,
   inputs,
-  isWorkstation,
   lib,
   pkgs,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux isDarwin;
   # https://github.com/numtide/nix-ai-tools
   aiPackages = [
     inputs.nix-ai-tools.packages.${pkgs.system}.crush
@@ -61,14 +59,6 @@ let
       docker system prune --all --volumes --force || true
     '';
   };
-  precommitSetup = pkgs.writeShellApplication {
-    name = "pre-commit-setup";
-    runtimeInputs = with pkgs; [
-      nixpkgs-review
-      pre-commit
-    ];
-    text = builtins.readFile ./pre-commit-setup.sh;
-  };
 in
 {
   home = {
@@ -83,7 +73,6 @@ in
       with pkgs;
       [
         dockerPurge
-        precommitSetup
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
@@ -104,12 +93,6 @@ in
         sopsFile = ../../../secrets/cg-repos.yaml;
         mode = "0644";
       };
-      #gh_token = {
-      #  sopsFile = ../../../secrets/github.yaml;
-      #};
-      #gh_read_only = {
-      #  sopsFile = ../../../secrets/github.yaml;
-      #};
     };
   };
 }

@@ -246,7 +246,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.jnoortheen.nix-ide
             vscode-marketplace.marp-team.marp-vscode
             vscode-marketplace.mechatroner.rainbow-csv
-            vscode-marketplace.mkhl.direnv
             vscode-marketplace.ms-python.debugpy
             vscode-marketplace.ms-python.python
             vscode-marketplace.ms-python.vscode-pylance

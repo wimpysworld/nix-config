@@ -40,15 +40,11 @@ in
     ./btop.nix # Modern Unix `htop`
     ./cava.nix # Terminal audio visualizer
     ./dircolors.nix # Terminal colors
-    ./direnv.nix # Modern Unix `env`
     ./eza.nix # Modern Unix `ls`
     ./fastfetch.nix # Modern Unix `neofetch`
     ./fd.nix # Modern Unix `find`
     ./fzf.nix # Terminal fuzzy finder
-    ./gh.nix # Terminal GitHub client`
-    ./git.nix # Terminal Git client
     ./gpg.nix # Terminal GPG
-    ./jq.nix # Terminal JSON processor
     ./micro.nix # Terminal text editor
     ./pueue.nix # Terminal task manager
     ./rclone.nix # Terminal cloud storage sync
