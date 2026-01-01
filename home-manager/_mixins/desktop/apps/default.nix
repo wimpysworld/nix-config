@@ -36,7 +36,6 @@ in
 {
   imports = [
     ./communications
-    ./development
     ./libreoffice
     ./live-streaming
     ./media-production

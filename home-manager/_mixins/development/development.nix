@@ -9,11 +9,6 @@
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
   # https://github.com/numtide/nix-ai-tools
-  claudePackage =
-    if isLinux then
-      inputs.nix-ai-tools.packages.${pkgs.system}.claude-code
-    else
-      pkgs.unstable.claude-code;
   aiPackages = [
     inputs.nix-ai-tools.packages.${pkgs.system}.crush
     inputs.nix-ai-tools.packages.${pkgs.system}.spec-kit
@@ -95,30 +90,6 @@ lib.mkIf isWorkstation {
         waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
       ]
       ++ aiPackages;
-  };
-
-  programs = {
-    claude-code = {
-      enable = true;
-      #commands = {
-      #  fix-issue = ./fips-compliance-source-code-analysis.md;
-      #};
-      mcpServers = {
-        context7 = {
-          type = "http";
-          url = "https://mcp.context7.com/mcp";
-        };
-        nixos = {
-          type = "stdio";
-          command = "mcp-nixos";
-        };
-        svelte = {
-          type = "http";
-          url = "https://mcp.svelte.dev/mcp";
-        };
-      };
-      package = claudePackage;
-    };
   };
 
   # https://dl.thalheim.io/

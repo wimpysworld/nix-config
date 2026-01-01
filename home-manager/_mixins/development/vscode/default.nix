@@ -213,7 +213,6 @@ lib.mkIf (lib.elem username installFor) {
           [
             vscode-marketplace.aaron-bond.better-comments
             vscode-marketplace.alefragnani.project-manager
-            vscode-marketplace.anthropic.claude-code
             vscode-marketplace.bmalehorn.shell-syntax
             vscode-marketplace.bmalehorn.vscode-fish
             vscode-marketplace.budparr.language-hugo-vscode
