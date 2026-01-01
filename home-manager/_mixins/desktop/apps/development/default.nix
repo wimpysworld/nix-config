@@ -90,6 +90,7 @@ lib.mkIf (lib.elem username installFor) {
     # Packages that are used by some of the extensions below
     packages = with pkgs; [
       bash-language-server
+      delve
       gitkraken
       gk-cli
       go
@@ -173,6 +174,7 @@ lib.mkIf (lib.elem username installFor) {
           "github.copilot.chat.agent.thinkingTool" = true;
           "github.copilot.chat.codesearch.enabled" = true;
           "githubPullRequests.pullBranch" = "never";
+          "gopls.ui.semanticTokens" = true;
           "markdown.preview.breaks" = true;
           "nix.enableLanguageServer" = true;
           "nix.serverPath" = "nil";
