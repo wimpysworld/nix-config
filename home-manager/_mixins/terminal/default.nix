@@ -8,7 +8,7 @@ let
   shellAliases = {
     banner = "${pkgs.figlet}/bin/figlet";
     banner-color = "${pkgs.figlet}/bin/figlet $argv | ${pkgs.dotacat}/bin/dotacat";
-    clock = if (isLinux) then ''${pkgs.tty-clock}/bin/tty-clock -B -c -C 4 -f "%a, %d %b"'' else "date";
+    clock = if isLinux then ''${pkgs.tty-clock}/bin/tty-clock -B -c -C 4 -f "%a, %d %b"'' else "date";
     dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
     dmesg = "${pkgs.util-linux}/bin/dmesg --human --color=always";
     egrep = "${pkgs.gnugrep}/bin/egrep --color=auto";
@@ -16,7 +16,7 @@ let
     glow = "${pkgs.frogmouth}/bin/frogmouth";
     grep = "${pkgs.gnugrep}/bin/grep --color=auto";
     hr = ''${pkgs.hr}/bin/hr "─━"'';
-    ip = if (isLinux) then "${pkgs.iproute2}/bin/ip --color --brief" else "ipconfig getifaddr en0";
+    ip = if isLinux then "${pkgs.iproute2}/bin/ip --color --brief" else "ipconfig getifaddr en0";
     lolcat = "${pkgs.dotacat}/bin/dotacat";
     lsusb = "${pkgs.cyme}/bin/cyme --headings";
     moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";

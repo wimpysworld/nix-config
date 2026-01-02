@@ -12,5 +12,5 @@ let
   };
 in
 {
-  home.packages = with pkgs; [ shellApplication ];
+  home.packages = [ shellApplication ];
 }

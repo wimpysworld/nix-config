@@ -75,7 +75,7 @@ let
   };
   iconThemeName = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
   iconThemePackage =
-    if (isLinux) then
+    if isLinux then
       pkgs.catppuccin-papirus-folders.override {
         flavor = config.catppuccin.flavor;
         accent = config.catppuccin.accent;
@@ -100,7 +100,7 @@ in
   };
 
   dconf = lib.mkIf isLinux {
-    settings = with lib.hm.gvariant; {
+    settings = {
       "org/gnome/desktop/interface" = {
         color-scheme = catppuccinPalette.preferShade;
         clock-format = clockFormat;

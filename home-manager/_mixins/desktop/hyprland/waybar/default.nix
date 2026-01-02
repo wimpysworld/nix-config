@@ -91,7 +91,7 @@ in
   };
 
   # Just use trayscale as a UI
-  dconf.settings = with lib.hm.gvariant; {
+  dconf.settings = {
     "dev/deedles/Trayscale" = {
       tray-icon = false;
     };

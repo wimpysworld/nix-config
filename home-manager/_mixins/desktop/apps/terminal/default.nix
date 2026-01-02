@@ -1,13 +1,12 @@
 {
   catppuccinPalette,
   config,
-  desktop,
   lib,
   pkgs,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux isDarwin;
+  inherit (pkgs.stdenv) isDarwin;
   # Helper function to get color as hex string
   getColor = colorName: catppuccinPalette.getColor colorName;
 in
@@ -18,7 +17,7 @@ in
   };
 
   # User specific dconf terminal-related settings
-  dconf.settings = with lib.hm.gvariant; {
+  dconf.settings = {
     "com/github/stunkymonkey/nautilus-open-any-terminal" = {
       terminal = "kitty";
     };
