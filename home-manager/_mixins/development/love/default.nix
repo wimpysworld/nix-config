@@ -29,16 +29,18 @@ lib.mkIf (lib.elem hostname installOn) {
           "[lua]"."editor.defaultFormatter" = "JohnnyMorganz.stylua";
         };
         extensions = with pkgs; [
+          vscode-marketplace.dtoplak.vscode-glsllint
           vscode-marketplace.ismoh-games.second-local-lua-debugger-vscode
           vscode-marketplace.johnnymorganz.stylua
           vscode-marketplace.pixelbyte-studios.pixelbyte-love2d
           vscode-marketplace.slevesque.shader
-          vscode-marketplace.yinfei.luahelper
+          vscode-marketplace.sumneko.lua
         ];
       };
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
+        "glsl"
         "lua"
       ];
     };
