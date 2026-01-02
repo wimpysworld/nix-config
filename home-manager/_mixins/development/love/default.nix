@@ -14,6 +14,7 @@ in
 lib.mkIf (lib.elem hostname installOn) {
   home = {
     packages = with pkgs; [
+      glslang
       love
       luaformatter
       luajit
