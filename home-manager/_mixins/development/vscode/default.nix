@@ -94,22 +94,21 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "editor.fontSize" = 16;
           "editor.fontFamily" = "FiraCode Nerd Font Mono";
           "editor.fontLigatures" = true;
-          # fontWeight:
-          # 300 - Light
-          # 400 - Regular
-          # 450 - Retina (only works with FiraCode-VF.ttf installed, see below when using separated font files)
-          # 500 - Medium
-          # 600 - Bold
           "editor.fontWeight" = "400";
+          "editor.formatOnPaste" = true;
+          "editor.formatOnSave" = true;
           "editor.guides.bracketPairs" = true;
           "editor.guides.bracketPairsHorizontal" = true;
           "editor.inlineSuggest.enabled" = true;
+          "editor.insertSpaces" = true;
           "editor.renderWhitespace" = "all";
           "editor.rulers" = [
             80
             88
           ];
           "editor.semanticHighlighting.enabled" = true;
+          "editor.tabSize" = 2;
+          "editor.wordWrap" = "on";
           "explorer.confirmDragAndDrop" = false;
           "extensions.ignoreRecommendations" = true;
           "[dockerfile]"."editor.quickSuggestions.strings" = true;
@@ -135,9 +134,9 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "telemetry.telemetryLevel" = "off";
           "terminal.integrated.fontSize" = 16;
           "terminal.integrated.fontFamily" = "FiraCode Nerd Font Mono";
-          "terminal.integrated.fontWeight" = "400";
-          "terminal.integrated.fontWeightBold" = "600";
-          "terminal.integrated.scrollback" = 10240;
+          "terminal.integrated.fontWeight" = 400;
+          "terminal.integrated.fontWeightBold" = 600;
+          "terminal.integrated.scrollback" = 16384;
           "terminal.integrated.copyOnSelection" = true;
           "terminal.integrated.cursorBlinking" = true;
           "update.mode" = "none";

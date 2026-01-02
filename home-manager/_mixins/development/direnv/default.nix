@@ -27,5 +27,10 @@
         ];
       };
     };
+    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+      userSettings = {
+        load_direnv = "shell_hook";
+      };
+    };
   };
 }

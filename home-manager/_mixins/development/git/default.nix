@@ -133,21 +133,23 @@ in
       };
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
-      agent = {
-        commit_message_model = {
-          provider = "anthropic";
-          model = "claude-haiku-4-5";
+      userSettings = {
+        agent = {
+          commit_message_model = {
+            provider = "copilot-chat";
+            model = "gpt-5-mini";
+          };
+        };
+        languages = {
+          "Git Commit" = {
+            soft_wrap = "editor_width";
+            preferred_line_length = 72;
+          };
         };
       };
       extensions = [
         "git-firefly"
       ];
-      languages = {
-        "Git Commit" = {
-          soft_wrap = "editor_width";
-          preferred_line_length = 72;
-        };
-      };
     };
     zsh = {
       inherit shellAliases;

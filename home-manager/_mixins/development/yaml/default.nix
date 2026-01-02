@@ -22,10 +22,25 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
       profiles.default = {
         userSettings = {
           "redhat.telemetry.enabled" = false;
+          "yaml.keyOrdering" = true;
         };
         extensions = with pkgs; [
           vscode-marketplace.redhat.vscode-yaml
         ];
+      };
+    };
+    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+      userSettings = {
+        lsp = {
+          yaml-language-server = {
+            settings = {
+              yaml = {
+                # Enforces alphabetical ordering of keys in maps
+                keyOrdering = true;
+              };
+            };
+          };
+        };
       };
     };
   };
