@@ -38,6 +38,15 @@ lib.mkIf (lib.elem username installFor) {
         "basher"
         "fish"
       ];
+      userSettings = {
+        languages = {
+          "Shell Script" = {
+            format_on_save = true;
+            tab_size = 2;
+            hard_tabs = false;
+          };
+        };
+      };
     };
   };
 }
