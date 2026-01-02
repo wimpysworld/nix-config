@@ -62,15 +62,13 @@ let
 in
 {
   home = {
-    packages =
-      with pkgs;
-      [
-        dockerPurge
-      ]
-      ++ lib.optionals pkgs.stdenv.isLinux [
-        waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
-      ]
-      ++ aiPackages;
+    packages = [
+      dockerPurge
+    ]
+    ++ lib.optionals pkgs.stdenv.isLinux [
+      waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
+    ]
+    ++ aiPackages;
   };
 
   # https://dl.thalheim.io/

@@ -3,7 +3,6 @@
   config,
   hostname,
   isInstall,
-  isISO,
   isWorkstation,
   inputs,
   lib,

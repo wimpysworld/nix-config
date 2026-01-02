@@ -14,11 +14,11 @@ lib.mkIf isDarwin {
         AutoFillFromAddressBook = false;
         AutoFillMiscellaneousForms = false;
         AutoFillPasswords = false;
-        # Prevent Safari from opening ‘safe’ files automatically after downloading
+        # Prevent Safari from opening 'safe' files automatically after downloading
         AutoOpenSafeDownloads = false;
         IncludeInternalDebugMenu = true;
         IncludeDevelopMenu = true;
-        # Privacy: don’t send search queries to Apple
+        # Privacy: don't send search queries to Apple
         SuppressSearchSuggestions = true;
         UniversalSearchEnabled = false;
         ShowFavoritesBar = false;
