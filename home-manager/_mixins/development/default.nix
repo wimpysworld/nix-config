@@ -18,6 +18,7 @@
     ./meld
     ./nix
     ./python
+    ./rust
     ./shell
     ./svelte
     ./typescript

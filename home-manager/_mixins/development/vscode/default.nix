@@ -194,11 +194,9 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.nefrob.vscode-just-syntax
             vscode-marketplace.nhoizey.gremlins
             vscode-marketplace.nico-castell.linux-desktop-file
-            vscode-marketplace.rust-lang.rust-analyzer
             vscode-marketplace.ryu1kn.partial-diff
             vscode-marketplace.sanjulaganepola.github-local-actions
             vscode-marketplace.streetsidesoftware.code-spell-checker
-            vscode-marketplace.tamasfe.even-better-toml
             vscode-marketplace.twxs.cmake
             vscode-marketplace.tobiashochguertel.just-formatter
             vscode-marketplace.yzhang.markdown-all-in-one
