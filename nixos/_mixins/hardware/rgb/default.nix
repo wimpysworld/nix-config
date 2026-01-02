@@ -55,7 +55,7 @@ lib.mkIf isInstall {
     hardware.openrgb = lib.mkIf (builtins.hasAttr hostname hostRGB) {
       enable = true;
       motherboard = if builtins.hasAttr hostname hostRGB then hostRGB.${hostname} else null;
-      package = pkgs.unstable.openrgb-with-all-plugins;
+      package = pkgs.openrgb-with-all-plugins;
     };
   };
 }

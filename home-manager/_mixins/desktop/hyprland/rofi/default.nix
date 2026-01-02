@@ -34,7 +34,7 @@ in
   programs = {
     rofi = {
       enable = true;
-      package = pkgs.unstable.rofi;
+      package = pkgs.rofi;
     };
   };
 

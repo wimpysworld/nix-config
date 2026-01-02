@@ -60,7 +60,7 @@ let
     }
   );
   gtkColloidThemeName = "Colloid${themeAccent}${catppuccinPalette.themeShade}-Catppuccin";
-  gtkColloidThemePackage = pkgs.unstable.colloid-gtk-theme.override {
+  gtkColloidThemePackage = pkgs.colloid-gtk-theme.override {
     colorVariants = [
       "standard"
       "light"
@@ -74,10 +74,14 @@ let
     tweaks = [ "catppuccin" ];
   };
   iconThemeName = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
-  iconThemePackage = if (isLinux) then pkgs.catppuccin-papirus-folders.override {
-    flavor = config.catppuccin.flavor;
-    accent = config.catppuccin.accent;
-  } else null;
+  iconThemePackage =
+    if (isLinux) then
+      pkgs.catppuccin-papirus-folders.override {
+        flavor = config.catppuccin.flavor;
+        accent = config.catppuccin.accent;
+      }
+    else
+      null;
 in
 {
   # import the DE specific configuration and any user specific desktop configuration
@@ -96,37 +100,37 @@ in
   };
 
   dconf = lib.mkIf isLinux {
-   settings = with lib.hm.gvariant; {
-    "org/gnome/desktop/interface" = {
-      color-scheme = catppuccinPalette.preferShade;
-      clock-format = clockFormat;
-      cursor-size = cursorSize;
-      cursor-theme = config.home.pointerCursor.name;
-      document-font-name = config.gtk.font.name or "Work Sans 13";
-      gtk-enable-primary-paste = true;
-      gtk-theme = config.gtk.theme.name;
-      icon-theme = config.gtk.iconTheme.name;
-      monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
-      text-scaling-factor = 1.0;
-    };
+    settings = with lib.hm.gvariant; {
+      "org/gnome/desktop/interface" = {
+        color-scheme = catppuccinPalette.preferShade;
+        clock-format = clockFormat;
+        cursor-size = cursorSize;
+        cursor-theme = config.home.pointerCursor.name;
+        document-font-name = config.gtk.font.name or "Work Sans 13";
+        gtk-enable-primary-paste = true;
+        gtk-theme = config.gtk.theme.name;
+        icon-theme = config.gtk.iconTheme.name;
+        monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
+        text-scaling-factor = 1.0;
+      };
 
-    "org/gnome/desktop/sound" = {
-      theme-name = "freedesktop";
-    };
+      "org/gnome/desktop/sound" = {
+        theme-name = "freedesktop";
+      };
 
-    "org/gnome/desktop/wm/preferences" = {
-      button-layout = "${buttonLayout}";
-      theme = config.gtk.theme.name;
-    };
+      "org/gnome/desktop/wm/preferences" = {
+        button-layout = "${buttonLayout}";
+        theme = config.gtk.theme.name;
+      };
 
-    "org/gtk/gtk4/Settings/FileChooser" = {
-      clock-format = clockFormat;
-    };
+      "org/gtk/gtk4/Settings/FileChooser" = {
+        clock-format = clockFormat;
+      };
 
-    "org/gtk/Settings/FileChooser" = {
-      clock-format = clockFormat;
+      "org/gtk/Settings/FileChooser" = {
+        clock-format = clockFormat;
+      };
     };
-   };
   };
 
   # Authrorize X11 access in Distrobox
