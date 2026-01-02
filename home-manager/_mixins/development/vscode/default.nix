@@ -192,14 +192,12 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.mechatroner.rainbow-csv
             vscode-marketplace.ms-vscode.cmake-tools
             vscode-extensions.ms-vscode-remote.vscode-remote-extensionpack
-            vscode-marketplace.nefrob.vscode-just-syntax
             vscode-marketplace.nhoizey.gremlins
             vscode-marketplace.nico-castell.linux-desktop-file
             vscode-marketplace.ryu1kn.partial-diff
             vscode-marketplace.sanjulaganepola.github-local-actions
             vscode-marketplace.streetsidesoftware.code-spell-checker
             vscode-marketplace.twxs.cmake
-            vscode-marketplace.tobiashochguertel.just-formatter
             vscode-marketplace.yzhang.markdown-all-in-one
           ]
           ++ lib.optionals isLinux [

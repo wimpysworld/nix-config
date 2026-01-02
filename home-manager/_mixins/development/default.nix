@@ -14,6 +14,7 @@
     ./gitkraken
     ./go
     ./jq # Terminal JSON processor
+    ./just
     ./love
     ./meld
     ./nix
