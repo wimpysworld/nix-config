@@ -167,7 +167,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.jeff-hykin.better-csv-syntax
             vscode-marketplace.jeff-hykin.better-dockerfile-syntax
             vscode-marketplace.jeff-hykin.polacode-2019
-            vscode-marketplace.jeroen-meijer.pubspec-assist
             vscode-marketplace.mechatroner.rainbow-csv
             vscode-marketplace.ms-vscode.cmake-tools
             vscode-extensions.ms-vscode-remote.vscode-remote-extensionpack

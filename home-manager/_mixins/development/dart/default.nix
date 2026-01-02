@@ -33,6 +33,7 @@ lib.mkIf (lib.elem username installFor) {
         extensions = with pkgs; [
           vscode-marketplace.dart-code.dart-code
           vscode-marketplace.dart-code.flutter
+          vscode-marketplace.jeroen-meijer.pubspec-assist
         ];
       };
     };
