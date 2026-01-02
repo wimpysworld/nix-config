@@ -84,13 +84,11 @@ in
         jpegoptim # Terminal JPEG optimizer
         lima # Terminal VM manager
         magic-wormhole-rs # Terminal file transfer
-        marp-cli # Terminal Markdown presenter
         mprocs # Terminal parallel process runner
         mtr # Modern Unix `traceroute`
         netdiscover # Modern Unix `arp`
         optipng # Terminal PNG optimizer
         pciutils # Terminal PCI info
-        presenterm # Terminal Markdown presenter
         procs # Modern Unix `ps`
         rsync # Traditional `rsync`
         rustmission # Terminal Transmission Torrent client

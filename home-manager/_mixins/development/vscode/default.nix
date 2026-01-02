@@ -118,7 +118,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "github.copilot.chat.agent.thinkingTool" = true;
           "github.copilot.chat.codesearch.enabled" = true;
           "githubPullRequests.pullBranch" = "never";
-          "markdown.preview.breaks" = true;
           "partialDiff.enableTelemetry" = false;
           "projectManager.git" = {
             baseFolders = [
@@ -152,12 +151,10 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           with pkgs;
           [
             vscode-marketplace.alefragnani.project-manager
-            vscode-marketplace.budparr.language-hugo-vscode
             vscode-marketplace.catppuccin.catppuccin-vsc-icons
             vscode-marketplace.coolbear.systemd-unit-file
             vscode-marketplace.dotjoshjohnson.xml
             vscode-marketplace.editorconfig.editorconfig
-            vscode-marketplace.eliostruyf.vscode-front-matter
             vscode-marketplace.esbenp.prettier-vscode
             vscode-marketplace.fill-labs.dependi
             vscode-marketplace.github.copilot
@@ -171,7 +168,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.jeff-hykin.better-dockerfile-syntax
             vscode-marketplace.jeff-hykin.polacode-2019
             vscode-marketplace.jeroen-meijer.pubspec-assist
-            vscode-marketplace.marp-team.marp-vscode
             vscode-marketplace.mechatroner.rainbow-csv
             vscode-marketplace.ms-vscode.cmake-tools
             vscode-extensions.ms-vscode-remote.vscode-remote-extensionpack
@@ -181,7 +177,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.sanjulaganepola.github-local-actions
             vscode-marketplace.streetsidesoftware.code-spell-checker
             vscode-marketplace.twxs.cmake
-            vscode-marketplace.yzhang.markdown-all-in-one
           ]
           ++ lib.optionals isLinux [
             vscode-extensions.ms-vscode.cpptools-extension-pack

@@ -16,6 +16,7 @@
     ./jq # Terminal JSON processor
     ./just
     ./love
+    ./markdown
     ./meld
     ./nix
     ./python
