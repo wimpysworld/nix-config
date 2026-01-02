@@ -19,8 +19,10 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
     zed-editor = {
       enable = true;
       extensions = [
+        "desktop"
         "dockerfile"
         "github-actions"
+        "ini"
         "make"
         "neocmake"
         "rainbow-csv"
