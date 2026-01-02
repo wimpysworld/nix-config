@@ -155,12 +155,13 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "terminal.integrated.copyOnSelection" = true;
           "terminal.integrated.cursorBlinking" = true;
           "update.mode" = "none";
-          "vsicons.dontShowNewVersionMessage" = true;
           "window.controlsStyle" =
             if config.wayland.windowManager.hyprland.enable then "hidden" else "native";
+          "workbench.colorTheme" = "Catppuccin Mocha";
+          "workbench.editor.empty.hint" = "hidden";
+          "workbench.iconTheme" = "catppuccin-mocha";
           "workbench.tree.indent" = 20;
           "workbench.startupEditor" = "none";
-          "workbench.editor.empty.hint" = "hidden";
         };
         extensions =
           with pkgs;
@@ -174,7 +175,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.editorconfig.editorconfig
             vscode-marketplace.eliostruyf.vscode-front-matter
             vscode-marketplace.esbenp.prettier-vscode
-            vscode-marketplace.evan-buss.font-switcher
             vscode-marketplace.fill-labs.dependi
             vscode-marketplace.github.copilot
             vscode-marketplace.github.copilot-chat
@@ -190,13 +190,10 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.marp-team.marp-vscode
             vscode-marketplace.mechatroner.rainbow-csv
             vscode-marketplace.ms-vscode.cmake-tools
-            vscode-marketplace.ms-vscode.hexeditor
             vscode-extensions.ms-vscode-remote.vscode-remote-extensionpack
             vscode-marketplace.nefrob.vscode-just-syntax
             vscode-marketplace.nhoizey.gremlins
             vscode-marketplace.nico-castell.linux-desktop-file
-            vscode-marketplace.pkief.material-product-icons
-            vscode-marketplace.prince781.vala
             vscode-marketplace.rust-lang.rust-analyzer
             vscode-marketplace.ryu1kn.partial-diff
             vscode-marketplace.sanjulaganepola.github-local-actions
@@ -204,9 +201,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.tamasfe.even-better-toml
             vscode-marketplace.twxs.cmake
             vscode-marketplace.tobiashochguertel.just-formatter
-            vscode-marketplace.unifiedjs.vscode-mdx
-            vscode-marketplace.vscode-icons-team.vscode-icons
-            vscode-marketplace.xyc.vscode-mdx-preview
             vscode-marketplace.yzhang.markdown-all-in-one
           ]
           ++ lib.optionals isLinux [
