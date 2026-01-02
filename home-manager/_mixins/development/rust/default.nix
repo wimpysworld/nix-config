@@ -1,7 +1,5 @@
 {
   config,
-  inputs,
-  isWorkstation,
   lib,
   pkgs,
   username,
@@ -10,7 +8,7 @@
 let
   installFor = [ "martin" ];
 in
-lib.mkIf (lib.elem username installFor && isWorkstation) {
+lib.mkIf (lib.elem username installFor) {
   home = {
     packages = with pkgs; [
       rust-analyzer

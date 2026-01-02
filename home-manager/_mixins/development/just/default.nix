@@ -1,7 +1,5 @@
 {
   config,
-  inputs,
-  isWorkstation,
   lib,
   pkgs,
   username,
