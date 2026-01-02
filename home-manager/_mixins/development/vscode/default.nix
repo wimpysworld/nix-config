@@ -167,7 +167,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
         extensions =
           with pkgs;
           [
-            vscode-marketplace.aaron-bond.better-comments
             vscode-marketplace.alefragnani.project-manager
             vscode-marketplace.budparr.language-hugo-vscode
             vscode-marketplace.catppuccin.catppuccin-vsc-icons
@@ -182,7 +181,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.github.vscode-github-actions
             vscode-marketplace.github.vscode-pull-request-github
             vscode-marketplace.griimick.vhs
-            #vscode-marketplace.hashicorp.terraform
+            vscode-marketplace.gruntfuggly.todo-tree
             vscode-marketplace.jdemille.debian-control-vscode
             vscode-marketplace.jeff-hykin.better-csv-syntax
             vscode-marketplace.jeff-hykin.better-dockerfile-syntax
