@@ -12,11 +12,19 @@ let
 in
 lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
   catppuccin.zed.enable = config.programs.zed-editor.enable;
+  home.packages = with pkgs; [
+    neocmakelsp
+  ];
   programs = {
     zed-editor = {
       enable = true;
       extensions = [
+        "dockerfile"
         "github-actions"
+        "make"
+        "neocmake"
+        "rainbow-csv"
+        "xml"
       ];
       package = pkgs.unstable.zed-editor;
       userSettings = {
