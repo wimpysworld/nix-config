@@ -28,6 +28,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
+        "cargotom"
         "tombi"
         "toml"
       ];
