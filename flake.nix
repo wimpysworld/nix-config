@@ -264,9 +264,9 @@
                 just
                 micro
                 nh
-                nil
+                nixd
                 nixfmt-tree
-                nixpkgs-fmt
+                nixfmt-rfc-style
                 nix-output-monitor
                 nvd
                 sops

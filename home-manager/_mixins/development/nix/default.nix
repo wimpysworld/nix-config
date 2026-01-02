@@ -12,7 +12,8 @@ lib.mkIf (lib.elem username installFor) {
   home = {
     packages = with pkgs; [
       mcp-nixos
-      nil
+      nixd
+      nix-diff
       nixfmt-rfc-style
     ];
   };
@@ -25,11 +26,12 @@ lib.mkIf (lib.elem username installFor) {
           "[nix]"."editor.formatOnSave" = true;
           "[nix]"."editor.tabSize" = 2;
           "nix.enableLanguageServer" = true;
-          "nix.serverPath" = "nil";
+          "nix.formatterPath" = "nixfmt";
+          "nix.serverPath" = "${pkgs.nixd}/bin/nixd";
           "nix.serverSettings" = {
-            "nil" = {
+            "nixd" = {
               "formatting" = {
-                "command" = [ "nixfmt" ];
+                "command" = [ "${pkgs.nixfmt-rfc-style}/bin/nixfmt" ];
               };
             };
           };
@@ -49,7 +51,7 @@ lib.mkIf (lib.elem username installFor) {
           "Nix" = {
             "formatter" = {
               "external" = {
-                "command" = "nixfmt";
+                "command" = "${pkgs.nixfmt-rfc-style}/bin/nixfmt";
                 "arguments" = [
                   "--quiet"
                   "--"
@@ -57,13 +59,12 @@ lib.mkIf (lib.elem username installFor) {
               };
             };
             "language_servers" = [
-              "nil"
-              "!nixd"
+              "${pkgs.nixd}/bin/nixd"
             ];
           };
         };
         "lsp" = {
-          "nil" = {
+          "nixd" = {
             "settings" = {
               "diagnostics" = {
                 "ignored" = [ "unused_binding" ];
