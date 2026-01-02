@@ -2,9 +2,11 @@
   config,
   lib,
   pkgs,
+  username,
   ...
 }:
 let
+  inherit (pkgs.stdenv) isLinux isDarwin;
   gitsignCredentialCache =
     if pkgs.stdenv.isLinux then
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
@@ -23,7 +25,13 @@ let
   shellAliases = {
     gitso = "${pkgs.git}/bin/git --signoff";
   };
-
+  vscodeUserDir =
+    if isLinux then
+      "${config.xdg.configHome}/Code/User"
+    else if isDarwin then
+      "/Users/${username}/Library/Application Support/Code/User"
+    else
+      throw "Unsupported platform";
 in
 {
   catppuccin = {
@@ -111,21 +119,11 @@ in
       profiles.default = {
         userSettings = {
           "git.openRepositoryInParentFolders" = "always";
-          "github.copilot.chat.commitMessageGeneration.instructions.text" = ''
-            # Git Commit Message Generator
-
-            Write a conventional commit message summarising the final outcome of what we've just been working on, focus on the staged changes in the git repository if there are any.
-
-            Please create a commit message that:
-            - Follows Conventional Commits 1.0.0 specification exactly
-            - Uses appropriate type (feat, fix, build, chore, ci, docs, perf, refactor, etc.)
-            - Includes proper scope if applicable
-            - Has clear, imperative mood description under 72 characters
-            - Includes body with bullet points if needed
-            - Adds footers for breaking changes or issue references if relevant
-
-            Output only the commit message, ready for `git commit -m`.
-          '';
+          "github.copilot.chat.commitMessageGeneration.instructions" = [
+            {
+              file = "${vscodeUserDir}/prompts/create-conventional-commit.prompt.md";
+            }
+          ];
         };
         extensions = with pkgs; [
           vscode-marketplace.codezombiech.gitignore

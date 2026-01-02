@@ -21,7 +21,7 @@ lib.mkIf (lib.elem username installFor) {
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {
-          "shellcheck.run" = "onSave";
+          "shellformat.path" = "${pkgs.shfmt}/bin/shfmt";
           "shellformat.useEditorConfig" = true;
         };
         extensions = with pkgs; [

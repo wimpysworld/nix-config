@@ -25,6 +25,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
 
   catppuccin = {
     vscode.profiles.default.enable = config.programs.vscode.enable;
+    vscode.profiles.default.icons.enable = config.programs.vscode.enable;
   };
 
   home = {
@@ -80,22 +81,27 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
         enableExtensionUpdateCheck = false;
         enableUpdateCheck = false;
         userSettings = {
-          # Set to `true` to disable folding arrows next to folder icons.
-          "catppuccin-icons.hidesExplorerArrows" = false;
-          # Set to `false` to only use the default folder icon.
-          "catppuccin-icons.specificFolders" = true;
-          # Set to `true` to only use the `text` fill color for all icons.
-          "catppuccin-icons.monochrome" = false;
+          "catppuccin-icons.hidesExplorerArrows" = false; # Set to `true` to disable folding arrows next to folder icons.
+          "catppuccin-icons.specificFolders" = true; # Set to `false` to only use the default folder icon.
+          "catppuccin-icons.monochrome" = false; # Set to `true` to only use the `text` fill color for all icons.
+          "chat.checkpoints.showFileChanges" = true;
+          "chat.edits2.enabled" = true;
+          "chat.editor.fontFamily" = "FiraCode Nerd Font Mono";
+          "chat.editor.fontSize" = 16;
+          "chat.fontFamily" = "Work Sans";
+          "chat.fontSize" = 16;
+          "inlineChat.enableV2" = true;
+          "chat.mcp.assisted.nuget.enabled" = false;
           "chat.mcp.autostart" = "newAndOutdated";
-          "chat.mcp.discovery.enabled" = true;
-          "chat.mcp.enabled" = true;
+          "chat.mcp.gallery.enabled" = true;
+          "chat.tools.terminal.blockDetectedFileWrites" = "never";
           "cSpell.diagnosticLevel" = "Hint";
           "editor.bracketPairColorization.independentColorPoolPerBracketType" = true;
           "editor.cursorSmoothCaretAnimation" = "on";
           "editor.fontSize" = 16;
           "editor.fontFamily" = "FiraCode Nerd Font Mono";
           "editor.fontLigatures" = true;
-          "editor.fontWeight" = "400";
+          "editor.fontWeight" = 400;
           "editor.formatOnPaste" = true;
           "editor.formatOnSave" = true;
           "editor.guides.bracketPairs" = true;
@@ -112,25 +118,16 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "editor.semanticHighlighting.enabled" = true;
           "editor.tabSize" = 2;
           "editor.wordWrap" = "on";
+          "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
           "explorer.confirmDragAndDrop" = false;
           "extensions.ignoreRecommendations" = true;
-          "[dockerfile]"."editor.quickSuggestions.strings" = true;
-          "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
           "files.insertFinalNewline" = true;
           "files.trimTrailingWhitespace" = true;
-          "github.copilot.chat.agent.thinkingTool" = true;
+          "github.copilot.chat.anthropic.thinking.enabled" = true;
           "github.copilot.chat.codesearch.enabled" = true;
           "partialDiff.enableTelemetry" = false;
-          "projectManager.git" = {
-            baseFolders = [
-              "~/Chainguard"
-              "~/Development"
-              "~/Websites"
-              "~/Zero"
-            ];
-            maxDepthRecursion = 5;
-          };
           "security.workspace.trust.untrustedFiles" = "open";
+          "telemetry.editStats.enabled" = false;
           "telemetry.feedback.enabled" = false;
           "telemetry.telemetryLevel" = "off";
           "terminal.integrated.fontSize" = 16;
@@ -152,8 +149,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
         extensions =
           with pkgs;
           [
-            vscode-marketplace.alefragnani.project-manager
-            vscode-marketplace.catppuccin.catppuccin-vsc-icons
             vscode-marketplace.coolbear.systemd-unit-file
             vscode-marketplace.dotjoshjohnson.xml
             vscode-marketplace.editorconfig.editorconfig

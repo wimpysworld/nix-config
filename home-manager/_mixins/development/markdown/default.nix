@@ -27,9 +27,6 @@ lib.mkIf (lib.elem username installFor) {
             scminput = true;
           };
           "markdown.preview.breaks" = true;
-          "[markdown].editor.defaultFormatter" = "yzhang.markdown-all-in-one";
-          "[markdown].editor.quickSuggestions" = true;
-          "rumdl.format.autoFixOnSave" = true;
           "rumdl.server.path" = "${pkgs.rumdl}/bin/rumdl";
         };
         extensions = with pkgs; [

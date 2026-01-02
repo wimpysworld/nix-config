@@ -30,7 +30,8 @@ lib.mkIf (lib.elem username installFor) {
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {
-          "gopls.ui.semanticTokens" = true;
+          "go.gopath" = "${config.home.homeDirectory}/.local/go";
+          "go.survey.prompt" = false;
         };
         extensions = with pkgs; [
           vscode-marketplace.golang.go
