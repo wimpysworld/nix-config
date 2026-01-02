@@ -91,6 +91,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "chat.mcp.enabled" = true;
           "cSpell.diagnosticLevel" = "Hint";
           "editor.bracketPairColorization.independentColorPoolPerBracketType" = true;
+          "editor.cursorSmoothCaretAnimation" = "on";
           "editor.fontSize" = 16;
           "editor.fontFamily" = "FiraCode Nerd Font Mono";
           "editor.fontLigatures" = true;
@@ -99,6 +100,8 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "editor.formatOnSave" = true;
           "editor.guides.bracketPairs" = true;
           "editor.guides.bracketPairsHorizontal" = true;
+          "editor.guides.highlightActiveBracketPair" = true;
+          "editor.indentSize" = 2;
           "editor.inlineSuggest.enabled" = true;
           "editor.insertSpaces" = true;
           "editor.renderWhitespace" = "all";
