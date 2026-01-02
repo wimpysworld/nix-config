@@ -1,4 +1,5 @@
 {
+  inputs,
   lib,
   pkgs,
   username,
@@ -7,19 +8,42 @@
 let
   installFor = [
     "martin"
-    "martin.wimpress"
   ];
   inherit (pkgs.stdenv) isLinux isDarwin;
+  waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
+    inherit pkgs;
+    nameMatch = [
+      {
+        case = "^https?://accounts.google.com";
+        command = "wavebox";
+      }
+      {
+        case = "^https?://github.com/login/device";
+        command = "wavebox";
+      }
+      {
+        case = "^https?://auth.chainguard.dev/activate";
+        command = "wavebox";
+      }
+      {
+        case = "^https?://issuer.enforce.dev";
+        command = "wavebox";
+      }
+    ];
+  };
 in
 {
   home = {
     packages =
       with pkgs;
-      lib.optionals (isDarwin) [
+      lib.optionals isDarwin [
         wavebox
       ]
-      ++ lib.optionals (isLinux) [
+      ++ lib.optionals isLinux [
         mullvad-browser
+      ]
+      ++ lib.optionals pkgs.stdenv.isLinux [
+        waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
       ];
   };
 

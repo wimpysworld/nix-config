@@ -1,7 +1,6 @@
 {
   config,
   inputs,
-  lib,
   pkgs,
   ...
 }:
@@ -11,27 +10,6 @@ let
     inputs.nix-ai-tools.packages.${pkgs.system}.crush
     inputs.nix-ai-tools.packages.${pkgs.system}.spec-kit
   ];
-  waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
-    inherit pkgs;
-    nameMatch = [
-      {
-        case = "^https?://accounts.google.com";
-        command = "wavebox";
-      }
-      {
-        case = "^https?://github.com/login/device";
-        command = "wavebox";
-      }
-      {
-        case = "^https?://auth.chainguard.dev/activate";
-        command = "wavebox";
-      }
-      {
-        case = "^https?://issuer.enforce.dev";
-        command = "wavebox";
-      }
-    ];
-  };
   dockerPurge = pkgs.writeShellApplication {
     name = "docker-purge";
     runtimeInputs = with pkgs; [
@@ -64,9 +42,6 @@ in
   home = {
     packages = [
       dockerPurge
-    ]
-    ++ lib.optionals pkgs.stdenv.isLinux [
-      waveboxXdgOpen # Integrate Wavebox with Slack, GitHub, Auth, etc.
     ]
     ++ aiPackages;
   };
