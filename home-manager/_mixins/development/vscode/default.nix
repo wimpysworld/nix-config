@@ -67,8 +67,9 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     };
     # Packages that are used by some of the extensions below
     packages = with pkgs; [
-      prettier
+      lldb
       nodejs_24
+      prettier
     ];
   };
 

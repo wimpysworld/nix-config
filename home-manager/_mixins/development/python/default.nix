@@ -38,7 +38,7 @@ lib.mkIf (lib.elem username installFor) {
         "languages" = {
           "Python" = {
             "language_servers" = [
-              "basedpyright"
+              "${pkgs.basedpyright}/bin/basedpyright"
               "!ty"
             ];
           };
