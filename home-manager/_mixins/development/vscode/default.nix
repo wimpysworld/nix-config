@@ -120,7 +120,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "files.trimTrailingWhitespace" = true;
           "github.copilot.chat.agent.thinkingTool" = true;
           "github.copilot.chat.codesearch.enabled" = true;
-          "githubPullRequests.pullBranch" = "never";
           "partialDiff.enableTelemetry" = false;
           "projectManager.git" = {
             baseFolders = [
@@ -162,8 +161,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.fill-labs.dependi
             vscode-marketplace.github.copilot
             vscode-marketplace.github.copilot-chat
-            vscode-marketplace.github.vscode-github-actions
-            vscode-marketplace.github.vscode-pull-request-github
             vscode-marketplace.griimick.vhs
             vscode-marketplace.gruntfuggly.todo-tree
             vscode-marketplace.jdemille.debian-control-vscode
@@ -176,7 +173,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.nhoizey.gremlins
             vscode-marketplace.nico-castell.linux-desktop-file
             vscode-marketplace.ryu1kn.partial-diff
-            vscode-marketplace.sanjulaganepola.github-local-actions
             vscode-marketplace.streetsidesoftware.code-spell-checker
             vscode-marketplace.twxs.cmake
           ]

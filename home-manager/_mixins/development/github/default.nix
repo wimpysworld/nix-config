@@ -24,6 +24,7 @@ in
 
   home = {
     packages = with pkgs; [
+      act # Run GitHub Actions locally
       ghbackup # Backup GitHub repositories
       ghorg # Clone all repositories in a GitHub organization
     ];
@@ -108,6 +109,18 @@ in
         prompt = "enabled";
       };
     };
+    vscode = lib.mkIf config.programs.vscode.enable {
+      profiles.default = {
+        userSettings = {
+          "githubPullRequests.pullBranch" = "never";
+        };
+        extensions = with pkgs; [
+          vscode-marketplace.github.vscode-github-actions
+          vscode-marketplace.github.vscode-pull-request-github
+          vscode-marketplace.sanjulaganepola.github-local-actions
+        ];
+      };
+    };
     zsh = {
       inherit shellAliases;
       initContent =
@@ -147,6 +160,15 @@ in
           zshConfigEarly
           zshConfig
         ];
+    };
+  };
+  sops = {
+    secrets = {
+      act-env = {
+        path = "${config.home.homeDirectory}/.config/act/secrets";
+        sopsFile = ../../../../secrets/act.yaml;
+        mode = "0660";
+      };
     };
   };
 }

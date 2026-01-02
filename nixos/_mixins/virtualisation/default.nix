@@ -15,7 +15,6 @@ lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
   environment = {
     # https://wiki.nixos.org/wiki/Docker
     systemPackages = with pkgs; [
-      act
       distrobox
       docker-color-output
       docker-compose

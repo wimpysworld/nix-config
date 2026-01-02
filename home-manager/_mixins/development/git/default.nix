@@ -156,6 +156,16 @@ in
     };
   };
 
+  sops = {
+    secrets = {
+      cg-repos = {
+        path = "${config.home.homeDirectory}/.config/cg-repos";
+        sopsFile = ../../../../secrets/cg-repos.yaml;
+        mode = "0644";
+      };
+    };
+  };
+
   systemd.user = lib.mkIf pkgs.stdenv.isLinux {
     services.gitsign-credential-cache = {
       Unit = {
