@@ -43,7 +43,7 @@ in
     ./github
     ./gitkraken
     ./go
-    ./jq
+    ./json
     ./just
     ./love
     ./markdown
