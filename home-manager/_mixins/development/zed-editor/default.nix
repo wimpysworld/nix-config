@@ -1,5 +1,6 @@
 {
   config,
+  hostname,
   isWorkstation,
   lib,
   pkgs,
@@ -35,11 +36,16 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
         "vhs"
         "xml"
       ];
+      installRemoteServer = true;
       package = pkgs.unstable.zed-editor;
       userSettings = {
         agent = {
-          message_editor_min_lines = 5;
+          enable_feedback = false;
+          dock = if hostname == "vader" then "bottom" else "right";
+          message_editor_min_lines = 12;
         };
+        agent_buffer_font_size = fontSize;
+        agent_ui_font_size = fontSize;
         auto_update = false;
         base_keymap = "VSCode";
         buffer_font_size = fontSize;
@@ -49,6 +55,9 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
         cursor_shape = "block";
         hard_tabs = false;
         hour_format = "hour24";
+        inlay_hints = {
+          enabled = true;
+        };
         insert_spaces = true;
         lsp_document_colors = "background";
         metrics = false;
@@ -63,9 +72,9 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
           path = "${pkgs.nodejs_24}/bin/node";
           npm_path = "${pkgs.nodejs_24}/bin/npm";
         };
-        session = {
-          trust_all_worktrees = true;
-        };
+        #session = {
+        #  trust_all_worktrees = true;
+        #};
         show_whitespaces = "all";
         tab_size = 2;
         tabs = {
@@ -76,8 +85,8 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
           show_diagnostics = "all";
         };
         telemetry = {
-          metrics = false;
           diagnostics = false;
+          metrics = false;
         };
         terminal = {
           blinking = "on";
@@ -93,7 +102,7 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
           show_project_items = true;
           show_onboarding_banner = true;
           show_user_picture = true;
-          show_user_menu = true;
+          #show_user_menu = true;
           show_sign_in = true;
           show_menus = true;
         };
