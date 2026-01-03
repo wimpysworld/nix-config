@@ -86,7 +86,7 @@
   # be accessible through 'pkgs.unstable'
   unstablePackages = final: _prev: {
     unstable = import inputs.nixpkgs-unstable {
-      inherit (final) system;
+      system = final.stdenv.hostPlatform.system;
       config.allowUnfree = true;
       overlays = [
         # Apply the same rofi-unwrapped modification to unstable packages

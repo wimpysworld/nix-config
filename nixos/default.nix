@@ -42,10 +42,10 @@
       emulatedSystems = [
         "riscv64-linux"
       ]
-      ++ lib.optionals (pkgs.system == "x86_64-linux") [
+      ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "x86_64-linux") [
         "aarch64-linux"
       ]
-      ++ lib.optionals (pkgs.system == "aarch64-linux") [
+      ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "aarch64-linux") [
         "x86_64-linux"
       ];
     };
@@ -80,8 +80,8 @@
     systemPackages =
       with pkgs;
       [
-        inputs.determinate.packages.${pkgs.system}.default
-        inputs.fh.packages.${pkgs.system}.default
+        inputs.determinate.packages.${pkgs.stdenv.hostPlatform.system}.default
+        inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
         git
         just
         micro
@@ -89,7 +89,7 @@
         sops
       ]
       ++ lib.optionals isInstall [
-        inputs.nixos-needsreboot.packages.${pkgs.system}.default
+        inputs.nixos-needsreboot.packages.${pkgs.stdenv.hostPlatform.system}.default
         nvd
         nvme-cli
         rsync
@@ -255,7 +255,7 @@
       nixos-needsreboot = lib.mkIf (isInstall) {
         supportsDryActivation = true;
         text = "${
-          lib.getExe inputs.nixos-needsreboot.packages.${pkgs.system}.default
+          lib.getExe inputs.nixos-needsreboot.packages.${pkgs.stdenv.hostPlatform.system}.default
         } \"$systemConfig\" || true";
       };
     };

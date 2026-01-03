@@ -60,7 +60,7 @@ in
   ];
   home = {
     packages = with pkgs; [
-      inputs.nix-ai-tools.packages.${pkgs.system}.crush
+      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.crush
       dconf2nix # Nix code from Dconf files
       dockerPurge
       tokei # Modern Unix `wc` for code

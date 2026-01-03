@@ -58,7 +58,7 @@ lib.mkIf (lib.elem username installFor) {
     };
     packages = [
       pkgs.unstable.copilot-cli
-      inputs.nix-ai-tools.packages.${pkgs.system}.spec-kit
+      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.spec-kit
     ];
   };
   programs = {

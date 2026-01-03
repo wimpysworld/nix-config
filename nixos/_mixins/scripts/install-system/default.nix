@@ -8,7 +8,7 @@ let
   install-system = pkgs.writeShellApplication {
     name = "install-system";
     runtimeInputs = with pkgs; [
-      inputs.disko.packages.${pkgs.system}.default
+      inputs.disko.packages.${pkgs.stdenv.hostPlatform.system}.default
       coreutils-full
       findutils
       gawk

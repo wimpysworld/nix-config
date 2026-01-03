@@ -58,7 +58,7 @@
 
   nix-homebrew = {
     enable = true;
-    enableRosetta = if (pkgs.system == "aarch64-darwin") then true else false;
+    enableRosetta = if (pkgs.stdenv.hostPlatform.system == "aarch64-darwin") then true else false;
     autoMigrate = true;
     user = "${username}";
     mutableTaps = true;

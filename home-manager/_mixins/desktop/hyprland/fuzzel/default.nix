@@ -70,9 +70,9 @@ in
   # Fuzzel menus for app launcher, emoji picker, wifi manager, clipboard manager, etc
   home = {
     packages = with pkgs; [
-      inputs.bzmenu.packages.${pkgs.system}.default
-      inputs.iwmenu.packages.${pkgs.system}.default
-      inputs.pwmenu.packages.${pkgs.system}.default
+      inputs.bzmenu.packages.${pkgs.stdenv.hostPlatform.system}.default
+      inputs.iwmenu.packages.${pkgs.stdenv.hostPlatform.system}.default
+      inputs.pwmenu.packages.${pkgs.stdenv.hostPlatform.system}.default
       fuzzelActions
       fuzzelBluetooth
       fuzzelClipboard
