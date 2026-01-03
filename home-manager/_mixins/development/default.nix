@@ -34,11 +34,12 @@ let
 in
 {
   imports = [
-    ./direnv
+    ./assistants
     ./claude-code
     ./copilot
     #./dart
     ./defold
+    ./direnv
     ./git
     ./github
     ./gitkraken
