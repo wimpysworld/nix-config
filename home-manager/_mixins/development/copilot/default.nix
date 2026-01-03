@@ -71,6 +71,16 @@ lib.mkIf (lib.elem username installFor) {
           "chat.fontFamily" = "Work Sans";
           "chat.fontSize" = 16;
           "chat.tools.terminal.blockDetectedFileWrites" = "never";
+          "chat.tools.urls.autoApprove" = {
+            "https://github.com" = {
+              approveRequest = true;
+              approveResponse = true;
+            };
+            "https://raw.githubusercontent.com" = {
+              approveRequest = true;
+              approveResponse = true;
+            };
+          };
           "github.copilot.chat.anthropic.thinking.enabled" = true;
           "github.copilot.chat.codesearch.enabled" = true;
           "github.copilot.chat.commitMessageGeneration.instructions" = [
