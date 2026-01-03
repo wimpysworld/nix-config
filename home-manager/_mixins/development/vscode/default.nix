@@ -62,6 +62,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             88
           ];
           "editor.semanticHighlighting.enabled" = true;
+          "editor.smoothScrolling" = true;
           "editor.tabSize" = 2;
           "editor.wordWrap" = "on";
           "[xml]"."editor.defaultFormatter" = "DotJoshJohnson.xml";
@@ -86,6 +87,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             if config.wayland.windowManager.hyprland.enable then "hidden" else "native";
           "workbench.editor.empty.hint" = "hidden";
           "workbench.tree.indent" = 20;
+          "workbench.list.smoothScrolling" = true;
           "workbench.startupEditor" = "none";
         };
         extensions =
