@@ -47,7 +47,6 @@ lib.mkIf (lib.elem username installFor && !isLima && isLinux) {
       extraOptions = [
         "--config=${config.home.homeDirectory}/Syncthing/Devices/${hostname}"
         "--data=${config.home.homeDirectory}/Syncthing/DB/${hostname}"
-        "--no-default-folder"
         "--no-browser"
       ];
       tray = lib.mkIf isWorkstation {
