@@ -56,7 +56,7 @@ lib.mkIf (lib.elem username installFor) {
       "${vscodeUserDir}/prompts/update-docs.prompt.md".text = builtins.readFile ./update-docs.prompt.md;
     };
     packages = [
-      pkgs.unstable.copilot-cli
+      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.copilot-cli
       inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.spec-kit
     ];
   };
