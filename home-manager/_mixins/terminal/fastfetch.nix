@@ -34,8 +34,8 @@ in
               "type": 2
             },
             "bar": {
-              "charElapsed": "",
-              "charTotal": " "
+              "char.elapsed": "",
+              "char.total": " "
             },
             "key": {
               "width": 6
@@ -191,16 +191,19 @@ in
         }
       '';
     };
-    packages = with pkgs; [
-      cpufetch
-      fastfetch
-      foodfetch
-      ipfetch
-      onefetch
-    ] ++ lib.optionals isLinux [
-      microfetch
-      ramfetch
-    ];
+    packages =
+      with pkgs;
+      [
+        cpufetch
+        fastfetch
+        foodfetch
+        ipfetch
+        onefetch
+      ]
+      ++ lib.optionals isLinux [
+        microfetch
+        ramfetch
+      ];
   };
   programs = {
     bash.shellAliases = shellAliases;
