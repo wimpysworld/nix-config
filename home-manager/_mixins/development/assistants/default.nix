@@ -104,6 +104,31 @@ let
       name = lib.removeSuffix suffix (lib.removeSuffix ".md" name);
       value = transformForClaudeCode (builtins.readFile (./. + "/${name}"));
     }) files;
+
+  # Helper to generate Copilot CLI file copy commands
+  # Note: Copilot CLI doesn't follow symlinks due to security concerns,
+  # so we copy files during activation instead of using home.file which creates symlinks
+  mkCopilotFileCmds = ''
+    # Copy agents
+    ${lib.concatStringsSep "\n" (
+      lib.mapAttrsToList (
+        name: _:
+        let
+          sourcePath = ./. + "/${name}";
+          targetDir = "${config.xdg.configHome}/.copilot/agents";
+          targetPath = "${targetDir}/${name}";
+        in
+        ''
+          mkdir -p ${targetDir}
+          cp -f ${sourcePath} ${targetPath}
+        ''
+      ) agentFiles
+    )}
+
+    # Copy instructions file
+    mkdir -p ${config.xdg.configHome}/.copilot
+    cp -f ${./copilot.instructions.md} ${config.xdg.configHome}/.copilot/copilot-instructions.md
+  '';
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
@@ -120,6 +145,11 @@ lib.mkIf (lib.elem username installFor) {
     # VSCode: auto-generated agent and prompt files
     // mkVscodeFiles agentFiles
     // mkVscodeFiles promptFiles;
+    # GitHub Copilot CLI: files copied via activation script (see home.activation below)
+
+    # Copy Copilot CLI files as real files (not symlinks)
+    # Note: Copilot CLI doesn't follow symlinks due to security concerns
+    activation.copilotFiles = lib.hm.dag.entryAfter [ "writeBoundary" ] mkCopilotFileCmds;
   };
   programs = {
     claude-code = lib.mkIf config.programs.claude-code.enable {
