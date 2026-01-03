@@ -47,9 +47,6 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
         buffer_font_weight = fontWeight;
         colorize_brackets = true;
         cursor_shape = "block";
-        features = {
-          edit_prediction_provider = "copilot";
-        };
         hard_tabs = false;
         hour_format = "hour24";
         insert_spaces = true;

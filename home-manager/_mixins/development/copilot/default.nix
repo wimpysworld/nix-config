@@ -93,14 +93,26 @@ lib.mkIf (lib.elem username installFor) {
       userSettings = {
         agent = {
           commit_message_model = {
-            provider = "copilot-chat";
+            provider = "copilot_chat";
+            model = "claude-haiku-4.5";
+          };
+          default_model = {
+            provider = "copilot_chat";
+            model = "claude-sonnet-4.5";
+          };
+          inline_assistant_model = {
+            provider = "copilot_chat";
+            model = "claude-haiku-4.5";
+          };
+          thread_summary_model = {
+            provider = "copilot_chat";
             model = "gpt-5-mini";
+          };
+          features = {
+            edit_prediction_provider = "copilot";
           };
         };
       };
-      extensions = [
-
-      ];
     };
   };
 }
