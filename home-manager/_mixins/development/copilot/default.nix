@@ -32,6 +32,10 @@ lib.mkIf (lib.elem username installFor) {
               approveRequest = true;
               approveResponse = true;
             };
+            "https://docs.github.com" = {
+              approveRequest = true;
+              approveResponse = true;
+            };
             "https://raw.githubusercontent.com" = {
               approveRequest = true;
               approveResponse = true;
