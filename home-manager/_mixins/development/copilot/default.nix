@@ -85,7 +85,6 @@ lib.mkIf (lib.elem username installFor) {
           "inlineChat.enableV2" = true;
         };
         extensions = with pkgs; [
-          vscode-marketplace.github.copilot
           vscode-marketplace.github.copilot-chat
         ];
       };
