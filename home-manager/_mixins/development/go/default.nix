@@ -43,6 +43,34 @@ lib.mkIf (lib.elem username installFor) {
         "golangci-lint"
         "gosum"
       ];
+      userSettings = {
+        languages = {
+          Go = {
+            formatter = {
+              external = {
+                command = "golangci-lint";
+                arguments = [
+                  "run"
+                  "--output.json.path"
+                  "stdout"
+                  "--show-stats=false"
+                  "--output.text.path="
+                ];
+              };
+            };
+            language_servers = [
+              "gopls"
+            ];
+          };
+        };
+        lsp = {
+          gopls = {
+            binary = {
+              path_lookup = true;
+            };
+          };
+        };
+      };
     };
   };
 }
