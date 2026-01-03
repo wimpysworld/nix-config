@@ -25,20 +25,6 @@ lib.mkIf (lib.elem username installFor) {
       #commands = {
       #  fix-issue = ./fips-compliance-source-code-analysis.md;
       #};
-      mcpServers = {
-        context7 = {
-          type = "http";
-          url = "https://mcp.context7.com/mcp";
-        };
-        nixos = {
-          type = "stdio";
-          command = "mcp-nixos";
-        };
-        svelte = {
-          type = "http";
-          url = "https://mcp.svelte.dev/mcp";
-        };
-      };
       package = claudePackage;
     };
     vscode = lib.mkIf config.programs.vscode.enable {

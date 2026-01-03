@@ -11,7 +11,6 @@ in
 lib.mkIf (lib.elem username installFor) {
   home = {
     packages = with pkgs; [
-      mcp-nixos
       nixd
       nix-diff
       nixfmt-rfc-style

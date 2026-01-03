@@ -47,6 +47,7 @@ in
     ./just
     ./love
     ./markdown
+    ./mcp
     ./meld
     ./nix
     ./python

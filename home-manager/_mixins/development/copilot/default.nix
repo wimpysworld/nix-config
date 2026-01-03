@@ -20,7 +20,6 @@ in
 lib.mkIf (lib.elem username installFor) {
   home = {
     file = {
-      "${vscodeUserDir}/mcp.json".text = builtins.readFile ./mcp.json;
       "${vscodeUserDir}/prompts/copilot.instructions.md".text =
         builtins.readFile ./copilot.instructions.md;
       "${vscodeUserDir}/prompts/dummy.prompt.md".text = builtins.readFile ./copilot.instructions.md;
@@ -71,9 +70,6 @@ lib.mkIf (lib.elem username installFor) {
           "chat.editor.fontSize" = 16;
           "chat.fontFamily" = "Work Sans";
           "chat.fontSize" = 16;
-          "chat.mcp.assisted.nuget.enabled" = false;
-          "chat.mcp.autostart" = "newAndOutdated";
-          "chat.mcp.gallery.enabled" = true;
           "chat.tools.terminal.blockDetectedFileWrites" = "never";
           "github.copilot.chat.anthropic.thinking.enabled" = true;
           "github.copilot.chat.codesearch.enabled" = true;
