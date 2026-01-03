@@ -21,6 +21,10 @@ let
   # Uses config.sops.placeholder to inject secrets at activation time
   mcpServers = {
     # Servers without secrets
+    cloudflare = {
+      type = "http";
+      url = "https://docs.mcp.cloudflare.com/mcp";
+    };
     nixos = {
       type = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
@@ -55,6 +59,16 @@ let
   # MCP servers for Copilot CLI - only supports stdio/local with required tools/args arrays
   copilotMcpServers = {
     # Servers without secrets
+    cloudflare = {
+      type = "stdio";
+      command = "${pkgs.nodejs_24}/bin/npx";
+      args = [
+        "-y"
+        "mcp-remote"
+        "https://docs.mcp.cloudflare.com/mcp"
+      ];
+      tools = [ "*" ];
+    };
     nixos = {
       type = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
@@ -126,6 +140,14 @@ lib.mkIf (lib.elem username installFor) {
       ];
       userSettings = {
         context_servers = {
+          cloudflare = {
+            command = "${pkgs.nodejs_24}/bin/npx";
+            args = [
+              "-y"
+              "mcp-remote"
+              "https://docs.mcp.cloudflare.com/mcp"
+            ];
+          };
           nixos = {
             command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
             args = [ ];
