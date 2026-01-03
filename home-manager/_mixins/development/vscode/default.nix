@@ -41,6 +41,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "catppuccin-icons.monochrome" = false; # Set to `true` to only use the `text` fill color for all icons.
           "cSpell.diagnosticLevel" = "Hint";
           "editor.bracketPairColorization.independentColorPoolPerBracketType" = true;
+          "editor.cursorBlinking" = "smooth";
           "editor.cursorSmoothCaretAnimation" = "on";
           "editor.cursorStyle" = "block";
           "editor.fontSize" = 16;
