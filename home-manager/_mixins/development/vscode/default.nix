@@ -42,6 +42,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "cSpell.diagnosticLevel" = "Hint";
           "editor.bracketPairColorization.independentColorPoolPerBracketType" = true;
           "editor.cursorSmoothCaretAnimation" = "on";
+          "editor.cursorStyle" = "block";
           "editor.fontSize" = 16;
           "editor.fontFamily" = "FiraCode Nerd Font Mono";
           "editor.fontLigatures" = true;

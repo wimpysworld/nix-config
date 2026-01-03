@@ -46,6 +46,7 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
         buffer_font_family = "FiraCode Nerd Font Mono";
         buffer_font_weight = fontWeight;
         colorize_brackets = true;
+        cursor_shape = "block";
         features = {
           edit_prediction_provider = "copilot";
         };
