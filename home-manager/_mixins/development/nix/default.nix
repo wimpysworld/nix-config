@@ -43,36 +43,39 @@ lib.mkIf (lib.elem username installFor) {
       };
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
-      extensions = [
-        "nix"
-      ];
       userSettings = {
-        "languages" = {
-          "Nix" = {
-            "formatter" = {
-              "external" = {
-                "command" = "${pkgs.nixfmt-rfc-style}/bin/nixfmt";
-                "arguments" = [
+        languages = {
+          Nix = {
+            formatter = {
+              external = {
+                command = "${pkgs.nixfmt-rfc-style}/bin/nixfmt";
+                arguments = [
                   "--quiet"
                   "--"
                 ];
               };
             };
-            "language_servers" = [
-              "${pkgs.nixd}/bin/nixd"
+            language_servers = [
+              "nixd"
             ];
           };
         };
-        "lsp" = {
-          "nixd" = {
-            "settings" = {
-              "diagnostics" = {
-                "ignored" = [ "unused_binding" ];
+        lsp = {
+          nixd = {
+            binary = {
+              path_lookup = true;
+            };
+            settings = {
+              diagnostics = {
+                suppress = [ "sema-extra-with" ];
               };
             };
           };
         };
       };
+      extensions = [
+        "nix"
+      ];
     };
   };
 }
