@@ -40,6 +40,10 @@ lib.mkIf (lib.elem username installFor) {
               approveRequest = true;
               approveResponse = true;
             };
+            "https://zed.dev" = {
+              approveRequest = true;
+              approveResponse = true;
+            };
           };
           "github.copilot.chat.anthropic.thinking.enabled" = true;
           "github.copilot.chat.codesearch.enabled" = true;
