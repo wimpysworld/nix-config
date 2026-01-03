@@ -121,6 +121,11 @@ in
         ];
       };
     };
+    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+      extensions = [
+        "github-actions"
+      ];
+    };
     zsh = {
       inherit shellAliases;
       initContent =

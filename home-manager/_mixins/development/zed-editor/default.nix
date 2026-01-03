@@ -28,7 +28,6 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
         "desktop"
         "dockerfile"
         "editorconfig"
-        "github-actions"
         "ini"
         "make"
         "neocmake"
