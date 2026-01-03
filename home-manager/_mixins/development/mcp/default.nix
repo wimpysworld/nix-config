@@ -50,15 +50,58 @@ let
         ENGINE_ID = config.sops.placeholder.GOOGLE_CSE_ENGINE_ID;
       };
     };
-    brave-search = {
+  };
+
+  # MCP servers for Copilot CLI - only supports stdio/local with required tools/args arrays
+  copilotMcpServers = {
+    # Servers without secrets
+    nixos = {
       type = "stdio";
-      command = "${pkgs.nodePackages.nodejs}/bin/npx";
+      command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+      args = [ ];
+      tools = [ "*" ];
+    };
+    svelte = {
+      type = "stdio";
+      command = "${pkgs.nodejs_24}/bin/npx";
       args = [
         "-y"
-        "@brave/brave-search-mcp-server"
+        "@sveltejs/mcp"
       ];
+      tools = [ "*" ];
+    };
+    # Servers with secrets
+    context7 = {
+      type = "stdio";
+      command = "${pkgs.nodejs_24}/bin/npx";
+      args = [
+        "-y"
+        "@upstash/context7-mcp"
+        "--api-key"
+        config.sops.placeholder.CONTEXT7_API_KEY
+      ];
+      tools = [ "*" ];
+    };
+    firecrawl-mcp = {
+      type = "stdio";
+      command = "${pkgs.nodejs_24}/bin/npx";
+      args = [
+        "-y"
+        "firecrawl-mcp"
+      ];
+      tools = [ "*" ];
       env = {
-        BRAVE_API_KEY = config.sops.placeholder.BRAVE_SEARCH_API_KEY;
+        FIRECRAWL_API_KEY = config.sops.placeholder.FIRECRAWL_API_KEY;
+      };
+    };
+    mcp-google-cse = {
+      type = "stdio";
+      command = "${pkgs.uv}/bin/uvx";
+      args = [ "mcp-google-cse" ];
+      tools = [ "*" ];
+      env = {
+        API_KEY = config.sops.placeholder.GOOGLE_CSE_API_KEY;
+        ENGINE_ID = config.sops.placeholder.GOOGLE_CSE_ENGINE_ID;
       };
     };
   };
@@ -82,11 +125,12 @@ lib.mkIf (lib.elem username installFor) {
         "svelte-mcp"
       ];
       userSettings = {
-        #context_servers = {
-        #  nixos = {
-        #    command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
-        #  };
-        #};
+        context_servers = {
+          nixos = {
+            command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+            args = [ ];
+          };
+        };
       };
     };
   };
@@ -109,7 +153,7 @@ lib.mkIf (lib.elem username installFor) {
       };
     };
     # MCP servers - used by Claude Code
-    templates."claude-mcp-config.json" = {
+    templates."claude-mcp-config.json" = lib.mkIf config.programs.claude-code.enable {
       content = builtins.toJSON { inherit mcpServers; };
       path = "${config.home.homeDirectory}/.config/claude/mcp.json";
     };
@@ -121,9 +165,16 @@ lib.mkIf (lib.elem username installFor) {
     };
 
     # MCP servers - used by VSCode which expects "servers" key not "mcpServers"
-    templates."vscode-mcp-config.json" = {
+    templates."vscode-mcp-config.json" = lib.mkIf config.programs.vscode.enable {
       content = builtins.toJSON { servers = mcpServers; };
       path = "${vscodeUserDir}/mcp.json";
+    };
+
+    # MCP servers - used by GitHub Copilot CLI
+    # NOTE: Copilot CLI uses ~/.config/.copilot/ (hidden folder inside .config)
+    templates."copilot-cli-mcp-config.json" = {
+      content = builtins.toJSON { mcpServers = copilotMcpServers; };
+      path = "${config.xdg.configHome}/.copilot/mcp-config.json";
     };
   };
 }
