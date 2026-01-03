@@ -82,9 +82,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "update.mode" = "none";
           "window.controlsStyle" =
             if config.wayland.windowManager.hyprland.enable then "hidden" else "native";
-          #"workbench.colorTheme" = "Catppuccin Mocha";
           "workbench.editor.empty.hint" = "hidden";
-          #"workbench.iconTheme" = "catppuccin-mocha";
           "workbench.tree.indent" = 20;
           "workbench.startupEditor" = "none";
         };
