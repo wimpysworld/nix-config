@@ -171,9 +171,5 @@ lib.mkIf (lib.elem username installFor) {
         };
       };
     };
-    zed-editor = lib.mkIf config.programs.zed-editor.enable {
-      userSettings = {
-      };
-    };
   };
 }
