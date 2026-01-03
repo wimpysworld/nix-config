@@ -1,15 +1,9 @@
 {
-  config,
   inputs,
   pkgs,
   ...
 }:
 let
-  # https://github.com/numtide/nix-ai-tools
-  aiPackages = [
-    inputs.nix-ai-tools.packages.${pkgs.system}.crush
-    inputs.nix-ai-tools.packages.${pkgs.system}.spec-kit
-  ];
   dockerPurge = pkgs.writeShellApplication {
     name = "docker-purge";
     runtimeInputs = with pkgs; [
@@ -42,6 +36,7 @@ in
   imports = [
     ./direnv
     ./claude-code
+    ./copilot
     #./dart
     ./defold
     ./git
@@ -64,13 +59,11 @@ in
     ./zed-editor
   ];
   home = {
-    packages =
-      with pkgs;
-      [
-        dconf2nix # Nix code from Dconf files
-        dockerPurge
-        tokei # Modern Unix `wc` for code
-      ]
-      ++ aiPackages;
+    packages = with pkgs; [
+      inputs.nix-ai-tools.packages.${pkgs.system}.crush
+      dconf2nix # Nix code from Dconf files
+      dockerPurge
+      tokei # Modern Unix `wc` for code
+    ];
   };
 }

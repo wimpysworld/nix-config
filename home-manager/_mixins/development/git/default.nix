@@ -2,11 +2,9 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux isDarwin;
   gitsignCredentialCache =
     if pkgs.stdenv.isLinux then
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
@@ -25,13 +23,6 @@ let
   shellAliases = {
     gitso = "${pkgs.git}/bin/git --signoff";
   };
-  vscodeUserDir =
-    if isLinux then
-      "${config.xdg.configHome}/Code/User"
-    else if isDarwin then
-      "/Users/${username}/Library/Application Support/Code/User"
-    else
-      throw "Unsupported platform";
 in
 {
   catppuccin = {
@@ -119,11 +110,6 @@ in
       profiles.default = {
         userSettings = {
           "git.openRepositoryInParentFolders" = "always";
-          "github.copilot.chat.commitMessageGeneration.instructions" = [
-            {
-              file = "${vscodeUserDir}/prompts/create-conventional-commit.prompt.md";
-            }
-          ];
         };
         extensions = with pkgs; [
           vscode-marketplace.codezombiech.gitignore
@@ -132,12 +118,6 @@ in
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       userSettings = {
-        agent = {
-          commit_message_model = {
-            provider = "copilot-chat";
-            model = "gpt-5-mini";
-          };
-        };
         languages = {
           "Git Commit" = {
             soft_wrap = "editor_width";
