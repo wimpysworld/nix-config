@@ -18,6 +18,29 @@ let
       pkgs.opencode;
 in
 lib.mkIf (lib.elem username installFor) {
+  home.file."${config.xdg.configHome}/zed/keymap.json" = lib.mkIf config.programs.zed-editor.enable {
+    text = builtins.toJSON [
+      {
+        bindings = {
+          "cmd-alt-o" = [
+            "agent::NewExternalAgentThread"
+            {
+              agent = {
+                custom = {
+                  name = "OpenCode";
+                  command = {
+                    command = "opencode";
+                    args = [ "acp" ];
+                  };
+                };
+              };
+            }
+          ];
+        };
+      }
+    ];
+  };
+
   programs = {
     opencode = {
       enable = true;
@@ -29,6 +52,11 @@ lib.mkIf (lib.elem username installFor) {
           vscode-marketplace.sst-dev.opencode
         ];
       };
+    };
+    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+      extensions = [
+        "opencode"
+      ];
     };
   };
 }
