@@ -1,5 +1,5 @@
 ---
-agent: "otto"
+agent: "brain"
 description: "Review Tests 🧪"
 ---
 

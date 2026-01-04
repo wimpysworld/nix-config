@@ -1,5 +1,5 @@
 ---
-agent: "linus"
+agent: "garfield"
 description: "Creates a Conventional Commits 1.0.0 compliant commit message from recent implementation changes"
 ---
 

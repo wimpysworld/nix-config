@@ -1,5 +1,5 @@
 ---
-agent: "luthor"
+agent: "snagglepuss"
 description: "Review Naming 🏷️"
 ---
 
