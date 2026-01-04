@@ -33,6 +33,41 @@ let
       value.text = builtins.readFile (./. + "/${name}");
     }) files;
 
+  # Transform agent files for Claude Code
+  # Claude Code agents require 'name' field in frontmatter (not 'agent')
+  transformForClaudeCodeAgent =
+    filename: content:
+    let
+      # Extract agent name from filename (e.g., "linus.agent.md" -> "linus")
+      agentName = lib.removeSuffix ".agent.md" filename;
+
+      lines = lib.splitString "\n" content;
+
+      # Extract description from existing frontmatter
+      descLine = lib.findFirst (line: lib.hasPrefix "description: " line) null lines;
+      description =
+        if descLine != null then
+          # Keep the full description line as-is (with quotes if present)
+          lib.removePrefix "description: " descLine
+        else
+          "AI assistant";
+
+      # Split content into frontmatter and body
+      splitContent = lib.splitString "---" content;
+      # Format: ["", "frontmatter", "body..."]
+      hasFrontmatter = (lib.length splitContent) >= 3;
+      bodyParts = if hasFrontmatter then lib.drop 2 splitContent else [ content ];
+      body = lib.concatStringsSep "---" bodyParts;
+
+      # Create Claude Code-compatible frontmatter with required 'name' field
+      claudeCodeYaml = ''
+        ---
+        name: ${agentName}
+        description: ${description}
+        ---'';
+    in
+    claudeCodeYaml + body;
+
   # Transform Copilot Chat syntax to Claude Code syntax
   transformForClaudeCode =
     content:
@@ -151,6 +186,14 @@ let
     in
     opencodeYaml + body;
 
+  # Helper to generate Claude Code agent entries with transformations
+  mkClaudeCodeAgents =
+    files:
+    lib.mapAttrs' (name: _: {
+      name = lib.removeSuffix ".agent" (lib.removeSuffix ".md" name);
+      value = transformForClaudeCodeAgent name (builtins.readFile (./. + "/${name}"));
+    }) files;
+
   # Helper to generate OpenCode agent entries
   mkOpenCodeAgents =
     files:
@@ -208,7 +251,8 @@ lib.mkIf (lib.elem username installFor) {
   programs = {
     claude-code = lib.mkIf config.programs.claude-code.enable {
       # Custom agents (auto-generated from *.agent.md files)
-      agents = mkClaudeFiles agentFiles ".agent";
+      # Claude Code requires 'name' field in frontmatter
+      agents = mkClaudeCodeAgents agentFiles;
 
       # Reusable commands (auto-generated from *.prompt.md files)
       commands = mkClaudeFiles promptFiles ".prompt";
