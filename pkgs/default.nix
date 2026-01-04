@@ -11,6 +11,7 @@ pkgs: {
   obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };
   obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
   obs-webkitgtk = pkgs.callPackage ./obs-plugins/obs-webkitgtk.nix { };
+  opencode-desktop = pkgs.callPackage ./opencode-desktop { };
   wavebox = pkgs.callPackage ./wavebox { };
 
   # Local package overrides
