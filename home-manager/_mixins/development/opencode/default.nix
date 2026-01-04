@@ -45,6 +45,9 @@ lib.mkIf (lib.elem username installFor) {
     opencode = {
       enable = true;
       package = opencodePackage;
+      settings = {
+        theme = "catppuccin";
+      };
     };
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
