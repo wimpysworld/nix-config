@@ -29,6 +29,13 @@ let
       type = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
     };
+    github = {
+      type = "http";
+      url = "https://api.githubcopilot.com/mcp/";
+      headers = {
+        Authorization = "Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
+      };
+    };
     svelte = {
       type = "http";
       url = "https://mcp.svelte.dev/mcp";
@@ -60,17 +67,20 @@ let
   opencodeServers = {
     # Servers without secrets
     cloudflare = {
-      type = "local";
-      command = [
-        "${pkgs.nodejs_24}/bin/npx"
-        "-y"
-        "mcp-remote"
-        "https://docs.mcp.cloudflare.com/mcp"
-      ];
+      type = "remote";
+      url = "https://docs.mcp.cloudflare.com/mcp";
     };
     nixos = {
       type = "local";
       command = [ "${pkgs.mcp-nixos}/bin/mcp-nixos" ];
+    };
+    github = {
+      enabled = false;
+      type = "remote";
+      url = "https://api.githubcopilot.com/mcp/";
+      headers = {
+        Authorization = "Bearer {env:GITHUB_TOKEN}";
+      };
     };
     svelte = {
       type = "local";
@@ -89,6 +99,7 @@ let
       };
     };
     firecrawl = {
+      enabled = false;
       type = "remote";
       url = "https://mcp.firecrawl.dev/{env:FIRECRAWL_API_KEY}/v2/mcp";
     };
@@ -123,6 +134,19 @@ let
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
       args = [ ];
       tools = [ "*" ];
+    };
+    github = {
+      type = "stdio";
+      command = "${pkgs.nodejs_24}/bin/npx";
+      args = [
+        "-y"
+        "mcp-remote"
+        "https://api.githubcopilot.com/mcp/"
+      ];
+      tools = [ "*" ];
+      env = {
+        MCP_REMOTE_HEADERS = "Authorization: Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
+      };
     };
     svelte = {
       type = "stdio";
@@ -235,6 +259,9 @@ lib.mkIf (lib.elem username installFor) {
         sopsFile = mcpSopsFile;
       };
       FIRECRAWL_API_KEY = {
+        sopsFile = mcpSopsFile;
+      };
+      GITHUB_TOKEN = {
         sopsFile = mcpSopsFile;
       };
       GOOGLE_CSE_API_KEY = {
