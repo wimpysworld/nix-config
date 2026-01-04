@@ -1,17 +1,18 @@
 ---
-agent: 'rosey'
-description: 'Create Agent ✨'
+agent: "rosey"
+description: "Create Agent ✨"
 ---
+
 ## New Agent Creation
 
-Create a new agent prompt with the following details:
+Create a new agent prompt. Ask the user to provide the following details:
 
-**Agent Name:** ${input:agentName}
-**Role/Purpose:** ${input:rolePurpose}
-**Key Capabilities:** ${input:keyCapabilities}
-**Tool Requirements:** ${input:toolRequirements:None}
-**Output Format Needs:** ${input:outputFormat:Standard prose}
-**Target Word Count:** ${input:targetWords:400-600 words}
+- Agent name
+- Role/purpose
+- Key capabilities
+- Tool requirements (default: none)
+- Output format needs (default: standard prose)
+- Target word count (default: 400-600 words)
 
 Follow the standard agent structure. Focus on constraints and output format-these steer behaviour.
 

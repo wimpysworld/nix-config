@@ -1,7 +1,8 @@
 ---
-agent: 'dilbert'
-description: 'GitHub Copilot PR Review Assessment & Implementation'
+agent: "dilbert"
+description: "GitHub Copilot PR Review Assessment & Implementation"
 ---
+
 I need you to systematically evaluate and implement (or explicitly decline with rationale) the feedback from GitHub Copilot's pull request review. Your goal is to improve code quality whilst maintaining development velocity and avoiding over-engineering.
 
 ### Assessment Framework
@@ -13,12 +14,14 @@ For each piece of Copilot feedback, follow this structured evaluation:
 Classify each suggestion into one of these categories:
 
 **🚨 Critical Bugs** (MUST FIX)
+
 - Logic errors breaking core functionality
 - Runtime crashes, data corruption, or memory leaks
 - Security vulnerabilities (injection, auth bypass, data exposure)
 - Undefined behaviour that will cause production failures
 
 **🛡️ Robustness Issues** (SHOULD FIX)
+
 - Unhandled edge cases that could cause failures
 - Missing error handling or recovery
 - Race conditions or concurrency issues
@@ -26,6 +29,7 @@ Classify each suggestion into one of these categories:
 - Resource management problems (unclosed handles, memory cleanup)
 
 **🔧 Code Quality** (CONSIDER FIXING)
+
 - Clear maintainability improvements
 - Performance optimizations with measurable benefit
 - Clarity improvements that reduce cognitive load
@@ -33,6 +37,7 @@ Classify each suggestion into one of these categories:
 - Documentation gaps for complex logic
 
 **📝 Style/Architecture** (USUALLY SKIP)
+
 - Subjective formatting preferences
 - Complex refactoring for marginal gains
 - Premature optimizations without metrics
@@ -55,6 +60,7 @@ Score as: `[Severity × Probability] / Complexity = Priority Score`
 Based on your assessment, take one of these actions:
 
 **✅ IMPLEMENT** if:
+
 - Critical bug (any severity × certain probability)
 - High-value fix with low complexity
 - Security issue of any kind
@@ -62,12 +68,14 @@ Based on your assessment, take one of these actions:
 - Clear bug with simple fix
 
 **⚠️ DEFER** (create issue for later) if:
+
 - High value but high complexity
 - Good idea but not critical path
 - Requires broader refactoring
 - Performance optimization needing benchmarks first
 
 **❌ DECLINE** (with documented reason) if:
+
 - False positive (misunderstands intent)
 - Style preference with no objective benefit
 - Would break existing functionality
@@ -75,6 +83,7 @@ Based on your assessment, take one of these actions:
 - Complexity exceeds benefit
 
 **🔍 INVESTIGATE** if:
+
 - Unclear whether it's a real issue
 - Need to understand broader impact
 - Requires testing to validate
@@ -83,12 +92,13 @@ Based on your assessment, take one of these actions:
 
 For each Copilot suggestion, provide:
 
-```markdown
+````markdown
 ## Suggestion #[X]: [Brief description]
 
 **Category**: 🚨|🛡️|🔧|📝 [Category name]
 
 **Assessment**:
+
 - Severity: [None/Minor/Major/Critical] - [Why]
 - Probability: [Rare/Occasional/Common/Certain] - [Context]
 - Complexity: [Trivial/Simple/Moderate/Complex] - [What's involved]
@@ -99,15 +109,19 @@ For each Copilot suggestion, provide:
 **Rationale**: [1-2 sentences explaining the decision]
 
 **Implementation** (if implementing):
+
 ```[language]
 // Code changes here
 ```
+````
 
 **Issue Created** (if deferring):
+
 - Title: [Issue title]
 - Priority: [P0/P1/P2/P3]
 - Milestone: [When to address]
-```
+
+````
 
 ### Context Considerations
 
@@ -159,7 +173,7 @@ After processing all feedback, provide:
 
 **Recommendation**:
 [Should we run another review round or move forward?]
-```
+````
 
 ### Special Instructions
 

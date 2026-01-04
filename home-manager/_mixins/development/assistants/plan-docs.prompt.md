@@ -1,12 +1,14 @@
 ---
-agent: 'velma'
-description: 'Plan Docs 📋'
+agent: "velma"
+description: "Plan Docs 📋"
 ---
+
 ## Documentation Plan
 
-Review documentation and information architecture in ${input:codebase:#codebase}.
+Review documentation and information architecture for the project.
 
 **Produce:**
+
 1. Current state assessment (what exists, what's missing, what's stale)
 2. Prioritised improvement plan with rationale
 3. Proposed structure/reorganisation if needed

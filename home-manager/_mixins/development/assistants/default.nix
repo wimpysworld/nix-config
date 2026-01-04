@@ -105,6 +105,19 @@ let
       value = transformForClaudeCode (builtins.readFile (./. + "/${name}"));
     }) files;
 
+  # Transform command files for OpenCode
+  # OpenCode commands: preserve agent field in frontmatter to specify which agent executes the command
+  # Simply pass through the content as-is since we no longer use input variables
+  transformForOpenCodeCommand = content: content;
+
+  # Helper to generate OpenCode command entries with transformations
+  mkOpenCodeCommands =
+    files:
+    lib.mapAttrs' (name: _: {
+      name = lib.removeSuffix ".prompt" (lib.removeSuffix ".md" name);
+      value = transformForOpenCodeCommand (builtins.readFile (./. + "/${name}"));
+    }) files;
+
   # Transform agent files for OpenCode
   # OpenCode agents: subagents (mode: subagent) can only be @mentioned, not listed in Tab cycling
   # For agents to appear in /agents list and Tab cycling, use mode: primary or omit mode entirely
@@ -205,8 +218,8 @@ lib.mkIf (lib.elem username installFor) {
       agents = mkOpenCodeAgents agentFiles;
 
       # Reusable commands (auto-generated from *.prompt.md files)
-      # Uses same transformation as Claude Code: removes agent: line, replaces ${input:*} with $ARGUMENTS
-      commands = mkClaudeFiles promptFiles ".prompt";
+      # Preserves agent: field in frontmatter, replaces ${input:*} with $ARGUMENTS
+      commands = mkOpenCodeCommands promptFiles;
 
       # Global rules from copilot.instructions.md
       rules = builtins.readFile ./copilot.instructions.md;

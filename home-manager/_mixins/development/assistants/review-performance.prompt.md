@@ -1,9 +1,10 @@
 ---
-agent: 'gonzales'
-description: 'Review Performance ⚡'
+agent: "gonzales"
+description: "Review Performance ⚡"
 ---
+
 ## Performance Review
 
-Analyse ${input:codebase:#codebase} for optimisation opportunities.
+Analyse the codebase for optimisation opportunities.
 
 Focus on user-perceivable impact. Output as specified in your agent format.

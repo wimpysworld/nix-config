@@ -1,12 +1,14 @@
 ---
-agent: 'velma'
-description: 'Update Docs 🔄'
+agent: "velma"
+description: "Update Docs 🔄"
 ---
+
 ## Documentation Update
 
-Update documentation in ${input:codebase:#codebase} to reflect recent changes.
+Update documentation to reflect recent changes in the codebase.
 
 **Cover:**
+
 - What changed and why (features, APIs, interfaces)
 - Usage examples for new functionality
 - Configuration or setup changes
@@ -14,6 +16,7 @@ Update documentation in ${input:codebase:#codebase} to reflect recent changes.
 - Known limitations or TODOs
 
 **Update:**
+
 - README if user-facing behaviour changed
 - Inline comments where logic changed significantly
 - Development guide if setup steps changed
