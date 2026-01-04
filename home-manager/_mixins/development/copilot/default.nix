@@ -8,6 +8,28 @@
 }:
 let
   installFor = [ "martin" ];
+
+  # Domains to auto-approve for URL access in Copilot chat
+  approvedDomains = [
+    "anthrophic.com"
+    "docs.anthropic.com"
+    "claude.com"
+    "code.claude.com"
+    "platform.claude.com"
+    "github.com"
+    "docs.github.com"
+    "raw.githubusercontent.com"
+    "opencode.ai"
+    "zed.dev"
+  ];
+
+  # Generate autoApprove configuration from domain list
+  mkAutoApprove =
+    domains:
+    lib.genAttrs (map (domain: "https://${domain}") domains) (_: {
+      approveRequest = true;
+      approveResponse = true;
+    });
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
@@ -27,24 +49,7 @@ lib.mkIf (lib.elem username installFor) {
           "chat.fontFamily" = "Work Sans";
           "chat.fontSize" = 16;
           "chat.tools.terminal.blockDetectedFileWrites" = "never";
-          "chat.tools.urls.autoApprove" = {
-            "https://github.com" = {
-              approveRequest = true;
-              approveResponse = true;
-            };
-            "https://docs.github.com" = {
-              approveRequest = true;
-              approveResponse = true;
-            };
-            "https://raw.githubusercontent.com" = {
-              approveRequest = true;
-              approveResponse = true;
-            };
-            "https://zed.dev" = {
-              approveRequest = true;
-              approveResponse = true;
-            };
-          };
+          "chat.tools.urls.autoApprove" = mkAutoApprove approvedDomains;
           "github.copilot.chat.anthropic.thinking.enabled" = true;
           "github.copilot.chat.codesearch.enabled" = true;
           "inlineChat.enableV2" = true;
