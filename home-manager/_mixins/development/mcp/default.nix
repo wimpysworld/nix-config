@@ -56,6 +56,55 @@ let
     };
   };
 
+  # MCP servers for OpenCode - uses {env:VAR} syntax for secrets
+  opencodeServers = {
+    # Servers without secrets
+    cloudflare = {
+      type = "local";
+      command = [
+        "${pkgs.nodejs_24}/bin/npx"
+        "-y"
+        "mcp-remote"
+        "https://docs.mcp.cloudflare.com/mcp"
+      ];
+    };
+    nixos = {
+      type = "local";
+      command = [ "${pkgs.mcp-nixos}/bin/mcp-nixos" ];
+    };
+    svelte = {
+      type = "local";
+      command = [
+        "${pkgs.nodejs_24}/bin/npx"
+        "-y"
+        "@sveltejs/mcp"
+      ];
+    };
+    # Servers with secrets - using OpenCode's {env:VAR} syntax
+    context7 = {
+      type = "remote";
+      url = "https://mcp.context7.com/mcp";
+      headers = {
+        CONTEXT7_API_KEY = "{env:CONTEXT7_API_KEY}";
+      };
+    };
+    firecrawl = {
+      type = "remote";
+      url = "https://mcp.firecrawl.dev/{env:FIRECRAWL_API_KEY}/v2/mcp";
+    };
+    mcp-google-cse = {
+      type = "local";
+      command = [
+        "${pkgs.uv}/bin/uvx"
+        "mcp-google-cse"
+      ];
+      environment = {
+        API_KEY = "{env:GOOGLE_CSE_API_KEY}";
+        ENGINE_ID = "{env:GOOGLE_CSE_ENGINE_ID}";
+      };
+    };
+  };
+
   # MCP servers for Copilot CLI - only supports stdio/local with required tools/args arrays
   copilotMcpServers = {
     # Servers without secrets
@@ -122,6 +171,30 @@ let
 in
 lib.mkIf (lib.elem username installFor) {
   programs = {
+    fish = {
+      shellInit = ''
+        # Export MCP secrets from sops
+        set -gx CONTEXT7_API_KEY (cat ${config.sops.secrets.CONTEXT7_API_KEY.path} 2>/dev/null; or echo "")
+        set -gx FIRECRAWL_API_KEY (cat ${config.sops.secrets.FIRECRAWL_API_KEY.path} 2>/dev/null; or echo "")
+        set -gx GOOGLE_CSE_API_KEY (cat ${config.sops.secrets.GOOGLE_CSE_API_KEY.path} 2>/dev/null; or echo "")
+        set -gx GOOGLE_CSE_ENGINE_ID (cat ${config.sops.secrets.GOOGLE_CSE_ENGINE_ID.path} 2>/dev/null; or echo "")
+      '';
+    };
+    bash = {
+      initExtra = ''
+        # Export MCP secrets from sops
+        export CONTEXT7_API_KEY=$(cat ${config.sops.secrets.CONTEXT7_API_KEY.path} 2>/dev/null || echo "")
+        export FIRECRAWL_API_KEY=$(cat ${config.sops.secrets.FIRECRAWL_API_KEY.path} 2>/dev/null || echo "")
+        export GOOGLE_CSE_API_KEY=$(cat ${config.sops.secrets.GOOGLE_CSE_API_KEY.path} 2>/dev/null || echo "")
+        export GOOGLE_CSE_ENGINE_ID=$(cat ${config.sops.secrets.GOOGLE_CSE_ENGINE_ID.path} 2>/dev/null || echo "")
+      '';
+    };
+    opencode = lib.mkIf config.programs.opencode.enable {
+      enableMcpIntegration = true;
+      settings = {
+        mcp = opencodeServers;
+      };
+    };
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {

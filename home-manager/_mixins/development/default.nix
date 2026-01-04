@@ -1,5 +1,4 @@
 {
-  inputs,
   pkgs,
   ...
 }:
@@ -51,6 +50,7 @@ in
     ./mcp
     ./meld
     ./nix
+    ./opencode
     ./python
     ./rust
     ./shell
@@ -62,7 +62,6 @@ in
   ];
   home = {
     packages = with pkgs; [
-      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.crush
       dconf2nix # Nix code from Dconf files
       dockerPurge
       tokei # Modern Unix `wc` for code

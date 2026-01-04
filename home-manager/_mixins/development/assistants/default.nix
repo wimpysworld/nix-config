@@ -105,6 +105,47 @@ let
       value = transformForClaudeCode (builtins.readFile (./. + "/${name}"));
     }) files;
 
+  # Transform agent files for OpenCode
+  # OpenCode agents: subagents (mode: subagent) can only be @mentioned, not listed in Tab cycling
+  # For agents to appear in /agents list and Tab cycling, use mode: primary or omit mode entirely
+  transformForOpenCodeAgent =
+    content:
+    let
+      lines = lib.splitString "\n" content;
+
+      # Extract description from existing frontmatter
+      descLine = lib.findFirst (line: lib.hasPrefix "description: " line) null lines;
+      description =
+        if descLine != null then
+          # Remove "description: " prefix and quotes
+          lib.replaceStrings [ "description: " "'" "\"" ] [ "" "" "" ] descLine
+        else
+          "AI assistant";
+
+      # Split content into frontmatter and body
+      splitContent = lib.splitString "---" content;
+      # Format: ["", "frontmatter", "body..."]
+      hasFrontmatter = (lib.length splitContent) >= 3;
+      bodyParts = if hasFrontmatter then lib.drop 2 splitContent else [ content ];
+      body = lib.concatStringsSep "---" bodyParts;
+
+      # Create OpenCode-compatible frontmatter
+      # Omit mode entirely so agents appear in list (mode: subagent prevents listing)
+      opencodeYaml = ''
+        ---
+        description: ${description}
+        ---'';
+    in
+    opencodeYaml + body;
+
+  # Helper to generate OpenCode agent entries
+  mkOpenCodeAgents =
+    files:
+    lib.mapAttrs' (name: _: {
+      name = lib.removeSuffix ".agent" (lib.removeSuffix ".md" name);
+      value = transformForOpenCodeAgent (builtins.readFile (./. + "/${name}"));
+    }) files;
+
   # Helper to generate Copilot CLI file copy commands
   # Note: Copilot CLI doesn't follow symlinks due to security concerns,
   # so we copy files during activation instead of using home.file which creates symlinks
@@ -159,7 +200,17 @@ lib.mkIf (lib.elem username installFor) {
       # Reusable commands (auto-generated from *.prompt.md files)
       commands = mkClaudeFiles promptFiles ".prompt";
     };
+    opencode = lib.mkIf config.programs.opencode.enable {
+      # Custom agents (auto-generated from *.agent.md files)
+      agents = mkOpenCodeAgents agentFiles;
 
+      # Reusable commands (auto-generated from *.prompt.md files)
+      # Uses same transformation as Claude Code: removes agent: line, replaces ${input:*} with $ARGUMENTS
+      commands = mkClaudeFiles promptFiles ".prompt";
+
+      # Global rules from copilot.instructions.md
+      rules = builtins.readFile ./copilot.instructions.md;
+    };
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {
