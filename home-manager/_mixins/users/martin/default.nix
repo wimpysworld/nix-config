@@ -56,6 +56,15 @@ in
     file.".ssh/allowed_signers".text = ''
       martin@wimpress.org ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAywaYwPN4LVbPqkc+kUc7ZVazPBDy4LCAud5iGJdr7g9CwLYoudNjXt/98Oam5lK7ai6QPItK6ECj5+33x/iFpWb3Urr9SqMc/tH5dU1b9N/9yWRhE2WnfcvuI0ms6AXma8QGp1pj/DoLryPVQgXvQlglHaDIL1qdRWFqXUO2u30X5tWtDdOoR02UyAtYBttou4K0rG7LF9rRaoLYP9iCBLxkMJbCIznPD/pIYa6Fl8V8/OVsxYiFy7l5U0RZ7gkzJv8iNz+GG8vw2NX4oIJfAR4oIk3INUvYrKvI2NSMSw5sry+z818fD1hK+soYLQ4VZ4hHRHcf4WV4EeVa5ARxdw== Martin Wimpress
     '';
+    # Configure gpg-agent SSH keys for Git signing
+    file.".gnupg/sshcontrol" = {
+      text = ''
+        # SSH key for Git commit signing (id_rsa)
+        # Keygrip for: ${config.home.homeDirectory}/.ssh/id_rsa
+        EAC48EAAD36DC5B3460F9FC8FBD68DEED4DECD0F 0
+      '';
+      force = true;
+    };
     sessionVariables = {
       DEBFULLNAME = "Martin Wimpress";
       DEBEMAIL = "code@wimpress.io";
@@ -68,12 +77,9 @@ in
     '';
     git = {
       settings = {
-        extraConfig = {
-          gpg = {
-            format = "ssh";
-            #ssh = {
+        gpg = {
+          ssh = {
             allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
-            #};
           };
         };
         user = {
@@ -82,6 +88,7 @@ in
         };
       };
       signing = {
+        format = "ssh";
         key = "${config.home.homeDirectory}/.ssh/id_rsa";
         signByDefault = true;
       };
