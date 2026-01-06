@@ -25,16 +25,13 @@ let
       type = "http";
       url = "https://docs.mcp.cloudflare.com/mcp";
     };
+    exa = {
+      type = "http";
+      url = "https://mcp.exa.ai/mcp";
+    };
     nixos = {
       type = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
-    };
-    github = {
-      type = "http";
-      url = "https://api.githubcopilot.com/mcp/";
-      headers = {
-        Authorization = "Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
-      };
     };
     svelte = {
       type = "http";
@@ -48,19 +45,36 @@ let
         Authorization = "Bearer ${config.sops.placeholder.CONTEXT7_API_KEY}";
       };
     };
-    firecrawl-mcp = {
+    #firecrawl-mcp = {
+    #  type = "http";
+    #  url = "https://mcp.firecrawl.dev/${config.sops.placeholder.FIRECRAWL_API_KEY}/v2/mcp";
+    #};
+    github = {
       type = "http";
-      url = "https://mcp.firecrawl.dev/${config.sops.placeholder.FIRECRAWL_API_KEY}/v2/mcp";
-    };
-    mcp-google-cse = {
-      type = "stdio";
-      command = "${pkgs.uv}/bin/uvx";
-      args = [ "mcp-google-cse" ];
-      env = {
-        API_KEY = config.sops.placeholder.GOOGLE_CSE_API_KEY;
-        ENGINE_ID = config.sops.placeholder.GOOGLE_CSE_ENGINE_ID;
+      url = "https://api.githubcopilot.com/mcp/";
+      headers = {
+        Authorization = "Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
       };
     };
+    jina-mcp-server = {
+      type = "http";
+      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,
+             expand_query,parallel_search_arxiv,parallel_search_ssrn,
+             parallel_search_web,show_api_key,search_arxiv,search_jina_blog,
+             search_ssrn,search_web";
+      headers = {
+        Authorization = "Bearer ${config.sops.placeholder.JINA_API_KEY}";
+      };
+    };
+    #mcp-google-cse = {
+    #  type = "stdio";
+    #  command = "${pkgs.uv}/bin/uvx";
+    #  args = [ "mcp-google-cse" ];
+    #  env = {
+    #    API_KEY = config.sops.placeholder.GOOGLE_CSE_API_KEY;
+    #    ENGINE_ID = config.sops.placeholder.GOOGLE_CSE_ENGINE_ID;
+    #  };
+    #};
   };
 
   # MCP servers for OpenCode - uses {env:VAR} syntax for secrets
@@ -70,17 +84,15 @@ let
       type = "remote";
       url = "https://docs.mcp.cloudflare.com/mcp";
     };
+    # Disabled because Exa is already included by default OpenCode
+    #exa = {
+    #  enabled = false;
+    #  type = "remote";
+    #  url = "https://mcp.exa.ai/mcp";
+    #};
     nixos = {
       type = "local";
       command = [ "${pkgs.mcp-nixos}/bin/mcp-nixos" ];
-    };
-    github = {
-      enabled = false;
-      type = "remote";
-      url = "https://api.githubcopilot.com/mcp/";
-      headers = {
-        Authorization = "Bearer {env:GITHUB_TOKEN}";
-      };
     };
     svelte = {
       type = "local";
@@ -98,22 +110,42 @@ let
         CONTEXT7_API_KEY = "{env:CONTEXT7_API_KEY}";
       };
     };
-    firecrawl = {
+    #firecrawl = {
+    #  enabled = false;
+    #  type = "remote";
+    #  url = "https://mcp.firecrawl.dev/{env:FIRECRAWL_API_KEY}/v2/mcp";
+    #};
+    github = {
       enabled = false;
       type = "remote";
-      url = "https://mcp.firecrawl.dev/{env:FIRECRAWL_API_KEY}/v2/mcp";
-    };
-    mcp-google-cse = {
-      type = "local";
-      command = [
-        "${pkgs.uv}/bin/uvx"
-        "mcp-google-cse"
-      ];
-      environment = {
-        API_KEY = "{env:GOOGLE_CSE_API_KEY}";
-        ENGINE_ID = "{env:GOOGLE_CSE_ENGINE_ID}";
+      url = "https://api.githubcopilot.com/mcp/";
+      headers = {
+        Authorization = "Bearer {env:GITHUB_TOKEN}";
       };
     };
+    jina-mcp-server = {
+      enabled = false;
+      type = "remote";
+      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,
+             expand_query,parallel_search_arxiv,parallel_search_ssrn,
+             parallel_search_web,show_api_key,search_arxiv,search_jina_blog,
+             search_ssrn,search_web";
+      headers = {
+        Authorization = "Bearer {env:JINA_API_KEY}";
+      };
+    };
+    #mcp-google-cse = {
+    #  enabled = false;
+    #  type = "local";
+    #  command = [
+    #    "${pkgs.uv}/bin/uvx"
+    #    "mcp-google-cse"
+    #  ];
+    #  environment = {
+    #    API_KEY = "{env:GOOGLE_CSE_API_KEY}";
+    #    ENGINE_ID = "{env:GOOGLE_CSE_ENGINE_ID}";
+    #  };
+    #};
   };
 
   # MCP servers for Copilot CLI - only supports stdio/local with required tools/args arrays
@@ -129,24 +161,35 @@ let
       ];
       tools = [ "*" ];
     };
-    nixos = {
-      type = "stdio";
-      command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
-      args = [ ];
-      tools = [ "*" ];
-    };
-    github = {
+    exa = {
       type = "stdio";
       command = "${pkgs.nodejs_24}/bin/npx";
       args = [
         "-y"
         "mcp-remote"
-        "https://api.githubcopilot.com/mcp/"
+        "https://mcp.exa.ai/mcp"
       ];
       tools = [ "*" ];
-      env = {
-        MCP_REMOTE_HEADERS = "Authorization: Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
-      };
+    };
+    # GitHub is disabled because Copilot CLI already uses it by default
+    #github = {
+    #  type = "stdio";
+    #  command = "${pkgs.nodejs_24}/bin/npx";
+    #  args = [
+    #    "-y"
+    #    "mcp-remote"
+    #    "https://api.githubcopilot.com/mcp/"
+    #  ];
+    #  tools = [ "*" ];
+    #  env = {
+    #    MCP_REMOTE_HEADERS = "Authorization: Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
+    #  };
+    #};
+    nixos = {
+      type = "stdio";
+      command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+      args = [ ];
+      tools = [ "*" ];
     };
     svelte = {
       type = "stdio";
@@ -169,28 +212,49 @@ let
       ];
       tools = [ "*" ];
     };
-    firecrawl-mcp = {
+    #firecrawl-mcp = {
+    #  type = "stdio";
+    #  command = "${pkgs.nodejs_24}/bin/npx";
+    #  args = [
+    #    "-y"
+    #    "firecrawl-mcp"
+    #  ];
+    #  tools = [
+    #    "scrape"
+    #    "batch_scrape"
+    #    "map"
+    #    "crawl"
+    #    "extract"
+    #  ];
+    #  env = {
+    #    FIRECRAWL_API_KEY = config.sops.placeholder.FIRECRAWL_API_KEY;
+    #  };
+    #};
+    jina-mcp-server = {
       type = "stdio";
       command = "${pkgs.nodejs_24}/bin/npx";
       args = [
         "-y"
-        "firecrawl-mcp"
+        "mcp-remote"
+        "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,
+        expand_query,parallel_search_arxiv,parallel_search_ssrn,
+        parallel_search_web,show_api_key,search_arxiv,search_jina_blog,
+        search_ssrn,search_web"
+        "--header"
+        "Authorization: Bearer ${config.sops.placeholder.JINA_API_KEY}"
       ];
       tools = [ "*" ];
-      env = {
-        FIRECRAWL_API_KEY = config.sops.placeholder.FIRECRAWL_API_KEY;
-      };
     };
-    mcp-google-cse = {
-      type = "stdio";
-      command = "${pkgs.uv}/bin/uvx";
-      args = [ "mcp-google-cse" ];
-      tools = [ "*" ];
-      env = {
-        API_KEY = config.sops.placeholder.GOOGLE_CSE_API_KEY;
-        ENGINE_ID = config.sops.placeholder.GOOGLE_CSE_ENGINE_ID;
-      };
-    };
+    #mcp-google-cse = {
+    #  type = "stdio";
+    #  command = "${pkgs.uv}/bin/uvx";
+    #  args = [ "mcp-google-cse" ];
+    #  tools = [ "*" ];
+    #  env = {
+    #    API_KEY = config.sops.placeholder.GOOGLE_CSE_API_KEY;
+    #    ENGINE_ID = config.sops.placeholder.GOOGLE_CSE_ENGINE_ID;
+    #  };
+    #};
   };
 in
 lib.mkIf (lib.elem username installFor) {
@@ -202,6 +266,7 @@ lib.mkIf (lib.elem username installFor) {
         set -gx FIRECRAWL_API_KEY (cat ${config.sops.secrets.FIRECRAWL_API_KEY.path} 2>/dev/null; or echo "")
         set -gx GOOGLE_CSE_API_KEY (cat ${config.sops.secrets.GOOGLE_CSE_API_KEY.path} 2>/dev/null; or echo "")
         set -gx GOOGLE_CSE_ENGINE_ID (cat ${config.sops.secrets.GOOGLE_CSE_ENGINE_ID.path} 2>/dev/null; or echo "")
+        set -gx JINA_API_KEY (cat ${config.sops.secrets.JINA_API_KEY.path} 2>/dev/null; or echo "")
       '';
     };
     bash = {
@@ -211,6 +276,7 @@ lib.mkIf (lib.elem username installFor) {
         export FIRECRAWL_API_KEY=$(cat ${config.sops.secrets.FIRECRAWL_API_KEY.path} 2>/dev/null || echo "")
         export GOOGLE_CSE_API_KEY=$(cat ${config.sops.secrets.GOOGLE_CSE_API_KEY.path} 2>/dev/null || echo "")
         export GOOGLE_CSE_ENGINE_ID=$(cat ${config.sops.secrets.GOOGLE_CSE_ENGINE_ID.path} 2>/dev/null || echo "")
+        export JINA_API_KEY=$(cat ${config.sops.secrets.JINA_API_KEY.path} 2>/dev/null || echo "")
       '';
     };
     opencode = lib.mkIf config.programs.opencode.enable {
@@ -231,8 +297,7 @@ lib.mkIf (lib.elem username installFor) {
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "mcp-server-context7"
-        "mcp-server-brave-search"
-        "mcp-server-firecrawl"
+        #"mcp-server-firecrawl"
         "svelte-mcp"
       ];
       userSettings = {
@@ -245,9 +310,28 @@ lib.mkIf (lib.elem username installFor) {
               "https://docs.mcp.cloudflare.com/mcp"
             ];
           };
+          exa = {
+            command = "${pkgs.nodejs_24}/bin/npx";
+            args = [
+              "-y"
+              "mcp-remote"
+              "https://mcp.exa.ai/mcp"
+            ];
+          };
           nixos = {
             command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
             args = [ ];
+          };
+          jina = {
+            command = "${pkgs.nodejs_24}/bin/npx";
+            args = [
+              "-y"
+              "mcp-remote"
+              "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,
+               expand_query,parallel_search_arxiv,parallel_search_ssrn,
+               parallel_search_web,show_api_key,search_arxiv,
+               search_jina_blog,search_ssrn,search_web"
+            ];
           };
         };
       };
@@ -270,7 +354,7 @@ lib.mkIf (lib.elem username installFor) {
       GOOGLE_CSE_ENGINE_ID = {
         sopsFile = mcpSopsFile;
       };
-      BRAVE_SEARCH_API_KEY = {
+      JINA_API_KEY = {
         sopsFile = mcpSopsFile;
       };
     };
