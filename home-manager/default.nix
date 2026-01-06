@@ -221,7 +221,6 @@ in
       gpg_public = { };
       gpg_ownertrust = { };
       hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
-      obs_secrets = { };
       ssh_config.path =
         if isLinux then
           "${config.home.homeDirectory}/.ssh/config"
