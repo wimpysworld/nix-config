@@ -41,7 +41,7 @@ let
   ]
   ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
     "cogito:14b" # 128k (stem)
-    "qwen2.5-coder:14" # 32k  (code reasoning)
+    "qwen2.5-coder:14b" # 32k  (code reasoning)
     "qwen3:14b" # 40k  (cot)
   ];
   # Transform defaultModels into a ; separated string for Open WebUI filter
