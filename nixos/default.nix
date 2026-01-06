@@ -182,7 +182,12 @@
     age = {
       keyFile = "/var/lib/private/sops/age/keys.txt";
       generateKey = false;
+      # Disable SSH key scanning - we use the age keyFile and the SSH host keys
+      # are themselves managed by sops, creating a circular dependency at boot.
+      sshKeyPaths = [ ];
     };
+    # Disable GPG SSH key scanning for the same reason.
+    gnupg.sshKeyPaths = [ ];
     defaultSopsFile = ../secrets/secrets.yaml;
     secrets = {
       test-key = { };
