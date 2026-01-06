@@ -89,7 +89,6 @@
         sops
       ]
       ++ lib.optionals isInstall [
-        inputs.nixos-needsreboot.packages.${pkgs.stdenv.hostPlatform.system}.default
         nvd
         nvme-cli
         rsync
@@ -251,14 +250,6 @@
   };
 
   system = {
-    activationScripts = {
-      nixos-needsreboot = lib.mkIf (isInstall) {
-        supportsDryActivation = true;
-        text = "${
-          lib.getExe inputs.nixos-needsreboot.packages.${pkgs.stdenv.hostPlatform.system}.default
-        } \"$systemConfig\" || true";
-      };
-    };
     nixos.label = lib.mkIf isInstall "-";
     inherit stateVersion;
   };

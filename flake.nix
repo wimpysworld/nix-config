@@ -25,7 +25,6 @@
     kolide-launcher.url = "github:/kolide/nix-agent/main";
     kolide-launcher.inputs.nixpkgs.follows = "nixpkgs";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
-    nixos-needsreboot.url = "https://flakehub.com/f/wimpysworld/nixos-needsreboot/0.2.9.tar.gz";
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
     nix-index-database.url = "github:Mic92/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
@@ -250,31 +249,26 @@
         in
         {
           default = pkgs.mkShell {
-            packages =
-              with pkgs;
-              [
-                bc
-                git
-                home-manager
-                hyperfine
-                inputs.determinate.packages.${system}.default
-                inputs.disko.packages.${system}.default
-                inputs.fh.packages.${system}.default
-                jq
-                just
-                micro
-                nh
-                nixd
-                nixfmt-tree
-                nixfmt-rfc-style
-                nix-output-monitor
-                nvd
-                sops
-                tree
-              ]
-              ++ lib.optionals pkgs.stdenv.isLinux [
-                inputs.nixos-needsreboot.packages.${system}.default
-              ];
+            packages = with pkgs; [
+              bc
+              git
+              home-manager
+              hyperfine
+              inputs.determinate.packages.${system}.default
+              inputs.disko.packages.${system}.default
+              inputs.fh.packages.${system}.default
+              jq
+              just
+              micro
+              nh
+              nixd
+              nixfmt-tree
+              nixfmt-rfc-style
+              nix-output-monitor
+              nvd
+              sops
+              tree
+            ];
           };
         }
       );
