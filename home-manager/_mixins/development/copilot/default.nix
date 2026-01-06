@@ -50,6 +50,7 @@ lib.mkIf (lib.elem username installFor) {
           "chat.fontSize" = 16;
           "chat.tools.terminal.blockDetectedFileWrites" = "never";
           "chat.tools.urls.autoApprove" = mkAutoApprove approvedDomains;
+          "chat.viewSessions.orientation" = "stacked";
           "github.copilot.chat.anthropic.thinking.enabled" = true;
           "github.copilot.chat.codesearch.enabled" = true;
           "inlineChat.enableV2" = true;
