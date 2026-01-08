@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   username,
   ...
