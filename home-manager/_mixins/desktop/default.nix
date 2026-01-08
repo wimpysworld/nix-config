@@ -164,7 +164,7 @@ in
     };
   };
 
-  gtk = {
+  gtk = lib.mkIf isLinux {
     enable = true;
     font = {
       name = "Work Sans";
@@ -231,7 +231,7 @@ in
     };
   };
 
-  xdg = {
+  xdg = lib.mkIf isLinux {
     autostart = {
       enable = true;
     };
@@ -253,7 +253,7 @@ in
         };
       };
     };
-    desktopEntries = lib.mkIf isLinux {
+    desktopEntries = {
       kvantummanager = {
         name = "Kvantum Manager";
         noDisplay = true;
@@ -271,7 +271,7 @@ in
         noDisplay = true;
       };
     };
-    portal = lib.mkIf isLinux {
+    portal = {
       config = {
         common = {
           default =

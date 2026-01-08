@@ -8,9 +8,8 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isDarwin isLinux;
+  inherit (pkgs.stdenv) isLinux;
   davinciResolve = (pkgs.davinci-resolve.override { studioVariant = true; });
-  blenderPackage = if isDarwin then pkgs.blender else pkgs.blender-hip;
 in
 {
   dconf = lib.mkIf isLinux {
@@ -411,13 +410,13 @@ in
 
   home.packages =
     with pkgs;
-    [
+    lib.optionals (!isLima) [
       audacity
-      inkscape
-      blenderPackage
     ]
     ++ lib.optionals (!isLima && isLinux) [
+      blender-hip
       gimp3
+      inkscape
       davinciResolve
     ];
 
