@@ -133,11 +133,7 @@ in
     };
   };
 
-  # Authrorize X11 access in Distrobox
   home = lib.mkIf isLinux {
-    file = {
-      ".distroboxrc".text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
-    };
     packages = [
       pkgs.kdePackages.qt6ct
       pkgs.kdePackages.qtstyleplugin-kvantum

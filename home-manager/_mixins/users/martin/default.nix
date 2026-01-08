@@ -41,16 +41,6 @@ in
       text = ''export DEB_VENDOR=Ubuntu'';
     };
     file."Games/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."Quickemu/nixos-console/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."Quickemu/nixos-console.conf" = lib.mkIf (!isLima) {
-      text = ''
-        #!/run/current-system/sw/bin/quickemu --vm
-        guest_os="linux"
-        disk_img="nixos-console/disk.qcow2"
-        disk_size="96G"
-        iso="nixos-console/nixos.iso"
-      '';
-    };
     file."Websites/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."Zero/.keep".text = "";
     file.".ssh/allowed_signers".text = ''

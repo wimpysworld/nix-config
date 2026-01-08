@@ -56,6 +56,7 @@ in
     ./shell
     ./svelte
     ./typescript
+    ./virtualisation
     ./vscode
     ./yaml
     ./zed-editor
