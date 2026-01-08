@@ -1,5 +1,0 @@
-_: {
-  homebrew = {
-    casks = [ "blender" ];
-  };
-}

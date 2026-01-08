@@ -8,45 +8,46 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  inherit (pkgs.stdenv) isDarwin isLinux;
   davinciResolve = (pkgs.davinci-resolve.override { studioVariant = true; });
+  blenderPackage = if isDarwin then pkgs.blender else pkgs.blender-hip;
 in
 {
-  dconf = lib.mkIf isLinux { 
-   settings = with lib.hm.gvariant; {
-    "com/github/wwmm/easyeffects" = {
-      bypass = false;
-      inactivity-timer-enable = false;
-      process-all-inputs = false;
-      process-all-outputs = false;
-      show-native-plugin-ui = true;
-      shutdown-on-window-close = false;
-      use-cubic-volumes = false;
-    };
+  dconf = lib.mkIf isLinux {
+    settings = with lib.hm.gvariant; {
+      "com/github/wwmm/easyeffects" = {
+        bypass = false;
+        inactivity-timer-enable = false;
+        process-all-inputs = false;
+        process-all-outputs = false;
+        show-native-plugin-ui = true;
+        shutdown-on-window-close = false;
+        use-cubic-volumes = false;
+      };
 
-    "com/github/wwmm/easyeffects/spectrum" = {
-      height = 240;
-      line-width = mkDouble 2.0;
-      n-points = 100;
-      rounded-corners = true;
-      show-bar-border = true;
-      type = "Bars";
-    };
+      "com/github/wwmm/easyeffects/spectrum" = {
+        height = 240;
+        line-width = mkDouble 2.0;
+        n-points = 100;
+        rounded-corners = true;
+        show-bar-border = true;
+        type = "Bars";
+      };
 
-    "com/github/wwmm/easyeffects/streaminputs" = {
-      blocklist = [ "input.Mic-Loopback" ];
-      use-default-input-device = true;
-    };
+      "com/github/wwmm/easyeffects/streaminputs" = {
+        blocklist = [ "input.Mic-Loopback" ];
+        use-default-input-device = true;
+      };
 
-    "com/github/wwmm/easyeffects/streamoutputs" = {
-      blocklist = [ "output.Mic-Loopback" ];
-    };
+      "com/github/wwmm/easyeffects/streamoutputs" = {
+        blocklist = [ "output.Mic-Loopback" ];
+      };
 
-    "org/gnome/SoundRecorder" = {
-      audio-channel = "mono";
-      audio-profile = "flac";
+      "org/gnome/SoundRecorder" = {
+        audio-channel = "mono";
+        audio-profile = "flac";
+      };
     };
-   };
   };
 
   home.file = {
@@ -413,12 +414,10 @@ in
     [
       audacity
       inkscape
-    ]
-    ++ lib.optionals isLinux [
-      gimp3
-      gnome-sound-recorder
+      blenderPackage
     ]
     ++ lib.optionals (!isLima && isLinux) [
+      gimp3
       davinciResolve
     ];
 

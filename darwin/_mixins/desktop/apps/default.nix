@@ -1,6 +1,5 @@
 _: {
   imports = [
-    ./blender
     ./browsers
     ./graphics-production
     ./keybase
