@@ -205,7 +205,7 @@
           "/System/Applications/Music.app"
           "/Applications/Heynote.app"
           "/Applications/Joplin.app"
-          "/System/Applications/Launchpad.app"
+          "/System/Applications/Apps.app"
         ];
         show-recents = false;
         tilesize = 48;
