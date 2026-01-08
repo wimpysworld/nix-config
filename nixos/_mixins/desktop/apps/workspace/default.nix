@@ -44,6 +44,7 @@ let
 in
 lib.mkIf (lib.elem username installFor && isInstall) {
   environment.systemPackages = [
+    pkgs._1password-gui
     pkgs.wavebox
     slackWavebox
     waveboxXdgOpen
