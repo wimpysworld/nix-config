@@ -11,10 +11,7 @@ in
 lib.mkIf (builtins.elem username installFor) {
   home.packages =
     with pkgs;
-    [
-      youtube-music
-    ]
-    ++ lib.optionals isLinux [
+    lib.optionals isLinux [
       cider
     ];
 }
