@@ -1,11 +1,8 @@
 {
   catppuccinPalette,
-  isInstall,
-  pkgs,
   ...
 }:
 {
-  environment.systemPackages = [ pkgs.wavebox ];
   programs = {
     chromium = {
       # - https://help.kagi.com/kagi/getting-started/setting-default.html
@@ -20,18 +17,6 @@
         "HomePageLocation" = "https://kagi.com";
         "NewTabPageLocation" = "https://kagi.com";
       };
-    };
-    wavebox = {
-      enable = isInstall;
-      extensions = [
-        "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-        "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
-        "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
-        "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
-        "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
-        "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
-        "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
-      ];
     };
     firefox = {
       policies = {

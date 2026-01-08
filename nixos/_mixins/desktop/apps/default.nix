@@ -4,5 +4,6 @@ _: {
     ./browsers
     ./evolution
     ./steam
+    ./workspace
   ];
 }

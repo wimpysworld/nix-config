@@ -43,7 +43,6 @@ in
     ./streaming
     ./terminal
     ./utilities
-    ./workspace
   ];
 
   dbus = lib.mkIf isLinux {
