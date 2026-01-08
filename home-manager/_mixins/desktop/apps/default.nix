@@ -35,15 +35,15 @@ let
 in
 {
   imports = [
-    ./communications
+    ./browsers
+    ./chat
     ./libreoffice
-    ./live-streaming
     ./media-production
     ./music
     ./notes
+    ./streaming
     ./terminal
     ./utilities
-    ./web-browsers
     ./workspace
   ];
 
