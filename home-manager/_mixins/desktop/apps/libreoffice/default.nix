@@ -1,11 +1,11 @@
 {
-  lib,
   pkgs,
-  username,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
-  installFor = [ "martin" ];
+  inherit (pkgs.stdenv) isDarwin;
+  libreofficePackage = if isDarwin then pkgs.libreoffice-bin else pkgs.libreoffice;
 in
-lib.mkIf (lib.elem username installFor && isLinux) { home.packages = with pkgs; [ libreoffice ]; }
+{
+  home.packages = [ libreofficePackage ];
+}
