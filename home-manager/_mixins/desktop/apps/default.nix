@@ -44,6 +44,7 @@ in
     ./terminal
     ./utilities
     ./web-browsers
+    ./workspace
   ];
 
   dbus = lib.mkIf isLinux {

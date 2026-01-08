@@ -13,17 +13,6 @@ let
   # Catppuccin Halloy themes from the catppuccin flake
   catppuccinHalloy = inputs.catppuccin.packages.${pkgs.system}.halloy;
 
-  slackWavebox = (
-    inputs.xdg-override.lib.wrapPackage {
-      nameMatch = [
-        {
-          case = "^https?://";
-          command = "wavebox";
-        }
-      ];
-    } pkgs.slack
-  );
-
   # Halloy configuration as TOML with secret placeholders
   halloyConfig = ''
     theme = "catppuccin-mocha"
@@ -118,7 +107,6 @@ in
       ++ lib.optionals (lib.elem username installFor && isLinux) [
         fractal
         halloy
-        slackWavebox
         zoom-us
       ];
   };
@@ -136,7 +124,9 @@ in
   };
 
   # Install Catppuccin Mocha theme for Halloy
-  xdg.configFile."halloy/themes/catppuccin-mocha.toml" = lib.mkIf (lib.elem username installFor && isLinux) {
-    source = catppuccinHalloy + "/catppuccin-mocha.toml";
-  };
+  xdg.configFile."halloy/themes/catppuccin-mocha.toml" =
+    lib.mkIf (lib.elem username installFor && isLinux)
+      {
+        source = catppuccinHalloy + "/catppuccin-mocha.toml";
+      };
 }
