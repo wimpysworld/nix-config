@@ -8,7 +8,6 @@ lib.mkIf (lib.elem username installFor) {
   homebrew = {
     casks = [
       "heynote"
-      "joplin"
     ];
   };
 }

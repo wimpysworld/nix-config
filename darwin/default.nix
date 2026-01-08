@@ -204,7 +204,7 @@
           "/Users/${username}/Applications/Home Manager Apps/Kitty.app"
           "/System/Applications/Music.app"
           "/Applications/Heynote.app"
-          "/Applications/Joplin.app"
+          "/Users/${username}/Applications/Home Manager Apps/Joplin.app"
           "/System/Applications/Apps.app"
         ];
         show-recents = false;

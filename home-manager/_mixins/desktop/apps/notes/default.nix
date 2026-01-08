@@ -24,7 +24,7 @@ lib.mkIf (lib.elem username installFor) {
   };
 
   programs.joplin-desktop = {
-    enable = isLinux;
+    enable = true;
     extraConfig = {
       "markdown.plugin.sub" = true;
       "markdown.plugin.sup" = true;
