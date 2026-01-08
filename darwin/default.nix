@@ -198,7 +198,7 @@
           "/Users/${username}/Applications/Home Manager Apps/Wavebox.app"
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"
-          "/Applications/Halloy.app"
+          "/Users/${username}/Applications/Home Manager Apps/Halloy.app"
           "/Users/${username}/Applications/Home Manager Apps/Visual Studio Code.app"
           "/Users/${username}/Applications/Home Manager Apps/GitKraken.app"
           "/Users/${username}/Applications/Home Manager Apps/Kitty.app"

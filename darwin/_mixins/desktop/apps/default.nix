@@ -3,7 +3,6 @@ _: {
     ./blender
     ./grammarly
     ./graphics-production
-    ./internet-chat
     ./keybase
     ./notes
     ./maestral

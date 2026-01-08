@@ -99,15 +99,17 @@ in
   home = {
     packages =
       with pkgs;
-      [ telegram-desktop ]
+      [
+        halloy
+        telegram-desktop
+        zoom-us
+      ]
       ++ lib.optionals (lib.elem username installFor) [
         (discord.override { withOpenASAR = true; })
       ]
       # Halloy is installed via homebrew on Darwin
       ++ lib.optionals (lib.elem username installFor && isLinux) [
         fractal
-        halloy
-        zoom-us
       ];
   };
 
