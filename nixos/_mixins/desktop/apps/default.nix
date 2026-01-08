@@ -1,8 +1,8 @@
 _: {
   imports = [
     ./blender
+    ./browsers
     ./evolution
     ./steam
-    ./web-browsers
   ];
 }
