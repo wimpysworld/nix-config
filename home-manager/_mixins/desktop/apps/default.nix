@@ -36,10 +36,10 @@ in
   imports = [
     ./browsers
     ./chat
-    ./libreoffice
     ./media-production
     ./music
     ./notes
+    ./office
     ./streaming
     ./terminal
     ./utilities
