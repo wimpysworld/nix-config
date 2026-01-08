@@ -1,25 +1,13 @@
 {
   catppuccinPalette,
+  isInstall,
+  pkgs,
   ...
 }:
 {
+  environment.systemPackages = [ pkgs.wavebox ];
   programs = {
     chromium = {
-      extensions = [
-        "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
-        "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
-        "mdjildafknihdffpkfmmpnpoiajfjnjd" # Consent-O-Matic
-        "mnjggcdmjocbbbhaepdhchncahnbgone" # SponsorBlock for YouTube
-        "gebbhagfogifgggkldgodflihgfeippi" # Return YouTube Dislike
-        "fdpohaocaechififmbbbbbknoalclacl" # GoFullPage
-        "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
-        "cdglnehniifkbagbbombnjghhcihifij" # Kagi
-        "dpaefegpjhgeplnkomgbcmmlffkijbgp" # Kagi Summariser
-        #"bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
-        "lnjaiaapbakfhlbjenjkhffcdpoompki" # Catppuccin Web file explorer icons
-        "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
-        "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
-      ];
       # - https://help.kagi.com/kagi/getting-started/setting-default.html
       extraOpts = {
         # Default search provider; Kagi
@@ -34,8 +22,9 @@
       };
     };
     wavebox = {
-      enable = true;
+      enable = isInstall;
       extensions = [
+        "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
         "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
         "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
         "glnpjglilkicbckjpbgcfkogebgllemb" # Okta

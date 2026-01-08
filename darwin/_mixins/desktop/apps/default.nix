@@ -1,14 +1,12 @@
 _: {
   imports = [
     ./blender
-    ./grammarly
+    ./browsers
     ./graphics-production
     ./keybase
     ./notes
     ./maestral
     ./obs-studio
-    ./security
     ./utilities
-    ./web-browsers
   ];
 }

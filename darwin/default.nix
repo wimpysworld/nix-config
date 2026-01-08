@@ -194,8 +194,8 @@
         orientation = "left";
         # TODO: Make this user-specific
         persistent-apps = [
-          "/Applications/Brave Browser.app"
-          "/Users/${username}/Applications/Home Manager Apps/Wavebox.app"
+          "/Applications/Orion.app"
+          "/Applications/Nix Apps/Brave Browser.app"
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"
           "/Users/${username}/Applications/Home Manager Apps/Halloy.app"

@@ -11,20 +11,20 @@ let
     "louise"
   ];
   forMartin = [ "martin" ];
+  familyPackages = [
+    pkgs.brave
+    pkgs.microsoft-edge
+  ];
+  martinPackages = [
+    pkgs.brave
+    pkgs.mullvad-browser
+  ];
 in
 {
   imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
   environment.systemPackages =
-    with pkgs;
-    lib.optionals (builtins.elem username forFamily && isInstall) [
-      google-chrome
-      microsoft-edge
-    ]
-    ++ lib.optionals (builtins.elem username forMartin && isInstall) [
-      brave
-      chromium
-      wavebox
-    ];
+    lib.optionals (builtins.elem username forFamily && isInstall) familyPackages
+    ++ lib.optionals (builtins.elem username forMartin && isInstall) martinPackages;
 
   # TODO: Configure Microsoft Edge policy
   # - https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies
@@ -35,9 +35,6 @@ in
       # - https://chromeenterprise.google/policies/
       # - chromium.enable just enables the Chromium policies.
       enable = isInstall;
-      extensions = [
-        "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-      ];
       extraOpts = {
         # Misc; privacy and data collection prevention
         "BrowserNetworkTimeQueriesEnabled" = false;

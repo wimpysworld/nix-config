@@ -1,6 +1,5 @@
 {
   catppuccinPalette,
-  desktop,
   lib,
   pkgs,
   ...
