@@ -168,6 +168,10 @@
         "com.apple.TimeMachine".DoNotOfferNewDisksForBackup = true;
         # Turn on app auto-update
         "com.apple.commerce".AutoUpdate = true;
+        NSGlobalDomain = {
+          AppleLanguages = [ "en-GB" ];
+          AppleLocale = "en_GB";
+        };
       };
       NSGlobalDomain = {
         AppleICUForce24HourTime = true;
