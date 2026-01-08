@@ -37,7 +37,6 @@ in
       enable = isInstall;
       extensions = [
         "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-        "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
       ];
       extraOpts = {
         # Misc; privacy and data collection prevention
@@ -54,8 +53,7 @@ in
         "NTPCustomBackgroundEnabled" = false;
         "NTPMiddleSlotAnnouncementVisible" = false;
         # Misc; Downloads
-        "DefaultDownloadDirectory" = "/home/${username}/Downloads";
-        "DownloadDirectory" = "/home/${username}/Downloads";
+        # Note: DefaultDownloadDirectory and DownloadDirectory removed as they conflict with PromptForDownloadLocation
         "PromptForDownloadLocation" = true;
         # Misc
         "AllowSystemNotifications" = true;
@@ -107,6 +105,16 @@ in
         "HomePageIsNewTabPage" = true;
         "RestoreOnStartup" = 1;
         "ShowHomeButton" = false;
+      };
+      # Set initial browser preferences (user can change these later in settings)
+      # - https://www.chromium.org/administrators/configuring-other-preferences/
+      # browser.theme.system_theme values: 0 = default, 1 = GTK, 2 = Chromium
+      initialPrefs = {
+        browser.theme = {
+          # Use system (GTK) theme colors
+          #follows_system_colors = true;
+          system_theme = 1;
+        };
       };
     };
     # - https://mozilla.github.io/policy-templates/

@@ -16,7 +16,7 @@
 {
   imports = [
     # Use module this flake exports; from modules/nixos
-    #outputs.nixosModules.my-module
+    outputs.nixosModules.wavebox
     # Use modules from other flakes
     inputs.catppuccin.nixosModules.catppuccin
     inputs.determinate.nixosModules.default

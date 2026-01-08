@@ -15,11 +15,7 @@
         "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
         "cdglnehniifkbagbbombnjghhcihifij" # Kagi
         "dpaefegpjhgeplnkomgbcmmlffkijbgp" # Kagi Summariser
-        "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
-        "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
-        "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
-        "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
-        "bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
+        #"bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
         "lnjaiaapbakfhlbjenjkhffcdpoompki" # Catppuccin Web file explorer icons
         "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
         "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
@@ -35,8 +31,18 @@
         "DefaultSearchProviderSuggestURL" = "https://kagi.com/api/autosuggest?q={searchTerms}";
         "HomePageLocation" = "https://kagi.com";
         "NewTabPageLocation" = "https://kagi.com";
-        "PromptForDownloadLocation" = true;
       };
+    };
+    wavebox = {
+      enable = true;
+      extensions = [
+        "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
+        "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
+        "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
+        "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
+        "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
+        "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
+      ];
     };
     firefox = {
       policies = {
