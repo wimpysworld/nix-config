@@ -19,6 +19,24 @@ let
     pkgs.brave
     pkgs.mullvad-browser
   ];
+  essentialExtensions = [
+    "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
+  ];
+  extraExtensions = [
+    "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
+    "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
+    "mdjildafknihdffpkfmmpnpoiajfjnjd" # Consent-O-Matic
+    "mnjggcdmjocbbbhaepdhchncahnbgone" # SponsorBlock for YouTube
+    "gebbhagfogifgggkldgodflihgfeippi" # Return YouTube Dislike
+    "fdpohaocaechififmbbbbbknoalclacl" # GoFullPage
+    "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
+    "cdglnehniifkbagbbombnjghhcihifij" # Kagi
+    "dpaefegpjhgeplnkomgbcmmlffkijbgp" # Kagi Summariser
+    #"bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
+    "lnjaiaapbakfhlbjenjkhffcdpoompki" # Catppuccin Web file explorer icons
+    "clngdbkpkpeebahjckkjfobafhncgmne" # Stylus
+    "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
+  ];
 in
 {
   imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
@@ -35,6 +53,11 @@ in
       # - https://chromeenterprise.google/policies/
       # - chromium.enable just enables the Chromium policies.
       enable = isInstall;
+      extensions =
+        if (lib.elem username forMartin) then
+          essentialExtensions ++ extraExtensions
+        else
+          essentialExtensions;
       extraOpts = {
         # Misc; privacy and data collection prevention
         "BrowserNetworkTimeQueriesEnabled" = false;
