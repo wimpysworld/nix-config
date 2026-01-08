@@ -12,7 +12,7 @@ let
   ];
   forMartin = [ "martin" ];
   familyPackages = [
-    pkgs.brave
+    pkgs.google-chrome
     pkgs.microsoft-edge
   ];
   martinPackages = [

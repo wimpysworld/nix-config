@@ -1,21 +1,38 @@
-{ pkgs, ... }:
 {
-  environment.systemPackages = with pkgs; [
-    brave
-    grandperspective
-    keka
-    maestral # CLI
-    stats
-    utm
+  pkgs,
+  username,
+  ...
+}:
+let
+  installFor = [
+    "martin"
   ];
+in
+{
+  environment.systemPackages =
+    with pkgs;
+    [
+      grandperspective
+      keka
+      maestral # CLI
+    ]
+    ++ lib.optionals (builtins.elem username installFor) [
+      brave
+      stats
+      utm
+    ];
 
   homebrew = {
     casks = [
+      "blender"
+      "inkscape"
+      "maestral" # GUI
+    ]
+    ++ lib.optionals (builtins.elem username installFor) [
       "beyond-compare"
       "docker-desktop"
       "heynote"
       "keybase"
-      "maestral" # GUI
       "mullvad-browser"
       "obs"
       "orion"

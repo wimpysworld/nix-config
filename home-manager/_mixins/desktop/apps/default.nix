@@ -34,6 +34,7 @@ let
 in
 {
   imports = [
+    ./browsers
     ./chat
     ./libreoffice
     ./media-production
