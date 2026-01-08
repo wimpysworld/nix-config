@@ -5,6 +5,7 @@
   ...
 }:
 let
+  inherit (pkgs.stdenv) isLinux;
   gitsignCredentialCache =
     if pkgs.stdenv.isLinux then
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
@@ -104,7 +105,7 @@ in
       ];
     };
     gitui = {
-      enable = true;
+      enable = isLinux;
     };
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
