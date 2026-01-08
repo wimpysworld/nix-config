@@ -16,8 +16,8 @@ let
 in
 {
   imports = [
-    # Custom Home Manager modules from this flake
-    outputs.homeManagerModules.wavebox
+    # Custom Home Manager modules go here
+    #outputs.homeManagerModules.mymodule
 
     # Modules exported from other flakes:
     inputs.catppuccin.homeModules.catppuccin

@@ -1,7 +1,6 @@
-{ pkgs, ... }:
-{
+_: {
   imports = [
+    ./fonts
     ./network
   ];
-  environment.systemPackages = with pkgs; [ ];
 }

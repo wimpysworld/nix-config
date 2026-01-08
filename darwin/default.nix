@@ -17,7 +17,6 @@
     ./${hostname}
     ./_mixins/desktop
     ./_mixins/features
-    ./_mixins/scripts
   ];
 
   # Only install the docs I use
