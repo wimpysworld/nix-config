@@ -63,6 +63,10 @@ in
         cursor_trail 500
         cursor_trail_decay 0.175 0.425
         cursor_trail_start_threshold 2
+
+        # Send proper escape sequences for Enter key modifiers (for OpenCode)
+        map shift+enter send_text all \x1b[13;2u
+        map ctrl+enter send_text all \x1b[13;5u
       '';
     };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {
