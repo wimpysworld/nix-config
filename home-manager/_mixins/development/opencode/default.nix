@@ -51,7 +51,59 @@ lib.mkIf (lib.elem username installFor) {
         # These provide guardrails across the board
         permission = {
           # Safe operations - allow without prompting
-          read = "allow"; # Reading files
+          read = {
+            # Default: allow most file reads
+            "*" = "allow";
+            "**/*" = "allow";
+
+            # DENY: Credentials and secrets (more specific patterns override)
+            ".env" = "deny";
+            ".env.*" = "deny";
+            ".env.local" = "deny";
+            ".env.*.local" = "deny";
+            "**/secrets/**" = "deny";
+            "**/.secrets/**" = "deny";
+            "secrets/**" = "deny";
+            ".secrets/**" = "deny";
+
+            # DENY: SSH keys
+            "~/.ssh/id_rsa" = "deny";
+            "~/.ssh/id_rsa.*" = "deny";
+            "~/.ssh/id_ed25519" = "deny";
+            "~/.ssh/id_ed25519.*" = "deny";
+            "~/.ssh/id_ecdsa" = "deny";
+            "~/.ssh/id_ecdsa.*" = "deny";
+            "~/.ssh/*_rsa" = "deny";
+            "~/.ssh/*_ed25519" = "deny";
+            "**/id_rsa" = "deny";
+            "**/id_ed25519" = "deny";
+            "*.pem" = "deny";
+            "*.key" = "deny";
+
+            # DENY: GPG keys
+            "~/.gnupg/private-keys-v1.d/**" = "deny";
+            "~/.gnupg/**/*.key" = "deny";
+
+            # DENY: Cloud credentials
+            "~/.aws/credentials" = "deny";
+            "~/.aws/config" = "deny";
+            "~/.config/gcloud/**" = "deny";
+            "~/.azure/**" = "deny";
+
+            # DENY: VCS credentials
+            "~/.config/gh/hosts.yml" = "deny";
+            "~/.git-credentials" = "deny";
+            "~/.netrc" = "deny";
+
+            # DENY: Container/Kubernetes secrets
+            "~/.docker/config.json" = "deny";
+            "~/.kube/config" = "deny";
+
+            # DENY: Shell history (may contain passwords)
+            "~/.bash_history" = "deny";
+            "~/.zsh_history" = "deny";
+            "~/.fish_history" = "deny";
+          };
           glob = "allow"; # Finding files by pattern
           grep = "allow"; # Searching file contents
           list = "allow"; # Listing directories
@@ -60,192 +112,384 @@ lib.mkIf (lib.elem username installFor) {
           # Potentially destructive operations - require approval
           edit = "allow"; # All file modifications (edit, write, patch)
           bash = {
-            # CATCH-ALL: Unknown commands require approval
-            # ============================================================
+            # ══════════════════════════════════════════════════════════════
+            # CATCH-ALL: Unknown commands require approval (must be first)
+            # ══════════════════════════════════════════════════════════════
             "*" = "ask";
 
-            # Shell
-            # ============================================================
-            # allow: read-only and low-risk
+            # ══════════════════════════════════════════════════════════════
+            # GLOBAL DENIES - destructive or privilege escalation
+            # ══════════════════════════════════════════════════════════════
+            "rm" = "deny";
+            "rm *" = "deny";
+            "sudo" = "deny";
+            "sudo *" = "deny";
+            "dd *" = "deny";
+            "mkfs*" = "deny";
+            "shred *" = "deny";
+            "wipe *" = "deny";
+            "srm *" = "deny";
+            "rmdir *" = "deny";
+            "truncate *" = "deny";
+
+            # System modification
+            "sysctl *" = "deny";
+            "modprobe *" = "deny";
+            "insmod *" = "deny";
+            "rmmod *" = "deny";
+
+            # Boot/firmware
+            "grub-install *" = "deny";
+            "update-grub *" = "deny";
+            "efibootmgr *" = "deny";
+
+            # Disk operations
+            "fdisk *" = "deny";
+            "parted *" = "deny";
+            "gparted *" = "deny";
+            "mkswap *" = "deny";
+            "swapon *" = "deny";
+            "swapoff *" = "deny";
+            "mount *" = "deny";
+            "umount *" = "deny";
+
+            # Subshell execution bypasses
+            "bash -c*" = "deny";
+            "sh -c*" = "deny";
+            "fish -c*" = "deny";
+            "zsh -c*" = "deny";
+            "dash -c*" = "deny";
+
+            # Direct code execution via interpreters
+            "python -c*" = "deny";
+            "python3 -c*" = "deny";
+            "python2 -c*" = "deny";
+            "node -e*" = "deny";
+            "node --eval*" = "deny";
+            "perl -e*" = "deny";
+            "ruby -e*" = "deny";
+            "lua -e*" = "deny";
+            "php -r*" = "deny";
+
+            # ══════════════════════════════════════════════════════════════
+            # Shell - read-only utilities (safe with any arguments)
+            # ══════════════════════════════════════════════════════════════
             "ls" = "allow";
+            "ls *" = "allow";
             "cat" = "allow";
+            "cat *" = "allow";
             "head" = "allow";
+            "head *" = "allow";
             "tail" = "allow";
+            "tail *" = "allow";
             "wc" = "allow";
+            "wc *" = "allow";
             "file" = "allow";
+            "file *" = "allow";
             "tree" = "allow";
+            "tree *" = "allow";
             "pwd" = "allow";
             "which" = "allow";
+            "which *" = "allow";
             "type" = "allow";
+            "type *" = "allow";
             "env" = "allow";
             "fd" = "allow";
+            "fd *" = "allow";
             "rg" = "allow";
-            "mkdir" = "allow";
-            "touch" = "allow";
+            "rg *" = "allow";
+            "grep" = "allow";
+            "grep *" = "allow";
+            "egrep *" = "allow";
+            "fgrep *" = "allow";
+            "mkdir" = "ask";
+            "mkdir *" = "ask";
+            "touch" = "ask";
+            "touch *" = "ask";
             "whoami" = "allow";
             "hostname" = "allow";
+            "hostname *" = "allow";
             "uname" = "allow";
-            "uname -a" = "allow";
+            "uname *" = "allow";
             "df" = "allow";
-            "df -h" = "allow";
+            "df *" = "allow";
             "free" = "allow";
-            "free -h" = "allow";
+            "free *" = "allow";
             "ps" = "allow";
-            "ps aux" = "allow";
-            "top -b" = "allow";
-            "top -b -n 1" = "allow";
+            "ps *" = "allow";
+            "top -b*" = "allow";
             "uptime" = "allow";
             "date" = "allow";
+            "date *" = "allow";
             "lscpu" = "allow";
+            "lscpu *" = "allow";
             "lsblk" = "allow";
+            "lsblk *" = "allow";
             "lsusb" = "allow";
+            "lsusb *" = "allow";
             "lspci" = "allow";
-            "id" = "allow"; # shows user/group IDs
-            "groups" = "allow"; # shows group memberships
+            "lspci *" = "allow";
+            "id" = "allow";
+            "id *" = "allow";
+            "groups" = "allow";
+            "groups *" = "allow";
             "printenv" = "allow";
-            "basename" = "allow";
-            "dirname" = "allow";
-            "realpath" = "allow";
+            "printenv *" = "allow";
+            "basename *" = "allow";
+            "dirname *" = "allow";
+            "realpath *" = "allow";
             "stat" = "allow";
-            "du" = "allow"; # disk usage (read-only)
-            "du -h" = "allow";
-            "sort" = "allow"; # sorts stdin, no file modification
+            "stat *" = "allow";
+            "du" = "allow";
+            "du *" = "allow";
+            "sort" = "allow";
+            "sort *" = "allow";
             "uniq" = "allow";
+            "uniq *" = "allow";
             "cut" = "allow";
+            "cut *" = "allow";
             "awk" = "allow";
+            "awk *" = "allow";
             "diff" = "allow";
+            "diff *" = "allow";
             "cmp" = "allow";
-            "less" = "allow";
-            "more" = "allow";
-            "tr" = "allow";
+            "cmp *" = "allow";
+            "less *" = "allow";
+            "more *" = "allow";
+            "tr *" = "allow";
             "tac" = "allow";
+            "tac *" = "allow";
             "rev" = "allow";
-            "seq" = "allow";
-            "md5sum" = "allow";
-            "sha256sum" = "allow";
-            "shasum" = "allow";
+            "rev *" = "allow";
+            "seq *" = "allow";
+            "md5sum *" = "allow";
+            "sha256sum *" = "allow";
+            "shasum *" = "allow";
             "jq" = "allow";
+            "jq *" = "allow";
             "yq" = "allow";
+            "yq *" = "allow";
             "bc" = "allow";
-            "man" = "allow";
-            "tldr" = "allow";
-            "strings" = "allow"; # extract strings from binaries
-            # ask: file modification or redirection risk
-            "xdg-open" = "ask"; # opens files/URLs with default app
-            "sed" = "ask";
-            "sd" = "ask"; # modifies files in place
-            "mv" = "ask";
-            "cp" = "ask";
-            "tee" = "ask";
-            "echo" = "ask"; # redirection risk
-            "printf" = "ask"; # redirection risk
-            "curl" = "ask"; # network + file write
-            "wget" = "ask"; # network + file write
-            "chmod" = "ask";
-            "chown" = "ask";
-            "kill" = "ask";
-            "pkill" = "ask";
-            # deny: destructive or privilege escalation
-            "rm" = "deny";
-            "sudo" = "deny";
+            "bc *" = "allow";
+            "man *" = "allow";
+            "tldr *" = "allow";
+            "strings *" = "allow";
+            "test *" = "allow";
+            "true" = "allow";
+            "false" = "allow";
+            "sleep *" = "allow";
 
-            # Systemd service management
-            # ============================================================
-            # allow: read-only status and log queries
+            # Text processing - additional
+            "column *" = "allow";
+            "fold *" = "allow";
+            "nl *" = "allow";
+            "pr *" = "allow";
+            "expand *" = "allow";
+            "unexpand *" = "allow";
+            "paste *" = "allow";
+            "join *" = "allow";
+            "comm *" = "allow";
+
+            # Archive inspection (read-only)
+            "tar -t*" = "allow";
+            "tar --list*" = "allow";
+            "unzip -l*" = "allow";
+            "zipinfo *" = "allow";
+            "7z l*" = "allow";
+            "zcat *" = "allow";
+            "bzcat *" = "allow";
+            "xzcat *" = "allow";
+            "zless *" = "allow";
+            "bzless *" = "allow";
+            "xzless *" = "allow";
+
+            # Network inspection (read-only)
+            "ip addr" = "allow";
+            "ip addr show*" = "allow";
+            "ip link show*" = "allow";
+            "ip route show*" = "allow";
+            "ss -t*" = "allow";
+            "ss -u*" = "allow";
+            "ss -l*" = "allow";
+            "netstat -t*" = "allow";
+            "netstat -l*" = "allow";
+            "ping -c*" = "allow";
+            "traceroute *" = "allow";
+            "dig *" = "allow";
+            "host *" = "allow";
+            "nslookup *" = "allow";
+
+            # Process inspection
+            "pgrep *" = "allow";
+            "pidof *" = "allow";
+            "pstree *" = "allow";
+            "lsof -p*" = "allow";
+            "lsof *" = "allow";
+
+            # Alternative file viewers
+            "bat" = "allow";
+            "bat *" = "allow";
+            "most *" = "allow";
+
+            # Development helpers
+            "xxd *" = "allow";
+            "hexdump *" = "allow";
+            "od *" = "allow";
+            "base64 *" = "allow";
+            "base32 *" = "allow";
+
+            # Shell - ask: file modification or redirection risk
+            "xdg-open *" = "ask";
+            "sed" = "ask";
+            "sed *" = "ask";
+            "sd *" = "ask";
+            "mv *" = "ask";
+            "cp *" = "ask";
+            "tee *" = "ask";
+            "echo *" = "ask";
+            "printf *" = "ask";
+            "curl *" = "ask";
+            "wget *" = "ask";
+            "chmod *" = "ask";
+            "chown *" = "ask";
+            "kill *" = "ask";
+            "pkill *" = "ask";
+            "ln *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Systemd - deny power management first
+            # ══════════════════════════════════════════════════════════════
+            "systemctl poweroff*" = "deny";
+            "systemctl reboot*" = "deny";
+            "systemctl halt*" = "deny";
+            "systemctl suspend*" = "deny";
+            "systemctl hibernate*" = "deny";
+            "systemctl rescue*" = "deny";
+            "systemctl emergency*" = "deny";
+
+            # Systemd - read-only status and log queries
             "systemctl --version" = "allow";
             "systemctl status" = "allow";
-            "systemctl is-active" = "allow";
-            "systemctl is-enabled" = "allow";
-            "systemctl is-failed" = "allow";
+            "systemctl status *" = "allow";
+            "systemctl is-active *" = "allow";
+            "systemctl is-enabled *" = "allow";
+            "systemctl is-failed *" = "allow";
             "systemctl list-units" = "allow";
+            "systemctl list-units *" = "allow";
             "systemctl list-unit-files" = "allow";
-            "systemctl show" = "allow";
-            "systemctl cat" = "allow";
+            "systemctl list-unit-files *" = "allow";
+            "systemctl list-dependencies *" = "allow";
+            "systemctl list-jobs" = "allow";
+            "systemctl list-jobs *" = "allow";
+            "systemctl list-sockets*" = "allow";
+            "systemctl list-timers*" = "allow";
+            "systemctl show *" = "allow";
+            "systemctl cat *" = "allow";
+            "systemctl help *" = "allow";
             "journalctl" = "allow";
-            "journalctl -u" = "allow";
-            "journalctl -f" = "allow";
-            "journalctl --no-pager" = "allow";
+            "journalctl *" = "allow";
             "systemd-analyze" = "allow";
-            "systemd-analyze blame" = "allow";
-            "systemd-analyze critical-chain" = "allow";
+            "systemd-analyze *" = "allow";
             "hostnamectl" = "allow";
-            "hostnamectl status" = "allow";
+            "hostnamectl *" = "allow";
             "timedatectl" = "allow";
-            "timedatectl status" = "allow";
+            "timedatectl *" = "allow";
             "loginctl" = "allow";
-            "loginctl list-sessions" = "allow";
+            "loginctl *" = "allow";
             "localectl" = "allow";
-            "localectl status" = "allow";
+            "localectl *" = "allow";
             "networkctl" = "allow";
-            "networkctl status" = "allow";
-            "networkctl list" = "allow";
+            "networkctl *" = "allow";
             "resolvectl" = "allow";
-            "resolvectl status" = "allow";
+            "resolvectl *" = "allow";
             "busctl" = "allow";
-            "busctl list" = "allow";
-            "busctl tree" = "allow";
-            # allow: additional read-only queries
-            "systemctl list-dependencies" = "allow"; # unit dependency tree
-            "systemctl list-jobs" = "allow"; # pending jobs
-            "journalctl --disk-usage" = "allow"; # check journal size
-            "coredumpctl" = "allow"; # list coredumps
-            "resolvectl query" = "allow"; # DNS queries
-            "resolvectl dns" = "allow"; # DNS servers configuration
-            # ask: service state modifications
-            "systemctl start" = "ask";
-            "systemctl stop" = "ask";
-            "systemctl restart" = "ask";
-            "systemctl reload" = "ask";
-            "systemctl enable" = "ask";
-            "systemctl disable" = "ask";
-            "systemctl mask" = "ask";
-            "systemctl unmask" = "ask";
+            "busctl *" = "allow";
+            "coredumpctl" = "allow";
+            "coredumpctl *" = "allow";
+
+            # Systemd - ask: service state modifications
+            "systemctl start *" = "ask";
+            "systemctl stop *" = "ask";
+            "systemctl restart *" = "ask";
+            "systemctl reload *" = "ask";
+            "systemctl enable *" = "ask";
+            "systemctl disable *" = "ask";
+            "systemctl mask *" = "ask";
+            "systemctl unmask *" = "ask";
             "systemctl daemon-reload" = "ask";
-            "systemctl edit" = "ask";
-            # deny: power management
-            "systemctl poweroff" = "deny";
-            "systemctl reboot" = "deny";
-            "systemctl halt" = "deny";
-            "systemctl suspend" = "deny";
-            "systemctl hibernate" = "deny";
+            "systemctl daemon-reexec" = "ask";
+            "systemctl edit *" = "ask";
+            "systemctl set-property *" = "ask";
 
-            # Container management
-            # ============================================================
-            # allow: read-only queries
+            # ══════════════════════════════════════════════════════════════
+            # Docker - deny mass destruction first
+            # ══════════════════════════════════════════════════════════════
+            "docker rm *" = "deny";
+            "docker rmi *" = "deny";
+            "docker system prune*" = "deny";
+            "docker volume prune*" = "deny";
+            "docker container prune*" = "deny";
+            "docker image prune*" = "deny";
+            "docker network prune*" = "deny";
+            "docker volume rm *" = "deny";
+            "docker network rm *" = "deny";
+
+            # Docker - read-only queries
             "docker --version" = "allow";
-            "docker ps" = "allow";
-            "docker images" = "allow";
-            "docker logs" = "allow";
-            "docker inspect" = "allow";
+            "docker version" = "allow";
             "docker info" = "allow";
+            "docker ps" = "allow";
+            "docker ps *" = "allow";
+            "docker images" = "allow";
+            "docker images *" = "allow";
+            "docker logs *" = "allow";
+            "docker inspect *" = "allow";
             "docker stats" = "allow";
+            "docker stats *" = "allow";
             "docker network ls" = "allow";
+            "docker network ls *" = "allow";
+            "docker network inspect *" = "allow";
             "docker volume ls" = "allow";
+            "docker volume ls *" = "allow";
+            "docker volume inspect *" = "allow";
+            "docker top *" = "allow";
+            "docker port *" = "allow";
+            "docker diff *" = "allow";
+            "docker history *" = "allow";
+            "docker search *" = "allow";
             "docker-compose --version" = "allow";
+            "docker-compose config*" = "allow";
             "docker compose --version" = "allow";
-            # ask: container operations (Dockerfiles run arbitrary code)
-            "docker build" = "ask";
-            "docker run" = "ask";
-            "docker exec" = "ask";
-            "docker stop" = "ask";
-            "docker start" = "ask";
-            "docker-compose up" = "ask";
-            "docker-compose down" = "ask";
-            "docker pull" = "ask";
-            "docker push" = "ask";
-            # deny: mass destruction
-            "docker system prune" = "deny";
-            "docker volume prune" = "deny";
-            "docker container prune" = "deny";
-            "docker image prune" = "deny";
+            "docker compose config*" = "allow";
 
-            # Build tools (autotools, cmake, meson, ninja, clang)
-            # ============================================================
-            # allow: version checks and info queries
+            # Docker - ask: container operations
+            "docker build *" = "ask";
+            "docker run *" = "ask";
+            "docker exec *" = "ask";
+            "docker stop *" = "ask";
+            "docker start *" = "ask";
+            "docker restart *" = "ask";
+            "docker kill *" = "ask";
+            "docker pause *" = "ask";
+            "docker unpause *" = "ask";
+            "docker pull *" = "ask";
+            "docker push *" = "ask";
+            "docker tag *" = "ask";
+            "docker create *" = "ask";
+            "docker commit *" = "ask";
+            "docker cp *" = "ask";
+            "docker-compose up*" = "ask";
+            "docker-compose down*" = "ask";
+            "docker compose up*" = "ask";
+            "docker compose down*" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Build tools - version checks and read-only inspection
+            # ══════════════════════════════════════════════════════════════
             "autoconf --version" = "allow";
             "automake --version" = "allow";
             "make --version" = "allow";
-            "make -n" = "allow"; # shows what would be done without executing
+            "make -n*" = "allow";
             "cmake --version" = "allow";
             "cmake -E capabilities" = "allow";
             "meson --version" = "allow";
@@ -257,57 +501,43 @@ lib.mkIf (lib.elem username installFor) {
             "clangd --version" = "allow";
             "gcc --version" = "allow";
             "g++ --version" = "allow";
-            "ldd --version" = "allow"; # library dependency info
-            "pkg-config --version" = "allow";
-            "pkgconf --version" = "allow";
+            "ldd" = "allow";
+            "ldd *" = "allow";
+            "pkg-config *" = "allow";
+            "pkgconf *" = "allow";
             "ar --version" = "allow";
             "ranlib --version" = "allow";
-            "objdump --version" = "allow";
-            "nm --version" = "allow";
-            "readelf --version" = "allow";
-            # allow: read-only binary inspection
-            "objdump" = "allow"; # disassembly/headers
-            "nm" = "allow"; # symbol listing
-            "readelf" = "allow"; # ELF structure
-            "ldd" = "allow"; # shared library deps
-            # allow: library discovery (read-only queries)
-            "pkg-config" = "allow";
-            "pkgconf" = "allow";
-            # ask: configuration and builds (configure/cmakelists/build scripts run arbitrary code)
-            "./configure" = "ask"; # executes configure script
-            "configure" = "ask";
-            "autoreconf" = "ask";
-            "autoconf" = "ask";
-            "automake" = "ask";
-            "make" = "ask";
-            "make clean" = "ask";
-            "make install" = "ask";
-            "cmake" = "ask";
-            "cmake -E" = "ask";
-            "cmake --build" = "ask";
-            "cmake --install" = "ask";
-            "meson" = "ask";
-            "meson setup" = "ask";
-            "meson compile" = "ask";
-            "meson test" = "ask";
-            "meson install" = "ask";
-            "meson clean" = "ask";
-            "ninja" = "ask";
-            "ninja clean" = "ask";
-            "clang" = "ask";
-            "clang++" = "ask";
-            "gcc" = "ask";
-            "g++" = "ask";
-            # ask: archive manipulation
-            "ar" = "ask";
-            "ranlib" = "ask";
-            # ask: auto-fixing tools (modify files)
-            "clang-tidy" = "ask"; # can auto-fix with --fix
-            "clang-format" = "ask"; # modifies files
+            "objdump" = "allow";
+            "objdump *" = "allow";
+            "nm" = "allow";
+            "nm *" = "allow";
+            "readelf" = "allow";
+            "readelf *" = "allow";
 
-            # FFmpeg media processing
-            # ============================================================
-            # allow: info, probing, and codec/filter queries
+            # Build tools - ask: configuration and builds
+            "./configure*" = "ask";
+            "configure *" = "ask";
+            "autoreconf*" = "ask";
+            "autoconf *" = "ask";
+            "automake *" = "ask";
+            "make" = "ask";
+            "make *" = "ask";
+            "cmake *" = "ask";
+            "meson *" = "ask";
+            "ninja" = "ask";
+            "ninja *" = "ask";
+            "clang *" = "ask";
+            "clang++ *" = "ask";
+            "gcc *" = "ask";
+            "g++ *" = "ask";
+            "ar *" = "ask";
+            "ranlib *" = "ask";
+            "clang-tidy *" = "ask";
+            "clang-format *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # FFmpeg - info and probing
+            # ══════════════════════════════════════════════════════════════
             "ffmpeg -version" = "allow";
             "ffmpeg -formats" = "allow";
             "ffmpeg -codecs" = "allow";
@@ -319,284 +549,544 @@ lib.mkIf (lib.elem username installFor) {
             "ffmpeg -layouts" = "allow";
             "ffmpeg -sample_fmts" = "allow";
             "ffmpeg -filters" = "allow";
-            "ffmpeg -loglevel" = "allow";
-            "ffmpeg -hwaccels" = "allow"; # list hardware acceleration methods
-            "ffprobe" = "allow";
-            # ask: file processing (creates/overwrites files)
-            "ffmpeg" = "ask";
+            "ffmpeg -hwaccels" = "allow";
+            "ffprobe *" = "allow";
 
-            # GitHub operations
-            # ============================================================
-            # allow: read-only queries
+            # FFmpeg - ask: file processing
+            "ffmpeg *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # GitHub CLI - deny destructive first
+            # ══════════════════════════════════════════════════════════════
+            "gh repo delete*" = "deny";
+            "gh release delete*" = "deny";
+            "gh gist delete*" = "deny";
+
+            # GitHub CLI - read-only queries
             "gh --version" = "allow";
-            "gh repo view" = "allow";
-            "gh pr view" = "allow";
-            "gh pr list" = "allow";
-            "gh issue view" = "allow";
-            "gh issue list" = "allow";
+            "gh auth status*" = "allow";
             "gh status" = "allow";
-            # ask: state modifications
-            "gh pr create" = "ask";
-            "gh pr merge" = "ask";
-            "gh pr checkout" = "ask";
-            "gh issue create" = "ask";
-            "gh release create" = "ask";
-            "gh repo create" = "ask";
-            "gh repo clone" = "ask";
-            # deny: destructive operations
-            "gh repo delete" = "deny";
+            "gh status *" = "allow";
+            "gh repo view*" = "allow";
+            "gh repo list*" = "allow";
+            "gh pr view*" = "allow";
+            "gh pr list*" = "allow";
+            "gh pr status*" = "allow";
+            "gh pr diff*" = "allow";
+            "gh pr checks*" = "allow";
+            "gh issue view*" = "allow";
+            "gh issue list*" = "allow";
+            "gh issue status*" = "allow";
+            "gh run view*" = "allow";
+            "gh run list*" = "allow";
+            "gh workflow view*" = "allow";
+            "gh workflow list*" = "allow";
+            "gh release view*" = "allow";
+            "gh release list*" = "allow";
+            "gh gist view*" = "allow";
+            "gh gist list*" = "allow";
+            "gh api *" = "allow";
+            "gh search *" = "allow";
 
-            # Git operations
-            # ============================================================
-            # allow: read-only queries
+            # GitHub CLI - ask: state modifications
+            "gh pr create*" = "ask";
+            "gh pr merge*" = "ask";
+            "gh pr close*" = "ask";
+            "gh pr reopen*" = "ask";
+            "gh pr checkout*" = "ask";
+            "gh pr review*" = "ask";
+            "gh pr edit*" = "ask";
+            "gh pr comment*" = "ask";
+            "gh issue create*" = "ask";
+            "gh issue close*" = "ask";
+            "gh issue reopen*" = "ask";
+            "gh issue edit*" = "ask";
+            "gh issue comment*" = "ask";
+            "gh repo create*" = "ask";
+            "gh repo clone*" = "ask";
+            "gh repo fork*" = "ask";
+            "gh repo edit*" = "ask";
+            "gh release create*" = "ask";
+            "gh release edit*" = "ask";
+            "gh run rerun*" = "ask";
+            "gh run cancel*" = "ask";
+            "gh workflow run*" = "ask";
+            "gh gist create*" = "ask";
+            "gh gist edit*" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Git - deny destructive first
+            # ══════════════════════════════════════════════════════════════
+            "git reset --hard*" = "deny";
+            "git clean*" = "deny";
+            "git filter-branch*" = "deny";
+            "git filter-repo*" = "deny";
+            "git reflog expire*" = "deny";
+
+            # Git - read-only queries
             "git status" = "allow";
+            "git status *" = "allow";
             "git diff" = "allow";
+            "git diff *" = "allow";
             "git log" = "allow";
-            "git branch" = "allow";
-            "git remote" = "allow";
+            "git log *" = "allow";
             "git show" = "allow";
-            "git stash list" = "allow";
+            "git show *" = "allow";
+            "git branch" = "allow";
+            "git branch -a*" = "allow";
+            "git branch -v*" = "allow";
+            "git branch -r*" = "allow";
+            "git branch --list*" = "allow";
+            "git branch --contains*" = "allow";
+            "git branch --merged*" = "allow";
+            "git branch --no-merged*" = "allow";
+            "git remote" = "allow";
+            "git remote *" = "allow";
             "git tag" = "allow";
-            "git worktree list" = "allow";
-            "git config --list" = "allow";
-            "git config --get" = "allow";
-            "git remote -v" = "allow";
-            "git branch -a" = "allow";
+            "git tag -l*" = "allow";
+            "git tag --list*" = "allow";
+            "git stash list*" = "allow";
+            "git stash show*" = "allow";
             "git reflog" = "allow";
-            # ask: state modifications
-            "git add" = "ask";
-            "git commit" = "ask";
-            "git push" = "ask";
-            "git pull" = "ask";
-            "git fetch" = "ask";
-            "git checkout" = "ask";
-            "git switch" = "ask";
-            "git merge" = "ask";
-            "git rebase" = "ask";
-            "git stash" = "ask";
-            "git restore" = "ask";
-            "git cherry-pick" = "ask";
-            "git worktree" = "ask"; # add/remove/prune create/delete directories
-            "git rev-parse" = "allow"; # get commit hashes, branch info
-            "git describe" = "allow"; # version info from tags
-            "git shortlog" = "allow"; # summarise commits
-            "git blame" = "allow"; # line-by-line history
-            "git ls-files" = "allow"; # list tracked files
-            "git ls-tree" = "allow"; # list tree contents
-            "git grep" = "allow"; # git-specific search
-            # deny: history rewriting / destructive
-            "git push --force" = "deny";
-            "git push -f" = "deny";
-            "git reset --hard" = "deny";
-            "git clean" = "deny";
-            "git filter-branch" = "deny";
+            "git reflog *" = "allow";
+            "git rev-parse *" = "allow";
+            "git describe *" = "allow";
+            "git shortlog *" = "allow";
+            "git blame *" = "allow";
+            "git ls-files" = "allow";
+            "git ls-files *" = "allow";
+            "git ls-tree *" = "allow";
+            "git ls-remote *" = "allow";
+            "git grep *" = "allow";
+            "git config --list*" = "allow";
+            "git config --get*" = "allow";
+            "git worktree list" = "allow";
+            "git name-rev *" = "allow";
+            "git cat-file *" = "allow";
+            "git count-objects*" = "allow";
+            "git for-each-ref *" = "allow";
+            "git symbolic-ref *" = "allow";
+            "git verify-commit *" = "allow";
+            "git verify-tag *" = "allow";
 
-            # Hugo static site generator
-            # ============================================================
-            # allow: info only
+            # Git - ask: state modifications
+            "git add *" = "ask";
+            "git commit" = "ask";
+            "git commit *" = "ask";
+            "git push" = "ask";
+            "git push *" = "ask";
+
+            # Force push - explicit deny (must come AFTER general push patterns)
+            "git push*--force*" = "deny";
+            "git push*-f *" = "deny";
+            "git push * --force*" = "deny";
+            "git push * -f*" = "deny";
+
+            "git pull" = "ask";
+            "git pull *" = "ask";
+            "git fetch" = "ask";
+            "git fetch *" = "ask";
+            "git checkout *" = "ask";
+            "git switch *" = "ask";
+            "git branch -d *" = "ask";
+            "git branch -D *" = "ask";
+            "git branch -m *" = "ask";
+            "git branch -M *" = "ask";
+            "git branch --set-upstream*" = "ask";
+            "git branch *" = "ask";
+            "git merge *" = "ask";
+            "git rebase *" = "ask";
+            "git cherry-pick *" = "ask";
+            "git stash" = "ask";
+            "git stash *" = "ask";
+            "git restore *" = "ask";
+            "git reset *" = "ask";
+            "git revert *" = "ask";
+            "git tag -a *" = "ask";
+            "git tag -d *" = "ask";
+            "git tag -s *" = "ask";
+            "git tag *" = "ask";
+            "git worktree add *" = "ask";
+            "git worktree remove *" = "ask";
+            "git worktree prune*" = "ask";
+            "git am *" = "ask";
+            "git apply *" = "ask";
+            "git bisect *" = "ask";
+            "git clone *" = "ask";
+            "git config *" = "ask";
+            "git init*" = "ask";
+            "git mv *" = "ask";
+            "git rm *" = "ask";
+            "git submodule *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Hugo
+            # ══════════════════════════════════════════════════════════════
             "hugo version" = "allow";
             "hugo env" = "allow";
-            # ask: builds and server (creates files)
-            "hugo" = "ask";
-            "hugo server" = "ask";
-            "hugo new" = "ask";
+            "hugo env *" = "allow";
+            "hugo list *" = "allow";
+            "hugo config*" = "allow";
 
-            # ImageMagick image processing
-            # ============================================================
-            # allow: info, metadata queries, and version checks
+            "hugo" = "ask";
+            "hugo *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # ImageMagick
+            # ══════════════════════════════════════════════════════════════
             "identify" = "allow";
-            "identify -verbose" = "allow";
+            "identify *" = "allow";
             "convert --version" = "allow";
             "magick --version" = "allow";
-            "magick identify" = "allow";
+            "magick identify *" = "allow";
             "compare --version" = "allow";
             "composite --version" = "allow";
             "mogrify --version" = "allow";
-            # ask: file processing (creates/overwrites files)
-            "convert" = "ask";
-            "magick" = "ask";
-            "mogrify" = "ask";
-            "compare" = "ask";
-            "composite" = "ask";
 
-            # NixOS and Home Manager
-            # ============================================================
-            # allow: info and evaluation
-            "nix --version" = "allow";
-            "nix flake show" = "allow";
-            "nix flake check" = "allow";
-            "nix eval" = "allow";
-            "nix search" = "allow";
-            "nix-instantiate --parse" = "allow"; # syntax check only, no eval
-            "nix flake metadata" = "allow";
-            "nix path-info" = "allow";
-            "nixfmt --check" = "allow"; # check formatting, no write
-            # ask: builds and environment (evaluates derivations)
-            "nix build" = "ask";
-            "nix develop" = "ask";
-            "nix-shell" = "ask";
-            "nix flake update" = "ask";
-            "nix-env" = "ask";
-            "home-manager switch" = "ask";
-            "nixos-rebuild" = "ask";
-            # deny: garbage collection (can break system)
+            "convert *" = "ask";
+            "magick *" = "ask";
+            "mogrify *" = "ask";
+            "compare *" = "ask";
+            "composite *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Nix - deny garbage collection first
+            # ══════════════════════════════════════════════════════════════
             "nix-collect-garbage" = "deny";
+            "nix-collect-garbage *" = "deny";
+            "nix store gc*" = "deny";
+            "nix store delete*" = "deny";
 
-            # Cloudflare Workers deployment
-            # ============================================================
-            # allow: info only
+            # Nix - read-only info and evaluation
+            "nix --version" = "allow";
+            "nix flake show*" = "allow";
+            "nix flake check*" = "allow";
+            "nix flake metadata*" = "allow";
+            "nix flake info*" = "allow";
+            "nix eval *" = "allow";
+            "nix search *" = "allow";
+            "nix path-info *" = "allow";
+            "nix why-depends *" = "allow";
+            "nix derivation show *" = "allow";
+            "nix store ls *" = "allow";
+            "nix hash *" = "allow";
+            "nix-instantiate" = "allow";
+            "nix-instantiate *" = "allow";
+            "nix repl" = "allow";
+            "nix repl *" = "allow";
+            "nixfmt" = "allow";
+            "nixfmt *" = "allow";
+            "statix *" = "allow";
+            "deadnix *" = "allow";
+            "alejandra *" = "allow";
+
+            # Nix - ask: builds and environment changes
+            "nix build*" = "ask";
+            "nix develop*" = "ask";
+            "nix run *" = "ask";
+            "nix shell *" = "ask";
+            "nix flake update*" = "ask";
+            "nix flake lock*" = "ask";
+            "nix profile *" = "ask";
+            "nix-shell" = "ask";
+            "nix-shell *" = "ask";
+            "nix-build *" = "ask";
+            "nix-env *" = "ask";
+            "home-manager *" = "ask";
+            "nixos-rebuild *" = "ask";
+            "darwin-rebuild *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Cloudflare Wrangler - deny deletion first
+            # ══════════════════════════════════════════════════════════════
+            "wrangler delete*" = "deny";
+
             "wrangler --version" = "allow";
             "wrangler whoami" = "allow";
-            # ask: development and deployment (pushes to production!)
-            "wrangler dev" = "ask";
-            "wrangler deploy" = "ask";
-            "wrangler publish" = "ask";
-            "wrangler secret" = "ask";
-            "wrangler kv" = "ask";
-            "wrangler r2" = "ask";
-            "wrangler d1" = "ask";
-            # deny: resource deletion
-            "wrangler delete" = "deny";
+            "wrangler *" = "ask";
 
-            # Go language toolchain
-            # ============================================================
-            # allow: info and static analysis
+            # ══════════════════════════════════════════════════════════════
+            # Go
+            # ══════════════════════════════════════════════════════════════
             "go version" = "allow";
             "go env" = "allow";
-            "go list" = "allow";
+            "go env *" = "allow";
+            "go list *" = "allow";
             "go vet" = "allow";
-            "go doc" = "allow";
+            "go vet *" = "allow";
+            "go doc *" = "allow";
             "go mod graph" = "allow";
-            "go mod why" = "allow";
-            # ask: builds and code execution
-            "go build" = "ask";
-            "go run" = "ask";
-            "go test" = "ask";
-            "go generate" = "ask"; # runs arbitrary //go:generate commands
-            "go get" = "ask"; # downloads + can run code
-            "go mod tidy" = "ask";
-            "go install" = "ask";
+            "go mod graph *" = "allow";
+            "go mod why *" = "allow";
+            "go mod verify" = "allow";
+            "go mod download" = "allow";
+            "go mod download *" = "allow";
+            "go help *" = "allow";
 
-            # JavaScript/TypeScript ecosystem
-            # ============================================================
-            # allow: info and type checking
+            "go build*" = "ask";
+            "go run *" = "ask";
+            "go test*" = "ask";
+            "go generate*" = "ask";
+            "go get *" = "ask";
+            "go install *" = "ask";
+            "go mod tidy*" = "ask";
+            "go mod init*" = "ask";
+            "go mod edit*" = "ask";
+            "go work *" = "ask";
+            "go fmt *" = "ask";
+            "gofmt *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # JavaScript/TypeScript - deny cache corruption first
+            # ══════════════════════════════════════════════════════════════
+            "npm cache clean --force*" = "deny";
+            "npm cache clean -f*" = "deny";
+            "pnpm store prune*" = "deny";
+            "yarn cache clean*" = "deny";
+
+            # JavaScript/TypeScript - read-only
             "node --version" = "allow";
+            "node -v" = "allow";
             "npm --version" = "allow";
-            "pnpm --version" = "allow";
+            "npm -v" = "allow";
             "npm ls" = "allow";
+            "npm ls *" = "allow";
+            "npm list *" = "allow";
             "npm outdated" = "allow";
-            "npm view" = "allow";
-            "npm info" = "allow";
+            "npm outdated *" = "allow";
+            "npm view *" = "allow";
+            "npm info *" = "allow";
+            "npm search *" = "allow";
+            "npm explain *" = "allow";
+            "npm audit" = "allow";
+            "npm audit *" = "allow";
+            "npm doctor" = "allow";
+            "npm config list*" = "allow";
+            "npm config get*" = "allow";
+            "npm help *" = "allow";
+            "npm pack --dry-run*" = "allow";
             "npx --version" = "allow";
-            "tsc --version" = "allow";
-            "tsc --noEmit" = "allow"; # type check only
-            # ask: installs (supply chain risk) and execution
-            "npm install" = "ask";
-            "npm run" = "ask";
-            "npm test" = "ask";
-            "npm publish" = "ask";
-            "pnpm install" = "ask";
-            "pnpm run" = "ask";
-            "yarn add" = "ask";
-            "yarn install" = "ask";
-            "vite" = "ask";
-            "vite build" = "ask";
-            # deny: cache corruption
-            "npm cache clean --force" = "deny";
 
-            # Just command runner - CAUTION: recipes are arbitrary shell
-            # ============================================================
-            # allow: listing only
+            "pnpm --version" = "allow";
+            "pnpm -v" = "allow";
+            "pnpm ls*" = "allow";
+            "pnpm list*" = "allow";
+            "pnpm outdated*" = "allow";
+            "pnpm audit*" = "allow";
+            "pnpm why *" = "allow";
+
+            "yarn --version" = "allow";
+            "yarn -v" = "allow";
+            "yarn list*" = "allow";
+            "yarn info *" = "allow";
+            "yarn why *" = "allow";
+
+            "tsc --version" = "allow";
+            "tsc --noEmit*" = "allow";
+
+            # JavaScript/TypeScript - ask: installs and execution
+            "npm install*" = "ask";
+            "npm i" = "ask";
+            "npm i *" = "ask";
+            "npm ci*" = "ask";
+            "npm run *" = "ask";
+            "npm test*" = "ask";
+            "npm start*" = "ask";
+            "npm exec *" = "ask";
+            "npm publish*" = "ask";
+            "npm uninstall*" = "ask";
+            "npm update*" = "ask";
+            "npm link*" = "ask";
+            "npx *" = "ask";
+
+            "pnpm install*" = "ask";
+            "pnpm i" = "ask";
+            "pnpm i *" = "ask";
+            "pnpm run *" = "ask";
+            "pnpm test*" = "ask";
+            "pnpm exec *" = "ask";
+            "pnpm dlx *" = "ask";
+            "pnpm add *" = "ask";
+            "pnpm remove *" = "ask";
+
+            "yarn install*" = "ask";
+            "yarn add *" = "ask";
+            "yarn remove *" = "ask";
+            "yarn run *" = "ask";
+
+            "tsc" = "ask";
+            "tsc *" = "ask";
+            "vite*" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Just - listing is safe, execution is not
+            # ══════════════════════════════════════════════════════════════
             "just --version" = "allow";
             "just --list" = "allow";
+            "just --list *" = "allow";
             "just -l" = "allow";
+            "just -l *" = "allow";
             "just --summary" = "allow";
-            # ask: all recipe execution
-            "just" = "ask";
+            "just --summary *" = "allow";
+            "just --evaluate*" = "allow";
+            "just --show *" = "allow";
 
-            # Lua ecosystem and LÖVE game framework
-            # ============================================================
-            # allow: info only
+            "just" = "ask";
+            "just *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Lua and LÖVE
+            # ══════════════════════════════════════════════════════════════
             "lua -v" = "allow";
             "love --version" = "allow";
-            # ask: execution and package management
+
             "lua" = "ask";
-            "love" = "ask"; # runs game code
-            "luarocks install" = "ask";
-            "luarocks remove" = "ask";
+            "lua *" = "ask";
+            "love *" = "ask";
+            "luarocks *" = "ask";
 
-            # Rust language toolchain
-            # ============================================================
-            # allow: info and static analysis
+            # ══════════════════════════════════════════════════════════════
+            # Rust
+            # ══════════════════════════════════════════════════════════════
             "cargo --version" = "allow";
+            "cargo version" = "allow";
             "cargo check" = "allow";
+            "cargo check *" = "allow";
             "cargo clippy" = "allow";
+            "cargo clippy *" = "allow";
             "cargo doc" = "allow";
+            "cargo doc *" = "allow";
             "cargo tree" = "allow";
-            "rustc --version" = "allow";
-            "rustup --version" = "allow";
-            "rustup show" = "allow";
-            "rustup target list" = "allow";
-            "rustup component list" = "allow";
-            "cargo fmt --check" = "allow"; # check formatting, no write
+            "cargo tree *" = "allow";
             "cargo metadata" = "allow";
-            # ask: builds and code execution (build.rs runs arbitrary code)
-            "cargo build" = "ask";
-            "cargo test" = "ask";
-            "cargo run" = "ask";
-            "cargo install" = "ask";
-            "cargo publish" = "ask";
-            "cargo update" = "ask";
-            "rustup update" = "ask";
-            "rustup default" = "ask";
+            "cargo metadata *" = "allow";
+            "cargo search *" = "allow";
+            "cargo fmt --check*" = "allow";
+            "cargo verify-project*" = "allow";
+            "cargo locate-project*" = "allow";
+            "cargo pkgid*" = "allow";
+            "cargo read-manifest*" = "allow";
+            "rustc --version" = "allow";
+            "rustc --print *" = "allow";
+            "rustup --version" = "allow";
+            "rustup show*" = "allow";
+            "rustup target list*" = "allow";
+            "rustup component list*" = "allow";
+            "rustup which *" = "allow";
 
-            # Python ecosystem
-            # ============================================================
-            # allow: info and read-only
+            "cargo build*" = "ask";
+            "cargo test*" = "ask";
+            "cargo run*" = "ask";
+            "cargo bench*" = "ask";
+            "cargo install*" = "ask";
+            "cargo uninstall*" = "ask";
+            "cargo publish*" = "ask";
+            "cargo update*" = "ask";
+            "cargo add *" = "ask";
+            "cargo remove *" = "ask";
+            "cargo init*" = "ask";
+            "cargo new *" = "ask";
+            "cargo fmt" = "ask";
+            "cargo fmt *" = "ask";
+            "cargo fix*" = "ask";
+            "cargo generate*" = "ask";
+            "rustup update*" = "ask";
+            "rustup default *" = "ask";
+            "rustup toolchain *" = "ask";
+            "rustup override *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Python
+            # ══════════════════════════════════════════════════════════════
             "python --version" = "allow";
+            "python -V" = "allow";
             "python3 --version" = "allow";
+            "python3 -V" = "allow";
             "pip --version" = "allow";
+            "pip -V" = "allow";
             "pip list" = "allow";
-            "pip show" = "allow";
+            "pip list *" = "allow";
+            "pip show *" = "allow";
             "pip freeze" = "allow";
+            "pip freeze *" = "allow";
             "pip check" = "allow";
-            "pytest --version" = "allow";
-            "python -m pytest --collect-only" = "allow";
-            "mypy --version" = "allow";
-            "ruff --version" = "allow";
-            "ruff check" = "allow"; # lint without fixing
+            "pip index versions *" = "allow";
+            "pip search *" = "allow";
+            "pip help *" = "allow";
+
             "uv --version" = "allow";
             "uv pip list" = "allow";
-            # ask: installs and execution (setup.py runs arbitrary code)
-            "pip install" = "ask";
-            "pip uninstall" = "ask";
+            "uv pip list *" = "allow";
+            "uv pip show *" = "allow";
+            "uv pip freeze*" = "allow";
+            "uv pip check*" = "allow";
+
+            "pytest --version" = "allow";
+            "pytest --collect-only*" = "allow";
+            "python -m pytest --collect-only*" = "allow";
+            "python3 -m pytest --collect-only*" = "allow";
+
+            "mypy --version" = "allow";
+            "ruff --version" = "allow";
+            "ruff check" = "allow";
+            "ruff check *" = "allow";
+            "ruff rule *" = "allow";
+            "black --version" = "allow";
+            "black --check *" = "allow";
+            "isort --version" = "allow";
+            "isort --check*" = "allow";
+            "isort --diff *" = "allow";
+
             "python" = "ask";
+            "python *" = "ask";
             "python3" = "ask";
+            "python3 *" = "ask";
+            "pip install*" = "ask";
+            "pip uninstall*" = "ask";
+            "pip download*" = "ask";
+
+            "uv pip install*" = "ask";
+            "uv pip uninstall*" = "ask";
+            "uv sync*" = "ask";
+            "uv run *" = "ask";
+            "uv venv*" = "ask";
+            "uv lock*" = "ask";
+            "uv add *" = "ask";
+            "uv remove *" = "ask";
+
             "pytest" = "ask";
+            "pytest *" = "ask";
+            "python -m pytest*" = "ask";
+            "python3 -m pytest*" = "ask";
             "mypy" = "ask";
+            "mypy *" = "ask";
             "ruff" = "ask";
-            "uv pip install" = "ask";
-            "uv sync" = "ask";
-            "uv run" = "ask";
+            "ruff *" = "ask";
+            "black *" = "ask";
+            "isort *" = "ask";
 
-            # Svelte/SvelteKit framework
-            # ============================================================
-            # allow: info and sync
+            # ══════════════════════════════════════════════════════════════
+            # Svelte/SvelteKit
+            # ══════════════════════════════════════════════════════════════
             "svelte-check --help" = "allow";
-            # ask: builds and type checking (may run plugins)
-            "svelte-kit sync" = "ask";
-            "svelte-check" = "ask";
-            "svelte-kit build" = "ask";
+            "svelte-check --version" = "allow";
 
-            # Wails Go + Web desktop apps
-            # ============================================================
-            # allow: info only
+            "svelte-kit sync*" = "ask";
+            "svelte-check" = "ask";
+            "svelte-check *" = "ask";
+            "svelte-kit *" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # Wails
+            # ══════════════════════════════════════════════════════════════
             "wails --version" = "allow";
             "wails doctor" = "allow";
-            # ask: builds and dev server
-            "wails build" = "ask";
-            "wails dev" = "ask";
-            "wails init" = "ask";
+            "wails doctor *" = "allow";
+
+            "wails build*" = "ask";
+            "wails dev*" = "ask";
+            "wails init*" = "ask";
+            "wails generate*" = "ask";
           };
           task = "ask"; # Launching subagents
           skill = "ask"; # Loading agent skills
