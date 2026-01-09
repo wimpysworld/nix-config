@@ -10,6 +10,7 @@ in
 lib.mkIf (lib.elem username installFor) {
   home = {
     packages = with pkgs; [
+      unstable.bun
       tsx
       typescript
       typescript-language-server
