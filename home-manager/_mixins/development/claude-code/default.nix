@@ -371,6 +371,7 @@ let
     "Bash(chown:*)"
     "Bash(kill:*)"
     "Bash(pkill:*)"
+    "Bash(ln:*)" # Symlink creation - can overwrite files
 
     # Systemd - service state modifications
     "Bash(systemctl start:*)"
@@ -461,6 +462,7 @@ let
     "Bash(nix-env:*)"
     "Bash(home-manager switch:*)"
     "Bash(nixos-rebuild:*)"
+    "Bash(darwin-rebuild:*)" # macOS system rebuild (nix-darwin)
 
     # Go - builds and code execution
     "Bash(go build:*)"
@@ -564,6 +566,7 @@ let
     "Bash(swapoff:*)"
     "Bash(mount:*)"
     "Bash(umount:*)"
+    "Bash(dd:*)" # Disk copy utility - extremely dangerous, can destroy disks
 
     # Subshell execution bypasses
     "Bash(bash -c:*)"
@@ -617,42 +620,54 @@ let
   ];
 
   # File patterns to deny reading (sensitive files)
+  # Use fully qualified paths with ${config.home.homeDirectory} for reliability
   readDeny = [
+    # Environment files (relative and absolute)
     "Read(./.env)"
     "Read(./.env.*)"
-    "Read(./secrets/**)"
-    "Read(~/.ssh/**)"
-    "Read(~/.aws/**)"
-    "Read(~/.gnupg/**)"
-    "Read(~/.config/gh/hosts.yml)"
-
-    # Environment files anywhere in tree
     "Read(**/.env)"
     "Read(**/.env.*)"
 
-    # Secrets directories (recursive)
+    # Secrets directories (relative and absolute)
+    "Read(./secrets/**)"
     "Read(**/secrets/**)"
     "Read(**/.secrets/**)"
+
+    # SSH keys (fully qualified paths)
+    "Read(${config.home.homeDirectory}/.ssh/**)"
+    "Read(**/*_rsa)"
+    "Read(**/*_rsa.*)"
+    "Read(**/*_ed25519)"
+    "Read(**/*_ed25519.*)"
+    "Read(**/*_ecdsa)"
+    "Read(**/*_ecdsa.*)"
 
     # Key files by extension
     "Read(*.pem)"
     "Read(*.key)"
-    "Read(**/*_rsa)"
-    "Read(**/*_ed25519)"
-    "Read(**/*_ecdsa)"
 
-    # Additional credentials
-    "Read(~/.netrc)"
-    "Read(~/.git-credentials)"
-    "Read(~/.docker/config.json)"
-    "Read(~/.kube/config)"
-    "Read(~/.config/gcloud/**)"
-    "Read(~/.azure/**)"
+    # GPG keys (fully qualified paths)
+    "Read(${config.home.homeDirectory}/.gnupg/**)"
 
-    # Shell history
-    "Read(~/.bash_history)"
-    "Read(~/.zsh_history)"
-    "Read(~/.fish_history)"
+    # Cloud credentials (fully qualified paths)
+    "Read(${config.home.homeDirectory}/.aws/**)"
+    "Read(${config.home.homeDirectory}/.azure/**)"
+    "Read(${config.home.homeDirectory}/.config/gcloud/**)"
+
+    # VCS credentials (fully qualified paths)
+    "Read(${config.home.homeDirectory}/.config/gh/hosts.yml)"
+    "Read(${config.home.homeDirectory}/.git-credentials)"
+    "Read(${config.home.homeDirectory}/.netrc)"
+
+    # Container/Kubernetes secrets (fully qualified paths)
+    "Read(${config.home.homeDirectory}/.docker/config.json)"
+    "Read(${config.home.homeDirectory}/.kube/**)"
+
+    # Shell history (fully qualified paths - may contain passwords)
+    "Read(${config.home.homeDirectory}/.bash_history)"
+    "Read(${config.home.homeDirectory}/.zsh_history)"
+    "Read(${config.home.homeDirectory}/.fish_history)"
+    "Read(${config.home.homeDirectory}/.local/share/fish/fish_history)"
   ];
 in
 lib.mkIf (lib.elem username installFor) {

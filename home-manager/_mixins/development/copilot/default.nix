@@ -267,6 +267,13 @@ let
     "/^sudo\\b/" = false;
     "/^(shred|wipe|srm|rmdir|truncate)\\b/" = false;
 
+    # File permission and ownership changes
+    "/^chmod\\b/" = false;
+    "/^chown\\b/" = false;
+
+    # Symlink creation - can overwrite files
+    "/^ln\\b/" = false;
+
     # System modification
     "/^(sysctl|modprobe|insmod|rmmod)\\b/" = false;
 
@@ -275,6 +282,7 @@ let
 
     # Disk operations
     "/^(fdisk|parted|gparted|mkfs|mkswap|swapon|swapoff|mount|umount)\\b/" = false;
+    "/^dd\\b/" = false; # Disk copy utility - extremely dangerous, can destroy disks
 
     # Subshell execution bypasses
     "/^(bash|sh|fish|zsh|dash)\\s+-c\\b/" = false;
@@ -305,13 +313,19 @@ let
     # Nix garbage collection
     "/^nix-collect-garbage\\b/" = false;
 
+    # System rebuild commands - high risk configuration changes
+    "/^(nixos-rebuild|home-manager|darwin-rebuild)\\b/" = false;
+
     # npm cache corruption
     "/^npm cache clean --force\\b/" = false;
 
     # Cloudflare deletion
     "/^wrangler delete\\b/" = false;
 
-    # NOTE: Many state-modifying commands (git commit/push, npm install, 
+    # Text editors - interactive, can modify files
+    "/^(vi|vim|nvim|emacs|nano|ed)\\b/" = false;
+
+    # NOTE: Many state-modifying commands (git commit/push, npm install,
     # cargo build, docker run, etc.) are intentionally NOT listed here.
     # They fall through to VS Code's default prompt behavior, which is
     # safer than auto-approving. This provides defense-in-depth while

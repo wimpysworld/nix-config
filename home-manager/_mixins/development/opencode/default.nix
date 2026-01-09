@@ -51,58 +51,68 @@ lib.mkIf (lib.elem username installFor) {
         # These provide guardrails across the board
         permission = {
           # Safe operations - allow without prompting
+          # CRITICAL: Deny rules must be LAST due to .findLast() matching
           read = {
-            # Default: allow most file reads
+            # ALLOW: Default allow most file reads (FIRST - lowest priority)
             "*" = "allow";
             "**/*" = "allow";
 
-            # DENY: Credentials and secrets (more specific patterns override)
+            # ══════════════════════════════════════════════════════════════
+            # DENY: Credentials and secrets (LAST - highest priority)
+            # These must come after the allow rules due to .findLast()
+            # ══════════════════════════════════════════════════════════════
+
+            # Environment files
             ".env" = "deny";
             ".env.*" = "deny";
             ".env.local" = "deny";
             ".env.*.local" = "deny";
+
+            # Secrets directories
             "**/secrets/**" = "deny";
             "**/.secrets/**" = "deny";
             "secrets/**" = "deny";
             ".secrets/**" = "deny";
 
-            # DENY: SSH keys
-            "~/.ssh/id_rsa" = "deny";
-            "~/.ssh/id_rsa.*" = "deny";
-            "~/.ssh/id_ed25519" = "deny";
-            "~/.ssh/id_ed25519.*" = "deny";
-            "~/.ssh/id_ecdsa" = "deny";
-            "~/.ssh/id_ecdsa.*" = "deny";
-            "~/.ssh/*_rsa" = "deny";
-            "~/.ssh/*_ed25519" = "deny";
+            # SSH keys (fully qualified + patterns)
+            "${config.home.homeDirectory}/.ssh/**" = "deny";
             "**/id_rsa" = "deny";
+            "**/id_rsa.*" = "deny";
             "**/id_ed25519" = "deny";
+            "**/id_ed25519.*" = "deny";
+            "**/id_ecdsa" = "deny";
+            "**/id_ecdsa.*" = "deny";
+            "**/*_rsa" = "deny";
+            "**/*_rsa.*" = "deny";
+            "**/*_ed25519" = "deny";
+            "**/*_ed25519.*" = "deny";
+            "**/*_ecdsa" = "deny";
+            "**/*_ecdsa.*" = "deny";
             "*.pem" = "deny";
             "*.key" = "deny";
 
-            # DENY: GPG keys
-            "~/.gnupg/private-keys-v1.d/**" = "deny";
-            "~/.gnupg/**/*.key" = "deny";
+            # GPG keys
+            "${config.home.homeDirectory}/.gnupg/**" = "deny";
 
-            # DENY: Cloud credentials
-            "~/.aws/credentials" = "deny";
-            "~/.aws/config" = "deny";
-            "~/.config/gcloud/**" = "deny";
-            "~/.azure/**" = "deny";
+            # Cloud credentials
+            "${config.home.homeDirectory}/.aws/**" = "deny";
+            "${config.home.homeDirectory}/.azure/**" = "deny";
+            "${config.home.homeDirectory}/.config/gcloud/**" = "deny";
 
-            # DENY: VCS credentials
-            "~/.config/gh/hosts.yml" = "deny";
-            "~/.git-credentials" = "deny";
-            "~/.netrc" = "deny";
+            # VCS credentials
+            "${config.home.homeDirectory}/.config/gh/hosts.yml" = "deny";
+            "${config.home.homeDirectory}/.git-credentials" = "deny";
+            "${config.home.homeDirectory}/.netrc" = "deny";
 
-            # DENY: Container/Kubernetes secrets
-            "~/.docker/config.json" = "deny";
-            "~/.kube/config" = "deny";
+            # Container/Kubernetes secrets
+            "${config.home.homeDirectory}/.docker/config.json" = "deny";
+            "${config.home.homeDirectory}/.kube/**" = "deny";
 
-            # DENY: Shell history (may contain passwords)
-            "~/.bash_history" = "deny";
-            "~/.zsh_history" = "deny";
-            "~/.fish_history" = "deny";
+            # Shell history (may contain passwords)
+            "${config.home.homeDirectory}/.bash_history" = "deny";
+            "${config.home.homeDirectory}/.zsh_history" = "deny";
+            "${config.home.homeDirectory}/.fish_history" = "deny";
+            "${config.home.homeDirectory}/.local/share/fish/fish_history" = "deny";
           };
           glob = "allow"; # Finding files by pattern
           grep = "allow"; # Searching file contents
@@ -112,65 +122,6 @@ lib.mkIf (lib.elem username installFor) {
           # Potentially destructive operations - require approval
           edit = "allow"; # All file modifications (edit, write, patch)
           bash = {
-            # ══════════════════════════════════════════════════════════════
-            # CATCH-ALL: Unknown commands require approval (must be first)
-            # ══════════════════════════════════════════════════════════════
-            "*" = "ask";
-
-            # ══════════════════════════════════════════════════════════════
-            # GLOBAL DENIES - destructive or privilege escalation
-            # ══════════════════════════════════════════════════════════════
-            "rm" = "deny";
-            "rm *" = "deny";
-            "sudo" = "deny";
-            "sudo *" = "deny";
-            "dd *" = "deny";
-            "mkfs*" = "deny";
-            "shred *" = "deny";
-            "wipe *" = "deny";
-            "srm *" = "deny";
-            "rmdir *" = "deny";
-            "truncate *" = "deny";
-
-            # System modification
-            "sysctl *" = "deny";
-            "modprobe *" = "deny";
-            "insmod *" = "deny";
-            "rmmod *" = "deny";
-
-            # Boot/firmware
-            "grub-install *" = "deny";
-            "update-grub *" = "deny";
-            "efibootmgr *" = "deny";
-
-            # Disk operations
-            "fdisk *" = "deny";
-            "parted *" = "deny";
-            "gparted *" = "deny";
-            "mkswap *" = "deny";
-            "swapon *" = "deny";
-            "swapoff *" = "deny";
-            "mount *" = "deny";
-            "umount *" = "deny";
-
-            # Subshell execution bypasses
-            "bash -c*" = "deny";
-            "sh -c*" = "deny";
-            "fish -c*" = "deny";
-            "zsh -c*" = "deny";
-            "dash -c*" = "deny";
-
-            # Direct code execution via interpreters
-            "python -c*" = "deny";
-            "python3 -c*" = "deny";
-            "python2 -c*" = "deny";
-            "node -e*" = "deny";
-            "node --eval*" = "deny";
-            "perl -e*" = "deny";
-            "ruby -e*" = "deny";
-            "lua -e*" = "deny";
-            "php -r*" = "deny";
-
             # ══════════════════════════════════════════════════════════════
             # Shell - read-only utilities (safe with any arguments)
             # ══════════════════════════════════════════════════════════════
@@ -1087,6 +1038,72 @@ lib.mkIf (lib.elem username installFor) {
             "wails dev*" = "ask";
             "wails init*" = "ask";
             "wails generate*" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # CATCH-ALL: Unknown commands require approval
+            # Must come BEFORE deny rules in Nix, but will be processed
+            # first by opencode's .findLast() matching
+            # ══════════════════════════════════════════════════════════════
+            "*" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # GLOBAL DENIES - MUST BE LAST (highest priority with .findLast())
+            # These rules will match last and override earlier patterns
+            # ══════════════════════════════════════════════════════════════
+
+            # File deletion and destruction
+            "rm" = "deny";
+            "rm *" = "deny";
+            "dd *" = "deny";
+            "shred *" = "deny";
+            "wipe *" = "deny";
+            "srm *" = "deny";
+            "rmdir *" = "deny";
+            "truncate *" = "deny";
+
+            # Privilege escalation
+            "sudo" = "deny";
+            "sudo *" = "deny";
+
+            # Subshell execution bypasses (arbitrary code execution)
+            "bash -c*" = "deny";
+            "sh -c*" = "deny";
+            "fish -c*" = "deny";
+            "zsh -c*" = "deny";
+            "dash -c*" = "deny";
+
+            # Direct code execution via interpreters
+            "python -c*" = "deny";
+            "python3 -c*" = "deny";
+            "python2 -c*" = "deny";
+            "node -e*" = "deny";
+            "node --eval*" = "deny";
+            "perl -e*" = "deny";
+            "ruby -e*" = "deny";
+            "lua -e*" = "deny";
+            "php -r*" = "deny";
+
+            # System modification
+            "sysctl *" = "deny";
+            "modprobe *" = "deny";
+            "insmod *" = "deny";
+            "rmmod *" = "deny";
+
+            # Boot/firmware
+            "grub-install *" = "deny";
+            "update-grub *" = "deny";
+            "efibootmgr *" = "deny";
+
+            # Disk operations
+            "fdisk *" = "deny";
+            "parted *" = "deny";
+            "gparted *" = "deny";
+            "mkfs*" = "deny";
+            "mkswap *" = "deny";
+            "swapon *" = "deny";
+            "swapoff *" = "deny";
+            "mount *" = "deny";
+            "umount *" = "deny";
           };
           task = "ask"; # Launching subagents
           skill = "ask"; # Loading agent skills
@@ -1095,8 +1112,65 @@ lib.mkIf (lib.elem username installFor) {
           websearch = "allow"; # Web searches
           codesearch = "allow"; # Code searches
           # Safety guards - always ask
-          external_directory = "ask"; # Files outside project
           doom_loop = "ask"; # Repeated identical tool calls
+
+          # External directory access - granular control
+          # Triggered when accessing files outside the project directory
+          external_directory = {
+            # ══════════════════════════════════════════════════════════════
+            # ALLOW: Safe read-only system directories
+            # ══════════════════════════════════════════════════════════════
+            "/tmp/*" = "allow";
+            "/usr/share/*" = "allow";
+            "/usr/local/share/*" = "allow";
+            "/var/log/*" = "allow";
+
+            # ALLOW: Nix store (read-only by nature)
+            "/nix/store/*" = "allow";
+
+            # ALLOW: User cache and data directories (fully qualified paths)
+            "${config.home.homeDirectory}/.cache/*" = "allow";
+            "${config.home.homeDirectory}/.local/share/*" = "allow";
+
+            # ALLOW: Non-sensitive config directories (fully qualified paths)
+            "${config.home.homeDirectory}/.config/*" = "allow"; # General config (but SSH/GPG denied by read rules)
+
+            # ══════════════════════════════════════════════════════════════
+            # CATCHALL: Prompt for other external directories
+            # ══════════════════════════════════════════════════════════════
+            "*" = "ask";
+
+            # ══════════════════════════════════════════════════════════════
+            # DENY: Sensitive system directories (highest priority - LAST)
+            # ══════════════════════════════════════════════════════════════
+            "/etc/shadow" = "deny";
+            "/etc/gshadow" = "deny";
+            "/etc/sudoers" = "deny";
+            "/etc/sudoers.d/*" = "deny";
+            "/root/*" = "deny";
+            "/boot/*" = "deny";
+
+            # DENY: Sensitive user directories (fully qualified paths - defense-in-depth)
+            # Match parent directory patterns that Read tool checks
+            "${config.home.homeDirectory}/.ssh" = "deny";
+            "${config.home.homeDirectory}/.ssh/*" = "deny";
+            "${config.home.homeDirectory}/.gnupg" = "deny";
+            "${config.home.homeDirectory}/.gnupg/*" = "deny";
+            "${config.home.homeDirectory}/.aws" = "deny";
+            "${config.home.homeDirectory}/.aws/*" = "deny";
+            "${config.home.homeDirectory}/.azure" = "deny";
+            "${config.home.homeDirectory}/.azure/*" = "deny";
+            "${config.home.homeDirectory}/.config/gcloud" = "deny";
+            "${config.home.homeDirectory}/.config/gcloud/*" = "deny";
+            "${config.home.homeDirectory}/.docker" = "deny";
+            "${config.home.homeDirectory}/.docker/*" = "deny";
+            "${config.home.homeDirectory}/.kube" = "deny";
+            "${config.home.homeDirectory}/.kube/*" = "deny";
+            "${config.home.homeDirectory}/.config/gh" = "deny";
+            "${config.home.homeDirectory}/.config/gh/*" = "deny";
+            "${config.home.homeDirectory}/.git-credentials" = "deny";
+            "${config.home.homeDirectory}/.netrc" = "deny";
+          };
         };
       };
     };
