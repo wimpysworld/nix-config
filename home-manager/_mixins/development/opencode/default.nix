@@ -113,22 +113,27 @@ lib.mkIf (lib.elem username installFor) {
           # Standard CUA (Common User Access) clipboard
           input_clear = "none"; # No clear binding needed (just select all & delete if needed)
           input_paste = "ctrl+v,shift+insert,ctrl+shift+v"; # Paste - standard CUA + terminal paste
+          #input_copy = "ctrl+insert"; # Copy selection (CUA standard)
+          #input_cut = "shift+delete"; # Cut selection (CUA standard)
           input_undo = "ctrl+z"; # Undo
-          input_redo = "ctrl+shift+z"; # Redo (Ctrl+Y is reserved for copy-selection)
+          input_redo = "ctrl+shift+z"; # Redo
 
           # Keyboard-based text copying in OpenCode:
           # 1. Select text with Shift+Arrow keys (or other input_select_* bindings)
-          # 2. Press Ctrl+Y to copy selected text to clipboard (hardcoded in OpenCode)
-          # 3. Press Ctrl+V to paste (configured above)
+          # 2. Press Ctrl+Insert to copy selected text to clipboard (CUA standard)
+          # 3. Press Shift+Delete to cut selected text (copy + delete) (CUA standard)
+          # 4. Press Ctrl+V or Shift+Insert to paste
+          #
+          # CUA-standard keybindings (Common User Access from IBM/Windows/Office):
+          # - Work reliably across all terminal emulators (not intercepted)
+          # - Align with existing input_paste default (Shift+Insert)
+          # - Avoid conflicts with terminal native shortcuts (Ctrl+Shift+C/V)
           #
           # Alternative - Mouse-based copying:
           # - SELECT TEXT WITH MOUSE → automatically copied via OSC52
           # - Ctrl+Shift+V pastes (terminal native)
           # - Ctrl+V pastes (CUA standard, configured above)
           # - Shift+Insert pastes (CUA alternative, configured above)
-          #
-          # Note: Ctrl+Y for copy is hardcoded in OpenCode and NOT configurable.
-          # Cut (Ctrl+X) is not supported - use select + delete + undo if needed.
 
           # Delete operations - standard text editor with CUA
           input_backspace = "backspace";
