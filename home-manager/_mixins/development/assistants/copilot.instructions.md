@@ -34,7 +34,7 @@ description: "Remind the dummy about our environment 🎗️"
 
 ## Tool Decision Framework
 
-Use **#mcp-google-cse/google_search** or **#context7/** when:
+Use **#exa/** or **#context7/** when:
 
 - Current APIs, versions, or implementations
 - Syntax, parameters, or best practices uncertainty

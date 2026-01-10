@@ -5,36 +5,66 @@ description: "Orientate 🧭"
 
 ## Project Orientation
 
-Orient yourself with the codebase before we begin.
+Orient yourself efficiently with the codebase before we begin.
 
-### 1. Review Documentation
+### 1. Check for AGENTS.md
 
-In order: README → CONTRIBUTING → ARCHITECTURE → PRD/GDD → CLAUDE.md/AGENTS.md → .github/copilot-instructions.md → .cursorrules
+**If AGENTS.md exists at repository root:**
+- Read AGENTS.md only (comprehensive project guide)
+- Skip to step 4 (Report)
 
-### 2. Analyse Codebase
+**If AGENTS.md missing:**
+- Read README.md for project overview
+- Check for CONTRIBUTING.md or ARCHITECTURE.md (if they exist)
+- Skim recent git commits (last 5-10 with `git log --oneline -10`)
 
-- Directory structure and module organisation
-- Entry points and core logic
-- Dependencies and configuration
-- Test structure and recent commits
+### 2. Identify Project Type
+
+Quickly determine:
+- Primary language/framework (check file extensions, package manifests)
+- Build system (presence of Makefile, package.json, flake.nix, etc.)
+- Test framework (if any)
+
+Do NOT read entire codebases or documentation files verbatim.
 
 ### 3. Recall Context
 
-From previous sessions:
-
-- Decisions made and rationale
-- Known issues and limitations
-- Work in progress
-- Project-specific preferences or instructions
+From previous sessions (if applicable):
+- Recent decisions or work in progress
+- Known constraints or issues
+- Project-specific patterns
 
 ### 4. Report
 
-Provide:
+Provide concise orientation (target 50-100 lines total):
 
-- **Summary**: What we're building, current state
-- **Context**: Key technologies, conventions, constraints
-- **Memory**: Relevant recalled information affecting today's work
-- **Gaps**: Missing files, ambiguities, or conflicts between memory and docs
-- **Ready**: Confirm orientation complete
+**Summary** (2-3 sentences):
+- What we're building
+- Current state (version, stability)
 
-Flag any expected files that are missing or inaccessible.
+**Tech Stack** (bullet points):
+- Language, framework, build tools
+- Key dependencies
+
+**Development Commands** (3-5 most common):
+- Build, test, run commands
+
+**Key Conventions** (bullet points):
+- Code style (if specified)
+- File structure pattern
+- Testing requirements
+
+**Constraints** (if any):
+- Version locks
+- Platform requirements
+- Security considerations
+
+**Ready**: Confirm orientation complete
+
+**Efficiency Guidelines:**
+- Prioritise AGENTS.md if it exists (skip everything else)
+- Use glob/grep to find files, not extensive directory listings
+- Read configuration files (package.json, flake.nix) over source code
+- Focus on actionable information (commands, conventions, constraints)
+- Omit generic project descriptions or boilerplate
+- If uncertain, note gaps and ask rather than over-researching
