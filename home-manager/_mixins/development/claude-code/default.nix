@@ -535,14 +535,18 @@ let
     "Bash(wrangler d1:*)"
   ];
 
-  bashDeny = [
-    # Shell - destructive or privilege escalation
+  bashAskDestructive = [
+    # Shell - destructive file operations (supervised deletion)
     "Bash(rm:*)"
+    "Bash(rmdir:*)"
+  ];
+
+  bashDeny = [
+    # Shell - privilege escalation and secure deletion
     "Bash(sudo:*)"
     "Bash(shred:*)"
     "Bash(wipe:*)"
     "Bash(srm:*)"
-    "Bash(rmdir:*)"
     "Bash(truncate:*)"
 
     # System modification
@@ -678,7 +682,7 @@ lib.mkIf (lib.elem username installFor) {
       settings = {
         permissions = {
           allow = bashAllow;
-          ask = bashAsk;
+          ask = bashAsk ++ bashAskDestructive;
           deny = bashDeny ++ readDeny;
           defaultMode = "default";
         };

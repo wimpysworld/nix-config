@@ -1143,18 +1143,20 @@ lib.mkIf (lib.elem username installFor) {
             "*" = "ask";
 
             # ══════════════════════════════════════════════════════════════
-            # GLOBAL DENIES - MUST BE LAST (highest priority with .findLast())
-            # These rules will match last and override earlier patterns
+            # GLOBAL OVERRIDES - MUST BE LAST (highest priority with .findLast())
+            # These rules match last and override earlier patterns
             # ══════════════════════════════════════════════════════════════
 
-            # File deletion and destruction
-            "rm" = "deny";
-            "rm *" = "deny";
+            # File deletion (supervised - prompts for confirmation)
+            "rm" = "ask";
+            "rm *" = "ask";
+            "rmdir *" = "ask";
+
+            # Destructive operations (denied - unrecoverable or bypass deletion)
             "dd *" = "deny";
             "shred *" = "deny";
             "wipe *" = "deny";
             "srm *" = "deny";
-            "rmdir *" = "deny";
             "truncate *" = "deny";
 
             # Privilege escalation
