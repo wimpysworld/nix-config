@@ -29,6 +29,7 @@ in
   catppuccin = {
     delta.enable = config.programs.delta.enable;
     gitui.enable = config.programs.gitui.enable;
+    lazygit.enable = config.programs.lazygit.enable;
   };
 
   home = {
@@ -106,6 +107,21 @@ in
     };
     gitui = {
       enable = isLinux;
+    };
+    lazygit = {
+      enable = isLinux;
+      settings = {
+        gui = {
+          # Show keybindings in the bottom status line (like gitui does)
+          showBottomLine = true;
+          # Show jump-to-window keybindings (1-5) in window titles
+          showPanelJumps = true;
+          # Show Nerd Font icons (requires Nerd Font in terminal)
+          nerdFontsVersion = "3";
+          # Show a random tip in the command log when lazygit starts
+          showRandomTip = true;
+        };
+      };
     };
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {

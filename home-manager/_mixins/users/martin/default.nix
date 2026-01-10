@@ -83,6 +83,10 @@ in
         signByDefault = true;
       };
     };
+    lazygit.settings.git.commit = {
+      # Add Signed-off-by trailer to commits (DCO compliance)
+      signOff = true;
+    };
   };
   systemd.user.tmpfiles = lib.mkIf (isLinux && !isLima) {
     rules = [
