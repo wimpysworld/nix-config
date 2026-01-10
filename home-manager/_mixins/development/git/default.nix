@@ -67,7 +67,7 @@ in
     git = {
       enable = true;
       settings = {
-        aliases = {
+        alias = {
           ci = "commit";
           cl = "clone";
           co = "checkout";
