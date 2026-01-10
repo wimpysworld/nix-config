@@ -48,6 +48,11 @@ lib.mkIf (lib.elem username installFor) {
       settings = {
         theme = "catppuccin";
 
+        # TUI settings
+        tui = {
+          diff_style = "stacked"; # Always show single-column stacked diffs
+        };
+
         # ══════════════════════════════════════════════════════════════
         # Keybindings - Standard CUA text editor navigation
         # ══════════════════════════════════════════════════════════════
