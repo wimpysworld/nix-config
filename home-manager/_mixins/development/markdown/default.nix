@@ -46,5 +46,13 @@ lib.mkIf (lib.elem username installFor) {
         "rumdl"
       ];
     };
+    neovim = lib.mkIf config.programs.neovim.enable {
+      plugins = [
+        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
+          p.markdown
+          p.markdown_inline
+        ]))
+      ];
+    };
   };
 }

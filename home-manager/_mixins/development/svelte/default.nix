@@ -34,5 +34,16 @@ lib.mkIf (lib.elem username installFor) {
         "svelte"
       ];
     };
+    neovim = lib.mkIf config.programs.neovim.enable {
+      plugins = [
+        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
+          p.svelte
+        ]))
+      ];
+      extraLuaConfig = ''
+        -- Svelte LSP using Neovim 0.11+ native API
+        vim.lsp.enable('svelte')
+      '';
+    };
   };
 }

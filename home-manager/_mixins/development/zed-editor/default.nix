@@ -18,7 +18,7 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
   home.packages = with pkgs; [
     clang-tools
     neocmakelsp
-    vscode-css-languageserver
+    vscode-langservers-extracted # JSON, HTML, CSS, ESLint
   ];
   programs = {
     zed-editor = {
@@ -114,6 +114,19 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
           88
         ];
       };
+    };
+    neovim = lib.mkIf config.programs.neovim.enable {
+      plugins = [
+        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
+          p.css
+          p.html
+          p.json
+        ]))
+      ];
+      extraLuaConfig = ''
+        -- JSON/CSS/HTML LSPs using Neovim 0.11+ native API
+        vim.lsp.enable({'jsonls', 'cssls', 'html'})
+      '';
     };
   };
 }

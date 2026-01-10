@@ -25,7 +25,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     packages = with pkgs; [
       lldb
       nodejs_24
-      prettier
     ];
   };
 
@@ -96,7 +95,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.coolbear.systemd-unit-file
             vscode-marketplace.dotjoshjohnson.xml
             vscode-marketplace.editorconfig.editorconfig
-            vscode-marketplace.esbenp.prettier-vscode
             vscode-marketplace.fill-labs.dependi
             vscode-marketplace.griimick.vhs
             vscode-marketplace.gruntfuggly.todo-tree

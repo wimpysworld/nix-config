@@ -49,8 +49,10 @@ in
     ./markdown
     ./mcp
     ./meld
+    ./neovim
     ./nix
     ./opencode
+    ./prettier
     ./python
     ./rust
     ./shell

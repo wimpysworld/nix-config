@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   username,
@@ -17,5 +18,21 @@ lib.mkIf (lib.elem username installFor) {
       vscode-js-debug
       vtsls
     ];
+  };
+
+  programs = {
+    neovim = lib.mkIf config.programs.neovim.enable {
+      plugins = [
+        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
+          p.javascript
+          p.tsx
+          p.typescript
+        ]))
+      ];
+      extraLuaConfig = ''
+        -- TypeScript/JavaScript LSP (ts_ls) using Neovim 0.11+ native API
+        vim.lsp.enable('ts_ls')
+      '';
+    };
   };
 }

@@ -54,5 +54,12 @@ lib.mkIf (lib.elem username installFor) {
         };
       };
     };
+    neovim = lib.mkIf config.programs.neovim.enable {
+      plugins = [
+        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
+          p.just
+        ]))
+      ];
+    };
   };
 }
