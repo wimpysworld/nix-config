@@ -113,6 +113,12 @@ in
         disableStartupPopups = true;
         # Nix manages the package, so disable update checks
         update.method = "never";
+        # CUA-style keybindings
+        keybinding = {
+          universal = {
+            quit = "<c-q>"; # Ctrl+Q to quit (CUA standard)
+          };
+        };
         git = {
           # Auto-fetch from remote periodically
           autoFetch = true;
