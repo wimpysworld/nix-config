@@ -1,5 +1,5 @@
 ---
-agent: "donatello"
+agent: "rosey"
 description: "Handover 📤"
 ---
 
@@ -7,62 +7,64 @@ description: "Handover 📤"
 
 Create a handover document enabling the next engineer to continue without reverse-engineering our decisions.
 
+### Document Guidelines
+
+- Target **800-1200 words** for typical features, **1500-2000 words** for major systems
+- Skip or minimise sections that don't apply
+- Prefer concrete examples over generic descriptions
+- ⚠️ Mark gotchas explicitly; 📌 for critical information
+
 ### Required Sections
 
-**1. Project State**
+**1. Context** (100-150 words)
 
 - What we're building and why
-- Completed vs remaining work
-- Key architectural decisions with rationale
+- Current state: completed vs remaining work
+- Single sentence on architectural approach
 
-**2. Codebase**
+**2. Key Decisions** (150-250 words)
 
-- Repository structure and conventions
-- Dependencies with versions and purpose
-- Configuration and environment setup
+- Document decisions with context: problem → chosen approach → alternatives considered and rejected
+- Focus on non-obvious choices that would be costly to rediscover
 
-**3. Technical Details**
+**3. Working Codebase** (200-350 words)
 
-- Architecture overview (diagram if helpful)
-- Data flow and integration points
-- Core algorithms and logic explained
+- Repository structure at 2-3 levels deep, skip obvious directories
+- Critical dependencies only (purpose + version constraint)
+- One-liner for environment setup
 
-**4. Development Setup**
+**4. Technical Essentials** (150-300 words)
 
-- Step-by-step environment setup
-- Build, test, deploy commands
-- Required tools and versions
+- Architecture diagram only if text alone is insufficient
+- Data flow through the new/changed components only
+- Core logic explained in 2-3 sentences maximum
 
-**5. Known Limitations**
+**5. Development** (100-200 words)
+
+- Essential commands only (setup, test, run)
+- Single most common gotcha with workaround
+- Skip documentation that's easily discoverable
+
+**6. Known Limitations** (100-200 words)
 
 - Technical constraints discovered
-- Workarounds and why they exist
-- Performance issues and potential solutions
+- Workarounds and their trade-offs
+- Skip hypothetical issues
 
-**6. Outstanding Work**
-For each remaining feature:
+**7. Remaining Work** (150-300 words)
 
-- Description and acceptance criteria
-- Recommended implementation approach
-- Prerequisites and dependencies
-- Potential challenges and mitigations
-- Complexity estimate (S/M/L)
+- List only truly outstanding items
+- For each: description + recommended approach + complexity estimate (S/M/L)
+- Skip obvious follow-ups
 
-**7. Testing**
+**8. Quick Orientation** (100-150 words)
 
-- Current coverage and gaps
-- Critical test scenarios
-- Test data location and refresh process
-
-**8. Quick Start**
-
-- First day: environment setup and orientation tasks
-- First week: recommended starting point and why
-- Key contacts and resources
+- First-day environment setup (max 5 steps)
+- Recommended starting point with rationale
+- Skip generic project information
 
 ### Formatting
 
-- ⚠️ WARNING for gotchas and non-obvious behaviour
+- ⚠️ WARNING for non-obvious behaviour
 - 📌 IMPORTANT for critical information
-- Include code examples where they clarify implementation
-- Document failed approaches and why they didn't work
+- Include failed approaches only if they inform the current design
