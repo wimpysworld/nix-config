@@ -51,6 +51,9 @@ in
         nvim-web-devicons
         lualine-nvim
         indent-blankline-nvim
+        rainbow-delimiters-nvim
+        virt-column-nvim
+        vim-illuminate
         # File management
         nvim-tree-lua
         telescope-nvim
@@ -85,20 +88,17 @@ in
         cmp-nvim-lsp
         cmp-buffer
         cmp-path
-        cmp_luasnip
-        luasnip
-        friendly-snippets
         # Formatting
         conform-nvim
         # Diagnostics
         trouble-nvim
-        # Quality of life: auto-pairs, todo highlighting, terminal
+        # Quality of life: auto-pairs, todo highlighting, terminal, sessions
         nvim-autopairs
         todo-comments-nvim
         toggleterm-nvim
-        # AI assistance (Copilot)
-        copilot-lua
-        copilot-cmp
+        auto-session
+        # NOTE: Copilot plugins (copilot-lua, copilot-cmp) configured in
+        # home-manager/_mixins/development/copilot/default.nix
       ];
       extraConfig = ''
         " novim-mode is loaded automatically via the plugins list
@@ -118,6 +118,9 @@ in
         set clipboard=unnamedplus
         set undofile
 
+        " Session options (required for auto-session)
+        set sessionoptions=blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions
+
         " Indentation
         set tabstop=2
         set shiftwidth=2
@@ -125,6 +128,42 @@ in
         set smartindent
       '';
       extraLuaConfig = lib.mkBefore ''
+        -- =============================================================================
+        -- MODELESS EDITING CONFIGURATION
+        -- =============================================================================
+        -- This configuration provides a VSCode/CUA-like editing experience using the
+        -- novim-mode plugin. The goal is to make Neovim behave like a "normal" editor:
+        --
+        -- PHILOSOPHY:
+        --   - No modal editing: users type text immediately without mode switching
+        --   - Selection via Shift+Arrow keys (like VSCode, Word, etc.)
+        --   - Standard CUA keybindings: Ctrl+C/X/V for copy/cut/paste, Ctrl+S to save
+        --   - Additional classic keybindings: Shift+Del (cut), Shift+Ins (paste)
+        --   - All custom keybindings work across modes {'n', 'i', 'v', 's'} to maintain
+        --     consistent behaviour regardless of Neovim's internal state
+        --
+        -- KEY MAPPINGS (provided by novim-mode):
+        --   Ctrl+S: Save | Ctrl+Z: Undo | Ctrl+Y: Redo | Ctrl+A: Select all
+        --   Ctrl+C: Copy | Ctrl+X: Cut | Ctrl+V: Paste | Ctrl+F: Find
+        --   Shift+Arrow: Select text | Ctrl+Arrow: Move by word
+        --
+        -- ADDITIONAL MAPPINGS (defined below):
+        --   Ctrl+Ins: Paste | Ctrl+Del: Cut selection | Alt+S: Save As
+        --   Ctrl+P: Find files | Ctrl+Shift+F: Search in files
+        --   Ctrl+B: Toggle file tree | Ctrl+W: Close buffer
+        --   Ctrl+`: Terminal | F12: Go to definition | F2: Rename
+        --
+        -- NOTE: Some Ctrl+Shift combinations don't work reliably in terminals
+        -- (terminals can't distinguish Ctrl+S from Ctrl+Shift+S). Alt-based
+        -- alternatives are used where necessary.
+        --
+        -- COPILOT: AI suggestions configured in copilot/default.nix
+        --   Tab: Accept suggestion | Alt+]/[: Next/prev | Ctrl+E: Dismiss
+        --
+        -- COMPLETION MENU (nvim-cmp):
+        --   Tab: Accept selected | Up/Down: Navigate | Escape: Close
+        -- =============================================================================
+
         -- Global LSP configuration (Neovim 0.11+ native API)
         -- Set default capabilities for all LSP servers (nvim-cmp integration)
         vim.lsp.config('*', {
@@ -194,10 +233,60 @@ in
           },
         }
 
-        -- Indent guides
+        -- Rainbow delimiters (colourful bracket matching)
+        local rainbow_delimiters = require('rainbow-delimiters')
+        local rainbow_highlight = {
+          'RainbowDelimiterRed',
+          'RainbowDelimiterYellow',
+          'RainbowDelimiterBlue',
+          'RainbowDelimiterOrange',
+          'RainbowDelimiterGreen',
+          'RainbowDelimiterViolet',
+          'RainbowDelimiterCyan',
+        }
+        require('rainbow-delimiters.setup').setup {
+          strategy = {
+            [""] = rainbow_delimiters.strategy['global'],
+          },
+          query = {
+            [""] = 'rainbow-delimiters',
+          },
+          highlight = rainbow_highlight,
+        }
+
+        -- Indent guides with rainbow scope lines
         require('ibl').setup {
           indent = { char = "│" },
-          scope = { enabled = true },
+          scope = {
+            enabled = true,
+            highlight = rainbow_highlight,  -- Use rainbow colours for scope line
+          },
+        }
+        -- Hook indent-blankline to rainbow-delimiters for matching colours
+        local hooks = require('ibl.hooks')
+        hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
+
+        -- Virtual column markers at 80 and 88 characters (thin lines, not highlighted columns)
+        require('virt-column').setup {
+          char = '┊',           -- Dotted line for subtlety
+          virtcolumn = '80,88',
+          highlight = 'NonText', -- Use faint NonText highlight (very subtle)
+        }
+
+        -- Illuminate: highlight other occurrences of word under cursor
+        require('illuminate').configure {
+          delay = 200,           -- Delay before highlighting (ms)
+          under_cursor = true,   -- Highlight word under cursor
+          providers = {
+            'lsp',               -- Use LSP for smart highlighting
+            'treesitter',        -- Fall back to treesitter
+            'regex',             -- Fall back to regex
+          },
+          filetypes_denylist = { -- Don't illuminate in these filetypes
+            'NvimTree',
+            'TelescopePrompt',
+            'toggleterm',
+          },
         }
 
         -- File tree (opens by default, full-height on left for bufferline offset)
@@ -290,26 +379,16 @@ in
 
         -- Autocompletion with nvim-cmp
         local cmp = require('cmp')
-        local luasnip = require('luasnip')
         local lspkind = require('lspkind')
 
-        -- Load friendly-snippets
-        require('luasnip.loaders.from_vscode').lazy_load()
-
         cmp.setup {
-          snippet = {
-            expand = function(args)
-              luasnip.lsp_expand(args.body)
-            end,
-          },
           mapping = cmp.mapping.preset.insert({
             ['<C-Space>'] = cmp.mapping.complete(),
             ['<CR>'] = cmp.mapping.confirm({ select = true }),
+            -- Tab/Shift+Tab to navigate completion menu
             ['<Tab>'] = cmp.mapping(function(fallback)
               if cmp.visible() then
-                cmp.select_next_item()
-              elseif luasnip.expand_or_jumpable() then
-                luasnip.expand_or_jump()
+                cmp.confirm({ select = true })  -- Accept selected completion
               else
                 fallback()
               end
@@ -317,12 +396,12 @@ in
             ['<S-Tab>'] = cmp.mapping(function(fallback)
               if cmp.visible() then
                 cmp.select_prev_item()
-              elseif luasnip.jumpable(-1) then
-                luasnip.jump(-1)
               else
                 fallback()
               end
             end, { 'i', 's' }),
+            ['<Down>'] = cmp.mapping.select_next_item(),
+            ['<Up>'] = cmp.mapping.select_prev_item(),
             ['<C-b>'] = cmp.mapping.scroll_docs(-4),
             ['<C-f>'] = cmp.mapping.scroll_docs(4),
             ['<C-e>'] = cmp.mapping.abort(),
@@ -330,7 +409,6 @@ in
           sources = cmp.config.sources({
             { name = 'copilot', group_index = 2 },  -- Copilot suggestions
             { name = 'nvim_lsp' },
-            { name = 'luasnip' },
             { name = 'path' },
           }, {
             { name = 'buffer' },
@@ -410,6 +488,29 @@ in
           },
         }
 
+        -- Auto-session: automatically save and restore sessions per directory
+        require('auto-session').setup {
+          enabled = true,                -- Enable auto-session
+          auto_restore = true,           -- Restore session when opening Neovim in a directory
+          auto_save = true,              -- Save session when leaving Neovim
+          auto_create = true,            -- Create session if none exists
+          suppressed_dirs = {            -- Don't create sessions in these directories
+            '~/',
+            '~/Downloads',
+            '~/tmp',
+            '/tmp',
+          },
+          -- Close nvim-tree before saving session (it doesn't restore well)
+          pre_save_cmds = { 'NvimTreeClose' },
+          -- Reopen nvim-tree after restoring session
+          post_restore_cmds = {
+            function()
+              require('nvim-tree.api').tree.open()
+              vim.cmd('wincmd l')
+            end,
+          },
+        }
+
         -- Toggleterm for integrated terminal (VSCode-style)
         require('toggleterm').setup {
           size = function(term)
@@ -441,50 +542,6 @@ in
         -- Ctrl+Shift+` for floating terminal
         vim.keymap.set({'n', 'i', 'v', 't'}, '<C-S-`>', '<cmd>ToggleTerm direction=float<cr>', { noremap = true, silent = true })
 
-        -- Copilot AI assistance
-        require('copilot').setup {
-          panel = {
-            enabled = true,
-            auto_refresh = true,
-            keymap = {
-              jump_prev = "[[",
-              jump_next = "]]",
-              accept = "<CR>",
-              refresh = "gr",
-              open = "<M-CR>",  -- Alt+Enter to open panel
-            },
-            layout = {
-              position = "right",
-              ratio = 0.4,
-            },
-          },
-          suggestion = {
-            enabled = true,
-            auto_trigger = true,
-            hide_during_completion = true,
-            debounce = 75,
-            keymap = {
-              accept = "<M-l>",       -- Alt+l to accept suggestion
-              accept_word = "<M-j>",  -- Alt+j to accept word
-              accept_line = "<M-k>",  -- Alt+k to accept line
-              next = "<M-]>",         -- Alt+] for next suggestion
-              prev = "<M-[>",         -- Alt+[ for previous suggestion
-              dismiss = "<C-]>",      -- Ctrl+] to dismiss
-            },
-          },
-          filetypes = {
-            yaml = false,
-            markdown = true,
-            help = false,
-            gitcommit = true,
-            gitrebase = false,
-            ["."] = false,
-          },
-          copilot_node_command = "node",
-        }
-        -- Setup copilot-cmp for completion integration
-        require('copilot_cmp').setup {}
-
         -- LSP keybindings (CUA/VSCode-style)
         vim.api.nvim_create_autocmd('LspAttach', {
           callback = function(args)
@@ -513,8 +570,8 @@ in
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-Tab>', '<cmd>BufferLineCyclePrev<cr>', opts)
         -- Ctrl+W to close current buffer (using bufdelete for clean closure)
         vim.keymap.set({'n', 'i', 'v'}, '<C-w>', '<cmd>Bdelete<cr>', opts)
-        -- Ctrl+Shift+S for "Save As" via Telescope
-        vim.keymap.set({'n', 'i', 'v'}, '<C-S-s>', function()
+        -- Alt+S for "Save As" (Ctrl+Shift+S doesn't work reliably in terminals)
+        vim.keymap.set({'n', 'i', 'v', 's'}, '<M-s>', function()
           vim.ui.input({ prompt = "Save as: ", default = vim.fn.expand("%:p") }, function(input)
             if input and input ~= "" then
               vim.cmd("saveas " .. vim.fn.fnameescape(input))
@@ -529,6 +586,15 @@ in
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-m>', '<cmd>Trouble diagnostics toggle<cr>', opts)  -- Problems panel
         -- Git integration keybindings (VSCode-style)
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-g>', '<cmd>Telescope git_status<cr>', opts)  -- Git status
+
+        -- Additional CUA keybindings (classic Windows/IBM style)
+        -- Shift+Del to cut selection to system clipboard (like Ctrl+X)
+        -- Uses same approach as novim-mode: <C-O>"+xi
+        vim.keymap.set('s', '<S-Del>', '<C-O>"+xi', opts)
+        vim.keymap.set('v', '<S-Del>', '"+xi', opts)
+        -- Shift+Ins to paste from system clipboard (like Ctrl+V)
+        -- Call the same novim_mode#Paste() function that Ctrl+V uses
+        vim.keymap.set({'n', 'i', 'v', 's'}, '<S-Ins>', '<C-O>:call novim_mode#Paste()<CR>', opts)
       '';
     };
   };

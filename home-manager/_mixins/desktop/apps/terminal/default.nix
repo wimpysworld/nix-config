@@ -67,6 +67,11 @@ in
         # Send proper escape sequences for Enter key modifiers (for OpenCode)
         map shift+enter send_text all \x1b[13;2u
         map ctrl+enter send_text all \x1b[13;5u
+
+        # Send proper escape sequences for Shift+Ins and Shift+Del (for Neovim CUA keybindings)
+        # Without this, Kitty intercepts these for its own clipboard operations
+        map shift+insert send_text all \x1b[2;2~
+        map shift+delete send_text all \x1b[3;2~
       '';
     };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {

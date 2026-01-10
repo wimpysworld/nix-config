@@ -342,6 +342,69 @@ lib.mkIf (lib.elem username installFor) {
     ];
   };
   programs = {
+    neovim = lib.mkIf config.programs.neovim.enable {
+      plugins = with pkgs.vimPlugins; [
+        copilot-lua
+        copilot-cmp
+      ];
+      extraLuaConfig = ''
+        -- =========================================================================
+        -- COPILOT AI ASSISTANCE
+        -- =========================================================================
+        -- Provides inline suggestions (ghost text) and completion integration.
+        -- Authentication: Run :Copilot auth once to authenticate via browser.
+        --                 Credentials stored in ~/.config/github-copilot/
+        --
+        -- SUGGESTION KEYBINDINGS:
+        --   Tab: Accept full suggestion (like VSCode)
+        --   Alt+]: Next suggestion | Alt+[: Previous suggestion
+        --   Ctrl+E: Dismiss/ignore suggestion
+        --   Alt+Enter: Open Copilot panel
+        -- =========================================================================
+        require('copilot').setup {
+          panel = {
+            enabled = true,
+            auto_refresh = true,
+            keymap = {
+              jump_prev = "[[",
+              jump_next = "]]",
+              accept = "<CR>",
+              refresh = "gr",
+              open = "<M-CR>",  -- Alt+Enter to open panel
+            },
+            layout = {
+              position = "right",
+              ratio = 0.4,
+            },
+          },
+          suggestion = {
+            enabled = true,
+            auto_trigger = true,
+            hide_during_completion = true,
+            debounce = 75,
+            keymap = {
+              accept = "<Tab>",       -- Tab to accept suggestion (like VSCode)
+              accept_word = false,    -- Disabled (use Tab for full accept)
+              accept_line = false,    -- Disabled (use Tab for full accept)
+              next = "<M-]>",         -- Alt+] for next suggestion
+              prev = "<M-[>",         -- Alt+[ for previous suggestion
+              dismiss = "<C-e>",      -- Ctrl+E to dismiss (Escape conflicts with novim-mode)
+            },
+          },
+          filetypes = {
+            yaml = false,
+            markdown = true,
+            help = false,
+            gitcommit = true,
+            gitrebase = false,
+            ["."] = false,
+          },
+          copilot_node_command = "node",
+        }
+        -- Setup copilot-cmp for completion integration
+        require('copilot_cmp').setup {}
+      '';
+    };
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {
