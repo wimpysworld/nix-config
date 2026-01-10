@@ -28,7 +28,6 @@ in
 {
   catppuccin = {
     delta.enable = config.programs.delta.enable;
-    gitui.enable = config.programs.gitui.enable;
     lazygit.enable = config.programs.lazygit.enable;
   };
 
@@ -59,7 +58,7 @@ in
       options = {
         hyperlinks = true;
         line-numbers = true;
-        side-by-side = true;
+        side-by-side = false;
       };
     };
     fish = {
@@ -105,12 +104,23 @@ in
         "result*"
       ];
     };
-    gitui = {
-      enable = isLinux;
-    };
     lazygit = {
-      enable = isLinux;
+      enable = true;
       settings = {
+        # Skip "Press enter to return to lazygit" after subprocesses
+        promptToReturnFromSubprocess = false;
+        # Skip intro popups when opening lazygit
+        disableStartupPopups = true;
+        # Nix manages the package, so disable update checks
+        update.method = "never";
+        git = {
+          # Auto-fetch from remote periodically
+          autoFetch = true;
+          # Use delta for diffs with side-by-side view (pagers is an array)
+          pagers = [
+            { pager = "${pkgs.delta}/bin/delta --dark --paging=never"; }
+          ];
+        };
         gui = {
           # Show keybindings in the bottom status line (like gitui does)
           showBottomLine = true;
@@ -120,6 +130,12 @@ in
           nerdFontsVersion = "3";
           # Show a random tip in the command log when lazygit starts
           showRandomTip = true;
+          # Accordion effect - expand the focused side panel
+          expandFocusedSidePanel = true;
+          # Use fuzzy filtering when searching with '/'
+          filterMode = "fuzzy";
+          # Show all branches log instead of dashboard (hides donate link)
+          statusPanelView = "allBranchesLog";
         };
       };
     };
