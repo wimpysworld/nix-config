@@ -24,6 +24,46 @@ let
       license = lib.licenses.mit;
     };
   };
+
+  # Fetch nvzone/volt (dependency for nvzone/menu)
+  nvzone-volt = pkgs.vimUtils.buildVimPlugin {
+    pname = "volt";
+    version = "unstable-2025-01-11";
+    src = pkgs.fetchFromGitHub {
+      owner = "nvzone";
+      repo = "volt";
+      rev = "620de1321f275ec9d80028c68d1b88b409c0c8b1";
+      sha256 = "sha256-5Xao1+QXZOvqwCXL6zWpckJPO1LDb8I7wtikMRFQ3Jk=";
+    };
+    meta = {
+      homepage = "https://github.com/nvzone/volt";
+      description = "Volt is a reactive UI library for Neovim";
+      license = lib.licenses.gpl3Only;
+    };
+  };
+
+  # Fetch nvzone/menu for context menus
+  nvzone-menu = pkgs.vimUtils.buildVimPlugin {
+    pname = "menu";
+    version = "unstable-2025-01-11";
+    src = pkgs.fetchFromGitHub {
+      owner = "nvzone";
+      repo = "menu";
+      rev = "7a0a4a2896b715c066cfbe320bdc048091874cc6";
+      sha256 = "sha256-4GfQ6Mo32rsoQAXKZF9Bpnm/sms2hfbrTldpLp5ySoY=";
+    };
+    # Skip require check - plugin has runtime dependencies (volt, neo-tree, nvim-tree)
+    nvimSkipModule = [
+      "menu"
+      "menus.neo-tree"
+      "menus.nvimtree"
+    ];
+    meta = {
+      homepage = "https://github.com/nvzone/menu";
+      description = "Menu plugin for Neovim with nested menu support";
+      license = lib.licenses.gpl3Only;
+    };
+  };
 in
 {
   catppuccin.nvim = {
@@ -42,26 +82,30 @@ in
         # novim-mode for CUA/VSCode-style modeless editing
         novim-mode
         # Quality of life plugins
-        vim-sensible
         vim-sleuth # Auto-detect indentation
-        vim-commentary # gc to comment
-        vim-surround # Surround text objects
         vim-lastplace # Restore cursor position
+        trim-nvim # Auto-trim trailing whitespace on save
         # Visual enhancements
         nvim-web-devicons
         lualine-nvim
         indent-blankline-nvim
         rainbow-delimiters-nvim
+        hlchunk-nvim
         virt-column-nvim
         vim-illuminate
+        nvim-scrollview
+        # Context menus (right-click menus)
+        nvzone-volt # Required by nvzone-menu
+        nvzone-menu
         # File management
-        nvim-tree-lua
+        neo-tree-nvim
+        nui-nvim # Required by neo-tree
+        nvim-lsp-file-operations # LSP-aware file renames (updates imports)
         telescope-nvim
         telescope-fzf-native-nvim
         telescope-ui-select-nvim
         plenary-nvim
-        # Keybinding help
-        which-key-nvim
+
         # Git integration
         gitsigns-nvim
         # Tab bar and buffer management
@@ -115,7 +159,9 @@ in
         set signcolumn=yes
         set termguicolors
         set mouse=a
-        set clipboard=unnamedplus
+        " Don't auto-sync with system clipboard (CUA: only Ctrl+C/X should copy/cut)
+        " novim-mode handles explicit clipboard operations
+        set clipboard=
         set undofile
         set splitright
         set splitbelow
@@ -128,6 +174,8 @@ in
         set shiftwidth=2
         set expandtab
         set smartindent
+
+
       '';
       extraLuaConfig = lib.mkBefore ''
         -- =============================================================================
@@ -148,6 +196,7 @@ in
         --   Ctrl+S: Save | Ctrl+Z: Undo | Ctrl+Y: Redo | Ctrl+A: Select all
         --   Ctrl+C: Copy | Ctrl+X: Cut | Ctrl+V: Paste | Ctrl+F: Find
         --   Shift+Arrow: Select text | Ctrl+Arrow: Move by word
+        --   Tab: Indent selection | Shift+Tab: Unindent selection
         --
         -- ADDITIONAL MAPPINGS (defined below):
         --   Ctrl+Ins: Paste | Ctrl+Del: Cut selection | Alt+S: Save As
@@ -193,13 +242,7 @@ in
           },
         }
 
-        -- Which-key for keybinding discovery popup
-        require('which-key').setup {
-          delay = 500,  -- Show popup after 500ms
-          icons = {
-            mappings = false,  -- Disable icons for cleaner look
-          },
-        }
+
 
         -- Git signs in the gutter (maximum bling)
         require('gitsigns').setup {
@@ -268,11 +311,65 @@ in
         local hooks = require('ibl.hooks')
         hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
 
+        -- Hlchunk: draw lines connecting bracket pairs
+        -- Uses Vim's searchpair (not treesitter) for consistent { } matching
+        require('hlchunk').setup {
+          chunk = {
+            enable = true,
+            use_treesitter = false,       -- Use searchpair for all { } brackets
+            style = {
+              { fg = "${catppuccinPalette.getColor "mauve"}" },
+              { fg = "${catppuccinPalette.getColor "red"}" },   -- Error colour
+            },
+            chars = {
+              horizontal_line = "─",
+              vertical_line = "│",
+              left_top = "╭",
+              left_bottom = "╰",
+              right_arrow = ">",
+            },
+            textobject = "",              -- Disable textobject (we use treesitter's)
+            max_file_size = 1024 * 1024,  -- 1MB
+            error_sign = true,            -- Show different colour for syntax errors
+            duration = 200,               -- Animation duration (ms)
+            delay = 300,                  -- Delay before showing (ms)
+          },
+          indent = {
+            enable = false,  -- Disabled: using indent-blankline instead
+          },
+          line_num = {
+            enable = false,  -- Disabled: gitsigns handles line number colouring
+          },
+          blank = {
+            enable = false,
+          },
+        }
+
         -- Virtual column markers at 80 and 88 characters (thin lines, not highlighted columns)
         require('virt-column').setup {
           char = '┊',           -- Dotted line for subtlety
           virtcolumn = '80,88',
           highlight = 'NonText', -- Use faint NonText highlight (very subtle)
+        }
+
+        -- Scrollbar with signs (diagnostics, search, marks, git)
+        -- Clickable for navigation, right-click for info
+        require('scrollview').setup {
+          excluded_filetypes = { 'neo-tree', 'toggleterm' },
+          current_only = true,           -- Only show scrollbar in current window
+          winblend = 50,                 -- Transparency (0-100)
+          signs_on_startup = {           -- Enable these sign groups
+            'diagnostics',
+            'search',
+            'marks',
+            'keywords',                  -- TODO, FIXME, HACK, etc.
+          },
+          diagnostics_severities = {     -- Show all diagnostic levels
+            vim.diagnostic.severity.ERROR,
+            vim.diagnostic.severity.WARN,
+            vim.diagnostic.severity.INFO,
+            vim.diagnostic.severity.HINT,
+          },
         }
 
         -- Illuminate: highlight other occurrences of word under cursor
@@ -285,25 +382,136 @@ in
             'regex',             -- Fall back to regex
           },
           filetypes_denylist = { -- Don't illuminate in these filetypes
-            'NvimTree',
+            'neo-tree',
             'TelescopePrompt',
             'toggleterm',
           },
         }
 
-        -- File tree (opens by default, full-height on left for bufferline offset)
-        require('nvim-tree').setup {
-          view = {
-            side = "left",
-            width = 30,
-            preserve_window_proportions = true,
+        -- File tree (neo-tree: more features, better session handling)
+        require('neo-tree').setup {
+          close_if_last_window = true,     -- Close neo-tree if it's the last window
+          popup_border_style = "rounded",
+          enable_git_status = true,
+          enable_diagnostics = true,
+          sort_case_insensitive = true,
+          default_component_configs = {
+            container = {
+              enable_character_fade = true,
+            },
+            indent = {
+              indent_size = 2,
+              padding = 1, -- extra padding on left hand side
+              -- indent guides
+              with_markers = true,
+              indent_marker = "│",
+              last_indent_marker = "└",
+              highlight = "NeoTreeIndentMarker",
+              -- expander config, needed for nesting files
+              with_expanders = nil, -- if nil and file nesting is enabled, will enable expanders
+              expander_collapsed = "",
+              expander_expanded = "",
+              expander_highlight = "NeoTreeExpander",
+            },
+            icon = {
+              folder_closed = "",
+              folder_open = "",
+              folder_empty = "󰜌",
+              provider = function(icon, node, state) -- default icon provider utilizes nvim-web-devicons if available
+                if node.type == "file" or node.type == "terminal" then
+                  local success, web_devicons = pcall(require, "nvim-web-devicons")
+                  local name = node.type == "terminal" and "terminal" or node.name
+                  if success then
+                    local devicon, hl = web_devicons.get_icon(name)
+                    icon.text = devicon or icon.text
+                    icon.highlight = hl or icon.highlight
+                  end
+                end
+              end,
+              -- The next two settings are only a fallback, if you use nvim-web-devicons and configure default icons there
+              -- then these will never be used.
+              default = "*",
+              highlight = "NeoTreeFileIcon",
+              use_filtered_colors = true, -- Whether to use a different highlight when the file is filtered (hidden, dotfile, etc.).
+            },
+            modified = {
+              symbol = "[+]",
+              highlight = "NeoTreeModified",
+            },
+            name = {
+              trailing_slash = false,
+              use_filtered_colors = true, -- Whether to use a different highlight when the file is filtered (hidden, dotfile, etc.).
+              use_git_status_colors = true,
+              highlight = "NeoTreeFileName",
+            }, 
+            git_status = {
+              symbols = {
+                -- Change type
+                added = "", -- or "✚"
+                modified = "", -- or ""
+                deleted = "✖", -- this can only be used in the git_status source
+                renamed = "󰁕", -- this can only be used in the git_status source
+                -- Status type
+                untracked = "",
+                ignored = "",
+                unstaged = "󰄱",
+                staged = "",
+                conflict = "",
+              },
+            },
           },
-          renderer = { icons = { show = { file = true, folder = true, folder_arrow = true } } },
-          actions = {
-            open_file = {
-              quit_on_open = false,        -- Keep tree open after opening file
-              resize_window = false,       -- Don't resize tree when opening files
-              window_picker = { enable = false },  -- Open in previous window, not picker
+          window = {
+            position = "left",
+            width = 30,
+            mappings = {
+              -- CUA-friendly mappings (avoid single-letter vim bindings)
+              ["<CR>"] = "open",
+              ["<2-LeftMouse>"] = "open",
+              ["<F2>"] = "rename",
+              ["<Del>"] = "delete",
+              ["<F5>"] = "refresh",
+              -- Keep some useful defaults
+              ["a"] = "add",               -- Add file/directory
+              ["d"] = "delete",
+              ["r"] = "rename",
+              ["y"] = "copy_to_clipboard",
+              ["x"] = "cut_to_clipboard",
+              ["p"] = "paste_from_clipboard",
+              ["c"] = "copy",              -- Copy to location
+              ["m"] = "move",              -- Move to location
+              ["q"] = "close_window",
+              ["R"] = "refresh",
+              ["?"] = "show_help",
+              ["<"] = "prev_source",
+              [">"] = "next_source",
+              ["/"] = "fuzzy_finder",      -- Built-in fuzzy finder
+              ["H"] = "toggle_hidden",
+              ["o"] = "open",
+              ["s"] = "open_vsplit",
+              ["S"] = "open_split",
+              ["t"] = "open_tabnew",
+            },
+          },
+          filesystem = {
+            filtered_items = {
+              visible = false,             -- Hide hidden files by default
+              hide_dotfiles = false,       -- But don't hide dotfiles
+              hide_gitignored = true,      -- Hide gitignored files
+              hide_by_name = {
+                ".git",
+                "node_modules",
+                "__pycache__",
+              },
+            },
+            follow_current_file = {
+              enabled = true,              -- Auto-reveal current file
+              leave_dirs_open = true,      -- Keep parent dirs open
+            },
+            use_libuv_file_watcher = true, -- Auto-refresh on file changes
+          },
+          buffers = {
+            follow_current_file = {
+              enabled = true,
             },
           },
         }
@@ -323,10 +531,8 @@ in
             right_mouse_command = function(bufnr) require('bufdelete').bufdelete(bufnr, true) end,
             offsets = {
               {
-                filetype = "NvimTree",
-                text = "File Explorer",
-                text_align = "left",
-                highlight = "Directory",
+                filetype = "neo-tree",
+                text = "",
                 separator = true,
               },
             },
@@ -335,10 +541,20 @@ in
         -- Open tree on startup, then focus editor
         vim.api.nvim_create_autocmd("VimEnter", {
           callback = function()
-            require('nvim-tree.api').tree.open()
+            vim.cmd('Neotree show')
             -- Move focus to the editor window (away from tree)
             vim.cmd('wincmd l')
           end
+        })
+
+        -- Keep neo-tree and menu in normal mode (prevent novim-mode from switching to insert)
+        -- This ensures these UI elements remain navigable without mode interference
+        vim.api.nvim_create_autocmd("FileType", {
+          pattern = { "neo-tree", "neo-tree-popup", "NvMenu", "VoltWindow" },
+          callback = function()
+            vim.b.novim_mode_disable = true  -- Disable novim-mode for this buffer
+            vim.cmd('stopinsert')            -- Ensure we're in normal mode
+          end,
         })
 
         -- Telescope fuzzy finder with extensions
@@ -354,6 +570,9 @@ in
 
         -- Fidget for LSP progress
         require('fidget').setup {}
+
+        -- LSP file operations (updates imports when renaming files in neo-tree)
+        require('lsp-file-operations').setup {}
 
         -- Treesitter configuration
         require('nvim-treesitter.configs').setup {
@@ -387,14 +606,17 @@ in
           mapping = cmp.mapping.preset.insert({
             ['<C-Space>'] = cmp.mapping.complete(),
             ['<CR>'] = cmp.mapping.confirm({ select = true }),
-            -- Tab/Shift+Tab to navigate completion menu
-            ['<Tab>'] = cmp.mapping(function(fallback)
+            -- Tab: accept completion if visible, otherwise insert tab/spaces
+            -- Only in insert mode - select mode Tab is used for indenting selections
+            ['<Tab>'] = cmp.mapping(function(_)
               if cmp.visible() then
                 cmp.confirm({ select = true })  -- Accept selected completion
               else
-                fallback()
+                -- Insert appropriate indentation (respects expandtab, shiftwidth, etc.)
+                local key = vim.api.nvim_replace_termcodes('<Tab>', true, true, true)
+                vim.api.nvim_feedkeys(key, 'n', false)
               end
-            end, { 'i', 's' }),
+            end, { 'i' }),
             ['<S-Tab>'] = cmp.mapping(function(fallback)
               if cmp.visible() then
                 cmp.select_prev_item()
@@ -406,7 +628,14 @@ in
             ['<Up>'] = cmp.mapping.select_prev_item(),
             ['<C-b>'] = cmp.mapping.scroll_docs(-4),
             ['<C-f>'] = cmp.mapping.scroll_docs(4),
-            ['<C-e>'] = cmp.mapping.abort(),
+            -- Escape closes completion menu, falls through to novim-mode otherwise
+            ['<Esc>'] = cmp.mapping(function(fallback)
+              if cmp.visible() then
+                cmp.abort()
+              else
+                fallback()
+              end
+            end, { 'i' }),
           }),
           sources = cmp.config.sources({
             { name = 'copilot', group_index = 2 },  -- Copilot suggestions
@@ -436,6 +665,17 @@ in
 
         -- Trouble for diagnostics
         require('trouble').setup {}
+
+        -- Auto-trim trailing whitespace on save
+        require('trim').setup {
+          ft_blocklist = { 'markdown', 'diff', 'gitcommit' },
+          trim_on_write = true,
+          trim_trailing = true,
+          trim_last_line = true,       -- Remove blank lines at end of file
+          trim_first_line = true,      -- Remove blank lines at start of file
+          highlight = false,           -- Don't highlight (scrollview already shows this)
+          notifications = false,       -- Silent operation
+        }
 
         -- Auto-pairs for brackets, quotes, etc.
         local npairs = require('nvim-autopairs')
@@ -502,12 +742,12 @@ in
             '~/tmp',
             '/tmp',
           },
-          -- Close nvim-tree before saving session (it doesn't restore well)
-          pre_save_cmds = { 'NvimTreeClose' },
-          -- Reopen nvim-tree after restoring session
+          -- Close neo-tree before saving session (it doesn't restore well)
+          pre_save_cmds = { 'Neotree close' },
+          -- Reopen neo-tree after restoring session
           post_restore_cmds = {
             function()
-              require('nvim-tree.api').tree.open()
+              vim.cmd('Neotree show')
               vim.cmd('wincmd l')
             end,
           },
@@ -574,9 +814,9 @@ in
         -- Ctrl+P for file finder (all modes)
         vim.keymap.set({'n', 'i', 'v'}, '<C-p>', '<cmd>Telescope find_files<cr>', opts)
         -- Ctrl+B to toggle file tree (all modes)
-        vim.keymap.set({'n', 'i', 'v'}, '<C-b>', '<cmd>NvimTreeToggle<cr>', opts)
+        vim.keymap.set({'n', 'i', 'v'}, '<C-b>', '<cmd>Neotree toggle<cr>', opts)
         -- Ctrl+E to focus file tree (all modes)
-        vim.keymap.set({'n', 'i', 'v'}, '<C-e>', '<cmd>NvimTreeFocus<cr>', opts)
+        vim.keymap.set({'n', 'i', 'v'}, '<C-e>', '<cmd>Neotree focus<cr>', opts)
         -- Tab switching (Ctrl+Tab / Ctrl+Shift+Tab)
         vim.keymap.set({'n', 'i', 'v'}, '<C-Tab>', '<cmd>BufferLineCycleNext<cr>', opts)
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-Tab>', '<cmd>BufferLineCyclePrev<cr>', opts)
@@ -598,8 +838,18 @@ in
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-m>', '<cmd>Trouble diagnostics toggle<cr>', opts)  -- Problems panel
         -- Git integration keybindings (VSCode-style)
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-g>', '<cmd>Telescope git_status<cr>', opts)  -- Git status
+        -- Command palette (VSCode-style Ctrl+Shift+P)
+        vim.keymap.set({'n', 'i', 'v'}, '<C-S-p>', '<cmd>Telescope commands<cr>', opts)
 
         -- Additional CUA keybindings (classic Windows/IBM style)
+        -- Tab/Shift+Tab to indent/dedent selection (VSCode-style)
+        -- novim-mode uses select mode where Tab is broken in Neovim, so we convert to visual mode first
+        vim.keymap.set('s', '<Tab>', '<C-G>>gv', opts)      -- Select -> Visual -> indent -> reselect
+        vim.keymap.set('s', '<S-Tab>', '<C-G><gv', opts)    -- Select -> Visual -> dedent -> reselect
+        vim.keymap.set('v', '<Tab>', '>gv', opts)           -- Visual mode indent
+        vim.keymap.set('v', '<S-Tab>', '<gv', opts)         -- Visual mode dedent
+        -- Shift+Enter behaves like Enter (consistent editing experience)
+        vim.keymap.set({'n', 'i', 'v', 's'}, '<S-CR>', '<CR>', opts)
         -- Shift+Del to cut selection to system clipboard (like Ctrl+X)
         -- Uses same approach as novim-mode: <C-O>"+xi
         vim.keymap.set('s', '<S-Del>', '<C-O>"+xi', opts)
@@ -607,6 +857,193 @@ in
         -- Shift+Ins to paste from system clipboard (like Ctrl+V)
         -- Call the same novim_mode#Paste() function that Ctrl+V uses
         vim.keymap.set({'n', 'i', 'v', 's'}, '<S-Ins>', '<C-O>:call novim_mode#Paste()<CR>', opts)
+
+        -- Context menu (nvzone/menu) - CUA-friendly right-click menus
+
+        -- Neo-tree file explorer menu (CUA-friendly keybinds)
+        local neotree_manager = require "neo-tree.sources.manager"
+        local neotree_cc = require "neo-tree.sources.common.commands"
+
+        local function get_neotree_state()
+          local state = neotree_manager.get_state_for_window()
+          assert(state)
+          state.config = state.config or {}
+          return state
+        end
+
+        local function neotree_call(what)
+          return vim.schedule_wrap(function()
+            local state = get_neotree_state()
+            local cb = require("neo-tree.sources." .. state.name .. ".commands")[what] or neotree_cc[what]
+            cb(state)
+          end)
+        end
+
+        local function neotree_copy_path(how)
+          return function()
+            local node = get_neotree_state().tree:get_node()
+            if node.type == "message" then return end
+            vim.fn.setreg('"', vim.fn.fnamemodify(node.path, how))
+            vim.fn.setreg("+", vim.fn.fnamemodify(node.path, how))
+          end
+        end
+
+        local function neotree_open_in_terminal()
+          return function()
+            local node = get_neotree_state().tree:get_node()
+            if node.type == "message" then return end
+            local path = node.path
+            local node_type = vim.uv.fs_stat(path).type
+            local dir = node_type == "directory" and path or vim.fn.fnamemodify(path, ":h")
+            vim.cmd("ToggleTerm dir=" .. vim.fn.fnameescape(dir))
+          end
+        end
+
+        local neotree_menu = {
+          { name = "  New File", cmd = neotree_call "add", rtxt = "Ctrl+N" },
+          { name = "  New Folder", cmd = neotree_call "add_directory", rtxt = "Ctrl+Shift+N" },
+          { name = "separator" },
+          { name = "  Open", cmd = neotree_call "open", rtxt = "Enter" },
+          { name = "  Open in Split", cmd = neotree_call "open_split" },
+          { name = "  Open in Vertical Split", cmd = neotree_call "open_vsplit" },
+          { name = "󰓪  Open in New Tab", cmd = neotree_call "open_tabnew" },
+          { name = "separator" },
+          { name = "  Cut", cmd = neotree_call "cut_to_clipboard", rtxt = "Ctrl+X" },
+          { name = "  Copy", cmd = neotree_call "copy_to_clipboard", rtxt = "Ctrl+C" },
+          { name = "  Paste", cmd = neotree_call "paste_from_clipboard", rtxt = "Ctrl+V" },
+          { name = "separator" },
+          { name = "󰴠  Copy Path", cmd = neotree_copy_path ":p", rtxt = "Ctrl+Shift+C" },
+          { name = "  Copy Relative Path", cmd = neotree_copy_path ":~:." },
+          { name = "separator" },
+          { name = "  Rename", cmd = neotree_call "rename", rtxt = "F2" },
+          { name = "  Delete", hl = "ExRed", cmd = neotree_call "delete", rtxt = "Del" },
+          { name = "separator" },
+          { name = "  Open in Terminal", hl = "ExBlue", cmd = neotree_open_in_terminal() },
+          { name = "   File Details", cmd = neotree_call "show_file_details" },
+          { name = "separator" },
+          { name = "  Refresh", cmd = neotree_call "refresh", rtxt = "F5" },
+          { name = "  Toggle Hidden Files", cmd = neotree_call "toggle_hidden", rtxt = "Ctrl+H" },
+        }
+
+        -- Define custom menu items for modeless editing workflow
+        local cua_menu = {
+          { name = "Cut", cmd = "normal! \"+x", rtxt = "Ctrl+X" },
+          { name = "Copy", cmd = "normal! \"+y", rtxt = "Ctrl+C" },
+          { name = "Paste", cmd = "call novim_mode#Paste()", rtxt = "Ctrl+V" },
+          { name = "separator" },
+          { name = "Select All", cmd = "normal! ggVG", rtxt = "Ctrl+A" },
+          { name = "separator" },
+          { name = "  Find", hl = "ExBlue", items = {
+            { name = "Find in Files", cmd = "Telescope live_grep", rtxt = "Ctrl+Shift+F" },
+            { name = "Find Files", cmd = "Telescope find_files", rtxt = "Ctrl+P" },
+            { name = "Find TODOs", cmd = "TodoTelescope", rtxt = "Ctrl+Shift+T" },
+            { name = "Find Symbols", cmd = "Telescope lsp_document_symbols", rtxt = "Ctrl+Shift+O" },
+          }},
+          { name = "separator" },
+          { name = "  LSP", hl = "ExBlue", items = {
+            { name = "Go to Definition", cmd = function() vim.lsp.buf.definition() end, rtxt = "F12" },
+            { name = "Find References", cmd = function() vim.lsp.buf.references() end, rtxt = "Shift+F12" },
+            { name = "Rename Symbol", cmd = function() vim.lsp.buf.rename() end, rtxt = "F2" },
+            { name = "Code Actions", cmd = function() vim.lsp.buf.code_action() end, rtxt = "Ctrl+." },
+            { name = "Hover Info", cmd = function() vim.lsp.buf.hover() end, rtxt = "Ctrl+K Ctrl+I" },
+            { name = "separator" },
+            { name = "Format Document", cmd = function()
+              local ok, conform = pcall(require, "conform")
+              if ok then conform.format({ lsp_fallback = true }) else vim.lsp.buf.format() end
+            end },
+          }},
+          { name = "separator" },
+          { name = "  Git", hl = "ExGreen", items = {
+            { name = "Git Status", cmd = "Telescope git_status", rtxt = "Ctrl+Shift+G" },
+            { name = "Stage Hunk", cmd = function() require('gitsigns').stage_hunk() end },
+            { name = "Reset Hunk", cmd = function() require('gitsigns').reset_hunk() end },
+            { name = "Preview Hunk", cmd = function() require('gitsigns').preview_hunk() end },
+            { name = "Blame Line", cmd = function() require('gitsigns').blame_line({ full = true }) end },
+          }},
+          { name = "separator" },
+          { name = "  View", hl = "ExYellow", items = {
+            { name = "Toggle File Tree", cmd = "Neotree toggle", rtxt = "Ctrl+B" },
+            { name = "Toggle Terminal", cmd = "ToggleTerm", rtxt = "Ctrl+`" },
+            { name = "Problems Panel", cmd = "Trouble diagnostics toggle", rtxt = "Ctrl+Shift+M" },
+            { name = "Command Palette", cmd = "Telescope commands", rtxt = "Ctrl+Shift+P" },
+          }},
+        }
+
+        -- Helper function to close menu
+        local function close_menu()
+          local state = require('menu.state')
+          if state.bufids and #state.bufids > 0 then
+            for _, buf in ipairs(state.bufids) do
+              if vim.api.nvim_buf_is_valid(buf) then
+                local wins = vim.fn.win_findbuf(buf)
+                for _, win in ipairs(wins) do
+                  if vim.api.nvim_win_is_valid(win) then
+                    vim.api.nvim_win_close(win, true)
+                  end
+                end
+                vim.api.nvim_buf_delete(buf, { force = true })
+              end
+            end
+            state.bufids = {}
+            state.bufs = {}
+            state.config = nil
+            state.nested_menu = ""
+            -- Return to original window
+            if state.old_data and vim.api.nvim_win_is_valid(state.old_data.win) then
+              vim.api.nvim_set_current_win(state.old_data.win)
+            end
+            return true
+          end
+          return false
+        end
+
+        -- Right-click to open context menu (mouse users)
+        vim.keymap.set({ 'n', 'v' }, '<RightMouse>', function()
+          -- Delete old menus to prevent stacking
+          require('menu.utils').delete_old_menus()
+          -- Position cursor at mouse location
+          vim.cmd.exec '"normal! \\<RightMouse>"'
+          -- Determine which menu to show based on the buffer type
+          local buf = vim.api.nvim_win_get_buf(vim.fn.getmousepos().winid)
+          local ft = vim.bo[buf].filetype
+          local menu_items = cua_menu
+          if ft == "neo-tree" then
+            menu_items = neotree_menu  -- Use CUA-friendly neo-tree menu
+          end
+          -- Open menu at mouse position
+          require('menu').open(menu_items, { mouse = true })
+        end, opts)
+
+        -- Shift+F10 to open context menu (keyboard users, like Windows)
+        vim.keymap.set({ 'n', 'i', 'v' }, '<S-F10>', function()
+          require('menu.utils').delete_old_menus()
+          require('menu').open(cua_menu, { mouse = false })
+        end, opts)
+
+        -- Alt+F10 as alternative (some terminals don't pass Shift+F10)
+        vim.keymap.set({ 'n', 'i', 'v' }, '<M-F10>', function()
+          require('menu.utils').delete_old_menus()
+          require('menu').open(cua_menu, { mouse = false })
+        end, opts)
+
+        -- Escape closes menu if open (works in all modes for novim-mode compatibility)
+        vim.keymap.set({ 'n', 'i', 'v', 's' }, '<Esc>', function()
+          if not close_menu() then
+            -- No menu was open, do normal escape behaviour
+            -- In insert mode, novim-mode handles Escape, so just pass through
+            local mode = vim.fn.mode()
+            if mode == 'i' then
+              -- Let novim-mode handle it
+              return '<Esc>'
+            elseif mode == 'v' or mode == 'V' or mode == '\22' then
+              -- Exit visual mode
+              vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('<Esc>', true, true, true))
+            elseif mode == 's' or mode == 'S' or mode == '\19' then
+              -- Exit select mode
+              vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('<Esc>', true, true, true))
+            end
+          end
+        end, { noremap = true, silent = true, expr = false })
       '';
     };
   };
