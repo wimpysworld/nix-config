@@ -117,6 +117,8 @@ in
         set mouse=a
         set clipboard=unnamedplus
         set undofile
+        set splitright
+        set splitbelow
 
         " Session options (required for auto-session)
         set sessionoptions=blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions
@@ -537,10 +539,18 @@ in
             winblend = 3,
           },
         }
-        -- Terminal mode: let Escape pass through to the terminal naturally
-        -- This allows terminal apps (vim, less, fzf, etc.) to receive Escape normally.
-        -- To exit terminal mode if needed, use Ctrl+\ Ctrl+N (Vim's built-in method)
-        -- or simply toggle the terminal closed with Ctrl+`
+        -- Terminal mode: automatically enter terminal mode when opening/focusing
+        -- This provides a modeless experience - just start typing commands
+        vim.api.nvim_create_autocmd({'TermOpen', 'BufEnter', 'BufWinEnter'}, {
+          pattern = 'term://*',
+          callback = function()
+            vim.fn.timer_start(50, function()
+              if vim.bo.buftype == 'terminal' then
+                vim.cmd('startinsert')
+              end
+            end)
+          end,
+        })
         -- Ctrl+Shift+` for floating terminal
         vim.keymap.set({'n', 'i', 'v', 't'}, '<C-S-`>', '<cmd>ToggleTerm direction=float<cr>', { noremap = true, silent = true })
 
