@@ -186,7 +186,7 @@ in
             lualine_c = {'filename'},
             lualine_x = {
               -- Keybinding hints (rotates to save space)
-              { function() return "C-`:Term C-p:Files C-S-f:Search C-S-t:TODOs" end },
+              { function() return "C-`:Term C-p:Files C-S-f:Search C-M-i:Chat" end },
             },
             lualine_y = {'encoding', 'fileformat', 'filetype'},
             lualine_z = {'location'}
