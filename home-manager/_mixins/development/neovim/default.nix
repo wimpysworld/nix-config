@@ -537,8 +537,10 @@ in
             winblend = 3,
           },
         }
-        -- Terminal mode escape to normal mode
-        vim.keymap.set('t', '<Esc>', [[<C-\><C-n>]], { noremap = true })
+        -- Terminal mode: let Escape pass through to the terminal naturally
+        -- This allows terminal apps (vim, less, fzf, etc.) to receive Escape normally.
+        -- To exit terminal mode if needed, use Ctrl+\ Ctrl+N (Vim's built-in method)
+        -- or simply toggle the terminal closed with Ctrl+`
         -- Ctrl+Shift+` for floating terminal
         vim.keymap.set({'n', 'i', 'v', 't'}, '<C-S-`>', '<cmd>ToggleTerm direction=float<cr>', { noremap = true, silent = true })
 
