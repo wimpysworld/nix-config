@@ -118,6 +118,7 @@ lib.mkIf (lib.elem username installFor) {
           # Standard CUA (Common User Access) clipboard
           input_clear = "none"; # No clear binding needed (just select all & delete if needed)
           input_paste = "ctrl+v,shift+insert,ctrl+shift+v"; # Paste - standard CUA + terminal paste
+          # Pending https://github.com/anomalyco/opencode/pull/7520
           #input_copy = "ctrl+insert"; # Copy selection (CUA standard)
           #input_cut = "shift+delete"; # Cut selection (CUA standard)
           input_undo = "ctrl+z"; # Undo
