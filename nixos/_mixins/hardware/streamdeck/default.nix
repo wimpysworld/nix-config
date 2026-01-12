@@ -70,5 +70,10 @@ lib.mkIf isInstall {
       Restart = "on-failure";
       RestartSec = "5s";
     };
+
+    # Inherit full system PATH so deckmaster can execute shell scripts and system binaries
+    environment = {
+      PATH = lib.mkForce "/run/wrappers/bin:/home/${username}/.nix-profile/bin:/etc/profiles/per-user/${username}/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin";
+    };
   };
 }

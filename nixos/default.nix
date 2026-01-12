@@ -249,6 +249,7 @@
     };
     tmpfiles.rules = [
       "L+ /bin/bash - - - - ${pkgs.bash}/bin/bash"
+      "L+ /bin/sh - - - - ${pkgs.bash}/bin/sh"
       "d /nix/var/nix/profiles/per-user/${username} 0755 ${username} root"
       "d /var/lib/private/sops/age 0755 root root"
     ];
