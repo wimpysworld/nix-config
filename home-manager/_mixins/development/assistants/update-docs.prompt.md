@@ -5,20 +5,51 @@ description: "Update Docs 🔄"
 
 ## Documentation Update
 
-Update documentation to reflect recent changes in the codebase.
+Update documentation to reflect recent code changes.
 
-**Cover:**
+### Scope
 
-- What changed and why (features, APIs, interfaces)
-- Usage examples for new functionality
-- Configuration or setup changes
-- Breaking changes and migration steps (if any)
-- Known limitations or TODOs
+Specify what changed (or will analyse recent commits):
+- **Feature**: New functionality
+- **API**: Endpoint or interface changes
+- **Config**: Setup or configuration changes
+- **Breaking**: Incompatible changes requiring migration
 
-**Update:**
+### Files to Update
 
-- README if user-facing behaviour changed
-- Inline comments where logic changed significantly
-- Development guide if setup steps changed
+| Change Type | Update |
+|-------------|--------|
+| User-facing behaviour | README |
+| API changes | API docs, inline comments |
+| Setup changes | README, development guide |
+| Complex logic | Inline comments explaining "why" |
+| Breaking changes | README, CHANGELOG, migration guide |
 
-Concise but complete-future developers should understand what changed and how to work with it.
+### Example
+
+<example_input>
+Added rate limiting to API endpoints
+</example_input>
+
+<example_output>
+**README.md** — Added "Rate Limits" section:
+```markdown
+## Rate Limits
+
+- 100 requests/minute (authenticated)
+- 10 requests/minute (anonymous)
+
+Exceeding limits returns `429 Too Many Requests` with `Retry-After` header.
+```
+
+**src/middleware/rateLimit.ts** — Inline comment:
+```typescript
+// Sliding window, not fixed—prevents request bunching at boundaries
+```
+</example_output>
+
+### Constraints
+
+- Update existing sections rather than creating new ones
+- Include code examples for new functionality
+- Flag breaking changes prominently

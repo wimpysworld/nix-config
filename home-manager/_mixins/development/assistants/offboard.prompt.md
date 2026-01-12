@@ -5,66 +5,44 @@ description: "Handover 📤"
 
 ## Project Handover Document
 
-Create a handover document enabling the next engineer to continue without reverse-engineering our decisions.
+Create handover enabling next engineer to continue without reverse-engineering decisions.
 
-### Document Guidelines
+**Length:** 800-1200 words (typical), 1500-2000 (major systems)
 
-- Target **800-1200 words** for typical features, **1500-2000 words** for major systems
-- Skip or minimise sections that don't apply
-- Prefer concrete examples over generic descriptions
-- ⚠️ Mark gotchas explicitly; 📌 for critical information
+**Markers:** ⚠️ WARNING (non-obvious behaviour), 📌 IMPORTANT (critical info)
 
-### Required Sections
+### Sections
 
-**1. Context** (100-150 words)
+| Section | Focus | Words |
+|---------|-------|-------|
+| Context | What, why, current state, architecture (one sentence) | 100-150 |
+| Key Decisions | Problem → approach → rejected alternatives (non-obvious only) | 150-250 |
+| Codebase | Structure (2-3 levels), critical deps, env setup | 200-350 |
+| Technical | Architecture/data flow only if text insufficient | 150-300 |
+| Development | Essential commands, single most common gotcha | 100-200 |
+| Known Limitations | Constraints discovered, workarounds (not hypotheticals) | 100-200 |
+| Remaining Work | Outstanding items with approach and complexity (S/M/L) | 150-300 |
+| Quick Orientation | First-day setup (max 5 steps), starting point | 100-150 |
 
-- What we're building and why
-- Current state: completed vs remaining work
-- Single sentence on architectural approach
+### Example
 
-**2. Key Decisions** (150-250 words)
+<example_section>
+**Key Decisions**
 
-- Document decisions with context: problem → chosen approach → alternatives considered and rejected
-- Focus on non-obvious choices that would be costly to rediscover
+📌 **Chose SQLite over PostgreSQL for local dev**
+- Problem: CI slow due to Postgres container spin-up
+- Approach: SQLite for tests, Postgres for staging/prod
+- Trade-off: Must avoid Postgres-specific SQL in tested paths
 
-**3. Working Codebase** (200-350 words)
+⚠️ **Rate limiter uses sliding window, not fixed**
+- Fixed window caused request bunching at boundaries
+- Adds ~2ms latency but smoother distribution
+</example_section>
 
-- Repository structure at 2-3 levels deep, skip obvious directories
-- Critical dependencies only (purpose + version constraint)
-- One-liner for environment setup
+### Constraints
 
-**4. Technical Essentials** (150-300 words)
+- Skip sections that don't apply
+- Concrete examples over generic descriptions
+- Include failed approaches only if they inform current design
+- Exclude easily discoverable information
 
-- Architecture diagram only if text alone is insufficient
-- Data flow through the new/changed components only
-- Core logic explained in 2-3 sentences maximum
-
-**5. Development** (100-200 words)
-
-- Essential commands only (setup, test, run)
-- Single most common gotcha with workaround
-- Skip documentation that's easily discoverable
-
-**6. Known Limitations** (100-200 words)
-
-- Technical constraints discovered
-- Workarounds and their trade-offs
-- Skip hypothetical issues
-
-**7. Remaining Work** (150-300 words)
-
-- List only truly outstanding items
-- For each: description + recommended approach + complexity estimate (S/M/L)
-- Skip obvious follow-ups
-
-**8. Quick Orientation** (100-150 words)
-
-- First-day environment setup (max 5 steps)
-- Recommended starting point with rationale
-- Skip generic project information
-
-### Formatting
-
-- ⚠️ WARNING for non-obvious behaviour
-- 📌 IMPORTANT for critical information
-- Include failed approaches only if they inform the current design

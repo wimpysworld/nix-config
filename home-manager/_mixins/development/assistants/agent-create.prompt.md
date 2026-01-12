@@ -5,15 +5,19 @@ description: "Create Agent ✨"
 
 ## New Agent Creation
 
-Create a new agent prompt. Ask the user to provide the following details:
+Gather from user (ask if not provided):
 
-- Agent name
-- Role/purpose
-- Key capabilities
-- Tool requirements (default: none)
-- Output format needs (default: standard prose)
-- Target word count (default: 400-600 words)
+- **Required:** Agent name, role/purpose, key capabilities
+- **If judgment/style involved:** Example input/output pair
+- **If tools needed:** Specific tool requirements
 
-Follow the standard agent structure. Focus on constraints and output format-these steer behaviour.
+Infer without asking: output format (default: standard prose), constraints (derive from purpose).
 
-Provide the complete agent prompt followed by the word count and brief rationale for key design decisions.
+Create complete agent prompt following standard structure. Target 400-600 words (up to 700 with examples).
+
+**Output:**
+
+1. Complete agent prompt
+2. Word count
+3. Design rationale: why examples were/weren't included, key constraint choices
+

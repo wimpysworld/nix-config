@@ -5,28 +5,54 @@ description: "Plan Implementation 📝"
 
 ## Implementation Plan
 
-Create an implementation plan for inclusion in the project, optimised for AI-assisted development.
+Create implementation plan optimised for AI-assisted development.
 
-**Per Task:**
+### Task Structure
 
-- **ID**: TASK-001: Descriptive name
-- **Dependencies**: What must be complete first
-- **Scope**: Files/functions to modify
-- **Success Criteria**: How to verify it works
-- **Complexity**: S/M/L/XL
-- **Review Points**: What needs human review
+| Field | Content |
+|-------|---------|
+| ID | `<phase>.<number>` — Descriptive name |
+| Dependencies | Tasks that must complete first, or "None" |
+| Scope | Files/functions to modify |
+| Success Criteria | How to verify completion |
+| Complexity | XS/S/M/L/XL |
+| Flags | ⚠️ High-risk, 🔍 Needs review, 🧠 Context-intensive |
 
-**Structure:**
+### Planning Principles
 
-- Atomic tasks: completable in one session, independently testable, safely revertible
-- Group into chunks of 3-5 related tasks
-- Each chunk produces working, testable code
-- Clear commit points to save progress
+- **Atomic:** Each task completable in one session, independently testable, safely revertible
+- **Chunked:** Group 3-5 related tasks; each chunk produces working code
+- **Stateless:** Assume fresh AI instance per conversation
 
-**Flag:**
+### Example
 
-- High-risk tasks needing extra scrutiny
-- Tasks requiring human decisions
-- Areas where context window may be challenged
+<example>
+## Phase 1: Authentication Foundation
 
-Each step should be self-contained-assume a fresh AI instance per conversation.
+### 1.1 — Add JWT dependency and configuration
+- **Dependencies**: None
+- **Scope**: `package.json`, `src/config/auth.ts`
+- **Success Criteria**: `npm test` passes, config loads from env
+- **Complexity**: XS
+
+### 1.2 — Implement token generation service
+- **Dependencies**: 1.1
+- **Scope**: `src/services/auth/token.ts`, `src/services/auth/token.test.ts`
+- **Success Criteria**: Unit tests pass for sign/verify/refresh
+- **Complexity**: S
+- **Flags**: 🔍 Review token expiry values
+
+### 1.3 — Add auth middleware
+- **Dependencies**: 1.2
+- **Scope**: `src/middleware/auth.ts`, `src/middleware/auth.test.ts`
+- **Success Criteria**: Protected routes return 401 without valid token
+- **Complexity**: M
+- **Flags**: ⚠️ Affects all protected endpoints
+</example>
+
+### Constraints
+
+- Each task must be independently testable
+- Include test file in scope when adding/modifying functionality
+- Flag tasks requiring decisions before implementation
+- Note when scope may challenge context limits

@@ -34,13 +34,13 @@ description: "Remind the dummy about our environment 🎗️"
 
 ## Tool Decision Framework
 
-Use **#exa/** or **#context7/** when:
+Use **web search tools** (Exa, Context7) when:
 
 - Current APIs, versions, or implementations
 - Syntax, parameters, or best practices uncertainty
 - Time or version-sensitive technical information
 
-Use **#nixos/** for:
+Use **Nix-specific tools** (nixos MCP) for:
 
 - NixOS options, Home Manager, nix-darwin, Nixpkgs searches, Nix builtins
 - Always verify option paths and package names before providing examples
@@ -55,3 +55,4 @@ Use **training knowledge** when:
 - British English spelling
 - Syntax-highlighted code blocks with file paths
 - Clear rationale for recommendations
+- Use hyphens or commas, never emdashes

@@ -5,66 +5,52 @@ description: "Orientate 🧭"
 
 ## Project Orientation
 
-Orient yourself efficiently with the codebase before we begin.
+**If AGENTS.md exists:** Read it, skip to Report.
 
-### 1. Check for AGENTS.md
+**If missing:**
+1. README.md for overview
+2. CONTRIBUTING.md or ARCHITECTURE.md if present
+3. Recent commits: `git log --oneline -10`
+4. Tech stack from package manifests
 
-**If AGENTS.md exists at repository root:**
-- Read AGENTS.md only (comprehensive project guide)
-- Skip to step 4 (Report)
+### Report (50-100 lines)
 
-**If AGENTS.md missing:**
-- Read README.md for project overview
-- Check for CONTRIBUTING.md or ARCHITECTURE.md (if they exist)
-- Skim recent git commits (last 5-10 with `git log --oneline -10`)
+| Section | Content |
+|---------|---------|
+| Summary | What we're building, current state (2-3 sentences) |
+| Tech Stack | Language, framework, key dependencies |
+| Commands | Build, test, run (3-5 most common) |
+| Conventions | Code style, structure, testing |
+| Constraints | Version locks, platform requirements |
 
-### 2. Identify Project Type
+End with: **Ready**: Orientation complete
 
-Quickly determine:
-- Primary language/framework (check file extensions, package manifests)
-- Build system (presence of Makefile, package.json, flake.nix, etc.)
-- Test framework (if any)
+### Example
 
-Do NOT read entire codebases or documentation files verbatim.
+<example>
+**Summary**
+CLI for validating OpenAPI schemas against live APIs. v0.3.2, pre-1.0.
 
-### 3. Recall Context
+**Tech Stack**
+Go 1.22, Cobra CLI, go-openapi/spec, zerolog
 
-From previous sessions (if applicable):
-- Recent decisions or work in progress
-- Known constraints or issues
-- Project-specific patterns
+**Commands**
+- `go build ./cmd/validator`
+- `go test ./...`
+- `./validator check ./examples/petstore.yaml`
 
-### 4. Report
+**Conventions**
+Table-driven tests, errors via `fmt.Errorf`, commands in `/cmd`, packages in `/internal`
 
-Provide concise orientation (target 50-100 lines total):
+**Constraints**
+Must support Go 1.21+ (CI matrix)
 
-**Summary** (2-3 sentences):
-- What we're building
-- Current state (version, stability)
+**Ready**: Orientation complete
+</example>
 
-**Tech Stack** (bullet points):
-- Language, framework, build tools
-- Key dependencies
+### Constraints
 
-**Development Commands** (3-5 most common):
-- Build, test, run commands
-
-**Key Conventions** (bullet points):
-- Code style (if specified)
-- File structure pattern
-- Testing requirements
-
-**Constraints** (if any):
-- Version locks
-- Platform requirements
-- Security considerations
-
-**Ready**: Confirm orientation complete
-
-**Efficiency Guidelines:**
-- Prioritise AGENTS.md if it exists (skip everything else)
-- Use glob/grep to find files, not extensive directory listings
-- Read configuration files (package.json, flake.nix) over source code
-- Focus on actionable information (commands, conventions, constraints)
-- Omit generic project descriptions or boilerplate
-- If uncertain, note gaps and ask rather than over-researching
+- AGENTS.md takes precedence over all other files
+- Read config files over source code
+- Note gaps and ask rather than over-researching
+- Do NOT read entire codebases verbatim
