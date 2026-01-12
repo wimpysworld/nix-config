@@ -1,12 +1,17 @@
 {
+  hostname,
   isInstall,
   lib,
   pkgs,
   username,
   ...
 }:
+let
+  isStreamstation = hostname == "phasma" || hostname == "vader";
+in
 lib.mkIf isInstall {
   environment.systemPackages = with pkgs; [ deckmaster ];
+
   services = {
     # Provides users with access to all Elgato StreamDecks.
     # https://github.com/muesli/deckmaster
@@ -41,7 +46,29 @@ lib.mkIf isInstall {
       SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0086", TAG+="uaccess", SYMLINK+="streamdeck-pedal"
     '';
   };
+
   users.users.${username} = {
     extraGroups = [ "input" ];
+  };
+
+  # Systemd user service for deckmaster on stream workstations
+  systemd.user.services.deckmaster-xl = lib.mkIf isStreamstation {
+    description = "Deckmaster XL for Stream Deck";
+    after = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    wantedBy = [ "graphical-session.target" ];
+
+    unitConfig = {
+      # Restart up to 5 times within 60 seconds before giving up
+      StartLimitBurst = 5;
+      StartLimitIntervalSec = 60;
+    };
+
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.deckmaster}/bin/deckmaster -deck %h/Studio/StreamDeck/Deckmaster-xl/main.deck";
+      Restart = "on-failure";
+      RestartSec = "5s";
+    };
   };
 }

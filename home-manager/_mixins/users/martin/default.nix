@@ -13,32 +13,19 @@ let
 in
 {
   home = {
-    file."${config.xdg.configHome}/autostart/deskmaster-xl.desktop" = lib.mkIf isStreamstation {
-      text = ''
-        [Desktop Entry]
-        Name=Deckmaster XL
-        Comment=Deckmaster XL
-        Type=Application
-        Exec=deckmaster -deck ${config.home.homeDirectory}/Studio/StreamDeck/Deckmaster-xl/main.deck
-        Categories=
-        Terminal=false
-        NoDisplay=true
-        StartupNotify=false
-      '';
-    };
     file.".face".source = ./face.png;
     file."Development/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."Development/salsa/.envrc" = lib.mkIf (!isLima) {
-      text = ''export DEB_VENDOR=Debian'';
+      text = "export DEB_VENDOR=Debian";
     };
     file."Development/launchpad/.envrc" = lib.mkIf (!isLima) {
-      text = ''export DEB_VENDOR=Ubuntu'';
+      text = "export DEB_VENDOR=Ubuntu";
     };
     file."Development/ubuntu/.envrc" = lib.mkIf (!isLima) {
-      text = ''export DEB_VENDOR=Ubuntu'';
+      text = "export DEB_VENDOR=Ubuntu";
     };
     file."Development/ubuntu-mate/.envrc" = lib.mkIf (!isLima) {
-      text = ''export DEB_VENDOR=Ubuntu'';
+      text = "export DEB_VENDOR=Ubuntu";
     };
     file."Games/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."Websites/.keep" = lib.mkIf (!isLima) { text = ""; };
