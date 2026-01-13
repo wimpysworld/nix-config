@@ -11,7 +11,7 @@ let
   inherit (pkgs.stdenv) isLinux;
 
   # Catppuccin Halloy themes from the catppuccin flake
-  catppuccinHalloy = inputs.catppuccin.packages.${pkgs.system}.halloy;
+  catppuccinHalloy = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.halloy;
 
   # Halloy configuration as TOML with secret placeholders
   halloyConfig = ''
