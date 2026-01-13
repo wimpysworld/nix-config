@@ -31,6 +31,14 @@ let
   copilotHelpers = import ./copilot.nix {
     inherit config lib agentFiles;
   };
+  codecompanionHelpers = import ./codecompanion.nix { inherit lib; };
+
+  # Generate CodeCompanion markdown prompt files
+  # Placed in ~/.config/nvim/prompts/codecompanion/ for native markdown loading (v18.x+)
+  codecompanionPromptFiles = codecompanionHelpers.mkCodeCompanionPromptFiles {
+    inherit agentFiles promptFiles;
+    promptsDir = "${config.xdg.configHome}/nvim/prompts/codecompanion";
+  };
 
   # Helper to generate VSCode file entries
   mkVscodeFiles =
@@ -42,25 +50,29 @@ let
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
-    file =
-      {
-        # Special files
-        "${vscodeUserDir}/prompts/copilot.instructions.md".text =
-          builtins.readFile ./copilot.instructions.md;
-        "${vscodeUserDir}/prompts/dummy.prompt.md".text = builtins.readFile ./copilot.instructions.md;
+    file = {
+      # Special files
+      "${vscodeUserDir}/prompts/copilot.instructions.md".text =
+        builtins.readFile ./copilot.instructions.md;
+      "${vscodeUserDir}/prompts/dummy.prompt.md".text = builtins.readFile ./copilot.instructions.md;
 
-        # Claude Code rules (manual placement for 25.11 compatibility)
-        "${config.home.homeDirectory}/.claude/rules/instructions.md".text =
-          builtins.readFile ./copilot.instructions.md;
-      }
-      # VSCode: auto-generated agent and prompt files
-      // mkVscodeFiles agentFiles
-      // mkVscodeFiles promptFiles;
+      # Claude Code rules (manual placement for 25.11 compatibility)
+      "${config.home.homeDirectory}/.claude/rules/instructions.md".text =
+        builtins.readFile ./copilot.instructions.md;
+    }
+    # CodeCompanion.nvim: markdown prompt files (native loading in v18.x+)
+    # Auto-generated from assistants/*.agent.md and *.prompt.md files
+    // codecompanionPromptFiles
+    # VSCode: auto-generated agent and prompt files
+    // mkVscodeFiles agentFiles
+    // mkVscodeFiles promptFiles;
     # GitHub Copilot CLI: files copied via activation script (see home.activation below)
 
     # Copy Copilot CLI files as real files (not symlinks)
     # Note: Copilot CLI doesn't follow symlinks due to security concerns
-    activation.copilotFiles = lib.hm.dag.entryAfter [ "writeBoundary" ] copilotHelpers.mkCopilotFileCmds;
+    activation.copilotFiles = lib.hm.dag.entryAfter [
+      "writeBoundary"
+    ] copilotHelpers.mkCopilotFileCmds;
   };
   programs = {
     claude-code = lib.mkIf config.programs.claude-code.enable {
@@ -69,7 +81,9 @@ lib.mkIf (lib.elem username installFor) {
       agents = claudeCodeHelpers.mkClaudeCodeAgents claudeCodeHelpers.transformForClaudeCodeAgent agentFiles;
 
       # Reusable commands (auto-generated from *.prompt.md files)
-      commands = claudeCodeHelpers.mkClaudeFiles claudeCodeHelpers.transformForClaudeCode promptFiles ".prompt";
+      commands =
+        claudeCodeHelpers.mkClaudeFiles claudeCodeHelpers.transformForClaudeCode promptFiles
+          ".prompt";
     };
     opencode = lib.mkIf config.programs.opencode.enable {
       # Custom agents (auto-generated from *.agent.md files)

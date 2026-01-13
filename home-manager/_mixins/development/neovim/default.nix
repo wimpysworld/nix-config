@@ -8,6 +8,9 @@
 let
   inherit (pkgs.stdenv) isLinux;
 
+  # Sops file for AI API keys (Anthropic, OpenAI, Gemini)
+  aiSopsFile = ../../../../secrets/ai.yaml;
+
   # Fetch novim-mode plugin from GitHub (not in nixpkgs)
   novim-mode = pkgs.vimUtils.buildVimPlugin {
     pname = "novim-mode";
@@ -62,6 +65,27 @@ let
       homepage = "https://github.com/nvzone/menu";
       description = "Menu plugin for Neovim with nested menu support";
       license = lib.licenses.gpl3Only;
+    };
+  };
+
+  # Fetch codecompanion.nvim from upstream (nixpkgs version lags behind significantly)
+  # v18.x introduced breaking changes: strategies→interactions, adapters→adapters.http
+  codecompanion-nvim = pkgs.vimUtils.buildVimPlugin {
+    pname = "codecompanion.nvim";
+    version = "18.4.0";
+    src = pkgs.fetchFromGitHub {
+      owner = "olimorris";
+      repo = "codecompanion.nvim";
+      rev = "v18.4.0";
+      sha256 = "sha256-DHU/eaZmNQ+rr05+OiZR6s5aEHXjyEd6SJzUYybnVr4=";
+    };
+    # Skip require check - plugin has many optional runtime dependencies
+    # (plenary, telescope, fzf-lua, mini.pick, snacks, blink.cmp, nvim-cmp, etc.)
+    doCheck = false;
+    meta = {
+      homepage = "https://github.com/olimorris/codecompanion.nvim";
+      description = "AI-powered coding companion for Neovim";
+      license = lib.licenses.mit;
     };
   };
 in
@@ -141,8 +165,9 @@ in
         todo-comments-nvim
         toggleterm-nvim
         auto-session
-        # NOTE: Copilot plugins (copilot-lua, copilot-cmp) configured in
-        # home-manager/_mixins/development/copilot/default.nix
+        # AI assistance: CodeCompanion for multi-provider LLM integration
+        # Provides chat, inline transforms, and agentic tools
+        codecompanion-nvim
       ];
       extraConfig = ''
         " novim-mode is loaded automatically via the plugins list
@@ -208,8 +233,13 @@ in
         -- (terminals can't distinguish Ctrl+S from Ctrl+Shift+S). Alt-based
         -- alternatives are used where necessary.
         --
-        -- COPILOT: AI suggestions configured in copilot/default.nix
-        --   Tab: Accept suggestion | Alt+]/[: Next/prev | Ctrl+E: Dismiss
+        -- AI ASSISTANCE: CodeCompanion configured below
+        --   Ctrl+Alt+I: Toggle chat panel | Ctrl+I: Inline chat prompt
+        --   Alt+A: Actions picker | Alt+M: Model/adapter selector
+        --   Alt+/: Quick transform (visual) | Alt+E: Explain (visual)
+        --   Alt+X: Fix code (visual) | Alt+T: Generate tests (visual)
+        --   Alt+D: Generate docs (visual)
+        --   In chat buffer: Enter sends, Shift/Ctrl+Enter for newline
         --
         -- COMPLETION MENU (nvim-cmp):
         --   Tab: Accept selected | Up/Down: Navigate | Escape: Close
@@ -222,7 +252,10 @@ in
           root_markers = { '.git' },
         })
 
-        -- Lualine statusbar with keybinding hints
+        -- Lualine statusbar with keybinding hints and AI status
+        -- CodeCompanion status tracking (updated via autocmds below)
+        _G.codecompanion_status = ""
+
         require('lualine').setup {
           options = {
             theme = 'catppuccin',
@@ -234,8 +267,14 @@ in
             lualine_b = {'branch', 'diff', 'diagnostics'},
             lualine_c = {'filename'},
             lualine_x = {
-              -- Keybinding hints (rotates to save space)
-              { function() return "C-`:Term C-p:Files C-S-f:Search C-M-i:Chat" end },
+              -- CodeCompanion AI status indicator
+              {
+                function() return _G.codecompanion_status end,
+                cond = function() return _G.codecompanion_status ~= "" end,
+                color = { fg = "${catppuccinPalette.getColor "mauve"}" },
+              },
+              -- Keybinding hints
+              { function() return "C-M-i:Chat M-m:Model M-a:Actions" end },
             },
             lualine_y = {'encoding', 'fileformat', 'filetype'},
             lualine_z = {'location'}
@@ -638,7 +677,6 @@ in
             end, { 'i' }),
           }),
           sources = cmp.config.sources({
-            { name = 'copilot', group_index = 2 },  -- Copilot suggestions
             { name = 'nvim_lsp' },
             { name = 'path' },
           }, {
@@ -1027,15 +1065,12 @@ in
         end, opts)
 
         -- Escape closes menu if open (works in all modes for novim-mode compatibility)
-        vim.keymap.set({ 'n', 'i', 'v', 's' }, '<Esc>', function()
+        -- Note: Telescope and other floating pickers handle their own Escape bindings
+        vim.keymap.set({ 'n', 'v', 's' }, '<Esc>', function()
           if not close_menu() then
             -- No menu was open, do normal escape behaviour
-            -- In insert mode, novim-mode handles Escape, so just pass through
             local mode = vim.fn.mode()
-            if mode == 'i' then
-              -- Let novim-mode handle it
-              return '<Esc>'
-            elseif mode == 'v' or mode == 'V' or mode == '\22' then
+            if mode == 'v' or mode == 'V' or mode == '\22' then
               -- Exit visual mode
               vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('<Esc>', true, true, true))
             elseif mode == 's' or mode == 'S' or mode == '\19' then
@@ -1044,6 +1079,491 @@ in
             end
           end
         end, { noremap = true, silent = true, expr = false })
+
+        -- Insert mode Escape: close menu or let novim-mode handle it
+        vim.keymap.set('i', '<Esc>', function()
+          if close_menu() then
+            return ""  -- Closed menu, consume keypress
+          else
+            -- Pass through to novim-mode
+            return vim.api.nvim_replace_termcodes('<Esc>', true, true, true)
+          end
+        end, { noremap = true, silent = true, expr = true })
+
+        -- =========================================================================
+        -- CODECOMPANION AI ASSISTANCE (Modeless/CUA-style)
+        -- =========================================================================
+        -- Multi-provider LLM integration with chat, inline transforms, and agentic
+        -- tools. Configured for GitHub Copilot Pro+ (primary) with Anthropic fallback.
+        --
+        -- Authentication:
+        --   Copilot: Uses OAuth token from ~/.config/github-copilot/apps.json
+        --            (created via :Copilot auth from copilot-lua/copilot.vim)
+        --   Anthropic: Set ANTHROPIC_API_KEY environment variable (optional fallback)
+        --
+        -- CHAT KEYBINDINGS (VSCode-style, modeless - work across all modes):
+        --   Ctrl+Alt+I: Open/toggle Chat panel
+        --   Ctrl+I: Inline chat - ask about selection/buffer
+        --   Alt+M: Change model/adapter (works globally or in chat)
+        --   Alt+A: Actions picker
+        --   Enter: Send message (in chat buffer)
+        --   Shift+Enter / Ctrl+Enter: Insert newline (in chat buffer)
+        --   Ctrl+C: Close/cancel chat | Alt+Q: Stop generation | Ctrl+D: Show diff
+        --
+        -- VISUAL MODE AI (select text first):
+        --   Alt+/: Quick transform | Alt+E: Explain | Alt+X: Fix
+        --   Alt+T: Generate tests | Alt+D: Generate docs
+        --
+        -- CHAT CONTEXT (prefix in chat input):
+        --   #buffer        - Current buffer content
+        --   #file:<path>   - Include file content
+        --   @full_stack_dev - Enable full coding agent with tools
+        --   @files         - Enable file operation tools only
+        --
+        -- TOOLS (agentic capabilities):
+        --   cmd_runner         - Execute shell commands (requires approval)
+        --   insert_edit_into_file - Apply code changes to files
+        --   create_file/delete_file - File management
+        --   file_search/grep_search - Search codebase
+        --   read_file          - Read file contents
+        -- =========================================================================
+
+        require('codecompanion').setup {
+          -- Adapter configuration (LLM providers)
+          adapters = {
+            http = {
+              -- GitHub Copilot Pro+ as primary (uses OAuth from apps.json)
+              copilot = 'copilot',
+              -- Anthropic Claude as fallback (requires ANTHROPIC_API_KEY env var)
+              -- Uses API aliases which auto-update to latest snapshots
+              anthropic = function()
+                return require('codecompanion.adapters').extend('anthropic', {
+                  env = {
+                    api_key = 'ANTHROPIC_API_KEY',
+                  },
+                  schema = {
+                    model = {
+                      default = 'claude-sonnet-4-5',
+                      choices = {
+                        'claude-sonnet-4-5',
+                        'claude-opus-4-5',
+                        'claude-haiku-4-5',
+                      },
+                    },
+                  },
+                })
+              end,
+            },
+          },
+          opts = {
+            log_level = 'WARN',  -- Set to DEBUG for troubleshooting
+          },
+
+          -- Interactions configuration (chat, inline, cmd behaviours)
+          interactions = {
+            -- Chat buffer settings
+            chat = {
+              adapter = 'copilot',  -- Default to GitHub Copilot Pro+
+              roles = {
+                llm = function(adapter)
+                  return 'AI (' .. adapter.formatted_name .. ')'
+                end,
+                user = 'Developer',
+              },
+              opts = {
+                completion_provider = 'cmp',  -- Use nvim-cmp for slash command completion
+              },
+
+              -- CUA-compatible keymaps for chat buffer
+              -- Only override modes; callbacks are inherited from defaults
+              keymaps = {
+                send = {
+                  modes = { n = '<CR>', i = '<CR>' },  -- Enter to send (chat-style)
+                },
+                close = {
+                  modes = { n = '<C-c>', i = '<C-c>' },  -- Ctrl+C to close/cancel
+                },
+                stop = {
+                  modes = { n = 'q', i = '<M-q>' },  -- q or Alt+Q to stop generation
+                },
+                regenerate = {
+                  modes = { n = '<C-r>' },  -- Ctrl+R to regenerate
+                },
+                super_diff = {
+                  modes = { n = '<C-d>' },  -- Ctrl+D to show super diff
+                },
+                change_adapter = {
+                  modes = { n = '<M-m>', i = '<M-m>' },  -- Alt+M to change model/adapter
+                },
+                clear = {
+                  modes = { n = '<C-l>' },  -- Ctrl+L to clear chat
+                },
+              },
+
+              -- Slash commands with Telescope integration
+              slash_commands = {
+                ['file'] = {
+                  opts = { provider = 'telescope' },
+                },
+                ['buffer'] = {
+                  opts = { provider = 'telescope' },
+                },
+                ['symbols'] = {
+                  opts = { provider = 'telescope' },
+                },
+              },
+
+              -- Tool configuration for agentic workflows
+              tools = {
+                -- Tool groups bundle related tools together
+                groups = {
+                  -- Full coding agent with all capabilities
+                  full_stack_dev = {
+                    description = 'Full Stack Developer - Can run code, edit code and modify files',
+                    prompt = 'You have access to ''${tools} to help with coding tasks',
+                    tools = {
+                      'cmd_runner',
+                      'create_file',
+                      'delete_file',
+                      'file_search',
+                      'get_changed_files',
+                      'grep_search',
+                      'insert_edit_into_file',
+                      'list_code_usages',
+                      'read_file',
+                    },
+                    opts = {
+                      collapse_tools = true,  -- Collapse tool definitions in prompt
+                    },
+                  },
+                  -- File operations only (safer subset)
+                  files = {
+                    description = 'File operations - reading, searching, and editing files',
+                    prompt = 'You have access to ''${tools} for file operations',
+                    tools = {
+                      'create_file',
+                      'file_search',
+                      'get_changed_files',
+                      'grep_search',
+                      'insert_edit_into_file',
+                      'read_file',
+                    },
+                    opts = {
+                      collapse_tools = true,
+                    },
+                  },
+                },
+
+                -- Individual tool configuration
+                -- cmd_runner: Always requires approval (dangerous operations)
+                cmd_runner = {
+                  opts = {
+                    require_approval_before = true,
+                    allowed_in_yolo_mode = false,  -- Never auto-approve commands
+                  },
+                },
+                -- delete_file: Always requires approval
+                delete_file = {
+                  opts = {
+                    require_approval_before = true,
+                    allowed_in_yolo_mode = false,
+                  },
+                },
+                -- insert_edit_into_file: Show confirmation after edits
+                insert_edit_into_file = {
+                  opts = {
+                    require_approval_before = { buffer = false, file = false },
+                    require_confirmation_after = true,
+                    file_size_limit_mb = 2,
+                  },
+                },
+
+                -- Global tool options
+                opts = {
+                  auto_submit_errors = true,   -- Auto-send errors back to LLM
+                  auto_submit_success = true,  -- Auto-send success back to LLM
+                  folds = { enabled = true },  -- Fold tool calls in chat
+                },
+              },
+            },
+
+            -- Inline assistant settings
+            inline = {
+              adapter = 'copilot',  -- Use Copilot for inline too
+              -- CUA-style keymaps for accepting/rejecting inline changes
+              keymaps = {
+                accept_change = {
+                  modes = { n = '<M-CR>' },  -- Alt+Enter to accept
+                },
+                reject_change = {
+                  modes = { n = '<Esc>' },  -- Escape to reject
+                },
+              },
+            },
+          },
+
+          -- Display configuration
+          display = {
+            chat = {
+              -- Modeless behaviour: start in insert mode (matches novim-mode philosophy)
+              start_in_insert_mode = true,
+              -- Hide intro message for cleaner look
+              intro_message = nil,
+              -- Show token counts
+              show_token_count = true,
+              -- Hide settings panel (cleaner)
+              show_settings = false,
+
+              -- Chat window layout
+              window = {
+                layout = 'vertical',    -- Side panel like VSCode
+                width = 0.35,           -- 35% of screen width
+                border = 'rounded',
+                full_height = true,
+                opts = {
+                  breakindent = true,
+                  cursorcolumn = false,
+                  cursorline = false,
+                  foldcolumn = '0',
+                  linebreak = true,
+                  list = false,
+                  numberwidth = 1,
+                  signcolumn = 'no',
+                  spell = false,
+                  wrap = true,
+                },
+              },
+
+              -- Customise token display
+              token_count = function(tokens, adapter)
+                return ' (' .. tokens .. ' tokens)'
+              end,
+            },
+
+            -- Action palette uses Telescope (Escape to close, better UX)
+            action_palette = {
+              provider = 'telescope',
+              opts = {
+                show_preset_prompts = false,  -- Hide built-in prompts, use custom only
+              },
+            },
+
+            -- Inline diff display
+            inline = {
+              layout = 'vertical',  -- Side-by-side diff
+            },
+          },
+
+          -- Prompt library: custom agents and commands
+          -- Auto-generated from assistants/*.agent.md and *.prompt.md files
+          -- Native markdown loading from ~/.config/nvim/prompts/codecompanion/
+          prompt_library = {
+            markdown = {
+              dirs = {
+                vim.fn.stdpath('config') .. '/prompts/codecompanion',
+              },
+            },
+          },
+        }
+
+        -- =========================================================================
+        -- CODECOMPANION STATUS FEEDBACK
+        -- =========================================================================
+        -- Updates lualine status and shows fidget notifications for AI activity.
+        -- Provides visual feedback when prompts are submitted and responses stream.
+        -- =========================================================================
+
+        local cc_augroup = vim.api.nvim_create_augroup("CodeCompanionStatusHooks", { clear = true })
+
+        -- Track active requests per chat for proper status management
+        local cc_active_chats = {}
+
+        vim.api.nvim_create_autocmd("User", {
+          group = cc_augroup,
+          pattern = "CodeCompanionRequestStarted",
+          callback = function(event)
+            local id = event.data and event.data.id
+            if id then
+              cc_active_chats[id] = true
+            end
+            _G.codecompanion_status = " Thinking..."
+            require('lualine').refresh()
+            -- Also notify via fidget for more visible feedback
+            local ok, fidget = pcall(require, 'fidget')
+            if ok then
+              fidget.notify("AI request started", vim.log.levels.INFO, { annote = "CodeCompanion", key = "codecompanion" })
+            end
+          end,
+        })
+
+        vim.api.nvim_create_autocmd("User", {
+          group = cc_augroup,
+          pattern = "CodeCompanionRequestStreaming",
+          callback = function(_)
+            _G.codecompanion_status = " Streaming..."
+            require('lualine').refresh()
+          end,
+        })
+
+        vim.api.nvim_create_autocmd("User", {
+          group = cc_augroup,
+          pattern = { "CodeCompanionRequestFinished", "CodeCompanionChatStopped" },
+          callback = function(event)
+            local id = event.data and event.data.id
+            if id then
+              cc_active_chats[id] = nil
+            end
+            -- Only clear status if no active requests remain
+            if vim.tbl_isempty(cc_active_chats) then
+              _G.codecompanion_status = ""
+              require('lualine').refresh()
+              local ok, fidget = pcall(require, 'fidget')
+              if ok then
+                fidget.notify("AI response complete", vim.log.levels.INFO, { annote = "CodeCompanion", key = "codecompanion", ttl = 2 })
+              end
+            end
+          end,
+        })
+
+        -- =========================================================================
+        -- MODELESS CHAT WINDOW
+        -- =========================================================================
+        -- Force the CodeCompanion chat buffer to behave like a normal text input.
+        -- Uses the same approach as novim-mode: timer-delayed startinsert and
+        -- blocking Escape from leaving insert mode.
+        --
+        -- Chat input mappings:
+        --   Enter: Submit prompt
+        --   Ctrl+Enter / Shift+Enter: Insert newline
+        --   Ctrl+C: Close chat
+        -- =========================================================================
+
+        -- Helper: make CodeCompanion buffer modeless
+        local function make_codecompanion_modeless()
+          -- Use timer to ensure buffer is fully ready
+          vim.fn.timer_start(50, function()
+            -- Verify we're still in a codecompanion buffer
+            local ft = vim.bo.filetype
+            if ft ~= 'codecompanion' then return end
+
+            -- Disable novim-mode for this buffer (it handles its own keymaps)
+            vim.b.novim_mode_disable = true
+            vim.cmd('startinsert')
+
+            -- Only set buffer-local keymaps if not already set
+            if not vim.b.codecompanion_modeless_setup then
+              vim.b.codecompanion_modeless_setup = true
+              -- Block Escape from leaving insert mode in this buffer
+              vim.api.nvim_buf_set_keymap(0, 'i', '<Esc>', '<Nop>', { noremap = true, silent = true })
+              -- Ctrl+Enter and Shift+Enter insert newlines (Enter submits)
+              vim.api.nvim_buf_set_keymap(0, 'i', '<C-CR>', '<CR>', { noremap = true, silent = true })
+              vim.api.nvim_buf_set_keymap(0, 'i', '<S-CR>', '<CR>', { noremap = true, silent = true })
+            end
+          end)
+        end
+
+        -- Apply modeless behaviour when entering CodeCompanion chat buffers
+        -- Multiple events to ensure insert mode persists after picker interactions
+        vim.api.nvim_create_autocmd({'BufEnter', 'BufWinEnter', 'WinEnter'}, {
+          callback = function()
+            -- Check filetype (more reliable than pattern matching buffer name)
+            if vim.bo.filetype == 'codecompanion' then
+              make_codecompanion_modeless()
+            end
+          end,
+        })
+
+        -- Also handle FileType for initial buffer creation
+        vim.api.nvim_create_autocmd('FileType', {
+          pattern = 'codecompanion',
+          callback = make_codecompanion_modeless,
+        })
+
+        -- CodeCompanion global keybindings (VSCode-style, modeless - work across all modes)
+        local cc_opts = { noremap = true, silent = true }
+
+        -- Ctrl+Alt+I: Open/toggle Chat panel (VSCode: Ctrl+Alt+I opens chat view)
+        vim.keymap.set({'n', 'i', 'v', 's'}, '<C-M-i>', '<Cmd>CodeCompanionChat Toggle<CR>', cc_opts)
+
+        -- Ctrl+I: Inline chat - ask about selection or current context
+        -- (VSCode: Ctrl+I for inline chat in editor)
+        vim.keymap.set({'n', 'i', 'v', 's'}, '<C-i>', function()
+          local input = vim.fn.input('CodeCompanion: ')
+          if input ~= "" then
+            require('codecompanion').chat(input)
+            vim.schedule(function()
+              vim.cmd('startinsert')
+            end)
+          end
+        end, { noremap = true, silent = false })
+
+        -- Alt+A: Actions picker (prompts and quick actions menu)
+        vim.keymap.set({'n', 'i', 'v', 's'}, '<M-a>', '<Cmd>CodeCompanionActions<CR>', cc_opts)
+
+        -- Alt+M: Model/adapter selector (global binding)
+        -- When in chat buffer, the chat keymap handles it directly
+        -- When outside chat, opens chat first then triggers adapter picker
+        vim.keymap.set({'n', 'i', 'v', 's'}, '<M-m>', function()
+          local cc = require('codecompanion')
+          -- Check if we're already in a codecompanion buffer
+          local ft = vim.bo.filetype
+          if ft == 'codecompanion' then
+            -- Let the buffer-local keymap handle it (already mapped above)
+            -- Feed the key to trigger the chat buffer's own Alt+M binding
+            local key = vim.api.nvim_replace_termcodes('<M-m>', true, true, true)
+            vim.api.nvim_feedkeys(key, 'n', false)
+            return
+          end
+          -- Not in chat buffer - open/toggle chat then trigger adapter picker
+          local chat = cc.last_chat()
+          if chat and chat.ui and chat.ui:is_visible() then
+            -- Chat is visible, focus it and trigger adapter change
+            vim.cmd('CodeCompanionChat Focus')
+            vim.defer_fn(function()
+              local c = cc.last_chat()
+              if c and c.change_adapter then c:change_adapter() end
+            end, 50)
+          elseif chat then
+            -- Chat exists but hidden, toggle it open then change adapter
+            cc.toggle()
+            vim.defer_fn(function()
+              local c = cc.last_chat()
+              if c and c.change_adapter then c:change_adapter() end
+            end, 150)
+          else
+            -- No chat exists, create one then change adapter
+            cc.chat()
+            vim.defer_fn(function()
+              local c = cc.last_chat()
+              if c and c.change_adapter then c:change_adapter() end
+            end, 250)
+          end
+        end, cc_opts)
+
+        -- Alt+/: Quick inline prompt (transform selection with prompt)
+        vim.keymap.set({'v', 's'}, '<M-/>', function()
+          local input = vim.fn.input('Transform: ')
+          if input ~= "" then
+            require('codecompanion').inline({ args = input })
+          end
+        end, { noremap = true, silent = false, desc = 'AI inline transform' })
+
+        -- Alt+E: Explain selection (uses built-in prompt)
+        vim.keymap.set({'v', 's'}, '<M-e>', '<Cmd>CodeCompanion /explain<CR>', cc_opts)
+
+        -- Alt+X: Fix selection (uses built-in prompt)
+        -- Note: Alt+F is reserved for find operations
+        vim.keymap.set({'v', 's'}, '<M-x>', '<Cmd>CodeCompanion /fix<CR>', cc_opts)
+
+        -- Alt+T: Generate tests (uses built-in prompt)
+        vim.keymap.set({'v', 's'}, '<M-t>', '<Cmd>CodeCompanion /tests<CR>', cc_opts)
+
+        -- Alt+D: Generate docstring/documentation
+        vim.keymap.set({'v', 's'}, '<M-d>', function()
+          require('codecompanion').inline({
+            args = 'Add comprehensive documentation/docstring to this code. Follow the language conventions.',
+          })
+        end, cc_opts)
       '';
     };
   };
@@ -1054,6 +1574,24 @@ in
         name = "Neovim";
         noDisplay = true;
       };
+    };
+  };
+
+  # Export AI API keys from sops for CodeCompanion
+  programs = {
+    fish.shellInit = lib.mkIf config.programs.neovim.enable ''
+      # Export AI API keys for CodeCompanion (Neovim)
+      set -gx ANTHROPIC_API_KEY (cat ${config.sops.secrets.ANTHROPIC_API_KEY.path} 2>/dev/null; or echo "")
+    '';
+    bash.initExtra = lib.mkIf config.programs.neovim.enable ''
+      # Export AI API keys for CodeCompanion (Neovim)
+      export ANTHROPIC_API_KEY=$(cat ${config.sops.secrets.ANTHROPIC_API_KEY.path} 2>/dev/null || echo "")
+    '';
+  };
+
+  sops.secrets = {
+    ANTHROPIC_API_KEY = {
+      sopsFile = aiSopsFile;
     };
   };
 }
