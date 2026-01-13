@@ -48,6 +48,14 @@ lib.mkIf (lib.elem username installFor) {
       settings = {
         theme = "catppuccin";
 
+        # Context compaction - manual control
+        # Use /compact slash command when context gets full
+        # OpenCode displays token usage in the interface to help monitor
+        compaction = {
+          auto = false; # Disable automatic compaction
+          prune = true; # Keep pruning old tool outputs to save tokens
+        };
+
         # TUI settings
         tui = {
           diff_style = "stacked"; # Always show single-column stacked diffs
