@@ -8,6 +8,33 @@
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
   modifiedPackages = _final: prev: {
+    # Override Python packages to fix Darwin-specific issues
+    python3 = prev.python3.override {
+      packageOverrides = pyfinal: pyprev: {
+        # Fix setproctitle test failures on Darwin with multiprocessing fork
+        # See: https://github.com/NixOS/nixpkgs/issues/479313
+        setproctitle = pyprev.setproctitle.overridePythonAttrs (old: {
+          disabledTests = (old.disabledTests or [ ]) ++ prev.lib.optionals prev.stdenv.isDarwin [
+            "test_fork_segfault"
+            "test_thread_fork_segfault"
+          ];
+        });
+      };
+    };
+
+    python313 = prev.python313.override {
+      packageOverrides = pyfinal: pyprev: {
+        # Fix setproctitle test failures on Darwin with multiprocessing fork
+        # See: https://github.com/NixOS/nixpkgs/issues/479313
+        setproctitle = pyprev.setproctitle.overridePythonAttrs (old: {
+          disabledTests = (old.disabledTests or [ ]) ++ prev.lib.optionals prev.stdenv.isDarwin [
+            "test_fork_segfault"
+            "test_thread_fork_segfault"
+          ];
+        });
+      };
+    };
+
     # Override avizo to use a specific commit that includes these fixes:
     # - https://github.com/heyjuvi/avizo/pull/76 (fix options of lightctl)
     # - https://github.com/heyjuvi/avizo/pull/73 (chore: fix size of dark theme icons)

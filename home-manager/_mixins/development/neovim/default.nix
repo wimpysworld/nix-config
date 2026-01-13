@@ -482,7 +482,7 @@ in
               use_filtered_colors = true, -- Whether to use a different highlight when the file is filtered (hidden, dotfile, etc.).
               use_git_status_colors = true,
               highlight = "NeoTreeFileName",
-            }, 
+            },
             git_status = {
               symbols = {
                 -- Change type

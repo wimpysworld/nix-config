@@ -5,7 +5,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  inherit (pkgs.stdenv) isLinux isDarwin;
   gitsignCredentialCache =
     if pkgs.stdenv.isLinux then
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
@@ -36,12 +36,17 @@ in
       # Symlink ~/.gitconfig to ~/.config/git/config to prevent config divergence
       ".gitconfig".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/git/config";
     };
-    packages = with pkgs; [
-      git-igitt # git log/graph
-      gitsign # Sign Git commits and tags with Sigstore
-      pre-commit # Git pre-commit hooks
-      precommitSetup
-    ];
+    packages =
+      with pkgs;
+      [
+        git-igitt # git log/graph
+        gitsign # Sign Git commits and tags with Sigstore
+      ]
+      # pre-commit and related tools require dotnet which is currently broken on Darwin
+      ++ lib.optionals (!isDarwin) [
+        pre-commit # Git pre-commit hooks
+        precommitSetup
+      ];
     sessionVariables = {
       GITSIGN_CONNECTOR_ID = "https://accounts.google.com";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
