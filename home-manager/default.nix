@@ -234,6 +234,16 @@ in
     };
   };
 
+  # Fix sops-nix launchd service PATH on Darwin
+  launchd.agents.sops-nix = lib.mkIf isDarwin {
+    enable = true;
+    config = {
+      EnvironmentVariables = {
+        PATH = lib.mkForce "/usr/bin:/bin:/usr/sbin:/sbin";
+      };
+    };
+  };
+
   # Nicely reload system units when changing configs
   systemd.user.startServices = lib.mkIf isLinux "sd-switch";
   # Create age keys directory for SOPS
