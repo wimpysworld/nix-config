@@ -33,11 +33,12 @@ let
   };
   codecompanionHelpers = import ./codecompanion.nix { inherit lib; };
 
-  # Generate CodeCompanion markdown prompt files
-  # Placed in ~/.config/nvim/prompts/codecompanion/ for native markdown loading (v18.x+)
-  codecompanionPromptFiles = codecompanionHelpers.mkCodeCompanionPromptFiles {
+  # Generate CodeCompanion rules and prompt files
+  # Rules: Agent definitions in ~/.config/nvim/rules/ (loaded as context)
+  # Prompts: Commands in ~/.config/nvim/prompts/codecompanion/ (reference rules)
+  codecompanionFiles = codecompanionHelpers.mkCodeCompanionFiles {
     inherit agentFiles promptFiles;
-    promptsDir = "${config.xdg.configHome}/nvim/prompts/codecompanion";
+    configDir = "${config.xdg.configHome}/nvim";
   };
 
   # Helper to generate VSCode file entries
@@ -60,9 +61,9 @@ lib.mkIf (lib.elem username installFor) {
       "${config.home.homeDirectory}/.claude/rules/instructions.md".text =
         builtins.readFile ./copilot.instructions.md;
     }
-    # CodeCompanion.nvim: markdown prompt files (native loading in v18.x+)
-    # Auto-generated from assistants/*.agent.md and *.prompt.md files
-    // codecompanionPromptFiles
+    # CodeCompanion.nvim: rules and prompt files (v18.x+ rules-based composition)
+    # Rules (agents) loaded as context, prompts (commands) reference them
+    // codecompanionFiles
     # VSCode: auto-generated agent and prompt files
     // mkVscodeFiles agentFiles
     // mkVscodeFiles promptFiles;

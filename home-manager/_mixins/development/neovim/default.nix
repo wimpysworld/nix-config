@@ -11,6 +11,19 @@ let
   # Sops file for AI API keys (Anthropic, OpenAI, Gemini)
   aiSopsFile = ../../../../secrets/ai.yaml;
 
+  # Generate CodeCompanion rules config from agent files
+  assistantsDir = ../assistants;
+  allAssistantFiles = builtins.readDir assistantsDir;
+  agentFiles = lib.filterAttrs (
+    name: type: type == "regular" && lib.hasSuffix ".agent.md" name
+  ) allAssistantFiles;
+
+  codecompanionHelpers = import "${assistantsDir}/codecompanion.nix" { inherit lib; };
+  rulesConfigLua = codecompanionHelpers.mkRulesConfig {
+    inherit agentFiles;
+    configDir = config.xdg.configHome + "/nvim";
+  };
+
   # Fetch novim-mode plugin from GitHub (not in nixpkgs)
   novim-mode = pkgs.vimUtils.buildVimPlugin {
     pname = "novim-mode";
@@ -1158,6 +1171,10 @@ in
           opts = {
             log_level = 'WARN',  -- Set to DEBUG for troubleshooting
           },
+
+          -- Rules configuration (agent definitions loaded as context)
+          -- Agents defined as rules can be referenced by prompts via opts.rules
+          rules = ${rulesConfigLua},
 
           -- Interactions configuration (chat, inline, cmd behaviours)
           interactions = {

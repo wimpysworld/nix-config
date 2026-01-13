@@ -1,20 +1,31 @@
 { lib }:
-# CodeCompanion.nvim Prompt Helpers (v18.x Markdown Format)
+# CodeCompanion.nvim Rules and Prompts (v18.x Markdown Format)
 #
-# Transforms *.agent.md and *.prompt.md files into CodeCompanion's markdown format.
-# CodeCompanion v18+ loads prompts from markdown files with YAML frontmatter.
+# Transforms *.agent.md and *.prompt.md files into CodeCompanion's rules-based composition pattern.
+# CodeCompanion v18+ supports:
+#   - Rules: Agent definitions loaded as context (system-level instructions)
+#   - Prompts: Command definitions that reference rules via `opts.rules`
 #
-# Expected output format:
+# Agent files become rules with the codecompanion parser for system prompt extraction.
+# Command files become prompts that reference agent rules via YAML frontmatter.
+#
+# Expected rule format (agents):
+#   # Agent Name
+#
+#   ## System Prompt
+#   System-level instructions...
+#
+#   Rest of agent definition...
+#
+# Expected prompt format (commands):
 #   ---
 #   name: Display Name
 #   interaction: chat
 #   description: "Description text"
 #   opts:
 #     alias: short-name
+#     rules: agent-name
 #   ---
-#
-#   ## system
-#   System prompt content...
 #
 #   ## user
 #   User prompt content...
@@ -51,7 +62,8 @@ let
     in
     lib.concatStringsSep " " (map capitalise words);
 
-  # Escape ## headings in content to ### (CodeCompanion uses ## for section markers)
+  # Escape ## headings in content to ### (CodeCompanion uses ## for section markers in prompts)
+  # Only escape in content sections, not in rule files where ## System Prompt is required
   escapeHeadings =
     content:
     let
@@ -66,57 +78,54 @@ let
     lib.concatStringsSep "\n" (map escapeLine lines);
 in
 {
-  # Generate Home Manager file entries for CodeCompanion prompts
-  mkCodeCompanionPromptFiles =
+  # Generate Home Manager file entries for CodeCompanion rules and prompts
+  # Uses rules-based composition: agents become rules, commands reference them
+  mkCodeCompanionFiles =
     {
       agentFiles,
       promptFiles,
-      promptsDir,
+      configDir,
     }:
     let
-      # Build map of agent name -> body content for embedding in commands
-      agentBodies = lib.mapAttrs' (
-        filename: _:
-        let
-          agentName = lib.removeSuffix ".agent.md" filename;
-          content = builtins.readFile (./. + "/${filename}");
-        in
-        {
-          name = agentName;
-          value = escapeHeadings (extractBody content);
-        }
-      ) agentFiles;
+      rulesDir = "${configDir}/rules";
+      promptsDir = "${configDir}/prompts/codecompanion";
 
-      # Transform agent files: become system prompts
-      agentEntries = lib.mapAttrs' (
+      # Transform agent files into rules (system-level instructions)
+      # Rules use the codecompanion parser to extract system prompts via ## System Prompt header
+      agentRules = lib.mapAttrs' (
         filename: _:
         let
           agentName = lib.removeSuffix ".agent.md" filename;
           content = builtins.readFile (./. + "/${filename}");
           description = extractField "description" content;
-          body = escapeHeadings (extractBody content);
+          body = extractBody content; # Don't escape headings in rules - ## System Prompt is required
+
+          # Restructure agent content for codecompanion parser
+          # The parser looks for "## System Prompt" header and uses that section as system message
+          ruleContent =
+            if lib.hasInfix "## System Prompt" body then
+              # Agent already has System Prompt section, use as-is
+              body
+            else
+              # Wrap entire agent definition in System Prompt section
+              ''
+                ## System Prompt
+
+                ${body}
+              '';
         in
         {
-          name = "${promptsDir}/${agentName}.md";
+          name = "${rulesDir}/${agentName}.md";
           value.text = ''
-            ---
-            name: ${toTitleCase agentName}
-            interaction: chat
-            description: "${if description != null then description else "AI assistant"}"
-            opts:
-              alias: ${agentName}
-              is_slash_cmd: true
-            ---
+            # ${toTitleCase agentName}
 
-            ## system
-
-            ${body}
+            ${ruleContent}
           '';
         }
       ) agentFiles;
 
-      # Transform command files: become user prompts (optionally with agent system prompt)
-      commandEntries = lib.mapAttrs' (
+      # Transform command files into prompts that reference agent rules
+      commandPrompts = lib.mapAttrs' (
         filename: _:
         let
           cmdName = lib.removeSuffix ".prompt.md" filename;
@@ -125,18 +134,8 @@ in
           agent = extractField "agent" content;
           body = escapeHeadings (extractBody content);
 
-          # Include agent system prompt if specified and exists
-          hasAgent = agent != null && lib.hasAttr agent agentBodies;
-          systemSection =
-            if hasAgent then
-              ''
-
-                ## system
-
-                ${agentBodies.${agent}}
-              ''
-            else
-              "";
+          # Reference agent rule if specified
+          rulesOption = if agent != null then "  rules: ${agent}\n" else "";
         in
         {
           name = "${promptsDir}/${cmdName}.md";
@@ -148,8 +147,8 @@ in
             opts:
               alias: ${cmdName}
               is_slash_cmd: true
-            ---
-            ${systemSection}
+            ${rulesOption}---
+
             ## user
 
             ${body}
@@ -157,5 +156,34 @@ in
         }
       ) promptFiles;
     in
-    agentEntries // commandEntries;
+    agentRules // commandPrompts;
+
+  # Generate Lua configuration for rules registry
+  # Returns Lua table defining all agent rules for CodeCompanion setup
+  mkRulesConfig =
+    {
+      agentFiles,
+      configDir,
+    }:
+    let
+      rulesDir = "${configDir}/rules";
+      ruleEntries = lib.mapAttrsToList (
+        filename: _:
+        let
+          agentName = lib.removeSuffix ".agent.md" filename;
+          content = builtins.readFile (./. + "/${filename}");
+          description = extractField "description" content;
+        in
+        ''
+          ${agentName} = {
+            description = "${if description != null then description else "AI assistant"}",
+            parser = "codecompanion",
+            files = { "${rulesDir}/${agentName}.md" },
+          },''
+      ) agentFiles;
+    in
+    ''
+      {
+        ${lib.concatStringsSep "\n" ruleEntries}
+      }'';
 }
