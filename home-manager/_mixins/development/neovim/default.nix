@@ -145,6 +145,8 @@ in
 
         # Git integration
         gitsigns-nvim
+        # Direnv integration
+        direnv-vim
         # Tab bar and buffer management
         bufferline-nvim
         bufdelete-nvim
