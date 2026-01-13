@@ -889,8 +889,10 @@ in
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-m>', '<cmd>Trouble diagnostics toggle<cr>', opts)  -- Problems panel
         -- Git integration keybindings (VSCode-style)
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-g>', '<cmd>Telescope git_status<cr>', opts)  -- Git status
-        -- Command palette (VSCode-style Ctrl+Shift+P)
-        vim.keymap.set({'n', 'i', 'v'}, '<C-S-p>', '<cmd>Telescope commands<cr>', opts)
+         -- Command palette (VSCode-style Ctrl+Shift+P)
+         vim.keymap.set('n', '<C-S-p>', '<cmd>Telescope commands<cr>', opts)
+         vim.keymap.set('i', '<C-S-p>', '<cmd>Telescope commands<cr>', opts)
+         vim.keymap.set('v', '<C-S-p>', '<cmd>Telescope commands<cr>', opts)
 
         -- Additional CUA keybindings (classic Windows/IBM style)
         -- Tab/Shift+Tab to indent/dedent selection (VSCode-style)
@@ -1187,9 +1189,14 @@ in
                 end,
                 user = 'Developer',
               },
-              opts = {
-                completion_provider = 'cmp',  -- Use nvim-cmp for slash command completion
-              },
+               opts = {
+                 completion_provider = 'cmp',  -- Use nvim-cmp for slash command completion
+                 -- Decorate user prompts with tags before sending to LLM
+                 -- (Similar to VS Code Copilot - helps differentiate user input from context)
+                 prompt_decorator = function(message, adapter, context)
+                   return string.format([[<prompt>%s</prompt>]], message)
+                 end,
+               },
 
               -- CUA-compatible keymaps for chat buffer
               -- Only override modes; callbacks are inherited from defaults
@@ -1217,18 +1224,29 @@ in
                 },
               },
 
-              -- Slash commands with Telescope integration
-              slash_commands = {
-                ['file'] = {
-                  opts = { provider = 'telescope' },
-                },
-                ['buffer'] = {
-                  opts = { provider = 'telescope' },
-                },
-                ['symbols'] = {
-                  opts = { provider = 'telescope' },
-                },
-              },
+               -- Slash commands with Telescope integration
+               slash_commands = {
+                 ['file'] = {
+                   opts = { provider = 'telescope' },
+                 },
+                 ['buffer'] = {
+                   opts = { provider = 'telescope' },
+                 },
+                 ['symbols'] = {
+                   opts = { provider = 'telescope' },
+                 },
+               },
+
+               -- Variables: context placeholders (invoked with #)
+               variables = {
+                 ['buffer'] = {
+                   opts = {
+                     -- Auto-sync buffer changes by sharing diffs on each turn
+                     -- Use "all" to share entire buffer instead of just changes
+                     default_params = 'diff',
+                   },
+                 },
+               },
 
               -- Tool configuration for agentic workflows
               tools = {
@@ -1271,29 +1289,32 @@ in
                   },
                 },
 
-                -- Individual tool configuration
-                -- cmd_runner: Always requires approval (dangerous operations)
-                cmd_runner = {
-                  opts = {
-                    require_approval_before = true,
-                    allowed_in_yolo_mode = false,  -- Never auto-approve commands
-                  },
-                },
-                -- delete_file: Always requires approval
-                delete_file = {
-                  opts = {
-                    require_approval_before = true,
-                    allowed_in_yolo_mode = false,
-                  },
-                },
-                -- insert_edit_into_file: Show confirmation after edits
-                insert_edit_into_file = {
-                  opts = {
-                    require_approval_before = { buffer = false, file = false },
-                    require_confirmation_after = true,
-                    file_size_limit_mb = 2,
-                  },
-                },
+                 -- Individual tool configuration
+                 -- cmd_runner: Always requires approval (dangerous operations)
+                 cmd_runner = {
+                   opts = {
+                     require_approval_before = true,
+                     allowed_in_yolo_mode = false,  -- Never auto-approve commands
+                     auto_submit_errors = true,     -- Send errors back to LLM
+                     auto_submit_success = false,   -- Manually review successful output
+                   },
+                 },
+                 -- delete_file: Always requires approval
+                 delete_file = {
+                   opts = {
+                     require_approval_before = true,
+                     allowed_in_yolo_mode = false,
+                   },
+                 },
+                 -- insert_edit_into_file: Show confirmation after edits
+                 insert_edit_into_file = {
+                   opts = {
+                     require_approval_before = { buffer = false, file = false },
+                     require_confirmation_after = true,
+                     file_size_limit_mb = 2,
+                     auto_submit_success = true,  -- Auto-continue after successful edits
+                   },
+                 },
 
                 -- Global tool options
                 opts = {
@@ -1319,17 +1340,25 @@ in
             },
           },
 
-          -- Display configuration
-          display = {
-            chat = {
-              -- Modeless behaviour: start in insert mode (matches novim-mode philosophy)
-              start_in_insert_mode = true,
-              -- Hide intro message for cleaner look
-              intro_message = nil,
-              -- Show token counts
-              show_token_count = true,
-              -- Hide settings panel (cleaner)
-              show_settings = false,
+           -- Display configuration
+           display = {
+             chat = {
+               -- Modeless behaviour: start in insert mode (matches novim-mode philosophy)
+               start_in_insert_mode = true,
+               -- Hide intro message for cleaner look
+               intro_message = nil,
+               -- Show token counts
+               show_token_count = true,
+               -- Hide settings panel (cleaner)
+               show_settings = false,
+               -- Auto-scroll during streaming (disabled automatically if you move cursor)
+               auto_scroll = true,
+               -- Don't fold context - show all information inline
+               fold_context = false,
+               -- Don't fold reasoning output - keep it visible
+               fold_reasoning = false,
+               -- Show reasoning output (extended thinking from models that support it)
+               show_reasoning = true,
 
               -- Chat window layout
               window = {
@@ -1442,42 +1471,42 @@ in
           end,
         })
 
-        -- =========================================================================
-        -- MODELESS CHAT WINDOW
-        -- =========================================================================
-        -- Force the CodeCompanion chat buffer to behave like a normal text input.
-        -- Uses the same approach as novim-mode: timer-delayed startinsert and
-        -- blocking Escape from leaving insert mode.
-        --
-        -- Chat input mappings:
-        --   Enter: Submit prompt
-        --   Ctrl+Enter / Shift+Enter: Insert newline
-        --   Ctrl+C: Close chat
-        -- =========================================================================
+         -- =========================================================================
+         -- MODELESS CHAT WINDOW
+         -- =========================================================================
+         -- Force the CodeCompanion chat buffer to behave like a normal text input.
+         -- Uses the same approach as novim-mode: timer-delayed startinsert and
+         -- blocking Escape from leaving insert mode.
+         --
+         -- Chat input mappings:
+         --   Enter: Submit prompt
+         --   Ctrl+Enter / Shift+Enter: Insert newline
+         --   Ctrl+C: Close chat
+         -- =========================================================================
 
-        -- Helper: make CodeCompanion buffer modeless
-        local function make_codecompanion_modeless()
-          -- Use timer to ensure buffer is fully ready
-          vim.fn.timer_start(50, function()
-            -- Verify we're still in a codecompanion buffer
-            local ft = vim.bo.filetype
-            if ft ~= 'codecompanion' then return end
+         -- Helper: make CodeCompanion buffer modeless
+         local function make_codecompanion_modeless()
+           -- Use timer to ensure buffer is fully ready
+           vim.fn.timer_start(50, function()
+             -- Verify we're still in a codecompanion buffer
+             local ft = vim.bo.filetype
+             if ft ~= 'codecompanion' then return end
 
-            -- Disable novim-mode for this buffer (it handles its own keymaps)
-            vim.b.novim_mode_disable = true
-            vim.cmd('startinsert')
+             -- Disable novim-mode for this buffer (it handles its own keymaps)
+             vim.b.novim_mode_disable = true
+             vim.cmd('startinsert')
 
-            -- Only set buffer-local keymaps if not already set
-            if not vim.b.codecompanion_modeless_setup then
-              vim.b.codecompanion_modeless_setup = true
-              -- Block Escape from leaving insert mode in this buffer
-              vim.api.nvim_buf_set_keymap(0, 'i', '<Esc>', '<Nop>', { noremap = true, silent = true })
-              -- Ctrl+Enter and Shift+Enter insert newlines (Enter submits)
-              vim.api.nvim_buf_set_keymap(0, 'i', '<C-CR>', '<CR>', { noremap = true, silent = true })
-              vim.api.nvim_buf_set_keymap(0, 'i', '<S-CR>', '<CR>', { noremap = true, silent = true })
-            end
-          end)
-        end
+             -- Only set buffer-local keymaps if not already set
+             if not vim.b.codecompanion_modeless_setup then
+               vim.b.codecompanion_modeless_setup = true
+               -- Block Escape from leaving insert mode in this buffer
+               vim.api.nvim_buf_set_keymap(0, 'i', '<Esc>', '<Nop>', { noremap = true, silent = true })
+               -- Ctrl+Enter and Shift+Enter insert newlines (Enter submits)
+               vim.api.nvim_buf_set_keymap(0, 'i', '<C-CR>', '<CR>', { noremap = true, silent = true })
+               vim.api.nvim_buf_set_keymap(0, 'i', '<S-CR>', '<CR>', { noremap = true, silent = true })
+             end
+           end)
+         end
 
         -- Apply modeless behaviour when entering CodeCompanion chat buffers
         -- Multiple events to ensure insert mode persists after picker interactions

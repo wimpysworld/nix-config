@@ -44,7 +44,7 @@ in
         window_margin_width = 0;
         single_window_margin_width = 0;
         sync_to_monitor = "yes";
-        term = "xterm-256color";
+        term = "xterm-kitty"; # Use xterm-kitty to enable Kitty graphics protocol features
         # Mouse
         copy_on_select = true;
         mouse_hide_wait = 0;
@@ -72,6 +72,10 @@ in
         # Without this, Kitty intercepts these for its own clipboard operations
         map shift+insert send_text all \x1b[2;2~
         map shift+delete send_text all \x1b[3;2~
+
+        # Ensure Ctrl+Shift+P is passed through to applications (not intercepted by Kitty)
+        # This is needed for Neovim command palette
+        map ctrl+shift+p send_text all \x1b[80;6u
       '';
     };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {
