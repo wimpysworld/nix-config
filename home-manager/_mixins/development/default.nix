@@ -44,6 +44,7 @@ in
     ./github
     ./gitkraken
     ./go
+    ./javascript
     ./json
     ./just
     ./love
@@ -58,7 +59,6 @@ in
     ./rust
     ./shell
     ./svelte
-    ./typescript
     ./virtualisation
     ./vscode
     ./yaml

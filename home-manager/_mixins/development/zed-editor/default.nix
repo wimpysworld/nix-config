@@ -15,9 +15,6 @@ let
 in
 lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
   catppuccin.zed.enable = config.programs.zed-editor.enable;
-  home.packages = with pkgs; [
-    vscode-langservers-extracted # JSON, HTML, CSS, ESLint
-  ];
   programs = {
     zed-editor = {
       enable = true;
@@ -111,19 +108,6 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
           88
         ];
       };
-    };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.css
-          p.html
-          p.json
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- JSON/CSS/HTML LSPs using Neovim 0.11+ native API
-        vim.lsp.enable({'jsonls', 'cssls', 'html'})
-      '';
     };
   };
 }

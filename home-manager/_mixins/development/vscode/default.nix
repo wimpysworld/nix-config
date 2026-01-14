@@ -21,12 +21,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     vscode.profiles.default.icons.enable = config.programs.vscode.enable;
   };
 
-  home = {
-    packages = with pkgs; [
-      nodejs_24
-    ];
-  };
-
   programs = {
     vscode = {
       enable = true;
