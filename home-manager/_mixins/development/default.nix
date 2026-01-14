@@ -54,7 +54,6 @@ in
     ./neovim
     ./nix
     ./opencode
-    ./prettier
     ./python
     ./rust
     ./shell
