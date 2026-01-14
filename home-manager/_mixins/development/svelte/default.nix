@@ -33,6 +33,21 @@ lib.mkIf (lib.elem username installFor) {
       extensions = [
         "svelte"
       ];
+      userSettings = {
+        languages = {
+          Svelte = {
+            formatter = {
+              external = {
+                command = "prettier";
+                arguments = [
+                  "--stdin-filepath"
+                  "{buffer_path}"
+                ];
+              };
+            };
+          };
+        };
+      };
     };
     neovim = lib.mkIf config.programs.neovim.enable {
       plugins = [
@@ -43,6 +58,8 @@ lib.mkIf (lib.elem username installFor) {
       extraLuaConfig = ''
         -- Svelte LSP using Neovim 0.11+ native API
         vim.lsp.enable('svelte')
+        -- Svelte formatting with prettier
+        require('conform').formatters_by_ft.svelte = { 'prettier' }
       '';
     };
   };

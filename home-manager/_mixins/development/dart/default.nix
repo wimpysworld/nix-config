@@ -48,6 +48,12 @@ lib.mkIf (lib.elem username installFor) {
           p.dart
         ]))
       ];
+      extraLuaConfig = ''
+        -- Dart LSP using Neovim 0.11+ native API
+        vim.lsp.enable('dartls')
+        -- Dart formatting with dart format
+        require('conform').formatters_by_ft.dart = { 'dart_format' }
+      '';
     };
   };
 }

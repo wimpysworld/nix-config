@@ -58,5 +58,23 @@ lib.mkIf (lib.elem username installFor) {
         require('conform').formatters_by_ft.python = { 'ruff_format' }
       '';
     };
+    opencode = lib.mkIf config.programs.opencode.enable {
+      settings = {
+        formatter = {
+          # Python: ruff format (requires explicit command for OpenCode)
+          ruff = {
+            command = [
+              "${pkgs.ruff}/bin/ruff"
+              "format"
+              "$FILE"
+            ];
+            extensions = [
+              ".py"
+              ".pyi"
+            ];
+          };
+        };
+      };
+    };
   };
 }

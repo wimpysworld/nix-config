@@ -20,6 +20,7 @@ lib.mkIf (lib.elem username installFor) {
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {
+          "[markdown]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
           "emojisense.languages" = {
             plaintext = false;
             markdown = true;
@@ -45,6 +46,21 @@ lib.mkIf (lib.elem username installFor) {
         "emoji-completions"
         "rumdl"
       ];
+      userSettings = {
+        languages = {
+          Markdown = {
+            formatter = {
+              external = {
+                command = "prettier";
+                arguments = [
+                  "--stdin-filepath"
+                  "{buffer_path}"
+                ];
+              };
+            };
+          };
+        };
+      };
     };
     neovim = lib.mkIf config.programs.neovim.enable {
       plugins = with pkgs.vimPlugins; [
@@ -189,6 +205,9 @@ lib.mkIf (lib.elem username installFor) {
           silent = false,
           desc = 'Paste image from clipboard (alternative)',
         })
+
+        -- Markdown formatting with prettier
+        require('conform').formatters_by_ft.markdown = { 'prettier' }
       '';
     };
   };

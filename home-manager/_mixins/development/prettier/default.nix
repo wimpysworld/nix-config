@@ -132,5 +132,32 @@ lib.mkIf (lib.elem username installFor) {
         require('conform').formatters_by_ft.typescriptreact = { 'prettier' }
       '';
     };
+    opencode = lib.mkIf config.programs.opencode.enable {
+      settings = {
+        formatter = {
+          # Prettier: format web languages (JS/TS/CSS/HTML/JSON)
+          # Uses Nix-installed prettier as fallback when not in package.json
+          prettier = {
+            command = [
+              "${pkgs.nodePackages.prettier}/bin/prettier"
+              "--write"
+              "$FILE"
+            ];
+            extensions = [
+              ".js"
+              ".jsx"
+              ".ts"
+              ".tsx"
+              ".html"
+              ".css"
+              ".scss"
+              ".less"
+              ".json"
+              ".jsonc"
+            ];
+          };
+        };
+      };
+    };
   };
 }

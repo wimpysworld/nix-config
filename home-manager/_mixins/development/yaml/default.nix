@@ -21,6 +21,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {
+          "[yaml]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
           "redhat.telemetry.enabled" = false;
           "yaml.keyOrdering" = true;
         };
@@ -31,6 +32,19 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       userSettings = {
+        languages = {
+          YAML = {
+            formatter = {
+              external = {
+                command = "prettier";
+                arguments = [
+                  "--stdin-filepath"
+                  "{buffer_path}"
+                ];
+              };
+            };
+          };
+        };
         lsp = {
           yaml-language-server = {
             settings = {
@@ -59,6 +73,8 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           },
         })
         vim.lsp.enable('yamlls')
+        -- YAML formatting with prettier
+        require('conform').formatters_by_ft.yaml = { 'prettier' }
       '';
     };
   };

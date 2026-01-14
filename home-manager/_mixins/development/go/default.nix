@@ -48,14 +48,8 @@ lib.mkIf (lib.elem username installFor) {
           Go = {
             formatter = {
               external = {
-                command = "golangci-lint";
-                arguments = [
-                  "run"
-                  "--output.json.path"
-                  "stdout"
-                  "--show-stats=false"
-                  "--output.text.path="
-                ];
+                command = "gofmt";
+                arguments = [ ];
               };
             };
             language_servers = [
