@@ -189,6 +189,8 @@
         NSAutomaticSpellingCorrectionEnabled = true;
         NSNavPanelExpandedStateForSaveMode = true;
         NSNavPanelExpandedStateForSaveMode2 = true;
+        # Disable switching to Space with open windows when switching apps
+        AppleSpacesSwitchOnActivate = false;
       };
       SoftwareUpdate = {
         AutomaticallyInstallMacOSUpdates = false;
@@ -217,6 +219,10 @@
         wvous-br-corner = 1;
         wvous-tl-corner = 1;
         wvous-tr-corner = 1;
+        # Mission Control and Spaces preferences
+        mru-spaces = false; # Disable automatic rearranging of Spaces
+        expose-animation-duration = 0.1; # Faster Mission Control animations
+        expose-group-apps = false; # Don't group windows by application in Mission Control
       };
       finder = {
         _FXShowPosixPathInTitle = true;
