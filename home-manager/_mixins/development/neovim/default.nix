@@ -157,10 +157,6 @@ in
         # Treesitter for syntax highlighting
         # Core grammars only; language-specific grammars in their ecosystem configs
         (nvim-treesitter.withPlugins (p: [
-          p.c
-          p.cmake
-          p.cpp
-          p.make
           p.vim
           p.vimdoc
         ]))

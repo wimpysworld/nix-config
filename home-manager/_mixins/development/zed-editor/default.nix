@@ -16,8 +16,6 @@ in
 lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
   catppuccin.zed.enable = config.programs.zed-editor.enable;
   home.packages = with pkgs; [
-    clang-tools
-    neocmakelsp
     vscode-langservers-extracted # JSON, HTML, CSS, ESLint
   ];
   programs = {
@@ -31,7 +29,6 @@ lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
         "editorconfig"
         "ini"
         "make"
-        "neocmake"
         "rainbow-csv"
         "vhs"
         "xml"

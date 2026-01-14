@@ -23,7 +23,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
 
   home = {
     packages = with pkgs; [
-      lldb
       nodejs_24
     ];
   };
@@ -103,18 +102,14 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.jeff-hykin.better-dockerfile-syntax
             vscode-marketplace.jeff-hykin.polacode-2019
             vscode-marketplace.mechatroner.rainbow-csv
-            vscode-marketplace.ms-vscode.cmake-tools
             vscode-extensions.ms-vscode-remote.vscode-remote-extensionpack
             vscode-marketplace.nhoizey.gremlins
             vscode-marketplace.nico-castell.linux-desktop-file
             vscode-marketplace.ryu1kn.partial-diff
             vscode-marketplace.streetsidesoftware.code-spell-checker
-            vscode-marketplace.twxs.cmake
           ]
           ++ lib.optionals isLinux [
-            vscode-extensions.ms-vscode.cpptools-extension-pack
             vscode-extensions.ms-vsliveshare.vsliveshare
-            vscode-extensions.vadimcn.vscode-lldb
           ];
       };
       mutableExtensionsDir = true;

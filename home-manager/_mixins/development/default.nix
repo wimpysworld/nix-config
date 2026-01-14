@@ -34,6 +34,7 @@ in
 {
   imports = [
     ./assistants
+    ./c
     ./claude-code
     ./copilot
     #./dart
