@@ -11,9 +11,8 @@ let
   fontSize = 18;
   fontWeight = 400;
   installFor = [ "martin" ];
-  inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (lib.elem username installFor && isLinux && isWorkstation) {
+lib.mkIf (lib.elem username installFor && isWorkstation) {
   catppuccin.zed.enable = config.programs.zed-editor.enable;
   programs = {
     zed-editor = {
