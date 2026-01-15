@@ -53,6 +53,9 @@ lib.mkIf (lib.elem username installFor) {
         # TUI settings
         tui = {
           diff_style = "stacked"; # Always show single-column stacked diffs
+          scroll_acceleration = {
+            enabled = true; # Enable macOS-style smooth scroll acceleration
+          };
         };
 
         # ══════════════════════════════════════════════════════════════
