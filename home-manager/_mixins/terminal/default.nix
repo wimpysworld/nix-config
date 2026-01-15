@@ -13,7 +13,6 @@ let
     dmesg = "${pkgs.util-linux}/bin/dmesg --human --color=always";
     egrep = "${pkgs.gnugrep}/bin/egrep --color=auto";
     fgrep = "${pkgs.gnugrep}/bin/fgrep --color=auto";
-    glow = "${pkgs.frogmouth}/bin/frogmouth";
     grep = "${pkgs.gnugrep}/bin/grep --color=auto";
     hr = ''${pkgs.hr}/bin/hr "─━"'';
     lolcat = "${pkgs.dotacat}/bin/dotacat";
@@ -70,9 +69,9 @@ in
         dust # Modern Unix `du`
         entr # Modern Unix `watch`
         file # Terminal file info
-        frogmouth # Terminal markdown viewer
         fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
+        glow # Terminal markdown viewer
         gocryptfs # Terminal encrypted filesystem
         gping # Modern Unix `ping`
         hexyl # Modern Unix `hexedit`
