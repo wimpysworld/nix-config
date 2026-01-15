@@ -47,12 +47,9 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
         colorize_brackets = true;
         cursor_shape = "block";
         hard_tabs = false;
-        hour_format = "hour24";
         inlay_hints = {
           enabled = true;
         };
-        insert_spaces = true;
-        lsp_document_colors = "background";
         metrics = false;
         minimap = {
           show = "auto";
