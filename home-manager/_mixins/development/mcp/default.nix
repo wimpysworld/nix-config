@@ -81,6 +81,7 @@ let
   opencodeServers = {
     # Servers without secrets
     cloudflare = {
+      enabled = false;
       type = "remote";
       url = "https://docs.mcp.cloudflare.com/mcp";
     };
@@ -91,10 +92,12 @@ let
     #  url = "https://mcp.exa.ai/mcp";
     #};
     nixos = {
+      enabled = false;
       type = "local";
       command = [ "${pkgs.mcp-nixos}/bin/mcp-nixos" ];
     };
     svelte = {
+      enabled = false;
       type = "local";
       command = [
         "${pkgs.nodejs_24}/bin/npx"
