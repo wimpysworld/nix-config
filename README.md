@@ -2,8 +2,10 @@
 <img src=".github/logo.png" alt="Sith Happens" width="256" />
 
 # Wimpy's [NixOS], [nix-darwin] & [Home Manager] Configurations
+
 <b>Made with 💝 for <img src=".github/nixos.png" align="center" width="18" alt="NixOS"/> & <img src=".github/apple.png" align="center" width="16" alt="macOS"/></b>
 <br />
+
 </div>
 
 This repository contains a [Nix Flake](https://zero-to-nix.com/concepts/flakes) for configuring my computers and/or their home environment.
@@ -11,29 +13,28 @@ It is not intended to be a drop in configuration for your computer, but might se
 **If you are looking for a more generic NixOS configuration template, I highly recommend [nix-starter-configs](https://github.com/Misterio77/nix-starter-configs).** 👍️
 These computers are managed by this Nix flake ❄️
 
-|   Hostname  |            Board            |               CPU              |  RAM  |         Primary GPU         |        Secondary GPU       | Role | OS  | State |
-| :---------: | :-------------------------: | :----------------------------: | :---: | :-------------------------: | :------------------------: | :--: | :-: | :---: |
-| `vader`     | [MEG-X570-UNIFY]            | [AMD Ryzen 9 5950X]            | 128GB | [Fighter RX 7900 GRE]       | [RTX 2000E Ada Generation] | 🖥️   | ❄️  | ✅    |
-| `phasma`    | [MEG-X570-ACE]              | [AMD Ryzen 9 5900X]            | 128GB | [Fighter RX 7900 GRE]       | [RTX 2000E Ada Generation] | 🖥️   | ❄️  | ✅    |
-| `sidious`   | [ThinkPad P1 Gen 1]         | [Intel Xeon E-2176M]           | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630    | 💻️🎭️ | ❄️  | ✅    |
-| `palpatine` | ⤴️                          | ⤴️                             | ⤴️    | ⤴️                          | ⤴️                         | 💻️🎭️ | 🪟  | ✅    |
-| `bane`      | [Framework 16]              | [AMD Ryzen 7 7940HS]             | 96GB  | AMD Radeon 780M             |                            | 💻️   | ❄️  | 🚧    |
-| `tanis`     | [ThinkPad Z13 Gen 1]        | [AMD Ryzen 5 PRO 6650U]        | 32GB  | AMD Radeon 660M             |                            | 💻️   | ❄️  | ✅    |
-| `shaa`      | [ThinkPad T14s Gen 1]       | [AMD Ryzen 5 PRO 4650U]        | 16GB  | AMD Radeon RX Vega 6        |                            | 💻️   | ❄️  | ✅    |
-| `atrius`    | [ThinkPad T495s]            | [AMD Ryzen 7 3700U]            | 16GB  | AMD Radeon Vega 10          |                            | 💻️   | ❄️  | 🚧    |
-| `krall`     | [Macbook Pro (Mid 2015)]    | Intel Core i7                  | 16GB  | Intel Iris Pro Graphics     |                            | 💻️   | 🍏  | ✅    |
-| `steamdeck` | [Steam Deck 64GB LCD]       | Zen 2 4c/8t                    | 16GB  | 8 RDNA 2 CUs                |                            | 🎮️   | 🐧  | ✅    |
-| `crawler`   | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
-| `dagger`    | [QEMU]                      | -                              | -     | [VirGL]                     |                            | 🐄   | ❄️  | ✅    |
-| `defender`  | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
-| `fighter`   | [Lima]                      | -                              | -     | -                           |                            | 🐄   | 🐧  | ✅    |
-| `revan`     | [Z390-DESIGNARE]            | [Intel Core i9-9900K]          | 64GB  | Intel UHD Graphics 630      | [NVIDIA T1000]             | ☁️   | ❄️  | 🚧    |
-| `malak`     | [B360 HD3P-LM]              | [Intel Core i7-8700]           | 128GB | Intel UHD Graphics 630      | -                          | ☁️   | ❄️  | 🚧    |
-| `maul`      | [TRX40-DESIGNARE]           | [AMD Ryzen Threadripper 3970X] | 256GB | NVIDIA RTX 3090             | NVIDIA RTX 2080Ti (22GB)   | ☁️   | ❄️  | 🚧    |
-
+|  Hostname   |             Board             |              CPU               |  RAM  |         Primary GPU         |      Secondary GPU       |  Role  | OS  | State |
+| :---------: | :---------------------------: | :----------------------------: | :---: | :-------------------------: | :----------------------: | :----: | :-: | :---: |
+|  `malgus`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  |  🚧   |
+|  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  |  🚧   |
+|  `sidious`  |      [ThinkPad P1 Gen 1]      |      [Intel Xeon E-2176M]      | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630  | 💻️🎭️ | ❄️  |  ✅   |
+| `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️ | 🪟  |  ✅   |
+|   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  🚧   |
+|   `tanis`   |     [ThinkPad Z13 Gen 1]      |    [AMD Ryzen 5 PRO 6650U]     | 32GB  |       AMD Radeon 660M       |                          |  💻️   | ❄️  |  ✅   |
+|   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
+|  `atrius`   |       [ThinkPad T495s]        |      [AMD Ryzen 7 3700U]       | 16GB  |     AMD Radeon Vega 10      |                          |  💻️   | ❄️  |  🚧   |
+|   `krall`   |   [Macbook Pro (Mid 2015)]    |         Intel Core i7          | 16GB  |   Intel Iris Pro Graphics   |                          |  💻️   | 🍏  |  ✅   |
+| `steamdeck` |     [Steam Deck 64GB LCD]     |          Zen 2 4c/8t           | 16GB  |        8 RDNA 2 CUs         |                          |  🎮️   | 🐧  |  ✅   |
+|  `crawler`  |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
+|  `dagger`   |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
+| `defender`  |            [Lima]             |               -                |   -   |              -              |                          |   🐄   | 🐧  |  ✅   |
+|  `fighter`  |            [Lima]             |               -                |   -   |              -              |                          |   🐄   | 🐧  |  ✅   |
+|   `revan`   |       [Z390-DESIGNARE]        |     [Intel Core i9-9900K]      | 64GB  |   Intel UHD Graphics 630    |      [NVIDIA T1000]      |   ☁️   | ❄️  |  🚧   |
+|   `malak`   |        [B360 HD3P-LM]         |      [Intel Core i7-8700]      | 128GB |   Intel UHD Graphics 630    |            -             |   ☁️   | ❄️  |  🚧   |
+|   `maul`    |       [TRX40-DESIGNARE]       | [AMD Ryzen Threadripper 3970X] | 256GB |       NVIDIA RTX 3090       | NVIDIA RTX 2080Ti (22GB) |   ☁️   | ❄️  |  🚧   |
 
 Workstation and server host names are Sith Lords and the virtual machines are named after TIE fighter series.
-Dual boot systems have the NixOS install named a Sith Lord and the *"other"* OS named after their public-facing persona.
+Dual boot systems have the NixOS install named a Sith Lord and the _"other"_ OS named after their public-facing persona.
 
 **Key**
 
@@ -71,15 +72,15 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
 
 ## Installing 💾
 
-- Boot off an .iso image created by this flake using `build-iso console` or `build-iso <desktop>` (*see below*) 💿
+- Boot off an .iso image created by this flake using `build-iso console` or `build-iso <desktop>` (_see below_) 💿
 - Put the .iso image on a USB drive, I use [USBImager](https://bztsrc.gitlab.io/usbimager/)
 - Boot the target computer from the USB drive
 - Two installation options are available:
   1 Run `install-system <hostname> <username>` from a terminal
-   - The install script uses [Disko] to automatically partition and format the disks, then uses my flake via `nixos-install` to complete a full-system installation
-   - This flake is copied to the target user's home directory as `~/Zero/nix-config`
-   - `nixos-enter` is used to automatically chroot into the new system and apply the Home Manager configuration
-  2 The desktop iso image includes the graphical Calamares installer if an ad-hoc system installation is required
+  - The install script uses [Disko] to automatically partition and format the disks, then uses my flake via `nixos-install` to complete a full-system installation
+  - This flake is copied to the target user's home directory as `~/Zero/nix-config`
+  - `nixos-enter` is used to automatically chroot into the new system and apply the Home Manager configuration
+    2 The desktop iso image includes the graphical Calamares installer if an ad-hoc system installation is required
 - Make a cuppa 🫖
 - Reboot 🥾
 
@@ -128,7 +129,7 @@ This flake includes a [justfile](./justfile) that provides convenient commands f
 
 The `just iso <iso_name>` command creates an .iso image from this flake:
 
-- `just iso console` (*terminal environment*): Includes `install-system` for automated installation.
+- `just iso console` (_terminal environment_): Includes `install-system` for automated installation.
 
 Live images will be left in `result/iso/` and are also injected into `~/Quickemu/nixos-iso-<iso_name>/nixos.iso` respectively.
 The console .iso image is also periodically built and published via [GitHub Actions](./.github/workflows) and is available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
@@ -138,6 +139,7 @@ The console .iso image is also periodically built and published via [GitHub Acti
 If `nh`, `nom`, `just` and `home-manager` are not available here are traditional ways to build and switch.
 
 **NixOS**
+
 ```shell
 sudo nixos-rebuild boot --flake $HOME/Zero/nix-config
 sudo nixos-rebuild switch --flake $HOME/Zero/nix-config
@@ -146,12 +148,14 @@ nix run github:nix-community/nixos-anywhere -- --flake '.#{hostname}' root@{ip-a
 ```
 
 **nix-darwin**
+
 ```shell
 nix run nix-darwin -- switch --flake ~/Zero/nix-config
 nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
 ```
 
 **Home Manager**
+
 ```shell
 home-manager build --flake $HOME/Zero/nix-config -L
 home-manager switch -b backup --flake $HOME/Zero/nix-config
@@ -160,6 +164,7 @@ nix run nixpkgs#home-manager -- switch -b backup --flake "$HOME/Zero/nix-config"
 ```
 
 **ISO**
+
 ```shell
 nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
 ```
@@ -230,9 +235,9 @@ Here's the directory structure I'm using:
 
 ### The Shell 🐚
 
-A fully *"oxidised"* 🦀 [Modern Unix] shell experience is provided by [Fish shell](https://fishshell.com/) 🐟️ with [Starship](https://starship.rs/) 🚀 and a collection of tools that deliver a contempory UX to my terminal ‍🧑‍💻
+A fully _"oxidised"_ 🦀 [Modern Unix] shell experience is provided by [Fish shell](https://fishshell.com/) 🐟️ with [Starship](https://starship.rs/) 🚀 and a collection of tools that deliver a contempory UX to my terminal ‍🧑‍💻
 
-The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], [Distrobox](./nixos/_mixins/features/distrobox/default.nix) and, of course, a delightfully configured [micro]. (*Fight me!* 🥊)
+The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], [Distrobox](./nixos/_mixins/features/distrobox/default.nix) and, of course, a delightfully configured [micro]. (_Fight me!_ 🥊)
 Useful shell scripts I used to keep in muddle of git repos are now migrated to [NixOS scripts](./nixos/_mixins/scripts) and [Home Manager scripts](./home-manager/_mixins/scripts) to provide a declarative, reproducible and `shellcheck` validated toolbox 🧰
 
 ![fastfetch on Phasma](.github/screenshots/fastfetch.png)
@@ -243,14 +248,15 @@ Hyprland 💧 and Wayfire 🔥 desktop options are available.
 The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code).
 The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
-|   Desktops  |        NixOS       |       Home Manager        |       Theme       |
-| :---------: | :----------------: | :-----------------------: | :---------------: |
-| 💧 Hyprland | [Hyprland NixOS]   | [Hyprland Home Manager]   | Catppuccin Mocha  |
-| 🔥 Wayfire  | [Wayfire NixOS]    | [Wayfire Home Manager]    | Catppuccin Mocha  |
+|  Desktops   |      NixOS       |      Home Manager       |      Theme       |
+| :---------: | :--------------: | :---------------------: | :--------------: |
+| 💧 Hyprland | [Hyprland NixOS] | [Hyprland Home Manager] | Catppuccin Mocha |
+| 🔥 Wayfire  | [Wayfire NixOS]  | [Wayfire Home Manager]  | Catppuccin Mocha |
 
 ## Eye Candy 👀🍬
 
 ![Hyprland on Shaa](.github/screenshots/hyprland.png)
+
 <div align="center"><small>Hyprland on Shaa; <i>a work in progress; soon to be daily driver</i></small></div>
 
 ## Post-install Checklist
@@ -310,8 +316,8 @@ Things I currently need to do manually after installation.
 #### Malak
 
 - [ ] Create ntfy user and ACLs
-  `sudo ntfy user add --role=admin <username>`
-  `sudo ntfy access everyone <topic> rw`
+      `sudo ntfy user add --role=admin <username>`
+      `sudo ntfy access everyone <topic> rw`
 
 ### Themes
 
@@ -330,6 +336,7 @@ Some applications require manual configuration to apply the correct theme.
   - Click Install
 - [ ] Discord OpenAsar
   - [ ] Add Catppuccin CSS
+
 ```css
 /* mocha */
 @import url("https://catppuccin.github.io/discord/dist/catppuccin-mocha.theme.css");
@@ -387,6 +394,7 @@ There's plenty to learn from browsing other people's Nix configurations.
 I recommend a search of [GitHub nixos configuration] from time to time to see what interesting techniques you pick up and new tools you might discover ️🕵️
 
 My use of [Disko] and automated installation script were inspired by the these blog posts:
+
 - [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
 - [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
 
@@ -399,14 +407,13 @@ My use of [Disko] and automated installation script were inspired by the these b
 [GitHub nixos configuration]: https://github.com/search?q=nixos+configuration
 [nix-starter-configs]: https://github.com/Misterio77/nix-starter-configs
 [nix-darwin-kickstarter]: https://github.com/ryan4yin/nix-darwin-kickstarter
-
 [NixOS]: https://nixos.org/
 [nix-darwin]: https://github.com/LnL7/nix-darwin
 [Home Manager]: https://github.com/nix-community/home-manager
 [Disko]: https://github.com/nix-community/disko
 [nixos-anywhere]: https://github.com/nix-community/nixos-anywhere
 [sops-nix]: https://github.com/Mic92/sops-nix
-
+[Frame Desktop Mainboard]: https://frame.work/gb/en/products/framework-desktop-mainboard-amd-ryzen-ai-max-300-series
 [TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10
 [Z390-DESIGNARE]: https://www.gigabyte.com/Motherboard/Z390-DESIGNARE-rev-10#kf
 [MEG-X570-UNIFY]: https://www.msi.com/Motherboard/MEG-X570-UNIFY
@@ -428,7 +435,6 @@ My use of [Disko] and automated installation script were inspired by the these b
 [GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
 [QEMU]: https://www.qemu.org/
 [Lima]: https://lima-vm.io/
-
 [Intel Core i9-9900K]: https://www.intel.com/content/www/us/en/products/sku/186605/intel-core-i99900k-processor-16m-cache-up-to-5-00-ghz/specifications.html
 [Intel Core i7-8700]: https://www.intel.com/content/www/us/en/products/sku/126686/intel-core-i78700-processor-12m-cache-up-to-4-60-ghz/specifications.html
 [Intel Xeon E-2176M]: https://ark.intel.com/content/www/us/en/ark/products/134867/intel-xeon-e-2176m-processor-12m-cache-up-to-4-40-ghz.html
@@ -436,6 +442,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [Intel Core i7-6770HQ]: https://ark.intel.com/content/www/us/en/ark/products/93341/intel-core-i7-6770hq-processor-6m-cache-up-to-3-50-ghz.html
 [Intel Celeron 2955U]: https://www.intel.com/content/www/us/en/products/sku/75608/intel-celeron-processor-2955u-2m-cache-1-40-ghz/specifications.html
 [AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/newsroom/press-releases/2019-11-7-amd-introduces-world-s-fastest-high-end-desktop-pr.html
+[AMD Ryzen AI Max+ 395]: https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-max-plus-395.html
 [AMD Ryzen 9 5950X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5950x
 [AMD Ryzen 9 5900X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5900x
 [AMD Ryzen 7 7940HS]: https://www.amd.com/en/products/processors/laptop/ryzen/7000-series/amd-ryzen-9-7940hs.html
@@ -443,6 +450,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [AMD Ryzen 5 PRO 4650U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen-pro/ryzen-pro-4000-series/amd-ryzen-5-pro-4650u.html
 [AMD Ryzen 7 3700U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen/ryzen-3000-series/amd-ryzen-7-3700u.html#amd_support_product_spec
 [AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/support/cpu/amd-ryzen-processors/amd-ryzen-threadripper-processors/amd-ryzen-threadripper-3970x
+[AMD Radeon 8060S]: https://www.techpowerup.com/gpu-specs/radeon-8060s.c4270
 [Intel Arc A770 16GB]: https://www.intel.com/content/www/us/en/products/sku/229151/intel-arc-a770-graphics-16gb/specifications.html
 [Fighter RX 6800]: https://www.powercolor.com/product?id=1606212415
 [Fighter RX 6700 XT]: https://www.powercolor.com/product?id=1612512944
@@ -454,7 +462,6 @@ My use of [Disko] and automated installation script were inspired by the these b
 [NVIDIA T600]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/proviz-print-nvidia-T600-datasheet-us-nvidia-1670029-r5-web.pdf
 [NVIDIA T400]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/nvidia-t400-datasheet-1987150-r3.pdf
 [VirGL]: https://docs.mesa3d.org/drivers/virgl.html
-
 [.github]: ./github/workflows
 [darwin]: ./darwin
 [home-manager]: ./home-manager
@@ -464,7 +471,6 @@ My use of [Disko] and automated installation script were inspired by the these b
 [flake.nix]: ./flake.nix
 [Modern Unix]: ./home-manager/default.nix
 [OpenSSH]: ./nixos/_mixins/services/ssh/default.nix
-
 [micro]: https://micro-editor.github.io/
 [Tailscale]: https://tailscale.com/
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
