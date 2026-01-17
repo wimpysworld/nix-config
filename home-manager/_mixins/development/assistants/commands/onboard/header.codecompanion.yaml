@@ -1,6 +1,5 @@
 name: Onboard
 interaction: chat
-description: "Onboard 📥"
 opts:
   alias: onboard
   is_slash_cmd: true

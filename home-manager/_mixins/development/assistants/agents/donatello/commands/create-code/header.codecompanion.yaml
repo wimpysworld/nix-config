@@ -1,6 +1,5 @@
 name: Create Code
 interaction: chat
-description: "Implement Code 🔨"
 opts:
   alias: create-code
   is_slash_cmd: true

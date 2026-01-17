@@ -1,6 +1,5 @@
 name: Review Pull Request Feedback
 interaction: chat
-description: "PR Review Assessment 🔍"
 opts:
   alias: review-pull-request-feedback
   is_slash_cmd: true

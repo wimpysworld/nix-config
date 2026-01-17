@@ -1,6 +1,5 @@
 name: Create Overview
 interaction: chat
-description: "Create Overview 📄"
 opts:
   alias: create-overview
   is_slash_cmd: true

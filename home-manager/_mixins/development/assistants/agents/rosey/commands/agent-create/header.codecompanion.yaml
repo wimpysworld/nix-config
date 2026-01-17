@@ -1,6 +1,5 @@
 name: Agent Create
 interaction: chat
-description: "Create Agent ✨"
 opts:
   alias: agent-create
   is_slash_cmd: true

@@ -1,6 +1,5 @@
 name: Instructions Review
 interaction: chat
-description: "Review Agent Prompts 🔬"
 opts:
   alias: instructions-review
   is_slash_cmd: true

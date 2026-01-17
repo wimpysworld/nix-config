@@ -1,6 +1,5 @@
 name: Agent Optimise
 interaction: chat
-description: "Optimise Agent ⚡"
 opts:
   alias: agent-optimise
   is_slash_cmd: true

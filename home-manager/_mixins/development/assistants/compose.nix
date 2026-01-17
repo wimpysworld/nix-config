@@ -38,6 +38,7 @@ let
     let
       agentPath = basePath + "/agents/${agentName}";
       prompt = readFile (agentPath + "/prompt.md");
+      description = readFile (agentPath + "/description.txt");
     in
     if platform == "codecompanion" then
       # CodeCompanion: markdown header + blank line + prompt (no frontmatter delimiters)
@@ -45,8 +46,10 @@ let
     else
       let
         header = readFile (agentPath + "/header.${platform}.yaml");
+        # Inject description from description.txt into header
+        headerWithDescription = "description: \"${description}\"\n${header}";
       in
-      composeWithFrontmatter header prompt;
+      composeWithFrontmatter headerWithDescription prompt;
 
   # Generate all agents for a platform
   # Returns attrset: { agentName = "composed content"; ... }
@@ -71,9 +74,12 @@ let
         else
           basePath + "/commands/${cmdName}";
       prompt = readFile (cmdPath + "/prompt.md");
-      header = readFile (cmdPath + "/header.${platform}.yaml");
+      description = readFile (cmdPath + "/description.txt");
+      rawHeader = readFile (cmdPath + "/header.${platform}.yaml");
+      # Inject description from description.txt into header
+      header = "description: \"${description}\"\n${rawHeader}";
       # Check if this command should use Task tool for subagent execution
-      useTask = lib.hasInfix "use-task: true" header;
+      useTask = lib.hasInfix "use-task: true" rawHeader;
     in
     if platform == "codecompanion" then
       # CodeCompanion: YAML frontmatter + ## user + escaped content

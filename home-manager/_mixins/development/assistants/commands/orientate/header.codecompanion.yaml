@@ -1,6 +1,5 @@
 name: Orientate
 interaction: chat
-description: "Orientate 🧭"
 opts:
   alias: orientate
   is_slash_cmd: true
