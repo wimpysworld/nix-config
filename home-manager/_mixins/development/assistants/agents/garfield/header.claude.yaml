@@ -1,2 +1,3 @@
 name: garfield
 description: "A specialised git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards."
+model: haiku

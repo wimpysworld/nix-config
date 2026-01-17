@@ -1,2 +1,4 @@
-agent: "garfield"
 description: "Create Commit ✍️"
+agent: garfield
+subtask: true
+model: opencode/minimax-m2.1-free

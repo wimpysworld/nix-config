@@ -72,12 +72,20 @@ let
           basePath + "/commands/${cmdName}";
       prompt = readFile (cmdPath + "/prompt.md");
       header = readFile (cmdPath + "/header.${platform}.yaml");
+      # Check if this command should use Task tool for subagent execution
+      useTask = lib.hasInfix "use-task: true" header;
     in
     if platform == "codecompanion" then
       # CodeCompanion: YAML frontmatter + ## user + escaped content
       composeWithFrontmatter header "\n## user\n\n${escapeHeadings prompt}"
+    else if platform == "claude" && agentName != null && useTask then
+      # Claude Code with agent + use-task: instruct to use Task tool for subagent
+      composeWithFrontmatter header ''
+        Use the Task tool to launch the ${agentName} agent for the following task:
+
+        ${prompt}''
     else if platform == "claude" && agentName != null then
-      # Claude Code with agent: prepend @agent on its own line before body
+      # Claude Code with agent (no use-task): prepend @agent on its own line before body
       composeWithFrontmatter header "@${agentName}\n\n${prompt}"
     else
       # All other cases: standard frontmatter + prompt
