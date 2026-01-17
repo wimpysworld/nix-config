@@ -1,0 +1,7 @@
+name: Offboard
+interaction: chat
+description: "Handover 📤"
+opts:
+  alias: offboard
+  is_slash_cmd: true
+  rules: rosey

@@ -1,0 +1,7 @@
+name: Plan Docs
+interaction: chat
+description: "Plan Docs 📋"
+opts:
+  alias: plan-docs
+  is_slash_cmd: true
+  rules: velma

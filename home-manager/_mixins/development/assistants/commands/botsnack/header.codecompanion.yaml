@@ -1,0 +1,6 @@
+name: Botsnack
+interaction: chat
+description: "Bot snack 🍪"
+opts:
+  alias: botsnack
+  is_slash_cmd: true

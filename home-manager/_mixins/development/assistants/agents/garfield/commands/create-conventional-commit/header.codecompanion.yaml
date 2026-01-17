@@ -1,0 +1,7 @@
+name: Create Conventional Commit
+interaction: chat
+description: "Create Commit ✍️"
+opts:
+  alias: create-conventional-commit
+  is_slash_cmd: true
+  rules: garfield

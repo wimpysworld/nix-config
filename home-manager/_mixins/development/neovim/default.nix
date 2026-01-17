@@ -13,14 +13,8 @@ let
 
   # Generate CodeCompanion rules config from agent files
   assistantsDir = ../assistants;
-  allAssistantFiles = builtins.readDir assistantsDir;
-  agentFiles = lib.filterAttrs (
-    name: type: type == "regular" && lib.hasSuffix ".agent.md" name
-  ) allAssistantFiles;
-
-  codecompanionHelpers = import "${assistantsDir}/codecompanion.nix" { inherit lib; };
-  rulesConfigLua = codecompanionHelpers.mkRulesConfig {
-    inherit agentFiles;
+  composeHelpers = import "${assistantsDir}/compose.nix" { inherit lib; };
+  rulesConfigLua = composeHelpers.mkRulesConfig {
     configDir = config.xdg.configHome + "/nvim";
   };
 

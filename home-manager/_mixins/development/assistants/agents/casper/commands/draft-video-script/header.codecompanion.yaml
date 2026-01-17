@@ -1,0 +1,7 @@
+name: Draft Video Script
+interaction: chat
+description: "Draft Video Script 🎬"
+opts:
+  alias: draft-video-script
+  is_slash_cmd: true
+  rules: casper

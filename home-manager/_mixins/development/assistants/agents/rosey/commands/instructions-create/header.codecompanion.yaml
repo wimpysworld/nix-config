@@ -1,0 +1,7 @@
+name: Instructions Create
+interaction: chat
+description: "Create AI assistant instructions 🤖"
+opts:
+  alias: instructions-create
+  is_slash_cmd: true
+  rules: rosey

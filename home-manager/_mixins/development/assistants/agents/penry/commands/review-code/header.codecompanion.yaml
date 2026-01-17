@@ -1,0 +1,7 @@
+name: Review Code
+interaction: chat
+description: "Review Code 🔍"
+opts:
+  alias: review-code
+  is_slash_cmd: true
+  rules: penry

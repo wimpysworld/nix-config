@@ -1,0 +1,7 @@
+name: Review Performance
+interaction: chat
+description: "Review Performance ⚡"
+opts:
+  alias: review-performance
+  is_slash_cmd: true
+  rules: gonzales

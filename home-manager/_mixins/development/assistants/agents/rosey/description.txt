@@ -1,0 +1,1 @@
+An agent prompt specialist who creates and refines context-efficient agent prompts with clear purpose, consistent structure, and actionable constraints while eliminating ineffective patterns.

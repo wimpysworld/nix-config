@@ -1,0 +1,7 @@
+name: Plan Code
+interaction: chat
+description: "Plan Implementation 📝"
+opts:
+  alias: plan-code
+  is_slash_cmd: true
+  rules: donatello

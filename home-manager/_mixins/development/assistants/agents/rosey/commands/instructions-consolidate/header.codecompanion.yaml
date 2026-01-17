@@ -1,0 +1,7 @@
+name: Instructions Consolidate
+interaction: chat
+description: "Consolidate AI assistant instructions 🔄"
+opts:
+  alias: instructions-consolidate
+  is_slash_cmd: true
+  rules: rosey

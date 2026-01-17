@@ -1,0 +1,7 @@
+name: Draft Blog Post
+interaction: chat
+description: "Draft Blog Post ✍️"
+opts:
+  alias: draft-blog-post
+  is_slash_cmd: true
+  rules: casper

@@ -1,0 +1,7 @@
+name: Update Docs
+interaction: chat
+description: "Update Docs 🔄"
+opts:
+  alias: update-docs
+  is_slash_cmd: true
+  rules: velma

@@ -8,6 +8,8 @@
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
   installFor = [ "martin" ];
+
+  # Platform-specific paths
   vscodeUserDir =
     if isLinux then
       "${config.xdg.configHome}/Code/User"
@@ -16,87 +18,139 @@ let
     else
       throw "Unsupported platform";
 
-  # Read directory and filter for agent/prompt files
-  allFiles = builtins.readDir ./.;
-  agentFiles = lib.filterAttrs (
-    name: type: type == "regular" && lib.hasSuffix ".agent.md" name
-  ) allFiles;
-  promptFiles = lib.filterAttrs (
-    name: type: type == "regular" && lib.hasSuffix ".prompt.md" name
-  ) allFiles;
+  copilotCliDir = "${config.xdg.configHome}/.copilot";
+  nvimConfigDir = "${config.xdg.configHome}/nvim";
 
-  # Import helper modules
-  claudeCodeHelpers = import ./claude-code.nix { inherit lib; };
-  opencodeHelpers = import ./opencode.nix { inherit lib; };
-  copilotHelpers = import ./copilot.nix {
-    inherit config lib agentFiles;
-  };
-  codecompanionHelpers = import ./codecompanion.nix { inherit lib; };
+  # Import compose module
+  compose = import ./compose.nix { inherit lib; };
 
-  # Generate CodeCompanion rules and prompt files
-  # Rules: Agent definitions in ~/.config/nvim/rules/ (loaded as context)
-  # Prompts: Commands in ~/.config/nvim/prompts/codecompanion/ (reference rules)
-  codecompanionFiles = codecompanionHelpers.mkCodeCompanionFiles {
-    inherit agentFiles promptFiles;
-    configDir = "${config.xdg.configHome}/nvim";
-  };
+  # ============ CLAUDE CODE ============
 
-  # Helper to generate VSCode file entries
-  mkVscodeFiles =
-    files:
-    lib.mapAttrs' (name: _: {
-      name = "${vscodeUserDir}/prompts/${name}";
-      value.text = builtins.readFile (./. + "/${name}");
-    }) files;
+  claudeAgents = compose.composeAgents "claude";
+  claudeCommands = compose.composeCommands "claude";
+  claudeInstructions = compose.composeInstructions "claude";
+
+  # ============ OPENCODE ============
+
+  opencodeAgents = compose.composeAgents "opencode";
+  opencodeCommands = compose.composeCommands "opencode";
+  opencodeInstructions = compose.composeInstructions "opencode";
+
+  # ============ COPILOT (VSCODE & CLI) ============
+
+  copilotAgents = compose.composeAgents "copilot";
+  copilotCommands = compose.composeCommands "copilot";
+  copilotInstructions = compose.composeInstructions "copilot";
+
+  # Generate VSCode file entries for agents and commands
+  mkVscodeAgentFiles = lib.mapAttrs' (name: content: {
+    name = "${vscodeUserDir}/prompts/${name}.agent.md";
+    value.text = content;
+  }) copilotAgents;
+
+  mkVscodeCommandFiles = lib.mapAttrs' (name: content: {
+    name = "${vscodeUserDir}/prompts/${name}.prompt.md";
+    value.text = content;
+  }) copilotCommands;
+
+  # Copilot CLI activation script (copies files as real files, not symlinks)
+  copilotCliActivationScript =
+    let
+      agentCmds = lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (
+          name: content:
+          let
+            escaped = lib.escapeShellArg content;
+          in
+          ''printf '%s' ${escaped} > "${copilotCliDir}/agents/${name}.agent.md"''
+        ) copilotAgents
+      );
+      commandCmds = lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (
+          name: content:
+          let
+            escaped = lib.escapeShellArg content;
+          in
+          ''printf '%s' ${escaped} > "${copilotCliDir}/prompts/${name}.prompt.md"''
+        ) copilotCommands
+      );
+    in
+    ''
+      # Create Copilot CLI directories
+      mkdir -p "${copilotCliDir}/agents"
+      mkdir -p "${copilotCliDir}/prompts"
+
+      # Write agent files
+      ${agentCmds}
+
+      # Write command files
+      ${commandCmds}
+
+      # Write instructions file
+      printf '%s' ${lib.escapeShellArg copilotInstructions} > "${copilotCliDir}/copilot-instructions.md"
+    '';
+
+  # ============ CODECOMPANION ============
+
+  codecompanionAgents = compose.composeAgents "codecompanion";
+  codecompanionCommands = compose.composeCommands "codecompanion";
+
+  # CodeCompanion rules: agents go in ~/.config/nvim/rules/
+  mkCodeCompanionRuleFiles = lib.mapAttrs' (name: content: {
+    name = "${nvimConfigDir}/rules/${name}.md";
+    value.text = content;
+  }) codecompanionAgents;
+
+  # CodeCompanion prompts: commands go in ~/.config/nvim/prompts/codecompanion/
+  mkCodeCompanionPromptFiles = lib.mapAttrs' (name: content: {
+    name = "${nvimConfigDir}/prompts/codecompanion/${name}.md";
+    value.text = content;
+  }) codecompanionCommands;
+
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
     file = {
-      # Special files
-      "${vscodeUserDir}/prompts/copilot.instructions.md".text =
-        builtins.readFile ./copilot.instructions.md;
-      "${vscodeUserDir}/prompts/dummy.prompt.md".text = builtins.readFile ./copilot.instructions.md;
+      # Claude Code global instructions
+      "${config.home.homeDirectory}/.claude/rules/instructions.md".text = claudeInstructions;
 
-      # Claude Code rules (manual placement for 25.11 compatibility)
-      "${config.home.homeDirectory}/.claude/rules/instructions.md".text =
-        builtins.readFile ./copilot.instructions.md;
+      # VSCode Copilot global instructions
+      "${vscodeUserDir}/prompts/copilot.instructions.md".text = copilotInstructions;
+      # Dummy prompt for VSCode compatibility
+      "${vscodeUserDir}/prompts/dummy.prompt.md".text = copilotInstructions;
     }
-    # CodeCompanion.nvim: rules and prompt files (v18.x+ rules-based composition)
-    # Rules (agents) loaded as context, prompts (commands) reference them
-    // codecompanionFiles
-    # VSCode: auto-generated agent and prompt files
-    // mkVscodeFiles agentFiles
-    // mkVscodeFiles promptFiles;
-    # GitHub Copilot CLI: files copied via activation script (see home.activation below)
+    # VSCode agent and command files
+    // mkVscodeAgentFiles
+    // mkVscodeCommandFiles
+    # CodeCompanion rules and prompts
+    // mkCodeCompanionRuleFiles
+    // mkCodeCompanionPromptFiles;
 
-    # Copy Copilot CLI files as real files (not symlinks)
-    # Note: Copilot CLI doesn't follow symlinks due to security concerns
-    activation.copilotFiles = lib.hm.dag.entryAfter [
-      "writeBoundary"
-    ] copilotHelpers.mkCopilotFileCmds;
+    # Copilot CLI: files copied via activation script (not symlinks)
+    # Copilot CLI doesn't follow symlinks due to security concerns
+    activation.copilotFiles = lib.hm.dag.entryAfter [ "writeBoundary" ] copilotCliActivationScript;
   };
+
   programs = {
     claude-code = lib.mkIf config.programs.claude-code.enable {
-      # Custom agents (auto-generated from *.agent.md files)
-      # Claude Code requires 'name' field in frontmatter
-      agents = claudeCodeHelpers.mkClaudeCodeAgents claudeCodeHelpers.transformForClaudeCodeAgent agentFiles;
+      # Custom agents (auto-generated from agents/ directory)
+      agents = claudeAgents;
 
-      # Reusable commands (auto-generated from *.prompt.md files)
-      commands =
-        claudeCodeHelpers.mkClaudeFiles claudeCodeHelpers.transformForClaudeCode promptFiles
-          ".prompt";
+      # Reusable commands (auto-generated from commands/ directories)
+      commands = claudeCommands;
     };
+
     opencode = lib.mkIf config.programs.opencode.enable {
-      # Custom agents (auto-generated from *.agent.md files)
-      agents = opencodeHelpers.mkOpenCodeAgents opencodeHelpers.transformForOpenCodeAgent agentFiles;
+      # Custom agents (auto-generated from agents/ directory)
+      agents = opencodeAgents;
 
-      # Reusable commands (auto-generated from *.prompt.md files)
-      # Preserves agent: field in frontmatter, replaces ${input:*} with $ARGUMENTS
-      commands = opencodeHelpers.mkOpenCodeCommands opencodeHelpers.transformForOpenCodeCommand promptFiles;
+      # Reusable commands (auto-generated from commands/ directories)
+      commands = opencodeCommands;
 
-      # Global rules from copilot.instructions.md
-      rules = builtins.readFile ./copilot.instructions.md;
+      # Global rules
+      rules = opencodeInstructions;
     };
+
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {

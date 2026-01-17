@@ -1,0 +1,7 @@
+name: Review Naming
+interaction: chat
+description: "Review Naming 🏷️"
+opts:
+  alias: review-naming
+  is_slash_cmd: true
+  rules: snagglepuss
