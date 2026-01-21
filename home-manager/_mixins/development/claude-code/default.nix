@@ -675,6 +675,11 @@ let
   ];
 in
 lib.mkIf (lib.elem username installFor) {
+  home = {
+    packages = [
+      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.ccusage
+    ];
+  };
   programs = {
     claude-code = {
       enable = true;
