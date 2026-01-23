@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths:
-      - 'flake.lock'
+      - "flake.lock"
   workflow_dispatch:
 
 concurrency:
@@ -21,20 +21,19 @@ jobs:
     strategy:
       matrix:
         flake:
-          - name: krall
+          - name: momin
             type: darwin
-            path: '.#darwinConfigurations.krall.config.system.build.toplevel'
-          - name: krall
+            path: ".#darwinConfigurations.krall.config.system.build.toplevel"
+          - name: momin
             type: home
             path: '.#homeConfigurations.\"martin@krall\".activationPackage'
     steps:
-    - uses: actions/checkout@v6
-    - uses: DeterminateSystems/determinate-nix-action@v3
-      with:
-        extra-conf: |
-          lazy-trees = true
-    - uses: DeterminateSystems/flakehub-cache-action@v3
-    - name: ${{ matrix.flake.name }}-${{ matrix.flake.type }}
-      run: |
-        sed -i '' 's|pico8|#pico8|' home-manager/_mixins/desktop/apps/game-development/default.nix
-        nix build ${{ matrix.flake.path }} -L
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            lazy-trees = true
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: ${{ matrix.flake.name }}-${{ matrix.flake.type }}
+        run: |
+          nix build ${{ matrix.flake.path }} -L

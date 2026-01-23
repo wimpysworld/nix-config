@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths:
-      - 'flake.lock'
+      - "flake.lock"
   workflow_dispatch:
 
 concurrency:
@@ -21,26 +21,25 @@ jobs:
     strategy:
       matrix:
         host:
-          - 'crawler'
-          - 'dagger'
+          - "crawler"
+          - "dagger"
         config-type:
-          - type: 'nixos'
-            path: '.#nixosConfigurations.{host}.config.system.build.toplevel'
-          - type: 'home'
+          - type: "nixos"
+            path: ".#nixosConfigurations.{host}.config.system.build.toplevel"
+          - type: "home"
             path: '.#homeConfigurations."martin@{host}".activationPackage'
     steps:
-    - uses: actions/checkout@v6
-    - uses: wimpysworld/nothing-but-nix@main
-      with:
-        hatchet-protocol: 'holster'
-    - uses: DeterminateSystems/determinate-nix-action@v3
-      with:
-        extra-conf: |
-          lazy-trees = true
-    - uses: DeterminateSystems/flakehub-cache-action@v3
-    - name: ${{ matrix.host }}
-      run: |
-        sed -i 's|pico8|#pico8|' home-manager/_mixins/desktop/apps/game-development/default.nix
-        FLAKEREF="${{ matrix.config-type.path }}"
-        FLAKEREF="${FLAKEREF/\{host\}/${{ matrix.host }}}"
-        nix build ${FLAKEREF} -L
+      - uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: "holster"
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            lazy-trees = true
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: ${{ matrix.host }}
+        run: |
+          FLAKEREF="${{ matrix.config-type.path }}"
+          FLAKEREF="${FLAKEREF/\{host\}/${{ matrix.host }}}"
+          nix build ${FLAKEREF} -L
