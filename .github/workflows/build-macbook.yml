@@ -23,10 +23,10 @@ jobs:
         flake:
           - name: momin
             type: darwin
-            path: ".#darwinConfigurations.krall.config.system.build.toplevel"
+            path: ".#darwinConfigurations.momin.config.system.build.toplevel"
           - name: momin
             type: home
-            path: '.#homeConfigurations.\"martin@krall\".activationPackage'
+            path: '.#homeConfigurations.\"martin@momin\".activationPackage'
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3
