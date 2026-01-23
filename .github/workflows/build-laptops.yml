@@ -23,8 +23,6 @@ jobs:
         host:
           - atrius
           - bane
-          - shaa
-          - sidious
           - tanis
         config-type:
           - type: "nixos"
