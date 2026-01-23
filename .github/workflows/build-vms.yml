@@ -22,7 +22,6 @@ jobs:
       matrix:
         host:
           - "crawler"
-          - "dagger"
         config-type:
           - type: "nixos"
             path: ".#nixosConfigurations.{host}.config.system.build.toplevel"
