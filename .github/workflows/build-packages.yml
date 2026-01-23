@@ -3,20 +3,20 @@ name: Build 🏗️ Packages ️📦
 on:
   pull_request:
     paths:
-      - 'flake.nix'
-      - 'flake.lock'
-      - 'lib/**'
-      - 'pkgs/**'
-      - 'overlays/**'
+      - "flake.nix"
+      - "flake.lock"
+      - "lib/**"
+      - "pkgs/**"
+      - "overlays/**"
   push:
     branches:
       - main
     paths:
-      - 'flake.nix'
-      - 'flake.lock'
-      - 'lib/**'
-      - 'pkgs/**'
-      - 'overlays/**'
+      - "flake.nix"
+      - "flake.lock"
+      - "lib/**"
+      - "pkgs/**"
+      - "overlays/**"
   workflow_dispatch:
 
 concurrency:
@@ -67,7 +67,7 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: ${{ matrix.package }}
         run: |
-            nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
+          nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
 
   build-linux-apps:
     name: 🐧
@@ -78,7 +78,7 @@ jobs:
           - cider
           - defold
           - gitkraken
-          - gotosocial
+          #- gotosocial
           - wavebox
     steps:
       - uses: actions/checkout@v6
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
         with:
-          hatchet-protocol: 'holster'
+          hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
