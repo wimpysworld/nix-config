@@ -246,29 +246,35 @@
             inherit system;
             config.allowUnfree = true;
           };
+          # Some flake inputs don't support all platforms (e.g., determinate doesn't support x86_64-darwin)
+          optionalFlakePackage =
+            flakeInput:
+            inputs.nixpkgs.lib.optional (flakeInput.packages ? ${system}) flakeInput.packages.${system}.default;
         in
         {
           default = pkgs.mkShell {
-            packages = with pkgs; [
-              bc
-              git
-              home-manager
-              hyperfine
-              inputs.determinate.packages.${system}.default
-              inputs.disko.packages.${system}.default
-              inputs.fh.packages.${system}.default
-              jq
-              just
-              micro
-              nh
-              nixd
-              nixfmt-tree
-              nixfmt-rfc-style
-              nix-output-monitor
-              nvd
-              sops
-              tree
-            ];
+            packages =
+              with pkgs;
+              [
+                bc
+                git
+                home-manager
+                hyperfine
+                jq
+                just
+                micro
+                nh
+                nixd
+                nixfmt-tree
+                nixfmt-rfc-style
+                nix-output-monitor
+                nvd
+                sops
+                tree
+              ]
+              ++ optionalFlakePackage inputs.determinate
+              ++ optionalFlakePackage inputs.disko
+              ++ optionalFlakePackage inputs.fh;
           };
         }
       );
