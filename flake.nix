@@ -232,8 +232,17 @@
             config.allowUnfree = true;
             overlays = builtins.attrValues self.overlays;
           };
+          # Re-export packages from flake inputs that might not support all platforms
+          optionalFlakePackage =
+            name: flakeInput:
+            nixpkgs.lib.optionalAttrs (flakeInput.packages ? ${system}) {
+              ${name} = flakeInput.packages.${system}.default;
+            };
         in
         import ./pkgs pkgs
+        // optionalFlakePackage "bzmenu" inputs.bzmenu
+        // optionalFlakePackage "iwmenu" inputs.iwmenu
+        // optionalFlakePackage "pwmenu" inputs.pwmenu
       );
       # Formatter for .nix files, available via 'nix fmt'
       formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
