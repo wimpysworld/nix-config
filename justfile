@@ -276,3 +276,16 @@ switch-host hostname=current_hostname:
     else
       echo "Unsupported OS: $(uname)"
     fi
+
+# Boot OS configuration (activate on next reboot)
+boot-host hostname=current_hostname:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "$(uname)" = "Linux" ]; then
+      echo "NixOS ♺  Booting: {{ hostname }}"
+      nh os boot . --hostname "{{ hostname }}"
+    elif [ "$(uname)" = "Darwin" ]; then
+      echo "nix-darwin does not support boot activation. Use 'just switch-host' instead."
+    else
+      echo "Unsupported OS: $(uname)"
+    fi
