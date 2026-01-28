@@ -168,7 +168,6 @@ in
         # Quality of life: auto-pairs, todo highlighting, terminal, sessions
         nvim-autopairs
         todo-comments-nvim
-        toggleterm-nvim
         auto-session
         # AI assistance: CodeCompanion for multi-provider LLM integration
         # Provides chat, inline transforms, and agentic tools
@@ -232,7 +231,14 @@ in
                 --   Ctrl+Ins: Paste | Ctrl+Del: Cut selection | Alt+S: Save As
                 --   Ctrl+P: Find files | Ctrl+Shift+F: Search in files
                 --   Ctrl+B: Toggle file tree | Ctrl+W: Close buffer
-                --   Ctrl+`: Terminal | F12: Go to definition | F2: Rename
+                --   F12: Go to definition | F2: Rename
+                --
+                -- TERMINAL:
+                --   Ctrl+`: Toggle terminal | Ctrl+Shift+`: Floating terminal
+                --
+                -- GIT & GITHUB:
+                --   Ctrl+G: Lazygit | Alt+Shift+G: Open in GitHub
+                --   Ctrl+Shift+I: GitHub Issues | Ctrl+Shift+R: GitHub PRs
                 --
                 -- TROUBLE DIAGNOSTICS (VSCode-style problem navigation):
                 --   Ctrl+Shift+M: Problems panel | Alt+M: Buffer problems only
@@ -411,7 +417,7 @@ in
                 -- Scrollbar with signs (diagnostics, search, marks, git)
                 -- Clickable for navigation, right-click for info
                 require('scrollview').setup {
-                  excluded_filetypes = { 'neo-tree', 'toggleterm' },
+                  excluded_filetypes = { 'neo-tree', 'snacks_terminal' },
                   current_only = true,           -- Only show scrollbar in current window
                   winblend = 50,                 -- Transparency (0-100)
                   signs_on_startup = {           -- Enable these sign groups
@@ -440,7 +446,7 @@ in
                   filetypes_denylist = { -- Don't illuminate in these filetypes
                     'neo-tree',
                     'snacks_picker',
-                    'toggleterm',
+                    'snacks_terminal',
                   },
                 }
 
@@ -948,6 +954,35 @@ in
                     actions = require("trouble.sources.snacks").actions,
                   },
 
+                  -- Terminal (replaces toggleterm.nvim)
+                  terminal = {
+                    enabled = true,
+                    win = {
+                      style = 'terminal',
+                      position = 'bottom',
+                      height = 0.3,
+                      border = 'rounded',
+                    },
+                  },
+
+                  -- Lazygit integration
+                  lazygit = {
+                    enabled = true,
+                    configure = true,  -- Auto-sync theme with Neovim colorscheme
+                    win = {
+                      style = 'float',
+                      width = 0.9,
+                      height = 0.9,
+                      border = 'rounded',
+                    },
+                  },
+
+                  -- Git browse (open files in GitHub/GitLab)
+                  gitbrowse = {
+                    enabled = true,
+                    notify = true,
+                  },
+
                   -- Disable features covered by other plugins
                   notifier = { enabled = false },
                   explorer = { enabled = false },
@@ -1059,46 +1094,14 @@ in
                   },
                 }
 
-                -- Toggleterm for integrated terminal (VSCode-style)
-                require('toggleterm').setup {
-                  size = function(term)
-                    if term.direction == "horizontal" then
-                      return 15
-                    elseif term.direction == "vertical" then
-                      return vim.o.columns * 0.4
-                    end
-                  end,
-                  open_mapping = [[<C-`>]],  -- Ctrl+` to toggle (like VSCode)
-                  hide_numbers = true,
-                  shade_terminals = true,
-                  shading_factor = 2,
-                  start_in_insert = true,
-                  insert_mappings = true,
-                  terminal_mappings = true,
-                  persist_size = true,
-                  persist_mode = true,
-                  direction = "horizontal",
-                  close_on_exit = true,
-                  shell = vim.o.shell,
-                  float_opts = {
-                    border = "curved",
-                    winblend = 3,
-                  },
-                }
-                -- Terminal mode: automatically enter terminal mode when opening/focusing
-                -- This provides a modeless experience - just start typing commands
-                vim.api.nvim_create_autocmd({'TermOpen', 'BufEnter', 'BufWinEnter'}, {
-                  pattern = 'term://*',
-                  callback = function()
-                    vim.fn.timer_start(50, function()
-                      if vim.bo.buftype == 'terminal' then
-                        vim.cmd('startinsert')
-                      end
-                    end)
-                  end,
-                })
-                -- Ctrl+Shift+` for floating terminal
-                vim.keymap.set({'n', 'i', 'v', 't'}, '<C-S-`>', '<cmd>ToggleTerm direction=float<cr>', { noremap = true, silent = true })
+                -- Terminal keybindings (Ctrl+` to toggle, like VSCode)
+                vim.keymap.set({'n', 'i', 'v', 't'}, '<C-`>', function()
+                  Snacks.terminal.toggle()
+                end, { noremap = true, silent = true, desc = 'Toggle terminal' })
+
+                vim.keymap.set({'n', 'i', 'v', 't'}, '<C-S-`>', function()
+                  Snacks.terminal.toggle(nil, { win = { position = 'float', border = 'rounded' } })
+                end, { noremap = true, silent = true, desc = 'Toggle floating terminal' })
 
                 -- LSP keybindings (CUA/VSCode-style)
                 vim.api.nvim_create_autocmd('LspAttach', {
@@ -1201,8 +1204,31 @@ in
                   end,
                 })
 
-                -- Git integration keybindings (VSCode-style)
-                vim.keymap.set({'n', 'i', 'v'}, '<C-S-g>', function() Snacks.picker.git_status() end, opts)  -- Git status
+                -- Lazygit (Ctrl+G - terminals can't distinguish Ctrl+G from Ctrl+Shift+G)
+                -- Override novim-mode's Ctrl+G (goto line) since we use Ctrl+L for goto line
+                -- Set after plugins load to ensure priority over novim-mode's binding
+                vim.api.nvim_create_autocmd('VimEnter', {
+                  callback = function()
+                    vim.keymap.set({'n', 'i', 'v', 's'}, '<C-g>', function()
+                      Snacks.lazygit()
+                    end, { noremap = true, silent = true, desc = 'Open Lazygit' })
+                  end,
+                })
+
+                -- Git browse (open in GitHub/GitLab)
+                vim.keymap.set({'n', 'i', 'v'}, '<M-S-g>', function()
+                  Snacks.gitbrowse()
+                end, { noremap = true, silent = true, desc = 'Open in GitHub' })
+
+                -- GitHub integration (requires gh CLI)
+                vim.keymap.set({'n', 'i', 'v'}, '<C-S-i>', function()
+                  Snacks.picker.gh_issues()
+                end, { noremap = true, silent = true, desc = 'GitHub Issues' })
+
+                vim.keymap.set({'n', 'i', 'v'}, '<C-S-r>', function()
+                  Snacks.picker.gh_prs()
+                end, { noremap = true, silent = true, desc = 'GitHub PRs' })
+
                  -- Command palette (VSCode-style Ctrl+Shift+P)
                  vim.keymap.set({'n', 'i', 'v'}, '<C-S-p>', function() Snacks.picker.commands() end, opts)
 
@@ -1260,7 +1286,7 @@ in
                     local path = node.path
                     local node_type = vim.uv.fs_stat(path).type
                     local dir = node_type == "directory" and path or vim.fn.fnamemodify(path, ":h")
-                    vim.cmd("ToggleTerm dir=" .. vim.fn.fnameescape(dir))
+                    Snacks.terminal.toggle(nil, { cwd = dir })
                   end
                 end
 
@@ -1323,7 +1349,13 @@ in
                   }},
                   { name = "separator" },
                   { name = "  Git", hl = "ExGreen", items = {
-                    { name = "Git Status", cmd = function() Snacks.picker.git_status() end, rtxt = "Ctrl+Shift+G" },
+                    { name = "Lazygit", cmd = function() Snacks.lazygit() end, rtxt = "Ctrl+G" },
+                    { name = "Git Status", cmd = function() Snacks.picker.git_status() end },
+                    { name = "Open in GitHub", cmd = function() Snacks.gitbrowse() end, rtxt = "Alt+Shift+G" },
+                    { name = "separator" },
+                    { name = "GitHub Issues", cmd = function() Snacks.picker.gh_issues() end, rtxt = "Ctrl+Shift+I" },
+                    { name = "GitHub PRs", cmd = function() Snacks.picker.gh_prs() end, rtxt = "Ctrl+Shift+R" },
+                    { name = "separator" },
                     { name = "Stage Hunk", cmd = function() require('gitsigns').stage_hunk() end },
                     { name = "Reset Hunk", cmd = function() require('gitsigns').reset_hunk() end },
                     { name = "Preview Hunk", cmd = function() require('gitsigns').preview_hunk() end },
@@ -1332,7 +1364,7 @@ in
                   { name = "separator" },
                   { name = "  View", hl = "ExYellow", items = {
                     { name = "Toggle File Tree", cmd = "Neotree toggle", rtxt = "Ctrl+B" },
-                    { name = "Toggle Terminal", cmd = "ToggleTerm", rtxt = "Ctrl+`" },
+                    { name = "Toggle Terminal", cmd = function() Snacks.terminal.toggle() end, rtxt = "Ctrl+`" },
                     { name = "separator" },
                     { name = "  Problems Panel", cmd = "Trouble diagnostics toggle", rtxt = "Ctrl+Shift+M" },
                     { name = "  Buffer Problems", cmd = "Trouble diagnostics_buffer toggle", rtxt = "Alt+M" },
