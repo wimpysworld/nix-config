@@ -132,9 +132,6 @@ in
         neo-tree-nvim
         nui-nvim # Required by neo-tree
         nvim-lsp-file-operations # LSP-aware file renames (updates imports)
-        telescope-nvim
-        telescope-fzf-native-nvim
-        telescope-ui-select-nvim
         plenary-nvim
         # Find and replace
         searchbox-nvim # Buffer find/replace with floating UI (uses nui-nvim)
@@ -242,7 +239,7 @@ in
                 --   Alt+O: Symbols outline | Alt+Shift+T: TODOs panel
                 --   F8: Next problem | Shift+F8: Previous problem
                 --   Alt+Shift+F12: LSP references | Alt+Shift+Q: Quickfix list
-                --   In Telescope: Ctrl+T sends results to Trouble
+                --   In Snacks picker: Ctrl+T sends results to Trouble
                 --
                 -- FIND AND REPLACE (CUA-style):
                 --   Ctrl+F: Find in buffer (floating) | Ctrl+H: Find/Replace in buffer
@@ -442,7 +439,7 @@ in
                   },
                   filetypes_denylist = { -- Don't illuminate in these filetypes
                     'neo-tree',
-                    'TelescopePrompt',
+                    'snacks_picker',
                     'toggleterm',
                   },
                 }
@@ -619,28 +616,6 @@ in
                     vim.cmd('stopinsert')            -- Ensure we're in normal mode
                   end,
                 })
-
-                -- Telescope fuzzy finder with extensions and Trouble integration
-                local telescope = require('telescope')
-                local trouble_telescope = require("trouble.sources.telescope")
-                telescope.setup {
-                  defaults = {
-                    mappings = {
-                      i = {
-                        ["<C-t>"] = trouble_telescope.open,
-                      },
-                      n = {
-                        ["<C-t>"] = trouble_telescope.open,
-                      },
-                    },
-                  },
-                  extensions = {
-                    fzf = { fuzzy = true, override_generic_sorter = true, override_file_sorter = true },
-                    ["ui-select"] = { require("telescope.themes").get_dropdown {} },
-                  },
-                }
-                telescope.load_extension('fzf')
-                telescope.load_extension('ui-select')
 
                 -- Fidget for LSP progress
                 require('fidget').setup {}
@@ -857,18 +832,18 @@ in
                       pick = function(cmd, opts)
                         opts = opts or {}
                         if cmd == "files" then
-                          require('telescope.builtin').find_files(opts)
+                          Snacks.picker.files(opts)
                         elseif cmd == "live_grep" then
-                          require('telescope.builtin').live_grep(opts)
+                          Snacks.picker.grep(opts)
                         elseif cmd == "oldfiles" then
-                          require('telescope.builtin').oldfiles(opts)
+                          Snacks.picker.recent(opts)
                         end
                       end,
 
                       keys = {
-                        { icon = "󰈞 ", key = "f", desc = "Find File", action = ":Telescope find_files" },
-                        { icon = " ", key = "r", desc = "Recent Files", action = ":Telescope oldfiles" },
-                        { icon = " ", key = "g", desc = "Find Text", action = ":Telescope live_grep" },
+                        { icon = "󰈞 ", key = "f", desc = "Find File", action = function() Snacks.picker.files() end },
+                        { icon = " ", key = "r", desc = "Recent Files", action = function() Snacks.picker.recent() end },
+                        { icon = " ", key = "g", desc = "Find Text", action = function() Snacks.picker.grep() end },
                         { icon = " ", key = "s", desc = "Restore Session", section = "session" },
                         { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
                         { icon = " ", key = "q", desc = "Quit", action = ":qa" },
@@ -952,13 +927,29 @@ in
                         align = "center",
                         padding = 1,
                       },
-                      { section = "startup" },
                     },
+                  },
+
+                  -- Picker: replaces Telescope for fuzzy finding
+                  picker = {
+                    enabled = true,
+                    ui_select = true,  -- Replaces telescope-ui-select
+                    sources = {
+                      files = { hidden = true },
+                      grep = { hidden = true },
+                    },
+                    win = {
+                      input = {
+                        keys = {
+                          ["<c-t>"] = { "trouble_open", mode = { "n", "i" } },
+                        },
+                      },
+                    },
+                    actions = require("trouble.sources.snacks").actions,
                   },
 
                   -- Disable features covered by other plugins
                   notifier = { enabled = false },
-                  picker = { enabled = false },
                   explorer = { enabled = false },
                   scroll = { enabled = false },
                   indent = { enabled = false },
@@ -1001,7 +992,7 @@ in
                     javascript = { "template_string" },
                     java = false,  -- Don't check treesitter on java
                   },
-                  disable_filetype = { "TelescopePrompt", "vim" },
+                  disable_filetype = { "snacks_picker", "vim" },
                   fast_wrap = {
                     map = "<M-e>",  -- Alt+e to wrap with pair
                     chars = { "{", "[", "(", '"', "'" },
@@ -1120,14 +1111,16 @@ in
                     vim.keymap.set({'n', 'i'}, '<F2>', vim.lsp.buf.rename, opts)                -- Rename symbol
                     vim.keymap.set({'n', 'i'}, '<C-k><C-i>', vim.lsp.buf.hover, opts)           -- Hover info
                     vim.keymap.set({'n', 'i'}, '<C-.>', vim.lsp.buf.code_action, opts)          -- Code actions
-                    vim.keymap.set({'n', 'i'}, '<C-S-o>', '<cmd>Telescope lsp_document_symbols<cr>', opts)  -- Document symbols
+                    vim.keymap.set({'n', 'i'}, '<C-S-o>', function() Snacks.picker.lsp_symbols() end, opts)  -- Document symbols
                   end,
                 })
 
                 -- Keybindings for plugins (CUA-friendly, work in all modes)
                 local opts = { noremap = true, silent = true }
                 -- Ctrl+P for file finder (all modes)
-                vim.keymap.set({'n', 'i', 'v'}, '<C-p>', '<cmd>Telescope find_files<cr>', opts)
+                vim.keymap.set({'n', 'i', 'v'}, '<C-p>', function() Snacks.picker.files() end, opts)
+                -- Alt+Home: Open dashboard
+                vim.keymap.set({'n', 'i', 'v'}, '<M-Home>', function() Snacks.dashboard() end, opts)
                 -- Ctrl+B to toggle file tree (all modes)
                 vim.keymap.set({'n', 'i', 'v'}, '<C-b>', '<cmd>Neotree toggle<cr>', opts)
                 -- Ctrl+E to focus file tree (all modes)
@@ -1146,9 +1139,9 @@ in
                   end)
                 end, opts)
                 -- Ctrl+Shift+F for grep/search in files
-                vim.keymap.set({'n', 'i', 'v'}, '<C-S-f>', '<cmd>Telescope live_grep<cr>', opts)
+                vim.keymap.set({'n', 'i', 'v'}, '<C-S-f>', function() Snacks.picker.grep() end, opts)
                 -- Todo comments navigation
-                vim.keymap.set({'n', 'i', 'v'}, '<C-S-t>', '<cmd>TodoTelescope<cr>', opts)  -- Search TODOs
+                vim.keymap.set({'n', 'i', 'v'}, '<C-S-t>', function() Snacks.picker.todo_comments() end, opts)  -- Search TODOs
                 -- Trouble diagnostics panel
                 vim.keymap.set({'n', 'i', 'v'}, '<C-S-m>', '<cmd>Trouble diagnostics toggle<cr>', opts)  -- Problems panel
                 -- Buffer diagnostics only (Alt+M)
@@ -1209,11 +1202,9 @@ in
                 })
 
                 -- Git integration keybindings (VSCode-style)
-                vim.keymap.set({'n', 'i', 'v'}, '<C-S-g>', '<cmd>Telescope git_status<cr>', opts)  -- Git status
+                vim.keymap.set({'n', 'i', 'v'}, '<C-S-g>', function() Snacks.picker.git_status() end, opts)  -- Git status
                  -- Command palette (VSCode-style Ctrl+Shift+P)
-                 vim.keymap.set('n', '<C-S-p>', '<cmd>Telescope commands<cr>', opts)
-                 vim.keymap.set('i', '<C-S-p>', '<cmd>Telescope commands<cr>', opts)
-                 vim.keymap.set('v', '<C-S-p>', '<cmd>Telescope commands<cr>', opts)
+                 vim.keymap.set({'n', 'i', 'v'}, '<C-S-p>', function() Snacks.picker.commands() end, opts)
 
                 -- Additional CUA keybindings (classic Windows/IBM style)
                 -- Tab/Shift+Tab to indent/dedent selection (VSCode-style)
@@ -1311,10 +1302,11 @@ in
                     { name = "Find in Buffer", cmd = function() require('searchbox').incsearch({ show_matches = '[{match}/{total}]' }) end, rtxt = "Ctrl+F" },
                     { name = "Find and Replace", cmd = function() require('searchbox').replace({ confirm = 'menu' }) end, rtxt = "Ctrl+H" },
                     { name = "separator" },
-                    { name = "Find in Files", cmd = "Telescope live_grep", rtxt = "Ctrl+Shift+F" },
-                    { name = "Find Files", cmd = "Telescope find_files", rtxt = "Ctrl+P" },
-                    { name = "Find TODOs", cmd = "TodoTelescope", rtxt = "Ctrl+Shift+T" },
-                    { name = "Find Symbols", cmd = "Telescope lsp_document_symbols", rtxt = "Ctrl+Shift+O" },
+                    { name = "Find in Files", cmd = function() Snacks.picker.grep() end, rtxt = "Ctrl+Shift+F" },
+                    { name = "Find Files", cmd = function() Snacks.picker.files() end, rtxt = "Ctrl+P" },
+                    { name = "separator" },
+                    { name = "Find TODOs", cmd = function() Snacks.picker.todo_comments() end, rtxt = "Ctrl+Shift+T" },
+                    { name = "Find Symbols", cmd = function() Snacks.picker.lsp_symbols() end, rtxt = "Ctrl+Shift+O" },
                   }},
                   { name = "separator" },
                   { name = "  LSP", hl = "ExBlue", items = {
@@ -1331,7 +1323,7 @@ in
                   }},
                   { name = "separator" },
                   { name = "  Git", hl = "ExGreen", items = {
-                    { name = "Git Status", cmd = "Telescope git_status", rtxt = "Ctrl+Shift+G" },
+                    { name = "Git Status", cmd = function() Snacks.picker.git_status() end, rtxt = "Ctrl+Shift+G" },
                     { name = "Stage Hunk", cmd = function() require('gitsigns').stage_hunk() end },
                     { name = "Reset Hunk", cmd = function() require('gitsigns').reset_hunk() end },
                     { name = "Preview Hunk", cmd = function() require('gitsigns').preview_hunk() end },
@@ -1350,7 +1342,7 @@ in
                     { name = "  Next Problem", cmd = function() require('trouble').next({ skip_groups = true, jump = true }) end, rtxt = "F8" },
                     { name = "  Previous Problem", cmd = function() require('trouble').prev({ skip_groups = true, jump = true }) end, rtxt = "Shift+F8" },
                     { name = "separator" },
-                    { name = "Command Palette", cmd = "Telescope commands", rtxt = "Ctrl+Shift+P" },
+                    { name = "Command Palette", cmd = function() Snacks.picker.commands() end, rtxt = "Ctrl+Shift+P" },
                   }},
                 }
 
@@ -1412,7 +1404,7 @@ in
                 end, opts)
 
                 -- Escape closes menu if open (works in all modes for novim-mode compatibility)
-                -- Note: Telescope and other floating pickers handle their own Escape bindings
+                -- Note: Snacks picker and other floating pickers handle their own Escape bindings
                 vim.keymap.set({ 'n', 'v', 's' }, '<Esc>', function()
                   if not close_menu() then
                     -- No menu was open, do normal escape behaviour
@@ -1556,16 +1548,16 @@ in
                         },
                       },
 
-                       -- Slash commands with Telescope integration
+                       -- Slash commands with Snacks picker integration
                        slash_commands = {
                          ['file'] = {
-                           opts = { provider = 'telescope' },
+                           opts = { provider = 'snacks' },
                          },
                          ['buffer'] = {
-                           opts = { provider = 'telescope' },
+                           opts = { provider = 'snacks' },
                          },
                          ['symbols'] = {
-                           opts = { provider = 'telescope' },
+                           opts = { provider = 'snacks' },
                          },
                        },
 
@@ -1718,9 +1710,9 @@ in
                       end,
                     },
 
-                    -- Action palette uses Telescope (Escape to close, better UX)
+                    -- Action palette uses Snacks picker (Escape to close, better UX)
                     action_palette = {
-                      provider = 'telescope',
+                      provider = 'snacks',
                       opts = {
                         show_preset_prompts = false,  -- Hide built-in prompts, use custom only
                       },
