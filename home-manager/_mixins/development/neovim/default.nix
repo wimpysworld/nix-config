@@ -234,6 +234,13 @@ in
         --   Ctrl+B: Toggle file tree | Ctrl+W: Close buffer
         --   Ctrl+`: Terminal | F12: Go to definition | F2: Rename
         --
+        -- TROUBLE DIAGNOSTICS (VSCode-style problem navigation):
+        --   Ctrl+Shift+M: Problems panel | Alt+M: Buffer problems only
+        --   Alt+O: Symbols outline | Alt+Shift+T: TODOs panel
+        --   F8: Next problem | Shift+F8: Previous problem
+        --   Alt+Shift+F12: LSP references | Alt+Shift+Q: Quickfix list
+        --   In Telescope: Ctrl+T sends results to Trouble
+        --
         -- NOTE: Some Ctrl+Shift combinations don't work reliably in terminals
         -- (terminals can't distinguish Ctrl+S from Ctrl+Shift+S). Alt-based
         -- alternatives are used where necessary.
@@ -594,16 +601,27 @@ in
         -- Keep neo-tree and menu in normal mode (prevent novim-mode from switching to insert)
         -- This ensures these UI elements remain navigable without mode interference
         vim.api.nvim_create_autocmd("FileType", {
-          pattern = { "neo-tree", "neo-tree-popup", "NvMenu", "VoltWindow" },
+          pattern = { "neo-tree", "neo-tree-popup", "NvMenu", "VoltWindow", "trouble" },
           callback = function()
             vim.b.novim_mode_disable = true  -- Disable novim-mode for this buffer
             vim.cmd('stopinsert')            -- Ensure we're in normal mode
           end,
         })
 
-        -- Telescope fuzzy finder with extensions
+        -- Telescope fuzzy finder with extensions and Trouble integration
         local telescope = require('telescope')
+        local trouble_telescope = require("trouble.sources.telescope")
         telescope.setup {
+          defaults = {
+            mappings = {
+              i = {
+                ["<C-t>"] = trouble_telescope.open,
+              },
+              n = {
+                ["<C-t>"] = trouble_telescope.open,
+              },
+            },
+          },
           extensions = {
             fzf = { fuzzy = true, override_generic_sorter = true, override_file_sorter = true },
             ["ui-select"] = { require("telescope.themes").get_dropdown {} },
@@ -703,8 +721,59 @@ in
           formatters_by_ft = {},
         }
 
-        -- Trouble for diagnostics
-        require('trouble').setup {}
+        -- Trouble for diagnostics, symbols, and unified problem views
+        require('trouble').setup {
+          focus = false,
+          follow = true,
+          auto_refresh = true,
+          preview = {
+            type = "main",
+            scratch = true,
+          },
+          win = {
+            position = "bottom",
+            size = { height = 10 },
+          },
+          keys = {
+            ["?"] = "help",
+            ["<F5>"] = "refresh",
+            ["<Esc>"] = "close",
+            ["q"] = "close",
+            ["<CR>"] = "jump_close",
+            ["<2-leftmouse>"] = "jump_close",
+            ["o"] = "jump",
+            ["<Down>"] = "next",
+            ["<Up>"] = "prev",
+            ["}"] = "next",
+            ["{"] = "prev",
+            ["<Tab>"] = "fold_toggle",
+            ["<S-Tab>"] = "fold_toggle_recursive",
+            ["+"] = "fold_open",
+            ["-"] = "fold_close",
+          },
+          modes = {
+            symbols = {
+              desc = "Document Symbols",
+              mode = "lsp_document_symbols",
+              focus = false,
+              win = {
+                position = "right",
+                size = { width = 0.25 },
+              },
+            },
+            diagnostics_buffer = {
+              mode = "diagnostics",
+              filter = { buf = 0 },
+            },
+            todo = {
+              mode = "todo",
+              win = {
+                position = "bottom",
+                size = { height = 10 },
+              },
+            },
+          },
+        }
 
         -- Auto-trim trailing whitespace on save
         require('trim').setup {
@@ -876,6 +945,23 @@ in
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-t>', '<cmd>TodoTelescope<cr>', opts)  -- Search TODOs
         -- Trouble diagnostics panel
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-m>', '<cmd>Trouble diagnostics toggle<cr>', opts)  -- Problems panel
+        -- Buffer diagnostics only (Alt+M)
+        vim.keymap.set({'n', 'i', 'v'}, '<M-m>', '<cmd>Trouble diagnostics_buffer toggle<cr>', opts)
+        -- Symbols/Outline panel (Alt+O)
+        vim.keymap.set({'n', 'i', 'v'}, '<M-o>', '<cmd>Trouble symbols toggle<cr>', opts)
+        -- Todo comments panel (Alt+Shift+T to avoid conflict with CodeCompanion Alt+T)
+        vim.keymap.set({'n', 'i', 'v'}, '<M-S-t>', '<cmd>Trouble todo toggle<cr>', opts)
+        -- Navigate problems: F8/Shift+F8 (VSCode standard)
+        vim.keymap.set({'n', 'i', 'v'}, '<F8>', function()
+          require('trouble').next({ skip_groups = true, jump = true })
+        end, opts)
+        vim.keymap.set({'n', 'i', 'v'}, '<S-F8>', function()
+          require('trouble').prev({ skip_groups = true, jump = true })
+        end, opts)
+        -- LSP references in Trouble (Alt+Shift+F12)
+        vim.keymap.set({'n', 'i', 'v'}, '<M-S-F12>', '<cmd>Trouble lsp_references toggle<cr>', opts)
+        -- Quickfix list in Trouble (Alt+Shift+Q)
+        vim.keymap.set({'n', 'i', 'v'}, '<M-S-q>', '<cmd>Trouble qflist toggle<cr>', opts)
         -- Git integration keybindings (VSCode-style)
         vim.keymap.set({'n', 'i', 'v'}, '<C-S-g>', '<cmd>Telescope git_status<cr>', opts)  -- Git status
          -- Command palette (VSCode-style Ctrl+Shift+P)
@@ -1006,7 +1092,15 @@ in
           { name = "  View", hl = "ExYellow", items = {
             { name = "Toggle File Tree", cmd = "Neotree toggle", rtxt = "Ctrl+B" },
             { name = "Toggle Terminal", cmd = "ToggleTerm", rtxt = "Ctrl+`" },
-            { name = "Problems Panel", cmd = "Trouble diagnostics toggle", rtxt = "Ctrl+Shift+M" },
+            { name = "separator" },
+            { name = "  Problems Panel", cmd = "Trouble diagnostics toggle", rtxt = "Ctrl+Shift+M" },
+            { name = "  Buffer Problems", cmd = "Trouble diagnostics_buffer toggle", rtxt = "Alt+M" },
+            { name = "  Symbols Outline", cmd = "Trouble symbols toggle", rtxt = "Alt+O" },
+            { name = "  TODOs", cmd = "Trouble todo toggle", rtxt = "Alt+Shift+T" },
+            { name = "separator" },
+            { name = "  Next Problem", cmd = function() require('trouble').next({ skip_groups = true, jump = true }) end, rtxt = "F8" },
+            { name = "  Previous Problem", cmd = function() require('trouble').prev({ skip_groups = true, jump = true }) end, rtxt = "Shift+F8" },
+            { name = "separator" },
             { name = "Command Palette", cmd = "Telescope commands", rtxt = "Ctrl+Shift+P" },
           }},
         }
