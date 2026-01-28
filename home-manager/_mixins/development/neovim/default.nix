@@ -696,12 +696,9 @@ in
           },
         }
 
-        -- Conform for formatting
+        -- Conform for formatting (manual only, format-on-save disabled)
         require('conform').setup {
-          format_on_save = {
-            timeout_ms = 500,
-            lsp_fallback = true,
-          },
+          format_on_save = false,
           -- Formatters configured per-language in ecosystem configs
           formatters_by_ft = {},
         }
