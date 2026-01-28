@@ -147,7 +147,6 @@ in
         direnv-vim
         # Tab bar and buffer management
         bufferline-nvim
-        bufdelete-nvim
         # LSP support
         nvim-lspconfig
         fidget-nvim
@@ -586,9 +585,9 @@ in
                     diagnostics = "nvim_lsp",
                     themable = true,
                     always_show_bufferline = true,
-                    -- Use bufdelete for cleaner buffer closing (fixes offset issues)
-                    close_command = function(bufnr) require('bufdelete').bufdelete(bufnr, true) end,
-                    right_mouse_command = function(bufnr) require('bufdelete').bufdelete(bufnr, true) end,
+                    -- Use Snacks.bufdelete for cleaner buffer closing (fixes offset issues)
+                    close_command = function(bufnr) Snacks.bufdelete(bufnr) end,
+                    right_mouse_command = function(bufnr) Snacks.bufdelete(bufnr) end,
                     offsets = {
                       {
                         filetype = "neo-tree",
@@ -1136,8 +1135,8 @@ in
                 -- Tab switching (Ctrl+Tab / Ctrl+Shift+Tab)
                 vim.keymap.set({'n', 'i', 'v'}, '<C-Tab>', '<cmd>BufferLineCycleNext<cr>', opts)
                 vim.keymap.set({'n', 'i', 'v'}, '<C-S-Tab>', '<cmd>BufferLineCyclePrev<cr>', opts)
-                -- Ctrl+W to close current buffer (using bufdelete for clean closure)
-                vim.keymap.set({'n', 'i', 'v'}, '<C-w>', '<cmd>Bdelete<cr>', opts)
+                -- Ctrl+W to close current buffer (using Snacks.bufdelete for clean closure)
+                vim.keymap.set({'n', 'i', 'v'}, '<C-w>', function() Snacks.bufdelete() end, opts)
                 -- Alt+S for "Save As" (Ctrl+Shift+S doesn't work reliably in terminals)
                 vim.keymap.set({'n', 'i', 'v', 's'}, '<M-s>', function()
                   vim.ui.input({ prompt = "Save as: ", default = vim.fn.expand("%:p") }, function(input)
