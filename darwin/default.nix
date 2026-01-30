@@ -77,7 +77,8 @@
   };
 
   # Determinate Nix darwin module configuration
-  determinate-nix = {
+  determinateNix = {
+    enable = true;
     customSettings = {
       experimental-features = "nix-command flakes";
       extra-experimental-features = "parallel-eval";
@@ -98,10 +99,7 @@
         # Workaround for https://github.com/NixOS/nix/issues/9574
         nix-path = config.nix.nixPath;
       };
-      # Determinate uses its own daemon to manage the Nix installation that
-      # conflicts with nix-darwin’s native Nix management.
-      enable = false;
-      # Disable channels
+      # Disable channels (nix.enable handled by determinateNix module)
       channel.enable = false;
       # Make flake registry and nix path match flake inputs
       registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
