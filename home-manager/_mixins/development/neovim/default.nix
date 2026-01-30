@@ -719,6 +719,14 @@ in
                       winhighlight = 'Normal:Normal,FloatBorder:FloatBorder',
                     },
                   },
+                  hooks = {
+                    after_mount = function(input)
+                      local opts = {buffer = input.bufnr}
+                      -- Navigate matches with Up/Down arrows
+                      vim.keymap.set('i', '<Down>', '<Plug>(searchbox-next-match)', opts)
+                      vim.keymap.set('i', '<Up>', '<Plug>(searchbox-prev-match)', opts)
+                    end,
+                  },
                 }
 
                 -- =============================================================================
