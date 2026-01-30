@@ -95,6 +95,23 @@ let
       license = lib.licenses.mit;
     };
   };
+
+  # Fetch nvim-scrollbar from upstream (not in nixpkgs)
+  nvim-scrollbar = pkgs.vimUtils.buildVimPlugin {
+    pname = "nvim-scrollbar";
+    version = "unstable-2025-11-17";
+    src = pkgs.fetchFromGitHub {
+      owner = "petertriho";
+      repo = "nvim-scrollbar";
+      rev = "f8e87b96cd6362ef8579be456afee3b38fd7e2a8";
+      sha256 = "sha256-g+gJp7noNdLKfvp+QbnTFE++PI3FcJG7reDenkg15k0=";
+    };
+    meta = {
+      homepage = "https://github.com/petertriho/nvim-scrollbar";
+      description = "Extensible Neovim Scrollbar";
+      license = lib.licenses.mit;
+    };
+  };
 in
 {
   catppuccin.nvim = {
@@ -121,6 +138,7 @@ in
         lualine-nvim
         rainbow-delimiters-nvim
         virt-column-nvim
+        nvim-scrollbar
         # Context menus (right-click menus)
         nvzone-volt # Required by nvzone-menu
         nvzone-menu
@@ -938,7 +956,7 @@ in
                       only_current = true,
                       priority = 200,
                       hl = "SnacksIndentChunk",
-                      char = { corner_top = "╭", corner_bottom = "╰", horizontal = "─", vertical = "│", arrow = ">" },
+                      char = { corner_top = "╭", corner_bottom = "╰", horizontal = "─", vertical = "│", arrow = "🢒" },
                     },
                   },
 
@@ -1024,6 +1042,124 @@ in
                     vim.notify('Dim enabled', vim.log.levels.INFO)
                   end
                 end, { desc = 'Toggle dim/focus mode' })
+
+                -- Scrollbar with Catppuccin colors and gitsigns integration
+                -- Renders on the right edge (separate from snacks.statuscolumn on the left)
+                require('scrollbar').setup {
+                  show = true,
+                  show_in_active_only = false,
+                  set_highlights = true,
+                  folds = 1000, -- handle folds, large value means only show for unfolded regions
+                  max_lines = false, -- disable for large files
+                  hide_if_all_visible = false, -- hide if nothing to scroll
+                  throttle_ms = 100,
+                  handle = {
+                    text = ' ',
+                    blend = 50,
+                    color = '${catppuccinPalette.getColor "surface1"}',
+                    highlight = 'Visual',
+                    hide_if_all_visible = true, -- hides handle if all lines are visible
+                  },
+                  marks = {
+                     Cursor = {
+                       text = '⌖',
+                       priority = 0,
+                       color = '${catppuccinPalette.getColor "blue"}',
+                       highlight = 'Normal',
+                     },
+                    Search = {
+                      text = { '┈', '┉' },
+                      priority = 1,
+                      color = '${catppuccinPalette.getColor "peach"}',
+                      highlight = 'Search',
+                    },
+                    Error = {
+                      text = { '✗', '✘' },
+                      priority = 2,
+                      color = '${catppuccinPalette.getColor "red"}',
+                      highlight = 'DiagnosticError',
+                    },
+                     Warn = {
+                       text = { '△', '▲' },
+                       priority = 3,
+                       color = '${catppuccinPalette.getColor "yellow"}',
+                       highlight = 'DiagnosticWarn',
+                     },
+                    Info = {
+                      text = { '○', '●' },
+                      priority = 4,
+                      color = '${catppuccinPalette.getColor "sky"}',
+                      highlight = 'DiagnosticInfo',
+                    },
+                     Hint = {
+                       text = { '◇', '◆' },
+                       priority = 5,
+                       color = '${catppuccinPalette.getColor "teal"}',
+                       highlight = 'DiagnosticHint',
+                     },
+                    GitAdd = {
+                      text = '┃',
+                      priority = 7,
+                      color = '${catppuccinPalette.getColor "green"}',
+                      highlight = 'GitSignsAdd',
+                    },
+                    GitChange = {
+                      text = '┋',
+                      priority = 7,
+                      color = '${catppuccinPalette.getColor "yellow"}',
+                      highlight = 'GitSignsChange',
+                    },
+                    GitDelete = {
+                      text = '┃' ,
+                      priority = 7,
+                      color = '${catppuccinPalette.getColor "red"}',
+                      highlight = 'GitSignsDelete',
+                    },
+                  },
+                  excluded_buftypes = {
+                    'terminal',
+                  },
+                  excluded_filetypes = {
+                    'prompt',
+                    'TelescopePrompt',
+                    'noice',
+                    'snacks_picker',
+                    'snacks_dashboard',
+                    'snacks_input',
+                    'neo-tree',
+                    'neo-tree-popup',
+                    'trouble',
+                    'codecompanion',
+                  },
+                  autocmd = {
+                    render = {
+                      'BufWinEnter',
+                      'TabEnter',
+                      'TermEnter',
+                      'WinEnter',
+                      'CmdwinLeave',
+                      'TextChanged',
+                      'VimResized',
+                      'WinScrolled',
+                    },
+                    clear = {
+                      'BufWinLeave',
+                      'TabLeave',
+                      'TermLeave',
+                      'WinLeave',
+                    },
+                  },
+                  handlers = {
+                    cursor = true,
+                    diagnostic = true,
+                    gitsigns = true, -- requires gitsigns
+                    handle = true,
+                    search = false, -- disabled (user doesn't have nvim-hlslens)
+                  },
+                }
+
+                -- Gitsigns integration for scrollbar
+                require('scrollbar.handlers.gitsigns').setup()
 
                 -- LSP Progress notifications (replaces fidget)
                 local lsp_progress = vim.defaulttable()
