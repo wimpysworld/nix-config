@@ -35,46 +35,6 @@ let
     };
   };
 
-  # Fetch nvzone/volt (dependency for nvzone/menu)
-  nvzone-volt = pkgs.vimUtils.buildVimPlugin {
-    pname = "volt";
-    version = "unstable-2025-01-11";
-    src = pkgs.fetchFromGitHub {
-      owner = "nvzone";
-      repo = "volt";
-      rev = "620de1321f275ec9d80028c68d1b88b409c0c8b1";
-      sha256 = "sha256-5Xao1+QXZOvqwCXL6zWpckJPO1LDb8I7wtikMRFQ3Jk=";
-    };
-    meta = {
-      homepage = "https://github.com/nvzone/volt";
-      description = "Volt is a reactive UI library for Neovim";
-      license = lib.licenses.gpl3Only;
-    };
-  };
-
-  # Fetch nvzone/menu for context menus
-  nvzone-menu = pkgs.vimUtils.buildVimPlugin {
-    pname = "menu";
-    version = "unstable-2025-01-11";
-    src = pkgs.fetchFromGitHub {
-      owner = "nvzone";
-      repo = "menu";
-      rev = "7a0a4a2896b715c066cfbe320bdc048091874cc6";
-      sha256 = "sha256-4GfQ6Mo32rsoQAXKZF9Bpnm/sms2hfbrTldpLp5ySoY=";
-    };
-    # Skip require check - plugin has runtime dependencies (volt, neo-tree, nvim-tree)
-    nvimSkipModule = [
-      "menu"
-      "menus.neo-tree"
-      "menus.nvimtree"
-    ];
-    meta = {
-      homepage = "https://github.com/nvzone/menu";
-      description = "Menu plugin for Neovim with nested menu support";
-      license = lib.licenses.gpl3Only;
-    };
-  };
-
   # Fetch codecompanion.nvim from upstream (nixpkgs version lags behind significantly)
   # v18.x introduced breaking changes: strategies→interactions, adapters→adapters.http
   codecompanion-nvim = pkgs.vimUtils.buildVimPlugin {
@@ -139,16 +99,9 @@ in
         rainbow-delimiters-nvim
         virt-column-nvim
         nvim-scrollbar
-        # Context menus (right-click menus)
-        nvzone-volt # Required by nvzone-menu
-        nvzone-menu
-        # File management
-        neo-tree-nvim
-        nui-nvim # Required by neo-tree
-        nvim-lsp-file-operations # LSP-aware file renames (updates imports)
         plenary-nvim
         # Find and replace
-        searchbox-nvim # Buffer find/replace with floating UI (uses nui-nvim)
+        searchbox-nvim # Buffer find/replace with floating UI
         # Quality-of-life enhancements
         snacks-nvim # Dashboard, input replacement, bigfile protection
 
@@ -380,134 +333,6 @@ in
                   highlight = 'NonText', -- Use faint NonText highlight (very subtle)
                 }
 
-                -- File tree (neo-tree: more features, better session handling)
-                require('neo-tree').setup {
-                  close_if_last_window = true,     -- Close neo-tree if it's the last window
-                  popup_border_style = "rounded",
-                  enable_git_status = true,
-                  enable_diagnostics = true,
-                  sort_case_insensitive = true,
-                  default_component_configs = {
-                    container = {
-                      enable_character_fade = true,
-                    },
-                    indent = {
-                      indent_size = 2,
-                      padding = 1, -- extra padding on left hand side
-                      -- indent guides
-                      with_markers = true,
-                      indent_marker = "│",
-                      last_indent_marker = "└",
-                      highlight = "NeoTreeIndentMarker",
-                      -- expander config, needed for nesting files
-                      with_expanders = nil, -- if nil and file nesting is enabled, will enable expanders
-                      expander_collapsed = "",
-                      expander_expanded = "",
-                      expander_highlight = "NeoTreeExpander",
-                    },
-                    icon = {
-                      folder_closed = "",
-                      folder_open = "",
-                      folder_empty = "󰜌",
-                      provider = function(icon, node, state) -- default icon provider utilizes nvim-web-devicons if available
-                        if node.type == "file" or node.type == "terminal" then
-                          local success, web_devicons = pcall(require, "nvim-web-devicons")
-                          local name = node.type == "terminal" and "terminal" or node.name
-                          if success then
-                            local devicon, hl = web_devicons.get_icon(name)
-                            icon.text = devicon or icon.text
-                            icon.highlight = hl or icon.highlight
-                          end
-                        end
-                      end,
-                      -- The next two settings are only a fallback, if you use nvim-web-devicons and configure default icons there
-                      -- then these will never be used.
-                      default = "*",
-                      highlight = "NeoTreeFileIcon",
-                      use_filtered_colors = true, -- Whether to use a different highlight when the file is filtered (hidden, dotfile, etc.).
-                    },
-                    modified = {
-                      symbol = "[+]",
-                      highlight = "NeoTreeModified",
-                    },
-                    name = {
-                      trailing_slash = false,
-                      use_filtered_colors = true, -- Whether to use a different highlight when the file is filtered (hidden, dotfile, etc.).
-                      use_git_status_colors = true,
-                      highlight = "NeoTreeFileName",
-                    },
-                    git_status = {
-                      symbols = {
-                        -- Change type
-                        added = "", -- or "✚"
-                        modified = "", -- or ""
-                        deleted = "✖", -- this can only be used in the git_status source
-                        renamed = "󰁕", -- this can only be used in the git_status source
-                        -- Status type
-                        untracked = "",
-                        ignored = "",
-                        unstaged = "󰄱",
-                        staged = "",
-                        conflict = "",
-                      },
-                    },
-                  },
-                  window = {
-                    position = "left",
-                    width = 30,
-                    mappings = {
-                      -- CUA-friendly mappings (avoid single-letter vim bindings)
-                      ["<CR>"] = "open",
-                      ["<2-LeftMouse>"] = "open",
-                      ["<F2>"] = "rename",
-                      ["<Del>"] = "delete",
-                      ["<F5>"] = "refresh",
-                      -- Keep some useful defaults
-                      ["a"] = "add",               -- Add file/directory
-                      ["d"] = "delete",
-                      ["r"] = "rename",
-                      ["y"] = "copy_to_clipboard",
-                      ["x"] = "cut_to_clipboard",
-                      ["p"] = "paste_from_clipboard",
-                      ["c"] = "copy",              -- Copy to location
-                      ["m"] = "move",              -- Move to location
-                      ["q"] = "close_window",
-                      ["R"] = "refresh",
-                      ["?"] = "show_help",
-                      ["<"] = "prev_source",
-                      [">"] = "next_source",
-                      ["/"] = "fuzzy_finder",      -- Built-in fuzzy finder
-                      ["H"] = "toggle_hidden",
-                      ["o"] = "open",
-                      ["s"] = "open_vsplit",
-                      ["S"] = "open_split",
-                      ["t"] = "open_tabnew",
-                    },
-                  },
-                  filesystem = {
-                    filtered_items = {
-                      visible = false,             -- Hide hidden files by default
-                      hide_dotfiles = false,       -- But don't hide dotfiles
-                      hide_gitignored = true,      -- Hide gitignored files
-                      hide_by_name = {
-                        ".git",
-                        "node_modules",
-                        "__pycache__",
-                      },
-                    },
-                    follow_current_file = {
-                      enabled = true,              -- Auto-reveal current file
-                      leave_dirs_open = true,      -- Keep parent dirs open
-                    },
-                    use_libuv_file_watcher = true, -- Auto-refresh on file changes
-                  },
-                  buffers = {
-                    follow_current_file = {
-                      enabled = true,
-                    },
-                  },
-                }
-
                 -- Bufferline tab bar
                 require('bufferline').setup {
                   options = {
@@ -523,38 +348,34 @@ in
                     right_mouse_command = function(bufnr) Snacks.bufdelete(bufnr) end,
                     offsets = {
                       {
-                        filetype = "neo-tree",
-                        text = "",
+                        filetype = "snacks_picker_list",
+                        text = "📁 Explorer",
+                        text_align = "left",
                         separator = true,
                       },
                     },
                   },
                 }
-                -- Open tree on startup (but not if dashboard is shown)
-                vim.api.nvim_create_autocmd("VimEnter", {
-                  callback = function()
-                    -- Skip if dashboard is visible or no file opened
-                    local ft = vim.bo.filetype
-                    if ft == "snacks_dashboard" then
-                      return
-                    end
-                    vim.cmd('Neotree show')
-                    vim.cmd('wincmd l')
-                  end
-                })
-
-                -- Keep neo-tree and menu in normal mode (prevent novim-mode from switching to insert)
-                -- This ensures these UI elements remain navigable without mode interference
+                -- Keep certain UI elements in normal mode (disable novim-mode interference)
+                -- CRITICAL: snacks_picker_list must be included otherwise novim-mode
+                -- intercepts keys before Snacks explorer can process them
                 vim.api.nvim_create_autocmd("FileType", {
-                  pattern = { "neo-tree", "neo-tree-popup", "NvMenu", "VoltWindow", "trouble", "snacks_dashboard", "snacks_input" },
+                  pattern = {
+                    "trouble",
+                    "snacks_dashboard",
+                    "snacks_input",
+                    "snacks_picker_list",   -- Explorer and all pickers
+                    "snacks_picker_input",  -- Picker input field
+                    "snacks_picker_preview", -- Picker preview
+                  },
                   callback = function()
-                    vim.b.novim_mode_disable = true  -- Disable novim-mode for this buffer
-                    vim.cmd('stopinsert')            -- Ensure we're in normal mode
+                    vim.b.novim_mode_disable = true
+                    -- Don't stop insert for picker input - we want to type there immediately
+                    if vim.bo.filetype ~= "snacks_picker_input" then
+                      vim.cmd('stopinsert')
+                    end
                   end,
                 })
-
-                -- LSP file operations (updates imports when renaming files in neo-tree)
-                require('lsp-file-operations').setup {}
 
                 -- Treesitter configuration
                 require('nvim-treesitter.configs').setup {
@@ -875,18 +696,136 @@ in
                   picker = {
                     enabled = true,
                     ui_select = true,  -- Replaces telescope-ui-select
-                    sources = {
-                      files = { hidden = true },
-                      grep = { hidden = true },
+                  sources = {
+                    files = { hidden = true },
+                    grep = { hidden = true },
+                    explorer = {
+                      focus = "input",  -- Focus search input instead of file list
+                      on_show = function(picker)
+                        vim.defer_fn(function()
+                          vim.cmd("startinsert")
+                        end, 1)
+                      end,
+                      follow_file = true,
+                      auto_close = false,
+                      jump = { close = false },
+                      win = {
+                        input = {
+                          keys = {
+                            -- Navigate matches while staying in search input
+                            ["<Up>"] = { "list_up", mode = { "i", "n" } },
+                            ["<Down>"] = { "list_down", mode = { "i", "n" } },
+                            -- Fast navigation with PageUp/PageDown
+                            ["<PageUp>"] = { "page_up", mode = { "i", "n" } },
+                            ["<PageDown>"] = { "page_down", mode = { "i", "n" } },
+                            -- Escape clears search filter; use / to toggle focus back to list
+                            ["<Esc>"] = { "clear_filter", mode = { "i", "n" } },
+                            -- Ctrl+B closes explorer (consistent with global toggle)
+                            ["<c-b>"] = { "cancel", mode = { "i", "n" } },
+                            -- Disable Vim-style navigation in input (allows typing j/k)
+                            ["j"] = "<Nop>",
+                            ["k"] = "<Nop>",
+                          },
+                        },
+                        list = {
+                          keys = {
+                            -- CUA-style navigation (mode "n" for normal mode in picker)
+                            ["<Up>"] = "list_up",
+                            ["<Down>"] = "list_down",
+                            -- PageUp/PageDown: use custom actions that scroll by 80% of window
+                            -- height, which works better than list_scroll_up/down for small windows
+                            ["<PageUp>"] = "page_up",
+                            ["<PageDown>"] = "page_down",
+                            ["<Left>"] = "explorer_close",
+                            ["<Right>"] = "confirm",
+                            ["<CR>"] = "confirm",           -- Enter to open
+                            ["<2-LeftMouse>"] = "confirm",  -- Double-click to open
+
+                            -- CUA-style file operations
+                            ["<F2>"] = "explorer_rename",   -- Rename
+                            ["<Delete>"] = "explorer_del",  -- Delete
+                            ["<F5>"] = "explorer_update",   -- Refresh
+                            ["a"] = "explorer_add",         -- Add file/directory
+                            ["c"] = "explorer_copy",        -- Copy
+                            ["x"] = "explorer_move",        -- Cut
+                            ["p"] = "explorer_paste",       -- Paste
+                            ["y"] = "explorer_yank",        -- Yank path
+                            ["h"] = "toggle_hidden",        -- Toggle hidden files
+                            ["/"] = "filter",               -- Filter/fuzzy find
+
+                            -- Disable Vim-style navigation (using CUA arrow keys only)
+                            ["j"] = "<Nop>",
+                            ["k"] = "<Nop>",
+                            ["gg"] = "<Nop>",
+                            ["G"] = "<Nop>",
+                            ["i"] = "<Nop>",
+                            ["l"] = "<Nop>",
+
+                            -- Selection
+                            ["<Space>"] = "toggle_select",
+                            ["<Tab>"] = "select_and_next",
+
+                            -- Close explorer (cancel restores focus to main window)
+                            ["q"] = "cancel",
+                            ["<Esc>"] = "cancel",
+                            -- Ctrl+B toggle: close explorer when focused (mirror of global Ctrl+B)
+                            ["<c-b>"] = "cancel",
+                            -- Ctrl+Q: close explorer AND quit Neovim (single-press quit)
+                            -- Uses custom action that handles unsaved buffers gracefully
+                            ["<C-q>"] = "close_and_quit",
+                          },
+                        },
+                      },
                     },
+                  },
                     win = {
                       input = {
                         keys = {
                           ["<c-t>"] = { "trouble_open", mode = { "n", "i" } },
                         },
                       },
+                      list = {
+                        keys = {
+                          -- Disable default preview_scroll_up to allow explorer Ctrl+B toggle
+                          ["<c-b>"] = false,
+                        },
+                      },
                     },
-                    actions = require("trouble.sources.snacks").actions,
+                    -- Custom actions for CUA-style behaviour
+                    -- Merged with Trouble actions for Ctrl+T integration
+                    actions = vim.tbl_extend("force", require("trouble.sources.snacks").actions, {
+                      -- Clear filter text (for Escape in search input)
+                      clear_filter = function(picker)
+                        -- Clear the input line using Vim's native <C-u>
+                        local keys = vim.api.nvim_replace_termcodes("<C-u>", true, true, true)
+                        vim.api.nvim_feedkeys(keys, "n", false)
+                      end,
+                      -- Page scrolling with fixed amounts (independent of vim.wo.scroll)
+                      -- This fixes PageUp/PageDown in small windows like explorer sidebar
+                      page_down = function(picker)
+                        local height = picker.list.state.height or 20
+                        picker.list:scroll(math.max(1, math.floor(height * 0.8)))
+                      end,
+                      page_up = function(picker)
+                        local height = picker.list.state.height or 20
+                        picker.list:scroll(-math.max(1, math.floor(height * 0.8)))
+                      end,
+                      -- Close explorer and quit Neovim (for Ctrl+Q single-press quit)
+                      close_and_quit = function(picker)
+                        picker:close()
+                        vim.schedule(function()
+                          -- Only quit if no unsaved buffers
+                          local modified = vim.tbl_filter(function(buf)
+                            return vim.bo[buf].modified
+                          end, vim.api.nvim_list_bufs())
+                          if #modified > 0 then
+                            vim.cmd('confirm qa')
+                          else
+                            vim.cmd('qa')
+                          end
+                        end)
+                      end,
+                    }),
                   },
 
                   -- Terminal (replaces toggleterm.nvim)
@@ -1031,8 +970,20 @@ in
                     icons = { math = " ", chart = " ", image = " " },
                   },
 
-                  -- Disable features covered by other plugins
-                  explorer = { enabled = false },
+                  -- File explorer with CUA-style keybindings
+                  -- NOTE: Explorer is a picker in disguise. Key actions:
+                  --   - close: closes picker only
+                  --   - cancel: closes picker and restores focus to main window
+                  --   - page_up/page_down: custom actions that scroll by 80% of window height
+                  --   - close_and_quit: closes explorer then quits Neovim
+                  --   - list_up/down: move cursor by one item
+                  -- IMPORTANT: novim-mode must be disabled for snacks_picker_list filetype
+                  -- (see FileType autocmd above) otherwise keys are intercepted before
+                  -- Snacks can process them.
+                  -- Keybindings are configured in picker.sources.explorer above.
+                  explorer = {
+                    enabled = true,
+                  },
                   scope = { enabled = false },
                   animate = { enabled = false },
                 }
@@ -1134,8 +1085,7 @@ in
                     'snacks_picker',
                     'snacks_dashboard',
                     'snacks_input',
-                    'neo-tree',
-                    'neo-tree-popup',
+                    'snacks_picker_list',
                     'trouble',
                     'codecompanion',
                   },
@@ -1306,6 +1256,7 @@ in
                 }
 
                 -- Auto-session: automatically save and restore sessions per directory
+                -- Explorer state is handled by session save/restore; no manual opening needed
                 require('auto-session').setup {
                   enabled = true,                -- Enable auto-session
                   auto_restore = true,           -- Restore session when opening Neovim in a directory
@@ -1317,13 +1268,19 @@ in
                     '~/tmp',
                     '/tmp',
                   },
-                  -- Close neo-tree before saving session (it doesn't restore well)
-                  pre_save_cmds = { 'Neotree close' },
-                  -- Reopen neo-tree after restoring session
-                  post_restore_cmds = {
+                  -- Don't save explorer windows in session (avoids restoration conflicts)
+                  bypass_save_filetypes = { 'snacks_picker_list', 'snacks_dashboard' },
+                  -- Close explorer before saving session to prevent stale state
+                  pre_save_cmds = {
                     function()
-                      vim.cmd('Neotree show')
-                      vim.cmd('wincmd l')
+                      -- Close any open Snacks picker/explorer windows before save
+                      for _, win in ipairs(vim.api.nvim_list_wins()) do
+                        local buf = vim.api.nvim_win_get_buf(win)
+                        local ft = vim.bo[buf].filetype
+                        if ft:match("^snacks_picker") or ft == "snacks_dashboard" then
+                          pcall(vim.api.nvim_win_close, win, true)
+                        end
+                      end
                     end,
                   },
                 }
@@ -1358,10 +1315,19 @@ in
                 vim.keymap.set({'n', 'i', 'v'}, '<C-p>', function() Snacks.picker.files() end, opts)
                 -- Alt+Home: Open dashboard
                 vim.keymap.set({'n', 'i', 'v'}, '<M-Home>', function() Snacks.dashboard() end, opts)
-                -- Ctrl+B to toggle file tree (all modes)
-                vim.keymap.set({'n', 'i', 'v'}, '<C-b>', '<cmd>Neotree toggle<cr>', opts)
-                -- Ctrl+E to focus file tree (all modes)
-                vim.keymap.set({'n', 'i', 'v'}, '<C-e>', '<cmd>Neotree focus<cr>', opts)
+                -- Toggle file explorer (Ctrl+B for CUA familiarity)
+                -- Close explorer if focused, otherwise toggle it open
+                vim.keymap.set({'n', 'i', 'v'}, '<C-b>', function()
+                  local ft = vim.bo.filetype
+                  if ft == 'snacks_picker_list' or ft == 'snacks_picker_input' or ft == 'snacks_picker_preview' then
+                    -- In explorer: use same action as Esc (cancel = close and restore focus)
+                    local picker = Snacks.picker.get()[1]
+                    if picker then picker:close() end
+                  else
+                    -- Not in explorer: toggle it
+                    Snacks.explorer()
+                  end
+                end, { desc = 'Toggle file explorer' })
                 -- Tab switching (Ctrl+Tab / Ctrl+Shift+Tab)
                 vim.keymap.set({'n', 'i', 'v'}, '<C-Tab>', '<cmd>BufferLineCycleNext<cr>', opts)
                 vim.keymap.set({'n', 'i', 'v'}, '<C-S-Tab>', '<cmd>BufferLineCyclePrev<cr>', opts)
@@ -1485,218 +1451,6 @@ in
                 -- Shift+Ins to paste from system clipboard (like Ctrl+V)
                 -- Call the same novim_mode#Paste() function that Ctrl+V uses
                 vim.keymap.set({'n', 'i', 'v', 's'}, '<S-Ins>', '<C-O>:call novim_mode#Paste()<CR>', opts)
-
-                -- Context menu (nvzone/menu) - CUA-friendly right-click menus
-
-                -- Neo-tree file explorer menu (CUA-friendly keybinds)
-                local neotree_manager = require "neo-tree.sources.manager"
-                local neotree_cc = require "neo-tree.sources.common.commands"
-
-                local function get_neotree_state()
-                  local state = neotree_manager.get_state_for_window()
-                  assert(state)
-                  state.config = state.config or {}
-                  return state
-                end
-
-                local function neotree_call(what)
-                  return vim.schedule_wrap(function()
-                    local state = get_neotree_state()
-                    local cb = require("neo-tree.sources." .. state.name .. ".commands")[what] or neotree_cc[what]
-                    cb(state)
-                  end)
-                end
-
-                local function neotree_copy_path(how)
-                  return function()
-                    local node = get_neotree_state().tree:get_node()
-                    if node.type == "message" then return end
-                    vim.fn.setreg('"', vim.fn.fnamemodify(node.path, how))
-                    vim.fn.setreg("+", vim.fn.fnamemodify(node.path, how))
-                  end
-                end
-
-                local function neotree_open_in_terminal()
-                  return function()
-                    local node = get_neotree_state().tree:get_node()
-                    if node.type == "message" then return end
-                    local path = node.path
-                    local node_type = vim.uv.fs_stat(path).type
-                    local dir = node_type == "directory" and path or vim.fn.fnamemodify(path, ":h")
-                    Snacks.terminal.toggle(nil, { cwd = dir })
-                  end
-                end
-
-                local neotree_menu = {
-                  { name = "  New File", cmd = neotree_call "add", rtxt = "Ctrl+N" },
-                  { name = "  New Folder", cmd = neotree_call "add_directory", rtxt = "Ctrl+Shift+N" },
-                  { name = "separator" },
-                  { name = "  Open", cmd = neotree_call "open", rtxt = "Enter" },
-                  { name = "  Open in Split", cmd = neotree_call "open_split" },
-                  { name = "  Open in Vertical Split", cmd = neotree_call "open_vsplit" },
-                  { name = "󰓪  Open in New Tab", cmd = neotree_call "open_tabnew" },
-                  { name = "separator" },
-                  { name = "  Cut", cmd = neotree_call "cut_to_clipboard", rtxt = "Ctrl+X" },
-                  { name = "  Copy", cmd = neotree_call "copy_to_clipboard", rtxt = "Ctrl+C" },
-                  { name = "  Paste", cmd = neotree_call "paste_from_clipboard", rtxt = "Ctrl+V" },
-                  { name = "separator" },
-                  { name = "󰴠  Copy Path", cmd = neotree_copy_path ":p", rtxt = "Ctrl+Shift+C" },
-                  { name = "  Copy Relative Path", cmd = neotree_copy_path ":~:." },
-                  { name = "separator" },
-                  { name = "  Rename", cmd = neotree_call "rename", rtxt = "F2" },
-                  { name = "  Delete", hl = "ExRed", cmd = neotree_call "delete", rtxt = "Del" },
-                  { name = "separator" },
-                  { name = "  Open in Terminal", hl = "ExBlue", cmd = neotree_open_in_terminal() },
-                  { name = "   File Details", cmd = neotree_call "show_file_details" },
-                  { name = "separator" },
-                  { name = "  Refresh", cmd = neotree_call "refresh", rtxt = "F5" },
-                  { name = "  Toggle Hidden Files", cmd = neotree_call "toggle_hidden", rtxt = "Ctrl+H" },
-                }
-
-                -- Define custom menu items for modeless editing workflow
-                local cua_menu = {
-                  { name = "Cut", cmd = "normal! \"+x", rtxt = "Ctrl+X" },
-                  { name = "Copy", cmd = "normal! \"+y", rtxt = "Ctrl+C" },
-                  { name = "Paste", cmd = "call novim_mode#Paste()", rtxt = "Ctrl+V" },
-                  { name = "separator" },
-                  { name = "Select All", cmd = "normal! ggVG", rtxt = "Ctrl+A" },
-                  { name = "separator" },
-                  { name = "  Find", hl = "ExBlue", items = {
-                    { name = "Find in Buffer", cmd = function() require('searchbox').incsearch({ show_matches = '[{match}/{total}]' }) end, rtxt = "Ctrl+F" },
-                    { name = "Find and Replace", cmd = function() require('searchbox').replace({ confirm = 'menu' }) end, rtxt = "Ctrl+H" },
-                    { name = "separator" },
-                    { name = "Find in Files", cmd = function() Snacks.picker.grep() end, rtxt = "Ctrl+Shift+F" },
-                    { name = "Find Files", cmd = function() Snacks.picker.files() end, rtxt = "Ctrl+P" },
-                    { name = "separator" },
-                    { name = "Find TODOs", cmd = function() Snacks.picker.todo_comments() end, rtxt = "Ctrl+Shift+T" },
-                    { name = "Find Symbols", cmd = function() Snacks.picker.lsp_symbols() end, rtxt = "Ctrl+Shift+O" },
-                  }},
-                  { name = "separator" },
-                  { name = "  LSP", hl = "ExBlue", items = {
-                    { name = "Go to Definition", cmd = function() vim.lsp.buf.definition() end, rtxt = "F12" },
-                    { name = "Find References", cmd = function() vim.lsp.buf.references() end, rtxt = "Shift+F12" },
-                    { name = "Rename Symbol", cmd = function() vim.lsp.buf.rename() end, rtxt = "F2" },
-                    { name = "Code Actions", cmd = function() vim.lsp.buf.code_action() end, rtxt = "Ctrl+." },
-                    { name = "Hover Info", cmd = function() vim.lsp.buf.hover() end, rtxt = "Ctrl+K Ctrl+I" },
-                    { name = "separator" },
-                    { name = "Format Document", cmd = function()
-                      local ok, conform = pcall(require, "conform")
-                      if ok then conform.format({ lsp_fallback = true }) else vim.lsp.buf.format() end
-                    end },
-                  }},
-                  { name = "separator" },
-                  { name = "  Git", hl = "ExGreen", items = {
-                    { name = "Lazygit", cmd = function() Snacks.lazygit() end, rtxt = "Ctrl+G" },
-                    { name = "Git Status", cmd = function() Snacks.picker.git_status() end },
-                    { name = "Open in GitHub", cmd = function() Snacks.gitbrowse() end, rtxt = "Alt+Shift+G" },
-                    { name = "separator" },
-                    { name = "GitHub Issues", cmd = function() Snacks.picker.gh_issues() end, rtxt = "Ctrl+Shift+I" },
-                    { name = "GitHub PRs", cmd = function() Snacks.picker.gh_prs() end, rtxt = "Ctrl+Shift+R" },
-                    { name = "separator" },
-                    { name = "Stage Hunk", cmd = function() require('gitsigns').stage_hunk() end },
-                    { name = "Reset Hunk", cmd = function() require('gitsigns').reset_hunk() end },
-                    { name = "Preview Hunk", cmd = function() require('gitsigns').preview_hunk() end },
-                    { name = "Blame Line", cmd = function() require('gitsigns').blame_line({ full = true }) end },
-                  }},
-                  { name = "separator" },
-                  { name = "  View", hl = "ExYellow", items = {
-                    { name = "Toggle File Tree", cmd = "Neotree toggle", rtxt = "Ctrl+B" },
-                    { name = "Toggle Terminal", cmd = function() Snacks.terminal.toggle() end, rtxt = "Ctrl+`" },
-                    { name = "separator" },
-                    { name = "  Problems Panel", cmd = "Trouble diagnostics toggle", rtxt = "Ctrl+Shift+M" },
-                    { name = "  Buffer Problems", cmd = "Trouble diagnostics_buffer toggle", rtxt = "Alt+M" },
-                    { name = "  Symbols Outline", cmd = "Trouble symbols toggle", rtxt = "Alt+O" },
-                    { name = "  TODOs", cmd = "Trouble todo toggle", rtxt = "Alt+Shift+T" },
-                    { name = "separator" },
-                    { name = "  Next Problem", cmd = function() require('trouble').next({ skip_groups = true, jump = true }) end, rtxt = "F8" },
-                    { name = "  Previous Problem", cmd = function() require('trouble').prev({ skip_groups = true, jump = true }) end, rtxt = "Shift+F8" },
-                    { name = "separator" },
-                    { name = "Command Palette", cmd = function() Snacks.picker.commands() end, rtxt = "Ctrl+Shift+P" },
-                  }},
-                }
-
-                -- Helper function to close menu
-                local function close_menu()
-                  local state = require('menu.state')
-                  if state.bufids and #state.bufids > 0 then
-                    for _, buf in ipairs(state.bufids) do
-                      if vim.api.nvim_buf_is_valid(buf) then
-                        local wins = vim.fn.win_findbuf(buf)
-                        for _, win in ipairs(wins) do
-                          if vim.api.nvim_win_is_valid(win) then
-                            vim.api.nvim_win_close(win, true)
-                          end
-                        end
-                        vim.api.nvim_buf_delete(buf, { force = true })
-                      end
-                    end
-                    state.bufids = {}
-                    state.bufs = {}
-                    state.config = nil
-                    state.nested_menu = ""
-                    -- Return to original window
-                    if state.old_data and vim.api.nvim_win_is_valid(state.old_data.win) then
-                      vim.api.nvim_set_current_win(state.old_data.win)
-                    end
-                    return true
-                  end
-                  return false
-                end
-
-                -- Right-click to open context menu (mouse users)
-                vim.keymap.set({ 'n', 'v' }, '<RightMouse>', function()
-                  -- Delete old menus to prevent stacking
-                  require('menu.utils').delete_old_menus()
-                  -- Position cursor at mouse location
-                  vim.cmd.exec '"normal! \\<RightMouse>"'
-                  -- Determine which menu to show based on the buffer type
-                  local buf = vim.api.nvim_win_get_buf(vim.fn.getmousepos().winid)
-                  local ft = vim.bo[buf].filetype
-                  local menu_items = cua_menu
-                  if ft == "neo-tree" then
-                    menu_items = neotree_menu  -- Use CUA-friendly neo-tree menu
-                  end
-                  -- Open menu at mouse position
-                  require('menu').open(menu_items, { mouse = true })
-                end, opts)
-
-                -- Shift+F10 to open context menu (keyboard users, like Windows)
-                vim.keymap.set({ 'n', 'i', 'v' }, '<S-F10>', function()
-                  require('menu.utils').delete_old_menus()
-                  require('menu').open(cua_menu, { mouse = false })
-                end, opts)
-
-                -- Alt+F10 as alternative (some terminals don't pass Shift+F10)
-                vim.keymap.set({ 'n', 'i', 'v' }, '<M-F10>', function()
-                  require('menu.utils').delete_old_menus()
-                  require('menu').open(cua_menu, { mouse = false })
-                end, opts)
-
-                -- Escape closes menu if open (works in all modes for novim-mode compatibility)
-                -- Note: Snacks picker and other floating pickers handle their own Escape bindings
-                vim.keymap.set({ 'n', 'v', 's' }, '<Esc>', function()
-                  if not close_menu() then
-                    -- No menu was open, do normal escape behaviour
-                    local mode = vim.fn.mode()
-                    if mode == 'v' or mode == 'V' or mode == '\22' then
-                      -- Exit visual mode
-                      vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('<Esc>', true, true, true))
-                    elseif mode == 's' or mode == 'S' or mode == '\19' then
-                      -- Exit select mode
-                      vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('<Esc>', true, true, true))
-                    end
-                  end
-                end, { noremap = true, silent = true, expr = false })
-
-                -- Insert mode Escape: close menu or let novim-mode handle it
-                vim.keymap.set('i', '<Esc>', function()
-                  if close_menu() then
-                    return ""  -- Closed menu, consume keypress
-                  else
-                    -- Pass through to novim-mode
-                    return vim.api.nvim_replace_termcodes('<Esc>', true, true, true)
-                  end
-                end, { noremap = true, silent = true, expr = true })
 
                 -- =========================================================================
                 -- CODECOMPANION AI ASSISTANCE (Modeless/CUA-style)
