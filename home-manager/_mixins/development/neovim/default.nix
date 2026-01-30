@@ -966,11 +966,33 @@ in
                   -- Smooth scrolling (replaces nvim-scrollview scrolling behaviour)
                   scroll = {
                     enabled = true,
-                    animate = { duration = { step = 10, total = 200 }, easing = "linear" },
-                    animate_repeat = { delay = 100, duration = { step = 5, total = 50 }, easing = "linear" },
+                    animate = {
+                      duration = { step = 10, total = 200 },
+                      easing = "linear",
+                    },
+                    animate_repeat = {
+                      delay = 100,
+                      duration = { step = 5, total = 50 },
+                      easing = "linear",
+                    },
                     filter = function(buf)
                       return vim.g.snacks_scroll ~= false and vim.b[buf].snacks_scroll ~= false and vim.bo[buf].buftype ~= "terminal"
                     end,
+                  },
+
+                  -- Dim: focus mode that dims code outside current scope
+                  dim = {
+                    enabled = true,
+                    scope = {
+                      min_size = 5,
+                      max_size = 20,
+                      siblings = true,
+                    },
+                    animate = {
+                      enabled = true,
+                      easing = "outQuad",
+                      duration = { step = 20, total = 300 },
+                    },
                   },
 
                   -- Image rendering in documents
@@ -988,6 +1010,20 @@ in
                   scope = { enabled = false },
                   animate = { enabled = false },
                 }
+
+                -- Enable dimming after setup (dim starts disabled by default)
+                Snacks.dim.enable()
+
+                -- Toggle dim keybinding (Alt+Shift+D for focus mode)
+                vim.keymap.set({ 'n', 'i', 'v' }, '<A-S-d>', function()
+                  if Snacks.dim.enabled then
+                    Snacks.dim.disable()
+                    vim.notify('Dim disabled', vim.log.levels.INFO)
+                  else
+                    Snacks.dim.enable()
+                    vim.notify('Dim enabled', vim.log.levels.INFO)
+                  end
+                end, { desc = 'Toggle dim/focus mode' })
 
                 -- LSP Progress notifications (replaces fidget)
                 local lsp_progress = vim.defaulttable()
@@ -1054,6 +1090,9 @@ in
                     -- Snacks notification styling
                     vim.api.nvim_set_hl(0, "SnacksNotifierTitle", { fg = "${catppuccinPalette.getColor "blue"}", bold = true })
                     vim.api.nvim_set_hl(0, "SnacksNotifierBorder", { fg = "${catppuccinPalette.getColor "surface1"}" })
+
+                    -- Snacks dim highlight (subtle grey for unfocused code)
+                    vim.api.nvim_set_hl(0, "SnacksDim", { fg = "${catppuccinPalette.getColor "overlay0"}" })
                   end,
                 })
                 vim.cmd("doautocmd ColorScheme")
