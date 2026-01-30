@@ -119,12 +119,8 @@ in
         # Visual enhancements
         nvim-web-devicons
         lualine-nvim
-        indent-blankline-nvim
         rainbow-delimiters-nvim
-        hlchunk-nvim
         virt-column-nvim
-        vim-illuminate
-        nvim-scrollview
         # Context menus (right-click menus)
         nvzone-volt # Required by nvzone-menu
         nvzone-menu
@@ -146,7 +142,6 @@ in
         bufferline-nvim
         # LSP support
         nvim-lspconfig
-        fidget-nvim
         lspkind-nvim
         # Treesitter for syntax highlighting
         # Core grammars only; language-specific grammars in their ecosystem configs
@@ -361,93 +356,10 @@ in
                   highlight = rainbow_highlight,
                 }
 
-                -- Indent guides with rainbow scope lines
-                require('ibl').setup {
-                  indent = { char = "│" },
-                  scope = {
-                    enabled = true,
-                    highlight = rainbow_highlight,  -- Use rainbow colours for scope line
-                  },
-                }
-                -- Hook indent-blankline to rainbow-delimiters for matching colours
-                local hooks = require('ibl.hooks')
-                hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
-
-                -- Hlchunk: draw lines connecting bracket pairs
-                -- Uses Vim's searchpair (not treesitter) for consistent { } matching
-                require('hlchunk').setup {
-                  chunk = {
-                    enable = true,
-                    use_treesitter = false,       -- Use searchpair for all { } brackets
-                    style = {
-                      { fg = "${catppuccinPalette.getColor "mauve"}" },
-                      { fg = "${catppuccinPalette.getColor "red"}" },   -- Error colour
-                    },
-                    chars = {
-                      horizontal_line = "─",
-                      vertical_line = "│",
-                      left_top = "╭",
-                      left_bottom = "╰",
-                      right_arrow = ">",
-                    },
-                    textobject = "",              -- Disable textobject (we use treesitter's)
-                    max_file_size = 1024 * 1024,  -- 1MB
-                    error_sign = true,            -- Show different colour for syntax errors
-                    duration = 200,               -- Animation duration (ms)
-                    delay = 300,                  -- Delay before showing (ms)
-                  },
-                  indent = {
-                    enable = false,  -- Disabled: using indent-blankline instead
-                  },
-                  line_num = {
-                    enable = false,  -- Disabled: gitsigns handles line number colouring
-                  },
-                  blank = {
-                    enable = false,
-                  },
-                }
-
-                -- Virtual column markers at 80 and 88 characters (thin lines, not highlighted columns)
                 require('virt-column').setup {
                   char = '┊',           -- Dotted line for subtlety
                   virtcolumn = '80,88',
                   highlight = 'NonText', -- Use faint NonText highlight (very subtle)
-                }
-
-                -- Scrollbar with signs (diagnostics, search, marks, git)
-                -- Clickable for navigation, right-click for info
-                require('scrollview').setup {
-                  excluded_filetypes = { 'neo-tree', 'snacks_terminal' },
-                  current_only = true,           -- Only show scrollbar in current window
-                  winblend = 50,                 -- Transparency (0-100)
-                  signs_on_startup = {           -- Enable these sign groups
-                    'diagnostics',
-                    'search',
-                    'marks',
-                    'keywords',                  -- TODO, FIXME, HACK, etc.
-                  },
-                  diagnostics_severities = {     -- Show all diagnostic levels
-                    vim.diagnostic.severity.ERROR,
-                    vim.diagnostic.severity.WARN,
-                    vim.diagnostic.severity.INFO,
-                    vim.diagnostic.severity.HINT,
-                  },
-                }
-
-                -- Illuminate: highlight other occurrences of word under cursor
-                require('illuminate').configure {
-                  delay = 200,           -- Delay before highlighting (ms)
-                  under_cursor = true,   -- Highlight word under cursor
-                  providers = {
-                    'lsp',               -- Use LSP for smart highlighting
-                    'treesitter',        -- Fall back to treesitter
-                    'regex',             -- Fall back to regex
-                  },
-                  filetypes_denylist = { -- Don't illuminate in these filetypes
-                    'neo-tree',
-                    'snacks_picker',
-                    'snacks_terminal',
-                  },
                 }
 
                 -- File tree (neo-tree: more features, better session handling)
@@ -622,9 +534,6 @@ in
                     vim.cmd('stopinsert')            -- Ensure we're in normal mode
                   end,
                 })
-
-                -- Fidget for LSP progress
-                require('fidget').setup {}
 
                 -- LSP file operations (updates imports when renaming files in neo-tree)
                 require('lsp-file-operations').setup {}
@@ -983,16 +892,143 @@ in
                     notify = true,
                   },
 
+                  -- Notification system (replaces fidget for LSP progress)
+                  notifier = {
+                    enabled = true,
+                    timeout = 3000,
+                    width = { min = 40, max = 0.4 },
+                    height = { min = 1, max = 0.6 },
+                    margin = { top = 0, right = 1, bottom = 0 },
+                    padding = true,
+                    sort = { "level", "added" },
+                    level = vim.log.levels.TRACE,
+                    icons = { error = " ", warn = " ", info = " ", debug = " ", trace = " " },
+                    style = "compact",
+                    top_down = true,
+                    date_format = "%R",
+                  },
+
+                  -- Indent guides with rainbow colours and scope highlighting (replaces indent-blankline and hlchunk)
+                  indent = {
+                    enabled = true,
+                    indent = {
+                      enabled = true,
+                      only_scope = true,
+                      only_current = true,
+                      char = "│",
+                      priority = 1,
+                      hl = { "SnacksIndent1", "SnacksIndent2", "SnacksIndent3", "SnacksIndent4", "SnacksIndent5", "SnacksIndent6", "SnacksIndent7" },
+                    },
+                    animate = {
+                      enabled = vim.fn.has("nvim-0.10") == 1,
+                      style = "out",
+                      easing = "linear",
+                      duration = { step = 20, total = 300 },
+                    },
+                    scope = {
+                      enabled = true,
+                      priority = 200,
+                      char = "│",
+                      underline = false,
+                      only_current = false,
+                      hl = "SnacksIndentScope",
+                    },
+                    chunk = {
+                      enabled = true,
+                      only_current = true,
+                      priority = 200,
+                      hl = "SnacksIndentChunk",
+                      char = { corner_top = "╭", corner_bottom = "╰", horizontal = "─", vertical = "│", arrow = ">" },
+                    },
+                  },
+
+                  -- Status column with git signs and fold indicators (replaces scrollview signs)
+                  statuscolumn = {
+                    enabled = true,
+                    left = { "mark", "sign" },
+                    right = { "fold", "git" },
+                    folds = { open = false, git_hl = false },
+                    git = { patterns = { "GitSign", "MiniDiffSign" } },
+                    refresh = 50,
+                  },
+
+                  -- Word highlighting and navigation (replaces vim-illuminate)
+                  words = {
+                    enabled = true,
+                    debounce = 200,
+                    notify_jump = false,
+                    notify_end = true,
+                    foldopen = true,
+                    jumplist = true,
+                    modes = { "n", "i", "c" },
+                  },
+
+                  -- Smooth scrolling (replaces nvim-scrollview scrolling behaviour)
+                  scroll = {
+                    enabled = true,
+                    animate = { duration = { step = 10, total = 200 }, easing = "linear" },
+                    animate_repeat = { delay = 100, duration = { step = 5, total = 50 }, easing = "linear" },
+                    filter = function(buf)
+                      return vim.g.snacks_scroll ~= false and vim.b[buf].snacks_scroll ~= false and vim.bo[buf].buftype ~= "terminal"
+                    end,
+                  },
+
+                  -- Image rendering in documents
+                  image = {
+                    enabled = true,
+                    formats = { "png", "jpg", "jpeg", "gif", "bmp", "webp", "tiff", "heic", "avif", "mp4", "mov", "avi", "mkv", "webm", "pdf" },
+                    force = false,
+                    doc = { enabled = true, inline = true, float = true, max_width = 80, max_height = 40 },
+                    img_dirs = { "img", "images", "assets", "static", "public", "media" },
+                    icons = { math = " ", chart = " ", image = " " },
+                  },
+
                   -- Disable features covered by other plugins
-                  notifier = { enabled = false },
                   explorer = { enabled = false },
-                  scroll = { enabled = false },
-                  indent = { enabled = false },
-                  statuscolumn = { enabled = false },
-                  words = { enabled = false },
                   scope = { enabled = false },
                   animate = { enabled = false },
                 }
+
+                -- LSP Progress notifications (replaces fidget)
+                local lsp_progress = vim.defaulttable()
+                vim.api.nvim_create_autocmd("LspProgress", {
+                  callback = function(ev)
+                    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+                    local value = ev.data.params.value
+                    if not client or type(value) ~= "table" then return end
+
+                    local p = lsp_progress[client.id]
+                    for i = 1, #p + 1 do
+                      if i == #p + 1 or p[i].token == ev.data.params.token then
+                        p[i] = {
+                          token = ev.data.params.token,
+                          msg = ("[%3d%%] %s%s"):format(
+                            value.kind == "end" and 100 or value.percentage or 100,
+                            value.title or "",
+                            value.message and (" **%s**"):format(value.message) or ""
+                          ),
+                          done = value.kind == "end",
+                        }
+                        break
+                      end
+                    end
+
+                    local msg = {}
+                    lsp_progress[client.id] = vim.tbl_filter(function(v)
+                      return table.insert(msg, v.msg) or not v.done
+                    end, p)
+
+                    local spinner = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
+                    vim.notify(table.concat(msg, "\n"), "info", {
+                      id = "lsp_progress",
+                      title = client.name,
+                      opts = function(notif)
+                        notif.icon = #lsp_progress[client.id] == 0 and " "
+                          or spinner[math.floor(vim.uv.hrtime() / (1e6 * 80)) % #spinner + 1]
+                      end,
+                    })
+                  end,
+                })
 
                 -- Custom highlight groups for dashboard (Catppuccin integration)
                 vim.api.nvim_create_autocmd("ColorScheme", {
@@ -1003,6 +1039,21 @@ in
                     vim.api.nvim_set_hl(0, "SnacksDashboardDesc", { fg = "${catppuccinPalette.getColor "text"}" })
                     vim.api.nvim_set_hl(0, "SnacksDashboardSpecial", { fg = "${catppuccinPalette.getColor "surface1"}" })
                     vim.api.nvim_set_hl(0, "SnacksDashboardIcon", { fg = "${catppuccinPalette.getColor "lavender"}" })
+
+                    -- Snacks indent rainbow colours
+                    vim.api.nvim_set_hl(0, "SnacksIndent1", { fg = "${catppuccinPalette.getColor "rosewater"}" })
+                    vim.api.nvim_set_hl(0, "SnacksIndent2", { fg = "${catppuccinPalette.getColor "flamingo"}" })
+                    vim.api.nvim_set_hl(0, "SnacksIndent3", { fg = "${catppuccinPalette.getColor "pink"}" })
+                    vim.api.nvim_set_hl(0, "SnacksIndent4", { fg = "${catppuccinPalette.getColor "mauve"}" })
+                    vim.api.nvim_set_hl(0, "SnacksIndent5", { fg = "${catppuccinPalette.getColor "blue"}" })
+                    vim.api.nvim_set_hl(0, "SnacksIndent6", { fg = "${catppuccinPalette.getColor "teal"}" })
+                    vim.api.nvim_set_hl(0, "SnacksIndent7", { fg = "${catppuccinPalette.getColor "green"}" })
+                    vim.api.nvim_set_hl(0, "SnacksIndentScope", { fg = "${catppuccinPalette.getColor "lavender"}", bold = true })
+                    vim.api.nvim_set_hl(0, "SnacksIndentChunk", { fg = "${catppuccinPalette.getColor "mauve"}" })
+
+                    -- Snacks notification styling
+                    vim.api.nvim_set_hl(0, "SnacksNotifierTitle", { fg = "${catppuccinPalette.getColor "blue"}", bold = true })
+                    vim.api.nvim_set_hl(0, "SnacksNotifierBorder", { fg = "${catppuccinPalette.getColor "surface1"}" })
                   end,
                 })
                 vim.cmd("doautocmd ColorScheme")
@@ -1014,7 +1065,7 @@ in
                   trim_trailing = true,
                   trim_last_line = true,       -- Remove blank lines at end of file
                   trim_first_line = true,      -- Remove blank lines at start of file
-                  highlight = false,           -- Don't highlight (scrollview already shows this)
+                  highlight = false,           -- Don't highlight (trim handles this silently)
                   notifications = false,       -- Silent operation
                 }
 
@@ -1133,6 +1184,9 @@ in
                 vim.keymap.set({'n', 'i', 'v'}, '<C-S-Tab>', '<cmd>BufferLineCyclePrev<cr>', opts)
                 -- Ctrl+W to close current buffer (using Snacks.bufdelete for clean closure)
                 vim.keymap.set({'n', 'i', 'v'}, '<C-w>', function() Snacks.bufdelete() end, opts)
+                -- Words navigation (LSP references - replaces vim-illuminate navigation)
+                vim.keymap.set({'n', 'i'}, ']]', function() Snacks.words.jump(vim.v.count1) end, { noremap = true, silent = true, desc = 'Next LSP reference' })
+                vim.keymap.set({'n', 'i'}, '[[', function() Snacks.words.jump(-vim.v.count1) end, { noremap = true, silent = true, desc = 'Previous LSP reference' })
                 -- Alt+S for "Save As" (Ctrl+Shift+S doesn't work reliably in terminals)
                 vim.keymap.set({'n', 'i', 'v', 's'}, '<M-s>', function()
                   vim.ui.input({ prompt = "Save as: ", default = vim.fn.expand("%:p") }, function(input)
@@ -1771,7 +1825,7 @@ in
                 -- =========================================================================
                 -- CODECOMPANION STATUS FEEDBACK
                 -- =========================================================================
-                -- Updates lualine status and shows fidget notifications for AI activity.
+                -- Updates lualine status and shows notifications for AI activity.
                 -- Provides visual feedback when prompts are submitted and responses stream.
                 -- =========================================================================
 
@@ -1790,11 +1844,8 @@ in
                     end
                     _G.codecompanion_status = " Thinking..."
                     require('lualine').refresh()
-                    -- Also notify via fidget for more visible feedback
-                    local ok, fidget = pcall(require, 'fidget')
-                    if ok then
-                      fidget.notify("AI request started", vim.log.levels.INFO, { annote = "CodeCompanion", key = "codecompanion" })
-                    end
+                    -- Notify via Snacks notifier for more visible feedback
+                    vim.notify("AI request started", vim.log.levels.INFO, { title = "CodeCompanion", id = "codecompanion" })
                   end,
                 })
 
@@ -1819,10 +1870,7 @@ in
                     if vim.tbl_isempty(cc_active_chats) then
                       _G.codecompanion_status = ""
                       require('lualine').refresh()
-                      local ok, fidget = pcall(require, 'fidget')
-                      if ok then
-                        fidget.notify("AI response complete", vim.log.levels.INFO, { annote = "CodeCompanion", key = "codecompanion", ttl = 2 })
-                      end
+                      vim.notify("AI response complete", vim.log.levels.INFO, { title = "CodeCompanion", id = "codecompanion", timeout = 2000 })
                     end
                   end,
                 })
