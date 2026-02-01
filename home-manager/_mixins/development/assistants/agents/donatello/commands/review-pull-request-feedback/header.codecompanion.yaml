@@ -4,3 +4,4 @@ opts:
   alias: review-pull-request-feedback
   is_slash_cmd: true
   rules: donatello
+  user_prompt: true

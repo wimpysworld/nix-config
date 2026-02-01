@@ -4,10 +4,12 @@ Write a commit message for staged changes (or recent work if nothing staged).
 
 ### Process
 
-1. Gather change information using safe read-only commands (no pipes):
+1. Gather change information using **separate** read-only git commands:
    - `git diff --staged` — view staged changes
    - `git diff --staged --stat` — summarise staged file changes
    - `git status` — verify staging state and working tree
+   
+   **IMPORTANT**: Run each command individually. Do NOT chain commands with `&&`, `;`, or pipes (`|`). This ensures no manual approval is required.
 2. If nothing staged, summarise recent implementation work
 3. Apply type selection from agent definition
 4. Output commit message only—ready for `git commit -m`

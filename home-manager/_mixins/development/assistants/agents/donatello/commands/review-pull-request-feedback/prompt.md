@@ -2,6 +2,12 @@
 
 Evaluate and implement (or decline with rationale) feedback from a pull request review.
 
+### Input
+
+**Pull Request URL**: $1
+
+Fetch the pull request review comments from the provided URL using safe read-only commands (no pipes) to gather feedback for assessment.
+
 ### Categories
 
 | Category | Action | Examples |
