@@ -1,0 +1,6 @@
+name: Analyse Audio Processing
+interaction: chat
+opts:
+  alias: analyse-audio-processing
+  is_slash_cmd: true
+  rules: melody

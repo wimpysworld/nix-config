@@ -1,0 +1,6 @@
+name: Analyse Audio Levels
+interaction: chat
+opts:
+  alias: analyse-audio-levels
+  is_slash_cmd: true
+  rules: melody
