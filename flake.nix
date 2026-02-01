@@ -18,7 +18,7 @@
     iwmenu.inputs.nixpkgs.follows = "nixpkgs";
     pwmenu.url = "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.3.0.tar.gz";
     pwmenu.inputs.nixpkgs.follows = "nixpkgs";
-    catppuccin.url = "github:catppuccin/nix";
+    catppuccin.url = "https://github.com/catppuccin/nix/archive/refs/tags/v25.11.tar.gz";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     disko.url = "https://flakehub.com/f/nix-community/disko/1.12.0.tar.gz";
     disko.inputs.nixpkgs.follows = "nixpkgs";
