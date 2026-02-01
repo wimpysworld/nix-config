@@ -1,0 +1,6 @@
+name: Create Pull Request
+interaction: chat
+opts:
+  alias: create-pull-request
+  is_slash_cmd: true
+  rules: garfield

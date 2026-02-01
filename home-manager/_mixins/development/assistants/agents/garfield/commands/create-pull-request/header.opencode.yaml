@@ -1,0 +1,3 @@
+agent: garfield
+subtask: true
+model: github-copilot/gpt-5-mini
