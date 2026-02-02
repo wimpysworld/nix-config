@@ -208,8 +208,8 @@ in
         -- TERMINAL:
         --   Ctrl+`: Toggle terminal | Ctrl+Shift+`: Floating terminal
         --
-        -- GIT & GITHUB:
-        --   Alt+Shift+G: Lazygit | Alt+Shift+I: GitHub Issues | Alt+Shift+P: GitHub PRs
+        -- GITHUB (dashboard only, shown in git repos):
+        --   g: Browse Repo | i: Issues | p: PRs
         --
         -- TROUBLE DIAGNOSTICS (VSCode-style problem navigation):
         --   Ctrl+Shift+M: Problems panel | Alt+M: Buffer problems only
@@ -667,10 +667,8 @@ in
             col = nil,
             pane_gap = 4,
 
-            -- No preset keys - Quick Actions section removed
-
             sections = {
-              -- Rainbow NEOCODE banner - each line as separate section for proper rendering
+              -- Rainbow NEOCODE banner
               {
                 text = { { "::::    ::: :::::::::: ::::::::   ::::::::   ::::::::  :::::::::  :::::::::: ", hl = "SnacksDashboardBannerRed" } },
                 align = "center",
@@ -702,7 +700,7 @@ in
               -- Tagline
               { padding = 0 },
               {
-                text = { { "Modal editing is Stockholm syndrome; the cult of i can keep it.", hl = "SnacksDashboardDesc" } },
+                text = { { " Modal editing is Stockholm syndrome; the cult of  can keep it ", hl = "SnacksDashboardLavender" } },
                 align = "center",
                 padding = 0,
               },
@@ -712,9 +710,9 @@ in
                 align = "center",
                 padding = 0,
               },
-              -- CUA Keybindings section
+              -- Keybindings section
               {
-                text = { { "Keybindings", hl = "SnacksDashboardTitle" } },
+                text = { { "󰧹 Keybindings", hl = "SnacksDashboardTitle" } },
                 align = "center",
                 padding = 1,
               },
@@ -774,9 +772,9 @@ in
                 align = "center",
                 padding = 0,
               },
-              -- AI & Development Tools section
+              -- Assistant section
               {
-                text = { { "Assistant", hl = "SnacksDashboardTitle" } },
+                text = { { " Assistant", hl = "SnacksDashboardTitle" } },
                 align = "center",
                 padding = 1,
               },
@@ -797,23 +795,68 @@ in
                 align = "center",
                 padding = 0,
               },
-              -- Git & GitHub section
+              -- GitHub section header
               {
-                text = { { "GitHub", hl = "SnacksDashboardTitle" } },
+                text = { { " GitHub", hl = "SnacksDashboardTitle" } },
                 align = "center",
                 padding = 1,
               },
+              -- Browse Repo item
               {
                 text = {
-                  { "Alt+Shift+G ", hl = "SnacksDashboardKey" }, { "Lazygit   ", hl = "SnacksDashboardDesc" },
-                  { "    ", hl = "SnacksDashboardDesc" },
-                  { "Alt+Shift+I ", hl = "SnacksDashboardKey" }, { "Issues    ", hl = "SnacksDashboardDesc" },
-                  { "    ", hl = "SnacksDashboardDesc" },
-                  { "Alt+Shift+P ", hl = "SnacksDashboardKey" }, { "PRs       ", hl = "SnacksDashboardDesc" },
+                  { "Alt+Shift+G ", hl = "SnacksDashboardKey" }, { "Browse ", hl = "SnacksDashboardDesc" },
+                  { "   ", hl = "SnacksDashboardDesc" },
+                  { "Alt+Shift+I ", hl = "SnacksDashboardKey" }, { "Issues ", hl = "SnacksDashboardDesc" },
+                  { "   ", hl = "SnacksDashboardDesc" },
+                  { "Alt+Shift+P ", hl = "SnacksDashboardKey" }, { "PRs    ", hl = "SnacksDashboardDesc" },
                 },
                 align = "center",
                 padding = 1,
               },
+              {
+                icon = " ",
+                desc = "Open Repository",
+                key = "g",
+                action = function()
+                  Snacks.gitbrowse()
+                end,
+                enabled = function()
+                  return Snacks.git.get_root() ~= nil
+                end,
+                padding = 1,
+              },
+              -- GitHub terminal sections (Issues, PRs, Git Status)
+              function()
+                local in_git = Snacks.git.get_root() ~= nil
+                local cmds = {
+                  {
+                    title = "Notifications",
+                    cmd = "gh notify -s -a -n5",
+                    action = function()
+                      vim.ui.open("https://github.com/notifications")
+                    end,
+                    key = "n",
+                    icon = " ",
+                    height = 7,
+                    enabled = true,
+                  },
+                  {
+                    title = "Git Status",
+                    cmd = "git --no-pager diff --stat -B -M -C",
+                    icon = " ",
+                    height = 6,
+                  },
+                }
+                return vim.tbl_map(function(cmd)
+                  return vim.tbl_extend("force", {
+                    section = "terminal",
+                    enabled = in_git,
+                    padding = 1,
+                    ttl = 5 * 60,
+                    indent = 3,
+                  }, cmd)
+                end, cmds)
+              end,
               -- Final separator
               {
                 text = { { "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", hl = "SnacksDashboardSpecial" } },
@@ -994,18 +1037,6 @@ in
               style = 'terminal',
               position = 'bottom',
               height = 0.3,
-              border = 'rounded',
-            },
-          },
-
-          -- Lazygit integration
-          lazygit = {
-            enabled = true,
-            configure = true,  -- Auto-sync theme with Neovim colorscheme
-            win = {
-              style = 'float',
-              width = 0.9,
-              height = 0.9,
               border = 'rounded',
             },
           },
@@ -1601,13 +1632,11 @@ in
           end,
         })
 
-        -- Lazygit (Alt+Shift+G)
-        vim.keymap.set({'n', 'i', 'v', 's'}, '<M-S-g>', function()
-          Snacks.lazygit()
-        end, { noremap = true, silent = true, desc = 'Open Lazygit' })
-
         -- GitHub integration (requires gh CLI)
         -- Uses Alt+Shift variants since Ctrl+Shift doesn't work reliably in terminals
+        -- Alt+Shift+G: Open current file in GitHub (uses Snacks.gitbrowse)
+        vim.keymap.set({'n', 'i', 'v'}, '<M-S-g>', function() Snacks.gitbrowse() end, { noremap = true, silent = true, desc = 'Open in GitHub' })
+
         vim.keymap.set({'n', 'i', 'v'}, '<M-S-i>', function()
           Snacks.picker.gh_issue()
         end, { noremap = true, silent = true, desc = 'GitHub Issues' })
