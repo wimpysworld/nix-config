@@ -252,14 +252,86 @@ in
 
         require('lualine').setup {
           options = {
-            theme = 'catppuccin',
+            theme = {
+              normal = {
+                a = { bg = "${catppuccinPalette.getColor "peach"}", fg = "${catppuccinPalette.getColor "base"}", gui = "bold" },
+                b = { bg = "${catppuccinPalette.getColor "surface0"}", fg = "${catppuccinPalette.getColor "text"}" },
+                c = { bg = "${catppuccinPalette.getColor "base"}", fg = "${catppuccinPalette.getColor "text"}" },
+              },
+              insert = {
+                a = { bg = "${catppuccinPalette.getColor "peach"}", fg = "${catppuccinPalette.getColor "base"}", gui = "bold" },
+              },
+              visual = {
+                a = { bg = "${catppuccinPalette.getColor "mauve"}", fg = "${catppuccinPalette.getColor "base"}", gui = "bold" },
+              },
+              replace = {
+                a = { bg = "${catppuccinPalette.getColor "red"}", fg = "${catppuccinPalette.getColor "base"}", gui = "bold" },
+              },
+              command = {
+                a = { bg = "${catppuccinPalette.getColor "peach"}", fg = "${catppuccinPalette.getColor "base"}", gui = "bold" },
+              },
+              inactive = {
+                a = { bg = "${catppuccinPalette.getColor "surface0"}", fg = "${catppuccinPalette.getColor "subtext0"}" },
+                b = { bg = "${catppuccinPalette.getColor "surface0"}", fg = "${catppuccinPalette.getColor "subtext0"}" },
+                c = { bg = "${catppuccinPalette.getColor "base"}", fg = "${catppuccinPalette.getColor "subtext0"}" },
+              },
+            },
             component_separators = { left = "", right = "" },
             section_separators = { left = "", right = "" },
           },
           sections = {
-            lualine_a = {'mode'},
+            lualine_a = {
+              -- Session name from auto-session
+              {
+                function()
+                  local ok, auto_session = pcall(require, 'auto-session.lib')
+                  if not ok then return "" end
+                  local session = auto_session.current_session_name()
+                  if session and session ~= "" then
+                    local name = vim.fn.fnamemodify(session, ":t"):gsub("%%", "/")
+                    return "󰉋 " .. name
+                  end
+                  return ""
+                end,
+                cond = function()
+                  local ok, auto_session = pcall(require, 'auto-session.lib')
+                  return ok and auto_session.current_session_name() ~= nil and auto_session.current_session_name() ~= ""
+                end,
+              },
+            },
             lualine_b = {'branch', 'diff', 'diagnostics'},
-            lualine_c = {'filename'},
+            lualine_c = {
+              -- Current scope (function/class name from treesitter)
+              {
+                function()
+                  local ok, ts_utils = pcall(require, 'nvim-treesitter.ts_utils')
+                  if not ok then return "" end
+                  local node = vim.treesitter.get_node()
+                  while node do
+                    local type = node:type()
+                    if type:match("function") or type:match("class") or type:match("method") then
+                      local name_node = node:field("name")[1]
+                      if name_node then
+                        return "󰊕 " .. vim.treesitter.get_node_text(name_node, 0)
+                      end
+                    end
+                    node = node:parent()
+                  end
+                  return ""
+                end,
+                cond = function() return vim.bo.filetype ~= "" end,
+                color = { fg = "${catppuccinPalette.getColor "subtext0"}" },
+              },
+              -- LSP client names
+              {
+                function()
+                  local clients = vim.lsp.get_clients({ bufnr = 0 })
+                  if #clients == 0 then return "" end
+                  local names = vim.tbl_map(function(c) return c.name end, clients)
+                  return " " .. table.concat(names, ", ")
+                end,
+              },
+            },
             lualine_x = {
               -- CodeCompanion AI status indicator
               {
@@ -268,7 +340,7 @@ in
                 color = { fg = "${catppuccinPalette.getColor "mauve"}" },
               },
               -- Keybinding hints
-              { function() return "Ctrl+Alt+I:Chat Alt+M:Model Alt+A:Actions" end },
+              { function() return "F1:Help" end },
             },
             lualine_y = {'encoding', 'fileformat', 'filetype'},
             lualine_z = {'location'}
