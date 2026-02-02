@@ -1467,8 +1467,48 @@ in
         local opts = { noremap = true, silent = true }
                 -- Ctrl+P for file finder (all modes)
                 vim.keymap.set({'n', 'i', 'v'}, '<C-p>', function() Snacks.picker.files() end, opts)
-                -- F1: Open dashboard (replaces default help)
-                vim.keymap.set({'n', 'i', 'v'}, '<F1>', function() Snacks.dashboard() end, opts)
+                -- F1: Toggle dashboard (replaces default help)
+                vim.keymap.set({'n', 'i', 'v'}, '<F1>', function()
+                  -- Check if dashboard buffer is currently visible
+                  local dashboard_win = nil
+                  local dashboard_buf = nil
+                  local main_win = nil
+
+                  for _, win in ipairs(vim.api.nvim_list_wins()) do
+                    local buf = vim.api.nvim_win_get_buf(win)
+                    if vim.bo[buf].filetype == 'snacks_dashboard' then
+                      dashboard_win = win
+                      dashboard_buf = buf
+                    elseif vim.api.nvim_win_get_config(win).relative == "" then
+                      -- Non-floating window - candidate for main window
+                      -- Prefer windows with real buffers (not empty/scratch)
+                      if main_win == nil or (vim.bo[buf].buftype == "" and vim.fn.bufname(buf) ~= "") then
+                        main_win = win
+                      end
+                    end
+                  end
+
+                  if dashboard_buf then
+                    -- Close dashboard: switch to main window first, then delete buffer
+                    -- This mimics how Snacks picker closes (restores focus before cleanup)
+                    if main_win and main_win ~= dashboard_win then
+                      vim.api.nvim_set_current_win(main_win)
+                    end
+                    -- Schedule buffer deletion to ensure window switch completes first
+                    vim.schedule(function()
+                      if vim.api.nvim_buf_is_valid(dashboard_buf) then
+                        vim.api.nvim_buf_delete(dashboard_buf, { force = true })
+                      end
+                      -- Force statusline refresh after dashboard closes
+                      vim.schedule(function()
+                        vim.cmd('redrawstatus!')
+                      end)
+                    end)
+                    return
+                  end
+                  -- Dashboard not open, so open it
+                  Snacks.dashboard()
+                end, opts)
                 -- Toggle file explorer (Ctrl+B for CUA familiarity)
         -- Close explorer if focused, otherwise toggle it open
         vim.keymap.set({'n', 'i', 'v'}, '<C-b>', function()
