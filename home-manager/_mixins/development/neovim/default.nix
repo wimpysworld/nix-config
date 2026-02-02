@@ -426,7 +426,7 @@ in
             offsets = {
               {
                 filetype = "snacks_picker_list",
-                text = "📁 Explorer",
+                text = " Explorer",
                 text_align = "left",
                 separator = true,
               },
@@ -1057,10 +1057,18 @@ in
             padding = true,
             sort = { "level", "added" },
             level = vim.log.levels.TRACE,
-            icons = { error = " ", warn = " ", info = " ", debug = " ", trace = " " },
+            icons = {
+              error = " ",
+              warn = " ",
+              info = " ",
+              debug = " ",
+              trace = " ",
+            },
             style = "compact",
-            top_down = true,
+            top_down = false,
             date_format = "%R",
+            more_format = " ↓ %d lines ",
+            refresh = 50, -- refresh at most every 50ms
           },
 
           -- Indent guides with rainbow colours and scope highlighting (replaces indent-blankline and hlchunk)
@@ -1157,7 +1165,7 @@ in
             force = false,
             doc = { enabled = true, inline = true, float = true, max_width = 80, max_height = 40 },
             img_dirs = { "img", "images", "assets", "static", "public", "media" },
-            icons = { math = " ", chart = " ", image = " " },
+            icons = { math = "󱖦", chart = "󰄨", image = "" },
           },
 
           -- File explorer with CUA-style keybindings
