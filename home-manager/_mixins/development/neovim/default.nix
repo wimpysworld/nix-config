@@ -988,20 +988,6 @@ in
                   animate = { enabled = false },
                 }
 
-                -- Enable dimming after setup (dim starts disabled by default)
-                Snacks.dim.enable()
-
-                -- Toggle dim keybinding (Alt+Shift+D for focus mode)
-                vim.keymap.set({ 'n', 'i', 'v' }, '<A-S-d>', function()
-                  if Snacks.dim.enabled then
-                    Snacks.dim.disable()
-                    vim.notify('Dim disabled', vim.log.levels.INFO)
-                  else
-                    Snacks.dim.enable()
-                    vim.notify('Dim enabled', vim.log.levels.INFO)
-                  end
-                end, { desc = 'Toggle dim/focus mode' })
-
                 -- Scrollbar with Catppuccin colors and gitsigns integration
                 -- Renders on the right edge (separate from snacks.statuscolumn on the left)
                 require('scrollbar').setup {
