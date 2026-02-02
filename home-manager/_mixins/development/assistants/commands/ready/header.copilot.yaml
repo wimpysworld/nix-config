@@ -1,0 +1,3 @@
+description: "Get ready 🌱"
+# Usage: /ready ${input:topic}
+# The topic is passed via ${input:topic} in the prompt

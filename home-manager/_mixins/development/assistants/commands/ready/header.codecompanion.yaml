@@ -1,0 +1,6 @@
+name: Get ready 🌱
+interaction: chat
+opts:
+  alias: ready
+  is_slash_cmd: true
+  user_prompt: true
