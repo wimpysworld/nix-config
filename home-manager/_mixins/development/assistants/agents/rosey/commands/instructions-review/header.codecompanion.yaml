@@ -1,6 +1,0 @@
-name: Instructions Review
-interaction: chat
-opts:
-  alias: instructions-review
-  is_slash_cmd: true
-  rules: rosey

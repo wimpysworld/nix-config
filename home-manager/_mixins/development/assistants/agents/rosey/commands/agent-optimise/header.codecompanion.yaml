@@ -1,6 +1,0 @@
-name: Agent Optimise
-interaction: chat
-opts:
-  alias: agent-optimise
-  is_slash_cmd: true
-  rules: rosey

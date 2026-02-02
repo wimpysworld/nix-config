@@ -1,6 +1,0 @@
-name: Instructions Create
-interaction: chat
-opts:
-  alias: instructions-create
-  is_slash_cmd: true
-  rules: rosey

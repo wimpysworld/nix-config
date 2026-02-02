@@ -1,6 +1,0 @@
-name: Create Code
-interaction: chat
-opts:
-  alias: create-code
-  is_slash_cmd: true
-  rules: donatello

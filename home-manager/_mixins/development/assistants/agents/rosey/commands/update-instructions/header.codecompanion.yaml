@@ -1,0 +1,6 @@
+name: Update Instructions
+interaction: chat
+opts:
+  alias: update-instructions
+  is_slash_cmd: true
+  rules: rosey

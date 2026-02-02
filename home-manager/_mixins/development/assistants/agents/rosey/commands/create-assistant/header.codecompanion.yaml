@@ -1,0 +1,6 @@
+name: Create AI Assistant
+interaction: chat
+opts:
+  alias: create-assistant
+  is_slash_cmd: true
+  rules: rosey

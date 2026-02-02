@@ -1,0 +1,6 @@
+name: Update AI Assistant
+interaction: chat
+opts:
+  alias: update-assistant
+  is_slash_cmd: true
+  rules: rosey

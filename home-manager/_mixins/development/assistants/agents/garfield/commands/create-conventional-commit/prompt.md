@@ -1,22 +1,35 @@
 ## Create Conventional Commit
 
-Write a commit message for staged changes (or recent work if nothing staged).
+Write a commit message for staged changes. Output only - never execute commits.
+
+### Allowed Commands
+
+Run each command separately (no chaining):
+
+- `git status` - shows staging state AND current branch (line 1: "On branch X")
+- `git diff --staged` - view staged changes
+- `git diff --staged --stat` - summarise staged files
+- `git log --oneline -10` - recent commits for style reference
+
+### Forbidden Commands
+
+**NEVER execute:**
+
+- `git commit` / `git commit -m` - output message only, user commits manually
+- `git branch` - use `git status` for branch name instead
+- `git add` / `git checkout` / `git reset` - no staging or working tree changes
+- Command chaining with `&&`, `;`, or `|`
 
 ### Process
 
-1. Gather change information using **separate** read-only git commands:
-   - `git diff --staged` — view staged changes
-   - `git diff --staged --stat` — summarise staged file changes
-   - `git status` — verify staging state and working tree
-   
-   **IMPORTANT**: Run each command individually. Do NOT chain commands with `&&`, `;`, or pipes (`|`). This ensures no manual approval is required.
-2. If nothing staged, summarise recent implementation work
+1. Run allowed commands individually to gather context
+2. If nothing staged, summarise recent implementation work from conversation
 3. Apply type selection from agent definition
-4. Output commit message only—ready for `git commit -m`
+4. **Output commit message in a code block** - user will copy and commit
 
 ### Body Decision
 
-- **Include body**: Multiple files changed, non-obvious rationale, breaking change
+- **Include body**: Multiple files, non-obvious rationale, breaking change
 - **Skip body**: Single-purpose change clear from subject line
 
 ### Example
@@ -26,10 +39,12 @@ Staged: Added null check in auth middleware, updated error message
 </example_input>
 
 <example_output>
+```
 fix(auth): handle missing user email in profile lookup
 
 - Add null check before accessing user.email
 - Return descriptive error instead of crashing
 
 Fixes #234
+```
 </example_output>

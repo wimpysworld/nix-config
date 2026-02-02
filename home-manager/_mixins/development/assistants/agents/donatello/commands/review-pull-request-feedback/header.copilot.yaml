@@ -1,4 +1,0 @@
-agent: "donatello"
-description: "Assess and action PR review feedback"
-# Usage: /review-pull-request-feedback https://github.com/owner/repo/pull/123
-# The PR URL is passed via ${input:pr-url} in the prompt

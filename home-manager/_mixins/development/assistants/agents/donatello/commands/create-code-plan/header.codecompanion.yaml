@@ -1,0 +1,6 @@
+name: Create Code Plan
+interaction: chat
+opts:
+  alias: create-code-plan
+  is_slash_cmd: true
+  rules: donatello

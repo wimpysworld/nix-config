@@ -1,4 +1,4 @@
-## Research Overview Document
+## Create Overview Document
 
 Create overview enabling downstream agents to continue without reverse-engineering your research.
 

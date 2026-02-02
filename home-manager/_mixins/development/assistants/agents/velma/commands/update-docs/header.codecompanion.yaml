@@ -1,4 +1,4 @@
-name: Update Docs
+name: Update Documentation
 interaction: chat
 opts:
   alias: update-docs

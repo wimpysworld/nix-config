@@ -1,0 +1,6 @@
+name: Create Documentation Plan
+interaction: chat
+opts:
+  alias: create-docs-plan
+  is_slash_cmd: true
+  rules: velma

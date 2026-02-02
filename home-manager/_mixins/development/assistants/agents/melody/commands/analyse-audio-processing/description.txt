@@ -1,1 +1,1 @@
-Compare before/after audio metrics to evaluate processing pipeline effectiveness
+Analyse audio processing 🎛️

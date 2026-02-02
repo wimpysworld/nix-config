@@ -1,6 +1,0 @@
-name: Instructions Consolidate
-interaction: chat
-opts:
-  alias: instructions-consolidate
-  is_slash_cmd: true
-  rules: rosey

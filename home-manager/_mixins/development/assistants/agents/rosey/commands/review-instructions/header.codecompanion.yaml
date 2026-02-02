@@ -1,0 +1,6 @@
+name: Review AGENTS.md
+interaction: chat
+opts:
+  alias: review-instructions
+  is_slash_cmd: true
+  rules: rosey

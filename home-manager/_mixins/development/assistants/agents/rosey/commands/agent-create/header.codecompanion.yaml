@@ -1,6 +1,0 @@
-name: Agent Create
-interaction: chat
-opts:
-  alias: agent-create
-  is_slash_cmd: true
-  rules: rosey

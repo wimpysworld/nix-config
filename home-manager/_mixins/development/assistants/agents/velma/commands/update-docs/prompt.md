@@ -1,4 +1,4 @@
-## Documentation Update
+## Update Documentation
 
 Update documentation to reflect recent code changes.
 
