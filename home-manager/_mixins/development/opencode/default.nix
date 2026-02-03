@@ -1,6 +1,7 @@
 {
   config,
   inputs,
+  isWorkstation,
   lib,
   pkgs,
   username,
@@ -8,8 +9,9 @@
 }:
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
+  system = pkgs.stdenv.hostPlatform.system;
   installFor = [ "martin" ];
-  opencodePackage = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
+  opencodePackage = inputs.opencode.packages.${system}.opencode;
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
@@ -36,7 +38,12 @@ lib.mkIf (lib.elem username installFor) {
       ];
     };
     packages = [
-      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.ccusage-opencode
+      inputs.nix-ai-tools.packages.${system}.ccusage-opencode
+    ]
+    # TODO: Disabled until upstream fixes missing outputHashes
+    # https://github.com/anomalyco/opencode/issues/11755
+    ++ lib.optionals (false && isWorkstation && isLinux) [
+      inputs.opencode.packages.${system}.desktop
     ];
   };
 
