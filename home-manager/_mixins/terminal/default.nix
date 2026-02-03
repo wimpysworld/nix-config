@@ -68,6 +68,7 @@ in
         duf # Modern Unix `df`
         dust # Modern Unix `du`
         entr # Modern Unix `watch`
+        frogmouth # Terminal Markdown viewer
         file # Terminal file info
         fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
@@ -117,6 +118,12 @@ in
         m-cli # Terminal Swiss Army Knife for macOS
         coreutils
       ];
+
+    # Environment variables for terminal applications
+    sessionVariables = {
+      # Set Catppuccin Mocha theme for Textual-based applications (e.g., frogmouth)
+      TEXTUAL_THEME = "catppuccin-mocha";
+    };
   };
 
   programs = {
