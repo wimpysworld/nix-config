@@ -41,9 +41,29 @@ lib.mkIf (lib.elem hostname installOn) {
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
+        "emmylua"
         "glsl"
         "lua"
       ];
+      userSettings = {
+        languages = {
+          Lua = {
+            format_on_save = "on";
+            formatter = {
+              external = {
+                command = "stylua";
+                arguments = [
+                  "--syntax=Lua54"
+                  "--respect-ignores"
+                  "--stdin-filepath"
+                  "{buffer_path}"
+                  "-"
+                ];
+              };
+            };
+          };
+        };
+      };
     };
     neovim = lib.mkIf config.programs.neovim.enable {
       plugins = [

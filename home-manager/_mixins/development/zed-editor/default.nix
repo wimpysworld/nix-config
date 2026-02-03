@@ -20,6 +20,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
       extensions = [
         "color-highlight"
         "comment"
+        "dependi"
         "desktop"
         "dockerfile"
         "editorconfig"

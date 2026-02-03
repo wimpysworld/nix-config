@@ -23,14 +23,4 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
       gk-cli
     ];
   };
-
-  programs = {
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        extensions = with pkgs; [
-          vscode-marketplace.s3anmorrow.openwithkraken
-        ];
-      };
-    };
-  };
 }

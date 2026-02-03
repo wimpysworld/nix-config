@@ -41,6 +41,23 @@ lib.mkIf (lib.elem username installFor) {
       extensions = [
         "dart"
       ];
+      userSettings = {
+        # Dart language-specific settings
+        languages = {
+          Dart = {
+            format_on_save = "on";
+            tab_size = 2;
+          };
+        };
+        # Dart LSP configuration for formatting line length
+        lsp = {
+          dart = {
+            settings = {
+              lineLength = 80;
+            };
+          };
+        };
+      };
     };
     neovim = lib.mkIf config.programs.neovim.enable {
       plugins = [

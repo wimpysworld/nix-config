@@ -34,9 +34,23 @@ lib.mkIf (lib.elem username installFor) {
       };
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
+      extensions = [
+        "python-requirements"
+        "rst"
+      ];
       userSettings = {
         "languages" = {
           "Python" = {
+            "format_on_save" = "on";
+            "formatter" = {
+              "external" = {
+                "command" = "${pkgs.ruff}/bin/ruff";
+                "arguments" = [
+                  "format"
+                  "-"
+                ];
+              };
+            };
             "language_servers" = [
               "${pkgs.basedpyright}/bin/basedpyright"
               "!ty"
