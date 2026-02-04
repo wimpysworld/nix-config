@@ -1,1 +1,1 @@
-$1 I have more details to share, let me know when you're ready to collaborate.
+$1 Don't do any research, I have details to share. Let me know when you're ready to collaborate.
