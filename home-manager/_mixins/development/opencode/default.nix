@@ -15,28 +15,6 @@ let
 in
 lib.mkIf (lib.elem username installFor) {
   home = {
-    file."${config.xdg.configHome}/zed/keymap.json" = lib.mkIf config.programs.zed-editor.enable {
-      text = builtins.toJSON [
-        {
-          bindings = {
-            "cmd-alt-o" = [
-              "agent::NewExternalAgentThread"
-              {
-                agent = {
-                  custom = {
-                    name = "OpenCode";
-                    command = {
-                      command = "opencode";
-                      args = [ "acp" ];
-                    };
-                  };
-                };
-              }
-            ];
-          };
-        }
-      ];
-    };
     packages = [
       inputs.nix-ai-tools.packages.${system}.ccusage-opencode
     ]
@@ -1306,6 +1284,36 @@ lib.mkIf (lib.elem username installFor) {
       extensions = [
         "opencode"
       ];
+      userKeymaps = [
+        {
+          bindings = {
+            "ctrl-alt-shift-p" = [
+              "agent::NewExternalAgentThread"
+              {
+                agent = {
+                  custom = {
+                    name = "OpenCode";
+                    command = {
+                      command = "opencode";
+                      args = [ "acp" ];
+                    };
+                  };
+                };
+              }
+            ];
+          };
+        }
+      ];
+      userSettings = {
+        agent_servers = {
+          OpenCode = {
+            type = "custom";
+            command = "opencode";
+            args = [ "acp" ];
+            env = { };
+          };
+        };
+      };
     };
   };
 }
