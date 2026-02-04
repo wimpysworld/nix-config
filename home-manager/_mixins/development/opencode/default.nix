@@ -1287,6 +1287,10 @@ lib.mkIf (lib.elem username installFor) {
       userKeymaps = [
         {
           bindings = {
+            "ctrl-alt-shift-c" = [
+              "agent::NewExternalAgentThread"
+              { agent = "claude_code"; }
+            ];
             "ctrl-alt-shift-p" = [
               "agent::NewExternalAgentThread"
               {
