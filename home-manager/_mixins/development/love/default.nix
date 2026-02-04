@@ -48,7 +48,7 @@ lib.mkIf (lib.elem hostname installOn) {
       userSettings = {
         languages = {
           Lua = {
-            format_on_save = "on";
+            format_on_save = "off";
             formatter = {
               external = {
                 command = "stylua";

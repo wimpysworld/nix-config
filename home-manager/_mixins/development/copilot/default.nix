@@ -387,9 +387,9 @@ lib.mkIf (lib.elem username installFor) {
             provider = "copilot_chat";
             model = "gpt-5-mini";
           };
-          features = {
-            edit_prediction_provider = "copilot";
-          };
+        };
+        features = {
+          edit_prediction_provider = "copilot";
         };
       };
     };

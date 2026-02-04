@@ -3,7 +3,6 @@ Executive Summary
 📌 KEY: Zed can serve as a daily driver today, but with notable workflow adjustments required. The configuration is already well-structured with good LSP and formatter coverage across all major languages. However, several critical gaps exist in code quality tools and collaboration features that may impact your workflow.
 Blocking issues for full replacement:
 - No invisible character detection (gremlins equivalent)
-- No TODO/fixme tracking panel
 - No Live Share equivalent for real-time collaboration
 - Limited extension ecosystem for niche file types (Debian control files)
 Confidence: High - based on comprehensive review of 26 configuration files
@@ -13,7 +12,7 @@ Core Editor Extensions
 | Feature/Extension | VSCode | Zed | Priority | Notes/Equivalent |
 |-------------------|--------|-----|----------|------------------|
 | Invisible character detection | gremlins | ❌ None | High | No Zed equivalent - `show_whitespaces` only displays U+0020 (space) and U+0009 (tab), NOT NBSP or zero-width characters |
-| TODO tree/tracking | todo-tree | ❌ None | High | No panel equivalent; would need external tooling |
+| TODO tree/tracking | todo-tree | ✅ comment | ✅ Parity | Provides TODO/FIXME/XXX tracking and navigation |
 | Partial diff/compare | partial-diff | ❌ None | Low | User does not use this feature; Zed's Git diff tooling is superior. Remaining ad-hoc comparison needs covered by split panes or terminal tools |
 | Code screenshots | polacode-2019 | ❌ None | Low | Use external tools like Carbon |
 | EditorConfig | editorconfig | ✅ editorconfig | ✅ Parity | Both supported |
@@ -137,7 +136,6 @@ YAML
 Git Integration
 | Aspect | VSCode | Zed | Status |
 |--------|--------|-----|--------|
-| Gitignore templates | codezombiech.gitignore | ❌ None | Low gap |
 | GitHub Actions | vscode-github-actions, github-local-actions | ✅ github-actions | Partial |
 | PR/Issues | vscode-pull-request-github | ❌ None | Medium gap |
 | Git commit message | (built-in) | ✅ git-firefly | ✅ Parity |
@@ -153,10 +151,6 @@ Critical (Would block daily use)
 3. Collaboration assessment
    - Evaluate if Zed Channels meet your collaboration needs
    - If not, keep VSCode available for pair programming sessions
-High Priority
-4. Consider TODO tracking alternatives:
-   - Use rg "TODO|FIXME|XXX" in terminal
-   - Or create a just recipe for project-wide TODO scanning
 Medium Priority
 5. Accept remaining gaps:
     - **Note**: The dependi extension for dependency version checking was recently released and is now available
@@ -242,13 +236,13 @@ Summary Statistics
 | Category | Parity | Zed Superior | Gap |
 |----------|--------|--------------|-----|
 | Languages | 39 | 4 | 6 |
-| Core features | 8 | 1 | 4 |
+| Core features | 9 | 1 | 3 |
 | File types | 7 | 0 | 1 |
 | Collaboration | 1 | 0 | 1 |
-| Git Integration | 2 | 0 | 2 |
-| **Total** | **57** | **5** | **14** |
+| Git Integration | 2 | 0 | 1 |
+| **Total** | **58** | **5** | **12** |
 
-Overall assessment: ~82% feature parity (62 of 76 features fully supported), with Zed excelling in performance and modern features but lacking in code quality tooling, shell debugging, and collaboration.
+Overall assessment: ~86% feature parity (63 of 74 features fully supported), with Zed excelling in performance and modern features but lacking in code quality tooling, shell debugging, and collaboration.
 ---
 Potential Extension Projects
 The following extensions would be interesting contributions to the Zed ecosystem and could address notable gaps identified above:
@@ -256,7 +250,5 @@ The following extensions would be interesting contributions to the Zed ecosystem
 Create a Zed extension that generates beautiful code screenshots, inspired by [carbon.now.sh](https://carbon.now.sh) and the VSCode Polacode extension. This would allow generating shareable images of code snippets directly within the editor, with customisable themes, backgrounds, and padding.
 **Gremlins - Invisible Character Detection**
 Develop a Zed extension that highlights invisible unicode characters (non-breaking spaces, zero-width spaces, BOM markers) in the editor. This would address the critical gap where Zed's `show_whitespaces` cannot display characters like NBSP or zero-width characters, providing visual indicators similar to the VSCode Gremlins extension.
-**Recently Released Extensions**
-The following extension has recently become available and addresses a gap previously identified in this analysis:
-- **dependi** (released February 2025) - Provides automatic dependency version checking for Go and Rust with inlay hints showing latest versions, outdated dependency highlighting, quick update actions, and security vulnerability warnings.
+
 These are potential future contributions, not immediate priorities, but would significantly improve the Zed experience for developers working with code quality sensitive to invisible character issues or those sharing code snippets.

@@ -41,7 +41,7 @@ lib.mkIf (lib.elem username installFor) {
       userSettings = {
         "languages" = {
           "Python" = {
-            "format_on_save" = "on";
+            "format_on_save" = "off";
             "formatter" = {
               "external" = {
                 "command" = "${pkgs.ruff}/bin/ruff";

@@ -51,7 +51,6 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
         inlay_hints = {
           enabled = true;
         };
-        metrics = false;
         minimap = {
           show = "auto";
           thumb = "always";

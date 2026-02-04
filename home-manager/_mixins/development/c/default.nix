@@ -43,15 +43,15 @@ lib.mkIf (lib.elem username installFor) {
       userSettings = {
         languages = {
           C = {
-            format_on_save = "on";
+            format_on_save = "off";
             tab_size = 2;
           };
           "C++" = {
-            format_on_save = "on";
+            format_on_save = "off";
             tab_size = 2;
           };
           CMake = {
-            format_on_save = "on";
+            format_on_save = "off";
             tab_size = 2;
             language_servers = [
               "neocmakelsp"
@@ -59,16 +59,7 @@ lib.mkIf (lib.elem username installFor) {
           };
         };
         lsp = {
-          clangd = {
-            binary = {
-              path_lookup = true;
-            };
-          };
-          neocmakelsp = {
-            binary = {
-              path_lookup = true;
-            };
-          };
+          clangd = { };
         };
       };
     };

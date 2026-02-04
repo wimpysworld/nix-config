@@ -61,9 +61,6 @@ lib.mkIf (lib.elem username installFor) {
         };
         lsp = {
           nixd = {
-            binary = {
-              path_lookup = true;
-            };
             settings = {
               diagnostics = {
                 suppress = [ "sema-extra-with" ];

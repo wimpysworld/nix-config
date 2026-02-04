@@ -155,9 +155,6 @@ in
         userSettings = {
           "git.openRepositoryInParentFolders" = "always";
         };
-        extensions = with pkgs; [
-          vscode-marketplace.codezombiech.gitignore
-        ];
       };
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {

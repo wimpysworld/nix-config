@@ -46,11 +46,7 @@ lib.mkIf (lib.elem username installFor) {
           };
         };
         lsp = {
-          just-lsp = {
-            binary = {
-              path_lookup = true;
-            };
-          };
+          just-lsp = { };
         };
       };
     };

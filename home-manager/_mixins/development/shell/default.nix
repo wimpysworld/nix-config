@@ -41,7 +41,7 @@ lib.mkIf (lib.elem username installFor) {
       userSettings = {
         languages = {
           "Shell Script" = {
-            format_on_save = "on";
+            format_on_save = "off";
             tab_size = 2;
             hard_tabs = false;
           };
