@@ -58,10 +58,7 @@ let
     };
     jina-mcp-server = {
       type = "http";
-      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,
-             expand_query,parallel_search_arxiv,parallel_search_ssrn,
-             parallel_search_web,show_api_key,search_arxiv,search_jina_blog,
-             search_ssrn,search_web";
+      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
       headers = {
         Authorization = "Bearer ${config.sops.placeholder.JINA_API_KEY}";
       };
@@ -129,10 +126,7 @@ let
     jina-mcp-server = {
       enabled = false;
       type = "remote";
-      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,
-             expand_query,parallel_search_arxiv,parallel_search_ssrn,
-             parallel_search_web,show_api_key,search_arxiv,search_jina_blog,
-             search_ssrn,search_web";
+      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
       headers = {
         Authorization = "Bearer {env:JINA_API_KEY}";
       };
@@ -239,10 +233,7 @@ let
       args = [
         "-y"
         "mcp-remote"
-        "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,
-        expand_query,parallel_search_arxiv,parallel_search_ssrn,
-        parallel_search_web,show_api_key,search_arxiv,search_jina_blog,
-        search_ssrn,search_web"
+        "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web"
         "--header"
         "Authorization: Bearer ${config.sops.placeholder.JINA_API_KEY}"
       ];
@@ -330,10 +321,7 @@ lib.mkIf (lib.elem username installFor) {
             args = [
               "-y"
               "mcp-remote"
-              "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,
-               expand_query,parallel_search_arxiv,parallel_search_ssrn,
-               parallel_search_web,show_api_key,search_arxiv,
-               search_jina_blog,search_ssrn,search_web"
+              "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web"
             ];
           };
         };
