@@ -18,6 +18,9 @@ let
     else
       pkgs.claude-code;
 
+  # Import shared MCP server definitions
+  mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
+
   # Permission lists for Claude Code
   # Format: "Bash(command:*)" for prefix matching, "Bash(command)" for exact
   bashAllow = [
@@ -684,6 +687,8 @@ lib.mkIf (lib.elem username installFor) {
     claude-code = {
       enable = true;
       package = claudePackage;
+      # Use Home Manager's native MCP support with shared server definitions
+      mcpServers = mcpServerDefs.mcpServers;
       settings = {
         permissions = {
           allow = bashAllow;
