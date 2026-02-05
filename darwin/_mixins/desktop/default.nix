@@ -37,7 +37,6 @@ in
       "mullvad-browser"
       "obs"
       "orion"
-      "syncthing-app"
       "tailscale-app"
     ];
   };
