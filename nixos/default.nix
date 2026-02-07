@@ -15,7 +15,8 @@
 }:
 {
   imports = [
-    # Use module this flake exports; from modules/nixos
+    # Use modules this flake exports; from modules/nixos
+    outputs.nixosModules.falcon-sensor
     outputs.nixosModules.wavebox
     # Use modules from other flakes
     inputs.catppuccin.nixosModules.catppuccin
@@ -30,6 +31,7 @@
     ./_mixins/console
     ./_mixins/hardware
     ./_mixins/network
+    ./_mixins/policy
     ./_mixins/scripts
     ./_mixins/server
     ./_mixins/users
