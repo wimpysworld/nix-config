@@ -62,7 +62,7 @@ lib.mkIf (lib.elem hostname installOn) {
   # CrowdStrike Falcon sensor for security monitoring and intrusion detection.
   # The NixOS module (modules/nixos/falcon-sensor.nix) manages the systemd service
   # and CID/BPF configuration. The sensor binaries are bootstrapped to
-  # /opt/CrowdStrike/ using falcon-sensor-install. See NixOS-Falcon-Server.md.
+  # /opt/CrowdStrike/ using falcon-sensor-install. See NixOS-Falcon-Sensor.md.
   services.falcon-sensor = {
     enable = true;
     cidFile = config.sops.secrets.falcon-cid.path;
@@ -70,7 +70,7 @@ lib.mkIf (lib.elem hostname installOn) {
   };
 
   # Deploy secrets for policy/compliance agents via sops-nix.
-  # See NixOS-Kolide.md and NixOS-Falcon-Server.md for obtaining these secrets.
+  # See NixOS-Kolide.md and NixOS-Falcon-Sensor.md for obtaining these secrets.
   sops = {
     secrets = {
       kolide = {
