@@ -27,6 +27,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
         "ini"
         "make"
         "rainbow-csv"
+        "semgrep"
         "vhs"
         "xml"
       ];
@@ -56,6 +57,20 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           thumb = "always";
           thumb_border = "full";
           current_line_highlight = null;
+        };
+        lsp = {
+          semgrep = {
+            binary = {
+              path = "${pkgs.semgrep}/bin/semgrep";
+              arguments = [ "lsp" ];
+            };
+            initialization_options = {
+              scan = {
+                configuration = [ "auto" ];
+                only_git_dirty = false;
+              };
+            };
+          };
         };
         node = {
           ignore_system_version = true;

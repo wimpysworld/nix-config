@@ -64,6 +64,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
           "files.trimTrailingWhitespace" = true;
           "partialDiff.enableTelemetry" = false;
           "security.workspace.trust.untrustedFiles" = "open";
+          "semgrep.path" = "${pkgs.semgrep}/bin/semgrep";
           "telemetry.editStats.enabled" = false;
           "telemetry.feedback.enabled" = false;
           "telemetry.telemetryLevel" = "off";
@@ -100,6 +101,7 @@ lib.mkIf (lib.elem username installFor && isWorkstation) {
             vscode-marketplace.nhoizey.gremlins
             vscode-marketplace.nico-castell.linux-desktop-file
             vscode-marketplace.ryu1kn.partial-diff
+            vscode-marketplace.semgrep.semgrep
             vscode-marketplace.streetsidesoftware.code-spell-checker
           ]
           ++ lib.optionals isLinux [

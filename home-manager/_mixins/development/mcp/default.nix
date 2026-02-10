@@ -31,6 +31,7 @@ lib.mkIf (lib.elem username installFor) {
         set -gx GOOGLE_CSE_API_KEY (cat ${config.sops.secrets.GOOGLE_CSE_API_KEY.path} 2>/dev/null; or echo "")
         set -gx GOOGLE_CSE_ENGINE_ID (cat ${config.sops.secrets.GOOGLE_CSE_ENGINE_ID.path} 2>/dev/null; or echo "")
         set -gx JINA_API_KEY (cat ${config.sops.secrets.JINA_API_KEY.path} 2>/dev/null; or echo "")
+        set -gx SEMGREP_APP_TOKEN (cat ${config.sops.secrets.SEMGREP_APP_TOKEN.path} 2>/dev/null; or echo "")
       '';
     };
     bash = {
@@ -41,6 +42,7 @@ lib.mkIf (lib.elem username installFor) {
         export GOOGLE_CSE_API_KEY=$(cat ${config.sops.secrets.GOOGLE_CSE_API_KEY.path} 2>/dev/null || echo "")
         export GOOGLE_CSE_ENGINE_ID=$(cat ${config.sops.secrets.GOOGLE_CSE_ENGINE_ID.path} 2>/dev/null || echo "")
         export JINA_API_KEY=$(cat ${config.sops.secrets.JINA_API_KEY.path} 2>/dev/null || echo "")
+        export SEMGREP_APP_TOKEN=$(cat ${config.sops.secrets.SEMGREP_APP_TOKEN.path} 2>/dev/null || echo "")
       '';
     };
     opencode = lib.mkIf config.programs.opencode.enable {
@@ -116,6 +118,9 @@ lib.mkIf (lib.elem username installFor) {
         sopsFile = mcpSopsFile;
       };
       JINA_API_KEY = {
+        sopsFile = mcpSopsFile;
+      };
+      SEMGREP_APP_TOKEN = {
         sopsFile = mcpSopsFile;
       };
     };

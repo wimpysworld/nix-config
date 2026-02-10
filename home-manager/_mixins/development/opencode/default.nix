@@ -40,6 +40,73 @@ lib.mkIf (lib.elem username installFor) {
           prune = true; # Keep pruning old tool outputs to save tokens
         };
 
+        # Semgrep LSP - security diagnostics via the built-in diagnostics tool
+        lsp = {
+          semgrep = {
+            command = [
+              "${pkgs.semgrep}/bin/semgrep"
+              "lsp"
+            ];
+            extensions = [
+              ".R"
+              ".bash"
+              ".c"
+              ".cc"
+              ".cjs"
+              ".clj"
+              ".cljc"
+              ".cljs"
+              ".cls"
+              ".cpp"
+              ".cs"
+              ".cts"
+              ".cxx"
+              ".dart"
+              ".ex"
+              ".exs"
+              ".go"
+              ".h"
+              ".hcl"
+              ".hh"
+              ".hpp"
+              ".html"
+              ".hxx"
+              ".java"
+              ".jl"
+              ".js"
+              ".json"
+              ".jsonnet"
+              ".jsx"
+              ".kt"
+              ".kts"
+              ".libsonnet"
+              ".lua"
+              ".mjs"
+              ".ml"
+              ".mli"
+              ".mts"
+              ".php"
+              ".py"
+              ".r"
+              ".rb"
+              ".rs"
+              ".scala"
+              ".scm"
+              ".sh"
+              ".sol"
+              ".ss"
+              ".swift"
+              ".tf"
+              ".trigger"
+              ".ts"
+              ".tsx"
+              ".xml"
+              ".yaml"
+              ".yml"
+            ];
+          };
+        };
+
         # TUI settings
         tui = {
           diff_style = "stacked"; # Always show single-column stacked diffs
