@@ -11,7 +11,7 @@
   ...
 }:
 let
-  isServer = hostname == "revan" || hostname == "malak";
+  isServer = hostname == "revan" || hostname == "malak" || hostname == "maul";
   useDoT = if isLaptop then "opportunistic" else "true";
   useNetworkManager = if (isISO || !isServer) then true else false;
   unmanagedInterfaces =
