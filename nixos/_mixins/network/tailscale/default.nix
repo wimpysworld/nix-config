@@ -1,6 +1,7 @@
 {
   config,
   hostname,
+  isInstall,
   isWorkstation,
   isServer,
   lib,
@@ -18,6 +19,9 @@ lib.mkIf (isWorkstation || isServer) {
   environment.systemPackages = with pkgs; lib.optionals isWorkstation [ trayscale ];
 
   services.tailscale = {
+    authKeyFile = lib.mkIf isInstall config.sops.secrets.tailscale-auth-key.path;
+    authKeyParameters.preauthorized = lib.mkIf isInstall true;
+    disableUpstreamLogging = true;
     enable = true;
     extraUpFlags = [
       "--operator=${username}"
@@ -32,5 +36,12 @@ lib.mkIf (isWorkstation || isServer) {
     permitCertUid = lib.mkIf config.services.caddy.enable "caddy";
     openFirewall = true;
     useRoutingFeatures = "both";
+  };
+
+  sops = lib.mkIf isInstall {
+    secrets.tailscale-auth-key = {
+      sopsFile = ../../../secrets/tailscale.yaml;
+      key = "auth_key";
+    };
   };
 }
