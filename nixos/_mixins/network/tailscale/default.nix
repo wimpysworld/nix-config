@@ -40,7 +40,7 @@ lib.mkIf (isWorkstation || isServer) {
 
   sops = lib.mkIf isInstall {
     secrets.tailscale-auth-key = {
-      sopsFile = ../../../secrets/tailscale.yaml;
+      sopsFile = ../../../../secrets/tailscale.yaml;
       key = "auth_key";
     };
   };
