@@ -120,7 +120,6 @@ jobs:
     strategy:
       matrix:
         package:
-          - nerd-font-patcher
           - bebas-neue-2014-font
           - bebas-neue-2018-font
           - bebas-neue-pro-font
