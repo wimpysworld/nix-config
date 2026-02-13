@@ -8,7 +8,11 @@
 }:
 let
   xkbLayout = "gb";
-  monitors = (import ./monitors.nix { }).${hostname};
+  monitors =
+    (import ./monitors.nix { }).${hostname} or {
+      monitor = [ ", preferred, auto, 1" ];
+      workspace = [ ];
+    };
 in
 {
   catppuccin = {
