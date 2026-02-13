@@ -41,6 +41,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
@@ -63,6 +65,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
@@ -78,6 +82,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
@@ -86,6 +92,28 @@ jobs:
       - name: caddy (with plugins)
         run: |
           nix build .#nixosConfigurations.malak.config.services.caddy.package -L
+
+  build-davinci-resolve:
+    name: 🎬
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - davinci-resolve
+          - davinci-resolve-studio
+    steps:
+      - uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: "holster"
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            lazy-trees = true
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: ${{ matrix.package }}
+        run: |
+          nix build .#nixosConfigurations.vader.pkgs.${{ matrix.package }} -L
 
   build-linux-apps:
     name: 🐧
@@ -105,6 +133,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
@@ -185,6 +215,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |

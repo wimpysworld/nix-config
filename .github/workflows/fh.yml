@@ -1,7 +1,6 @@
 name: Flake ❄️ Publish 📤
 on:
   workflow_dispatch:
-  pull_request:
   push:
     branches:
     - main
@@ -20,4 +19,4 @@ jobs:
       id-token: write
       contents: read
     with:
-      visibility: true
+      visibility: public
