@@ -14,10 +14,12 @@
         # Fix setproctitle test failures on Darwin with multiprocessing fork
         # See: https://github.com/NixOS/nixpkgs/issues/479313
         setproctitle = pyprev.setproctitle.overridePythonAttrs (old: {
-          disabledTests = (old.disabledTests or [ ]) ++ prev.lib.optionals prev.stdenv.isDarwin [
-            "test_fork_segfault"
-            "test_thread_fork_segfault"
-          ];
+          disabledTests =
+            (old.disabledTests or [ ])
+            ++ prev.lib.optionals prev.stdenv.isDarwin [
+              "test_fork_segfault"
+              "test_thread_fork_segfault"
+            ];
         });
       };
     };
@@ -27,13 +29,27 @@
         # Fix setproctitle test failures on Darwin with multiprocessing fork
         # See: https://github.com/NixOS/nixpkgs/issues/479313
         setproctitle = pyprev.setproctitle.overridePythonAttrs (old: {
-          disabledTests = (old.disabledTests or [ ]) ++ prev.lib.optionals prev.stdenv.isDarwin [
-            "test_fork_segfault"
-            "test_thread_fork_segfault"
-          ];
+          disabledTests =
+            (old.disabledTests or [ ])
+            ++ prev.lib.optionals prev.stdenv.isDarwin [
+              "test_fork_segfault"
+              "test_thread_fork_segfault"
+            ];
         });
       };
     };
+
+    # Fix inetutils build failure on Darwin with clang 21
+    # CVE-2026-24061 patches break gnulib error() macro expansion on Darwin
+    # See: upstream nixpkgs issue with inetutils-2.7 + clang 21
+    inetutils = prev.inetutils.overrideAttrs (
+      old:
+      prev.lib.optionalAttrs prev.stdenv.isDarwin {
+        env = (old.env or { }) // {
+          NIX_CFLAGS_COMPILE = toString ((old.env.NIX_CFLAGS_COMPILE or "") + " -D_GL_GNULIB_ERROR=0");
+        };
+      }
+    );
 
     # Override avizo to use a specific commit that includes these fixes:
     # - https://github.com/heyjuvi/avizo/pull/76 (fix options of lightctl)
