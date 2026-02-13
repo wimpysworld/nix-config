@@ -1,9 +1,11 @@
 {
+  isInstall,
   isWorkstation,
+  lib,
   pkgs,
   ...
 }:
-{
+lib.mkIf isInstall {
   environment.systemPackages =
     with pkgs;
     lib.optionals isWorkstation [

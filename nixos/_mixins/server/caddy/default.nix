@@ -15,10 +15,10 @@ let
 in
 {
   environment = {
-    shellAliases = {
+    shellAliases = lib.mkIf useCaddy {
       caddy-log = "journalctl _SYSTEMD_UNIT=caddy.service";
     };
-    systemPackages = with pkgs; [ caddy ];
+    systemPackages = lib.optionals useCaddy (with pkgs; [ caddy ]);
   };
   services = {
     caddy = {

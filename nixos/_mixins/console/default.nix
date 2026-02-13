@@ -60,7 +60,7 @@ let
       palette-background=${rgbToKmscon "base"}
       sb-size=16384
     '';
-  useGeoclue = !isServer;
+  useGeoclue = !isServer && !isISO;
 
   # Use centralized VT color mapping from palette
   vtColorMap = catppuccinPalette.vtColorMap;

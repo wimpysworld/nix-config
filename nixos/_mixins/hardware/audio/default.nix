@@ -11,7 +11,7 @@
 let
   useLowLatencyPipewire = hostname == "phasma" || hostname == "vader";
 in
-{
+lib.mkIf isInstall {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency
   boot = lib.mkIf config.services.pipewire.enable {
     # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56

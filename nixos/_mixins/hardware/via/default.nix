@@ -1,5 +1,10 @@
-{ username, ... }:
 {
+  isInstall,
+  lib,
+  username,
+  ...
+}:
+lib.mkIf isInstall {
   services = {
     # Provides users with access to VIA
     # https://get.vial.today/manual/linux-udev.html
