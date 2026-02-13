@@ -15,7 +15,6 @@ pkgs: {
 
   # Local package overrides
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
-  gotosocial = pkgs.callPackage ./gotosocial { };
   kmscon = pkgs.callPackage ./kmscon { };
   libtsm = pkgs.callPackage ./libtsm { };
   wolfictl = pkgs.callPackage ./wolfictl { };

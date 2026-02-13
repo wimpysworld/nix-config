@@ -78,7 +78,6 @@ jobs:
           - cider
           - defold
           - gitkraken
-          #- gotosocial
           - wavebox
     steps:
       - uses: actions/checkout@v6
