@@ -1,5 +1,8 @@
 name: Build 🏗️ ISO 📀
 on:
+  pull_request:
+    paths:
+      - "flake.lock"
   push:
     branches:
       - main
@@ -7,7 +10,7 @@ on:
       - 'flake.lock'
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 permissions:
   contents: write
@@ -44,6 +47,7 @@ jobs:
         sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
         sudo df -h
     - name: Release ISO 🎁
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -62,6 +66,7 @@ jobs:
 
   publish-flakehub:
     needs: [build-iso]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Publish FlakeHub ❄️
     runs-on: ubuntu-latest
     permissions:

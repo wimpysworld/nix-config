@@ -25,9 +25,16 @@ jobs:
             lazy-trees = true
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - uses: DeterminateSystems/update-flake-lock@v28
+        id: update
         with:
+          token: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
           pr-title: "chore: update flake.lock"
           # Labels to be set on the PR
           pr-labels: |
             dependencies
             automated
+      - name: Enable auto-merge 🤖
+        if: steps.update.outputs.pull-request-number != ''
+        run: gh pr merge --auto --squash ${{ steps.update.outputs.pull-request-number }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}

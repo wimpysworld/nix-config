@@ -1,5 +1,8 @@
 name: Build 🏗️ VMs 👻
 on:
+  pull_request:
+    paths:
+      - "flake.lock"
   push:
     branches:
       - main
@@ -8,7 +11,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 permissions:
   contents: read
