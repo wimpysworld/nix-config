@@ -54,6 +54,10 @@ lib.mkIf (lib.elem username installFor && !isLima) {
   sops.secrets.syncthing_key.sopsFile = ../../../secrets/${hostname}.yaml;
   sops.secrets.syncthing_cert.sopsFile = ../../../secrets/${hostname}.yaml;
   sops.secrets.pass.sopsFile = ../../../secrets/syncthing.yaml;
+  sops.secrets.syncthing_apikey = {
+    sopsFile = ../../../secrets/syncthing.yaml;
+    key = "apikey";
+  };
 
   services = {
     # Keybase is Linux-only (macOS uses Homebrew cask)
@@ -103,6 +107,20 @@ lib.mkIf (lib.elem username installFor && !isLima) {
         Wants = [ "graphical-session-pre.target" ];
       };
     };
+    user.services.syncthing-init.Service.ExecStartPost =
+      let
+        setApiKey = pkgs.writeShellScript "syncthing-set-apikey" ''
+          APIKEY=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.syncthing_apikey.path})
+          CURRENT_KEY=$(${pkgs.libxml2}/bin/xmllint --xpath 'string(configuration/gui/apikey)' "''${XDG_STATE_HOME:-$HOME/.local/state}/syncthing/config.xml")
+          ${pkgs.curl}/bin/curl -sSLk \
+            -H "X-API-Key: $CURRENT_KEY" \
+            -X PATCH \
+            -d "{\"apikey\": \"$APIKEY\"}" \
+            --retry 5 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:8384/rest/config/gui
+        '';
+      in
+      "${setApiKey}";
     user.services.syncthingtray = lib.mkIf isWorkstation {
       Service.ExecStart = lib.mkForce "${pkgs.syncthingtray}/bin/syncthingtray --wait";
     };

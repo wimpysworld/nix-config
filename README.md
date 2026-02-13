@@ -291,7 +291,6 @@ Things I currently need to do manually after installation.
 - [ ] Maelstral - `maestral_qt`
 - [ ] Matrix - authenticate
 - [ ] Slack - authenticate
-- [ ] Syncthing - Connect API and introduce host
 - [ ] Telegram - authenticate
 - [ ] VSCode - authenticate with GitHub enable sync
 - [ ] Wavebox - authenticate Google and restore profile
