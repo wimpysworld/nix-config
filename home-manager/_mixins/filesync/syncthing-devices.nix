@@ -9,6 +9,9 @@
     malak = {
       id = "33YEJHX-NZB34VC-KB3LI2V-HFNOALL-7O2OLEB-SE75AWA-DWOC62K-5SRXMAC";
     };
+    malgus = {
+      id = "L6J7UDJ-O3WXU6L-HV5ANLQ-ADJJZP6-CFMU6G4-ZKRXUYB-3OWXI5A-TRBMGQ7";
+    };
     maul = {
       id = "ZEAIH76-MXTIJIT-NAO7XPT-CDGUM4D-PREAAQG-6Z3LVD5-47PB6ZB-KDCRCAS";
     };
@@ -33,6 +36,9 @@
     vader = {
       id = "TTRWY3V-22LRBHF-7LVDDX7-ADRHXG5-HQJYS5F-K35PUBJ-AXYXKEJ-MGXHNQR";
     };
+    zannah = {
+      id = "W7VBAM3-AC544LE-IF7IB4P-M744YPK-AXBYTYG-5YZHYZ6-PAFT645-ID7QRQ4";
+    };
   };
 
   folders = {
@@ -43,10 +49,12 @@
       path = "~/Apps";
       devices = [
         "bane"
+        "malgus"
         "momin"
         "phasma"
         "revan"
         "vader"
+        "zannah"
       ];
     };
     audio = {
@@ -56,9 +64,11 @@
       path = "~/Audio";
       devices = [
         "bane"
+        "malgus"
         "phasma"
         "revan"
         "vader"
+        "zannah"
       ];
     };
     chainguard = {
@@ -68,8 +78,10 @@
       path = "~/Chainguard";
       devices = [
         "bane"
+        "malgus"
         "phasma"
         "vader"
+        "zannah"
       ];
     };
     crypt = {
@@ -81,6 +93,7 @@
         "atrius"
         "bane"
         "malak"
+        "malgus"
         "maul"
         "momin"
         "phasma"
@@ -89,6 +102,7 @@
         "sidious"
         "tanis"
         "vader"
+        "zannah"
       ];
     };
     development = {
@@ -98,10 +112,12 @@
       path = "~/Development";
       devices = [
         "bane"
+        "malgus"
         "momin"
         "phasma"
         "tanis"
         "vader"
+        "zannah"
       ];
     };
     documents = {
@@ -111,10 +127,12 @@
       path = "~/Documents";
       devices = [
         "bane"
+        "malgus"
         "momin"
         "phasma"
         "revan"
         "vader"
+        "zannah"
       ];
     };
     downloads = {
@@ -124,10 +142,12 @@
       path = "~/Downloads";
       devices = [
         "bane"
+        "malgus"
         "momin"
         "phasma"
         "revan"
         "vader"
+        "zannah"
       ];
     };
     games = {
@@ -136,8 +156,10 @@
       maxConflicts = 10;
       path = "~/Games";
       devices = [
+        "malgus"
         "phasma"
         "vader"
+        "zannah"
       ];
     };
     music = {
@@ -146,8 +168,10 @@
       maxConflicts = 10;
       path = "~/Music";
       devices = [
+        "malgus"
         "phasma"
         "vader"
+        "zannah"
       ];
     };
     pictures = {
@@ -157,9 +181,11 @@
       path = "~/Pictures";
       devices = [
         "bane"
+        "malgus"
         "phasma"
         "revan"
         "vader"
+        "zannah"
       ];
     };
     studio = {
@@ -168,9 +194,11 @@
       maxConflicts = 10;
       path = "~/Studio";
       devices = [
+        "malgus"
         "phasma"
         "revan"
         "vader"
+        "zannah"
       ];
     };
     videos = {
@@ -179,8 +207,10 @@
       maxConflicts = 10;
       path = "~/Videos";
       devices = [
+        "malgus"
         "phasma"
         "vader"
+        "zannah"
       ];
     };
   };

@@ -15,11 +15,11 @@ These computers are managed by this Nix flake ❄️
 
 |  Hostname   |             Board             |              CPU               |  RAM  |         Primary GPU         |      Secondary GPU       |  Role  | OS  | State |
 | :---------: | :---------------------------: | :----------------------------: | :---: | :-------------------------: | :----------------------: | :----: | :-: | :---: |
-|  `malgus`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  |  🚧   |
-|  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  |  🚧   |
-|  `sidious`  |      [ThinkPad P1 Gen 1]      |      [Intel Xeon E-2176M]      | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630  | 💻️🎭️ | ❄️  |  ✅   |
-| `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️ | 🪟  |  ✅   |
-|   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  🚧   |
+|  `malgus`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  🚧   |
+|  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  🚧   |
+|  `sidious`  |      [ThinkPad P1 Gen 1]      |      [Intel Xeon E-2176M]      | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630  | 💻️🎭️  | ❄️  |  ✅   |
+| `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️  | 🪟  |  ✅   |
+|   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  ✅   |
 |   `tanis`   |     [ThinkPad Z13 Gen 1]      |    [AMD Ryzen 5 PRO 6650U]     | 32GB  |       AMD Radeon 660M       |                          |  💻️   | ❄️  |  ✅   |
 |   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
 |  `atrius`   |       [ThinkPad T495s]        |      [AMD Ryzen 7 3700U]       | 16GB  |     AMD Radeon Vega 10      |                          |  💻️   | ❄️  |  🚧   |
@@ -30,7 +30,7 @@ These computers are managed by this Nix flake ❄️
 | `defender`  |            [Lima]             |               -                |   -   |              -              |                          |   🐄   | 🐧  |  ✅   |
 |  `fighter`  |            [Lima]             |               -                |   -   |              -              |                          |   🐄   | 🐧  |  ✅   |
 |   `revan`   |       [Z390-DESIGNARE]        |     [Intel Core i9-9900K]      | 64GB  |   Intel UHD Graphics 630    |      [NVIDIA T1000]      |   ☁️   | ❄️  |  🚧   |
-|   `malak`   |        [B360 HD3P-LM]         |      [Intel Core i7-8700]      | 128GB |   Intel UHD Graphics 630    |            -             |   ☁️   | ❄️  |  🚧   |
+|   `malak`   |        [B360 HD3P-LM]         |      [Intel Core i7-8700]      | 128GB |   Intel UHD Graphics 630    |            -             |   ☁️   | ❄️  |  ✅   |
 |   `maul`    |       [TRX40-DESIGNARE]       | [AMD Ryzen Threadripper 3970X] | 256GB |       NVIDIA RTX 3090       | NVIDIA RTX 2080Ti (22GB) |   ☁️   | ❄️  |  🚧   |
 
 Workstation and server host names are Sith Lords and the virtual machines are named after TIE fighter series.
@@ -412,7 +412,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [Disko]: https://github.com/nix-community/disko
 [nixos-anywhere]: https://github.com/nix-community/nixos-anywhere
 [sops-nix]: https://github.com/Mic92/sops-nix
-[Frame Desktop Mainboard]: https://frame.work/gb/en/products/framework-desktop-mainboard-amd-ryzen-ai-max-300-series
+[Framework Desktop Mainboard]: https://frame.work/gb/en/products/framework-desktop-mainboard-amd-ryzen-ai-max-300-series
 [TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10
 [Z390-DESIGNARE]: https://www.gigabyte.com/Motherboard/Z390-DESIGNARE-rev-10#kf
 [MEG-X570-UNIFY]: https://www.msi.com/Motherboard/MEG-X570-UNIFY
