@@ -77,14 +77,13 @@ let
 in
 buildNpmPackage (finalAttrs: {
   pname = "heynote";
-  version = "2.8.0-beta.4";
+  version = "2.8.2";
 
   src = fetchFromGitHub {
     owner = "heyman";
     repo = "heynote";
-    # Using beta.4 release which is the latest available
     rev = "v${finalAttrs.version}";
-    hash = "sha256-9oNWVzTsRLDe5hmqKmBOPH3zUljHhwO46IOa+GNJ49c=";
+    hash = "sha256-SoEz528bxt+cUkM941Z9O4X2mb3LwoIGAEL504LLQqY=";
   };
 
   # Use the same Node.js version that Heynote expects
@@ -100,7 +99,7 @@ buildNpmPackage (finalAttrs: {
 
   # npm dependencies hash - computed from package-lock.json
   # Updated to use sass instead of sass-embedded (pure JS vs binary-embedded)
-  npmDepsHash = "sha256-wG75gHygV0wvVNPAiEaDydPHLJi0ymmRmJaaj0+u/GE=";
+  npmDepsHash = "sha256-wER+JuBf60KUE+opvPEYTqeYM1xHAStxETK1GOB7ma4=";
 
   # Skip scripts during initial npm install to avoid ripgrep download
   npmFlags = [ "--ignore-scripts" ];

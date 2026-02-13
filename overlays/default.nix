@@ -65,29 +65,6 @@
       };
     });
 
-    # gitkraken = prev.gitkraken.overrideAttrs (_old: rec {
-    #   version = "11.4.0";
-    #   src =
-    #     {
-    #       x86_64-linux = prev.fetchzip {
-    #         url = "https://api.gitkraken.dev/releases/production/linux/x64/${version}/gitkraken-amd64.tar.gz";
-    #         hash = "sha256-mJ7BAR1cBZS4kE94kQQJc0FBR5lqId/fWTPxu62bUeA=";
-    #       };
-
-    #       x86_64-darwin = prev.fetchzip {
-    #         url = "https://api.gitkraken.dev/releases/production/darwin/x64/${version}/GitKraken-v${version}.zip";
-    #         hash = "sha256-qMe2vIjKcAI8T53W+lL71G1HS6oy6RaCQmHVLUgCzdI=";
-    #       };
-
-    #       aarch64-darwin = prev.fetchzip {
-    #         url = "https://api.gitkraken.dev/releases/production/darwin/arm64/${version}/GitKraken-v${version}.zip";
-    #         hash = "sha256-HlEsSDq1DZWi6ehO66OHd57rA0jrYXWRA1V7H+DsveM=";
-    #       };
-    #     }
-    #     .${prev.stdenv.hostPlatform.system}
-    #       or (throw "Unsupported system: ${prev.stdenv.hostPlatform.system}");
-    # });
-
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
       _lpself: lpsuper: {
         mwprocapture = lpsuper.mwprocapture.overrideAttrs (_old: rec {

@@ -75,9 +75,14 @@ jobs:
     strategy:
       matrix:
         package:
+          - catppuccin-gtk
           - cider
           - defold
-          - gitkraken
+          - defold-bob
+          - defold-gdc
+          - heynote
+          - kmscon
+          - libtsm
           - wavebox
     steps:
       - uses: actions/checkout@v6
@@ -111,7 +116,7 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: ${{ matrix.package }}
         run: |
-          nix build .#darwinConfigurations.krall.pkgs.${{ matrix.package }} -L
+          nix build .#darwinConfigurations.momin.pkgs.${{ matrix.package }} -L
 
   build-fonts:
     name: 🔤

@@ -19,15 +19,15 @@
   check,
   buildPackages,
 }:
-stdenv.mkDerivation {
+stdenv.mkDerivation (finalAttrs: {
   pname = "kmscon";
-  version = "9.0.1-unstable-2025-10-03";
+  version = "9.3.2";
 
   src = fetchFromGitHub {
-    owner = "Aetf";
+    owner = "kmscon";
     repo = "kmscon";
-    rev = "1275f4466b58aead9b90f22800ec6fb13c599fa3";
-    sha256 = "sha256-xEpO0/g0fXcaRbs+UrZxwD/iwl7nEZn4G/1woH8n7BA=";
+    rev = "v${finalAttrs.version}";
+    sha256 = "sha256-a1H9/j92Z/vjvFp226Ps9PFy5dAS8yg+RErgJWIb9HQ=";
   };
 
   strictDeps = true;
@@ -37,43 +37,48 @@ stdenv.mkDerivation {
   ];
 
   buildInputs = [
+    check
+    libdrm
+    libgbm
     libGLU
     libGL
-    libdrm
     libtsm
     libxkbcommon
     pango
     pixman
     systemdLibs
-    libgbm
-    check
   ];
 
   nativeBuildInputs = [
+    docbook_xsl
+    libxslt
     meson
     ninja
-    docbook_xsl
     pkg-config
-    libxslt # xsltproc
   ];
 
-  env.NIX_CFLAGS_COMPILE =
-    lib.optionalString stdenv.cc.isGNU "-O "
-    + "-Wno-error=maybe-uninitialized -Wno-error=unused-result -Wno-error=implicit-function-declaration";
+  mesonFlags = [
+    "--sysconfdir=${placeholder "out"}/etc"
+  ];
+
+  # The upstream meson.build resolves systemdsystemunitdir from the systemd
+  # pkg-config dependency, which points into the read-only systemd-libs store
+  # path. Override it to install systemd units into the package's own output.
+  postPatch = ''
+    substituteInPlace meson.build \
+      --replace-fail \
+        "systemdsystemunitdir = systemd_deps.get_variable('systemdsystemunitdir', default_value: 'lib/systemd/system')" \
+        "systemdsystemunitdir = get_option('prefix') / 'lib/systemd/system'"
+  '';
 
   enableParallelBuilding = true;
-
-  patches = [
-    ./auto-kbd-layout.patch # Update systemd dependencies so automatic keyboard layout configuration works
-    ./sandbox.patch # Generate system units where they should be (nix store) instead of /etc/systemd/system
-  ];
 
   meta = with lib; {
     description = "KMS/DRM based System Console";
     mainProgram = "kmscon";
-    homepage = "https://www.freedesktop.org/wiki/Software/kmscon/";
+    homepage = "https://github.com/kmscon/kmscon";
     license = licenses.mit;
-    maintainers = [ ];
+    maintainers = with maintainers; [ flexiondotorg ];
     platforms = platforms.linux;
   };
-}
+})
