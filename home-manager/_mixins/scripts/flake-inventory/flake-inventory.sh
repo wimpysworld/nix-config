@@ -163,7 +163,6 @@ log_debug "homeConfigurations: ${home_names}"
 
 # ═══════════════════════════════════════════════════
 # 4. NixOS matrix (per-host, with paired home config)
-#    Filters out iso-* entries (built separately in release-iso).
 # ═══════════════════════════════════════════════════
 
 log_info "Building NixOS matrix..."
@@ -172,14 +171,6 @@ runner=$(get_runner "x86_64-linux")
 
 while IFS= read -r name; do
 	[ -z "${name}" ] && continue
-
-	# Filter out ISO configurations; they are built separately.
-	case "${name}" in
-	iso-*)
-		log_debug "Skipping ${name} (ISO, built separately)"
-		continue
-		;;
-	esac
 
 	# Find the matching homeConfiguration (username@hostname pattern).
 	home_match=$(echo "${home_names}" | jq -r --arg h "${name}" \
