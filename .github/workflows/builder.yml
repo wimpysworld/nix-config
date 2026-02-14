@@ -1,4 +1,4 @@
-name: Flake CI ❄️
+name: Flake Builder 🏗️
 on:
   pull_request:
   push:
