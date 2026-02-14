@@ -10,6 +10,12 @@ Previously, `DeterminateSystems/flake-iter` handled discovery, but it has a fund
 
 `flake-inventory` solves this by only enumerating attribute names via lazy evaluation (`builtins.attrNames`, ~50ms per category) and mapping them to the correct platform runners without ever deeply evaluating any configuration.
 
+## Why per-host parallelism
+
+NixOS and Darwin configurations are built **one per runner** (parallel matrix jobs) rather than sequentially on a single runner per platform. The primary constraint is disk capacity: GitHub Actions runners provide roughly 28-75GB of usable space (depending on runner type and `nothing-but-nix` reclamation), while a single NixOS configuration closure can consume 15-30GB. With 13+ NixOS configurations in this flake, sequential builds on one runner would require far more disk than any single runner can provide.
+
+Per-host runners also allow FlakeHub Cache to push artefacts incrementally during each build, so parallel runners benefit from each other's cache pushes mid-flight. Wall-clock time drops from 90+ minutes (if sequential were even feasible) to roughly 20 minutes.
+
 ## How it works
 
 ### 1. DevShells and formatter discovery

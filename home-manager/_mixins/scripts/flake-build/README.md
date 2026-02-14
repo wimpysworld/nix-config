@@ -1,16 +1,14 @@
 # flake-build
 
-Platform-aware build script for Nix flake outputs. Discovers and builds all outputs for the current system without evaluating foreign-platform configurations.
+Platform-aware build script for Nix flake outputs. Discovers and builds all outputs for the current system without evaluating foreign-platform configurations. Primarily used as a **local development tool** for verifying builds before committing.
 
 ## Why this exists
 
-CI workflows need to build every flake output (NixOS, Darwin, Home Manager, packages, dev shells, formatter) and cache them in FlakeHub Cache. Previously, `DeterminateSystems/flake-iter` handled discovery, but it has a fundamental design flaw: it evaluates **all** flake outputs across **all** platforms before filtering by system. The filtering happens in Rust after Nix evaluation completes.
+Building all flake outputs locally requires discovering which outputs belong to the current platform without evaluating foreign-platform configurations. Naively evaluating all outputs fails when any foreign-platform configuration references a broken package, because Nix evaluates everything before any filtering can occur.
 
-This means a macOS runner evaluates every `nixosConfigurations` entry (Linux-only), and a Linux runner evaluates every `darwinConfigurations` entry (macOS-only). If any foreign-platform configuration references a broken package, the entire evaluation fails, and the runner cannot discover even its own outputs. There is no CLI flag, environment variable, or workaround.
+`flake-build` solves this by only enumerating attribute names (via lazy `builtins.attrNames` evaluation) and building outputs relevant to the current platform.
 
-This caused real CI failures when upstream nixpkgs marked the `bcachefs` kernel module as broken - the macOS runner couldn't build anything because evaluating the Linux NixOS configurations failed first.
-
-`flake-build` solves this by only evaluating outputs relevant to the current platform.
+In CI, output discovery and building are handled separately: `flake-inventory` discovers outputs and emits GitHub Actions matrices, and the workflow builds each output type in dedicated parallel jobs. See the [flake-inventory README](../flake-inventory/README.md) for the CI architecture.
 
 ## How it works
 
@@ -69,17 +67,7 @@ Packages that evaluate successfully but set `meta.hydraPlatforms = []` are skipp
 
 ### CI
 
-Called from `.github/workflows/ci.yml` in the build matrix job:
-
-```yaml
-- name: Build 🏗️
-  env:
-    FLAKE_BUILD_SYSTEM: ${{ matrix.systems.nix-system }}
-  run: |
-    bash home-manager/_mixins/scripts/flake-build/flake-build.sh
-```
-
-The inventory job still uses `flake-iter` to enumerate runner/system pairs for the matrix. `flake-build` replaces only the build step.
+`flake-build` is no longer used in CI. The workflow in `.github/workflows/ci.yml` now uses `flake-inventory` for output discovery and has inline build steps per job type (devshells, packages, nixos, darwin, orphan-homes). Each NixOS and Darwin configuration builds on its own runner via a matrix strategy, driven by the per-host matrices that `flake-inventory` emits. See the [flake-inventory README](../flake-inventory/README.md) for details.
 
 ### Local
 
