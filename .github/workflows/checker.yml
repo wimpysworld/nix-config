@@ -15,9 +15,6 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
-      - uses: wimpysworld/nothing-but-nix@main
-        with:
-          hatchet-protocol: 'holster'
       - uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - uses: DeterminateSystems/flake-checker-action@v12
