@@ -18,7 +18,7 @@
 
 ## Constraints
 
-- Do not use bash syntax, heredocs, or subshells on the command line-fish is the only interactive shell available
+- Do not use bash syntax, heredocs, or subshells on the command line - fish is the only interactive shell available
 - Never suggest or generate bash-specific patterns on the command line
 
 ## File Operations

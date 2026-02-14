@@ -4,22 +4,7 @@
 
 NixOS, nix-darwin, and Home Manager flake for managing multiple systems declaratively. Uses mixin pattern for composable configuration modules. Builds workstations, servers, VMs, macOS systems, and custom ISO images.
 
-## Setup commands
-
-Clone to standard location:
-
-```bash
-gh repo clone wimpysworld/nix-config ~/Zero/nix-config
-cd ~/Zero/nix-config
-```
-
-Enter development shell (automatically via direnv if installed):
-
-```bash
-nix develop
-```
-
-## Build and test commands
+## Build and deploy commands
 
 Build and switch system configuration:
 
@@ -27,6 +12,14 @@ Build and switch system configuration:
 just host              # Build and switch NixOS/nix-darwin config
 just home              # Build and switch Home Manager config
 just switch            # Switch both system and home (runs home first, then host)
+```
+
+Apply pre-built configurations from FlakeHub Cache (no local evaluation):
+
+```bash
+just apply             # Apply both system and home from FlakeHub Cache
+just apply-home        # Apply Home Manager only
+just apply-host        # Apply NixOS/nix-darwin only
 ```
 
 Build only (no switch):
@@ -46,29 +39,14 @@ just eval-flake        # Evaluate flake structure only
 just eval-configs      # Evaluate all system configurations
 ```
 
-Build specific package:
+Other commands:
 
 ```bash
 just build-pkg firefox              # Build package for current host
 just build-pkg firefox vader        # Build package for specific host
-```
-
-Build ISO image:
-
-```bash
-just iso console       # Build minimal console ISO
-```
-
-Update dependencies:
-
-```bash
-just update            # Update flake.lock
-```
-
-Garbage collection:
-
-```bash
-just gc                # Clean old generations, keep latest 5
+just iso console                    # Build minimal console ISO
+just update                         # Update flake.lock
+just gc                             # Clean old generations, keep latest 5
 ```
 
 ## Code style and conventions
@@ -108,13 +86,20 @@ just gc                # Clean old generations, keep latest 5
 - Explicit `inherit` statements for clarity
 - String interpolation: `"${variable}"` not `variable`
 
+**Mixin placement:**
+
+- System-level services, kernel, boot, networking → `nixos/_mixins/`
+- User-level programs, dotfiles, scripts → `home-manager/_mixins/`
+- Hardware-specific config (disks, kernel modules) → `nixos/{hostname}/`
+- Use `home.packages` in Home Manager modules, `environment.systemPackages` in NixOS modules
+
 ## System registry and configuration
 
 All systems defined in `flake.nix` system registry with type-based defaults:
 
 - **type**: `workstation`, `server`, `vm`, `darwin`, `lima`, `iso`, `wsl`, `gaming`
 - **username**: defaults based on type (martin/nixos/deck)
-- **platform**: `x86_64-linux`, `aarch64-darwin`, etc.
+- **platform**: `x86_64-linux`, `aarch64-darwin`
 - **desktop**: `hyprland`, `wayfire`, `aqua`, or `null`
 
 Helper functions in `lib/helpers.nix` generate configs from registry.
@@ -127,7 +112,7 @@ These are passed to all modules via `specialArgs`:
 - `username`: primary user
 - `desktop`: desktop environment or null
 - `platform`: system architecture
-- `stateVersion`: NixOS/Home Manager state version (25.11)
+- `stateVersion`: NixOS/Home Manager state version (defined in `lib/helpers.nix`)
 - `isWorkstation`, `isLaptop`, `isServer`, `isLima`, `isISO`, `isInstall`: boolean flags
 - `catppuccinPalette`: colour palette helper with `getColor`, `getHyprlandColor`, etc.
 - `inputs`, `outputs`: flake inputs and outputs
@@ -141,61 +126,15 @@ Access in modules:
 }
 ```
 
-## Testing locally
-
-Test configuration changes without switching:
-
-```bash
-just build-host        # Verify NixOS/nix-darwin builds
-just build-home        # Verify Home Manager builds
-just eval-configs      # Check for evaluation errors
-```
-
-Build specific system:
-
-```bash
-nix build .#nixosConfigurations.vader.config.system.build.toplevel
-nix build .#homeConfigurations."martin@vader".activationPackage
-nix build .#darwinConfigurations.momin.config.system.build.toplevel
-```
-
 ## Secrets management
 
 Secrets encrypted with sops-nix using age keys.
 
-**User key location:** `~/.config/sops/age/keys.txt`
-**Host key location:** `/var/lib/private/sops/age/keys.txt`
-
-Generate user key:
-
-```bash
-mkdir -p ~/.config/sops/age
-age-keygen -o ~/.config/sops/age/keys.txt
-age-keygen -y ~/.config/sops/age/keys.txt  # Display public key
-```
-
-Generate host key (on target system):
-
-```bash
-sudo mkdir -p /var/lib/private/sops/age
-sudo age-keygen -o /var/lib/private/sops/age/keys.txt
-sudo age-keygen -y /var/lib/private/sops/age/keys.txt  # Display public key
-```
-
-Edit secrets:
-
-```bash
-sops secrets/secrets.yaml              # Edit main secrets file
-sops secrets/{hostname}.yaml           # Edit host-specific secrets
-```
-
-After adding recipients to `.sops.yaml`, rekey all secrets:
-
-```bash
-sops updatekeys secrets/secrets.yaml
-```
-
-**Never commit unencrypted secrets.** All sensitive data must be in encrypted `.yaml` files in `secrets/` directory.
+- **User key:** `~/.config/sops/age/keys.txt`
+- **Host key:** `/var/lib/private/sops/age/keys.txt`
+- **Edit secrets:** `sops secrets/secrets.yaml` or `sops secrets/{hostname}.yaml`
+- **Rekey after adding recipients:** `sops updatekeys secrets/secrets.yaml`
+- Never commit unencrypted secrets. All sensitive data in encrypted `.yaml` files in `secrets/`.
 
 ## Catppuccin theming
 
@@ -222,12 +161,6 @@ Catppuccin Mocha palette available via `catppuccinPalette` helper:
 Available colours: base, mantle, crust, surface0, surface1, surface2, overlay0, overlay1, overlay2, subtext0, subtext1, text, lavender, blue, sapphire, sky, teal, green, yellow, peach, maroon, red, mauve, pink, flamingo, rosewater.
 
 ## Adding new packages
-
-Create package directory in `pkgs/`:
-
-```bash
-mkdir pkgs/my-package
-```
 
 Create `pkgs/my-package/default.nix`:
 
@@ -311,13 +244,7 @@ systems = {
 };
 ```
 
-Create host directory:
-
-```bash
-mkdir nixos/mynewhost      # or darwin/mynewhost
-```
-
-Create `nixos/mynewhost/default.nix`:
+Create host directory and `nixos/mynewhost/default.nix`:
 
 ```nix
 { inputs, ... }:
@@ -334,51 +261,44 @@ Create `nixos/mynewhost/default.nix`:
 }
 ```
 
-Create disk layout with Disko in `nixos/mynewhost/disks.nix`.
-
-Build configuration:
+Create disk layout with Disko in `nixos/mynewhost/disks.nix`. Build with:
 
 ```bash
 nix build .#nixosConfigurations.mynewhost.config.system.build.toplevel
 ```
 
-## Remote installation
-
-Install NixOS to remote host using nixos-anywhere:
-
-```bash
-install-anywhere -h mynewhost -r <ip-address>
-```
-
-This script:
-
-1. Uses Disko to partition and format disks
-2. Installs NixOS configuration via `nixos-anywhere`
-3. Reboots automatically when complete
-
-After reboot, deploy Home Manager:
-
-```bash
-ssh mynewhost
-sudo chown -Rv "$USER":users "$HOME/.config"
-git clone https://github.com/wimpysworld/nix-config "$HOME/Zero/nix-config"
-cd "$HOME/Zero/nix-config"
-home-manager switch -b backup --flake .
-```
-
 ## CI/CD workflows
 
-GitHub Actions build configurations on flake.lock updates:
+Unified CI workflow in `.github/workflows/ci.yml` triggers on pull requests and pushes to main:
 
-- **build-workstations.yml**: Desktop systems (vader, phasma)
-- **build-laptops.yml**: Laptop systems (sidious, tanis, shaa, bane, atrius)
-- **build-servers.yml**: Server systems (malak, maul, revan)
-- **build-vms.yml**: Virtual machines (crawler, dagger)
-- **build-macbook.yml**: Darwin systems (krall)
-- **build-iso.yml**: ISO images
-- **build-packages.yml**: Custom packages
+1. **Inventory** - `flake-inventory.sh` discovers all buildable outputs, emitting per-platform JSON matrices
+2. **Build jobs** - Parallel per-host/per-package builds using `flake-build.sh` (devShells, packages, NixOS, Darwin, orphan Home Manager configs)
+3. **Publish** - Pushes to FlakeHub with `include-output-paths: true` for FlakeHub Cache
+4. **Release ISO** - Builds and publishes console ISO on main branch
 
-Workflows use Determinate Systems actions for caching and optimisation.
+Auto-merge of `flake.lock` update PRs is gated on all build jobs passing via branch protection required status checks.
+
+## Architecture notes
+
+**Mixin pattern:**
+
+Configurations composed from small, focused modules in `_mixins` directories. Each mixin handles one concern (e.g., desktop environment, hardware feature, script). Mixins imported based on system type and flags.
+
+**Helper function flow:**
+
+1. System registry in `flake.nix` defines all hosts
+2. `generateConfigs` filters by type and merges with type defaults
+3. `mkNixos`, `mkHome`, `mkDarwin` create final configurations
+4. Special args computed and passed to all modules
+5. Modules import relevant mixins based on flags
+
+**Overlay system:**
+
+- `localPackages`: Custom packages from `pkgs/` directory
+- `modifiedPackages`: Overrides and patches to nixpkgs packages
+- `unstablePackages`: Access to nixpkgs-unstable via `pkgs.unstable`
+
+Applied in order, allowing layered modifications.
 
 ## Common issues and solutions
 
@@ -411,28 +331,13 @@ Workflows use Determinate Systems actions for caching and optimisation.
 - Add necessary runtime dependencies to `runtimeInputs`
 - Fix shellcheck warnings (shellcheck validation automatic)
 
-## Architecture notes
+## Constraints
 
-**Mixin pattern:**
-
-Configurations composed from small, focused modules in `_mixins` directories. Each mixin handles one concern (e.g., desktop environment, hardware feature, script). Mixins imported based on system type and flags.
-
-**Helper function flow:**
-
-1. System registry in `flake.nix` defines all hosts
-2. `generateConfigs` filters by type and merges with type defaults
-3. `mkNixos`, `mkHome`, `mkDarwin` create final configurations
-4. Special args computed and passed to all modules
-5. Modules import relevant mixins based on flags
-
-**Overlay system:**
-
-- `localPackages`: Custom packages from `pkgs/` directory
-- `modifiedPackages`: Overrides and patches to nixpkgs packages
-- `unstablePackages`: Access to nixpkgs-unstable via `pkgs.unstable`
-
-Applied in order, allowing layered modifications.
-
-**State version:**
-
-StateVersion locked at `25.11`. Never change on existing systems (breaks compatibility). Only set on new installations.
+- Never modify `flake.lock` directly; use `just update`
+- Never change `stateVersion` on existing systems (breaks compatibility)
+- Never commit unencrypted secrets outside `secrets/` directory
+- Never use `environment.systemPackages` in Home Manager modules; use `home.packages`
+- Never use `writeShellScriptBin`; use `writeShellApplication` (enforces shellcheck)
+- Run `just eval` before committing Nix changes to catch evaluation errors
+- Run `just build` or `just build-host` / `just build-home` to verify builds before switching
+- Keep each mixin self-contained with a single concern
