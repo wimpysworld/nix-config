@@ -15,6 +15,9 @@ let
   # Import Syncthing device and folder definitions
   syncDefs = import ./syncthing-devices.nix;
 
+  # Determine whether this host is a Syncthing cohort member
+  isSyncthingHost = builtins.hasAttr hostname syncDefs.devices;
+
   # Exclude the current host from the devices list
   otherDevices = lib.filterAttrs (name: _: name != hostname) syncDefs.devices;
 
@@ -51,12 +54,14 @@ lib.mkIf (lib.elem username installFor && !isLima) {
     stc = "${pkgs.stc-cli}/bin/stc";
   };
 
-  sops.secrets.syncthing_key.sopsFile = ../../../secrets/${hostname}.yaml;
-  sops.secrets.syncthing_cert.sopsFile = ../../../secrets/${hostname}.yaml;
-  sops.secrets.pass.sopsFile = ../../../secrets/syncthing.yaml;
-  sops.secrets.syncthing_apikey = {
-    sopsFile = ../../../secrets/syncthing.yaml;
-    key = "apikey";
+  sops.secrets = lib.mkIf isSyncthingHost {
+    syncthing_key.sopsFile = ../../../secrets/${hostname}.yaml;
+    syncthing_cert.sopsFile = ../../../secrets/${hostname}.yaml;
+    pass.sopsFile = ../../../secrets/syncthing.yaml;
+    syncthing_apikey = {
+      sopsFile = ../../../secrets/syncthing.yaml;
+      key = "apikey";
+    };
   };
 
   services = {
@@ -69,7 +74,7 @@ lib.mkIf (lib.elem username installFor && !isLima) {
       enable = true;
     };
     # Syncthing works on both Linux (systemd) and macOS (launchd)
-    syncthing = {
+    syncthing = lib.mkIf isSyncthingHost {
       enable = true;
       cert = config.sops.secrets.syncthing_cert.path;
       key = config.sops.secrets.syncthing_key.path;
@@ -100,7 +105,7 @@ lib.mkIf (lib.elem username installFor && !isLima) {
 
   # Workaround for Failed to restart syncthingtray.service: Unit tray.target not found.
   # - https://github.com/nix-community/home-manager/issues/2064
-  systemd = lib.mkIf isLinux {
+  systemd = lib.mkIf (isLinux && isSyncthingHost) {
     user.targets.tray = lib.mkIf isWorkstation {
       Unit = {
         Description = "Home Manager System Tray";

@@ -42,6 +42,10 @@ nix eval .#homeConfigurations."<name>".pkgs.stdenv.hostPlatform.system
 
 Each output is built with `nix build --no-link -L`. Failures are tracked but don't halt execution - all remaining outputs continue building. A summary prints at the end, and the script exits non-zero if any build failed.
 
+### 5. Package skip via `hydraPlatforms`
+
+Packages that evaluate successfully but set `meta.hydraPlatforms = []` are skipped. This is the standard nixpkgs convention for packages that cannot be built in CI, such as `requireFile` packages that need manually-provided source files. The check only applies to packages, not devShells.
+
 ### Build attribute paths
 
 | Output type | Attribute path |
