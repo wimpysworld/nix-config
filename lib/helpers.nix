@@ -217,7 +217,6 @@ rec {
     "aarch64-linux"
     "x86_64-linux"
     "aarch64-darwin"
-    "x86_64-darwin"
   ];
 
   # Helper function to create system configurations based on type

@@ -12,10 +12,10 @@ VERBOSE="${FLAKE_INVENTORY_VERBOSE:-0}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/stdout}"
 
 # Runner mapping: nix system → GitHub Actions runner.
-RUNNER_MAP='{"x86_64-linux":"ubuntu-latest","aarch64-linux":"ubuntu-24.04-arm","aarch64-darwin":"macos-latest","x86_64-darwin":"macos-15-intel"}'
+RUNNER_MAP='{"x86_64-linux":"ubuntu-latest","aarch64-linux":"ubuntu-24.04-arm","aarch64-darwin":"macos-latest"}'
 
 # Platforms to discover outputs for.
-PLATFORMS=("x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin")
+PLATFORMS=("x86_64-linux" "aarch64-linux" "aarch64-darwin")
 
 # --- Helper Functions ---
 
