@@ -37,6 +37,9 @@ jobs:
         with:
           hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Inventory
         id: inventory
@@ -64,6 +67,9 @@ jobs:
         with:
           hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build devShells & formatter
         env:
@@ -139,6 +145,9 @@ jobs:
         with:
           hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build packages
         env:
@@ -209,6 +218,9 @@ jobs:
         with:
           hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build NixOS ${{ matrix.target.name }}
         run: |
@@ -236,6 +248,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build Darwin ${{ matrix.target.name }}
         run: |
@@ -266,6 +281,9 @@ jobs:
         with:
           hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build Home ${{ matrix.target.name }}
         run: |
@@ -298,6 +316,9 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - uses: DeterminateSystems/determinate-nix-action@v3
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - name: Derive version
@@ -318,13 +339,16 @@ jobs:
     name: Publish FlakeHub ❄️
     needs: [sentinel]
     if: github.repository_owner == 'wimpysworld' && needs.sentinel.outputs.ver != ''
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     permissions:
       id-token: write
       contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - uses: DeterminateSystems/flakehub-push@v6
         with:
@@ -352,6 +376,9 @@ jobs:
           root-safe-haven: "10240"
           mnt-safe-haven: "10240"
       - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build ISO 💿️
         id: build-iso
