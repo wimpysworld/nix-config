@@ -274,15 +274,32 @@ jobs:
           nix build ".#homeConfigurations.\"${{ matrix.target.name }}\".activationPackage" --no-link -L
 
   # ──────────────────────────────────────────────
+  # Gate: single required-check sentinel
+  # ──────────────────────────────────────────────
+  ci-gate:
+    name: CI Gate 🏁
+    needs: [devshells, packages, nixos, darwin, orphan-homes]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check build results
+        run: |
+          results='${{ toJSON(needs.*.result) }}'
+          echo "Job results: ${results}"
+          if echo "${results}" | jq -e 'any(. == "failure" or . == "cancelled")' > /dev/null 2>&1; then
+            echo "❌ One or more build jobs failed or were cancelled"
+            exit 1
+          fi
+          echo "✅ All build jobs passed (or were skipped)"
+
+  # ──────────────────────────────────────────────
   # Publish to FlakeHub (after all builds pass)
   # ──────────────────────────────────────────────
   publish:
     name: Publish FlakeHub ❄️
-    needs: [devshells, packages, nixos, darwin, orphan-homes]
+    needs: [ci-gate]
     if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
+      needs.ci-gate.result == 'success' &&
       github.repository_owner == 'wimpysworld' &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
@@ -304,7 +321,7 @@ jobs:
   # ──────────────────────────────────────────────
   release-iso:
     name: Release ISO 📀
-    needs: nixos
+    needs: [ci-gate]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
