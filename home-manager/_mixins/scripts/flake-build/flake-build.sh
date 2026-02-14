@@ -225,6 +225,13 @@ log_info "Found ${#pkg_list[@]} packages for ${SYSTEM}"
 for name in "${pkg_list[@]}"; do
 	[ -z "${name}" ] && continue
 	if check_evaluates "packages.${SYSTEM}.${name}"; then
+		# Check hydraPlatforms - skip if explicitly set to empty
+		hydra_platforms=$(nix eval "${FLAKE_DIR}#packages.${SYSTEM}.${name}.meta.hydraPlatforms" --json --no-write-lock-file 2>/dev/null || echo "null")
+		if [ "${hydra_platforms}" = "[]" ]; then
+			log_skip "packages.${SYSTEM}.${name} (excluded from CI via hydraPlatforms)"
+			SKIPPED=$((SKIPPED + 1))
+			continue
+		fi
 		build_output \
 			"packages.${SYSTEM}.${name}" \
 			"packages.${SYSTEM}.${name}"

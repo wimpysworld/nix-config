@@ -81,6 +81,7 @@ stdenv.mkDerivation rec {
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     maintainers = with lib.maintainers; [ flexiondotorg ];
     platforms = [ "x86_64-linux" ];
+    hydraPlatforms = [ ];
     mainProgram = "pico8";
   };
 }
