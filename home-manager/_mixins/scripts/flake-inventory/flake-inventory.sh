@@ -12,10 +12,10 @@ VERBOSE="${FLAKE_INVENTORY_VERBOSE:-0}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/stdout}"
 
 # Runner mapping: nix system → GitHub Actions runner.
-RUNNER_MAP='{"aarch64-darwin":"macos-latest","x86_64-linux":"ubuntu-latest"}'
+RUNNER_MAP='{"x86_64-linux":"ubuntu-latest","aarch64-linux":"ubuntu-24.04-arm","aarch64-darwin":"macos-latest","x86_64-darwin":"macos-15-intel"}'
 
 # Platforms to discover outputs for.
-PLATFORMS=("x86_64-linux" "aarch64-darwin")
+PLATFORMS=("x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin")
 
 # --- Helper Functions ---
 
@@ -167,10 +167,17 @@ log_debug "homeConfigurations: ${home_names}"
 
 log_info "Building NixOS matrix..."
 nixos_json="[]"
-runner=$(get_runner "x86_64-linux")
 
 while IFS= read -r name; do
 	[ -z "${name}" ] && continue
+
+	# Derive the platform from the configuration itself.
+	host_system=$(nix eval "${FLAKE_DIR}#nixosConfigurations.${name}.pkgs.stdenv.hostPlatform.system" --raw --no-write-lock-file 2>/dev/null || echo "unknown")
+	runner=$(get_runner "${host_system}")
+	if [ -z "${runner}" ]; then
+		log_debug "nixos: ${name} → platform ${host_system} has no runner, skipping"
+		continue
+	fi
 
 	# Find the matching homeConfiguration (username@hostname pattern).
 	home_match=$(echo "${home_names}" | jq -r --arg h "${name}" \
@@ -183,7 +190,7 @@ while IFS= read -r name; do
 		'{name: $name, runner: $runner, home: $home}')
 	nixos_json=$(echo "${nixos_json}" | jq -c --argjson e "${entry}" '. + [$e]')
 
-	log_debug "nixos: ${name} → home: ${home_match:-none}"
+	log_debug "nixos: ${name} → ${host_system} (${runner}), home: ${home_match:-none}"
 done < <(echo "${nixos_names}" | jq -r '.[]')
 
 nixos_matrix_count=$(echo "${nixos_json}" | jq 'length')
@@ -195,10 +202,17 @@ log_info "NixOS matrix: ${nixos_matrix_count} host(s)"
 
 log_info "Building Darwin matrix..."
 darwin_json="[]"
-runner=$(get_runner "aarch64-darwin")
 
 while IFS= read -r name; do
 	[ -z "${name}" ] && continue
+
+	# Derive the platform from the configuration itself.
+	host_system=$(nix eval "${FLAKE_DIR}#darwinConfigurations.${name}.pkgs.stdenv.hostPlatform.system" --raw --no-write-lock-file 2>/dev/null || echo "unknown")
+	runner=$(get_runner "${host_system}")
+	if [ -z "${runner}" ]; then
+		log_debug "darwin: ${name} → platform ${host_system} has no runner, skipping"
+		continue
+	fi
 
 	# Find the matching homeConfiguration.
 	home_match=$(echo "${home_names}" | jq -r --arg h "${name}" \
@@ -211,7 +225,7 @@ while IFS= read -r name; do
 		'{name: $name, runner: $runner, home: $home}')
 	darwin_json=$(echo "${darwin_json}" | jq -c --argjson e "${entry}" '. + [$e]')
 
-	log_debug "darwin: ${name} → home: ${home_match:-none}"
+	log_debug "darwin: ${name} → ${host_system} (${runner}), home: ${home_match:-none}"
 done < <(echo "${darwin_names}" | jq -r '.[]')
 
 darwin_matrix_count=$(echo "${darwin_json}" | jq 'length')
@@ -220,7 +234,7 @@ log_info "Darwin matrix: ${darwin_matrix_count} host(s)"
 # ═══════════════════════════════════════════════════
 # 6. Orphan homeConfigurations (not paired with any system config)
 #    These are lima, wsl, gaming types that only have Home Manager configs.
-#    All are x86_64-linux in this flake.
+#    Platform is dynamically detected from the configuration.
 # ═══════════════════════════════════════════════════
 
 log_info "Discovering orphan homeConfigurations..."
@@ -240,8 +254,13 @@ while IFS= read -r home; do
 		'if index($h) then "yes" else "no" end')
 
 	if [ "${is_paired}" = "no" ]; then
-		# Orphan home config; assume x86_64-linux (all lima/wsl/gaming are Linux).
-		orphan_runner=$(get_runner "x86_64-linux")
+		# Orphan home config; derive platform from the configuration itself.
+		orphan_system=$(nix eval "${FLAKE_DIR}#homeConfigurations.\"${home}\".pkgs.stdenv.hostPlatform.system" --raw --no-write-lock-file 2>/dev/null || echo "unknown")
+		orphan_runner=$(get_runner "${orphan_system}")
+		if [ -z "${orphan_runner}" ]; then
+			log_debug "orphan home: ${home} → platform ${orphan_system} has no runner, skipping"
+			continue
+		fi
 		entry=$(jq -n -c \
 			--arg name "${home}" \
 			--arg runner "${orphan_runner}" \
