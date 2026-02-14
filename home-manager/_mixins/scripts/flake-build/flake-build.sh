@@ -12,6 +12,7 @@ VERBOSE="${FLAKE_BUILD_VERBOSE:-0}"
 FLAKE_DIR="${FLAKE_BUILD_DIR:-.}"
 FAILED=()
 BUILT=0
+SKIPPED=0
 
 # --- Helper Functions ---
 
@@ -29,6 +30,19 @@ log_build() {
 
 log_success() {
 	echo "✅ $*"
+}
+
+log_skip() {
+	echo "⏭️  $*"
+}
+
+# Check whether a flake output evaluates successfully for the current platform.
+# Uses drvPath evaluation which is fast (no building) and catches meta.platforms
+# restrictions and other evaluation failures.
+# Returns 0 if evaluable, 1 if not.
+check_evaluates() {
+	local attr_path="$1"
+	nix eval "${FLAKE_DIR}#${attr_path}.drvPath" --raw --no-write-lock-file >/dev/null 2>&1
 }
 
 # Discover attribute names for a given flake output path.
@@ -210,9 +224,14 @@ log_info "Found ${#pkg_list[@]} packages for ${SYSTEM}"
 
 for name in "${pkg_list[@]}"; do
 	[ -z "${name}" ] && continue
-	build_output \
-		"packages.${SYSTEM}.${name}" \
-		"packages.${SYSTEM}.${name}"
+	if check_evaluates "packages.${SYSTEM}.${name}"; then
+		build_output \
+			"packages.${SYSTEM}.${name}" \
+			"packages.${SYSTEM}.${name}"
+	else
+		log_skip "packages.${SYSTEM}.${name} (not evaluable for ${SYSTEM})"
+		SKIPPED=$((SKIPPED + 1))
+	fi
 done
 
 # --- Build DevShells ---
@@ -231,9 +250,14 @@ log_info "Found ${#shell_list[@]} devShells for ${SYSTEM}"
 
 for name in "${shell_list[@]}"; do
 	[ -z "${name}" ] && continue
-	build_output \
-		"devShells.${SYSTEM}.${name}" \
-		"devShells.${SYSTEM}.${name}"
+	if check_evaluates "devShells.${SYSTEM}.${name}"; then
+		build_output \
+			"devShells.${SYSTEM}.${name}" \
+			"devShells.${SYSTEM}.${name}"
+	else
+		log_skip "devShells.${SYSTEM}.${name} (not evaluable for ${SYSTEM})"
+		SKIPPED=$((SKIPPED + 1))
+	fi
 done
 
 # --- Build Formatter ---
@@ -255,6 +279,7 @@ echo "  Build Summary"
 echo "════════════════════════════════════════════════"
 echo "  System:    ${SYSTEM}"
 echo "  Built:     ${BUILT}"
+echo "  Skipped:   ${SKIPPED}"
 echo "  Failed:    ${#FAILED[@]}"
 echo "════════════════════════════════════════════════"
 
