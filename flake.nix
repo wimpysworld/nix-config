@@ -244,8 +244,21 @@
             nixpkgs.lib.optionalAttrs (
               nixpkgs.lib.hasSuffix "linux" system && flakeInput.packages ? ${system}
             ) { ${name} = flakeInput.packages.${system}.default; };
+          # Filter local packages by meta.platforms so that packages which
+          # cannot build on the current system are excluded from the output.
+          # This prevents flakehub-push deep evaluation from hitting
+          # "not available on the requested hostPlatform" assertions.
+          filterLocalPackages =
+            localPkgs:
+            nixpkgs.lib.filterAttrs (
+              _name: pkg:
+              let
+                platforms = pkg.meta.platforms or [ ];
+              in
+              platforms == [ ] || builtins.elem system platforms
+            ) localPkgs;
         in
-        import ./pkgs pkgs
+        filterLocalPackages (import ./pkgs pkgs)
         // linuxOnlyFlakePackage "bzmenu" inputs.bzmenu
         // linuxOnlyFlakePackage "iwmenu" inputs.iwmenu
         // linuxOnlyFlakePackage "pwmenu" inputs.pwmenu
