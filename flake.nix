@@ -236,11 +236,19 @@
             nixpkgs.lib.optionalAttrs (flakeInput.packages ? ${system}) {
               ${name} = flakeInput.packages.${system}.default;
             };
+          # Like optionalFlakePackage but restricted to Linux systems;
+          # some flake inputs provide Darwin outputs that fail to compile
+          # because they depend on Linux-specific services.
+          linuxOnlyFlakePackage =
+            name: flakeInput:
+            nixpkgs.lib.optionalAttrs (
+              nixpkgs.lib.hasSuffix "linux" system && flakeInput.packages ? ${system}
+            ) { ${name} = flakeInput.packages.${system}.default; };
         in
         import ./pkgs pkgs
-        // optionalFlakePackage "bzmenu" inputs.bzmenu
-        // optionalFlakePackage "iwmenu" inputs.iwmenu
-        // optionalFlakePackage "pwmenu" inputs.pwmenu
+        // linuxOnlyFlakePackage "bzmenu" inputs.bzmenu
+        // linuxOnlyFlakePackage "iwmenu" inputs.iwmenu
+        // linuxOnlyFlakePackage "pwmenu" inputs.pwmenu
       );
       # Formatter for .nix files, available via 'nix fmt'
       formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
@@ -252,6 +260,7 @@
           pkgs = import nixpkgs {
             inherit system;
             config.allowUnfree = true;
+            overlays = builtins.attrValues self.overlays;
           };
           # Some flake inputs don't support all platforms (e.g., determinate doesn't support x86_64-darwin)
           optionalFlakePackage =
