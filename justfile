@@ -179,6 +179,30 @@ switch:
     @just switch-home
     @just switch-host
 
+# Apply OS and Home configurations from FlakeHub Cache
+apply:
+    @just apply-home
+    @just apply-host
+
+# Apply Home configuration from FlakeHub Cache
+apply-home username=current_username hostname=current_hostname:
+    @echo "Home Manager 󰋜 Applying: {{ username }}@{{ hostname }}"
+    @fh apply home-manager "wimpysworld/nix-config/*#homeConfigurations.{{ username }}@{{ hostname }}"
+
+# Apply OS configuration from FlakeHub Cache
+apply-host hostname=current_hostname:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "$(uname)" = "Linux" ]; then
+      echo "NixOS 󱄅 Applying: {{ hostname }}"
+      sudo fh apply nixos "wimpysworld/nix-config/*#nixosConfigurations.{{ hostname }}"
+    elif [ "$(uname)" = "Darwin" ]; then
+      echo "nix-darwin 󰀵 Applying: {{ hostname }}"
+      sudo fh apply nix-darwin "wimpysworld/nix-config/*#darwinConfigurations.{{ hostname }}"
+    else
+      echo "Unsupported OS: $(uname)"
+    fi
+
 # Build and Switch Home configuration
 home:
     @just build-home
@@ -205,7 +229,7 @@ gc:
 
 # Update flake.lock
 update:
-    @echo "flake.lock 󱄅 Updating "
+    @echo "flake.lock 󰈡 Updating "
     nix flake update
 
 # Build a specific package
