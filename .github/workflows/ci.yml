@@ -52,11 +52,11 @@ jobs:
           hatchet-protocol: 'holster'
       - uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Build
+      - name: Build 🏗️
         env:
-          FLAKE_ITER_NIX_SYSTEM: ${{ matrix.systems.nix-system }}
+          FLAKE_BUILD_SYSTEM: ${{ matrix.systems.nix-system }}
         run: |
-          nix run "https://flakehub.com/f/DeterminateSystems/flake-iter/*" -- --verbose build
+          bash home-manager/_mixins/scripts/flake-build/flake-build.sh
 
   publish:
     name: Publish FlakeHub ❄️
