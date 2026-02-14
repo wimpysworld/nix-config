@@ -186,22 +186,84 @@ apply:
 
 # Apply Home configuration from FlakeHub Cache
 apply-home username=current_username hostname=current_hostname:
-    @echo "Home Manager 󰋜 Applying: {{ username }}@{{ hostname }}"
-    @fh apply home-manager "wimpysworld/nix-config/*#homeConfigurations.{{ username }}@{{ hostname }}"
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    FLAKEREF="wimpysworld/nix-config/*"
+    LABEL="Home Manager 󰋜"
+    CURRENT_LINK="${HOME}/.local/state/home-manager/gcroots/current-home"
+
+    echo "${LABEL} Checking: {{ username }}@{{ hostname }}"
+
+    # Check availability
+    if ! RESOLVED=$(fh resolve "${FLAKEREF}#homeConfigurations.{{ username }}@{{ hostname }}" 2>/dev/null); then
+      echo "❌ ${LABEL} configuration for {{ username }}@{{ hostname }} not found on FlakeHub"
+      echo "   Has the flake been published with 'include-output-paths: true'?"
+      exit 1
+    fi
+
+    # Check freshness
+    if [ -L "${CURRENT_LINK}" ]; then
+      CURRENT=$(readlink "${CURRENT_LINK}")
+      if [ "${RESOLVED}" = "${CURRENT}" ]; then
+        echo "✅ ${LABEL} {{ username }}@{{ hostname }} is already up to date"
+        exit 0
+      fi
+      echo "${LABEL} Applying: {{ username }}@{{ hostname }}"
+      echo "   Current:   ${CURRENT}"
+      echo "   Available: ${RESOLVED}"
+    else
+      echo "${LABEL} Applying: {{ username }}@{{ hostname }} (first run)"
+      echo "   Available: ${RESOLVED}"
+    fi
+
+    fh apply home-manager "${FLAKEREF}#homeConfigurations.{{ username }}@{{ hostname }}"
 
 # Apply OS configuration from FlakeHub Cache
 apply-host hostname=current_hostname:
     #!/usr/bin/env bash
     set -euo pipefail
+
+    FLAKEREF="wimpysworld/nix-config/*"
+
     if [ "$(uname)" = "Linux" ]; then
-      echo "NixOS 󱄅 Applying: {{ hostname }}"
-      sudo fh apply nixos "wimpysworld/nix-config/*#nixosConfigurations.{{ hostname }}"
+      CONFIG_TYPE="nixos"
+      CONFIG_PATH="nixosConfigurations"
+      LABEL="NixOS 󱄅"
     elif [ "$(uname)" = "Darwin" ]; then
-      echo "nix-darwin 󰀵 Applying: {{ hostname }}"
-      sudo fh apply nix-darwin "wimpysworld/nix-config/*#darwinConfigurations.{{ hostname }}"
+      CONFIG_TYPE="nix-darwin"
+      CONFIG_PATH="darwinConfigurations"
+      LABEL="nix-darwin 󰀵"
     else
       echo "Unsupported OS: $(uname)"
+      exit 1
     fi
+
+    echo "${LABEL} Checking: {{ hostname }}"
+
+    # Check availability
+    if ! RESOLVED=$(fh resolve "${FLAKEREF}#${CONFIG_PATH}.{{ hostname }}" 2>/dev/null); then
+      echo "❌ ${LABEL} configuration for {{ hostname }} not found on FlakeHub"
+      echo "   Has the flake been published with 'include-output-paths: true'?"
+      exit 1
+    fi
+
+    # Check freshness
+    if [ -L /run/current-system ]; then
+      CURRENT=$(readlink /run/current-system)
+      if [ "${RESOLVED}" = "${CURRENT}" ]; then
+        echo "✅ ${LABEL} {{ hostname }} is already up to date"
+        exit 0
+      fi
+      echo "${LABEL} Applying: {{ hostname }}"
+      echo "   Current:   ${CURRENT}"
+      echo "   Available: ${RESOLVED}"
+    else
+      echo "${LABEL} Applying: {{ hostname }} (first run)"
+      echo "   Available: ${RESOLVED}"
+    fi
+
+    sudo fh apply "${CONFIG_TYPE}" "${FLAKEREF}#${CONFIG_PATH}.{{ hostname }}"
 
 # Build and Switch Home configuration
 home:
