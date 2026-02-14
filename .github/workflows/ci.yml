@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "v?[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
 
 concurrency:
@@ -293,15 +291,42 @@ jobs:
           echo "✅ All build jobs passed (or were skipped)"
 
   # ──────────────────────────────────────────────
+  # Version: derive semver from nixpkgs date stamp
+  # ──────────────────────────────────────────────
+  version:
+    name: Version 🏷️
+    needs: [ci-gate]
+    if: |
+      needs.ci-gate.result == 'success' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      ver: ${{ steps.version.outputs.ver }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Derive version
+        id: version
+        run: |
+          # Extract NixOS version (e.g. 25.11.20260211.6c5e707) and take first 3
+          # dot-separated components, then strip leading zeros for semver compliance
+          NIXOS_VER=$(nix eval .#nixosConfigurations.iso-console.config.system.nixos.version --raw)
+          VER=$(echo "${NIXOS_VER}" | cut -d'.' -f1-3 | sed -E 's/\b0+([1-9])/\1/g')
+          echo "ver=${VER}" >> "$GITHUB_OUTPUT"
+          echo "📌 Version: ${VER}"
+
+  # ──────────────────────────────────────────────
   # Publish to FlakeHub (after all builds pass)
   # ──────────────────────────────────────────────
   publish:
     name: Publish FlakeHub ❄️
-    needs: [ci-gate]
-    if: |
-      needs.ci-gate.result == 'success' &&
-      github.repository_owner == 'wimpysworld' &&
-      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    needs: [version]
+    if: github.repository_owner == 'wimpysworld'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -312,7 +337,7 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - uses: DeterminateSystems/flakehub-push@v6
         with:
-          rolling: ${{ github.ref == 'refs/heads/main' }}
+          tag: v${{ needs.version.outputs.ver }}
           visibility: public
           include-output-paths: true
 
@@ -321,8 +346,7 @@ jobs:
   # ──────────────────────────────────────────────
   release-iso:
     name: Release ISO 📀
-    needs: [ci-gate]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [version]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -341,23 +365,20 @@ jobs:
         run: |
           nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
           ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
-          # Make semver compatible version tag
-          VER=$(head -n1 result/nix-support/hydra-build-products | cut -d'-' -f4 | cut -d'.' -f1-3 | sed -E 's/\b0+([1-9])/\1/g')
-          echo "ver=v${VER}" >> "$GITHUB_OUTPUT"
           # Stage ISO for release upload; GitHub auto-generates sha256 digests
           mkdir -p iso
           sudo mv "result/iso/${ISO}" "iso/console-${ISO}"
       - name: Delete existing release 🗑️
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.build-iso.outputs.ver }}
+          TAG: v${{ needs.version.outputs.ver }}
         run: |
           # Delete any existing release with the same tag to handle duplicate nixpkgs date stamps
           gh release delete "${TAG}" --yes --cleanup-tag 2>/dev/null || true
       - name: Release ISO 🎁
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.build-iso.outputs.ver }}
+          tag_name: v${{ needs.version.outputs.ver }}
           files: iso/*
           generate_release_notes: true
           make_latest: true
