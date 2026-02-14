@@ -1,4 +1,4 @@
-name: Flake ❄️ Checker ✅
+name: Flake Lock Checker ✅
 
 on:
   schedule:
@@ -19,8 +19,5 @@ jobs:
         with:
           hatchet-protocol: 'holster'
       - uses: DeterminateSystems/determinate-nix-action@v3
-        with:
-          extra-conf: |
-            lazy-trees = true
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - uses: DeterminateSystems/flake-checker-action@v12
