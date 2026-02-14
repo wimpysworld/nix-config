@@ -13,6 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ──────────────────────────────────────────────
+  # Inventory: discover all flake outputs
+  # ──────────────────────────────────────────────
   inventory:
     name: Inventory 📋
     runs-on: ubuntu-latest
@@ -20,7 +23,16 @@ jobs:
       id-token: write
       contents: read
     outputs:
-      systems: ${{ steps.inventory.outputs.systems }}
+      devshells: ${{ steps.inventory.outputs.devshells }}
+      packages: ${{ steps.inventory.outputs.packages }}
+      nixos: ${{ steps.inventory.outputs.nixos }}
+      darwin: ${{ steps.inventory.outputs.darwin }}
+      orphan_homes: ${{ steps.inventory.outputs.orphan_homes }}
+      has_devshells: ${{ steps.inventory.outputs.has_devshells }}
+      has_packages: ${{ steps.inventory.outputs.has_packages }}
+      has_nixos: ${{ steps.inventory.outputs.has_nixos }}
+      has_darwin: ${{ steps.inventory.outputs.has_darwin }}
+      has_orphan_homes: ${{ steps.inventory.outputs.has_orphan_homes }}
     steps:
       - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
@@ -30,21 +42,169 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Inventory
         id: inventory
-        run: |
-          nix run "https://flakehub.com/f/DeterminateSystems/flake-iter/*" -- systems \
-            --runner-map '{"aarch64-darwin":"macos-latest","x86_64-linux":"ubuntu-latest"}'
+        run: bash home-manager/_mixins/scripts/flake-inventory/flake-inventory.sh
 
-  build:
-    name: Build 🏗️
+  # ──────────────────────────────────────────────
+  # DevShells & Formatter (per-platform)
+  # ──────────────────────────────────────────────
+  devshells:
+    name: DevShells 🐚 (${{ matrix.target.system }})
     needs: inventory
-    runs-on: ${{ matrix.systems.runner }}
+    if: needs.inventory.outputs.has_devshells == 'true'
+    runs-on: ${{ matrix.target.runner }}
     permissions:
       id-token: write
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        systems: ${{ fromJSON(needs.inventory.outputs.systems) }}
+        target: ${{ fromJSON(needs.inventory.outputs.devshells) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@main
+        if: contains(matrix.target.system, 'linux')
+        with:
+          hatchet-protocol: 'holster'
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Build devShells & formatter
+        env:
+          SYSTEM: ${{ matrix.target.system }}
+          SHELLS_JSON: ${{ toJSON(matrix.target.shells) }}
+          HAS_FORMATTER: ${{ matrix.target.formatter }}
+        run: |
+          FAILED=()
+          BUILT=0
+          SKIPPED=0
+
+          # Build each devShell, checking evaluability first.
+          while IFS= read -r shell; do
+            [ -z "${shell}" ] && continue
+            ATTR="devShells.${SYSTEM}.${shell}"
+            if nix eval ".#${ATTR}.drvPath" --raw --no-write-lock-file >/dev/null 2>&1; then
+              echo "🔨 Building ${ATTR}"
+              if nix build ".#${ATTR}" --no-link -L; then
+                echo "✅ Built ${ATTR}"
+                BUILT=$((BUILT + 1))
+              else
+                echo "❌ Failed to build ${ATTR}" >&2
+                FAILED+=("${ATTR}")
+              fi
+            else
+              echo "⏭️  Skipping ${ATTR} (not evaluable for ${SYSTEM})"
+              SKIPPED=$((SKIPPED + 1))
+            fi
+          done < <(echo "${SHELLS_JSON}" | jq -r '.[]')
+
+          # Build formatter if present.
+          if [ "${HAS_FORMATTER}" = "true" ]; then
+            ATTR="formatter.${SYSTEM}"
+            echo "🔨 Building ${ATTR}"
+            if nix build ".#${ATTR}" --no-link -L; then
+              echo "✅ Built ${ATTR}"
+              BUILT=$((BUILT + 1))
+            else
+              echo "❌ Failed to build ${ATTR}" >&2
+              FAILED+=("${ATTR}")
+            fi
+          fi
+
+          echo ""
+          echo "Built: ${BUILT}, Skipped: ${SKIPPED}, Failed: ${#FAILED[@]}"
+          if [ "${#FAILED[@]}" -gt 0 ]; then
+            echo "Failed outputs:"
+            for f in "${FAILED[@]}"; do
+              echo "  ✗ ${f}"
+            done
+            exit 1
+          fi
+
+  # ──────────────────────────────────────────────
+  # Packages (per-platform)
+  # ──────────────────────────────────────────────
+  packages:
+    name: Packages 📦 (${{ matrix.target.system }})
+    needs: inventory
+    if: needs.inventory.outputs.has_packages == 'true'
+    runs-on: ${{ matrix.target.runner }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.inventory.outputs.packages) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@main
+        if: contains(matrix.target.system, 'linux')
+        with:
+          hatchet-protocol: 'holster'
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Build packages
+        env:
+          SYSTEM: ${{ matrix.target.system }}
+          PACKAGES_JSON: ${{ toJSON(matrix.target.packages) }}
+        run: |
+          FAILED=()
+          BUILT=0
+          SKIPPED=0
+
+          while IFS= read -r name; do
+            [ -z "${name}" ] && continue
+            ATTR="packages.${SYSTEM}.${name}"
+
+            # Check whether the package evaluates for this platform.
+            if ! nix eval ".#${ATTR}.drvPath" --raw --no-write-lock-file >/dev/null 2>&1; then
+              echo "⏭️  Skipping ${ATTR} (not evaluable for ${SYSTEM})"
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
+
+            # Check hydraPlatforms; skip if explicitly set to empty.
+            hydra_platforms=$(nix eval ".#${ATTR}.meta.hydraPlatforms" --json --no-write-lock-file 2>/dev/null || echo "null")
+            if [ "${hydra_platforms}" = "[]" ]; then
+              echo "⏭️  Skipping ${ATTR} (excluded from CI via hydraPlatforms)"
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
+
+            echo "🔨 Building ${ATTR}"
+            if nix build ".#${ATTR}" --no-link -L; then
+              echo "✅ Built ${ATTR}"
+              BUILT=$((BUILT + 1))
+            else
+              echo "❌ Failed to build ${ATTR}" >&2
+              FAILED+=("${ATTR}")
+            fi
+          done < <(echo "${PACKAGES_JSON}" | jq -r '.[]')
+
+          echo ""
+          echo "Built: ${BUILT}, Skipped: ${SKIPPED}, Failed: ${#FAILED[@]}"
+          if [ "${#FAILED[@]}" -gt 0 ]; then
+            echo "Failed outputs:"
+            for f in "${FAILED[@]}"; do
+              echo "  ✗ ${f}"
+            done
+            exit 1
+          fi
+
+  # ──────────────────────────────────────────────
+  # NixOS Configurations (per-host)
+  # ──────────────────────────────────────────────
+  nixos:
+    name: NixOS 🐧 ${{ matrix.target.name }}
+    needs: inventory
+    if: needs.inventory.outputs.has_nixos == 'true'
+    runs-on: ${{ matrix.target.runner }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.inventory.outputs.nixos) }}
     steps:
       - uses: actions/checkout@v6
       - uses: wimpysworld/nothing-but-nix@main
@@ -52,16 +212,77 @@ jobs:
           hatchet-protocol: 'holster'
       - uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Build 🏗️
-        env:
-          FLAKE_BUILD_SYSTEM: ${{ matrix.systems.nix-system }}
+      - name: Build NixOS ${{ matrix.target.name }}
         run: |
-          bash home-manager/_mixins/scripts/flake-build/flake-build.sh
+          nix build ".#nixosConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
+      - name: Build Home ${{ matrix.target.home }}
+        if: matrix.target.home != ''
+        run: |
+          nix build ".#homeConfigurations.\"${{ matrix.target.home }}\".activationPackage" --no-link -L
 
+  # ──────────────────────────────────────────────
+  # Darwin Configurations (per-host)
+  # ──────────────────────────────────────────────
+  darwin:
+    name: Darwin 🍏 ${{ matrix.target.name }}
+    needs: inventory
+    if: needs.inventory.outputs.has_darwin == 'true'
+    runs-on: ${{ matrix.target.runner }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.inventory.outputs.darwin) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Build Darwin ${{ matrix.target.name }}
+        run: |
+          nix build ".#darwinConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
+      - name: Build Home ${{ matrix.target.home }}
+        if: matrix.target.home != ''
+        run: |
+          nix build ".#homeConfigurations.\"${{ matrix.target.home }}\".activationPackage" --no-link -L
+
+  # ──────────────────────────────────────────────
+  # Orphan Home Configurations (lima, wsl, gaming)
+  # ──────────────────────────────────────────────
+  orphan-homes:
+    name: Home 🏠 ${{ matrix.target.name }}
+    needs: inventory
+    if: needs.inventory.outputs.has_orphan_homes == 'true'
+    runs-on: ${{ matrix.target.runner }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.inventory.outputs.orphan_homes) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: 'holster'
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Build Home ${{ matrix.target.name }}
+        run: |
+          nix build ".#homeConfigurations.\"${{ matrix.target.name }}\".activationPackage" --no-link -L
+
+  # ──────────────────────────────────────────────
+  # Publish to FlakeHub (after all builds pass)
+  # ──────────────────────────────────────────────
   publish:
     name: Publish FlakeHub ❄️
-    needs: build
+    needs: [devshells, packages, nixos, darwin, orphan-homes]
     if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
       github.repository_owner == 'wimpysworld' &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
@@ -78,9 +299,12 @@ jobs:
           visibility: public
           include-output-paths: true
 
+  # ──────────────────────────────────────────────
+  # Release ISO (after NixOS builds pass)
+  # ──────────────────────────────────────────────
   release-iso:
     name: Release ISO 📀
-    needs: build
+    needs: nixos
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
