@@ -93,10 +93,6 @@
         };
 
         # Darwin systems
-        krall = {
-          type = "darwin";
-          platform = "x86_64-darwin";
-        };
         momin = {
           type = "darwin";
         };
