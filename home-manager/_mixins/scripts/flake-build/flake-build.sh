@@ -113,7 +113,10 @@ fi
 # --- Build System Configurations ---
 
 if [ "${IS_LINUX}" = "1" ]; then
-	mapfile -t nixos_list < <(echo "${NIXOS_NAMES}" | jq -r '.[]')
+	nixos_list=()
+	while IFS= read -r item; do
+		nixos_list+=("$item")
+	done < <(echo "${NIXOS_NAMES}" | jq -r '.[]')
 	log_info "Found ${#nixos_list[@]} nixosConfigurations"
 	for name in "${nixos_list[@]}"; do
 		[ -z "${name}" ] && continue
@@ -124,7 +127,10 @@ if [ "${IS_LINUX}" = "1" ]; then
 fi
 
 if [ "${IS_DARWIN}" = "1" ]; then
-	mapfile -t darwin_list < <(echo "${DARWIN_NAMES}" | jq -r '.[]')
+	darwin_list=()
+	while IFS= read -r item; do
+		darwin_list+=("$item")
+	done < <(echo "${DARWIN_NAMES}" | jq -r '.[]')
 	log_info "Found ${#darwin_list[@]} darwinConfigurations"
 	for name in "${darwin_list[@]}"; do
 		[ -z "${name}" ] && continue
@@ -142,7 +148,10 @@ if [ "${VERBOSE}" = "1" ]; then
 	log_info "homeConfigurations: ${HOME_NAMES}"
 fi
 
-mapfile -t home_list < <(echo "${HOME_NAMES}" | jq -r '.[]')
+home_list=()
+while IFS= read -r item; do
+	home_list+=("$item")
+done < <(echo "${HOME_NAMES}" | jq -r '.[]')
 log_info "Found ${#home_list[@]} homeConfigurations total"
 
 for name in "${home_list[@]}"; do
@@ -193,7 +202,10 @@ if [ "${VERBOSE}" = "1" ]; then
 	log_info "packages.${SYSTEM}: ${PKG_NAMES}"
 fi
 
-mapfile -t pkg_list < <(echo "${PKG_NAMES}" | jq -r '.[]')
+pkg_list=()
+while IFS= read -r item; do
+	pkg_list+=("$item")
+done < <(echo "${PKG_NAMES}" | jq -r '.[]')
 log_info "Found ${#pkg_list[@]} packages for ${SYSTEM}"
 
 for name in "${pkg_list[@]}"; do
@@ -211,7 +223,10 @@ if [ "${VERBOSE}" = "1" ]; then
 	log_info "devShells.${SYSTEM}: ${SHELL_NAMES}"
 fi
 
-mapfile -t shell_list < <(echo "${SHELL_NAMES}" | jq -r '.[]')
+shell_list=()
+while IFS= read -r item; do
+	shell_list+=("$item")
+done < <(echo "${SHELL_NAMES}" | jq -r '.[]')
 log_info "Found ${#shell_list[@]} devShells for ${SYSTEM}"
 
 for name in "${shell_list[@]}"; do
