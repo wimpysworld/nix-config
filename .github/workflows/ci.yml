@@ -275,7 +275,7 @@ jobs:
   # Sentinel: gate builds and derive release version
   # ──────────────────────────────────────────────
   sentinel:
-    name: Sentinel 🏁
+    name: Sentinel 👁️
     needs: [devshells, packages, nixos, darwin, orphan-homes]
     if: always()
     runs-on: ubuntu-latest
@@ -331,11 +331,12 @@ jobs:
           tag: v${{ needs.sentinel.outputs.ver }}
           visibility: public
           include-output-paths: true
+          log-directives: flakehub_push=debug
 
   # ──────────────────────────────────────────────
   # Release ISO (after NixOS builds pass)
   # ──────────────────────────────────────────────
-  release-iso:
+  release:
     name: Release ISO 📀
     needs: [sentinel]
     if: needs.sentinel.outputs.ver != ''
