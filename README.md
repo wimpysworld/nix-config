@@ -23,7 +23,7 @@ These computers are managed by this Nix flake ❄️
 |   `tanis`   |     [ThinkPad Z13 Gen 1]      |    [AMD Ryzen 5 PRO 6650U]     | 32GB  |       AMD Radeon 660M       |                          |  💻️   | ❄️  |  ✅   |
 |   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
 |  `atrius`   |       [ThinkPad T495s]        |      [AMD Ryzen 7 3700U]       | 16GB  |     AMD Radeon Vega 10      |                          |  💻️   | ❄️  |  🚧   |
-|   `krall`   |   [Macbook Pro (Mid 2015)]    |         Intel Core i7          | 16GB  |   Intel Iris Pro Graphics   |                          |  💻️   | 🍏  |  ✅   |
+|   `momin`   |   [Macbook Pro]               |         Apple Silicon          | 36GB  |         Apple Silicon       |                          |  💻️   | 🍏  |  ✅   |
 | `steamdeck` |     [Steam Deck 64GB LCD]     |          Zen 2 4c/8t           | 16GB  |        8 RDNA 2 CUs         |                          |  🎮️   | 🐧  |  ✅   |
 |  `crawler`  |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
 |  `dagger`   |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
@@ -184,7 +184,7 @@ Here's the directory structure I'm using:
 │  │  ├── desktop
 │  │  ├── scripts
 │  │  └── users
-│  ├── krall
+│  ├── momin
 │  └── default.nix
 ├── home-manager
 │  ├── _mixins

@@ -156,7 +156,7 @@ Build specific system:
 ```bash
 nix build .#nixosConfigurations.vader.config.system.build.toplevel
 nix build .#homeConfigurations."martin@vader".activationPackage
-nix build .#darwinConfigurations.krall.config.system.build.toplevel
+nix build .#darwinConfigurations.momin.config.system.build.toplevel
 ```
 
 ## Secrets management
@@ -206,13 +206,13 @@ Catppuccin Mocha palette available via `catppuccinPalette` helper:
 {
   # Get hex colour with #
   backgroundColor = catppuccinPalette.getColor "base";
-  
+
   # Get hex without # (for Hyprland)
   hyprlandColor = catppuccinPalette.getHyprlandColor "blue";
-  
+
   # Access raw palette
   palette = catppuccinPalette.colors;
-  
+
   # Theme detection
   isDark = catppuccinPalette.isDark;        # true for mocha
   preferShade = catppuccinPalette.preferShade;  # "prefer-dark"
@@ -237,12 +237,12 @@ Create `pkgs/my-package/default.nix`:
 stdenv.mkDerivation rec {
   pname = "my-package";
   version = "1.0.0";
-  
+
   src = fetchurl {
     url = "https://example.com/${pname}-${version}.tar.gz";
     sha256 = lib.fakeSha256;  # Build once to get real hash
   };
-  
+
   meta = with lib; {
     description = "Package description";
     homepage = "https://example.com";
@@ -327,9 +327,9 @@ Create `nixos/mynewhost/default.nix`:
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     ./disks.nix
   ];
-  
+
   boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" ];
-  
+
   # Hardware-specific configuration
 }
 ```

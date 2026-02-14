@@ -1,0 +1,125 @@
+name: CI ❄️
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v?[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inventory:
+    name: Inventory 📋
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      systems: ${{ steps.inventory.outputs.systems }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: 'holster'
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Inventory
+        id: inventory
+        run: |
+          nix run "https://flakehub.com/f/DeterminateSystems/flake-iter/*" -- systems \
+            --runner-map '{"aarch64-darwin":"macos-latest","x86_64-linux":"ubuntu-latest"}'
+
+  build:
+    name: Build 🏗️
+    needs: inventory
+    runs-on: ${{ matrix.systems.runner }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        systems: ${{ fromJSON(needs.inventory.outputs.systems) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: 'holster'
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Build
+        env:
+          FLAKE_ITER_NIX_SYSTEM: ${{ matrix.systems.nix-system }}
+        run: |
+          nix run "https://flakehub.com/f/DeterminateSystems/flake-iter/*" -- --verbose build
+
+  publish:
+    name: Publish FlakeHub ❄️
+    needs: build
+    if: |
+      github.repository_owner == 'wimpysworld' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-push@v6
+        with:
+          rolling: ${{ github.ref == 'refs/heads/main' }}
+          visibility: public
+          include-output-paths: true
+
+  release-iso:
+    name: Release ISO 📀
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: wimpysworld/nothing-but-nix@main
+        with:
+          hatchet-protocol: 'holster'
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Build ISO 💿️
+        id: build-iso
+        run: |
+          nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
+          mkdir iso || true
+          ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
+          # Make semver compatible
+          VER=$(head -n1 result/nix-support/hydra-build-products | cut -d'-' -f4 | cut -d'.' -f1-3 | sed -E 's/\b0+([1-9])/\1/g')
+          # Set output variable
+          echo "ver=v${VER}" >> $GITHUB_OUTPUT
+          sudo mv "result/iso/${ISO}" iso/console-${ISO}
+          sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
+          sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
+          sudo df -h
+      - name: Release ISO 🎁
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
+          if [ -f "iso/console-${ISO}" ]; then
+            # Delete any existing release with the same tag to handle duplicate nixpkgs date stamps
+            gh release delete "${{ steps.build-iso.outputs.ver }}" --yes --cleanup-tag 2>/dev/null || true
+            gh release create "${{ steps.build-iso.outputs.ver }}" --draft=false --generate-notes
+            for artefact in "iso/"*; do
+              gh release upload "${{ steps.build-iso.outputs.ver }}" "${artefact}" --clobber
+            done
+          else
+            echo "No ISO found, failing the job"
+            exit 1
+          fi
