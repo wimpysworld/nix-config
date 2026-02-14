@@ -112,17 +112,6 @@
     unstable = import inputs.nixpkgs-unstable {
       system = final.stdenv.hostPlatform.system;
       config.allowUnfree = true;
-      overlays = [
-        # Apply the same rofi-unwrapped modification to unstable packages
-        (_final: _prev: {
-          rofi-unwrapped = _prev.rofi-unwrapped.overrideAttrs (oldAttrs: {
-            postInstall = (oldAttrs.postInstall or "") + ''
-              rm -f $out/share/applications/rofi.desktop
-              rm -f $out/share/applications/rofi-theme-selector.desktop
-            '';
-          });
-        })
-      ];
     };
   };
 }
