@@ -315,35 +315,32 @@ jobs:
       - uses: wimpysworld/nothing-but-nix@main
         with:
           hatchet-protocol: 'holster'
+          root-safe-haven: '10240'
+          mnt-safe-haven: '10240'
       - uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build ISO 💿️
         id: build-iso
         run: |
           nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
-          mkdir iso || true
           ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
-          # Make semver compatible
+          # Make semver compatible version tag
           VER=$(head -n1 result/nix-support/hydra-build-products | cut -d'-' -f4 | cut -d'.' -f1-3 | sed -E 's/\b0+([1-9])/\1/g')
-          # Set output variable
-          echo "ver=v${VER}" >> $GITHUB_OUTPUT
-          sudo mv "result/iso/${ISO}" iso/console-${ISO}
-          sha256sum "iso/console-${ISO}" > "iso/console-${ISO}.sha256"
-          sed -i -r "s/ .*\/(.+)/  \1/g" "iso/console-${ISO}.sha256"
-          sudo df -h
-      - name: Release ISO 🎁
+          echo "ver=v${VER}" >> "$GITHUB_OUTPUT"
+          # Stage ISO for release upload; GitHub auto-generates sha256 digests
+          mkdir -p iso
+          sudo mv "result/iso/${ISO}" "iso/console-${ISO}"
+      - name: Delete existing release 🗑️
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.build-iso.outputs.ver }}
         run: |
-          ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
-          if [ -f "iso/console-${ISO}" ]; then
-            # Delete any existing release with the same tag to handle duplicate nixpkgs date stamps
-            gh release delete "${{ steps.build-iso.outputs.ver }}" --yes --cleanup-tag 2>/dev/null || true
-            gh release create "${{ steps.build-iso.outputs.ver }}" --draft=false --generate-notes
-            for artefact in "iso/"*; do
-              gh release upload "${{ steps.build-iso.outputs.ver }}" "${artefact}" --clobber
-            done
-          else
-            echo "No ISO found, failing the job"
-            exit 1
-          fi
+          # Delete any existing release with the same tag to handle duplicate nixpkgs date stamps
+          gh release delete "${TAG}" --yes --cleanup-tag 2>/dev/null || true
+      - name: Release ISO 🎁
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.build-iso.outputs.ver }}
+          files: iso/*
+          generate_release_notes: true
+          make_latest: true
