@@ -1,5 +1,7 @@
 {
   inputs,
+  lib,
+  pkgs,
   ...
 }:
 {
@@ -27,6 +29,7 @@
         "nvidia"
       ];
     };
+    kernelPackages = lib.mkForce pkgs.linuxPackages_6_12;
   };
 
   hardware = {
