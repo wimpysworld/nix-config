@@ -272,13 +272,18 @@ jobs:
           nix build ".#homeConfigurations.\"${{ matrix.target.name }}\".activationPackage" --no-link -L
 
   # ──────────────────────────────────────────────
-  # Gate: single required-check sentinel
+  # Sentinel: gate builds and derive release version
   # ──────────────────────────────────────────────
-  ci-gate:
-    name: CI Gate 🏁
+  sentinel:
+    name: Sentinel 🏁
     needs: [devshells, packages, nixos, darwin, orphan-homes]
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      ver: ${{ steps.version.outputs.ver }}
     steps:
       - name: Check build results
         run: |
@@ -289,29 +294,15 @@ jobs:
             exit 1
           fi
           echo "✅ All build jobs passed (or were skipped)"
-
-  # ──────────────────────────────────────────────
-  # Version: derive semver from nixpkgs date stamp
-  # ──────────────────────────────────────────────
-  version:
-    name: Version 🏷️
-    needs: [ci-gate]
-    if: |
-      needs.ci-gate.result == 'success' &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    outputs:
-      ver: ${{ steps.version.outputs.ver }}
-    steps:
       - uses: actions/checkout@v6
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - uses: DeterminateSystems/determinate-nix-action@v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - uses: DeterminateSystems/flakehub-cache-action@v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - name: Derive version
         id: version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           # Extract NixOS version (e.g. 25.11.20260211.6c5e707) and take first 3
           # dot-separated components, then strip leading zeros for semver compliance
@@ -325,8 +316,8 @@ jobs:
   # ──────────────────────────────────────────────
   publish:
     name: Publish FlakeHub ❄️
-    needs: [version]
-    if: github.repository_owner == 'wimpysworld'
+    needs: [sentinel]
+    if: github.repository_owner == 'wimpysworld' && needs.sentinel.outputs.ver != ''
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -337,7 +328,7 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - uses: DeterminateSystems/flakehub-push@v6
         with:
-          tag: v${{ needs.version.outputs.ver }}
+          tag: v${{ needs.sentinel.outputs.ver }}
           visibility: public
           include-output-paths: true
 
@@ -346,7 +337,8 @@ jobs:
   # ──────────────────────────────────────────────
   release-iso:
     name: Release ISO 📀
-    needs: [version]
+    needs: [sentinel]
+    if: needs.sentinel.outputs.ver != ''
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -371,14 +363,14 @@ jobs:
       - name: Delete existing release 🗑️
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: v${{ needs.version.outputs.ver }}
+          TAG: v${{ needs.sentinel.outputs.ver }}
         run: |
           # Delete any existing release with the same tag to handle duplicate nixpkgs date stamps
           gh release delete "${TAG}" --yes --cleanup-tag 2>/dev/null || true
       - name: Release ISO 🎁
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.version.outputs.ver }}
+          tag_name: v${{ needs.sentinel.outputs.ver }}
           files: iso/*
           generate_release_notes: true
           make_latest: true
