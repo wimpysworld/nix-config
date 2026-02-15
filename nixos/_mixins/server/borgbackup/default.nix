@@ -149,6 +149,7 @@ let
     runtimeInputs = with pkgs; [
       borgbackup
       coreutils
+      fuse
       util-linux
     ];
     text = ''
