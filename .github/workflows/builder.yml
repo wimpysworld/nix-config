@@ -157,6 +157,7 @@ jobs:
           FAILED=()
           BUILT=0
           SKIPPED=0
+          SUMMARY_ROWS=()
 
           while IFS= read -r name; do
             [ -z "${name}" ] && continue
@@ -166,6 +167,7 @@ jobs:
             if ! nix eval ".#${ATTR}.drvPath" --raw --no-write-lock-file >/dev/null 2>&1; then
               echo "⏭️  Skipping ${ATTR} (not evaluable for ${SYSTEM})"
               SKIPPED=$((SKIPPED + 1))
+              SUMMARY_ROWS+=("| ${name} | ⏭️ Skipped |")
               continue
             fi
 
@@ -174,6 +176,7 @@ jobs:
             if [ "${hydra_platforms}" = "[]" ]; then
               echo "⏭️  Skipping ${ATTR} (excluded from CI via hydraPlatforms)"
               SKIPPED=$((SKIPPED + 1))
+              SUMMARY_ROWS+=("| ${name} | ⏭️ Skipped |")
               continue
             fi
 
@@ -181,11 +184,24 @@ jobs:
             if nix build ".#${ATTR}" --no-link -L; then
               echo "✅ Built ${ATTR}"
               BUILT=$((BUILT + 1))
+              SUMMARY_ROWS+=("| ${name} | ✅ Built |")
             else
               echo "❌ Failed to build ${ATTR}" >&2
               FAILED+=("${ATTR}")
+              SUMMARY_ROWS+=("| ${name} | ❌ Failed |")
             fi
           done < <(echo "${PACKAGES_JSON}" | jq -r '.[]')
+
+          # Write Job Summary
+          {
+            printf "## Packages 📦 (%s)\n\n" "${SYSTEM}"
+            printf "| Package | Status |\n"
+            printf "|---------|--------|\n"
+            for row in "${SUMMARY_ROWS[@]}"; do
+              printf "%s\n" "${row}"
+            done
+            printf "\n**Built: %d, Skipped: %d, Failed: %d**\n" "${BUILT}" "${SKIPPED}" "${#FAILED[@]}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
           echo ""
           echo "Built: ${BUILT}, Skipped: ${SKIPPED}, Failed: ${#FAILED[@]}"
