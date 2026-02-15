@@ -356,10 +356,14 @@ jobs:
     needs: [sentinel]
     if: github.repository_owner == 'wimpysworld' && needs.sentinel.outputs.ver != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       id-token: write
       contents: read
     steps:
+      - uses: actionhippie/swap-space@v1
+        with:
+          size: 16G
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
