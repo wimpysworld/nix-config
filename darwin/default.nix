@@ -34,7 +34,6 @@
       mas
       nh
       nix-output-monitor
-      nvd
       plistwatch
       sops
     ];

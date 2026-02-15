@@ -297,7 +297,6 @@
                 nixfmt-tree
                 nixfmt-rfc-style
                 nix-output-monitor
-                nvd
                 sops
                 tree
               ]

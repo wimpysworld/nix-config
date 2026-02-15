@@ -90,7 +90,6 @@
         sops
       ]
       ++ lib.optionals isInstall [
-        nvd
         nvme-cli
         rsync
         smartmontools
