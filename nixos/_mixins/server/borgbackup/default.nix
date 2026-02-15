@@ -20,6 +20,11 @@ let
   ];
   backupBase = if lib.elem hostname legacyHosts then "/mnt/snapshot" else "/mnt/data";
   home = "/home/${username}";
+  domain = config.services.nullmailer.config.defaultdomain;
+
+  # Derive the borg repository path for a given job name.
+  repoPrefix = "${backupBase}/${username}/borg-${hostname}-";
+  mkRepoPath = name: "${repoPrefix}${name}";
 
   # Structured backup job definitions. Each entry describes what to back up,
   # when to run, and how long to retain archives.
@@ -108,7 +113,7 @@ let
   # Transform a job definition into a complete borgbackup job configuration,
   # applying common settings shared across all backup jobs.
   mkBorgJob = name: job: {
-    repo = "${backupBase}/${username}/borg-${hostname}-${name}";
+    repo = mkRepoPath name;
     inherit (job)
       paths
       exclude
@@ -166,7 +171,7 @@ let
               ;;
       esac
 
-      REPO="${backupBase}/${username}/borg-${hostname}-''${JOB}"
+      REPO="${repoPrefix}''${JOB}"
       MOUNT_POINT="''${HOME}/Backups/''${JOB}"
       export BORG_PASSCOMMAND="cat ${config.sops.secrets.borg_passphrase.path}"
       export BORG_REPO="''${REPO}"
@@ -248,7 +253,7 @@ let
     name: verifyData:
     let
       kind = if verifyData then "verify" else "check";
-      repoPath = "${backupBase}/${username}/borg-${hostname}-${name}";
+      repoPath = mkRepoPath name;
       backupUnit = "borgbackup-job-${name}.service";
       # Prevent checks from running concurrently with the backup job or with
       # each other (check vs verify for the same repository).
@@ -311,8 +316,9 @@ let
     description = "Failure notification for ${serviceName}";
     serviceConfig.Type = "oneshot";
     script = ''
+      set -euo pipefail
       /run/wrappers/bin/sendmail -t <<EOF
-      To: ${username}@wimpys.world
+      To: ${username}@${domain}
       From: borgbackup@${hostname}
       Subject: [${hostname}] ${serviceName} failed
 
