@@ -337,14 +337,11 @@ build-host hostname=current_hostname:
     if [ "$(uname)" = "Linux" ]; then
       echo "NixOS  Building: {{ hostname }} ({{ build_cores }} cores)"
       nh os build . --hostname "{{ hostname }}" -- \
-        --cores "{{ build_cores }}" \
-        --option extra-substituters https://install.determinate.systems \
-        --option extra-trusted-public-keys "cache.flakehub.com-3:hJuILl5sVK4iKm86JzgdXW12Y2Hwd5G07qKtHTOcDCM="
+        --cores "{{ build_cores }}"
     elif [ "$(uname)" = "Darwin" ]; then
       echo "nix-darwin 󰀵 Building: {{ hostname }} ({{ build_cores }} cores)"
       nh darwin build . --hostname "{{ hostname }}" -- \
-        --option extra-substituters https://install.determinate.systems \
-        --option extra-trusted-public-keys "cache.flakehub.com-3:hJuILl5sVK4iKm86JzgdXW12Y2Hwd5G07qKtHTOcDCM="
+        --cores "{{ build_cores }}"
     else
       echo "Unsupported OS: $(uname)"
     fi
