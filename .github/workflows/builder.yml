@@ -376,6 +376,7 @@ jobs:
           visibility: public
           include-output-paths: true
           log-directives: flakehub_push=debug
+          my-flake-is-too-big: true
 
   # ──────────────────────────────────────────────
   # Release ISO (after NixOS builds pass)
