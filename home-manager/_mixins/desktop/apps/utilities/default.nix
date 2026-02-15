@@ -13,7 +13,6 @@ lib.mkIf (builtins.elem username installFor) {
     with pkgs;
     lib.optionals isLinux [
       cpu-x
-      pika-backup
       usbimager
       vaults
     ];
