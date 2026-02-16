@@ -61,6 +61,7 @@ Dual boot systems have the NixOS install named a Sith Lord and the _"other"_ OS 
   - [FlakeHub Cache Action](https://github.com/marketplace/actions/flakehub-cache)
   - [Flake Checker Action](https://github.com/marketplace/actions/nix-flake-checker)
   - [Update Flake Lock Action](https://github.com/marketplace/actions/update-nix-flake-lock)
+- [common]: Shared configuration modules used by both NixOS and nix-darwin
 - [darwin]: macOS configurations
   - Includes full system configuration for a MacBook Air M2 15" and MacBook Pro (Mid 2015)
 - [home-manager]: Home Manager configurations
@@ -179,6 +180,8 @@ Here's the directory structure I'm using:
 
 ```
 .
+├── common
+│  └── default.nix
 ├── darwin
 │  ├── _mixins
 │  │  ├── desktop
@@ -226,6 +229,7 @@ Here's the directory structure I'm using:
 └── justfile
 ```
 
+- The `common` directory contains shared configuration modules used by both NixOS and nix-darwin, such as overlays, system packages, environment variables and shell settings.
 - The NixOS, macOS (darwin) and Home Manager configurations are in the `nixos`, `darwin` and `home-manager` directories respectively, they are structured in a similar way with `_mixins` directories that contain the configurations applied via mixin pattern that compose the final configuration.
 - The `lib` directory contains helper functions for the `nixos`, `nix-darwin` and `home-manager` configurations.
 - The `overlays` directory hold my custom overlays.
@@ -460,6 +464,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [NVIDIA T400]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/nvidia-t400-datasheet-1987150-r3.pdf
 [VirGL]: https://docs.mesa3d.org/drivers/virgl.html
 [.github]: ./github/workflows
+[common]: ./common
 [darwin]: ./darwin
 [home-manager]: ./home-manager
 [nixos]: ./nixos

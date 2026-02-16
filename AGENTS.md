@@ -58,6 +58,7 @@ just gc                             # Clean old generations, keep latest 5
 
 **File structure:**
 
+- Shared cross-platform configuration in `common/default.nix`, imported by both NixOS and nix-darwin
 - Configuration organised in `_mixins` directories using mixin pattern
 - Each mixin is self-contained with `default.nix` entry point
 - Host-specific configs in `nixos/{hostname}/`, `darwin/{hostname}/`
@@ -290,7 +291,9 @@ Configurations composed from small, focused modules in `_mixins` directories. Ea
 2. `generateConfigs` filters by type and merges with type defaults
 3. `mkNixos`, `mkHome`, `mkDarwin` create final configurations
 4. Special args computed and passed to all modules
-5. Modules import relevant mixins based on flags
+5. `common/default.nix` provides shared configuration (documentation, nixpkgs, nix registry, common packages, environment variables, fish shell) imported by both `nixos/default.nix` and `darwin/default.nix`
+6. Platform-specific entry points add their own imports, packages and settings
+7. Modules import relevant mixins based on flags
 
 **Overlay system:**
 
