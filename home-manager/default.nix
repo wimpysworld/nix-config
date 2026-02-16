@@ -210,9 +210,6 @@ in
     defaultSopsFile = ../secrets/secrets.yaml;
     secrets = {
       asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
-      gpg_private = { };
-      gpg_public = { };
-      gpg_ownertrust = { };
       hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
       ssh_config.path =
         if isLinux then

@@ -190,7 +190,6 @@
     gnupg.sshKeyPaths = [ ];
     defaultSopsFile = ../secrets/secrets.yaml;
     secrets = {
-      test-key = { };
       ssh_key = {
         mode = "0600";
         path = "/root/.ssh/id_rsa";
