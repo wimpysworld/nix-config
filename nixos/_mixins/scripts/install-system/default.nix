@@ -1,6 +1,7 @@
 {
   isISO,
   inputs,
+  lib,
   pkgs,
   ...
 }:
@@ -16,7 +17,6 @@ let
       git
       home-manager
       iproute2
-      keyutils
       rsync
       util-linux
     ];
@@ -24,5 +24,5 @@ let
   };
 in
 {
-  environment.systemPackages = with pkgs; lib.optionals isISO [ install-system ];
+  environment.systemPackages = lib.optionals isISO [ install-system ];
 }
