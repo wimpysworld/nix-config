@@ -10,6 +10,8 @@
 }:
 {
   imports = [
+    # Common configuration shared with nixos
+    ../common
     inputs.determinate.darwinModules.default
     inputs.mac-app-util.darwinModules.default
     inputs.nix-homebrew.darwinModules.nix-homebrew
@@ -19,29 +21,18 @@
     ./_mixins/features
   ];
 
-  # Only install the docs I use
-  documentation.enable = true;
-  documentation.doc.enable = false;
-  documentation.info.enable = false;
-  documentation.man.enable = true;
-
   environment = {
     shells = [ pkgs.fish ];
+    # Darwin-specific packages; common packages are in ../common
     systemPackages = with pkgs; [
-      git
-      just
       m-cli
       mas
       nh
-      nix-output-monitor
       plistwatch
-      sops
     ];
 
     variables = {
-      EDITOR = "micro";
       SHELL = "${pkgs.fish}/bin/fish";
-      VISUAL = "micro";
     };
   };
 
@@ -62,19 +53,6 @@
     mutableTaps = true;
   };
 
-  nixpkgs = {
-    # Configure your nixpkgs instance
-    config.allowUnfree = true;
-    # You can add overlays here
-    overlays = [
-      # Add overlays your own flake exports (from overlays and pkgs dir):
-      outputs.overlays.localPackages
-      outputs.overlays.modifiedPackages
-      outputs.overlays.unstablePackages
-      # Add overlays exported from other flakes:
-    ];
-  };
-
   # Determinate Nix darwin module configuration
   determinateNix = {
     enable = true;
@@ -89,25 +67,8 @@
     };
   };
 
-  nix =
-    let
-      flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-    in
-    {
-      settings = {
-        # Workaround for https://github.com/NixOS/nix/issues/9574
-        nix-path = config.nix.nixPath;
-      };
-      # Disable channels (nix.enable handled by determinateNix module)
-      channel.enable = false;
-      # Make flake registry and nix path match flake inputs
-      registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
-      nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
-    };
-
   programs = {
     fish = {
-      enable = true;
       shellAliases = {
         nano = "micro";
       };
@@ -117,7 +78,6 @@
       enableSSHSupport = true;
     };
     info.enable = false;
-    nix-index-database.comma.enable = true;
   };
 
   # Enable TouchID for sudo authentication

@@ -15,6 +15,8 @@
 }:
 {
   imports = [
+    # Common configuration shared with darwin
+    ../common
     # Use modules this flake exports; from modules/nixos
     outputs.nixosModules.falcon-sensor
     outputs.nixosModules.wavebox
@@ -70,24 +72,13 @@
     flavor = catppuccinPalette.flavor;
   };
 
-  # Only install the docs I use
-  documentation.enable = true;
-  documentation.nixos.enable = false;
-  documentation.man.enable = true;
-  documentation.info.enable = false;
-  documentation.doc.enable = false;
-
   environment = {
+    # NixOS-specific packages; common packages are in ../common
     systemPackages =
       with pkgs;
       [
         inputs.determinate.packages.${pkgs.stdenv.hostPlatform.system}.default
         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
-        git
-        just
-        micro
-        nix-output-monitor
-        sops
       ]
       ++ lib.optionals isInstall [
         nvme-cli
@@ -96,52 +87,24 @@
       ];
 
     variables = {
-      EDITOR = "micro";
       SYSTEMD_EDITOR = "micro";
-      VISUAL = "micro";
     };
   };
 
-  nixpkgs = {
-    overlays = [
-      # Overlays defined via overlays/default.nix and pkgs/default.nix
-      outputs.overlays.localPackages
-      outputs.overlays.modifiedPackages
-      outputs.overlays.unstablePackages
-    ];
-    config = {
-      allowUnfree = true;
+  nix = {
+    settings = {
+      experimental-features = "nix-command flakes";
+      extra-experimental-features = "parallel-eval";
+      # Disable global registry
+      flake-registry = "";
+      lazy-trees = true;
+      eval-cores = 0; # Enable parallel evaluation across all cores
+      warn-dirty = false;
     };
   };
-
-  nix =
-    let
-      flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-    in
-    {
-      settings = {
-        experimental-features = "nix-command flakes";
-        extra-experimental-features = "parallel-eval";
-        # Disable global registry
-        flake-registry = "";
-        lazy-trees = true;
-        eval-cores = 0; # Enable parallel evaluation across all cores
-        # Workaround for https://github.com/NixOS/nix/issues/9574
-        nix-path = config.nix.nixPath;
-        warn-dirty = false;
-      };
-      # Disable channels
-      channel.enable = false;
-      # Make flake registry and nix path match flake inputs
-      registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
-      nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
-    };
 
   programs = {
     command-not-found.enable = false;
-    fish = {
-      enable = true;
-    };
     nano.enable = lib.mkDefault false;
     nh = {
       clean = {
@@ -151,7 +114,6 @@
       enable = true;
       flake = "/home/${username}/Zero/nix-config";
     };
-    nix-index-database.comma.enable = isInstall;
     nix-ld = lib.mkIf isInstall {
       enable = true;
       libraries = with pkgs; [
