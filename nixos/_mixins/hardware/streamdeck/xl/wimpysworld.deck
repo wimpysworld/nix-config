@@ -1,0 +1,276 @@
+[[keys]]
+  index = 0
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Canon-EOS-M6-MkII.png"
+  [keys.action]
+    exec = "obs-cli scene current Dev Main"
+
+[[keys]]
+  index = 1
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Coding.jpg"
+  [keys.action]
+    exec = "obs-cli scene current Dev Code"
+  [keys.action_hold]
+    exec = "obs-cli scene current Dev CodeAlt"
+
+[[keys]]
+  index = 2
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Canon-EOS-M6-MkII-Overhead.png"
+  [keys.action]
+    exec = "obs-cli scene current Dev Overhead"
+
+[[keys]]
+  index = 3
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/USBCaptureHDMIGen2.png"
+  [keys.action]
+    exec = "obs-cli scene current Dev Cap"
+
+[[keys]]
+  index = 4
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/iPhone Camera.png"
+  [keys.action]
+    exec = "obs-cli scene current Dev Phone"
+
+[[keys]]
+  index = 5
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/MonitorLCD.png"
+  [keys.action]
+    exec = "obs-cli scene current Dev Code"
+
+[[keys]]
+  index = 6
+  [keys.widget]
+    id = "command"
+    interval = 1000
+    [keys.widget.config]
+      command = "echo 'Stream';echo 'Music';get-rhythmbox-volume"
+      font = "thin;regular;bold"
+      color = "#fefefe"
+  [keys.action]
+    exec = "music-volume 0.3"
+  [keys.action_hold]
+    exec = "music-volume 0.75"
+
+[[keys]]
+  index = 7
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/stream-live.jpg"
+  [keys.action]
+    exec = "obs-cli sceneitem show Commands Sequence-Start"
+
+[[keys]]
+  index = 8
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Canon-EOS-M6-MkII.png"
+      fontsize = 8.0
+      label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Dev GuestMain"
+
+[[keys]]
+  index = 9
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Coding.jpg"
+      fontsize = 8.0
+      label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Dev GuestCode"
+
+[[keys]]
+  index = 10
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Canon-EOS-M6-MkII-Overhead.png"
+      fontsize = 8.0
+      label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Dev GuestOverhead"
+
+[[keys]]
+  index = 11
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/USBCaptureHDMIGen2.png"
+      fontsize = 8.0
+      label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Dev GuestCap"
+
+[[keys]]
+  index = 12
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/iPhone Camera.png"
+      fontsize = 8.0
+      label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Dev GuestPhone"
+
+[[keys]]
+  index = 13
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/MonitorLCD.png"
+      fontsize = 8.0
+      label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Dev GuestScreen"
+
+[[keys]]
+  index = 14
+  [keys.widget]
+    id = "command"
+    interval = 1000
+    [keys.widget.config]
+      command = "default-output status;echo 'Volume';get-volume"
+      font = "thin;regular;bold"
+      color = "#4FB637;#4FB637;#fefefe"
+  [keys.action]
+    exec = "pulsemixer --set-volume 50"
+  [keys.action_hold]
+    exec = "pulsemixer --set-volume 100"
+
+[[keys]]
+  index = 15
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/stream-offline.jpg"
+  [keys.action]
+    exec = "obs-cli sceneitem show Commands Sequence-Stop"
+
+[[keys]]
+  index = 16
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Canon-EOS-M6-MkII.png"
+      fontsize = 8.0
+      label = "Gaming"
+  [keys.action]
+    exec = "obs-cli scene current Play Main"
+
+[[keys]]
+  index = 17
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Joystick.png"
+      fontsize = 8.0
+      label = "Gaming"
+  [keys.action]
+    exec = "obs-cli scene current Play Game"
+
+[[keys]]
+  index = 18
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Canon-EOS-M6-MkII-Overhead.png"
+      fontsize = 8.0
+      label = "Gaming"
+  [keys.action]
+    exec = "obs-cli scene current Play Over"
+
+[[keys]]
+  index = 22
+  [keys.widget]
+    id = "command"
+    interval = 1000
+    [keys.widget.config]
+      command = "default-input status;mic-loopback status;mic-mute status"
+      font = "thin;regular;bold"
+      color = "#FFB638;#FFB638;#FEFEFE"
+  [keys.action]
+    exec = "mic-loopback toggle"
+  [keys.action_hold]
+    exec = "default-input usb"
+
+[[keys]]
+  index = 23
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/screenshot.jpg"
+  [keys.action]
+    exec = "obs-cli sceneitem show Commands Screenshot"
+
+[[keys]]
+  index = 24
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Teapot.png"
+      #fontsize = 8.0
+      #label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Break"
+
+[[keys]]
+  index = 25
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Tools.png"
+      #fontsize = 8.0
+      #label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Problem"
+
+[[keys]]
+  index = 26
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Police Light.png"
+      #fontsize = 8.0
+      #label = "Guest"
+  [keys.action]
+    exec = "obs-cli scene current Dev PanicRoom"
+
+[[keys]]
+  index = 30
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/audio-mixer-audio-on.jpg"
+  [keys.action]
+    deck = "audio-streaming.deck"
+
+[[keys]]
+  index = 31
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Folders/folder-arrow.jpg"
+  [keys.action]
+    deck = "main.deck"
+  [keys.action_hold]
+    deck = "wimpysworld.deck"

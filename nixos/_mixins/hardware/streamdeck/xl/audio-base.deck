@@ -1,0 +1,321 @@
+[[keys]]
+  index = 0
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Cider-Logo.png"
+  [keys.action]
+    exec = "cider"
+
+[[keys]]
+  index = 1
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-down.jpg"
+  [keys.action]
+    exec = "ciderctl vol 5-"
+  [keys.action_hold]
+    exec = "ciderctl vol 25"
+
+[[keys]]
+  index = 2
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-up.jpg"
+  [keys.action]
+    exec = "ciderctl vol 5+"
+  [keys.action_hold]
+    exec = "ciderctl vol 75"
+
+[[keys]]
+  index = 3
+  [keys.widget]
+    id = "command"
+    interval = 2000
+    [keys.widget.config]
+      command = "echo 'Cider';echo 'Music';ciderctl vol"
+      font = "thin;regular;bold"
+      color = "#CA1C35;#CA1C35;#fefefe"
+  [keys.action]
+    exec = "ciderctl vol 50"
+  [keys.action_hold]
+    exec = "ciderctl vol 100"
+
+[[keys]]
+  index = 4
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-previous-track.jpg"
+  [keys.action]
+    exec = "ciderctl previous"
+
+[[keys]]
+  index = 5
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-play-pause.jpg"
+  [keys.action]
+    exec = "ciderctl playpause"
+
+[[keys]]
+  index = 6
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
+  [keys.action]
+    exec = "ciderctl next"
+
+#[[keys]]
+#  index = 7
+#  [keys.widget]
+#    id = "button"
+#    [keys.widget.config]
+#      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
+#  [keys.action]
+#    exec = "ciderctl next"
+
+
+[[keys]]
+  index = 8
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Apps/app-itunes.jpg"
+
+[[keys]]
+  index = 9
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-down.jpg"
+  [keys.action]
+    exec = "ipad-volume vol-down"
+  [keys.action_hold]
+    exec = "ipad-volume set 25"
+
+[[keys]]
+  index = 10
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-up.jpg"
+  [keys.action]
+    exec = "ipad-volume vol-up"
+  [keys.action_hold]
+    exec = "ipad-volume set 75"
+
+[[keys]]
+  index = 11
+  [keys.widget]
+    id = "command"
+    interval = 1000
+    [keys.widget.config]
+      command = "echo 'Apple';echo 'Music';ipad-volume status"
+      font = "thin;regular;bold"
+      color = "#CA1C35;#CA1C35;#fefefe"
+  [keys.action]
+    exec = "ipad-volume set 50"
+  [keys.action_hold]
+    exec = "ipad-volume set 100"
+
+[[keys]]
+  index = 12
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-previous-track.jpg"
+  [keys.action]
+    exec = "playerctl --player Lodge_iPad previous"
+
+[[keys]]
+  index = 13
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-play-pause.jpg"
+  [keys.action]
+    exec = "playerctl --player Lodge_iPad play-pause"
+
+[[keys]]
+  index = 14
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
+  [keys.action]
+    exec = "playerctl --player Lodge_iPad next"
+
+[[keys]]
+  index = 16
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/audio-mute.jpg"
+  [keys.action]
+    keycode = "Mute"
+
+[[keys]]
+  index = 17
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-down.jpg"
+  [keys.action]
+    exec = "pulsemixer --change-volume -5"
+  [keys.action_hold]
+    exec = "pulsemixer --set-volume 30"
+
+[[keys]]
+  index = 18
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-up.jpg"
+  [keys.action]
+    exec = "pulsemixer --change-volume +5"
+  [keys.action_hold]
+    exec = "pulsemixer --set-volume 75"
+
+[[keys]]
+  index = 19
+  [keys.widget]
+    id = "command"
+    interval = 1000
+    [keys.widget.config]
+      command = "default-output status;echo 'Volume';get-volume"
+      font = "thin;regular;bold"
+      color = "#4FB637;#4FB637;#fefefe"
+  [keys.action]
+    exec = "pulsemixer --set-volume 50"
+  [keys.action_hold]
+    exec = "pulsemixer --set-volume 100"
+
+[[keys]]
+  index = 20
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/SSL_2.jpg"
+      fontsize = 6
+      label = "SSL 2"
+  [keys.action]
+    exec = "default-output usb"
+
+[[keys]]
+  index = 21
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/inzone-buds.png"
+      fontsize = 6
+      label = "INZONE"
+  [keys.action]
+    exec = "default-output inzone"
+
+[[keys]]
+  index = 22
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/vr_p10.png"
+      fontsize = 6
+      label = "VR P10"
+  [keys.action]
+    exec = "default-output vr_p10"
+
+[[keys]]
+  index = 23
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/JBL_Quantum_TWS.jpg"
+      fontsize = 6
+      label = "JBL TWS"
+  [keys.action]
+    exec = "default-output quantum_tws"
+
+[[keys]]
+  index = 24
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/mic-on.jpg"
+  [keys.action]
+    exec = "mic-mute toggle"
+
+[[keys]]
+  index = 25
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-down.jpg"
+  [keys.action]
+    exec = "mic-loopback vol-down"
+  [keys.action_hold]
+    exec = "mic-loopback set 100"
+
+[[keys]]
+  index = 26
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-up.jpg"
+  [keys.action]
+    exec = "mic-loopback vol-up"
+  [keys.action_hold]
+    exec = "mic-loopback set 150"
+
+[[keys]]
+  index = 27
+  [keys.widget]
+    id = "command"
+    interval = 1000
+    [keys.widget.config]
+      command = "default-input status;mic-loopback status;mic-mute status"
+      font = "thin;regular;bold"
+      color = "#FFB638;#FFB638;#FEFEFE"
+  [keys.action]
+    exec = "mic-loopback toggle"
+  [keys.action_hold]
+    exec = "default-input usb"
+
+#[[keys]]
+#  index = 28
+#  [keys.widget]
+#    id = "command"
+#    interval = 1000
+#    [keys.widget.config]
+#      command = "echo 'Bluetooth';bt-codec profile;bt-codec codec"
+#      font = "thin;regular;bold"
+#      color = "#29AAE1;#255BAB;#FEFEFE"
+#  [keys.action]
+#    exec = "bt-codec switch"
+#  [keys.action_hold]
+#    exec = "bt-codec toggle"
+
+[[keys]]
+  index = 29
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Bluetooth.png"
+      fontsize = 6
+      label = "Bluetooth"
+  [keys.action]
+    exec = "default-output bluez"
+  [keys.action_hold]
+    exec = "default-input bluez"
+
+[[keys]]
+  index = 31
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Folders/folder-arrow.jpg"
+  [keys.action]
+    deck = "main.deck"

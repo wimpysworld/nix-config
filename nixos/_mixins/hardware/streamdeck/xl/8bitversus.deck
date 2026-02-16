@@ -1,0 +1,17 @@
+[[keys]]
+  index = 0
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Dropbox/Documents/Martin/Home/YouTube/8-bit Vs/Brand/Avatar/Final/New Avatar-overlayed.png"
+
+[[keys]]
+  index = 31
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Folders/folder-arrow.jpg"
+  [keys.action]
+    deck = "main.deck"
+  [keys.action_hold]
+    deck = "8bitversus.deck"
