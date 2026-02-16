@@ -13,7 +13,7 @@ lib.mkIf (lib.elem username installFor) {
     packages = with pkgs; [
       nixd
       nix-diff
-      nixfmt-rfc-style
+      nixfmt
     ];
   };
 
@@ -30,7 +30,7 @@ lib.mkIf (lib.elem username installFor) {
           "nix.serverSettings" = {
             "nixd" = {
               "formatting" = {
-                "command" = [ "${pkgs.nixfmt-rfc-style}/bin/nixfmt" ];
+                "command" = [ "${pkgs.nixfmt}/bin/nixfmt" ];
               };
             };
           };
@@ -47,7 +47,7 @@ lib.mkIf (lib.elem username installFor) {
           Nix = {
             formatter = {
               external = {
-                command = "${pkgs.nixfmt-rfc-style}/bin/nixfmt";
+                command = "${pkgs.nixfmt}/bin/nixfmt";
                 arguments = [
                   "--quiet"
                   "--"

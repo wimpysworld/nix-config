@@ -5,7 +5,7 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       deadnix
-      nixfmt-rfc-style
+      nixfmt
       statix
     ];
     text = builtins.readFile ./${name}.sh;

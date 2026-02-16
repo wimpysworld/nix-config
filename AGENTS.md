@@ -80,7 +80,7 @@ just gc                             # Clean old generations, keep latest 5
 
 **Nix style:**
 
-- Use `nixfmt-rfc-style` formatter (run via `nix fmt`)
+- Use `nixfmt` formatter (run via `nix fmt`)
 - Prefer `lib.mkDefault` and `lib.mkForce` over plain values for overridability
 - Use `lib.optional` and `lib.optionals` for conditional imports
 - Explicit `inherit` statements for clarity
