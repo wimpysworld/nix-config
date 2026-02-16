@@ -370,13 +370,18 @@ jobs:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
+      # Use fork with OIDC fix until upstream merges:
+      # https://github.com/DeterminateSystems/flakehub-push/pull/275
+      - name: Build flakehub-push 🔨
+        run: |
+          nix build github:flexiondotorg/flakehub-push/oidc-order#packages.x86_64-linux.default -L
       - uses: DeterminateSystems/flakehub-push@v6
         with:
           tag: v${{ needs.sentinel.outputs.ver }}
           visibility: public
           include-output-paths: true
           log-directives: flakehub_push=debug
-          my-flake-is-too-big: true
+          source-binary: result/bin/flakehub-push
 
   # ──────────────────────────────────────────────
   # Release ISO (after NixOS builds pass)
