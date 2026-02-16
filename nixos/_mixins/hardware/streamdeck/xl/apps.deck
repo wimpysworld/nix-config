@@ -1,0 +1,137 @@
+[[keys]]
+  index = 1
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/brave.png"
+  [keys.action]
+    exec = "brave"
+
+[[keys]]
+  index = 2
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/wavebox.png"
+  [keys.action]
+    exec = "wavebox"
+
+[[keys]]
+  index = 3
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Google_Chrome.png"
+  [keys.action]
+    exec = "google-chrome-stable"
+
+[[keys]]
+  index = 4
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Chromium.png"
+  [keys.action]
+    exec = "chromium"
+
+[[keys]]
+  index = 5
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Microsoft_Edge.png"
+  [keys.action]
+    exec = "microsoft-edge"
+
+[[keys]]
+  index = 8
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Telegram.png"
+  [keys.action]
+    exec = "telegram-desktop"
+
+[[keys]]
+  index = 9
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/discord.png"
+  [keys.action]
+    exec = "discord"
+
+[[keys]]
+  index = 10
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Halloy.png"
+  [keys.action]
+    exec = "halloy"
+
+[[keys]]
+  index = 11
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Fractal.png"
+  [keys.action]
+    exec = "fractal"
+
+[[keys]]
+  index = 12
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Chatterino.png"
+  [keys.action]
+    exec = "chatterino"
+
+[[keys]]
+  index = 16
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Visual_Studio_Code.png"
+  [keys.action]
+    exec = "code"
+
+
+[[keys]]
+  index = 17
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/GitKraken.png"
+  [keys.action]
+    exec = "gitkraken"
+
+[[keys]]
+  index = 24
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Cider-Logo.png"
+  [keys.action]
+    exec = "cider"
+
+[[keys]]
+  index = 25
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/rhythmbox.png"
+  [keys.action]
+    exec = "rhythmbox"
+
+[[keys]]
+  index = 31
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Folders/folder-arrow.jpg"
+  [keys.action]
+    deck = "main.deck"
+  [keys.action_hold]
+    deck = "apps.deck"

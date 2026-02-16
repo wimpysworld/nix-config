@@ -1,0 +1,28 @@
+parent = "audio-base.deck"
+
+[[keys]]
+  index = 0
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/DetSys/Social/determinatesystems_brandmark_RBG_avatar.png"
+  [keys.action]
+    deck = "virtualcam.deck"
+
+[[keys]]
+  index = 7
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Zoom/Labelled/Meeting/Mute_Unmute.png"
+  [keys.action]
+    exec = "toggle-meet mic"
+
+[[keys]]
+  index = 15
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Zoom/Labelled/Meeting/Video.png"
+  [keys.action]
+    exec = "toggle-meet camera"

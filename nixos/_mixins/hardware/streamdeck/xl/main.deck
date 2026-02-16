@@ -1,0 +1,280 @@
+[[keys]]
+  index = 0
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Websites/web-twitch.jpg"
+      label = "OBS Dev"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "obs --collection 'Wimpys World' --profile Dev --scene Collage"
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 2
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Apps/app-obs.jpg"
+      label = "OBS Dev Local"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "obs --collection 'Wimpys World' --profile Dev --scene Collage"
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 3
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Pictures/Profiles/martin/wimpysworld-new.png"
+      label = "Deck Dev"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 5
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Streaming.png"
+  [keys.action]
+    exec = "hypr-activity wimpysworld"
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 6
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-on.jpg"
+  [keys.action]
+    deck = "lights.deck"
+
+[[keys]]
+  index = 7
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/audio-mixer-audio-on.jpg"
+  [keys.action]
+    deck = "audio.deck"
+
+[[keys]]
+  index = 8
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Websites/web-twitch.jpg"
+      label = "OBS Play"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "obs --collection 'Wimpys World' --profile Play --scene Collage"
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 10
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Apps/app-obs.jpg"
+      label = "OBS Play Local"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "obs --collection 'Wimpys World' --profile Play-Local --scene Collage"
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 11
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Pictures/Profiles/martin/wimpy-rock.png"
+      label = "Deck Play"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 13
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Hyprland.png"
+  [keys.action]
+    exec = "hypr-activity gsd"
+
+[[keys]]
+  index = 14
+  [keys.widget]
+    id = "time"
+    [keys.widget.config]
+      format = "%H;%i;%s"
+      font = "bold;regular;thin"
+      color = "#fefefe"
+
+[[keys]]
+  index = 15
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-play-pause.jpg"
+  [keys.action]
+    exec = "ciderctl playpause"
+
+[[keys]]
+  index = 16
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Dropbox/Documents/Martin/Home/YouTube/8-bit Vs/Brand/Avatar/Final/New Avatar-overlayed.png"
+  [keys.action]
+    exec = "hypr-activity 8bitversus"
+    deck = "8bitversus.deck"
+
+[[keys]]
+  index = 17
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Development/restfulmedia/brand-artwork/linux-matters/Telegram/Telegram-Profile-512x512.png"
+  [keys.action]
+    exec = "hypr-activity linuxmatters"
+    deck = "linuxmatters.deck"
+
+[[keys]]
+  index = 18
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      label = "VirtalCam"
+      #icon = "~/Studio/DetSys/Social/determinatesystems_brandmark_RBG_avatar.png"
+  [keys.action]
+    exec = "virtualcam toggle"
+    deck = "virtualcam.deck"
+
+[[keys]]
+  index = 19
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Apps/app-game-capture.jpg"
+  [keys.action]
+    exec = "obs --collection SimpleCap --profile SimpleCap --scene SimpleCap"
+    deck = "simplecap.deck"
+
+[[keys]]
+  index = 21
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/shopping.png"
+  [keys.action]
+    exec = "brave https://ocado.com"
+
+[[keys]]
+  index = 22
+  [keys.widget]
+    id = "weather"
+    [keys.widget.config]
+      location = "basingstoke"
+      unit = "celsius"
+      color = "#fefefe"
+      #flatten = true
+      #theme = "notomoji"
+
+[[keys]]
+  index = 23
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
+  [keys.action]
+    exec = "ciderctl next"
+
+[[keys]]
+  index = 24
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Dropbox/Documents/Martin/Home/YouTube/8-bit Vs/Brand/Avatar/Final/New Avatar-overlayed.png"
+      label = "Deck"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    deck = "8bitversus.deck"
+
+[[keys]]
+  index = 25
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Development/restfulmedia/brand-artwork/linux-matters/Telegram/Telegram-Profile-512x512.png"
+      label = "Deck"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    deck = "linuxmatters.deck"
+
+[[keys]]
+  index = 26
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      #icon = "~/Studio/DetSys/Social/determinatesystems_brandmark_RBG_avatar.png"
+      label = "Deck"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    deck = "virtualcam.deck"
+
+[[keys]]
+  index = 27
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Apps/app-game-capture.jpg"
+      label = "Deck"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    deck = "simplecap.deck"
+
+[[keys]]
+  index = 30
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/floppy-disk.png"
+      label = "OBS Backup"
+      fontsize = 6.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "backup-obs"
+
+[[keys]]
+  index = 31
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Websites/web-elgato.jpg"
+  [keys.action]
+    deck = "main.deck"

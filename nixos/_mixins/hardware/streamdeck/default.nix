@@ -8,6 +8,12 @@
 }:
 let
   isStreamstation = hostname == "phasma" || hostname == "vader";
+  # Bundle all .deck config files into a single store directory so that
+  # relative deck references (deck = "foo.deck") resolve correctly.
+  deckmaster-xl-config = pkgs.runCommand "deckmaster-xl-config" { } ''
+    mkdir -p $out
+    cp ${./xl}/*.deck $out/
+  '';
 in
 lib.mkIf isInstall {
   environment.systemPackages = with pkgs; [ deckmaster ];
@@ -66,7 +72,7 @@ lib.mkIf isInstall {
 
     serviceConfig = {
       Type = "simple";
-      ExecStart = "${pkgs.deckmaster}/bin/deckmaster -deck %h/Studio/StreamDeck/Deckmaster-xl/main.deck";
+      ExecStart = "${pkgs.deckmaster}/bin/deckmaster -deck ${deckmaster-xl-config}/main.deck";
       Restart = "on-failure";
       RestartSec = "5s";
     };

@@ -1,0 +1,28 @@
+parent = "audio-base.deck"
+
+[[keys]]
+  index = 0
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Apps/app-game-capture.jpg"
+  [keys.action]
+    deck = "simplecap.deck"
+
+[[keys]]
+  index = 7
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/record.jpg"
+  [keys.action]
+    exec = "obs-cli recording start"
+
+[[keys]]
+  index = 15
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/record-off.jpg"
+  [keys.action]
+    exec = "obs-cli recording stop"

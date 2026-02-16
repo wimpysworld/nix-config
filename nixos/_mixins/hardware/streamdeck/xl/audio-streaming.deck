@@ -1,0 +1,93 @@
+parent = "audio-base.deck"
+
+[[keys]]
+  index = 0
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/rhythmbox.png"
+  [keys.action]
+    exec = "rhythmbox"
+
+[[keys]]
+  index = 1
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-down.jpg"
+  [keys.action]
+    exec = "rhythmbox-client --no-start --volume-down"
+  [keys.action_hold]
+    exec = "rhythmbox-client --no-start --set-volume 0.4"
+
+[[keys]]
+  index = 2
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-up.jpg"
+  [keys.action]
+    exec = "rhythmbox-client --no-start --volume-up"
+  [keys.action_hold]
+    exec = "rhythmbox-client --no-start --set-volume 0.75"
+
+[[keys]]
+  index = 3
+  [keys.widget]
+    id = "command"
+    interval = 1000
+    [keys.widget.config]
+      command = "echo 'Stream';echo 'Music';get-rhythmbox-volume"
+      font = "thin;regular;bold"
+      color = "#fefefe"
+  [keys.action]
+    exec = "rhythmbox-client --no-start --set-volume 0.5"
+  [keys.action_hold]
+    exec = "rhythmbox-client --no-start --set-volume 1"
+
+[[keys]]
+  index = 4
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-previous-track.jpg"
+  [keys.action]
+    exec = "rhythmbox-client --no-start --previous"
+
+[[keys]]
+  index = 5
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-play-pause.jpg"
+  [keys.action]
+    exec = "rhythmbox-client --no-start --play-pause"
+
+[[keys]]
+  index = 6
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
+  [keys.action]
+    exec = "rhythmbox-client --no-start --next"
+
+[[keys]]
+  index = 30
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Pictures/Profiles/martin/wimpysworld-new.png"
+  [keys.action]
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 31
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Folders/folder-arrow.jpg"
+  [keys.action]
+    deck = "main.deck"
+  [keys.action_hold]
+    deck = "audio-streaming.deck"

@@ -1,0 +1,21 @@
+parent = "audio-base.deck"
+
+[[keys]]
+  index = 30
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Pictures/Profiles/martin/wimpysworld-new.png"
+  [keys.action]
+    deck = "wimpysworld.deck"
+
+[[keys]]
+  index = 31
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Folders/folder-arrow.jpg"
+  [keys.action]
+    deck = "main.deck"
+  [keys.action_hold]
+    deck = "audio.deck"

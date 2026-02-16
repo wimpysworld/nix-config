@@ -1,0 +1,186 @@
+[[keys]]
+  index = 0
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-on.jpg"
+      label = "All"
+      fontsize = 8.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "all-lights on"
+
+[[keys]]
+  index = 1
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-off.jpg"
+      label = "All"
+      fontsize = 8.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "all-lights off"
+
+[[keys]]
+  index = 8
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-on.jpg"
+      label = "Key"
+      fontsize = 8.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "key-lights on"
+
+[[keys]]
+  index = 9
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-off.jpg"
+      label = "Key"
+      fontsize = 8.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "key-lights off"
+
+[[keys]]
+  index = 16
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-on.jpg"
+      label = "Hue"
+      fontsize = 8.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "hue-lights on"
+
+[[keys]]
+  index = 17
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-off.jpg"
+      label = "Hue"
+      fontsize = 8.0
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "hue-lights off"
+
+
+[[keys]]
+  index = 7
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-colder.jpg"
+      label = "Coding"
+      fontsize = 8.0
+      color = "#0000ff"
+      flatten = false
+  [keys.action]
+    exec = "hue-lights coding"
+
+[[keys]]
+  index = 14
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-warmer.jpg"
+      label = "DetSys"
+      fontsize = 8.0
+      color = "#EA741F"
+      flatten = false
+  [keys.action]
+    exec = "hue-lights detsys"
+
+[[keys]]
+  index = 15
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-warmer.jpg"
+      label = "Gaming"
+      fontsize = 8.0
+      color = "#D22260"
+      flatten = false
+  [keys.action]
+    exec = "hue-lights gaming"
+
+
+[[keys]]
+  index = 23
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/General/light-on.jpg"
+      label = "Focus"
+      fontsize = 8.0
+      color = "#ffffff"
+      flatten = false
+  [keys.action]
+    exec = "hue-lights white"
+
+[[keys]]
+  index = 11
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      label = "OFF"
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "all-lights off"
+
+[[keys]]
+  index = 12
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      label = "OFF"
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "all-lights off"
+
+[[keys]]
+  index = 19
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      label = "OFF"
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "all-lights off"
+
+[[keys]]
+  index = 20
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      label = "OFF"
+      color = "#fefefe"
+      flatten = false
+  [keys.action]
+    exec = "all-lights off"
+
+[[keys]]
+  index = 31
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Nebula/Folders/folder-arrow.jpg"
+  [keys.action]
+    deck = "main.deck"
+  [keys.action_hold]
+    deck = "lights.deck"
