@@ -30,7 +30,6 @@ in
     ./_mixins/scripts
     ./_mixins/terminal
     ./_mixins/users
-    ./_mixins/yubikey
   ]
   ++ lib.optional isWorkstation ./_mixins/desktop;
 
@@ -208,20 +207,6 @@ in
       generateKey = false;
     };
     defaultSopsFile = ../secrets/secrets.yaml;
-    secrets = {
-      asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
-      hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
-      ssh_config.path =
-        if isLinux then
-          "${config.home.homeDirectory}/.ssh/config"
-        else
-          "${config.home.homeDirectory}/.ssh/local_config";
-      ssh_key.path = "${config.home.homeDirectory}/.ssh/id_rsa";
-      ssh_pub.path = "${config.home.homeDirectory}/.ssh/id_rsa.pub";
-      ssh_semaphore_key.path = "${config.home.homeDirectory}/.ssh/id_rsa_semaphore";
-      ssh_semaphore_pub.path = "${config.home.homeDirectory}/.ssh/id_rsa_semaphore.pub";
-      transifex.path = "${config.home.homeDirectory}/.transifexrc";
-    };
   };
 
   # Fix sops-nix launchd service PATH on Darwin
