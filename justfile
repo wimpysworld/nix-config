@@ -372,3 +372,22 @@ boot-host hostname=current_hostname:
     else
       echo "Unsupported OS: $(uname)"
     fi
+
+# Format and lint Nix files
+format *paths:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ $# -eq 0 ]; then
+      echo "Nix 󰉼 Formatting: all files"
+      deadnix --edit .
+      statix fix .
+      nixfmt-tree
+    else
+      echo "Nix 󰉼 Formatting: $*"
+      deadnix --edit "$@"
+      for target in "$@"; do
+        statix fix "$target"
+      done
+      nixfmt "$@"
+    fi

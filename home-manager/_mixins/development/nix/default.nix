@@ -11,9 +11,12 @@ in
 lib.mkIf (lib.elem username installFor) {
   home = {
     packages = with pkgs; [
+      deadnix
       nixd
       nix-diff
       nixfmt
+      nixfmt-tree
+      statix
     ];
   };
 

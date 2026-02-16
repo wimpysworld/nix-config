@@ -286,6 +286,7 @@
               with pkgs;
               [
                 bc
+                deadnix
                 git
                 home-manager
                 hyperfine
@@ -298,6 +299,7 @@
                 nixfmt
                 nix-output-monitor
                 sops
+                statix
                 tree
               ]
               ++ optionalFlakePackage inputs.determinate
