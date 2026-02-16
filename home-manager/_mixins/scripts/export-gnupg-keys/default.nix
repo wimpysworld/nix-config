@@ -4,13 +4,14 @@ let
   shellApplication = pkgs.writeShellApplication {
     inherit name;
     runtimeInputs = with pkgs; [
-      gnupg
       coreutils
-      findutils
+      gnupg
+      jq
+      sops
     ];
     text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ shellApplication ];
+  home.packages = [ shellApplication ];
 }

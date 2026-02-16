@@ -10,6 +10,7 @@
 let
   inherit (pkgs.stdenv) isLinux;
   isStreamstation = hostname == "phasma" || hostname == "vader";
+  gnupgSopsFile = ../../../../secrets/gnupg.yaml;
 in
 {
   home = {
@@ -47,8 +48,46 @@ in
       DEBEMAIL = "code@wimpress.io";
       DEBSIGN_KEYID = "8F04688C17006782143279DA61DF940515E06DA3";
     };
+    # Import GPG private keys from sops after public keys are in place.
+    # Ordered after linkGeneration because Home Manager's importGpgKeys
+    # (which handles publicKeys when mutableKeys = true) runs after linkGeneration.
+    # See GnuPG.md Section 8 for the full technical rationale.
+    activation.importGpgPrivateKeys = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      GPG="${pkgs.gnupg}/bin/gpg"
+
+      for PRIVATE in \
+        "${config.sops.secrets.gpg_private_0864983E.path}" \
+        "${config.sops.secrets.gpg_private_FFEE1E5C.path}" \
+        "${config.sops.secrets.gpg_private_15E06DA3.path}"; do
+        if [ -f "$PRIVATE" ]; then
+          $GPG --batch --yes --pinentry-mode loopback \
+            --allow-secret-key-import --import "$PRIVATE" 2>/dev/null || true
+        fi
+      done
+    '';
   };
   programs = {
+    # Declarative GPG public keys and trust for Martin's keys.
+    # mutableKeys must be true (the default) to allow private key import
+    # to update pubring.kbx metadata. See GnuPG.md Section 8.3.
+    gpg = {
+      mutableKeys = true;
+      mutableTrust = false;
+      publicKeys = [
+        {
+          source = ./gpg-pubkey-0864983E.asc;
+          trust = "full";
+        }
+        {
+          source = ./gpg-pubkey-FFEE1E5C.asc;
+          trust = "full";
+        }
+        {
+          source = ./gpg-pubkey-15E06DA3.asc;
+          trust = "ultimate"; # Primary key, used for DEBSIGN
+        }
+      ];
+    };
     fish.loginShellInit = ''
       ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
     '';
@@ -74,6 +113,13 @@ in
       # Add Signed-off-by trailer to commits (DCO compliance)
       signOff = true;
     };
+  };
+  # GPG private keys from sops-encrypted gnupg.yaml.
+  # Public keys and trust are managed declaratively via programs.gpg.publicKeys above.
+  sops.secrets = {
+    gpg_private_0864983E.sopsFile = gnupgSopsFile;
+    gpg_private_FFEE1E5C.sopsFile = gnupgSopsFile;
+    gpg_private_15E06DA3.sopsFile = gnupgSopsFile;
   };
   systemd.user.tmpfiles = lib.mkIf (isLinux && !isLima) {
     rules = [

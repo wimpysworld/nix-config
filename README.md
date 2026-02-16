@@ -16,14 +16,14 @@ These computers are managed by this Nix flake ❄️
 |  Hostname   |             Board             |              CPU               |  RAM  |         Primary GPU         |      Secondary GPU       |  Role  | OS  | State |
 | :---------: | :---------------------------: | :----------------------------: | :---: | :-------------------------: | :----------------------: | :----: | :-: | :---: |
 |  `malgus`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  🚧   |
-|  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  🚧   |
+|  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  |  🚧   |
 |  `sidious`  |      [ThinkPad P1 Gen 1]      |      [Intel Xeon E-2176M]      | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630  | 💻️🎭️  | ❄️  |  ✅   |
 | `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️  | 🪟  |  ✅   |
 |   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  ✅   |
 |   `tanis`   |     [ThinkPad Z13 Gen 1]      |    [AMD Ryzen 5 PRO 6650U]     | 32GB  |       AMD Radeon 660M       |                          |  💻️   | ❄️  |  ✅   |
 |   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
 |  `atrius`   |       [ThinkPad T495s]        |      [AMD Ryzen 7 3700U]       | 16GB  |     AMD Radeon Vega 10      |                          |  💻️   | ❄️  |  🚧   |
-|   `momin`   |   [Macbook Pro]               |         Apple Silicon          | 36GB  |         Apple Silicon       |                          |  💻️   | 🍏  |  ✅   |
+|   `momin`   |         [MacBook M3 Pro]      |         11-core Apple M3 Pro chip          | 36GB  |         14-core GPU         |                          |  💻️    | 🍏  |  ✅   |
 | `steamdeck` |     [Steam Deck 64GB LCD]     |          Zen 2 4c/8t           | 16GB  |        8 RDNA 2 CUs         |                          |  🎮️   | 🐧  |  ✅   |
 |  `crawler`  |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
 |  `dagger`   |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
@@ -136,7 +136,7 @@ The console .iso image is also periodically built and published via [GitHub Acti
 
 ### Building without just
 
-If `nh`, `nom`, `just` and `home-manager` are not available here are traditional ways to build and switch.
+If `nh`, `nom`, `just` and `home-manager` are not available, here are the traditional ways to build and switch.
 
 **NixOS**
 
@@ -272,7 +272,6 @@ Things I currently need to do manually after installation.
 - [ ] Run `determinate-nixd login`
 - [ ] Run `gh auth login`
 - [ ] Tailscale - `sudo tailscale up --operator="$USER"`
-- [ ] Run `gpg-restore`
 - [ ] Keybase - `keybase login`
 
 ### Accounts
@@ -308,8 +307,6 @@ Things I currently need to do manually after installation.
   - `create-defender`
   - `create-fighter`
 - [ ] On macOS run
-  - `install-homebrew`
-  - `install-docker`
   - Run Docker Desktop to complete the setup.
 
 #### Malak
@@ -427,8 +424,9 @@ My use of [Disko] and automated installation script were inspired by the these b
 [ThinkPad Z13 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadz/thinkpad-z13-(13-inch-amd)/21d20012uk
 [ThinkPad T14s Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadt/t14s-amd-g1/22tpt144sa2
 [ThinkPad T495s]: https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/t495s/22tp2tt495s
-[Macbook Air M2 15"]: https://www.apple.com/uk/macbook-air-13-and-15-m2/
-[Macbook Pro (Mid 2015)]: https://support.apple.com/en-us/111955
+[MacBook M3 Pro]: https://support.apple.com/en-gb/117736
+[MacBook M2 Air]: https://support.apple.com/en-gb/111346
+[MacBook Pro 2015]: https://support.apple.com/en-gb/111955
 [Steam Deck 64GB LCD]: https://store.steampowered.com/steamdeck
 [GB-BXCEH-2955]: https://www.gigabyte.com/uk/Mini-PcBarebone/GB-BXCEH-2955-rev-10
 [GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
