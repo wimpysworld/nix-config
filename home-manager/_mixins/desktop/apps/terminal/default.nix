@@ -9,6 +9,13 @@ let
   inherit (pkgs.stdenv) isDarwin;
   # Helper function to get color as hex string
   getColor = colorName: catppuccinPalette.getColor colorName;
+  hideWindowDecorations =
+    if config.wayland.windowManager.wayfire.enable then
+      false
+    else if config.wayland.windowManager.hyprland.enable then
+      true
+    else
+      false;
 in
 {
   # Enable the Catppuccin theme
@@ -17,9 +24,9 @@ in
   };
 
   # User specific dconf terminal-related settings
-  dconf.settings = {
+  dconf.settings = with lib.hm.gvariant; {
     "com/github/stunkymonkey/nautilus-open-any-terminal" = {
-      terminal = "kitty";
+      terminal = "${lib.getExe pkgs.kitty} --single-instance";
     };
   };
 
@@ -35,7 +42,7 @@ in
         cursor_shape = "block";
         cursor_shape_unfocused = "hollow";
         cursor_stop_blinking_after = 0;
-        hide_window_decorations = if config.wayland.windowManager.hyprland.enable then true else false;
+        hide_window_decorations = hideWindowDecorations;
         scrollback_indicator_opacity = 0.50;
         scrollback_lines = 65536;
         shell = lib.mkIf isDarwin "${pkgs.fish}/bin/fish --interactive";
@@ -79,7 +86,7 @@ in
       '';
     };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {
-      settings.main.terminal = "kitty";
+      settings.main.terminal = "${lib.getExe pkgs.kitty} --single-instance";
     };
   };
 
@@ -87,7 +94,7 @@ in
     hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
       settings = {
         bind = [
-          "$mod, T, exec, kitty"
+          "$mod, T, exec, ${lib.getExe pkgs.kitty} --single-instance"
         ];
       };
     };
@@ -96,7 +103,7 @@ in
         command = {
           # Super+T launches a terminal
           binding_terminal = "<super> KEY_T";
-          command_terminal = "${lib.getExe pkgs.kitty}";
+          command_terminal = "${lib.getExe pkgs.kitty} --single-instance";
         };
       };
     };
@@ -151,5 +158,12 @@ in
     "XTerm*utf8" = true;
     "XTerm*locale" = false;
     "XTerm.vt100.metaSendsEscape" = true;
+  };
+  xdg = {
+    terminal-exec = {
+      settings = {
+        default = [ "kitty.desktop" ];
+      };
+    };
   };
 }
