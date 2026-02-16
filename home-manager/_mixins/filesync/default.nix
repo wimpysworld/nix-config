@@ -55,8 +55,8 @@ lib.mkIf (lib.elem username installFor && !isLima) {
   };
 
   sops.secrets = lib.mkIf isSyncthingHost {
-    syncthing_key.sopsFile = ../../../secrets/${hostname}.yaml;
-    syncthing_cert.sopsFile = ../../../secrets/${hostname}.yaml;
+    syncthing_key.sopsFile = ../../../secrets/host-${hostname}.yaml;
+    syncthing_cert.sopsFile = ../../../secrets/host-${hostname}.yaml;
     pass.sopsFile = ../../../secrets/syncthing.yaml;
     syncthing_apikey = {
       sopsFile = ../../../secrets/syncthing.yaml;

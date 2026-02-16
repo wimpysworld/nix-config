@@ -20,7 +20,7 @@ if [[ -z "${1:-}" ]]; then
 fi
 HOSTNAME="${1}"
 
-SECRETS_FILE="${REPO_ROOT}/secrets/${HOSTNAME}.yaml"
+SECRETS_FILE="${REPO_ROOT}/secrets/host-${HOSTNAME}.yaml"
 if [[ ! -f "${SECRETS_FILE}" ]]; then
 	echo "ERROR: Secrets file not found: ${SECRETS_FILE}"
 	exit 1
@@ -41,14 +41,14 @@ DEVICE_ID=$(syncthing device-id --home="${tmpdir}")
 KEY_JSON=$(jq -Rs . <"${tmpdir}/key.pem")
 CERT_JSON=$(jq -Rs . <"${tmpdir}/cert.pem")
 
-echo "Adding keys to secrets/${HOSTNAME}.yaml..."
+echo "Adding keys to secrets/host-${HOSTNAME}.yaml..."
 
 # Add keys to the secrets file using sops set
 sops set "${SECRETS_FILE}" '["syncthing_key"]' "${KEY_JSON}"
 sops set "${SECRETS_FILE}" '["syncthing_cert"]' "${CERT_JSON}"
 
 echo ""
-echo "✓ Keys added to secrets/${HOSTNAME}.yaml"
+echo "✓ Keys added to secrets/host-${HOSTNAME}.yaml"
 echo ""
 echo "Device ID: ${DEVICE_ID}"
 echo ""

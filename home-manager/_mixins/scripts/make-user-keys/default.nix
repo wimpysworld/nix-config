@@ -5,11 +5,13 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       coreutils
+      jq
       openssh
+      sops
     ];
     text = builtins.readFile ./${name}.sh;
   };
 in
 {
-  home.packages = with pkgs; [ shellApplication ];
+  home.packages = [ shellApplication ];
 }

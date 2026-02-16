@@ -132,7 +132,7 @@ Secrets encrypted with sops-nix using age keys.
 
 - **User key:** `~/.config/sops/age/keys.txt`
 - **Host key:** `/var/lib/private/sops/age/keys.txt`
-- **Edit secrets:** `sops secrets/secrets.yaml` or `sops secrets/{hostname}.yaml`
+- **Edit secrets:** `sops secrets/secrets.yaml` or `sops secrets/host-{hostname}.yaml`
 - **Rekey after adding recipients:** `sops updatekeys secrets/secrets.yaml`
 - Never commit unencrypted secrets. All sensitive data in encrypted `.yaml` files in `secrets/`.
 
