@@ -30,26 +30,6 @@ let
     ];
     text = builtins.readFile ./bluetooth-toggle.sh;
   };
-  eyecandyCheck = pkgs.writeShellApplication {
-    name = "eyecandy-check";
-    runtimeInputs = with pkgs; [
-      gawk
-      jq
-      findutils
-    ];
-    text = builtins.readFile ./eyecandy-check.sh;
-  };
-  eyecandyToggle = pkgs.writeShellApplication {
-    name = "eyecandy-toggle";
-    runtimeInputs = with pkgs; [
-      findutils
-      gawk
-      jq
-      notify-desktop
-    ];
-    # https://github.com/hyprwm/Hyprland/issues/3655#issuecomment-1784217814
-    text = builtins.readFile ./eyecandy-toggle.sh;
-  };
   tailscaleCheck = pkgs.writeShellApplication {
     name = "tailscale-check";
     runtimeInputs = with pkgs; [
@@ -165,17 +145,9 @@ in
           color: @flamingo;
         }
 
-        #custom-eyecandy {
-          color: @flamingo;
-        }
-
         #clock {
           color: @rosewater;
           font-size: 16px;
-        }
-
-        #custom-calendar {
-          color: @flamingo;
         }
 
         #custom-swaync {
@@ -184,9 +156,7 @@ in
         }
 
         #idle_inhibitor,
-        #custom-eyecandy,
         #clock,
-        #custom-calendar,
         #custom-swaync {
           background-color: @base;
           margin: 5px 0 0 0;
@@ -195,9 +165,7 @@ in
         }
 
         #idle_inhibitor:hover,
-        #custom-eyecandy:hover,
         #clock:hover,
-        #custom-calendar:hover,
         #custom-swaync:hover {
           background-color: #242536;
         }
@@ -340,9 +308,7 @@ in
           ];
           modules-center = [
             "idle_inhibitor"
-            "custom/eyecandy"
             "clock"
-            "custom/calendar"
             "custom/swaync"
           ];
           modules-right = [
@@ -419,13 +385,6 @@ in
             tooltip-format-activated = "󰅶  Caffeination {status}";
             tooltip-format-deactivated = "󰾪  Caffeination {status}";
           };
-          "custom/eyecandy" = lib.mkIf config.wayland.windowManager.hyprland.enable {
-            format = "<big>{}</big>";
-            max-length = 2;
-            interval = 1;
-            exec = "${lib.getExe eyecandyCheck}";
-            on-click = "${lib.getExe eyecandyToggle}";
-          };
           clock = {
             actions = {
               on-click-middle = "shift_down";
@@ -448,14 +407,6 @@ in
             format-alt = "{:%a, %d %b %R}";
             interval = 60;
             tooltip-format = "<tt><small>{calendar}</small></tt>";
-          };
-          "custom/calendar" = {
-            format = "<big>󰔠</big>";
-            max-length = 2;
-            on-click = "${lib.getExe pkgs.gnome-calendar}";
-            on-click-middle = "${lib.getExe pkgs.mousam}";
-            on-click-right = "${lib.getExe pkgs.gnome-clocks}";
-            tooltip-format = "󰸗  Calendar (left-click)\n󰼳  Weather (middle-click)\n󱎫  Clock (right-click)";
           };
           #https://haseebmajid.dev/posts/2024-03-15-til-how-to-get-swaync-to-play-nice-with-waybar/
           "custom/swaync" = {
