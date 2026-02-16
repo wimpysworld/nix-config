@@ -8,12 +8,14 @@ let
     runtimeInputs = with pkgs; [
       coreutils-full
       git
+      jq
       openssh
+      sops
       tree
     ];
     text = builtins.readFile ./install-anywhere.sh;
   };
 in
 {
-  environment.systemPackages = with pkgs; [ install-anywhere ];
+  environment.systemPackages = [ install-anywhere ];
 }
