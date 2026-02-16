@@ -169,7 +169,7 @@ in
     bash = {
       initExtra = lib.mkIf config.programs.nh.enable ''
         # Set nh search to use the stable channel
-        export NH_SEARCH_CHANNEL="$(norm 2>/dev/null || echo nixos-unstable)"
+        export NH_SEARCH_CHANNEL="$(noughty channel 2>/dev/null || echo nixos-unstable)"
       '';
     };
     fish = {
@@ -177,7 +177,7 @@ in
       shellInit = lib.mkIf config.programs.nh.enable ''
         set fish_greeting ""
         # Set nh search to use the stable channel
-        set -gx NH_SEARCH_CHANNEL (norm 2>/dev/null; or echo nixos-unstable)
+        set -gx NH_SEARCH_CHANNEL (noughty channel 2>/dev/null; or echo nixos-unstable)
       '';
     };
     home-manager.enable = true;
@@ -195,7 +195,7 @@ in
       initContent = lib.mkIf config.programs.nh.enable (
         lib.mkOrder 500 ''
           # Set nh search to use the stable channel
-          export NH_SEARCH_CHANNEL="$(norm 2>/dev/null || echo nixos-unstable)"
+          export NH_SEARCH_CHANNEL="$(noughty channel 2>/dev/null || echo nixos-unstable)"
         ''
       );
     };
