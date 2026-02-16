@@ -134,7 +134,8 @@ let
     extraCreateArgs = [
       "--stats"
       "--exclude-caches"
-      "--exclude-if-present .nobackup"
+      "--exclude-if-present"
+      ".nobackup"
     ];
     extraPruneArgs = [
       "--stats"
@@ -320,7 +321,7 @@ let
       set -euo pipefail
       /run/wrappers/bin/sendmail -t <<EOF
       To: ${username}@${domain}
-      From: borgbackup@${hostname}
+      From: borgbackup@${domain}
       Subject: [${hostname}] ${serviceName} failed
 
       The systemd service ${serviceName}.service on host ${hostname} has failed.
@@ -350,6 +351,25 @@ lib.mkIf (lib.elem hostname installOn) {
   ];
 
   services.borgbackup.jobs = lib.mapAttrs mkBorgJob backupJobs;
+
+  # Allow borgbackup services to take sleep inhibitor locks without interactive
+  # authentication. The borgbackup services run as User=${username} and set
+  # inhibitsSleep = true, which wraps borg in systemd-inhibit --what="sleep".
+  # That takes a block lock, triggering the polkit action
+  # org.freedesktop.login1.inhibit-block-sleep. The service process is not part
+  # of a logind session, so polkit classifies it under "allow_any" which
+  # defaults to auth_admin_keep, requiring interactive authentication that a
+  # headless systemd service cannot provide.
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id === "org.freedesktop.login1.inhibit-block-sleep" &&
+          subject.user === "${username}" &&
+          subject.system_unit &&
+          subject.system_unit.indexOf("borgbackup-job-") === 0) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
 
   # Lightweight integrity checks (repository index + archive metadata).
   # Run weekly on Sunday at 06:00 for data and 07:00 for media, staggered
