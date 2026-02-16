@@ -220,13 +220,18 @@ in
     };
   };
 
-  # Nicely reload system units when changing configs
-  systemd.user.startServices = lib.mkIf isLinux "sd-switch";
-  # Create age keys directory for SOPS
-  systemd.user.tmpfiles = lib.mkIf isLinux {
-    rules = [
-      "d ${config.home.homeDirectory}/.config/sops/age 0755 ${username} users - -"
-    ];
+  systemd = lib.mkIf isLinux {
+    user = {
+      # Nicely reload system units when changing configs
+      startServices = "sd-switch";
+      systemctlPath = "${pkgs.systemd}/bin/systemctl";
+      # Create age keys directory for SOPS
+      tmpfiles = {
+        rules = [
+          "d ${config.home.homeDirectory}/.config/sops/age 0755 ${username} users - -"
+        ];
+      };
+    };
   };
 
   xdg = {
