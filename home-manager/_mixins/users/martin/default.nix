@@ -8,9 +8,11 @@
 }:
 {
   imports = [
+    ./atuin.nix
     ./ssh.nix
     ./u2f.nix
     ./gpg.nix
+    ./git.nix
   ];
 
   # User-specific sops secrets
@@ -38,6 +40,9 @@
     file."Games/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."Websites/.keep" = lib.mkIf (!isLima) { text = ""; };
     file."Zero/.keep".text = "";
+    packages = lib.optionals (!isLima) [
+      pkgs.gocryptfs # Terminal encrypted filesystem
+    ];
     sessionVariables = {
       DEBFULLNAME = "Martin Wimpress";
       DEBEMAIL = "code@wimpress.io";
@@ -45,30 +50,26 @@
     };
   };
   programs = {
+    bash.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !isLima) {
+      lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
+      unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
+      lock-secrets = "fusermount -u ~/Vaults/Secrets";
+      unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
+    };
     fish.loginShellInit = ''
       ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
     '';
-    git = {
-      settings = {
-        gpg = {
-          ssh = {
-            allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
-          };
-        };
-        user = {
-          email = "code@wimpress.io";
-          name = "Martin Wimpress";
-        };
-      };
-      signing = {
-        format = "ssh";
-        key = "${config.home.homeDirectory}/.ssh/id_rsa";
-        signByDefault = true;
-      };
+    fish.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !isLima) {
+      lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
+      unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
+      lock-secrets = "fusermount -u ~/Vaults/Secrets";
+      unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
     };
-    lazygit.settings.git.commit = {
-      # Add Signed-off-by trailer to commits (DCO compliance)
-      signOff = true;
+    zsh.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !isLima) {
+      lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
+      unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
+      lock-secrets = "fusermount -u ~/Vaults/Secrets";
+      unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
     };
   };
   systemd.user.tmpfiles = lib.mkIf (pkgs.stdenv.isLinux && !isLima) {
