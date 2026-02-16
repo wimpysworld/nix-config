@@ -318,6 +318,7 @@ jobs:
       contents: read
     outputs:
       ver: ${{ steps.version.outputs.ver }}
+      publish_ver: ${{ steps.version.outputs.publish_ver }}
     steps:
       - name: Check build results
         run: |
@@ -345,8 +346,11 @@ jobs:
           # dot-separated components, then strip leading zeros for semver compliance
           NIXOS_VER=$(nix eval .#nixosConfigurations.iso-console.config.system.nixos.version --raw)
           VER=$(echo "${NIXOS_VER}" | cut -d'.' -f1-3 | sed -E 's/\b0+([1-9])/\1/g')
+          PUBLISH_VER="${VER}$(date -u +%H)"
           echo "ver=${VER}" >> "$GITHUB_OUTPUT"
+          echo "publish_ver=${PUBLISH_VER}" >> "$GITHUB_OUTPUT"
           echo "📌 Version: ${VER}"
+          echo "📌 Publish version: ${PUBLISH_VER}"
 
   # ──────────────────────────────────────────────
   # Publish to FlakeHub (after all builds pass)
@@ -354,7 +358,7 @@ jobs:
   publish:
     name: Publish FlakeHub ❄️
     needs: [sentinel]
-    if: github.repository_owner == 'wimpysworld' && needs.sentinel.outputs.ver != ''
+    if: github.repository_owner == 'wimpysworld' && needs.sentinel.outputs.publish_ver != ''
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -377,7 +381,7 @@ jobs:
           nix build github:flexiondotorg/flakehub-push/oidc-order#packages.x86_64-linux.default -L
       - uses: DeterminateSystems/flakehub-push@v6
         with:
-          tag: v${{ needs.sentinel.outputs.ver }}
+          tag: v${{ needs.sentinel.outputs.publish_ver }}
           visibility: public
           include-output-paths: true
           log-directives: flakehub_push=debug
