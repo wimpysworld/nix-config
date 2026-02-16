@@ -14,8 +14,12 @@
       enableZshIntegration = config.programs.zsh.enable;
       flags = [ "--disable-up-arrow" ];
       settings = {
+        auto_sync = true;
         key_path = config.sops.secrets.atuin_key.path;
+        sync_frequency = "5m";
         update_check = false;
+        sync.records = true;
+        dotfiles.enabled = false;
       };
     };
   };

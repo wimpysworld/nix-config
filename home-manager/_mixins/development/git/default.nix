@@ -48,7 +48,6 @@ in
         precommitSetup
       ];
     sessionVariables = {
-      GITSIGN_CONNECTOR_ID = "https://accounts.google.com";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
     };
   };
@@ -172,16 +171,6 @@ in
     };
     zsh = {
       inherit shellAliases;
-    };
-  };
-
-  sops = {
-    secrets = {
-      cg-repos = {
-        path = "${config.home.homeDirectory}/.config/cg-repos";
-        sopsFile = ../../../../secrets/cg-repos.yaml;
-        mode = "0644";
-      };
     };
   };
 

@@ -25,15 +25,10 @@ let
     speedtest = "${pkgs.speedtest-go}/bin/speedtest-go";
     wormhole = "${pkgs.wormhole-rs}/bin/wormhole-rs";
     weather = "${lib.getExe pkgs.girouette} --quiet";
-    lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
-    unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
-    lock-secrets = "fusermount -u ~/Vaults/Secrets";
-    unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
   };
 in
 {
   imports = [
-    ./atuin.nix # Modern Unix shell history
     ./bat.nix # Modern Unix `cat`
     ./bottom.nix # Modern Unix `top`
     ./btop.nix # Modern Unix `htop`
@@ -74,7 +69,6 @@ in
         fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
         glow # Terminal markdown viewer
-        gocryptfs # Terminal encrypted filesystem
         gping # Modern Unix `ping`
         hexyl # Modern Unix `hexedit`
         hr # Terminal horizontal rule

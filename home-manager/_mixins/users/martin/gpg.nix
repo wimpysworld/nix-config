@@ -28,15 +28,6 @@ in
         fi
       done
     '';
-    # Configure gpg-agent SSH keys for Git signing
-    file.".gnupg/sshcontrol" = {
-      text = ''
-        # SSH key for Git commit signing (id_rsa)
-        # Keygrip for: ${config.home.homeDirectory}/.ssh/id_rsa
-        EAC48EAAD36DC5B3460F9FC8FBD68DEED4DECD0F 0
-      '';
-      force = true;
-    };
   };
   programs = {
     # Declarative GPG public keys and trust for Martin's keys.
