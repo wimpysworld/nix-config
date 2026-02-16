@@ -11,6 +11,7 @@ let
     clock = "${pkgs.clock-rs}/bin/clock-rs --blink --color blue --hide-seconds";
     dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
     dmesg = "${pkgs.util-linux}/bin/dmesg --human --color=always";
+    duf = "${pkgs.duf}/bin/duf --theme ansi";
     egrep = "${pkgs.gnugrep}/bin/egrep --color=auto";
     fgrep = "${pkgs.gnugrep}/bin/fgrep --color=auto";
     grep = "${pkgs.gnugrep}/bin/grep --color=auto";
