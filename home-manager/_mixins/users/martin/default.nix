@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   isLima,
   lib,
   pkgs,
@@ -57,7 +56,7 @@
           };
         };
         user = {
-          email = "martin@wimpress.org";
+          email = "code@wimpress.io";
           name = "Martin Wimpress";
         };
       };
