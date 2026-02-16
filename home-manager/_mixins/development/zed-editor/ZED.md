@@ -145,7 +145,7 @@ Nix
 | Aspect | VSCode | Zed | Status |
 |--------|--------|-----|--------|
 | LSP | nixd | ✅ nixd | ✅ Parity |
-| Formatter | nixfmt-rfc-style | ✅ nixfmt-rfc-style | ✅ Parity |
+| Formatter | nixfmt | ✅ nixfmt | ✅ Parity |
 | Syntax | better-nix-syntax, nix-ide | ✅ nix | ✅ Parity |
 | Diagnostics | ✅ | ✅ suppress = ["sema-extra-with"] | ✅ Parity |
 Python

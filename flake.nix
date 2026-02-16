@@ -264,7 +264,7 @@
         // linuxOnlyFlakePackage "pwmenu" inputs.pwmenu
       );
       # Formatter for .nix files, available via 'nix fmt'
-      formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
+      formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
 
       # Creates a devshell for working with this flake via direnv.
       devShells = helper.forAllSystems (
@@ -295,7 +295,7 @@
                 nh
                 nixd
                 nixfmt-tree
-                nixfmt-rfc-style
+                nixfmt
                 nix-output-monitor
                 sops
                 tree
