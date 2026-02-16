@@ -204,12 +204,12 @@
       initrd_ssh_host_ed25519_key = {
         mode = "0600";
         path = "/etc/ssh/initrd_ssh_host_ed25519_key";
-        sopsFile = ../secrets/initrd.yaml;
+        sopsFile = ../secrets/ssh.yaml;
       };
       initrd_ssh_host_ed25519_key_pub = {
         mode = "0644";
         path = "/etc/ssh/initrd_ssh_host_ed25519_key.pub";
-        sopsFile = ../secrets/initrd.yaml;
+        sopsFile = ../secrets/ssh.yaml;
       };
       ssh_host_ed25519_key = {
         mode = "0600";
