@@ -2,7 +2,6 @@
   inputs,
   lib,
   pkgs,
-  username,
   ...
 }:
 {
@@ -64,15 +63,6 @@
     };
   };
 
-  services = {
-    cron = {
-      enable = true;
-      systemCronJobs = [
-        "*/30 * * * * ${username} /home/${username}/Scripts/backup/sync-legoworlds.sh >> /home/${username}/Games/Steam_Backups/legoworlds.log"
-        "42 * * * * ${username} /home/${username}/Scripts/backup/sync-hotshotracing.sh >> /home/${username}/Games/Steam_Backups/hotshotracing.log"
-      ];
-    };
-  };
   services.xserver.videoDrivers = [
     "amdgpu"
     "nvidia"

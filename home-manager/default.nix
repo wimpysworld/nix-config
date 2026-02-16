@@ -28,6 +28,7 @@ in
     ./_mixins/development
     ./_mixins/filesync
     ./_mixins/scripts
+    ./_mixins/services
     ./_mixins/terminal
     ./_mixins/users
   ]
