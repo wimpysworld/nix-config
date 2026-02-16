@@ -384,24 +384,40 @@ jobs:
   release:
     name: Release ISO 📀
     needs: [sentinel]
-    if: needs.sentinel.outputs.ver != ''
+    if: github.repository_owner == 'wimpysworld' && needs.sentinel.outputs.ver != ''
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: write
     steps:
       - uses: actions/checkout@v6
+      - name: Check existing release 🔍
+        id: check-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v${{ needs.sentinel.outputs.ver }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release v${{ needs.sentinel.outputs.ver }} already exists; skipping ISO build"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Release v${{ needs.sentinel.outputs.ver }} not found; proceeding with ISO build"
+          fi
       - uses: wimpysworld/nothing-but-nix@main
+        if: steps.check-release.outputs.exists == 'false'
         with:
           hatchet-protocol: "holster"
           root-safe-haven: "10240"
           mnt-safe-haven: "10240"
       - uses: DeterminateSystems/determinate-nix-action@v3
+        if: steps.check-release.outputs.exists == 'false'
         with:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
+        if: steps.check-release.outputs.exists == 'false'
       - name: Build ISO 💿️
+        if: steps.check-release.outputs.exists == 'false'
         id: build-iso
         run: |
           nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
@@ -409,14 +425,8 @@ jobs:
           # Stage ISO for release upload; GitHub auto-generates sha256 digests
           mkdir -p iso
           sudo mv "result/iso/${ISO}" "iso/console-${ISO}"
-      - name: Delete existing release 🗑️
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: v${{ needs.sentinel.outputs.ver }}
-        run: |
-          # Delete any existing release with the same tag to handle duplicate nixpkgs date stamps
-          gh release delete "${TAG}" --yes --cleanup-tag 2>/dev/null || true
       - name: Release ISO 🎁
+        if: steps.check-release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.sentinel.outputs.ver }}
