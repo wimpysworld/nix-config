@@ -249,7 +249,6 @@
   };
 
   system = {
-    nixos.label = lib.mkIf isInstall "-";
     inherit stateVersion;
   };
 }
