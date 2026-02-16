@@ -20,9 +20,9 @@ if [[ -z "${1:-}" ]]; then
 fi
 HOSTNAME="${1}"
 
-SECRETS_FILE="${REPO_ROOT}/secrets/${HOSTNAME}.yaml"
+SECRETS_FILE="${REPO_ROOT}/secrets/host-${HOSTNAME}.yaml"
 if [[ ! -f "${SECRETS_FILE}" ]]; then
-	echo "Secrets file not found; creating secrets/${HOSTNAME}.yaml..."
+	echo "Secrets file not found; creating secrets/host-${HOSTNAME}.yaml..."
 	echo '{}' >"${SECRETS_FILE}"
 	sops encrypt -i "${SECRETS_FILE}"
 fi
@@ -42,7 +42,7 @@ ED25519_PUB_JSON=$(jq -Rs . <"${tmpdir}/ssh_host_ed25519_key.pub")
 RSA_KEY_JSON=$(jq -Rs . <"${tmpdir}/ssh_host_rsa_key")
 RSA_PUB_JSON=$(jq -Rs . <"${tmpdir}/ssh_host_rsa_key.pub")
 
-echo "Adding keys to secrets/${HOSTNAME}.yaml..."
+echo "Adding keys to secrets/host-${HOSTNAME}.yaml..."
 
 # Add keys to the secrets file using sops set
 sops set "${SECRETS_FILE}" '["ssh_host_ed25519_key"]' "${ED25519_KEY_JSON}"
@@ -51,7 +51,7 @@ sops set "${SECRETS_FILE}" '["ssh_host_rsa_key"]' "${RSA_KEY_JSON}"
 sops set "${SECRETS_FILE}" '["ssh_host_rsa_key_pub"]' "${RSA_PUB_JSON}"
 
 echo ""
-echo "✓ SSH host keys added to secrets/${HOSTNAME}.yaml"
+echo "✓ SSH host keys added to secrets/host-${HOSTNAME}.yaml"
 echo ""
 echo "Keys added:"
 echo "  - ssh_host_ed25519_key"
