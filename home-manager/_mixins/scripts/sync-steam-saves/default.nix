@@ -5,10 +5,11 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       coreutils
+      findutils
       netcat-gnu
+      notify-desktop
       openssh
       rsync
-      notify-desktop
     ];
     text = builtins.readFile ./${name}.sh;
   };

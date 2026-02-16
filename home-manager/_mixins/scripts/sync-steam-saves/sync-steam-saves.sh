@@ -30,8 +30,7 @@ fi
 
 echo "${IP} is online"
 
-if ls -1dr "${TARGET}/"* >/dev/null 2>&1; then
-	BACKUP_PREV=$(ls -1dr "${TARGET}/"* | head -n1)
+if BACKUP_PREV=$(find "${TARGET}" -mindepth 1 -maxdepth 1 -type d -print | sort -r | head -n1) && [ -n "${BACKUP_PREV}" ]; then
 	if [ "${BACKUP_NOW}" == "${BACKUP_PREV}" ]; then
 		echo " - ERROR! Backup target is the same as previous backup, skipping."
 		exit 1
