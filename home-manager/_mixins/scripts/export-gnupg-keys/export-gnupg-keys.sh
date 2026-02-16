@@ -65,15 +65,19 @@ for FP in "${FINGERPRINTS[@]}"; do
 	fi
 
 	# JSON-encode the armoured exports for sops.
-	PUB_JSON=$(jq -Rs . <"${PUB_FILE}")
-	PRIV_JSON=$(jq -Rs . <"${PRIV_FILE}")
+	# Write to temp files and use --value-file to avoid leaking key material
+	# in process arguments (visible via ps/proc).
+	PUB_JSON_FILE="${tmpdir}/pub-${SHORT_ID}.json"
+	PRIV_JSON_FILE="${tmpdir}/priv-${SHORT_ID}.json"
+	jq -Rs . <"${PUB_FILE}" >"${PUB_JSON_FILE}"
+	jq -Rs . <"${PRIV_FILE}" >"${PRIV_JSON_FILE}"
 
 	# Add entries to the sops-encrypted YAML.
 	echo "  Adding gpg_public_${SHORT_ID} to gnupg.yaml..."
-	sops set "${SECRETS_FILE}" "[\"gpg_public_${SHORT_ID}\"]" "${PUB_JSON}"
+	sops set --value-file "${SECRETS_FILE}" "[\"gpg_public_${SHORT_ID}\"]" "${PUB_JSON_FILE}"
 
 	echo "  Adding gpg_private_${SHORT_ID} to gnupg.yaml..."
-	sops set "${SECRETS_FILE}" "[\"gpg_private_${SHORT_ID}\"]" "${PRIV_JSON}"
+	sops set --value-file "${SECRETS_FILE}" "[\"gpg_private_${SHORT_ID}\"]" "${PRIV_JSON_FILE}"
 
 	# Write the public key .asc file to the repository.
 	ASC_FILE="${PUBKEY_DIR}/gpg-pubkey-${SHORT_ID}.asc"
