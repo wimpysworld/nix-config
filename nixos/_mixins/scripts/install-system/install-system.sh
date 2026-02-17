@@ -64,7 +64,22 @@ function run_disko() {
 	if command -v disko >/dev/null 2>&1; then
 		sudo disko --mode "$DISKO_MODE" "$DISKO_CONFIG"
 	else
-		sudo nix run github:nix-community/disko/latest -- --mode "$DISKO_MODE" "$DISKO_CONFIG"
+		# Use 'nix build' instead of 'nix run' for the single-line progress
+		# bar. 'nix run' uses the nix2 renderer with noisy per-path output.
+		# Progress bar renders on stderr; $() only captures stdout.
+		#
+		# When disko runs, it internally calls nix-build to produce a
+		# derivation (e.g. disko-destroy-format-mount) which fetches its
+		# runtime dependencies (bash, coreutils, parted, cryptsetup, etc.).
+		# That internal nix-build uses the legacy CLI renderer, producing
+		# a short burst of per-path "copying" lines (~51 paths, ~15 MiB).
+		# Pre-building this derivation ourselves would require replicating
+		# disko's internal evaluation environment (NIX_PATH, cli.nix args,
+		# --impure), which is fragile and not worth the trade-off for a
+		# few seconds of output.
+		echo "Fetching disko..."
+		DISKO_PATH=$(nix build github:nix-community/disko/v1.13.0 --no-link --print-out-paths)
+		sudo "$DISKO_PATH/bin/disko" --mode "$DISKO_MODE" "$DISKO_CONFIG"
 	fi
 }
 
@@ -336,9 +351,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		if HM_PATH=$(fh resolve "$HM_REF"); then
 			# Use 'nix build --store /mnt' to fetch the closure directly
 			# into /mnt/nix/store via configured substituters (including
-			# FlakeHub Cache), mirroring the approach nixos-install uses
-			# internally. This avoids staging through the ISO's limited
-			# RAM-backed local store which can run out of space.
+			# FlakeHub Cache). This provides a single-line progress bar
+			# and avoids staging through the ISO's limited RAM-backed
+			# local store which can run out of space.
 			echo "Copying Home Manager closure to target..."
 			sudo nix build --store /mnt --no-link "$HM_PATH" \
 				--option max-substitution-jobs 128 \
