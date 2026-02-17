@@ -429,9 +429,9 @@ install host remote keep_disks="false" vm_test="false":
     # Create a temporary directory for extra files
     FILES=$(mktemp -d)
 
-    # Cleanup temporary directory on exit
+    # Cleanup temporary directory and sensitive files on exit
     cleanup() {
-        rm -rf "${FILES}"
+        rm -rf "${FILES}" /tmp/data.passwordFile /tmp/luks.key
     }
     trap cleanup EXIT
 
@@ -535,12 +535,13 @@ install host remote keep_disks="false" vm_test="false":
                     break
                 else
                     echo "Passwords do not match, please try again."
-                    exit 1
+                    continue
                 fi
             done
 
             # Write the password to /tmp/data.passwordFile with no trailing newline
             echo -n "$password" >/tmp/data.passwordFile
+            chmod 600 /tmp/data.passwordFile
             LUKS_PASS=" --disk-encryption-keys /tmp/data.passwordFile /tmp/data.passwordFile"
         fi
 
