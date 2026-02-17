@@ -63,6 +63,8 @@
       flake-registry = "";
       lazy-trees = true;
       eval-cores = 0; # Enable parallel evaluation across all cores
+      # Workaround for NixOS/nix#10683; prevents download stalls
+      download-buffer-size = 134217728;
       warn-dirty = false;
     };
   };
