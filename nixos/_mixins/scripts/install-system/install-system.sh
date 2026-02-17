@@ -284,11 +284,17 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		FLAKE_REF="wimpysworld/nix-config/*#nixosConfigurations.$TARGET_HOST"
 		echo "Resolving NixOS configuration from FlakeHub Cache..."
 		if SYSTEM_PATH=$(fh resolve "$FLAKE_REF"); then
-			# nixos-install --system uses 'nix-env --store /mnt --set'
-			# internally, so substituters (including FlakeHub Cache)
-			# download the closure directly into /mnt/nix/store without
-			# staging through the ISO's RAM-backed local store.
-			echo "Installing NixOS from FlakeHub Cache (skipping local build)..."
+			# Pre-copy the closure into /mnt/nix/store using 'nix build'
+			# which shows a single-line progress bar with download counters.
+			# nixos-install uses 'nix-env --set' (nix2 CLI) which prints
+			# a noisy line per path. With the closure already present,
+			# nixos-install only needs to set the profile and activate.
+			echo "Copying NixOS closure to target..."
+			sudo nix build --store /mnt --no-link "$SYSTEM_PATH" \
+				--option max-substitution-jobs 128 \
+				--option http-connections 256 \
+				--option narinfo-cache-negative-ttl 0
+			echo "Installing NixOS from FlakeHub Cache..."
 			sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH" \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256 \
