@@ -578,3 +578,69 @@ install host remote keep_disks="false" vm_test="false":
     # shellcheck disable=2086
     nix run github:nix-community/nixos-anywhere -- \
         $EXTRA --print-build-logs --chown "/home/${USER}/.config" 1000:100 --flake ".#$HOST" --target-host "root@$REMOTE_ADDRESS" --disko-mode mount --phases disko,install
+
+# Inject tokens and keys to a remote ISO host for install
+inject-tokens remote user="nixos":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    REMOTE_ADDRESS="{{ remote }}"
+    REMOTE_USER="{{ user }}"
+    INJECTED_DIR="/tmp/injected-tokens"
+
+    if [[ -z "${REMOTE_ADDRESS}" ]]; then
+        echo "Usage: just inject-tokens <remote-ip> [user]"
+        echo "  remote-ip: IP address of the ISO host"
+        echo "  user:      SSH user on the ISO (default: nixos)"
+        exit 1
+    fi
+
+    # Build the staging directory locally
+    STAGING=$(mktemp -d)
+    trap 'rm -rf "${STAGING}"' EXIT
+    STAGED=0
+
+    # User SOPS age key
+    USER_AGE_KEYS="${HOME}/.config/sops/age/keys.txt"
+    if [[ -f "${USER_AGE_KEYS}" ]]; then
+        cp "${USER_AGE_KEYS}" "${STAGING}/user-age-keys.txt"
+        echo "- INFO: Staged user SOPS age key"
+        STAGED=$((STAGED + 1))
+    else
+        echo "- WARN! User SOPS age key not found at ${USER_AGE_KEYS}"
+    fi
+
+    # Host SOPS age key (root-owned on workstation, needs sudo to read)
+    HOST_AGE_KEYS="/var/lib/private/sops/age/keys.txt"
+    if sudo test -f "${HOST_AGE_KEYS}"; then
+        sudo cp "${HOST_AGE_KEYS}" "${STAGING}/host-age-keys.txt"
+        sudo chown "${USER}": "${STAGING}/host-age-keys.txt"
+        echo "- INFO: Staged host SOPS age key"
+        STAGED=$((STAGED + 1))
+    else
+        echo "- WARN! Host SOPS age key not found at ${HOST_AGE_KEYS}"
+    fi
+
+    # FlakeHub netrc (world-readable on workstation, no elevation needed)
+    NETRC_SRC="/nix/var/determinate/netrc"
+    if [[ -f "${NETRC_SRC}" ]]; then
+        cp "${NETRC_SRC}" "${STAGING}/netrc"
+        echo "- INFO: Staged FlakeHub netrc"
+        STAGED=$((STAGED + 1))
+    else
+        echo "- WARN! FlakeHub netrc not found at ${NETRC_SRC}"
+    fi
+
+    if [[ "${STAGED}" -eq 0 ]]; then
+        echo "ERROR! Nothing to inject."
+        exit 1
+    fi
+
+    echo ""
+    echo "Injecting ${STAGED} file(s) to ${REMOTE_USER}@${REMOTE_ADDRESS}:${INJECTED_DIR}..."
+
+    # Create the injection directory and transfer files in one go
+    ssh "${REMOTE_USER}@${REMOTE_ADDRESS}" "mkdir -p ${INJECTED_DIR} && chmod 700 ${INJECTED_DIR}"
+    scp "${STAGING}"/* "${REMOTE_USER}@${REMOTE_ADDRESS}:${INJECTED_DIR}/"
+
+    echo "Token injection complete. Run install-system on the ISO host to continue."
