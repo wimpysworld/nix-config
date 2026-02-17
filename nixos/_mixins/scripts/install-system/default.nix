@@ -18,6 +18,7 @@ let
       home-manager
       iproute2
       rsync
+      sops
       util-linux
     ];
     text = builtins.readFile ./install-system.sh;
