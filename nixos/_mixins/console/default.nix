@@ -21,6 +21,7 @@ let
   kmsconFontSize = {
     sidious = "24";
     tanis = "18";
+    felkor = "18";
     vader = "20";
   };
   kmsconExtraConfig =

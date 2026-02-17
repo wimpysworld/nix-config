@@ -17,7 +17,7 @@ let
       "0, -1124"
     else if hostname == "phasma" then
       "0, -460"
-    else if hostname == "tanis" then
+    else if (hostname == "tanis" || hostname == "felkor") then
       "0, -424"
     else
       "0, -316";
@@ -33,7 +33,9 @@ let
       "DP-1"
     else if hostname == "phasma" then
       "DP-1"
-    else if (hostname == "shaa" || hostname == "tanis" || hostname == "atrius") then
+    else if
+      (hostname == "shaa" || hostname == "tanis" || hostname == "felkor" || hostname == "atrius")
+    then
       "eDP-1"
     else
       "";

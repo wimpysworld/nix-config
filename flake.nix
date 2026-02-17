@@ -89,6 +89,10 @@
           type = "workstation";
           desktop = "hyprland";
         };
+        felkor = {
+          type = "workstation";
+          desktop = "hyprland";
+        };
         sidious = {
           type = "workstation";
           desktop = "hyprland";
