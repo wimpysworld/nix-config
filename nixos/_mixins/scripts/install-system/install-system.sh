@@ -67,6 +67,8 @@ fi
 
 if [ ! -e "$HOME/.config/sops/age/keys.txt" ]; then
 	echo "WARNING! $HOME/.config/sops/age/keys.txt was not found."
+	echo "         Without the user age key, the installed system will not be"
+	echo "         able to decrypt sops-managed secrets."
 	echo "         Do you want to continue without it?"
 	echo
 	read -p "Are you sure? [y/N] " -n 1 -r
@@ -76,6 +78,25 @@ if [ ! -e "$HOME/.config/sops/age/keys.txt" ]; then
 		mkdir -p "$HOME/.config/sops/age" 2>/dev/null || true
 		echo "From a trusted host run:"
 		echo "scp ~/.config/sops/age/keys.txt $USER@$IP:.config/sops/age/keys.txt"
+		exit
+	fi
+fi
+
+if [ ! -e "/var/lib/private/sops/age/keys.txt" ]; then
+	echo "WARNING! /var/lib/private/sops/age/keys.txt was not found."
+	echo "         Without the host age key, the installed system will not be"
+	echo "         able to decrypt any sops-managed secrets at boot."
+	echo "         Do you want to continue without it?"
+	echo
+	read -p "Are you sure? [y/N] " -n 1 -r
+	echo
+	if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+		IP=$(ip route get 1.1.1.1 | awk '{print $7}' | head -n 1)
+		echo "From a trusted host run:"
+		echo "scp /var/lib/private/sops/age/keys.txt $USER@$IP:/tmp/host-age-keys.txt"
+		echo "Then on this machine:"
+		echo "sudo mv /tmp/host-age-keys.txt /var/lib/private/sops/age/keys.txt"
+		echo "sudo chmod 600 /var/lib/private/sops/age/keys.txt"
 		exit
 	fi
 fi
@@ -143,6 +164,67 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		sudo mkdir -p /mnt/etc
 		sudo cp /tmp/luks.key /mnt/etc/luks.key
 		sudo chmod 400 /mnt/etc/luks.key
+	fi
+
+	# Copy the host SOPS age keys to the target install.
+	# Without this, the installed system cannot decrypt any sops-managed
+	# secrets at boot. The user was warned and offered to abort earlier
+	# if this key was missing.
+	if [ -e "/var/lib/private/sops/age/keys.txt" ]; then
+		echo "Copying host SOPS age keys..."
+		sudo mkdir -p "/mnt/var/lib/private/sops/age"
+		sudo cp "/var/lib/private/sops/age/keys.txt" "/mnt/var/lib/private/sops/age/keys.txt"
+		sudo chmod 600 "/mnt/var/lib/private/sops/age/keys.txt"
+	else
+		echo "WARNING! Skipping host SOPS age key copy; key not found."
+	fi
+
+	# Decrypt and inject SSH host keys from sops-encrypted secrets.
+	# This requires the user age key to be present, as sops uses it to
+	# decrypt the secrets files.
+	if [ -e "$HOME/.config/sops/age/keys.txt" ]; then
+		# --- Initrd SSH keys ---
+		# Extracted from sops-encrypted secrets/ssh.yaml.
+		SSH_SECRETS="secrets/ssh.yaml"
+		if [ -f "$SSH_SECRETS" ]; then
+			echo "Decrypting initrd SSH keys..."
+			sudo mkdir -p "/mnt/etc/ssh"
+			sops decrypt --extract '["initrd_ssh_host_ed25519_key"]' "$SSH_SECRETS" |
+				sudo tee "/mnt/etc/ssh/initrd_ssh_host_ed25519_key" >/dev/null
+			sudo chmod 600 "/mnt/etc/ssh/initrd_ssh_host_ed25519_key"
+			sops decrypt --extract '["initrd_ssh_host_ed25519_key_pub"]' "$SSH_SECRETS" |
+				sudo tee "/mnt/etc/ssh/initrd_ssh_host_ed25519_key.pub" >/dev/null
+			sudo chmod 644 "/mnt/etc/ssh/initrd_ssh_host_ed25519_key.pub"
+		else
+			echo "WARNING! $SSH_SECRETS was not found."
+			echo "         Initrd SSH host keys will not be injected."
+		fi
+
+		# --- Per-host SSH keys ---
+		# Extracted from sops-encrypted secrets/host-<hostname>.yaml.
+		HOST_SECRETS="secrets/host-${TARGET_HOST}.yaml"
+		if [ -f "$HOST_SECRETS" ]; then
+			echo "Decrypting host SSH keys for ${TARGET_HOST}..."
+			sudo mkdir -p "/mnt/etc/ssh"
+			sops decrypt --extract '["ssh_host_ed25519_key"]' "$HOST_SECRETS" |
+				sudo tee "/mnt/etc/ssh/ssh_host_ed25519_key" >/dev/null
+			sudo chmod 600 "/mnt/etc/ssh/ssh_host_ed25519_key"
+			sops decrypt --extract '["ssh_host_ed25519_key_pub"]' "$HOST_SECRETS" |
+				sudo tee "/mnt/etc/ssh/ssh_host_ed25519_key.pub" >/dev/null
+			sudo chmod 644 "/mnt/etc/ssh/ssh_host_ed25519_key.pub"
+			sops decrypt --extract '["ssh_host_rsa_key"]' "$HOST_SECRETS" |
+				sudo tee "/mnt/etc/ssh/ssh_host_rsa_key" >/dev/null
+			sudo chmod 600 "/mnt/etc/ssh/ssh_host_rsa_key"
+			sops decrypt --extract '["ssh_host_rsa_key_pub"]' "$HOST_SECRETS" |
+				sudo tee "/mnt/etc/ssh/ssh_host_rsa_key.pub" >/dev/null
+			sudo chmod 644 "/mnt/etc/ssh/ssh_host_rsa_key.pub"
+		else
+			echo "WARNING! $HOST_SECRETS was not found."
+			echo "         Host SSH keys for ${TARGET_HOST} will not be injected."
+		fi
+	else
+		echo "WARNING! User age key not found; skipping SSH key decryption."
+		echo "         SSH host keys will not be injected (sops requires the user age key)."
 	fi
 
 	# Install NixOS to the target
