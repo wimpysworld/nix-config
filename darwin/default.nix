@@ -65,6 +65,12 @@
       eval-cores = 0; # Enable parallel evaluation across all cores
       # Workaround for NixOS/nix#10683; prevents download stalls
       download-buffer-size = 134217728;
+      # Allow wheel users to set client-side Nix options (e.g. netrc-file
+      # for FlakeHub Cache authentication via fh apply).
+      trusted-users = [
+        "root"
+        "@admin"
+      ];
       warn-dirty = false;
     };
   };

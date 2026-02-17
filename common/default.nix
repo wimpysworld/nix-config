@@ -51,6 +51,12 @@
       settings = {
         # Workaround for https://github.com/NixOS/nix/issues/9574
         nix-path = config.nix.nixPath;
+        # Allow wheel users to set client-side Nix options (e.g. netrc-file
+        # for FlakeHub Cache authentication via fh apply).
+        trusted-users = [
+          "root"
+          "@wheel"
+        ];
       };
       # Disable channels
       channel.enable = false;
