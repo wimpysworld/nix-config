@@ -622,16 +622,6 @@ inject-tokens remote user="nixos":
         echo "- WARN! Host SOPS age key not found at ${HOST_AGE_KEYS}"
     fi
 
-    # FlakeHub netrc (world-readable on workstation, no elevation needed)
-    NETRC_SRC="/nix/var/determinate/netrc"
-    if [[ -f "${NETRC_SRC}" ]]; then
-        cp "${NETRC_SRC}" "${STAGING}/netrc"
-        echo "- INFO: Staged FlakeHub netrc"
-        STAGED=$((STAGED + 1))
-    else
-        echo "- WARN! FlakeHub netrc not found at ${NETRC_SRC}"
-    fi
-
     if [[ "${STAGED}" -eq 0 ]]; then
         echo "ERROR! Nothing to inject."
         exit 1

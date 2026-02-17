@@ -11,7 +11,7 @@ function usage() {
 	echo
 	echo "The install path is determined automatically:"
 	echo "  - Age keys: required (inject with 'just inject-tokens' or SCP manually)"
-	echo "  - FlakeHub netrc: if present, uses FlakeHub Cache; otherwise builds locally"
+	echo "  - FlakeHub: uses 'determinate-nixd login' if not already authenticated"
 }
 
 TARGET_HOST="${1:-}"
@@ -99,13 +99,6 @@ if [[ -d "${INJECTED_DIR}" ]]; then
 		echo "- Installed host SOPS age key"
 	fi
 
-	if [[ -f "${INJECTED_DIR}/netrc" ]]; then
-		sudo mkdir -p "/nix/var/determinate"
-		sudo cp "${INJECTED_DIR}/netrc" "/nix/var/determinate/netrc"
-		sudo chmod 600 "/nix/var/determinate/netrc"
-		echo "- Installed FlakeHub netrc"
-	fi
-
 	# Clean up the injection directory after processing
 	rm -rf "${INJECTED_DIR}"
 	echo "Token ingestion complete."
@@ -123,7 +116,7 @@ if [ ! -e "$HOME/.config/sops/age/keys.txt" ]; then
 fi
 
 # --- Hard stop: host age key required ---
-if [ ! -e "/var/lib/private/sops/age/keys.txt" ]; then
+if ! sudo test -e "/var/lib/private/sops/age/keys.txt"; then
 	echo "ERROR! /var/lib/private/sops/age/keys.txt was not found."
 	echo "       The host age key is required for the installed system to decrypt"
 	echo "       sops-managed secrets at boot."
@@ -133,14 +126,29 @@ if [ ! -e "/var/lib/private/sops/age/keys.txt" ]; then
 	exit 1
 fi
 
-# --- Detect FlakeHub availability ---
+# --- Detect and authenticate FlakeHub ---
 USE_FLAKEHUB=0
-NETRC_PATH="/nix/var/determinate/netrc"
-if [ -f "$NETRC_PATH" ] && fh status 2>/dev/null | grep -q "Logged in: true"; then
-	USE_FLAKEHUB=1
-	echo "FlakeHub Cache available. Will use cached closures where possible."
+if command -v determinate-nixd >/dev/null 2>&1; then
+	if determinate-nixd status 2>/dev/null | grep -q "Logged in: true"; then
+		USE_FLAKEHUB=1
+		echo "FlakeHub Cache available. Will use cached closures where possible."
+	else
+		echo "FlakeHub Cache not authenticated."
+		read -p "Run 'determinate-nixd login' now? [y/N] " -n 1 -r
+		echo
+		if [[ $REPLY =~ ^[Yy]$ ]]; then
+			if sudo determinate-nixd login; then
+				USE_FLAKEHUB=1
+				echo "FlakeHub Cache authenticated. Will use cached closures where possible."
+			else
+				echo "WARNING! determinate-nixd login failed. Will build locally."
+			fi
+		else
+			echo "Skipping FlakeHub login. Will build locally."
+		fi
+	fi
 else
-	echo "FlakeHub Cache not available. Will build locally."
+	echo "determinate-nixd not found. Will build locally."
 fi
 
 if [ -x "nixos/$TARGET_HOST/disks.sh" ]; then
@@ -212,7 +220,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 	# Without this, the installed system cannot decrypt any sops-managed
 	# secrets at boot. The user was warned and offered to abort earlier
 	# if this key was missing.
-	if [ -e "/var/lib/private/sops/age/keys.txt" ]; then
+	if sudo test -e "/var/lib/private/sops/age/keys.txt"; then
 		echo "Copying host SOPS age keys..."
 		sudo mkdir -p "/mnt/var/lib/private/sops/age"
 		sudo cp "/var/lib/private/sops/age/keys.txt" "/mnt/var/lib/private/sops/age/keys.txt"
@@ -297,14 +305,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 	# Enter to the new install and apply the Home Manager configuration.
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
 	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
-		# Copy the FlakeHub netrc to the target so fh can authenticate
-		# inside the chroot.
-		if [ -f "$NETRC_PATH" ]; then
-			sudo mkdir -p "/mnt/nix/var/determinate"
-			sudo cp "$NETRC_PATH" "/mnt/nix/var/determinate/netrc"
-			sudo chmod 600 "/mnt/nix/var/determinate/netrc"
-		fi
-
 		HM_REF="wimpysworld/nix-config/*#homeConfigurations.$TARGET_USER@$TARGET_HOST"
 		echo "Applying Home Manager configuration from FlakeHub Cache..."
 		if sudo nixos-enter --root /mnt --command "su - $TARGET_USER -c 'fh apply home-manager \"$HM_REF\"'"; then

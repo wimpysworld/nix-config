@@ -28,13 +28,12 @@ Before running `install-system`, push the required secrets from your workstation
 just inject-tokens <ip-address>
 ```
 
-This transfers up to three files via SCP:
+This transfers two files via SCP:
 
 | Token              | Source (workstation)                   | Purpose                                    |
 |--------------------|----------------------------------------|--------------------------------------------|
 | User SOPS age key  | `~/.config/sops/age/keys.txt`          | Decrypt sops-managed secrets during install |
 | Host SOPS age key  | `/var/lib/private/sops/age/keys.txt`   | Decrypt sops-managed secrets at boot        |
-| FlakeHub netrc     | `/nix/var/determinate/netrc`           | Authenticate with FlakeHub Cache            |
 
 Files land in `/tmp/injected-tokens/` on the ISO (RAM-backed tmpfs). When `install-system` starts, it copies them to their final locations and deletes the staging directory.
 
@@ -47,21 +46,21 @@ Both age keys are **hard requirements**. The script aborts if either is missing 
 - **User age key** - decrypts SSH host keys and other sops-managed secrets during the install
 - **Host age key** - copied to the target system so it can decrypt secrets at boot
 
-### FlakeHub netrc (optional)
+### FlakeHub authentication (optional)
 
-The FlakeHub netrc is optional. Its presence determines the install path automatically:
+FlakeHub Cache requires `determinate-nixd` to be authenticated. During install, if `determinate-nixd` is available but not logged in, the script prompts you to run `determinate-nixd login` interactively.
 
-- **Present and authenticated:** Uses `fh resolve` to pull pre-built closures from FlakeHub Cache, skipping local compilation. Falls back to local build if resolution fails.
-- **Absent:** Builds everything locally from the flake. Slower but fully functional.
+- **Authenticated:** Uses `fh resolve` to pull pre-built closures from FlakeHub Cache, skipping local compilation. Falls back to local build if resolution fails.
+- **Not authenticated or unavailable:** Builds everything locally from the flake. Slower but fully functional.
 
-No flags are needed. The script detects what is available.
+No files need to be injected for FlakeHub, authentication is handled interactively on the ISO host. No flags are needed, the script detects what is available.
 
 ## What the script does
 
 1. **Clone the repo** - Clones `nix-config` to `~/Zero/nix-config` if not already present, checks out the requested branch
 2. **Ingest tokens** - Copies any files from `/tmp/injected-tokens/` to their final locations, then cleans up the staging directory
 3. **Validate keys** - Checks that both user and host age keys exist at their final paths; aborts with a helpful message if not
-4. **Detect FlakeHub** - Checks for netrc and `fh status`; sets the install path accordingly
+4. **Detect FlakeHub** - Checks `determinate-nixd status`; prompts for login if needed; sets the install path accordingly
 5. **Prepare disks** - Runs [Disko] to partition and format the target disk(s) using the host's `disks.nix` (prompts for confirmation before destructive operations)
 6. **Install NixOS** - Runs `nixos-install` using either FlakeHub Cache or the local flake
 7. **Copy secrets to target** - Copies the host age key and user age key to the mounted target filesystem
@@ -89,6 +88,8 @@ ssh nixos@192.168.1.42
 # 3. Run the installer
 install-system vader
 ```
+
+The script will prompt for FlakeHub login during install if `determinate-nixd` is available but not authenticated.
 
 Make a cuppa while it builds. Reboot when done.
 

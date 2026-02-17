@@ -81,8 +81,8 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
   ```bash
   just inject-tokens <ip-address>
   ```
-  This sends the SOPS age keys (required) and FlakeHub netrc (optional) to the live environment. Both age keys are hard requirements, the install will abort without them.
-  If the FlakeHub netrc is present, the installer automatically uses FlakeHub Cache for a faster install; otherwise it builds locally.
+  This sends the SOPS age keys to the live environment. Both age keys are hard requirements - the install will abort without them. FlakeHub authentication is handled interactively during install via `determinate-nixd login`.
+  If `determinate-nixd` is authenticated, the installer uses FlakeHub Cache for a faster install; otherwise it builds locally.
 - SSH into the ISO host and run the installer:
   ```bash
   ssh nixos@<ip-address>
