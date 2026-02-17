@@ -308,11 +308,28 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		sudo chmod 600 "/mnt/home/$TARGET_USER/.config/sops/age/keys.txt"
 	fi
 
-	# Enter the new install and apply the Home Manager configuration.
-	# FlakeHub Cache cannot authenticate inside a nixos-enter chroot,
-	# so Home Manager is always built locally via nix run.
+	# Apply the Home Manager configuration.
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
-	echo "Applying Home Manager configuration..."
-	sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && runuser -u $TARGET_USER -- nix run nixpkgs#home-manager -- switch --flake \".#$TARGET_USER@$TARGET_HOST\""
+	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
+		HM_REF="wimpysworld/nix-config/*#homeConfigurations.$TARGET_USER@$TARGET_HOST"
+		echo "Resolving Home Manager configuration from FlakeHub Cache..."
+		if HM_PATH=$(fh resolve "$HM_REF"); then
+			# Fetch the closure into the ISO's store via FlakeHub Cache,
+			# then copy it to the target's store. Activation inside the
+			# chroot only needs the store path, not FlakeHub auth.
+			echo "Fetching Home Manager closure..."
+			nix-store --realise "$HM_PATH" || true
+			echo "Copying Home Manager closure to target..."
+			sudo nix copy --no-check-sigs --to /mnt "$HM_PATH"
+			echo "Activating Home Manager from FlakeHub Cache..."
+			sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate"
+		else
+			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
+			sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\""
+		fi
+	else
+		echo "Applying Home Manager configuration..."
+		sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\""
+	fi
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
 fi

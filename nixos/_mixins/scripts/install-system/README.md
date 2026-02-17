@@ -50,7 +50,7 @@ Both age keys are **hard requirements**. The script aborts if either is missing 
 
 FlakeHub Cache requires `determinate-nixd` to be authenticated. During install, if `determinate-nixd` is available but not logged in, the script prompts you to run `determinate-nixd login` interactively.
 
-- **Authenticated:** Uses `fh resolve` to pull pre-built closures from FlakeHub Cache, skipping local compilation. Falls back to local build if resolution fails.
+- **Authenticated:** Uses `fh resolve` to pull pre-built closures from FlakeHub Cache for both NixOS system installation and Home Manager activation, skipping local compilation. Falls back to local build if resolution fails.
 - **Not authenticated or unavailable:** Builds everything locally from the flake. Slower but fully functional.
 
 No files need to be injected for FlakeHub, authentication is handled interactively on the ISO host. No flags are needed, the script detects what is available.
@@ -62,17 +62,25 @@ No files need to be injected for FlakeHub, authentication is handled interactive
 3. **Validate keys** - Checks that both user and host age keys exist at their final paths; aborts with a helpful message if not
 4. **Detect FlakeHub** - Checks `determinate-nixd status`; prompts for login if needed; sets the install path accordingly
 5. **Prepare disks** - Runs [Disko] to partition and format the target disk(s) using the host's `disks.nix` (prompts for confirmation before destructive operations)
-6. **Install NixOS** - Runs `nixos-install` using either FlakeHub Cache or the local flake
+6. **Install NixOS** - Runs `nixos-install` with `--no-channel-copy` using either FlakeHub Cache or the local flake; cleans up any channel artefacts afterwards
 7. **Copy secrets to target** - Copies the host age key and user age key to the mounted target filesystem
-8. **Inject SSH keys** - Decrypts initrd and per-host SSH keys from sops-encrypted secrets and writes them to `/mnt/etc/ssh/`
+8. **Inject SSH keys** - Cleans and recreates `/mnt/etc/ssh/`, then decrypts initrd and per-host SSH keys from sops-encrypted secrets
 9. **Rsync the flake** - Copies `~/Zero/` to the target user's home directory
-10. **Activate Home Manager** - Chroots into the new system and runs `home-manager switch` (via FlakeHub or local build)
+10. **Activate Home Manager** - When FlakeHub is available, resolves the Home Manager store path and copies the closure to the target's Nix store outside the chroot (where FlakeHub auth works), then activates directly from that store path inside the chroot. Falls back to a local build via `nix run nixpkgs#home-manager` if FlakeHub resolution fails. Without FlakeHub, builds locally from the flake
 
 ## LUKS disk encryption
 
-If the host's `disks.nix` references `data.passwordFile`, the script prompts for a disk encryption password (with confirmation) and writes it to `/tmp/data.passwordFile` for Disko.
+If the host's `disks.nix` references `data.passwordFile`, the script prompts for a disk encryption password (with confirmation) and writes it to `/tmp/data.passwordFile` for Disko. If the disk configuration references a `keyFile`, the script generates a random 4096-byte LUKS key at `/tmp/luks.key` and copies it to `/mnt/etc/luks.key` after formatting.
 
-If the disk configuration references a `keyFile`, the script generates a random 4096-byte LUKS key at `/tmp/luks.key` and copies it to `/mnt/etc/luks.key` after formatting.
+Both prompts happen **inside** the Disko formatting step, only when you confirm the format prompt with "Y". On mount-only re-runs (answering "N" to the format prompt), the password and keyfile prompts are skipped entirely.
+
+## Re-runs and idempotency
+
+The install can fail mid-way (network timeouts, build errors, etc.) and the script can be re-run safely:
+
+- **Disko re-run** - When prompted to format disks, answering "N" performs a mount-only operation. No LUKS password or keyfile prompts appear in this case.
+- **SSH key cleanup** - `/mnt/etc/ssh` is cleaned and recreated on each run to avoid permission conflicts from previous attempts.
+- **Channel cleanup** - Channel artefacts left by `nixos-install` are removed after each run to prevent spurious warnings.
 
 ## Example
 
