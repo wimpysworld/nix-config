@@ -101,6 +101,8 @@
       eval-cores = 0; # Enable parallel evaluation across all cores
       # Workaround for NixOS/nix#10683; prevents download stalls
       download-buffer-size = 134217728;
+      # Workaround for NixOS/nix#1254; avoids HTTP/2 framing errors from CDN servers
+      http2 = false;
       warn-dirty = false;
     };
   };
