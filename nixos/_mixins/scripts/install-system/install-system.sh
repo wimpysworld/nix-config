@@ -277,6 +277,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 	fi
 
 	# Install NixOS to the target.
+	# Install-time overrides: push download parallelism higher than the
+	# base config (64/128) since initial provisioning fetches thousands
+	# of store paths and the ISO has no contending workload.
 	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
 		FLAKE_REF="wimpysworld/nix-config/*#nixosConfigurations.$TARGET_HOST"
 		echo "Resolving NixOS configuration from FlakeHub Cache..."
@@ -286,13 +289,20 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 			# download the closure directly into /mnt/nix/store without
 			# staging through the ISO's RAM-backed local store.
 			echo "Installing NixOS from FlakeHub Cache (skipping local build)..."
-			sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH"
+			sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH" \
+				--option max-substitution-jobs 128 \
+				--option http-connections 256 \
+				--option narinfo-cache-negative-ttl 0
 		else
 			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
-			sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST"
+			sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST" \
+				--option max-substitution-jobs 128 \
+				--option http-connections 256
 		fi
 	else
-		sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST"
+		sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST" \
+			--option max-substitution-jobs 128 \
+			--option http-connections 256
 	fi
 
 	# Remove channel artefacts created by nixos-install activation.
@@ -324,7 +334,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 			# internally. This avoids staging through the ISO's limited
 			# RAM-backed local store which can run out of space.
 			echo "Copying Home Manager closure to target..."
-			sudo nix build --store /mnt --no-link "$HM_PATH"
+			sudo nix build --store /mnt --no-link "$HM_PATH" \
+				--option max-substitution-jobs 128 \
+				--option http-connections 256 \
+				--option narinfo-cache-negative-ttl 0
 			echo "Activating Home Manager from FlakeHub Cache..."
 			sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate"
 		else
