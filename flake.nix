@@ -300,6 +300,7 @@
                 nixfmt-tree
                 nixfmt
                 nix-output-monitor
+                openssh
                 sops
                 statix
                 tree
