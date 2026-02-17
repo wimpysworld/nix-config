@@ -281,6 +281,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		FLAKE_REF="wimpysworld/nix-config/*#nixosConfigurations.$TARGET_HOST"
 		echo "Resolving NixOS configuration from FlakeHub Cache..."
 		if SYSTEM_PATH=$(fh resolve "$FLAKE_REF"); then
+			# nixos-install --system uses 'nix-env --store /mnt --set'
+			# internally, so substituters (including FlakeHub Cache)
+			# download the closure directly into /mnt/nix/store without
+			# staging through the ISO's RAM-backed local store.
 			echo "Installing NixOS from FlakeHub Cache (skipping local build)..."
 			sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH"
 		else
@@ -314,13 +318,13 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		HM_REF="wimpysworld/nix-config/*#homeConfigurations.$TARGET_USER@$TARGET_HOST"
 		echo "Resolving Home Manager configuration from FlakeHub Cache..."
 		if HM_PATH=$(fh resolve "$HM_REF"); then
-			# Fetch the closure into the ISO's store via FlakeHub Cache,
-			# then copy it to the target's store. Activation inside the
-			# chroot only needs the store path, not FlakeHub auth.
-			echo "Fetching Home Manager closure..."
-			nix-store --realise "$HM_PATH" || true
+			# Use 'nix build --store /mnt' to fetch the closure directly
+			# into /mnt/nix/store via configured substituters (including
+			# FlakeHub Cache), mirroring the approach nixos-install uses
+			# internally. This avoids staging through the ISO's limited
+			# RAM-backed local store which can run out of space.
 			echo "Copying Home Manager closure to target..."
-			sudo nix copy --no-check-sigs --to /mnt "$HM_PATH"
+			sudo nix build --store /mnt --no-link "$HM_PATH"
 			echo "Activating Home Manager from FlakeHub Cache..."
 			sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate"
 		else
