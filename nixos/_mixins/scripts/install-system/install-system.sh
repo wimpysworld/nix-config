@@ -299,16 +299,16 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		FLAKE_REF="wimpysworld/nix-config/*#nixosConfigurations.$TARGET_HOST"
 		echo "Resolving NixOS configuration from FlakeHub Cache..."
 		if SYSTEM_PATH=$(fh resolve "$FLAKE_REF"); then
-			# Pre-copy the closure into /mnt/nix/store using 'nix build'
-			# which shows a single-line progress bar with download counters.
-			# nixos-install uses 'nix-env --set' (nix2 CLI) which prints
-			# a noisy line per path. With the closure already present,
-			# nixos-install only needs to set the profile and activate.
+			# Best-effort pre-copy of the closure using 'nix build' for its
+			# single-line progress bar. If the download is interrupted, the
+			# '|| true' lets the script continue; nixos-install picks up
+			# any missing paths from the store (with noisier output, but
+			# only for the remainder).
 			echo "Copying NixOS closure to target..."
 			sudo nix build --store /mnt --no-link "$SYSTEM_PATH" \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256 \
-				--option narinfo-cache-negative-ttl 0
+				--option narinfo-cache-negative-ttl 0 || true
 			echo "Installing NixOS from FlakeHub Cache..."
 			sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH" \
 				--option max-substitution-jobs 128 \
@@ -349,16 +349,16 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		HM_REF="wimpysworld/nix-config/*#homeConfigurations.$TARGET_USER@$TARGET_HOST"
 		echo "Resolving Home Manager configuration from FlakeHub Cache..."
 		if HM_PATH=$(fh resolve "$HM_REF"); then
-			# Use 'nix build --store /mnt' to fetch the closure directly
-			# into /mnt/nix/store via configured substituters (including
-			# FlakeHub Cache). This provides a single-line progress bar
-			# and avoids staging through the ISO's limited RAM-backed
-			# local store which can run out of space.
+			# Best-effort pre-copy of the closure using 'nix build' for its
+			# single-line progress bar and to write directly to /mnt/nix/store
+			# via configured substituters. If interrupted, '|| true' lets
+			# the script attempt activation; on re-run nix build resumes
+			# from where it left off.
 			echo "Copying Home Manager closure to target..."
 			sudo nix build --store /mnt --no-link "$HM_PATH" \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256 \
-				--option narinfo-cache-negative-ttl 0
+				--option narinfo-cache-negative-ttl 0 || true
 			echo "Activating Home Manager from FlakeHub Cache..."
 			sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate"
 		else

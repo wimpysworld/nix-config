@@ -82,6 +82,14 @@ The install can fail mid-way (network timeouts, build errors, etc.) and the scri
 - **SSH key cleanup** - `/mnt/etc/ssh` is cleaned and recreated on each run to avoid permission conflicts from previous attempts.
 - **Channel cleanup** - Channel artefacts left by `nixos-install` are removed after each run to prevent spurious warnings.
 
+### Network resilience
+
+The `nix build` pre-copy step was introduced purely for UX - a single progress bar instead of thousands of noisy "copying path" lines. An accidental side benefit is that it makes the entire install remarkably resilient to flaky networks.
+
+Each pre-copy runs with `|| true`, making it best-effort. If a network timeout interrupts `nix build` after downloading 4,000 of 5,000 paths, the script continues to the next operation (`nixos-install` or Home Manager activation) which finds those 4,000 paths already in the store and only fetches the remaining 1,000. This gives two bites at the apple within a single run - no need to re-run the script after a transient failure. Nix registers store paths atomically, so partially-downloaded runs leave the store in a clean state. If the script does need re-running, `nix build` resumes from where it left off rather than starting from scratch.
+
+One gap: the [Disko] tool itself is pre-fetched, but disko's internal `nix-build` for runtime dependencies (~51 paths, ~15 MiB) is a separate fetch phase not covered by the pre-copy.
+
 ## Example
 
 From your workstation:
