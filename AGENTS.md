@@ -49,6 +49,15 @@ just update                         # Update flake.lock
 just gc                             # Clean old generations, keep latest 5
 ```
 
+Install and deploy:
+
+```bash
+just install vader 192.168.1.10     # Remote install via nixos-anywhere
+just inject-tokens 192.168.1.10     # Inject tokens to ISO host for install
+```
+
+`just install` handles SOPS age key injection, SSH host key decryption, and LUKS password/keyfile setup. Optional parameters: `keep_disks="true"`, `vm_test="true"`. `just inject-tokens` sends user age key, host age key, and FlakeHub netrc to the target. Optional parameter: `user="nixos"`.
+
 ## Code style and conventions
 
 **Language:**
@@ -136,6 +145,8 @@ Secrets encrypted with sops-nix using age keys.
 - **Edit secrets:** `sops secrets/secrets.yaml` or `sops secrets/host-{hostname}.yaml`
 - **Rekey after adding recipients:** `sops updatekeys secrets/secrets.yaml`
 - Never commit unencrypted secrets. All sensitive data in encrypted `.yaml` files in `secrets/`.
+
+For ISO installs, `just inject-tokens` sends age keys and FlakeHub netrc to the ISO media at `/tmp/injected-tokens/`. Both user and host age keys are hard requirements for `install-system` (hard stop if missing). FlakeHub Cache is auto-detected: if netrc is present and authenticated, uses `fh resolve` + `nixos-install --system`; otherwise falls back to local build.
 
 ## Catppuccin theming
 

@@ -2,37 +2,17 @@
 
 set -euo pipefail
 
-USE_FLAKEHUB=0
-
 function usage() {
-	echo "Usage: $(basename "$0") [-f] <hostname> [username] [branch]"
+	echo "Usage: $(basename "$0") <hostname> [username] [branch]"
 	echo
 	echo "  hostname   NixOS configuration to install (required)"
 	echo "  username   Target user (default: martin)"
 	echo "  branch     Git branch to use (default: main)"
 	echo
-	echo "Options:"
-	echo "  -f         Use FlakeHub Cache (skips local build)"
-	echo "  -h         Show this help message"
+	echo "The install path is determined automatically:"
+	echo "  - Age keys: required (inject with 'just inject-tokens' or SCP manually)"
+	echo "  - FlakeHub netrc: if present, uses FlakeHub Cache; otherwise builds locally"
 }
-
-while getopts ":fh" opt; do
-	case $opt in
-	f)
-		USE_FLAKEHUB=1
-		;;
-	h)
-		usage
-		exit 0
-		;;
-	\?)
-		echo "ERROR! Unknown option: -$OPTARG"
-		usage
-		exit 1
-		;;
-	esac
-done
-shift $((OPTIND - 1))
 
 TARGET_HOST="${1:-}"
 TARGET_USER="${2:-martin}"
@@ -97,53 +77,70 @@ if [[ -z "$TARGET_USER" ]]; then
 	exit 1
 fi
 
+# --- Ingest injected tokens ---
+# If just inject-tokens was run from the workstation, files will be
+# in /tmp/injected-tokens/. Copy them to their final locations before
+# proceeding with the existing guardrail checks.
+INJECTED_DIR="/tmp/injected-tokens"
+if [[ -d "${INJECTED_DIR}" ]]; then
+	echo "Found injected tokens. Processing..."
+
+	if [[ -f "${INJECTED_DIR}/user-age-keys.txt" ]]; then
+		mkdir -p "${HOME}/.config/sops/age"
+		cp "${INJECTED_DIR}/user-age-keys.txt" "${HOME}/.config/sops/age/keys.txt"
+		chmod 600 "${HOME}/.config/sops/age/keys.txt"
+		echo "- Installed user SOPS age key"
+	fi
+
+	if [[ -f "${INJECTED_DIR}/host-age-keys.txt" ]]; then
+		sudo mkdir -p "/var/lib/private/sops/age"
+		sudo cp "${INJECTED_DIR}/host-age-keys.txt" "/var/lib/private/sops/age/keys.txt"
+		sudo chmod 600 "/var/lib/private/sops/age/keys.txt"
+		echo "- Installed host SOPS age key"
+	fi
+
+	if [[ -f "${INJECTED_DIR}/netrc" ]]; then
+		sudo mkdir -p "/nix/var/determinate"
+		sudo cp "${INJECTED_DIR}/netrc" "/nix/var/determinate/netrc"
+		sudo chmod 600 "/nix/var/determinate/netrc"
+		echo "- Installed FlakeHub netrc"
+	fi
+
+	# Clean up the injection directory after processing
+	rm -rf "${INJECTED_DIR}"
+	echo "Token ingestion complete."
+	echo ""
+fi
+
+# --- Hard stop: user age key required ---
 if [ ! -e "$HOME/.config/sops/age/keys.txt" ]; then
-	echo "WARNING! $HOME/.config/sops/age/keys.txt was not found."
-	echo "         Without the user age key, the installed system will not be"
-	echo "         able to decrypt sops-managed secrets."
-	echo "         Do you want to continue without it?"
-	echo
-	read -p "Are you sure? [y/N] " -n 1 -r
-	echo
-	if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-		IP=$(ip route get 1.1.1.1 | awk '{print $7}' | head -n 1)
-		mkdir -p "$HOME/.config/sops/age" 2>/dev/null || true
-		echo "From a trusted host run:"
-		echo "scp ~/.config/sops/age/keys.txt $USER@$IP:.config/sops/age/keys.txt"
-		exit
-	fi
+	echo "ERROR! $HOME/.config/sops/age/keys.txt was not found."
+	echo "       The user age key is required to decrypt sops-managed secrets."
+	echo ""
+	echo "From a trusted workstation, run:"
+	echo "  just inject-tokens $(ip route get 1.1.1.1 | awk '{print $7}' | head -n 1)"
+	exit 1
 fi
 
+# --- Hard stop: host age key required ---
 if [ ! -e "/var/lib/private/sops/age/keys.txt" ]; then
-	echo "WARNING! /var/lib/private/sops/age/keys.txt was not found."
-	echo "         Without the host age key, the installed system will not be"
-	echo "         able to decrypt any sops-managed secrets at boot."
-	echo "         Do you want to continue without it?"
-	echo
-	read -p "Are you sure? [y/N] " -n 1 -r
-	echo
-	if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-		IP=$(ip route get 1.1.1.1 | awk '{print $7}' | head -n 1)
-		echo "From a trusted host run:"
-		echo "scp /var/lib/private/sops/age/keys.txt $USER@$IP:/tmp/host-age-keys.txt"
-		echo "Then on this machine:"
-		echo "sudo mv /tmp/host-age-keys.txt /var/lib/private/sops/age/keys.txt"
-		echo "sudo chmod 600 /var/lib/private/sops/age/keys.txt"
-		exit
-	fi
+	echo "ERROR! /var/lib/private/sops/age/keys.txt was not found."
+	echo "       The host age key is required for the installed system to decrypt"
+	echo "       sops-managed secrets at boot."
+	echo ""
+	echo "From a trusted workstation, run:"
+	echo "  just inject-tokens $(ip route get 1.1.1.1 | awk '{print $7}' | head -n 1)"
+	exit 1
 fi
 
-# When using FlakeHub Cache, ensure authentication is available before
-# proceeding with disk operations.
-if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
-	echo "FlakeHub Cache mode enabled."
-	if ! fh status 2>/dev/null | grep -q "Logged in: true"; then
-		echo "FlakeHub authentication required."
-		echo "A browser window will open for you to log in."
-		determinate-nixd login
-	else
-		echo "FlakeHub authentication confirmed."
-	fi
+# --- Detect FlakeHub availability ---
+USE_FLAKEHUB=0
+NETRC_PATH="/nix/var/determinate/netrc"
+if [ -f "$NETRC_PATH" ] && fh status 2>/dev/null | grep -q "Logged in: true"; then
+	USE_FLAKEHUB=1
+	echo "FlakeHub Cache available. Will use cached closures where possible."
+else
+	echo "FlakeHub Cache not available. Will build locally."
 fi
 
 if [ -x "nixos/$TARGET_HOST/disks.sh" ]; then
@@ -302,10 +299,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
 		# Copy the FlakeHub netrc to the target so fh can authenticate
 		# inside the chroot.
-		NETRC_SRC="/nix/var/determinate/netrc"
-		if [ -f "$NETRC_SRC" ]; then
+		if [ -f "$NETRC_PATH" ]; then
 			sudo mkdir -p "/mnt/nix/var/determinate"
-			sudo cp "$NETRC_SRC" "/mnt/nix/var/determinate/netrc"
+			sudo cp "$NETRC_PATH" "/mnt/nix/var/determinate/netrc"
 			sudo chmod 600 "/mnt/nix/var/determinate/netrc"
 		fi
 

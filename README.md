@@ -73,17 +73,25 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
 
 ## Installing 💾
 
-- Boot off an .iso image created by this flake using `build-iso console` or `build-iso <desktop>` (_see below_) 💿
+- Boot off an .iso image created by this flake using `just iso console` or `just iso <desktop>` (_see below_) 💿
 - Put the .iso image on a USB drive, I use [USBImager](https://bztsrc.gitlab.io/usbimager/)
 - Boot the target computer from the USB drive
-- Two installation options are available:
-  1 Run `install-system <hostname> <username>` from a terminal
-  - The install script uses [Disko] to automatically partition and format the disks, then uses my flake via `nixos-install` to complete a full-system installation
-  - This flake is copied to the target user's home directory as `~/Zero/nix-config`
-  - `nixos-enter` is used to automatically chroot into the new system and apply the Home Manager configuration
-    2 The desktop iso image includes the graphical Calamares installer if an ad-hoc system installation is required
+- From a trusted workstation, inject tokens to the ISO host:
+  ```bash
+  just inject-tokens <ip-address>
+  ```
+  This sends the SOPS age keys (required) and FlakeHub netrc (optional) to the live environment. Both age keys are hard requirements, the install will abort without them.
+  If the FlakeHub netrc is present, the installer automatically uses FlakeHub Cache for a faster install; otherwise it builds locally.
+- SSH into the ISO host and run the installer:
+  ```bash
+  ssh nixos@<ip-address>
+  install-system <hostname> [username]
+  ```
+  The install script uses [Disko] to partition and format the disks, installs NixOS via `nixos-install`, copies the flake to `~/Zero/nix-config`, and chroots into the new system to activate the Home Manager configuration.
 - Make a cuppa 🫖
 - Reboot 🥾
+
+See [install-system documentation](./nixos/_mixins/scripts/install-system/README.md) for the full reference.
 
 ### Installing to a remote host 🌍
 
@@ -99,10 +107,11 @@ just install malak <ip-address>
 Optional parameters: `keep_disks="true"` preserves existing disk partitions, and `vm_test="true"` runs a local VM test instead of deploying.
 
 When the deployment is complete, the remote host will be automatically rebooted.
+The `just install` recipe handles SOPS age keys (user and host), initrd SSH keys, and per-host SSH host keys automatically, decrypting them from sops secrets and injecting them into the target.
+
 I keep my Home Manager configuration separate from my NixOS configuration, so after the NixOS configuration has been deployed, I SSH in to the remote host and activate the Home Manager configuration:
 
 ```bash
-sudo chown -Rv "$USER":users "$HOME/.config"
 git clone https://github.com/wimpysworld/nix-config "$HOME/Zero/nix-config"
 home-manager switch -b backup --flake "$HOME/Zero/nix-config"
 ```
@@ -130,12 +139,12 @@ This flake includes a [justfile](./justfile) that provides convenient commands f
 
 ### ISO 📀
 
-The `just iso <iso_name>` command creates an .iso image from this flake:
+**Daily ISO builds are available for download from [this project's Releases](https://github.com/wimpysworld/nix-config/releases)**, built automatically via [GitHub Actions](./.github/workflows).
+If you'd rather build your own, the `just iso <iso_name>` command creates an .iso image from this flake:
 
 - `just iso console` (_terminal environment_): Includes `install-system` for automated installation.
 
 Live images will be left in `result/iso/` and are also injected into `~/Quickemu/nixos-iso-<iso_name>/nixos.iso` respectively.
-The console .iso image is also periodically built and published via [GitHub Actions](./.github/workflows) and is available in [this project's Releases](https://github.com/wimpysworld/nix-config/releases).
 
 ### Building without just
 
@@ -271,8 +280,9 @@ Things I currently need to do manually after installation.
 
 ### Secrets
 
-- [ ] Provision `/var/lib/private/sops/age/keys.txt`
-- [ ] Provision `~/.config/sops/age/keys.txt`
+- [ ] Provision age keys (handled by `just inject-tokens` during ISO install, or manually for remote hosts)
+  - `/var/lib/private/sops/age/keys.txt`
+  - `~/.config/sops/age/keys.txt`
 - [ ] 1Password - authenticate
 - [ ] LastPass - authenticate
 - [ ] Run `determinate-nixd login`
