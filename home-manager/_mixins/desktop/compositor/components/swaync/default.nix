@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   swayncRun = pkgs.writeShellApplication {
     name = "swaync-run";
@@ -551,11 +556,21 @@ in
       '';
     };
   };
-  wayland.windowManager.hyprland = {
-    settings = {
-      bind = [
-        "CTRL ALT, N, exec, ${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait"
-      ];
+  wayland.windowManager = {
+    hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
+      settings = {
+        bind = [
+          "CTRL ALT, N, exec, ${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait"
+        ];
+      };
+    };
+    wayfire = lib.mkIf config.wayland.windowManager.wayfire.enable {
+      settings = {
+        command = {
+          binding_notifications = "<ctrl> <alt> KEY_N";
+          command_notifications = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
+        };
+      };
     };
   };
 }

@@ -87,12 +87,11 @@ in
   # import the DE specific configuration and any user specific desktop configuration
   imports = [
     ./apps
-    ./wayfire
   ]
-  ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop}
+  ++ lib.optional (builtins.pathExists (./. + "/compositor/${desktop}")) ./compositor/${desktop}
   ++ lib.optional (builtins.pathExists (
-    ./. + "/${desktop}/${username}/default.nix"
-  )) ./${desktop}/${username};
+    ./. + "/compositor/${desktop}/${username}/default.nix"
+  )) ./compositor/${desktop}/${username};
 
   catppuccin = {
     cursors.enable = isLinux;

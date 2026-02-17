@@ -27,15 +27,15 @@ in
   # Hyprland is a Wayland compositor and dynamic tiling window manager
   # Additional applications are required to create a full desktop shell
   imports = [
-    ./avizo # on-screen display for audio and backlight
-    ./fuzzel # app launcher, emoji picker and clipboard manager
-    ./hyprlock # screen locker
-    ./hyprpaper # wallpaper setter
-    ./hyprshot # screenshot grabber and annotator
-    ./rofi # application launcher
-    ./swaync # notification center
-    ./waybar # status bar
-    ./wlogout # session menu
+    ../components/avizo # on-screen display for audio and backlight
+    ../components/fuzzel # app launcher, emoji picker and clipboard manager
+    ../components/hyprlock # screen locker
+    ../components/hyprpaper # wallpaper setter
+    ../components/hyprshot # screenshot grabber and annotator
+    ../components/rofi # application launcher
+    ../components/swaync # notification center
+    ../components/waybar # status bar
+    ../components/wlogout # session menu
   ];
   services = {
     # Not in home-manager 25.04
