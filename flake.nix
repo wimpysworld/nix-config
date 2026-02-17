@@ -24,7 +24,7 @@
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     direnv-instant.url = "github:Mic92/direnv-instant";
     direnv-instant.inputs.nixpkgs.follows = "nixpkgs";
-    disko.url = "https://flakehub.com/f/nix-community/disko/1.12.0.tar.gz";
+    disko.url = "https://flakehub.com/f/nix-community/disko/1.13.0.tar.gz";
     disko.inputs.nixpkgs.follows = "nixpkgs";
     kolide-launcher.url = "github:/kolide/nix-agent/main";
     kolide-launcher.inputs.nixpkgs.follows = "nixpkgs";
