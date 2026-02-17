@@ -6,6 +6,9 @@
     bane = {
       id = "X7K3SCU-7KN62YR-NKAZQHW-V2JYRXP-JXGNXFO-QPPPPHX-3MQTO6B-XIK72Q3";
     };
+    felkor = {
+      id = "7E5FVLT-FHN6W2E-4FJI65X-DXV4PGJ-LSFGLRX-YIUTMHG-DBEKSLB-IWY2VQO";
+    };
     malak = {
       id = "33YEJHX-NZB34VC-KB3LI2V-HFNOALL-7O2OLEB-SE75AWA-DWOC62K-5SRXMAC";
     };
@@ -92,6 +95,7 @@
       devices = [
         "atrius"
         "bane"
+        "felkor"
         "malak"
         "malgus"
         "maul"
@@ -116,6 +120,7 @@
         "momin"
         "phasma"
         "tanis"
+        "felkor"
         "vader"
         "zannah"
       ];

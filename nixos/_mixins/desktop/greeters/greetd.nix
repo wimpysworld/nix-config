@@ -50,6 +50,7 @@ let
     vader = "2560x2880";
     phasma = "3440x1440";
     tanis = "1920x1200";
+    felkor = "1920x1200";
     default = "1920x1080";
   };
   wallpaperResolution = wallpaperResolutions.${hostname} or wallpaperResolutions.default;

@@ -9,7 +9,11 @@
 let
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
   isThinkpad =
-    hostname == "tanis" || hostname == "sidious" || hostname == "shaa" || hostname == "atrius";
+    hostname == "tanis"
+    || hostname == "felkor"
+    || hostname == "sidious"
+    || hostname == "shaa"
+    || hostname == "atrius";
   usePowerProfiles = config.programs.hyprland.enable || config.programs.wayfire.enable;
 in
 lib.mkIf isInstall {

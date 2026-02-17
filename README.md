@@ -21,6 +21,7 @@ These computers are managed by this Nix flake ❄️
 | `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️  | 🪟  |  ✅   |
 |   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  ✅   |
 |   `tanis`   |     [ThinkPad Z13 Gen 1]      |    [AMD Ryzen 5 PRO 6650U]     | 32GB  |       AMD Radeon 660M       |                          |  💻️   | ❄️  |  ✅   |
+|  `felkor`   |     [ThinkPad X13 Gen 2]      |    [AMD Ryzen 5 PRO 5650U]     | 16GB  |      AMD Radeon Vega 7      |                          |  💻️   | ❄️  |  🚧   |
 |   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
 |  `atrius`   |       [ThinkPad T495s]        |      [AMD Ryzen 7 3700U]       | 16GB  |     AMD Radeon Vega 10      |                          |  💻️   | ❄️  |  🚧   |
 |   `momin`   |         [MacBook M3 Pro]      |         11-core Apple M3 Pro chip          | 36GB  |         14-core GPU         |                          |  💻️    | 🍏  |  ✅   |
@@ -228,6 +229,7 @@ Here's the directory structure I'm using:
 │  ├── revan
 │  ├── sidious
 │  ├── tanis
+│  ├── felkor
 │  ├── vader
 │  └── default.nix
 ├── overlays
@@ -438,6 +440,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [Framework 16]: https://frame.work/gb/en/laptop16
 [ThinkPad P1 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadp/thinkpad-p1/22ws2wpp101
 [ThinkPad Z13 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadz/thinkpad-z13-(13-inch-amd)/21d20012uk
+[ThinkPad X13 Gen 2]: https://www.lenovo.com/us/en/p/coming-soon/x13-amd-g2/22tpx13x3a1
 [ThinkPad T14s Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadt/t14s-amd-g1/22tpt144sa2
 [ThinkPad T495s]: https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/t495s/22tp2tt495s
 [MacBook M3 Pro]: https://support.apple.com/en-gb/117736
@@ -460,6 +463,7 @@ My use of [Disko] and automated installation script were inspired by the these b
 [AMD Ryzen 9 5900X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5900x
 [AMD Ryzen 7 7940HS]: https://www.amd.com/en/products/processors/laptop/ryzen/7000-series/amd-ryzen-9-7940hs.html
 [AMD Ryzen 5 PRO 6650U]: https://www.amd.com/en/products/apu/amd-ryzen-5-pro-6650u
+[AMD Ryzen 5 PRO 5650U]: https://www.techpowerup.com/cpu-specs/ryzen-5-pro-5650u.c2773
 [AMD Ryzen 5 PRO 4650U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen-pro/ryzen-pro-4000-series/amd-ryzen-5-pro-4650u.html
 [AMD Ryzen 7 3700U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen/ryzen-3000-series/amd-ryzen-7-3700u.html#amd_support_product_spec
 [AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/support/cpu/amd-ryzen-processors/amd-ryzen-threadripper-processors/amd-ryzen-threadripper-3970x

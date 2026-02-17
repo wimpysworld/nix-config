@@ -27,6 +27,10 @@
             [
               "/etc/backgrounds/Catppuccin-1920x1200.png"
             ]
+          else if hostname == "felkor" then
+            [
+              "/etc/backgrounds/Catppuccin-1920x1200.png"
+            ]
           else
             [
               "/etc/backgrounds/Catppuccin-1920x1080.png"
@@ -49,6 +53,10 @@
               "eDP-1, /etc/backgrounds/Catppuccin-2560x1600.png"
             ]
           else if hostname == "tanis" then
+            [
+              "eDP-1, /etc/backgrounds/Catppuccin-1920x1200.png"
+            ]
+          else if hostname == "felkor" then
             [
               "eDP-1, /etc/backgrounds/Catppuccin-1920x1200.png"
             ]
