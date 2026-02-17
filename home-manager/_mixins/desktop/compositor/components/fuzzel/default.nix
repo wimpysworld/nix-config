@@ -111,21 +111,45 @@ in
   services = {
     cliphist = {
       enable = true;
-      systemdTargets = "hyprland-session.target";
+      systemdTargets =
+        if config.wayland.windowManager.hyprland.enable then
+          "hyprland-session.target"
+        else if config.wayland.windowManager.wayfire.enable then
+          "wayfire-session.target"
+        else
+          "graphical-session.target";
     };
   };
-  wayland.windowManager.hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
-    settings = {
-      bind = [
-        ", Print, exec, fuzzel-hyprshot"
-        "CTRL ALT, SPACE, exec, hypr-activity-menu"
-        "CTRL ALT, B, exec, fuzzel-bluetooth"
-        "CTRL ALT, E, exec, fuzzel-emoji"
-        "CTRL ALT, K, exec, fuzzel-hyprpicker"
-        "CTRL ALT, P, exec, fuzzel-clipboard"
-        "CTRL ALT, R, exec, fuzzel-history"
-        "CTRL ALT, W, exec, fuzzel-wifi"
-      ];
+  wayland.windowManager = {
+    hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
+      settings = {
+        bind = [
+          ", Print, exec, fuzzel-hyprshot"
+          "CTRL ALT, SPACE, exec, hypr-activity-menu"
+          "CTRL ALT, B, exec, fuzzel-bluetooth"
+          "CTRL ALT, E, exec, fuzzel-emoji"
+          "CTRL ALT, K, exec, fuzzel-hyprpicker"
+          "CTRL ALT, P, exec, fuzzel-clipboard"
+          "CTRL ALT, R, exec, fuzzel-history"
+          "CTRL ALT, W, exec, fuzzel-wifi"
+        ];
+      };
+    };
+    wayfire = lib.mkIf config.wayland.windowManager.wayfire.enable {
+      settings = {
+        command = {
+          binding_bluetooth = "<ctrl> <alt> KEY_B";
+          command_bluetooth = "fuzzel-bluetooth";
+          binding_emoji = "<ctrl> <alt> KEY_E";
+          command_emoji = "fuzzel-emoji";
+          binding_clipboard = "<ctrl> <alt> KEY_P";
+          command_clipboard = "fuzzel-clipboard";
+          binding_history = "<ctrl> <alt> KEY_R";
+          command_history = "fuzzel-history";
+          binding_wifi = "<ctrl> <alt> KEY_W";
+          command_wifi = "fuzzel-wifi";
+        };
+      };
     };
   };
 }

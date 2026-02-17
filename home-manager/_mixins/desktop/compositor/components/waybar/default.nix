@@ -606,8 +606,14 @@ in
         }
       ];
       systemd = {
-        enable = true;
-        target = "hyprland-session.target";
+        enable = config.wayland.windowManager.hyprland.enable;
+        target =
+          if config.wayland.windowManager.hyprland.enable then
+            "hyprland-session.target"
+          else if config.wayland.windowManager.wayfire.enable then
+            "wayfire-session.target"
+          else
+            "graphical-session.target";
       };
     };
   };

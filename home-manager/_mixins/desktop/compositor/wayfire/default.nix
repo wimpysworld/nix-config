@@ -1,13 +1,11 @@
 {
   catppuccinPalette,
+  config,
   lib,
   pkgs,
   ...
 }:
-let
-  inherit (pkgs.stdenv) isLinux;  
-in
-lib.mkIf isLinux {
+{
   #TODO: IPC tooling for wayfire
   # https://github.com/killown/wayfire-rs
   # https://github.com/AR-CADE/wayfire-ipc
@@ -19,6 +17,21 @@ lib.mkIf isLinux {
   # TODO: Wayfire 0.10.0
   # Integrate this patch for colour picking support
   # https://github.com/WayfireWM/wayfire/pull/2852
+
+  home.packages = with pkgs; [
+    wayland-logout
+  ];
+
+  imports = [
+    ../components/avizo
+    ../components/fuzzel
+    ../components/hyprpaper
+    ../components/rofi
+    ../components/swaync
+    ../components/waybar
+    ../components/wlogout
+  ];
+
   wayland.windowManager.wayfire = {
     enable = true;
     plugins = with pkgs.wayfirePlugins; [
@@ -28,13 +41,14 @@ lib.mkIf isLinux {
     settings = {
       # Window animations
       animate = {
-        open_animation = "zoom";
-        close_animation = "zoom";
+        open_animation = "zap";
+        close_animation = "spin";
         duration = 300;
       };
       autostart = {
         # Disable wf-shell autostart, we're using waybar et al instead
         autostart_wf_shell = false;
+        bar = "${pkgs.waybar}/bin/waybar";
         button_layout = "dconf write /org/gnome/desktop/wm/preferences/button-layout \"':close,minimize,maximize'\"";
       };
       command = {
@@ -42,24 +56,25 @@ lib.mkIf isLinux {
         binding_files = "<super> KEY_E";
         command_files = "${lib.getExe pkgs.nautilus} --new-window";
         # Media controls
-        binding_play_pause = "XF86AudioPlay";
+        binding_play_pause = "KEY_PLAYPAUSE";
         command_play_pause = "${lib.getExe pkgs.playerctl} play-pause";
-        binding_previous = "XF86AudioPrev";
+        binding_previous = "KEY_PREVIOUS";
         command_previous = "${lib.getExe pkgs.playerctl} previous";
-        binding_next = "XF86AudioNext";
+        binding_next = "KEY_NEXT";
         command_next = "${lib.getExe pkgs.playerctl} next";
       };
       core = {
         plugins = "animate autostart blur command decoration foreign-toplevel grid gtk-shell idle ipc ipc-rules move place resize session-lock switcher vswitch wm-actions wobbly xdg-activation";
+        preferred_decoration_mode = "client";
         vwidth = 8;
         vheight = 1;
       };
       # Window decorations (title bars, borders)
       decoration = {
-        # Active window: use crust colour for visibility against surface
+        # Active window: use mantle colour for visibility against surface
         active_color =
           let
-            hex = catppuccinPalette.getColor "crust";
+            hex = catppuccinPalette.getColor "mantle";
             r = builtins.substring 1 2 hex;
             g = builtins.substring 3 2 hex;
             b = builtins.substring 5 2 hex;
@@ -67,10 +82,10 @@ lib.mkIf isLinux {
           in
           "${toFloat r} ${toFloat g} ${toFloat b} 1.0";
 
-        # Inactive window: use surface1 for subtle, recessed appearance
+        # Inactive window: use base for subtle, recessed appearance
         inactive_color =
           let
-            hex = catppuccinPalette.getColor "surface1";
+            hex = catppuccinPalette.getColor "base";
             r = builtins.substring 1 2 hex;
             g = builtins.substring 3 2 hex;
             b = builtins.substring 5 2 hex;
@@ -80,6 +95,7 @@ lib.mkIf isLinux {
         font = "Work Sans 12";
         border_size = 4;
         title_height = 30;
+        button_order = "minimize maximize close";
       };
       # Grid snapping - position windows in screen regions
       grid = {
@@ -96,6 +112,11 @@ lib.mkIf isLinux {
         #slot_bl = "<super> <shift> KEY_DOWN"; # Bottom-left quarter
         #slot_br = "<super> <ctrl> KEY_DOWN"; # Bottom-right quarter
         restore = "<super> KEY_DOWN"; # Restore original size
+      };
+      idle = {
+        toggle = "<super> KEY_Z";
+        screensaver_timeout = 300;
+        dpms_timeout = 600;
       };
       input = {
         xkb_layout = "gb";
@@ -155,15 +176,15 @@ lib.mkIf isLinux {
     };
     xwayland.enable = true;
   };
-  #xdg = {
-  #  portal = {
-  #    config = {
-  #      common = {
-  #        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-  #        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-  #      };
-  #    };
-  #    configPackages = [ config.wayland.windowManager.wayfire.package ];
-  #  };
-  #};
+  xdg = {
+    portal = {
+      config = {
+        common = {
+          "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+          "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+        };
+      };
+      configPackages = [ config.wayland.windowManager.wayfire.package ];
+    };
+  };
 }
