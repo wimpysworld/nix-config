@@ -451,6 +451,8 @@ install host remote keep_disks="false" vm_test="false":
         echo "- WARN! Wiping disks"
     fi
 
+    sudo true
+
     # https://github.com/nix-community/nixos-anywhere/blob/main/docs/howtos/secrets.md
     # --- SOPS user age keys ---
     # Sourced from the standard location on the running workstation.
@@ -469,9 +471,10 @@ install host remote keep_disks="false" vm_test="false":
     # --- SOPS host age keys ---
     # Sourced from the standard location on the running workstation.
     HOST_AGE_KEYS="/var/lib/private/sops/age/keys.txt"
-    if [[ -f "${HOST_AGE_KEYS}" ]]; then
+    if sudo test -f "${HOST_AGE_KEYS}"; then
         install -d -m755 "${FILES}/var/lib/private/sops/age"
-        cp "${HOST_AGE_KEYS}" "${FILES}/var/lib/private/sops/age/keys.txt"
+        sudo cp "${HOST_AGE_KEYS}" "${FILES}/var/lib/private/sops/age/keys.txt"
+        sudo chown "${USER}": "${FILES}/var/lib/private/sops/age/keys.txt"
         chmod 600 "${FILES}/var/lib/private/sops/age/keys.txt"
         echo "- INFO: Sending SOPS host keys"
         EXTRA_FILES=1
