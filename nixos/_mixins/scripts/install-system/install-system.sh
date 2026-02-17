@@ -78,7 +78,7 @@ function run_disko() {
 		# --impure), which is fragile and not worth the trade-off for a
 		# few seconds of output.
 		echo "Fetching disko..."
-		DISKO_PATH=$(nix build github:nix-community/disko/v1.13.0 --no-link --print-out-paths)
+		DISKO_PATH=$(nix build github:nix-community/disko/v1.13.0 --no-link --print-out-paths --option http2 false)
 		sudo "$DISKO_PATH/bin/disko" --mode "$DISKO_MODE" "$DISKO_CONFIG"
 	fi
 }
@@ -292,9 +292,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 	fi
 
 	# Install NixOS to the target.
-	# Install-time overrides: push download parallelism higher than the
-	# base config (64/128) since initial provisioning fetches thousands
-	# of store paths and the ISO has no contending workload.
+	# Install-time overrides: disable HTTP/2 (CDN framing errors) and push
+	# download parallelism higher than the base config (64/128) since initial
+	# provisioning fetches thousands of store paths and the ISO has no
+	# contending workload.
 	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
 		FLAKE_REF="wimpysworld/nix-config/*#nixosConfigurations.$TARGET_HOST"
 		echo "Resolving NixOS configuration from FlakeHub Cache..."
@@ -306,22 +307,26 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 			# only for the remainder).
 			echo "Copying NixOS closure to target..."
 			sudo nix build --store /mnt --no-link "$SYSTEM_PATH" \
+				--option http2 false \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256 \
 				--option narinfo-cache-negative-ttl 0 || true
 			echo "Installing NixOS from FlakeHub Cache..."
 			sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH" \
+				--option http2 false \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256 \
 				--option narinfo-cache-negative-ttl 0
 		else
 			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
 			sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST" \
+				--option http2 false \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256
 		fi
 	else
 		sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST" \
+			--option http2 false \
 			--option max-substitution-jobs 128 \
 			--option http-connections 256
 	fi
@@ -356,6 +361,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 			# from where it left off.
 			echo "Copying Home Manager closure to target..."
 			sudo nix build --store /mnt --no-link "$HM_PATH" \
+				--option http2 false \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256 \
 				--option narinfo-cache-negative-ttl 0 || true
