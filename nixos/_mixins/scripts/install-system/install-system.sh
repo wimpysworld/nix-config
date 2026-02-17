@@ -38,6 +38,28 @@ function run_disko() {
 	sudo true
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		DISKO_MODE="destroy,format,mount"
+
+		# Prompt for disk encryption password if needed.
+		if grep -q "data.passwordFile" "$DISKO_CONFIG" && [ ! -f /tmp/data.passwordFile ]; then
+			while true; do
+				read -rsp "Enter disk encryption password:   " password
+				echo
+				read -rsp "Confirm disk encryption password: " password_confirm
+				echo
+				if [ "$password" == "$password_confirm" ]; then
+					break
+				else
+					echo "Passwords do not match, please try again."
+				fi
+			done
+			echo -n "$password" >/tmp/data.passwordFile
+		fi
+
+		# Generate a LUKS keyfile if needed.
+		if grep -q "keyFile" "$DISKO_CONFIG" && [ ! -f /tmp/luks.key ]; then
+			dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
+			chmod 600 /tmp/luks.key
+		fi
 	fi
 	if command -v disko >/dev/null 2>&1; then
 		sudo disko --mode "$DISKO_MODE" "$DISKO_CONFIG"
@@ -129,10 +151,8 @@ fi
 # --- Detect and authenticate FlakeHub ---
 USE_FLAKEHUB=0
 if command -v determinate-nixd >/dev/null 2>&1; then
-	if determinate-nixd status 2>/dev/null | grep -q "Logged in: true"; then
-		USE_FLAKEHUB=1
-		echo "FlakeHub Cache available. Will use cached closures where possible."
-	else
+	DNIXD_STATUS=$(determinate-nixd status 2>&1 || true)
+	if echo "$DNIXD_STATUS" | grep -q "Authentication: logged-out"; then
 		echo "FlakeHub Cache not authenticated."
 		read -p "Run 'determinate-nixd login' now? [y/N] " -n 1 -r
 		echo
@@ -146,6 +166,9 @@ if command -v determinate-nixd >/dev/null 2>&1; then
 		else
 			echo "Skipping FlakeHub login. Will build locally."
 		fi
+	else
+		USE_FLAKEHUB=1
+		echo "FlakeHub Cache available. Will use cached closures where possible."
 	fi
 else
 	echo "determinate-nixd not found. Will build locally."
@@ -160,34 +183,6 @@ else
 	if [ ! -e "nixos/$TARGET_HOST/disks.nix" ]; then
 		echo "ERROR! $(basename "$0") could not find the required nixos/$TARGET_HOST/disks.nix"
 		exit 1
-	fi
-
-	if grep -q "data.passwordFile" "nixos/$TARGET_HOST/disks.nix"; then
-		# If the machine we're provisioning expects a password to unlock a disk, prompt for it.
-		while true; do
-			# Prompt for the password, input is hidden
-			read -rsp "Enter disk encryption password:   " password
-			echo
-			# Prompt for the password again for confirmation
-			read -rsp "Confirm disk encryption password: " password_confirm
-			echo
-			# Check if both entered passwords match
-			if [ "$password" == "$password_confirm" ]; then
-				break
-			else
-				echo "Passwords do not match, please try again."
-			fi
-		done
-
-		# Write the password to /tmp/data.passwordFile with no trailing newline
-		echo -n "$password" >/tmp/data.passwordFile
-	fi
-
-	if grep -q "keyFile" nixos/"$TARGET_HOST"/disk*.nix; then
-		# Check if the machine we're provisioning expects a keyfile to unlock a disk.
-		# If it does, generate a new key, and write to a known location.
-		dd if=/dev/urandom of=/tmp/luks.key bs=4096 count=1 iflag=fullblock
-		chmod 600 /tmp/luks.key
 	fi
 
 	run_disko "nixos/$TARGET_HOST/disks.nix"
@@ -208,6 +203,12 @@ echo
 read -p "Are you sure? [y/N]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
+	# Ensure a clean target for secret and key injection.
+	# On re-runs, files from a previous attempt may exist with
+	# restrictive permissions that prevent overwriting.
+	sudo rm -rf /mnt/etc/ssh
+	sudo mkdir -p /mnt/etc/ssh
+
 	# If there is a keyfile for another disk, copy it to the root
 	# partition and ensure the permissions are set appropriately.
 	if [[ -f "/tmp/luks.key" ]]; then
@@ -238,7 +239,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		SSH_SECRETS="secrets/ssh.yaml"
 		if [ -f "$SSH_SECRETS" ]; then
 			echo "Decrypting initrd SSH keys..."
-			sudo mkdir -p "/mnt/etc/ssh"
 			sops decrypt --extract '["initrd_ssh_host_ed25519_key"]' "$SSH_SECRETS" |
 				sudo tee "/mnt/etc/ssh/initrd_ssh_host_ed25519_key" >/dev/null
 			sudo chmod 600 "/mnt/etc/ssh/initrd_ssh_host_ed25519_key"
@@ -255,7 +255,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		HOST_SECRETS="secrets/host-${TARGET_HOST}.yaml"
 		if [ -f "$HOST_SECRETS" ]; then
 			echo "Decrypting host SSH keys for ${TARGET_HOST}..."
-			sudo mkdir -p "/mnt/etc/ssh"
 			sops decrypt --extract '["ssh_host_ed25519_key"]' "$HOST_SECRETS" |
 				sudo tee "/mnt/etc/ssh/ssh_host_ed25519_key" >/dev/null
 			sudo chmod 600 "/mnt/etc/ssh/ssh_host_ed25519_key"
@@ -283,14 +282,21 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		echo "Resolving NixOS configuration from FlakeHub Cache..."
 		if SYSTEM_PATH=$(fh resolve "$FLAKE_REF"); then
 			echo "Installing NixOS from FlakeHub Cache (skipping local build)..."
-			sudo nixos-install --no-root-password --system "$SYSTEM_PATH"
+			sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH"
 		else
 			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
-			sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
+			sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST"
 		fi
 	else
-		sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
+		sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST"
 	fi
+
+	# Remove channel artefacts created by nixos-install activation.
+	# The flake sets nix.channel.enable = false but activation may
+	# still create these directories, triggering spurious warnings
+	# on every subsequent nixos-enter invocation.
+	sudo rm -rf /mnt/root/.nix-defexpr/channels
+	sudo rm -rf /mnt/nix/var/nix/profiles/per-user/root/channels
 
 	# Rsync nix-config to the target install and set the remote origin to SSH.
 	sudo rsync -a --delete "$HOME/Zero/" "/mnt/home/$TARGET_USER/Zero/"
@@ -302,19 +308,11 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		sudo chmod 600 "/mnt/home/$TARGET_USER/.config/sops/age/keys.txt"
 	fi
 
-	# Enter to the new install and apply the Home Manager configuration.
+	# Enter the new install and apply the Home Manager configuration.
+	# FlakeHub Cache cannot authenticate inside a nixos-enter chroot,
+	# so Home Manager is always built locally via nix run.
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
-	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
-		HM_REF="wimpysworld/nix-config/*#homeConfigurations.$TARGET_USER@$TARGET_HOST"
-		echo "Applying Home Manager configuration from FlakeHub Cache..."
-		if sudo nixos-enter --root /mnt --command "su - $TARGET_USER -c 'fh apply home-manager \"$HM_REF\"'"; then
-			echo "Home Manager applied from FlakeHub Cache."
-		else
-			echo "WARNING! FlakeHub Home Manager apply failed; falling back to local build..."
-			sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config; env USER=$TARGET_USER HOME=/home/$TARGET_USER home-manager switch --flake \".#$TARGET_USER@$TARGET_HOST\""
-		fi
-	else
-		sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config; env USER=$TARGET_USER HOME=/home/$TARGET_USER home-manager switch --flake \".#$TARGET_USER@$TARGET_HOST\""
-	fi
+	echo "Applying Home Manager configuration..."
+	sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && runuser -u $TARGET_USER -- nix run nixpkgs#home-manager -- switch --flake \".#$TARGET_USER@$TARGET_HOST\""
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
 fi
