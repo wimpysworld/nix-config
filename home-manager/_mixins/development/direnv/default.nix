@@ -20,6 +20,15 @@
         enable = true;
       };
     };
+    # Non-blocking direnv shell integration; runs evaluation asynchronously
+    # in the background and spawns a multiplexer pane after a delay.
+    # https://github.com/Mic92/direnv-instant
+    direnv-instant = {
+      enable = true;
+      enableBashIntegration = config.programs.bash.enable;
+      enableFishIntegration = config.programs.fish.enable;
+      enableZshIntegration = config.programs.zsh.enable;
+    };
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         extensions = with pkgs; [
