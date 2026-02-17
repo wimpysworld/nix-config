@@ -87,14 +87,16 @@ The [nixos/_mixins] and [home-manager/_mixins] are a collection of composited co
 
 ### Installing to a remote host 🌍
 
-As [Disko] is used to declare the disk layout for all my NixOS hosts, each NixOS configurations can be deployed to a remote host using [nixos-anywhere].
-I've created a simple wrapper around `nixos-anywhere` that makes it a bit simpler to deploy a NixOS configuration to a remote host.
+As [Disko] is used to declare the disk layout for all my NixOS hosts, each NixOS configuration can be deployed to a remote host using [nixos-anywhere].
+The justfile includes an `install` recipe that wraps `nixos-anywhere` to simplify remote deployments.
 For example, `malak` is a Hetzner dedicated server.
-To deploy it, enable the Hetzner Rescue system and then execute the following command from one of my workstations:
+To deploy it, enable the Hetzner Rescue system and then run the following from one of my workstations:
 
 ```bash
-install-anywhere -h malak -r <ip-address>
+just install malak <ip-address>
 ```
+
+Optional parameters: `keep_disks="true"` preserves existing disk partitions, and `vm_test="true"` runs a local VM test instead of deploying.
 
 When the deployment is complete, the remote host will be automatically rebooted.
 I keep my Home Manager configuration separate from my NixOS configuration, so after the NixOS configuration has been deployed, I SSH in to the remote host and activate the Home Manager configuration:
