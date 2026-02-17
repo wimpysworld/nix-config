@@ -45,7 +45,7 @@
         Authorization = "Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
       };
     };
-    jina-mcp-server = {
+    jina = {
       type = "http";
       url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
       headers = {
@@ -71,12 +71,10 @@
       type = "remote";
       url = "https://docs.mcp.cloudflare.com/mcp";
     };
-    # Disabled because Exa is already included by default OpenCode
-    #exa = {
-    #  enabled = false;
-    #  type = "remote";
-    #  url = "https://mcp.exa.ai/mcp";
-    #};
+    exa = {
+      type = "remote";
+      url = "https://mcp.exa.ai/mcp";
+    };
     nixos = {
       enabled = false;
       type = "local";
@@ -112,8 +110,7 @@
         Authorization = "Bearer {env:GITHUB_TOKEN}";
       };
     };
-    jina-mcp-server = {
-      enabled = false;
+    jina = {
       type = "remote";
       url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
       headers = {
@@ -216,7 +213,7 @@
     #    FIRECRAWL_API_KEY = config.sops.placeholder.FIRECRAWL_API_KEY;
     #  };
     #};
-    jina-mcp-server = {
+    jina = {
       type = "stdio";
       command = "${pkgs.nodejs_24}/bin/npx";
       args = [

@@ -21,6 +21,7 @@ in
 
     # Modules exported from other flakes:
     inputs.catppuccin.homeModules.catppuccin
+    inputs.direnv-instant.homeModules.direnv-instant
     inputs.sops-nix.homeManagerModules.sops
     inputs.mac-app-util.homeManagerModules.default
     inputs.nix-index-database.homeModules.nix-index
