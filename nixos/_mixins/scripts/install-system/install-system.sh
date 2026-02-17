@@ -2,6 +2,38 @@
 
 set -euo pipefail
 
+USE_FLAKEHUB=0
+
+function usage() {
+	echo "Usage: $(basename "$0") [-f] <hostname> [username] [branch]"
+	echo
+	echo "  hostname   NixOS configuration to install (required)"
+	echo "  username   Target user (default: martin)"
+	echo "  branch     Git branch to use (default: main)"
+	echo
+	echo "Options:"
+	echo "  -f         Use FlakeHub Cache (skips local build)"
+	echo "  -h         Show this help message"
+}
+
+while getopts ":fh" opt; do
+	case $opt in
+	f)
+		USE_FLAKEHUB=1
+		;;
+	h)
+		usage
+		exit 0
+		;;
+	\?)
+		echo "ERROR! Unknown option: -$OPTARG"
+		usage
+		exit 1
+		;;
+	esac
+done
+shift $((OPTIND - 1))
+
 TARGET_HOST="${1:-}"
 TARGET_USER="${2:-martin}"
 TARGET_BRANCH="${3:-main}"
@@ -98,6 +130,19 @@ if [ ! -e "/var/lib/private/sops/age/keys.txt" ]; then
 		echo "sudo mv /tmp/host-age-keys.txt /var/lib/private/sops/age/keys.txt"
 		echo "sudo chmod 600 /var/lib/private/sops/age/keys.txt"
 		exit
+	fi
+fi
+
+# When using FlakeHub Cache, ensure authentication is available before
+# proceeding with disk operations.
+if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
+	echo "FlakeHub Cache mode enabled."
+	if ! fh status 2>/dev/null | grep -q "Logged in: true"; then
+		echo "FlakeHub authentication required."
+		echo "A browser window will open for you to log in."
+		determinate-nixd login
+	else
+		echo "FlakeHub authentication confirmed."
 	fi
 fi
 
@@ -227,8 +272,20 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		echo "         SSH host keys will not be injected (sops requires the user age key)."
 	fi
 
-	# Install NixOS to the target
-	sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
+	# Install NixOS to the target.
+	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
+		FLAKE_REF="wimpysworld/nix-config/*#nixosConfigurations.$TARGET_HOST"
+		echo "Resolving NixOS configuration from FlakeHub Cache..."
+		if SYSTEM_PATH=$(fh resolve "$FLAKE_REF"); then
+			echo "Installing NixOS from FlakeHub Cache (skipping local build)..."
+			sudo nixos-install --no-root-password --system "$SYSTEM_PATH"
+		else
+			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
+			sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
+		fi
+	else
+		sudo nixos-install --no-root-password --flake ".#$TARGET_HOST"
+	fi
 
 	# Rsync nix-config to the target install and set the remote origin to SSH.
 	sudo rsync -a --delete "$HOME/Zero/" "/mnt/home/$TARGET_USER/Zero/"
@@ -240,8 +297,28 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 		sudo chmod 600 "/mnt/home/$TARGET_USER/.config/sops/age/keys.txt"
 	fi
 
-	# Enter to the new install and apply the home-manager configuration.
+	# Enter to the new install and apply the Home Manager configuration.
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
-	sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config; env USER=$TARGET_USER HOME=/home/$TARGET_USER home-manager switch --flake \".#$TARGET_USER@$TARGET_HOST\""
+	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
+		# Copy the FlakeHub netrc to the target so fh can authenticate
+		# inside the chroot.
+		NETRC_SRC="/nix/var/determinate/netrc"
+		if [ -f "$NETRC_SRC" ]; then
+			sudo mkdir -p "/mnt/nix/var/determinate"
+			sudo cp "$NETRC_SRC" "/mnt/nix/var/determinate/netrc"
+			sudo chmod 600 "/mnt/nix/var/determinate/netrc"
+		fi
+
+		HM_REF="wimpysworld/nix-config/*#homeConfigurations.$TARGET_USER@$TARGET_HOST"
+		echo "Applying Home Manager configuration from FlakeHub Cache..."
+		if sudo nixos-enter --root /mnt --command "su - $TARGET_USER -c 'fh apply home-manager \"$HM_REF\"'"; then
+			echo "Home Manager applied from FlakeHub Cache."
+		else
+			echo "WARNING! FlakeHub Home Manager apply failed; falling back to local build..."
+			sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config; env USER=$TARGET_USER HOME=/home/$TARGET_USER home-manager switch --flake \".#$TARGET_USER@$TARGET_HOST\""
+		fi
+	else
+		sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config; env USER=$TARGET_USER HOME=/home/$TARGET_USER home-manager switch --flake \".#$TARGET_USER@$TARGET_HOST\""
+	fi
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
 fi
