@@ -2,14 +2,11 @@
   config,
   isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
-let
-  installFor = [ "martin" ];
-in
-lib.mkIf (lib.elem username installFor && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && isWorkstation) {
   home = {
     packages = with pkgs; [
       yaml-language-server

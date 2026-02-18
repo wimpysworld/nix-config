@@ -1,14 +1,11 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
-let
-  installFor = [ "martin" ];
-in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     packages = with pkgs; [
       marp-cli # Terminal Markdown presenter

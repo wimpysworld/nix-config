@@ -4,12 +4,12 @@
   isLima,
   isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
   username,
   ...
 }:
 let
-  installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 
   # Import Syncthing device and folder definitions
@@ -40,7 +40,7 @@ let
     else
       [ pkgs.keybase ];
 in
-lib.mkIf (lib.elem username installFor && !isLima) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && !isLima) {
   home = lib.mkIf isLinux {
     file."${config.xdg.configHome}/keybase/autostart_created".text = ''
       This file is created the first time Keybase starts, along with

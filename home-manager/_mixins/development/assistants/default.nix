@@ -1,13 +1,13 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   username,
   ...
 }:
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
-  installFor = [ "martin" ];
 
   # Platform-specific paths
   vscodeUserDir =
@@ -108,7 +108,7 @@ let
   }) codecompanionCommands;
 
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     file = {
       # Claude Code global instructions

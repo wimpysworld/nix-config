@@ -1,14 +1,13 @@
 {
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
   inherit (pkgs.stdenv) isLinux;
-  installFor = [ "martin" ];
 in
-lib.mkIf (builtins.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home.packages =
     with pkgs;
     lib.optionals isLinux [

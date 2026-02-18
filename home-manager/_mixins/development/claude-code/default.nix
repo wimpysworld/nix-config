@@ -2,13 +2,12 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
-  installFor = [ "martin" ];
   # https://github.com/numtide/nix-ai-tools
   claudePackage =
     if isLinux then
@@ -677,7 +676,7 @@ let
     "Read(${config.home.homeDirectory}/.local/share/fish/fish_history)"
   ];
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     packages = [
       inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.ccusage

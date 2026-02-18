@@ -3,15 +3,14 @@
   inputs,
   isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "none" ];
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (lib.elem username installFor && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "none" ] && isWorkstation) {
   nixpkgs.overlays = [
     inputs.nix-vscode-extensions.overlays.default
   ];

@@ -2,14 +2,11 @@
   config,
   isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
-let
-  installFor = [ "none" ];
-in
-lib.mkIf (lib.elem username installFor && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "none" ] && isWorkstation) {
   home = {
     file = {
       # https://github.com/catppuccin/gitkraken

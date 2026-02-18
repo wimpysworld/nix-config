@@ -1,15 +1,14 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "martin" ];
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     file = {
       # Customised Catppuccin Mocha Blue theme for Joplin

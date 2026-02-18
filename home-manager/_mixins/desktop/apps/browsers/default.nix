@@ -1,7 +1,7 @@
 {
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
@@ -24,9 +24,6 @@ let
     { id = "clngdbkpkpeebahjckkjfobafhncgmne"; } # Stylus
     { id = "mdpfkohgfpidohkakdbpmnngaocglmhl"; } # Disable Ctrl + Scroll Zoom
   ];
-  installFor = [
-    "martin"
-  ];
 in
 {
   # Install browser extension for macOS and nix-darwin doesn't support it yet
@@ -34,7 +31,7 @@ in
     brave = {
       enable = isDarwin;
       extensions =
-        if (lib.elem username installFor) then basicExtensions ++ advancedExtensions else basicExtensions;
+        if (noughtyLib.isUser [ "martin" ]) then basicExtensions ++ advancedExtensions else basicExtensions;
     };
   };
 }

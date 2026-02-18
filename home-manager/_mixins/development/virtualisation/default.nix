@@ -3,20 +3,19 @@
   isLima,
   isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
   inherit (pkgs.stdenv) isLinux;
-  installFor = [ "martin" ];
 in
-lib.mkIf (lib.elem username installFor && isLinux) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
   # Authrorize X11 access in Distrobox
   home = {
     file = {
       ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && isWorkstation) {
-        text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
+        text = "${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER";
       };
       "Quickemu/nixos-console/.keep" = lib.mkIf (!isLima) {
         text = "";

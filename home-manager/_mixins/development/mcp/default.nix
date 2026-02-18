@@ -1,13 +1,13 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   username,
   ...
 }:
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
-  installFor = [ "martin" ];
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   vscodeUserDir =
     if isLinux then
@@ -21,7 +21,7 @@ let
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
   inherit (mcpServerDefs) mcpServers opencodeServers copilotMcpServers;
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   programs = {
     fish = {
       shellInit = ''

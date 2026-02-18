@@ -1,14 +1,11 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
-let
-  installFor = [ "martin" ];
-in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     # Packages that are used by some of the extensions below
     packages = with pkgs; [

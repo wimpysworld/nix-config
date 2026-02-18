@@ -3,16 +3,15 @@
   hostname,
   isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
   fontSize = 18;
   fontWeight = 400;
-  installFor = [ "martin" ];
 in
-lib.mkIf (lib.elem username installFor && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && isWorkstation) {
   catppuccin.zed.enable = config.programs.zed-editor.enable;
   programs = {
     zed-editor = {

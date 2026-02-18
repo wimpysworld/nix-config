@@ -3,17 +3,16 @@
   inputs,
   isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
   system = pkgs.stdenv.hostPlatform.system;
-  installFor = [ "martin" ];
   opencodePackage = inputs.opencode.packages.${system}.opencode;
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     packages = [
       inputs.nix-ai-tools.packages.${system}.ccusage-opencode

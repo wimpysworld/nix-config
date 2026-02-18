@@ -2,13 +2,13 @@
   config,
   isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
   username,
   ...
 }:
 let
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
-  installFor = [ "martin" ];
   rootlessMode = false;
 
   # Introspect the root filesystem type from disko configuration
@@ -67,7 +67,7 @@ let
     else
       "overlay2"; # Default for xfs, ext4, and others
 in
-lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && isWorkstation) {
   environment = {
     # https://wiki.nixos.org/wiki/Docker
     systemPackages =

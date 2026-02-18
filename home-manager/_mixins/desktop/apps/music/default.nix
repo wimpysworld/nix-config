@@ -1,16 +1,15 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "martin" ];
   hasOBS = config.programs.obs-studio.enable;
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (builtins.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
 
   dconf.settings =
     with lib.hm.gvariant;
