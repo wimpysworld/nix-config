@@ -366,14 +366,16 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 				--option http-connections 256 \
 				--option narinfo-cache-negative-ttl 0 || true
 			echo "Activating Home Manager from FlakeHub Cache..."
-			sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate"
+			sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate" || true
 		else
 			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
-			sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\""
+			sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\"" || true
 		fi
 	else
 		echo "Applying Home Manager configuration..."
-		sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\""
+		sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\"" || true
 	fi
+	# Fix ownership after activation. Home Manager runs as root inside
+	# nixos-enter, so all created files and directories are owned by root:root.
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
 fi
