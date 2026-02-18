@@ -1,13 +1,18 @@
 {
+  hostname,
   inputs,
-  isInstall,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "martin" ];
+  installOn = [
+    "bane"
+    "malgus"
+    "phasma"
+    "vader"
+    "zannah"
+  ];
 
   # Wrap Slack to open all URLs in Wavebox
   slackWavebox = inputs.xdg-override.lib.wrapPackage {
@@ -42,7 +47,7 @@ let
     ];
   };
 in
-lib.mkIf (lib.elem username installFor && isInstall) {
+lib.mkIf (lib.elem hostname installOn) {
   environment.systemPackages = [
     pkgs._1password-gui
     pkgs.wavebox
