@@ -19,9 +19,11 @@
   pkgs,
   platform,
   stateVersion,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 {
   imports = [
     # Common configuration shared with darwin
@@ -61,7 +63,6 @@
       tags = hostTags;
       is.iso = hostIsIso;
     };
-    user.name = username;
   };
 
   boot = {

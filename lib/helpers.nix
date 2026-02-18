@@ -167,7 +167,6 @@ rec {
           inputs
           outputs
           hostname
-          username
           stateVersion
           isInstall
           isLaptop
@@ -186,7 +185,10 @@ rec {
       };
       modules = [
         ../home-manager
-        { noughty.host.desktop = desktop; }
+        {
+          noughty.host.desktop = desktop;
+          noughty.user.name = username;
+        }
       ];
     };
 
@@ -227,7 +229,6 @@ rec {
           inputs
           outputs
           hostname
-          username
           stateVersion
           isInstall
           isISO
@@ -255,7 +256,10 @@ rec {
         in
         [
           ../nixos
-          { noughty.host.desktop = desktop; }
+          {
+            noughty.host.desktop = desktop;
+            noughty.user.name = username;
+          }
         ]
         ++ inputs.nixpkgs.lib.optionals isISO [ cd-dvd ];
     };
@@ -289,7 +293,6 @@ rec {
           inputs
           outputs
           hostname
-          username
           isInstall
           isISO
           isLaptop
@@ -306,7 +309,10 @@ rec {
       };
       modules = [
         ../darwin
-        { noughty.host.desktop = desktop; }
+        {
+          noughty.host.desktop = desktop;
+          noughty.user.name = username;
+        }
       ];
     };
 

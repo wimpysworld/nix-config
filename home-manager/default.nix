@@ -18,11 +18,11 @@
   pkgs,
   platform,
   stateVersion,
-  username,
   ...
 }:
 let
   inherit (pkgs.stdenv) isDarwin isLinux;
+  username = config.noughty.user.name;
 in
 {
   imports = [
@@ -56,7 +56,6 @@ in
       tags = hostTags;
       is.iso = hostIsIso;
     };
-    user.name = username;
   };
 
   # Enable the Catppuccin theme
@@ -69,7 +68,7 @@ in
 
   home = {
     inherit stateVersion;
-    inherit username;
+    username = config.noughty.user.name;
     homeDirectory =
       if isDarwin then
         "/Users/${username}"

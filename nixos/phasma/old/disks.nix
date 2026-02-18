@@ -5,10 +5,13 @@
 # sdb     4TB:   Backup RAID-0
 # sdc     4TB:   Backup RAID-0
 {
+  config,
   lib,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 {
   boot = {
     swraid = {

@@ -11,9 +11,11 @@
   outputs,
   pkgs,
   platform,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 {
   imports = [
     # Common configuration shared with nixos
@@ -38,7 +40,6 @@
       tags = hostTags;
       is.iso = hostIsIso;
     };
-    user.name = username;
   };
 
   environment = {
