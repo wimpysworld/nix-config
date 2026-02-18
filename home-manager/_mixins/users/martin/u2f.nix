@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -15,7 +16,7 @@ let
   u2f_phasma = "U8Za14UahAnDSSwA6y2EJpDjIZP+0IliX9Ta//89oCvaNPGlVaxTCQY6VPShTNV41agGH+O+AuOfOcV6pIS9Wg==,2o6OE9jB4E62FGcCmAPDXaY4FyT5uSNBVW9LydetbJFgZem9GZtJ1tnXt2FJm/sHgmg8BBqIY+QIf/r+5oFXMw==,es256,+presence";
   u2f_vader = "G4S+zVnfPIpcnShvEuLYazwAS8XhX8DRyZZBX2OdV3K+7RVbr4UG+TqmmT3kEgC0XgTpKpN2cM/t4CpFDUE9Ig==,xxXHLkGtoMUAEbyu7/TMxmPGjuqISDVT1ldSy7qoWppWzgNlyvZZiu5bST7Llf3sHLDsT/agFbqzuf4HcVJZcw==,es256,+presence";
 in
-lib.mkIf isLinux {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
   home.packages = with pkgs; [
     yubikey-manager
     pam_u2f

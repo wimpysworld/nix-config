@@ -1,11 +1,18 @@
 {
+  config,
   lib,
   pkgs,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 {
-  imports = [ ./root ] ++ lib.optional (builtins.pathExists (./. + "/${username}")) ./${username};
+  imports = [
+    ./martin
+    ./nixos
+    ./root
+  ];
   environment.localBinInPath = true;
   users.users.${username} = {
     extraGroups = [

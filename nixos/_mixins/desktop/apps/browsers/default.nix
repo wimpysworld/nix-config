@@ -2,10 +2,10 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   forFamily = [
     "agatha"
     "louise"
@@ -39,7 +39,7 @@ let
   ];
 in
 {
-  imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
+  imports = [ ./martin.nix ];
   environment.systemPackages =
     lib.optionals (builtins.elem username forFamily && !config.noughty.host.is.iso) familyPackages
     ++ lib.optionals (builtins.elem username forMartin && !config.noughty.host.is.iso) martinPackages;

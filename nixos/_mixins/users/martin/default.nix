@@ -1,5 +1,9 @@
-{ ... }:
 {
+  lib,
+  noughtyLib,
+  ...
+}:
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   users.users.martin = {
     description = "Martin Wimpress";
     # mkpasswd -m sha-512

@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -34,7 +35,7 @@ let
     map (baseName: mkSshKeySecrets "id_ed25519_sk" baseName) ed25519SkKeyIdentifiers
   );
 in
-{
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     # SSH allowed signers for Git verification
     file.".ssh/allowed_signers".text = ''

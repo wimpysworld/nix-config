@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -9,7 +10,7 @@ let
   # sopsFile requires an absolute path - use path type to resolve correctly
   gnupgSopsFile = ../../../../secrets/gnupg.yaml;
 in
-{
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     # Import GPG private keys from sops after public keys are in place.
     # Ordered after linkGeneration because Home Manager's importGpgKeys
