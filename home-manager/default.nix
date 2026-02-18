@@ -1,8 +1,13 @@
 {
   catppuccinPalette,
   config,
+  desktop,
+  hostname,
   inputs,
+  isISO,
+  isLaptop,
   isLima,
+  isServer,
   isWorkstation,
   lib,
   outputs,
@@ -18,6 +23,7 @@ in
   imports = [
     # Custom Home Manager modules go here
     #outputs.homeManagerModules.mymodule
+    ../lib/noughty
 
     # Modules exported from other flakes:
     inputs.catppuccin.homeModules.catppuccin
@@ -34,6 +40,16 @@ in
     ./_mixins/users
   ]
   ++ lib.optional isWorkstation ./_mixins/desktop;
+
+  noughty = {
+    host = {
+      name = hostname;
+      platform = pkgs.stdenv.hostPlatform.system;
+      desktop = desktop;
+      is.iso = isISO;
+    };
+    user.name = username;
+  };
 
   # Enable the Catppuccin theme
   catppuccin = {

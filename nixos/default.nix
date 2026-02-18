@@ -1,8 +1,12 @@
 {
   catppuccinPalette,
   config,
+  desktop,
   hostname,
   isInstall,
+  isISO,
+  isLaptop,
+  isServer,
   isWorkstation,
   inputs,
   lib,
@@ -17,6 +21,7 @@
   imports = [
     # Common configuration shared with darwin
     ../common
+    ../lib/noughty
     # Use modules this flake exports; from modules/nixos
     outputs.nixosModules.falcon-sensor
     outputs.nixosModules.wavebox
@@ -40,6 +45,16 @@
     ./_mixins/virtualisation
   ]
   ++ lib.optional isWorkstation ./_mixins/desktop;
+
+  noughty = {
+    host = {
+      name = hostname;
+      platform = pkgs.stdenv.hostPlatform.system;
+      desktop = desktop;
+      is.iso = isISO;
+    };
+    user.name = username;
+  };
 
   boot = {
     binfmt = lib.mkIf isInstall {

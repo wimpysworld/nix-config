@@ -12,6 +12,7 @@
   imports = [
     # Common configuration shared with nixos
     ../common
+    ../lib/noughty
     inputs.determinate.darwinModules.default
     inputs.mac-app-util.darwinModules.default
     inputs.nix-homebrew.darwinModules.nix-homebrew
@@ -20,6 +21,15 @@
     ./_mixins/desktop
     ./_mixins/features
   ];
+
+  noughty = {
+    host = {
+      name = hostname;
+      platform = pkgs.stdenv.hostPlatform.system;
+      desktop = "aqua";
+    };
+    user.name = username;
+  };
 
   environment = {
     shells = [ pkgs.fish ];
