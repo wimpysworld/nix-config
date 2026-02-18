@@ -1,4 +1,4 @@
-{ username, ... }:
+{ ... }:
 {
   users.users.martin = {
     description = "Martin Wimpress";

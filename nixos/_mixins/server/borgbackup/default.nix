@@ -4,10 +4,10 @@
   lib,
   noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
 
   # Legacy hosts store backups under /mnt/snapshot; newer hosts use /mnt/data.
   legacyHosts = [

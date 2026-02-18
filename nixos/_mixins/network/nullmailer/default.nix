@@ -1,10 +1,10 @@
 {
   config,
   lib,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   domain = "wimpys.world";
 in
 lib.mkIf (!config.noughty.host.is.iso) {

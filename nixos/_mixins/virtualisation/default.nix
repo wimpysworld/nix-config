@@ -3,10 +3,10 @@
   lib,
   noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
   rootlessMode = false;
 

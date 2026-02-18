@@ -2,10 +2,10 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   scanningApp =
     if (config.noughty.host.desktop == "plasma") then pkgs.kdePackages.skanpage else pkgs.simple-scan;
 in

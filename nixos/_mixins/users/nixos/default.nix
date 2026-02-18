@@ -2,10 +2,10 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   isWorkstationISO = config.noughty.host.is.iso && config.noughty.host.is.workstation;
 in
 {

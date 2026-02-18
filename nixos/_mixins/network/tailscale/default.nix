@@ -3,10 +3,10 @@
   hostname,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   tsExitNodes = [
     "maul"
     "revan"

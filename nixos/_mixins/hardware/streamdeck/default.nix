@@ -3,10 +3,10 @@
   hostname,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   isStreamstation = hostname == "phasma" || hostname == "vader";
   # Bundle all .deck config files into a single store directory so that
   # relative deck references (deck = "foo.deck") resolve correctly.

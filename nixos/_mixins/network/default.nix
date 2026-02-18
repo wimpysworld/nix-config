@@ -3,10 +3,10 @@
   hostname,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   useDoT = if config.noughty.host.is.laptop then "opportunistic" else "true";
   useNetworkManager =
     if (config.noughty.host.is.iso || !config.noughty.host.is.server) then true else false;

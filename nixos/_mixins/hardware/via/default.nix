@@ -1,9 +1,11 @@
 {
   config,
   lib,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 lib.mkIf (!config.noughty.host.is.iso) {
   services = {
     # Provides users with access to VIA

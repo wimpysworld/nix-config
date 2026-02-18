@@ -4,10 +4,10 @@
   lib,
   noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   inherit (pkgs.stdenv) isLinux;
 
   # Import Syncthing device and folder definitions

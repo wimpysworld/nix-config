@@ -2,10 +2,10 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
   hasAmdGPU = config.hardware.amdgpu.initrd.enable;
   hasIntelGPU = lib.any (mod: lib.elem mod config.boot.initrd.kernelModules) [

@@ -4,9 +4,11 @@
   lib,
   noughtyLib,
   pkgs,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 lib.mkIf (noughtyLib.isHost [ "vader" ]) {
   environment.systemPackages = with pkgs; [ transmission_4 ];
 

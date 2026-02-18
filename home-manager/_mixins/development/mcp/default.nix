@@ -3,10 +3,10 @@
   lib,
   noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   inherit (pkgs.stdenv) isLinux isDarwin;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   vscodeUserDir =

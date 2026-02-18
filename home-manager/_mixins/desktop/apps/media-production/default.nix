@@ -4,10 +4,10 @@
   lib,
   noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   inherit (pkgs.stdenv) isLinux;
   davinciResolve = (pkgs.davinci-resolve.override { studioVariant = true; });
 in

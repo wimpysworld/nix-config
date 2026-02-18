@@ -6,13 +6,16 @@
 # SATA1:             8TB Ultrastar DC HC510 7200RPM (SATA) HUH721008ALE600
 # SATA2:             8TB Ultrastar DC HC510 7200RPM (SATA) HUH721008ALE600
 {
+  config,
   hostname,
   inputs,
   lib,
   pkgs,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel

@@ -3,10 +3,10 @@
   hostname,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   useLowLatencyPipewire = hostname == "phasma" || hostname == "vader";
 in
 lib.mkIf (!config.noughty.host.is.iso) {

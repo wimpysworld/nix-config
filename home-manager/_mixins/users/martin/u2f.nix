@@ -2,10 +2,10 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   inherit (pkgs.stdenv) isLinux;
   # Make with: pamu2fcfg -n
   u2f_28L = "TBfRqRfHADrZSgh4nOAwbCOgsbc0QTVwa0duBV3Qaz2ROuQ86QUR+70Hytzjicj88GhA0RRh2jNNe0ktKgzmXQ==,aUjvFdpwTbafll6K28EwSvLj7C+7XY/La+m3YXIeMTqRKu9+RarhGaOPQdXxfwwoa+ynjkZXtmVCkr5Nb+WPdQ==,es256,+presence";

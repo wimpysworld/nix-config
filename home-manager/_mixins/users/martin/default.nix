@@ -3,9 +3,11 @@
   lib,
   noughtyLib,
   pkgs,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 {
   imports = [
     ./atuin.nix
