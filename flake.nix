@@ -58,134 +58,168 @@
       helper = import ./lib { inherit inputs outputs stateVersion; };
 
       # System registry - central definition of all systems and their properties
+      #
+      # Canonical tag vocabulary:
+      #   Host tags: streamstation, high-dpi, thinkpad, gaming, lima, wsl
+      #   User tags: developer, admin, family
+      #
+      # Registry fields:
+      #   kind       - required: "computer", "server", "vm", "container"
+      #   platform   - required: "x86_64-linux", "aarch64-darwin", etc.
+      #   formFactor - optional: "laptop", "desktop", "handheld", "tablet", "phone"
+      #   desktop    - optional: derived from kind + platform if omitted
+      #   username   - optional: defaults to "martin"
+      #   gpu        - optional: { vendors = [ "nvidia" "amd" "intel" ]; }
+      #   tags       - optional: [ "streamstation" "thinkpad" ... ]
+      #   iso        - optional: true for ISO image builds
       systems = {
-        # ISO Image
-        iso-console = {
-          type = "iso";
-          username = "nixos";
-        };
-        # Workstations
-        bane = {
-          type = "workstation";
-          desktop = "hyprland";
+
+        # Linux workstations
+        # desktop defaults to "hyprland" (kind = "computer", linux platform)
+        # username defaults to "martin"
+        vader = {
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "desktop";
+          gpu.vendors = [
+            "amd"
+            "nvidia"
+          ];
+          tags = [
+            "streamstation"
+            "high-dpi"
+          ];
         };
         phasma = {
-          type = "workstation";
-          desktop = "hyprland";
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "desktop";
+          gpu.vendors = [
+            "amd"
+            "nvidia"
+          ];
+          tags = [
+            "streamstation"
+            "high-dpi"
+          ];
         };
-        vader = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        shaa = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        atrius = {
-          type = "workstation";
-          desktop = "hyprland";
+        bane = {
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "desktop";
+          gpu.vendors = [ "amd" ];
         };
         tanis = {
-          type = "workstation";
-          desktop = "hyprland";
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "laptop";
+          tags = [ "thinkpad" ];
         };
-        felkor = {
-          type = "workstation";
-          desktop = "hyprland";
+        shaa = {
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "laptop";
+          tags = [ "thinkpad" ];
+        };
+        atrius = {
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "laptop";
+          tags = [ "thinkpad" ];
         };
         sidious = {
-          type = "workstation";
-          desktop = "hyprland";
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "laptop";
+          gpu.vendors = [
+            "intel"
+            "nvidia"
+          ];
+        };
+        felkor = {
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "laptop";
+          gpu.vendors = [ "amd" ];
         };
 
-        # Darwin systems
-        momin = {
-          type = "darwin";
-        };
-        # Dual boot (WSL/Ubuntu variant)
-        palpatine = {
-          type = "wsl";
+        # Gaming - non-standard username and desktop, so both explicit
+        steamdeck = {
+          kind = "computer";
+          platform = "x86_64-linux";
+          formFactor = "handheld";
+          username = "deck";
+          desktop = "gamescope";
+          tags = [ "gaming" ];
         };
 
-        # Servers
+        # Servers - desktop = null from kind = "server"
         malak = {
-          type = "server";
+          kind = "server";
+          platform = "x86_64-linux";
+          gpu.vendors = [ "intel" ];
         };
         maul = {
-          type = "server";
+          kind = "server";
+          platform = "x86_64-linux";
+          gpu.vendors = [ "nvidia" ];
         };
         revan = {
-          type = "server";
+          kind = "server";
+          platform = "x86_64-linux";
+          gpu.vendors = [
+            "intel"
+            "nvidia"
+          ];
         };
 
-        # Steam Deck
-        steamdeck = {
-          type = "gaming";
-          username = "deck";
-        };
-
-        # VMs (NixOS)
+        # Linux VMs
         crawler = {
-          type = "vm";
+          kind = "vm";
+          platform = "x86_64-linux";
         };
         dagger = {
-          type = "vm";
+          kind = "vm";
+          platform = "x86_64-linux";
           desktop = "hyprland";
         };
 
-        # VMs (Lima/Home Manager only)
+        # Lima VMs (Home Manager only; tag drives module selection)
         blackace = {
-          type = "lima";
+          kind = "vm";
+          platform = "x86_64-linux";
+          tags = [ "lima" ];
         };
         defender = {
-          type = "lima";
+          kind = "vm";
+          platform = "x86_64-linux";
+          tags = [ "lima" ];
         };
         fighter = {
-          type = "lima";
+          kind = "vm";
+          platform = "x86_64-linux";
+          tags = [ "lima" ];
         };
-      };
 
-      # Type defaults for different system types
-      typeDefaults = {
-        iso = {
-          username = "nixos";
+        # WSL (Home Manager only; tag drives module selection)
+        palpatine = {
+          kind = "vm";
           platform = "x86_64-linux";
-          desktop = null;
+          tags = [ "wsl" ];
         };
-        workstation = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = "hyprland";
-        };
-        server = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = null;
-        };
-        vm = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = null;
-        };
-        lima = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = null;
-        };
-        darwin = {
-          username = "martin";
+
+        # Darwin - platform drives isDarwin; desktop defaults to "aqua"
+        momin = {
+          kind = "computer";
           platform = "aarch64-darwin";
-          desktop = "aqua";
+          formFactor = "laptop";
         };
-        wsl = {
-          username = "martin";
+
+        # ISO - iso = true applies isoDefaults: desktop = null, username = "nixos"
+        iso-console = {
+          kind = "computer";
           platform = "x86_64-linux";
-          desktop = null;
-        };
-        gaming = {
-          username = "deck";
-          platform = "x86_64-linux";
-          desktop = "gamescope";
+          iso = true;
         };
       };
 
@@ -197,31 +231,29 @@
       # Generated system configurations
       nixosConfigurations =
         let
-          allNixos =
-            helper.generateConfigs "workstation" systems typeDefaults
-            // helper.generateConfigs "server" systems typeDefaults
-            // helper.generateConfigs "vm" systems typeDefaults
-            // helper.generateConfigs "iso" systems typeDefaults;
+          allNixos = helper.generateConfigs (
+            e:
+            helper.isLinuxEntry e
+            && !helper.isISOEntry e
+            && !helper.isWSLEntry e
+            && !helper.isLimaEntry e
+            && !helper.isGamingEntry e
+          ) systems;
+          allISO = helper.generateConfigs helper.isISOEntry systems;
         in
-        nixpkgs.lib.mapAttrs (name: config: helper.mkNixos config) allNixos;
+        nixpkgs.lib.mapAttrs (_name: config: helper.mkNixos config) (allNixos // allISO);
 
-      darwinConfigurations = nixpkgs.lib.mapAttrs (name: config: helper.mkDarwin config) (
-        helper.generateConfigs "darwin" systems typeDefaults
+      darwinConfigurations = nixpkgs.lib.mapAttrs (_name: config: helper.mkDarwin config) (
+        helper.generateConfigs helper.isDarwinEntry systems
       );
 
       homeConfigurations =
         let
-          allHomes =
-            helper.generateConfigs "workstation" systems typeDefaults
-            // helper.generateConfigs "server" systems typeDefaults
-            // helper.generateConfigs "vm" systems typeDefaults
-            // helper.generateConfigs "lima" systems typeDefaults
-            // helper.generateConfigs "darwin" systems typeDefaults
-            // helper.generateConfigs "wsl" systems typeDefaults
-            // helper.generateConfigs "gaming" systems typeDefaults;
+          allHomes = helper.generateConfigs (_e: true) systems;
         in
         nixpkgs.lib.mapAttrs' (
-          name: config: nixpkgs.lib.nameValuePair "${config.username}@${name}" (helper.mkHome config)
+          _name: config:
+          nixpkgs.lib.nameValuePair "${config.username}@${config.hostname}" (helper.mkHome config)
         ) allHomes;
       # Custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };

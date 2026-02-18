@@ -4,9 +4,68 @@
   stateVersion,
   ...
 }:
+let
+  lib = inputs.nixpkgs.lib;
+
+  # Resolve a registry entry by merging four layers (later wins):
+  # 1. baseline username
+  # 2. kind + OS derived desktop
+  # 3. iso implicit defaults
+  # 4. explicit entry values
+  resolveEntry =
+    name: entry:
+    let
+      isDarwin = lib.hasSuffix "-darwin" entry.platform;
+
+      kDefaults = {
+        desktop =
+          {
+            computer = if isDarwin then "aqua" else "hyprland";
+            server = null;
+            vm = null;
+            container = null;
+          }
+          .${entry.kind};
+      };
+
+      isoDefaults = lib.optionalAttrs (entry.iso or false) {
+        desktop = null;
+        username = "nixos";
+      };
+
+      merged = {
+        username = "martin";
+      }
+      // kDefaults
+      // isoDefaults
+      // entry
+      // {
+        name = name;
+      };
+    in
+    merged;
+
+  # Predicate functions for filtering registry entries
+  isLinuxEntry = e: lib.hasSuffix "-linux" e.platform;
+  isDarwinEntry = e: lib.hasSuffix "-darwin" e.platform;
+  isISOEntry = e: e.iso or false;
+  isWSLEntry = e: builtins.elem "wsl" (e.tags or [ ]);
+  isLimaEntry = e: builtins.elem "lima" (e.tags or [ ]);
+  isGamingEntry = e: builtins.elem "gaming" (e.tags or [ ]);
+in
 rec {
+  # Export predicate functions for use in flake.nix
+  inherit
+    isLinuxEntry
+    isDarwinEntry
+    isISOEntry
+    isWSLEntry
+    isLimaEntry
+    isGamingEntry
+    ;
+
   # Generate Catppuccin palette with helper functions
-  # This reads the palette JSON and provides convenient color access functions
+  # This reads the palette JSON and provides convenient colour access functions
   mkCatppuccinPalette =
     {
       flavor ? "mocha",
@@ -33,8 +92,8 @@ rec {
       themeShade = if isDark then "-Dark" else "-Light";
       preferShade = if isDark then "prefer-dark" else "prefer-light";
 
-      # VT color mapping (16 ANSI colors: 0-15)
-      # Standard ANSI colors followed by bright variants
+      # VT colour mapping (16 ANSI colours: 0-15)
+      # Standard ANSI colours followed by bright variants
       # Note: Index 0 is used as default background, so it must be "base"
       vtColorMap = [
         "base" # 0: black (also used as default background)
@@ -79,6 +138,11 @@ rec {
       username ? "martin",
       desktop ? null,
       platform ? "x86_64-linux",
+      hostKind ? "computer",
+      hostFormFactor ? null,
+      hostGpuVendors ? [ ],
+      hostTags ? [ ],
+      hostIsIso ? false,
     }:
     let
       isISO = builtins.substring 0 4 hostname == "iso-";
@@ -113,6 +177,12 @@ rec {
           isServer
           isWorkstation
           catppuccinPalette
+          platform
+          hostKind
+          hostFormFactor
+          hostGpuVendors
+          hostTags
+          hostIsIso
           ;
       };
       modules = [ ../home-manager ];
@@ -125,6 +195,11 @@ rec {
       username ? "martin",
       desktop ? null,
       platform ? "x86_64-linux",
+      hostKind ? "computer",
+      hostFormFactor ? null,
+      hostGpuVendors ? [ ],
+      hostTags ? [ ],
+      hostIsIso ? false,
     }:
     let
       isISO = builtins.substring 0 4 hostname == "iso-";
@@ -160,6 +235,12 @@ rec {
           isWorkstation
           tailNet
           catppuccinPalette
+          platform
+          hostKind
+          hostFormFactor
+          hostGpuVendors
+          hostTags
+          hostIsIso
           ;
       };
       # If the hostname starts with "iso-", generate an ISO image
@@ -180,6 +261,11 @@ rec {
       hostname,
       username ? "martin",
       platform ? "aarch64-darwin",
+      hostKind ? "computer",
+      hostFormFactor ? null,
+      hostGpuVendors ? [ ],
+      hostTags ? [ ],
+      hostIsIso ? false,
     }:
     let
       isISO = false;
@@ -206,6 +292,12 @@ rec {
           isServer
           isWorkstation
           catppuccinPalette
+          platform
+          hostKind
+          hostFormFactor
+          hostGpuVendors
+          hostTags
+          hostIsIso
           ;
       };
       modules = [
@@ -219,29 +311,30 @@ rec {
     "aarch64-darwin"
   ];
 
-  # Helper function to create system configurations based on type
+  # Resolve a registry entry and produce the helperConfig attrset
+  # that mkNixos/mkHome/mkDarwin expect.
   mkSystemConfig =
-    name: config: typeDefaults:
+    name: entry:
     let
-      # Get type-specific defaults
-      defaults = typeDefaults.${config.type} or { };
-      # Merge system config with defaults
-      finalConfig = defaults // config;
-      # Filter config to only include parameters expected by helper functions
-      helperConfig = {
-        hostname = name;
-        username = finalConfig.username;
-        desktop = finalConfig.desktop;
-        platform = finalConfig.platform;
-      };
+      resolved = resolveEntry name entry;
     in
-    helperConfig;
+    {
+      hostname = name;
+      username = resolved.username;
+      desktop = resolved.desktop or null;
+      platform = resolved.platform;
+      hostKind = resolved.kind;
+      hostFormFactor = resolved.formFactor or null;
+      hostGpuVendors = (resolved.gpu or { }).vendors or [ ];
+      hostTags = resolved.tags or [ ];
+      hostIsIso = resolved.iso or false;
+    };
 
-  # Generate configurations for each type
+  # Generate configurations by filtering with a predicate function
   generateConfigs =
-    configType: systems: typeDefaults:
+    predicate: systems:
     let
-      filteredSystems = inputs.nixpkgs.lib.filterAttrs (name: config: config.type == configType) systems;
+      filteredSystems = lib.filterAttrs (_name: entry: predicate entry) systems;
     in
-    inputs.nixpkgs.lib.mapAttrs (name: config: mkSystemConfig name config typeDefaults) filteredSystems;
+    lib.mapAttrs (name: entry: mkSystemConfig name entry) filteredSystems;
 }

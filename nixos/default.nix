@@ -3,6 +3,11 @@
   config,
   desktop,
   hostname,
+  hostKind,
+  hostFormFactor,
+  hostGpuVendors,
+  hostTags,
+  hostIsIso,
   isInstall,
   isISO,
   isLaptop,
@@ -13,6 +18,7 @@
   modulesPath,
   outputs,
   pkgs,
+  platform,
   stateVersion,
   username,
   ...
@@ -49,9 +55,13 @@
   noughty = {
     host = {
       name = hostname;
-      platform = pkgs.stdenv.hostPlatform.system;
+      kind = hostKind;
+      platform = platform;
       desktop = desktop;
-      is.iso = isISO;
+      formFactor = hostFormFactor;
+      gpu.vendors = hostGpuVendors;
+      tags = hostTags;
+      is.iso = hostIsIso;
     };
     user.name = username;
   };

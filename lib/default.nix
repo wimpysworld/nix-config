@@ -15,5 +15,11 @@ in
     forAllSystems
     mkSystemConfig
     generateConfigs
+    isLinuxEntry
+    isDarwinEntry
+    isISOEntry
+    isWSLEntry
+    isLimaEntry
+    isGamingEntry
     ;
 }

@@ -1,10 +1,16 @@
 {
   config,
   hostname,
+  hostKind,
+  hostFormFactor,
+  hostGpuVendors,
+  hostTags,
+  hostIsIso,
   inputs,
   lib,
   outputs,
   pkgs,
+  platform,
   username,
   ...
 }:
@@ -25,8 +31,13 @@
   noughty = {
     host = {
       name = hostname;
-      platform = pkgs.stdenv.hostPlatform.system;
+      kind = hostKind;
+      platform = platform;
       desktop = "aqua";
+      formFactor = hostFormFactor;
+      gpu.vendors = hostGpuVendors;
+      tags = hostTags;
+      is.iso = hostIsIso;
     };
     user.name = username;
   };
