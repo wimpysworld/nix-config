@@ -5,17 +5,12 @@
 #   See NixOS-Falcon-Sensor.md for bootstrap instructions.
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
-  # Hosts that require policy/compliance agents.
-  installOn = [
-    "bane"
-  ];
-
   # Automates the bootstrap and update process for CrowdStrike Falcon on NixOS.
   # Downloads the sensor RPM, extracts it, copies binaries to /opt/CrowdStrike/,
   # and patches all ELF binaries with the NixOS glibc interpreter.
@@ -44,7 +39,7 @@ let
     text = builtins.readFile ./falcon-sensor-check.sh;
   };
 in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost [ "bane" ]) {
 
   environment.systemPackages = [
     falconSensorCheck

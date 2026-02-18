@@ -1,7 +1,5 @@
 {
   config,
-  isLima,
-  isWorkstation,
   lib,
   noughtyLib,
   pkgs,
@@ -14,13 +12,13 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
   # Authrorize X11 access in Distrobox
   home = {
     file = {
-      ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && isWorkstation) {
+      ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && config.noughty.host.is.workstation) {
         text = "${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER";
       };
-      "Quickemu/nixos-console/.keep" = lib.mkIf (!isLima) {
+      "Quickemu/nixos-console/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
         text = "";
       };
-      "Quickemu/nixos-console.conf" = lib.mkIf (!isLima) {
+      "Quickemu/nixos-console.conf" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
         text = ''
           #!/run/current-system/sw/bin/quickemu --vm
           guest_os="linux"
@@ -30,7 +28,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
         '';
       };
     };
-    packages = lib.optionals isWorkstation [
+    packages = lib.optionals config.noughty.host.is.workstation [
       pkgs.quickemu
     ];
   };

@@ -1,8 +1,8 @@
 {
   config,
   hostname,
-  isLima,
   lib,
+  noughtyLib,
   pkgs,
   username,
   ...
@@ -410,10 +410,10 @@ in
 
   home.packages =
     with pkgs;
-    lib.optionals (!isLima) [
+    lib.optionals (!(noughtyLib.hostHasTag "lima")) [
       audacity
     ]
-    ++ lib.optionals (!isLima && isLinux) [
+    ++ lib.optionals (!(noughtyLib.hostHasTag "lima") && isLinux) [
       gimp3
       inkscape
     ]

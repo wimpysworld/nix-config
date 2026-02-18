@@ -1,8 +1,6 @@
 {
   config,
   hostname,
-  isLima,
-  isWorkstation,
   lib,
   noughtyLib,
   pkgs,
@@ -32,7 +30,7 @@ let
   ) syncDefs.folders;
 
   keybasePackages =
-    if isWorkstation then
+    if config.noughty.host.is.workstation then
       [
         pkgs.keybase
         pkgs.keybase-gui
@@ -40,7 +38,7 @@ let
     else
       [ pkgs.keybase ];
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && !isLima) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
   home = lib.mkIf isLinux {
     file."${config.xdg.configHome}/keybase/autostart_created".text = ''
       This file is created the first time Keybase starts, along with
@@ -96,7 +94,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && !isLima) {
         };
       };
       # Tray is Linux-only (uses systemd and X11/Wayland tray protocol)
-      tray = lib.mkIf (isLinux && isWorkstation) {
+      tray = lib.mkIf (isLinux && config.noughty.host.is.workstation) {
         enable = true;
         package = pkgs.syncthingtray;
       };
@@ -106,7 +104,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && !isLima) {
   # Workaround for Failed to restart syncthingtray.service: Unit tray.target not found.
   # - https://github.com/nix-community/home-manager/issues/2064
   systemd = lib.mkIf (isLinux && isSyncthingHost) {
-    user.targets.tray = lib.mkIf isWorkstation {
+    user.targets.tray = lib.mkIf config.noughty.host.is.workstation {
       Unit = {
         Description = "Home Manager System Tray";
         Wants = [ "graphical-session-pre.target" ];
@@ -126,7 +124,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && !isLima) {
         '';
       in
       "${setApiKey}";
-    user.services.syncthingtray = lib.mkIf isWorkstation {
+    user.services.syncthingtray = lib.mkIf config.noughty.host.is.workstation {
       Service.ExecStart = lib.mkForce "${pkgs.syncthingtray}/bin/syncthingtray --wait";
     };
   };

@@ -1,6 +1,5 @@
 {
   config,
-  isInstall,
   lib,
   pkgs,
   ...
@@ -37,15 +36,15 @@
       # https://wiki.nixos.org/w/index.php?title=Appimage
       # https://nixos.org/manual/nixpkgs/stable/#sec-pkgs-appimageTools
       appimage = {
-        enable = isInstall;
-        binfmt = isInstall;
+        enable = !config.noughty.host.is.iso;
+        binfmt = !config.noughty.host.is.iso;
       };
       dconf = {
         enable = true;
       };
     };
     services = {
-      flatpak = lib.mkIf isInstall {
+      flatpak = lib.mkIf (!config.noughty.host.is.iso) {
         enable = true;
         update.auto = {
           enable = true;

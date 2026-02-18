@@ -3,7 +3,6 @@
   hostname,
   lib,
   pkgs,
-  tailNet,
   username,
   ...
 }:
@@ -39,19 +38,21 @@ in
         hash = "sha256-Otl88PMFNHbcNkTIPB2sNjdDCyl9UC1nEwYyxVzUsFU=";
       };
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
-      virtualHosts."${hostname}.${tailNet}" = lib.mkIf config.services.tailscale.enable {
-        extraConfig = ''
-          redir ${basePath} ${basePath}/
-          handle_path ${basePath}/* {
-            reverse_proxy localhost:8384 {
-              header_up Host localhost
-            }
-          }
-        '';
-        logFormat = lib.mkDefault ''
-          output file /var/log/caddy/tailscale.log
-        '';
-      };
+      virtualHosts."${hostname}.${config.noughty.network.tailNet}" =
+        lib.mkIf config.services.tailscale.enable
+          {
+            extraConfig = ''
+              redir ${basePath} ${basePath}/
+              handle_path ${basePath}/* {
+                reverse_proxy localhost:8384 {
+                  header_up Host localhost
+                }
+              }
+            '';
+            logFormat = lib.mkDefault ''
+              output file /var/log/caddy/tailscale.log
+            '';
+          };
     };
   };
 }

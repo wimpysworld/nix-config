@@ -1,7 +1,6 @@
 {
   config,
   inputs,
-  isWorkstation,
   lib,
   noughtyLib,
   pkgs,
@@ -10,7 +9,7 @@
 let
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (noughtyLib.isUser [ "none" ] && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "none" ] && config.noughty.host.is.workstation) {
   nixpkgs.overlays = [
     inputs.nix-vscode-extensions.overlays.default
   ];

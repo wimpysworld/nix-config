@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  isInstall,
   lib,
   pkgs,
   ...
@@ -75,7 +74,7 @@ in
       };
       systemPackages =
         with pkgs;
-        lib.optionals isInstall [
+        lib.optionals (!config.noughty.host.is.iso) [
           hyprShim
         ];
     };

@@ -1,14 +1,11 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
-let
-  installOn = [ "malak" ];
-in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   environment = {
     shellAliases = {
       gatus-log = "journalctl _SYSTEMD_UNIT=gatus.service";

@@ -2,42 +2,43 @@
   config,
   hostname,
   lib,
+  noughtyLib,
   pkgs,
-  tailNet,
   ...
 }:
 let
   basePath = "/netdata";
-  installOn = [
+  hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
+in
+lib.mkIf
+  (noughtyLib.isHost [
     "malak"
     "maul"
     "revan"
-  ];
-  hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
-in
-lib.mkIf (lib.elem config.networking.hostName installOn) {
-  services = {
-    # Reverse proxy netdata if Tailscale is enabled.
-    caddy.virtualHosts."${hostname}.${tailNet}".extraConfig =
-      lib.mkIf (config.services.netdata.enable && config.services.tailscale.enable)
-        ''
-          redir ${basePath} ${basePath}/
-          reverse_proxy ${basePath}/* localhost:19999
-        '';
-    netdata = {
-      # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present
-      configDir = lib.mkIf hasNvidiaGPU {
-        "python.d.conf" = pkgs.writeText "python.d.conf" ''
-          nvidia_smi: yes
-        '';
+  ])
+  {
+    services = {
+      # Reverse proxy netdata if Tailscale is enabled.
+      caddy.virtualHosts."${hostname}.${config.noughty.network.tailNet}".extraConfig =
+        lib.mkIf (config.services.netdata.enable && config.services.tailscale.enable)
+          ''
+            redir ${basePath} ${basePath}/
+            reverse_proxy ${basePath}/* localhost:19999
+          '';
+      netdata = {
+        # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present
+        configDir = lib.mkIf hasNvidiaGPU {
+          "python.d.conf" = pkgs.writeText "python.d.conf" ''
+            nvidia_smi: yes
+          '';
+        };
+        enable = true;
+        enableAnalyticsReporting = false;
+        package = pkgs.netdata;
       };
-      enable = true;
-      enableAnalyticsReporting = false;
-      package = pkgs.netdata;
     };
-  };
-  # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present
-  systemd.services.netdata.path = lib.optionals hasNvidiaGPU [
-    config.boot.kernelPackages.nvidia_x11
-  ];
-}
+    # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present
+    systemd.services.netdata.path = lib.optionals hasNvidiaGPU [
+      config.boot.kernelPackages.nvidia_x11
+    ];
+  }

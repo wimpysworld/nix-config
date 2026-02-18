@@ -1,7 +1,6 @@
 {
   config,
   inputs,
-  isWorkstation,
   lib,
   noughtyLib,
   pkgs,
@@ -19,7 +18,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
     ]
     # TODO: Disabled until upstream fixes missing outputHashes
     # https://github.com/anomalyco/opencode/issues/11755
-    ++ lib.optionals (false && isWorkstation && isLinux) [
+    ++ lib.optionals (false && config.noughty.host.is.workstation && isLinux) [
       inputs.opencode.packages.${system}.desktop
     ];
   };

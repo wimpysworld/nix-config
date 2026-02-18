@@ -1,5 +1,5 @@
 {
-  isISO,
+  config,
   inputs,
   lib,
   pkgs,
@@ -25,5 +25,5 @@ let
   };
 in
 {
-  environment.systemPackages = lib.optionals isISO [ install-system ];
+  environment.systemPackages = lib.optionals config.noughty.host.is.iso [ install-system ];
 }

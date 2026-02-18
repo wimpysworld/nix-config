@@ -1,6 +1,5 @@
 {
   config,
-  isInstall,
   lib,
   username,
   ...
@@ -8,7 +7,7 @@
 let
   domain = "wimpys.world";
 in
-lib.mkIf isInstall {
+lib.mkIf (!config.noughty.host.is.iso) {
   environment = {
     shellAliases = {
       mail-log = "journalctl _SYSTEMD_UNIT=nullmailer.service";

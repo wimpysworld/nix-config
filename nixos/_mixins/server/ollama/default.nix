@@ -3,7 +3,6 @@
   hostname,
   lib,
   pkgs,
-  tailNet,
   ...
 }:
 let
@@ -108,7 +107,7 @@ in
         WEBUI_NAME = "${sithLord} Chat";
         WEBUI_URL =
           if (config.services.tailscale.enable && config.services.caddy.enable) then
-            "https://${hostname}.${tailNet}/"
+            "https://${hostname}.${config.noughty.network.tailNet}/"
           else
             "http://localhost:${toString config.services.open-webui.port}";
       };
@@ -117,11 +116,13 @@ in
       port = 8088;
     };
     caddy = lib.mkIf config.services.caddy.enable {
-      virtualHosts."${hostname}.${tailNet}" = lib.mkIf config.services.tailscale.enable {
-        extraConfig = ''
-          reverse_proxy ${config.services.open-webui.host}:${toString config.services.open-webui.port}
-        '';
-      };
+      virtualHosts."${hostname}.${config.noughty.network.tailNet}" =
+        lib.mkIf config.services.tailscale.enable
+          {
+            extraConfig = ''
+              reverse_proxy ${config.services.open-webui.host}:${toString config.services.open-webui.port}
+            '';
+          };
     };
     tika.enable = config.services.open-webui.enable;
   };

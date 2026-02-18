@@ -1,7 +1,7 @@
 {
   config,
-  isLima,
   lib,
+  noughtyLib,
   pkgs,
   username,
   ...
@@ -24,23 +24,23 @@
 
   home = {
     file.".face".source = ./face.png;
-    file."Development/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."Development/salsa/.envrc" = lib.mkIf (!isLima) {
+    file."Development/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) { text = ""; };
+    file."Development/salsa/.envrc" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
       text = "export DEB_VENDOR=Debian";
     };
-    file."Development/launchpad/.envrc" = lib.mkIf (!isLima) {
+    file."Development/launchpad/.envrc" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
       text = "export DEB_VENDOR=Ubuntu";
     };
-    file."Development/ubuntu/.envrc" = lib.mkIf (!isLima) {
+    file."Development/ubuntu/.envrc" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
       text = "export DEB_VENDOR=Ubuntu";
     };
-    file."Development/ubuntu-mate/.envrc" = lib.mkIf (!isLima) {
+    file."Development/ubuntu-mate/.envrc" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
       text = "export DEB_VENDOR=Ubuntu";
     };
-    file."Games/.keep" = lib.mkIf (!isLima) { text = ""; };
-    file."Websites/.keep" = lib.mkIf (!isLima) { text = ""; };
+    file."Games/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) { text = ""; };
+    file."Websites/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) { text = ""; };
     file."Zero/.keep".text = "";
-    packages = lib.optionals (!isLima) [
+    packages = lib.optionals (!(noughtyLib.hostHasTag "lima")) [
       pkgs.gocryptfs # Terminal encrypted filesystem
     ];
     sessionVariables = {
@@ -50,7 +50,7 @@
     };
   };
   programs = {
-    bash.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !isLima) {
+    bash.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !(noughtyLib.hostHasTag "lima")) {
       lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
       unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
       lock-secrets = "fusermount -u ~/Vaults/Secrets";
@@ -59,20 +59,20 @@
     fish.loginShellInit = ''
       ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
     '';
-    fish.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !isLima) {
+    fish.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !(noughtyLib.hostHasTag "lima")) {
       lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
       unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
       lock-secrets = "fusermount -u ~/Vaults/Secrets";
       unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
     };
-    zsh.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !isLima) {
+    zsh.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !(noughtyLib.hostHasTag "lima")) {
       lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
       unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
       lock-secrets = "fusermount -u ~/Vaults/Secrets";
       unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
     };
   };
-  systemd.user.tmpfiles = lib.mkIf (pkgs.stdenv.isLinux && !isLima) {
+  systemd.user.tmpfiles = lib.mkIf (pkgs.stdenv.isLinux && !(noughtyLib.hostHasTag "lima")) {
     rules = [
       "d ${config.home.homeDirectory}/Crypt 0755 ${username} users - -"
       "d ${config.home.homeDirectory}/Vaults/Armstrong 0755 ${username} users - -"

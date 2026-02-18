@@ -1,11 +1,10 @@
 {
   config,
-  isInstall,
   lib,
   pkgs,
   ...
 }:
-lib.mkIf isInstall {
+lib.mkIf (!config.noughty.host.is.iso) {
   # Only enables auxilary printing support/packages if
   # config.services.printing.enable is true; the master control
   # - https://wiki.nixos.org/wiki/Printing

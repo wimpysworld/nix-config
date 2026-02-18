@@ -1,6 +1,6 @@
 {
+  config,
   hostname,
-  isInstall,
   lib,
   pkgs,
   username,
@@ -15,7 +15,7 @@ let
     cp ${./xl}/*.deck $out/
   '';
 in
-lib.mkIf isInstall {
+lib.mkIf (!config.noughty.host.is.iso) {
   environment.systemPackages = with pkgs; [ deckmaster ];
 
   services = {

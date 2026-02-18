@@ -1,20 +1,20 @@
 {
   config,
-  isISO,
-  isWorkstation,
   lib,
   pkgs,
   username,
   ...
 }:
 let
-  isWorkstationISO = isISO && isWorkstation;
+  isWorkstationISO = config.noughty.host.is.iso && config.noughty.host.is.workstation;
 in
 {
   config.users.users.nixos.description = "NixOS";
 
   # All configurations for live media are below:
-  config.system = lib.mkIf isISO { stateVersion = lib.mkForce lib.trivial.release; };
+  config.system = lib.mkIf config.noughty.host.is.iso {
+    stateVersion = lib.mkForce lib.trivial.release;
+  };
 
   config.environment = {
     systemPackages = lib.optionals isWorkstationISO [ pkgs.gparted ];

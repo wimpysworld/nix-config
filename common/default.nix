@@ -1,7 +1,6 @@
 {
   config,
   inputs,
-  isInstall,
   lib,
   outputs,
   pkgs,
@@ -67,6 +66,6 @@
 
   programs = {
     fish.enable = true;
-    nix-index-database.comma.enable = isInstall;
+    nix-index-database.comma.enable = !config.noughty.host.is.iso;
   };
 }

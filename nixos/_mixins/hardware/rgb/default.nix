@@ -1,7 +1,6 @@
 {
+  config,
   hostname,
-  isInstall,
-  isWorkstation,
   lib,
   pkgs,
   username,
@@ -31,12 +30,16 @@ let
     ];
   };
 in
-lib.mkIf isInstall {
+lib.mkIf (!config.noughty.host.is.iso) {
   environment = {
     systemPackages =
       with pkgs;
-      lib.optionals (builtins.hasAttr hostname razerPeripherals && isWorkstation) [ polychromatic ]
-      ++ lib.optionals (builtins.hasAttr hostname ratbagMice && isWorkstation) [ piper ];
+      lib.optionals (builtins.hasAttr hostname razerPeripherals && config.noughty.host.is.workstation) [
+        polychromatic
+      ]
+      ++ lib.optionals (builtins.hasAttr hostname ratbagMice && config.noughty.host.is.workstation) [
+        piper
+      ];
   };
   hardware = {
     openrazer = lib.mkIf (builtins.hasAttr hostname razerPeripherals) {

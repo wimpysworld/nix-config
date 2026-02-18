@@ -1,13 +1,10 @@
 {
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
-let
-  installOn = [ "none" ];
-in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost [ "none" ]) {
   services = {
     samba = {
       package = pkgs.samba4Full;

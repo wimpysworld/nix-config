@@ -1,8 +1,7 @@
 {
   catppuccinPalette,
+  config,
   hostname,
-  isISO,
-  isServer,
   lib,
   pkgs,
   ...
@@ -61,7 +60,7 @@ let
       palette-background=${rgbToKmscon "base"}
       sb-size=16384
     '';
-  useGeoclue = !isServer && !isISO;
+  useGeoclue = !config.noughty.host.is.server && !config.noughty.host.is.iso;
 
   # Use centralized VT color mapping from palette
   vtColorMap = catppuccinPalette.vtColorMap;
@@ -159,7 +158,7 @@ in
     # - https://github.com/Aetf/kmscon/issues/18#issuecomment-612003371
 
     kmscon = {
-      autologinUser = if isISO then "nixos" else null;
+      autologinUser = if config.noughty.host.is.iso then "nixos" else null;
       enable = true;
       hwRender = false;
       fonts = [
@@ -181,6 +180,6 @@ in
 
   time = {
     hardwareClockInLocalTime = true;
-    timeZone = lib.mkIf isServer "UTC";
+    timeZone = lib.mkIf config.noughty.host.is.server "UTC";
   };
 }

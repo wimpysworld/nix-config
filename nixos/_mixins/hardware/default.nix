@@ -1,7 +1,5 @@
 {
   config,
-  isInstall,
-  isWorkstation,
   lib,
   ...
 }:
@@ -15,11 +13,11 @@ in
   imports = lib.mapAttrsToList (name: _: importDirectory name) directories;
 
   services = {
-    fwupd.enable = lib.mkDefault isWorkstation;
-    hardware.bolt.enable = isInstall;
+    fwupd.enable = lib.mkDefault config.noughty.host.is.workstation;
+    hardware.bolt.enable = !config.noughty.host.is.iso;
     irqbalance = lib.mkIf (!config.services.qemuGuest.enable) {
       enable = true;
     };
-    smartd.enable = isInstall;
+    smartd.enable = !config.noughty.host.is.iso;
   };
 }

@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  isWorkstation,
   lib,
   noughtyLib,
   pkgs,
@@ -10,7 +9,7 @@
 let
   inherit (pkgs.stdenv) isLinux;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;

@@ -1,12 +1,11 @@
 {
   config,
-  isWorkstation,
   lib,
   noughtyLib,
   pkgs,
   ...
 }:
-lib.mkIf (noughtyLib.isUser [ "martin" ] && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) {
   home = {
     packages = with pkgs; [
       yaml-language-server

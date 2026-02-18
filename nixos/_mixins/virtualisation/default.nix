@@ -1,6 +1,5 @@
 {
   config,
-  isWorkstation,
   lib,
   noughtyLib,
   pkgs,
@@ -67,7 +66,7 @@ let
     else
       "overlay2"; # Default for xfs, ext4, and others
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) {
   environment = {
     # https://wiki.nixos.org/wiki/Docker
     systemPackages =

@@ -1,9 +1,6 @@
 {
   config,
   hostname,
-  isInstall,
-  isWorkstation,
-  isServer,
   lib,
   pkgs,
   username,
@@ -15,12 +12,14 @@ let
     "revan"
   ];
 in
-lib.mkIf (isWorkstation || isServer) {
-  environment.systemPackages = with pkgs; lib.optionals isWorkstation [ trayscale ];
+lib.mkIf (config.noughty.host.is.workstation || config.noughty.host.is.server) {
+  environment.systemPackages =
+    with pkgs;
+    lib.optionals config.noughty.host.is.workstation [ trayscale ];
 
   services.tailscale = {
-    authKeyFile = lib.mkIf isInstall config.sops.secrets.tailscale-auth-key.path;
-    authKeyParameters.preauthorized = lib.mkIf isInstall true;
+    authKeyFile = lib.mkIf (!config.noughty.host.is.iso) config.sops.secrets.tailscale-auth-key.path;
+    authKeyParameters.preauthorized = lib.mkIf (!config.noughty.host.is.iso) true;
     disableUpstreamLogging = true;
     enable = true;
     extraUpFlags = [
@@ -38,7 +37,7 @@ lib.mkIf (isWorkstation || isServer) {
     useRoutingFeatures = "both";
   };
 
-  sops = lib.mkIf isInstall {
+  sops = lib.mkIf (!config.noughty.host.is.iso) {
     secrets.tailscale-auth-key = {
       sopsFile = ../../../../secrets/tailscale.yaml;
       key = "auth_key";

@@ -1,10 +1,10 @@
 {
-  isInstall,
+  config,
   lib,
   username,
   ...
 }:
-lib.mkIf isInstall {
+lib.mkIf (!config.noughty.host.is.iso) {
   services = {
     # Provides users with access to VIA
     # https://get.vial.today/manual/linux-udev.html
