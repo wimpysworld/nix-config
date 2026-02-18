@@ -414,9 +414,11 @@ in
       audacity
     ]
     ++ lib.optionals (!isLima && isLinux) [
-      blender-hip
       gimp3
       inkscape
+    ]
+    ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
+      blender-hip
       davinciResolve
     ];
 
