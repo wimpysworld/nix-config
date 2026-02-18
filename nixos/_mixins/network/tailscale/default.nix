@@ -20,7 +20,6 @@ lib.mkIf (isWorkstation || isServer) {
 
   services.tailscale = {
     authKeyFile = lib.mkIf isInstall config.sops.secrets.tailscale-auth-key.path;
-    authKeyParameters.preauthorized = lib.mkIf isInstall true;
     disableUpstreamLogging = true;
     enable = true;
     extraUpFlags = [
