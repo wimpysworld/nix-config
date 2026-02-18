@@ -7,7 +7,7 @@
   ...
 }:
 let
-  installFor = [ "martin" ];
+  installFor = [ "none" ];
 in
 lib.mkIf (lib.elem username installFor && isWorkstation) {
   home = {
