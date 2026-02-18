@@ -475,7 +475,6 @@ in
 { isISO, isWorkstation, lib, ... }:
 {
   environment.systemPackages = lib.optionals (!isISO) [ ... ];
-  imports = lib.optional isWorkstation ./_mixins/desktop;
 }
 ```
 
@@ -487,15 +486,10 @@ let
 in
 {
   environment.systemPackages = lib.optionals (!cfg.is.iso) [ ... ];
-  imports = lib.optional cfg.is.workstation ./_mixins/desktop;
 }
 ```
 
-⚠️ **Caveat on `imports`.** Using `config` in `imports` creates an infinite recursion because `imports` is evaluated before `config` is fixed. The `imports` lines that use boolean flags must either:
-- Continue receiving the flag via a minimal `specialArgs` set (see [What stays as specialArgs](#what-stays-as-specialargs)), or
-- Be restructured to use `lib.mkIf` inside the imported module rather than conditionally importing.
-
-This is the single biggest constraint on the migration. See [Trade-offs](#trade-offs-and-limitations) for the full discussion.
+⚠️ **Caveat on `imports`.** Using `config` in `imports` creates an infinite recursion because `imports` is evaluated before `config` is fixed. The old `imports = lib.optional isWorkstation ./_mixins/desktop` pattern cannot be translated to `imports = lib.optional cfg.is.workstation ./_mixins/desktop` - this will recurse. Instead, make the import unconditional and have the imported module gate itself internally using the long-form pattern (see [Pattern 9](#pattern-9-long-form-module-with-sub-imports-6-hub-modules)). This constraint affects only the ~6 desktop hub modules.
 
 ### Pattern 5: Combined user + flag gating
 
@@ -622,6 +616,91 @@ in
 ```
 
 Declared once in the host module, consumed everywhere. Adding a new workstation means setting `noughty.host.displays` in one file - no other files need updating.
+
+### Pattern 9: Long-form module with sub-imports (~6 hub modules)
+
+Most modules are leaf modules - they set config values and have no `imports`. These use the flat patterns shown in Patterns 1-8: `lib.mkIf condition { ... }` as the entire module body, clean and minimal.
+
+A small number of **hub modules** import sub-modules and also need to gate their own config. These modules require the long-form pattern because `imports` cannot appear inside `lib.mkIf`.
+
+**Before (conditional import at the parent):**
+```nix
+# nixos/default.nix
+{ isWorkstation, lib, ... }:
+{
+  imports = lib.optional isWorkstation ./_mixins/desktop;
+}
+
+# nixos/_mixins/desktop/default.nix
+{ isInstall, lib, pkgs, ... }:
+{
+  imports = [ ./${desktop} ];
+  boot.plymouth.enable = true;
+  programs.appimage.enable = isInstall;
+}
+```
+
+**After (unconditional import, internal gate):**
+```nix
+# nixos/default.nix - import unconditionally
+{
+  imports = [ ./_mixins/desktop ];
+}
+
+# nixos/_mixins/desktop/default.nix - long-form: imports + gated config
+{ config, lib, pkgs, ... }:
+{
+  imports = [
+    ./apps
+    ./backgrounds
+    ./hyprland
+    ./wayfire
+  ];
+  config = lib.mkIf config.noughty.host.is.workstation {
+    boot.plymouth.enable = true;
+    programs.appimage.enable = !config.noughty.host.is.iso;
+  };
+}
+```
+
+#### When to use the long-form pattern
+
+📌 **Decision rule: does the module have `imports`?**
+
+- **No `imports`** → use the flat pattern: `lib.mkIf condition { ... }` as the entire module body. This is Patterns 1-8 and covers ~95% of modules.
+- **Has `imports`** → use the long-form pattern: `{ imports = [...]; config = lib.mkIf condition { ... }; }`. The `imports` stay unconditional; each imported sub-module gates itself internally.
+
+That's it. One question, one answer.
+
+#### Why `imports` cannot be conditional on `config`
+
+The Nix module system evaluates in two passes. First pass: collect all `imports` to build the complete module tree. Second pass: evaluate `config` by merging all modules. Since `imports` are resolved *before* `config` exists, any expression like `imports = lib.optional config.noughty.host.is.workstation ./foo` creates infinite recursion - it needs `config` to determine imports, but needs imports to determine `config`.
+
+The long-form pattern sidesteps this: `imports` are always unconditional (resolved in pass one), and `config` is gated with `lib.mkIf` (evaluated in pass two). The imported sub-modules are always present in the module tree but contribute nothing when their gate is false.
+
+#### Scope
+
+Only ~6 hub modules in the codebase need this pattern - the desktop entry points that fan out to compositor sub-modules. The ~200 leaf modules migrated in Phase 3 use the flat patterns from Patterns 1-5. Adding a new leaf mixin (the common case) never requires the long-form pattern.
+
+#### With `let` bindings
+
+When a hub module has `let` bindings that depend on `config.noughty.*` values (e.g. reading `desktop` which is `null` on non-workstation systems), place the `let` block inside the `config` gate to avoid evaluation failures:
+
+```nix
+{ config, lib, pkgs, ... }:
+{
+  imports = [ ./hyprland ./wayfire ];
+  config = lib.mkIf config.noughty.host.is.workstation (
+    let
+      desktop = config.noughty.host.desktop;
+      # bindings that use desktop safely - only evaluated when gate is true
+    in
+    {
+      # config using those bindings
+    }
+  );
+}
+```
 
 
 ## Complete Helper Function Reference
@@ -924,19 +1003,19 @@ The migration is designed to be incremental. At no point does anything break. Ea
 
 ### Phase 2: Remove `desktop` from specialArgs
 
-This proves the unconditional-import pattern and delivers the first specialArg removal.
+This proves the unconditional-import pattern and delivers the first specialArg removal. It affects only the ~6 desktop hub modules that have `imports` - these require the long-form `{ imports = [...]; config = lib.mkIf ... { ... }; }` pattern (see [Pattern 9](#pattern-9-long-form-module-with-sub-imports-6-hub-modules)). The ~200 leaf modules migrated in Phase 3 use the flat patterns from Patterns 1-5.
 
 1. In `nixos/default.nix` and `home-manager/default.nix`, make `./_mixins/desktop` an unconditional import.
-2. Wrap the entire body of `nixos/_mixins/desktop/default.nix` in `lib.mkIf config.noughty.host.is.workstation { }`.
+2. Convert `nixos/_mixins/desktop/default.nix` to the long-form module pattern: `imports` stay unconditional at the top level; wrap the config body in `config = lib.mkIf config.noughty.host.is.workstation { ... }`. The long-form is required because this module has `imports` - see [Pattern 9](#pattern-9-long-form-module-with-sub-imports-6-hub-modules) for why.
 3. Replace the `pathExists`-gated inner import with unconditional imports of all desktop subdirectories (`./hyprland`, `./wayfire`, `./aqua`).
-4. Add `lib.mkIf (config.noughty.host.desktop == "x") { ... }` to each desktop subdirectory's `default.nix`.
-5. In `home-manager/_mixins/desktop/default.nix`, move the `let` block inside `lib.mkIf config.noughty.host.is.workstation ( let ... in { ... } )`. Replace `desktop` function argument with `config.noughty.host.desktop`. Apply the same unconditional compositor imports.
+4. Convert each desktop subdirectory's `default.nix` to the long-form pattern: `imports` unconditional, `config = lib.mkIf (config.noughty.host.desktop == "x") { ... }`. Modules without `imports` (e.g. `greetd.nix`) use the flat pattern directly.
+5. In `home-manager/_mixins/desktop/default.nix`, convert to the long-form pattern: `imports` unconditional at the top level, `config = lib.mkIf config.noughty.host.is.workstation ( let ... in { ... } )`. Place the `let` block inside the `config` gate so bindings that read `desktop` (which is `null` on non-workstation systems) are not forced. Replace `desktop` function argument with `config.noughty.host.desktop`. Apply the same unconditional compositor imports.
 6. Remove `desktop` from `specialArgs`/`extraSpecialArgs` in `lib/helpers.nix`.
 7. Run `just eval` and `just build`.
 
-⚠️ **Verify with a non-workstation build.** After step 7, explicitly build a server (e.g. `just build-host malak`) and a VM. `let` bindings inside `lib.mkIf` are still evaluated to thunks - Nix's laziness means they won't be *forced* when the condition is false, but any binding that unconditionally calls a function on `desktop` (which is `null` on non-workstation systems) will produce a type error if forced. A successful `just build` on the current host is not sufficient if that host is a workstation - the `lib.mkIf` path is never false during that build.
+⚠️ **Verify with a non-workstation build.** After step 7, explicitly build a server (e.g. `just build-host malak`) and a VM. `let` bindings inside the `config` gate are still evaluated to thunks - Nix's laziness means they won't be *forced* when the condition is false, but any binding that unconditionally calls a function on `desktop` (which is `null` on non-workstation systems) will produce a type error if forced. A successful `just build` on the current host is not sufficient if that host is a workstation - the `lib.mkIf` path is never false during that build.
 
-**Result:** `desktop` is gone from specialArgs. The unconditional-import + internal gate pattern is established and proven.
+**Result:** `desktop` is gone from specialArgs. The unconditional-import + internal gate pattern is established and proven. Only ~6 hub modules use the long-form pattern; all other modules are unchanged.
 
 ### Phase 3: Migrate module bodies off `hostname` and `username`
 
@@ -1007,9 +1086,9 @@ This conditional import exists in both `nixos/default.nix` and `home-manager/def
 # nixos/default.nix - import unconditionally
 imports = [ ... ./_mixins/desktop ];
 
-# nixos/_mixins/desktop/default.nix - gate internally
+# nixos/_mixins/desktop/default.nix - long-form module: imports stay unconditional, config is gated
 { config, lib, pkgs, ... }:
-lib.mkIf config.noughty.host.is.workstation {
+{
   imports = [
     ./apps
     ./backgrounds
@@ -1017,43 +1096,60 @@ lib.mkIf config.noughty.host.is.workstation {
     ./wayfire
     ./aqua
   ];
-  boot     = { ... };
-  programs = { ... };
-  services = { ... };
+  config = lib.mkIf config.noughty.host.is.workstation {
+    boot     = { ... };
+    programs = { ... };
+    services = { ... };
+  };
 }
 ```
 
-Each desktop subdirectory gates on the specific value:
+⚠️ **Why the long-form pattern?** `imports` cannot appear inside `lib.mkIf` - the module system resolves `imports` before `config` is available, so conditional imports based on `config` values cause infinite recursion. The long-form `{ imports = [...]; config = lib.mkIf ... { ... }; }` pattern separates the two concerns: sub-modules are always imported (and gate themselves internally), while config is conditionally applied. See [Pattern 9](#pattern-9-long-form-module-with-sub-imports-6-hub-modules) for the full explanation and decision guide.
+
+Each desktop subdirectory gates on the specific compositor value:
 
 ```nix
-# nixos/_mixins/desktop/hyprland/default.nix
+# nixos/_mixins/desktop/hyprland/default.nix - also long-form (has imports)
 { config, lib, ... }:
-lib.mkIf (config.noughty.host.desktop == "hyprland") { ... }
+{
+  imports = [ ../greeters/greetd.nix ];
+  config = lib.mkIf (config.noughty.host.desktop == "hyprland") { ... };
+}
 ```
 
-This is safe: a module whose entire body is `lib.mkIf false { ... }` is fully evaluated (option declarations, function arguments) but contributes nothing to the system configuration. This is the standard NixOS mixin pattern.
+Modules without `imports` use the flat pattern directly:
+
+```nix
+# nixos/_mixins/desktop/greeters/greetd.nix - flat pattern (no imports)
+{ config, lib, ... }:
+lib.mkIf config.noughty.host.is.workstation { ... }
+```
+
+This is safe: a module whose entire `config` is `lib.mkIf false { ... }` is fully evaluated (option declarations, function arguments) but contributes nothing to the system configuration. This is the standard NixOS mixin pattern.
 
 The `builtins.pathExists` guard previously used inside the desktop mixin (`lib.optional (pathExists ./${desktop}) ./${desktop}`) was defensive - all desktop subdirectories exist in the repo. With typed `noughty.host.desktop`, typo protection moves to option validation. The `pathExists` check is dropped.
 
-In `home-manager/_mixins/desktop/default.nix`, the large `let` block computing theme values from `desktop` must move inside `lib.mkIf` to avoid evaluation failures on non-workstation systems (where `desktop` is `null`). `lib.mkIf` accepts a `let` expression as its second argument:
+In `home-manager/_mixins/desktop/default.nix`, the large `let` block computing theme values from `desktop` must move inside the `config` gate to avoid evaluation failures on non-workstation systems (where `desktop` is `null`). The long-form pattern places `imports` outside and the `let` block inside `config`:
 
 ```nix
 { catppuccinPalette, config, lib, pkgs, ... }:
-lib.mkIf config.noughty.host.is.workstation (
-  let
-    desktop = config.noughty.host.desktop;  # read from noughty, not specialArg
-    # all existing theme computations unchanged
-  in
-  {
-    imports = [
-      ./apps
-      ./compositor/hyprland
-      ./compositor/wayfire
-      ./compositor/aqua
-    ];
-    # each compositor/x/default.nix gates on config.noughty.host.desktop == "x"
-  }
-)
+{
+  imports = [
+    ./apps
+    ./compositor/hyprland
+    ./compositor/wayfire
+    ./compositor/aqua
+  ];
+  config = lib.mkIf config.noughty.host.is.workstation (
+    let
+      desktop = config.noughty.host.desktop;  # read from noughty, not specialArg
+      # all existing theme computations unchanged
+    in
+    {
+      # each compositor/x/default.nix gates on config.noughty.host.desktop == "x"
+    }
+  );
+}
 ```
 
 `desktop` is removed from `specialArgs`/`extraSpecialArgs` entirely. No module below the entry point lists it as a function argument.

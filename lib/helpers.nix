@@ -166,7 +166,6 @@ rec {
         inherit
           inputs
           outputs
-          desktop
           hostname
           username
           stateVersion
@@ -185,7 +184,10 @@ rec {
           hostIsIso
           ;
       };
-      modules = [ ../home-manager ];
+      modules = [
+        ../home-manager
+        { noughty.host.desktop = desktop; }
+      ];
     };
 
   # Helper function for generating NixOS configs
@@ -224,7 +226,6 @@ rec {
         inherit
           inputs
           outputs
-          desktop
           hostname
           username
           stateVersion
@@ -252,7 +253,11 @@ rec {
             else
               inputs.nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix";
         in
-        [ ../nixos ] ++ inputs.nixpkgs.lib.optionals isISO [ cd-dvd ];
+        [
+          ../nixos
+          { noughty.host.desktop = desktop; }
+        ]
+        ++ inputs.nixpkgs.lib.optionals isISO [ cd-dvd ];
     };
 
   mkDarwin =
@@ -283,7 +288,6 @@ rec {
         inherit
           inputs
           outputs
-          desktop
           hostname
           username
           isInstall
@@ -302,6 +306,7 @@ rec {
       };
       modules = [
         ../darwin
+        { noughty.host.desktop = desktop; }
       ];
     };
 

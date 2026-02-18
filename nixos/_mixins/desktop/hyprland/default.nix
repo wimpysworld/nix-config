@@ -1,5 +1,6 @@
 {
   catppuccinPalette,
+  config,
   isInstall,
   lib,
   pkgs,
@@ -58,75 +59,77 @@ let
 in
 {
   imports = [ ../greeters/greetd.nix ];
-  environment = {
-    sessionVariables = {
-      # Make sure the cursor size is the same in all environments
-      HYPRCURSOR_SIZE = 32;
-      HYPRCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
-      NIXOS_OZONE_WL = 1;
-      QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
-      # The the desktop sessions provided by the Hyprland package
-      XDG_DATA_DIRS = [
-        "${mkHiddenWaylandSession "hyprland"}/share"
-        "${mkHiddenWaylandSession "hyprland-systemd"}/share"
+  config = lib.mkIf (config.noughty.host.desktop == "hyprland") {
+    environment = {
+      sessionVariables = {
+        # Make sure the cursor size is the same in all environments
+        HYPRCURSOR_SIZE = 32;
+        HYPRCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+        NIXOS_OZONE_WL = 1;
+        QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
+        # The the desktop sessions provided by the Hyprland package
+        XDG_DATA_DIRS = [
+          "${mkHiddenWaylandSession "hyprland"}/share"
+          "${mkHiddenWaylandSession "hyprland-systemd"}/share"
+        ];
+      };
+      systemPackages =
+        with pkgs;
+        lib.optionals isInstall [
+          hyprShim
+        ];
+    };
+
+    programs = {
+      dconf.profiles.user.databases = [
+        {
+          settings = with lib.gvariant; {
+            "org/gnome/desktop/interface" = {
+              clock-format = "24h";
+              color-scheme = "${catppuccinPalette.preferShade}";
+              cursor-size = mkInt32 32;
+              cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+              document-font-name = "Work Sans 12";
+              font-name = "Work Sans 12";
+              gtk-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
+              gtk-enable-primary-paste = true;
+              icon-theme = "Papirus${catppuccinPalette.themeShade}";
+              monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
+              text-scaling-factor = mkDouble 1.0;
+            };
+
+            "org/gnome/desktop/sound" = {
+              theme-name = "freedesktop";
+            };
+
+            "org/gtk/gtk4/Settings/FileChooser" = {
+              clock-format = "24h";
+            };
+
+            "org/gtk/Settings/FileChooser" = {
+              clock-format = "24h";
+            };
+          };
+        }
       ];
+      hyprland = {
+        enable = true;
+        systemd.setPath.enable = true;
+      };
+      iio-hyprland = {
+        enable = true;
+      };
+      udevil.enable = true;
     };
-    systemPackages =
-      with pkgs;
-      lib.optionals isInstall [
-        hyprShim
-      ];
-  };
-
-  programs = {
-    dconf.profiles.user.databases = [
-      {
-        settings = with lib.gvariant; {
-          "org/gnome/desktop/interface" = {
-            clock-format = "24h";
-            color-scheme = "${catppuccinPalette.preferShade}";
-            cursor-size = mkInt32 32;
-            cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
-            document-font-name = "Work Sans 12";
-            font-name = "Work Sans 12";
-            gtk-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
-            gtk-enable-primary-paste = true;
-            icon-theme = "Papirus${catppuccinPalette.themeShade}";
-            monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
-            text-scaling-factor = mkDouble 1.0;
-          };
-
-          "org/gnome/desktop/sound" = {
-            theme-name = "freedesktop";
-          };
-
-          "org/gtk/gtk4/Settings/FileChooser" = {
-            clock-format = "24h";
-          };
-
-          "org/gtk/Settings/FileChooser" = {
-            clock-format = "24h";
-          };
-        };
-      }
-    ];
-    hyprland = {
-      enable = true;
-      systemd.setPath.enable = true;
+    security = {
+      pam.services.hyprlock = { };
     };
-    iio-hyprland = {
-      enable = true;
-    };
-    udevil.enable = true;
-  };
-  security = {
-    pam.services.hyprlock = { };
-  };
 
-  services = {
-    devmon.enable = true;
-    displayManager = {
-      sessionPackages = [ hyprShim ];
+    services = {
+      devmon.enable = true;
+      displayManager = {
+        sessionPackages = [ hyprShim ];
+      };
     };
   };
 }

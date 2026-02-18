@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  desktop,
   hostname,
   hostKind,
   hostFormFactor,
@@ -41,18 +40,17 @@ in
     ./_mixins/development
     ./_mixins/filesync
     ./_mixins/scripts
+    ./_mixins/desktop
     ./_mixins/services
     ./_mixins/terminal
     ./_mixins/users
-  ]
-  ++ lib.optional isWorkstation ./_mixins/desktop;
+  ];
 
   noughty = {
     host = {
       name = hostname;
       kind = hostKind;
       platform = platform;
-      desktop = desktop;
       formFactor = hostFormFactor;
       gpu.vendors = hostGpuVendors;
       tags = hostTags;

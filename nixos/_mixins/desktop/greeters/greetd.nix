@@ -1,5 +1,6 @@
 {
   catppuccinPalette,
+  config,
   hostname,
   lib,
   pkgs,
@@ -75,7 +76,7 @@ let
     default = "";
   };
 in
-{
+lib.mkIf config.noughty.host.is.workstation {
   # Use Cage to run regreet
   environment = {
     etc = {

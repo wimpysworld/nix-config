@@ -155,43 +155,43 @@ in
       is = {
         workstation = lib.mkOption {
           type = lib.types.bool;
-          default = lib.mkDefault (config.noughty.host.desktop != null);
+          default = config.noughty.host.desktop != null;
           description = "Whether this host is a workstation (has a desktop environment).";
         };
 
         server = lib.mkOption {
           type = lib.types.bool;
-          default = lib.mkDefault (config.noughty.host.kind == "server");
+          default = config.noughty.host.kind == "server";
           description = "Whether this host is a server.";
         };
 
         laptop = lib.mkOption {
           type = lib.types.bool;
-          default = lib.mkDefault (config.noughty.host.formFactor == "laptop");
+          default = config.noughty.host.formFactor == "laptop";
           description = "Whether this host is a laptop.";
         };
 
         iso = lib.mkOption {
           type = lib.types.bool;
-          default = lib.mkDefault false;
+          default = false;
           description = "Whether this host is an ISO image build.";
         };
 
         vm = lib.mkOption {
           type = lib.types.bool;
-          default = lib.mkDefault (config.noughty.host.kind == "vm");
+          default = config.noughty.host.kind == "vm";
           description = "Whether this host is a virtual machine.";
         };
 
         darwin = lib.mkOption {
           type = lib.types.bool;
-          default = lib.mkDefault (config.noughty.host.os == "darwin");
+          default = config.noughty.host.os == "darwin";
           description = "Whether this host runs macOS (Darwin).";
         };
 
         linux = lib.mkOption {
           type = lib.types.bool;
-          default = lib.mkDefault (config.noughty.host.os == "linux");
+          default = config.noughty.host.os == "linux";
           description = "Whether this host runs Linux.";
         };
       };

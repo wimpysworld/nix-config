@@ -1,6 +1,5 @@
 {
   config,
-  desktop,
   isISO,
   isWorkstation,
   lib,
@@ -22,7 +21,9 @@ in
   };
 
   # All workstation configurations for live media are below.
-  config.isoImage = lib.mkIf isWorkstationISO { edition = lib.mkForce "${desktop}"; };
+  config.isoImage = lib.mkIf isWorkstationISO {
+    edition = lib.mkForce "${config.noughty.host.desktop}";
+  };
 
   config.services = {
     displayManager.autoLogin = lib.mkIf isWorkstationISO { user = "${username}"; };

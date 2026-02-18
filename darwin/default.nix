@@ -33,7 +33,6 @@
       name = hostname;
       kind = hostKind;
       platform = platform;
-      desktop = "aqua";
       formFactor = hostFormFactor;
       gpu.vendors = hostGpuVendors;
       tags = hostTags;

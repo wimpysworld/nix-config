@@ -1,5 +1,6 @@
 {
   catppuccinPalette,
+  config,
   isInstall,
   lib,
   pkgs,
@@ -58,65 +59,67 @@ let
 in
 {
   imports = [ ../greeters/greetd.nix ];
-  environment = {
-    sessionVariables = {
-      # Make sure the cursor size is the same in all environments
-      XCURSOR_SIZE = 32;
-      XCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
-      NIXOS_OZONE_WL = 1;
-      # Hide the default wayfire session provided by the Wayfire package
-      XDG_DATA_DIRS = [
-        "${mkHiddenWaylandSession "wayfire"}/share"
-      ];
+  config = lib.mkIf (config.noughty.host.desktop == "wayfire") {
+    environment = {
+      sessionVariables = {
+        # Make sure the cursor size is the same in all environments
+        XCURSOR_SIZE = 32;
+        XCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+        NIXOS_OZONE_WL = 1;
+        # Hide the default wayfire session provided by the Wayfire package
+        XDG_DATA_DIRS = [
+          "${mkHiddenWaylandSession "wayfire"}/share"
+        ];
+      };
+      systemPackages =
+        with pkgs;
+        lib.optionals isInstall [
+          wayfireShim
+          wayfire
+        ];
     };
-    systemPackages =
-      with pkgs;
-      lib.optionals isInstall [
-        wayfireShim
-        wayfire
+
+    programs = {
+      dconf.profiles.user.databases = [
+        {
+          settings = with lib.gvariant; {
+            "org/gnome/desktop/interface" = {
+              clock-format = "24h";
+              color-scheme = "${catppuccinPalette.preferShade}";
+              cursor-size = mkInt32 32;
+              cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+              document-font-name = "Work Sans 12";
+              font-name = "Work Sans 12";
+              gtk-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
+              gtk-enable-primary-paste = true;
+              icon-theme = "Papirus${catppuccinPalette.themeShade}";
+              monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
+              text-scaling-factor = mkDouble 1.0;
+            };
+
+            "org/gnome/desktop/sound" = {
+              theme-name = "freedesktop";
+            };
+
+            "org/gtk/gtk4/Settings/FileChooser" = {
+              clock-format = "24h";
+            };
+
+            "org/gtk/Settings/FileChooser" = {
+              clock-format = "24h";
+            };
+          };
+        }
       ];
-  };
-
-  programs = {
-    dconf.profiles.user.databases = [
-      {
-        settings = with lib.gvariant; {
-          "org/gnome/desktop/interface" = {
-            clock-format = "24h";
-            color-scheme = "${catppuccinPalette.preferShade}";
-            cursor-size = mkInt32 32;
-            cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
-            document-font-name = "Work Sans 12";
-            font-name = "Work Sans 12";
-            gtk-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
-            gtk-enable-primary-paste = true;
-            icon-theme = "Papirus${catppuccinPalette.themeShade}";
-            monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
-            text-scaling-factor = mkDouble 1.0;
-          };
-
-          "org/gnome/desktop/sound" = {
-            theme-name = "freedesktop";
-          };
-
-          "org/gtk/gtk4/Settings/FileChooser" = {
-            clock-format = "24h";
-          };
-
-          "org/gtk/Settings/FileChooser" = {
-            clock-format = "24h";
-          };
-        };
-      }
-    ];
-    wayfire = {
-      enable = true;
+      wayfire = {
+        enable = true;
+      };
     };
-  };
 
-  services = {
-    displayManager = {
-      sessionPackages = [ wayfireShim ];
+    services = {
+      displayManager = {
+        sessionPackages = [ wayfireShim ];
+      };
     };
   };
 }

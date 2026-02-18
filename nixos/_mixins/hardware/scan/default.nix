@@ -1,6 +1,5 @@
 {
   config,
-  desktop,
   isWorkstation,
   isInstall,
   lib,
@@ -9,7 +8,8 @@
   ...
 }:
 let
-  scanningApp = if (desktop == "plasma") then pkgs.kdePackages.skanpage else pkgs.simple-scan;
+  scanningApp =
+    if (config.noughty.host.desktop == "plasma") then pkgs.kdePackages.skanpage else pkgs.simple-scan;
 in
 lib.mkIf isInstall {
   # Only enables auxilary scanning support/packages if
