@@ -119,8 +119,6 @@
         "malgus"
         "momin"
         "phasma"
-        "tanis"
-        "felkor"
         "vader"
         "zannah"
       ];
