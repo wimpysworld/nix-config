@@ -10,7 +10,6 @@
   imports = [
     ./apps
     ./backgrounds
-    ./wayfire
   ]
   ++ lib.optional (builtins.pathExists (./. + "/${desktop}")) ./${desktop};
 
