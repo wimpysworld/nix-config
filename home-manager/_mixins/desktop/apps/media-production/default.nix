@@ -51,7 +51,7 @@ in
 
   home.file = {
     "${config.xdg.configHome}/easyeffects/input/mic-vader-oktava.json" =
-      lib.mkIf (hostname == "vader")
+      lib.mkIf (noughtyLib.isHost [ "vader" ])
         {
           text = ''
             {
@@ -229,7 +229,7 @@ in
           '';
         };
     "${config.xdg.configHome}/easyeffects/input/mic-phasma-oktava.json" =
-      lib.mkIf (hostname == "phasma")
+      lib.mkIf (noughtyLib.isHost [ "phasma" ])
         {
           text = ''
             {
@@ -417,12 +417,12 @@ in
       gimp3
       inkscape
     ]
-    ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
+    ++ lib.optionals (noughtyLib.hostHasTag "streamstation") [
       blender-hip
       davinciResolve
     ];
 
-  services.easyeffects = lib.mkIf (hostname == "vader" || hostname == "phasma") {
+  services.easyeffects = lib.mkIf (noughtyLib.hostHasTag "streamstation") {
     enable = true;
     preset = "mic-${hostname}-oktava";
   };

@@ -1,13 +1,13 @@
 {
   config,
-  hostname,
+  noughtyLib,
   lib,
   pkgs,
   ...
 }:
 let
   username = config.noughty.user.name;
-  useLowLatencyPipewire = hostname == "phasma" || hostname == "vader";
+  useLowLatencyPipewire = noughtyLib.hostHasTag "streamstation";
 in
 lib.mkIf (!config.noughty.host.is.iso) {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency

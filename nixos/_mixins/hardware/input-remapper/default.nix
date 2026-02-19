@@ -1,13 +1,13 @@
 {
   config,
-  hostname,
+  noughtyLib,
   lib,
   pkgs,
   ...
 }:
 let
   username = config.noughty.user.name;
-  enableInputRemapper = hostname == "phasma" || hostname == "vader";
+  enableInputRemapper = noughtyLib.hostHasTag "trackball";
 in
 lib.mkIf (!config.noughty.host.is.iso) {
   services.input-remapper = {

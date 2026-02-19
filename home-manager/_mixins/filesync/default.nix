@@ -45,7 +45,9 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
       ~/.config/autostart/keybase_autostart.desktop. As long as this
       file exists, the autostart file won't be automatically recreated.
     '';
-    packages = with pkgs; [ stc-cli ] ++ lib.optionals (hostname != "bane") keybasePackages;
+    packages =
+      with pkgs;
+      [ stc-cli ] ++ lib.optionals (!(noughtyLib.hostHasTag "policy")) keybasePackages;
   };
 
   programs.fish.shellAliases = lib.mkIf isLinux {
@@ -64,11 +66,11 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
 
   services = {
     # Keybase is Linux-only (macOS uses Homebrew cask)
-    kbfs = lib.mkIf (isLinux && hostname != "bane") {
+    kbfs = lib.mkIf (isLinux && !(noughtyLib.hostHasTag "policy")) {
       enable = true;
       mountPoint = "Keybase";
     };
-    keybase = lib.mkIf (isLinux && hostname != "bane") {
+    keybase = lib.mkIf (isLinux && !(noughtyLib.hostHasTag "policy")) {
       enable = true;
     };
     # Syncthing works on both Linux (systemd) and macOS (launchd)

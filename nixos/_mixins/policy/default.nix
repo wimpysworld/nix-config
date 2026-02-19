@@ -39,7 +39,7 @@ let
     text = builtins.readFile ./falcon-sensor-check.sh;
   };
 in
-lib.mkIf (noughtyLib.isHost [ "bane" ]) {
+lib.mkIf (noughtyLib.hostHasTag "policy") {
 
   environment.systemPackages = [
     falconSensorCheck

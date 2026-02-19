@@ -2,6 +2,7 @@
   config,
   hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -316,7 +317,7 @@ in
             "wireplumber"
             "pulseaudio#input"
           ]
-          ++ lib.optional (hostname == "vader" || hostname == "phasma") "custom/virtualcam"
+          ++ lib.optional (noughtyLib.hostHasTag "pci-hdmi-capture") "custom/virtualcam"
           ++ [
             "bluetooth"
             "network"

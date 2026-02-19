@@ -1,13 +1,12 @@
 {
   config,
-  hostname,
   lib,
   noughtyLib,
   pkgs,
   ...
 }:
 let
-  mountPath = if hostname == "malak" then "data" else "snapshot";
+  mountPath = if noughtyLib.isHost [ "malak" ] then "data" else "snapshot";
 in
 lib.mkIf
   (noughtyLib.isHost [
@@ -16,7 +15,7 @@ lib.mkIf
   ])
   {
     environment = {
-      shellAliases = lib.mkIf (hostname == "malak") {
+      shellAliases = lib.mkIf (noughtyLib.isHost [ "malak" ]) {
         goaccess-ubuntu-mate-releases = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/ubuntu-mate-releases.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
       };
       systemPackages = with pkgs; [
@@ -25,7 +24,7 @@ lib.mkIf
     };
 
     services = {
-      caddy = lib.mkIf (hostname == "malak") {
+      caddy = lib.mkIf (noughtyLib.isHost [ "malak" ]) {
         virtualHosts."releases.ubuntu-mate.org" = {
           extraConfig = ''
             root * /mnt/${mountPath}/ubuntu-mate/releases
@@ -41,7 +40,7 @@ lib.mkIf
       };
     };
 
-    systemd.services.goaccess-ubuntu-mate-releases = lib.mkIf (hostname == "malak") {
+    systemd.services.goaccess-ubuntu-mate-releases = lib.mkIf (noughtyLib.isHost [ "malak" ]) {
       description = "Generate goaccess ubuntu-mate-releases report";
       serviceConfig = {
         ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/ubuntu-mate-releases.log --log-format=CADDY -o /mnt/data/www/goaccess/ubuntu-mate-releases.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
@@ -49,7 +48,7 @@ lib.mkIf
       };
     };
 
-    systemd.timers.goaccess-ubuntu-mate-releases = lib.mkIf (hostname == "malak") {
+    systemd.timers.goaccess-ubuntu-mate-releases = lib.mkIf (noughtyLib.isHost [ "malak" ]) {
       description = "Run goaccess ubuntu-mate-releases report every hour";
       wantedBy = [ "timers.target" ];
       timerConfig = {

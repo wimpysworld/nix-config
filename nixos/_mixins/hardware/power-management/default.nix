@@ -1,17 +1,12 @@
 {
   config,
-  hostname,
+  noughtyLib,
   lib,
   ...
 }:
 let
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
-  isThinkpad =
-    hostname == "tanis"
-    || hostname == "felkor"
-    || hostname == "sidious"
-    || hostname == "shaa"
-    || hostname == "atrius";
+  isThinkpad = noughtyLib.hostHasTag "thinkpad";
   usePowerProfiles = config.programs.hyprland.enable || config.programs.wayfire.enable;
 in
 lib.mkIf (!config.noughty.host.is.iso) {

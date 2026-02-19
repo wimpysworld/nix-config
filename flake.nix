@@ -60,7 +60,7 @@
       # System registry - central definition of all systems and their properties
       #
       # Canonical tag vocabulary:
-      #   Host tags: streamstation, high-dpi, thinkpad, gaming, lima, wsl
+      #   Host tags: streamstation, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, gaming, lima, wsl
       #   User tags: developer, admin, family
       #
       # Registry fields:
@@ -87,7 +87,9 @@
           ];
           tags = [
             "streamstation"
-            "high-dpi"
+            "trackball"
+            "streamdeck"
+            "pci-hdmi-capture"
           ];
         };
         phasma = {
@@ -100,7 +102,9 @@
           ];
           tags = [
             "streamstation"
-            "high-dpi"
+            "trackball"
+            "streamdeck"
+            "pci-hdmi-capture"
           ];
         };
         bane = {
@@ -108,6 +112,7 @@
           platform = "x86_64-linux";
           formFactor = "desktop";
           gpu.vendors = [ "amd" ];
+          tags = [ "policy" ];
         };
         tanis = {
           kind = "computer";
@@ -135,12 +140,14 @@
             "intel"
             "nvidia"
           ];
+          tags = [ "thinkpad" ];
         };
         felkor = {
           kind = "computer";
           platform = "x86_64-linux";
           formFactor = "laptop";
           gpu.vendors = [ "amd" ];
+          tags = [ "thinkpad" ];
         };
 
         # Gaming - non-standard username and desktop, so both explicit

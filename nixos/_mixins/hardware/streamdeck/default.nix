@@ -1,13 +1,13 @@
 {
   config,
-  hostname,
+  noughtyLib,
   lib,
   pkgs,
   ...
 }:
 let
   username = config.noughty.user.name;
-  isStreamstation = hostname == "phasma" || hostname == "vader";
+  isStreamstation = noughtyLib.hostHasTag "streamdeck";
   # Bundle all .deck config files into a single store directory so that
   # relative deck references (deck = "foo.deck") resolve correctly.
   deckmaster-xl-config = pkgs.runCommand "deckmaster-xl-config" { } ''

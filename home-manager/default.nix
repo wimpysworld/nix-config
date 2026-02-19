@@ -8,11 +8,8 @@
   hostTags,
   hostIsIso,
   inputs,
-  isLaptop,
-  isLima,
-  isServer,
-  isWorkstation,
   lib,
+  noughtyLib,
   outputs,
   pkgs,
   platform,
@@ -71,7 +68,7 @@ in
     homeDirectory =
       if isDarwin then
         "/Users/${username}"
-      else if isLima then
+      else if noughtyLib.hostHasTag "lima" then
         "/home/${username}.linux"
       else
         "/home/${username}";
@@ -108,7 +105,7 @@ in
         symbola
         work-sans
       ]
-      ++ lib.optionals isWorkstation [
+      ++ lib.optionals config.noughty.host.is.workstation [
         bebas-neue-2014-font
         bebas-neue-pro-font
         bebas-neue-rounded-font
@@ -271,7 +268,7 @@ in
     };
     userDirs = {
       # Do not create XDG directories for LIMA; it is confusing
-      enable = isLinux && !isLima;
+      enable = isLinux && !(noughtyLib.hostHasTag "lima");
       createDirectories = lib.mkDefault true;
       extraConfig = {
         XDG_SCREENSHOTS_DIR = "${config.home.homeDirectory}/Pictures/Screenshots";
