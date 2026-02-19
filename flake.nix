@@ -312,7 +312,7 @@
 
       homeConfigurations =
         let
-          allHomes = builder.generateConfigs (_e: true) systems;
+          allHomes = builder.generateConfigs (e: !builder.isISOEntry e) systems;
         in
         nixpkgs.lib.mapAttrs' (
           _name: config:
