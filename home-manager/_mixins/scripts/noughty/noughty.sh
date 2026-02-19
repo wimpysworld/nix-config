@@ -16,6 +16,7 @@ Commands:
   shell [--unstable] <pkg...> Spawn shell with multiple packages
   channel                     Show current stable Nixpkgs channel
   spawn <program> [args...]   Launch program detached from session
+  facts                       Show system attributes and configuration
 
 Options:
   -h, --help                  Show this help message
@@ -27,6 +28,7 @@ Examples:
   noughty shell git vim       # Shell with git and vim
   noughty channel             # Show current stable channel
   noughty spawn firefox       # Launch firefox detached
+  noughty facts               # Show system attributes
 EOF
 }
 
@@ -268,6 +270,84 @@ cmd_spawn() {
 	setsid --fork "$program" "$@" &>/dev/null
 }
 
+# Command: noughty facts (alias: nofx)
+cmd_facts() {
+	# ANSI colour codes
+	local dim='\033[2m'
+	local bold='\033[1m'
+	local reset='\033[0m'
+	local cyan='\033[36m'
+	local green='\033[32m'
+
+	# Format a label-value pair; skip if value is empty or "none"
+	print_field() {
+		local label="$1"
+		local value="$2"
+		if [ -n "$value" ] && [ "$value" != "none" ]; then
+			printf "  ${dim}%-12s${reset} %s\n" "$label" "$value"
+		fi
+	}
+
+	echo ""
+	printf "  ${cyan}${bold}nøughty${reset} ${dim}facts${reset}\n"
+	echo ""
+
+	# Identity
+	printf "  ${dim}%-12s${reset} ${bold}%s${reset}\n" "Host" "$NOUGHTY_HOST_NAME"
+	print_field "Kind" "$NOUGHTY_HOST_KIND"
+	print_field "OS" "$NOUGHTY_HOST_OS ($NOUGHTY_HOST_PLATFORM)"
+	print_field "Form" "$NOUGHTY_HOST_FORM_FACTOR"
+
+	# Configuration
+	print_field "Desktop" "$NOUGHTY_HOST_DESKTOP"
+	if [ -n "$NOUGHTY_HOST_GPU_VENDORS" ]; then
+		print_field "GPU" "${NOUGHTY_HOST_GPU_VENDORS// /, }"
+	fi
+	if [ -n "$NOUGHTY_HOST_TAGS" ]; then
+		print_field "Tags" "${NOUGHTY_HOST_TAGS// /, }"
+	fi
+
+	echo ""
+
+	# User
+	print_field "User" "$NOUGHTY_USER_NAME"
+	if [ -n "$NOUGHTY_USER_TAGS" ]; then
+		print_field "User tags" "${NOUGHTY_USER_TAGS// /, }"
+	fi
+	print_field "Tailnet" "$NOUGHTY_NETWORK_TAILNET"
+
+	# Display (only if configured)
+	if [ -n "$NOUGHTY_HOST_DISPLAY_PRIMARY" ]; then
+		echo ""
+		if [ "$NOUGHTY_HOST_DISPLAY_MULTI" = "true" ]; then
+			local outputs_formatted="${NOUGHTY_HOST_DISPLAY_OUTPUTS// /, }"
+			print_field "Displays" "$outputs_formatted"
+			print_field "Primary" "$NOUGHTY_HOST_DISPLAY_PRIMARY ($NOUGHTY_HOST_DISPLAY_RESOLUTION)"
+		else
+			print_field "Display" "$NOUGHTY_HOST_DISPLAY_PRIMARY ($NOUGHTY_HOST_DISPLAY_RESOLUTION)"
+		fi
+	fi
+
+	# Active flags (compact line, only true values)
+	local flags=""
+	[ "$NOUGHTY_HOST_IS_WORKSTATION" = "true" ] && flags+="workstation, "
+	[ "$NOUGHTY_HOST_IS_SERVER" = "true" ] && flags+="server, "
+	[ "$NOUGHTY_HOST_IS_LAPTOP" = "true" ] && flags+="laptop, "
+	[ "$NOUGHTY_HOST_IS_VM" = "true" ] && flags+="vm, "
+	[ "$NOUGHTY_HOST_IS_ISO" = "true" ] && flags+="iso, "
+	[ "$NOUGHTY_HOST_IS_DARWIN" = "true" ] && flags+="darwin, "
+	[ "$NOUGHTY_HOST_IS_LINUX" = "true" ] && flags+="linux, "
+
+	if [ -n "$flags" ]; then
+		# Remove trailing ", "
+		flags="${flags%, }"
+		echo ""
+		printf "  ${dim}%-12s${reset} ${green}%s${reset}\n" "Flags" "$flags"
+	fi
+
+	echo ""
+}
+
 # Main dispatcher
 main() {
 	if [ $# -eq 0 ]; then
@@ -299,6 +379,10 @@ main() {
 	spawn)
 		shift
 		cmd_spawn "$@"
+		;;
+	facts)
+		shift
+		cmd_facts "$@"
 		;;
 	*)
 		echo "Unknown command: $1" >&2
