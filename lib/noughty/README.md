@@ -120,7 +120,7 @@ in
 | Former registry `type` | `noughty.host.kind` | Notes |
 |---|---|---|
 | `workstation` | `computer` | Desktop or laptop physical system |
-| `gaming` | `computer` | Use-case, not a system class; use tag `"gaming"` |
+| `gaming` / `steamdeck` | `computer` | Use-case, not a system class; use tag `"steamdeck"` |
 | `darwin` | `computer` | OS, not a system class; `noughty.host.os` captures this |
 | `server` | `server` | Unchanged |
 | `vm` | `vm` | Generic virtual machine |
@@ -177,7 +177,7 @@ All derived from `noughty.host.kind`, `noughty.host.os`, `noughty.host.desktop`,
 
 📌 **`isLaptop` fix:** Derived cleanly from `formFactor == "laptop"`. No negative hostname list, no tag discipline required. Adding a new laptop to the registry just requires setting `formFactor = "laptop"` in the system entry. Adding a new desktop requires nothing - `formFactor = "desktop"` (or `null`) means `is.laptop` is `false` automatically.
 
-📌 **Removed flags:** `is.install`, `is.lima`, `is.wsl`, and `is.gaming` are removed. `is.install` was a redundant negation of `is.iso` - use `!config.noughty.host.is.iso` directly. Lima and WSL hosts use `kind = "vm"` with tags `"lima"` and `"wsl"` respectively. Gaming hosts use `kind = "computer"` with tag `"gaming"`. Use `noughtyLib.hostHasTag "lima"` etc. for conditional config.
+📌 **Removed flags:** `is.install`, `is.lima`, `is.wsl`, and `is.gaming` are removed. `is.install` was a redundant negation of `is.iso` - use `!config.noughty.host.is.iso` directly. Lima and WSL hosts use `kind = "vm"` with tags `"lima"` and `"wsl"` respectively. The Steam Deck uses `kind = "computer"` with tag `"steamdeck"`. Use `noughtyLib.hostHasTag "lima"` etc. for conditional config.
 
 ### `noughty.user` - User identity
 
@@ -779,19 +779,20 @@ resolveEntry = name: entry:
 `generateConfigs` filtering replaces the old `type`-string approach with predicates derived directly from registry fields:
 
 ```nix
-isLinux  = e: lib.hasSuffix "-linux"  e.platform;
-isDarwin = e: lib.hasSuffix "-darwin" e.platform;
-isISO    = e: e.iso or false;
-isWSL    = e: builtins.elem "wsl"  (e.tags or []);
-isLima   = e: builtins.elem "lima" (e.tags or []);
+isLinux         = e: lib.hasSuffix "-linux"  e.platform;
+isDarwin        = e: lib.hasSuffix "-darwin" e.platform;
+isISO           = e: e.iso or false;
+isHomeOnlyEntry = e:
+  let tags = e.tags or []; in
+  builtins.elem "wsl" tags || builtins.elem "lima" tags || builtins.elem "steamdeck" tags;
 
-nixosConfigurations  = entries where: isLinux && !isISO && !isWSL && !isLima
+nixosConfigurations  = entries where: isLinux && !isISO && !isHomeOnlyEntry
 darwinConfigurations = entries where: isDarwin
 isoConfigurations    = entries where: isISO
 homeConfigurations   = all entries
 ```
 
-WSL and Lima hosts are excluded from `nixosConfigurations` - they run foreign Linux distros (typically Ubuntu) and only get Home Manager configurations. The `"wsl"` and `"lima"` tags gate any VM-implementation-specific module content within Home Manager. A future path to system-level management (e.g. Numtide's `system-manager`) could change this, but is out of scope.
+WSL, Lima, and Steam Deck hosts are excluded from `nixosConfigurations` - WSL and Lima run foreign Linux distros (typically Ubuntu), while the Steam Deck runs SteamOS. All three only get Home Manager configurations. The `"wsl"`, `"lima"`, and `"steamdeck"` tags gate implementation-specific module content within Home Manager. A future path to system-level management (e.g. Numtide's `system-manager`) could change this, but is out of scope.
 
 The revised `systems` registry for the full current host set:
 
@@ -853,14 +854,14 @@ systems = {
     gpu.vendors = [ "amd" ];
   };
 
-  # Gaming - non-standard username and desktop, so both explicit
+  # Steam Deck - non-standard username and desktop, so both explicit
   steamdeck = {
     kind       = "computer";
     platform   = "x86_64-linux";
     formFactor = "handheld";
     username   = "deck";
     desktop    = "gamescope";
-    tags       = [ "gaming" ];
+    tags       = [ "steamdeck" ];
   };
 
   # Servers - desktop = null from kind = "server"
@@ -1241,7 +1242,7 @@ The long `if hostname == "vader" then ... else if hostname == "phasma" then ...`
 | Tags | Two lists: `noughty.host.tags` (hardware/role) and `noughty.user.tags` (persona/role) |
 | Tag type | `listOf str` (freeform); canonical vocabulary documented in `flake.nix` |
 | Tag helpers | `noughtyLib.hostHasTag`, `noughtyLib.userHasTag`, and variant forms |
-| Removed `is.*` flags | `is.lima`, `is.wsl`, `is.gaming`, `is.install` removed; Lima/WSL/gaming replaced by tags; `is.install` dropped as redundant negation of `is.iso` |
+| Removed `is.*` flags | `is.lima`, `is.wsl`, `is.gaming`, `is.install` removed; Lima/WSL use tags `"lima"`/`"wsl"`; Steam Deck uses tag `"steamdeck"`; `is.install` dropped as redundant negation of `is.iso` |
 | Added `is.*` flags | `is.linux` and `is.darwin` added (derived from `os`) |
 | ISO exclusion guard | Explicit `!config.noughty.host.is.iso` - no hidden conditions baked into helpers |
 | `catppuccinPalette` | Stays as specialArg permanently; explicitly out of scope |

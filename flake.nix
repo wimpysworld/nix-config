@@ -55,12 +55,20 @@
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "25.11";
-      helper = import ./lib { inherit inputs outputs stateVersion; };
+      darwinStateVersion = 5;
+      helper = import ./lib {
+        inherit
+          inputs
+          outputs
+          stateVersion
+          darwinStateVersion
+          ;
+      };
 
       # System registry - central definition of all systems and their properties
       #
       # Canonical tag vocabulary:
-      #   Host tags: streamstation, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, gaming, lima, wsl
+      #   Host tags: streamstation, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl
       #   User tags: developer, admin, family
       #
       # Registry fields:
@@ -157,7 +165,7 @@
           formFactor = "handheld";
           username = "deck";
           desktop = "gamescope";
-          tags = [ "gaming" ];
+          tags = [ "steamdeck" ];
         };
 
         # Servers - desktop = null from kind = "server"
@@ -239,12 +247,7 @@
       nixosConfigurations =
         let
           allNixos = helper.generateConfigs (
-            e:
-            helper.isLinuxEntry e
-            && !helper.isISOEntry e
-            && !helper.isWSLEntry e
-            && !helper.isLimaEntry e
-            && !helper.isGamingEntry e
+            e: helper.isLinuxEntry e && !helper.isISOEntry e && !helper.isHomeOnlyEntry e
           ) systems;
           allISO = helper.generateConfigs helper.isISOEntry systems;
         in

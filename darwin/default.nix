@@ -1,16 +1,12 @@
 {
+  catppuccinPalette,
   config,
   hostname,
-  hostKind,
-  hostFormFactor,
-  hostGpuVendors,
-  hostTags,
-  hostIsIso,
   inputs,
   lib,
   outputs,
   pkgs,
-  platform,
+  stateVersion,
   ...
 }:
 let
@@ -29,18 +25,6 @@ in
     ./_mixins/desktop
     ./_mixins/features
   ];
-
-  noughty = {
-    host = {
-      name = hostname;
-      kind = hostKind;
-      platform = platform;
-      formFactor = hostFormFactor;
-      gpu.vendors = hostGpuVendors;
-      tags = hostTags;
-      is.iso = hostIsIso;
-    };
-  };
 
   environment = {
     shells = [ pkgs.fish ];
@@ -118,7 +102,7 @@ in
 
   system = {
     primaryUser = "${username}";
-    stateVersion = 5;
+    inherit stateVersion;
     defaults = {
       CustomUserPreferences = {
         "com.apple.AdLib" = {

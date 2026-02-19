@@ -1,18 +1,11 @@
 {
   catppuccinPalette,
   config,
-  hostname,
-  hostKind,
-  hostFormFactor,
-  hostGpuVendors,
-  hostTags,
-  hostIsIso,
   inputs,
   lib,
   noughtyLib,
   outputs,
   pkgs,
-  platform,
   stateVersion,
   ...
 }:
@@ -41,18 +34,6 @@ in
     ./_mixins/terminal
     ./_mixins/users
   ];
-
-  noughty = {
-    host = {
-      name = hostname;
-      kind = hostKind;
-      platform = platform;
-      formFactor = hostFormFactor;
-      gpu.vendors = hostGpuVendors;
-      tags = hostTags;
-      is.iso = hostIsIso;
-    };
-  };
 
   # Enable the Catppuccin theme
   catppuccin = {

@@ -1,11 +1,19 @@
 {
+  darwinStateVersion,
   inputs,
   outputs,
   stateVersion,
   ...
 }:
 let
-  helpers = import ./helpers.nix { inherit inputs outputs stateVersion; };
+  helpers = import ./helpers.nix {
+    inherit
+      darwinStateVersion
+      inputs
+      outputs
+      stateVersion
+      ;
+  };
 in
 {
   inherit (helpers)
@@ -18,8 +26,6 @@ in
     isLinuxEntry
     isDarwinEntry
     isISOEntry
-    isWSLEntry
-    isLimaEntry
-    isGamingEntry
+    isHomeOnlyEntry
     ;
 }

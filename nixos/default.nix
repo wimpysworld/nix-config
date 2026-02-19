@@ -2,20 +2,11 @@
   catppuccinPalette,
   config,
   hostname,
-  hostKind,
-  hostFormFactor,
-  hostGpuVendors,
-  hostTags,
-  hostIsIso,
-  isLaptop,
-  isServer,
-  isWorkstation,
   inputs,
   lib,
   modulesPath,
   outputs,
   pkgs,
-  platform,
   stateVersion,
   ...
 }:
@@ -50,18 +41,6 @@ in
     ./_mixins/users
     ./_mixins/virtualisation
   ];
-
-  noughty = {
-    host = {
-      name = hostname;
-      kind = hostKind;
-      platform = platform;
-      formFactor = hostFormFactor;
-      gpu.vendors = hostGpuVendors;
-      tags = hostTags;
-      is.iso = hostIsIso;
-    };
-  };
 
   boot = {
     binfmt = lib.mkIf (!config.noughty.host.is.iso) {

@@ -1,4 +1,5 @@
 {
+  darwinStateVersion,
   inputs,
   outputs,
   stateVersion,
@@ -49,9 +50,12 @@ let
   isLinuxEntry = e: lib.hasSuffix "-linux" e.platform;
   isDarwinEntry = e: lib.hasSuffix "-darwin" e.platform;
   isISOEntry = e: e.iso or false;
-  isWSLEntry = e: builtins.elem "wsl" (e.tags or [ ]);
-  isLimaEntry = e: builtins.elem "lima" (e.tags or [ ]);
-  isGamingEntry = e: builtins.elem "gaming" (e.tags or [ ]);
+  isHomeOnlyEntry =
+    e:
+    let
+      tags = e.tags or [ ];
+    in
+    builtins.elem "wsl" tags || builtins.elem "lima" tags || builtins.elem "steamdeck" tags;
 in
 rec {
   # Export predicate functions for use in flake.nix
@@ -59,9 +63,7 @@ rec {
     isLinuxEntry
     isDarwinEntry
     isISOEntry
-    isWSLEntry
-    isLimaEntry
-    isGamingEntry
+    isHomeOnlyEntry
     ;
 
   # Generate Catppuccin palette with helper functions
@@ -145,17 +147,6 @@ rec {
       hostIsIso ? false,
     }:
     let
-      isISO = hostIsIso;
-      isLaptop =
-        hostname != "vader"
-        && hostname != "phasma"
-        && hostname != "revan"
-        && hostname != "malak"
-        && hostname != "maul";
-      isLima = hostname == "blackace" || hostname == "defender" || hostname == "fighter";
-      isWorkstation = builtins.isString desktop;
-      isServer = desktop == null && !isLima && !isISO;
-
       # Generate the Catppuccin palette for this system
       catppuccinPalette = mkCatppuccinPalette { system = platform; };
     in
@@ -167,23 +158,22 @@ rec {
           outputs
           hostname
           stateVersion
-          isLaptop
-          isLima
-          isServer
-          isWorkstation
           catppuccinPalette
-          platform
-          hostKind
-          hostFormFactor
-          hostGpuVendors
-          hostTags
-          hostIsIso
           ;
       };
       modules = [
         ../home-manager
         {
-          noughty.host.desktop = desktop;
+          noughty.host = {
+            name = hostname;
+            kind = hostKind;
+            platform = platform;
+            formFactor = hostFormFactor;
+            gpu.vendors = hostGpuVendors;
+            tags = hostTags;
+            desktop = desktop;
+            is.iso = hostIsIso;
+          };
           noughty.user.name = username;
         }
       ];
@@ -203,18 +193,6 @@ rec {
       hostIsIso ? false,
     }:
     let
-      isISO = hostIsIso;
-      isLaptop =
-        hostname != "vader"
-        && hostname != "phasma"
-        && hostname != "revan"
-        && hostname != "malak"
-        && hostname != "maul";
-      isLima = hostname == "blackace" || hostname == "defender" || hostname == "fighter";
-      isWorkstation = builtins.isString desktop;
-      isServer = desktop == null && !isLima && !isISO;
-      tailNet = "drongo-gamma.ts.net";
-
       # Generate the Catppuccin palette for this system
       catppuccinPalette = mkCatppuccinPalette { system = platform; };
     in
@@ -226,17 +204,7 @@ rec {
           outputs
           hostname
           stateVersion
-          isLaptop
-          isServer
-          isWorkstation
-          tailNet
           catppuccinPalette
-          platform
-          hostKind
-          hostFormFactor
-          hostGpuVendors
-          hostTags
-          hostIsIso
           ;
       };
       # If the hostname starts with "iso-", generate an ISO image
@@ -247,11 +215,20 @@ rec {
         [
           ../nixos
           {
-            noughty.host.desktop = desktop;
+            noughty.host = {
+              name = hostname;
+              kind = hostKind;
+              platform = platform;
+              formFactor = hostFormFactor;
+              gpu.vendors = hostGpuVendors;
+              tags = hostTags;
+              desktop = desktop;
+              is.iso = hostIsIso;
+            };
             noughty.user.name = username;
           }
         ]
-        ++ inputs.nixpkgs.lib.optionals isISO [ cd-dvd ];
+        ++ inputs.nixpkgs.lib.optionals hostIsIso [ cd-dvd ];
     };
 
   mkDarwin =
@@ -267,12 +244,10 @@ rec {
       hostIsIso ? false,
     }:
     let
-      isLaptop = true;
-      isWorkstation = true;
-      isServer = false;
-
       # Generate the Catppuccin palette for this system
       catppuccinPalette = mkCatppuccinPalette { system = platform; };
+      # nix-darwin uses an integer stateVersion (e.g. 5), not a string like NixOS
+      stateVersion = darwinStateVersion;
     in
     inputs.nix-darwin.lib.darwinSystem {
       system = platform;
@@ -281,22 +256,23 @@ rec {
           inputs
           outputs
           hostname
-          isLaptop
-          isServer
-          isWorkstation
+          stateVersion
           catppuccinPalette
-          platform
-          hostKind
-          hostFormFactor
-          hostGpuVendors
-          hostTags
-          hostIsIso
           ;
       };
       modules = [
         ../darwin
         {
-          noughty.host.desktop = desktop;
+          noughty.host = {
+            name = hostname;
+            kind = hostKind;
+            platform = platform;
+            formFactor = hostFormFactor;
+            gpu.vendors = hostGpuVendors;
+            tags = hostTags;
+            desktop = desktop;
+            is.iso = hostIsIso;
+          };
           noughty.user.name = username;
         }
       ];
