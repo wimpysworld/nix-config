@@ -145,8 +145,7 @@ rec {
       hostIsIso ? false,
     }:
     let
-      isISO = builtins.substring 0 4 hostname == "iso-";
-      isInstall = !isISO;
+      isISO = hostIsIso;
       isLaptop =
         hostname != "vader"
         && hostname != "phasma"
@@ -168,10 +167,8 @@ rec {
           outputs
           hostname
           stateVersion
-          isInstall
           isLaptop
           isLima
-          isISO
           isServer
           isWorkstation
           catppuccinPalette
@@ -206,8 +203,7 @@ rec {
       hostIsIso ? false,
     }:
     let
-      isISO = builtins.substring 0 4 hostname == "iso-";
-      isInstall = !isISO;
+      isISO = hostIsIso;
       isLaptop =
         hostname != "vader"
         && hostname != "phasma"
@@ -230,8 +226,6 @@ rec {
           outputs
           hostname
           stateVersion
-          isInstall
-          isISO
           isLaptop
           isServer
           isWorkstation
@@ -248,11 +242,7 @@ rec {
       # If the hostname starts with "iso-", generate an ISO image
       modules =
         let
-          cd-dvd =
-            if (desktop == null) then
-              inputs.nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
-            else
-              inputs.nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-graphical-calamares.nix";
+          cd-dvd = inputs.nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix";
         in
         [
           ../nixos
@@ -277,8 +267,6 @@ rec {
       hostIsIso ? false,
     }:
     let
-      isISO = false;
-      isInstall = true;
       isLaptop = true;
       isWorkstation = true;
       isServer = false;
@@ -293,8 +281,6 @@ rec {
           inputs
           outputs
           hostname
-          isInstall
-          isISO
           isLaptop
           isServer
           isWorkstation

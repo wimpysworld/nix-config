@@ -18,13 +18,13 @@ lib.mkIf (!config.noughty.host.is.iso) {
 
   environment.systemPackages =
     with pkgs;
-    lib.optionals (!config.noughty.host.is.iso) [
+    [
       alsa-utils
       playerctl
       pulseaudio
       pulsemixer
     ]
-    ++ lib.optionals (!config.noughty.host.is.iso && config.noughty.host.is.workstation) [
+    ++ lib.optionals config.noughty.host.is.workstation [
       pwvucontrol
     ];
 

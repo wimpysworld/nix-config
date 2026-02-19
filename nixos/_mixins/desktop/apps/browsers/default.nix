@@ -41,8 +41,8 @@ in
 {
   imports = [ ./martin.nix ];
   environment.systemPackages =
-    lib.optionals (builtins.elem username forFamily && !config.noughty.host.is.iso) familyPackages
-    ++ lib.optionals (builtins.elem username forMartin && !config.noughty.host.is.iso) martinPackages;
+    lib.optionals (builtins.elem username forFamily) familyPackages
+    ++ lib.optionals (builtins.elem username forMartin) martinPackages;
 
   # TODO: Configure Microsoft Edge policy
   # - https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies
@@ -52,7 +52,7 @@ in
       # Configures policies for Chromium, Chrome and Brave
       # - https://chromeenterprise.google/policies/
       # - chromium.enable just enables the Chromium policies.
-      enable = !config.noughty.host.is.iso;
+      enable = true;
       extensions =
         if (lib.elem username forMartin) then
           essentialExtensions ++ extraExtensions

@@ -276,13 +276,13 @@ host:
     @just switch-host
 
 # Build ISO
-iso iso_name="console":
-    @echo "ISO 󰗮 Building: {{ iso_name }} ({{ build_cores }} cores)"
-    @nom build .#nixosConfigurations.iso-{{ iso_name }}.config.system.build.isoImage --cores "{{ build_cores }}"
-    @mkdir -p "${HOME}/Quickemu/nixos-iso-{{ iso_name }}" 2>/dev/null
-    cp "result/iso/$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)" "${HOME}/Quickemu/nixos-iso-{{ iso_name }}/nixos.iso"
-    @chown "${USER}": "${HOME}/Quickemu/nixos-iso-{{ iso_name }}/nixos.iso"
-    @chmod 644 "${HOME}/Quickemu/nixos-iso-{{ iso_name }}/nixos.iso"
+iso:
+    @echo "ISO 󰗮 Building: console ({{ build_cores }} cores)"
+    @nom build .#nixosConfigurations.iso-console.config.system.build.isoImage --cores "{{ build_cores }}"
+    @mkdir -p "${HOME}/Quickemu/nixos-iso-console" 2>/dev/null
+    cp "result/iso/$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)" "${HOME}/Quickemu/nixos-iso-console/nixos.iso"
+    @chown "${USER}": "${HOME}/Quickemu/nixos-iso-console/nixos.iso"
+    @chmod 644 "${HOME}/Quickemu/nixos-iso-console/nixos.iso"
 
 # Nix Garbage Collection
 gc:

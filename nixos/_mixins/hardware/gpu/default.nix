@@ -48,10 +48,10 @@ lib.mkIf (!config.noughty.host.is.iso) {
       ++ lib.optionals hasIntelGPU [ intel-gpu-tools ];
   };
   hardware = {
-    amdgpu = lib.mkIf hasAmdGPU { opencl.enable = !config.noughty.host.is.iso; };
+    amdgpu = lib.mkIf hasAmdGPU { opencl.enable = true; };
     graphics = {
       enable = true;
-      enable32Bit = lib.mkForce (!config.noughty.host.is.iso);
+      enable32Bit = lib.mkForce true;
       extraPackages = with pkgs; lib.optionals hasIntelGPU [ intel-compute-runtime ];
     };
     nvidia = lib.mkIf hasNvidiaGPU {

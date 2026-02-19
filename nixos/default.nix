@@ -7,8 +7,6 @@
   hostGpuVendors,
   hostTags,
   hostIsIso,
-  isInstall,
-  isISO,
   isLaptop,
   isServer,
   isWorkstation,
@@ -66,7 +64,7 @@ in
   };
 
   boot = {
-    binfmt = lib.mkIf isInstall {
+    binfmt = lib.mkIf (!config.noughty.host.is.iso) {
       emulatedSystems = [
         "riscv64-linux"
       ]
@@ -81,7 +79,7 @@ in
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
     # Only enable the systemd-boot on installs, not live media (.ISO images)
-    loader = lib.mkIf isInstall {
+    loader = lib.mkIf (!config.noughty.host.is.iso) {
       efi.canTouchEfiVariables = true;
       systemd-boot.configurationLimit = lib.mkDefault 10;
       systemd-boot.consoleMode = "max";
@@ -104,7 +102,7 @@ in
         inputs.determinate.packages.${pkgs.stdenv.hostPlatform.system}.default
         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
       ]
-      ++ lib.optionals isInstall [
+      ++ lib.optionals (!config.noughty.host.is.iso) [
         nvme-cli
         rsync
         smartmontools
@@ -138,13 +136,13 @@ in
     nano.enable = lib.mkDefault false;
     nh = {
       clean = {
-        enable = isInstall;
+        enable = !config.noughty.host.is.iso;
         extraArgs = "--keep-since 15d --keep 10";
       };
       enable = true;
       flake = "/home/${username}/Zero/nix-config";
     };
-    nix-ld = lib.mkIf isInstall {
+    nix-ld = lib.mkIf (!config.noughty.host.is.iso) {
       enable = true;
       libraries = with pkgs; [
         # Add any missing dynamic libraries for unpackaged
@@ -161,7 +159,7 @@ in
   };
 
   # Only enable sudo-rs on installs, not live media (.ISO images)
-  security = lib.mkIf isInstall {
+  security = lib.mkIf (!config.noughty.host.is.iso) {
     polkit.enable = true;
     sudo.enable = false;
     sudo-rs = {
@@ -170,7 +168,7 @@ in
   };
 
   # https://dl.thalheim.io/
-  sops = lib.mkIf (isInstall) {
+  sops = lib.mkIf (!config.noughty.host.is.iso) {
     age = {
       keyFile = "/var/lib/private/sops/age/keys.txt";
       generateKey = false;

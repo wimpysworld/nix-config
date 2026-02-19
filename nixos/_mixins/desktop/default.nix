@@ -12,7 +12,7 @@
     ./wayfire
   ];
 
-  config = lib.mkIf config.noughty.host.is.workstation {
+  config = lib.mkIf (config.noughty.host.is.workstation && !config.noughty.host.is.iso) {
     boot = {
       consoleLogLevel = 0;
       initrd.verbose = false;
@@ -36,15 +36,15 @@
       # https://wiki.nixos.org/w/index.php?title=Appimage
       # https://nixos.org/manual/nixpkgs/stable/#sec-pkgs-appimageTools
       appimage = {
-        enable = !config.noughty.host.is.iso;
-        binfmt = !config.noughty.host.is.iso;
+        enable = true;
+        binfmt = true;
       };
       dconf = {
         enable = true;
       };
     };
     services = {
-      flatpak = lib.mkIf (!config.noughty.host.is.iso) {
+      flatpak = {
         enable = true;
         update.auto = {
           enable = true;

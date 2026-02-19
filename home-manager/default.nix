@@ -8,7 +8,6 @@
   hostTags,
   hostIsIso,
   inputs,
-  isISO,
   isLaptop,
   isLima,
   isServer,

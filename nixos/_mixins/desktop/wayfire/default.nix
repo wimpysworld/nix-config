@@ -70,12 +70,10 @@ in
           "${mkHiddenWaylandSession "wayfire"}/share"
         ];
       };
-      systemPackages =
-        with pkgs;
-        lib.optionals (!config.noughty.host.is.iso) [
-          wayfireShim
-          wayfire
-        ];
+      systemPackages = with pkgs; [
+        wayfireShim
+        wayfire
+      ];
     };
 
     programs = {

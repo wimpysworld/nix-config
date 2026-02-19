@@ -72,11 +72,9 @@ in
           "${mkHiddenWaylandSession "hyprland-systemd"}/share"
         ];
       };
-      systemPackages =
-        with pkgs;
-        lib.optionals (!config.noughty.host.is.iso) [
-          hyprShim
-        ];
+      systemPackages = [
+        hyprShim
+      ];
     };
 
     programs = {
