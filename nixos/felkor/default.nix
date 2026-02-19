@@ -24,5 +24,24 @@
     ];
   };
 
+  noughty.host.displays = [
+    {
+      output = "eDP-1";
+      width = 1920;
+      height = 1200;
+      primary = true;
+      workspaces = [
+        1
+        2
+        3
+        4
+        5
+        6
+        7
+        8
+      ];
+    }
+  ];
+
   services.fprintd.enable = lib.mkForce false;
 }

@@ -156,7 +156,6 @@ rec {
         inherit
           inputs
           outputs
-          hostname
           stateVersion
           catppuccinPalette
           ;

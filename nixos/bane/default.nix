@@ -23,4 +23,23 @@
       "kvm-amd"
     ];
   };
+
+  noughty.host.displays = [
+    {
+      output = "eDP-1";
+      width = 2560;
+      height = 1600;
+      primary = true;
+      workspaces = [
+        1
+        2
+        3
+        4
+        5
+        6
+        7
+        8
+      ];
+    }
+  ];
 }

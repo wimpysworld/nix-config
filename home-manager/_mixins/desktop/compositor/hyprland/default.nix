@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  hostname,
   lib,
   pkgs,
   ...
@@ -9,7 +8,7 @@
 let
   xkbLayout = "gb";
   monitors =
-    (import ./monitors.nix { }).${hostname} or {
+    (import ./monitors.nix { }).${config.noughty.host.name} or {
       monitor = [ ", preferred, auto, 1" ];
       workspace = [ ];
     };
@@ -180,8 +179,8 @@ in
         };
         #https://wiki.hyprland.org/Configuring/Master-Layout/
         master = {
-          mfact = if hostname == "phasma" then 0.5 else 0.55;
-          orientation = if hostname == "phasma" then "center" else "left";
+          mfact = if config.noughty.host.display.primaryIsUltrawide then 0.5 else 0.55;
+          orientation = if config.noughty.host.display.primaryIsUltrawide then "center" else "left";
         };
         # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
         dwindle = {

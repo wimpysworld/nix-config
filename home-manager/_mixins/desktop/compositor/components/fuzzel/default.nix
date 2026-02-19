@@ -1,13 +1,13 @@
 {
   config,
-  hostname,
   inputs,
   lib,
   pkgs,
   ...
 }:
 let
-  fontSize = if (hostname == "phasma" || hostname == "vader") then "30" else "18";
+  display = config.noughty.host.display;
+  fontSize = if display.primaryIsHighRes || display.primaryIsHighDpi then "30" else "18";
   fuzzelActions = pkgs.writeShellApplication {
     name = "fuzzel-actions";
     text = "fuzzel --prompt '󰌧 ' --show-actions";

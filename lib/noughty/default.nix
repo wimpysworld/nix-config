@@ -297,6 +297,55 @@ in
           readOnly = true;
         };
 
+        primaryOrientation = lib.mkOption {
+          type = lib.types.enum [
+            "landscape"
+            "portrait"
+          ];
+          default =
+            if primaryDisplay != null && primaryDisplay.height > primaryDisplay.width then
+              "portrait"
+            else
+              "landscape";
+          readOnly = true;
+          description = "Orientation of the primary display: landscape or portrait.";
+        };
+
+        primaryIsPortrait = lib.mkOption {
+          type = lib.types.bool;
+          default = primaryDisplay != null && primaryDisplay.height > primaryDisplay.width;
+          readOnly = true;
+          description = "Whether the primary display is portrait-oriented.";
+        };
+
+        primaryIsUltrawide = lib.mkOption {
+          type = lib.types.bool;
+          default = primaryDisplay != null && primaryDisplay.width * 10 / primaryDisplay.height >= 21;
+          readOnly = true;
+          description = "Whether the primary display is ultra-wide.";
+        };
+
+        primaryScale = lib.mkOption {
+          type = lib.types.float;
+          default = if primaryDisplay != null then primaryDisplay.scale else 1.0;
+          readOnly = true;
+          description = "Scale factor of the primary display.";
+        };
+
+        primaryIsHighDpi = lib.mkOption {
+          type = lib.types.bool;
+          default = primaryDisplay != null && primaryDisplay.scale >= 2.0;
+          readOnly = true;
+          description = "Whether the primary display is high-DPI (scale >= 2.0).";
+        };
+
+        primaryIsHighRes = lib.mkOption {
+          type = lib.types.bool;
+          default = primaryDisplay != null && primaryDisplay.width * primaryDisplay.height >= 3686400;
+          readOnly = true;
+          description = "Whether the primary display has high resolution (pixel count >= ~QHD+).";
+        };
+
         isMultiMonitor = lib.mkOption {
           type = lib.types.bool;
           default = builtins.length config.noughty.host.displays > 1;

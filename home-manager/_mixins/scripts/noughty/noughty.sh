@@ -284,16 +284,16 @@ cmd_facts() {
 		local label="$1"
 		local value="$2"
 		if [ -n "$value" ] && [ "$value" != "none" ]; then
-			printf "  ${dim}%-12s${reset} %s\n" "$label" "$value"
+			printf "  %s%-12s%s %s\n" "$dim" "$label" "$reset" "$value"
 		fi
 	}
 
 	echo ""
-	printf "  ${cyan}${bold}nøughty${reset} ${dim}facts${reset}\n"
+	printf "  %s%snøughty%s %sfacts%s\n" "$cyan" "$bold" "$reset" "$dim" "$reset"
 	echo ""
 
 	# Identity
-	printf "  ${dim}%-12s${reset} ${bold}%s${reset}\n" "Host" "$NOUGHTY_HOST_NAME"
+	printf "  %s%-12s%s %s%s%s\n" "$dim" "Host" "$reset" "$bold" "$NOUGHTY_HOST_NAME" "$reset"
 	print_field "Kind" "$NOUGHTY_HOST_KIND"
 	print_field "OS" "$NOUGHTY_HOST_OS ($NOUGHTY_HOST_PLATFORM)"
 	print_field "Form" "$NOUGHTY_HOST_FORM_FACTOR"
@@ -342,7 +342,7 @@ cmd_facts() {
 		# Remove trailing ", "
 		flags="${flags%, }"
 		echo ""
-		printf "  ${dim}%-12s${reset} ${green}%s${reset}\n" "Flags" "$flags"
+		printf "  %s%-12s%s %s%s%s\n" "$dim" "Flags" "$reset" "$green" "$flags" "$reset"
 	fi
 
 	echo ""
