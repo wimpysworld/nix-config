@@ -37,48 +37,43 @@ let
     # If there is a kanshi profile for regreet, use it.
     KANSHI_REGREET="$(${pkgs.coreutils}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
     if [ -n "$KANSHI_REGREET" ]; then
-      ${pkgs.cage}/bin/cage -m last -s -- sh -c \
+      ${pkgs.cage}/bin/cage -d -m last -s -- sh -c \
         '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
          ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
     else
-      ${pkgs.cage}/bin/cage -m last -s -- ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet
+      ${pkgs.cage}/bin/cage -d -m last -s -- ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet
     fi
   '';
-  wallpaperResolutions = {
-    bane = "2560x1600";
-    vader = "2560x2880";
-    phasma = "3440x1440";
-    tanis = "1920x1200";
-    felkor = "1920x1200";
-    default = "1920x1080";
-  };
-  wallpaperResolution = wallpaperResolutions.${host.name} or wallpaperResolutions.default;
-  # Kanshi profiles for regreet that just enable the primary display:
-  # - Order is important
-  # - The last enabled output is what cage will use via `-m last`
-  kanshiProfiles = {
-    phasma = ''
-      profile {
-        output DP-2 disable
-        output HDMI-A-1 disable
-        output DP-1 enable mode 3440x1440@100Hz position 0,1280 scale 1
-      }
-    '';
-    vader = ''
-      profile {
-        output DP-3 disable
-        output DP-2 disable
-        output DP-1 enable mode 2560x2880@60Hz position 0,0 scale 1
-      }
-    '';
-    default = "";
-  };
+  wallpaperResolution =
+    let
+      res = host.display.primaryResolution;
+    in
+    if res != "" then res else "1920x1080";
+  # Kanshi profile for regreet: disable non-primary displays, enable primary.
+  # Order matters: Cage -m last uses the last enabled output.
+  # Single-monitor hosts need no kanshi profile; Cage handles one output fine.
+  kanshiProfile =
+    if !host.display.isMultiMonitor then
+      ""
+    else
+      let
+        primary = host.display.primary;
+        nonPrimary = lib.filter (d: d.output != primary.output) host.displays;
+        disableLines = map (d: "    output ${d.output} disable") nonPrimary;
+        enableLine = "    output ${primary.output} enable mode ${toString primary.width}x${toString primary.height}@${toString primary.refresh}Hz position 0,0 scale 1";
+      in
+      ''
+        profile {
+        ${lib.concatStringsSep "\n" disableLines}
+        ${enableLine}
+        }
+      '';
 in
 lib.mkIf host.is.workstation {
   # Use Cage to run regreet
   environment = {
     etc = {
-      "kanshi/regreet".text = kanshiProfiles.${host.name} or kanshiProfiles.default;
+      "kanshi/regreet".text = kanshiProfile;
     };
     systemPackages = [
       cursorPackage
