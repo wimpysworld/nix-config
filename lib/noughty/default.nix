@@ -205,10 +205,73 @@ in
               "nvidia"
               "amd"
               "intel"
+              "apple"
             ]
           );
           default = [ ];
           description = "GPU vendors present in this host.";
+        };
+
+        compute = {
+          vendor = lib.mkOption {
+            type = lib.types.nullOr (
+              lib.types.enum [
+                "nvidia"
+                "amd"
+                "intel"
+                "apple"
+              ]
+            );
+            default = null;
+            description = "GPU vendor used for compute workloads (CUDA/ROCm/etc).";
+          };
+
+          vram = lib.mkOption {
+            type = lib.types.int;
+            default = 0;
+            description = ''
+              VRAM available on the compute GPU, in GB.
+              For discrete GPUs, use the card's VRAM (e.g. 24 for RTX 3090).
+              For unified memory (Apple Silicon, AMD Strix Halo), use the
+              portion allocatable for GPU compute.
+              Zero means no usable GPU memory for compute.
+            '';
+          };
+
+          unified = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = ''
+              Whether the compute GPU uses unified memory shared with the CPU.
+              True for Apple Silicon and AMD Strix Halo. Inference runtimes
+              can use more aggressive memory strategies on unified architectures.
+            '';
+          };
+
+          acceleration = lib.mkOption {
+            type = lib.types.nullOr (
+              lib.types.enum [
+                "cuda"
+                "rocm"
+                "vulkan"
+                "metal"
+              ]
+            );
+            default =
+              if config.noughty.host.gpu.compute.vendor == "nvidia" then
+                "cuda"
+              else if config.noughty.host.gpu.compute.vendor == "amd" then
+                "rocm"
+              else if config.noughty.host.gpu.compute.vendor == "apple" then
+                "metal"
+              else
+                null;
+            description = ''
+              GPU acceleration framework for compute workloads.
+              Defaults to cuda for NVIDIA, rocm for AMD, metal for Apple, null otherwise.
+              Override to vulkan for cross-vendor comparison or fallback.
+            '';
+          };
         };
 
         hasNvidia = lib.mkOption {
@@ -232,6 +295,13 @@ in
           readOnly = true;
         };
 
+        hasApple = lib.mkOption {
+          type = lib.types.bool;
+          default = lib.elem "apple" config.noughty.host.gpu.vendors;
+          description = "Whether this host has an Apple GPU. Derived from gpu.vendors.";
+          readOnly = true;
+        };
+
         hasAny = lib.mkOption {
           type = lib.types.bool;
           default = config.noughty.host.gpu.vendors != [ ];
@@ -241,8 +311,8 @@ in
 
         hasCuda = lib.mkOption {
           type = lib.types.bool;
-          default = lib.elem "nvidia" config.noughty.host.gpu.vendors;
-          description = "Whether this host supports CUDA. Derived from gpu.vendors.";
+          default = config.noughty.host.gpu.compute.acceleration == "cuda";
+          description = "Whether this host has CUDA compute capability. Derived from compute.acceleration.";
           readOnly = true;
         };
       };

@@ -302,6 +302,20 @@ cmd_facts() {
 	print_field "Desktop" "$NOUGHTY_HOST_DESKTOP"
 	if [ -n "$NOUGHTY_HOST_GPU_VENDORS" ]; then
 		print_field "GPU" "${NOUGHTY_HOST_GPU_VENDORS// /, }"
+		if [ -n "$NOUGHTY_HOST_GPU_COMPUTE_VENDOR" ]; then
+			local compute_info="$NOUGHTY_HOST_GPU_COMPUTE_VENDOR"
+			if [ "$NOUGHTY_HOST_GPU_COMPUTE_VRAM" != "0" ]; then
+				local vram_label="${NOUGHTY_HOST_GPU_COMPUTE_VRAM}GB"
+				if [ "$NOUGHTY_HOST_GPU_COMPUTE_UNIFIED" = "true" ]; then
+					vram_label+=" unified"
+				fi
+				compute_info+=" ($vram_label)"
+			fi
+			if [ -n "$NOUGHTY_HOST_GPU_COMPUTE_ACCEL" ]; then
+				compute_info+=" [$NOUGHTY_HOST_GPU_COMPUTE_ACCEL]"
+			fi
+			print_field "Compute" "$compute_info"
+		fi
 	fi
 	if [ -n "$NOUGHTY_HOST_TAGS" ]; then
 		print_field "Tags" "${NOUGHTY_HOST_TAGS// /, }"

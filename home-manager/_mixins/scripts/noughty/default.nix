@@ -14,6 +14,14 @@ let
     NOUGHTY_HOST_FORM_FACTOR="${if cfg.host.formFactor != null then cfg.host.formFactor else "none"}"
     NOUGHTY_HOST_TAGS="${builtins.concatStringsSep " " cfg.host.tags}"
     NOUGHTY_HOST_GPU_VENDORS="${builtins.concatStringsSep " " cfg.host.gpu.vendors}"
+    NOUGHTY_HOST_GPU_COMPUTE_VENDOR="${
+      if cfg.host.gpu.compute.vendor != null then cfg.host.gpu.compute.vendor else ""
+    }"
+    NOUGHTY_HOST_GPU_COMPUTE_VRAM="${toString cfg.host.gpu.compute.vram}"
+    NOUGHTY_HOST_GPU_COMPUTE_UNIFIED="${if cfg.host.gpu.compute.unified then "true" else "false"}"
+    NOUGHTY_HOST_GPU_COMPUTE_ACCEL="${
+      if cfg.host.gpu.compute.acceleration != null then cfg.host.gpu.compute.acceleration else ""
+    }"
     NOUGHTY_HOST_IS_WORKSTATION="${if cfg.host.is.workstation then "true" else "false"}"
     NOUGHTY_HOST_IS_SERVER="${if cfg.host.is.server then "true" else "false"}"
     NOUGHTY_HOST_IS_LAPTOP="${if cfg.host.is.laptop then "true" else "false"}"

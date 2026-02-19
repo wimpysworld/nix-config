@@ -77,8 +77,8 @@
       #   formFactor - optional: "laptop", "desktop", "handheld", "tablet", "phone"
       #   desktop    - optional: derived from kind + platform if omitted
       #   username   - optional: defaults to "martin"
-      #   gpu        - optional: { vendors = [ "nvidia" "amd" "intel" ]; }
-      #   tags       - optional: [ "streamstation" "thinkpad" ... ]
+      #   gpu        - optional: { vendors = [ "nvidia" "amd" "intel" "apple" ]; compute = { vendor = "nvidia"; vram = 24; }; }
+      #   tags       - optional: [ "streamstation" "thinkpad" "inference" ... ]
       #   iso        - optional: true for ISO image builds
       systems = {
 
@@ -89,30 +89,44 @@
           kind = "computer";
           platform = "x86_64-linux";
           formFactor = "desktop";
-          gpu.vendors = [
-            "amd"
-            "nvidia"
-          ];
+          gpu = {
+            vendors = [
+              "amd"
+              "nvidia"
+            ];
+            compute = {
+              vendor = "nvidia";
+              vram = 16;
+            };
+          };
           tags = [
             "streamstation"
             "trackball"
             "streamdeck"
             "pci-hdmi-capture"
+            "inference"
           ];
         };
         phasma = {
           kind = "computer";
           platform = "x86_64-linux";
           formFactor = "desktop";
-          gpu.vendors = [
-            "amd"
-            "nvidia"
-          ];
+          gpu = {
+            vendors = [
+              "amd"
+              "nvidia"
+            ];
+            compute = {
+              vendor = "nvidia";
+              vram = 16;
+            };
+          };
           tags = [
             "streamstation"
             "trackball"
             "streamdeck"
             "pci-hdmi-capture"
+            "inference"
           ];
         };
         bane = {
@@ -177,7 +191,14 @@
         maul = {
           kind = "server";
           platform = "x86_64-linux";
-          gpu.vendors = [ "nvidia" ];
+          gpu = {
+            vendors = [ "nvidia" ];
+            compute = {
+              vendor = "nvidia";
+              vram = 24;
+            };
+          };
+          tags = [ "inference" ];
         };
         revan = {
           kind = "server";
@@ -228,6 +249,14 @@
           kind = "computer";
           platform = "aarch64-darwin";
           formFactor = "laptop";
+          gpu = {
+            vendors = [ "apple" ];
+            compute = {
+              vendor = "apple";
+              vram = 36;
+              unified = true;
+            };
+          };
         };
 
         # ISO - iso = true applies isoDefaults: desktop = null, username = "nixos"

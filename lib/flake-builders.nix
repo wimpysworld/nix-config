@@ -143,6 +143,7 @@ rec {
       hostKind ? "computer",
       hostFormFactor ? null,
       hostGpuVendors ? [ ],
+      hostGpuCompute ? { },
       hostTags ? [ ],
       hostIsIso ? false,
     }:
@@ -168,7 +169,10 @@ rec {
             kind = hostKind;
             platform = platform;
             formFactor = hostFormFactor;
-            gpu.vendors = hostGpuVendors;
+            gpu = {
+              vendors = hostGpuVendors;
+              compute = hostGpuCompute;
+            };
             tags = hostTags;
             desktop = desktop;
             is.iso = hostIsIso;
@@ -188,6 +192,7 @@ rec {
       hostKind ? "computer",
       hostFormFactor ? null,
       hostGpuVendors ? [ ],
+      hostGpuCompute ? { },
       hostTags ? [ ],
       hostIsIso ? false,
     }:
@@ -219,7 +224,10 @@ rec {
               kind = hostKind;
               platform = platform;
               formFactor = hostFormFactor;
-              gpu.vendors = hostGpuVendors;
+              gpu = {
+                vendors = hostGpuVendors;
+                compute = hostGpuCompute;
+              };
               tags = hostTags;
               desktop = desktop;
               is.iso = hostIsIso;
@@ -239,6 +247,7 @@ rec {
       hostKind ? "computer",
       hostFormFactor ? null,
       hostGpuVendors ? [ ],
+      hostGpuCompute ? { },
       hostTags ? [ ],
       hostIsIso ? false,
     }:
@@ -267,7 +276,10 @@ rec {
             kind = hostKind;
             platform = platform;
             formFactor = hostFormFactor;
-            gpu.vendors = hostGpuVendors;
+            gpu = {
+              vendors = hostGpuVendors;
+              compute = hostGpuCompute;
+            };
             tags = hostTags;
             desktop = desktop;
             is.iso = hostIsIso;
@@ -298,6 +310,7 @@ rec {
       hostKind = resolved.kind;
       hostFormFactor = resolved.formFactor or null;
       hostGpuVendors = (resolved.gpu or { }).vendors or [ ];
+      hostGpuCompute = (resolved.gpu or { }).compute or { };
       hostTags = resolved.tags or [ ];
       hostIsIso = resolved.iso or false;
     };
