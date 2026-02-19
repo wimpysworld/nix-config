@@ -6,10 +6,10 @@
   ...
 }:
 let
-  cfg = config.noughty.host;
+  host = config.noughty.host;
   isInference = noughtyLib.hostHasTag "inference";
-  vram = cfg.gpu.compute.vram;
-  accel = cfg.gpu.compute.acceleration;
+  vram = host.gpu.compute.vram;
+  accel = host.gpu.compute.acceleration;
 
   # Package selection based on acceleration framework.
   # services.ollama.acceleration was removed from nixpkgs; use package variants.
@@ -78,7 +78,7 @@ lib.mkIf isInference {
   services.ollama = {
     enable = true;
     package = ollamaPackage;
-    host = if cfg.is.server then "0.0.0.0" else "127.0.0.1";
+    host = if host.is.server then "0.0.0.0" else "127.0.0.1";
     loadModels = allModels;
   };
 }

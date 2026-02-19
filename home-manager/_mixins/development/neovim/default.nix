@@ -6,7 +6,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 
   # Sops file for AI API keys (Anthropic, OpenAI, Gemini)
   aiSopsFile = ../../../../secrets/ai.yaml;
@@ -2235,7 +2235,7 @@ in
     };
   };
 
-  xdg = lib.mkIf isLinux {
+  xdg = lib.mkIf host.is.linux {
     desktopEntries = {
       nvim = {
         name = "Neovim";

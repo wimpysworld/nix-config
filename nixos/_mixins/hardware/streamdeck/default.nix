@@ -6,6 +6,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
   isStreamstation = noughtyLib.hostHasTag "streamdeck";
   # Bundle all .deck config files into a single store directory so that
@@ -15,7 +16,7 @@ let
     cp ${./xl}/*.deck $out/
   '';
 in
-lib.mkIf (!config.noughty.host.is.iso) {
+lib.mkIf (!host.is.iso) {
   environment.systemPackages = with pkgs; [ deckmaster ];
 
   services = {

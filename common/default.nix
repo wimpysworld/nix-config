@@ -6,6 +6,9 @@
   pkgs,
   ...
 }:
+let
+  host = config.noughty.host;
+in
 {
   # Only install the docs I use
   documentation.enable = true;
@@ -66,6 +69,6 @@
 
   programs = {
     fish.enable = true;
-    nix-index-database.comma.enable = !config.noughty.host.is.iso;
+    nix-index-database.comma.enable = !host.is.iso;
   };
 }

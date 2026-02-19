@@ -5,14 +5,14 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
 {
   catppuccin.cava.enable = config.programs.cava.enable;
 
   programs = {
     cava = {
-      enable = isLinux;
+      enable = host.is.linux;
     };
   };
 }

@@ -7,7 +7,7 @@
 }:
 let
   username = config.noughty.user.name;
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   # Make with: pamu2fcfg -n
   u2f_28L = "TBfRqRfHADrZSgh4nOAwbCOgsbc0QTVwa0duBV3Qaz2ROuQ86QUR+70Hytzjicj88GhA0RRh2jNNe0ktKgzmXQ==,aUjvFdpwTbafll6K28EwSvLj7C+7XY/La+m3YXIeMTqRKu9+RarhGaOPQdXxfwwoa+ynjkZXtmVCkr5Nb+WPdQ==,es256,+presence";
   u2f_45L = "fitUdpvbJ6SMWMkojEDpOnUTdCXFt/qlQpZzXBpdQHzC/qPdKPBjo+HGmcLfIO+yGRsefmIb2jS4Gn3mDJ0CeA==,AKu1ho3I+PfNtB52egDBx/VAwrD5EMNl6zyTGgcvSHpp8AOWHwrbdfroIaoTGZNMZVWI4QvF8+HrTBv48lb7sA==,es256,+presence";
@@ -16,7 +16,7 @@ let
   u2f_phasma = "U8Za14UahAnDSSwA6y2EJpDjIZP+0IliX9Ta//89oCvaNPGlVaxTCQY6VPShTNV41agGH+O+AuOfOcV6pIS9Wg==,2o6OE9jB4E62FGcCmAPDXaY4FyT5uSNBVW9LydetbJFgZem9GZtJ1tnXt2FJm/sHgmg8BBqIY+QIf/r+5oFXMw==,es256,+presence";
   u2f_vader = "G4S+zVnfPIpcnShvEuLYazwAS8XhX8DRyZZBX2OdV3K+7RVbr4UG+TqmmT3kEgC0XgTpKpN2cM/t4CpFDUE9Ig==,xxXHLkGtoMUAEbyu7/TMxmPGjuqISDVT1ldSy7qoWppWzgNlyvZZiu5bST7Llf3sHLDsT/agFbqzuf4HcVJZcw==,es256,+presence";
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux) {
   home.packages = with pkgs; [
     yubikey-manager
     pam_u2f

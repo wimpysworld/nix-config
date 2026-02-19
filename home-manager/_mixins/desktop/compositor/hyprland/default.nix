@@ -6,9 +6,10 @@
   ...
 }:
 let
+  host = config.noughty.host;
   xkbLayout = "gb";
   monitors =
-    (import ./monitors.nix { }).${config.noughty.host.name} or {
+    (import ./monitors.nix { }).${host.name} or {
       monitor = [ ", preferred, auto, 1" ];
       workspace = [ ];
     };
@@ -28,7 +29,7 @@ in
     ../components/wlogout # session menu
   ];
 
-  config = lib.mkIf (config.noughty.host.desktop == "hyprland") {
+  config = lib.mkIf (host.desktop == "hyprland") {
     catppuccin = {
       hyprland.enable = config.wayland.windowManager.hyprland.enable;
     };
@@ -179,8 +180,8 @@ in
         };
         #https://wiki.hyprland.org/Configuring/Master-Layout/
         master = {
-          mfact = if config.noughty.host.display.primaryIsUltrawide then 0.5 else 0.55;
-          orientation = if config.noughty.host.display.primaryIsUltrawide then "center" else "left";
+          mfact = if host.display.primaryIsUltrawide then 0.5 else 0.55;
+          orientation = if host.display.primaryIsUltrawide then "center" else "left";
         };
         # https://wiki.hyprland.org/Configuring/Dwindle-Layout/
         dwindle = {

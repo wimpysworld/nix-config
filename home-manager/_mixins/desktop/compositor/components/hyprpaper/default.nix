@@ -1,6 +1,7 @@
 { config, lib, ... }:
 let
-  displays = config.noughty.host.displays;
+  host = config.noughty.host;
+  displays = host.displays;
   # Build a resolution string from a display's width and height.
   resolution = d: "${toString d.width}x${toString d.height}";
   # The first display gets a Catppuccin wallpaper; subsequent displays get Colorway.

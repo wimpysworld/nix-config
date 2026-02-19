@@ -6,20 +6,19 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
   tsExitNodes = [
     "maul"
     "revan"
   ];
 in
-lib.mkIf (config.noughty.host.is.workstation || config.noughty.host.is.server) {
-  environment.systemPackages =
-    with pkgs;
-    lib.optionals config.noughty.host.is.workstation [ trayscale ];
+lib.mkIf (host.is.workstation || host.is.server) {
+  environment.systemPackages = with pkgs; lib.optionals host.is.workstation [ trayscale ];
 
   services.tailscale = {
-    authKeyFile = lib.mkIf (!config.noughty.host.is.iso) config.sops.secrets.tailscale-auth-key.path;
-    authKeyParameters.preauthorized = lib.mkIf (!config.noughty.host.is.iso) true;
+    authKeyFile = lib.mkIf (!host.is.iso) config.sops.secrets.tailscale-auth-key.path;
+    authKeyParameters.preauthorized = lib.mkIf (!host.is.iso) true;
     disableUpstreamLogging = true;
     enable = true;
     extraUpFlags = [
@@ -37,7 +36,7 @@ lib.mkIf (config.noughty.host.is.workstation || config.noughty.host.is.server) {
     useRoutingFeatures = "both";
   };
 
-  sops = lib.mkIf (!config.noughty.host.is.iso) {
+  sops = lib.mkIf (!host.is.iso) {
     secrets.tailscale-auth-key = {
       sopsFile = ../../../../secrets/tailscale.yaml;
       key = "auth_key";

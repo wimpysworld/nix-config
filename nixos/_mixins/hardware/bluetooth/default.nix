@@ -4,14 +4,17 @@
   pkgs,
   ...
 }:
+let
+  host = config.noughty.host;
+in
 {
-  environment.systemPackages = lib.optionals (!config.noughty.host.is.iso) [
+  environment.systemPackages = lib.optionals (!host.is.iso) [
     pkgs.bluetui
   ];
   hardware = {
     # https://nixos.wiki/wiki/Bluetooth
     bluetooth = {
-      enable = !config.noughty.host.is.iso;
+      enable = !host.is.iso;
       package = pkgs.bluez;
       settings = {
         General = {

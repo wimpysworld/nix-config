@@ -6,7 +6,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   # sopsFile requires an absolute path - use path type to resolve correctly
   gnupgSopsFile = ../../../../secrets/gnupg.yaml;
 in
@@ -53,7 +53,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
       ];
       # Prevent the PCSC-Lite conflicting with gpg-agent
       # https://wiki.nixos.org/wiki/Yubikey#Smartcard_mode
-      scdaemonSettings = lib.mkIf isLinux {
+      scdaemonSettings = lib.mkIf host.is.linux {
         disable-ccid = true;
       };
     };

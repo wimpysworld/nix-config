@@ -5,6 +5,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   isNixosUser = noughtyLib.isUser [ "nixos" ];
 in
 {
@@ -12,7 +13,7 @@ in
     users.users.nixos.description = "NixOS";
 
     # All configurations for live media are below:
-    system = lib.mkIf config.noughty.host.is.iso {
+    system = lib.mkIf host.is.iso {
       stateVersion = lib.mkForce lib.trivial.release;
     };
   };

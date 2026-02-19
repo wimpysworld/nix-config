@@ -5,7 +5,8 @@
   ...
 }:
 let
-  display = config.noughty.host.display;
+  host = config.noughty.host;
+  display = host.display;
   catSize =
     if display.primaryIsPortrait then
       320

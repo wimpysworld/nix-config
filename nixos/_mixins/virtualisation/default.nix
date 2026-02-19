@@ -6,6 +6,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
   rootlessMode = false;
@@ -66,7 +67,7 @@ let
     else
       "overlay2"; # Default for xfs, ext4, and others
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
   environment = {
     # https://wiki.nixos.org/wiki/Docker
     systemPackages =

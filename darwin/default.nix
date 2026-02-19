@@ -9,6 +9,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
 in
 {
@@ -216,7 +217,7 @@ in
         askForPassword = true;
         askForPasswordDelay = 300;
       };
-      smb.NetBIOSName = config.noughty.host.name;
+      smb.NetBIOSName = host.name;
       trackpad = {
         Clicking = true;
         TrackpadRightClick = true; # enable two finger right click

@@ -7,9 +7,9 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
-lib.mkIf (noughtyLib.isUser [ "none" ] && config.noughty.host.is.workstation) {
+lib.mkIf (noughtyLib.isUser [ "none" ] && host.is.workstation) {
   nixpkgs.overlays = [
     inputs.nix-vscode-extensions.overlays.default
   ];
@@ -102,7 +102,7 @@ lib.mkIf (noughtyLib.isUser [ "none" ] && config.noughty.host.is.workstation) {
             vscode-marketplace.semgrep.semgrep
             vscode-marketplace.streetsidesoftware.code-spell-checker
           ]
-          ++ lib.optionals isLinux [
+          ++ lib.optionals host.is.linux [
             vscode-extensions.ms-vsliveshare.vsliveshare
           ];
       };

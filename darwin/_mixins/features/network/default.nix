@@ -2,10 +2,13 @@
   config,
   ...
 }:
+let
+  host = config.noughty.host;
+in
 {
   networking = {
-    hostName = config.noughty.host.name;
-    computerName = config.noughty.host.name;
+    hostName = host.name;
+    computerName = host.name;
     # extraHosts = ''
     #   127.0.0.3      k3d-k3d.localhost
     #   10.10.10.1     router

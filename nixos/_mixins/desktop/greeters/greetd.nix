@@ -7,6 +7,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   cursorPackage =
     pkgs.catppuccin-cursors."${catppuccinPalette.flavor}${
       lib.toUpper (builtins.substring 0 1 catppuccinPalette.accent)
@@ -51,8 +52,7 @@ let
     felkor = "1920x1200";
     default = "1920x1080";
   };
-  wallpaperResolution =
-    wallpaperResolutions.${config.noughty.host.name} or wallpaperResolutions.default;
+  wallpaperResolution = wallpaperResolutions.${host.name} or wallpaperResolutions.default;
   # Kanshi profiles for regreet that just enable the primary display:
   # - Order is important
   # - The last enabled output is what cage will use via `-m last`
@@ -74,11 +74,11 @@ let
     default = "";
   };
 in
-lib.mkIf config.noughty.host.is.workstation {
+lib.mkIf host.is.workstation {
   # Use Cage to run regreet
   environment = {
     etc = {
-      "kanshi/regreet".text = kanshiProfiles.${config.noughty.host.name} or kanshiProfiles.default;
+      "kanshi/regreet".text = kanshiProfiles.${host.name} or kanshiProfiles.default;
     };
     systemPackages = [
       cursorPackage

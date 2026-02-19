@@ -6,6 +6,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   consoleKeymap = "uk";
   locale = "en_GB.UTF-8";
   xkbLayout = "gb";
@@ -24,9 +25,9 @@ let
   };
   kmsconExtraConfig =
     (
-      if (builtins.hasAttr config.noughty.host.name kmsconFontSize) then
+      if (builtins.hasAttr host.name kmsconFontSize) then
         ''
-          font-size=${kmsconFontSize.${config.noughty.host.name}}
+          font-size=${kmsconFontSize.${host.name}}
         ''
       else
         ''
@@ -59,7 +60,7 @@ let
       palette-background=${rgbToKmscon "base"}
       sb-size=16384
     '';
-  useGeoclue = !config.noughty.host.is.server && !config.noughty.host.is.iso;
+  useGeoclue = !host.is.server && !host.is.iso;
 
   # Use centralized VT color mapping from palette
   vtColorMap = catppuccinPalette.vtColorMap;
@@ -157,7 +158,7 @@ in
     # - https://github.com/Aetf/kmscon/issues/18#issuecomment-612003371
 
     kmscon = {
-      autologinUser = if config.noughty.host.is.iso then "nixos" else null;
+      autologinUser = if host.is.iso then "nixos" else null;
       enable = true;
       hwRender = false;
       fonts = [
@@ -179,6 +180,6 @@ in
 
   time = {
     hardwareClockInLocalTime = true;
-    timeZone = lib.mkIf config.noughty.host.is.server "UTC";
+    timeZone = lib.mkIf host.is.server "UTC";
   };
 }

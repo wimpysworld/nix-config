@@ -6,7 +6,8 @@
   ...
 }:
 let
-  display = config.noughty.host.display;
+  host = config.noughty.host;
+  display = host.display;
   wlogoutMargins =
     if display.primaryIsPortrait then
       "--margin-top 960 --margin-bottom 960"

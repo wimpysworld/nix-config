@@ -5,12 +5,12 @@
   ...
 }:
 let
+  host = config.noughty.host;
   # Don't open the firewall for SSH on laptops; Tailscale will handle it.
-  openSSHFirewall =
-    if (!config.noughty.host.is.iso && config.noughty.host.is.laptop) then false else true;
+  openSSHFirewall = if (!host.is.iso && host.is.laptop) then false else true;
 in
 {
-  environment = lib.mkIf (!config.noughty.host.is.iso) {
+  environment = lib.mkIf (!host.is.iso) {
     systemPackages = with pkgs; [ ssh-to-age ];
   };
   programs = {
@@ -26,7 +26,7 @@ in
       };
     };
     sshguard = {
-      enable = !config.noughty.host.is.iso;
+      enable = !host.is.iso;
       whitelist = [
         "10.10.10.0/24"
         "10.10.30.0/24"

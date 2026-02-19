@@ -7,13 +7,13 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;
-    lib.mkIf isLinux {
+    lib.mkIf host.is.linux {
       "org/gnome/meld" = {
         custom-font = "FiraCode Nerd Font Mono Medium 13";
         indent-width = mkInt32 4;

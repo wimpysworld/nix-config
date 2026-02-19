@@ -5,6 +5,9 @@
   pkgs,
   ...
 }:
+let
+  host = config.noughty.host;
+in
 {
   imports = [
     ../components/avizo
@@ -16,7 +19,7 @@
     ../components/wlogout
   ];
 
-  config = lib.mkIf (config.noughty.host.desktop == "wayfire") {
+  config = lib.mkIf (host.desktop == "wayfire") {
     #TODO: IPC tooling for wayfire
     # https://github.com/killown/wayfire-rs
     # https://github.com/AR-CADE/wayfire-ipc

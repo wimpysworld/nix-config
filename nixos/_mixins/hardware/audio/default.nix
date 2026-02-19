@@ -6,10 +6,11 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
   useLowLatencyPipewire = noughtyLib.hostHasTag "streamstation";
 in
-lib.mkIf (!config.noughty.host.is.iso) {
+lib.mkIf (!host.is.iso) {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency
   boot = lib.mkIf config.services.pipewire.enable {
     # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
@@ -24,7 +25,7 @@ lib.mkIf (!config.noughty.host.is.iso) {
       pulseaudio
       pulsemixer
     ]
-    ++ lib.optionals config.noughty.host.is.workstation [
+    ++ lib.optionals host.is.workstation [
       pwvucontrol
     ];
 

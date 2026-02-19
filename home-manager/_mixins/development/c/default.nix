@@ -6,7 +6,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
 lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
@@ -29,7 +29,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
             vscode-marketplace.ms-vscode.cmake-tools
             vscode-marketplace.twxs.cmake
           ]
-          ++ lib.optionals isLinux [
+          ++ lib.optionals host.is.linux [
             vscode-extensions.ms-vscode.cpptools-extension-pack
             vscode-extensions.vadimcn.vscode-lldb
           ];

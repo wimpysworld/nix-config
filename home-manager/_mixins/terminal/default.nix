@@ -1,10 +1,11 @@
 {
-  pkgs,
+  config,
   lib,
+  pkgs,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   shellAliases = {
     banner = "${pkgs.figlet}/bin/figlet";
     banner-color = "${pkgs.figlet}/bin/figlet $argv | ${pkgs.dotacat}/bin/dotacat";
@@ -95,7 +96,7 @@ in
         wget2 # Terminal HTTP client
         xh # Terminal HTTP client
       ]
-      ++ lib.optionals pkgs.stdenv.isLinux [
+      ++ lib.optionals host.is.linux [
         batmon # Terminal battery monitor
         figlet # Terminal ASCII banners
         iw # Terminal WiFi info
@@ -109,7 +110,7 @@ in
         wavemon # Terminal WiFi monitor
         writedisk # Modern Unix `dd`
       ]
-      ++ lib.optionals pkgs.stdenv.isDarwin [
+      ++ lib.optionals host.is.darwin [
         m-cli # Terminal Swiss Army Knife for macOS
         coreutils
       ];

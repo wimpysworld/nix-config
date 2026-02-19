@@ -6,7 +6,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
 lib.mkIf
   (noughtyLib.isHost [
@@ -74,7 +74,7 @@ lib.mkIf
     };
 
     # Linux specific configuration
-    systemd.user.tmpfiles = lib.mkIf isLinux {
+    systemd.user.tmpfiles = lib.mkIf host.is.linux {
       rules = [
         "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
       ];

@@ -1,11 +1,12 @@
 {
+  config,
   lib,
   noughtyLib,
   pkgs,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isDarwin;
+  host = config.noughty.host;
   basicExtensions = [
     { id = "hdokiejnpimakedhajhdlcegeplioahd"; } # LastPass
   ];
@@ -29,7 +30,7 @@ in
   # Install browser extension for macOS and nix-darwin doesn't support it yet
   programs = {
     brave = {
-      enable = isDarwin;
+      enable = host.is.darwin;
       extensions =
         if (noughtyLib.isUser [ "martin" ]) then basicExtensions ++ advancedExtensions else basicExtensions;
     };

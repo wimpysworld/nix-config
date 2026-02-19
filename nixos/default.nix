@@ -10,6 +10,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
 in
 {
@@ -41,7 +42,7 @@ in
   ];
 
   boot = {
-    binfmt = lib.mkIf (!config.noughty.host.is.iso) {
+    binfmt = lib.mkIf (!host.is.iso) {
       emulatedSystems = [
         "riscv64-linux"
       ]
@@ -56,7 +57,7 @@ in
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
     # Only enable the systemd-boot on installs, not live media (.ISO images)
-    loader = lib.mkIf (!config.noughty.host.is.iso) {
+    loader = lib.mkIf (!host.is.iso) {
       efi.canTouchEfiVariables = true;
       systemd-boot.configurationLimit = lib.mkDefault 10;
       systemd-boot.consoleMode = "max";
@@ -79,7 +80,7 @@ in
         inputs.determinate.packages.${pkgs.stdenv.hostPlatform.system}.default
         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
       ]
-      ++ lib.optionals (!config.noughty.host.is.iso) [
+      ++ lib.optionals (!host.is.iso) [
         nvme-cli
         rsync
         smartmontools
@@ -113,13 +114,13 @@ in
     nano.enable = lib.mkDefault false;
     nh = {
       clean = {
-        enable = !config.noughty.host.is.iso;
+        enable = !host.is.iso;
         extraArgs = "--keep-since 15d --keep 10";
       };
       enable = true;
       flake = "/home/${username}/Zero/nix-config";
     };
-    nix-ld = lib.mkIf (!config.noughty.host.is.iso) {
+    nix-ld = lib.mkIf (!host.is.iso) {
       enable = true;
       libraries = with pkgs; [
         # Add any missing dynamic libraries for unpackaged
@@ -136,7 +137,7 @@ in
   };
 
   # Only enable sudo-rs on installs, not live media (.ISO images)
-  security = lib.mkIf (!config.noughty.host.is.iso) {
+  security = lib.mkIf (!host.is.iso) {
     polkit.enable = true;
     sudo.enable = false;
     sudo-rs = {
@@ -145,7 +146,7 @@ in
   };
 
   # https://dl.thalheim.io/
-  sops = lib.mkIf (!config.noughty.host.is.iso) {
+  sops = lib.mkIf (!host.is.iso) {
     age = {
       keyFile = "/var/lib/private/sops/age/keys.txt";
       generateKey = false;
@@ -181,22 +182,22 @@ in
       ssh_host_ed25519_key = {
         mode = "0600";
         path = "/etc/ssh/ssh_host_ed25519_key";
-        sopsFile = ../secrets/host-${config.noughty.host.name}.yaml;
+        sopsFile = ../secrets/host-${host.name}.yaml;
       };
       ssh_host_ed25519_key_pub = {
         mode = "0644";
         path = "/etc/ssh/ssh_host_ed25519_key.pub";
-        sopsFile = ../secrets/host-${config.noughty.host.name}.yaml;
+        sopsFile = ../secrets/host-${host.name}.yaml;
       };
       ssh_host_rsa_key = {
         mode = "0600";
         path = "/etc/ssh/ssh_host_rsa_key";
-        sopsFile = ../secrets/host-${config.noughty.host.name}.yaml;
+        sopsFile = ../secrets/host-${host.name}.yaml;
       };
       ssh_host_rsa_key_pub = {
         mode = "0644";
         path = "/etc/ssh/ssh_host_rsa_key.pub";
-        sopsFile = ../secrets/host-${config.noughty.host.name}.yaml;
+        sopsFile = ../secrets/host-${host.name}.yaml;
       };
     };
   };

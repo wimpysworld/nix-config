@@ -6,9 +6,9 @@
   ...
 }:
 let
-  cfg = config.noughty.host;
-  hostName = cfg.name;
-  isInferenceServer = cfg.is.server && noughtyLib.hostHasTag "inference";
+  host = config.noughty.host;
+  hostName = host.name;
+  isInferenceServer = host.is.server && noughtyLib.hostHasTag "inference";
 
   # Pull model information from the ollama service configuration.
   defaultModel =

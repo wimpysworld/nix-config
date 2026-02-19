@@ -10,7 +10,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isDarwin isLinux;
+  host = config.noughty.host;
   username = config.noughty.user.name;
 in
 {
@@ -47,7 +47,7 @@ in
     inherit stateVersion;
     username = config.noughty.user.name;
     homeDirectory =
-      if isDarwin then
+      if host.is.darwin then
         "/Users/${username}"
       else if noughtyLib.hostHasTag "lima" then
         "/home/${username}.linux"
@@ -86,7 +86,7 @@ in
         symbola
         work-sans
       ]
-      ++ lib.optionals config.noughty.host.is.workstation [
+      ++ lib.optionals host.is.workstation [
         bebas-neue-2014-font
         bebas-neue-pro-font
         bebas-neue-rounded-font
@@ -212,7 +212,7 @@ in
   };
 
   # Fix sops-nix launchd service PATH on Darwin
-  launchd.agents.sops-nix = lib.mkIf isDarwin {
+  launchd.agents.sops-nix = lib.mkIf host.is.darwin {
     enable = true;
     config = {
       EnvironmentVariables = {
@@ -221,7 +221,7 @@ in
     };
   };
 
-  systemd = lib.mkIf isLinux {
+  systemd = lib.mkIf host.is.linux {
     user = {
       # Nicely reload system units when changing configs
       startServices = "sd-switch";
@@ -236,8 +236,8 @@ in
   };
 
   xdg = {
-    enable = isLinux;
-    desktopEntries = lib.mkIf isLinux {
+    enable = host.is.linux;
+    desktopEntries = lib.mkIf host.is.linux {
       cups = {
         name = "Manage Printing";
         noDisplay = true;
@@ -249,7 +249,7 @@ in
     };
     userDirs = {
       # Do not create XDG directories for LIMA; it is confusing
-      enable = isLinux && !(noughtyLib.hostHasTag "lima");
+      enable = host.is.linux && !(noughtyLib.hostHasTag "lima");
       createDirectories = lib.mkDefault true;
       extraConfig = {
         XDG_SCREENSHOTS_DIR = "${config.home.homeDirectory}/Pictures/Screenshots";

@@ -7,12 +7,12 @@
 }:
 let
   username = config.noughty.user.name;
-  inherit (pkgs.stdenv) isLinux isDarwin;
+  host = config.noughty.host;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   vscodeUserDir =
-    if isLinux then
+    if host.is.linux then
       "${config.xdg.configHome}/Code/User"
-    else if isDarwin then
+    else if host.is.darwin then
       "/Users/${username}/Library/Application Support/Code/User"
     else
       throw "Unsupported platform";

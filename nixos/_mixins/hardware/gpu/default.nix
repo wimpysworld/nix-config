@@ -5,6 +5,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
   hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
   hasAmdGPU = config.hardware.amdgpu.initrd.enable;
@@ -13,7 +14,7 @@ let
     "xe"
   ];
 in
-lib.mkIf (!config.noughty.host.is.iso) {
+lib.mkIf (!host.is.iso) {
 
   boot = {
     # If the "nvidia" driver is enabled, blacklist the "nouveau" driver
@@ -31,9 +32,9 @@ lib.mkIf (!config.noughty.host.is.iso) {
         vdpauinfo
         vulkan-tools
       ]
-      ++ lib.optionals config.noughty.host.is.workstation [ gpu-viewer ]
-      ++ lib.optionals (config.noughty.host.is.workstation && hasAmdGPU) [ lact ]
-      ++ lib.optionals (config.noughty.host.is.workstation && hasNvidiaGPU) [ gwe ]
+      ++ lib.optionals host.is.workstation [ gpu-viewer ]
+      ++ lib.optionals (host.is.workstation && hasAmdGPU) [ lact ]
+      ++ lib.optionals (host.is.workstation && hasNvidiaGPU) [ gwe ]
       ++ lib.optionals hasNvidiaGPU [
         cudaPackages.cudatoolkit
         nvitop
@@ -55,7 +56,7 @@ lib.mkIf (!config.noughty.host.is.iso) {
       extraPackages = with pkgs; lib.optionals hasIntelGPU [ intel-compute-runtime ];
     };
     nvidia = lib.mkIf hasNvidiaGPU {
-      nvidiaSettings = lib.mkDefault config.noughty.host.is.workstation;
+      nvidiaSettings = lib.mkDefault host.is.workstation;
     };
   };
 

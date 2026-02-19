@@ -5,6 +5,9 @@
   pkgs,
   ...
 }:
+let
+  host = config.noughty.host;
+in
 lib.mkIf
   (noughtyLib.isHost [
     "bane"
@@ -28,7 +31,7 @@ lib.mkIf
       };
     };
 
-    systemd.user.services.maestral-gui = lib.mkIf config.noughty.host.is.workstation {
+    systemd.user.services.maestral-gui = lib.mkIf host.is.workstation {
       description = "Maestral GUI";
       wantedBy = [ "default.target" ];
       serviceConfig = {

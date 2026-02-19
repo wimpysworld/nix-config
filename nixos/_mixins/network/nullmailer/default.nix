@@ -4,10 +4,11 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
   domain = "wimpys.world";
 in
-lib.mkIf (!config.noughty.host.is.iso) {
+lib.mkIf (!host.is.iso) {
   environment = {
     shellAliases = {
       mail-log = "journalctl _SYSTEMD_UNIT=nullmailer.service";

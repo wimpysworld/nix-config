@@ -7,11 +7,11 @@
 }:
 let
   username = config.noughty.user.name;
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   davinciResolve = (pkgs.davinci-resolve.override { studioVariant = true; });
 in
 {
-  dconf = lib.mkIf isLinux {
+  dconf = lib.mkIf host.is.linux {
     settings = with lib.hm.gvariant; {
       "com/github/wwmm/easyeffects" = {
         bypass = false;
@@ -412,7 +412,7 @@ in
     lib.optionals (!(noughtyLib.hostHasTag "lima")) [
       audacity
     ]
-    ++ lib.optionals (!(noughtyLib.hostHasTag "lima") && isLinux) [
+    ++ lib.optionals (!(noughtyLib.hostHasTag "lima") && host.is.linux) [
       gimp3
       inkscape
     ]
@@ -423,10 +423,10 @@ in
 
   services.easyeffects = lib.mkIf (noughtyLib.hostHasTag "streamstation") {
     enable = true;
-    preset = "mic-${config.noughty.host.name}-oktava";
+    preset = "mic-${host.name}-oktava";
   };
 
-  systemd.user.tmpfiles.rules = lib.mkIf isLinux [
+  systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
     "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
     "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
   ];

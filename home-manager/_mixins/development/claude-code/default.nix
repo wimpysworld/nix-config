@@ -7,12 +7,12 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux isDarwin;
+  host = config.noughty.host;
   # https://github.com/numtide/nix-ai-tools
   claudePackage =
-    if isLinux then
+    if host.is.linux then
       inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.claude-code
-    else if isDarwin then
+    else if host.is.darwin then
       pkgs.unstable.claude-code
     else
       pkgs.claude-code;

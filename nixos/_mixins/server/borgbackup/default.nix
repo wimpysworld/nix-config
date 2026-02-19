@@ -6,6 +6,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
 
   # Legacy hosts store backups under /mnt/snapshot; newer hosts use /mnt/data.
@@ -14,12 +15,12 @@ let
     "revan"
     "vader"
   ];
-  backupBase = if lib.elem config.noughty.host.name legacyHosts then "/mnt/snapshot" else "/mnt/data";
+  backupBase = if lib.elem host.name legacyHosts then "/mnt/snapshot" else "/mnt/data";
   home = "/home/${username}";
   domain = config.services.nullmailer.config.defaultdomain;
 
   # Derive the borg repository path for a given job name.
-  repoPrefix = "${backupBase}/${username}/borg-${config.noughty.host.name}-";
+  repoPrefix = "${backupBase}/${username}/borg-${host.name}-";
   mkRepoPath = name: "${repoPrefix}${name}";
 
   # Structured backup job definitions. Each entry describes what to back up,
@@ -318,9 +319,9 @@ let
       /run/wrappers/bin/sendmail -t <<EOF
       To: ${username}@${domain}
       From: borgbackup@${domain}
-      Subject: [${config.noughty.host.name}] ${serviceName} failed
+      Subject: [${host.name}] ${serviceName} failed
 
-      The systemd service ${serviceName}.service on host ${config.noughty.host.name} has failed.
+      The systemd service ${serviceName}.service on host ${host.name} has failed.
 
       Review the logs:
         journalctl -u ${serviceName}.service -n 50 --no-pager

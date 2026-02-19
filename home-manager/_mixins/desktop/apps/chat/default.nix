@@ -7,7 +7,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 
   # Catppuccin Halloy themes from the catppuccin flake
   catppuccinHalloy = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.halloy;
@@ -107,12 +107,12 @@ in
         halloy
       ]
       # Halloy is installed via homebrew on Darwin
-      ++ lib.optionals (noughtyLib.isUser [ "martin" ] && isLinux) [
+      ++ lib.optionals (noughtyLib.isUser [ "martin" ] && host.is.linux) [
         fractal
       ];
   };
 
-  sops = lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
+  sops = lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux) {
     secrets = {
       SOJU_PASSWORD.sopsFile = ../../../../../secrets/halloy.yaml;
       LIBERA_PASSWORD.sopsFile = ../../../../../secrets/halloy.yaml;
@@ -126,7 +126,7 @@ in
 
   # Install Catppuccin Mocha theme for Halloy
   xdg.configFile."halloy/themes/catppuccin-mocha.toml" =
-    lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux)
+    lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux)
       {
         source = catppuccinHalloy + "/catppuccin-mocha.toml";
       };

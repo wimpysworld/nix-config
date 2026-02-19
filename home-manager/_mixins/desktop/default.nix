@@ -5,6 +5,9 @@
   pkgs,
   ...
 }:
+let
+  host = config.noughty.host;
+in
 {
   # Import the DE specific configuration; each compositor gates itself internally
   imports = [
@@ -13,9 +16,8 @@
     ./compositor/wayfire
   ];
 
-  config = lib.mkIf config.noughty.host.is.workstation (
+  config = lib.mkIf host.is.workstation (
     let
-      inherit (pkgs.stdenv) isLinux;
       buttonLayout =
         if config.wayland.windowManager.hyprland.enable then ":appmenu" else ":close,minimize,maximize";
       clockFormat = "24h";
@@ -82,7 +84,7 @@
       };
       iconThemeName = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
       iconThemePackage =
-        if isLinux then
+        if host.is.linux then
           pkgs.catppuccin-papirus-folders.override {
             flavor = config.catppuccin.flavor;
             accent = config.catppuccin.accent;
@@ -92,11 +94,11 @@
     in
     {
       catppuccin = {
-        cursors.enable = isLinux;
+        cursors.enable = host.is.linux;
         kvantum.enable = config.qt.enable;
       };
 
-      dconf = lib.mkIf isLinux {
+      dconf = lib.mkIf host.is.linux {
         settings = {
           "org/gnome/desktop/interface" = {
             color-scheme = catppuccinPalette.preferShade;
@@ -130,7 +132,7 @@
         };
       };
 
-      home = lib.mkIf isLinux {
+      home = lib.mkIf host.is.linux {
         packages = [
           pkgs.kdePackages.qt6ct
           pkgs.kdePackages.qtstyleplugin-kvantum
@@ -161,7 +163,7 @@
         };
       };
 
-      gtk = lib.mkIf isLinux {
+      gtk = lib.mkIf host.is.linux {
         enable = true;
         font = {
           name = "Work Sans";
@@ -198,7 +200,7 @@
         };
       };
 
-      qt = lib.mkIf isLinux {
+      qt = lib.mkIf host.is.linux {
         enable = true;
         platformTheme = {
           name = config.qt.style.name;
@@ -208,7 +210,7 @@
         };
       };
 
-      services = lib.mkIf isLinux {
+      services = lib.mkIf host.is.linux {
         gnome-keyring = {
           enable = true;
         };
@@ -228,7 +230,7 @@
         };
       };
 
-      xdg = lib.mkIf isLinux {
+      xdg = lib.mkIf host.is.linux {
         autostart = {
           enable = true;
         };

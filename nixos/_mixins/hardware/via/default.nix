@@ -4,9 +4,10 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
 in
-lib.mkIf (!config.noughty.host.is.iso) {
+lib.mkIf (!host.is.iso) {
   services = {
     # Provides users with access to VIA
     # https://get.vial.today/manual/linux-udev.html

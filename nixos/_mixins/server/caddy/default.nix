@@ -6,6 +6,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
   basePath = "/syncthing";
   # Only enables caddy if tailscale is enabled or the host is Malak
@@ -38,7 +39,7 @@ in
         hash = "sha256-Otl88PMFNHbcNkTIPB2sNjdDCyl9UC1nEwYyxVzUsFU=";
       };
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
-      virtualHosts."${config.noughty.host.name}.${config.noughty.network.tailNet}" =
+      virtualHosts."${host.name}.${config.noughty.network.tailNet}" =
         lib.mkIf config.services.tailscale.enable
           {
             extraConfig = ''

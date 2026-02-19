@@ -5,7 +5,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
 {
   catppuccin.btop.enable = config.programs.btop.enable;
@@ -14,13 +14,13 @@ in
     btop = {
       enable = true;
       package = pkgs.btop.override {
-        cudaSupport = isLinux;
-        rocmSupport = isLinux;
+        cudaSupport = host.is.linux;
+        rocmSupport = host.is.linux;
       };
     };
   };
 
-  xdg = lib.mkIf isLinux {
+  xdg = lib.mkIf host.is.linux {
     desktopEntries = {
       btop = {
         name = "btop++";

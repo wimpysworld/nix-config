@@ -285,9 +285,9 @@ lib.mkIf (noughtyLib.hostHasTag "streamstation") {
 ```nix
 { config, lib, ... }:
 let
-  cfg = config.noughty.host;
+  host = config.noughty.host;
 in
-lib.mkIf cfg.is.workstation {
+lib.mkIf host.is.workstation {
   boot.plymouth.enable = true;
 }
 ```
@@ -331,9 +331,9 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) 
 ```nix
 { config, lib, noughtyLib, pkgs, ... }:
 let
-  cfg = config.noughty.host;
-  vram = cfg.gpu.compute.vram;
-  accel = cfg.gpu.compute.acceleration;
+  host = config.noughty.host;
+  vram = host.gpu.compute.vram;
+  accel = host.gpu.compute.acceleration;
   ollamaPackage =
     if accel == "cuda" then pkgs.ollama-cuda
     else if accel == "rocm" then pkgs.ollama-rocm
@@ -343,7 +343,7 @@ lib.mkIf (noughtyLib.hostHasTag "inference") {
   services.ollama = {
     enable = true;
     package = ollamaPackage;
-    host = if cfg.is.server then "0.0.0.0" else "127.0.0.1";
+    host = if host.is.server then "0.0.0.0" else "127.0.0.1";
   };
 }
 ```

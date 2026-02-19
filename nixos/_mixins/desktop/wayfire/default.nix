@@ -6,6 +6,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   mkHiddenWaylandSession =
     name:
     pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''
@@ -58,7 +59,7 @@ let
 in
 {
   imports = [ ../greeters/greetd.nix ];
-  config = lib.mkIf (config.noughty.host.desktop == "wayfire") {
+  config = lib.mkIf (host.desktop == "wayfire") {
     environment = {
       sessionVariables = {
         # Make sure the cursor size is the same in all environments

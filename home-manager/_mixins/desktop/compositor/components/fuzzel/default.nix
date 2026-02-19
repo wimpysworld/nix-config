@@ -6,7 +6,8 @@
   ...
 }:
 let
-  display = config.noughty.host.display;
+  host = config.noughty.host;
+  display = host.display;
   fontSize = if display.primaryIsHighRes || display.primaryIsHighDpi then "30" else "18";
   fuzzelActions = pkgs.writeShellApplication {
     name = "fuzzel-actions";

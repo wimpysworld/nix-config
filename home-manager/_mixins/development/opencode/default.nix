@@ -7,7 +7,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux isDarwin;
+  host = config.noughty.host;
   system = pkgs.stdenv.hostPlatform.system;
   opencodePackage = inputs.opencode.packages.${system}.opencode;
 in
@@ -18,7 +18,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
     ]
     # TODO: Disabled until upstream fixes missing outputHashes
     # https://github.com/anomalyco/opencode/issues/11755
-    ++ lib.optionals (false && config.noughty.host.is.workstation && isLinux) [
+    ++ lib.optionals (false && host.is.workstation && host.is.linux) [
       inputs.opencode.packages.${system}.desktop
     ];
   };

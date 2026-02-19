@@ -5,7 +5,10 @@
   pkgs,
   ...
 }:
-lib.mkIf (noughtyLib.isUser [ "none" ] && config.noughty.host.is.workstation) {
+let
+  host = config.noughty.host;
+in
+lib.mkIf (noughtyLib.isUser [ "none" ] && host.is.workstation) {
   home = {
     file = {
       # https://github.com/catppuccin/gitkraken

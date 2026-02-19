@@ -7,6 +7,7 @@
 }:
 let
   username = config.noughty.user.name;
+  host = config.noughty.host;
 in
 {
   imports = [
@@ -53,7 +54,7 @@ in
       };
     };
     programs = {
-      bash.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !(noughtyLib.hostHasTag "lima")) {
+      bash.shellAliases = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
         lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
         unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
         lock-secrets = "fusermount -u ~/Vaults/Secrets";
@@ -62,20 +63,20 @@ in
       fish.loginShellInit = ''
         ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
       '';
-      fish.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !(noughtyLib.hostHasTag "lima")) {
+      fish.shellAliases = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
         lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
         unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
         lock-secrets = "fusermount -u ~/Vaults/Secrets";
         unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
-      zsh.shellAliases = lib.mkIf (pkgs.stdenv.isLinux && !(noughtyLib.hostHasTag "lima")) {
+      zsh.shellAliases = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
         lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
         unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
         lock-secrets = "fusermount -u ~/Vaults/Secrets";
         unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
     };
-    systemd.user.tmpfiles = lib.mkIf (pkgs.stdenv.isLinux && !(noughtyLib.hostHasTag "lima")) {
+    systemd.user.tmpfiles = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
       rules = [
         "d ${config.home.homeDirectory}/Crypt 0755 ${username} users - -"
         "d ${config.home.homeDirectory}/Vaults/Armstrong 0755 ${username} users - -"

@@ -482,14 +482,14 @@ in
 ```nix
 { config, lib, ... }:
 let
-  cfg = config.noughty.host;
+  host = config.noughty.host;
 in
 {
-  environment.systemPackages = lib.optionals (!cfg.is.iso) [ ... ];
+  environment.systemPackages = lib.optionals (!host.is.iso) [ ... ];
 }
 ```
 
-⚠️ **Caveat on `imports`.** Using `config` in `imports` creates an infinite recursion because `imports` is evaluated before `config` is fixed. The old `imports = lib.optional isWorkstation ./_mixins/desktop` pattern cannot be translated to `imports = lib.optional cfg.is.workstation ./_mixins/desktop` - this will recurse. Instead, make the import unconditional and have the imported module gate itself internally using the long-form pattern (see [Pattern 9](#pattern-9-long-form-module-with-sub-imports-6-hub-modules)). This constraint affects only the ~6 desktop hub modules.
+⚠️ **Caveat on `imports`.** Using `config` in `imports` creates an infinite recursion because `imports` is evaluated before `config` is fixed. The old `imports = lib.optional isWorkstation ./_mixins/desktop` pattern cannot be translated to `imports = lib.optional host.is.workstation ./_mixins/desktop` - this will recurse. Instead, make the import unconditional and have the imported module gate itself internally using the long-form pattern (see [Pattern 9](#pattern-9-long-form-module-with-sub-imports-6-hub-modules)). This constraint affects only the ~6 desktop hub modules.
 
 ### Pattern 5: Combined user + flag gating
 

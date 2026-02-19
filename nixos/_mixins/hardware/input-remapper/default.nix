@@ -6,10 +6,11 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
   enableInputRemapper = noughtyLib.hostHasTag "trackball";
 in
-lib.mkIf (!config.noughty.host.is.iso) {
+lib.mkIf (!host.is.iso) {
   services.input-remapper = {
     enable = enableInputRemapper;
     enableUdevRules = enableInputRemapper;

@@ -4,6 +4,9 @@
   pkgs,
   ...
 }:
+let
+  host = config.noughty.host;
+in
 {
   imports = [
     ./apps
@@ -12,7 +15,7 @@
     ./wayfire
   ];
 
-  config = lib.mkIf (config.noughty.host.is.workstation && !config.noughty.host.is.iso) {
+  config = lib.mkIf (host.is.workstation && !host.is.iso) {
     boot = {
       consoleLogLevel = 0;
       initrd.verbose = false;

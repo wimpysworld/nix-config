@@ -6,6 +6,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   install-system = pkgs.writeShellApplication {
     name = "install-system";
     runtimeInputs = with pkgs; [
@@ -25,5 +26,5 @@ let
   };
 in
 {
-  environment.systemPackages = lib.optionals config.noughty.host.is.iso [ install-system ];
+  environment.systemPackages = lib.optionals host.is.iso [ install-system ];
 }

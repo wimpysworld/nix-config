@@ -6,13 +6,13 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux) {
   # Authrorize X11 access in Distrobox
   home = {
     file = {
-      ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && config.noughty.host.is.workstation) {
+      ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && host.is.workstation) {
         text = "${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER";
       };
       "Quickemu/nixos-console/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
@@ -28,7 +28,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
         '';
       };
     };
-    packages = lib.optionals config.noughty.host.is.workstation [
+    packages = lib.optionals host.is.workstation [
       pkgs.quickemu
     ];
   };
@@ -42,7 +42,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && isLinux) {
   };
   services = {
     podman = {
-      enable = isLinux;
+      enable = host.is.linux;
     };
   };
 }

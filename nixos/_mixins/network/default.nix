@@ -5,10 +5,10 @@
   ...
 }:
 let
+  host = config.noughty.host;
   username = config.noughty.user.name;
-  useDoT = if config.noughty.host.is.laptop then "opportunistic" else "true";
-  useNetworkManager =
-    if (config.noughty.host.is.iso || !config.noughty.host.is.server) then true else false;
+  useDoT = if host.is.laptop then "opportunistic" else "true";
+  useNetworkManager = if (host.is.iso || !host.is.server) then true else false;
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.docker.enable [ "docker0" ]
@@ -111,7 +111,7 @@ in
     ./vader.nix
   ];
 
-  programs.captive-browser = lib.mkIf config.noughty.host.is.laptop {
+  programs.captive-browser = lib.mkIf host.is.laptop {
     enable = true;
     browser = ''
       env XDG_CONFIG_HOME="$PREV_CONFIG_HOME" ${pkgs.chromium}/bin/chromium --user-data-dir=$HOME/.local/share/chromium-captive --proxy-server="socks5://$PROXY" --host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE localhost" --no-first-run --new-window --incognito -no-default-browser-check http://neverssl.com
@@ -141,14 +141,14 @@ in
     firewall = {
       enable = true;
       allowedTCPPorts =
-        lib.optionals (builtins.hasAttr config.noughty.host.name allowedTCPPorts)
-          allowedTCPPorts.${config.noughty.host.name};
+        lib.optionals (builtins.hasAttr host.name allowedTCPPorts)
+          allowedTCPPorts.${host.name};
       allowedUDPPorts =
-        lib.optionals (builtins.hasAttr config.noughty.host.name allowedUDPPorts)
-          allowedUDPPorts.${config.noughty.host.name};
+        lib.optionals (builtins.hasAttr host.name allowedUDPPorts)
+          allowedUDPPorts.${host.name};
       inherit trustedInterfaces;
     };
-    hostName = config.noughty.host.name;
+    hostName = host.name;
     nameservers = if builtins.hasAttr username userDns then userDns.${username} else fallbackDns;
     networkmanager = lib.mkIf useNetworkManager {
       # A NetworkManager dispatcher script to open a browser window when a captive portal is detected
@@ -203,8 +203,8 @@ in
       enable = true;
       unmanaged = unmanagedInterfaces;
       wifi.backend = "iwd";
-      wifi.powersave = !config.noughty.host.is.laptop;
-      settings.connectivity = lib.mkIf config.noughty.host.is.laptop {
+      wifi.powersave = !host.is.laptop;
+      settings.connectivity = lib.mkIf host.is.laptop {
         uri = "http://google.cn/generate_204";
         response = "";
       };
@@ -213,7 +213,7 @@ in
     nftables.enable = lib.mkIf config.virtualisation.incus.enable true;
     useDHCP = lib.mkDefault true;
     # Forcibly disable wireless networking on ISO images, as they now use NetworkManager/iwd
-    wireless = lib.mkIf config.noughty.host.is.iso {
+    wireless = lib.mkIf host.is.iso {
       enable = lib.mkForce false;
     };
   };
@@ -224,7 +224,7 @@ in
       publish = {
         addresses = true;
         enable = true;
-        workstation = config.noughty.host.is.workstation;
+        workstation = host.is.workstation;
       };
     };
     # Use resolved for DNS resolution; tailscale MagicDNS requires it
@@ -237,7 +237,7 @@ in
     };
   };
 
-  sops = lib.mkIf (!config.noughty.host.is.iso) {
+  sops = lib.mkIf (!host.is.iso) {
     secrets = {
       psk = lib.mkIf config.networking.networkmanager.enable {
         mode = "0600";

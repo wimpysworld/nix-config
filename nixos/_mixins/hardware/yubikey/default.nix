@@ -4,14 +4,17 @@
   pkgs,
   ...
 }:
-lib.mkIf (!config.noughty.host.is.iso) {
+let
+  host = config.noughty.host;
+in
+lib.mkIf (!host.is.iso) {
   environment.systemPackages =
     with pkgs;
-    lib.optionals config.noughty.host.is.workstation [
+    lib.optionals host.is.workstation [
       yubioath-flutter
     ];
-  programs.yubikey-touch-detector.enable = config.noughty.host.is.workstation;
-  programs.yubikey-touch-detector.libnotify = config.noughty.host.is.workstation;
+  programs.yubikey-touch-detector.enable = host.is.workstation;
+  programs.yubikey-touch-detector.libnotify = host.is.workstation;
   #security.pam.u2f.enable = true;
   #security.pam.yubico.control = "required";
   services = {

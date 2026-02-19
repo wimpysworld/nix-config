@@ -6,7 +6,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
 lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
@@ -19,7 +19,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
       "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text =
         builtins.readFile ./userstyle.css;
     };
-    packages = lib.optionals isLinux [ pkgs.heynote ];
+    packages = lib.optionals host.is.linux [ pkgs.heynote ];
   };
 
   programs.joplin-desktop = {
