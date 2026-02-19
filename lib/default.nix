@@ -6,7 +6,7 @@
   ...
 }:
 let
-  helpers = import ./helpers.nix {
+  builders = import ./flake-builders.nix {
     inherit
       darwinStateVersion
       inputs
@@ -16,7 +16,7 @@ let
   };
 in
 {
-  inherit (helpers)
+  inherit (builders)
     mkDarwin
     mkHome
     mkNixos

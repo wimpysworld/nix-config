@@ -56,7 +56,7 @@
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "25.11";
       darwinStateVersion = 5;
-      helper = import ./lib {
+      builder = import ./lib {
         inherit
           inputs
           outputs
@@ -118,7 +118,7 @@
         bane = {
           kind = "computer";
           platform = "x86_64-linux";
-          formFactor = "desktop";
+          formFactor = "laptop";
           gpu.vendors = [ "amd" ];
           tags = [ "policy" ];
         };
@@ -240,37 +240,37 @@
 
     in
     {
-      # Expose lib so it can be used by the helper functions
-      lib = helper;
+      # Expose lib so it can be used by the builder functions
+      lib = builder;
 
       # Generated system configurations
       nixosConfigurations =
         let
-          allNixos = helper.generateConfigs (
-            e: helper.isLinuxEntry e && !helper.isISOEntry e && !helper.isHomeOnlyEntry e
+          allNixos = builder.generateConfigs (
+            e: builder.isLinuxEntry e && !builder.isISOEntry e && !builder.isHomeOnlyEntry e
           ) systems;
-          allISO = helper.generateConfigs helper.isISOEntry systems;
+          allISO = builder.generateConfigs builder.isISOEntry systems;
         in
-        nixpkgs.lib.mapAttrs (_name: config: helper.mkNixos config) (allNixos // allISO);
+        nixpkgs.lib.mapAttrs (_name: config: builder.mkNixos config) (allNixos // allISO);
 
-      darwinConfigurations = nixpkgs.lib.mapAttrs (_name: config: helper.mkDarwin config) (
-        helper.generateConfigs helper.isDarwinEntry systems
+      darwinConfigurations = nixpkgs.lib.mapAttrs (_name: config: builder.mkDarwin config) (
+        builder.generateConfigs builder.isDarwinEntry systems
       );
 
       homeConfigurations =
         let
-          allHomes = helper.generateConfigs (_e: true) systems;
+          allHomes = builder.generateConfigs (_e: true) systems;
         in
         nixpkgs.lib.mapAttrs' (
           _name: config:
-          nixpkgs.lib.nameValuePair "${config.username}@${config.hostname}" (helper.mkHome config)
+          nixpkgs.lib.nameValuePair "${config.username}@${config.hostname}" (builder.mkHome config)
         ) allHomes;
       # Custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };
       # Custom NixOS modules
       nixosModules = import ./modules/nixos;
       # Custom packages; accessible via 'nix build', 'nix shell', etc
-      packages = helper.forAllSystems (
+      packages = builder.forAllSystems (
         system:
         let
           pkgs = import nixpkgs {
@@ -312,10 +312,10 @@
         // linuxOnlyFlakePackage "pwmenu" inputs.pwmenu
       );
       # Formatter for .nix files, available via 'nix fmt'
-      formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
+      formatter = builder.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
 
       # Creates a devshell for working with this flake via direnv.
-      devShells = helper.forAllSystems (
+      devShells = builder.forAllSystems (
         system:
         let
           pkgs = import nixpkgs {
