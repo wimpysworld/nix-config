@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   lib,
   noughtyLib,
   pkgs,
@@ -14,18 +13,18 @@ let
   syncDefs = import ./syncthing-devices.nix;
 
   # Determine whether this host is a Syncthing cohort member
-  isSyncthingHost = builtins.hasAttr hostname syncDefs.devices;
+  isSyncthingHost = builtins.hasAttr config.noughty.host.name syncDefs.devices;
 
   # Exclude the current host from the devices list
-  otherDevices = lib.filterAttrs (name: _: name != hostname) syncDefs.devices;
+  otherDevices = lib.filterAttrs (name: _: name != config.noughty.host.name) syncDefs.devices;
 
   # Transform folders: enable only where this host is listed, remove self from devices
   hostFolders = lib.mapAttrs (
     name: folder:
     folder
     // {
-      enable = lib.elem hostname folder.devices;
-      devices = lib.filter (d: d != hostname) folder.devices;
+      enable = lib.elem config.noughty.host.name folder.devices;
+      devices = lib.filter (d: d != config.noughty.host.name) folder.devices;
     }
   ) syncDefs.folders;
 
@@ -55,8 +54,8 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
   };
 
   sops.secrets = lib.mkIf isSyncthingHost {
-    syncthing_key.sopsFile = ../../../secrets/host-${hostname}.yaml;
-    syncthing_cert.sopsFile = ../../../secrets/host-${hostname}.yaml;
+    syncthing_key.sopsFile = ../../../secrets/host-${config.noughty.host.name}.yaml;
+    syncthing_cert.sopsFile = ../../../secrets/host-${config.noughty.host.name}.yaml;
     pass.sopsFile = ../../../secrets/syncthing.yaml;
     syncthing_apikey = {
       sopsFile = ../../../secrets/syncthing.yaml;

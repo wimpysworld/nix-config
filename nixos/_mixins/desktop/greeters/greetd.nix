@@ -1,8 +1,8 @@
 {
   catppuccinPalette,
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -18,9 +18,6 @@ let
     }
   );
   iconTheme = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
-  sithLord =
-    (lib.strings.toUpper (builtins.substring 0 1 hostname))
-    + (builtins.substring 1 (builtins.stringLength hostname) hostname);
   # Reference for setting display configuration for cage
   # - https://github.com/cage-kiosk/cage/issues/304
   # - https://github.com/cage-kiosk/cage/issues/257
@@ -54,7 +51,8 @@ let
     felkor = "1920x1200";
     default = "1920x1080";
   };
-  wallpaperResolution = wallpaperResolutions.${hostname} or wallpaperResolutions.default;
+  wallpaperResolution =
+    wallpaperResolutions.${config.noughty.host.name} or wallpaperResolutions.default;
   # Kanshi profiles for regreet that just enable the primary display:
   # - Order is important
   # - The last enabled output is what cage will use via `-m last`
@@ -80,7 +78,7 @@ lib.mkIf config.noughty.host.is.workstation {
   # Use Cage to run regreet
   environment = {
     etc = {
-      "kanshi/regreet".text = kanshiProfiles.${hostname} or kanshiProfiles.default;
+      "kanshi/regreet".text = kanshiProfiles.${config.noughty.host.name} or kanshiProfiles.default;
     };
     systemPackages = [
       cursorPackage
@@ -94,7 +92,7 @@ lib.mkIf config.noughty.host.is.workstation {
       enable = true;
       settings = {
         appearance = {
-          greeting_msg = "May ${sithLord} serve you well";
+          greeting_msg = "May ${noughtyLib.hostNameCapitalised} serve you well";
         };
         # https://docs.gtk.org/gtk4/enum.ContentFit.html
         background = {

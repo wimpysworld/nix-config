@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   lib,
   noughtyLib,
   pkgs,
@@ -46,7 +45,7 @@ lib.mkIf (noughtyLib.isHost [ "vader" ]) {
       ratio-limit-enabled = true;
       rpc-authentication-required = false;
       rpc-enabled = true;
-      rpc-host-whitelist = "localhost,${hostname},*.${config.noughty.network.tailNet}";
+      rpc-host-whitelist = "localhost,${config.noughty.host.name},*.${config.noughty.network.tailNet}";
       rpc-host-whitelist-enabled = true;
       rpc-bind-address = "0.0.0.0";
       rpc-port = 9091;

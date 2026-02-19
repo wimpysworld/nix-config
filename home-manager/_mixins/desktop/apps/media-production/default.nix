@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   lib,
   noughtyLib,
   pkgs,
@@ -424,7 +423,7 @@ in
 
   services.easyeffects = lib.mkIf (noughtyLib.hostHasTag "streamstation") {
     enable = true;
-    preset = "mic-${hostname}-oktava";
+    preset = "mic-${config.noughty.host.name}-oktava";
   };
 
   systemd.user.tmpfiles.rules = lib.mkIf isLinux [

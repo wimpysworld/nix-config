@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   lib,
   pkgs,
   ...
@@ -106,8 +105,11 @@ in
     ./nullmailer
     ./ssh
     ./tailscale
-  ]
-  ++ lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
+    ./malak.nix
+    ./phasma.nix
+    ./revan.nix
+    ./vader.nix
+  ];
 
   programs.captive-browser = lib.mkIf config.noughty.host.is.laptop {
     enable = true;
@@ -139,14 +141,14 @@ in
     firewall = {
       enable = true;
       allowedTCPPorts =
-        lib.optionals (builtins.hasAttr hostname allowedTCPPorts)
-          allowedTCPPorts.${hostname};
+        lib.optionals (builtins.hasAttr config.noughty.host.name allowedTCPPorts)
+          allowedTCPPorts.${config.noughty.host.name};
       allowedUDPPorts =
-        lib.optionals (builtins.hasAttr hostname allowedUDPPorts)
-          allowedUDPPorts.${hostname};
+        lib.optionals (builtins.hasAttr config.noughty.host.name allowedUDPPorts)
+          allowedUDPPorts.${config.noughty.host.name};
       inherit trustedInterfaces;
     };
-    hostName = hostname;
+    hostName = config.noughty.host.name;
     nameservers = if builtins.hasAttr username userDns then userDns.${username} else fallbackDns;
     networkmanager = lib.mkIf useNetworkManager {
       # A NetworkManager dispatcher script to open a browser window when a captive portal is detected

@@ -14,6 +14,11 @@
   # Check whether the current host is in a list of hostnames.
   isHost = hosts: lib.elem hostName hosts;
 
+  # Hostname with the first letter capitalised (e.g. "vader" → "Vader").
+  hostNameCapitalised =
+    (lib.strings.toUpper (builtins.substring 0 1 hostName))
+    + (builtins.substring 1 (builtins.stringLength hostName) hostName);
+
   # Check whether the host has a specific tag.
   hostHasTag = tag: lib.elem tag hostTags;
 

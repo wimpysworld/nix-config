@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   lib,
   noughtyLib,
   ...
@@ -20,7 +19,7 @@ lib.mkIf
     services = {
       # Reverse proxy scrutiny if Tailscale is enabled.
       # https://github.com/AnalogJ/scrutiny/blob/master/docs/TROUBLESHOOTING_REVERSE_PROXY.md?plain=1#L62
-      caddy.virtualHosts."${hostname}.${config.noughty.network.tailNet}".extraConfig =
+      caddy.virtualHosts."${config.noughty.host.name}.${config.noughty.network.tailNet}".extraConfig =
         lib.mkIf (config.services.scrutiny.enable && config.services.tailscale.enable)
           ''
             redir ${basePath} ${basePath}/
@@ -30,7 +29,7 @@ lib.mkIf
         enable = true;
         collector = {
           enable = true;
-          settings.host.id = "${hostname}";
+          settings.host.id = "${config.noughty.host.name}";
           settings.api.endpoint = "http://localhost:8080${basePath}";
         };
         settings.web.listen.basepath = basePath;

@@ -1,7 +1,7 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -25,11 +25,11 @@ lib.mkIf (config.noughty.host.is.workstation || config.noughty.host.is.server) {
     extraUpFlags = [
       "--operator=${username}"
     ]
-    ++ lib.optional (lib.elem "${hostname}" tsExitNodes) "--advertise-exit-node";
+    ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
     extraSetFlags = [
       "--operator=${username}"
     ]
-    ++ lib.optional (lib.elem "${hostname}" tsExitNodes) "--advertise-exit-node";
+    ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
     # Enable caddy to acquire certificates from the tailscale daemon
     # - https://tailscale.com/blog/caddy
     permitCertUid = lib.mkIf config.services.caddy.enable "caddy";

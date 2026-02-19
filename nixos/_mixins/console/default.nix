@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  hostname,
   lib,
   pkgs,
   ...
@@ -25,9 +24,9 @@ let
   };
   kmsconExtraConfig =
     (
-      if (builtins.hasAttr hostname kmsconFontSize) then
+      if (builtins.hasAttr config.noughty.host.name kmsconFontSize) then
         ''
-          font-size=${kmsconFontSize.${hostname}}
+          font-size=${kmsconFontSize.${config.noughty.host.name}}
         ''
       else
         ''

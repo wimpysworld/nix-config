@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   lib,
   pkgs,
   ...
@@ -34,15 +33,20 @@ lib.mkIf (!config.noughty.host.is.iso) {
   environment = {
     systemPackages =
       with pkgs;
-      lib.optionals (builtins.hasAttr hostname razerPeripherals && config.noughty.host.is.workstation) [
-        polychromatic
-      ]
-      ++ lib.optionals (builtins.hasAttr hostname ratbagMice && config.noughty.host.is.workstation) [
-        piper
-      ];
+      lib.optionals
+        (builtins.hasAttr config.noughty.host.name razerPeripherals && config.noughty.host.is.workstation)
+        [
+          polychromatic
+        ]
+      ++
+        lib.optionals
+          (builtins.hasAttr config.noughty.host.name ratbagMice && config.noughty.host.is.workstation)
+          [
+            piper
+          ];
   };
   hardware = {
-    openrazer = lib.mkIf (builtins.hasAttr hostname razerPeripherals) {
+    openrazer = lib.mkIf (builtins.hasAttr config.noughty.host.name razerPeripherals) {
       enable = true;
       devicesOffOnScreensaver = false;
       keyStatistics = true;
@@ -52,12 +56,16 @@ lib.mkIf (!config.noughty.host.is.iso) {
     };
   };
   services = {
-    ratbagd = lib.mkIf (builtins.hasAttr hostname ratbagMice) {
+    ratbagd = lib.mkIf (builtins.hasAttr config.noughty.host.name ratbagMice) {
       enable = true;
     };
-    hardware.openrgb = lib.mkIf (builtins.hasAttr hostname hostRGB) {
+    hardware.openrgb = lib.mkIf (builtins.hasAttr config.noughty.host.name hostRGB) {
       enable = true;
-      motherboard = if builtins.hasAttr hostname hostRGB then hostRGB.${hostname} else null;
+      motherboard =
+        if builtins.hasAttr config.noughty.host.name hostRGB then
+          hostRGB.${config.noughty.host.name}
+        else
+          null;
       package = pkgs.openrgb-with-all-plugins;
     };
   };

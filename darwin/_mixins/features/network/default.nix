@@ -1,11 +1,11 @@
 {
-  hostname,
+  config,
   ...
 }:
 {
   networking = {
-    hostName = hostname;
-    computerName = hostname;
+    hostName = config.noughty.host.name;
+    computerName = config.noughty.host.name;
     # extraHosts = ''
     #   127.0.0.3      k3d-k3d.localhost
     #   10.10.10.1     router

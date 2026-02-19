@@ -7,7 +7,6 @@
 # SATA2:             8TB Ultrastar DC HC510 7200RPM (SATA) HUH721008ALE600
 {
   config,
-  hostname,
   inputs,
   lib,
   pkgs,
@@ -53,7 +52,7 @@ in
     # - ip=ip-addr:<ignore>:gw-addr:netmask:hostname:interface:autoconf:dns1-addr:dns2-addr
     # - https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt
     kernelParams = [
-      "ip=116.202.241.253::116.202.241.193:255.255.255.192:${hostname}-initrd:eth0:off:185.12.64.1:185.12.64.2"
+      "ip=116.202.241.253::116.202.241.193:255.255.255.192:${config.noughty.host.name}-initrd:eth0:off:185.12.64.1:185.12.64.2"
     ];
     # Using GRUB because malak has no EFI boot available
     loader = {

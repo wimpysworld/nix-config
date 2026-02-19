@@ -234,7 +234,7 @@ in
         askForPassword = true;
         askForPasswordDelay = 300;
       };
-      smb.NetBIOSName = hostname;
+      smb.NetBIOSName = config.noughty.host.name;
       trackpad = {
         Clicking = true;
         TrackpadRightClick = true; # enable two finger right click

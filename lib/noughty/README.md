@@ -1250,3 +1250,203 @@ The long `if hostname == "vader" then ... else if hostname == "phasma" then ...`
 | Display configuration | `noughty.host.displays`: list of submodules (output, width, height, refresh, scale, position, primary, workspaces) with derived `display.*` shortcuts |
 | Display data location | Set in host modules (not registry); too verbose and hardware-specific for `flake.nix` |
 | Migration approach | Incremental, file-by-file; old and new paths coexist throughout |
+
+
+## Appendix A: noughtyLib as specialArg - Design Analysis
+
+**Status:** Research complete
+**Date:** 2026-02-19
+**Conclusion:** Do not adopt. The imports problem is smaller than it appears and has cleaner solutions.
+
+### 1. The Proposal
+
+Construct `noughtyLib` (or a subset of it) at `specialArgs`/`extraSpecialArgs` construction time in `lib/helpers.nix`, rather than (or in addition to) via `_module.args` inside the noughty module. This would make `noughtyLib.hostname`, `noughtyLib.isHost`, `noughtyLib.hostHasTag`, etc. available in `imports` blocks, where `config` does not yet exist.
+
+The motivation is to solve the "imports problem" - the three files that use `hostname` in import paths:
+
+| File | Usage |
+|------|-------|
+| `nixos/default.nix` | `./${hostname}` in imports |
+| `darwin/default.nix` | `./${hostname}` in imports |
+| `nixos/_mixins/network/default.nix` | `lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix` in imports |
+
+
+### 2. What It Would Solve
+
+**Import-time access to identity values.** A specialArg-based `noughtyLib` would make hostname, tags, and tag-checking helpers available before `config` is fixed. In principle, modules could write:
+
+```nix
+{ noughtyLib, lib, ... }:
+{
+  imports = lib.optional (noughtyLib.hostHasTag "custom-network") ./custom-network.nix;
+}
+```
+
+**Consistent API surface.** Modules would use `noughtyLib.*` for everything - identity checks, tag queries, and (if fully adopted) hostname and username access. No need to mix `noughtyLib` and `config.noughty.*` for identity-related values.
+
+**Potential to eliminate the `hostname` specialArg.** If `noughtyLib.hostname` were available as a specialArg, the bare `hostname` specialArg could be replaced entirely - `noughtyLib` becomes the single namespace for all identity access.
+
+
+### 3. Trade-offs
+
+#### 3.1 specialArgs are static; options are overridable
+
+`specialArgs` values are computed once in `lib/helpers.nix` and are immutable for the entire module evaluation. They cannot reflect `lib.mkDefault`, `lib.mkForce`, or module-system merging.
+
+Consider a hypothetical scenario where a host module does:
+
+```nix
+# nixos/vader/default.nix
+noughty.host.tags = lib.mkForce [ "maintenance-mode" ];
+```
+
+With the current `_module.args` approach, `noughtyLib.hostHasTag "streamstation"` would correctly return `false` after this override because it closes over `config.noughty.host.tags` lazily. With a specialArg-based `noughtyLib`, it would still return `true` because it was constructed from the registry value before module evaluation began.
+
+📌 **This is the fundamental tension.** The `_module.args` approach was chosen specifically because it participates in the module system's laziness. Moving to `specialArgs` sacrifices this property.
+
+⚠️ **Realistic risk assessment:** In this repository, `noughty.host.tags` and `noughty.host.name` are set once at the entry point from registry values and are never overridden by downstream modules. No host module currently uses `lib.mkForce` on identity values. The override scenario above is hypothetical. However, the *ability* to override is a design principle of the noughty module - the README explicitly states "Each uses `lib.mkDefault` so host-specific modules can override with `lib.mkForce`." Making identity values static would quietly remove this guarantee for a subset of the option space.
+
+#### 3.2 Two sources of truth
+
+If `noughtyLib` is a specialArg carrying identity values, and `config.noughty.host.*` also carries the same values as options, there are two paths to the same data:
+
+| Access path | Source | Overridable? | Available in imports? |
+|---|---|---|---|
+| `noughtyLib.hostname` | specialArg (static) | No | Yes |
+| `config.noughty.host.name` | Option (merged) | Yes | No |
+
+This creates a class of subtle bugs: a module author reads `noughtyLib.hostname` (thinking it is authoritative) while another module has overridden `config.noughty.host.name` via `lib.mkForce`. The two values silently disagree. The current design has one source of truth - `config.noughty.*` - and `noughtyLib` is a convenience lens over it.
+
+#### 3.3 The hybrid approach (specialArg for identity, _module.args for derived values)
+
+A middle ground: construct a *minimal* specialArg `noughtyLib` carrying only static identity (hostname, tags, username) and keep the `_module.args` version for config-derived helpers (the `is.*` flags, display values, etc.).
+
+This is technically feasible but introduces a confusing dual-delivery model:
+
+- **specialArg `noughtyLib`**: contains `hostname`, `isHost`, `hostHasTag`, `isUser`, `userHasTag`
+- **_module.args `noughtyLib`**: contains the same functions, but closing over `config` values
+
+These cannot both be named `noughtyLib` without one shadowing the other. The `_module.args` version would win (it is evaluated later), meaning `noughtyLib.isHost` in a module body uses the config-derived version, but `noughtyLib.isHost` in an `imports` block would fail because `_module.args` is not available there - it would fall back to the specialArg version silently only if the specialArg were named differently (e.g. `noughtyIdentity`).
+
+→ This adds complexity without proportional benefit.
+
+#### 3.4 A specialArg cannot read from config
+
+It is worth stating explicitly: a specialArg-based `noughtyLib` **cannot** close over `config.noughty.*` values. `specialArgs` are set before module evaluation begins. There is no mechanism for a specialArg to lazily reference evaluated option values. This is not a limitation that can be worked around - it is inherent to the module system's evaluation order.
+
+
+### 4. Alternative Solutions
+
+The imports problem affects exactly three files. Each has a targeted solution that does not require changing the noughtyLib delivery mechanism.
+
+#### 4.1 Entry-point host imports (nixos/default.nix, darwin/default.nix)
+
+These use `./${hostname}` to import host-specific hardware configuration (disk layout, kernel modules, nixos-hardware imports). This is an **irreducible** use of `hostname` at import time - the host directory contains hardware-specific modules that cannot be imported unconditionally without importing every host's configuration into every build.
+
+📌 **Already solved.** The current design retains `hostname` in `specialArgs` specifically for this purpose. The README documents this as Pattern B in "Resolving the `imports` Problem". Moving `hostname` into `noughtyLib` would not change the mechanism - it would still be a pre-evaluation value passed from outside the module system.
+
+→ **No change needed.** `hostname` stays as a specialArg. A specialArg-based `noughtyLib.hostname` would be a rename, not a solution.
+
+#### 4.2 Network per-host imports (nixos/_mixins/network/default.nix)
+
+This uses `lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix` to conditionally import per-host network config. Currently, four per-host files exist: `vader.nix`, `phasma.nix`, `revan.nix`, `malak.nix`.
+
+This **can be solved without changing noughtyLib delivery**, using the same unconditional-import + internal-gate pattern established in Phase 2:
+
+```nix
+# nixos/_mixins/network/default.nix
+{
+  imports = [
+    ./nullmailer
+    ./ssh
+    ./tailscale
+    ./vader.nix      # unconditional
+    ./phasma.nix     # unconditional
+    ./revan.nix      # unconditional
+    ./malak.nix      # unconditional
+  ];
+  # ... rest of config
+}
+```
+
+Each per-host file gates itself internally:
+
+```nix
+# nixos/_mixins/network/vader.nix
+{ config, lib, noughtyLib, ... }:
+lib.mkIf (noughtyLib.isHost [ "vader" ]) {
+  networking.networkmanager = lib.mkIf config.networking.networkmanager.enable {
+    connectionConfig = {
+      "ethernet.mtu" = 1462;
+      "wifi.mtu" = 1462;
+    };
+    wifi.powersave = true;
+  };
+}
+```
+
+This eliminates the `pathExists` + `hostname` import pattern entirely. New per-host network files are added to the imports list and gate themselves internally. The cost is trivial: four modules whose `config` is `lib.mkIf false { ... }` contribute nothing to non-matching hosts.
+
+→ **Recommended approach.** Solves the third imports-problem file cleanly within the existing architecture.
+
+#### 4.3 Moving host imports into lib/helpers.nix
+
+An alternative for the entry-point imports: construct the host-specific module path in `mkNixos`/`mkDarwin` and pass it via the `modules` list:
+
+```nix
+mkNixos = { hostname, ... }:
+  inputs.nixpkgs.lib.nixosSystem {
+    modules = [
+      ../nixos
+      ../nixos/${hostname}   # host-specific import moved here
+      { noughty.host.desktop = desktop; }
+    ];
+  };
+```
+
+This removes `./${hostname}` from `nixos/default.nix` entirely, but shifts import logic out of the module tree into the helper function. It works and would allow removing `hostname` from `specialArgs` for the entry-point import use, but `hostname` is still needed in module bodies for sops secret paths (`../secrets/host-${hostname}.yaml`) and other string interpolation references until those are migrated to `config.noughty.host.name`.
+
+→ **Viable but marginal.** Does not eliminate `hostname` from specialArgs because other non-import uses remain during migration. Could be revisited as a final cleanup step.
+
+
+### 5. Recommendation
+
+**Do not adopt noughtyLib-as-specialArg.** The costs outweigh the benefits for this repository.
+
+| Factor | Assessment |
+|--------|-----------|
+| Problem scope | 3 files use `hostname` in imports. 2 are irreducible. 1 is solvable with unconditional imports. |
+| Benefit | Eliminates `hostname` from specialArgs only if *all* import-time uses are removed - which they cannot be. |
+| Cost: dual truth | Creates two disagreeable sources for identity values (static specialArg vs overridable option). |
+| Cost: override loss | Silently removes `lib.mkForce` overridability for identity values. |
+| Cost: complexity | Hybrid model requires two delivery mechanisms or two differently-named APIs. |
+| Module system philosophy | `specialArgs` are for bootstrapping (`inputs`, `outputs`). Configuration belongs in options. `_module.args` is the correct mechanism for config-derived helpers. |
+
+The current design is sound:
+- `hostname` stays as a specialArg for the two irreducible import-time uses.
+- `noughtyLib` stays as `_module.args` to preserve lazy config closure and overridability.
+- The network per-host import (the only *solvable* imports-problem file) should be migrated to unconditional imports with internal `noughtyLib.isHost` gates.
+
+After that migration, the "imports problem" is fully resolved: two entry-point uses of `hostname` remain as an irreducible, well-documented architectural constraint, and the third is eliminated.
+
+
+### 6. If Adopted (Hypothetical)
+
+For completeness, here is what would change if the specialArg approach were adopted despite the recommendation above.
+
+**lib/helpers.nix changes:**
+- Import `noughty-helpers.nix` at the top level.
+- In each `mk*` function, construct a `noughtyLib` attrset by calling the helpers with the resolved registry values (`hostname`, `hostTags`, `username`, `userTags`).
+- Add `noughtyLib` to `specialArgs`/`extraSpecialArgs` in all three functions.
+- Optionally add `hostname` and `username` as direct attributes on `noughtyLib` (e.g. `noughtyLib.hostname`).
+
+**lib/noughty/default.nix changes:**
+- Remove the `_module.args.noughtyLib` setter, **or** keep it and accept that the `_module.args` version shadows the specialArg version in module bodies (this is actually the Nix module system's defined behaviour - `_module.args` wins over `specialArgs` for identically-named values).
+- If both are kept: specialArg `noughtyLib` would only be visible in `imports` blocks (where `_module.args` is not available). In module bodies, the `_module.args` version takes precedence. This is confusing but technically correct.
+
+**Consumer module changes:**
+- No changes required. `noughtyLib` in module bodies would continue to work identically (the `_module.args` version shadows the specialArg).
+- Modules that want to use `noughtyLib` in `imports` blocks would gain access to the static specialArg version - but only for identity checks, not for config-derived values like `is.workstation`.
+
+**Risk:**
+- The `noughtyLib` visible in `imports` and the `noughtyLib` visible in `config` would be *different objects* with the same name, constructed from different sources (registry vs config). An `isHost` call that returns `true` in imports could hypothetically return `false` in the same module's config body if someone overrode `noughty.host.name` via `lib.mkForce`. This is a new class of confusion that does not exist today.

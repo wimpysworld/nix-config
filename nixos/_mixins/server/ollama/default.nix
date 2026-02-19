@@ -1,23 +1,21 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
+  hostName = config.noughty.host.name;
   accelerationMap = {
     maul = "cuda";
     phasma = "cuda";
     vader = "cuda";
   };
-  hasAcceleration = builtins.hasAttr hostname accelerationMap;
-  installOpenWebUI = if hostname == "maul" then true else false;
-  sithLord =
-    (lib.strings.toUpper (builtins.substring 0 1 hostname))
-    + (builtins.substring 1 (builtins.stringLength hostname) hostname);
+  hasAcceleration = builtins.hasAttr hostName accelerationMap;
+  installOpenWebUI = if hostName == "maul" then true else false;
 
-  defaultModel = if hostname == "maul" then "gemma3:27b-it-qat" else "gemma3:12b-it-qat"; # 128k (multi-modal)
+  defaultModel = if hostName == "maul" then "gemma3:27b-it-qat" else "gemma3:12b-it-qat"; # 128k (multi-modal)
   embeddingModel = "nomic-embed-text:latest"; # 2K   (embedding)
   taskModel = "qwen3:4b"; # 40k  (task)
   embeddingModels = [
@@ -33,12 +31,12 @@ let
     "phi4-mini:3.8b" # 128k (task/reasoning)
     "qwen2.5-coder:7b" # 32k  (code reasoning)
   ]
-  ++ lib.optionals (hostname == "maul") [
+  ++ lib.optionals (hostName == "maul") [
     "cogito:32b" # 128k (stem)
     "qwen2.5-coder:32b" # 32k  (code reasoning)
     "qwen3:32b" # 40k  (general)
   ]
-  ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
+  ++ lib.optionals (hostName == "vader" || hostName == "phasma") [
     "cogito:14b" # 128k (stem)
     "qwen2.5-coder:14b" # 32k  (code reasoning)
     "qwen3:14b" # 40k  (cot)
@@ -65,9 +63,9 @@ in
   };
   services = {
     ollama = {
-      acceleration = lib.mkIf hasAcceleration accelerationMap.${hostname};
+      acceleration = lib.mkIf hasAcceleration accelerationMap.${hostName};
       enable = hasAcceleration;
-      host = if hostname == "maul" then "0.0.0.0" else "127.0.0.1";
+      host = if hostName == "maul" then "0.0.0.0" else "127.0.0.1";
       loadModels = generalModels ++ lib.optionals (config.services.ollama.enable) embeddingModels;
     };
     open-webui = {
@@ -104,10 +102,10 @@ in
         TASK_MODEL = taskModel;
         TIKA_SERVER_URL = "http://${config.services.tika.listenAddress}:${toString config.services.tika.port}";
         USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OpenWebUI/${pkgs.open-webui.version} Chrome/131.0.0.0 Safari/537.36";
-        WEBUI_NAME = "${sithLord} Chat";
+        WEBUI_NAME = "${noughtyLib.hostNameCapitalised} Chat";
         WEBUI_URL =
           if (config.services.tailscale.enable && config.services.caddy.enable) then
-            "https://${hostname}.${config.noughty.network.tailNet}/"
+            "https://${hostName}.${config.noughty.network.tailNet}/"
           else
             "http://localhost:${toString config.services.open-webui.port}";
       };
@@ -116,7 +114,7 @@ in
       port = 8088;
     };
     caddy = lib.mkIf config.services.caddy.enable {
-      virtualHosts."${hostname}.${config.noughty.network.tailNet}" =
+      virtualHosts."${hostName}.${config.noughty.network.tailNet}" =
         lib.mkIf config.services.tailscale.enable
           {
             extraConfig = ''

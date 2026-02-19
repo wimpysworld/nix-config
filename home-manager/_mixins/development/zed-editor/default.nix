@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   lib,
   noughtyLib,
   pkgs,
@@ -34,7 +33,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) 
       userSettings = {
         agent = {
           enable_feedback = false;
-          dock = if hostname == "vader" then "bottom" else "right";
+          dock = if noughtyLib.isHost [ "vader" ] then "bottom" else "right";
           message_editor_min_lines = 12;
         };
         agent_buffer_font_size = fontSize;

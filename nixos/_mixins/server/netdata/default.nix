@@ -1,6 +1,5 @@
 {
   config,
-  hostname,
   lib,
   noughtyLib,
   pkgs,
@@ -19,7 +18,7 @@ lib.mkIf
   {
     services = {
       # Reverse proxy netdata if Tailscale is enabled.
-      caddy.virtualHosts."${hostname}.${config.noughty.network.tailNet}".extraConfig =
+      caddy.virtualHosts."${config.noughty.host.name}.${config.noughty.network.tailNet}".extraConfig =
         lib.mkIf (config.services.netdata.enable && config.services.tailscale.enable)
           ''
             redir ${basePath} ${basePath}/
