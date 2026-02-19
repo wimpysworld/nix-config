@@ -78,7 +78,7 @@
       # System registry - central definition of all systems and their properties
       #
       # Canonical tag vocabulary:
-      #   Host tags: streamstation, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl
+      #   Host tags: streamstation, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso
       #   User tags: developer, admin, family
       #
       # Registry fields:
@@ -88,8 +88,7 @@
       #   desktop    - optional: derived from kind + platform if omitted
       #   username   - optional: defaults to "martin"
       #   gpu        - optional: { vendors = [ "nvidia" "amd" "intel" "apple" ]; compute = { vendor = "nvidia"; vram = 24; }; }
-      #   tags       - optional: [ "streamstation" "thinkpad" "inference" ... ]
-      #   iso        - optional: true for ISO image builds
+      #   tags       - optional: [ "streamstation" "thinkpad" "inference" "iso" ... ]
       systems = {
 
         # Linux workstations
@@ -284,11 +283,11 @@
           };
         };
 
-        # ISO - iso = true applies isoDefaults: desktop = null, username = "nixos"
-        iso-console = {
+        # ISO - "iso" tag applies isoDefaults: desktop = null, username = "nixos"
+        nihilus = {
           kind = "computer";
           platform = "x86_64-linux";
-          iso = true;
+          tags = [ "iso" ];
         };
       };
 

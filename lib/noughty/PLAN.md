@@ -889,7 +889,7 @@ systems = {
   };
 
   # ISO - iso = true applies isoDefaults: desktop = null, username = "nixos"
-  iso-console = {
+  nihilus = {
     kind     = "computer";
     platform = "x86_64-linux";
     iso      = true;

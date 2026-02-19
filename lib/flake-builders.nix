@@ -30,7 +30,7 @@ let
           .${entry.kind};
       };
 
-      isoDefaults = lib.optionalAttrs (entry.iso or false) {
+      isoDefaults = lib.optionalAttrs (lib.elem "iso" (entry.tags or [ ])) {
         desktop = null;
         username = "nixos";
       };
@@ -53,7 +53,7 @@ let
   # Predicate functions for filtering registry entries
   isLinuxEntry = e: lib.hasSuffix "-linux" e.platform;
   isDarwinEntry = e: lib.hasSuffix "-darwin" e.platform;
-  isISOEntry = e: e.iso or false;
+  isISOEntry = e: lib.elem "iso" (e.tags or [ ]);
   isHomeOnlyEntry =
     e:
     let
@@ -149,7 +149,6 @@ rec {
       hostGpuVendors ? [ ],
       hostGpuCompute ? { },
       hostTags ? [ ],
-      hostIsIso ? false,
       userTags ? [ ],
     }:
     let
@@ -180,7 +179,6 @@ rec {
             };
             tags = hostTags;
             desktop = desktop;
-            is.iso = hostIsIso;
           };
           noughty.user.name = username;
           noughty.user.tags = userTags;
@@ -200,7 +198,6 @@ rec {
       hostGpuVendors ? [ ],
       hostGpuCompute ? { },
       hostTags ? [ ],
-      hostIsIso ? false,
       userTags ? [ ],
     }:
     let
@@ -217,7 +214,7 @@ rec {
           catppuccinPalette
           ;
       };
-      # If the hostname starts with "iso-", generate an ISO image
+      # Include the ISO installer module when the "iso" tag is present.
       modules =
         let
           cd-dvd = inputs.nixpkgs + "/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix";
@@ -237,13 +234,12 @@ rec {
               };
               tags = hostTags;
               desktop = desktop;
-              is.iso = hostIsIso;
             };
             noughty.user.name = username;
             noughty.user.tags = userTags;
           }
         ]
-        ++ inputs.nixpkgs.lib.optionals hostIsIso [ cd-dvd ];
+        ++ inputs.nixpkgs.lib.optionals (lib.elem "iso" hostTags) [ cd-dvd ];
     };
 
   mkDarwin =
@@ -257,7 +253,6 @@ rec {
       hostGpuVendors ? [ ],
       hostGpuCompute ? { },
       hostTags ? [ ],
-      hostIsIso ? false,
       userTags ? [ ],
     }:
     let
@@ -291,7 +286,6 @@ rec {
             };
             tags = hostTags;
             desktop = desktop;
-            is.iso = hostIsIso;
           };
           noughty.user.name = username;
           noughty.user.tags = userTags;
@@ -322,7 +316,6 @@ rec {
       hostGpuVendors = (resolved.gpu or { }).vendors or [ ];
       hostGpuCompute = (resolved.gpu or { }).compute or { };
       hostTags = resolved.tags or [ ];
-      hostIsIso = resolved.iso or false;
       userTags = (resolved.userEntry or { }).tags or [ ];
     };
 

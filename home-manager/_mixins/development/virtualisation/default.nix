@@ -15,16 +15,16 @@ lib.mkIf host.is.linux {
       ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && host.is.workstation) {
         text = "${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER";
       };
-      "Quickemu/nixos-console/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
+      "Quickemu/nihilus/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
         text = "";
       };
-      "Quickemu/nixos-console.conf" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
+      "Quickemu/nihilus.conf" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
         text = ''
           #!/run/current-system/sw/bin/quickemu --vm
           guest_os="linux"
-          disk_img="nixos-console/disk.qcow2"
+          disk_img="nihilus/disk.qcow2"
           disk_size="96G"
-          iso="nixos-console/nixos.iso"
+          iso="nihilus/nixos.iso"
         '';
       };
     };

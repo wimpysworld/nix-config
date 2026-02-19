@@ -173,8 +173,9 @@ in
 
         iso = lib.mkOption {
           type = lib.types.bool;
-          default = false;
-          description = "Whether this host is an ISO image build.";
+          default = lib.elem "iso" config.noughty.host.tags;
+          description = "Whether this host is an ISO image build. Derived from the \"iso\" tag.";
+          readOnly = true;
         };
 
         vm = lib.mkOption {

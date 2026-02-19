@@ -179,7 +179,7 @@ nix run nixpkgs#home-manager -- switch -b backup --flake "$HOME/Zero/nix-config"
 **ISO**
 
 ```shell
-nix build .#nixosConfigurations.iso-console.config.system.build.isoImage
+nix build .#nixosConfigurations.nihilus.config.system.build.isoImage
 ```
 
 ## What's in the box? 🎁
@@ -220,7 +220,7 @@ Here's the directory structure I'm using:
 │  │  ├── scripts
 │  │  ├── services
 │  │  └── users
-│  ├── iso-console
+│  ├── nihilus
 │  ├── crawler -> dagger
 │  ├── dagger
 │  ├── malak
