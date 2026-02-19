@@ -107,7 +107,6 @@ The full noughty option reference, helper functions, and usage patterns are docu
 │  ├── _mixins
 │  │  ├── desktop
 │  │  └── features
-│  ├── krall
 │  ├── momin
 │  └── default.nix
 ├── home-manager

@@ -291,6 +291,7 @@
   steamdeck = {
     kind = "computer";
     platform = "x86_64-linux";
+    gpu.vendors = [ "amd" ];
     formFactor = "handheld";
     username = "deck";
     desktop = "gamescope";
