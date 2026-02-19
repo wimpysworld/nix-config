@@ -1,10 +1,12 @@
 {
   config,
-  isInstall,
   lib,
   ...
 }:
-lib.mkIf isInstall {
+let
+  host = config.noughty.host;
+in
+lib.mkIf (!host.is.iso) {
   boot = {
     extraModulePackages = with config.boot.kernelPackages; [ v4l2loopback ];
     extraModprobeConfig = ''

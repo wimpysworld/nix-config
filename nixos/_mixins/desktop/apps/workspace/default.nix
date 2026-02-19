@@ -1,19 +1,11 @@
 {
-  hostname,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
-  installOn = [
-    "bane"
-    "malgus"
-    "phasma"
-    "vader"
-    "zannah"
-  ];
-
   # Wrap Slack to open all URLs in Wavebox
   slackWavebox = inputs.xdg-override.lib.wrapPackage {
     nameMatch = [
@@ -47,26 +39,34 @@ let
     ];
   };
 in
-lib.mkIf (lib.elem hostname installOn) {
-  environment.systemPackages = [
-    pkgs._1password-gui
-    pkgs.wavebox
-    slackWavebox
-    waveboxXdgOpen
-  ];
-
-  programs.wavebox = {
-    enable = true;
-    extensions = [
-      "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-      "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
-      "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
-      "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
-      "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
-      "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
-      "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
-      "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
-      "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
+lib.mkIf
+  (noughtyLib.isHost [
+    "bane"
+    "malgus"
+    "phasma"
+    "vader"
+    "zannah"
+  ])
+  {
+    environment.systemPackages = [
+      pkgs._1password-gui
+      pkgs.wavebox
+      slackWavebox
+      waveboxXdgOpen
     ];
-  };
-}
+
+    programs.wavebox = {
+      enable = true;
+      extensions = [
+        "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
+        "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
+        "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
+        "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
+        "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
+        "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
+        "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
+        "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
+        "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
+      ];
+    };
+  }

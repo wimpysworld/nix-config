@@ -1,8 +1,10 @@
-{ config, lib, ... }:
-let
-  installOn = [ "revan" ];
-in
-lib.mkIf (lib.elem config.networking.hostName installOn) {
+{
+  config,
+  lib,
+  noughtyLib,
+  ...
+}:
+lib.mkIf (noughtyLib.isHost [ "revan" ]) {
   services = {
     plex = {
       enable = true;

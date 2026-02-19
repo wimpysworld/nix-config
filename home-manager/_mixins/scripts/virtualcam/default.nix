@@ -1,6 +1,11 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   name = builtins.baseNameOf (builtins.toString ./.);
   shellApplication = pkgs.writeShellApplication {
     inherit name;
@@ -14,6 +19,6 @@ let
     text = builtins.readFile ./${name}.sh;
   };
 in
-lib.mkIf isLinux {
+lib.mkIf host.is.linux {
   home.packages = with pkgs; [ shellApplication ];
 }

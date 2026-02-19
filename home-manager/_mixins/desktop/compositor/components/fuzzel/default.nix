@@ -1,13 +1,14 @@
 {
   config,
-  hostname,
   inputs,
   lib,
   pkgs,
   ...
 }:
 let
-  fontSize = if (hostname == "phasma" || hostname == "vader") then "30" else "18";
+  host = config.noughty.host;
+  display = host.display;
+  fontSize = if display.primaryIsHighRes || display.primaryIsHighDpi then "30" else "18";
   fuzzelActions = pkgs.writeShellApplication {
     name = "fuzzel-actions";
     text = "fuzzel --prompt '󰌧 ' --show-actions";
@@ -62,7 +63,7 @@ let
     text = ''iwmenu --launcher custom --launcher-command "fuzzel --dmenu --width=40 --prompt '󱚾 ' {password_flag:--password}"'';
   };
 in
-{
+lib.mkIf host.is.linux {
   catppuccin = {
     fuzzel.enable = config.programs.fuzzel.enable;
   };

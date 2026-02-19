@@ -2,13 +2,12 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "martin" ];
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 
   # Catppuccin Halloy themes from the catppuccin flake
   catppuccinHalloy = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.halloy;
@@ -103,17 +102,17 @@ in
         telegram-desktop
         zoom-us
       ]
-      ++ lib.optionals (lib.elem username installFor) [
+      ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
         (discord.override { withOpenASAR = true; })
         halloy
       ]
       # Halloy is installed via homebrew on Darwin
-      ++ lib.optionals (lib.elem username installFor && isLinux) [
+      ++ lib.optionals (noughtyLib.isUser [ "martin" ] && host.is.linux) [
         fractal
       ];
   };
 
-  sops = lib.mkIf (lib.elem username installFor && isLinux) {
+  sops = lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux) {
     secrets = {
       SOJU_PASSWORD.sopsFile = ../../../../../secrets/halloy.yaml;
       LIBERA_PASSWORD.sopsFile = ../../../../../secrets/halloy.yaml;
@@ -127,7 +126,7 @@ in
 
   # Install Catppuccin Mocha theme for Halloy
   xdg.configFile."halloy/themes/catppuccin-mocha.toml" =
-    lib.mkIf (lib.elem username installFor && isLinux)
+    lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux)
       {
         source = catppuccinHalloy + "/catppuccin-mocha.toml";
       };

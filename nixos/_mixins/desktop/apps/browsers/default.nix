@@ -1,11 +1,11 @@
 {
-  isInstall,
+  config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
+  username = config.noughty.user.name;
   forFamily = [
     "agatha"
     "louise"
@@ -39,10 +39,10 @@ let
   ];
 in
 {
-  imports = lib.optional (builtins.pathExists (./. + "/${username}.nix")) ./${username}.nix;
+  imports = [ ./martin.nix ];
   environment.systemPackages =
-    lib.optionals (builtins.elem username forFamily && isInstall) familyPackages
-    ++ lib.optionals (builtins.elem username forMartin && isInstall) martinPackages;
+    lib.optionals (builtins.elem username forFamily) familyPackages
+    ++ lib.optionals (builtins.elem username forMartin) martinPackages;
 
   # TODO: Configure Microsoft Edge policy
   # - https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies
@@ -52,7 +52,7 @@ in
       # Configures policies for Chromium, Chrome and Brave
       # - https://chromeenterprise.google/policies/
       # - chromium.enable just enables the Chromium policies.
-      enable = isInstall;
+      enable = true;
       extensions =
         if (lib.elem username forMartin) then
           essentialExtensions ++ extraExtensions

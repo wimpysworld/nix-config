@@ -1,8 +1,10 @@
 {
   catppuccinPalette,
+  lib,
+  noughtyLib,
   ...
 }:
-{
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   programs = {
     chromium = {
       # - https://help.kagi.com/kagi/getting-started/setting-default.html

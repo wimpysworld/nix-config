@@ -5,11 +5,11 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux isDarwin;
+  host = config.noughty.host;
   gitsignCredentialCache =
-    if pkgs.stdenv.isLinux then
+    if host.is.linux then
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
-    else if pkgs.stdenv.isDarwin then
+    else if host.is.darwin then
       "${config.home.homeDirectory}/Library/Caches/sigstore/gitsign/cache.sock"
     else
       "${config.home.homeDirectory}/.cache/sigstore/gitsign/cache.sock";
@@ -43,7 +43,7 @@ in
         gitsign # Sign Git commits and tags with Sigstore
       ]
       # pre-commit and related tools require dotnet which is currently broken on Darwin
-      ++ lib.optionals (!isDarwin) [
+      ++ lib.optionals (!host.is.darwin) [
         pre-commit # Git pre-commit hooks
         precommitSetup
       ];
@@ -174,7 +174,7 @@ in
     };
   };
 
-  systemd.user = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user = lib.mkIf host.is.linux {
     services.gitsign-credential-cache = {
       Unit = {
         Description = "GitSign credential cache";
@@ -213,7 +213,7 @@ in
     };
   };
 
-  launchd.agents = lib.mkIf pkgs.stdenv.isDarwin {
+  launchd.agents = lib.mkIf host.is.darwin {
     gitsign-credential-cache = {
       enable = true;
       config = {

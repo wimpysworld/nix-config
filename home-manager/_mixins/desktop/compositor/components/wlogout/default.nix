@@ -1,10 +1,11 @@
-{ config, ... }:
+{ config, lib, ... }:
 let
+  host = config.noughty.host;
   pngFiles = builtins.filter (file: builtins.match ".*\\.png" file != null) (
     builtins.attrNames (builtins.readDir ./.)
   );
 in
-{
+lib.mkIf host.is.linux {
   # Copy .png files in the current directory to the wlogout configuration directory
   home.file = builtins.listToAttrs (
     builtins.map (pngFile: {

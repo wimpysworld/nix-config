@@ -1,19 +1,15 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
-  tailNet,
-  username,
   ...
 }:
 let
-  # Declare which hosts have Transmission enabled.
-  installOn = [
-    "vader"
-  ];
+  host = config.noughty.host;
+  username = config.noughty.user.name;
 in
-lib.mkIf (lib.elem "${hostname}" installOn) {
+lib.mkIf (noughtyLib.isHost [ "vader" ]) {
   environment.systemPackages = with pkgs; [ transmission_4 ];
 
   services.transmission = {
@@ -50,7 +46,7 @@ lib.mkIf (lib.elem "${hostname}" installOn) {
       ratio-limit-enabled = true;
       rpc-authentication-required = false;
       rpc-enabled = true;
-      rpc-host-whitelist = "localhost,${hostname},*.${tailNet}";
+      rpc-host-whitelist = "localhost,${host.name},*.${config.noughty.network.tailNet}";
       rpc-host-whitelist-enabled = true;
       rpc-bind-address = "0.0.0.0";
       rpc-port = 9091;

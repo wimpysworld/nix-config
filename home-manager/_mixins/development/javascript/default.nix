@@ -2,13 +2,9 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
-let
-  installFor = [ "martin" ];
-in
-lib.mkIf (lib.elem username installFor) {
+{
   home = {
     packages = with pkgs; [
       # Node.js runtime and package manager

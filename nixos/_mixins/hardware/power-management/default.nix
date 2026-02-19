@@ -1,22 +1,16 @@
 {
   config,
-  hostname,
-  isInstall,
-  isLaptop,
+  noughtyLib,
   lib,
   ...
 }:
 let
+  host = config.noughty.host;
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
-  isThinkpad =
-    hostname == "tanis"
-    || hostname == "felkor"
-    || hostname == "sidious"
-    || hostname == "shaa"
-    || hostname == "atrius";
+  isThinkpad = noughtyLib.hostHasTag "thinkpad";
   usePowerProfiles = config.programs.hyprland.enable || config.programs.wayfire.enable;
 in
-lib.mkIf isInstall {
+lib.mkIf (!host.is.iso) {
   # Power Management strategy:
   # - If a desktop environment is enabled the supports the power-profiles-daemon, then use the power profiles daemon.
   #   - Otherwise, use auto-cpufreq.
@@ -27,13 +21,13 @@ lib.mkIf isInstall {
   # - Thinkpads have a battery threshold charging via auto-cpufreq
 
   # Disable USB autosuspend on desktop always on power workstations
-  boot.kernelParams = lib.optionals (!isLaptop) [ "usbcore.autosuspend=-1" ];
+  boot.kernelParams = lib.optionals (!host.is.laptop) [ "usbcore.autosuspend=-1" ];
 
   powerManagement.powertop.enable = lib.mkDefault false;
 
   services = {
     auto-cpufreq = {
-      enable = !usePowerProfiles && isLaptop;
+      enable = !usePowerProfiles && host.is.laptop;
       settings = {
         battery = {
           governor = "powersave";

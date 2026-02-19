@@ -1,4 +1,8 @@
-{ lib, ... }:
+{
+  lib,
+  noughtyLib,
+  ...
+}:
 let
   # https://developers.cloudflare.com/1.1.1.1/ip-addresses/
   cloudflareDns = [
@@ -15,7 +19,7 @@ let
     "2a01:4ff:ff00::add:2"
   ];
 in
-{
+lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   networking = {
     defaultGateway = "116.202.241.193";
     defaultGateway6 = {

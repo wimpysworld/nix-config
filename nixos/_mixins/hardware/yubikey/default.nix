@@ -1,18 +1,20 @@
 {
-  isInstall,
-  isWorkstation,
+  config,
   lib,
   pkgs,
   ...
 }:
-lib.mkIf isInstall {
+let
+  host = config.noughty.host;
+in
+lib.mkIf (!host.is.iso) {
   environment.systemPackages =
     with pkgs;
-    lib.optionals isWorkstation [
+    lib.optionals host.is.workstation [
       yubioath-flutter
     ];
-  programs.yubikey-touch-detector.enable = isWorkstation;
-  programs.yubikey-touch-detector.libnotify = isWorkstation;
+  programs.yubikey-touch-detector.enable = host.is.workstation;
+  programs.yubikey-touch-detector.libnotify = host.is.workstation;
   #security.pam.u2f.enable = true;
   #security.pam.yubico.control = "required";
   services = {

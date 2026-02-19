@@ -1,21 +1,19 @@
 {
   config,
-  desktop,
-  isWorkstation,
-  isInstall,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  scanningApp = if (desktop == "plasma") then pkgs.kdePackages.skanpage else pkgs.simple-scan;
+  host = config.noughty.host;
+  username = config.noughty.user.name;
+  scanningApp = if (host.desktop == "plasma") then pkgs.kdePackages.skanpage else pkgs.simple-scan;
 in
-lib.mkIf isInstall {
+lib.mkIf (!host.is.iso) {
   # Only enables auxilary scanning support/packages if
   # config.hardware.sane.enable is true; the master control
   # - https://wiki.nixos.org/wiki/Scanners
-  environment = lib.mkIf (config.hardware.sane.enable && isWorkstation) {
+  environment = lib.mkIf (config.hardware.sane.enable && host.is.workstation) {
     systemPackages = [ scanningApp ];
   };
 

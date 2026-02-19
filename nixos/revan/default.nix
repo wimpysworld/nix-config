@@ -1,6 +1,6 @@
 # Motherboard:       Gigabye Z390 Designare
 # CPU:               Intel i9 9900K
-# GPU:               NVIDIA T400
+# GPU:               NVIDIA T1000
 # RAM:               64GB DDR4
 # NVME0:             512GB Corsair Force MP600
 # NVME1:             1TB Corsair Force MP600
@@ -8,17 +8,20 @@
 # SATA3:             12TB Ultrastar He12
 # Slot 1 (PCIEX16):  Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
 # Slot 2 (PCIEX1_1): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)
-# Slot 3 (PCIEX8):   NVIDIA T400
+# Slot 3 (PCIEX8):   NVIDIA T1000
 # Slot 4 (PCIEX1_2): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB) **NOT INSTALLED**
 # Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
 
 {
+  config,
   inputs,
   lib,
   pkgs,
-  username,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel

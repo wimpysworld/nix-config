@@ -2,14 +2,12 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "martin" ];
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
-lib.mkIf (lib.elem username installFor) {
+{
   home = {
     packages = with pkgs; [
       bear # Generate compile_commands.json for non-CMake projects
@@ -30,7 +28,7 @@ lib.mkIf (lib.elem username installFor) {
             vscode-marketplace.ms-vscode.cmake-tools
             vscode-marketplace.twxs.cmake
           ]
-          ++ lib.optionals isLinux [
+          ++ lib.optionals host.is.linux [
             vscode-extensions.ms-vscode.cpptools-extension-pack
             vscode-extensions.vadimcn.vscode-lldb
           ];

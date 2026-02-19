@@ -1,15 +1,16 @@
 {
+  config,
   lib,
   pkgs,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   shellAliases = {
     pq = "${pkgs.pueue}/bin/pueue";
   };
 in
-lib.mkIf isLinux {
+lib.mkIf host.is.linux {
   programs = {
     bash.shellAliases = shellAliases;
     fish.shellAliases = shellAliases;

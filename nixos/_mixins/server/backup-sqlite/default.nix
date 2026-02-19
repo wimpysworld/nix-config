@@ -1,11 +1,10 @@
 {
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
-  installOn = [ "malak" ];
   backup-sqlite = pkgs.writeShellApplication {
     name = "backup-sqlite";
     runtimeInputs = with pkgs; [
@@ -19,7 +18,7 @@ let
     text = builtins.readFile ./backup-sqlite.sh;
   };
 in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   environment = {
     systemPackages = with pkgs; [
       backup-sqlite

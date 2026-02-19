@@ -6,6 +6,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   palette = catppuccinPalette;
 
   # Read template file and substitute colors
@@ -25,7 +26,7 @@ let
       templateContent
   );
 in
-{
+lib.mkIf host.is.linux {
   catppuccin.rofi.enable = true;
   home = {
     file."${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi".source = rofiAppGridRasi;

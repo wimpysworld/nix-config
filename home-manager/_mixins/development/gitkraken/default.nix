@@ -1,15 +1,14 @@
 {
   config,
-  isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "none" ];
+  host = config.noughty.host;
 in
-lib.mkIf (lib.elem username installFor && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "none" ] && host.is.workstation) {
   home = {
     file = {
       # https://github.com/catppuccin/gitkraken

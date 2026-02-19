@@ -1,35 +1,33 @@
 {
   config,
-  hostname,
-  isInstall,
-  isWorkstation,
-  isServer,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
+  host = config.noughty.host;
+  username = config.noughty.user.name;
   tsExitNodes = [
     "maul"
     "revan"
   ];
 in
-lib.mkIf (isWorkstation || isServer) {
-  environment.systemPackages = with pkgs; lib.optionals isWorkstation [ trayscale ];
+lib.mkIf (host.is.workstation || host.is.server) {
+  environment.systemPackages = with pkgs; lib.optionals host.is.workstation [ trayscale ];
 
   services.tailscale = {
-    authKeyFile = lib.mkIf isInstall config.sops.secrets.tailscale-auth-key.path;
+    authKeyFile = lib.mkIf (!host.is.iso) config.sops.secrets.tailscale-auth-key.path;
     disableUpstreamLogging = true;
     enable = true;
     extraUpFlags = [
       "--operator=${username}"
     ]
-    ++ lib.optional (lib.elem "${hostname}" tsExitNodes) "--advertise-exit-node";
+    ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
     extraSetFlags = [
       "--operator=${username}"
     ]
-    ++ lib.optional (lib.elem "${hostname}" tsExitNodes) "--advertise-exit-node";
+    ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
     # Enable caddy to acquire certificates from the tailscale daemon
     # - https://tailscale.com/blog/caddy
     permitCertUid = lib.mkIf config.services.caddy.enable "caddy";
@@ -37,7 +35,7 @@ lib.mkIf (isWorkstation || isServer) {
     useRoutingFeatures = "both";
   };
 
-  sops = lib.mkIf isInstall {
+  sops = lib.mkIf (!host.is.iso) {
     secrets.tailscale-auth-key = {
       sopsFile = ../../../../secrets/tailscale.yaml;
       key = "auth_key";

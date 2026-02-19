@@ -83,6 +83,19 @@ _: {
       "8, name:8, persistent:true, monitor:eDP-1"
     ];
   };
+  sidious = {
+    monitor = [ "eDP-1, 3840x2160@60Hz, auto, 2" ];
+    workspace = [
+      "1, name:1, persistent:true, monitor:eDP-1"
+      "2, name:2, persistent:true, monitor:eDP-1"
+      "3, name:3, persistent:true, monitor:eDP-1"
+      "4, name:4, persistent:true, monitor:eDP-1"
+      "5, name:5, persistent:true, monitor:eDP-1"
+      "6, name:6, persistent:true, monitor:eDP-1"
+      "7, name:7, persistent:true, monitor:eDP-1"
+      "8, name:8, persistent:true, monitor:eDP-1"
+    ];
+  };
   vader = {
     monitor = [
       "DP-1, 2560x2880@60Hz, 0x0, 1"

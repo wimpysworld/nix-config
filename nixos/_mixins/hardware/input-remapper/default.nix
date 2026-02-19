@@ -1,15 +1,16 @@
 {
-  hostname,
-  isInstall,
+  config,
+  noughtyLib,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  enableInputRemapper = hostname == "phasma" || hostname == "vader";
+  host = config.noughty.host;
+  username = config.noughty.user.name;
+  enableInputRemapper = noughtyLib.hostHasTag "trackball";
 in
-lib.mkIf isInstall {
+lib.mkIf (!host.is.iso) {
   services.input-remapper = {
     enable = enableInputRemapper;
     enableUdevRules = enableInputRemapper;

@@ -1,22 +1,23 @@
 {
   catppuccinPalette,
   config,
-  hostname,
-  isInstall,
-  isWorkstation,
   inputs,
   lib,
   modulesPath,
   outputs,
   pkgs,
   stateVersion,
-  username,
   ...
 }:
+let
+  host = config.noughty.host;
+  username = config.noughty.user.name;
+in
 {
   imports = [
     # Common configuration shared with darwin
     ../common
+    ../lib/noughty
     # Use modules this flake exports; from modules/nixos
     outputs.nixosModules.falcon-sensor
     outputs.nixosModules.wavebox
@@ -29,20 +30,19 @@
     inputs.nix-index-database.nixosModules.nix-index
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
-    ./${hostname}
     ./_mixins/console
     ./_mixins/hardware
     ./_mixins/network
     ./_mixins/policy
     ./_mixins/scripts
+    ./_mixins/desktop
     ./_mixins/server
     ./_mixins/users
     ./_mixins/virtualisation
-  ]
-  ++ lib.optional isWorkstation ./_mixins/desktop;
+  ];
 
   boot = {
-    binfmt = lib.mkIf isInstall {
+    binfmt = lib.mkIf (!host.is.iso) {
       emulatedSystems = [
         "riscv64-linux"
       ]
@@ -57,7 +57,7 @@
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
     # Only enable the systemd-boot on installs, not live media (.ISO images)
-    loader = lib.mkIf isInstall {
+    loader = lib.mkIf (!host.is.iso) {
       efi.canTouchEfiVariables = true;
       systemd-boot.configurationLimit = lib.mkDefault 10;
       systemd-boot.consoleMode = "max";
@@ -80,7 +80,7 @@
         inputs.determinate.packages.${pkgs.stdenv.hostPlatform.system}.default
         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
       ]
-      ++ lib.optionals isInstall [
+      ++ lib.optionals (!host.is.iso) [
         nvme-cli
         rsync
         smartmontools
@@ -114,13 +114,13 @@
     nano.enable = lib.mkDefault false;
     nh = {
       clean = {
-        enable = isInstall;
+        enable = !host.is.iso;
         extraArgs = "--keep-since 15d --keep 10";
       };
       enable = true;
       flake = "/home/${username}/Zero/nix-config";
     };
-    nix-ld = lib.mkIf isInstall {
+    nix-ld = lib.mkIf (!host.is.iso) {
       enable = true;
       libraries = with pkgs; [
         # Add any missing dynamic libraries for unpackaged
@@ -137,7 +137,7 @@
   };
 
   # Only enable sudo-rs on installs, not live media (.ISO images)
-  security = lib.mkIf isInstall {
+  security = lib.mkIf (!host.is.iso) {
     polkit.enable = true;
     sudo.enable = false;
     sudo-rs = {
@@ -146,7 +146,7 @@
   };
 
   # https://dl.thalheim.io/
-  sops = lib.mkIf (isInstall) {
+  sops = lib.mkIf (!host.is.iso) {
     age = {
       keyFile = "/var/lib/private/sops/age/keys.txt";
       generateKey = false;
@@ -182,22 +182,22 @@
       ssh_host_ed25519_key = {
         mode = "0600";
         path = "/etc/ssh/ssh_host_ed25519_key";
-        sopsFile = ../secrets/host-${hostname}.yaml;
+        sopsFile = ../secrets/host-${host.name}.yaml;
       };
       ssh_host_ed25519_key_pub = {
         mode = "0644";
         path = "/etc/ssh/ssh_host_ed25519_key.pub";
-        sopsFile = ../secrets/host-${hostname}.yaml;
+        sopsFile = ../secrets/host-${host.name}.yaml;
       };
       ssh_host_rsa_key = {
         mode = "0600";
         path = "/etc/ssh/ssh_host_rsa_key";
-        sopsFile = ../secrets/host-${hostname}.yaml;
+        sopsFile = ../secrets/host-${host.name}.yaml;
       };
       ssh_host_rsa_key_pub = {
         mode = "0644";
         path = "/etc/ssh/ssh_host_rsa_key.pub";
-        sopsFile = ../secrets/host-${hostname}.yaml;
+        sopsFile = ../secrets/host-${host.name}.yaml;
       };
     };
   };

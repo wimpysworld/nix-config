@@ -1,21 +1,18 @@
 {
   catppuccinPalette,
   config,
-  isWorkstation,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "martin" ];
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
-lib.mkIf (lib.elem username installFor && isWorkstation) {
+lib.mkIf host.is.workstation {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;
-    lib.mkIf isLinux {
+    lib.mkIf host.is.linux {
       "org/gnome/meld" = {
         custom-font = "FiraCode Nerd Font Mono Medium 13";
         indent-width = mkInt32 4;

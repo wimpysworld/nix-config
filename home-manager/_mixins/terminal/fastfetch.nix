@@ -5,7 +5,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   shellAliases = {
     neofetch = "${pkgs.fastfetch}/bin/fastfetch";
     screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
@@ -200,7 +200,7 @@ in
         ipfetch
         onefetch
       ]
-      ++ lib.optionals isLinux [
+      ++ lib.optionals host.is.linux [
         microfetch
         ramfetch
       ];

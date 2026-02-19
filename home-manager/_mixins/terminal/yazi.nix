@@ -5,7 +5,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
 {
   catppuccin.yazi.enable = config.programs.yazi.enable;
@@ -325,7 +325,7 @@ in
     };
   };
 
-  xdg = lib.mkIf isLinux {
+  xdg = lib.mkIf host.is.linux {
     desktopEntries = {
       yazi = {
         name = "Yazi";

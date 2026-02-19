@@ -1,19 +1,33 @@
 {
+  darwinStateVersion,
   inputs,
   outputs,
   stateVersion,
+  users ? { },
   ...
 }:
 let
-  helpers = import ./helpers.nix { inherit inputs outputs stateVersion; };
+  builders = import ./flake-builders.nix {
+    inherit
+      darwinStateVersion
+      inputs
+      outputs
+      stateVersion
+      users
+      ;
+  };
 in
 {
-  inherit (helpers)
+  inherit (builders)
     mkDarwin
     mkHome
     mkNixos
     forAllSystems
     mkSystemConfig
     generateConfigs
+    isLinuxEntry
+    isDarwinEntry
+    isISOEntry
+    isHomeOnlyEntry
     ;
 }

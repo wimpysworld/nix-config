@@ -1,17 +1,18 @@
 {
   config,
-  isInstall,
-  isLaptop,
   lib,
   pkgs,
   ...
 }:
 let
+  host = config.noughty.host;
   # Don't open the firewall for SSH on laptops; Tailscale will handle it.
-  openSSHFirewall = if (isInstall && isLaptop) then false else true;
+  openSSHFirewall = if (!host.is.iso && host.is.laptop) then false else true;
 in
 {
-  environment = lib.mkIf isInstall { systemPackages = with pkgs; [ ssh-to-age ]; };
+  environment = lib.mkIf (!host.is.iso) {
+    systemPackages = with pkgs; [ ssh-to-age ];
+  };
   programs = {
     # Only start the SSH agent if no other keyring is managing keys
     ssh.startAgent = !config.services.gnome.gnome-keyring.enable;
@@ -25,7 +26,7 @@ in
       };
     };
     sshguard = {
-      enable = isInstall;
+      enable = !host.is.iso;
       whitelist = [
         "10.10.10.0/24"
         "10.10.30.0/24"

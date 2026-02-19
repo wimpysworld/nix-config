@@ -5,7 +5,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
 {
   catppuccin.micro.enable = config.programs.micro.enable;
@@ -36,7 +36,7 @@ in
     };
   };
 
-  xdg = lib.mkIf isLinux {
+  xdg = lib.mkIf host.is.linux {
     desktopEntries = {
       micro = {
         name = "Micro";

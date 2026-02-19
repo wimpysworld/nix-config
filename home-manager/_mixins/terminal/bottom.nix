@@ -5,7 +5,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   shellAliases = {
     htop = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker";
     top = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker";
@@ -40,7 +40,7 @@ in
     zsh.shellAliases = lib.mkIf config.programs.bottom.enable shellAliases;
   };
 
-  xdg = lib.mkIf isLinux {
+  xdg = lib.mkIf host.is.linux {
     desktopEntries = {
       bottom = {
         name = "bottom";

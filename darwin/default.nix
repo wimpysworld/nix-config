@@ -1,22 +1,26 @@
 {
+  catppuccinPalette,
   config,
-  hostname,
   inputs,
   lib,
   outputs,
   pkgs,
-  username,
+  stateVersion,
   ...
 }:
+let
+  host = config.noughty.host;
+  username = config.noughty.user.name;
+in
 {
   imports = [
     # Common configuration shared with nixos
     ../common
+    ../lib/noughty
     inputs.determinate.darwinModules.default
     inputs.mac-app-util.darwinModules.default
     inputs.nix-homebrew.darwinModules.nix-homebrew
     inputs.nix-index-database.darwinModules.nix-index
-    ./${hostname}
     ./_mixins/desktop
     ./_mixins/features
   ];
@@ -97,7 +101,7 @@
 
   system = {
     primaryUser = "${username}";
-    stateVersion = 5;
+    inherit stateVersion;
     defaults = {
       CustomUserPreferences = {
         "com.apple.AdLib" = {
@@ -213,7 +217,7 @@
         askForPassword = true;
         askForPasswordDelay = 300;
       };
-      smb.NetBIOSName = hostname;
+      smb.NetBIOSName = host.name;
       trackpad = {
         Clicking = true;
         TrackpadRightClick = true; # enable two finger right click

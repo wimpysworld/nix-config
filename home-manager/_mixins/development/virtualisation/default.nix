@@ -1,37 +1,34 @@
 {
   config,
-  isLima,
-  isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
-  installFor = [ "martin" ];
+  host = config.noughty.host;
 in
-lib.mkIf (lib.elem username installFor && isLinux) {
+lib.mkIf host.is.linux {
   # Authrorize X11 access in Distrobox
   home = {
     file = {
-      ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && isWorkstation) {
-        text = ''${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER'';
+      ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && host.is.workstation) {
+        text = "${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER";
       };
-      "Quickemu/nixos-console/.keep" = lib.mkIf (!isLima) {
+      "Quickemu/nihilus/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
         text = "";
       };
-      "Quickemu/nixos-console.conf" = lib.mkIf (!isLima) {
+      "Quickemu/nihilus.conf" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
         text = ''
           #!/run/current-system/sw/bin/quickemu --vm
           guest_os="linux"
-          disk_img="nixos-console/disk.qcow2"
+          disk_img="nihilus/disk.qcow2"
           disk_size="96G"
-          iso="nixos-console/nixos.iso"
+          iso="nihilus/nixos.iso"
         '';
       };
     };
-    packages = lib.optionals isWorkstation [
+    packages = lib.optionals host.is.workstation [
       pkgs.quickemu
     ];
   };
@@ -45,7 +42,7 @@ lib.mkIf (lib.elem username installFor && isLinux) {
   };
   services = {
     podman = {
-      enable = isLinux;
+      enable = host.is.linux;
     };
   };
 }

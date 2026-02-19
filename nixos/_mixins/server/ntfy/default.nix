@@ -1,14 +1,11 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
-let
-  installOn = [ "malak" ];
-in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   environment = {
     shellAliases = {
       goaccess-ntfy = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/ntfy.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";

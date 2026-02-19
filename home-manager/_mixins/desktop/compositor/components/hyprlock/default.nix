@@ -1,46 +1,32 @@
 {
-  hostname,
+  config,
   lib,
   pkgs,
   ...
 }:
 let
+  host = config.noughty.host;
+  display = host.display;
   catSize =
-    if hostname == "vader" then
+    if display.primaryIsPortrait then
       320
-    else if hostname == "phasma" then
+    else if display.primaryIsUltrawide then
       430
     else
       240;
   catPosition =
-    if hostname == "vader" then
+    if display.primaryIsPortrait then
       "0, -1124"
-    else if hostname == "phasma" then
+    else if display.primaryIsUltrawide then
       "0, -460"
-    else if (hostname == "tanis" || hostname == "felkor") then
+    else if display.primaryHeight == 1200 then
       "0, -424"
     else
       "0, -316";
-  catResolution =
-    if hostname == "vader" then
-      "2560"
-    else if hostname == "phasma" then
-      "3440"
-    else
-      "1920";
-  monitor =
-    if hostname == "vader" then
-      "DP-1"
-    else if hostname == "phasma" then
-      "DP-1"
-    else if
-      (hostname == "shaa" || hostname == "tanis" || hostname == "felkor" || hostname == "atrius")
-    then
-      "eDP-1"
-    else
-      "";
+  catResolution = toString display.primaryWidth;
+  monitor = display.primaryOutput;
 in
-{
+lib.mkIf host.is.linux {
   # Hyprlock is a lockscreen that is a part of the hyprland suite
   programs = {
     hyprlock = {

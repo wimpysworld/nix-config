@@ -1,17 +1,16 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
-  installOn = prodOn ++ testOn;
   prodOn = [ "malak" ];
   testOn = [ "revan" ];
-  listen = if lib.elem hostname prodOn then "127.0.0.1" else "0.0.0.0";
+  listen = if noughtyLib.isHost prodOn then "127.0.0.1" else "0.0.0.0";
 in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost (prodOn ++ testOn)) {
   environment = {
     shellAliases = {
       goaccess-owncast = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/owncast.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
@@ -22,7 +21,7 @@ lib.mkIf (lib.elem hostname installOn) {
     ];
   };
   services = {
-    caddy = lib.mkIf (config.services.owncast.enable && lib.elem hostname prodOn) {
+    caddy = lib.mkIf (config.services.owncast.enable && noughtyLib.isHost prodOn) {
       # Reverse proxy to the GoToSocial instance
       virtualHosts."wimpysworld.live" = {
         extraConfig = ''

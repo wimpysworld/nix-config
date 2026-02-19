@@ -1,32 +1,25 @@
 {
   config,
-  hostname,
   lib,
   pkgs,
-  tailNet,
   ...
 }:
 let
+  host = config.noughty.host;
   basePath = "/netdata";
-  installOn = [
-    "malak"
-    "maul"
-    "revan"
-  ];
-  hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
 in
-lib.mkIf (lib.elem config.networking.hostName installOn) {
+lib.mkIf host.is.server {
   services = {
     # Reverse proxy netdata if Tailscale is enabled.
-    caddy.virtualHosts."${hostname}.${tailNet}".extraConfig =
+    caddy.virtualHosts."${host.name}.${config.noughty.network.tailNet}".extraConfig =
       lib.mkIf (config.services.netdata.enable && config.services.tailscale.enable)
         ''
           redir ${basePath} ${basePath}/
           reverse_proxy ${basePath}/* localhost:19999
         '';
     netdata = {
-      # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present
-      configDir = lib.mkIf hasNvidiaGPU {
+      # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present.
+      configDir = lib.mkIf host.gpu.hasNvidia {
         "python.d.conf" = pkgs.writeText "python.d.conf" ''
           nvidia_smi: yes
         '';
@@ -36,8 +29,8 @@ lib.mkIf (lib.elem config.networking.hostName installOn) {
       package = pkgs.netdata;
     };
   };
-  # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present
-  systemd.services.netdata.path = lib.optionals hasNvidiaGPU [
+  # Enable the Nvidia plugin for Netdata if an Nvidia GPU is present.
+  systemd.services.netdata.path = lib.optionals host.gpu.hasNvidia [
     config.boot.kernelPackages.nvidia_x11
   ];
 }

@@ -1,19 +1,14 @@
 {
   config,
-  hostname,
-  isInstall,
-  isISO,
-  isLaptop,
-  isWorkstation,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  isServer = hostname == "revan" || hostname == "malak" || hostname == "maul";
-  useDoT = if isLaptop then "opportunistic" else "true";
-  useNetworkManager = if (isISO || !isServer) then true else false;
+  host = config.noughty.host;
+  username = config.noughty.user.name;
+  useDoT = if host.is.laptop then "opportunistic" else "true";
+  useNetworkManager = if (host.is.iso || !host.is.server) then true else false;
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.docker.enable [ "docker0" ]
@@ -110,10 +105,13 @@ in
     ./nullmailer
     ./ssh
     ./tailscale
-  ]
-  ++ lib.optional (builtins.pathExists (./. + "/${hostname}.nix")) ./${hostname}.nix;
+    ./malak.nix
+    ./phasma.nix
+    ./revan.nix
+    ./vader.nix
+  ];
 
-  programs.captive-browser = lib.mkIf isLaptop {
+  programs.captive-browser = lib.mkIf host.is.laptop {
     enable = true;
     browser = ''
       env XDG_CONFIG_HOME="$PREV_CONFIG_HOME" ${pkgs.chromium}/bin/chromium --user-data-dir=$HOME/.local/share/chromium-captive --proxy-server="socks5://$PROXY" --host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE localhost" --no-first-run --new-window --incognito -no-default-browser-check http://neverssl.com
@@ -143,14 +141,14 @@ in
     firewall = {
       enable = true;
       allowedTCPPorts =
-        lib.optionals (builtins.hasAttr hostname allowedTCPPorts)
-          allowedTCPPorts.${hostname};
+        lib.optionals (builtins.hasAttr host.name allowedTCPPorts)
+          allowedTCPPorts.${host.name};
       allowedUDPPorts =
-        lib.optionals (builtins.hasAttr hostname allowedUDPPorts)
-          allowedUDPPorts.${hostname};
+        lib.optionals (builtins.hasAttr host.name allowedUDPPorts)
+          allowedUDPPorts.${host.name};
       inherit trustedInterfaces;
     };
-    hostName = hostname;
+    hostName = host.name;
     nameservers = if builtins.hasAttr username userDns then userDns.${username} else fallbackDns;
     networkmanager = lib.mkIf useNetworkManager {
       # A NetworkManager dispatcher script to open a browser window when a captive portal is detected
@@ -205,8 +203,8 @@ in
       enable = true;
       unmanaged = unmanagedInterfaces;
       wifi.backend = "iwd";
-      wifi.powersave = !isLaptop;
-      settings.connectivity = lib.mkIf isLaptop {
+      wifi.powersave = !host.is.laptop;
+      settings.connectivity = lib.mkIf host.is.laptop {
         uri = "http://google.cn/generate_204";
         response = "";
       };
@@ -215,7 +213,7 @@ in
     nftables.enable = lib.mkIf config.virtualisation.incus.enable true;
     useDHCP = lib.mkDefault true;
     # Forcibly disable wireless networking on ISO images, as they now use NetworkManager/iwd
-    wireless = lib.mkIf isISO {
+    wireless = lib.mkIf host.is.iso {
       enable = lib.mkForce false;
     };
   };
@@ -226,7 +224,7 @@ in
       publish = {
         addresses = true;
         enable = true;
-        workstation = isWorkstation;
+        workstation = host.is.workstation;
       };
     };
     # Use resolved for DNS resolution; tailscale MagicDNS requires it
@@ -239,7 +237,7 @@ in
     };
   };
 
-  sops = lib.mkIf (isInstall) {
+  sops = lib.mkIf (!host.is.iso) {
     secrets = {
       psk = lib.mkIf config.networking.networkmanager.enable {
         mode = "0600";

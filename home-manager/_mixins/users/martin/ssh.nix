@@ -1,11 +1,12 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isDarwin;
+  host = config.noughty.host;
   # sopsFile requires an absolute path - use path type to resolve correctly
   keysSopsFile = ../../../../secrets/ssh.yaml;
   # Helper function to generate SSH key secret definitions
@@ -34,24 +35,24 @@ let
     map (baseName: mkSshKeySecrets "id_ed25519_sk" baseName) ed25519SkKeyIdentifiers
   );
 in
-{
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     # SSH allowed signers for Git verification
     file.".ssh/allowed_signers".text = ''
       ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAywaYwPN4LVbPqkc+kUc7ZVazPBDy4LCAud5iGJdr7g9CwLYoudNjXt/98Oam5lK7ai6QPItK6ECj5+33x/iFpWb3Urr9SqMc/tH5dU1b9N/9yWRhE2WnfcvuI0ms6AXma8QGp1pj/DoLryPVQgXvQlglHaDIL1qdRWFqXUO2u30X5tWtDdOoR02UyAtYBttou4K0rG7LF9rRaoLYP9iCBLxkMJbCIznPD/pIYa6Fl8V8/OVsxYiFy7l5U0RZ7gkzJv8iNz+GG8vw2NX4oIJfAR4oIk3INUvYrKvI2NSMSw5sry+z818fD1hK+soYLQ4VZ4hHRHcf4WV4EeVa5ARxdw== Martin Wimpress
     '';
     # Darwin openssh for FIDO2 support
-    packages = lib.optionals isDarwin [ pkgs.openssh ];
+    packages = lib.optionals host.is.darwin [ pkgs.openssh ];
   };
 
   programs = {
-    fish = lib.mkIf isDarwin {
+    fish = lib.mkIf host.is.darwin {
       shellAliases = {
         ssh-agent-start = "eval (${pkgs.openssh}/bin/ssh-agent -c)";
         ssh-agent-stop = "${pkgs.openssh}/bin/ssh-agent -k";
       };
     };
-    ssh = lib.mkIf isDarwin {
+    ssh = lib.mkIf host.is.darwin {
       enable = true;
       enableDefaultConfig = false;
       includes = [
@@ -68,7 +69,7 @@ in
     ssh_config = {
       sopsFile = keysSopsFile;
       path =
-        if isDarwin then
+        if host.is.darwin then
           "${config.home.homeDirectory}/.ssh/local_config"
         else
           "${config.home.homeDirectory}/.ssh/config";

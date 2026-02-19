@@ -1,15 +1,14 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  installFor = [ "martin" ];
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
 in
-lib.mkIf (lib.elem username installFor) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     file = {
       # Customised Catppuccin Mocha Blue theme for Joplin
@@ -20,7 +19,7 @@ lib.mkIf (lib.elem username installFor) {
       "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text =
         builtins.readFile ./userstyle.css;
     };
-    packages = lib.optionals isLinux [ pkgs.heynote ];
+    packages = lib.optionals host.is.linux [ pkgs.heynote ];
   };
 
   programs.joplin-desktop = {

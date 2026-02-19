@@ -1,5 +1,10 @@
-{ config, ... }:
 {
+  config,
+  lib,
+  noughtyLib,
+  ...
+}:
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     # Configure gpg-agent SSH keys for Git signing
     file.".gnupg/sshcontrol" = {

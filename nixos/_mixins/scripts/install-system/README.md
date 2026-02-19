@@ -109,4 +109,11 @@ The script will prompt for FlakeHub login during install if `determinate-nixd` i
 
 Make a cuppa while it builds. Reboot when done.
 
+## Inspirations
+
+The use of [Disko] and automated installation was inspired by these blog posts:
+
+- [Setting up my new laptop: nix style](https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/)
+- [Setting up my machines: nix style](https://aldoborrero.com/posts/2023/01/15/setting-up-my-machines-nix-style/)
+
 [Disko]: https://github.com/nix-community/disko

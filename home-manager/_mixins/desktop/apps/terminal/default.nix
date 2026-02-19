@@ -6,7 +6,7 @@
   ...
 }:
 let
-  inherit (pkgs.stdenv) isDarwin;
+  host = config.noughty.host;
   # Helper function to get color as hex string
   getColor = colorName: catppuccinPalette.getColor colorName;
   hideWindowDecorations =
@@ -45,7 +45,7 @@ in
         hide_window_decorations = hideWindowDecorations;
         scrollback_indicator_opacity = 0.50;
         scrollback_lines = 65536;
-        shell = lib.mkIf isDarwin "${pkgs.fish}/bin/fish --interactive";
+        shell = lib.mkIf host.is.darwin "${pkgs.fish}/bin/fish --interactive";
         draw_minimal_borders = "yes";
         window_border_width = "0pt";
         window_margin_width = 0;

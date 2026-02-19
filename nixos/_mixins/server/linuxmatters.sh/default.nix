@@ -1,15 +1,14 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  installOn = [ "malak" ];
+  username = config.noughty.user.name;
 in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   environment = {
     shellAliases = {
       goaccess-linuxmatters = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/linuxmatters.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";

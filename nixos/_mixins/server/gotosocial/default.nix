@@ -1,12 +1,11 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
-  installOn = [ "malak" ];
   gotosocial-backup = pkgs.writeShellApplication {
     name = "gotosocial-backup";
     runtimeInputs = with pkgs; [
@@ -22,7 +21,7 @@ let
     text = builtins.readFile ./gotosocial-backup.sh;
   };
 in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   environment = {
     shellAliases = {
       goaccess-gotosocial = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/gotosocial.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";

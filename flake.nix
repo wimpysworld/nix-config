@@ -55,180 +55,55 @@
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "25.11";
-      helper = import ./lib { inherit inputs outputs stateVersion; };
+      darwinStateVersion = 6;
 
-      # System registry - central definition of all systems and their properties
-      systems = {
-        # ISO Image
-        iso-console = {
-          type = "iso";
-          username = "nixos";
-        };
-        # Workstations
-        bane = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        phasma = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        vader = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        shaa = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        atrius = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        tanis = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        felkor = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
-        sidious = {
-          type = "workstation";
-          desktop = "hyprland";
-        };
+      users = import ./lib/registry-users.nix;
 
-        # Darwin systems
-        momin = {
-          type = "darwin";
-        };
-        # Dual boot (WSL/Ubuntu variant)
-        palpatine = {
-          type = "wsl";
-        };
-
-        # Servers
-        malak = {
-          type = "server";
-        };
-        maul = {
-          type = "server";
-        };
-        revan = {
-          type = "server";
-        };
-
-        # Steam Deck
-        steamdeck = {
-          type = "gaming";
-          username = "deck";
-        };
-
-        # VMs (NixOS)
-        crawler = {
-          type = "vm";
-        };
-        dagger = {
-          type = "vm";
-          desktop = "hyprland";
-        };
-
-        # VMs (Lima/Home Manager only)
-        blackace = {
-          type = "lima";
-        };
-        defender = {
-          type = "lima";
-        };
-        fighter = {
-          type = "lima";
-        };
+      builder = import ./lib {
+        inherit
+          inputs
+          outputs
+          stateVersion
+          darwinStateVersion
+          users
+          ;
       };
 
-      # Type defaults for different system types
-      typeDefaults = {
-        iso = {
-          username = "nixos";
-          platform = "x86_64-linux";
-          desktop = null;
-        };
-        workstation = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = "hyprland";
-        };
-        server = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = null;
-        };
-        vm = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = null;
-        };
-        lima = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = null;
-        };
-        darwin = {
-          username = "martin";
-          platform = "aarch64-darwin";
-          desktop = "aqua";
-        };
-        wsl = {
-          username = "martin";
-          platform = "x86_64-linux";
-          desktop = null;
-        };
-        gaming = {
-          username = "deck";
-          platform = "x86_64-linux";
-          desktop = "gamescope";
-        };
-      };
+      systems = import ./lib/registry-systems.nix;
 
     in
     {
-      # Expose lib so it can be used by the helper functions
-      lib = helper;
+      # Expose lib so it can be used by the builder functions
+      lib = builder;
 
       # Generated system configurations
       nixosConfigurations =
         let
-          allNixos =
-            helper.generateConfigs "workstation" systems typeDefaults
-            // helper.generateConfigs "server" systems typeDefaults
-            // helper.generateConfigs "vm" systems typeDefaults
-            // helper.generateConfigs "iso" systems typeDefaults;
+          allNixos = builder.generateConfigs (
+            e: builder.isLinuxEntry e && !builder.isISOEntry e && !builder.isHomeOnlyEntry e
+          ) systems;
+          allISO = builder.generateConfigs builder.isISOEntry systems;
         in
-        nixpkgs.lib.mapAttrs (name: config: helper.mkNixos config) allNixos;
+        nixpkgs.lib.mapAttrs (_name: config: builder.mkNixos config) (allNixos // allISO);
 
-      darwinConfigurations = nixpkgs.lib.mapAttrs (name: config: helper.mkDarwin config) (
-        helper.generateConfigs "darwin" systems typeDefaults
+      darwinConfigurations = nixpkgs.lib.mapAttrs (_name: config: builder.mkDarwin config) (
+        builder.generateConfigs builder.isDarwinEntry systems
       );
 
       homeConfigurations =
         let
-          allHomes =
-            helper.generateConfigs "workstation" systems typeDefaults
-            // helper.generateConfigs "server" systems typeDefaults
-            // helper.generateConfigs "vm" systems typeDefaults
-            // helper.generateConfigs "lima" systems typeDefaults
-            // helper.generateConfigs "darwin" systems typeDefaults
-            // helper.generateConfigs "wsl" systems typeDefaults
-            // helper.generateConfigs "gaming" systems typeDefaults;
+          allHomes = builder.generateConfigs (e: !builder.isISOEntry e) systems;
         in
         nixpkgs.lib.mapAttrs' (
-          name: config: nixpkgs.lib.nameValuePair "${config.username}@${name}" (helper.mkHome config)
+          _name: config:
+          nixpkgs.lib.nameValuePair "${config.username}@${config.hostname}" (builder.mkHome config)
         ) allHomes;
       # Custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };
       # Custom NixOS modules
       nixosModules = import ./modules/nixos;
       # Custom packages; accessible via 'nix build', 'nix shell', etc
-      packages = helper.forAllSystems (
+      packages = builder.forAllSystems (
         system:
         let
           pkgs = import nixpkgs {
@@ -270,10 +145,10 @@
         // linuxOnlyFlakePackage "pwmenu" inputs.pwmenu
       );
       # Formatter for .nix files, available via 'nix fmt'
-      formatter = helper.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
+      formatter = builder.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
 
       # Creates a devshell for working with this flake via direnv.
-      devShells = helper.forAllSystems (
+      devShells = builder.forAllSystems (
         system:
         let
           pkgs = import nixpkgs {

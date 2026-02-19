@@ -1,5 +1,9 @@
-{ lib, ... }:
 {
+  lib,
+  noughtyLib,
+  ...
+}:
+lib.mkIf (noughtyLib.isHost [ "revan" ]) {
   networking = {
     defaultGateway = "10.10.10.1";
     firewall = {

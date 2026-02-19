@@ -1,13 +1,14 @@
 {
-  hostname,
-  isInstall,
+  config,
+  noughtyLib,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  isStreamstation = hostname == "phasma" || hostname == "vader";
+  host = config.noughty.host;
+  username = config.noughty.user.name;
+  isStreamstation = noughtyLib.hostHasTag "streamdeck";
   # Bundle all .deck config files into a single store directory so that
   # relative deck references (deck = "foo.deck") resolve correctly.
   deckmaster-xl-config = pkgs.runCommand "deckmaster-xl-config" { } ''
@@ -15,7 +16,7 @@ let
     cp ${./xl}/*.deck $out/
   '';
 in
-lib.mkIf isInstall {
+lib.mkIf (!host.is.iso) {
   environment.systemPackages = with pkgs; [ deckmaster ];
 
   services = {

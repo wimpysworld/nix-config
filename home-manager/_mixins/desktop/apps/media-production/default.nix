@@ -1,18 +1,17 @@
 {
   config,
-  hostname,
-  isLima,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  username = config.noughty.user.name;
+  host = config.noughty.host;
   davinciResolve = (pkgs.davinci-resolve.override { studioVariant = true; });
 in
 {
-  dconf = lib.mkIf isLinux {
+  dconf = lib.mkIf host.is.linux {
     settings = with lib.hm.gvariant; {
       "com/github/wwmm/easyeffects" = {
         bypass = false;
@@ -51,7 +50,7 @@ in
 
   home.file = {
     "${config.xdg.configHome}/easyeffects/input/mic-vader-oktava.json" =
-      lib.mkIf (hostname == "vader")
+      lib.mkIf (noughtyLib.isHost [ "vader" ])
         {
           text = ''
             {
@@ -229,7 +228,7 @@ in
           '';
         };
     "${config.xdg.configHome}/easyeffects/input/mic-phasma-oktava.json" =
-      lib.mkIf (hostname == "phasma")
+      lib.mkIf (noughtyLib.isHost [ "phasma" ])
         {
           text = ''
             {
@@ -410,24 +409,24 @@ in
 
   home.packages =
     with pkgs;
-    lib.optionals (!isLima) [
+    lib.optionals (!(noughtyLib.hostHasTag "lima")) [
       audacity
     ]
-    ++ lib.optionals (!isLima && isLinux) [
+    ++ lib.optionals (!(noughtyLib.hostHasTag "lima") && host.is.linux) [
       gimp3
       inkscape
     ]
-    ++ lib.optionals (hostname == "vader" || hostname == "phasma") [
+    ++ lib.optionals (noughtyLib.hostHasTag "streamstation") [
       blender-hip
       davinciResolve
     ];
 
-  services.easyeffects = lib.mkIf (hostname == "vader" || hostname == "phasma") {
+  services.easyeffects = lib.mkIf (noughtyLib.hostHasTag "streamstation") {
     enable = true;
-    preset = "mic-${hostname}-oktava";
+    preset = "mic-${host.name}-oktava";
   };
 
-  systemd.user.tmpfiles.rules = lib.mkIf isLinux [
+  systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
     "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
     "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
   ];

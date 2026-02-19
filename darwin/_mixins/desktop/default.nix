@@ -1,14 +1,9 @@
 {
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
-let
-  installFor = [
-    "martin"
-  ];
-in
 {
   environment.systemPackages =
     with pkgs;
@@ -17,7 +12,7 @@ in
       keka
       maestral # CLI
     ]
-    ++ lib.optionals (builtins.elem username installFor) [
+    ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       brave
       stats
       utm
@@ -29,7 +24,7 @@ in
       "inkscape"
       "maestral" # GUI
     ]
-    ++ lib.optionals (builtins.elem username installFor) [
+    ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       "beyond-compare"
       "docker-desktop"
       "heynote"

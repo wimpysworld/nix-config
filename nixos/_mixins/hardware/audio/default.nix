@@ -1,17 +1,16 @@
 {
   config,
-  hostname,
-  isInstall,
-  isWorkstation,
+  noughtyLib,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  useLowLatencyPipewire = hostname == "phasma" || hostname == "vader";
+  host = config.noughty.host;
+  username = config.noughty.user.name;
+  useLowLatencyPipewire = noughtyLib.hostHasTag "streamstation";
 in
-lib.mkIf isInstall {
+lib.mkIf (!host.is.iso) {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency
   boot = lib.mkIf config.services.pipewire.enable {
     # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
@@ -20,13 +19,15 @@ lib.mkIf isInstall {
 
   environment.systemPackages =
     with pkgs;
-    lib.optionals isInstall [
+    [
       alsa-utils
       playerctl
       pulseaudio
       pulsemixer
     ]
-    ++ lib.optionals (isInstall && isWorkstation) [ pwvucontrol ];
+    ++ lib.optionals host.is.workstation [
+      pwvucontrol
+    ];
 
   services = {
     # https://nixos.wiki/wiki/PipeWire

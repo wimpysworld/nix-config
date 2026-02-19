@@ -1,5 +1,5 @@
 {
-  hostname,
+  noughtyLib,
   lib,
   pkgs,
   ...
@@ -62,7 +62,7 @@ let
   };
 in
 {
-  systemd.user = lib.mkIf (hostname == "vader") {
+  systemd.user = lib.mkIf (noughtyLib.isHost [ "vader" ]) {
     services = lib.mkMerge (map mkService games);
     timers = lib.mkMerge (map mkTimer games);
   };

@@ -1,14 +1,13 @@
 {
   config,
-  isWorkstation,
   lib,
+  noughtyLib,
   pkgs,
-  username,
   ...
 }:
 let
-  hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
-  installFor = [ "martin" ];
+  host = config.noughty.host;
+  username = config.noughty.user.name;
   rootlessMode = false;
 
   # Introspect the root filesystem type from disko configuration
@@ -67,7 +66,7 @@ let
     else
       "overlay2"; # Default for xfs, ext4, and others
 in
-lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
   environment = {
     # https://wiki.nixos.org/wiki/Docker
     systemPackages =
@@ -82,7 +81,7 @@ lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
       ++ lib.optional rootlessMode fuse-overlayfs;
   };
 
-  hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
+  hardware.nvidia-container-toolkit.enable = host.gpu.hasNvidia;
 
   users.users.${username} = {
     extraGroups = lib.optional config.virtualisation.docker.enable "docker";
@@ -94,7 +93,7 @@ lib.mkIf (lib.elem "${username}" installFor && isWorkstation) {
       enable = true;
       daemon = {
         settings = {
-          features.cdi = hasNvidiaGPU;
+          features.cdi = host.gpu.hasNvidia;
         };
       };
       rootless = lib.mkIf rootlessMode {

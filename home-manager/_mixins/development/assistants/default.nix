@@ -2,18 +2,17 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux isDarwin;
-  installFor = [ "martin" ];
+  username = config.noughty.user.name;
+  host = config.noughty.host;
 
   # Platform-specific paths
   vscodeUserDir =
-    if isLinux then
+    if host.is.linux then
       "${config.xdg.configHome}/Code/User"
-    else if isDarwin then
+    else if host.is.darwin then
       "/Users/${username}/Library/Application Support/Code/User"
     else
       throw "Unsupported platform";
@@ -108,7 +107,7 @@ let
   }) codecompanionCommands;
 
 in
-lib.mkIf (lib.elem username installFor) {
+{
   home = {
     file = {
       # Claude Code global instructions

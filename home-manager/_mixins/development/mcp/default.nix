@@ -2,17 +2,16 @@
   config,
   lib,
   pkgs,
-  username,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux isDarwin;
-  installFor = [ "martin" ];
+  username = config.noughty.user.name;
+  host = config.noughty.host;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   vscodeUserDir =
-    if isLinux then
+    if host.is.linux then
       "${config.xdg.configHome}/Code/User"
-    else if isDarwin then
+    else if host.is.darwin then
       "/Users/${username}/Library/Application Support/Code/User"
     else
       throw "Unsupported platform";
@@ -21,7 +20,7 @@ let
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
   inherit (mcpServerDefs) mcpServers opencodeServers copilotMcpServers;
 in
-lib.mkIf (lib.elem username installFor) {
+{
   programs = {
     fish = {
       shellInit = ''

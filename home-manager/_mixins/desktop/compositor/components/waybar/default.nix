@@ -1,26 +1,21 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
+  host = config.noughty.host;
+  display = host.display;
   wlogoutMargins =
-    if hostname == "vader" then
+    if display.primaryIsPortrait then
       "--margin-top 960 --margin-bottom 960"
-    else if hostname == "phasma" then
+    else if display.primaryIsUltrawide then
       "--margin-left 540 --margin-right 540"
     else
       "";
-  outputDisplay = if (hostname == "vader" || hostname == "phasma") then "DP-1" else "eDP-1";
-  hwmonPath =
-    if (hostname == "vader" || hostname == "phasma") then
-      "/sys/class/hwmon/hwmon4/temp1_input"
-    else if hostname == "tanis" then
-      "/sys/class/hwmon/hwmon3/temp1_input"
-    else
-      "/sys/class/hwmon/hwmon0/temp1_input";
+  outputDisplay = display.primaryOutput;
   bluetoothToggle = pkgs.writeShellApplication {
     name = "bluetooth-toggle";
     runtimeInputs = with pkgs; [
@@ -65,7 +60,7 @@ let
     text = builtins.readFile ./virtualcam-toggle.sh;
   };
 in
-{
+lib.mkIf host.is.linux {
   catppuccin = {
     waybar.enable = config.programs.waybar.enable;
   };
@@ -316,7 +311,7 @@ in
             "wireplumber"
             "pulseaudio#input"
           ]
-          ++ lib.optional (hostname == "vader" || hostname == "phasma") "custom/virtualcam"
+          ++ lib.optional (noughtyLib.hostHasTag "pci-hdmi-capture") "custom/virtualcam"
           ++ [
             "bluetooth"
             "network"
@@ -541,7 +536,11 @@ in
             on-click-middle = "${pkgs.resources}/bin/resources --open-tab-id cpu";
           };
           temperature = {
-            hwmon-path = "${hwmonPath}";
+            hwmon-path-abs = [
+              "/sys/devices/platform/coretemp.0/hwmon"
+              "/sys/devices/pci0000:00/0000:00:18.3/hwmon"
+            ];
+            input-filename = "temp1_input";
             critical-threshold = 90;
             format = "<big>{icon}</big>";
             format-alt = "<big>{icon}</big> <small>{temperatureC}󰔄</small>";

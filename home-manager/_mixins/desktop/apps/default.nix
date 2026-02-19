@@ -1,11 +1,12 @@
 {
   catppuccinPalette,
+  config,
   lib,
   pkgs,
   ...
 }:
 let
-  inherit (pkgs.stdenv) isLinux;
+  host = config.noughty.host;
   audioPlayer = [ "org.gnome.Decibels.desktop" ];
   archiveManager = [ "org.gnome.FileRoller.desktop" ];
   webBrowser = [ "brave-browser.desktop" ];
@@ -45,11 +46,11 @@ in
     ./utilities
   ];
 
-  dbus = lib.mkIf isLinux {
+  dbus = lib.mkIf host.is.linux {
     packages = dbusPackages;
   };
 
-  dconf = lib.mkIf isLinux {
+  dconf = lib.mkIf host.is.linux {
     settings = with lib.hm.gvariant; {
       "ca/desrt/dconf-editor" = {
         show-warning = false;
@@ -60,7 +61,7 @@ in
       };
     };
   };
-  home = lib.mkIf isLinux {
+  home = lib.mkIf host.is.linux {
     packages =
       with pkgs;
       [
@@ -73,7 +74,7 @@ in
     };
   };
 
-  xdg = lib.mkIf isLinux {
+  xdg = lib.mkIf host.is.linux {
     enable = true;
     mime.enable = true;
     mimeApps = {

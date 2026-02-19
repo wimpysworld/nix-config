@@ -1,11 +1,10 @@
 {
   config,
-  isInstall,
-  isWorkstation,
   lib,
   ...
 }:
 let
+  host = config.noughty.host;
   currentDir = ./.; # Represents the current directory
   isDirectoryAndNotTemplate = _name: type: type == "directory";
   directories = lib.filterAttrs isDirectoryAndNotTemplate (builtins.readDir currentDir);
@@ -15,11 +14,11 @@ in
   imports = lib.mapAttrsToList (name: _: importDirectory name) directories;
 
   services = {
-    fwupd.enable = lib.mkDefault isWorkstation;
-    hardware.bolt.enable = isInstall;
+    fwupd.enable = lib.mkDefault host.is.workstation;
+    hardware.bolt.enable = !host.is.iso;
     irqbalance = lib.mkIf (!config.services.qemuGuest.enable) {
       enable = true;
     };
-    smartd.enable = isInstall;
+    smartd.enable = !host.is.iso;
   };
 }

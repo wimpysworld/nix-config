@@ -1,8 +1,10 @@
 {
   config,
+  lib,
+  noughtyLib,
   ...
 }:
-{
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   # Creates an infinite recursion if you do `catppuccin.atuin.enable = config.programs.atuin;`
   catppuccin.atuin.enable = true;
 

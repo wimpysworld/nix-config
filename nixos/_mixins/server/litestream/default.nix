@@ -1,17 +1,16 @@
 {
   config,
-  hostname,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
-  installOn = [ "malak" ];
   #replicateGotosocial = config.services.litestream.enable && config.services.gotosocial.enable && config.services.gotosocial.settings.db-type == "sqlite";
   replicateGotosocial = false;
   ifExists = groups: builtins.filter (group: builtins.hasAttr group config.users.groups) groups;
 in
-lib.mkIf (lib.elem hostname installOn) {
+lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   environment = {
     shellAliases = {
       litestream-log = "journalctl _SYSTEMD_UNIT=litestream.service";

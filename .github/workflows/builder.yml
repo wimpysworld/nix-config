@@ -344,7 +344,7 @@ jobs:
         run: |
           # Extract NixOS version (e.g. 25.11.20260211.6c5e707) and take first 3
           # dot-separated components, then strip leading zeros for semver compliance
-          NIXOS_VER=$(nix eval .#nixosConfigurations.iso-console.config.system.nixos.version --raw)
+          NIXOS_VER=$(nix eval .#nixosConfigurations.nihilus.config.system.nixos.version --raw)
           VER=$(echo "${NIXOS_VER}" | cut -d'.' -f1-3 | sed -E 's/\b0+([1-9])/\1/g')
           PUBLISH_VER="${VER}$(date -u +%H)"
           echo "ver=${VER}" >> "$GITHUB_OUTPUT"
@@ -429,11 +429,11 @@ jobs:
         if: steps.check-release.outputs.exists == 'false'
         id: build-iso
         run: |
-          nix build .#nixosConfigurations.iso-console.config.system.build.isoImage -L
+          nix build .#nixosConfigurations.nihilus.config.system.build.isoImage -L
           ISO=$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)
           # Stage ISO for release upload; GitHub auto-generates sha256 digests
           mkdir -p iso
-          sudo mv "result/iso/${ISO}" "iso/console-${ISO}"
+          sudo mv "result/iso/${ISO}" "iso/${ISO}"
       - name: Release ISO 🎁
         if: steps.check-release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
