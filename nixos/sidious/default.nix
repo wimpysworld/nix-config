@@ -29,26 +29,6 @@
     ];
   };
 
-  noughty.host.displays = [
-    {
-      output = "eDP-1";
-      width = 3840;
-      height = 2160;
-      scale = 2.0;
-      primary = true;
-      workspaces = [
-        1
-        2
-        3
-        4
-        5
-        6
-        7
-        8
-      ];
-    }
-  ];
-
   # TODO: Remove when I migrate off bcachefs.
   environment.systemPackages = with pkgs; [
     bcachefs-tools

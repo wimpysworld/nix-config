@@ -64,39 +64,6 @@
     };
     xone.enable = true;
   };
-  noughty.host.displays = [
-    {
-      output = "DP-1";
-      width = 3440;
-      height = 1440;
-      refresh = 100;
-      primary = true;
-      workspaces = [
-        1
-        2
-        3
-        4
-        5
-        6
-        7
-        8
-      ];
-    }
-    {
-      output = "HDMI-A-1";
-      width = 2560;
-      height = 1600;
-      refresh = 120;
-      scale = 1.25;
-      workspaces = [ 9 ];
-    }
-    {
-      output = "DP-2";
-      width = 1920;
-      height = 1080;
-      workspaces = [ 10 ];
-    }
-  ];
 
   services.xserver.videoDrivers = [
     "amdgpu"

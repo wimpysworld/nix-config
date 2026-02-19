@@ -149,6 +149,7 @@ rec {
       hostGpuVendors ? [ ],
       hostGpuCompute ? { },
       hostTags ? [ ],
+      hostDisplays ? [ ],
       userTags ? [ ],
     }:
     let
@@ -178,6 +179,7 @@ rec {
               compute = hostGpuCompute;
             };
             tags = hostTags;
+            displays = hostDisplays;
             desktop = desktop;
           };
           noughty.user.name = username;
@@ -198,6 +200,7 @@ rec {
       hostGpuVendors ? [ ],
       hostGpuCompute ? { },
       hostTags ? [ ],
+      hostDisplays ? [ ],
       userTags ? [ ],
     }:
     let
@@ -233,6 +236,7 @@ rec {
                 compute = hostGpuCompute;
               };
               tags = hostTags;
+              displays = hostDisplays;
               desktop = desktop;
             };
             noughty.user.name = username;
@@ -253,6 +257,7 @@ rec {
       hostGpuVendors ? [ ],
       hostGpuCompute ? { },
       hostTags ? [ ],
+      hostDisplays ? [ ],
       userTags ? [ ],
     }:
     let
@@ -285,6 +290,7 @@ rec {
               compute = hostGpuCompute;
             };
             tags = hostTags;
+            displays = hostDisplays;
             desktop = desktop;
           };
           noughty.user.name = username;
@@ -316,6 +322,7 @@ rec {
       hostGpuVendors = (resolved.gpu or { }).vendors or [ ];
       hostGpuCompute = (resolved.gpu or { }).compute or { };
       hostTags = resolved.tags or [ ];
+      hostDisplays = resolved.displays or [ ];
       userTags = (resolved.userEntry or { }).tags or [ ];
     };
 

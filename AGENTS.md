@@ -110,7 +110,7 @@ just inject-tokens 192.168.1.10     # Inject tokens to ISO host for install
 
 ## System registry and configuration
 
-All systems defined in `flake.nix` system registry. Each entry specifies:
+All systems defined in `lib/registry-systems.nix` (imported by `flake.nix`). Each entry specifies:
 
 - **kind** (required): `"computer"`, `"server"`, `"vm"`, `"container"`
 - **platform** (required): `"x86_64-linux"`, `"aarch64-darwin"`, etc.
@@ -118,14 +118,16 @@ All systems defined in `flake.nix` system registry. Each entry specifies:
 - **desktop** (optional): derived from `kind` + platform if omitted (e.g. `computer` on Linux defaults to `"hyprland"`, Darwin defaults to `"aqua"`)
 - **username** (optional): defaults to `"martin"`
 - **gpu** (optional): `{ vendors = [ "amd" "nvidia" ]; compute = { vendor = "nvidia"; vram = 16; }; }`
+- **displays** (optional): list of display submodules with output, width, height, refresh, scale, position, primary, workspaces
 - **tags** (optional): `[ "streamstation" "thinkpad" "iso" ... ]`
 
-Users defined in a separate `users` table in `flake.nix`:
+Users defined in `lib/registry-users.nix` (imported by `flake.nix`):
 
 ```nix
-users = {
+# In lib/registry-users.nix
+{
   martin = { tags = [ "developer" ]; };
-};
+}
 ```
 
 ISO hosts use `tags = [ "iso" ]` which applies implicit defaults (`desktop = null`, `username = "nixos"`). The ISO host is `nihilus`.
@@ -283,19 +285,21 @@ Script automatically validated with shellcheck during build.
 
 ## Creating new system configuration
 
-Add to system registry in `flake.nix`:
+Add to system registry in `lib/registry-systems.nix`:
 
 ```nix
-systems = {
-  mynewhost = {
-    kind = "computer";        # or "server", "vm", "container"
-    platform = "x86_64-linux";
-    formFactor = "desktop";   # or "laptop", "handheld", null
-    gpu.vendors = [ "amd" ];  # if applicable
-    tags = [ "thinkpad" ];    # if applicable
-    # desktop defaults to "hyprland" for computer+linux
-    # username defaults to "martin"
-  };
+# In lib/registry-systems.nix
+mynewhost = {
+  kind = "computer";        # or "server", "vm", "container"
+  platform = "x86_64-linux";
+  formFactor = "desktop";   # or "laptop", "handheld", null
+  gpu.vendors = [ "amd" ];  # if applicable
+  tags = [ "thinkpad" ];    # if applicable
+  displays = [
+    { output = "DP-1"; width = 2560; height = 1440; refresh = 144; primary = true; workspaces = [ 1 2 3 4 5 ]; }
+  ];
+  # desktop defaults to "hyprland" for computer+linux
+  # username defaults to "martin"
 };
 ```
 
@@ -311,10 +315,6 @@ Create host directory and `nixos/mynewhost/default.nix`:
   ];
 
   boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" ];
-
-  noughty.host.displays = [
-    { output = "DP-1"; width = 2560; height = 1440; refresh = 144; primary = true; workspaces = [ 1 2 3 4 5 ]; }
-  ];
 }
 ```
 
@@ -349,7 +349,7 @@ Configurations composed from small, focused modules in `_mixins` directories. Ea
 
 **Configuration flow:**
 
-1. System registry in `flake.nix` defines all hosts and users
+1. System registry in `lib/registry-systems.nix` and `lib/registry-users.nix` defines all hosts and users
 2. `resolveEntry` in `lib/flake-builders.nix` merges registry defaults (baseline, kind+OS derived, ISO defaults, explicit values)
 3. `mkSystemConfig` produces the attribute set consumed by `mkNixos`, `mkHome`, `mkDarwin`
 4. `noughty.*` options are set in the modules list; `lib/noughty/default.nix` computes derived booleans

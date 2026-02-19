@@ -47,7 +47,9 @@ nixos/default.nix        # Imports ../lib/noughty
 darwin/default.nix       # Imports ../lib/noughty
 home-manager/default.nix # Imports ../lib/noughty
 
-flake.nix                # System registry (systems attrset)
+flake.nix                # Imports registry files, wires inputs/outputs
+lib/registry-systems.nix # System registry (all host definitions)
+lib/registry-users.nix   # User profiles (per-user metadata)
 
 home-manager/_mixins/scripts/noughty/
   default.nix            # CLI tool wrapper (bakes config values at build time)
@@ -63,7 +65,7 @@ home-manager/_mixins/scripts/noughty/
 ## Data flow
 
 ```
-flake.nix systems registry
+lib/registry-systems.nix (system registry, imported by flake.nix)
   -> lib/flake-builders.nix: resolveEntry merges four layers (baseline, kind defaults, iso defaults, explicit values)
     -> mkSystemConfig produces { hostname, username, desktop, hostKind, hostGpuVendors, ... }
       -> mkNixos/mkHome/mkDarwin set noughty.* options in the modules list
@@ -102,7 +104,7 @@ See PLAN.md Appendix A for the full analysis.
 | `host.platform` | `str` | `"x86_64-linux"` | Architecture string (e.g. `"x86_64-linux"`, `"aarch64-darwin"`). |
 | `host.desktop` | `nullOr str` | `null` | Desktop environment name, or `null` for headless systems. |
 | `host.formFactor` | `nullOr (enum ["laptop" "desktop" "handheld" "tablet" "phone"])` | `null` | Physical form factor. `null` for virtual or headless systems. |
-| `host.tags` | `listOf str` | `[]` | Freeform tags for host classification. Canonical vocabulary in `flake.nix`. |
+| `host.tags` | `listOf str` | `[]` | Freeform tags for host classification. Canonical vocabulary in `lib/registry-systems.nix`. |
 | `host.os` | `enum ["linux" "darwin"]` | *(derived from platform)* | Read-only. Derived from `platform` suffix. |
 
 #### Notes on `host.kind`
@@ -168,7 +170,7 @@ A bare `hostHasTag "gpu"` cannot distinguish vendors. Hosts like vader have both
 
 ### `noughty.host.displays` - Display output configuration
 
-A list of display submodules. Set in host-specific modules, not the registry, because display data is too verbose and hardware-specific for `flake.nix`.
+A list of display submodules. Set in the system registry (`lib/registry-systems.nix`) alongside other host properties. This ensures display data flows to both NixOS and standalone Home Manager contexts.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -184,7 +186,7 @@ A list of display submodules. Set in host-specific modules, not the registry, be
 Example:
 
 ```nix
-# nixos/vader/default.nix (or home-manager equivalent)
+# lib/registry-systems.nix (vader entry)
 noughty.host.displays = [
   { output = "DP-1"; width = 2560; height = 2880; primary = true; workspaces = [ 1 2 7 8 9 ]; }
   { output = "DP-2"; width = 2560; height = 2880; workspaces = [ 3 4 5 6 ]; }
@@ -227,7 +229,7 @@ All derived from `noughty.host.displays`. Primary is the first display where `pr
 
 ### Tags
 
-Tags are freeform `listOf str`. The canonical vocabulary is documented in a comment block in the system registry section of `flake.nix`:
+Tags are freeform `listOf str`. The canonical vocabulary is documented in a comment block in `lib/registry-systems.nix`:
 
 - **Host tags:** `streamstation`, `trackball`, `streamdeck`, `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`, `inference`
 - **User tags:** `developer`, `admin`, `family`
@@ -483,25 +485,28 @@ Only four values remain in `specialArgs`/`extraSpecialArgs`, consistent across a
 
 ## Adding a new host
 
-### 1. Add to the system registry in `flake.nix`
+### 1. Add to the system registry in `lib/registry-systems.nix`
 
 ```nix
-systems = {
+{
   mynewhost = {
     kind = "computer";        # or "server", "vm", "container"
     platform = "x86_64-linux";
     formFactor = "desktop";   # or "laptop", "handheld", null
     gpu.vendors = [ "amd" ];  # if applicable
     tags = [ "thinkpad" ];    # if applicable
+    displays = [
+      { output = "DP-1"; width = 2560; height = 1440; refresh = 144; primary = true; workspaces = [ 1 2 3 4 5 ]; }
+    ];
     # desktop defaults to "hyprland" for computer+linux
     # username defaults to "martin"
   };
-};
+}
 ```
 
 ### 2. Create host directory
 
-Create `nixos/mynewhost/default.nix` with hardware-specific configuration (disk layout, kernel modules, nixos-hardware imports). Optionally set display configuration:
+Create `nixos/mynewhost/default.nix` with hardware-specific configuration (disk layout, kernel modules, nixos-hardware imports):
 
 ```nix
 { inputs, ... }:
@@ -513,10 +518,6 @@ Create `nixos/mynewhost/default.nix` with hardware-specific configuration (disk 
   ];
 
   boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" ];
-
-  noughty.host.displays = [
-    { output = "DP-1"; width = 2560; height = 1440; refresh = 144; primary = true; workspaces = [ 1 2 3 4 5 ]; }
-  ];
 }
 ```
 
@@ -553,7 +554,7 @@ options.noughty.host.myNewOption = lib.mkOption {
 
 If it should be set from the registry, also:
 
-1. Add the field to registry entries in `flake.nix`.
+1. Add the field to registry entries in `lib/registry-systems.nix`.
 2. Pass it through `mkSystemConfig` in `lib/flake-builders.nix`.
 3. Set it in the `noughty.host` block within `mkNixos`/`mkHome`/`mkDarwin`.
 
@@ -572,7 +573,7 @@ The function has access to `hostName`, `userName`, `hostTags`, and `userTags` vi
 
 ### Adding a new tag
 
-1. Add the tag to the canonical vocabulary comment in `flake.nix`.
+1. Add the tag to the canonical vocabulary comment in `lib/registry-systems.nix`.
 2. Set the tag on relevant hosts in the registry.
 3. Use `noughtyLib.hostHasTag "my-new-tag"` in modules.
 
@@ -582,9 +583,9 @@ The function has access to `hostName`, `userName`, `hostTags`, and `userTags` vi
 |----------|-----------|-----------|
 | Module, not better helpers | NixOS options module | Module system provides type checking, defaults, overridability, and documentation. |
 | `_module.args` for noughtyLib | Not `specialArgs` | Preserves lazy closure over `config.noughty.*`. Overrides via `mkForce` are reflected. |
-| Tags are freeform strings | `listOf str`, not enum | Start simple. Canonical vocabulary documented in `flake.nix`. Add validation only if typos become a real problem. |
+| Tags are freeform strings | `listOf str`, not enum | Start simple. Canonical vocabulary documented in `lib/registry-systems.nix`. Add validation only if typos become a real problem. |
 | GPU uses structured options | Not tags | Distinguishes vendors on dual-GPU hosts. Enum list with derived booleans provides type validation. |
-| Displays in host modules | Not the registry | Too verbose and hardware-specific for `flake.nix`. |
+| Displays in registry | `lib/registry-systems.nix` | Display data must flow to standalone Home Manager contexts. Extracting the registry to a dedicated file resolved the verbosity concern. |
 | `host.kind` replaces `type` | `enum ["computer" "server" "vm" "container"]` | Separates system class from OS, use-case, and deployment mechanism. |
 | `is.laptop` from `formFactor` | Not negative hostname list | Adding a new laptop just requires `formFactor = "laptop"`. No other files to update. |
 | `hasCuda` from `compute.acceleration` | Not vendor presence | A host with NVIDIA for encoding but no compute block correctly reports `hasCuda = false`. |
