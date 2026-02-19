@@ -26,7 +26,7 @@ let
   catResolution = toString display.primaryWidth;
   monitor = display.primaryOutput;
 in
-{
+lib.mkIf host.is.linux {
   # Hyprlock is a lockscreen that is a part of the hyprland suite
   programs = {
     hyprlock = {

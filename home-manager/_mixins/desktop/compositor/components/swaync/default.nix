@@ -5,6 +5,7 @@
   ...
 }:
 let
+  host = config.noughty.host;
   swayncRun = pkgs.writeShellApplication {
     name = "swaync-run";
     text = ''
@@ -19,7 +20,7 @@ let
     '';
   };
 in
-{
+lib.mkIf host.is.linux {
   # swaync is a notification daemon
   services = {
     swaync = {

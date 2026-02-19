@@ -4,7 +4,10 @@
   pkgs,
   ...
 }:
-{
+let
+  host = config.noughty.host;
+in
+lib.mkIf host.is.linux {
   # hyprshot is a screenshot grabber and satty is a screenshot editor
   # This config provides comprehensive screenshot functionality for hyprland
   home = {

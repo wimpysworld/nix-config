@@ -60,7 +60,7 @@ let
     text = builtins.readFile ./virtualcam-toggle.sh;
   };
 in
-{
+lib.mkIf host.is.linux {
   catppuccin = {
     waybar.enable = config.programs.waybar.enable;
   };

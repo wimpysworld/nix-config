@@ -8,7 +8,7 @@ let
   wallpaperVariant = i: if i == 0 then "Catppuccin" else "Colorway";
   wallpaperPath = i: d: "/etc/backgrounds/${wallpaperVariant i}-${resolution d}.png";
 in
-{
+lib.mkIf host.is.linux {
   # hyprpaper is a wallpaper manager and part of the hyprland suite
   services = {
     hyprpaper = {

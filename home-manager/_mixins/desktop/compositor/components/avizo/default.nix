@@ -4,7 +4,10 @@
   pkgs,
   ...
 }:
-{
+let
+  host = config.noughty.host;
+in
+lib.mkIf host.is.linux {
   # avizo is an osd notification daemon for audio and backlight
   # avizo provides volumectl and lightctl for controlling audio and backlight
   services = {
