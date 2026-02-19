@@ -202,7 +202,6 @@ rec {
         inherit
           inputs
           outputs
-          hostname
           stateVersion
           catppuccinPalette
           ;
@@ -214,6 +213,7 @@ rec {
         in
         [
           ../nixos
+          ../nixos/${hostname}
           {
             noughty.host = {
               name = hostname;
@@ -255,13 +255,13 @@ rec {
         inherit
           inputs
           outputs
-          hostname
           stateVersion
           catppuccinPalette
           ;
       };
       modules = [
         ../darwin
+        ../darwin/${hostname}
         {
           noughty.host = {
             name = hostname;

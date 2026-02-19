@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  hostname,
   inputs,
   lib,
   outputs,
@@ -21,7 +20,6 @@ in
     inputs.mac-app-util.darwinModules.default
     inputs.nix-homebrew.darwinModules.nix-homebrew
     inputs.nix-index-database.darwinModules.nix-index
-    ./${hostname}
     ./_mixins/desktop
     ./_mixins/features
   ];

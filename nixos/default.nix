@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  hostname,
   inputs,
   lib,
   modulesPath,
@@ -30,7 +29,6 @@ in
     inputs.nix-index-database.nixosModules.nix-index
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
-    ./${hostname}
     ./_mixins/console
     ./_mixins/hardware
     ./_mixins/network
