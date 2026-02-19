@@ -2,7 +2,6 @@
   config,
   inputs,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
@@ -676,7 +675,7 @@ let
     "Read(${config.home.homeDirectory}/.local/share/fish/fish_history)"
   ];
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+{
   home = {
     packages = [
       inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.ccusage

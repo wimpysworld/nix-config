@@ -2,7 +2,6 @@
   config,
   inputs,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
@@ -11,7 +10,7 @@ let
   system = pkgs.stdenv.hostPlatform.system;
   opencodePackage = inputs.opencode.packages.${system}.opencode;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+{
   home = {
     packages = [
       inputs.nix-ai-tools.packages.${system}.ccusage-opencode

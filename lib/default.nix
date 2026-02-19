@@ -3,6 +3,7 @@
   inputs,
   outputs,
   stateVersion,
+  users ? { },
   ...
 }:
 let
@@ -12,6 +13,7 @@ let
       inputs
       outputs
       stateVersion
+      users
       ;
   };
 in

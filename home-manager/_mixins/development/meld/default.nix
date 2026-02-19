@@ -2,14 +2,13 @@
   catppuccinPalette,
   config,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
 let
   host = config.noughty.host;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
+lib.mkIf host.is.workstation {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;

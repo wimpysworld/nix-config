@@ -1,11 +1,10 @@
 {
   config,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+{
   home = {
     packages = with pkgs; [
       delve

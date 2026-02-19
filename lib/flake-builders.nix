@@ -3,6 +3,7 @@
   inputs,
   outputs,
   stateVersion,
+  users ? { },
   ...
 }:
 let
@@ -43,8 +44,11 @@ let
       // {
         name = name;
       };
+
+      # Look up user-level metadata from the users table.
+      userEntry = users.${merged.username} or { };
     in
-    merged;
+    merged // { inherit userEntry; };
 
   # Predicate functions for filtering registry entries
   isLinuxEntry = e: lib.hasSuffix "-linux" e.platform;
@@ -146,6 +150,7 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostIsIso ? false,
+      userTags ? [ ],
     }:
     let
       # Generate the Catppuccin palette for this system
@@ -178,6 +183,7 @@ rec {
             is.iso = hostIsIso;
           };
           noughty.user.name = username;
+          noughty.user.tags = userTags;
         }
       ];
     };
@@ -195,6 +201,7 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostIsIso ? false,
+      userTags ? [ ],
     }:
     let
       # Generate the Catppuccin palette for this system
@@ -233,6 +240,7 @@ rec {
               is.iso = hostIsIso;
             };
             noughty.user.name = username;
+            noughty.user.tags = userTags;
           }
         ]
         ++ inputs.nixpkgs.lib.optionals hostIsIso [ cd-dvd ];
@@ -250,6 +258,7 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostIsIso ? false,
+      userTags ? [ ],
     }:
     let
       # Generate the Catppuccin palette for this system
@@ -285,6 +294,7 @@ rec {
             is.iso = hostIsIso;
           };
           noughty.user.name = username;
+          noughty.user.tags = userTags;
         }
       ];
     };
@@ -313,6 +323,7 @@ rec {
       hostGpuCompute = (resolved.gpu or { }).compute or { };
       hostTags = resolved.tags or [ ];
       hostIsIso = resolved.iso or false;
+      userTags = (resolved.userEntry or { }).tags or [ ];
     };
 
   # Generate configurations by filtering with a predicate function

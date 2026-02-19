@@ -1,11 +1,10 @@
 {
   config,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+{
   home = {
     # Packages that are used by some of the extensions below
     packages = with pkgs; [

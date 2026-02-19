@@ -1,4 +1,6 @@
 {
+  noughtyLib,
+  lib,
   pkgs,
   ...
 }:
@@ -63,11 +65,13 @@ in
     ./yaml
     ./zed-editor
   ];
-  home = {
-    packages = with pkgs; [
-      dconf2nix # Nix code from Dconf files
-      dockerPurge
-      tokei # Modern Unix `wc` for code
-    ];
+  config = lib.mkIf (noughtyLib.userHasTag "developer") {
+    home = {
+      packages = with pkgs; [
+        dconf2nix # Nix code from Dconf files
+        dockerPurge
+        tokei # Modern Unix `wc` for code
+      ];
+    };
   };
 }

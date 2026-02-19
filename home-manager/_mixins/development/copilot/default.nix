@@ -2,7 +2,6 @@
   config,
   inputs,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
@@ -333,7 +332,7 @@ let
     # (deny/prompt) entries, but the current approach is more secure.
   };
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+{
   home = {
     packages = [
       inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.copilot-cli

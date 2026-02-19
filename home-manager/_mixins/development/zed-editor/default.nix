@@ -10,7 +10,7 @@ let
   fontSize = 18;
   fontWeight = 400;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
+lib.mkIf host.is.workstation {
   catppuccin.zed.enable = config.programs.zed-editor.enable;
   programs = {
     zed-editor = {

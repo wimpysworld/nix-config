@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
@@ -21,7 +20,7 @@ let
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
   inherit (mcpServerDefs) mcpServers opencodeServers copilotMcpServers;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+{
   programs = {
     fish = {
       shellInit = ''

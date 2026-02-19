@@ -56,12 +56,22 @@
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "25.11";
       darwinStateVersion = 6;
+
+      # User profiles - per-user metadata keyed by username.
+      # Looked up by resolveEntry based on the resolved username for each system.
+      users = {
+        martin = {
+          tags = [ "developer" ];
+        };
+      };
+
       builder = import ./lib {
         inherit
           inputs
           outputs
           stateVersion
           darwinStateVersion
+          users
           ;
       };
 

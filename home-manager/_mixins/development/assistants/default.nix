@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
@@ -108,7 +107,7 @@ let
   }) codecompanionCommands;
 
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+{
   home = {
     file = {
       # Claude Code global instructions

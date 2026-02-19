@@ -8,7 +8,7 @@
 let
   host = config.noughty.host;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux) {
+lib.mkIf host.is.linux {
   # Authrorize X11 access in Distrobox
   home = {
     file = {
