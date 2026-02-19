@@ -44,7 +44,7 @@ Other commands:
 ```bash
 just build-pkg firefox              # Build package for current host
 just build-pkg firefox vader        # Build package for specific host
-just iso console                    # Build minimal console ISO
+just iso                            # Build nihilus ISO image
 just update                         # Update flake.lock
 just gc                             # Clean old generations, keep latest 5
 ```
@@ -86,7 +86,7 @@ just inject-tokens 192.168.1.10     # Inject tokens to ISO host for install
 - Hostnames: Sith Lords (workstations/servers), TIE fighters (VMs)
 - Variables: camelCase for Nix attributes
 - Files: kebab-case for directories and Nix files
-- Functions: camelCase in `lib/helpers.nix`
+- Functions: camelCase in `lib/flake-builders.nix`
 
 **Nix style:**
 
@@ -95,6 +95,11 @@ just inject-tokens 192.168.1.10     # Inject tokens to ISO host for install
 - Use `lib.optional` and `lib.optionals` for conditional imports
 - Explicit `inherit` statements for clarity
 - String interpolation: `"${variable}"` not `variable`
+
+**Module shorthand convention:**
+
+- Use `host = config.noughty.host;` in `let` bindings (NOT `cfg`)
+- Then reference `host.is.workstation`, `host.desktop`, `host.name`, etc.
 
 **Mixin placement:**
 
@@ -105,36 +110,70 @@ just inject-tokens 192.168.1.10     # Inject tokens to ISO host for install
 
 ## System registry and configuration
 
-All systems defined in `flake.nix` system registry with type-based defaults:
+All systems defined in `flake.nix` system registry. Each entry specifies:
 
-- **type**: `workstation`, `server`, `vm`, `darwin`, `lima`, `iso`, `wsl`, `gaming`
-- **username**: defaults based on type (martin/nixos/deck)
-- **platform**: `x86_64-linux`, `aarch64-darwin`
-- **desktop**: `hyprland`, `wayfire`, `aqua`, or `null`
+- **kind** (required): `"computer"`, `"server"`, `"vm"`, `"container"`
+- **platform** (required): `"x86_64-linux"`, `"aarch64-darwin"`, etc.
+- **formFactor** (optional): `"laptop"`, `"desktop"`, `"handheld"`, `"tablet"`, `"phone"`
+- **desktop** (optional): derived from `kind` + platform if omitted (e.g. `computer` on Linux defaults to `"hyprland"`, Darwin defaults to `"aqua"`)
+- **username** (optional): defaults to `"martin"`
+- **gpu** (optional): `{ vendors = [ "amd" "nvidia" ]; compute = { vendor = "nvidia"; vram = 16; }; }`
+- **tags** (optional): `[ "streamstation" "thinkpad" "iso" ... ]`
 
-Helper functions in `lib/helpers.nix` generate configs from registry.
-
-## Special arguments
-
-These are passed to all modules via `specialArgs`:
-
-- `hostname`: system hostname
-- `username`: primary user
-- `desktop`: desktop environment or null
-- `platform`: system architecture
-- `stateVersion`: NixOS/Home Manager state version (defined in `lib/helpers.nix`)
-- `isWorkstation`, `isLaptop`, `isServer`, `isLima`, `isISO`, `isInstall`: boolean flags
-- `catppuccinPalette`: colour palette helper with `getColor`, `getHyprlandColor`, etc.
-- `inputs`, `outputs`: flake inputs and outputs
-
-Access in modules:
+Users defined in a separate `users` table in `flake.nix`:
 
 ```nix
-{ hostname, username, catppuccinPalette, lib, ... }:
-{
-  # Use hostname, username, or palette colours
+users = {
+  martin = { tags = [ "developer" ]; };
+};
+```
+
+ISO hosts use `tags = [ "iso" ]` which applies implicit defaults (`desktop = null`, `username = "nixos"`). The ISO host is `nihilus`.
+
+Helper functions in `lib/flake-builders.nix` generate configs from the registry. `resolveEntry` merges four layers: baseline username, kind+OS derived desktop, ISO implicit defaults, then explicit entry values.
+
+## Noughty module system
+
+All host/user metadata is accessed via `config.noughty.*` options, not `specialArgs`. The noughty module provides type checking, defaults, and `mkDefault`/`mkForce` overridability.
+
+Only four values remain in `specialArgs`:
+
+- `inputs`, `outputs`: flake inputs and outputs
+- `stateVersion`: NixOS/Home Manager state version
+- `catppuccinPalette`: colour palette helper
+
+Access host/user data in modules:
+
+```nix
+{ config, noughtyLib, lib, ... }:
+let
+  host = config.noughty.host;
+in
+lib.mkIf host.is.workstation {
+  # host.name, host.desktop, host.is.laptop, host.gpu.hasNvidia, etc.
 }
 ```
+
+Use `noughtyLib` helpers for tag and identity checks:
+
+```nix
+{ noughtyLib, lib, pkgs, ... }:
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+  home.packages = [ pkgs.zed-editor ];
+}
+```
+
+Key gating patterns:
+
+- `host.is.workstation`, `host.is.server`, `host.is.laptop`, `host.is.iso`, `host.is.vm`, `host.is.darwin`, `host.is.linux` - derived booleans
+- `noughtyLib.isUser [ "martin" ]` - user identity check
+- `noughtyLib.isHost [ "vader" "phasma" ]` - host identity check
+- `noughtyLib.hostHasTag "streamstation"` - host tag check
+- `noughtyLib.userHasTag "developer"` - user tag check
+- `host.gpu.hasNvidia`, `host.gpu.hasCuda` - GPU checks
+- `host.display.primaryOutput`, `host.display.isMultiMonitor` - display checks
+
+See `lib/noughty/README.md` for the complete option reference and usage patterns.
 
 ## Secrets management
 
@@ -249,9 +288,13 @@ Add to system registry in `flake.nix`:
 ```nix
 systems = {
   mynewhost = {
-    type = "workstation";  # or server, vm, darwin, etc.
-    desktop = "hyprland";  # or null, wayfire, aqua
-    # username and platform use type defaults
+    kind = "computer";        # or "server", "vm", "container"
+    platform = "x86_64-linux";
+    formFactor = "desktop";   # or "laptop", "handheld", null
+    gpu.vendors = [ "amd" ];  # if applicable
+    tags = [ "thinkpad" ];    # if applicable
+    # desktop defaults to "hyprland" for computer+linux
+    # username defaults to "martin"
   };
 };
 ```
@@ -269,7 +312,9 @@ Create host directory and `nixos/mynewhost/default.nix`:
 
   boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" ];
 
-  # Hardware-specific configuration
+  noughty.host.displays = [
+    { output = "DP-1"; width = 2560; height = 1440; refresh = 144; primary = true; workspaces = [ 1 2 3 4 5 ]; }
+  ];
 }
 ```
 
@@ -279,14 +324,20 @@ Create disk layout with Disko in `nixos/mynewhost/disks.nix`. Build with:
 nix build .#nixosConfigurations.mynewhost.config.system.build.toplevel
 ```
 
+No other files need updating. The registry entry flows through `resolveEntry` -> `mkSystemConfig` -> `mkNixos`/`mkHome` -> `noughty.*` options automatically.
+
 ## CI/CD workflows
 
-Unified CI workflow in `.github/workflows/ci.yml` triggers on pull requests and pushes to main:
+Three workflows in `.github/workflows/`:
 
-1. **Inventory** - `flake-inventory.sh` discovers all buildable outputs, emitting per-platform JSON matrices
-2. **Build jobs** - Parallel per-host/per-package builds using `flake-build.sh` (devShells, packages, NixOS, Darwin, orphan Home Manager configs)
-3. **Publish** - Pushes to FlakeHub with `include-output-paths: true` for FlakeHub Cache
-4. **Release ISO** - Builds and publishes console ISO on main branch
+- **`builder.yml`** - Triggers on pull requests and pushes to main:
+  1. **Inventory** - `flake-inventory.sh` discovers all buildable outputs, emitting per-platform JSON matrices
+  2. **Build jobs** - Parallel per-host/per-package builds using `flake-build.sh` (devShells, packages, NixOS, Darwin, orphan Home Manager configs)
+  3. **Publish** - Pushes to FlakeHub with `include-output-paths: true` for FlakeHub Cache
+  4. **Release ISO** - Builds and publishes the nihilus ISO on main branch
+
+- **`updater.yml`** - Scheduled `flake.lock` updates via PR
+- **`checker.yml`** - Scheduled flake lock health checks
 
 Auto-merge of `flake.lock` update PRs is gated on all build jobs passing via branch protection required status checks.
 
@@ -294,17 +345,26 @@ Auto-merge of `flake.lock` update PRs is gated on all build jobs passing via bra
 
 **Mixin pattern:**
 
-Configurations composed from small, focused modules in `_mixins` directories. Each mixin handles one concern (e.g., desktop environment, hardware feature, script). Mixins imported based on system type and flags.
+Configurations composed from small, focused modules in `_mixins` directories. Each mixin handles one concern (e.g., desktop environment, hardware feature, script). Mixins gate themselves using `config.noughty.*` conditions.
 
-**Helper function flow:**
+**Configuration flow:**
 
-1. System registry in `flake.nix` defines all hosts
-2. `generateConfigs` filters by type and merges with type defaults
-3. `mkNixos`, `mkHome`, `mkDarwin` create final configurations
-4. Special args computed and passed to all modules
-5. `common/default.nix` provides shared configuration (documentation, nixpkgs, nix registry, common packages, environment variables, fish shell) imported by both `nixos/default.nix` and `darwin/default.nix`
-6. Platform-specific entry points add their own imports, packages and settings
-7. Modules import relevant mixins based on flags
+1. System registry in `flake.nix` defines all hosts and users
+2. `resolveEntry` in `lib/flake-builders.nix` merges registry defaults (baseline, kind+OS derived, ISO defaults, explicit values)
+3. `mkSystemConfig` produces the attribute set consumed by `mkNixos`, `mkHome`, `mkDarwin`
+4. `noughty.*` options are set in the modules list; `lib/noughty/default.nix` computes derived booleans
+5. `_module.args.noughtyLib` provides convenience helpers to all modules
+6. `common/default.nix` provides shared configuration (documentation, nixpkgs, nix registry, common packages, environment variables, fish shell) imported by both `nixos/default.nix` and `darwin/default.nix`
+7. Platform-specific entry points add their own imports, packages and settings
+8. Modules gate themselves using `config.noughty.*` or `noughtyLib.*`
+
+**Module gating patterns:**
+
+- **Flat pattern** (~95% of modules): `lib.mkIf condition { ... }` as the entire module body
+- **Long-form pattern** (hub modules with `imports`): `{ imports = [...]; config = lib.mkIf condition { ... }; }` - imports stay unconditional, each sub-module gates itself
+- Never use `lib.optional config.noughty.* ./foo` in `imports` - causes infinite recursion
+
+See `lib/noughty/README.md` for detailed explanation of the long-form pattern.
 
 **Overlay system:**
 
@@ -318,8 +378,8 @@ Applied in order, allowing layered modifications.
 
 **Build fails with "infinite recursion":**
 
+- Check for `config.noughty.*` used inside `imports` (must be in `config` block, not `imports`)
 - Check for circular imports in mixin modules
-- Verify `specialArgs` are not redeclared in module arguments
 
 **Home Manager activation fails:**
 
@@ -352,6 +412,7 @@ Applied in order, allowing layered modifications.
 - Never commit unencrypted secrets outside `secrets/` directory
 - Never use `environment.systemPackages` in Home Manager modules; use `home.packages`
 - Never use `writeShellScriptBin`; use `writeShellApplication` (enforces shellcheck)
+- Never use `config.noughty.*` inside `imports` - causes infinite recursion; use the long-form `config = lib.mkIf` pattern instead
 - Run `just eval` before committing Nix changes to catch evaluation errors
 - Run `just build` or `just build-host` / `just build-home` to verify builds before switching
 - Keep each mixin self-contained with a single concern
