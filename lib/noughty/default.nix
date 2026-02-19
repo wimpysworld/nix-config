@@ -315,6 +315,20 @@ in
           description = "Whether this host has CUDA compute capability. Derived from compute.acceleration.";
           readOnly = true;
         };
+
+        hasROCm = lib.mkOption {
+          type = lib.types.bool;
+          default = config.noughty.host.gpu.compute.acceleration == "rocm";
+          description = "Whether this host has ROCm compute capability. Derived from compute.acceleration.";
+          readOnly = true;
+        };
+
+        hasMetal = lib.mkOption {
+          type = lib.types.bool;
+          default = config.noughty.host.gpu.compute.acceleration == "metal";
+          description = "Whether this host has Metal compute capability. Derived from compute.acceleration.";
+          readOnly = true;
+        };
       };
 
       # ── Display output configuration ──────────────────────────────

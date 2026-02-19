@@ -140,18 +140,21 @@
           kind = "computer";
           platform = "x86_64-linux";
           formFactor = "laptop";
+          gpu.vendors = [ "amd" ];
           tags = [ "thinkpad" ];
         };
         shaa = {
           kind = "computer";
           platform = "x86_64-linux";
           formFactor = "laptop";
+          gpu.vendors = [ "amd" ];
           tags = [ "thinkpad" ];
         };
         atrius = {
           kind = "computer";
           platform = "x86_64-linux";
           formFactor = "laptop";
+          gpu.vendors = [ "amd" ];
           tags = [ "thinkpad" ];
         };
         sidious = {

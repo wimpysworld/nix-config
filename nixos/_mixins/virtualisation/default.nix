@@ -8,7 +8,6 @@
 let
   host = config.noughty.host;
   username = config.noughty.user.name;
-  hasNvidiaGPU = lib.elem "nvidia" config.services.xserver.videoDrivers;
   rootlessMode = false;
 
   # Introspect the root filesystem type from disko configuration
@@ -82,7 +81,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
       ++ lib.optional rootlessMode fuse-overlayfs;
   };
 
-  hardware.nvidia-container-toolkit.enable = hasNvidiaGPU;
+  hardware.nvidia-container-toolkit.enable = host.gpu.hasNvidia;
 
   users.users.${username} = {
     extraGroups = lib.optional config.virtualisation.docker.enable "docker";
@@ -94,7 +93,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
       enable = true;
       daemon = {
         settings = {
-          features.cdi = hasNvidiaGPU;
+          features.cdi = host.gpu.hasNvidia;
         };
       };
       rootless = lib.mkIf rootlessMode {
