@@ -55,7 +55,7 @@
       inherit (self) outputs;
       # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "25.11";
-      darwinStateVersion = 5;
+      darwinStateVersion = 6;
       builder = import ./lib {
         inherit
           inputs
@@ -158,10 +158,16 @@
           kind = "computer";
           platform = "x86_64-linux";
           formFactor = "laptop";
-          gpu.vendors = [
-            "intel"
-            "nvidia"
-          ];
+          gpu = {
+            vendors = [
+              "intel"
+              "nvidia"
+            ];
+            compute = {
+              vendor = "nvidia";
+              vram = 4;
+            };
+          };
           tags = [ "thinkpad" ];
         };
         felkor = {
@@ -203,10 +209,16 @@
         revan = {
           kind = "server";
           platform = "x86_64-linux";
-          gpu.vendors = [
-            "intel"
-            "nvidia"
-          ];
+          gpu = {
+            vendors = [
+              "intel"
+              "nvidia"
+            ];
+            compute = {
+              vendor = "nvidia";
+              vram = 8;
+            };
+          };
         };
 
         # Linux VMs
