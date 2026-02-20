@@ -8,9 +8,18 @@ let
   host = config.noughty.host;
 in
 {
-  environment.systemPackages = lib.optionals (!host.is.iso) [
-    pkgs.bluetui
-  ];
+  environment = {
+    systemPackages = lib.optionals (!host.is.iso) [
+      pkgs.bluetui
+    ];
+    # Hide the bluetui desktop entry from application launchers; it's a TUI
+    # tool intended to be launched from a terminal, not a launcher.
+    etc."xdg/applications/bluetui.desktop".text = ''
+      [Desktop Entry]
+      Name=Bluetui
+      NoDisplay=true
+    '';
+  };
   hardware = {
     # https://nixos.wiki/wiki/Bluetooth
     bluetooth = {

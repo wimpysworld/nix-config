@@ -54,6 +54,18 @@ lib.mkIf (!host.is.iso) {
         rocmPackages.rocm-smi
       ]
       ++ lib.optionals host.gpu.hasIntel [ intel-gpu-tools ];
+    # Hide amdgpu_top desktop entries from application launchers; both the GUI
+    # and TUI variants are invoked from a terminal or script, not a launcher.
+    etc."xdg/applications/amdgpu_top.desktop".text = ''
+      [Desktop Entry]
+      Name=AMDGPU TOP (GUI)
+      NoDisplay=true
+    '';
+    etc."xdg/applications/amdgpu_top-tui.desktop".text = ''
+      [Desktop Entry]
+      Name=AMDGPU TOP (TUI)
+      NoDisplay=true
+    '';
   };
   hardware = {
     amdgpu = lib.mkIf host.gpu.hasAmd { opencl.enable = true; };
