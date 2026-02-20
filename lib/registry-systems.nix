@@ -1,7 +1,7 @@
 # System registry - central definition of all systems and their properties
 #
 # Canonical tag vocabulary:
-#   Host tags: streamstation, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso
+#   Host tags: streamstation, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc
 #   User tags: developer, admin, family
 #
 # Registry fields:
@@ -37,6 +37,7 @@
       "streamdeck"
       "pci-hdmi-capture"
       "inference"
+      "wayvnc"
     ];
     displays = [
       {
@@ -91,6 +92,7 @@
       "streamdeck"
       "pci-hdmi-capture"
       "inference"
+      "wayvnc"
     ];
     displays = [
       {
