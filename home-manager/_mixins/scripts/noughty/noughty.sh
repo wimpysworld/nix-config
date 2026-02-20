@@ -273,11 +273,11 @@ cmd_spawn() {
 # Command: noughty facts (alias: nofx)
 cmd_facts() {
 	# ANSI colour codes
-	local dim='\033[2m'
-	local bold='\033[1m'
-	local reset='\033[0m'
-	local cyan='\033[36m'
-	local green='\033[32m'
+	local dim=$'\033[2m'
+	local bold=$'\033[1m'
+	local reset=$'\033[0m'
+	local cyan=$'\033[36m'
+	local green=$'\033[32m'
 
 	# Format a label-value pair; skip if value is empty or "none"
 	print_field() {
