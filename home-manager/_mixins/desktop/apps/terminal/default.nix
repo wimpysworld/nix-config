@@ -26,7 +26,7 @@ in
   # User specific dconf terminal-related settings
   dconf.settings = with lib.hm.gvariant; {
     "com/github/stunkymonkey/nautilus-open-any-terminal" = {
-      terminal = "${lib.getExe pkgs.kitty} --single-instance";
+      terminal = "${lib.getExe pkgs.kitty}";
     };
   };
 
@@ -86,7 +86,7 @@ in
       '';
     };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {
-      settings.main.terminal = "${lib.getExe pkgs.kitty} --single-instance";
+      settings.main.terminal = "${lib.getExe pkgs.kitty}";
     };
   };
 
@@ -94,7 +94,7 @@ in
     hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
       settings = {
         bind = [
-          "$mod, T, exec, ${lib.getExe pkgs.kitty} --single-instance"
+          "$mod, T, exec, ${lib.getExe pkgs.kitty}"
         ];
       };
     };
@@ -103,7 +103,7 @@ in
         command = {
           # Super+T launches a terminal
           binding_terminal = "<super> KEY_T";
-          command_terminal = "${lib.getExe pkgs.kitty} --single-instance";
+          command_terminal = "${lib.getExe pkgs.kitty}";
         };
       };
     };
