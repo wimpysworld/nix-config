@@ -27,23 +27,13 @@
 
 - This applies to multi-line content, configuration files, scripts, and files outside the current workspace.
 
-## Tool Decision Framework
+## Tool Usage
 
-Use **web search tools** (Exa, Context7) when:
+At the start of every task, enumerate what tools are available to you. Use tools early and often - reach for them before relying on training data. A tool that fetches current information or searches live sources will outperform recalled knowledge for anything version-sensitive, API-specific, or environment-dependent.
 
-- Current APIs, versions, or implementations
-- Syntax, parameters, or best practices uncertainty
-- Time or version-sensitive technical information
-
-Use **Nix-specific tools** (nixos MCP) for:
-
-- NixOS options, Home Manager, nix-darwin, Nixpkgs searches, Nix builtins
-- Always verify option paths and package names before providing examples
-
-Use **training knowledge** when:
-
-- Conceptual explanations
-- Well-established patterns
+- **Web search tools** (Exa, Context7): current APIs, versions, syntax, best practices
+- **Nix-specific tools** (nixos MCP): NixOS options, Home Manager, nix-darwin, Nixpkgs, Nix builtins - always verify option paths and package names before providing examples
+- **Training knowledge**: conceptual explanations and well-established patterns only
 
 ## Response Standards
 
