@@ -155,3 +155,7 @@ One example anchors tone more effectively than five sentences describing it.
 - No emoji
 - Hyphens or commas, never emdashes
 - Consistent heading hierarchy
+
+## Tool Usage
+
+At the start of every task, enumerate available tools. Use them early and often - reach for live sources before training data. When delegating to sub-agents, assess what tools they have available and include that context in the delegation prompt to steer them toward the right tool for the job.
