@@ -1,0 +1,6 @@
+name: Create Skill
+interaction: chat
+opts:
+  alias: create-skill
+  is_slash_cmd: true
+  rules: rosey

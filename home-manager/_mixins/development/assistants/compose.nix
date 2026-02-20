@@ -119,6 +119,18 @@ let
     in
     agentCommands // standaloneCmds;
 
+  # ============ SKILLS ============
+
+  # Discover all skill directories
+  skillDirs = discoverDirs (basePath + "/skills");
+
+  # Compose a single skill: read SKILL.md verbatim (no transformation needed)
+  composeSkill = skillName: readFile (basePath + "/skills/${skillName}/SKILL.md");
+
+  # Generate all skills
+  # Returns attrset: { skillName = "SKILL.md content"; ... }
+  composeSkills = lib.mapAttrs (name: _: composeSkill name) skillDirs;
+
   # ============ GLOBAL INSTRUCTIONS ============
 
   composeInstructions =
@@ -168,8 +180,16 @@ in
   # Instructions composition
   inherit composeInstructions;
 
+  # Skills composition
+  inherit composeSkills;
+
   # Discovery helpers (useful for debugging)
-  inherit agentDirs standaloneCommandDirs discoverAgentCommands;
+  inherit
+    agentDirs
+    standaloneCommandDirs
+    discoverAgentCommands
+    skillDirs
+    ;
 
   # CodeCompanion Lua config generator
   inherit mkRulesConfig;

@@ -35,6 +35,24 @@ let
   opencodeCommands = compose.composeCommands "opencode";
   opencodeInstructions = compose.composeInstructions "opencode";
 
+  # ============ SKILLS ============
+
+  skills = compose.composeSkills;
+
+  # Generate home.file entries for Claude Code skills
+  # Each skill goes in ~/.claude/skills/<name>/SKILL.md
+  mkClaudeSkillFiles = lib.mapAttrs' (name: content: {
+    name = "${config.home.homeDirectory}/.claude/skills/${name}/SKILL.md";
+    value.text = content;
+  }) skills;
+
+  # Generate home.file entries for OpenCode skills
+  # Each skill goes in ~/.config/opencode/skills/<name>/SKILL.md
+  mkOpencodeSkillFiles = lib.mapAttrs' (name: content: {
+    name = "${config.xdg.configHome}/opencode/skills/${name}/SKILL.md";
+    value.text = content;
+  }) skills;
+
   # ============ COPILOT (VSCODE & CLI) ============
 
   copilotAgents = compose.composeAgents "copilot";
@@ -73,6 +91,17 @@ let
           ''printf '%s' ${escaped} > "${copilotCliDir}/prompts/${name}.prompt.md"''
         ) copilotCommands
       );
+      skillCmds = lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (
+          name: content:
+          let
+            escaped = lib.escapeShellArg content;
+          in
+          ''
+            mkdir -p "${copilotCliDir}/skills/${name}"
+            printf '%s' ${escaped} > "${copilotCliDir}/skills/${name}/SKILL.md"''
+        ) skills
+      );
     in
     ''
       # Create Copilot CLI directories
@@ -87,6 +116,9 @@ let
 
       # Write instructions file
       printf '%s' ${lib.escapeShellArg copilotInstructions} > "${copilotCliDir}/copilot-instructions.md"
+
+      # Write skill files
+      ${skillCmds}
     '';
 
   # ============ CODECOMPANION ============
@@ -123,7 +155,11 @@ in
     // mkVscodeCommandFiles
     # CodeCompanion rules and prompts
     // mkCodeCompanionRuleFiles
-    // mkCodeCompanionPromptFiles;
+    // mkCodeCompanionPromptFiles
+    # Claude Code skill files
+    // mkClaudeSkillFiles
+    # OpenCode skill files
+    // mkOpencodeSkillFiles;
 
     # Copilot CLI: files copied via activation script (not symlinks)
     # Copilot CLI doesn't follow symlinks due to security concerns
