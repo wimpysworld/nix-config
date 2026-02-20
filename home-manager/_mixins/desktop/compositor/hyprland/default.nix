@@ -36,21 +36,8 @@ in
 
     home.packages = with pkgs; [
       hyprpicker
-      wayvnc
       wdisplays
     ];
-    services = {
-      # Not in home-manager 25.04
-      #wayvnc = {
-      #  autoStart = true;
-      #  enable = true;
-      #  settings = {
-      #    address = "0.0.0.0";
-      #    port = 5900;
-      #  };
-      #};
-    };
-
     wayland.windowManager.hyprland = {
       enable = true;
       settings = {
@@ -162,7 +149,6 @@ in
         };
         exec-once = [
           "hypr-session start"
-          #"wayvnc 0.0.0.0"
         ];
         general = {
           gesture = "3, horizontal, workspace";
