@@ -20,38 +20,6 @@ let
     ++ lib.optionals config.virtualisation.docker.enable [ "docker0" ]
     ++ lib.optionals config.virtualisation.incus.enable [ "incusbr0" ];
 
-  # Per-host firewall configuration; mostly for Syncthing which is configured via Home Manager
-  allowedTCPPorts = {
-    phasma = [
-      5900
-      22000
-    ];
-    vader = [
-      5900
-      22000
-    ];
-    revan = [ 22000 ];
-    maul = [ 22000 ];
-  };
-  allowedUDPPorts = {
-    phasma = [
-      22000
-      21027
-    ];
-    vader = [
-      22000
-      21027
-    ];
-    revan = [
-      22000
-      21027
-    ];
-    maul = [
-      22000
-      21027
-    ];
-  };
-
   # Define DNS settings for specific users
   # - https://mullvad.net/en/help/dns-over-https-and-dns-over-tls
   mullvadDns = [
@@ -140,12 +108,14 @@ in
     '';
     firewall = {
       enable = true;
-      allowedTCPPorts =
-        lib.optionals (builtins.hasAttr host.name allowedTCPPorts)
-          allowedTCPPorts.${host.name};
-      allowedUDPPorts =
-        lib.optionals (builtins.hasAttr host.name allowedUDPPorts)
-          allowedUDPPorts.${host.name};
+      # Syncthing ports are opened globally on servers so LAN devices (phones,
+      # tablets) can sync without Tailscale active. On workstations, Tailscale
+      # covers Syncthing access via trustedInterfaces.
+      allowedTCPPorts = lib.optionals host.is.server [ 22000 ];
+      allowedUDPPorts = lib.optionals host.is.server [
+        22000
+        21027
+      ];
       inherit trustedInterfaces;
     };
     hostName = host.name;
