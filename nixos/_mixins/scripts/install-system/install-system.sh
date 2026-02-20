@@ -83,6 +83,25 @@ function run_disko() {
 	fi
 }
 
+# Run a command that may fail on the first pass in the chroot environment.
+# Retries up to MAX_ATTEMPTS times; exits on final failure.
+function run_with_retry() {
+	local MAX_ATTEMPTS=2
+	local attempt
+	local exit_code
+	for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+		"$@"
+		exit_code=$?
+		if [[ "$exit_code" -eq 0 ]]; then
+			return 0
+		elif [[ "$attempt" -lt "$MAX_ATTEMPTS" ]]; then
+			echo "Attempt $attempt failed (exit code $exit_code); retrying..."
+		fi
+	done
+	echo "ERROR! Command failed after $MAX_ATTEMPTS attempts (exit code $exit_code): $*"
+	exit 1
+}
+
 sudo umount -R /mnt || true
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -312,20 +331,20 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 				--option http-connections 256 \
 				--option narinfo-cache-negative-ttl 0 || true
 			echo "Installing NixOS from FlakeHub Cache..."
-			sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH" \
+			run_with_retry sudo nixos-install --no-root-password --no-channel-copy --system "$SYSTEM_PATH" \
 				--option http2 false \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256 \
 				--option narinfo-cache-negative-ttl 0
 		else
 			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
-			sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST" \
+			run_with_retry sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST" \
 				--option http2 false \
 				--option max-substitution-jobs 128 \
 				--option http-connections 256
 		fi
 	else
-		sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST" \
+		run_with_retry sudo nixos-install --no-root-password --no-channel-copy --flake ".#$TARGET_HOST" \
 			--option http2 false \
 			--option max-substitution-jobs 128 \
 			--option http-connections 256
@@ -366,14 +385,14 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 				--option http-connections 256 \
 				--option narinfo-cache-negative-ttl 0 || true
 			echo "Activating Home Manager from FlakeHub Cache..."
-			sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate" || true
+			run_with_retry sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate"
 		else
 			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
-			sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\"" || true
+			run_with_retry sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\""
 		fi
 	else
 		echo "Applying Home Manager configuration..."
-		sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\"" || true
+		run_with_retry sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\""
 	fi
 	# Fix ownership after activation. Home Manager runs as root inside
 	# nixos-enter, so all created files and directories are owned by root:root.
