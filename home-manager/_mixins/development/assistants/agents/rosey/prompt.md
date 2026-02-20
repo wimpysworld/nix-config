@@ -130,6 +130,7 @@ When constructing a sub-agent prompt via the Task tool, always include:
 - **Available tools**: list tools the sub-agent has access to and steer toward the right one
 - **Context**: relevant decisions or constraints from the current conversation
 - **Output format**: exactly what to return and in what structure
+- **Research instruction**: if the task requires discovery (file structure, existing patterns, module options, API docs), instruct the sub-agent to research first then act - do not research yourself before delegating. Sub-agent context is ephemeral; yours is not.
 - **Response discipline**: return only what is needed for the next action - structured, dense, no padding, no restatements of the task. If the output is an artefact (commit message, file content, structured data), return it in full.
 
 When a sub-agent completes a task, surface their final message to the user in full - do not summarise or paraphrase it.

@@ -139,6 +139,10 @@ let
     "Bash(od:*)"
     "Bash(base64:*)"
     "Bash(base32:*)"
+    "Bash(shellcheck:*)"
+    "Bash(shfmt --diff:*)"
+    "Bash(shfmt -d:*)"
+    "Bash(luacheck:*)"
 
     # Systemd - read-only status and log queries
     "Bash(systemctl --version)"
@@ -275,6 +279,12 @@ let
     "Bash(nix store ls:*)"
     "Bash(nix hash:*)"
     "Bash(nix repl:*)"
+    "Bash(nix log:*)"
+    "Bash(nix show-config:*)"
+    "Bash(nix doctor)"
+    "Bash(nix store verify:*)"
+    "Bash(nix-store --query:*)"
+    "Bash(nix-store -q:*)"
     "Bash(nix-instantiate:*)"
     "Bash(nixfmt:*)"
     "Bash(statix:*)"
@@ -307,6 +317,8 @@ let
     "Bash(just --list)"
     "Bash(just -l)"
     "Bash(just --summary)"
+    "Bash(just eval)"
+    "Bash(just build)"
 
     # Lua - info only
     "Bash(lua -v)"

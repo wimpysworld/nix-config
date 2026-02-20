@@ -449,6 +449,10 @@ in
             "od *" = "allow";
             "base64 *" = "allow";
             "base32 *" = "allow";
+            "shellcheck *" = "allow";
+            "shfmt --diff *" = "allow";
+            "shfmt -d *" = "allow";
+            "luacheck *" = "allow";
 
             # Shell - ask: file modification or redirection risk
             "xdg-open *" = "ask";
@@ -886,6 +890,13 @@ in
             "nix-instantiate *" = "allow";
             "nix repl" = "allow";
             "nix repl *" = "allow";
+            "nix log *" = "allow";
+            "nix show-config" = "allow";
+            "nix show-config *" = "allow";
+            "nix doctor" = "allow";
+            "nix store verify *" = "allow";
+            "nix-store --query *" = "allow";
+            "nix-store -q *" = "allow";
             "nixfmt" = "allow";
             "nixfmt *" = "allow";
             "statix *" = "allow";
@@ -1042,6 +1053,8 @@ in
             "just --summary *" = "allow";
             "just --evaluate*" = "allow";
             "just --show *" = "allow";
+            "just eval" = "allow";
+            "just build" = "allow";
 
             "just" = "ask";
             "just *" = "ask";
