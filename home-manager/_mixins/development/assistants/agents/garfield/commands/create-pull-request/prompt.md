@@ -8,7 +8,7 @@ Push current branch and create a conventional pull request on GitHub.
    - `git log main..HEAD --oneline` — identify new commits
    - `git diff main..HEAD --stat` — summarise file changes
    - `git status` — verify clean working tree
-   - `git branch --show-current` — confirm current branch name
+   - `git rev-parse --abbrev-ref HEAD` — confirm current branch name
    
    **IMPORTANT**: Run each command individually. Do NOT chain commands with `&&`, `;`, or pipes (`|`). This ensures no manual approval is required.
 2. Push branch with `git push -u origin HEAD`

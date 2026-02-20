@@ -16,7 +16,7 @@ Run each command separately (no chaining):
 **NEVER execute:**
 
 - `git commit` / `git commit -m` - output message only, user commits manually
-- `git branch` - use `git status` for branch name instead
+- `git branch` - use `git rev-parse --abbrev-ref HEAD` for branch name instead
 - `git add` / `git checkout` / `git reset` - no staging or working tree changes
 - Command chaining with `&&`, `;`, or `|`
 
