@@ -30,6 +30,10 @@ in
       ];
       plymouth = {
         enable = true;
+        extraConfig = "UseSimpledrm=1";
+        logo = pkgs.runCommand "transparent-plymouth-logo.png" { } ''
+          ${pkgs.imagemagick}/bin/magick -size 1x1 xc:transparent PNG32:$out
+        '';
       };
     };
 
