@@ -104,12 +104,16 @@ in
 
   fonts = {
     fontDir.enable = true;
-    packages = with pkgs; [
-      nerd-fonts.fira-code
-      noto-fonts-monochrome-emoji
-      symbola
-      work-sans
-    ];
+    packages =
+      with pkgs;
+      [
+        nerd-fonts.fira-code
+      ]
+      ++ lib.optionals (!host.is.iso) [
+        noto-fonts-monochrome-emoji
+        symbola
+        work-sans
+      ];
     fontconfig = {
       antialias = true;
       enable = true;
@@ -147,7 +151,7 @@ in
   services = {
     automatic-timezoned.enable = useGeoclue;
     geoclue2 = {
-      enable = true;
+      enable = useGeoclue;
       # https://github.com/NixOS/nixpkgs/issues/321121
       geoProviderUrl = "https://api.positon.xyz/v1/geolocate?key=test";
       submissionUrl = "https://api.positon.xyz/v2/geosubmit?key=test";

@@ -1,4 +1,12 @@
-_: {
+{
+  config,
+  lib,
+  ...
+}:
+let
+  host = config.noughty.host;
+in
+lib.mkIf host.is.workstation {
   environment.etc = {
     "backgrounds/Cat-1920px.png".source = ./Cat-1920px.png;
     "backgrounds/Cat-2560px.png".source = ./Cat-2560px.png;
