@@ -43,8 +43,7 @@
 }:
 
 let
-  davinci = (
-    stdenv.mkDerivation rec {
+  davinci = stdenv.mkDerivation rec {
       pname = "davinci-resolve${lib.optionalString studioVariant "-studio"}";
       version = "20.3.1";
 
@@ -187,8 +186,7 @@ let
         done
         ln -s $out/libs/libcrypto.so.1.1 $out/libs/libcrypt.so.1
       '';
-    }
-  );
+    };
 
   fhs = buildFHSEnv {
     pname = "${davinci.pname}-fhs";

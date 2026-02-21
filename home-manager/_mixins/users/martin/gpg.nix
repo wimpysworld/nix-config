@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   # sopsFile requires an absolute path - use path type to resolve correctly
   gnupgSopsFile = ../../../../secrets/gnupg.yaml;
 in

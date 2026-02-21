@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   shellAliases = {
     neofetch = "${pkgs.fastfetch}/bin/fastfetch";
     screenfetch = "${pkgs.fastfetch}/bin/fastfetch";

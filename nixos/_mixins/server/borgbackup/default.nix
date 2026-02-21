@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
 
   # Legacy hosts store backups under /mnt/snapshot; newer hosts use /mnt/data.

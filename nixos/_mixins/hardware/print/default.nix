@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf (!host.is.iso) {
   # Only enables auxilary printing support/packages if

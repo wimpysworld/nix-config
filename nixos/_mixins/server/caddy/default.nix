@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
   basePath = "/syncthing";
   # Only enable caddy if tailscale is enabled or the host is malak

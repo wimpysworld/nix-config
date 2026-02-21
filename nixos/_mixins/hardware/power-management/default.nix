@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
   isThinkpad = noughtyLib.hostHasTag "thinkpad";
   usePowerProfiles = config.programs.hyprland.enable || config.programs.wayfire.enable;

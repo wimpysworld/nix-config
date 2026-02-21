@@ -6,8 +6,8 @@
   ...
 }:
 let
-  host = config.noughty.host;
-  primaryOutput = host.display.primaryOutput;
+  inherit (config.noughty) host;
+  inherit (host.display) primaryOutput;
   # sops-nix renders the wayvnc config with the password at activation time.
   wayvncConfigPath = "${config.xdg.configHome}/sops-nix/secrets/wayvnc-config";
 in

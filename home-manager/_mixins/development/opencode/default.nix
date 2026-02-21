@@ -6,8 +6,8 @@
   ...
 }:
 let
-  host = config.noughty.host;
-  system = pkgs.stdenv.hostPlatform.system;
+  inherit (config.noughty) host;
+  inherit (pkgs.stdenv.hostPlatform) system;
   opencodePackage = inputs.opencode.packages.${system}.opencode;
 in
 {

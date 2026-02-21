@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf (noughtyLib.isUser [ "none" ] && host.is.workstation) {
   home = {

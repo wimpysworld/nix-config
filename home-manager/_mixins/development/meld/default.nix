@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf host.is.workstation {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database

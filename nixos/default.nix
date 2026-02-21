@@ -10,7 +10,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
 in
 {
@@ -68,8 +68,8 @@ in
   };
 
   catppuccin = {
-    accent = catppuccinPalette.accent;
-    flavor = catppuccinPalette.flavor;
+    inherit (catppuccinPalette) accent;
+    inherit (catppuccinPalette) flavor;
   };
 
   environment = {

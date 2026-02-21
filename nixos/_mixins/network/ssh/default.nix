@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   # Don't open the firewall for SSH on laptops; Tailscale will handle it.
   openSSHFirewall = if (!host.is.iso && host.is.laptop) then false else true;
 in

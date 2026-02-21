@@ -6,9 +6,9 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   isInference = noughtyLib.hostHasTag "inference";
-  vram = host.gpu.compute.vram;
+  inherit (host.gpu.compute) vram;
   accel = host.gpu.compute.acceleration;
 
   # Package selection based on acceleration framework.

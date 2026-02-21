@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   vscodeUserDir =
     if host.is.linux then

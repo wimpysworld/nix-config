@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   name = builtins.baseNameOf (builtins.toString ./.);
   shellApplication = pkgs.writeShellApplication {
     inherit name;

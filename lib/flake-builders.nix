@@ -7,7 +7,7 @@
   ...
 }:
 let
-  lib = inputs.nixpkgs.lib;
+  inherit (inputs.nixpkgs) lib;
 
   # Resolve a registry entry by merging four layers (later wins):
   # 1. baseline username
@@ -42,7 +42,7 @@ let
       // isoDefaults
       // entry
       // {
-        name = name;
+        inherit name;
       };
 
       # Look up user-level metadata from the users table.
@@ -96,7 +96,7 @@ rec {
       mkRgba =
         colorName: alpha:
         let
-          rgb = palette.${colorName}.rgb;
+          inherit (palette.${colorName}) rgb;
         in
         "rgba(${toString rgb.r}, ${toString rgb.g}, ${toString rgb.b}, ${alpha})";
 
@@ -142,8 +142,8 @@ rec {
         vtColorMap
         ;
       colors = palette;
-      accent = accent;
-      flavor = flavor;
+      inherit accent;
+      inherit flavor;
     };
 
   # Helper function for generating home-manager configs
@@ -181,7 +181,7 @@ rec {
           noughty.host = {
             name = hostname;
             kind = hostKind;
-            platform = platform;
+            inherit platform;
             formFactor = hostFormFactor;
             gpu = {
               vendors = hostGpuVendors;
@@ -189,7 +189,7 @@ rec {
             };
             tags = hostTags;
             displays = hostDisplays;
-            desktop = desktop;
+            inherit desktop;
           };
           noughty.user.name = username;
           noughty.user.tags = userTags;
@@ -238,7 +238,7 @@ rec {
             noughty.host = {
               name = hostname;
               kind = hostKind;
-              platform = platform;
+              inherit platform;
               formFactor = hostFormFactor;
               gpu = {
                 vendors = hostGpuVendors;
@@ -246,7 +246,7 @@ rec {
               };
               tags = hostTags;
               displays = hostDisplays;
-              desktop = desktop;
+              inherit desktop;
             };
             noughty.user.name = username;
             noughty.user.tags = userTags;
@@ -292,7 +292,7 @@ rec {
           noughty.host = {
             name = hostname;
             kind = hostKind;
-            platform = platform;
+            inherit platform;
             formFactor = hostFormFactor;
             gpu = {
               vendors = hostGpuVendors;
@@ -300,7 +300,7 @@ rec {
             };
             tags = hostTags;
             displays = hostDisplays;
-            desktop = desktop;
+            inherit desktop;
           };
           noughty.user.name = username;
           noughty.user.tags = userTags;
@@ -323,9 +323,9 @@ rec {
     in
     {
       hostname = name;
-      username = resolved.username;
+      inherit (resolved) username;
       desktop = resolved.desktop or null;
-      platform = resolved.platform;
+      inherit (resolved) platform;
       hostKind = resolved.kind;
       hostFormFactor = resolved.formFactor or null;
       hostGpuVendors = (resolved.gpu or { }).vendors or [ ];
@@ -339,7 +339,7 @@ rec {
   generateConfigs =
     predicate: systems:
     let
-      filteredSystems = lib.filterAttrs (_name: entry: predicate entry) systems;
+      filteredSystems = lib.filterAttrs (_name: predicate) systems;
     in
     lib.mapAttrs (name: entry: mkSystemConfig name entry) filteredSystems;
 }

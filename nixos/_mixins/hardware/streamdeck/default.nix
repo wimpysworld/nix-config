@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
   isStreamstation = noughtyLib.hostHasTag "streamdeck";
   # Bundle all .deck config files into a single store directory so that

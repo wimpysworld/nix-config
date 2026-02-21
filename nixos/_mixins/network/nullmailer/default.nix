@@ -4,7 +4,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
   domain = "wimpys.world";
 in
@@ -27,7 +27,7 @@ lib.mkIf (!host.is.iso) {
   sops = {
     secrets = {
       mailjet = {
-        group = config.services.nullmailer.group;
+        inherit (config.services.nullmailer) group;
         mode = "0600";
         owner = config.services.nullmailer.user;
         path = "/etc/nullmailer/mailjet";

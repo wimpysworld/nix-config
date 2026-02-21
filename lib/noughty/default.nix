@@ -73,7 +73,7 @@ let
   # Compute the primary display from the displays list.
   primaryDisplay =
     let
-      displays = config.noughty.host.displays;
+      inherit (config.noughty.host) displays;
       primaries = lib.filter (d: d.primary) displays;
     in
     if primaries != [ ] then

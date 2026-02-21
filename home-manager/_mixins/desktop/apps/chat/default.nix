@@ -7,7 +7,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 
   # Catppuccin Halloy themes from the catppuccin flake
   catppuccinHalloy = inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.halloy;

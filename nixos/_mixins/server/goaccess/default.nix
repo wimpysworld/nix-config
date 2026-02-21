@@ -43,7 +43,7 @@ lib.mkIf
         };
       };
       geoipupdate = {
-        enable = config.services.caddy.enable;
+        inherit (config.services.caddy) enable;
         settings = {
           AccountID = 1087490;
           EditionIDs = [

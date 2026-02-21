@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
   rootlessMode = false;
 
@@ -32,7 +32,7 @@ let
               disk.content.format or null
             else if disk.content.type == "gpt" && disk.content ? partitions then
               lib.findFirst (x: x != null) null (
-                lib.mapAttrsToList (_: partition: findRootFs partition) disk.content.partitions
+                lib.mapAttrsToList (_: findRootFs) disk.content.partitions
               )
             else if disk.content.type == "luks" && disk.content ? content then
               findRootFs disk.content
@@ -100,7 +100,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
         enable = rootlessMode;
         setSocketVariable = rootlessMode;
       };
-      storageDriver = storageDriver;
+      inherit storageDriver;
     };
     oci-containers = lib.mkIf config.virtualisation.docker.enable {
       backend = "docker";

@@ -4,7 +4,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf host.is.workstation {
   environment.etc = {

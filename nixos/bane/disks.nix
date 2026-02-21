@@ -1,4 +1,4 @@
-{ ... }:
+_:
 let
   # https://gist.github.com/braindevices/fde49c6a8f6b9aaf563fb977562aafec
   # Use ls -la /dev/disk/by-id to find the correct names.

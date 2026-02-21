@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   basePath = "/netdata";
 in
 lib.mkIf host.is.server {

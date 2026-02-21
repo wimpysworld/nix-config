@@ -4,7 +4,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   libreofficePackage = if host.is.darwin then pkgs.libreoffice-bin else pkgs.libreoffice;
 in
 {

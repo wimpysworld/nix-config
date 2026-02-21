@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   palette = catppuccinPalette;
 
   # Read template file and substitute colors

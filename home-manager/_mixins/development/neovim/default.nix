@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 
   # Sops file for AI API keys (Anthropic, OpenAI, Gemini)
   aiSopsFile = ../../../../secrets/ai.yaml;
@@ -81,8 +81,8 @@ let
 in
 {
   catppuccin.nvim = {
-    enable = config.programs.neovim.enable;
-    flavor = catppuccinPalette.flavor;
+    inherit (config.programs.neovim) enable;
+    inherit (catppuccinPalette) flavor;
   };
 
   programs = {

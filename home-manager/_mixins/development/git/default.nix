@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   gitsignCredentialCache =
     if host.is.linux then
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
