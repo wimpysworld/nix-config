@@ -56,7 +56,7 @@
       stateVersion = "25.11";
       darwinStateVersion = 6;
 
-      users = import ./lib/registry-users.nix;
+      users = builtins.fromTOML (builtins.readFile ./lib/registry-users.toml);
 
       builder = import ./lib {
         inherit
@@ -68,7 +68,7 @@
           ;
       };
 
-      systems = import ./lib/registry-systems.nix;
+      systems = builtins.fromTOML (builtins.readFile ./lib/registry-systems.toml);
 
     in
     {
@@ -173,6 +173,7 @@
                 openssh
                 sops
                 statix
+                taplo
                 tree
               ]
               ++ optionalFlakePackage inputs.determinate

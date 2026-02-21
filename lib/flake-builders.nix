@@ -159,6 +159,8 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostDisplays ? [ ],
+      hostKeyboardLayout ? "gb",
+      hostKeyboardVariant ? "",
       userTags ? [ ],
     }:
     let
@@ -189,6 +191,10 @@ rec {
             };
             tags = hostTags;
             displays = hostDisplays;
+            keyboard = {
+              layout = hostKeyboardLayout;
+              variant = hostKeyboardVariant;
+            };
             inherit desktop;
           };
           noughty.user.name = username;
@@ -210,6 +216,8 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostDisplays ? [ ],
+      hostKeyboardLayout ? "gb",
+      hostKeyboardVariant ? "",
       userTags ? [ ],
     }:
     let
@@ -246,6 +254,10 @@ rec {
               };
               tags = hostTags;
               displays = hostDisplays;
+              keyboard = {
+                layout = hostKeyboardLayout;
+                variant = hostKeyboardVariant;
+              };
               inherit desktop;
             };
             noughty.user.name = username;
@@ -267,6 +279,8 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostDisplays ? [ ],
+      hostKeyboardLayout ? "gb",
+      hostKeyboardVariant ? "",
       userTags ? [ ],
     }:
     let
@@ -300,6 +314,10 @@ rec {
             };
             tags = hostTags;
             displays = hostDisplays;
+            keyboard = {
+              layout = hostKeyboardLayout;
+              variant = hostKeyboardVariant;
+            };
             inherit desktop;
           };
           noughty.user.name = username;
@@ -332,6 +350,8 @@ rec {
       hostGpuCompute = (resolved.gpu or { }).compute or { };
       hostTags = resolved.tags or [ ];
       hostDisplays = resolved.displays or [ ];
+      hostKeyboardLayout = (resolved.keyboard or { }).layout or "gb";
+      hostKeyboardVariant = (resolved.keyboard or { }).variant or "";
       userTags = (resolved.userEntry or { }).tags or [ ];
     };
 

@@ -82,13 +82,13 @@ Conditions can be as specific as you need: workstation vs server, laptop vs desk
 
 ### What noughty provides
 
-Every host is registered in the system registry (`lib/registry-systems.nix`, imported by `flake.nix`) with its properties: what kind of system it is, its platform, form factor, GPU vendors, displays, and freeform tags. The [noughty module system](./lib/noughty/README.md) turns this registry into typed, overridable NixOS options under `config.noughty.*`, with derived booleans like `host.is.workstation`, `host.is.laptop`, and `host.gpu.hasNvidia` computed automatically.
+Every host is registered in the system registry (`lib/registry-systems.toml`, read by `flake.nix`) with its properties: what kind of system it is, its platform, form factor, GPU vendors, displays, and freeform tags. The [noughty module system](./lib/noughty/README.md) turns this registry into typed, overridable NixOS options under `config.noughty.*`, with derived booleans like `host.is.workstation`, `host.is.laptop`, and `host.gpu.hasNvidia` computed automatically.
 
 ### Why this matters
 
 **Adding a new feature** = drop a directory containing a self-gating module. No import lists to edit. No other files to touch. Every host that matches the condition picks it up on next build.
 
-**Adding a new host** = add a registry entry to `lib/registry-systems.nix` and create a hardware config. That's it. The new host automatically gets the right desktop, GPU drivers, services, shell, everything - because the modules gate themselves based on the host's properties, not its name.
+**Adding a new host** = add a registry entry to `lib/registry-systems.toml` and create a hardware config. That's it. The new host automatically gets the right desktop, GPU drivers, services, shell, everything - because the modules gate themselves based on the host's properties, not its name.
 
 **Host-specific directories** (`nixos/vader/`, `nixos/sidious/`, etc.) contain *only* hardware: disk layouts and kernel modules. All behaviour lives in the self-gating modules reacting to host properties.
 
@@ -125,8 +125,8 @@ The full noughty option reference, helper functions, and usage patterns are docu
 │  ├── default.nix
 │  ├── flake-builders.nix
 │  ├── noughty-helpers.nix
-│  ├── registry-systems.nix
-│  └── registry-users.nix
+│  ├── registry-systems.toml
+│  └── registry-users.toml
 ├── nixos
 │  ├── _mixins
 │  │  ├── console
@@ -171,7 +171,7 @@ The full noughty option reference, helper functions, and usage patterns are docu
 | `darwin/` | macOS system configuration and `_mixins` for Darwin-specific features |
 | `home-manager/` | Home Manager configuration and `_mixins` for user-level programs, dotfiles, and scripts |
 | `nixos/` | NixOS system configuration, `_mixins` for self-gating modules, and per-host hardware directories |
-| `lib/` | The [noughty module system](./lib/noughty/README.md), `flake-builders.nix` for generating configs from the system registry, `registry-systems.nix` and `registry-users.nix` for host and user definitions, and pure helper functions |
+| `lib/` | The [noughty module system](./lib/noughty/README.md), `flake-builders.nix` for generating configs from the system registry, `registry-systems.toml` and `registry-users.toml` for host and user definitions, and pure helper functions |
 | `overlays/` | Custom overlays: local packages, modified packages, and nixpkgs-unstable access |
 | `pkgs/` | Custom local packages |
 | `secrets/` | Encrypted secrets managed by [sops-nix] |
