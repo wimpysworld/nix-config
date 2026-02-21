@@ -12,6 +12,12 @@ benchmark hostname=current_hostname:
     #!/usr/bin/env bash
     set -euo pipefail
 
+    if ! command -v hyperfine >/dev/null 2>&1; then
+        echo "benchmark requires hyperfine but it is not installed."
+        echo "Install it with: nix profile install nixpkgs#hyperfine"
+        exit 1
+    fi
+
     # Detect platform and set appropriate configuration
     case "$(uname -s)" in
         Linux)

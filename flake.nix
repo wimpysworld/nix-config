@@ -160,16 +160,13 @@
             packages =
               with pkgs;
               [
-                bc
                 deadnix
                 git
                 home-manager
-                hyperfine
                 jq
                 just
                 micro
                 nh
-                nixd
                 nixfmt-tree
                 nixfmt
                 nix-output-monitor
