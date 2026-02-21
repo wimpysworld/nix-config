@@ -23,8 +23,8 @@ in
   services = {
     caddy = {
       enable = useCaddy;
-      email = "${username}@wimpysworld.com";
-      globalConfig = ''
+      email = lib.mkIf useCaddy "${username}@wimpysworld.com";
+      globalConfig = lib.mkIf useCaddy ''
         servers {
           trusted_proxies cloudflare {
             interval 12h
@@ -32,12 +32,14 @@ in
           }
         }
       '';
-      package = pkgs.caddy.withPlugins {
-        plugins = [
-          "github.com/WeidiDeng/caddy-cloudflare-ip@v0.0.0-20231130002422-f53b62aa13cb"
-        ];
-        hash = "sha256-D8D9cU+7lWFruF/+C5iq4FLEUuXDbrtWktQuk9ohnC4=";
-      };
+      package = lib.mkIf useCaddy (
+        pkgs.caddy.withPlugins {
+          plugins = [
+            "github.com/WeidiDeng/caddy-cloudflare-ip@v0.0.0-20231130002422-f53b62aa13cb"
+          ];
+          hash = "sha256-D8D9cU+7lWFruF/+C5iq4FLEUuXDbrtWktQuk9ohnC4=";
+        }
+      );
       virtualHosts."${host.name}.${config.noughty.network.tailNet}" = lib.mkMerge [
         # Reverse proxy syncthing; which is configured/enabled via Home Manager
         (lib.mkIf config.services.tailscale.enable {

@@ -122,7 +122,7 @@ in
     nameservers = if builtins.hasAttr username userDns then userDns.${username} else fallbackDns;
     networkmanager = lib.mkIf useNetworkManager {
       # A NetworkManager dispatcher script to open a browser window when a captive portal is detected
-      dispatcherScripts = [
+      dispatcherScripts = lib.optionals (!host.is.iso) [
         {
           source = pkgs.writeText "captivePortal" ''
             #!/usr/bin/env bash
