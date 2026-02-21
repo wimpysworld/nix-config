@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   lib,
   pkgs,
@@ -6,6 +7,7 @@
 }:
 let
   host = config.noughty.host;
+  palette = catppuccinPalette;
   swayncRun = pkgs.writeShellApplication {
     name = "swaync-run";
     text = ''
@@ -191,26 +193,26 @@ lib.mkIf host.is.linux {
         }
 
         trough highlight {
-          background: #cdd6f4;
+          background: ${palette.getColor "text"};
         }
 
         scale trough {
           margin: 0rem 1rem;
-          background-color: #313244;
+          background-color: ${palette.getColor "surface0"};
           min-height: 8px;
           min-width: 70px;
         }
 
         slider {
-          background-color: #89b4fa;
+          background-color: ${palette.getColor "blue"};
         }
 
         .floating-notifications.background .notification-row .notification-background {
-          box-shadow: 0 0 10px 0 rgba(17, 17, 17, 0.8), inset 0 0 0 1px #313244;
+          box-shadow: 0 0 10px 0 rgba(17, 17, 17, 0.8), inset 0 0 0 1px ${palette.getColor "surface0"};
           border-radius: 12.6px;
           margin: 18px;
-          background-color: #1e1e2e;
-          color: #cdd6f4;
+          background-color: ${palette.getColor "base"};
+          color: ${palette.getColor "text"};
           padding: 0;
           opacity: 0.72;
         }
@@ -221,7 +223,7 @@ lib.mkIf host.is.linux {
         }
 
         .floating-notifications.background .notification-row .notification-background .notification.critical {
-          box-shadow: inset 0 0 7px 0 #f38ba8;
+          box-shadow: inset 0 0 7px 0 ${palette.getColor "red"};
         }
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content {
@@ -229,19 +231,19 @@ lib.mkIf host.is.linux {
         }
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .summary {
-          color: #cdd6f4;
+          color: ${palette.getColor "text"};
           font-family: "Work Sans";
           font-size: 1.4rem;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .time {
-          color: #a6adc8;
+          color: ${palette.getColor "subtext0"};
           font-family: "Work Sans";
           font-size: 1.0rem;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification .notification-content .body {
-          color: #cdd6f4;
+          color: ${palette.getColor "text"};
           font-family: "Work Sans";
           font-size: 1.2rem;
         }
@@ -252,83 +254,83 @@ lib.mkIf host.is.linux {
 
         .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * .notification-action {
           border-radius: 7px;
-          color: #cdd6f4;
-          background-color: #313244;
-          box-shadow: inset 0 0 0 1px #45475a;
+          color: ${palette.getColor "text"};
+          background-color: ${palette.getColor "surface0"};
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
           margin: 7px;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * .notification-action:hover {
-          box-shadow: inset 0 0 0 1px #45475a;
-          background-color: #313244;
-          color: #cdd6f4;
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
+          background-color: ${palette.getColor "surface0"};
+          color: ${palette.getColor "text"};
         }
 
         .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * .notification-action:active {
-          box-shadow: inset 0 0 0 1px #45475a;
-          background-color: #74c7ec;
-          color: #cdd6f4;
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
+          background-color: ${palette.getColor "sapphire"};
+          color: ${palette.getColor "text"};
         }
 
         .floating-notifications.background .notification-row .notification-background .close-button {
           margin: 7px;
           padding: 2px;
           border-radius: 6.3px;
-          color: #1e1e2e;
-          background-color: #f38ba8;
+          color: ${palette.getColor "base"};
+          background-color: ${palette.getColor "red"};
         }
 
         .floating-notifications.background .notification-row .notification-background .close-button:hover {
-          background-color: #eba0ac;
-          color: #1e1e2e;
+          background-color: ${palette.getColor "maroon"};
+          color: ${palette.getColor "base"};
         }
 
         .floating-notifications.background .notification-row .notification-background .close-button:active {
-          background-color: #f38ba8;
-          color: #1e1e2e;
+          background-color: ${palette.getColor "red"};
+          color: ${palette.getColor "base"};
         }
 
         .control-center {
-          box-shadow: 0 0 25px 0 rgba(17, 17, 17, 0.6), inset 0 0 0 1px #313244;
+          box-shadow: 0 0 25px 0 rgba(17, 17, 17, 0.6), inset 0 0 0 1px ${palette.getColor "surface0"};
           border-radius: 12.6px;
           margin: 18px;
-          background-color: #1e1e2e;
-          color: #cdd6f4;
+          background-color: ${palette.getColor "base"};
+          color: ${palette.getColor "text"};
           padding: 14px;
           opacity: 0.72;
         }
 
         .control-center .widget-title > label {
-          color: #cdd6f4;
+          color: ${palette.getColor "text"};
           font-family: "Work Sans";
           font-size: 1.3em;
         }
 
         .control-center .widget-title button {
           border-radius: 7px;
-          color: #cdd6f4;
-          background-color: #313244;
-          box-shadow: inset 0 0 0 1px #45475a;
+          color: ${palette.getColor "text"};
+          background-color: ${palette.getColor "surface0"};
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
           padding: 8px;
         }
 
         .control-center .widget-title button:hover {
-          box-shadow: inset 0 0 0 1px #45475a;
-          background-color: #585b70;
-          color: #cdd6f4;
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
+          background-color: ${palette.getColor "surface2"};
+          color: ${palette.getColor "text"};
         }
 
         .control-center .widget-title button:active {
-          box-shadow: inset 0 0 0 1px #45475a;
-          background-color: #74c7ec;
-          color: #1e1e2e;
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
+          background-color: ${palette.getColor "sapphire"};
+          color: ${palette.getColor "base"};
         }
 
         .control-center .notification-row .notification-background {
           border-radius: 7px;
-          color: #cdd6f4;
-          background-color: #313244;
-          box-shadow: inset 0 0 0 1px #45475a;
+          color: ${palette.getColor "text"};
+          background-color: ${palette.getColor "surface0"};
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
           margin-top: 14px;
         }
 
@@ -338,7 +340,7 @@ lib.mkIf host.is.linux {
         }
 
         .control-center .notification-row .notification-background .notification.critical {
-          box-shadow: inset 0 0 7px 0 #f38ba8;
+          box-shadow: inset 0 0 7px 0 ${palette.getColor "red"};
         }
 
         .control-center .notification-row .notification-background .notification .notification-content {
@@ -346,19 +348,19 @@ lib.mkIf host.is.linux {
         }
 
         .control-center .notification-row .notification-background .notification .notification-content .summary {
-          color: #cdd6f4;
+          color: ${palette.getColor "text"};
           font-family: "Work Sans";
           font-size: 1.4rem;
         }
 
         .control-center .notification-row .notification-background .notification .notification-content .time {
-          color: #a6adc8;
+          color: ${palette.getColor "subtext0"};
           font-family: "Work Sans";
           font-size: 1.0rem;
         }
 
         .control-center .notification-row .notification-background .notification .notification-content .body {
-          color: #cdd6f4;
+          color: ${palette.getColor "text"};
           font-family: "Work Sans";
           font-size: 1.2rem;
         }
@@ -369,30 +371,30 @@ lib.mkIf host.is.linux {
 
         .control-center .notification-row .notification-background .notification > *:last-child > * .notification-action {
           border-radius: 7px;
-          color: #cdd6f4;
-          background-color: #11111b;
-          box-shadow: inset 0 0 0 1px #45475a;
+          color: ${palette.getColor "text"};
+          background-color: ${palette.getColor "crust"};
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
           margin: 7px;
         }
 
         .control-center .notification-row .notification-background .notification > *:last-child > * .notification-action:hover {
-          box-shadow: inset 0 0 0 1px #45475a;
-          background-color: #313244;
-          color: #cdd6f4;
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
+          background-color: ${palette.getColor "surface0"};
+          color: ${palette.getColor "text"};
         }
 
         .control-center .notification-row .notification-background .notification > *:last-child > * .notification-action:active {
-          box-shadow: inset 0 0 0 1px #45475a;
-          background-color: #74c7ec;
-          color: #cdd6f4;
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
+          background-color: ${palette.getColor "sapphire"};
+          color: ${palette.getColor "text"};
         }
 
         .control-center .notification-row .notification-background .close-button {
           margin: 7px;
           padding: 2px;
           border-radius: 6.3px;
-          color: #1e1e2e;
-          background-color: #eba0ac;
+          color: ${palette.getColor "base"};
+          background-color: ${palette.getColor "maroon"};
         }
 
         .close-button {
@@ -400,50 +402,50 @@ lib.mkIf host.is.linux {
         }
 
         .control-center .notification-row .notification-background .close-button:hover {
-          background-color: #f38ba8;
-          color: #1e1e2e;
+          background-color: ${palette.getColor "red"};
+          color: ${palette.getColor "base"};
         }
 
         .control-center .notification-row .notification-background .close-button:active {
-          background-color: #f38ba8;
-          color: #1e1e2e;
+          background-color: ${palette.getColor "red"};
+          color: ${palette.getColor "base"};
         }
 
         .control-center .notification-row .notification-background:hover {
-          box-shadow: inset 0 0 0 1px #45475a;
-          background-color: #7f849c;
-          color: #cdd6f4;
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
+          background-color: ${palette.getColor "overlay1"};
+          color: ${palette.getColor "text"};
         }
 
         .control-center .notification-row .notification-background:active {
-          box-shadow: inset 0 0 0 1px #45475a;
-          background-color: #74c7ec;
-          color: #cdd6f4;
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
+          background-color: ${palette.getColor "sapphire"};
+          color: ${palette.getColor "text"};
         }
 
         .notification.critical progress {
-          background-color: #f38ba8;
+          background-color: ${palette.getColor "red"};
         }
 
         .notification.low progress,
         .notification.normal progress {
-          background-color: #89b4fa;
+          background-color: ${palette.getColor "blue"};
         }
 
         .control-center-dnd {
           margin-top: 5px;
           border-radius: 8px;
-          background: #313244;
-          border: 1px solid #45475a;
+          background: ${palette.getColor "surface0"};
+          border: 1px solid ${palette.getColor "surface1"};
           box-shadow: none;
         }
 
         .control-center-dnd:checked {
-          background: #313244;
+          background: ${palette.getColor "surface0"};
         }
 
         .control-center-dnd slider {
-          background: #45475a;
+          background: ${palette.getColor "surface1"};
           border-radius: 8px;
         }
 
@@ -456,23 +458,23 @@ lib.mkIf host.is.linux {
         .widget-dnd > switch {
           font-size: initial;
           border-radius: 8px;
-          background: #313244;
-          border: 1px solid #45475a;
+          background: ${palette.getColor "surface0"};
+          border: 1px solid ${palette.getColor "surface1"};
           box-shadow: none;
         }
 
         .widget-dnd > switch:checked {
-          background: #313244;
+          background: ${palette.getColor "surface0"};
         }
 
         .widget-dnd > switch slider {
-          background: #45475a;
+          background: ${palette.getColor "surface1"};
           border-radius: 8px;
-          border: 1px solid #6c7086;
+          border: 1px solid ${palette.getColor "overlay0"};
         }
 
         .widget-mpris .widget-mpris-player {
-          background: #313244;
+          background: ${palette.getColor "surface0"};
           padding: 7px;
         }
 
@@ -492,22 +494,22 @@ lib.mkIf host.is.linux {
         }
 
         .widget-menubar > box > .menu-button-bar > :nth-last-child(2) {
-          color: #f9e2af;
+          color: ${palette.getColor "yellow"};
         }
 
         .widget-menubar > box > .menu-button-bar > :last-child {
-          color: #f38ba8;
+          color: ${palette.getColor "red"};
           padding: 0 0;
         }
 
         .power-buttons button:hover,
         .powermode-buttons button:hover,
         .screenshot-buttons button:hover {
-          background: #313244;
+          background: ${palette.getColor "surface0"};
         }
 
         .control-center .widget-label > label {
-          color: #cdd6f4;
+          color: ${palette.getColor "text"};
           font-size: 2rem;
         }
 
@@ -520,7 +522,7 @@ lib.mkIf host.is.linux {
         }
 
         .widget-buttons-grid > flowbox > flowboxchild > button:hover label {
-          color: #89b4fa;
+          color: ${palette.getColor "blue"};
         }
 
         .widget-volume {
@@ -530,20 +532,20 @@ lib.mkIf host.is.linux {
 
         .widget-volume label {
           font-size: 1.5rem;
-          color: #74c7ec;
+          color: ${palette.getColor "sapphire"};
         }
 
         .widget-volume trough highlight {
-          background: #74c7ec;
+          background: ${palette.getColor "sapphire"};
         }
 
         .widget-backlight trough highlight {
-          background: #f9e2af;
+          background: ${palette.getColor "yellow"};
         }
 
         .widget-backlight label {
           font-size: 1.5rem;
-          color: #f9e2af;
+          color: ${palette.getColor "yellow"};
         }
 
         .widget-backlight .KB {
