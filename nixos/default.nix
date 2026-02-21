@@ -92,6 +92,11 @@ in
   };
 
   nix = {
+    # Deprioritise Nix builds on workstations to prevent audio stutter and UI
+    # jank. The daemon's scheduling policy propagates to all build processes.
+    daemonCPUSchedPolicy = lib.mkIf host.is.workstation "idle";
+    daemonIOSchedClass = lib.mkIf host.is.workstation "idle";
+    daemonIOSchedPriority = lib.mkIf host.is.workstation 7;
     settings = {
       experimental-features = "nix-command flakes";
       extra-experimental-features = "parallel-eval";

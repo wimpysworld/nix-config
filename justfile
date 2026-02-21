@@ -1,4 +1,3 @@
-build_cores := `printf "%.0f" "$(echo "$(case "$(uname -s)" in Linux) nproc;; Darwin) sysctl -n hw.logicalcpu;; esac) * 0.75" | bc)"`
 current_hostname := `hostname -s`
 current_username := `whoami`
 backup_ext := `date +%Y%m%d-%H%M`
@@ -306,8 +305,8 @@ host:
 
 # Build ISO
 iso:
-    @echo "ISO 󰗮 Building: nihilus ({{ build_cores }} cores)"
-    @nom build .#nixosConfigurations.nihilus.config.system.build.isoImage --cores "{{ build_cores }}"
+    @echo "ISO 󰗮 Building: nihilus"
+    @nom build .#nixosConfigurations.nihilus.config.system.build.isoImage
     @mkdir -p "${HOME}/Quickemu/nihilus" 2>/dev/null
     cp "result/iso/$(head -n1 result/nix-support/hydra-build-products | cut -d'/' -f6)" "${HOME}/Quickemu/nihilus/nixos.iso"
     @chown "${USER}": "${HOME}/Quickemu/nihilus/nixos.iso"
@@ -346,17 +345,17 @@ build-pkg pkg hostname=current_hostname:
             exit 1;;
     esac
 
-    echo "{{ pkg }} 󰏗 Building: for ${platform} on {{ hostname }} ({{ build_cores }} cores)"
-    nom build .#"${platform}"Configurations."{{ hostname }}".pkgs."{{ pkg }}" --cores "{{ build_cores }}"
+    echo "{{ pkg }} 󰏗 Building: for ${platform} on {{ hostname }}"
+    nom build .#"${platform}"Configurations."{{ hostname }}".pkgs."{{ pkg }}"
 
 # Build Home configuration
 build-home username=current_username hostname=current_hostname: prefetch
-    @echo "Home Manager  Building: {{ username }}@{{ hostname }} ({{ build_cores }} cores)"
-    @nh home build . --configuration "{{ username }}@{{ hostname }}" -- --cores "{{ build_cores }}"
+    @echo "Home Manager  Building: {{ username }}@{{ hostname }}"
+    @nh home build . --configuration "{{ username }}@{{ hostname }}"
 
 # Switch Home configuration
 switch-home username=current_username hostname=current_hostname: prefetch
-    @echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
+    @echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
     @nh home switch . --configuration "{{ username }}@{{ hostname }}" --backup-extension {{ backup_ext }}
 
 # Build OS configuration
@@ -364,13 +363,11 @@ build-host hostname=current_hostname: prefetch
     #!/usr/bin/env bash
     set -euo pipefail
     if [ "$(uname)" = "Linux" ]; then
-      echo "NixOS  Building: {{ hostname }} ({{ build_cores }} cores)"
-      nh os build . --hostname "{{ hostname }}" -- \
-        --cores "{{ build_cores }}"
+      echo "NixOS 󱄅 Building: {{ hostname }}"
+      nh os build . --hostname "{{ hostname }}"
     elif [ "$(uname)" = "Darwin" ]; then
-      echo "nix-darwin 󰀵 Building: {{ hostname }} ({{ build_cores }} cores)"
-      nh darwin build . --hostname "{{ hostname }}" -- \
-        --cores "{{ build_cores }}"
+      echo "nix-darwin 󰀵 Building: {{ hostname }}"
+      nh darwin build . --hostname "{{ hostname }}"
     else
       echo "Unsupported OS: $(uname)"
     fi
@@ -380,7 +377,7 @@ switch-host hostname=current_hostname: prefetch
     #!/usr/bin/env bash
     set -euo pipefail
     if [ "$(uname)" = "Linux" ]; then
-      echo "NixOS  Switching: {{ hostname }}"
+      echo "NixOS 󱄅 Switching: {{ hostname }}"
       nh os switch . --hostname "{{ hostname }}"
     elif [ "$(uname)" = "Darwin" ]; then
       echo "nix-darwin 󰀵 Switching: {{ hostname }}"

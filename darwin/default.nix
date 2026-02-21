@@ -85,6 +85,11 @@ in
     };
   };
 
+  # Prevent audio stutter and UI jank during builds.
+  # The daemon's scheduling policy propagates to all build processes.
+  nix.daemonProcessType = "Background";
+  nix.daemonIOLowPriority = true;
+
   programs = {
     fish = {
       shellAliases = {
