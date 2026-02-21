@@ -16,10 +16,9 @@ user-invocable: false
 | **gonzales** | Performance specialist | Profiling, optimisation, bottleneck analysis |
 | **melody** | Audio assessment | Interpreting audio metrics, voice recording quality |
 | **penfold** | Research generalist | Exploring ideas, synthesising findings, framing problems |
-| **penry** | Code reviewer | Maintainability improvements, simplification, deduplication |
+| **penry** | Code reviewer | Maintainability improvements, simplification, deduplication, naming clarity |
 | **pepe** | LÖVE 2D / Lua game dev | Lua 5.1 game code, LÖVE 2D APIs, game performance |
 | **rosey** | Principal assistant & prompt specialist | Crafting/refining agent prompts, coordinating delegation, creating skills |
-| **snagglepuss** | Naming specialist | Renaming variables, functions, files for clarity and consistency |
 | **velma** | Documentation architect | READMEs, technical docs, structured reference documentation |
 
 ## Delegation Pattern
