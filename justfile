@@ -84,6 +84,59 @@ benchmark hostname=current_hostname:
         echo "⚠️  Could not parse results (jq not available or results file missing)"
     fi
 
+# Prefetch proprietary packages into the Nix store
+prefetch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    SECRETS_FILE="secrets/secrets.yaml"
+
+    if ! command -v sops &>/dev/null; then
+        echo "Prefetch ⚠️  sops not found; skipping proprietary package prefetch"
+        exit 0
+    fi
+
+    if [[ ! -f "${SECRETS_FILE}" ]]; then
+        echo "Prefetch ⚠️  ${SECRETS_FILE} not found; skipping proprietary package prefetch"
+        exit 0
+    fi
+
+    echo "Prefetch 📦 Proprietary packages"
+
+    # Each entry: "secret_key filename expected_nix32 store_path"
+    PACKAGES=(
+        "cider_download_url cider-v3.1.8-linux-x64.deb 0a2lmn042ddc4pf8szksj64y659cw4rqbbv9jv22q4fjh1b592vi /nix/store/d1msri2m8mjpkn2g6wka5wp14ykppdcy-cider-v3.1.8-linux-x64.deb"
+        "pico8_download_url pico-8_0.2.7_amd64.zip 1alyii0bc9r9j2519q3jhxn8xazrcffy0kl8k07mnn208y2wxwpd /nix/store/6wlgkm92i70rflc5ijavv6nd1ys9pkn6-pico-8_0.2.7_amd64.zip"
+    )
+
+    for entry in "${PACKAGES[@]}"; do
+        read -r secret_key filename expected_hash store_path <<< "${entry}"
+
+        # Skip if already in the Nix store
+        if nix-store --check-validity "${store_path}" 2>/dev/null; then
+            echo "  ✅ ${filename} (already in store)"
+            continue
+        fi
+
+        # Decrypt the URL from sops
+        url=$(sops decrypt --extract "[\"${secret_key}\"]" "${SECRETS_FILE}" 2>/dev/null) || {
+            echo "  ⚠️  ${filename}: could not decrypt ${secret_key}; skipping"
+            continue
+        }
+
+        echo "  ⬇️  ${filename}"
+        actual_hash=$(nix-prefetch-url --name "${filename}" "${url}" 2>/dev/null) || {
+            echo "  ❌ ${filename}: download failed"
+            continue
+        }
+
+        if [[ "${actual_hash}" == "${expected_hash}" ]]; then
+            echo "  ✅ ${filename} (fetched and verified)"
+        else
+            echo "  ⚠️  ${filename}: hash mismatch (expected ${expected_hash}, got ${actual_hash})"
+        fi
+    done
+
 # Build OS and Home configurations
 build:
     @just build-home
@@ -291,21 +344,21 @@ build-pkg pkg hostname=current_hostname:
     nom build .#"${platform}"Configurations."{{ hostname }}".pkgs."{{ pkg }}" --cores "{{ build_cores }}"
 
 # Build Home configuration
-build-home username=current_username hostname=current_hostname:
-    @echo "Home Manager  Building: {{ username }}@{{ hostname }} ({{ build_cores }} cores)"
+build-home username=current_username hostname=current_hostname: prefetch
+    @echo "Home Manager  Building: {{ username }}@{{ hostname }} ({{ build_cores }} cores)"
     @nh home build . --configuration "{{ username }}@{{ hostname }}" -- --cores "{{ build_cores }}"
 
 # Switch Home configuration
-switch-home username=current_username hostname=current_hostname:
-    @echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
+switch-home username=current_username hostname=current_hostname: prefetch
+    @echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
     @nh home switch . --configuration "{{ username }}@{{ hostname }}" --backup-extension {{ backup_ext }}
 
 # Build OS configuration
-build-host hostname=current_hostname:
+build-host hostname=current_hostname: prefetch
     #!/usr/bin/env bash
     set -euo pipefail
     if [ "$(uname)" = "Linux" ]; then
-      echo "NixOS  Building: {{ hostname }} ({{ build_cores }} cores)"
+      echo "NixOS  Building: {{ hostname }} ({{ build_cores }} cores)"
       nh os build . --hostname "{{ hostname }}" -- \
         --cores "{{ build_cores }}"
     elif [ "$(uname)" = "Darwin" ]; then
@@ -317,11 +370,11 @@ build-host hostname=current_hostname:
     fi
 
 # Switch OS configuration
-switch-host hostname=current_hostname:
+switch-host hostname=current_hostname: prefetch
     #!/usr/bin/env bash
     set -euo pipefail
     if [ "$(uname)" = "Linux" ]; then
-      echo "NixOS  Switching: {{ hostname }}"
+      echo "NixOS  Switching: {{ hostname }}"
       nh os switch . --hostname "{{ hostname }}"
     elif [ "$(uname)" = "Darwin" ]; then
       echo "nix-darwin 󰀵 Switching: {{ hostname }}"

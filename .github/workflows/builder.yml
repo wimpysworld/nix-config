@@ -149,6 +149,18 @@ jobs:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Prefetch proprietary packages 📦
+        if: contains(matrix.target.system, 'linux')
+        env:
+          CIDER_DOWNLOAD_URL: ${{ secrets.CIDER_DOWNLOAD_URL }}
+          PICO8_DOWNLOAD_URL: ${{ secrets.PICO8_DOWNLOAD_URL }}
+        run: |
+          if [ -n "${CIDER_DOWNLOAD_URL}" ]; then
+            nix-prefetch-url --name "cider-v3.1.8-linux-x64.deb" "${CIDER_DOWNLOAD_URL}" || echo "⚠️  Cider prefetch failed"
+          fi
+          if [ -n "${PICO8_DOWNLOAD_URL}" ]; then
+            nix-prefetch-url --name "pico-8_0.2.7_amd64.zip" "${PICO8_DOWNLOAD_URL}" || echo "⚠️  PICO-8 prefetch failed"
+          fi
       - name: Build packages
         env:
           SYSTEM: ${{ matrix.target.system }}
@@ -238,6 +250,17 @@ jobs:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Prefetch proprietary packages 📦
+        env:
+          CIDER_DOWNLOAD_URL: ${{ secrets.CIDER_DOWNLOAD_URL }}
+          PICO8_DOWNLOAD_URL: ${{ secrets.PICO8_DOWNLOAD_URL }}
+        run: |
+          if [ -n "${CIDER_DOWNLOAD_URL}" ]; then
+            nix-prefetch-url --name "cider-v3.1.8-linux-x64.deb" "${CIDER_DOWNLOAD_URL}" || echo "⚠️  Cider prefetch failed"
+          fi
+          if [ -n "${PICO8_DOWNLOAD_URL}" ]; then
+            nix-prefetch-url --name "pico-8_0.2.7_amd64.zip" "${PICO8_DOWNLOAD_URL}" || echo "⚠️  PICO-8 prefetch failed"
+          fi
       - name: Build NixOS ${{ matrix.target.name }}
         run: |
           nix build ".#nixosConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
@@ -301,6 +324,18 @@ jobs:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Prefetch proprietary packages 📦
+        if: contains(matrix.target.runner, 'ubuntu')
+        env:
+          CIDER_DOWNLOAD_URL: ${{ secrets.CIDER_DOWNLOAD_URL }}
+          PICO8_DOWNLOAD_URL: ${{ secrets.PICO8_DOWNLOAD_URL }}
+        run: |
+          if [ -n "${CIDER_DOWNLOAD_URL}" ]; then
+            nix-prefetch-url --name "cider-v3.1.8-linux-x64.deb" "${CIDER_DOWNLOAD_URL}" || echo "⚠️  Cider prefetch failed"
+          fi
+          if [ -n "${PICO8_DOWNLOAD_URL}" ]; then
+            nix-prefetch-url --name "pico-8_0.2.7_amd64.zip" "${PICO8_DOWNLOAD_URL}" || echo "⚠️  PICO-8 prefetch failed"
+          fi
       - name: Build Home ${{ matrix.target.name }}
         run: |
           nix build ".#homeConfigurations.\"${{ matrix.target.name }}\".activationPackage" --no-link -L
