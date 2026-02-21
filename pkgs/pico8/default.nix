@@ -10,16 +10,11 @@
 }:
 stdenv.mkDerivation rec {
   pname = "pico8";
-  version = "0.2.6b";
-  #src = fetchurl {
-  #  url = "https://www.lexaloffle.com/xxxxxxxx/pico-8_${version}_amd64.zip";
-  #  hash = "sha256-ePiQQWhtANVu5xdw4MtlA2AnR90rS3rrg/Mx4/crJwI=";
-  #};
+  version = "0.2.7";
   src = requireFile rec {
     name = "pico-8_${version}_amd64.zip";
     url = "https://www.lexaloffle.com/pico-8.php";
-    # sha256sum /nix/store/deadb33f-pico-8_0.2.6b_amd64.zip
-    sha256 = "7ca8e9019f73771064859f71302bbc65c6e4042030605f4ee2f2c8c4e29b15d5";
+    sha256 = "edf2ce854740585b0f98884ee09d63f9ab8e6c8772e0148a902927b6408c9eaa";
   };
 
   unpackCmd = ''${unzip}/bin/unzip "$src"'';
@@ -81,7 +76,6 @@ stdenv.mkDerivation rec {
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     maintainers = with lib.maintainers; [ flexiondotorg ];
     platforms = [ "x86_64-linux" ];
-    hydraPlatforms = [ ];
     mainProgram = "pico8";
   };
 }

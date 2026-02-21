@@ -1,7 +1,7 @@
 {
   lib,
   stdenvNoCC,
-  fetchurl,
+  requireFile,
   makeWrapper,
   addDriverRunpath,
   autoPatchelfHook,
@@ -28,15 +28,16 @@
   zstd,
 }:
 let
-  version = "3.1.2";
+  version = "3.1.8";
   pname = "cider";
 in
 stdenvNoCC.mkDerivation {
   inherit pname version;
 
-  src = fetchurl {
-    url = "https://warez.wimpys.world/cider-v${version}-linux-x64.deb";
-    hash = "sha256-iD4ZJ4hZLIZH6d2rPgD04kydLLgeWXMp6UQ372APgo0=";
+  src = requireFile rec {
+    name = "cider-v${version}-linux-x64.deb";
+    url = "https://taproom.cider.sh/downloads";
+    sha256 = "718b545680d2112cc49669af8533e12c15e389917a7e8ddc25ac354180ad5428";
   };
 
   nativeBuildInputs = [
