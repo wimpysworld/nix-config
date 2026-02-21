@@ -8,6 +8,9 @@ configuration {
   show-icons:           true;
   display-drun:         "󱓞 ";
   drun-display-format:  "{name}";
+  hover-select:         true;
+  me-select-entry:      "";
+  me-accept-entry:      "MousePrimary";
 }
 
 window {
@@ -49,7 +52,37 @@ inputbar {
   border-color:      @accent_color@;
   border-radius:     8px;
   background-color:  @surface_color@;
-  children:          [ "prompt", "entry" ];
+  children:          [ "prompt", "entry", "textbox-counter-wrapper" ];
+}
+
+textbox-counter-wrapper {
+  orientation:       horizontal;
+  expand:            false;
+  spacing:           4px;
+  background-color:  transparent;
+  children:          [ num-filtered-rows, textbox-sep, num-rows ];
+}
+
+num-filtered-rows {
+  expand:            false;
+  text-color:        @accent_color_alpha@;
+  background-color:  transparent;
+  vertical-align:    0.5;
+}
+
+textbox-sep {
+  expand:            false;
+  str:               "/";
+  text-color:        @accent_color_alpha@;
+  background-color:  transparent;
+  vertical-align:    0.5;
+}
+
+num-rows {
+  expand:            false;
+  text-color:        @accent_color_alpha@;
+  background-color:  transparent;
+  vertical-align:    0.5;
 }
 
 prompt {
