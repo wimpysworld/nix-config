@@ -1,4 +1,4 @@
 .direnv/*
 !home-manager/_mixins/development/direnv/
 result/
-pkgs/pico8/pico-8_0.2.6b_amd64.zip
+plans/
