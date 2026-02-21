@@ -44,6 +44,10 @@
         output = "DP-1";
         width = 2560;
         height = 2880;
+        position = {
+          x = 0;
+          y = 0;
+        };
         primary = true;
         workspaces = [
           1
@@ -57,6 +61,10 @@
         output = "DP-2";
         width = 2560;
         height = 2880;
+        position = {
+          x = 2560;
+          y = 0;
+        };
         workspaces = [
           3
           4
@@ -68,6 +76,10 @@
         output = "DP-3";
         width = 1920;
         height = 1080;
+        position = {
+          x = 320;
+          y = 2880;
+        };
         workspaces = [ 10 ];
       }
     ];
@@ -100,6 +112,10 @@
         width = 3440;
         height = 1440;
         refresh = 100;
+        position = {
+          x = 0;
+          y = 1280;
+        };
         primary = true;
         workspaces = [
           1
@@ -118,12 +134,20 @@
         height = 1600;
         refresh = 120;
         scale = 1.25;
+        position = {
+          x = 1920;
+          y = 0;
+        };
         workspaces = [ 9 ];
       }
       {
         output = "DP-2";
         width = 1920;
         height = 1080;
+        position = {
+          x = 760;
+          y = 2720;
+        };
         workspaces = [ 10 ];
       }
     ];

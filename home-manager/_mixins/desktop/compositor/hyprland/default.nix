@@ -8,11 +8,56 @@
 let
   inherit (config.noughty) host;
   xkbLayout = "gb";
+
+  # Format a float scale as a clean string; builtins.toString produces "1.000000" for 1.0.
+  # Uses toJSON which gives "1.0", then strips the trailing ".0" if present.
+  scaleStr =
+    f:
+    let
+      s = builtins.toJSON f;
+      len = builtins.stringLength s;
+    in
+    if builtins.substring (len - 2) 2 s == ".0" then builtins.substring 0 (len - 2) s else s;
+
+  # Build a Hyprland monitor line: "output, WxH@Hz, position, scale".
+  # Single-monitor hosts use "auto" positioning; multi-monitor uses explicit coordinates.
+  mkMonitorLine =
+    d:
+    let
+      pos =
+        if d.position.x == 0 && d.position.y == 0 && builtins.length host.displays == 1 then
+          "auto"
+        else
+          "${toString d.position.x}x${toString d.position.y}";
+    in
+    "${d.output}, ${toString d.width}x${toString d.height}@${toString d.refresh}Hz, ${pos}, ${scaleStr d.scale}";
+
+  # Map each display's workspace list to persistent workspace rules.
+  # Workspace 10 is named "0" so it sits at the end of the bar (keyboard shortcut is 0).
+  mkWorkspaceLines =
+    d:
+    map (
+      ws:
+      let
+        name = if ws == 10 then "0" else toString ws;
+      in
+      "${toString ws}, name:${name}, persistent:true, monitor:${d.output}"
+    ) d.workspaces;
+
+  # Assemble monitor and workspace settings from the registry.
+  # The ", preferred, auto, 1" catch-all handles any hotplugged or unexpected monitors.
+  # Falls back to purely automatic config when no displays are defined for this host.
   monitors =
-    (import ./monitors.nix { }).${host.name} or {
-      monitor = [ ", preferred, auto, 1" ];
-      workspace = [ ];
-    };
+    if host.displays != [ ] then
+      {
+        monitor = map mkMonitorLine host.displays ++ [ ", preferred, auto, 1" ];
+        workspace = lib.concatMap mkWorkspaceLines host.displays;
+      }
+    else
+      {
+        monitor = [ ", preferred, auto, 1" ];
+        workspace = [ ];
+      };
 in
 {
   # Hyprland is a Wayland compositor and dynamic tiling window manager
