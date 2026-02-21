@@ -24,7 +24,7 @@ lib.mkIf
       ];
     };
     services = {
-      caddy = {
+      caddy = lib.mkIf config.services.caddy.enable {
         virtualHosts."goaccess.wimpys.world" = {
           extraConfig = ''
             encode zstd gzip

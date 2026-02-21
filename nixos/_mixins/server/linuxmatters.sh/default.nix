@@ -68,8 +68,6 @@ lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   };
 
   systemd.tmpfiles.rules = [
-    "d /mnt/data/www/hugo            0755 ${username} users"
-    "d /mnt/data/www/littlelink      0755 ${username} users"
     "d /mnt/data/www/linuxmatters.sh 0755 ${username} users"
   ];
 }

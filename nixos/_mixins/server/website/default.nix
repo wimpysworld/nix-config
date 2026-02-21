@@ -9,15 +9,10 @@ let
   username = config.noughty.user.name;
 in
 lib.mkIf (noughtyLib.isHost [ "malak" ]) {
-  environment = {
-    shellAliases = {
-      goaccess-hugo = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/hugo.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
-      goaccess-littlelink = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/littlelink.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
-      goaccess-ip = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/littlelink.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
-    };
-    systemPackages = with pkgs; [
-      caddy
-    ];
+  environment.shellAliases = {
+    goaccess-hugo = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/hugo.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
+    goaccess-littlelink = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/littlelink.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
+    goaccess-ip = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/littlelink.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
   };
   services = {
     caddy = {

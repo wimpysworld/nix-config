@@ -22,7 +22,7 @@ lib.mkIf (noughtyLib.isHost (prodOn ++ testOn)) {
   };
   services = {
     caddy = lib.mkIf (config.services.owncast.enable && noughtyLib.isHost prodOn) {
-      # Reverse proxy to the GoToSocial instance
+      # Reverse proxy to the Owncast instance
       virtualHosts."wimpysworld.live" = {
         extraConfig = ''
           encode zstd gzip

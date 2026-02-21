@@ -24,9 +24,9 @@ lib.mkIf (noughtyLib.isHost [ "malak" ]) {
     };
   };
   services = {
-    caddy = {
+    caddy = lib.mkIf config.services.gatus.enable {
       virtualHosts."gatus.wimpys.world" = {
-        extraConfig = lib.mkIf (config.services.gatus.enable) ''
+        extraConfig = ''
           reverse_proxy localhost:${toString config.services.gatus.settings.web.port}
         '';
         logFormat = lib.mkDefault ''
@@ -271,7 +271,7 @@ lib.mkIf (noughtyLib.isHost [ "malak" ]) {
             interval = "30s";
             conditions = [
               "[STATUS] == 200"
-              "[BODY] == pat(*A new episode every two weeks covering terminal productivity, desktop experience, development, gaming, hosting, hardware, community, cloud-native and all the Linux Matters that matter.*)"
+              "[BODY] == pat(*New episode every fortnight*)"
             ];
             alerts = [
               {
