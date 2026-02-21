@@ -7,7 +7,9 @@
 {
   home = {
     packages = with pkgs; [
-      dart
+      # lowPrio to avoid bin/resources collision with pkgs.resources (GNOME system monitor)
+      # Dart SDK ships bin/resources/ as an internal directory; dart tools resolve it via store path
+      (lib.lowPrio dart)
     ];
   };
 
