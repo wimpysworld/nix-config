@@ -6,7 +6,7 @@
 let
   host = config.noughty.host;
   currentDir = ./.; # Represents the current directory
-  isDirectoryAndNotTemplate = _name: type: type == "directory";
+  isDirectoryAndNotTemplate = name: type: type == "directory" && name != "_template";
   directories = lib.filterAttrs isDirectoryAndNotTemplate (builtins.readDir currentDir);
   importDirectory = name: import (currentDir + "/${name}");
 in

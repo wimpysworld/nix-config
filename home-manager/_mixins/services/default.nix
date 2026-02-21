@@ -1,8 +1,8 @@
 { lib, ... }:
 let
   currentDir = ./.; # Represents the current directory
-  isDirectory = name: type: type == "directory";
-  directories = lib.filterAttrs isDirectory (builtins.readDir currentDir);
+  isDirectoryAndNotTemplate = name: type: type == "directory" && name != "_template";
+  directories = lib.filterAttrs isDirectoryAndNotTemplate (builtins.readDir currentDir);
   importDirectory = name: import (currentDir + "/${name}");
 in
 {
