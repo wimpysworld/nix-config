@@ -69,6 +69,6 @@ in
 
   programs = {
     fish.enable = true;
-    nix-index-database.comma.enable = !host.is.iso;
+    nix-index-database.comma.enable = false;
   };
 }
