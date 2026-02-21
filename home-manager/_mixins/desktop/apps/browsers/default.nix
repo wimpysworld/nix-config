@@ -1,8 +1,6 @@
 {
   config,
-  lib,
   noughtyLib,
-  pkgs,
   ...
 }:
 let

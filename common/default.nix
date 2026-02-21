@@ -6,9 +6,6 @@
   pkgs,
   ...
 }:
-let
-  host = config.noughty.host;
-in
 {
   # Only install the docs I use
   documentation.enable = true;

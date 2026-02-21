@@ -5,7 +5,6 @@
   ...
 }:
 let
-  username = config.noughty.user.name;
   host = config.noughty.host;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   vscodeUserDir =

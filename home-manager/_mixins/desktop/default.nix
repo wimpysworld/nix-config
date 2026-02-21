@@ -22,44 +22,6 @@ in
         if config.wayland.windowManager.hyprland.enable then ":appmenu" else ":close,minimize,maximize";
       clockFormat = "24h";
       cursorSize = 32;
-      blues = [
-        "blue"
-        "sky"
-        "sapphire"
-        "lavender"
-      ];
-      pinks = [
-        "pink"
-        "rosewater"
-        "flamingo"
-      ];
-      reds = [
-        "red"
-        "maroon"
-      ];
-      themeAccent =
-        if lib.elem catppuccinPalette.accent blues then
-          ""
-        else if catppuccinPalette.accent == "green" then
-          "-Green"
-        else if catppuccinPalette.accent == "peach" then
-          "-Orange"
-        else if lib.elem catppuccinPalette.accent pinks then
-          "-Pink"
-        else if catppuccinPalette.accent == "mauve" then
-          "-Purple"
-        else if lib.elem catppuccinPalette.accent reds then
-          "-Red"
-        else if catppuccinPalette.accent == "teal" then
-          "-Teal"
-        else if catppuccinPalette.accent == "yellow" then
-          "-Yellow"
-        else
-          "";
-      cursorPackage =
-        pkgs.catppuccin-cursors."${catppuccinPalette.flavor}${
-          lib.toUpper (builtins.substring 0 1 catppuccinPalette.accent)
-        }${builtins.substring 1 (-1) catppuccinPalette.accent}";
       gtkCatppuccinThemeName = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
       gtkCatppuccinThemePackage = (
         pkgs.catppuccin-gtk.override {
@@ -68,20 +30,6 @@ in
           variant = config.catppuccin.flavor;
         }
       );
-      gtkColloidThemeName = "Colloid${themeAccent}${catppuccinPalette.themeShade}-Catppuccin";
-      gtkColloidThemePackage = pkgs.colloid-gtk-theme.override {
-        colorVariants = [
-          "standard"
-          "light"
-          "dark"
-        ];
-        sizeVariants = [
-          "standard"
-          "compact"
-        ];
-        themeVariants = [ "all" ];
-        tweaks = [ "catppuccin" ];
-      };
       iconThemeName = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
       iconThemePackage =
         if host.is.linux then

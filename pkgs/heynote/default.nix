@@ -1,9 +1,7 @@
 {
   lib,
-  stdenv,
   buildNpmPackage,
   fetchFromGitHub,
-  fetchurl,
   makeWrapper,
   copyDesktopItems,
   makeDesktopItem,

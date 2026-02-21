@@ -20,7 +20,7 @@ let
 
   # Transform folders: enable only where this host is listed, remove self from devices
   hostFolders = lib.mapAttrs (
-    name: folder:
+    _name: folder:
     folder
     // {
       enable = lib.elem host.name folder.devices;

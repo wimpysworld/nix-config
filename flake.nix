@@ -47,7 +47,6 @@
   outputs =
     {
       self,
-      nix-darwin,
       nixpkgs,
       ...
     }@inputs:
@@ -112,11 +111,6 @@
             overlays = builtins.attrValues self.overlays;
           };
           # Re-export packages from flake inputs that might not support all platforms
-          optionalFlakePackage =
-            name: flakeInput:
-            nixpkgs.lib.optionalAttrs (flakeInput.packages ? ${system}) {
-              ${name} = flakeInput.packages.${system}.default;
-            };
           # Like optionalFlakePackage but restricted to Linux systems;
           # some flake inputs provide Darwin outputs that fail to compile
           # because they depend on Linux-specific services.

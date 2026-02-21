@@ -10,7 +10,7 @@
   modifiedPackages = _final: prev: {
     # Override Python packages to fix Darwin-specific issues
     python3 = prev.python3.override {
-      packageOverrides = pyfinal: pyprev: {
+      packageOverrides = _pyfinal: pyprev: {
         # Fix setproctitle test failures on Darwin with multiprocessing fork
         # See: https://github.com/NixOS/nixpkgs/issues/479313
         setproctitle = pyprev.setproctitle.overridePythonAttrs (old: {
@@ -25,7 +25,7 @@
     };
 
     python313 = prev.python313.override {
-      packageOverrides = pyfinal: pyprev: {
+      packageOverrides = _pyfinal: pyprev: {
         # Fix setproctitle test failures on Darwin with multiprocessing fork
         # See: https://github.com/NixOS/nixpkgs/issues/479313
         setproctitle = pyprev.setproctitle.overridePythonAttrs (old: {
