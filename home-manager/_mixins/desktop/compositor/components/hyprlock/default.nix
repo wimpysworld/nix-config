@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   lib,
   pkgs,
@@ -7,6 +8,10 @@
 let
   host = config.noughty.host;
   display = host.display;
+  palette = catppuccinPalette;
+  mkRgb = colorName: "rgb(${palette.getHyprlandColor colorName})";
+  mkRgba = palette.mkRgba;
+  mkPangoHex = colorName: "#${palette.getColor colorName}";
   catSize =
     if display.primaryIsPortrait then
       320
@@ -45,7 +50,7 @@ lib.mkIf host.is.linux {
             path = "screenshot";
             blur_passes = 3;
             blur_size = 12;
-            color = "rgb(1e1e2e)";
+            color = mkRgb "base";
           }
         ];
         image = [
@@ -54,7 +59,7 @@ lib.mkIf host.is.linux {
             monitor = monitor;
             path = "$HOME/.face";
             border_size = 2;
-            border_color = "rgba(137, 180, 250, 0.7)";
+            border_color = mkRgba "blue" "0.7";
             size = 140;
             rounding = -1;
             rotate = 0;
@@ -82,7 +87,7 @@ lib.mkIf host.is.linux {
             # Date (1 hour)
             monitor = monitor;
             text = ''cmd[update:3600000] echo -e "$(date +"%a, %d %b")"'';
-            color = "rgba(205, 214, 244, 0.9)";
+            color = mkRgba "text" "0.9";
             font_size = 25;
             font_family = "Work Sans Bold";
             position = "0, 440";
@@ -90,21 +95,10 @@ lib.mkIf host.is.linux {
             valign = "center";
           }
           {
-            # Weather (30min)
-            monitor = monitor;
-            text = ''cmd[update:1800000] ${lib.getExe pkgs.curl} -sLq "wttr.in?format=%c+%t"'';
-            color = "rgba(205, 214, 244, 0.9)";
-            font_size = 16;
-            font_family = "FiraCode Nerd Font Propo Bold";
-            position = "0, 390";
-            halign = "center";
-            valign = "center";
-          }
-          {
             # Time Border left
             monitor = monitor;
             text = "$TIME";
-            color = "rgba(17, 17, 27, 0.8)";
+            color = mkRgba "crust" "0.8";
             font_size = 120;
             font_family = "FiraCode Nerd Font Mono Bold";
             position = "-4, 250";
@@ -116,7 +110,7 @@ lib.mkIf host.is.linux {
             # Time Border right
             monitor = monitor;
             text = "$TIME";
-            color = "rgba(17, 17, 27, 0.8)";
+            color = mkRgba "crust" "0.8";
             font_size = 120;
             font_family = "FiraCode Nerd Font Mono Bold";
             position = "4, 250";
@@ -128,7 +122,7 @@ lib.mkIf host.is.linux {
             # Time Border up
             monitor = monitor;
             text = "$TIME";
-            color = "rgba(17, 17, 27, 0.8)";
+            color = mkRgba "crust" "0.8";
             font_size = 120;
             font_family = "FiraCode Nerd Font Mono Bold";
             position = "0, 246";
@@ -140,7 +134,7 @@ lib.mkIf host.is.linux {
             # Time Border down
             monitor = monitor;
             text = "$TIME";
-            color = "rgba(17, 17, 27, 0.8)";
+            color = mkRgba "crust" "0.8";
             font_size = 120;
             font_family = "FiraCode Nerd Font Mono Bold";
             position = "0, 254";
@@ -152,7 +146,7 @@ lib.mkIf host.is.linux {
             # Time
             monitor = monitor;
             text = "$TIME";
-            color = "rgba(205, 214, 244, 0.9)";
+            color = mkRgba "text" "0.9";
             font_size = 120;
             font_family = "FiraCode Nerd Font Mono Bold";
             position = "0, 250";
@@ -163,8 +157,8 @@ lib.mkIf host.is.linux {
           {
             # Username
             monitor = monitor;
-            text = ''<span foreground="##a6e3a1">󰝴</span> $DESC'';
-            color = "rgba(147, 153, 178, 1.0)";
+            text = ''<span foreground="${mkPangoHex "green"}">󰝴</span> $DESC'';
+            color = mkRgba "overlay2" "1.0";
             font_size = 18;
             font_family = "FiraCode Nerd Font Propo";
             position = "0, -130";
@@ -178,10 +172,10 @@ lib.mkIf host.is.linux {
             monitor = monitor;
             size = "420, 60";
             position = "0, -130";
-            color = "rgba(69, 71, 90, 1.0)";
+            color = mkRgba "surface1" "1.0";
             rounding = 8;
             border_size = 2;
-            border_color = "rgba(49, 50, 68, 1.0)";
+            border_color = mkRgba "surface0" "1.0";
             rotate = 0;
             xray = false; # do not make a "hole" in the background
             halign = "center";
@@ -199,20 +193,20 @@ lib.mkIf host.is.linux {
             dots_spacing = 0.25;
             dots_center = true;
             fade_on_empty = false;
-            placeholder_text = ''<span foreground="##f9e2af"><big>  󰌋  </big></span>'';
-            fail_text = ''<span foreground="##f38ba8">󰀧</span>  <i>$FAIL</i> <span foreground="##f38ba8"><b>($ATTEMPTS)</b></span>'';
+            placeholder_text = ''<span foreground="${mkPangoHex "yellow"}"><big>  󰌋  </big></span>'';
+            fail_text = ''<span foreground="${mkPangoHex "red"}">󰀧</span>  <i>$FAIL</i> <span foreground="${mkPangoHex "red"}"><b>($ATTEMPTS)</b></span>'';
             fail_timeout = 3000; # milliseconds before fail_text and fail_color disappears
             fail_transition = 500; # transition time in ms between normal outer_color and fail_color
             hide_input = false;
             halign = "center";
             valign = "center";
             rounding = 8;
-            outer_color = "rgba(137, 180, 250, 1.0)";
-            inner_color = "rgba(88, 91, 112, 1.0)";
-            font_color = "rgba(205, 214, 244, 1.0)";
-            capslock_color = "rgba(250, 179, 135, 1.0)";
-            check_color = "rgba(116, 199, 236, 1.0)";
-            fail_color = "rgba(245, 194, 231, 1.0)";
+            outer_color = mkRgba "blue" "1.0";
+            inner_color = mkRgba "surface2" "1.0";
+            font_color = mkRgba "text" "1.0";
+            capslock_color = mkRgba "peach" "1.0";
+            check_color = mkRgba "sapphire" "1.0";
+            fail_color = mkRgba "pink" "1.0";
           }
         ];
       };
