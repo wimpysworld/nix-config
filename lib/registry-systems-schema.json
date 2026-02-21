@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Noughty system registry",
+  "description": "System registry for noughty. Each key is a hostname.",
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/definitions/host"
+  },
+  "definitions": {
+    "host": {
+      "type": "object",
+      "required": ["kind", "platform"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["computer", "server", "vm", "container"],
+          "description": "Class of host system."
+        },
+        "platform": {
+          "type": "string",
+          "description": "Nix system string (e.g. x86_64-linux, aarch64-darwin)."
+        },
+        "formFactor": {
+          "type": "string",
+          "enum": ["laptop", "desktop", "handheld", "tablet", "phone"],
+          "description": "Physical form factor. Omit for virtual or headless systems."
+        },
+        "desktop": {
+          "type": "string",
+          "description": "Desktop environment name. Derived from kind+platform if omitted."
+        },
+        "username": {
+          "type": "string",
+          "description": "Primary username. Defaults to martin."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Freeform host classification tags."
+        },
+        "gpu": { "$ref": "#/definitions/gpu" },
+        "displays": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/display" },
+          "description": "List of display outputs."
+        },
+        "keyboard": { "$ref": "#/definitions/keyboard" }
+      }
+    },
+    "gpu": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vendors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["nvidia", "amd", "intel", "apple"]
+          }
+        },
+        "compute": { "$ref": "#/definitions/gpuCompute" }
+      }
+    },
+    "gpuCompute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "type": "string",
+          "enum": ["nvidia", "amd", "intel", "apple"]
+        },
+        "vram": { "type": "integer", "minimum": 0 },
+        "unified": { "type": "boolean" },
+        "acceleration": {
+          "type": "string",
+          "enum": ["cuda", "rocm", "vulkan", "metal"]
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "required": ["output", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "output": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "refresh": { "type": "integer", "minimum": 1, "default": 60 },
+        "scale": { "type": "number", "minimum": 0.5, "default": 1.0 },
+        "primary": { "type": "boolean", "default": false },
+        "workspaces": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "position": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "keyboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "layout": {
+          "type": "string",
+          "description": "XKB layout code. Defaults to gb."
+        },
+        "variant": {
+          "type": "string",
+          "description": "XKB variant. Defaults to empty string."
+        },
+        "locale": {
+          "type": "string",
+          "description": "POSIX locale override. Derived from layout if omitted."
+        }
+      }
+    }
+  }
+}

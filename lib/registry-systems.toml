@@ -1,0 +1,305 @@
+# System registry - central definition of all systems and their properties
+#
+# Canonical tag vocabulary:
+#   Host tags: streamstation, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference
+#   User tags: developer, admin, family
+#
+# Registry fields:
+#   kind       - required: "computer", "server", "vm", "container"
+#   platform   - required: "x86_64-linux", "aarch64-darwin", etc.
+#   formFactor - optional: "laptop", "desktop", "handheld", "tablet", "phone"
+#   desktop    - optional: derived from kind + platform if omitted
+#   username   - optional: defaults to "martin"
+#   gpu        - optional: vendors, compute.vendor, compute.vram, compute.unified
+#   tags       - optional: list of host tags
+#
+# Omitted optional fields use their defaults (as resolved by resolveEntry):
+#   username defaults to "martin"
+#   desktop defaults to "hyprland" for computer+linux, "aqua" for computer+darwin
+#   scale defaults to 1.0 per display
+
+# Linux workstations
+# desktop defaults to "hyprland" (kind = "computer", linux platform)
+# username defaults to "martin"
+
+[vader]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "desktop"
+tags = ["streamstation", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc"]
+
+[vader.gpu]
+vendors = ["amd", "nvidia"]
+
+[vader.gpu.compute]
+vendor = "nvidia"
+vram = 16
+
+[[vader.displays]]
+output = "DP-1"
+width = 2560
+height = 2880
+primary = true
+workspaces = [1, 2, 7, 8, 9]
+position = { x = 0, y = 0 }
+
+[[vader.displays]]
+output = "DP-2"
+width = 2560
+height = 2880
+workspaces = [3, 4, 5, 6]
+position = { x = 2560, y = 0 }
+
+[[vader.displays]]
+output = "DP-3"
+width = 1920
+height = 1080
+workspaces = [10]
+position = { x = 320, y = 2880 }
+
+[phasma]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "desktop"
+tags = ["streamstation", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc"]
+
+[phasma.gpu]
+vendors = ["amd", "nvidia"]
+
+[phasma.gpu.compute]
+vendor = "nvidia"
+vram = 16
+
+[[phasma.displays]]
+output = "DP-1"
+width = 3440
+height = 1440
+refresh = 100
+primary = true
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 0, y = 1280 }
+
+[[phasma.displays]]
+output = "HDMI-A-1"
+width = 2560
+height = 1600
+refresh = 120
+scale = 1.25
+workspaces = [9]
+position = { x = 1920, y = 0 }
+
+[[phasma.displays]]
+output = "DP-2"
+width = 1920
+height = 1080
+workspaces = [10]
+position = { x = 760, y = 2720 }
+
+[bane]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "laptop"
+tags = ["policy"]
+
+[bane.gpu]
+vendors = ["amd"]
+
+[[bane.displays]]
+output = "eDP-1"
+width = 2560
+height = 1600
+primary = true
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 0, y = 0 }
+
+[tanis]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "laptop"
+tags = ["thinkpad"]
+
+[tanis.gpu]
+vendors = ["amd"]
+
+[[tanis.displays]]
+output = "eDP-1"
+width = 1920
+height = 1200
+primary = true
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 0, y = 0 }
+
+[shaa]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "laptop"
+tags = ["thinkpad"]
+
+[shaa.gpu]
+vendors = ["amd"]
+
+[[shaa.displays]]
+output = "eDP-1"
+width = 1920
+height = 1080
+primary = true
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 0, y = 0 }
+
+[atrius]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "laptop"
+tags = ["thinkpad"]
+
+[atrius.gpu]
+vendors = ["amd"]
+
+[[atrius.displays]]
+output = "eDP-1"
+width = 1920
+height = 1080
+primary = true
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 0, y = 0 }
+
+[sidious]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "laptop"
+tags = ["thinkpad"]
+
+[sidious.gpu]
+vendors = ["intel", "nvidia"]
+
+[sidious.gpu.compute]
+vendor = "nvidia"
+vram = 4
+
+[[sidious.displays]]
+output = "eDP-1"
+width = 3840
+height = 2160
+scale = 2.0
+primary = true
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 0, y = 0 }
+
+[felkor]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "laptop"
+tags = ["thinkpad"]
+
+[felkor.gpu]
+vendors = ["amd"]
+
+[[felkor.displays]]
+output = "eDP-1"
+width = 1920
+height = 1200
+primary = true
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 0, y = 0 }
+
+# Gaming - non-standard username and desktop, so both explicit
+
+[steamdeck]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "handheld"
+username = "deck"
+desktop = "gamescope"
+tags = ["steamdeck"]
+
+[steamdeck.gpu]
+vendors = ["amd"]
+
+# Servers - desktop = null from kind = "server"
+
+[malak]
+kind = "server"
+platform = "x86_64-linux"
+
+[malak.gpu]
+vendors = ["intel"]
+
+[maul]
+kind = "server"
+platform = "x86_64-linux"
+tags = ["inference"]
+
+[maul.gpu]
+vendors = ["nvidia"]
+
+[maul.gpu.compute]
+vendor = "nvidia"
+vram = 24
+
+[revan]
+kind = "server"
+platform = "x86_64-linux"
+
+[revan.gpu]
+vendors = ["intel", "nvidia"]
+
+[revan.gpu.compute]
+vendor = "nvidia"
+vram = 8
+
+# Linux VMs
+
+[crawler]
+kind = "vm"
+platform = "x86_64-linux"
+
+[dagger]
+kind = "vm"
+platform = "x86_64-linux"
+desktop = "hyprland"
+
+# Lima VMs (Home Manager only; tag drives module selection)
+
+[blackace]
+kind = "vm"
+platform = "x86_64-linux"
+tags = ["lima"]
+
+[defender]
+kind = "vm"
+platform = "x86_64-linux"
+tags = ["lima"]
+
+[fighter]
+kind = "vm"
+platform = "x86_64-linux"
+tags = ["lima"]
+
+# WSL (Home Manager only; tag drives module selection)
+
+[palpatine]
+kind = "vm"
+platform = "x86_64-linux"
+tags = ["wsl"]
+
+# Darwin - platform drives isDarwin; desktop defaults to "aqua"
+
+[momin]
+kind = "computer"
+platform = "aarch64-darwin"
+formFactor = "laptop"
+
+[momin.gpu]
+vendors = ["apple"]
+
+[momin.gpu.compute]
+vendor = "apple"
+vram = 36
+unified = true
+
+# ISO - "iso" tag applies isoDefaults: desktop = null, username = "nixos"
+
+[nihilus]
+kind = "computer"
+platform = "x86_64-linux"
+tags = ["iso"]

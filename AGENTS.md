@@ -110,24 +110,23 @@ just inject-tokens 192.168.1.10     # Inject tokens to ISO host for install
 
 ## System registry and configuration
 
-All systems defined in `lib/registry-systems.nix` (imported by `flake.nix`). Each entry specifies:
+All systems defined in `lib/registry-systems.toml` (read by `flake.nix` via `builtins.fromTOML`). Each entry specifies:
 
 - **kind** (required): `"computer"`, `"server"`, `"vm"`, `"container"`
 - **platform** (required): `"x86_64-linux"`, `"aarch64-darwin"`, etc.
 - **formFactor** (optional): `"laptop"`, `"desktop"`, `"handheld"`, `"tablet"`, `"phone"`
 - **desktop** (optional): derived from `kind` + platform if omitted (e.g. `computer` on Linux defaults to `"hyprland"`, Darwin defaults to `"aqua"`)
 - **username** (optional): defaults to `"martin"`
-- **gpu** (optional): `{ vendors = [ "amd" "nvidia" ]; compute = { vendor = "nvidia"; vram = 16; }; }`
+- **gpu** (optional): `vendors = ["amd", "nvidia"]` with optional `[hostname.gpu.compute]` block containing `vendor`, `vram`
 - **displays** (optional): list of display submodules with output, width, height, refresh, scale, position, primary, workspaces
-- **tags** (optional): `[ "streamstation" "thinkpad" "iso" ... ]`
+- **tags** (optional): `["streamstation", "thinkpad", "iso"]`
 
-Users defined in `lib/registry-users.nix` (imported by `flake.nix`):
+Users defined in `lib/registry-users.toml` (read by `flake.nix` via `builtins.fromTOML`):
 
-```nix
-# In lib/registry-users.nix
-{
-  martin = { tags = [ "developer" ]; };
-}
+```toml
+# lib/registry-users.toml
+[martin]
+tags = ["developer"]
 ```
 
 ISO hosts use `tags = [ "iso" ]` which applies implicit defaults (`desktop = null`, `username = "nixos"`). The ISO host is `nihilus`.
@@ -285,22 +284,31 @@ Script automatically validated with shellcheck during build.
 
 ## Creating new system configuration
 
-Add to system registry in `lib/registry-systems.nix`:
+Add to system registry in `lib/registry-systems.toml`:
 
-```nix
-# In lib/registry-systems.nix
-mynewhost = {
-  kind = "computer";        # or "server", "vm", "container"
-  platform = "x86_64-linux";
-  formFactor = "desktop";   # or "laptop", "handheld", null
-  gpu.vendors = [ "amd" ];  # if applicable
-  tags = [ "thinkpad" ];    # if applicable
-  displays = [
-    { output = "DP-1"; width = 2560; height = 1440; refresh = 144; primary = true; workspaces = [ 1 2 3 4 5 ]; }
-  ];
-  # desktop defaults to "hyprland" for computer+linux
-  # username defaults to "martin"
-};
+```toml
+# lib/registry-systems.toml
+[mynewhost]
+kind       = "computer"    # or "server", "vm", "container"
+platform   = "x86_64-linux"
+formFactor = "desktop"     # or "laptop", "handheld" (omit for none)
+tags       = ["thinkpad"]  # if applicable
+
+[mynewhost.gpu]
+vendors = ["amd"]          # if applicable
+
+[[mynewhost.displays]]
+output     = "DP-1"
+width      = 2560
+height     = 1440
+refresh    = 144
+primary    = true
+workspaces = [1, 2, 3, 4, 5]
+position   = { x = 0, y = 0 }
+
+# desktop defaults to "hyprland" for computer+linux
+# username defaults to "martin"
+# keyboard defaults to "gb" (UK); set keyboard.layout = "us" for non-UK hosts
 ```
 
 Create host directory and `nixos/mynewhost/default.nix`:
@@ -349,7 +357,7 @@ Configurations composed from small, focused modules in `_mixins` directories. Ea
 
 **Configuration flow:**
 
-1. System registry in `lib/registry-systems.nix` and `lib/registry-users.nix` defines all hosts and users
+1. System registry in `lib/registry-systems.toml` and `lib/registry-users.toml` defines all hosts and users
 2. `resolveEntry` in `lib/flake-builders.nix` merges registry defaults (baseline, kind+OS derived, ISO defaults, explicit values)
 3. `mkSystemConfig` produces the attribute set consumed by `mkNixos`, `mkHome`, `mkDarwin`
 4. `noughty.*` options are set in the modules list; `lib/noughty/default.nix` computes derived booleans
