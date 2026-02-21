@@ -1,0 +1,125 @@
+name: Package Freshener 🍋
+on:
+  schedule:
+    # Early bird; runs well before the flake lock updater (03:14 UTC)
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  wavebox:
+    name: Wavebox 📦
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Check for Wavebox update 🔍
+        id: check
+        run: |
+          set -euo pipefail
+
+          PKG_NIX="pkgs/wavebox/default.nix"
+
+          LINUX_JSON="https://download.wavebox.app/stable/linux/latest.json"
+          DARWIN_JSON="https://download.wavebox.app/stable/macuniversal/latest.json"
+
+          # Extract current versions from the Nix file
+          current_linux=$(awk '/^  linux = stdenvNoCC.mkDerivation/,/^  \}\);/ { if ($0 ~ /version = "/) { match($0, /version = "([^"]+)"/, arr); print arr[1]; exit } }' "$PKG_NIX")
+          current_darwin=$(awk '/^  darwin = stdenvNoCC.mkDerivation/,/^  \}\);/ { if ($0 ~ /version = "/) { match($0, /version = "([^"]+)"/, arr); print arr[1]; exit } }' "$PKG_NIX")
+
+          echo "Current Linux:  ${current_linux}"
+          echo "Current Darwin: ${current_darwin}"
+
+          # Fetch latest versions from Wavebox API
+          latest_linux=$(curl -fsSL "$LINUX_JSON" | jq -r '.urls.deb | match("wavebox_(.+)_amd64\\.deb").captures[0].string')
+          latest_darwin=$(curl -fsSL "$DARWIN_JSON" | jq -r '.url | match("Install%20Wavebox%20(.+)\\.dmg").captures[0].string')
+
+          echo "Latest Linux:   ${latest_linux}"
+          echo "Latest Darwin:  ${latest_darwin}"
+
+          if [[ "$current_linux" == "$latest_linux" && "$current_darwin" == "$latest_darwin" ]]; then
+            echo "✅ Wavebox is up to date"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "linux_version=${latest_linux}" >> "$GITHUB_OUTPUT"
+          echo "darwin_version=${latest_darwin}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Wavebox package 📝
+        if: steps.check.outputs.updated == 'true'
+        env:
+          LINUX_VERSION: ${{ steps.check.outputs.linux_version }}
+          DARWIN_VERSION: ${{ steps.check.outputs.darwin_version }}
+        run: |
+          set -euo pipefail
+
+          PKG_NIX="pkgs/wavebox/default.nix"
+
+          # Fetch and hash the Linux deb
+          linux_url="https://download.wavebox.app/stable/linux/deb/amd64/wavebox_${LINUX_VERSION}_amd64.deb"
+          echo "⬇️  Fetching Linux deb: ${linux_url}"
+          linux_store=$(nix store prefetch-file --json --hash-type sha256 "$linux_url" | jq -r '.hash')
+          echo "🔑 Linux hash: ${linux_store}"
+
+          # Fetch and hash the Darwin dmg
+          darwin_url="https://download.wavebox.app/stable/macuniversal/Install%20Wavebox%20${DARWIN_VERSION}.dmg"
+          echo "⬇️  Fetching Darwin dmg: ${darwin_url}"
+          darwin_store=$(nix store prefetch-file --json --hash-type sha256 "$darwin_url" | jq -r '.hash')
+          echo "🔑 Darwin hash: ${darwin_store}"
+
+          # Update Linux version and hash
+          sed -i "/^  linux = stdenvNoCC.mkDerivation/,/^  });/s/version = \".*\"/version = \"${LINUX_VERSION}\"/" "$PKG_NIX"
+          sed -i "/^  linux = stdenvNoCC.mkDerivation/,/^  });/s|hash = \".*\"|hash = \"${linux_store}\"|" "$PKG_NIX"
+
+          # Update Darwin version and hash
+          sed -i "/^  darwin = stdenvNoCC.mkDerivation/,/^  });/s/version = \".*\"/version = \"${DARWIN_VERSION}\"/" "$PKG_NIX"
+          sed -i "/^  darwin = stdenvNoCC.mkDerivation/,/^  });/s|hash = \".*\"|hash = \"${darwin_store}\"|" "$PKG_NIX"
+
+          echo "✅ Updated pkgs/wavebox/default.nix"
+          git diff "$PKG_NIX"
+
+      - name: Create pull request 🚀
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          LINUX_VERSION: ${{ steps.check.outputs.linux_version }}
+        run: |
+          BRANCH="wavebox-${LINUX_VERSION}"
+
+          # Check if a PR already exists for this version
+          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
+            echo "⏭️  PR already exists for ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add pkgs/wavebox/default.nix
+          git commit -m "chore(wavebox): update to ${LINUX_VERSION}"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(wavebox): update to ${LINUX_VERSION}" \
+            --body "$(cat <<EOF
+          Automated Wavebox update to version ${LINUX_VERSION}.
+
+          Changelog: https://wavebox.io/blog/releases/
+          EOF
+          )" \
+            --label "dependencies,automated")
+
+          echo "📋 Created PR: ${PR_URL}"
+
+          # Extract PR number and enable auto-merge
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge --auto --squash "$PR_NUMBER"
