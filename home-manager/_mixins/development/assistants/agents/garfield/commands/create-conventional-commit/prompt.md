@@ -26,6 +26,7 @@ Run each command separately (no chaining):
 2. If nothing staged, summarise recent implementation work from conversation
 3. Apply type selection from agent definition
 4. **Output commit message in a code block** - user will copy and commit
+5. **Output a ready-to-run command** immediately after the message block - user copies and runs to commit
 
 ### Body Decision
 
@@ -46,5 +47,14 @@ fix(auth): handle missing user email in profile lookup
 - Return descriptive error instead of crashing
 
 Fixes #234
+```
+
+```fish
+git commit -m "fix(auth): handle missing user email in profile lookup
+
+- Add null check before accessing user.email
+- Return descriptive error instead of crashing
+
+Fixes #234"
 ```
 </example_output>
