@@ -323,13 +323,13 @@ let
 
       linux_deb=$(curl -fsSL "$linux_json" | jq --raw-output '.["urls"]["deb"]')
       linux_hash=$(nix-hash --sri --type sha256 "$(nix-prefetch-url --print-path --unpack "$linux_deb" | tail -n1)")
-      sed -i "/^  linux = stdenv.mkDerivation/,/^  });/s/version = \".*\"/version = \"$linux_version\"/" "$DEFAULT_NIX"
-      sed -i "/^  linux = stdenv.mkDerivation/,/^  });/s|hash = \".*\"|hash = \"$linux_hash\"|" "$DEFAULT_NIX"
+      sed -i "/^  linux = stdenvNoCC.mkDerivation/,/^  });/s/version = \".*\"/version = \"$linux_version\"/" "$DEFAULT_NIX"
+      sed -i "/^  linux = stdenvNoCC.mkDerivation/,/^  });/s|hash = \".*\"|hash = \"$linux_hash\"|" "$DEFAULT_NIX"
 
       darwin_dmg=$(curl -fsSL "$darwin_json" | jq --raw-output '.["url"]')
       darwin_hash=$(nix-hash --sri --type sha256 "$(nix-prefetch-url --print-path --unpack "$darwin_dmg" | tail -n1)")
       sed -i "/^  darwin = stdenvNoCC.mkDerivation/,/^  });/s/version = \".*\"/version = \"$darwin_version\"/" "$DEFAULT_NIX"
-      sed -i "/^  darwin = stdenvNoCC.mkDerivation/,/^  });/s|hash = \".*\"|hash = \"$dawin_version\"|" "$DEFAULT_NIX"
+      sed -i "/^  darwin = stdenvNoCC.mkDerivation/,/^  });/s|hash = \".*\"|hash = \"$darwin_hash\"|" "$DEFAULT_NIX"
     '';
   };
 

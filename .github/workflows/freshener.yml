@@ -123,3 +123,154 @@ jobs:
           # Extract PR number and enable auto-merge
           PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
           gh pr merge --auto --squash "$PR_NUMBER"
+
+  defold:
+    name: Defold 📦
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Check for Defold update 🔍
+        id: check
+        run: |
+          set -euo pipefail
+
+          DEFOLD_NIX="pkgs/defold/default.nix"
+          BOB_NIX="pkgs/defold-bob/default.nix"
+          GDC_NIX="pkgs/defold-gdc/default.nix"
+
+          # Extract current versions and hashes from the Nix files
+          current_defold_version=$(sed -n 's/^  version = "\(.*\)";/\1/p' "$DEFOLD_NIX")
+          current_bob_version=$(sed -n 's/^  version = "\(.*\)";/\1/p' "$BOB_NIX")
+          current_gdc_version=$(sed -n 's/^  version = "\(.*\)";/\1/p' "$GDC_NIX")
+
+          current_defold_hash=$(sed -n 's/.*hash = "\(sha256-[^"]*\)".*/\1/p' "$DEFOLD_NIX")
+          current_bob_hash=$(sed -n 's/.*hash = "\(sha256-[^"]*\)".*/\1/p' "$BOB_NIX")
+          current_gdc_hash=$(sed -n 's/.*hash = "\(sha256-[^"]*\)".*/\1/p' "$GDC_NIX")
+
+          echo "Current defold:     ${current_defold_version} ${current_defold_hash}"
+          echo "Current defold-bob: ${current_bob_version} ${current_bob_hash}"
+          echo "Current defold-gdc: ${current_gdc_version} ${current_gdc_hash}"
+
+          # Fetch the latest stable release from GitHub
+          latest=$(curl -fsSL "https://api.github.com/repos/defold/defold/releases?per_page=20" \
+            | jq -r '[.[] | select(.prerelease == false)][0].tag_name')
+
+          if [[ -z "$latest" || "$latest" == "null" ]]; then
+            echo "❌ Could not determine latest Defold release"
+            exit 1
+          fi
+
+          echo "Latest release:     ${latest}"
+
+          # Fetch hashes for all three artefacts
+          defold_url="https://github.com/defold/defold/releases/download/${latest}/Defold-x86_64-linux.tar.gz"
+          bob_url="https://github.com/defold/defold/releases/download/${latest}/bob.jar"
+          gdc_url="https://github.com/defold/defold/releases/download/${latest}/gdc-linux"
+
+          echo "⬇️  Prefetching Defold artefacts for hash comparison..."
+          latest_defold_hash=$(nix store prefetch-file --json --hash-type sha256 "$defold_url" | jq -r '.hash')
+          latest_bob_hash=$(nix store prefetch-file --json --hash-type sha256 "$bob_url" | jq -r '.hash')
+          latest_gdc_hash=$(nix store prefetch-file --json --hash-type sha256 "$gdc_url" | jq -r '.hash')
+
+          echo "Latest defold hash:     ${latest_defold_hash}"
+          echo "Latest defold-bob hash: ${latest_bob_hash}"
+          echo "Latest defold-gdc hash: ${latest_gdc_hash}"
+
+          # Compare version AND all hashes; Defold sometimes re-pushes artefacts
+          if [[ "$current_defold_version" == "$latest" \
+             && "$current_bob_version" == "$latest" \
+             && "$current_gdc_version" == "$latest" \
+             && "$current_defold_hash" == "$latest_defold_hash" \
+             && "$current_bob_hash" == "$latest_bob_hash" \
+             && "$current_gdc_hash" == "$latest_gdc_hash" ]]; then
+            echo "✅ All Defold packages are up to date"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "version=${latest}" >> "$GITHUB_OUTPUT"
+          echo "defold_hash=${latest_defold_hash}" >> "$GITHUB_OUTPUT"
+          echo "bob_hash=${latest_bob_hash}" >> "$GITHUB_OUTPUT"
+          echo "gdc_hash=${latest_gdc_hash}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Defold packages 📝
+        if: steps.check.outputs.updated == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+          DEFOLD_HASH: ${{ steps.check.outputs.defold_hash }}
+          BOB_HASH: ${{ steps.check.outputs.bob_hash }}
+          GDC_HASH: ${{ steps.check.outputs.gdc_hash }}
+        run: |
+          set -euo pipefail
+
+          DEFOLD_NIX="pkgs/defold/default.nix"
+          BOB_NIX="pkgs/defold-bob/default.nix"
+          GDC_NIX="pkgs/defold-gdc/default.nix"
+
+          # Update defold
+          sed -i 's/^  version = ".*"/  version = "'"${VERSION}"'"/' "$DEFOLD_NIX"
+          sed -i 's|hash = "sha256-[^"]*"|hash = "'"${DEFOLD_HASH}"'"|' "$DEFOLD_NIX"
+          echo "✅ Updated ${DEFOLD_NIX}"
+
+          # Update defold-bob
+          sed -i 's/^  version = ".*"/  version = "'"${VERSION}"'"/' "$BOB_NIX"
+          sed -i 's|hash = "sha256-[^"]*"|hash = "'"${BOB_HASH}"'"|' "$BOB_NIX"
+          echo "✅ Updated ${BOB_NIX}"
+
+          # Update defold-gdc
+          sed -i 's/^  version = ".*"/  version = "'"${VERSION}"'"/' "$GDC_NIX"
+          sed -i 's|hash = "sha256-[^"]*"|hash = "'"${GDC_HASH}"'"|' "$GDC_NIX"
+          echo "✅ Updated ${GDC_NIX}"
+
+          git diff "$DEFOLD_NIX" "$BOB_NIX" "$GDC_NIX"
+
+      - name: Create pull request 🚀
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          # Include short hash in branch name to handle artefact re-pushes
+          SHORT_HASH=$(echo "${{ steps.check.outputs.defold_hash }}" | cut -c8-15)
+          BRANCH="defold-${VERSION}-${SHORT_HASH}"
+
+          # Check if a PR already exists for this exact version+hash
+          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
+            echo "⏭️  PR already exists for ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add pkgs/defold/default.nix pkgs/defold-bob/default.nix pkgs/defold-gdc/default.nix
+          git commit -m "chore(defold): update to ${VERSION}"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(defold): update to ${VERSION}" \
+            --body "$(cat <<EOF
+          Automated Defold update to version ${VERSION}.
+
+          Updates all three packages: defold, defold-bob, and defold-gdc.
+
+          Release: https://github.com/defold/defold/releases/tag/${VERSION}
+          EOF
+          )" \
+            --label "dependencies,automated")
+
+          echo "📋 Created PR: ${PR_URL}"
+
+          # Extract PR number and enable auto-merge
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge --auto --squash "$PR_NUMBER"
