@@ -1,0 +1,8 @@
+# W07 (eta_reduction) is disabled because statix incorrectly eta-reduces
+# multi-argument lambdas passed to lib.filterAttrs. For example, it reduces:
+#   (_name: entry: predicate entry) -> (_name: predicate)
+# which changes the arity and returns a function instead of a boolean.
+# See lib/flake-builders.nix line 342 (generateConfigs).
+disabled = [
+  "eta_reduction",
+]
