@@ -177,6 +177,33 @@ in
     xserver.xkb.layout = xkbLayout;
   };
 
+  # Override the upstream kmsconvt@ template service to fix blank VT1 on boot.
+  # The NixOS kmscon module only registers kmsconvt@ as an autovt@ alias, which
+  # triggers reactively when switching VTs but never starts proactively on VT1.
+  # This adds explicit activation via getty.target, proper boot ordering, and a
+  # fallback to the standard getty if kmscon fails.
+  # Reference: https://github.com/noughtylinux/config/blob/main/system-manager/kmscon.nix
+  systemd.services."kmsconvt@" = {
+    after = [
+      "systemd-user-sessions.service"
+      "plymouth-quit-wait.service"
+      "getty-pre.target"
+      "dbus.service"
+      "systemd-localed.service"
+    ];
+    before = [ "getty.target" ];
+    conflicts = [ "getty@%i.service" ];
+    onFailure = [ "getty@%i.service" ];
+    unitConfig = {
+      IgnoreOnIsolate = true;
+      ConditionPathExists = "/dev/tty0";
+    };
+    serviceConfig = {
+      Type = "idle";
+    };
+    wantedBy = [ "getty.target" ];
+  };
+
   # Prevent "Failed to open /etc/geoclue/conf.d/:" errors
   systemd.tmpfiles.rules = [
     "d /etc/geoclue/conf.d 0755 root root"
