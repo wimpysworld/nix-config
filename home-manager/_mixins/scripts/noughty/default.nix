@@ -36,6 +36,9 @@ let
     NOUGHTY_USER_NAME="${cfg.user.name}"
     NOUGHTY_USER_TAGS="${builtins.concatStringsSep " " cfg.user.tags}"
     NOUGHTY_NETWORK_TAILNET="${cfg.network.tailNet}"
+    NOUGHTY_HOST_KEYBOARD_LAYOUT="${cfg.host.keyboard.layout}"
+    NOUGHTY_HOST_KEYBOARD_VARIANT="${cfg.host.keyboard.variant}"
+    NOUGHTY_HOST_KEYBOARD_LOCALE="${cfg.host.keyboard.locale}"
   '';
 
   shellApplication = pkgs.writeShellApplication {
