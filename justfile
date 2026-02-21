@@ -23,7 +23,7 @@ benchmark hostname=current_hostname:
             config_name="Darwin ({{ hostname }})"
             ;;
         *)
-            echo "❌ Unsupported OS: $(uname -s)"
+            echo " Unsupported OS: $(uname -s)"
             exit 1
             ;;
     esac
@@ -65,7 +65,7 @@ benchmark hostname=current_hostname:
         "NIX_CONFIG=\$(cat $temp_dir/nix-determinate.conf) $nix_cmd"
 
     echo ""
-    echo "📊 Results Summary:"
+    echo " Results Summary:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
     # Extract and display key metrics from JSON results
@@ -78,10 +78,10 @@ benchmark hostname=current_hostname:
         percent_faster=$(echo "scale=1; ($standard_mean - $determinate_mean) / $standard_mean * 100" | bc)
 
         printf "❄️ Standard Nix:    %.3f seconds\n" "$standard_mean"
-        printf "🚀 Determinate Nix: %.3f seconds\n" "$determinate_mean"
-        printf "📈 Speedup:         %.2fx faster (%.1f%% improvement)\n" "$speedup" "$percent_faster"
+        printf " Determinate Nix: %.3f seconds\n" "$determinate_mean"
+        printf " Speedup:         %.2fx faster (%.1f%% improvement)\n" "$speedup" "$percent_faster"
     else
-        echo "⚠️  Could not parse results (jq not available or results file missing)"
+        echo "  Could not parse results (jq not available or results file missing)"
     fi
 
 # Prefetch proprietary packages into the Nix store
@@ -92,16 +92,16 @@ prefetch:
     SECRETS_FILE="secrets/secrets.yaml"
 
     if ! command -v sops &>/dev/null; then
-        echo "Prefetch ⚠️  sops not found; skipping proprietary package prefetch"
+        echo "Prefetch   sops not found; skipping proprietary package prefetch"
         exit 0
     fi
 
     if [[ ! -f "${SECRETS_FILE}" ]]; then
-        echo "Prefetch ⚠️  ${SECRETS_FILE} not found; skipping proprietary package prefetch"
+        echo "Prefetch   ${SECRETS_FILE} not found; skipping proprietary package prefetch"
         exit 0
     fi
 
-    echo "Prefetch 📦 Proprietary packages"
+    echo "Prefetch 󰏓 Proprietary packages"
 
     # Each entry: "secret_key filename expected_nix32 store_path"
     PACKAGES=(
@@ -114,26 +114,26 @@ prefetch:
 
         # Skip if already in the Nix store
         if nix-store --check-validity "${store_path}" 2>/dev/null; then
-            echo "  ✅ ${filename} (already in store)"
+            echo "  󰸞 ${filename} (already in store)"
             continue
         fi
 
         # Decrypt the URL from sops
         url=$(sops decrypt --extract "[\"${secret_key}\"]" "${SECRETS_FILE}" 2>/dev/null) || {
-            echo "  ⚠️  ${filename}: could not decrypt ${secret_key}; skipping"
+            echo "    ${filename}: could not decrypt ${secret_key}; skipping"
             continue
         }
 
         echo "  ⬇️  ${filename}"
         actual_hash=$(nix-prefetch-url --name "${filename}" "${url}" 2>/dev/null) || {
-            echo "  ❌ ${filename}: download failed"
+            echo "   ${filename}: download failed"
             continue
         }
 
         if [[ "${actual_hash}" == "${expected_hash}" ]]; then
-            echo "  ✅ ${filename} (fetched and verified)"
+            echo "  󰸞 ${filename} (fetched and verified)"
         else
-            echo "  ⚠️  ${filename}: hash mismatch (expected ${expected_hash}, got ${actual_hash})"
+            echo "    ${filename}: hash mismatch (expected ${expected_hash}, got ${actual_hash})"
         fi
     done
 
@@ -164,7 +164,7 @@ eval-configs:
     echo "Configurations 󱄅 Evaluation: all systems"
 
     # Evaluate NixOS configurations
-    echo "  NixOS configurations:"
+    echo "󱄅 NixOS configurations:"
     if [[ "$(grep ^ID= /etc/os-release | cut -d'=' -f2)" == "nixos" ]]; then
         for config in $(nix eval .#nixosConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
             echo "    Evaluating nixosConfigurations.${config}..."
@@ -178,7 +178,7 @@ eval-configs:
     fi
 
     # Evaluate Darwin configurations (only on macOS or with --impure for cross-evaluation)
-    echo "  Darwin configurations:"
+    echo " Darwin configurations:"
     if [[ "$(uname -s)" == "Darwin" ]]; then
         for config in $(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
             echo "    Evaluating darwinConfigurations.${config}..."
@@ -192,7 +192,7 @@ eval-configs:
     fi
 
     # Evaluate Home Manager configurations
-    echo "  Home Manager configurations:"
+    echo " Home Manager configurations:"
 
     # Get lists of available system configurations for filtering
     nixos_configs=$(nix eval .#nixosConfigurations --apply builtins.attrNames --json | jq -r '.[]' | tr '\n' ' ')
@@ -225,7 +225,7 @@ eval-configs:
         fi
     done
 
-    echo "🗹 All configurations evaluated successfully"
+    echo "󰸞 All configurations evaluated successfully"
 
 # Switch OS and Home configurations
 switch:
@@ -250,7 +250,7 @@ apply-home username=current_username hostname=current_hostname:
 
     # Check availability
     if ! RESOLVED=$(fh resolve "${FLAKEREF}#homeConfigurations.{{ username }}@{{ hostname }}" 2>/dev/null); then
-      echo "❌ ${LABEL} configuration for {{ username }}@{{ hostname }} not found on FlakeHub"
+      echo " ${LABEL} configuration for {{ username }}@{{ hostname }} not found on FlakeHub"
       echo "   Has the flake been published with 'include-output-paths: true'?"
       exit 1
     fi
@@ -281,7 +281,7 @@ apply-host hostname=current_hostname:
 
     # Check availability
     if ! RESOLVED=$(fh resolve "${FLAKEREF}#${CONFIG_PATH}.{{ hostname }}" 2>/dev/null); then
-      echo "❌ ${LABEL} configuration for {{ hostname }} not found on FlakeHub"
+      echo " ${LABEL} configuration for {{ hostname }} not found on FlakeHub"
       echo "   Has the flake been published with 'include-output-paths: true'?"
       exit 1
     fi
