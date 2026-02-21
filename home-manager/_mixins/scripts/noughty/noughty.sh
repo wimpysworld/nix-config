@@ -342,6 +342,17 @@ cmd_facts() {
 		fi
 	fi
 
+	# Keyboard (only if layout is set)
+	if [ -n "$NOUGHTY_HOST_KEYBOARD_LAYOUT" ]; then
+		local keyboard_info="$NOUGHTY_HOST_KEYBOARD_LAYOUT"
+		if [ -n "$NOUGHTY_HOST_KEYBOARD_VARIANT" ]; then
+			keyboard_info+=" ($NOUGHTY_HOST_KEYBOARD_VARIANT)"
+		fi
+		echo ""
+		print_field "Keyboard" "$keyboard_info"
+		print_field "Locale" "$NOUGHTY_HOST_KEYBOARD_LOCALE"
+	fi
+
 	# Active flags (compact line, only true values)
 	local flags=""
 	[ "$NOUGHTY_HOST_IS_WORKSTATION" = "true" ] && flags+="workstation, "

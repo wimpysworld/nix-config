@@ -186,10 +186,10 @@ Example:
 
 ```nix
 # lib/registry-systems.nix (vader entry)
-noughty.host.displays = [
-  { output = "DP-1"; width = 2560; height = 2880; primary = true; workspaces = [ 1 2 7 8 9 ]; }
-  { output = "DP-2"; width = 2560; height = 2880; workspaces = [ 3 4 5 6 ]; }
-  { output = "DP-3"; width = 1920; height = 1080; workspaces = [ 10 ]; }
+displays = [
+  { output = "DP-1"; width = 2560; height = 2880; position = { x = 0; y = 0; }; primary = true; workspaces = [ 1 2 7 8 9 ]; }
+  { output = "DP-2"; width = 2560; height = 2880; position = { x = 2560; y = 0; }; workspaces = [ 3 4 5 6 ]; }
+  { output = "DP-3"; width = 1920; height = 1080; position = { x = 320; y = 2880; }; workspaces = [ 10 ]; }
 ];
 ```
 
@@ -212,6 +212,70 @@ All derived from `noughty.host.displays`. Primary is the first display where `pr
 | `display.primaryIsHighRes` | `bool` | Pixel count >= ~QHD+ (3,686,400 pixels). |
 | `display.isMultiMonitor` | `bool` | `length displays > 1`. |
 | `display.outputs` | `listOf str` | All output connector names. |
+
+### `noughty.host.keyboard` - Keyboard layout and locale
+
+Keyboard layout is set once in the registry and derived into the formats each subsystem requires. Defaults to `"gb"` (United Kingdom) so the vast majority of hosts need not set anything.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `keyboard.layout` | `str` | `"gb"` | XKB keyboard layout code. Used by `services.xserver.xkb.layout`, Hyprland `kb_layout`, Wayfire `xkb_layout`, and kmscon. |
+| `keyboard.variant` | `str` | `""` | XKB variant (e.g. `"dvorak"`, `"colemak"`). Empty string means the default variant. |
+| `keyboard.consoleKeymap` | `str` | *(read-only, derived)* | Linux console keymap name, derived from `layout`. Used by `console.keyMap`. `"gb"` maps to `"uk"`; most other codes are identical in both namespaces. |
+| `keyboard.locale` | `str` | *(derived, overridable)* | POSIX locale string derived from `layout` (e.g. `"gb"` -> `"en_GB.UTF-8"`). Used by `i18n.defaultLocale` and all `LC_*` settings. Override explicitly when locale and layout diverge. |
+
+#### Format divergence: XKB vs console keymap
+
+The Linux virtual console and the XKB subsystem use different naming conventions for the same physical layout. The most common divergence is the British layout:
+
+| Subsystem | Option | Value |
+|-----------|--------|-------|
+| XKB (xserver, Hyprland, Wayfire, kmscon) | `keyboard.layout` | `"gb"` |
+| Linux console | `keyboard.consoleKeymap` | `"uk"` |
+| POSIX locale | `keyboard.locale` | `"en_GB.UTF-8"` |
+| macOS NSGlobalDomain | derived | `"en_GB"` / `"en-GB"` |
+
+The `consoleKeymap` option is read-only and derives automatically. Modules read `host.keyboard.consoleKeymap` for `console.keyMap` and `host.keyboard.layout` for everything XKB-based.
+
+#### Registry usage
+
+Since `"gb"` is the default, no registry entry is needed for UK hosts. Only non-UK hosts set `keyboard`:
+
+```nix
+# lib/registry-systems.nix - a US host (minimal)
+zuul = {
+  kind = "computer";
+  platform = "x86_64-linux";
+  keyboard.layout = "us";
+  # consoleKeymap auto-derives to "us", locale to "en_US.UTF-8"
+};
+
+# A host where locale and layout diverge (Swiss German)
+helvetia = {
+  kind = "computer";
+  platform = "x86_64-linux";
+  keyboard = {
+    layout = "ch";
+    locale = "de_CH.UTF-8";  # override - cannot auto-derive from "ch" alone
+  };
+};
+```
+
+#### Usage in modules
+
+```nix
+{ config, ... }:
+let
+  inherit (config.noughty) host;
+in
+{
+  console.keyMap                = host.keyboard.consoleKeymap;  # "uk"
+  services.xserver.xkb.layout  = host.keyboard.layout;         # "gb"
+  i18n.defaultLocale            = host.keyboard.locale;         # "en_GB.UTF-8"
+
+  wayland.windowManager.hyprland.settings.input.kb_layout = host.keyboard.layout;
+}
+```
 
 ### `noughty.user` - User identity
 
@@ -499,6 +563,7 @@ Only four values remain in `specialArgs`/`extraSpecialArgs`, consistent across a
     ];
     # desktop defaults to "hyprland" for computer+linux
     # username defaults to "martin"
+    # keyboard defaults to "gb" (UK); set keyboard.layout = "us" for non-UK hosts
   };
 }
 ```
@@ -589,3 +654,4 @@ The function has access to `hostName`, `userName`, `hostTags`, and `userTags` vi
 | `is.laptop` from `formFactor` | Not negative hostname list | Adding a new laptop just requires `formFactor = "laptop"`. No other files to update. |
 | `hasCuda` from `compute.acceleration` | Not vendor presence | A host with NVIDIA for encoding but no compute block correctly reports `hasCuda = false`. |
 | `hostname`/`username` eliminated from specialArgs | Read from `config.noughty.*` | All module bodies use `config.noughty.host.name` and `config.noughty.user.name`. |
+| `keyboard` uses structured options | Not hardcoded strings in each module | Single source of truth for layout, with derived `consoleKeymap` and `locale`. `"gb"` default means UK hosts need zero configuration. |
