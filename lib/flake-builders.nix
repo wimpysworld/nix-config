@@ -92,6 +92,14 @@ rec {
       # Hyprland-specific helper that removes # from hex colors
       getHyprlandColor = colorName: builtins.substring 1 (-1) palette.${colorName}.hex;
 
+      # CSS rgba() helper for use in GTK CSS, avizo, wlogout, etc.
+      mkRgba =
+        colorName: alpha:
+        let
+          rgb = palette.${colorName}.rgb;
+        in
+        "rgba(${toString rgb.r}, ${toString rgb.g}, ${toString rgb.b}, ${alpha})";
+
       # Determine if this is a dark theme
       isDark = flavor != "latte";
       isDarkAsIntString = if isDark then "1" else "0";
@@ -126,6 +134,7 @@ rec {
         getRGB
         getHSL
         getHyprlandColor
+        mkRgba
         isDark
         isDarkAsIntString
         themeShade

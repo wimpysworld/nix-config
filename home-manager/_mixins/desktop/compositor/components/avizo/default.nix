@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   lib,
   pkgs,
@@ -6,6 +7,7 @@
 }:
 let
   host = config.noughty.host;
+  palette = catppuccinPalette;
 in
 lib.mkIf host.is.linux {
   # avizo is an osd notification daemon for audio and backlight
@@ -15,11 +17,10 @@ lib.mkIf host.is.linux {
       enable = true;
       settings = {
         default = {
-          # Catppuccin Mocha theme
-          background = "rgba(30, 30, 46, 0.8)";
-          bar-bg-color = "rgba(88, 91, 112, 0.9)";
-          bar-fg-color = "rgba(137, 180, 250, 0.9)";
-          border-color = "rgba(137, 180, 250, 1)";
+          background = palette.mkRgba "base" "0.8";
+          bar-bg-color = palette.mkRgba "surface2" "0.9";
+          bar-fg-color = palette.mkRgba "blue" "0.9";
+          border-color = palette.mkRgba "blue" "1";
           border-width = 1;
           block-count = 20;
           block-height = 16;
