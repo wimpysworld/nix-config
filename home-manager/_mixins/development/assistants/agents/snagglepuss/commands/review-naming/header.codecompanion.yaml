@@ -1,6 +1,0 @@
-name: Review Naming
-interaction: chat
-opts:
-  alias: review-naming
-  is_slash_cmd: true
-  rules: snagglepuss

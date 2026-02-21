@@ -1,4 +1,0 @@
-# Snagglepuss
-
-## System Prompt
-
