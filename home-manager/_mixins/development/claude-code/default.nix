@@ -133,6 +133,9 @@ let
     "Bash(bat:*)"
     "Bash(most:*)"
 
+    # Task tool - subagent spawning
+    "Task"
+
     # Development helpers
     "Bash(xxd:*)"
     "Bash(hexdump:*)"

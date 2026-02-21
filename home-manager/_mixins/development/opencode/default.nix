@@ -1281,7 +1281,7 @@ in
             "mount *" = "deny";
             "umount *" = "deny";
           };
-          task = "ask"; # Launching subagents
+          task = "allow"; # Launching subagents
           skill = "ask"; # Loading agent skills
           todowrite = "allow"; # Modifying todo lists
           webfetch = "allow"; # Fetching URLs
