@@ -177,11 +177,9 @@ in
     xserver.xkb.layout = xkbLayout;
   };
 
-  # Override the upstream kmsconvt@ template service to fix blank VT1 on boot.
-  # The NixOS kmscon module only registers kmsconvt@ as an autovt@ alias, which
-  # triggers reactively when switching VTs but never starts proactively on VT1.
-  # This adds explicit activation via getty.target, proper boot ordering, and a
-  # fallback to the standard getty if kmscon fails.
+  # Override the upstream kmsconvt@ template to add boot ordering and a getty
+  # fallback. This drop-in applies to all instances (including those spawned
+  # reactively by logind via the autovt@ alias).
   # Reference: https://github.com/noughtylinux/config/blob/main/system-manager/kmscon.nix
   systemd.services."kmsconvt@" = {
     after = [
@@ -201,8 +199,15 @@ in
     serviceConfig = {
       Type = "idle";
     };
-    wantedBy = [ "getty.target" ];
   };
+
+  # Explicitly start kmscon on VT1 at boot. NixOS's wantedBy creates raw
+  # symlinks without consulting DefaultInstance, so wantedBy on a bare template
+  # (kmsconvt@) produces getty.target.wants/kmsconvt@.service which systemd
+  # ignores. An explicit instance ensures the correct symlink is created:
+  # getty.target.wants/kmsconvt@tty1.service -> ../kmsconvt@.service
+  # Other VTs are handled reactively by logind via the autovt@ alias.
+  systemd.services."kmsconvt@tty1".wantedBy = [ "getty.target" ];
 
   # Prevent "Failed to open /etc/geoclue/conf.d/:" errors
   systemd.tmpfiles.rules = [
