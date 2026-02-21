@@ -29,9 +29,9 @@ lib.mkIf (noughtyLib.isHost [ "malak" ]) {
   services = {
     # https://docs.ntfy.sh/config/#__tabbed_11_4
     # https://blog.alexsguardian.net/posts/2023/09/12/selfhosting-ntfy/
-    caddy = {
+    caddy = lib.mkIf config.services.ntfy-sh.enable {
       virtualHosts."ntfy.wimpys.world" = {
-        extraConfig = lib.mkIf config.services.ntfy-sh.enable ''
+        extraConfig = ''
           reverse_proxy localhost:2586
           @httpget {
             protocol http
