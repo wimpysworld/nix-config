@@ -14,10 +14,8 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
       # Customised Catppuccin Mocha Blue theme for Joplin
       # - https://github.com/catppuccin/joplin
       # - https://joplinapp.org/help/apps/custom_css
-      "${config.home.homeDirectory}/.config/joplin-desktop/userchrome.css".text =
-        builtins.readFile ./userchrome.css;
-      "${config.home.homeDirectory}/.config/joplin-desktop/userstyle.css".text =
-        builtins.readFile ./userstyle.css;
+      "${config.xdg.configHome}/joplin-desktop/userchrome.css".text = builtins.readFile ./userchrome.css;
+      "${config.xdg.configHome}/joplin-desktop/userstyle.css".text = builtins.readFile ./userstyle.css;
     };
     packages = lib.optionals host.is.linux [ pkgs.heynote ];
   };

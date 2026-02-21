@@ -205,7 +205,7 @@ in
   # https://dl.thalheim.io/
   sops = {
     age = {
-      keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
+      keyFile = "${config.xdg.configHome}/sops/age/keys.txt";
       generateKey = false;
     };
     defaultSopsFile = ../secrets/secrets.yaml;
@@ -229,7 +229,7 @@ in
       # Create age keys directory for SOPS
       tmpfiles = {
         rules = [
-          "d ${config.home.homeDirectory}/.config/sops/age 0755 ${username} users - -"
+          "d ${config.xdg.configHome}/sops/age 0755 ${username} users - -"
         ];
       };
     };
@@ -252,7 +252,7 @@ in
       enable = host.is.linux && !(noughtyLib.hostHasTag "lima");
       createDirectories = lib.mkDefault true;
       extraConfig = {
-        XDG_SCREENSHOTS_DIR = "${config.home.homeDirectory}/Pictures/Screenshots";
+        XDG_SCREENSHOTS_DIR = "${config.xdg.userDirs.pictures}/Screenshots";
       };
     };
   };

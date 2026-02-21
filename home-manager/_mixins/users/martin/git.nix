@@ -48,7 +48,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   sops = {
     secrets = {
       cg-repos = {
-        path = "${config.home.homeDirectory}/.config/cg-repos";
+        path = "${config.xdg.configHome}/cg-repos";
         sopsFile = ../../../../secrets/cg-repos.yaml;
         mode = "0644";
       };

@@ -170,7 +170,7 @@ in
   sops = {
     secrets = {
       act-env = {
-        path = "${config.home.homeDirectory}/.config/act/secrets";
+        path = "${config.xdg.configHome}/act/secrets";
         sopsFile = ../../../../secrets/act.yaml;
         mode = "0660";
       };

@@ -258,10 +258,10 @@ in
             # Cloud credentials
             "${config.home.homeDirectory}/.aws/**" = "deny";
             "${config.home.homeDirectory}/.azure/**" = "deny";
-            "${config.home.homeDirectory}/.config/gcloud/**" = "deny";
+            "${config.xdg.configHome}/gcloud/**" = "deny";
 
             # VCS credentials
-            "${config.home.homeDirectory}/.config/gh/hosts.yml" = "deny";
+            "${config.xdg.configHome}/gh/hosts.yml" = "deny";
             "${config.home.homeDirectory}/.git-credentials" = "deny";
             "${config.home.homeDirectory}/.netrc" = "deny";
 
@@ -273,7 +273,7 @@ in
             "${config.home.homeDirectory}/.bash_history" = "deny";
             "${config.home.homeDirectory}/.zsh_history" = "deny";
             "${config.home.homeDirectory}/.fish_history" = "deny";
-            "${config.home.homeDirectory}/.local/share/fish/fish_history" = "deny";
+            "${config.xdg.dataHome}/fish/fish_history" = "deny";
           };
           glob = "allow"; # Finding files by pattern
           grep = "allow"; # Searching file contents
@@ -1305,11 +1305,11 @@ in
             "/nix/store/*" = "allow";
 
             # ALLOW: User cache and data directories (fully qualified paths)
-            "${config.home.homeDirectory}/.cache/*" = "allow";
-            "${config.home.homeDirectory}/.local/share/*" = "allow";
+            "${config.xdg.cacheHome}/*" = "allow";
+            "${config.xdg.dataHome}/*" = "allow";
 
             # ALLOW: Non-sensitive config directories (fully qualified paths)
-            "${config.home.homeDirectory}/.config/*" = "allow"; # General config (but SSH/GPG denied by read rules)
+            "${config.xdg.configHome}/*" = "allow"; # General config (but SSH/GPG denied by read rules)
 
             # ══════════════════════════════════════════════════════════════
             # CATCHALL: Prompt for other external directories
@@ -1336,14 +1336,14 @@ in
             "${config.home.homeDirectory}/.aws/*" = "deny";
             "${config.home.homeDirectory}/.azure" = "deny";
             "${config.home.homeDirectory}/.azure/*" = "deny";
-            "${config.home.homeDirectory}/.config/gcloud" = "deny";
-            "${config.home.homeDirectory}/.config/gcloud/*" = "deny";
+            "${config.xdg.configHome}/gcloud" = "deny";
+            "${config.xdg.configHome}/gcloud/*" = "deny";
             "${config.home.homeDirectory}/.docker" = "deny";
             "${config.home.homeDirectory}/.docker/*" = "deny";
             "${config.home.homeDirectory}/.kube" = "deny";
             "${config.home.homeDirectory}/.kube/*" = "deny";
-            "${config.home.homeDirectory}/.config/gh" = "deny";
-            "${config.home.homeDirectory}/.config/gh/*" = "deny";
+            "${config.xdg.configHome}/gh" = "deny";
+            "${config.xdg.configHome}/gh/*" = "deny";
             "${config.home.homeDirectory}/.git-credentials" = "deny";
             "${config.home.homeDirectory}/.netrc" = "deny";
           };

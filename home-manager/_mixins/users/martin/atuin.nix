@@ -28,7 +28,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
 
   sops = {
     secrets = {
-      atuin_key.path = "${config.home.homeDirectory}/.local/share/atuin/key";
+      atuin_key.path = "${config.xdg.dataHome}/atuin/key";
     };
   };
 }

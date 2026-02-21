@@ -428,6 +428,6 @@ in
 
   systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
     "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
-    "L+ ${config.home.homeDirectory}/.local/share/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
+    "L+ ${config.xdg.dataHome}/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
   ];
 }

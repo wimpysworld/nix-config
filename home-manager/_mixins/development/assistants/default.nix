@@ -13,7 +13,7 @@ let
     if host.is.linux then
       "${config.xdg.configHome}/Code/User"
     else if host.is.darwin then
-      "/Users/${username}/Library/Application Support/Code/User"
+      "${config.home.homeDirectory}/Library/Application Support/Code/User"
     else
       throw "Unsupported platform";
 
