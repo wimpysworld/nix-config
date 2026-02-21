@@ -78,7 +78,7 @@ jobs:
           # Fetch and hash the Darwin dmg
           darwin_url="https://download.wavebox.app/stable/macuniversal/Install%20Wavebox%20${DARWIN_VERSION}.dmg"
           echo "⬇️  Fetching Darwin dmg: ${darwin_url}"
-          darwin_store=$(nix store prefetch-file --json --hash-type sha256 "$darwin_url" | jq -r '.hash')
+          darwin_store=$(nix store prefetch-file --json --hash-type sha256 --name wavebox.dmg "$darwin_url" | jq -r '.hash')
           echo "🔑 Darwin hash: ${darwin_store}"
 
           # Update Linux version and hash
@@ -184,19 +184,22 @@ jobs:
           echo "⬇️  Prefetching Defold artefacts for hash comparison..."
           latest_defold_hash=$(nix store prefetch-file --json --hash-type sha256 "$defold_url" | jq -r '.hash')
           latest_bob_hash=$(nix store prefetch-file --json --hash-type sha256 "$bob_url" | jq -r '.hash')
-          latest_gdc_hash=$(nix store prefetch-file --json --hash-type sha256 "$gdc_url" | jq -r '.hash')
+          latest_gdc_hash=$(nix store prefetch-file --json --hash-type sha256 "$gdc_url" 2>/dev/null | jq -r '.hash // empty') || latest_gdc_hash=""
 
           echo "Latest defold hash:     ${latest_defold_hash}"
           echo "Latest defold-bob hash: ${latest_bob_hash}"
           echo "Latest defold-gdc hash: ${latest_gdc_hash}"
 
           # Compare version AND all hashes; Defold sometimes re-pushes artefacts
+          gdc_matches=true
+          if [[ -n "$latest_gdc_hash" ]]; then
+            [[ "$current_gdc_version" == "$latest" && "$current_gdc_hash" == "$latest_gdc_hash" ]] || gdc_matches=false
+          fi
           if [[ "$current_defold_version" == "$latest" \
              && "$current_bob_version" == "$latest" \
-             && "$current_gdc_version" == "$latest" \
              && "$current_defold_hash" == "$latest_defold_hash" \
              && "$current_bob_hash" == "$latest_bob_hash" \
-             && "$current_gdc_hash" == "$latest_gdc_hash" ]]; then
+             && "$gdc_matches" == "true" ]]; then
             echo "✅ All Defold packages are up to date"
             echo "updated=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -232,12 +235,19 @@ jobs:
           sed -i 's|hash = "sha256-[^"]*"|hash = "'"${BOB_HASH}"'"|' "$BOB_NIX"
           echo "✅ Updated ${BOB_NIX}"
 
-          # Update defold-gdc
-          sed -i 's/^  version = ".*"/  version = "'"${VERSION}"'"/' "$GDC_NIX"
-          sed -i 's|hash = "sha256-[^"]*"|hash = "'"${GDC_HASH}"'"|' "$GDC_NIX"
-          echo "✅ Updated ${GDC_NIX}"
+          # Update defold-gdc (only if artefact is still published)
+          if [[ -n "$GDC_HASH" ]]; then
+            sed -i 's/^  version = ".*"/  version = "'"${VERSION}"'"/' "$GDC_NIX"
+            sed -i 's|hash = "sha256-[^"]*"|hash = "'"${GDC_HASH}"'"|' "$GDC_NIX"
+            echo "✅ Updated ${GDC_NIX}"
+          else
+            echo "⏭️  Skipping ${GDC_NIX} (gdc-linux artefact not available)"
+          fi
 
-          git diff "$DEFOLD_NIX" "$BOB_NIX" "$GDC_NIX"
+          git diff "$DEFOLD_NIX" "$BOB_NIX"
+          if [[ -n "$GDC_HASH" ]]; then
+            git diff "$GDC_NIX"
+          fi
 
       - name: Create pull request 🚀
         if: steps.check.outputs.updated == 'true'
@@ -258,7 +268,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add pkgs/defold/default.nix pkgs/defold-bob/default.nix pkgs/defold-gdc/default.nix
+          git add pkgs/defold/default.nix pkgs/defold-bob/default.nix
+          if [[ -n "${{ steps.check.outputs.gdc_hash }}" ]]; then
+            git add pkgs/defold-gdc/default.nix
+          fi
           git commit -m "chore(defold): update to ${VERSION}"
           git push -u origin "$BRANCH"
 
