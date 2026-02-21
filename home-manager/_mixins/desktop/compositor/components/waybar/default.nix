@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   lib,
   noughtyLib,
@@ -7,6 +8,7 @@
 }:
 let
   host = config.noughty.host;
+  palette = catppuccinPalette;
   display = host.display;
   wlogoutMargins =
     if display.primaryIsPortrait then
@@ -373,7 +375,7 @@ lib.mkIf host.is.linux {
           idle_inhibitor = {
             format = "<big>{icon}</big>";
             format-icons = {
-              activated = "<span foreground='#f5c2e7'>󰅶</span>";
+              activated = "<span foreground='${palette.getColor "pink"}'>󰅶</span>";
               deactivated = "󰾪";
             };
             start-activated = false;
@@ -391,11 +393,11 @@ lib.mkIf host.is.linux {
               on-scroll = 1;
               weeks-pos = "right";
               format = {
-                days = "<span color='#cdd6f4'><b>{}</b></span>";
-                months = "<span color='#89b4fa'><b>{}</b></span>";
-                weeks = "<span color='#74c7ec'><b>󱦰{}</b></span>";
-                weekdays = "<span color='#fab387'><b>{}</b></span>";
-                today = "<span color='#f38ba8'><b>{}</b></span>";
+                days = "<span color='${palette.getColor "text"}'><b>{}</b></span>";
+                months = "<span color='${palette.getColor "blue"}'><b>{}</b></span>";
+                weeks = "<span color='${palette.getColor "sapphire"}'><b>󱦰{}</b></span>";
+                weekdays = "<span color='${palette.getColor "peach"}'><b>{}</b></span>";
+                today = "<span color='${palette.getColor "red"}'><b>{}</b></span>";
               };
             };
             format = "<big>{:%H:%M}</big>";
@@ -408,11 +410,11 @@ lib.mkIf host.is.linux {
             format = "<big>{icon}</big>";
             format-icons = {
               none = "";
-              notification = "<span foreground='#f5c2e7'>󱅫</span>";
+              notification = "<span foreground='${palette.getColor "pink"}'>󱅫</span>";
               dnd-none = "󰂠";
               dnd-notification = "󱅫";
               inhibited-none = "";
-              inhibited-notification = "<span foreground='#f5c2e7'>󰅸</span>";
+              inhibited-notification = "<span foreground='${palette.getColor "pink"}'>󰅸</span>";
               dnd-inhibited-none = "󰪓";
               dnd-inhibited-notification = "󰅸";
             };

@@ -1,6 +1,12 @@
-{ config, lib, ... }:
+{
+  catppuccinPalette,
+  config,
+  lib,
+  ...
+}:
 let
   host = config.noughty.host;
+  palette = catppuccinPalette;
   pngFiles = builtins.filter (file: builtins.match ".*\\.png" file != null) (
     builtins.attrNames (builtins.readDir ./.)
   );
@@ -60,8 +66,8 @@ lib.mkIf host.is.linux {
         window {
             font-family: FiraCode Nerd Font Mono, monospace;
             font-size: 18pt;
-            color: #cdd6f4; /* text */
-            background-color: rgba(30, 30, 46, 0.5);
+            color: ${palette.getColor "text"};
+            background-color: ${palette.mkRgba "base" "0.5"};
         }
 
         button {
@@ -69,16 +75,16 @@ lib.mkIf host.is.linux {
             background-position: center;
             background-size: 50%;
             border: none;
-            background-color: rgba(30, 30, 46, 0);
+            background-color: ${palette.mkRgba "base" "0"};
             margin: 100px 5px 100px 5px;
             transition: box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
         }
         button:hover {
-            background-color: rgba(49, 50, 68, 0.1);
+            background-color: ${palette.mkRgba "surface0" "0.1"};
         }
         button:focus {
-            background-color: #89b4fa; /* accent (blue) */
-            color: #11111b; /* crust */
+            background-color: ${palette.getColor "blue"};
+            color: ${palette.getColor "crust"};
         }
 
         #lock {
