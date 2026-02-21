@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   # Helper function to get color as hex string
   getColor = colorName: catppuccinPalette.getColor colorName;
   hideWindowDecorations =

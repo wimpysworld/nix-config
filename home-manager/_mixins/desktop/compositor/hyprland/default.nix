@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   xkbLayout = "gb";
   monitors =
     (import ./monitors.nix { }).${host.name} or {

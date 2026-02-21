@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   palette = catppuccinPalette;
   swayncRun = pkgs.writeShellApplication {
     name = "swaync-run";

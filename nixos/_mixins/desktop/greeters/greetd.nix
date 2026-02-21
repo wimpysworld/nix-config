@@ -7,17 +7,15 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   cursorPackage =
     pkgs.catppuccin-cursors."${catppuccinPalette.flavor}${
       lib.toUpper (builtins.substring 0 1 catppuccinPalette.accent)
     }${builtins.substring 1 (-1) catppuccinPalette.accent}";
-  gtkThemePackage = (
-    pkgs.catppuccin-gtk.override {
+  gtkThemePackage = pkgs.catppuccin-gtk.override {
       accents = [ "${catppuccinPalette.accent}" ];
       variant = catppuccinPalette.flavor;
-    }
-  );
+    };
   iconTheme = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
   # Reference for setting display configuration for cage
   # - https://github.com/cage-kiosk/cage/issues/304
@@ -57,7 +55,7 @@ let
       ""
     else
       let
-        primary = host.display.primary;
+        inherit (host.display) primary;
         nonPrimary = lib.filter (d: d.output != primary.output) host.displays;
         disableLines = map (d: "    output ${d.output} disable") nonPrimary;
         enableLine = "    output ${primary.output} enable mode ${toString primary.width}x${toString primary.height}@${toString primary.refresh}Hz position 0,0 scale 1";

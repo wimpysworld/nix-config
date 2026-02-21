@@ -7,7 +7,7 @@
 }:
 let
   hasOBS = config.programs.obs-studio.enable;
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf (noughtyLib.isUser [ "martin" ]) {
 

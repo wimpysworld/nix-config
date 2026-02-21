@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   install-system = pkgs.writeShellApplication {
     name = "install-system";
     runtimeInputs = with pkgs; [

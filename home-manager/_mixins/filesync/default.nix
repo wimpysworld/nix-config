@@ -7,7 +7,7 @@
 }:
 let
   username = config.noughty.user.name;
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 
   # Import Syncthing device and folder definitions
   syncDefs = import ./syncthing-devices.nix;

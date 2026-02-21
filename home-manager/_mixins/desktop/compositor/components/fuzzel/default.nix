@@ -6,8 +6,8 @@
   ...
 }:
 let
-  host = config.noughty.host;
-  display = host.display;
+  inherit (config.noughty) host;
+  inherit (host) display;
   fontSize = if display.primaryIsHighRes || display.primaryIsHighDpi then "30" else "18";
   fuzzelActions = pkgs.writeShellApplication {
     name = "fuzzel-actions";
@@ -90,7 +90,7 @@ lib.mkIf host.is.linux {
   programs = {
     fuzzel = {
       enable = true;
-      package = (pkgs.fuzzel.override { svgBackend = "librsvg"; });
+      package = pkgs.fuzzel.override { svgBackend = "librsvg"; };
       settings = {
         main = {
           filter-desktop = true;

@@ -10,7 +10,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
 in
 {
@@ -37,8 +37,8 @@ in
 
   # Enable the Catppuccin theme
   catppuccin = {
-    accent = catppuccinPalette.accent;
-    flavor = catppuccinPalette.flavor;
+    inherit (catppuccinPalette) accent;
+    inherit (catppuccinPalette) flavor;
     fish.enable = config.programs.fish.enable;
     zsh-syntax-highlighting.enable = config.programs.zsh.enable;
   };

@@ -7,7 +7,7 @@
 }:
 let
   username = config.noughty.user.name;
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 {
   imports = [

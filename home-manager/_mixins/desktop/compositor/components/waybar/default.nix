@@ -7,9 +7,9 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   palette = catppuccinPalette;
-  display = host.display;
+  inherit (host) display;
   wlogoutMargins =
     if display.primaryIsPortrait then
       "--margin-top 960 --margin-bottom 960"
@@ -297,10 +297,10 @@ lib.mkIf host.is.linux {
           modules-left = [
             "custom/launcher"
           ]
-          ++ lib.optionals (config.wayland.windowManager.hyprland.enable) [
+          ++ lib.optionals config.wayland.windowManager.hyprland.enable [
             "hyprland/workspaces"
           ]
-          ++ lib.optionals (config.wayland.windowManager.wayfire.enable) [
+          ++ lib.optionals config.wayland.windowManager.wayfire.enable [
             "wayfire/workspaces"
           ];
           modules-center = [
@@ -607,7 +607,7 @@ lib.mkIf host.is.linux {
         }
       ];
       systemd = {
-        enable = config.wayland.windowManager.hyprland.enable;
+        inherit (config.wayland.windowManager.hyprland) enable;
         target =
           if config.wayland.windowManager.hyprland.enable then
             "hyprland-session.target"

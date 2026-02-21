@@ -7,7 +7,7 @@
 }:
 let
   username = config.noughty.user.name;
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   # Make with: pamu2fcfg -n
   u2f_28L = "TBfRqRfHADrZSgh4nOAwbCOgsbc0QTVwa0duBV3Qaz2ROuQ86QUR+70Hytzjicj88GhA0RRh2jNNe0ktKgzmXQ==,aUjvFdpwTbafll6K28EwSvLj7C+7XY/La+m3YXIeMTqRKu9+RarhGaOPQdXxfwwoa+ynjkZXtmVCkr5Nb+WPdQ==,es256,+presence";
   u2f_45L = "fitUdpvbJ6SMWMkojEDpOnUTdCXFt/qlQpZzXBpdQHzC/qPdKPBjo+HGmcLfIO+yGRsefmIb2jS4Gn3mDJ0CeA==,AKu1ho3I+PfNtB52egDBx/VAwrD5EMNl6zyTGgcvSHpp8AOWHwrbdfroIaoTGZNMZVWI4QvF8+HrTBv48lb7sA==,es256,+presence";

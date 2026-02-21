@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 {
   catppuccin.btop.enable = config.programs.btop.enable;

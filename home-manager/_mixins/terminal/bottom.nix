@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   shellAliases = {
     htop = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker";
     top = "${pkgs.bottom}/bin/btm --basic --tree --hide_table_gap --dot_marker";

@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf host.is.linux {
   # Authrorize X11 access in Distrobox
@@ -34,7 +34,7 @@ lib.mkIf host.is.linux {
   };
   programs = {
     distrobox = {
-      enable = config.services.podman.enable;
+      inherit (config.services.podman) enable;
       settings = {
         container_manager = "podman";
       };

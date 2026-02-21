@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   audioPlayer = [ "org.gnome.Decibels.desktop" ];
   archiveManager = [ "org.gnome.FileRoller.desktop" ];
   webBrowser = [ "brave-browser.desktop" ];

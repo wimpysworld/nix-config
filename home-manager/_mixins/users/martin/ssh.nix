@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   # sopsFile requires an absolute path - use path type to resolve correctly
   keysSopsFile = ../../../../secrets/ssh.yaml;
   # Helper function to generate SSH key secret definitions

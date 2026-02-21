@@ -6,11 +6,11 @@
   ...
 }:
 let
-  host = config.noughty.host;
-  display = host.display;
+  inherit (config.noughty) host;
+  inherit (host) display;
   palette = catppuccinPalette;
   mkRgb = colorName: "rgb(${palette.getHyprlandColor colorName})";
-  mkRgba = palette.mkRgba;
+  inherit (palette) mkRgba;
   mkPangoHex = colorName: "#${palette.getColor colorName}";
   catSize =
     if display.primaryIsPortrait then
@@ -56,7 +56,7 @@ lib.mkIf host.is.linux {
         image = [
           {
             # Avatar
-            monitor = monitor;
+            inherit monitor;
             path = "$HOME/.face";
             border_size = 2;
             border_color = mkRgba "blue" "0.7";
@@ -70,7 +70,7 @@ lib.mkIf host.is.linux {
           }
           {
             # Catppuccin
-            monitor = monitor;
+            inherit monitor;
             path = "/etc/backgrounds/Cat-${catResolution}px.png";
             border_size = 0;
             rounding = 0;
@@ -85,7 +85,7 @@ lib.mkIf host.is.linux {
         label = [
           {
             # Date (1 hour)
-            monitor = monitor;
+            inherit monitor;
             text = ''cmd[update:3600000] echo -e "$(date +"%a, %d %b")"'';
             color = mkRgba "text" "0.9";
             font_size = 25;
@@ -96,7 +96,7 @@ lib.mkIf host.is.linux {
           }
           {
             # Time Border left
-            monitor = monitor;
+            inherit monitor;
             text = "$TIME";
             color = mkRgba "crust" "0.8";
             font_size = 120;
@@ -108,7 +108,7 @@ lib.mkIf host.is.linux {
           }
           {
             # Time Border right
-            monitor = monitor;
+            inherit monitor;
             text = "$TIME";
             color = mkRgba "crust" "0.8";
             font_size = 120;
@@ -120,7 +120,7 @@ lib.mkIf host.is.linux {
           }
           {
             # Time Border up
-            monitor = monitor;
+            inherit monitor;
             text = "$TIME";
             color = mkRgba "crust" "0.8";
             font_size = 120;
@@ -132,7 +132,7 @@ lib.mkIf host.is.linux {
           }
           {
             # Time Border down
-            monitor = monitor;
+            inherit monitor;
             text = "$TIME";
             color = mkRgba "crust" "0.8";
             font_size = 120;
@@ -144,7 +144,7 @@ lib.mkIf host.is.linux {
           }
           {
             # Time
-            monitor = monitor;
+            inherit monitor;
             text = "$TIME";
             color = mkRgba "text" "0.9";
             font_size = 120;
@@ -156,7 +156,7 @@ lib.mkIf host.is.linux {
           }
           {
             # Username
-            monitor = monitor;
+            inherit monitor;
             text = ''<span foreground="${mkPangoHex "green"}">󰝴</span> $DESC'';
             color = mkRgba "overlay2" "1.0";
             font_size = 18;
@@ -169,7 +169,7 @@ lib.mkIf host.is.linux {
         # Username box
         shape = [
           {
-            monitor = monitor;
+            inherit monitor;
             size = "420, 60";
             position = "0, -130";
             color = mkRgba "surface1" "1.0";
@@ -185,7 +185,7 @@ lib.mkIf host.is.linux {
         # Password
         input-field = [
           {
-            monitor = monitor;
+            inherit monitor;
             size = "420, 60";
             position = "0, -210";
             outline_thickness = 2;

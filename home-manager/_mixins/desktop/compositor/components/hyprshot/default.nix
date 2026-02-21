@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf host.is.linux {
   # hyprshot is a screenshot grabber and satty is a screenshot editor

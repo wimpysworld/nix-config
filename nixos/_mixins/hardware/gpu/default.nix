@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
   # Select the lightest nvtop variant that covers the GPUs actually present.
   # nvtopPackages.full pulls in NVIDIA drivers and CUDA build dependencies,

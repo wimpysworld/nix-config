@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   shellAliases = {
     pq = "${pkgs.pueue}/bin/pueue";
   };

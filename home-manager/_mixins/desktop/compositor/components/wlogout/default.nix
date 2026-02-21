@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   palette = catppuccinPalette;
   pngFiles = builtins.filter (file: builtins.match ".*\\.png" file != null) (
     builtins.attrNames (builtins.readDir ./.)

@@ -5,7 +5,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
   useDoT = if host.is.laptop then "opportunistic" else "true";
   useNetworkManager = if (host.is.iso || !host.is.server) then true else false;
@@ -194,7 +194,7 @@ in
       publish = {
         addresses = true;
         enable = true;
-        workstation = host.is.workstation;
+        inherit (host.is) workstation;
       };
     };
     # Use resolved for DNS resolution; tailscale MagicDNS requires it

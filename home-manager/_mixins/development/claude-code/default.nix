@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   # https://github.com/numtide/nix-ai-tools
   claudePackage =
     if host.is.linux then
@@ -701,7 +701,7 @@ in
       enable = true;
       package = claudePackage;
       # Use Home Manager's native MCP support with shared server definitions
-      mcpServers = mcpServerDefs.mcpServers;
+      inherit (mcpServerDefs) mcpServers;
       settings = {
         permissions = {
           allow = bashAllow;

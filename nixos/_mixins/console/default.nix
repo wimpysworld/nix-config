@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   consoleKeymap = "uk";
   locale = "en_GB.UTF-8";
   xkbLayout = "gb";
@@ -63,7 +63,7 @@ let
   useGeoclue = !host.is.server && !host.is.iso;
 
   # Use centralized VT color mapping from palette
-  vtColorMap = catppuccinPalette.vtColorMap;
+  inherit (catppuccinPalette) vtColorMap;
 
   # Helper to extract RGB values for VT kernel parameters
   getRGBForVT = colorName: catppuccinPalette.getRGB colorName;

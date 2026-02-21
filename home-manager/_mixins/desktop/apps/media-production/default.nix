@@ -7,8 +7,8 @@
 }:
 let
   username = config.noughty.user.name;
-  host = config.noughty.host;
-  davinciResolve = (pkgs.davinci-resolve.override { studioVariant = true; });
+  inherit (config.noughty) host;
+  davinciResolve = pkgs.davinci-resolve.override { studioVariant = true; };
 in
 {
   dconf = lib.mkIf host.is.linux {

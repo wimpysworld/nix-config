@@ -6,7 +6,7 @@
   ...
 }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 {
   # Import the DE specific configuration; each compositor gates itself internally
@@ -23,19 +23,17 @@ in
       clockFormat = "24h";
       cursorSize = 32;
       gtkCatppuccinThemeName = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
-      gtkCatppuccinThemePackage = (
-        pkgs.catppuccin-gtk.override {
+      gtkCatppuccinThemePackage = pkgs.catppuccin-gtk.override {
           accents = [ "${config.catppuccin.accent}" ];
           size = "standard";
           variant = config.catppuccin.flavor;
-        }
-      );
+        };
       iconThemeName = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
       iconThemePackage =
         if host.is.linux then
           pkgs.catppuccin-papirus-folders.override {
-            flavor = config.catppuccin.flavor;
-            accent = config.catppuccin.accent;
+            inherit (config.catppuccin) flavor;
+            inherit (config.catppuccin) accent;
           }
         else
           null;
@@ -95,7 +93,7 @@ in
           dotIcons.enable = true;
           gtk.enable = true;
           hyprcursor = {
-            enable = config.wayland.windowManager.hyprland.enable;
+            inherit (config.wayland.windowManager.hyprland) enable;
             size = cursorSize;
           };
           size = cursorSize;
@@ -151,7 +149,7 @@ in
       qt = lib.mkIf host.is.linux {
         enable = true;
         platformTheme = {
-          name = config.qt.style.name;
+          inherit (config.qt.style) name;
         };
         style = {
           name = "kvantum";
