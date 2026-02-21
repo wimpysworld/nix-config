@@ -20,7 +20,7 @@ let
   discoverDirs =
     path:
     if builtins.pathExists path then
-      lib.filterAttrs (name: type: type == "directory") (builtins.readDir path)
+      lib.filterAttrs (_name: type: type == "directory") (builtins.readDir path)
     else
       { };
 

@@ -1,11 +1,9 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 let
-  username = config.noughty.user.name;
   host = config.noughty.host;
 
   # Platform-specific paths

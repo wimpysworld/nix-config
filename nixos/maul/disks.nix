@@ -78,10 +78,6 @@ let
     "space_cache=v2"
     "ssd"
   ];
-  defaultCrypttabExtraOpts = [
-    "--fido2-device=auto"
-    "--timeout=30"
-  ];
   # AES-XTS with 256-bit keys provides optimal security-performance balance.
   # Key size selection impacts performance. 256-bit keys (AES-128 equivalent)
   # provide 20% better performance than 512-bit keys (AES-256 equivalent)

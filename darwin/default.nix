@@ -1,9 +1,6 @@
 {
-  catppuccinPalette,
   config,
   inputs,
-  lib,
-  outputs,
   pkgs,
   stateVersion,
   ...
