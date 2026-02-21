@@ -24,10 +24,10 @@ in
       cursorSize = 32;
       gtkCatppuccinThemeName = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
       gtkCatppuccinThemePackage = pkgs.catppuccin-gtk.override {
-          accents = [ "${config.catppuccin.accent}" ];
-          size = "standard";
-          variant = config.catppuccin.flavor;
-        };
+        accents = [ "${config.catppuccin.accent}" ];
+        size = "standard";
+        variant = config.catppuccin.flavor;
+      };
       iconThemeName = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
       iconThemePackage =
         if host.is.linux then

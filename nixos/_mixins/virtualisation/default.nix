@@ -31,9 +31,7 @@ let
             then
               disk.content.format or null
             else if disk.content.type == "gpt" && disk.content ? partitions then
-              lib.findFirst (x: x != null) null (
-                lib.mapAttrsToList (_: findRootFs) disk.content.partitions
-              )
+              lib.findFirst (x: x != null) null (lib.mapAttrsToList (_: findRootFs) disk.content.partitions)
             else if disk.content.type == "luks" && disk.content ? content then
               findRootFs disk.content
             else if disk.content.type == "btrfs" && disk.content ? subvolumes then

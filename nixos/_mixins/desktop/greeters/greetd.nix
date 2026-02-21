@@ -13,9 +13,9 @@ let
       lib.toUpper (builtins.substring 0 1 catppuccinPalette.accent)
     }${builtins.substring 1 (-1) catppuccinPalette.accent}";
   gtkThemePackage = pkgs.catppuccin-gtk.override {
-      accents = [ "${catppuccinPalette.accent}" ];
-      variant = catppuccinPalette.flavor;
-    };
+    accents = [ "${catppuccinPalette.accent}" ];
+    variant = catppuccinPalette.flavor;
+  };
   iconTheme = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
   # Reference for setting display configuration for cage
   # - https://github.com/cage-kiosk/cage/issues/304

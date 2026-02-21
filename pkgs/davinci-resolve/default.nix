@@ -44,149 +44,149 @@
 
 let
   davinci = stdenv.mkDerivation rec {
-      pname = "davinci-resolve${lib.optionalString studioVariant "-studio"}";
-      version = "20.3.1";
+    pname = "davinci-resolve${lib.optionalString studioVariant "-studio"}";
+    version = "20.3.1";
 
-      nativeBuildInputs = [
-        appimageTools.appimage-exec
-        addDriverRunpath
-        copyDesktopItems
-        unzip
-      ];
+    nativeBuildInputs = [
+      appimageTools.appimage-exec
+      addDriverRunpath
+      copyDesktopItems
+      unzip
+    ];
 
-      # Pretty sure, there are missing dependencies ...
-      buildInputs = [
-        libGLU
-        xorg.libXxf86vm
-      ];
+    # Pretty sure, there are missing dependencies ...
+    buildInputs = [
+      libGLU
+      xorg.libXxf86vm
+    ];
 
-      src =
-        runCommandLocal "${pname}-src.zip"
-          rec {
-            outputHashMode = "recursive";
-            outputHashAlgo = "sha256";
-            outputHash =
-              if studioVariant then
-                "sha256-JaP0O+bSc9wd2YTqRwRQo35kdDkq//5WMb+7MtC9S/A="
-              else
-                "sha256-3mZWP58UZYS4U1f9M3TZ9wyto0cGy+KdB+GIJlvCVng=";
+    src =
+      runCommandLocal "${pname}-src.zip"
+        rec {
+          outputHashMode = "recursive";
+          outputHashAlgo = "sha256";
+          outputHash =
+            if studioVariant then
+              "sha256-JaP0O+bSc9wd2YTqRwRQo35kdDkq//5WMb+7MtC9S/A="
+            else
+              "sha256-3mZWP58UZYS4U1f9M3TZ9wyto0cGy+KdB+GIJlvCVng=";
 
-            impureEnvVars = lib.fetchers.proxyImpureEnvVars;
+          impureEnvVars = lib.fetchers.proxyImpureEnvVars;
 
-            nativeBuildInputs = [
-              curl
-              jq
-            ];
+          nativeBuildInputs = [
+            curl
+            jq
+          ];
 
-            # ENV VARS
-            SSL_CERT_FILE = "${cacert}/etc/ssl/certs/ca-bundle.crt";
+          # ENV VARS
+          SSL_CERT_FILE = "${cacert}/etc/ssl/certs/ca-bundle.crt";
 
-            # Get linux.downloadId from HTTP response on https://www.blackmagicdesign.com/products/davinciresolve
-            REFERID = "263d62f31cbb49e0868005059abcb0c9";
-            DOWNLOADSURL = "https://www.blackmagicdesign.com/api/support/us/downloads.json";
-            SITEURL = "https://www.blackmagicdesign.com/api/register/us/download";
-            PRODUCT = "DaVinci Resolve${lib.optionalString studioVariant " Studio"}";
-            VERSION = version;
+          # Get linux.downloadId from HTTP response on https://www.blackmagicdesign.com/products/davinciresolve
+          REFERID = "263d62f31cbb49e0868005059abcb0c9";
+          DOWNLOADSURL = "https://www.blackmagicdesign.com/api/support/us/downloads.json";
+          SITEURL = "https://www.blackmagicdesign.com/api/register/us/download";
+          PRODUCT = "DaVinci Resolve${lib.optionalString studioVariant " Studio"}";
+          VERSION = version;
 
-            USERAGENT = builtins.concatStringsSep " " [
-              "User-Agent: Mozilla/5.0 (X11; Linux ${stdenv.hostPlatform.linuxArch})"
-              "AppleWebKit/537.36 (KHTML, like Gecko)"
-              "Chrome/77.0.3865.75"
-              "Safari/537.36"
-            ];
+          USERAGENT = builtins.concatStringsSep " " [
+            "User-Agent: Mozilla/5.0 (X11; Linux ${stdenv.hostPlatform.linuxArch})"
+            "AppleWebKit/537.36 (KHTML, like Gecko)"
+            "Chrome/77.0.3865.75"
+            "Safari/537.36"
+          ];
 
-            REQJSON = builtins.toJSON {
-              "firstname" = "NixOS";
-              "lastname" = "Linux";
-              "email" = "someone@nixos.org";
-              "phone" = "+31 71 452 5670";
-              "country" = "nl";
-              "street" = "-";
-              "state" = "Province of Utrecht";
-              "city" = "Utrecht";
-              "product" = PRODUCT;
-            };
+          REQJSON = builtins.toJSON {
+            "firstname" = "NixOS";
+            "lastname" = "Linux";
+            "email" = "someone@nixos.org";
+            "phone" = "+31 71 452 5670";
+            "country" = "nl";
+            "street" = "-";
+            "state" = "Province of Utrecht";
+            "city" = "Utrecht";
+            "product" = PRODUCT;
+          };
 
-          }
-          ''
-            DOWNLOADID=$(
-              curl --silent --compressed "$DOWNLOADSURL" \
-                | jq --raw-output '.downloads[] | .urls.Linux?[]? | select(.downloadTitle | test("^'"$PRODUCT $VERSION"'( Update)?$")) | .downloadId'
-            )
-            echo "downloadid is $DOWNLOADID"
-            test -n "$DOWNLOADID"
-            RESOLVEURL=$(curl \
-              --silent \
-              --header 'Host: www.blackmagicdesign.com' \
-              --header 'Accept: application/json, text/plain, */*' \
-              --header 'Origin: https://www.blackmagicdesign.com' \
-              --header "$USERAGENT" \
-              --header 'Content-Type: application/json;charset=UTF-8' \
-              --header "Referer: https://www.blackmagicdesign.com/support/download/$REFERID/Linux" \
-              --header 'Accept-Encoding: gzip, deflate, br' \
-              --header 'Accept-Language: en-US,en;q=0.9' \
-              --header 'Authority: www.blackmagicdesign.com' \
-              --header 'Cookie: _ga=GA1.2.1849503966.1518103294; _gid=GA1.2.953840595.1518103294' \
-              --data-ascii "$REQJSON" \
-              --compressed \
-              "$SITEURL/$DOWNLOADID")
-            echo "resolveurl is $RESOLVEURL"
-
-            curl \
-              --retry 3 --retry-delay 3 \
-              --header "Upgrade-Insecure-Requests: 1" \
-              --header "$USERAGENT" \
-              --header "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8" \
-              --header "Accept-Language: en-US,en;q=0.9" \
-              --compressed \
-              "$RESOLVEURL" \
-              > $out
-          '';
-
-      # The unpack phase won't generate a directory
-      sourceRoot = ".";
-
-      installPhase =
-        let
-          appimageName = "DaVinci_Resolve_${lib.optionalString studioVariant "Studio_"}${version}_Linux.run";
-        in
+        }
         ''
-          runHook preInstall
+          DOWNLOADID=$(
+            curl --silent --compressed "$DOWNLOADSURL" \
+              | jq --raw-output '.downloads[] | .urls.Linux?[]? | select(.downloadTitle | test("^'"$PRODUCT $VERSION"'( Update)?$")) | .downloadId'
+          )
+          echo "downloadid is $DOWNLOADID"
+          test -n "$DOWNLOADID"
+          RESOLVEURL=$(curl \
+            --silent \
+            --header 'Host: www.blackmagicdesign.com' \
+            --header 'Accept: application/json, text/plain, */*' \
+            --header 'Origin: https://www.blackmagicdesign.com' \
+            --header "$USERAGENT" \
+            --header 'Content-Type: application/json;charset=UTF-8' \
+            --header "Referer: https://www.blackmagicdesign.com/support/download/$REFERID/Linux" \
+            --header 'Accept-Encoding: gzip, deflate, br' \
+            --header 'Accept-Language: en-US,en;q=0.9' \
+            --header 'Authority: www.blackmagicdesign.com' \
+            --header 'Cookie: _ga=GA1.2.1849503966.1518103294; _gid=GA1.2.953840595.1518103294' \
+            --data-ascii "$REQJSON" \
+            --compressed \
+            "$SITEURL/$DOWNLOADID")
+          echo "resolveurl is $RESOLVEURL"
 
-          export HOME=$PWD/home
-          mkdir -p $HOME
-
-          mkdir -p $out
-          test -e ${lib.escapeShellArg appimageName}
-          appimage-exec.sh -x $out ${lib.escapeShellArg appimageName}
-
-          mkdir -p $out/{"Apple Immersive/Calibration",configs,DolbyVision,easyDCP,Extras,Fairlight,GPUCache,lib,logs,Media,"Resolve Disk Database",.crashreport,.license,.LUT}
-
-          # For hardware panel support, Resolve requires the panel libraries to be unpacked to the
-          # library search path within the FHS environment.
-          tar xf $out/share/panels/dvpanel-framework-linux-x86_64.tgz -C $out/lib
-
-          runHook postInstall
+          curl \
+            --retry 3 --retry-delay 3 \
+            --header "Upgrade-Insecure-Requests: 1" \
+            --header "$USERAGENT" \
+            --header "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8" \
+            --header "Accept-Language: en-US,en;q=0.9" \
+            --compressed \
+            "$RESOLVEURL" \
+            > $out
         '';
 
-      dontStrip = true;
+    # The unpack phase won't generate a directory
+    sourceRoot = ".";
 
-      postFixup = ''
-        for program in $out/bin/*; do
-          isELF "$program" || continue
-          addDriverRunpath "$program"
-        done
+    installPhase =
+      let
+        appimageName = "DaVinci_Resolve_${lib.optionalString studioVariant "Studio_"}${version}_Linux.run";
+      in
+      ''
+        runHook preInstall
 
-        for program in $out/libs/*; do
-          isELF "$program" || continue
-          if [[ "$program" != *"libcudnn_cnn_infer"* ]];then
-            echo $program
-            addDriverRunpath "$program"
-          fi
-        done
-        ln -s $out/libs/libcrypto.so.1.1 $out/libs/libcrypt.so.1
+        export HOME=$PWD/home
+        mkdir -p $HOME
+
+        mkdir -p $out
+        test -e ${lib.escapeShellArg appimageName}
+        appimage-exec.sh -x $out ${lib.escapeShellArg appimageName}
+
+        mkdir -p $out/{"Apple Immersive/Calibration",configs,DolbyVision,easyDCP,Extras,Fairlight,GPUCache,lib,logs,Media,"Resolve Disk Database",.crashreport,.license,.LUT}
+
+        # For hardware panel support, Resolve requires the panel libraries to be unpacked to the
+        # library search path within the FHS environment.
+        tar xf $out/share/panels/dvpanel-framework-linux-x86_64.tgz -C $out/lib
+
+        runHook postInstall
       '';
-    };
+
+    dontStrip = true;
+
+    postFixup = ''
+      for program in $out/bin/*; do
+        isELF "$program" || continue
+        addDriverRunpath "$program"
+      done
+
+      for program in $out/libs/*; do
+        isELF "$program" || continue
+        if [[ "$program" != *"libcudnn_cnn_infer"* ]];then
+          echo $program
+          addDriverRunpath "$program"
+        fi
+      done
+      ln -s $out/libs/libcrypto.so.1.1 $out/libs/libcrypt.so.1
+    '';
+  };
 
   fhs = buildFHSEnv {
     pname = "${davinci.pname}-fhs";
@@ -321,7 +321,7 @@ let
       > $out/share/mime/packages/${davinci.pname}.xml
   '';
 
-  wrapper = ''${fhs}/bin/${davinci.pname}-fhs'';
+  wrapper = "${fhs}/bin/${davinci.pname}-fhs";
 
   # creates a derivation that wraps the "path" command with arguments in "args" list to run inside the FHS
   # the directories in "libs" and "plugins" are put into LD_LIBRARY_PATH and QT_PLUGIN_PATH
