@@ -41,6 +41,11 @@ jobs:
           latest_linux=$(curl -fsSL "$LINUX_JSON" | jq -r '.urls.deb | match("wavebox_(.+)_amd64\\.deb").captures[0].string')
           latest_darwin=$(curl -fsSL "$DARWIN_JSON" | jq -r '.url | match("Install%20Wavebox%20(.+)\\.dmg").captures[0].string')
 
+          if [[ -z "$latest_linux" || "$latest_linux" == "null" || -z "$latest_darwin" || "$latest_darwin" == "null" ]]; then
+            echo "❌ Could not determine latest Wavebox version"
+            exit 1
+          fi
+
           echo "Latest Linux:   ${latest_linux}"
           echo "Latest Darwin:  ${latest_darwin}"
 
