@@ -7,7 +7,6 @@
 }:
 let
   inherit (config.noughty) host;
-  xkbLayout = "gb";
 
   # Format a float scale as a clean string; builtins.toString produces "1.000000" for 1.0.
   # Uses toJSON which gives "1.0", then strips the trailing ".0" if present.
@@ -227,7 +226,7 @@ in
         };
         input = {
           follow_mouse = 2;
-          kb_layout = xkbLayout;
+          kb_layout = host.keyboard.layout;
           repeat_rate = 30;
           repeat_delay = 300;
           touchpad = {

@@ -7,9 +7,6 @@
 }:
 let
   inherit (config.noughty) host;
-  consoleKeymap = "uk";
-  locale = "en_GB.UTF-8";
-  xkbLayout = "gb";
   # Helper function to convert RGB array to comma-separated string for kmscon
   rgbToKmscon =
     colorName:
@@ -98,7 +95,7 @@ in
 
   console = {
     font = "${pkgs.tamzen}/share/consolefonts/TamzenForPowerline10x20.psf";
-    keyMap = consoleKeymap;
+    keyMap = host.keyboard.consoleKeymap;
     packages = with pkgs; [ tamzen ];
   };
 
@@ -130,17 +127,17 @@ in
   };
 
   i18n = {
-    defaultLocale = locale;
+    defaultLocale = host.keyboard.locale;
     extraLocaleSettings = {
-      LC_ADDRESS = locale;
-      LC_IDENTIFICATION = locale;
-      LC_MEASUREMENT = locale;
-      LC_MONETARY = locale;
-      LC_NAME = locale;
-      LC_NUMERIC = locale;
-      LC_PAPER = locale;
-      LC_TELEPHONE = locale;
-      LC_TIME = locale;
+      LC_ADDRESS = host.keyboard.locale;
+      LC_IDENTIFICATION = host.keyboard.locale;
+      LC_MEASUREMENT = host.keyboard.locale;
+      LC_MONETARY = host.keyboard.locale;
+      LC_NAME = host.keyboard.locale;
+      LC_NUMERIC = host.keyboard.locale;
+      LC_PAPER = host.keyboard.locale;
+      LC_TELEPHONE = host.keyboard.locale;
+      LC_TIME = host.keyboard.locale;
     };
   };
 
@@ -174,7 +171,7 @@ in
       extraConfig = kmsconExtraConfig;
       useXkbConfig = true;
     };
-    xserver.xkb.layout = xkbLayout;
+    xserver.xkb.layout = host.keyboard.layout;
   };
 
   # Override the upstream kmsconvt@ template to add boot ordering and a getty
