@@ -123,7 +123,7 @@ in
           dpms_timeout = 600;
         };
         input = {
-          xkb_layout = "gb";
+          xkb_layout = host.keyboard.layout;
           repeat_delay = 300;
           repeat_rate = 30;
           cursor_size = 32;

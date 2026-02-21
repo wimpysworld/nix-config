@@ -445,6 +445,77 @@ in
           readOnly = true;
         };
       };
+
+      # ── Keyboard layout configuration ─────────────────────────────
+
+      keyboard = {
+        layout = lib.mkOption {
+          type = lib.types.str;
+          default = "gb";
+          description = ''
+            XKB keyboard layout code (e.g. "gb", "us", "de").
+            Used by services.xserver.xkb.layout, Hyprland kb_layout, and Wayfire xkb_layout.
+            Defaults to "gb" (United Kingdom) so most hosts need not set this.
+          '';
+        };
+
+        variant = lib.mkOption {
+          type = lib.types.str;
+          default = "";
+          description = ''
+            XKB keyboard variant (e.g. "dvorak", "colemak").
+            Empty string means the default variant for the layout.
+          '';
+        };
+
+        consoleKeymap = lib.mkOption {
+          type = lib.types.str;
+          readOnly = true;
+          default =
+            let
+              # Map XKB layout codes to Linux console keymap names where they differ.
+              # Most codes are identical; "gb" is the main exception (console uses "uk").
+              xkbToConsole = {
+                gb = "uk";
+              };
+            in
+            xkbToConsole.${config.noughty.host.keyboard.layout} or config.noughty.host.keyboard.layout;
+          description = ''
+            Linux console keymap name, derived from keyboard.layout.
+            Used by console.keyMap. For most layouts this equals keyboard.layout;
+            "gb" maps to "uk" (the kbd database name for the British layout).
+          '';
+        };
+
+        locale = lib.mkOption {
+          type = lib.types.str;
+          default =
+            let
+              xkbToLocale = {
+                gb = "en_GB.UTF-8";
+                us = "en_US.UTF-8";
+                de = "de_DE.UTF-8";
+                fr = "fr_FR.UTF-8";
+                es = "es_ES.UTF-8";
+                it = "it_IT.UTF-8";
+                pt = "pt_PT.UTF-8";
+                nl = "nl_NL.UTF-8";
+                pl = "pl_PL.UTF-8";
+                ru = "ru_RU.UTF-8";
+                ja = "ja_JP.UTF-8";
+                zh = "zh_CN.UTF-8";
+                ko = "ko_KR.UTF-8";
+              };
+            in
+            xkbToLocale.${config.noughty.host.keyboard.layout} or "en_US.UTF-8";
+          description = ''
+            POSIX locale string derived from keyboard.layout (e.g. "en_GB.UTF-8").
+            Used by i18n.defaultLocale and LC_* settings on NixOS.
+            Override explicitly if locale and keyboard layout differ
+            (e.g. Swiss German: layout = "ch", locale = "de_CH.UTF-8").
+          '';
+        };
+      };
     };
 
     # ── User identity ─────────────────────────────────────────────────

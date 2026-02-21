@@ -1,6 +1,7 @@
 {
   config,
   inputs,
+  lib,
   pkgs,
   stateVersion,
   ...
@@ -8,6 +9,11 @@
 let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
+  # Derive Apple locale strings from the keyboard locale.
+  # "en_GB.UTF-8" -> "en_GB" (strip encoding suffix)
+  # "en_GB" -> "en-GB" (Apple language tag uses hyphens)
+  appleLocale = lib.head (lib.splitString "." host.keyboard.locale);
+  appleLanguage = builtins.replaceStrings [ "_" ] [ "-" ] appleLocale;
 in
 {
   imports = [
@@ -149,8 +155,8 @@ in
         # Turn on app auto-update
         "com.apple.commerce".AutoUpdate = true;
         NSGlobalDomain = {
-          AppleLanguages = [ "en-GB" ];
-          AppleLocale = "en_GB";
+          AppleLanguages = [ appleLanguage ];
+          AppleLocale = appleLocale;
         };
       };
       NSGlobalDomain = {
