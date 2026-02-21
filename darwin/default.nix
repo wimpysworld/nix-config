@@ -60,6 +60,11 @@ in
   # Determinate Nix darwin module configuration
   determinateNix = {
     enable = true;
+    # Enable native Linux builder (aarch64-linux, x86_64-linux) via macOS
+    # Virtualization framework. Access is gated - request via FlakeHub.
+    # Note: external-builders is managed by determinateNixd; setting it in
+    # customSettings is blocked by the module (disallowedOptions).
+    determinateNixd.builder.state = "enabled";
     customSettings = {
       experimental-features = "nix-command flakes";
       extra-experimental-features = "parallel-eval";
