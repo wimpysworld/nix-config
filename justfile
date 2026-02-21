@@ -129,7 +129,7 @@ eval-configs:
     if [[ "$(uname -s)" == "Darwin" ]]; then
         for config in $(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
             echo "    Evaluating darwinConfigurations.${config}..."
-            nix eval .#darwinConfigurations.${config}.config.system.name --quiet >/dev/null
+            nix eval .#darwinConfigurations.${config}.config.networking.hostName --quiet >/dev/null
         done
     else
         echo "    Skipping Darwin configurations (not on macOS)"
