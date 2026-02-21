@@ -144,7 +144,7 @@ in
     };
   };
 
-  location = {
+  location = lib.mkIf useGeoclue {
     provider = "geoclue2";
   };
 
