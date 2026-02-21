@@ -47,13 +47,23 @@ darwin/default.nix       # Imports ../lib/noughty
 home-manager/default.nix # Imports ../lib/noughty
 
 flake.nix                # Imports registry files, wires inputs/outputs
-lib/registry-systems.nix # System registry (all host definitions)
-lib/registry-users.nix   # User profiles (per-user metadata)
+lib/registry-systems.toml # System registry (all host definitions)
+lib/registry-users.toml   # User profiles (per-user metadata)
 
 home-manager/_mixins/scripts/noughty/
   default.nix            # CLI tool wrapper (bakes config values at build time)
   noughty.sh             # CLI tool implementation
 ```
+
+### Why TOML for the registries
+
+The system and user registries (`registry-systems.toml`, `registry-users.toml`) use TOML rather than Nix syntax for three reasons.
+
+First, noughty is designed to be reusable outside this flake - specifically with [Noughty Linux](https://github.com/noughtylinux/config), where users managing their system configuration should not need to know Nix to add or modify a host entry. TOML is widely familiar and editable with any text editor or standard tooling.
+
+Second, a TOML registry is consumable by non-Nix tooling (Python, Rust, shell scripts) without a Nix evaluator, enabling inventory scripts, dashboards, or CI tooling to read host metadata directly.
+
+Third, `builtins.fromTOML` has been a stable Nix built-in since Nix 2.3, requiring no additional dependencies. The parsed output is structurally identical to a Nix attrset, so no downstream module code changed when the registries were migrated from `.nix` files.
 
 ### Separation of concerns
 
@@ -64,7 +74,7 @@ home-manager/_mixins/scripts/noughty/
 ## Data flow
 
 ```
-lib/registry-systems.nix (system registry, imported by flake.nix)
+lib/registry-systems.toml (system registry, read by flake.nix via builtins.fromTOML)
   -> lib/flake-builders.nix: resolveEntry merges four layers (baseline, kind defaults, iso defaults, explicit values)
     -> mkSystemConfig produces { hostname, username, desktop, hostKind, hostGpuVendors, ... }
       -> mkNixos/mkHome/mkDarwin set noughty.* options in the modules list
@@ -103,7 +113,7 @@ A specialArg-based approach was analysed and rejected: specialArgs are static an
 | `host.platform` | `str` | `"x86_64-linux"` | Architecture string (e.g. `"x86_64-linux"`, `"aarch64-darwin"`). |
 | `host.desktop` | `nullOr str` | `null` | Desktop environment name, or `null` for headless systems. |
 | `host.formFactor` | `nullOr (enum ["laptop" "desktop" "handheld" "tablet" "phone"])` | `null` | Physical form factor. `null` for virtual or headless systems. |
-| `host.tags` | `listOf str` | `[]` | Freeform tags for host classification. Canonical vocabulary in `lib/registry-systems.nix`. |
+| `host.tags` | `listOf str` | `[]` | Freeform tags for host classification. Canonical vocabulary in `lib/registry-systems.toml`. |
 | `host.os` | `enum ["linux" "darwin"]` | *(derived from platform)* | Read-only. Derived from `platform` suffix. |
 
 #### Notes on `host.kind`
@@ -169,7 +179,7 @@ A bare `hostHasTag "gpu"` cannot distinguish vendors. Hosts like vader have both
 
 ### `noughty.host.displays` - Display output configuration
 
-A list of display submodules. Set in the system registry (`lib/registry-systems.nix`) alongside other host properties. This ensures display data flows to both NixOS and standalone Home Manager contexts.
+A list of display submodules. Set in the system registry (`lib/registry-systems.toml`) alongside other host properties. This ensures display data flows to both NixOS and standalone Home Manager contexts.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -184,13 +194,29 @@ A list of display submodules. Set in the system registry (`lib/registry-systems.
 
 Example:
 
-```nix
-# lib/registry-systems.nix (vader entry)
-displays = [
-  { output = "DP-1"; width = 2560; height = 2880; position = { x = 0; y = 0; }; primary = true; workspaces = [ 1 2 7 8 9 ]; }
-  { output = "DP-2"; width = 2560; height = 2880; position = { x = 2560; y = 0; }; workspaces = [ 3 4 5 6 ]; }
-  { output = "DP-3"; width = 1920; height = 1080; position = { x = 320; y = 2880; }; workspaces = [ 10 ]; }
-];
+```toml
+# lib/registry-systems.toml (vader entry)
+[[vader.displays]]
+output     = "DP-1"
+width      = 2560
+height     = 2880
+primary    = true
+workspaces = [1, 2, 7, 8, 9]
+position   = { x = 0, y = 0 }
+
+[[vader.displays]]
+output     = "DP-2"
+width      = 2560
+height     = 2880
+workspaces = [3, 4, 5, 6]
+position   = { x = 2560, y = 0 }
+
+[[vader.displays]]
+output     = "DP-3"
+width      = 1920
+height     = 1080
+workspaces = [10]
+position   = { x = 320, y = 2880 }
 ```
 
 ### `noughty.host.display` - Derived display shortcuts (read-only)
@@ -292,7 +318,7 @@ in
 
 ### Tags
 
-Tags are freeform `listOf str`. The canonical vocabulary is documented in a comment block in `lib/registry-systems.nix`:
+Tags are freeform `listOf str`. The canonical vocabulary is documented in a comment block in `lib/registry-systems.toml`:
 
 - **Host tags:** `streamstation`, `trackball`, `streamdeck`, `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`, `inference`
 - **User tags:** `developer`, `admin`, `family`
@@ -548,24 +574,31 @@ Only four values remain in `specialArgs`/`extraSpecialArgs`, consistent across a
 
 ## Adding a new host
 
-### 1. Add to the system registry in `lib/registry-systems.nix`
+### 1. Add to the system registry in `lib/registry-systems.toml`
 
-```nix
-{
-  mynewhost = {
-    kind = "computer";        # or "server", "vm", "container"
-    platform = "x86_64-linux";
-    formFactor = "desktop";   # or "laptop", "handheld", null
-    gpu.vendors = [ "amd" ];  # if applicable
-    tags = [ "thinkpad" ];    # if applicable
-    displays = [
-      { output = "DP-1"; width = 2560; height = 1440; refresh = 144; primary = true; workspaces = [ 1 2 3 4 5 ]; }
-    ];
-    # desktop defaults to "hyprland" for computer+linux
-    # username defaults to "martin"
-    # keyboard defaults to "gb" (UK); set keyboard.layout = "us" for non-UK hosts
-  };
-}
+```toml
+# lib/registry-systems.toml
+[mynewhost]
+kind       = "computer"    # or "server", "vm", "container"
+platform   = "x86_64-linux"
+formFactor = "desktop"     # or "laptop", "handheld", null (omit for none)
+tags       = ["thinkpad"]  # if applicable
+
+[mynewhost.gpu]
+vendors = ["amd"]          # if applicable
+
+[[mynewhost.displays]]
+output     = "DP-1"
+width      = 2560
+height     = 1440
+refresh    = 144
+primary    = true
+workspaces = [1, 2, 3, 4, 5]
+position   = { x = 0, y = 0 }
+
+# desktop defaults to "hyprland" for computer+linux
+# username defaults to "martin"
+# keyboard defaults to "gb" (UK); set keyboard.layout = "us" for non-UK hosts
 ```
 
 ### 2. Create host directory
@@ -618,7 +651,7 @@ options.noughty.host.myNewOption = lib.mkOption {
 
 If it should be set from the registry, also:
 
-1. Add the field to registry entries in `lib/registry-systems.nix`.
+1. Add the field to registry entries in `lib/registry-systems.toml`.
 2. Pass it through `mkSystemConfig` in `lib/flake-builders.nix`.
 3. Set it in the `noughty.host` block within `mkNixos`/`mkHome`/`mkDarwin`.
 
@@ -637,7 +670,7 @@ The function has access to `hostName`, `userName`, `hostTags`, and `userTags` vi
 
 ### Adding a new tag
 
-1. Add the tag to the canonical vocabulary comment in `lib/registry-systems.nix`.
+1. Add the tag to the canonical vocabulary comment in `lib/registry-systems.toml`.
 2. Set the tag on relevant hosts in the registry.
 3. Use `noughtyLib.hostHasTag "my-new-tag"` in modules.
 
@@ -647,11 +680,12 @@ The function has access to `hostName`, `userName`, `hostTags`, and `userTags` vi
 |----------|-----------|-----------|
 | Module, not better helpers | NixOS options module | Module system provides type checking, defaults, overridability, and documentation. |
 | `_module.args` for noughtyLib | Not `specialArgs` | Preserves lazy closure over `config.noughty.*`. Overrides via `mkForce` are reflected. |
-| Tags are freeform strings | `listOf str`, not enum | Start simple. Canonical vocabulary documented in `lib/registry-systems.nix`. Add validation only if typos become a real problem. |
+| Tags are freeform strings | `listOf str`, not enum | Start simple. Canonical vocabulary documented in `lib/registry-systems.toml`. Add validation only if typos become a real problem. |
 | GPU uses structured options | Not tags | Distinguishes vendors on dual-GPU hosts. Enum list with derived booleans provides type validation. |
-| Displays in registry | `lib/registry-systems.nix` | Display data must flow to standalone Home Manager contexts. Extracting the registry to a dedicated file resolved the verbosity concern. |
+| Displays in registry | `lib/registry-systems.toml` | Display data must flow to standalone Home Manager contexts. Extracting the registry to a dedicated file resolved the verbosity concern. |
 | `host.kind` replaces `type` | `enum ["computer" "server" "vm" "container"]` | Separates system class from OS, use-case, and deployment mechanism. |
 | `is.laptop` from `formFactor` | Not negative hostname list | Adding a new laptop just requires `formFactor = "laptop"`. No other files to update. |
 | `hasCuda` from `compute.acceleration` | Not vendor presence | A host with NVIDIA for encoding but no compute block correctly reports `hasCuda = false`. |
 | `hostname`/`username` eliminated from specialArgs | Read from `config.noughty.*` | All module bodies use `config.noughty.host.name` and `config.noughty.user.name`. |
 | `keyboard` uses structured options | Not hardcoded strings in each module | Single source of truth for layout, with derived `consoleKeymap` and `locale`. `"gb"` default means UK hosts need zero configuration. |
+| Registries use TOML, not Nix | `builtins.fromTOML` (stable since Nix 2.3) | Noughty Linux users should not need Nix knowledge to manage host entries. TOML is widely familiar, parseable by non-Nix tooling, and produces an identical attrset structure via `builtins.fromTOML` - no downstream code changed. |

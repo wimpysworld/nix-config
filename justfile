@@ -399,6 +399,13 @@ boot-host hostname=current_hostname:
       echo "Unsupported OS: $(uname)"
     fi
 
+# Validate TOML registry files against their JSON Schemas
+lint-registry:
+    @echo "Registry  Linting: systems"
+    @taplo lint --schema "file://$(pwd)/lib/registry-systems-schema.json" lib/registry-systems.toml
+    @echo "Registry  Linting: users"
+    @taplo lint --schema "file://$(pwd)/lib/registry-users-schema.json" lib/registry-users.toml
+
 # Format and lint Nix files
 format *paths:
     #!/usr/bin/env bash

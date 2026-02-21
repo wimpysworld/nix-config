@@ -1,14 +1,17 @@
-name: Flake Lock Checker ✅
+name: Checker ✅
 
 on:
   schedule:
     # l33t o'clock
     - cron: '37 13 * * *'
+  push:
+    paths:
+      - 'lib/**.toml'
   workflow_dispatch:
 
 jobs:
   flake-checker:
-    name: Flake Checker
+    name: Flake Lock Checker
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,3 +24,20 @@ jobs:
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - uses: DeterminateSystems/flake-checker-action@v12
+
+  toml-lint:
+    name: TOML Registry Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Validate registry schemas
+        run: |
+          nix shell nixpkgs#taplo --command taplo lint \
+            --schema "file://$(pwd)/lib/registry-systems-schema.json" \
+            lib/registry-systems.toml
+          nix shell nixpkgs#taplo --command taplo lint \
+            --schema "file://$(pwd)/lib/registry-users-schema.json" \
+            lib/registry-users.toml
