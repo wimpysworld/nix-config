@@ -27,7 +27,7 @@ lib.mkIf host.is.workstation {
 
   home = {
     file = {
-      "${config.home.homeDirectory}/.local/share/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text =
+      "${config.xdg.dataHome}/libgedit-gtksourceview-300/styles/catppuccin-mocha.xml".text =
         builtins.readFile ./gedit-catppuccin-mocha.xml;
     };
     # Packages that are used by some of the extensions below

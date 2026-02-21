@@ -21,7 +21,7 @@ in
   config = lib.mkIf (noughtyLib.isUser [ "martin" ]) {
     # User-specific sops secrets
     sops.secrets = {
-      asciinema.path = "${config.home.homeDirectory}/.config/asciinema/config";
+      asciinema.path = "${config.xdg.configHome}/asciinema/config";
       hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
       transifex.path = "${config.home.homeDirectory}/.transifexrc";
     };

@@ -22,7 +22,7 @@ lib.mkIf
     home = {
       file = {
         "/Studio/OBS/config/obs-studio/.keep".text = "";
-        "${config.home.homeDirectory}/.local/share/chatterino/Themes/mocha-blue.json".text =
+        "${config.xdg.dataHome}/chatterino/Themes/mocha-blue.json".text =
           builtins.readFile ./chatterino-mocha-blue.json;
       };
       packages = with pkgs; [
@@ -76,7 +76,7 @@ lib.mkIf
     # Linux specific configuration
     systemd.user.tmpfiles = lib.mkIf host.is.linux {
       rules = [
-        "L+ ${config.home.homeDirectory}/.config/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
+        "L+ ${config.xdg.configHome}/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
       ];
     };
 

@@ -12,7 +12,7 @@ let
     else if host.is.darwin then
       "${config.home.homeDirectory}/Library/Caches/sigstore/gitsign/cache.sock"
     else
-      "${config.home.homeDirectory}/.cache/sigstore/gitsign/cache.sock";
+      "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock";
   precommitSetup = pkgs.writeShellApplication {
     name = "pre-commit-setup";
     runtimeInputs = with pkgs; [

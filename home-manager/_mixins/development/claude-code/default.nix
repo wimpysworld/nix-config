@@ -672,10 +672,10 @@ let
     # Cloud credentials (fully qualified paths)
     "Read(${config.home.homeDirectory}/.aws/**)"
     "Read(${config.home.homeDirectory}/.azure/**)"
-    "Read(${config.home.homeDirectory}/.config/gcloud/**)"
+    "Read(${config.xdg.configHome}/gcloud/**)"
 
     # VCS credentials (fully qualified paths)
-    "Read(${config.home.homeDirectory}/.config/gh/hosts.yml)"
+    "Read(${config.xdg.configHome}/gh/hosts.yml)"
     "Read(${config.home.homeDirectory}/.git-credentials)"
     "Read(${config.home.homeDirectory}/.netrc)"
 
@@ -687,7 +687,7 @@ let
     "Read(${config.home.homeDirectory}/.bash_history)"
     "Read(${config.home.homeDirectory}/.zsh_history)"
     "Read(${config.home.homeDirectory}/.fish_history)"
-    "Read(${config.home.homeDirectory}/.local/share/fish/fish_history)"
+    "Read(${config.xdg.dataHome}/fish/fish_history)"
   ];
 in
 {
