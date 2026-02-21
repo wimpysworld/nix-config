@@ -339,7 +339,7 @@ rec {
   generateConfigs =
     predicate: systems:
     let
-      filteredSystems = lib.filterAttrs (_name: predicate) systems;
+      filteredSystems = lib.filterAttrs (_name: entry: predicate entry) systems;
     in
     lib.mapAttrs (name: entry: mkSystemConfig name entry) filteredSystems;
 }
