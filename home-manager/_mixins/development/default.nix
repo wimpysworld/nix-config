@@ -5,6 +5,10 @@
   ...
 }:
 let
+  currentDir = ./.;
+  isDirectoryAndNotTemplate = name: type: type == "directory" && name != "_template";
+  directories = lib.filterAttrs isDirectoryAndNotTemplate (builtins.readDir currentDir);
+  importDirectory = name: import (currentDir + "/${name}");
   dockerPurge = pkgs.writeShellApplication {
     name = "docker-purge";
     runtimeInputs = with pkgs; [
@@ -34,37 +38,7 @@ let
   };
 in
 {
-  imports = [
-    ./assistants
-    ./c
-    ./claude-code
-    ./copilot
-    #./dart
-    ./defold
-    ./direnv
-    ./git
-    ./github
-    ./gitkraken
-    ./go
-    ./javascript
-    ./json
-    ./just
-    ./love
-    ./markdown
-    ./mcp
-    ./meld
-    ./neovim
-    ./nix
-    ./opencode
-    ./python
-    ./rust
-    ./shell
-    ./svelte
-    ./virtualisation
-    ./vscode
-    ./yaml
-    ./zed-editor
-  ];
+  imports = lib.mapAttrsToList (name: _: importDirectory name) directories;
   config = lib.mkIf (noughtyLib.userHasTag "developer") {
     home = {
       packages = with pkgs; [
