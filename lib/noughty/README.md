@@ -39,7 +39,6 @@ lib/
   noughty/
     default.nix          # Option declarations, derived defaults, _module.args.noughtyLib setter
     README.md            # This file
-    PLAN.md              # Original design document (historical reference)
   noughty-helpers.nix    # Pure helper functions (no module system dependency)
   flake-builders.nix     # resolveEntry, mkNixos, mkHome, mkDarwin, mkSystemConfig
 
@@ -91,7 +90,7 @@ Helper functions are injected via `_module.args.noughtyLib`, not as `specialArgs
 - It would create two disagreeable sources of truth for identity values (static specialArg vs overridable option).
 - The imports problem it aimed to solve affects only two irreducible files.
 
-See PLAN.md Appendix A for the full analysis.
+A specialArg-based approach was analysed and rejected: specialArgs are static and computed before module evaluation, cannot reflect `mkDefault`/`mkForce` overrides, would create two disagreeable sources of truth, and the imports problem it aimed to solve affects only two irreducible entry-point files.
 
 ## Option reference
 
@@ -287,7 +286,7 @@ lib.mkIf (noughtyLib.hostHasTag "streamstation") {
 ```nix
 { config, lib, ... }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf host.is.workstation {
   boot.plymouth.enable = true;
@@ -333,7 +332,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) 
 ```nix
 { config, lib, noughtyLib, pkgs, ... }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
   vram = host.gpu.compute.vram;
   accel = host.gpu.compute.acceleration;
   ollamaPackage =

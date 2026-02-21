@@ -98,7 +98,7 @@ just inject-tokens 192.168.1.10     # Inject tokens to ISO host for install
 
 **Module shorthand convention:**
 
-- Use `host = config.noughty.host;` in `let` bindings (NOT `cfg`)
+- Use `inherit (config.noughty) host;` in `let` bindings (NOT `cfg`)
 - Then reference `host.is.workstation`, `host.desktop`, `host.name`, etc.
 
 **Mixin placement:**
@@ -149,7 +149,7 @@ Access host/user data in modules:
 ```nix
 { config, noughtyLib, lib, ... }:
 let
-  host = config.noughty.host;
+  inherit (config.noughty) host;
 in
 lib.mkIf host.is.workstation {
   # host.name, host.desktop, host.is.laptop, host.gpu.hasNvidia, etc.
