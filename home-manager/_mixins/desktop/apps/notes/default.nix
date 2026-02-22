@@ -17,7 +17,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
       "${config.xdg.configHome}/joplin-desktop/userchrome.css".text = builtins.readFile ./userchrome.css;
       "${config.xdg.configHome}/joplin-desktop/userstyle.css".text = builtins.readFile ./userstyle.css;
     };
-    packages = lib.optionals host.is.linux [ pkgs.heynote ];
+    packages = lib.optionals host.is.workstation [ pkgs.heynote ];
   };
 
   programs.joplin-desktop = {

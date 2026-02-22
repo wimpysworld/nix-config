@@ -27,7 +27,6 @@
     ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       "beyond-compare"
       "docker-desktop"
-      "heynote"
       "keybase"
       "mullvad-browser"
       "obs"

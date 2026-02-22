@@ -1,18 +1,24 @@
 {
   lib,
+  stdenv,
   buildNpmPackage,
   fetchFromGitHub,
   makeWrapper,
   copyDesktopItems,
   makeDesktopItem,
+  darwin,
   electron_39,
   nodejs,
   ripgrep,
-  # Command line arguments which are always set
   commandLineArgs ? "",
 }:
 let
   electron = electron_39;
+  electronPlatformTag =
+    if stdenv.hostPlatform.isDarwin then
+      "darwin-${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}"
+    else
+      "linux-${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}";
 
   # Catppuccin colour palette - defined at let-scope for use in postPatch
   catppuccinMocha = {
@@ -93,6 +99,11 @@ buildNpmPackage (finalAttrs: {
     # Tell @vscode/ripgrep to use system ripgrep
     VSCODE_RIPGREP_VERSION = "system";
     # Note: ELECTRON_CACHE is set dynamically in preBuild/build phases with absolute path
+  }
+  // lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+    # Disable macOS code signing auto-discovery in sandbox
+    # Ad-hoc signing is handled by darwin.autoSignDarwinBinariesHook
+    CSC_IDENTITY_AUTO_DISCOVERY = "false";
   };
 
   # npm dependencies hash - computed from package-lock.json
@@ -104,7 +115,12 @@ buildNpmPackage (finalAttrs: {
 
   nativeBuildInputs = [
     makeWrapper
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
     copyDesktopItems
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    darwin.autoSignDarwinBinariesHook
   ];
 
   # Early patches that need to run in both npm-deps and main build
@@ -538,7 +554,7 @@ buildNpmPackage (finalAttrs: {
     mkdir -p "$ELECTRON_CACHE"
     # electron-builder looks for electron-v<version>-linux-x64.zip in ELECTRON_CACHE
     # We create a symlink pointing to the electron dist directory
-    ln -sf "$PWD/electron-dist" "$ELECTRON_CACHE/electron-v${electron.version}-linux-x64"
+    ln -sf "$PWD/electron-dist" "$ELECTRON_CACHE/electron-v${electron.version}-${electronPlatformTag}"
 
         # Set up npm config for native rebuilds
         export npm_config_nodedir=${electron.headers}
@@ -562,11 +578,12 @@ buildNpmPackage (finalAttrs: {
     # Point to the electron-builder.json5 config which specifies files to include
     # The config has: files: ["dist-electron", "dist"] - ensuring dist/ is in app.asar
     npx electron-builder \
-      --linux dir \
-      --x64 \
+      ${if stdenv.hostPlatform.isDarwin then "--mac dir" else "--linux dir"} \
+      --${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"} \
       --config ./electron-builder.json5 \
       --config.electronDist="$PWD/electron-dist" \
-      --config.electronVersion=${electron.version}
+      --config.electronVersion=${electron.version} \
+      ${lib.optionalString stdenv.hostPlatform.isDarwin "--config.mac.identity=null"}
 
     runHook postBuild
   '';
@@ -574,8 +591,9 @@ buildNpmPackage (finalAttrs: {
   # Install phase
   installPhase = ''
     runHook preInstall
-
-    # Create output directories
+  ''
+  + lib.optionalString stdenv.hostPlatform.isLinux ''
+    # --- Linux Install ---
     mkdir -p $out/opt/heynote
     mkdir -p $out/bin
     mkdir -p $out/share/icons/hicolor/256x256/apps
@@ -605,11 +623,36 @@ buildNpmPackage (finalAttrs: {
       --set ELECTRON_IS_DEV 0 \
       --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --enable-wayland-ime=true}}" \
       --add-flags ${lib.escapeShellArg commandLineArgs}
+  ''
+  + lib.optionalString stdenv.hostPlatform.isDarwin ''
+    # --- macOS Install ---
+    mkdir -p "$out/Applications" "$out/bin"
 
+    # electron-builder outputs to release/<version>/mac-arm64/ or mac/ directory
+    # containing Heynote.app (the .app name comes from productName in package.json)
+    mv release/${finalAttrs.version}/mac*/Heynote.app "$out/Applications/"
+
+    # Remove auto-update configuration (not applicable for Nix)
+    rm -f "$out/Applications/Heynote.app/Contents/Resources/app-update.yml" || true
+
+    # Link ripgrep from nixpkgs into the .app bundle
+    mkdir -p "$out/Applications/Heynote.app/Contents/Resources/app.asar.unpacked/node_modules/@vscode/ripgrep/bin"
+    ln -sf ${lib.getExe ripgrep} "$out/Applications/Heynote.app/Contents/Resources/app.asar.unpacked/node_modules/@vscode/ripgrep/bin/rg"
+
+    # Wrap the binary inside the .app bundle
+    wrapProgram "$out/Applications/Heynote.app/Contents/MacOS/Heynote" \
+      --set ELECTRON_FORCE_IS_PACKAGED 1 \
+      --set ELECTRON_IS_DEV 0 \
+      --add-flags ${lib.escapeShellArg commandLineArgs}
+
+    # Create convenience bin wrapper
+    makeWrapper "$out/Applications/Heynote.app/Contents/MacOS/Heynote" "$out/bin/heynote"
+  ''
+  + ''
     runHook postInstall
   '';
 
-  desktopItems = [
+  desktopItems = lib.optionals stdenv.hostPlatform.isLinux [
     (makeDesktopItem {
       name = "heynote";
       desktopName = "Heynote";
@@ -638,7 +681,7 @@ buildNpmPackage (finalAttrs: {
     homepage = "https://heynote.com/";
     license = licenses.mit;
     maintainers = with maintainers; [ ];
-    platforms = [ "x86_64-linux" ];
+    platforms = lib.platforms.linux ++ lib.platforms.darwin;
     sourceProvenance = with sourceTypes; [
       fromSource
       binaryNativeCode # electron and some node modules
