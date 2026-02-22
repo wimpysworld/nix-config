@@ -1,0 +1,6 @@
+name: Review Alignment
+interaction: chat
+opts:
+  alias: review-alignment
+  is_slash_cmd: true
+  rules: penfold
