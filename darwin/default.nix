@@ -194,7 +194,7 @@ in
           "/Users/${username}/Applications/Home Manager Apps/GitKraken.app"
           "/Users/${username}/Applications/Home Manager Apps/Kitty.app"
           "/System/Applications/Music.app"
-          "/Applications/Heynote.app"
+          "/Users/${username}/Applications/Home Manager Apps/Heynote.app"
           "/Users/${username}/Applications/Home Manager Apps/Joplin.app"
           "/System/Applications/Apps.app"
         ];
