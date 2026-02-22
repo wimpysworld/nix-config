@@ -13,9 +13,13 @@ let
     name = "fuzzel-actions";
     text = "fuzzel --prompt '󰌧 ' --show-actions";
   };
+  fuzzelAudio = pkgs.writeShellApplication {
+    name = "fuzzel-audio";
+    text = ''pwmenu --launcher custom --launcher-command "fuzzel --dmenu --prompt '󰕾 '"'';
+  };
   fuzzelBluetooth = pkgs.writeShellApplication {
     name = "fuzzel-bluetooth";
-    text = ''bzmenu --menu custom --menu-command "fuzzel --dmenu --prompt '󰂯 '"'';
+    text = ''bzmenu --launcher custom --launcher-command "fuzzel --dmenu --prompt '󰂯 '"'';
   };
   fuzzelClipboard = pkgs.writeShellApplication {
     name = "fuzzel-clipboard";
@@ -75,6 +79,7 @@ lib.mkIf host.is.linux {
       inputs.iwmenu.packages.${pkgs.stdenv.hostPlatform.system}.default
       inputs.pwmenu.packages.${pkgs.stdenv.hostPlatform.system}.default
       fuzzelActions
+      fuzzelAudio
       fuzzelBluetooth
       fuzzelClipboard
       fuzzelEmoji
@@ -126,13 +131,10 @@ lib.mkIf host.is.linux {
       settings = {
         bind = [
           ", Print, exec, fuzzel-hyprshot"
-          "CTRL ALT, SPACE, exec, hypr-activity-menu"
-          "CTRL ALT, B, exec, fuzzel-bluetooth"
+          "CTRL ALT, SPACE, exec, hypr-session-menu"
           "CTRL ALT, E, exec, fuzzel-emoji"
-          "CTRL ALT, K, exec, fuzzel-hyprpicker"
           "CTRL ALT, P, exec, fuzzel-clipboard"
           "CTRL ALT, R, exec, fuzzel-history"
-          "CTRL ALT, W, exec, fuzzel-wifi"
         ];
       };
     };

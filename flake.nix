@@ -81,7 +81,11 @@
         overlays = self.overlays;
         localPackagesPath = ./pkgs;
         linuxOnlyFlakeInputs = {
-          inherit (inputs) bzmenu iwmenu pwmenu;
+          inherit (inputs)
+            bzmenu
+            iwmenu
+            pwmenu
+            ;
         };
       };
 
