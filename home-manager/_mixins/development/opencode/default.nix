@@ -9,6 +9,9 @@ let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   opencodePackage = inputs.opencode.packages.${system}.opencode;
+  shellAliases = {
+    opencode = "${opencodePackage}/bin/opencode --agent rosey --continue";
+  };
 in
 {
   home = {
@@ -23,6 +26,9 @@ in
   };
 
   programs = {
+    bash.shellAliases = shellAliases;
+    fish.shellAliases = shellAliases;
+    zsh.shellAliases = shellAliases;
     opencode = {
       enable = true;
       package = opencodePackage;
@@ -35,6 +41,15 @@ in
         compaction = {
           auto = false; # Disable automatic compaction
           prune = true; # Keep pruning old tool outputs to save tokens
+        };
+
+        # Override built-in /init with custom create-instructions command
+        command = {
+          init = {
+            description = "Create Instructions 🤖";
+            agent = "rosey";
+            template = builtins.readFile ../assistants/agents/rosey/commands/create-instructions/prompt.md;
+          };
         };
 
         # Semgrep LSP - security diagnostics via the built-in diagnostics tool
@@ -1282,7 +1297,10 @@ in
             "umount *" = "deny";
           };
           task = "allow"; # Launching subagents
-          skill = "ask"; # Loading agent skills
+          skill = {
+            "meet-the-agents" = "allow";
+            "*" = "ask";
+          };
           todowrite = "allow"; # Modifying todo lists
           webfetch = "allow"; # Fetching URLs
           websearch = "allow"; # Web searches
