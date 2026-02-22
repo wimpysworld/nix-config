@@ -603,11 +603,11 @@ buildNpmPackage (finalAttrs: {
     cp resources/icon.png $out/share/icons/hicolor/256x256/apps/heynote.png
 
     # Copy built application
-    # electron-builder outputs to release/${finalAttrs.version}/linux-unpacked/ (dir target)
+    # electron-builder outputs to release/${finalAttrs.version}/linux-unpacked/ (x86_64) or linux-arm64-unpacked/ (aarch64)
     # when using electron-builder.json5 config with directories.output set
-    cp -r release/${finalAttrs.version}/linux-unpacked/locales $out/opt/heynote/
-    cp -r release/${finalAttrs.version}/linux-unpacked/resources $out/opt/heynote/
-    cp -r release/${finalAttrs.version}/linux-unpacked/resources.pak $out/opt/heynote/ 2>/dev/null || true
+    cp -r release/${finalAttrs.version}/linux*-unpacked/locales $out/opt/heynote/
+    cp -r release/${finalAttrs.version}/linux*-unpacked/resources $out/opt/heynote/
+    cp -r release/${finalAttrs.version}/linux*-unpacked/resources.pak $out/opt/heynote/ 2>/dev/null || true
 
     # Remove auto-update configuration (not applicable for Nix)
     rm -f $out/opt/heynote/resources/app-update.yml || true
