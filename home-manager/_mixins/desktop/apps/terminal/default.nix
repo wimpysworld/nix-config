@@ -26,7 +26,7 @@ in
   # User specific dconf terminal-related settings
   dconf.settings = with lib.hm.gvariant; {
     "com/github/stunkymonkey/nautilus-open-any-terminal" = {
-      terminal = "${lib.getExe pkgs.kitty}";
+      terminal = "${lib.getExe config.programs.kitty.package}";
     };
   };
 
@@ -37,13 +37,16 @@ in
         name = "FiraCode Nerd Font Mono";
         size = 16;
       };
+      package = pkgs.kitty;
       settings = {
         cursor_blink_interval = 0.75;
         cursor_shape = "block";
         cursor_shape_unfocused = "hollow";
         cursor_stop_blinking_after = 0;
+        confirm_os_window_close = 0;
         hide_window_decorations = hideWindowDecorations;
-        scrollback_indicator_opacity = 0.50;
+        scrollbar = "scrolled";
+        scrollbar_handle_opacity = 0.50;
         scrollback_lines = 65536;
         shell = lib.mkIf host.is.darwin "${pkgs.fish}/bin/fish --interactive";
         draw_minimal_borders = "yes";
@@ -59,7 +62,7 @@ in
         wheel_scroll_multiplier = 2;
         # Bell
         enable_audio_bell = "no";
-        visual_bell = 0.25;
+        visual_bell_duration = 0.25;
       };
       shellIntegration = {
         enableBashIntegration = false;
@@ -86,7 +89,7 @@ in
       '';
     };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {
-      settings.main.terminal = "${lib.getExe pkgs.kitty}";
+      settings.main.terminal = "${lib.getExe config.programs.kitty.package}";
     };
   };
 
@@ -94,7 +97,7 @@ in
     hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
       settings = {
         bind = [
-          "$mod, T, exec, ${lib.getExe pkgs.kitty}"
+          "$mod, T, exec, ${lib.getExe config.programs.kitty.package}"
         ];
       };
     };
@@ -103,7 +106,7 @@ in
         command = {
           # Super+T launches a terminal
           binding_terminal = "<super> KEY_T";
-          command_terminal = "${lib.getExe pkgs.kitty}";
+          command_terminal = "${lib.getExe config.programs.kitty.package}";
         };
       };
     };

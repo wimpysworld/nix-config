@@ -328,7 +328,7 @@ lib.mkIf host.is.linux {
           "custom/launcher" = {
             format = "<big>󱄅</big>";
             on-click = "${pkgs.rofi}/bin/rofi -theme ${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi -show drun";
-            on-click-right = "hypr-activity-menu";
+            on-click-right = "hypr-session-menu";
             tooltip-format = "  Applications Menu";
           };
           # https://github.com/bluebyt/Wayfire-dots/blob/main/.config/waybar/config_wayfire_now.ini#L162
