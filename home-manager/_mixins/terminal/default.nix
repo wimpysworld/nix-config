@@ -90,6 +90,7 @@ in
         sd # Modern Unix `sed`
         speedtest-go # Terminal speedtest.net
         timer # Terminal timer
+        unixtools.xxd # Terminal Hexdump
         unzip # Terminal ZIP extractor
         upterm # Terminal sharing
         wget # Terminal HTTP client
