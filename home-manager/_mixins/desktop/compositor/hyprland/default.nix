@@ -16,7 +16,10 @@ let
       s = builtins.toJSON f;
       len = builtins.stringLength s;
     in
-    if builtins.substring (len - 2) 2 s == ".0" then builtins.substring 0 (len - 2) s else s;
+    if len >= 2 && builtins.substring (len - 2) 2 s == ".0" then
+      builtins.substring 0 (len - 2) s
+    else
+      s;
 
   # Build a Hyprland monitor line: "output, WxH@Hz, position, scale".
   # Single-monitor hosts use "auto" positioning; multi-monitor uses explicit coordinates.
