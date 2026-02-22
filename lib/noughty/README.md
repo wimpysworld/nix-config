@@ -267,24 +267,24 @@ The `consoleKeymap` option is read-only and derives automatically. Modules read 
 
 Since `"gb"` is the default, no registry entry is needed for UK hosts. Only non-UK hosts set `keyboard`:
 
-```nix
-# lib/registry-systems.nix - a US host (minimal)
-zuul = {
-  kind = "computer";
-  platform = "x86_64-linux";
-  keyboard.layout = "us";
-  # consoleKeymap auto-derives to "us", locale to "en_US.UTF-8"
-};
+```toml
+# lib/registry-systems.toml - a US host (minimal)
+[zuul]
+kind     = "computer"
+platform = "x86_64-linux"
+
+[zuul.keyboard]
+layout = "us"
+# consoleKeymap auto-derives to "us", locale to "en_US.UTF-8"
 
 # A host where locale and layout diverge (Swiss German)
-helvetia = {
-  kind = "computer";
-  platform = "x86_64-linux";
-  keyboard = {
-    layout = "ch";
-    locale = "de_CH.UTF-8";  # override - cannot auto-derive from "ch" alone
-  };
-};
+[helvetia]
+kind     = "computer"
+platform = "x86_64-linux"
+
+[helvetia.keyboard]
+layout = "ch"
+locale = "de_CH.UTF-8"  # override - cannot auto-derive from "ch" alone
 ```
 
 #### Usage in modules
