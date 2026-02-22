@@ -111,6 +111,12 @@ in
       http-connections = 128;
       connect-timeout = 10;
       warn-dirty = false;
+      # Allow wheel users to set client-side Nix options (e.g. netrc-file
+      # for FlakeHub Cache authentication via fh apply).
+      trusted-users = [
+        "root"
+        "@wheel"
+      ];
     };
   };
 
