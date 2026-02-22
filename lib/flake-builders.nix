@@ -60,6 +60,15 @@ let
       tags = e.tags or [ ];
     in
     builtins.elem "wsl" tags || builtins.elem "lima" tags || builtins.elem "steamdeck" tags;
+
+  # Single source of truth for nixpkgs instantiation.
+  mkPkgs =
+    { system, overlays }:
+    import inputs.nixpkgs {
+      inherit system;
+      config.allowUnfree = true;
+      overlays = builtins.attrValues overlays;
+    };
 in
 rec {
   # Export predicate functions for use in flake.nix
@@ -362,4 +371,86 @@ rec {
       filteredSystems = lib.filterAttrs (_name: entry: predicate entry) systems;
     in
     lib.mapAttrs (name: entry: mkSystemConfig name entry) filteredSystems;
+
+  # Generate all NixOS configurations from the registry.
+  # Includes regular Linux hosts and ISO entries; excludes home-only entries.
+  mkAllNixos =
+    systems:
+    lib.mapAttrs (_name: config: mkNixos config) (
+      generateConfigs (e: isLinuxEntry e && !isHomeOnlyEntry e) systems
+    );
+
+  # Generate all nix-darwin configurations from the registry.
+  mkAllDarwin =
+    systems: lib.mapAttrs (_name: config: mkDarwin config) (generateConfigs isDarwinEntry systems);
+
+  # Generate all Home Manager configurations from the registry.
+  # Produces "username@hostname" keys; excludes ISO entries.
+  mkAllHomes =
+    systems:
+    lib.mapAttrs' (
+      _name: config: lib.nameValuePair "${config.username}@${config.hostname}" (mkHome config)
+    ) (generateConfigs (e: !isISOEntry e) systems);
+
+  # Build the packages output for all systems.
+  # Imports local packages, filters by meta.platforms, and merges
+  # Linux-only re-exports from the given flake inputs.
+  mkPackages =
+    {
+      overlays,
+      localPackagesPath,
+      linuxOnlyFlakeInputs ? { },
+    }:
+    forAllSystems (
+      system:
+      let
+        pkgs = mkPkgs { inherit system overlays; };
+
+        # Filter local packages by meta.platforms so that packages which
+        # cannot build on the current system are excluded from the output.
+        filterLocalPackages =
+          localPkgs:
+          lib.filterAttrs (
+            _name: pkg:
+            let
+              platforms = pkg.meta.platforms or [ ];
+            in
+            platforms == [ ] || builtins.elem system platforms
+          ) localPkgs;
+
+        # Re-export packages from flake inputs restricted to Linux systems;
+        # some flake inputs provide Darwin outputs that fail to compile.
+        linuxOnlyPkgs = lib.concatMapAttrs (
+          name: flakeInput:
+          lib.optionalAttrs (lib.hasSuffix "linux" system && flakeInput.packages ? ${system}) {
+            ${name} = flakeInput.packages.${system}.default;
+          }
+        ) linuxOnlyFlakeInputs;
+      in
+      filterLocalPackages (import localPackagesPath pkgs) // linuxOnlyPkgs
+    );
+
+  # Build the devShells output for all systems.
+  # Accepts a package list function and optional flake inputs whose
+  # default packages are included when available on the current system.
+  mkDevShells =
+    {
+      overlays,
+      shellPackages,
+      extraFlakeInputs ? [ ],
+    }:
+    forAllSystems (
+      system:
+      let
+        pkgs = mkPkgs { inherit system overlays; };
+        extraPkgs = lib.concatMap (
+          flakeInput: lib.optional (flakeInput.packages ? ${system}) flakeInput.packages.${system}.default
+        ) extraFlakeInputs;
+      in
+      {
+        default = pkgs.mkShell {
+          packages = shellPackages pkgs ++ extraPkgs;
+        };
+      }
+    );
 }

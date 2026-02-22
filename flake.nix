@@ -52,11 +52,10 @@
     }@inputs:
     let
       inherit (self) outputs;
-      # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
       stateVersion = "25.11";
       darwinStateVersion = 6;
-
       users = builtins.fromTOML (builtins.readFile ./lib/registry-users.toml);
+      systems = builtins.fromTOML (builtins.readFile ./lib/registry-systems.toml);
 
       builder = import ./lib {
         inherit
@@ -67,120 +66,51 @@
           users
           ;
       };
-
-      systems = builtins.fromTOML (builtins.readFile ./lib/registry-systems.toml);
-
     in
     {
-      # Expose lib so it can be used by the builder functions
       lib = builder;
 
-      # Generated system configurations
-      nixosConfigurations =
-        let
-          allNixos = builder.generateConfigs (
-            e: builder.isLinuxEntry e && !builder.isISOEntry e && !builder.isHomeOnlyEntry e
-          ) systems;
-          allISO = builder.generateConfigs builder.isISOEntry systems;
-        in
-        nixpkgs.lib.mapAttrs (_name: config: builder.mkNixos config) (allNixos // allISO);
+      nixosConfigurations = builder.mkAllNixos systems;
+      darwinConfigurations = builder.mkAllDarwin systems;
+      homeConfigurations = builder.mkAllHomes systems;
 
-      darwinConfigurations = nixpkgs.lib.mapAttrs (_name: config: builder.mkDarwin config) (
-        builder.generateConfigs builder.isDarwinEntry systems
-      );
-
-      homeConfigurations =
-        let
-          allHomes = builder.generateConfigs (e: !builder.isISOEntry e) systems;
-        in
-        nixpkgs.lib.mapAttrs' (
-          _name: config:
-          nixpkgs.lib.nameValuePair "${config.username}@${config.hostname}" (builder.mkHome config)
-        ) allHomes;
-      # Custom packages and modifications, exported as overlays
       overlays = import ./overlays { inherit inputs; };
-      # Custom NixOS modules
       nixosModules = import ./modules/nixos;
-      # Custom packages; accessible via 'nix build', 'nix shell', etc
-      packages = builder.forAllSystems (
-        system:
-        let
-          pkgs = import nixpkgs {
-            inherit system;
-            config.allowUnfree = true;
-            overlays = builtins.attrValues self.overlays;
-          };
-          # Re-export packages from flake inputs that might not support all platforms
-          # Like optionalFlakePackage but restricted to Linux systems;
-          # some flake inputs provide Darwin outputs that fail to compile
-          # because they depend on Linux-specific services.
-          linuxOnlyFlakePackage =
-            name: flakeInput:
-            nixpkgs.lib.optionalAttrs (
-              nixpkgs.lib.hasSuffix "linux" system && flakeInput.packages ? ${system}
-            ) { ${name} = flakeInput.packages.${system}.default; };
-          # Filter local packages by meta.platforms so that packages which
-          # cannot build on the current system are excluded from the output.
-          # This prevents flakehub-push deep evaluation from hitting
-          # "not available on the requested hostPlatform" assertions.
-          filterLocalPackages =
-            localPkgs:
-            nixpkgs.lib.filterAttrs (
-              _name: pkg:
-              let
-                platforms = pkg.meta.platforms or [ ];
-              in
-              platforms == [ ] || builtins.elem system platforms
-            ) localPkgs;
-        in
-        filterLocalPackages (import ./pkgs pkgs)
-        // linuxOnlyFlakePackage "bzmenu" inputs.bzmenu
-        // linuxOnlyFlakePackage "iwmenu" inputs.iwmenu
-        // linuxOnlyFlakePackage "pwmenu" inputs.pwmenu
-      );
-      # Formatter for .nix files, available via 'nix fmt'
+
+      packages = builder.mkPackages {
+        overlays = self.overlays;
+        localPackagesPath = ./pkgs;
+        linuxOnlyFlakeInputs = {
+          inherit (inputs) bzmenu iwmenu pwmenu;
+        };
+      };
+
       formatter = builder.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
 
-      # Creates a devshell for working with this flake via direnv.
-      devShells = builder.forAllSystems (
-        system:
-        let
-          pkgs = import nixpkgs {
-            inherit system;
-            config.allowUnfree = true;
-            overlays = builtins.attrValues self.overlays;
-          };
-          # Some flake inputs don't support all platforms (e.g., determinate doesn't support x86_64-darwin)
-          optionalFlakePackage =
-            flakeInput:
-            inputs.nixpkgs.lib.optional (flakeInput.packages ? ${system}) flakeInput.packages.${system}.default;
-        in
-        {
-          default = pkgs.mkShell {
-            packages =
-              with pkgs;
-              [
-                deadnix
-                git
-                home-manager
-                jq
-                just
-                micro
-                nh
-                nixfmt-tree
-                nixfmt
-                nix-output-monitor
-                openssh
-                sops
-                statix
-                taplo
-                tree
-              ]
-              ++ optionalFlakePackage inputs.determinate
-              ++ optionalFlakePackage inputs.disko
-              ++ optionalFlakePackage inputs.fh;
-          };
-        }
-      );
+      devShells = builder.mkDevShells {
+        overlays = self.overlays;
+        shellPackages =
+          p: with p; [
+            deadnix
+            git
+            home-manager
+            jq
+            just
+            micro
+            nh
+            nixfmt-tree
+            nixfmt
+            nix-output-monitor
+            openssh
+            sops
+            statix
+            taplo
+          ];
+        extraFlakeInputs = with inputs; [
+          determinate
+          disko
+          fh
+        ];
+      };
     };
 }

@@ -29,5 +29,10 @@ in
     isDarwinEntry
     isISOEntry
     isHomeOnlyEntry
+    mkAllNixos
+    mkAllDarwin
+    mkAllHomes
+    mkPackages
+    mkDevShells
     ;
 }
