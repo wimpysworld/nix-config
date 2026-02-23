@@ -21,6 +21,7 @@
       just
       micro
       nix-output-monitor
+      nvd
       sops
     ];
 

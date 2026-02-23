@@ -255,12 +255,26 @@ apply-home username=current_username hostname=current_hostname:
 
     # Check availability
     if ! RESOLVED=$(fh resolve "${FLAKEREF}#homeConfigurations.{{ username }}@{{ hostname }}" 2>/dev/null); then
-      echo " ${LABEL} configuration for {{ username }}@{{ hostname }} not found on FlakeHub"
+      echo " ${LABEL} configuration for {{ username }}@{{ hostname }} not found on FlakeHub"
       echo "   Has the flake been published with 'include-output-paths: true'?"
       exit 1
     fi
 
+    # Capture the current generation store path for diffing
+    BEFORE=""
+    if [[ -L "${CURRENT_LINK}" ]]; then
+      BEFORE=$(readlink -f "${CURRENT_LINK}")
+    fi
+
     fh apply home-manager "${FLAKEREF}#homeConfigurations.{{ username }}@{{ hostname }}"
+
+    # Show what changed
+    if [[ -n "${BEFORE}" ]] && [[ -L "${CURRENT_LINK}" ]]; then
+      AFTER=$(readlink -f "${CURRENT_LINK}")
+      if [[ "${BEFORE}" != "${AFTER}" ]] && command -v nvd >/dev/null 2>&1; then
+        nvd diff "${BEFORE}" "${AFTER}"
+      fi
+    fi
 
 # Apply OS configuration from FlakeHub Cache
 apply-host hostname=current_hostname:
@@ -268,6 +282,7 @@ apply-host hostname=current_hostname:
     set -euo pipefail
 
     FLAKEREF="wimpysworld/nix-config/*"
+    SYSTEM_PROFILE="/nix/var/nix/profiles/system"
 
     if [ "$(uname)" = "Linux" ]; then
       CONFIG_TYPE="nixos"
@@ -286,12 +301,26 @@ apply-host hostname=current_hostname:
 
     # Check availability
     if ! RESOLVED=$(fh resolve "${FLAKEREF}#${CONFIG_PATH}.{{ hostname }}" 2>/dev/null); then
-      echo " ${LABEL} configuration for {{ hostname }} not found on FlakeHub"
+      echo " ${LABEL} configuration for {{ hostname }} not found on FlakeHub"
       echo "   Has the flake been published with 'include-output-paths: true'?"
       exit 1
     fi
 
+    # Capture the current generation store path for diffing
+    BEFORE=""
+    if [[ -L "${SYSTEM_PROFILE}" ]]; then
+      BEFORE=$(readlink -f "${SYSTEM_PROFILE}")
+    fi
+
     sudo fh apply "${CONFIG_TYPE}" "${FLAKEREF}#${CONFIG_PATH}.{{ hostname }}"
+
+    # Show what changed
+    if [[ -n "${BEFORE}" ]] && [[ -L "${SYSTEM_PROFILE}" ]]; then
+      AFTER=$(readlink -f "${SYSTEM_PROFILE}")
+      if [[ "${BEFORE}" != "${AFTER}" ]] && command -v nvd >/dev/null 2>&1; then
+        nvd diff "${BEFORE}" "${AFTER}"
+      fi
+    fi
 
 # Build and Switch Home configuration
 home:
