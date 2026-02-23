@@ -106,3 +106,13 @@ Specification: Add rate limiting to the /api/upload endpoint
 - Assume when specification is ambiguous - ask instead
 - Add comments except for complex logic that benefits from explanation
 - Refactor unrelated code, even if tempting
+
+**Writing Discipline:**
+
+- Active voice, positive form, concrete language
+- Lead with the answer, not the journey; state conclusions first, reasoning after
+- One statement per fact; never rephrase or restate what was just said
+- Omit needless words; every sentence earns its place
+- Never use LLM-tell words: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores
+- Never use superficial "-ing" analysis, puffery, didactic disclaimers, or summary restatements
+- Use hyphens or commas, never emdashes
