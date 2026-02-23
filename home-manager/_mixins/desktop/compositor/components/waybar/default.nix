@@ -384,7 +384,7 @@ lib.mkIf host.is.linux {
           };
           clock = {
             actions = {
-              on-click-middle = "shift_down";
+              on-click = "shift_down";
               on-click-right = "shift_up";
             };
             calendar = {
@@ -400,8 +400,8 @@ lib.mkIf host.is.linux {
                 today = "<span color='${palette.getColor "red"}'><b>{}</b></span>";
               };
             };
-            format = "<big>{:%H:%M}</big>";
-            format-alt = "{:%a, %d %b %R}";
+            on-click-middle = "${pkgs.gnome-clocks}/bin/gnome-clocks";
+            format = "{:%b/%d %H:%M}";
             interval = 60;
             tooltip-format = "<tt><small>{calendar}</small></tt>";
           };
