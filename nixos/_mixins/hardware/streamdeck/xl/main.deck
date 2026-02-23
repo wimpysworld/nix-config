@@ -46,7 +46,6 @@
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Streaming.png"
   [keys.action]
-    exec = "hypr-activity wimpysworld"
     deck = "wimpysworld.deck"
 
 [[keys]]
@@ -109,15 +108,6 @@
     deck = "wimpysworld.deck"
 
 [[keys]]
-  index = 13
-  [keys.widget]
-    id = "button"
-    [keys.widget.config]
-      icon = "~/Studio/StreamDeck/Icons/Hyprland.png"
-  [keys.action]
-    exec = "hypr-activity gsd"
-
-[[keys]]
   index = 14
   [keys.widget]
     id = "time"
@@ -142,7 +132,6 @@
     [keys.widget.config]
       icon = "~/Dropbox/Documents/Martin/Home/YouTube/8-bit Vs/Brand/Avatar/Final/New Avatar-overlayed.png"
   [keys.action]
-    exec = "hypr-activity 8bitversus"
     deck = "8bitversus.deck"
 
 [[keys]]
@@ -152,7 +141,6 @@
     [keys.widget.config]
       icon = "~/Development/restfulmedia/brand-artwork/linux-matters/Telegram/Telegram-Profile-512x512.png"
   [keys.action]
-    exec = "hypr-activity linuxmatters"
     deck = "linuxmatters.deck"
 
 [[keys]]
