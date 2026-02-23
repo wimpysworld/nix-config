@@ -255,7 +255,7 @@ apply-home username=current_username hostname=current_hostname:
 
     # Check availability
     if ! RESOLVED=$(fh resolve "${FLAKEREF}#homeConfigurations.{{ username }}@{{ hostname }}" 2>/dev/null); then
-      echo " ${LABEL} configuration for {{ username }}@{{ hostname }} not found on FlakeHub"
+      echo " ${LABEL} configuration for {{ username }}@{{ hostname }} not found on FlakeHub"
       echo "   Has the flake been published with 'include-output-paths: true'?"
       exit 1
     fi
@@ -301,7 +301,7 @@ apply-host hostname=current_hostname:
 
     # Check availability
     if ! RESOLVED=$(fh resolve "${FLAKEREF}#${CONFIG_PATH}.{{ hostname }}" 2>/dev/null); then
-      echo " ${LABEL} configuration for {{ hostname }} not found on FlakeHub"
+      echo " ${LABEL} configuration for {{ hostname }} not found on FlakeHub"
       echo "   Has the flake been published with 'include-output-paths: true'?"
       exit 1
     fi
@@ -319,6 +319,13 @@ apply-host hostname=current_hostname:
       AFTER=$(readlink -f "${SYSTEM_PROFILE}")
       if [[ "${BEFORE}" != "${AFTER}" ]] && command -v nvd >/dev/null 2>&1; then
         nvd diff "${BEFORE}" "${AFTER}"
+      fi
+    fi
+
+    # Check if a reboot is needed after activation
+    if [ "$(uname)" = "Linux" ]; then
+      if command -v nixos-needsreboot >/dev/null 2>&1; then
+        nixos-needsreboot || true
       fi
     fi
 
@@ -408,6 +415,10 @@ switch-host hostname=current_hostname: prefetch
     if [ "$(uname)" = "Linux" ]; then
       echo "NixOS 󱄅 Switching: {{ hostname }}"
       nh os switch . --hostname "{{ hostname }}"
+      # Check if a reboot is needed after activation
+      if command -v nixos-needsreboot >/dev/null 2>&1; then
+        nixos-needsreboot || true
+      fi
     elif [ "$(uname)" = "Darwin" ]; then
       echo "nix-darwin 󰀵 Switching: {{ hostname }}"
       nh darwin switch . --hostname "{{ hostname }}"
@@ -426,6 +437,19 @@ boot-host hostname=current_hostname:
       echo "nix-darwin does not support boot activation. Use 'just switch-host' instead."
     else
       echo "Unsupported OS: $(uname)"
+    fi
+
+# Check if NixOS needs a reboot after activation
+needs-reboot:
+    #!/usr/bin/env bash
+    if [ "$(uname)" != "Linux" ]; then
+      echo "needs-reboot is only supported on NixOS"
+      exit 0
+    fi
+    if command -v nixos-needsreboot >/dev/null 2>&1; then
+      nixos-needsreboot || true
+    else
+      echo "nixos-needsreboot is not installed"
     fi
 
 # Validate TOML registry files against their JSON Schemas
