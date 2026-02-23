@@ -24,15 +24,15 @@ function session_start() {
 	hyprctl keyword input:kb_layout "${LAYOUT}"
 	dconf write /org/gnome/desktop/wm/preferences/button-layout "':appmenu'"
 	# Restore the previous session and start the auto-save daemon.
-	hypr-session-core load 2>/dev/null || true
-	hypr-session-core start-daemon 2>/dev/null || true
+	hypr-layout load 2>/dev/null || true
+	hypr-layout start-daemon 2>/dev/null || true
 }
 
 function session_stop() {
 	# Save the current session before stopping (if one is active).
-	hypr-session-core save 2>/dev/null || true
+	hypr-layout save 2>/dev/null || true
 	# Stop the auto-save daemon.
-	hypr-session-core stop-daemon 2>/dev/null || true
+	hypr-layout stop-daemon 2>/dev/null || true
 	playerctl --all-players pause
 }
 
