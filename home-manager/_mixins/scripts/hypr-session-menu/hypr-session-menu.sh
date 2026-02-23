@@ -23,13 +23,13 @@ selected=$(echo -e "$session_save\n$session_reload\n$session_obliterate\n\n$wifi
 
 case $selected in
 "$session_save")
-	hypr-session-core save
+	hypr-layout save
 	;;
 "$session_reload")
-	hypr-session-core reload
+	hypr-layout reload
 	;;
 "$session_obliterate")
-	hypr-session-core clear
+	hypr-layout clear
 	;;
 "$wifi")
 	fuzzel-wifi
