@@ -209,6 +209,9 @@ in
       generateKey = false;
     };
     defaultSopsFile = ../secrets/secrets.yaml;
+    secrets = {
+      flakehub_token = { };
+    };
   };
 
   # Fix sops-nix launchd service PATH on Darwin
