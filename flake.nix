@@ -16,10 +16,13 @@
     opencode.inputs.nixpkgs.follows = "nixpkgs-unstable";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.3.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
+    bzmenu.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
     iwmenu.url = "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.3.0.tar.gz";
     iwmenu.inputs.nixpkgs.follows = "nixpkgs";
+    iwmenu.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
     pwmenu.url = "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.3.0.tar.gz";
     pwmenu.inputs.nixpkgs.follows = "nixpkgs";
+    pwmenu.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "https://github.com/catppuccin/nix/archive/refs/tags/v25.11.tar.gz";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     direnv-instant.url = "github:Mic92/direnv-instant";
@@ -37,6 +40,9 @@
     nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.6.0.tar.gz";
     mac-app-util.url = "github:hraban/mac-app-util";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
+    mac-app-util.inputs.cl-nix-lite.inputs.nixpkgs.follows = "nixpkgs";
+    mac-app-util.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
+    mac-app-util.inputs.cl-nix-lite.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
     vscode-server.url = "github:nix-community/nixos-vscode-server";
