@@ -331,9 +331,8 @@ Things I currently need to do manually after installation.
 
 - [ ] 1Password - authenticate
 - [ ] LastPass - authenticate
-- [ ] Run `determinate-nixd login`
+- [ ] Run `just detsys-login`
 - [ ] Run `gh auth login`
-- [ ] Tailscale - `sudo tailscale up --operator="$USER"`
 - [ ] Keybase - `keybase login`
 
 ### Accounts

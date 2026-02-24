@@ -89,8 +89,81 @@ benchmark hostname=current_hostname:
         echo "  Could not parse results (jq not available or results file missing)"
     fi
 
+# Check FlakeHub token freshness and warn if expiry is approaching
+token-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v fh &>/dev/null; then
+        exit 0
+    fi
+
+    STATUS=$(fh status 2>/dev/null) || exit 0
+
+    EXPIRES=$(echo "${STATUS}" | grep "Token expires at:" | sed 's/Token expires at: //' || true)
+    if [[ -z "${EXPIRES}" ]]; then
+        exit 0
+    fi
+
+    # Parse the expiry date into epoch seconds.
+    # fh status format: "2026-03-08 08:14:49 +00:00"
+    if date -d "2000-01-01" +%s &>/dev/null; then
+        # GNU date (Linux)
+        EXPIRY_EPOCH=$(date -d "${EXPIRES}" +%s 2>/dev/null) || exit 0
+    else
+        # BSD date (macOS) - reformat to a form it accepts
+        EXPIRY_EPOCH=$(date -j -f "%Y-%m-%d %H:%M:%S %z" "${EXPIRES}" +%s 2>/dev/null) || exit 0
+    fi
+    NOW_EPOCH=$(date +%s)
+    DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+
+    RENEW_URL="https://flakehub.com/token/create?description=FlakeHub+Token"
+
+    if [[ "${DAYS_LEFT}" -le 0 ]]; then
+        echo -e "FlakeHub  \033[1m\033[31mToken EXPIRED! Update flakehub_token in secrets/secrets.yaml\033[0m"
+        echo "   ${RENEW_URL}"
+    elif [[ "${DAYS_LEFT}" -le 7 ]]; then
+        echo -e "FlakeHub  \033[1mToken expires in ${DAYS_LEFT} days. Update flakehub_token in secrets/secrets.yaml\033[0m"
+        echo "   ${RENEW_URL}"
+    elif [[ "${DAYS_LEFT}" -le 14 ]]; then
+        echo "FlakeHub  Token expires in ${DAYS_LEFT} days. Update flakehub_token in secrets/secrets.yaml"
+        echo "   ${RENEW_URL}"
+    fi
+
+# Authenticate Determinate Nixd with FlakeHub using the sops-encrypted token
+detsys-login:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    SECRETS_FILE="secrets/secrets.yaml"
+
+    if ! command -v sops &>/dev/null; then
+        echo "FlakeHub  sops not found; cannot decrypt token"
+        exit 1
+    fi
+
+    if [[ ! -f "${SECRETS_FILE}" ]]; then
+        echo "FlakeHub  ${SECRETS_FILE} not found; cannot decrypt token"
+        exit 1
+    fi
+
+    if ! command -v determinate-nixd &>/dev/null; then
+        echo "FlakeHub  determinate-nixd not found"
+        exit 1
+    fi
+
+    echo "FlakeHub  Logging in to FlakeHub via Determinate Nixd"
+
+    # Decrypt the FlakeHub token from sops and write to a temporary file.
+    TOKEN_FILE=$(mktemp)
+    trap 'rm -f "${TOKEN_FILE}"' EXIT
+    sops decrypt --extract '["flakehub_token"]' "${SECRETS_FILE}" > "${TOKEN_FILE}"
+
+    sudo determinate-nixd auth login token --token-file "${TOKEN_FILE}"
+    echo "FlakeHub 󰸞 Logged in"
+
 # Prefetch proprietary packages into the Nix store
-prefetch:
+prefetch: token-check
     #!/usr/bin/env bash
     set -euo pipefail
 
