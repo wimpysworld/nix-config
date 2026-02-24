@@ -11,7 +11,7 @@ function usage() {
 	echo
 	echo "The install path is determined automatically:"
 	echo "  - Age keys: required (inject with 'just inject-tokens' or SCP manually)"
-	echo "  - FlakeHub: uses 'determinate-nixd login' if not already authenticated"
+	echo "  - FlakeHub: authenticates automatically from sops-encrypted token"
 }
 
 TARGET_HOST="${1:-}"
@@ -188,17 +188,25 @@ if command -v determinate-nixd >/dev/null 2>&1; then
 	DNIXD_STATUS=$(determinate-nixd status 2>&1 || true)
 	if echo "$DNIXD_STATUS" | grep -q "Authentication: logged-out"; then
 		echo "FlakeHub Cache not authenticated."
-		read -p "Run 'determinate-nixd login' now? [y/N] " -n 1 -r
-		echo
-		if [[ $REPLY =~ ^[Yy]$ ]]; then
-			if sudo determinate-nixd login; then
-				USE_FLAKEHUB=1
-				echo "FlakeHub Cache authenticated. Will use cached closures where possible."
+		# Try automatic authentication via sops-encrypted token
+		SECRETS_FILE="secrets/secrets.yaml"
+		if command -v sops &>/dev/null && [[ -f "${SECRETS_FILE}" ]]; then
+			TOKEN_FILE=$(mktemp)
+			trap 'rm -f "$TOKEN_FILE"' EXIT
+			if sops decrypt --extract '["flakehub_token"]' "${SECRETS_FILE}" >"$TOKEN_FILE" 2>/dev/null; then
+				echo "Authenticating with FlakeHub using sops token..."
+				if sudo determinate-nixd auth login token --token-file "$TOKEN_FILE"; then
+					USE_FLAKEHUB=1
+					echo "FlakeHub Cache authenticated. Will use cached closures where possible."
+				else
+					echo "WARNING! Token authentication failed. Will build locally."
+				fi
 			else
-				echo "WARNING! determinate-nixd login failed. Will build locally."
+				echo "WARNING! Could not decrypt flakehub_token from sops. Will build locally."
 			fi
+			rm -f "$TOKEN_FILE"
 		else
-			echo "Skipping FlakeHub login. Will build locally."
+			echo "WARNING! sops not available or secrets file not found. Will build locally."
 		fi
 	else
 		USE_FLAKEHUB=1
