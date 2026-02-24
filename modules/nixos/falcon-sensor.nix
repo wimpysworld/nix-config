@@ -193,6 +193,25 @@ in
           "/var/log"
           "/run/secrets"
         ];
+        # Prevent the sensor from consuming swap. A swapped-out security
+        # sensor is functionally dead; force pressure to manifest as
+        # throttling or OOM instead.
+        MemorySwapMax = "0";
+        # If the sensor is OOM-killed, stop the unit cleanly. Combined
+        # with Restart=on-failure, it will restart automatically.
+        OOMPolicy = "stop";
+        # Deprioritise the sensor when systemd-oomd selects candidates
+        # for proactive killing under system-wide memory pressure.
+        ManagedOOMPreference = "avoid";
+        # CPU scheduling: lower priority than default processes.
+        # batch optimises for throughput over latency, reducing context
+        # switches. Nice 5 and CPUWeight 80 yield to interactive work
+        # under contention without starving event processing.
+        Nice = 5;
+        CPUSchedulingPolicy = "batch";
+        CPUWeight = 80;
+        # IO scheduling: slightly yield to user workloads.
+        IOWeight = 80;
       };
     };
   };
