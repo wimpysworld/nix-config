@@ -80,7 +80,9 @@ rec {
     ;
 
   # Generate Catppuccin palette with helper functions
-  # This reads the palette JSON and provides convenient colour access functions
+  # This reads the palette JSON and provides convenient colour access functions.
+  # The palette data is inlined from lib/catppuccin-palette.json to avoid IFD
+  # (Import From Derivation) which would block evaluation for every host.
   mkCatppuccinPalette =
     {
       flavor ? "mocha",
@@ -88,9 +90,7 @@ rec {
       system ? "x86_64-linux",
     }:
     let
-      paletteJson = builtins.fromJSON (
-        builtins.readFile "${inputs.catppuccin.packages.${system}.palette}/palette.json"
-      );
+      paletteJson = builtins.fromJSON (builtins.readFile ./catppuccin-palette.json);
       palette = paletteJson.${flavor}.colors;
 
       # Helper functions for palette access
