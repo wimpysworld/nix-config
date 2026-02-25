@@ -77,35 +77,27 @@ let
     ];
   };
 in
-lib.mkIf
-  (noughtyLib.isHost [
-    "bane"
-    "malgus"
-    "phasma"
-    "vader"
-    "zannah"
-  ])
-  {
-    environment.systemPackages = [
-      pkgs._1password-gui
-      pkgs.wavebox
-      googleMeetDesktopItem
-      slackWavebox
-      waveboxXdgOpen
-    ];
+lib.mkIf (noughtyLib.hostHasTag "workspace") {
+  environment.systemPackages = [
+    pkgs._1password-gui
+    pkgs.wavebox
+    googleMeetDesktopItem
+    slackWavebox
+    waveboxXdgOpen
+  ];
 
-    programs.wavebox = {
-      enable = true;
-      extensions = [
-        "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-        "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
-        "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
-        "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
-        "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
-        "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
-        "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
-        "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
-        "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
-      ];
-    };
-  }
+  programs.wavebox = {
+    enable = true;
+    extensions = [
+      "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
+      "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
+      "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
+      "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
+      "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
+      "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
+      "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
+      "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
+      "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
+    ];
+  };
+}
