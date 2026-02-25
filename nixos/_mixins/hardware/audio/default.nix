@@ -8,7 +8,7 @@
 let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
-  useLowLatencyPipewire = noughtyLib.hostHasTag "streamstation";
+  useLowLatencyPipewire = noughtyLib.hostHasTag "studio";
 in
 lib.mkIf (!host.is.iso) {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency

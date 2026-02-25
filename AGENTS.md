@@ -119,7 +119,7 @@ All systems defined in `lib/registry-systems.toml` (read by `flake.nix` via `bui
 - **username** (optional): defaults to `"martin"`
 - **gpu** (optional): `vendors = ["amd", "nvidia"]` with optional `[hostname.gpu.compute]` block containing `vendor`, `vram`
 - **displays** (optional): list of display submodules with output, width, height, refresh, scale, position, primary, workspaces
-- **tags** (optional): `["streamstation", "thinkpad", "iso"]`
+- **tags** (optional): `["studio", "thinkpad", "iso"]`
 
 Users defined in `lib/registry-users.toml` (read by `flake.nix` via `builtins.fromTOML`):
 
@@ -169,7 +169,7 @@ Key gating patterns:
 - `host.is.workstation`, `host.is.server`, `host.is.laptop`, `host.is.iso`, `host.is.vm`, `host.is.darwin`, `host.is.linux` - derived booleans
 - `noughtyLib.isUser [ "martin" ]` - user identity check
 - `noughtyLib.isHost [ "vader" "phasma" ]` - host identity check
-- `noughtyLib.hostHasTag "streamstation"` - host tag check
+- `noughtyLib.hostHasTag "studio"` - host tag check
 - `noughtyLib.userHasTag "developer"` - user tag check
 - `host.gpu.hasNvidia`, `host.gpu.hasCuda` - GPU checks
 - `host.display.primaryOutput`, `host.display.isMultiMonitor` - display checks

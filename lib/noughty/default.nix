@@ -135,7 +135,7 @@ in
       tags = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [ ];
-        description = "Freeform tags for host classification (e.g. \"streamstation\", \"thinkpad\").";
+        description = "Freeform tags for host classification (e.g. \"studio\", \"thinkpad\").";
       };
 
       # ── Derived OS (read-only) ────────────────────────────────────
