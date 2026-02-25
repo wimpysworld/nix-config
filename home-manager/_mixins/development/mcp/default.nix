@@ -17,7 +17,12 @@ let
 
   # Import shared MCP server definitions
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
-  inherit (mcpServerDefs) mcpServers opencodeServers copilotMcpServers;
+  inherit (mcpServerDefs)
+    mcpServers
+    opencodeServers
+    copilotMcpServers
+    otermMcpServers
+    ;
 in
 {
   programs = {
@@ -132,6 +137,16 @@ in
     templates."vscode-mcp-config.json" = lib.mkIf config.programs.vscode.enable {
       content = builtins.toJSON { servers = mcpServers; };
       path = "${vscodeUserDir}/mcp.json";
+    };
+
+    # MCP servers - used by oterm (Ollama TUI with MCP support)
+    templates."oterm-config.json" = {
+      content = builtins.toJSON {
+        theme = "catppuccin-mocha";
+        splash-screen = true;
+        mcpServers = otermMcpServers;
+      };
+      path = "${config.xdg.dataHome}/oterm/config.json";
     };
 
     # MCP servers - used by GitHub Copilot CLI

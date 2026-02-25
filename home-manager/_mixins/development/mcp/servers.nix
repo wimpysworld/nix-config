@@ -132,6 +132,47 @@
   };
 
   # MCP servers for Copilot CLI - only supports stdio/local with required tools/args arrays
+  # MCP servers for oterm - uses stdio (command/args) and HTTP (url with optional auth)
+  otermMcpServers = {
+    # Stdio servers
+    nixos = {
+      command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+      args = [ ];
+    };
+    # HTTP servers without auth
+    cloudflare = {
+      url = "https://docs.mcp.cloudflare.com/mcp";
+    };
+    exa = {
+      url = "https://mcp.exa.ai/mcp";
+    };
+    svelte = {
+      url = "https://mcp.svelte.dev/mcp";
+    };
+    # HTTP servers with bearer auth
+    context7 = {
+      url = "https://mcp.context7.com/mcp";
+      auth = {
+        type = "bearer";
+        token = config.sops.placeholder.CONTEXT7_API_KEY;
+      };
+    };
+    github = {
+      url = "https://api.githubcopilot.com/mcp/";
+      auth = {
+        type = "bearer";
+        token = config.sops.placeholder.GITHUB_TOKEN;
+      };
+    };
+    jina = {
+      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
+      auth = {
+        type = "bearer";
+        token = config.sops.placeholder.JINA_API_KEY;
+      };
+    };
+  };
+
   copilotMcpServers = {
     # Servers without secrets
     cloudflare = {
