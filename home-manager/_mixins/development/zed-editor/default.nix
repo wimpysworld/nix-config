@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
@@ -34,7 +33,7 @@ lib.mkIf host.is.workstation {
       userSettings = {
         agent = {
           enable_feedback = false;
-          dock = if noughtyLib.isHost [ "vader" ] then "bottom" else "right";
+          dock = if host.display.primaryIsPortrait then "bottom" else "right";
           message_editor_min_lines = 12;
         };
         agent_buffer_font_size = fontSize;
