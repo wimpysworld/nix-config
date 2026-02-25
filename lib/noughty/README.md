@@ -320,12 +320,12 @@ in
 
 Tags are freeform `listOf str`. The canonical vocabulary is documented in a comment block in `lib/registry-systems.toml`:
 
-- **Host tags:** `streamstation`, `trackball`, `streamdeck`, `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`, `inference`
+- **Host tags:** `studio`, `trackball`, `streamdeck`, `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`, `inference`
 - **User tags:** `developer`, `admin`, `family`
 
-Tags centralise classification that was previously scattered as hostname comparisons across the tree (e.g. `hostname == "phasma" || hostname == "vader"` becomes the `"streamstation"` tag, set once in the registry).
+Tags centralise classification that was previously scattered as hostname comparisons across the tree (e.g. `hostname == "phasma" || hostname == "vader"` becomes the `"studio"` tag, set once in the registry).
 
-Because `tags` is `listOf str`, values from the registry and host-specific modules merge automatically via the module system. Tags are for *classification* ("this host is a streamstation"), not *configuration* ("this host uses DP-1").
+Because `tags` is `listOf str`, values from the registry and host-specific modules merge automatically via the module system. Tags are for *classification* ("this host is a studio"), not *configuration* ("this host uses DP-1").
 
 Start simple; add enum validation only if typos become a real problem.
 
@@ -366,7 +366,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
 
 ```nix
 { noughtyLib, lib, ... }:
-lib.mkIf (noughtyLib.hostHasTag "streamstation") {
+lib.mkIf (noughtyLib.hostHasTag "studio") {
   services.foo.enable = true;
 }
 ```
@@ -544,7 +544,7 @@ The `noughty` command is a shell script wrapped via `writeShellApplication` that
   Desktop      hyprland
   GPU          amd, nvidia
   Compute      nvidia (16GB) [cuda]
-  Tags         streamstation, trackball, streamdeck, pci-hdmi-capture, inference
+  Tags         studio, trackball, streamdeck, pci-hdmi-capture, inference
 
   User         martin
   Tailnet      drongo-gamma.ts.net

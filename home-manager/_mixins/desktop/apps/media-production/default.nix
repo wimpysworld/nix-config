@@ -416,12 +416,12 @@ in
       gimp3
       inkscape
     ]
-    ++ lib.optionals (noughtyLib.hostHasTag "streamstation") [
+    ++ lib.optionals (noughtyLib.hostHasTag "studio") [
       blender-hip
       davinciResolve
     ];
 
-  services.easyeffects = lib.mkIf (noughtyLib.hostHasTag "streamstation") {
+  services.easyeffects = lib.mkIf (noughtyLib.hostHasTag "studio") {
     enable = true;
     preset = "mic-${host.name}-oktava";
   };

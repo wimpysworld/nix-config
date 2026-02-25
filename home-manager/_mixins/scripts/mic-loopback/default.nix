@@ -19,7 +19,4 @@ let
     text = builtins.readFile ./${name}.sh;
   };
 in
-lib.mkIf (noughtyLib.isHost [
-  "phasma"
-  "vader"
-]) { home.packages = with pkgs; [ shellApplication ]; }
+lib.mkIf (noughtyLib.hostHasTag "studio") { home.packages = with pkgs; [ shellApplication ]; }
