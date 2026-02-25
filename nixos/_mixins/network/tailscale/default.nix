@@ -33,8 +33,6 @@ lib.mkIf (host.is.workstation || host.is.server) {
     ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
     extraSetFlags = [
       "--operator=${username}"
-      # OAuth clients require at least one tag; all NixOS nodes share a single tag
-      "--advertise-tags=tag:nixos"
     ]
     ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
     # Enable caddy to acquire certificates from the tailscale daemon
