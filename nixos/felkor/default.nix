@@ -1,6 +1,5 @@
 {
   inputs,
-  lib,
   ...
 }:
 {
@@ -23,6 +22,4 @@
       "kvm-amd"
     ];
   };
-
-  services.fprintd.enable = lib.mkForce false;
 }

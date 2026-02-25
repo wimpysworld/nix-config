@@ -2,7 +2,6 @@
 
 {
   inputs,
-  lib,
   pkgs,
   ...
 }:
@@ -58,13 +57,6 @@
   # - https://github.com/uunicorn/python-validity
   # - https://github.com/tester1969/pam-validity
   # TODO: Package the above project as libfprint-2-tod1-vfs009a
-  services = {
-    fprintd = {
-      enable = lib.mkDefault false;
-      #tod.enable = true;
-      #tod.driver = pkgs.libfprint-2-tod1-vfs0090;
-    };
-  };
   services.xserver.videoDrivers = [
     "i915"
     "nvidia"

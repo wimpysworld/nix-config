@@ -1,7 +1,7 @@
 # System registry - central definition of all systems and their properties
 #
 # Canonical tag vocabulary:
-#   Host tags: studio, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup
+#   Host tags: studio, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup, fprintd
 #   User tags: developer, admin, family
 #
 # Registry fields:
@@ -99,7 +99,7 @@ position = { x = 760, y = 2720 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["policy", "workspace", "dropbox"]
+tags = ["policy", "workspace", "dropbox", "fprintd"]
 
 [bane.gpu]
 vendors = ["amd"]
@@ -133,7 +133,7 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["thinkpad"]
+tags = ["thinkpad", "fprintd"]
 
 [shaa.gpu]
 vendors = ["amd"]
@@ -150,7 +150,7 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["thinkpad"]
+tags = ["thinkpad", "fprintd"]
 
 [atrius.gpu]
 vendors = ["amd"]

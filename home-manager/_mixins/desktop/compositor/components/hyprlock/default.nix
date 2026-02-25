@@ -2,6 +2,7 @@
   catppuccinPalette,
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -30,6 +31,7 @@ let
       "0, -316";
   catResolution = toString display.primaryWidth;
   monitor = display.primaryOutput;
+  unlockGlyph = if noughtyLib.hostHasTag "fprintd" then "󰈷" else "󰌋";
 in
 lib.mkIf host.is.linux {
   # Hyprlock is a lockscreen that is a part of the hyprland suite
@@ -44,6 +46,14 @@ lib.mkIf host.is.linux {
           immediate_render = true;
           no_fade_in = false;
           no_fade_out = false;
+        };
+        auth = lib.mkIf (noughtyLib.hostHasTag "fprintd") {
+          fingerprint = {
+            enabled = true;
+            ready_message = ""; #Place your finger on the Touch ID sensor
+            present_message = "Verifying your identity...";
+            retry_delay = 250;
+          };
         };
         background = [
           {
@@ -165,6 +175,17 @@ lib.mkIf host.is.linux {
             halign = "center";
             valign = "center";
           }
+          {
+            # Fingerprint prompt (only rendered when fprintd sends a message)
+            inherit monitor;
+            text = "$FPRINTPROMPT";
+            color = mkRgba "green" "0.9";
+            font_size = 14;
+            font_family = "Work Sans";
+            position = "0, -280";
+            halign = "center";
+            valign = "center";
+          }
         ];
         # Username box
         shape = [
@@ -193,7 +214,7 @@ lib.mkIf host.is.linux {
             dots_spacing = 0.25;
             dots_center = true;
             fade_on_empty = false;
-            placeholder_text = ''<span foreground="${mkPangoHex "yellow"}"><big>  󰌋  </big></span>'';
+            placeholder_text = ''<span foreground="${mkPangoHex "yellow"}"><big>  ${unlockGlyph}  </big></span>'';
             fail_text = ''<span foreground="${mkPangoHex "red"}">󰀧</span>  <i>$FAIL</i> <span foreground="${mkPangoHex "red"}"><b>($ATTEMPTS)</b></span>'';
             fail_timeout = 3000; # milliseconds before fail_text and fail_color disappears
             fail_transition = 500; # transition time in ms between normal outer_color and fail_color

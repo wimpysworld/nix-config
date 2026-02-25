@@ -49,6 +49,4 @@
       emulateWheel = lib.mkDefault config.hardware.trackpoint.enable;
     };
   };
-
-  services.fprintd.enable = lib.mkDefault true;
 }
