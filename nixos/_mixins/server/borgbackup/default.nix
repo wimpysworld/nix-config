@@ -329,79 +329,74 @@ let
     '';
   };
 in
-lib.mkIf
-  (noughtyLib.isHost [
-    "phasma"
-    "vader"
-  ])
-  {
-    # Ensure the user's backup directory exists on the target mount.
-    systemd.tmpfiles.rules = [ "d ${backupBase}/${username} 0755 ${username} users" ];
+lib.mkIf (noughtyLib.hostHasTag "borgbackup") {
+  # Ensure the user's backup directory exists on the target mount.
+  systemd.tmpfiles.rules = [ "d ${backupBase}/${username} 0755 ${username} users" ];
 
-    sops.secrets.borg_passphrase = {
-      sopsFile = ../../../../secrets/borg.yaml;
-      key = "passphrase";
-      owner = username;
-      group = "users";
-      mode = "0400";
-    };
+  sops.secrets.borg_passphrase = {
+    sopsFile = ../../../../secrets/borg.yaml;
+    key = "passphrase";
+    owner = username;
+    group = "users";
+    mode = "0400";
+  };
 
-    # Convenience scripts for mounting and unmounting borg backup archives.
-    environment.systemPackages = [
-      borgMount
-      borgUmount
-    ];
+  # Convenience scripts for mounting and unmounting borg backup archives.
+  environment.systemPackages = [
+    borgMount
+    borgUmount
+  ];
 
-    services.borgbackup.jobs = lib.mapAttrs mkBorgJob backupJobs;
+  services.borgbackup.jobs = lib.mapAttrs mkBorgJob backupJobs;
 
-    # Allow borgbackup services to take sleep inhibitor locks without interactive
-    # authentication. The borgbackup services run as User=${username} and set
-    # inhibitsSleep = true, which wraps borg in systemd-inhibit --what="sleep".
-    # That takes a block lock, triggering the polkit action
-    # org.freedesktop.login1.inhibit-block-sleep. The service process is not part
-    # of a logind session, so polkit classifies it under "allow_any" which
-    # defaults to auth_admin_keep, requiring interactive authentication that a
-    # headless systemd service cannot provide.
-    security.polkit.extraConfig = ''
-      polkit.addRule(function(action, subject) {
-        if (action.id === "org.freedesktop.login1.inhibit-block-sleep" &&
-            subject.user === "${username}" &&
-            subject.system_unit &&
-            subject.system_unit.indexOf("borgbackup-job-") === 0) {
-          return polkit.Result.YES;
-        }
-      });
-    '';
+  # Allow borgbackup services to take sleep inhibitor locks without interactive
+  # authentication. The borgbackup services run as User=${username} and set
+  # inhibitsSleep = true, which wraps borg in systemd-inhibit --what="sleep".
+  # That takes a block lock, triggering the polkit action
+  # org.freedesktop.login1.inhibit-block-sleep. The service process is not part
+  # of a logind session, so polkit classifies it under "allow_any" which
+  # defaults to auth_admin_keep, requiring interactive authentication that a
+  # headless systemd service cannot provide.
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id === "org.freedesktop.login1.inhibit-block-sleep" &&
+          subject.user === "${username}" &&
+          subject.system_unit &&
+          subject.system_unit.indexOf("borgbackup-job-") === 0) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
 
-    # Lightweight integrity checks (repository index + archive metadata).
-    # Run weekly on Sunday at 06:00 for data and 07:00 for media, staggered
-    # to avoid both hitting disk simultaneously.
-    systemd.services.borgcheck-data = mkCheckService "data" false;
-    systemd.timers.borgcheck-data = mkCheckTimer "data" "Sun *-*-* 06:00:00";
+  # Lightweight integrity checks (repository index + archive metadata).
+  # Run weekly on Sunday at 06:00 for data and 07:00 for media, staggered
+  # to avoid both hitting disk simultaneously.
+  systemd.services.borgcheck-data = mkCheckService "data" false;
+  systemd.timers.borgcheck-data = mkCheckTimer "data" "Sun *-*-* 06:00:00";
 
-    systemd.services.borgcheck-media = mkCheckService "media" false;
-    systemd.timers.borgcheck-media = mkCheckTimer "media" "Sun *-*-* 07:00:00";
+  systemd.services.borgcheck-media = mkCheckService "media" false;
+  systemd.timers.borgcheck-media = mkCheckTimer "media" "Sun *-*-* 07:00:00";
 
-    # Full data verification (reads and checksums every block in the repo).
-    # Run monthly on the first Sunday at 04:00 for data and 05:00 for media.
-    # These are expensive operations; idle scheduling ensures they yield to
-    # interactive workloads and backup jobs.
-    systemd.services.borgverify-data = mkCheckService "data" true;
-    systemd.timers.borgverify-data = mkCheckTimer "data" "Sun *-*-1..7 04:00:00";
+  # Full data verification (reads and checksums every block in the repo).
+  # Run monthly on the first Sunday at 04:00 for data and 05:00 for media.
+  # These are expensive operations; idle scheduling ensures they yield to
+  # interactive workloads and backup jobs.
+  systemd.services.borgverify-data = mkCheckService "data" true;
+  systemd.timers.borgverify-data = mkCheckTimer "data" "Sun *-*-1..7 04:00:00";
 
-    systemd.services.borgverify-media = mkCheckService "media" true;
-    systemd.timers.borgverify-media = mkCheckTimer "media" "Sun *-*-1..7 05:00:00";
+  systemd.services.borgverify-media = mkCheckService "media" true;
+  systemd.timers.borgverify-media = mkCheckTimer "media" "Sun *-*-1..7 05:00:00";
 
-    # Failure notification services triggered by OnFailure= when checks or
-    # backup jobs fail. Each sends an email via nullmailer's sendmail.
-    systemd.services.borgnotify-check-data = mkFailureNotify "borgcheck-data";
-    systemd.services.borgnotify-check-media = mkFailureNotify "borgcheck-media";
-    systemd.services.borgnotify-verify-data = mkFailureNotify "borgverify-data";
-    systemd.services.borgnotify-verify-media = mkFailureNotify "borgverify-media";
+  # Failure notification services triggered by OnFailure= when checks or
+  # backup jobs fail. Each sends an email via nullmailer's sendmail.
+  systemd.services.borgnotify-check-data = mkFailureNotify "borgcheck-data";
+  systemd.services.borgnotify-check-media = mkFailureNotify "borgcheck-media";
+  systemd.services.borgnotify-verify-data = mkFailureNotify "borgverify-data";
+  systemd.services.borgnotify-verify-media = mkFailureNotify "borgverify-media";
 
-    # Send failure notifications when backup jobs themselves fail.
-    systemd.services.borgbackup-job-data.unitConfig.OnFailure = "borgnotify-job-data.service";
-    systemd.services.borgbackup-job-media.unitConfig.OnFailure = "borgnotify-job-media.service";
-    systemd.services.borgnotify-job-data = mkFailureNotify "borgbackup-job-data";
-    systemd.services.borgnotify-job-media = mkFailureNotify "borgbackup-job-media";
-  }
+  # Send failure notifications when backup jobs themselves fail.
+  systemd.services.borgbackup-job-data.unitConfig.OnFailure = "borgnotify-job-data.service";
+  systemd.services.borgbackup-job-media.unitConfig.OnFailure = "borgnotify-job-media.service";
+  systemd.services.borgnotify-job-data = mkFailureNotify "borgbackup-job-data";
+  systemd.services.borgnotify-job-media = mkFailureNotify "borgbackup-job-media";
+}
