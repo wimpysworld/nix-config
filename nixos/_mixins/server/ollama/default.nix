@@ -25,12 +25,12 @@ let
 
   # VRAM-based model tier selection.
   defaultModel =
-    if vram >= 18 then
-      "gemma3:27b"
-    else if vram >= 8 then
-      "gemma3:12b"
+    if vram >= 65 then
+      "gpt-oss:120b"
+    else if vram >= 14 then
+      "gpt-oss:20b"
     else
-      "gemma3:4b";
+      "rnj-1:8b";
   generalModel =
     if vram >= 20 then
       "qwen3:30b"
@@ -59,7 +59,7 @@ let
       "qwen3-vl:8b"
     else
       "qwen3-vl:4b";
-  taskModel = "qwen3:4b";
+  taskModel = "rnj-1:8b";
 
   allModels = [
     codingModel
@@ -73,7 +73,7 @@ in
 lib.mkIf isInference {
   environment = {
     shellAliases.ollama-log = "journalctl _SYSTEMD_UNIT=ollama.service";
-    systemPackages = [ pkgs.gollama ];
+    systemPackages = [ pkgs.oterm ];
   };
   services.ollama = {
     enable = true;
