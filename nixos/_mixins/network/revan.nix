@@ -9,6 +9,7 @@ lib.mkIf (noughtyLib.isHost [ "revan" ]) {
     firewall = {
       trustedInterfaces = [ "eth0" ];
     };
+    # Adjust MTU for Virgin Fibre
     interfaces.eth0.mtu = 1462;
     interfaces.eth0.ipv4.addresses = [
       {
