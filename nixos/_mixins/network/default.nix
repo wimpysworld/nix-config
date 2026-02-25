@@ -74,7 +74,6 @@ in
     ./ssh
     ./tailscale
     ./malak.nix
-    ./phasma.nix
     ./revan.nix
     ./vader.nix
   ];
