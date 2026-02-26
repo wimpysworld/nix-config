@@ -9,9 +9,6 @@ let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   opencodePackage = inputs.opencode.packages.${system}.opencode;
-  shellAliases = {
-    opencode = "${opencodePackage}/bin/opencode --agent rosey --continue";
-  };
 in
 {
   home = {
@@ -26,9 +23,6 @@ in
   };
 
   programs = {
-    bash.shellAliases = shellAliases;
-    fish.shellAliases = shellAliases;
-    zsh.shellAliases = shellAliases;
     opencode = {
       enable = true;
       package = opencodePackage;
