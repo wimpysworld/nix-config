@@ -15,13 +15,7 @@ function bluetooth_devices() {
 }
 
 function session_start() {
-	local LAYOUT=""
 	bluetooth_devices connect
-	LAYOUT="$(localectl | grep "X11 Layout" | cut -d':' -f2 | sed 's/ //g')"
-	if [ -z "$LAYOUT" ]; then
-		LAYOUT="gb"
-	fi
-	hyprctl keyword input:kb_layout "${LAYOUT}"
 	dconf write /org/gnome/desktop/wm/preferences/button-layout "':appmenu'"
 	# Restore the previous session and start the auto-save daemon.
 	hypr-layout load 2>/dev/null || true
@@ -29,11 +23,13 @@ function session_start() {
 }
 
 function session_stop() {
-	# Save the current session before stopping (if one is active).
-	hypr-layout save 2>/dev/null || true
 	# Stop the auto-save daemon.
 	hypr-layout stop-daemon 2>/dev/null || true
 	playerctl --all-players pause
+	# Save the current session before stopping (if one is active).
+	hypr-layout save 2>/dev/null || true
+	# Close everything gracefully
+	hypr-layout clear 2>/dev/null || true
 }
 
 OPT="help"
