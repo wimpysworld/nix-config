@@ -336,7 +336,6 @@ in
   home = {
     packages = [
       inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.copilot-cli
-      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.spec-kit
     ];
   };
   programs = {
@@ -376,11 +375,11 @@ in
           };
           default_model = {
             provider = "copilot_chat";
-            model = "claude-sonnet-4.5";
+            model = "claude-sonnet-4.6";
           };
           inline_assistant_model = {
             provider = "copilot_chat";
-            model = "claude-haiku-4.5";
+            model = "claude-haiku-4.6";
           };
           thread_summary_model = {
             provider = "copilot_chat";
