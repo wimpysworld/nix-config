@@ -416,7 +416,7 @@ in
       gimp3
       inkscape
     ]
-    ++ lib.optionals (noughtyLib.hostHasTag "studio") [
+    ++ lib.optionals (noughtyLib.hostHasTag "gamedev") [
       blender-hip
     ]
     ++ lib.optionals (noughtyLib.hostHasTag "davinci") [
