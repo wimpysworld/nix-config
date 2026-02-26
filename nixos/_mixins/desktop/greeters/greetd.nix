@@ -83,6 +83,10 @@ lib.mkIf host.is.workstation {
   programs = {
     regreet = {
       enable = true;
+      cursorTheme = {
+        name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+        package = cursorPackage;
+      };
       settings = {
         appearance = {
           greeting_msg = "May ${noughtyLib.hostNameCapitalised} serve you well";
