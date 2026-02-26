@@ -418,6 +418,8 @@ in
     ]
     ++ lib.optionals (noughtyLib.hostHasTag "studio") [
       blender-hip
+    ]
+    ++ lib.optionals (noughtyLib.hostHasTag "davinci") [
       davinciResolve
     ];
 
