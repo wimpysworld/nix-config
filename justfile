@@ -310,6 +310,30 @@ switch:
     @just switch-home
     @just switch-host
 
+# Resolve FlakeHub Cache store paths for host and home configurations
+resolve username=current_username hostname=current_hostname:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    FLAKEREF="wimpysworld/nix-config/*"
+
+    if [ "$(uname)" = "Linux" ]; then
+      CONFIG_PATH="nixosConfigurations"
+      HOST_LABEL="NixOS 󱄅"
+    elif [ "$(uname)" = "Darwin" ]; then
+      CONFIG_PATH="darwinConfigurations"
+      HOST_LABEL="nix-darwin 󰀵"
+    else
+      echo "Unsupported OS: $(uname)"
+      exit 1
+    fi
+
+    echo "${HOST_LABEL} Resolving: {{ hostname }}"
+    fh resolve "${FLAKEREF}#${CONFIG_PATH}.{{ hostname }}" 2>/dev/null || echo "  Not found on FlakeHub"
+
+    echo "Home Manager 󰋜 Resolving: {{ username }}@{{ hostname }}"
+    fh resolve "${FLAKEREF}#homeConfigurations.{{ username }}@{{ hostname }}" 2>/dev/null || echo "  Not found on FlakeHub"
+
 # Apply OS and Home configurations from FlakeHub Cache
 apply:
     @just apply-home
