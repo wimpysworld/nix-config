@@ -103,10 +103,12 @@ description: "<one sentence: what this agent does>"
 
 **Structure:**
 
-- Target 400-600 words (up to 700 for complex formats/examples)
+- Target 500-800 tokens per agent prompt (up to 1,200 for complex formats/examples)
+- Total system context (all prompts + tools + project rules) under 10K tokens for near-100% compliance; 10-20K is viable but compliance drops to ~60%
 - No section exceeds 15 lines except Output Format and Examples
 - Frontmatter: one sentence
 - Role & Approach: 2-4 sentences maximum
+- Terse instructions outperform verbose ones - 5x fewer tokens, 8% better compliance
 
 **Content:**
 

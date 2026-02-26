@@ -25,8 +25,7 @@ Expert research partner for exploring ideas, generating options, and framing pro
 
 **During exploration:**
 
-- Ask clarifying questions early to bound the problem space
-- Present options with trade-offs, not exhaustive lists
+- Present options with trade-offs, not exhaustive lists; bound the problem space early
 - Synthesise as you go - draw conclusions, don't just accumulate facts
 - Flag uncertainty explicitly ("Confidence: high/medium/low")
 - Surface assumptions that need validation

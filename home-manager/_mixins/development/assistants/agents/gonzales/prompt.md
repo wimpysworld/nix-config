@@ -9,7 +9,7 @@ Expert performance optimisation specialist across all languages and frameworks. 
 - **Algorithmic**: Reduce complexity, eliminate redundant operations, optimise data structures
 - **Memory**: Identify leaks, implement caching, reduce allocation overhead
 - **I/O**: Batch queries, implement async/parallel I/O, optimise serialisation
-- **CPU**: Identify CPU-bound operations, leverage parallelisation, optimise hot paths
+- **CPU**: Identify CPU-bound operations, exploit parallelisation, optimise hot paths
 
 ## Tool Usage
 

@@ -2,148 +2,87 @@
 
 ## Project overview
 
-NixOS, nix-darwin, and Home Manager flake for managing multiple systems declaratively. Uses mixin pattern for composable configuration modules. Builds workstations, servers, VMs, macOS systems, and custom ISO images.
+NixOS, nix-darwin, and Home Manager flake managing multiple systems declaratively. Mixin pattern for composable modules. Builds workstations, servers, VMs, macOS systems, and ISO images.
 
-## Build and deploy commands
-
-Build and switch system configuration:
+## Commands
 
 ```bash
-just host              # Build and switch NixOS/nix-darwin config
-just home              # Build and switch Home Manager config
-just switch            # Switch both system and home (runs home first, then host)
-```
-
-Apply pre-built configurations from FlakeHub Cache (no local evaluation):
-
-```bash
-just apply             # Apply both system and home from FlakeHub Cache
-just apply-home        # Apply Home Manager only
-just apply-host        # Apply NixOS/nix-darwin only
-```
-
-Build only (no switch):
-
-```bash
-just build-host        # Build NixOS/nix-darwin only
-just build-home        # Build Home Manager only
-just build             # Build both (runs home first, then host)
-```
-
-Validate configurations:
-
-```bash
-just check             # Run nix flake check with trace
-just eval              # Evaluate flake syntax and all configurations
-just eval-flake        # Evaluate flake structure only
-just eval-configs      # Evaluate all system configurations
-```
-
-Other commands:
-
-```bash
-just build-pkg firefox              # Build package for current host
-just build-pkg firefox vader        # Build package for specific host
+just host                           # Build and switch NixOS/nix-darwin
+just home                           # Build and switch Home Manager
+just switch                         # Switch both (home first, then host)
+just apply                          # Apply both from FlakeHub Cache
+just apply-home                     # Apply Home Manager from cache
+just apply-host                     # Apply NixOS/nix-darwin from cache
+just build                          # Build both (no switch)
+just build-host                     # Build NixOS/nix-darwin only
+just build-home                     # Build Home Manager only
+just build-pkg firefox [vader]      # Build package [for specific host]
+just check                          # nix flake check --show-trace
+just eval                           # Evaluate flake syntax and all configs
+just format [*paths]                # Format and lint Nix (deadnix, statix, nixfmt)
+just lint-registry                  # Validate TOML registries against JSON schemas
 just iso                            # Build nihilus ISO image
 just update                         # Update flake.lock
 just gc                             # Clean old generations, keep latest 5
-```
-
-Install and deploy:
-
-```bash
+just boot-host                      # Activate NixOS config on next reboot
+just needs-reboot                   # Check if NixOS needs a reboot
 just install vader 192.168.1.10     # Remote install via nixos-anywhere
-just inject-tokens 192.168.1.10     # Inject tokens to ISO host for install
+just inject-tokens 192.168.1.10     # Inject age keys to ISO host
 ```
 
-`just install` handles SOPS age key injection, SSH host key decryption, and LUKS password/keyfile setup. Optional parameters: `keep_disks="true"`, `vm_test="true"`. `just inject-tokens` sends user age key and host age key to the target. Optional parameter: `user="nixos"`.
+`just install` handles SOPS age key injection, SSH host key decryption, and LUKS setup. Optional: `keep_disks="true"`, `vm_test="true"`. `just inject-tokens` optional: `user="nixos"`.
 
-## Code style and conventions
+## Code style
 
-**Language:**
-
-- British English spelling throughout all documentation and code
-- Comments use full sentences with proper punctuation
-
-**File structure:**
-
-- Shared cross-platform configuration in `common/default.nix`, imported by both NixOS and nix-darwin
-- Configuration organised in `_mixins` directories using mixin pattern
-- Each mixin is self-contained with `default.nix` entry point
-- Host-specific configs in `nixos/{hostname}/`, `darwin/{hostname}/`
-- Custom packages in `pkgs/` directory, exposed via overlay
-
-**Shell scripts:**
-
-- All scripts use `pkgs.writeShellApplication` wrapper (provides shellcheck validation)
-- Scripts live in `nixos/_mixins/scripts/` or `home-manager/_mixins/scripts/`
-- Each script in separate directory: `script-name/default.nix` + `script-name.sh`
-- Runtime dependencies declared in `runtimeInputs` list
-- Template available at `home-manager/_mixins/scripts/_template/`
-
-**Naming conventions:**
-
-- Hostnames: Sith Lords (workstations/servers), TIE fighters (VMs)
-- Variables: camelCase for Nix attributes
-- Files: kebab-case for directories and Nix files
-- Functions: camelCase in `lib/flake-builders.nix`
-
-**Nix style:**
-
-- Use `nixfmt` formatter (run via `nix fmt`)
-- Prefer `lib.mkDefault` and `lib.mkForce` over plain values for overridability
-- Use `lib.optional` and `lib.optionals` for conditional imports
+- British English spelling; comments use full sentences with proper punctuation
+- `nixfmt` formatter (run via `nix fmt`)
+- Prefer `lib.mkDefault`/`lib.mkForce` over plain values for overridability
+- `lib.optional`/`lib.optionals` for conditional imports
 - Explicit `inherit` statements for clarity
 - String interpolation: `"${variable}"` not `variable`
+- camelCase for Nix attributes and functions, kebab-case for files and directories
+- Hostnames: Sith Lords (workstations/servers), TIE fighters (VMs)
 
-**Module shorthand convention:**
+## File structure
 
-- Use `inherit (config.noughty) host;` in `let` bindings (NOT `cfg`)
-- Then reference `host.is.workstation`, `host.desktop`, `host.name`, etc.
+- `common/default.nix` - shared cross-platform config, imported by NixOS and nix-darwin
+- `_mixins/` directories - self-contained modules, each with `default.nix` entry point
+- `nixos/{hostname}/`, `darwin/{hostname}/` - host-specific configs (disks, kernel modules)
+- `pkgs/` - custom packages, exposed via overlay; register in `pkgs/default.nix`
+- `nixos/_mixins/scripts/`, `home-manager/_mixins/scripts/` - shell scripts
+- `home-manager/_mixins/scripts/_template/` - script template
 
-**Mixin placement:**
+**Shell scripts** use `pkgs.writeShellApplication` (never `writeShellScriptBin`). Each script lives in its own directory: `script-name/default.nix` + `script-name.sh`. Runtime dependencies go in `runtimeInputs`. Shellcheck validation is automatic.
 
-- System-level services, kernel, boot, networking → `nixos/_mixins/`
-- User-level programs, dotfiles, scripts → `home-manager/_mixins/`
-- Hardware-specific config (disks, kernel modules) → `nixos/{hostname}/`
-- Use `home.packages` in Home Manager modules, `environment.systemPackages` in NixOS modules
+**Mixin placement:** system-level (services, kernel, boot, networking) in `nixos/_mixins/`; user-level (programs, dotfiles, scripts) in `home-manager/_mixins/`. Use `home.packages` in Home Manager, `environment.systemPackages` in NixOS.
 
-## System registry and configuration
+## System registry
 
-All systems defined in `lib/registry-systems.toml` (read by `flake.nix` via `builtins.fromTOML`). Each entry specifies:
+All systems defined in `lib/registry-systems.toml`, users in `lib/registry-users.toml` (read via `builtins.fromTOML`). Schemas in `lib/registry-systems-schema.json` and `lib/registry-users-schema.json`.
+
+Registry fields:
 
 - **kind** (required): `"computer"`, `"server"`, `"vm"`, `"container"`
 - **platform** (required): `"x86_64-linux"`, `"aarch64-darwin"`, etc.
 - **formFactor** (optional): `"laptop"`, `"desktop"`, `"handheld"`, `"tablet"`, `"phone"`
-- **desktop** (optional): derived from `kind` + platform if omitted (e.g. `computer` on Linux defaults to `"hyprland"`, Darwin defaults to `"aqua"`)
+- **desktop** (optional): derived from kind + platform (Linux computer defaults to `"hyprland"`, Darwin to `"aqua"`)
 - **username** (optional): defaults to `"martin"`
-- **gpu** (optional): `vendors = ["amd", "nvidia"]` with optional `[hostname.gpu.compute]` block containing `vendor`, `vram`
-- **displays** (optional): list of display submodules with output, width, height, refresh, scale, position, primary, workspaces
+- **gpu** (optional): `vendors = ["amd", "nvidia"]`, optional `compute` block with `vendor`, `vram`, `unified`
+- **displays** (optional): list with output, width, height, refresh, scale, position, primary, workspaces
 - **tags** (optional): `["studio", "thinkpad", "iso"]`
+- **keyboard** (optional): `layout` (defaults to `"gb"`), `variant`
 
-Users defined in `lib/registry-users.toml` (read by `flake.nix` via `builtins.fromTOML`):
+ISO hosts use `tags = ["iso"]` which implies `desktop = null`, `username = "nixos"`. The ISO host is `nihilus`.
 
-```toml
-# lib/registry-users.toml
-[martin]
-tags = ["developer"]
-```
-
-ISO hosts use `tags = [ "iso" ]` which applies implicit defaults (`desktop = null`, `username = "nixos"`). The ISO host is `nihilus`.
-
-Helper functions in `lib/flake-builders.nix` generate configs from the registry. `resolveEntry` merges four layers: baseline username, kind+OS derived desktop, ISO implicit defaults, then explicit entry values.
+`resolveEntry` in `lib/flake-builders.nix` merges four layers: baseline username, kind+OS derived desktop, ISO defaults, then explicit values. The registry entry flows through `resolveEntry` -> `mkSystemConfig` -> `mkNixos`/`mkHome`/`mkDarwin` -> `noughty.*` options. No other files need updating when adding a host.
 
 ## Noughty module system
 
-All host/user metadata is accessed via `config.noughty.*` options, not `specialArgs`. The noughty module provides type checking, defaults, and `mkDefault`/`mkForce` overridability.
+All host/user metadata accessed via `config.noughty.*`, not `specialArgs`. Provides type checking, defaults, and `mkDefault`/`mkForce` overridability.
 
-Only four values remain in `specialArgs`:
+Only four `specialArgs`: `inputs`, `outputs`, `stateVersion`, `catppuccinPalette`.
 
-- `inputs`, `outputs`: flake inputs and outputs
-- `stateVersion`: NixOS/Home Manager state version
-- `catppuccinPalette`: colour palette helper
-
-Access host/user data in modules:
+Module shorthand: use `inherit (config.noughty) host;` in `let` bindings (not `cfg`).
 
 ```nix
 { config, noughtyLib, lib, ... }:
@@ -155,26 +94,27 @@ lib.mkIf host.is.workstation {
 }
 ```
 
-Use `noughtyLib` helpers for tag and identity checks:
-
-```nix
-{ noughtyLib, lib, pkgs, ... }:
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
-  home.packages = [ pkgs.zed-editor ];
-}
-```
-
 Key gating patterns:
 
-- `host.is.workstation`, `host.is.server`, `host.is.laptop`, `host.is.iso`, `host.is.vm`, `host.is.darwin`, `host.is.linux` - derived booleans
-- `noughtyLib.isUser [ "martin" ]` - user identity check
-- `noughtyLib.isHost [ "vader" "phasma" ]` - host identity check
-- `noughtyLib.hostHasTag "studio"` - host tag check
-- `noughtyLib.userHasTag "developer"` - user tag check
-- `host.gpu.hasNvidia`, `host.gpu.hasCuda` - GPU checks
-- `host.display.primaryOutput`, `host.display.isMultiMonitor` - display checks
+- `host.is.workstation`, `host.is.server`, `host.is.laptop`, `host.is.iso`, `host.is.vm`, `host.is.darwin`, `host.is.linux`
+- `host.gpu.hasNvidia`, `host.gpu.hasCuda`, `host.gpu.hasAmd`, `host.gpu.hasROCm`
+- `host.display.primaryOutput`, `host.display.isMultiMonitor`
+- `noughtyLib.isUser [ "martin" ]`, `noughtyLib.isHost [ "vader" "phasma" ]`
+- `noughtyLib.hostHasTag "studio"`, `noughtyLib.userHasTag "developer"`
 
-See `lib/noughty/README.md` for the complete option reference and usage patterns.
+Full reference: `lib/noughty/README.md`.
+
+## Module gating patterns
+
+**Flat pattern** (~95% of modules): `lib.mkIf condition { ... }` as the entire module body.
+
+**Long-form pattern** (hub modules with `imports`):
+
+```nix
+{ imports = [...]; config = lib.mkIf condition { ... }; }
+```
+
+Imports stay unconditional; each sub-module gates itself. Never use `lib.optional config.noughty.* ./foo` in `imports` - causes infinite recursion.
 
 ## Secrets management
 
@@ -182,245 +122,55 @@ Secrets encrypted with sops-nix using age keys.
 
 - **User key:** `~/.config/sops/age/keys.txt`
 - **Host key:** `/var/lib/private/sops/age/keys.txt`
-- **Edit secrets:** `sops secrets/secrets.yaml` or `sops secrets/host-{hostname}.yaml`
-- **Rekey after adding recipients:** `sops updatekeys secrets/secrets.yaml`
-- Never commit unencrypted secrets. All sensitive data in encrypted `.yaml` files in `secrets/`.
+- **Edit:** `sops secrets/secrets.yaml` or `sops secrets/host-{hostname}.yaml`
+- **Rekey:** `sops updatekeys secrets/secrets.yaml`
 
-For ISO installs, `just inject-tokens` sends age keys to the ISO media at `/tmp/injected-tokens/`. Both user and host age keys are hard requirements for `install-system` (hard stop if missing). FlakeHub Cache is auto-detected: `install-system` checks `determinate-nixd status` and prompts the user to run `determinate-nixd login` interactively if not already authenticated; otherwise falls back to local build.
+`just inject-tokens` sends age keys to `/tmp/injected-tokens/` on ISO media. Both keys are hard requirements for `install-system`.
 
 ## Catppuccin theming
 
-Catppuccin Mocha palette available via `catppuccinPalette` helper:
+Catppuccin Mocha palette via `catppuccinPalette` (passed in `specialArgs`):
 
-```nix
-{ catppuccinPalette, ... }:
-{
-  # Get hex colour with #
-  backgroundColor = catppuccinPalette.getColor "base";
+- `getColor "base"` - hex with `#`
+- `getHyprlandColor "blue"` - hex without `#`
+- `colors` - raw palette attribute set
+- `isDark` - true for mocha
+- `preferShade` - `"prefer-dark"` for dark themes
 
-  # Get hex without # (for Hyprland)
-  hyprlandColor = catppuccinPalette.getHyprlandColor "blue";
+## Overlays
 
-  # Access raw palette
-  palette = catppuccinPalette.colors;
+Three overlays applied in order:
 
-  # Theme detection
-  isDark = catppuccinPalette.isDark;        # true for mocha
-  preferShade = catppuccinPalette.preferShade;  # "prefer-dark"
-}
-```
+- `localPackages` - custom packages from `pkgs/`
+- `modifiedPackages` - overrides and patches to nixpkgs
+- `unstablePackages` - nixpkgs-unstable via `pkgs.unstable`
 
-Available colours: base, mantle, crust, surface0, surface1, surface2, overlay0, overlay1, overlay2, subtext0, subtext1, text, lavender, blue, sapphire, sky, teal, green, yellow, peach, maroon, red, mauve, pink, flamingo, rosewater.
+## CI/CD
 
-## Adding new packages
+Four workflows in `.github/workflows/`:
 
-Create `pkgs/my-package/default.nix`:
+- **`builder.yml`** - PRs and pushes to main: inventory via `flake-inventory.sh`, parallel per-host/per-package builds, publish to FlakeHub Cache, ISO release on main
+- **`freshener.yml`** - scheduled auto-updates for proprietary packages (Wavebox, Defold) via PR
+- **`updater.yml`** - scheduled `flake.lock` updates via PR
+- **`checker.yml`** - scheduled flake lock health checks and TOML registry schema validation
 
-```nix
-{ lib, stdenv, fetchurl, ... }:
+Auto-merge of update PRs gated on all build jobs passing.
 
-stdenv.mkDerivation rec {
-  pname = "my-package";
-  version = "1.0.0";
+## Troubleshooting
 
-  src = fetchurl {
-    url = "https://example.com/${pname}-${version}.tar.gz";
-    sha256 = lib.fakeSha256;  # Build once to get real hash
-  };
-
-  meta = with lib; {
-    description = "Package description";
-    homepage = "https://example.com";
-    license = licenses.mit;
-    platforms = platforms.linux;
-  };
-}
-```
-
-Add to `pkgs/default.nix`:
-
-```nix
-{
-  my-package = pkgs.callPackage ./my-package { };
-}
-```
-
-Reference in configuration:
-
-```nix
-{ pkgs, ... }:
-{
-  environment.systemPackages = [ pkgs.my-package ];
-}
-```
-
-## Adding shell scripts
-
-Use template from `home-manager/_mixins/scripts/_template/`:
-
-```bash
-cp -r home-manager/_mixins/scripts/_template home-manager/_mixins/scripts/my-script
-mv home-manager/_mixins/scripts/my-script/template.sh home-manager/_mixins/scripts/my-script/my-script.sh
-```
-
-Edit `my-script.sh` with your script logic. Edit `default.nix` to declare runtime dependencies:
-
-```nix
-{ pkgs, ... }:
-let
-  name = builtins.baseNameOf (builtins.toString ./.);
-  shellApplication = pkgs.writeShellApplication {
-    inherit name;
-    runtimeInputs = with pkgs; [ curl jq ];  # Add dependencies here
-    text = builtins.readFile ./${name}.sh;
-  };
-in
-{
-  home.packages = [ shellApplication ];
-}
-```
-
-Script automatically validated with shellcheck during build.
-
-## Creating new system configuration
-
-Add to system registry in `lib/registry-systems.toml`:
-
-```toml
-# lib/registry-systems.toml
-[mynewhost]
-kind       = "computer"    # or "server", "vm", "container"
-platform   = "x86_64-linux"
-formFactor = "desktop"     # or "laptop", "handheld" (omit for none)
-tags       = ["thinkpad"]  # if applicable
-
-[mynewhost.gpu]
-vendors = ["amd"]          # if applicable
-
-[[mynewhost.displays]]
-output     = "DP-1"
-width      = 2560
-height     = 1440
-refresh    = 144
-primary    = true
-workspaces = [1, 2, 3, 4, 5]
-position   = { x = 0, y = 0 }
-
-# desktop defaults to "hyprland" for computer+linux
-# username defaults to "martin"
-# keyboard defaults to "gb" (UK); set keyboard.layout = "us" for non-UK hosts
-```
-
-Create host directory and `nixos/mynewhost/default.nix`:
-
-```nix
-{ inputs, ... }:
-{
-  imports = [
-    inputs.nixos-hardware.nixosModules.common-cpu-amd
-    inputs.nixos-hardware.nixosModules.common-pc-ssd
-    ./disks.nix
-  ];
-
-  boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" ];
-}
-```
-
-Create disk layout with Disko in `nixos/mynewhost/disks.nix`. Build with:
-
-```bash
-nix build .#nixosConfigurations.mynewhost.config.system.build.toplevel
-```
-
-No other files need updating. The registry entry flows through `resolveEntry` -> `mkSystemConfig` -> `mkNixos`/`mkHome` -> `noughty.*` options automatically.
-
-## CI/CD workflows
-
-Three workflows in `.github/workflows/`:
-
-- **`builder.yml`** - Triggers on pull requests and pushes to main:
-  1. **Inventory** - `flake-inventory.sh` discovers all buildable outputs, emitting per-platform JSON matrices
-  2. **Build jobs** - Parallel per-host/per-package builds using `flake-build.sh` (devShells, packages, NixOS, Darwin, orphan Home Manager configs)
-  3. **Publish** - Pushes to FlakeHub with `include-output-paths: true` for FlakeHub Cache
-  4. **Release ISO** - Builds and publishes the nihilus ISO on main branch
-
-- **`updater.yml`** - Scheduled `flake.lock` updates via PR
-- **`checker.yml`** - Scheduled flake lock health checks
-
-Auto-merge of `flake.lock` update PRs is gated on all build jobs passing via branch protection required status checks.
-
-## Architecture notes
-
-**Mixin pattern:**
-
-Configurations composed from small, focused modules in `_mixins` directories. Each mixin handles one concern (e.g., desktop environment, hardware feature, script). Mixins gate themselves using `config.noughty.*` conditions.
-
-**Configuration flow:**
-
-1. System registry in `lib/registry-systems.toml` and `lib/registry-users.toml` defines all hosts and users
-2. `resolveEntry` in `lib/flake-builders.nix` merges registry defaults (baseline, kind+OS derived, ISO defaults, explicit values)
-3. `mkSystemConfig` produces the attribute set consumed by `mkNixos`, `mkHome`, `mkDarwin`
-4. `noughty.*` options are set in the modules list; `lib/noughty/default.nix` computes derived booleans
-5. `_module.args.noughtyLib` provides convenience helpers to all modules
-6. `common/default.nix` provides shared configuration (documentation, nixpkgs, nix registry, common packages, environment variables, fish shell) imported by both `nixos/default.nix` and `darwin/default.nix`
-7. Platform-specific entry points add their own imports, packages and settings
-8. Modules gate themselves using `config.noughty.*` or `noughtyLib.*`
-
-**Module gating patterns:**
-
-- **Flat pattern** (~95% of modules): `lib.mkIf condition { ... }` as the entire module body
-- **Long-form pattern** (hub modules with `imports`): `{ imports = [...]; config = lib.mkIf condition { ... }; }` - imports stay unconditional, each sub-module gates itself
-- Never use `lib.optional config.noughty.* ./foo` in `imports` - causes infinite recursion
-
-See `lib/noughty/README.md` for detailed explanation of the long-form pattern.
-
-**Overlay system:**
-
-- `localPackages`: Custom packages from `pkgs/` directory
-- `modifiedPackages`: Overrides and patches to nixpkgs packages
-- `unstablePackages`: Access to nixpkgs-unstable via `pkgs.unstable`
-
-Applied in order, allowing layered modifications.
-
-## Common issues and solutions
-
-**Build fails with "infinite recursion":**
-
-- Check for `config.noughty.*` used inside `imports` (must be in `config` block, not `imports`)
-- Check for circular imports in mixin modules
-
-**Home Manager activation fails:**
-
-- Ensure Home Manager configuration doesn't conflict with NixOS
-- Check file ownership and permissions
-- Use `home-manager switch -b backup --flake .` to backup conflicting files
-
-**Secrets not accessible:**
-
-- Verify age keys exist at specified locations
-- Check recipients in `.sops.yaml` match public keys
-- Run `sops updatekeys` after editing recipients
-
-**Package not found:**
-
-- Verify package added to `pkgs/default.nix`
-- Check overlay applied in configuration
-- Search nixpkgs: `nix search nixpkgs <package-name>`
-
-**Shell script fails shellcheck:**
-
-- Use `pkgs.writeShellApplication` wrapper (not `writeShellScriptBin`)
-- Add necessary runtime dependencies to `runtimeInputs`
-- Fix shellcheck warnings (shellcheck validation automatic)
+- **Infinite recursion** - `config.noughty.*` used inside `imports`; move to `config` block
+- **Home Manager activation fails** - file conflicts; use `home-manager switch -b backup --flake .`
+- **Secrets not accessible** - verify age keys exist; check `.sops.yaml` recipients; run `sops updatekeys`
+- **Package not found** - verify in `pkgs/default.nix` and overlay applied; `nix search nixpkgs <name>`
+- **Shellcheck failure** - use `writeShellApplication` (not `writeShellScriptBin`); add deps to `runtimeInputs`
 
 ## Constraints
 
 - Never modify `flake.lock` directly; use `just update`
-- Never change `stateVersion` on existing systems (breaks compatibility)
-- Never commit unencrypted secrets outside `secrets/` directory
-- Never use `environment.systemPackages` in Home Manager modules; use `home.packages`
-- Never use `writeShellScriptBin`; use `writeShellApplication` (enforces shellcheck)
-- Never use `config.noughty.*` inside `imports` - causes infinite recursion; use the long-form `config = lib.mkIf` pattern instead
-- Run `just eval` before committing Nix changes to catch evaluation errors
-- Run `just build` or `just build-host` / `just build-home` to verify builds before switching
+- Never change `stateVersion` on existing systems
+- Never commit unencrypted secrets outside `secrets/`
+- Never use `environment.systemPackages` in Home Manager; use `home.packages`
+- Never use `writeShellScriptBin`; use `writeShellApplication`
+- Never use `config.noughty.*` inside `imports`; use the long-form `config = lib.mkIf` pattern
+- Run `just eval` before committing to catch evaluation errors
 - Keep each mixin self-contained with a single concern

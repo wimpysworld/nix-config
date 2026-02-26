@@ -354,6 +354,7 @@ in
           "chat.fontSize" = 16;
           "chat.tools.terminal.autoApprove" = terminalAutoApprove;
           "chat.tools.terminal.blockDetectedFileWrites" = "outsideWorkspace";
+          "chat.tools.terminal.terminalProfile.linux" = "bash";
           "chat.tools.terminal.enableAutoApprove" = true;
           "chat.tools.urls.autoApprove" = mkAutoApprove approvedDomains;
           "chat.viewSessions.orientation" = "stacked";
