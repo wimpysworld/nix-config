@@ -12,12 +12,9 @@ let
 in
 {
   home = {
-    packages = [
-      inputs.nix-ai-tools.packages.${system}.ccusage-opencode
-    ]
     # TODO: Disabled until upstream fixes missing outputHashes
     # https://github.com/anomalyco/opencode/issues/11755
-    ++ lib.optionals (false && host.is.workstation && host.is.linux) [
+    packages = lib.optionals (false && host.is.workstation && host.is.linux) [
       inputs.opencode.packages.${system}.desktop
     ];
   };
