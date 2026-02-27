@@ -7,7 +7,7 @@
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
-  modifiedPackages = _final: prev: {
+  modifiedPackages = final: prev: {
     # Override Python packages to fix Darwin-specific issues
     python3 = prev.python3.override {
       packageOverrides = _pyfinal: pyprev: {
@@ -54,6 +54,40 @@
         };
       }
     );
+
+    # Bump bun to 1.3.10; required by the opencode flake input.
+    # The bun package uses a finalAttrs pattern where src derives from
+    # passthru.sources, but overrideAttrs does not re-evaluate the original
+    # function body. We must set src explicitly for the override to take effect.
+    # See: https://github.com/NixOS/nixpkgs/pull/494267
+    bun =
+      let
+        bunSources = {
+          "aarch64-darwin" = prev.fetchurl {
+            url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.10/bun-darwin-aarch64.zip";
+            hash = "sha256-ggNOh8nZtDmOphmu4u7V0qaMgVfppq4tEFLYTVM8zY0=";
+          };
+          "aarch64-linux" = prev.fetchurl {
+            url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.10/bun-linux-aarch64.zip";
+            hash = "sha256-+l7LJcr6jo9ch6D4M3GdRt0K8KhseDfYBlMSEtVWNtM=";
+          };
+          "x86_64-darwin" = prev.fetchurl {
+            url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.10/bun-darwin-x64-baseline.zip";
+            hash = "sha256-+WhsTk52DbTN53oPH60F5VJki5ycv6T3/Jp+wmufMmc=";
+          };
+          "x86_64-linux" = prev.fetchurl {
+            url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.10/bun-linux-x64.zip";
+            hash = "sha256-9XvAGH45Yj3nFro6OJ/aVIay175xMamAulTce3M9Lgg=";
+          };
+        };
+      in
+      prev.bun.overrideAttrs (old: {
+        version = "1.3.10";
+        src = bunSources.${final.stdenv.hostPlatform.system};
+        passthru = old.passthru // {
+          sources = bunSources;
+        };
+      });
 
     # Override avizo to use a specific commit that includes these fixes:
     # - https://github.com/heyjuvi/avizo/pull/76 (fix options of lightctl)

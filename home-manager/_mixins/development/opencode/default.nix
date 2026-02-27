@@ -8,7 +8,12 @@
 let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
-  opencodePackage = inputs.opencode.packages.${system}.opencode;
+  # Override bun in the opencode flake package to use our overlaid version.
+  # The opencode flake follows nixpkgs-unstable, which has bun 1.3.9, but
+  # opencode requires bun >= 1.3.10. Our bun overlay on pkgs provides 1.3.10.
+  opencodePackage = inputs.opencode.packages.${system}.opencode.override {
+    inherit (pkgs) bun;
+  };
 in
 {
   home = {
