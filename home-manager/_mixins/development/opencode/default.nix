@@ -17,10 +17,8 @@ let
 in
 {
   home = {
-    # TODO: Disabled until upstream fixes missing outputHashes
-    # https://github.com/anomalyco/opencode/issues/11755
-    packages = lib.optionals (false && host.is.workstation && host.is.linux) [
-      inputs.opencode.packages.${system}.desktop
+    packages = lib.optionals host.is.workstation [
+      pkgs.opencode-desktop
     ];
   };
 
