@@ -335,7 +335,7 @@ in
 {
   home = {
     packages = [
-      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.copilot-cli
+      inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.copilot-cli
     ];
   };
   programs = {
