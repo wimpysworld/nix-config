@@ -192,7 +192,7 @@ jobs:
           echo "📦 Regenerating package-lock.json from new tarball"
           WORK_DIR=$(mktemp -d)
           curl -fsSL "$TGZ_URL" | tar xz -C "$WORK_DIR"
-          npm install --package-lock-only --prefix "$WORK_DIR/package"
+          npm install --package-lock-only --ignore-scripts --prefix "$WORK_DIR/package"
           cp "$WORK_DIR/package/package-lock.json" pkgs/openchambre-web/package-lock.json
 
           echo "🔑 Computing npmDepsHash"
