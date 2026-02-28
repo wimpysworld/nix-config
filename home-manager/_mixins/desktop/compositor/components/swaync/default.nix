@@ -22,7 +22,7 @@ let
     '';
   };
 in
-lib.mkIf host.is.linux {
+lib.mkIf (host.is.linux && host.is.workstation) {
   # swaync is a notification daemon
   services = {
     swaync = {

@@ -11,7 +11,7 @@ let
   davinciResolve = pkgs.davinci-resolve.override { studioVariant = true; };
 in
 {
-  dconf = lib.mkIf host.is.linux {
+  dconf = lib.mkIf (host.is.linux && host.is.workstation) {
     settings = with lib.hm.gvariant; {
       "com/github/wwmm/easyeffects" = {
         bypass = false;
@@ -409,10 +409,10 @@ in
 
   home.packages =
     with pkgs;
-    lib.optionals (!(noughtyLib.hostHasTag "lima")) [
+    lib.optionals (host.is.workstation && !(noughtyLib.hostHasTag "lima")) [
       audacity
     ]
-    ++ lib.optionals (!(noughtyLib.hostHasTag "lima") && host.is.linux) [
+    ++ lib.optionals (host.is.workstation && !(noughtyLib.hostHasTag "lima") && host.is.linux) [
       gimp3
       inkscape
     ]
@@ -428,7 +428,7 @@ in
     preset = "mic-${host.name}-oktava";
   };
 
-  systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
+  systemd.user.tmpfiles.rules = lib.mkIf (host.is.linux && host.is.workstation) [
     "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
     "L+ ${config.xdg.dataHome}/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
   ];
