@@ -10,21 +10,36 @@
     nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-25.11";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Shared transitive inputs; most flake-utils and blueprint depend on nix-systems/default.
+    systems.url = "github:nix-systems/default";
+    flake-utils.url = "github:numtide/flake-utils";
+    flake-utils.inputs.systems.follows = "systems";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+
     llm-agents.url = "github:numtide/llm-agents.nix";
     llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
+    llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
+    llm-agents.inputs.blueprint.inputs.systems.follows = "systems";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.3.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
-    bzmenu.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+    bzmenu.inputs.rust-overlay.follows = "rust-overlay";
+    bzmenu.inputs.flake-utils.follows = "flake-utils";
     iwmenu.url = "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.3.0.tar.gz";
     iwmenu.inputs.nixpkgs.follows = "nixpkgs";
-    iwmenu.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+    iwmenu.inputs.rust-overlay.follows = "rust-overlay";
+    iwmenu.inputs.flake-utils.follows = "flake-utils";
     pwmenu.url = "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.3.0.tar.gz";
     pwmenu.inputs.nixpkgs.follows = "nixpkgs";
-    pwmenu.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+    pwmenu.inputs.rust-overlay.follows = "rust-overlay";
+    pwmenu.inputs.flake-utils.follows = "flake-utils";
     catppuccin.url = "https://github.com/catppuccin/nix/archive/refs/tags/v25.11.tar.gz";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     direnv-instant.url = "github:Mic92/direnv-instant";
     direnv-instant.inputs.nixpkgs.follows = "nixpkgs";
+    direnv-instant.inputs.flake-parts.follows = "flake-parts";
     disko.url = "https://flakehub.com/f/nix-community/disko/1.13.0.tar.gz";
     disko.inputs.nixpkgs.follows = "nixpkgs";
     kolide-launcher.url = "github:/kolide/nix-agent/main";
@@ -39,14 +54,19 @@
     mac-app-util.url = "github:hraban/mac-app-util";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
     mac-app-util.inputs.cl-nix-lite.inputs.nixpkgs.follows = "nixpkgs";
-    mac-app-util.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
-    mac-app-util.inputs.cl-nix-lite.inputs.treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
+    mac-app-util.inputs.cl-nix-lite.inputs.systems.follows = "systems";
+    mac-app-util.inputs.cl-nix-lite.inputs.flake-parts.follows = "flake-parts";
+    mac-app-util.inputs.cl-nix-lite.inputs.treefmt-nix.follows = "mac-app-util/treefmt-nix";
+    mac-app-util.inputs.flake-utils.follows = "flake-utils";
+    mac-app-util.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
+    vscode-server.inputs.flake-utils.follows = "flake-utils";
     xdg-override.url = "github:koiuo/xdg-override";
     xdg-override.inputs.nixpkgs.follows = "nixpkgs";
+    xdg-override.inputs.flake-parts.follows = "flake-parts";
   };
   outputs =
     {
