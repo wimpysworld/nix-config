@@ -43,6 +43,7 @@
     disko.url = "https://flakehub.com/f/nix-community/disko/1.13.0.tar.gz";
     disko.inputs.nixpkgs.follows = "nixpkgs";
     kolide-launcher.url = "github:/kolide/nix-agent/main";
+    kolide-launcher.inputs.flake-compat.follows = "determinate/nix/git-hooks-nix/flake-compat";
     kolide-launcher.inputs.nixpkgs.follows = "nixpkgs";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
