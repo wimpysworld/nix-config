@@ -67,7 +67,7 @@ let
     text = ''iwmenu --launcher custom --launcher-command "fuzzel --dmenu --width=40 --prompt '󱚾 ' {password_flag:--password}"'';
   };
 in
-lib.mkIf host.is.linux {
+lib.mkIf (host.is.linux && host.is.workstation) {
   catppuccin = {
     fuzzel.enable = config.programs.fuzzel.enable;
   };

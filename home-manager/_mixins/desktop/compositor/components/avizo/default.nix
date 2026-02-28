@@ -9,7 +9,7 @@ let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
 in
-lib.mkIf host.is.linux {
+lib.mkIf (host.is.linux && host.is.workstation) {
   # avizo is an osd notification daemon for audio and backlight
   # avizo provides volumectl and lightctl for controlling audio and backlight
   services = {

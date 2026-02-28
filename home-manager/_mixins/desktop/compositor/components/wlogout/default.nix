@@ -11,7 +11,7 @@ let
     builtins.attrNames (builtins.readDir ./.)
   );
 in
-lib.mkIf host.is.linux {
+lib.mkIf (host.is.linux && host.is.workstation) {
   # Copy .png files in the current directory to the wlogout configuration directory
   home.file = builtins.listToAttrs (
     builtins.map (pngFile: {
