@@ -12,7 +12,7 @@
 
     nix-ai-tools.url = "github:numtide/nix-ai-tools";
     nix-ai-tools.inputs.nixpkgs.follows = "nixpkgs-unstable";
-    opencode.url = "github:anomalyco/opencode";
+    opencode.url = "github:anomalyco/opencode/v1.2.14";
     opencode.inputs.nixpkgs.follows = "nixpkgs-unstable";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.3.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
