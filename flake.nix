@@ -57,7 +57,11 @@
     mac-app-util.inputs.cl-nix-lite.inputs.systems.follows = "systems";
     mac-app-util.inputs.cl-nix-lite.inputs.flake-parts.follows = "flake-parts";
     mac-app-util.inputs.cl-nix-lite.inputs.treefmt-nix.follows = "mac-app-util/treefmt-nix";
-    mac-app-util.inputs.flake-utils.follows = "flake-utils";
+    # Do not follow root flake-utils here; mac-app-util needs darwin-only systems
+    # from nix-systems/default-darwin, while our root flake-utils uses nix-systems/default.
+    # Sharing flake-utils would make eachDefaultSystem include Linux, causing dockutil
+    # (darwin-only) to be evaluated on Linux.
+    #mac-app-util.inputs.flake-utils.follows = "flake-utils";
     mac-app-util.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
