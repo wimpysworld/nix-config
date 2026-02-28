@@ -45,6 +45,17 @@
   };
 
   folders = {
+    archive = {
+      id = "archive";
+      label = "Archive";
+      maxConflicts = 10;
+      path = "/mnt/snapshot/martin/Archive";
+      devices = [
+        "phasma"
+        "revan"
+        "vader"
+      ];
+    };
     apps = {
       id = "apps";
       label = "Apps";
