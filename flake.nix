@@ -10,10 +10,8 @@
     nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-25.11";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    nix-ai-tools.url = "github:numtide/nix-ai-tools";
-    nix-ai-tools.inputs.nixpkgs.follows = "nixpkgs-unstable";
-    opencode.url = "github:anomalyco/opencode/v1.2.14";
-    opencode.inputs.nixpkgs.follows = "nixpkgs-unstable";
+    llm-agents.url = "github:numtide/llm-agents.nix";
+    llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.3.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";

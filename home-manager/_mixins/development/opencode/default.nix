@@ -8,12 +8,9 @@
 let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
-  # Override bun in the opencode flake package to use our overlaid version.
-  # The opencode flake follows nixpkgs-unstable, which has bun 1.3.9, but
-  # opencode requires bun >= 1.3.10. Our bun overlay on pkgs provides 1.3.10.
-  opencodePackage = inputs.opencode.packages.${system}.opencode.override {
-    inherit (pkgs) bun;
-  };
+  # Use the pre-built binary from numtide's llm-agents.nix flake.
+  # This avoids upstream source build issues entirely.
+  opencodePackage = inputs.llm-agents.packages.${system}.opencode;
 in
 {
   home = {

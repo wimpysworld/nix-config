@@ -7,10 +7,10 @@
 }:
 let
   inherit (config.noughty) host;
-  # https://github.com/numtide/nix-ai-tools
+  # https://github.com/numtide/llm-agents.nix
   claudePackage =
     if host.is.linux then
-      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.claude-code
+      inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code
     else if host.is.darwin then
       pkgs.unstable.claude-code
     else
@@ -693,7 +693,7 @@ in
 {
   home = {
     packages = [
-      inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.ccusage
+      inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccusage
     ];
   };
   programs = {
