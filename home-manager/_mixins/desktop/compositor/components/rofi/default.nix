@@ -26,7 +26,7 @@ let
       templateContent
   );
 in
-lib.mkIf host.is.linux {
+lib.mkIf (host.is.linux && host.is.workstation) {
   catppuccin.rofi.enable = true;
   home = {
     file."${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi".source = rofiAppGridRasi;

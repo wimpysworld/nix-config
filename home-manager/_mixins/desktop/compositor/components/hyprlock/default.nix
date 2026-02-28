@@ -33,7 +33,7 @@ let
   monitor = display.primaryOutput;
   unlockGlyph = if noughtyLib.hostHasTag "fprintd" then "󰈷" else "󰌋";
 in
-lib.mkIf host.is.linux {
+lib.mkIf (host.is.linux && host.is.workstation) {
   # Hyprlock is a lockscreen that is a part of the hyprland suite
   programs = {
     hyprlock = {
@@ -50,7 +50,7 @@ lib.mkIf host.is.linux {
         auth = lib.mkIf (noughtyLib.hostHasTag "fprintd") {
           fingerprint = {
             enabled = true;
-            ready_message = ""; #Place your finger on the Touch ID sensor
+            ready_message = ""; # Place your finger on the Touch ID sensor
             present_message = "Verifying your identity...";
             retry_delay = 250;
           };
