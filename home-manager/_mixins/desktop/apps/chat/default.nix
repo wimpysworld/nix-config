@@ -94,7 +94,7 @@ let
     enabled = true
   '';
 in
-{
+lib.mkIf host.is.workstation {
   home = {
     packages =
       with pkgs;
