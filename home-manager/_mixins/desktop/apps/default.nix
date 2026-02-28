@@ -46,11 +46,11 @@ in
     ./utilities
   ];
 
-  dbus = lib.mkIf host.is.linux {
+  dbus = lib.mkIf (host.is.linux && host.is.workstation) {
     packages = dbusPackages;
   };
 
-  dconf = lib.mkIf host.is.linux {
+  dconf = lib.mkIf (host.is.linux && host.is.workstation) {
     settings = with lib.hm.gvariant; {
       "ca/desrt/dconf-editor" = {
         show-warning = false;
@@ -61,7 +61,7 @@ in
       };
     };
   };
-  home = lib.mkIf host.is.linux {
+  home = lib.mkIf (host.is.linux && host.is.workstation) {
     packages =
       with pkgs;
       [
@@ -74,7 +74,7 @@ in
     };
   };
 
-  xdg = lib.mkIf host.is.linux {
+  xdg = lib.mkIf (host.is.linux && host.is.workstation) {
     enable = true;
     mime.enable = true;
     mimeApps = {

@@ -23,10 +23,13 @@ in
     kitty.enable = config.programs.kitty.enable;
   };
 
-  # User specific dconf terminal-related settings
-  dconf.settings = with lib.hm.gvariant; {
-    "com/github/stunkymonkey/nautilus-open-any-terminal" = {
-      terminal = "${lib.getExe config.programs.kitty.package}";
+  # User specific dconf terminal-related settings. Nautilus is only installed
+  # on workstations, so gate this setting accordingly.
+  dconf = lib.mkIf (host.is.linux && host.is.workstation) {
+    settings = with lib.hm.gvariant; {
+      "com/github/stunkymonkey/nautilus-open-any-terminal" = {
+        terminal = "${lib.getExe config.programs.kitty.package}";
+      };
     };
   };
 
