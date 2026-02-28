@@ -9,7 +9,7 @@ let
   hasOBS = config.programs.obs-studio.enable;
   inherit (config.noughty) host;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
 
   dconf.settings =
     with lib.hm.gvariant;

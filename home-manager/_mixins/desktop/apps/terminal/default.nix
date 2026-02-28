@@ -17,7 +17,7 @@ let
     else
       false;
 in
-{
+lib.mkIf host.is.workstation {
   # Enable the Catppuccin theme
   catppuccin = {
     kitty.enable = config.programs.kitty.enable;

@@ -8,7 +8,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
   home = {
     file = {
       # Customised Catppuccin Mocha Blue theme for Joplin
