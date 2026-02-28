@@ -1,10 +1,14 @@
 {
   catppuccinPalette,
+  config,
   lib,
   noughtyLib,
   ...
 }:
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+let
+  inherit (config.noughty) host;
+in
+lib.mkIf (host.is.workstation && noughtyLib.isUser [ "martin" ]) {
   programs = {
     chromium = {
       # - https://help.kagi.com/kagi/getting-started/setting-default.html
