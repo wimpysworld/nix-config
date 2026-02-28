@@ -189,6 +189,18 @@ jobs:
           sed -i "s/^  version = \".*\"/  version = \"${VERSION}\"/" "$PKG_NIX"
           sed -i "s|hash = \"sha256-[^\"]*\"|hash = \"${new_hash}\"|" "$PKG_NIX"
 
+          echo "📦 Regenerating package-lock.json from new tarball"
+          WORK_DIR=$(mktemp -d)
+          curl -fsSL "$TGZ_URL" | tar xz -C "$WORK_DIR"
+          npm install --package-lock-only --prefix "$WORK_DIR/package"
+          cp "$WORK_DIR/package/package-lock.json" pkgs/openchambre-web/package-lock.json
+
+          echo "🔑 Computing npmDepsHash"
+          new_deps_hash=$(nix run nixpkgs#prefetch-npm-deps -- pkgs/openchambre-web/package-lock.json)
+          echo "🔑 npmDepsHash: ${new_deps_hash}"
+          sed -i "s|npmDepsHash = \"sha256-[^\"]*\"|npmDepsHash = \"${new_deps_hash}\"|" "$PKG_NIX"
+          rm -rf "$WORK_DIR"
+
           echo "✅ Updated ${PKG_NIX}"
           git diff "$PKG_NIX"
 
@@ -209,7 +221,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add pkgs/openchambre-web/default.nix
+          git add pkgs/openchambre-web/default.nix pkgs/openchambre-web/package-lock.json
           git commit -m "chore(openchambre-web): update to ${VERSION}"
           git push -u origin "$BRANCH"
 
