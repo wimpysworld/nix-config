@@ -129,8 +129,8 @@ jobs:
           PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
           gh pr merge --auto --squash "$PR_NUMBER"
 
-  openchambre-web:
-    name: OpenChambre Web 📦
+  openchamber-web:
+    name: OpenChamber Web 📦
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -143,12 +143,12 @@ jobs:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Check for OpenChambre Web update 🔍
+      - name: Check for OpenChamber Web update 🔍
         id: check
         run: |
           set -euo pipefail
 
-          PKG_NIX="pkgs/openchambre-web/default.nix"
+          PKG_NIX="pkgs/openchamber-web/default.nix"
           current_version=$(sed -n 's/^  version = "\(.*\)";/\1/p' "$PKG_NIX")
           echo "Current version: ${current_version}"
 
@@ -157,14 +157,14 @@ jobs:
           latest_version="${latest_tag#v}"
 
           if [[ -z "$latest_version" || "$latest_version" == "null" ]]; then
-            echo "❌ Could not determine latest OpenChambre version"
+            echo "❌ Could not determine latest OpenChamber version"
             exit 1
           fi
 
           echo "Latest version: ${latest_version}"
 
           if [[ "$current_version" == "$latest_version" ]]; then
-            echo "✅ OpenChambre Web is up to date"
+            echo "✅ OpenChamber Web is up to date"
             echo "updated=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -172,14 +172,14 @@ jobs:
           echo "updated=true" >> "$GITHUB_OUTPUT"
           echo "version=${latest_version}" >> "$GITHUB_OUTPUT"
 
-      - name: Update OpenChambre Web package 📝
+      - name: Update OpenChamber Web package 📝
         if: steps.check.outputs.updated == 'true'
         env:
           VERSION: ${{ steps.check.outputs.version }}
         run: |
           set -euo pipefail
 
-          PKG_NIX="pkgs/openchambre-web/default.nix"
+          PKG_NIX="pkgs/openchamber-web/default.nix"
           TGZ_URL="https://github.com/btriapitsyn/openchamber/releases/download/v${VERSION}/openchamber-web-${VERSION}.tgz"
 
           echo "⬇️  Fetching tarball: ${TGZ_URL}"
@@ -193,10 +193,10 @@ jobs:
           WORK_DIR=$(mktemp -d)
           curl -fsSL "$TGZ_URL" | tar xz -C "$WORK_DIR"
           npm install --package-lock-only --ignore-scripts --prefix "$WORK_DIR/package"
-          cp "$WORK_DIR/package/package-lock.json" pkgs/openchambre-web/package-lock.json
+          cp "$WORK_DIR/package/package-lock.json" pkgs/openchamber-web/package-lock.json
 
           echo "🔑 Computing npmDepsHash"
-          new_deps_hash=$(nix run nixpkgs#prefetch-npm-deps -- pkgs/openchambre-web/package-lock.json)
+          new_deps_hash=$(nix run nixpkgs#prefetch-npm-deps -- pkgs/openchamber-web/package-lock.json)
           echo "🔑 npmDepsHash: ${new_deps_hash}"
           sed -i "s|npmDepsHash = \"sha256-[^\"]*\"|npmDepsHash = \"${new_deps_hash}\"|" "$PKG_NIX"
           rm -rf "$WORK_DIR"
@@ -210,7 +210,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
           VERSION: ${{ steps.check.outputs.version }}
         run: |
-          BRANCH="openchambre-web-${VERSION}"
+          BRANCH="openchamber-web-${VERSION}"
 
           # Check if a PR already exists for this version
           if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
@@ -221,14 +221,115 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add pkgs/openchambre-web/default.nix pkgs/openchambre-web/package-lock.json
-          git commit -m "chore(openchambre-web): update to ${VERSION}"
+          git add pkgs/openchamber-web/default.nix pkgs/openchamber-web/package-lock.json
+          git commit -m "chore(openchamber-web): update to ${VERSION}"
           git push -u origin "$BRANCH"
 
           PR_URL=$(gh pr create \
-            --title "chore(openchambre-web): update to ${VERSION}" \
+            --title "chore(openchamber-web): update to ${VERSION}" \
             --body "$(cat <<EOF
-          Automated OpenChambre Web update to version ${VERSION}.
+          Automated OpenChamber Web update to version ${VERSION}.
+
+          Release: https://github.com/btriapitsyn/openchamber/releases/tag/v${VERSION}
+          EOF
+          )" \
+            --label "dependencies,automated")
+
+          echo "📋 Created PR: ${PR_URL}"
+
+          # Extract PR number and enable auto-merge
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge --auto --squash "$PR_NUMBER"
+
+  openchamber-desktop:
+    name: OpenChamber Desktop 📦
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Check for OpenChamber Desktop update 🔍
+        id: check
+        run: |
+          set -euo pipefail
+
+          PKG_NIX="pkgs/openchamber-desktop/default.nix"
+          current_version=$(sed -n 's/^  version = "\(.*\)";/\1/p' "$PKG_NIX")
+          echo "Current version: ${current_version}"
+
+          latest_tag=$(curl -fsSL "https://api.github.com/repos/btriapitsyn/openchamber/releases/latest" \
+            | jq -r '.tag_name')
+          latest_version="${latest_tag#v}"
+
+          if [[ -z "$latest_version" || "$latest_version" == "null" ]]; then
+            echo "❌ Could not determine latest OpenChamber version"
+            exit 1
+          fi
+
+          echo "Latest version: ${latest_version}"
+
+          if [[ "$current_version" == "$latest_version" ]]; then
+            echo "✅ OpenChamber Desktop is up to date"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "version=${latest_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Update OpenChamber Desktop package 📝
+        if: steps.check.outputs.updated == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          PKG_NIX="pkgs/openchamber-desktop/default.nix"
+
+          # Fetch and hash the aarch64 dmg (primary; used as the pinned hash)
+          aarch64_url="https://github.com/btriapitsyn/openchamber/releases/download/v${VERSION}/OpenChamber_${VERSION}_darwin-aarch64.dmg"
+          echo "⬇️  Fetching aarch64 dmg: ${aarch64_url}"
+          new_hash=$(nix store prefetch-file --json --hash-type sha256 --name openchamber-desktop.dmg "$aarch64_url" | jq -r '.hash')
+          echo "🔑 Hash: ${new_hash}"
+
+          sed -i "s/^  version = \".*\"/  version = \"${VERSION}\"/" "$PKG_NIX"
+          sed -i "s|hash = \"sha256-[^\"]*\"|hash = \"${new_hash}\"|" "$PKG_NIX"
+
+          echo "✅ Updated ${PKG_NIX}"
+          git diff "$PKG_NIX"
+
+      - name: Create pull request 🚀
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          BRANCH="openchamber-desktop-${VERSION}"
+
+          # Check if a PR already exists for this version
+          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
+            echo "⏭️  PR already exists for ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add pkgs/openchamber-desktop/default.nix
+          git commit -m "chore(openchamber-desktop): update to ${VERSION}"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(openchamber-desktop): update to ${VERSION}" \
+            --body "$(cat <<EOF
+          Automated OpenChamber Desktop update to version ${VERSION}.
 
           Release: https://github.com/btriapitsyn/openchamber/releases/tag/v${VERSION}
           EOF

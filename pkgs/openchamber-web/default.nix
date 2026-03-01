@@ -1,4 +1,4 @@
-# OpenChambre Web - browser-based GUI for the OpenCode AI coding agent.
+# OpenChamber Web - browser-based GUI for the OpenCode AI coding agent.
 # The npm tarball ships pre-built dist/ and server/ assets; only node-pty
 # requires native compilation at install time.
 {
@@ -13,7 +13,7 @@ let
   version = "1.8.2";
 in
 buildNpmPackage {
-  pname = "openchambre-web";
+  pname = "openchamber-web";
   inherit version;
 
   # Use the pre-built tarball from GitHub releases rather than the npm registry.
