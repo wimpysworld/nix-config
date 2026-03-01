@@ -10,7 +10,7 @@
   nodePackages,
 }:
 let
-  version = "1.8.1";
+  version = "1.8.2";
 in
 buildNpmPackage {
   pname = "openchambre-web";
@@ -21,7 +21,7 @@ buildNpmPackage {
   # pin for the freshener workflow.
   src = fetchurl {
     url = "https://github.com/btriapitsyn/openchamber/releases/download/v${version}/openchamber-web-${version}.tgz";
-    hash = "sha256-yFEiqr4JYXR9BU9MoAREIm11gbUsUqqgaaAjhobQyQA=";
+    hash = "sha256-+bVPXBoBjBOUW5I2FRS1a6WSvFrhJswdK+hRKTABFxg=";
   };
 
   # The tarball extracts to a "package/" directory.
@@ -40,7 +40,7 @@ buildNpmPackage {
     nodePackages.node-gyp
   ];
 
-  npmDepsHash = "sha256-KqPcBRwPxdUSCiRHbJBYvcGyPOI5iLDCpjDIpkRu1uQ=";
+  npmDepsHash = "sha256-/yjs9wGPpFsTAYiwPN6Y0TFdxCKzz+m6PScRSgE8mIQ=";
 
   # The package ships pre-built dist/ and server/ - no build step needed.
   dontNpmBuild = true;
