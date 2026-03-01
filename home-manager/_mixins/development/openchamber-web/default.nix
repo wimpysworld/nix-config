@@ -1,4 +1,4 @@
-# OpenChambre Web - browser-based GUI for the OpenCode AI coding agent.
+# OpenChamber Web - browser-based GUI for the OpenCode AI coding agent.
 # Runs a local web server and provides a PWA-style desktop entry via Chromium.
 {
   config,
@@ -12,20 +12,20 @@ let
 in
 lib.mkIf (host.is.workstation && host.is.linux) {
   home.packages = [
-    pkgs.openchambre-web
+    pkgs.openchamber-web
   ];
 
-  # Run the OpenChambre web server as a background service.
-  systemd.user.services.openchambre-web = {
+  # Run the OpenChamber web server as a background service.
+  systemd.user.services.openchamber-web = {
     Unit = {
-      Description = "OpenChambre Web - GUI for OpenCode AI agent";
+      Description = "OpenChamber Web - GUI for OpenCode AI agent";
       Documentation = "https://github.com/btriapitsyn/openchamber";
       After = [ "graphical-session.target" ];
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
       Type = "simple";
-      ExecStart = "${lib.getExe pkgs.openchambre-web} --port ${toString port}";
+      ExecStart = "${lib.getExe pkgs.openchamber-web} --port ${toString port}";
       Restart = "on-failure";
       RestartSec = 5;
     };
@@ -35,8 +35,8 @@ lib.mkIf (host.is.workstation && host.is.linux) {
   };
 
   # Desktop entry launches Chromium in app mode pointing at the local server.
-  xdg.desktopEntries.openchambre-web = {
-    name = "OpenChambre";
+  xdg.desktopEntries.openchamber-web = {
+    name = "OpenChamber";
     genericName = "AI Coding Agent GUI";
     comment = "Web interface for the OpenCode AI coding agent";
     exec = "${lib.getExe pkgs.chromium} --app=http://localhost:${toString port}";
