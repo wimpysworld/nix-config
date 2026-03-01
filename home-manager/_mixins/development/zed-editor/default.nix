@@ -71,8 +71,8 @@ lib.mkIf host.is.workstation {
         };
         node = {
           ignore_system_version = true;
-          path = "${pkgs.nodejs_24}/bin/node";
-          npm_path = "${pkgs.nodejs_24}/bin/npm";
+          path = "${pkgs.nodejs_22}/bin/node";
+          npm_path = "${pkgs.nodejs_22}/bin/npm";
         };
         #session = {
         #  trust_all_worktrees = true;
