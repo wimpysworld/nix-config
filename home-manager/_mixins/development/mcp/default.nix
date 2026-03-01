@@ -72,7 +72,7 @@ in
       userSettings = {
         context_servers = {
           cloudflare = {
-            command = "${pkgs.nodejs_24}/bin/npx";
+            command = "${pkgs.nodejs_22}/bin/npx";
             args = [
               "-y"
               "mcp-remote"
@@ -80,7 +80,7 @@ in
             ];
           };
           exa = {
-            command = "${pkgs.nodejs_24}/bin/npx";
+            command = "${pkgs.nodejs_22}/bin/npx";
             args = [
               "-y"
               "mcp-remote"
@@ -92,7 +92,7 @@ in
             args = [ ];
           };
           jina = {
-            command = "${pkgs.nodejs_24}/bin/npx";
+            command = "${pkgs.nodejs_22}/bin/npx";
             args = [
               "-y"
               "mcp-remote"
