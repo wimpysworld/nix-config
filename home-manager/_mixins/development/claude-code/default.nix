@@ -19,6 +19,23 @@ let
   # Import shared MCP server definitions
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 
+  # Patch ccstatusline to accept null values for the seven_day field in the
+  # Anthropic usage API response. The API returns `"seven_day": null` when no
+  # weekly usage data is available, but ccstatusline's Zod schema uses
+  # `.optional()` rather than `.nullish()` for the outer object, causing
+  # safeParse to fail and both session-usage and weekly-usage widgets to render
+  # "[Parse Error]" indefinitely.
+  ccstatuslinePatched =
+    (inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccstatusline).overrideAttrs
+      (old: {
+        postInstall = (old.postInstall or "") + ''
+          substituteInPlace $out/bin/ccstatusline \
+            --replace-fail \
+              'seven_day: exports_external.object({ utilization: exports_external.number().nullable().optional() }).optional(),' \
+              'seven_day: exports_external.object({ utilization: exports_external.number().nullable().optional() }).nullish(),'
+        '';
+      });
+
   # Permission lists for Claude Code
   # Format: "Bash(command:*)" for prefix matching, "Bash(command)" for exact
   bashAllow = [
@@ -694,6 +711,118 @@ in
   home = {
     packages = [
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccusage
+      ccstatuslinePatched
+    ];
+  };
+
+  # Declarative configuration for ccstatusline.
+  # Settings are written to ~/.config/ccstatusline/settings.json, which is the
+  # default path the tool reads on startup. The status line command is injected
+  # into Claude Code's settings.json by the claude-code Home Manager module.
+  xdg.configFile."ccstatusline/settings.json".text = builtins.toJSON {
+    version = 3;
+    # Plain values required: builtins.toJSON serialises lib.mkDefault wrappers
+    # verbatim as attribute sets, which fails ccstatusline's Zod schema validation.
+    flexMode = "full-minus-40";
+    compactThreshold = 60;
+    colorLevel = 2;
+    defaultPadding = " ";
+    defaultSeparator = "|";
+    inheritSeparatorColors = false;
+    globalBold = false;
+    powerline = {
+      enabled = false;
+      separators = [ "\uE0B0" ];
+      separatorInvertBackground = [ false ];
+      startCaps = [ ];
+      endCaps = [ ];
+      autoAlign = false;
+    };
+    lines = [
+      [
+        # Line 1: model identity, session information, and block timing.
+        # Explicit separator widgets are intentionally absent: defaultSeparator
+        # already inserts a "|" between every adjacent widget pair automatically.
+        # Adding both causes triple separators (defaultSep + widget + defaultSep).
+        {
+          id = "1";
+          type = "model";
+          color = "cyan";
+        }
+        {
+          id = "3";
+          type = "session-clock";
+          color = "yellow";
+        }
+        {
+          id = "5";
+          type = "session-usage";
+          color = "brightBlue";
+        }
+        {
+          id = "7";
+          type = "session-cost";
+          color = "green";
+        }
+        # Block Reset Timer uses type "reset-timer" per the widget manifest
+        # (BlockResetTimerWidget is registered under that key, not "block-reset-timer").
+        {
+          id = "10";
+          type = "block-timer";
+          color = "yellow";
+        }
+        {
+          id = "12";
+          type = "reset-timer";
+          color = "brightYellow";
+        }
+        # Weekly widgets follow the block timers on the same line. When no
+        # weekly usage data is available they return null and are skipped by the
+        # renderer, so no blank line is ever reserved.
+        {
+          id = "14";
+          type = "weekly-usage";
+          color = "brightBlue";
+        }
+        {
+          id = "16";
+          type = "weekly-reset-timer";
+          color = "brightCyan";
+        }
+        {
+          id = "9";
+          type = "session-name";
+          color = "magenta";
+        }
+      ]
+      [
+        # Line 3: token counts and context bar.
+        {
+          id = "17";
+          type = "tokens-input";
+          color = "brightBlack";
+        }
+        {
+          id = "19";
+          type = "tokens-output";
+          color = "brightBlack";
+        }
+        {
+          id = "21";
+          type = "tokens-cached";
+          color = "brightBlack";
+        }
+        {
+          id = "23";
+          type = "tokens-total";
+          color = "white";
+        }
+        {
+          id = "25";
+          type = "context-bar";
+          color = "brightGreen";
+        }
+      ]
     ];
   };
   programs = {
@@ -703,6 +832,14 @@ in
       # Use Home Manager's native MCP support with shared server definitions
       inherit (mcpServerDefs) mcpServers;
       settings = {
+        # Wire ccstatusline into Claude Code's status bar. The module writes
+        # this value to ~/.claude/settings.json under the "statusLine" key,
+        # which Claude Code reads on startup to invoke the formatter.
+        statusLine = {
+          type = "command";
+          command = lib.getExe ccstatuslinePatched;
+          padding = 0;
+        };
         permissions = {
           allow = bashAllow;
           ask = bashAsk ++ bashAskDestructive;
