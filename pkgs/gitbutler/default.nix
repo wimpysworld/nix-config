@@ -159,7 +159,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # Task tracing requires Tokio to be built with this flag.
     RUSTFLAGS = "--cfg tokio_unstable";
 
-    TUBRO_BINARY_PATH = lib.getExe turbo;
+    TURBO_BINARY_PATH = lib.getExe turbo;
     TURBO_TELEMETRY_DISABLED = 1;
 
     OPENSSL_NO_VENDOR = true;
