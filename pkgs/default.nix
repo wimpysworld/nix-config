@@ -12,6 +12,7 @@ pkgs: {
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
+  gitbutler = pkgs.callPackage ./gitbutler { };
   obs-urlsource = pkgs.qt6Packages.callPackage ./obs-plugins/obs-urlsource.nix { };
   obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
   obs-webkitgtk = pkgs.callPackage ./obs-plugins/obs-webkitgtk.nix { };
