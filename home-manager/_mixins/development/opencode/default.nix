@@ -17,6 +17,9 @@ in
     packages = lib.optionals host.is.workstation [
       pkgs.opencode-desktop
     ];
+    shellAliases = {
+      oc-rosey = "opencode --agent rosey --continue";
+    };
   };
 
   programs = {

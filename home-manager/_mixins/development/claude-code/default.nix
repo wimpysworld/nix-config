@@ -724,6 +724,9 @@ in
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccusage
       ccstatuslinePatched
     ];
+    shellAliases = {
+      cc-rosey = "claude --agent rosey --continue";
+    };
   };
 
   # Declarative configuration for ccstatusline.
