@@ -19,20 +19,31 @@ let
   # Import shared MCP server definitions
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 
-  # Patch ccstatusline to accept null values for the seven_day field in the
-  # Anthropic usage API response. The API returns `"seven_day": null` when no
-  # weekly usage data is available, but ccstatusline's Zod schema uses
-  # `.optional()` rather than `.nullish()` for the outer object, causing
-  # safeParse to fail and both session-usage and weekly-usage widgets to render
-  # "[Parse Error]" indefinitely.
+  # Patch ccstatusline to accept null values for the five_hour and seven_day
+  # fields in the Anthropic usage API response. The API returns null for these
+  # fields when no usage data is available, but ccstatusline's Zod schema uses
+  # `.optional()` rather than `.nullish()` for the outer object wrapper.
+  # `.optional()` permits `undefined` but rejects `null`, so safeParse fails
+  # and the session-usage and weekly-usage widgets render "[Parse Error]"
+  # indefinitely. Replacing `.optional()` with `.nullish()` on the outer object
+  # accepts both undefined and null, matching the actual API contract.
+  #
+  # v2.2.0 expanded the schema to include resets_at alongside utilization,
+  # so the match pattern covers the full three-line block for each field.
   ccstatuslinePatched =
     (inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccstatusline).overrideAttrs
       (old: {
+        nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.perl ];
         postInstall = (old.postInstall or "") + ''
-          substituteInPlace $out/bin/ccstatusline \
-            --replace-fail \
-              'seven_day: exports_external.object({ utilization: exports_external.number().nullable().optional() }).optional(),' \
-              'seven_day: exports_external.object({ utilization: exports_external.number().nullable().optional() }).nullish(),'
+          # Patch five_hour and seven_day outer object wrappers from .optional()
+          # to .nullish() so that the Zod schema accepts null (not just undefined)
+          # when the Anthropic API returns null for those fields. The v2.2.0
+          # schema spans multiple lines; perl -0pe slurps the whole file so
+          # [^}]+ matches across newlines inside the object literal.
+          perl -i -0pe \
+            's/(five_hour: exports_external\.object\(\{[^}]+\}\))\.optional\(\),/$1.nullish(),/s;
+             s/(seven_day: exports_external\.object\(\{[^}]+\}\))\.optional\(\),/$1.nullish(),/s' \
+            "$out/bin/ccstatusline"
         '';
       });
 
