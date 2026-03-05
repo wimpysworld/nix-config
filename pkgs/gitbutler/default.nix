@@ -28,13 +28,13 @@
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "gitbutler";
-  version = "0.19.3";
+  version = "0.19.5";
 
   src = fetchFromGitHub {
     owner = "gitbutlerapp";
     repo = "gitbutler";
     tag = "release/${finalAttrs.version}";
-    hash = "sha256-OEDTpCtnIOTGxz6c3BoA9yVjaOHVemizIUtDuPuLc8A=";
+    hash = "sha256-gVYTt4r4QlVsYewUdiHAsGeEZx2oY9wGL2RJ2JvGio4=";
   };
 
   cargoDeps = rustPlatform.fetchCargoVendor {
@@ -82,7 +82,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       src
       ;
     fetcherVersion = 2;
-    hash = "sha256-ZhykVbbATjMoj6EYGlbrJ5C5nQ3l4tqWZeaH+vOdxdY=";
+    hash = "sha256-zzvvRicC2Un+KCJXVrN6vsmMxy+lkBbeKFMDAfoZtTs=";
   };
 
   nativeBuildInputs = [
