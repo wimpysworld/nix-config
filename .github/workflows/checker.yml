@@ -2,18 +2,17 @@ name: Checker ✅
 
 on:
   schedule:
-    # l33t o'clock
-    - cron: '37 13 * * *'
+    - cron: "37 13 14 * *"
   push:
     paths:
-      - 'lib/**.toml'
-      - 'lib/**-schema.json'
+      - "lib/**.toml"
+      - "lib/**-schema.json"
   workflow_dispatch:
 
 jobs:
   flake-checker:
     name: Flake Lock Checker
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
       id-token: write
@@ -28,7 +27,7 @@ jobs:
 
   toml-lint:
     name: TOML Registry Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
     steps:

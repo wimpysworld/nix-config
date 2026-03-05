@@ -1,8 +1,7 @@
 name: Package Freshener 🍋
 on:
   schedule:
-    # Early bird; runs well before the flake lock updater (03:14 UTC)
-    - cron: '0 1 * * *'
+    - cron: "20 4 * * 2,4"
   workflow_dispatch:
 
 jobs:
