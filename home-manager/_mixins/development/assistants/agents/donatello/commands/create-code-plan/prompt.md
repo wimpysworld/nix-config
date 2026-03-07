@@ -11,6 +11,7 @@ Create implementation plan optimised for AI-assisted development.
 | Scope | Files/functions to modify |
 | Success Criteria | How to verify completion |
 | Complexity | XS/S/M/L/XL |
+| Reuse | Existing functions, utilities, or patterns to leverage |
 | Flags | ⚠️ High-risk, 🔍 Needs review, 🧠 Context-intensive |
 
 ### Planning Principles
@@ -18,6 +19,7 @@ Create implementation plan optimised for AI-assisted development.
 - **Atomic:** Each task completable in one session, independently testable, safely revertible
 - **Chunked:** Group 3-5 related tasks; each chunk produces working code
 - **Stateless:** Assume fresh AI instance per conversation
+- **DRY:** Search for existing utilities and patterns before planning new code; reuse over rewrite
 
 ### Example
 
@@ -33,6 +35,7 @@ Create implementation plan optimised for AI-assisted development.
 ### 1.2 — Implement token generation service
 - **Dependencies**: 1.1
 - **Scope**: `src/services/auth/token.ts`, `src/services/auth/token.test.ts`
+- **Reuse**: `src/utils/crypto.ts` — existing `generateSecret()` for token signing
 - **Success Criteria**: Unit tests pass for sign/verify/refresh
 - **Complexity**: S
 - **Flags**: 🔍 Review token expiry values
@@ -40,6 +43,7 @@ Create implementation plan optimised for AI-assisted development.
 ### 1.3 — Add auth middleware
 - **Dependencies**: 1.2
 - **Scope**: `src/middleware/auth.ts`, `src/middleware/auth.test.ts`
+- **Reuse**: `src/middleware/validate.ts` — follow existing middleware pattern and error handling
 - **Success Criteria**: Protected routes return 401 without valid token
 - **Complexity**: M
 - **Flags**: ⚠️ Affects all protected endpoints

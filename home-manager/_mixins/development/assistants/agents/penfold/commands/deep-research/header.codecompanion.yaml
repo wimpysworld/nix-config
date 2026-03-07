@@ -1,0 +1,6 @@
+name: Deep Research
+interaction: chat
+opts:
+  alias: deep-research
+  is_slash_cmd: true
+  rules: penfold
