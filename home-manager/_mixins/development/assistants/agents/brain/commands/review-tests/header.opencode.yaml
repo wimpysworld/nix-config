@@ -1,1 +1,2 @@
 agent: brain
+model: github-copilot/gpt-5.4

@@ -1,0 +1,2 @@
+model: opus
+argument-hint: [plan-file] [scope]
