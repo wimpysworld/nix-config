@@ -25,6 +25,7 @@ in
   home = {
     packages = with pkgs; [
       act # Run GitHub Actions locally
+      actionlint
       ghbackup # Backup GitHub repositories
       ghorg # Clone all repositories in a GitHub organization
     ];
