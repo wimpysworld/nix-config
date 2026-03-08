@@ -27,8 +27,6 @@ in
       enable = true;
       package = opencodePackage;
       settings = {
-        theme = "catppuccin";
-
         # Context compaction - manual control
         # Use /compact slash command when context gets full
         # OpenCode displays token usage in the interface to help monitor
@@ -111,110 +109,6 @@ in
               ".yml"
             ];
           };
-        };
-
-        # TUI settings
-        tui = {
-          diff_style = "stacked"; # Always show single-column stacked diffs
-          scroll_acceleration = {
-            enabled = true; # Enable macOS-style smooth scroll acceleration
-          };
-        };
-
-        # ══════════════════════════════════════════════════════════════
-        # Keybindings - Standard CUA text editor navigation
-        # ══════════════════════════════════════════════════════════════
-        keybinds = {
-          # Core principle: Arrow keys, Home, End, and standard navigation
-          # work like a normal text editor. PgUp/PgDn scroll chat history.
-          # Full CUA (Common User Access) clipboard support.
-
-          # Application control
-          app_exit = "ctrl+q"; # Quit application (Ctrl+Q instead of Ctrl+C/D)
-          session_interrupt = "escape"; # Interrupt model (keep default)
-
-          # Text input cursor movement - standard arrow keys only
-          input_move_up = "up";
-          input_move_down = "down";
-          input_move_left = "left";
-          input_move_right = "right";
-
-          # History navigation - use Ctrl+Up/Down (avoiding Alt conflicts with window manager)
-          history_previous = "ctrl+up";
-          history_next = "ctrl+down";
-
-          # Home/End - dedicated to line navigation in input
-          input_line_home = "home";
-          input_line_end = "end";
-          input_buffer_home = "ctrl+home"; # Top of input buffer
-          input_buffer_end = "ctrl+end"; # Bottom of input buffer
-
-          # Message navigation - PgUp/PgDn for scrolling
-          messages_first = "shift+pageup"; # Jump to first message
-          messages_last = "shift+pagedown"; # Jump to last message
-          messages_page_up = "pageup"; # Scroll up one page
-          messages_page_down = "pagedown"; # Scroll down one page
-          messages_next = "none"; # Not bound (use PgDn to scroll)
-          messages_previous = "none"; # Not bound (use PgUp to scroll)
-
-          # Newline insertion - Shift+Enter (primary) plus alternatives
-          input_newline = "shift+return,ctrl+return";
-
-          # Submit on Enter
-          input_submit = "return";
-
-          # Selection with Shift+Arrows (standard text editor)
-          input_select_up = "shift+up";
-          input_select_down = "shift+down";
-          input_select_left = "shift+left";
-          input_select_right = "shift+right";
-          input_select_line_home = "shift+home"; # Select to line start
-          input_select_line_end = "shift+end"; # Select to line end
-          input_select_buffer_home = "ctrl+shift+home,ctrl+a"; # Select to buffer start (Ctrl+A = CUA "Select All")
-          input_select_buffer_end = "ctrl+shift+end"; # Select to buffer end
-
-          # Note: Ctrl+A (Select All in CUA) selects from cursor to buffer start.
-          # For true "select all": Press Ctrl+End (go to end) then Ctrl+A (select to start).
-          # Most of the time you're already at the end when typing, so Ctrl+A works as expected.
-
-          # Word movement (standard Windows/Linux text editor style)
-          input_word_forward = "ctrl+right";
-          input_word_backward = "ctrl+left";
-          input_select_word_forward = "ctrl+shift+right";
-          input_select_word_backward = "ctrl+shift+left";
-
-          # Standard CUA (Common User Access) clipboard
-          input_clear = "none"; # No clear binding needed (just select all & delete if needed)
-          input_paste = "ctrl+v,shift+insert,ctrl+shift+v"; # Paste - standard CUA + terminal paste
-          # Pending https://github.com/anomalyco/opencode/pull/7520
-          #input_copy = "ctrl+insert"; # Copy selection (CUA standard)
-          #input_cut = "shift+delete"; # Cut selection (CUA standard)
-          input_undo = "ctrl+z"; # Undo
-          input_redo = "ctrl+shift+z"; # Redo
-
-          # Keyboard-based text copying in OpenCode:
-          # 1. Select text with Shift+Arrow keys (or other input_select_* bindings)
-          # 2. Press Ctrl+Insert to copy selected text to clipboard (CUA standard)
-          # 3. Press Shift+Delete to cut selected text (copy + delete) (CUA standard)
-          # 4. Press Ctrl+V or Shift+Insert to paste
-          #
-          # CUA-standard keybindings (Common User Access from IBM/Windows/Office):
-          # - Work reliably across all terminal emulators (not intercepted)
-          # - Align with existing input_paste default (Shift+Insert)
-          # - Avoid conflicts with terminal native shortcuts (Ctrl+Shift+C/V)
-          #
-          # Alternative - Mouse-based copying:
-          # - SELECT TEXT WITH MOUSE → automatically copied via OSC52
-          # - Ctrl+Shift+V pastes (terminal native)
-          # - Ctrl+V pastes (CUA standard, configured above)
-          # - Shift+Insert pastes (CUA alternative, configured above)
-
-          # Delete operations - standard text editor with CUA
-          input_backspace = "backspace";
-          input_delete = "delete"; # Plain Delete key only (Shift+Del is for cut in CUA)
-          input_delete_word_forward = "ctrl+delete"; # Delete word forward
-          input_delete_word_backward = "ctrl+backspace"; # Delete word backward
-          input_delete_line = "ctrl+shift+k"; # Delete entire line
         };
 
         # Global permissions - applied to all agents including built-in Build and Plan
@@ -1407,6 +1301,113 @@ in
           };
         };
       };
+    };
+  };
+
+  xdg.configFile."opencode/tui.json".text = builtins.toJSON {
+    "$schema" = "https://opencode.ai/tui.json";
+    theme = "catppuccin";
+    tui = {
+      diff_style = "stacked";
+      scroll_acceleration = {
+        enabled = true;
+      };
+    };
+
+    # ══════════════════════════════════════════════════════════════
+    # Keybindings - Standard CUA text editor navigation
+    # ══════════════════════════════════════════════════════════════
+    keybinds = {
+      # Core principle: Arrow keys, Home, End, and standard navigation
+      # work like a normal text editor. PgUp/PgDn scroll chat history.
+      # Full CUA (Common User Access) clipboard support.
+
+      # Application control
+      app_exit = "ctrl+q"; # Quit application (Ctrl+Q instead of Ctrl+C/D)
+      session_interrupt = "escape"; # Interrupt model (keep default)
+
+      # Text input cursor movement - standard arrow keys only
+      input_move_up = "up";
+      input_move_down = "down";
+      input_move_left = "left";
+      input_move_right = "right";
+
+      # History navigation - use Ctrl+Up/Down (avoiding Alt conflicts with window manager)
+      history_previous = "ctrl+up";
+      history_next = "ctrl+down";
+
+      # Home/End - dedicated to line navigation in input
+      input_line_home = "home";
+      input_line_end = "end";
+      input_buffer_home = "ctrl+home"; # Top of input buffer
+      input_buffer_end = "ctrl+end"; # Bottom of input buffer
+
+      # Message navigation - PgUp/PgDn for scrolling
+      messages_first = "shift+pageup"; # Jump to first message
+      messages_last = "shift+pagedown"; # Jump to last message
+      messages_page_up = "pageup"; # Scroll up one page
+      messages_page_down = "pagedown"; # Scroll down one page
+      messages_next = "none"; # Not bound (use PgDn to scroll)
+      messages_previous = "none"; # Not bound (use PgUp to scroll)
+
+      # Newline insertion - Shift+Enter (primary) plus alternatives
+      input_newline = "shift+return,ctrl+return";
+
+      # Submit on Enter
+      input_submit = "return";
+
+      # Selection with Shift+Arrows (standard text editor)
+      input_select_up = "shift+up";
+      input_select_down = "shift+down";
+      input_select_left = "shift+left";
+      input_select_right = "shift+right";
+      input_select_line_home = "shift+home"; # Select to line start
+      input_select_line_end = "shift+end"; # Select to line end
+      input_select_buffer_home = "ctrl+shift+home,ctrl+a"; # Select to buffer start (Ctrl+A = CUA "Select All")
+      input_select_buffer_end = "ctrl+shift+end"; # Select to buffer end
+
+      # Note: Ctrl+A (Select All in CUA) selects from cursor to buffer start.
+      # For true "select all": Press Ctrl+End (go to end) then Ctrl+A (select to start).
+      # Most of the time you're already at the end when typing, so Ctrl+A works as expected.
+
+      # Word movement (standard Windows/Linux text editor style)
+      input_word_forward = "ctrl+right";
+      input_word_backward = "ctrl+left";
+      input_select_word_forward = "ctrl+shift+right";
+      input_select_word_backward = "ctrl+shift+left";
+
+      # Standard CUA (Common User Access) clipboard
+      input_clear = "none"; # No clear binding needed (just select all & delete if needed)
+      input_paste = "ctrl+v,shift+insert,ctrl+shift+v"; # Paste - standard CUA + terminal paste
+      # Pending https://github.com/anomalyco/opencode/pull/7520
+      #input_copy = "ctrl+insert"; # Copy selection (CUA standard)
+      #input_cut = "shift+delete"; # Cut selection (CUA standard)
+      input_undo = "ctrl+z"; # Undo
+      input_redo = "ctrl+shift+z"; # Redo
+
+      # Keyboard-based text copying in OpenCode:
+      # 1. Select text with Shift+Arrow keys (or other input_select_* bindings)
+      # 2. Press Ctrl+Insert to copy selected text to clipboard (CUA standard)
+      # 3. Press Shift+Delete to cut selected text (copy + delete) (CUA standard)
+      # 4. Press Ctrl+V or Shift+Insert to paste
+      #
+      # CUA-standard keybindings (Common User Access from IBM/Windows/Office):
+      # - Work reliably across all terminal emulators (not intercepted)
+      # - Align with existing input_paste default (Shift+Insert)
+      # - Avoid conflicts with terminal native shortcuts (Ctrl+Shift+C/V)
+      #
+      # Alternative - Mouse-based copying:
+      # - SELECT TEXT WITH MOUSE → automatically copied via OSC52
+      # - Ctrl+Shift+V pastes (terminal native)
+      # - Ctrl+V pastes (CUA standard, configured above)
+      # - Shift+Insert pastes (CUA alternative, configured above)
+
+      # Delete operations - standard text editor with CUA
+      input_backspace = "backspace";
+      input_delete = "delete"; # Plain Delete key only (Shift+Del is for cut in CUA)
+      input_delete_word_forward = "ctrl+delete"; # Delete word forward
+      input_delete_word_backward = "ctrl+backspace"; # Delete word backward
+      input_delete_line = "ctrl+shift+k"; # Delete entire line
     };
   };
 }
