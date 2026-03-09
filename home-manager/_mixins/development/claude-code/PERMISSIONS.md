@@ -37,7 +37,7 @@ Sensitive files are blocked at the read level, independent of bash rules:
 
 ## Bash command categories
 
-Rules cover 12 tool domains. Each follows the same pattern: version checks and read-only queries are allowed, state modifications require confirmation, destructive operations are denied.
+Rules cover 13 tool domains. Each follows the same pattern: version checks and read-only queries are allowed, state modifications require confirmation, destructive operations are denied.
 
 ### Shell utilities
 
