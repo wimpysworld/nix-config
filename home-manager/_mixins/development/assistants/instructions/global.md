@@ -8,7 +8,7 @@ LSP tools are available for supported file types. Use them to navigate and valid
 
 ## File Operations
 
-Always use IDE file creation/editing tools for all file operations, regardless of target location. This applies to multi-line content, configuration files, scripts, and files outside the current workspace.
+Always use the built-in file manipulation tools (Read, Edit, Write or equivalent) for all file operations, regardless of target location. Never use shell commands for file creation or editing. This applies to multi-line content, configuration files, scripts, and files outside the current workspace.
 
 ## Response Standards
 
