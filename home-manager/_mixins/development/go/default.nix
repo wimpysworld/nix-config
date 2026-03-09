@@ -9,8 +9,11 @@
     packages = with pkgs; [
       delve
       go
+      go-licenses
       golangci-lint
       gopls
+      goreleaser
+      govulncheck
     ];
     sessionPath = [
       "${config.home.homeDirectory}/.local/go/bin"
