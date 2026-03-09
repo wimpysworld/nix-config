@@ -87,6 +87,10 @@ in
               "https://mcp.exa.ai/mcp"
             ];
           };
+          goreleaser = {
+            command = "${pkgs.goreleaser-mcp}/bin/goreleaser-mcp";
+            args = [ ];
+          };
           nixos = {
             command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
             args = [ ];
