@@ -181,4 +181,45 @@
       };
     };
   };
+
+  claude-code.lspServers = {
+    typescript = {
+      command = lib.getExe pkgs.typescript-language-server;
+      args = [ "--stdio" ];
+      extensionToLanguage = {
+        ".ts" = "typescript";
+        ".tsx" = "typescriptreact";
+        ".js" = "javascript";
+        ".jsx" = "javascriptreact";
+        ".mjs" = "javascript";
+        ".mts" = "typescript";
+        ".cjs" = "javascript";
+        ".cts" = "typescript";
+      };
+    };
+    json = {
+      command = "${pkgs.vscode-langservers-extracted}/bin/vscode-json-language-server";
+      args = [ "--stdio" ];
+      extensionToLanguage = {
+        ".json" = "json";
+        ".jsonc" = "jsonc";
+      };
+    };
+    html = {
+      command = "${pkgs.vscode-langservers-extracted}/bin/vscode-html-language-server";
+      args = [ "--stdio" ];
+      extensionToLanguage = {
+        ".html" = "html";
+      };
+    };
+    css = {
+      command = "${pkgs.vscode-langservers-extracted}/bin/vscode-css-language-server";
+      args = [ "--stdio" ];
+      extensionToLanguage = {
+        ".css" = "css";
+        ".scss" = "scss";
+        ".less" = "less";
+      };
+    };
+  };
 }

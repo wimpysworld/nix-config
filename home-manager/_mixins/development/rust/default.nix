@@ -11,6 +11,13 @@
     ];
   };
 
+  claude-code.lspServers.rust = {
+    command = lib.getExe pkgs.rust-analyzer;
+    extensionToLanguage = {
+      ".rs" = "rust";
+    };
+  };
+
   programs = {
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {

@@ -5,6 +5,14 @@
   ...
 }:
 {
+  claude-code.lspServers.dart = {
+    command = "${pkgs.dart}/bin/dart";
+    args = [ "language-server" ];
+    extensionToLanguage = {
+      ".dart" = "dart";
+    };
+  };
+
   home = {
     packages = with pkgs; [
       # lowPrio to avoid bin/resources collision with pkgs.resources (GNOME system monitor)

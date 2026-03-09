@@ -1,3 +1,11 @@
+## LSP Tools
+
+LSP tools are available for supported file types. Use them to navigate and validate code:
+
+- Before editing: `goToDefinition`, `goToImplementation`, `documentSymbol` to locate symbols and understand structure
+- After editing: `hover` to verify types and signatures; `findReferences` to confirm no call sites are broken by renamed or moved symbols
+- For deeper analysis: `workspaceSymbol`, `prepareCallHierarchy`, `incomingCalls`, `outgoingCalls`
+
 ## File Operations
 
 Always use IDE file creation/editing tools for all file operations, regardless of target location. This applies to multi-line content, configuration files, scripts, and files outside the current workspace.
