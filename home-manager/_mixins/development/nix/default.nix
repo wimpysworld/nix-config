@@ -16,6 +16,13 @@
     ];
   };
 
+  claude-code.lspServers.nix = {
+    command = lib.getExe pkgs.nixd;
+    extensionToLanguage = {
+      ".nix" = "nix";
+    };
+  };
+
   programs = {
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {

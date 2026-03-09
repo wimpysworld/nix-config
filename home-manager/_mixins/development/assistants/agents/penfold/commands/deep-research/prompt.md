@@ -28,7 +28,8 @@ Before any search, create a research plan as a numbered checklist. Each item: on
 **2. Search**
 
 For each plan item:
-1. Search using `mcp__exa__web_search_exa` - prefer specific queries over broad ones
+1. Mark it `[~]` in RESEARCH-PLAN.md before starting
+2. Search using `mcp__exa__web_search_exa` - prefer specific queries over broad ones
 2. Evaluate results before reading - prioritise by source quality:
    - Official documentation and specifications
    - Primary sources (author blogs, release notes, changelogs)
@@ -94,5 +95,4 @@ Compile findings into the output format below. Every factual claim must have an 
 - If sources conflict, present both positions with citations and flag with ✗ CONFLICT
 - No hedging language ("perhaps", "might", "could potentially")
 - No filler sections - omit any section with no findings
-- One plan item in progress at a time; complete before starting the next
-- Update RESEARCH-PLAN.md after each item completes
+- Mark an item `[~]` in RESEARCH-PLAN.md before starting it; mark it `[x]` before starting the next - never advance without updating the file first

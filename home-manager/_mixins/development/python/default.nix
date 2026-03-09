@@ -15,6 +15,16 @@
     ];
   };
 
+  claude-code.lspServers.python = {
+    command = "${pkgs.basedpyright}/bin/basedpyright-langserver";
+    args = [ "--stdio" ];
+    extensionToLanguage = {
+      ".py" = "python";
+      ".pyi" = "python";
+      ".pyw" = "python";
+    };
+  };
+
   programs = {
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {

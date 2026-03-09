@@ -7,7 +7,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf host.is.workstation {
+{
   home = {
     packages = with pkgs; [
       yaml-language-server
@@ -74,6 +74,15 @@ lib.mkIf host.is.workstation {
         -- YAML formatting with prettier
         require('conform').formatters_by_ft.yaml = { 'prettier' }
       '';
+    };
+  };
+
+  claude-code.lspServers.yaml = {
+    command = lib.getExe pkgs.yaml-language-server;
+    args = [ "--stdio" ];
+    extensionToLanguage = {
+      ".yaml" = "yaml";
+      ".yml" = "yaml";
     };
   };
 }

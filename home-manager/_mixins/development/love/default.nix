@@ -11,6 +11,13 @@ lib.mkIf
     "vader"
   ])
   {
+    claude-code.lspServers.lua = {
+      command = lib.getExe pkgs.lua-language-server;
+      extensionToLanguage = {
+        ".lua" = "lua";
+      };
+    };
+
     home = {
       packages = with pkgs; [
         glslang

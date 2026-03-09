@@ -59,4 +59,12 @@
       '';
     };
   };
+
+  claude-code.lspServers.svelte = {
+    command = lib.getExe pkgs.svelte-language-server;
+    args = [ "--stdio" ];
+    extensionToLanguage = {
+      ".svelte" = "svelte";
+    };
+  };
 }

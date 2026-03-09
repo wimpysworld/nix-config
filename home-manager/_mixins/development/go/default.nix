@@ -22,6 +22,13 @@
     };
   };
 
+  claude-code.lspServers.go = {
+    command = lib.getExe pkgs.gopls;
+    extensionToLanguage = {
+      ".go" = "go";
+    };
+  };
+
   programs = {
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {

@@ -717,23 +717,54 @@ let
     "Read(${config.home.homeDirectory}/.fish_history)"
     "Read(${config.xdg.dataHome}/fish/fish_history)"
   ];
+
+  lspServers = config.claude-code.lspServers;
+
+  # Wrap Claude Code with LSP plugin support when language modules contribute
+  # LSP server configurations. Sets ENABLE_LSP_TOOL=1 and passes --plugin-dir
+  # pointing to the generated .lsp.json location. When no LSP servers are
+  # configured, the unwrapped package is used unchanged.
+  claudePackageWithLsp =
+    if lspServers != { } then
+      pkgs.symlinkJoin {
+        name = "claude-code-with-lsp";
+        paths = [ claudePackage ];
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          wrapProgram $out/bin/claude \
+            --set ENABLE_LSP_TOOL 1 \
+            --add-flags "--plugin-dir ${config.home.homeDirectory}/.claude/plugins/nix-lsp"
+        '';
+      }
+    else
+      claudePackage;
 in
 {
-  home = {
-    packages = [
-      inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccusage
-      ccstatuslinePatched
-    ];
-    shellAliases = {
-      cc-rosey = "claude --agent rosey --continue";
-    };
+  options.claude-code.lspServers = lib.mkOption {
+    type = lib.types.attrsOf (lib.types.attrsOf lib.types.anything);
+    default = { };
+    description = "LSP server configurations contributed by language modules, merged into .lsp.json";
   };
 
-  # Declarative configuration for ccstatusline.
-  # Settings are written to ~/.config/ccstatusline/settings.json, which is the
-  # default path the tool reads on startup. The status line command is injected
-  # into Claude Code's settings.json by the claude-code Home Manager module.
-  xdg.configFile."ccstatusline/settings.json".text = builtins.toJSON {
+  config = {
+    home = {
+      file = lib.mkIf (lspServers != { }) {
+        ".claude/plugins/nix-lsp/.lsp.json".text = builtins.toJSON lspServers;
+      };
+      packages = [
+        inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccusage
+        ccstatuslinePatched
+      ];
+      shellAliases = {
+        cc-rosey = "claude --agent rosey --continue";
+      };
+    };
+
+    # Declarative configuration for ccstatusline.
+    # Settings are written to ~/.config/ccstatusline/settings.json, which is the
+    # default path the tool reads on startup. The status line command is injected
+    # into Claude Code's settings.json by the claude-code Home Manager module.
+    xdg.configFile."ccstatusline/settings.json".text = builtins.toJSON {
     version = 3;
     # Plain values required: builtins.toJSON serialises lib.mkDefault wrappers
     # verbatim as attribute sets, which fails ccstatusline's Zod schema validation.
@@ -839,34 +870,35 @@ in
       ]
     ];
   };
-  programs = {
-    claude-code = {
-      enable = true;
-      package = claudePackage;
-      # Use Home Manager's native MCP support with shared server definitions
-      inherit (mcpServerDefs) mcpServers;
-      settings = {
-        # Wire ccstatusline into Claude Code's status bar. The module writes
-        # this value to ~/.claude/settings.json under the "statusLine" key,
-        # which Claude Code reads on startup to invoke the formatter.
-        statusLine = {
-          type = "command";
-          command = lib.getExe ccstatuslinePatched;
-          padding = 0;
-        };
-        permissions = {
-          allow = bashAllow;
-          ask = bashAsk ++ bashAskDestructive;
-          deny = bashDeny ++ readDeny;
-          defaultMode = "default";
+    programs = {
+      claude-code = {
+        enable = true;
+        package = claudePackageWithLsp;
+        # Use Home Manager's native MCP support with shared server definitions
+        inherit (mcpServerDefs) mcpServers;
+        settings = {
+          # Wire ccstatusline into Claude Code's status bar. The module writes
+          # this value to ~/.claude/settings.json under the "statusLine" key,
+          # which Claude Code reads on startup to invoke the formatter.
+          statusLine = {
+            type = "command";
+            command = lib.getExe ccstatuslinePatched;
+            padding = 0;
+          };
+          permissions = {
+            allow = bashAllow;
+            ask = bashAsk ++ bashAskDestructive;
+            deny = bashDeny ++ readDeny;
+            defaultMode = "default";
+          };
         };
       };
-    };
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        extensions = with pkgs; [
-          vscode-marketplace.anthropic.claude-code
-        ];
+      vscode = lib.mkIf config.programs.vscode.enable {
+        profiles.default = {
+          extensions = with pkgs; [
+            vscode-marketplace.anthropic.claude-code
+          ];
+        };
       };
     };
   };
