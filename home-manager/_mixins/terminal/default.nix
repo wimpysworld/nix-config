@@ -77,7 +77,7 @@ in
         hyperfine # Terminal benchmarking
         iperf3 # Terminal network benchmarking
         jpegoptim # Terminal JPEG optimizer
-        lima # Terminal VM manager
+        unstable.lima # Terminal VM manager
         magic-wormhole-rs # Terminal file transfer
         mprocs # Terminal parallel process runner
         mtr # Modern Unix `traceroute`

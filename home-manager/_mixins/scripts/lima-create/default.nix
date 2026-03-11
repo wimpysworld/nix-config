@@ -8,7 +8,7 @@ let
       coreutils
       gawk
       gnused
-      lima
+      unstable.lima
       procps
     ];
     text = builtins.readFile ./${name}.sh;
