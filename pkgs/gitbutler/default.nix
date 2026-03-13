@@ -37,32 +37,67 @@ rustPlatform.buildRustPackage (finalAttrs: {
     hash = "sha256-gVYTt4r4QlVsYewUdiHAsGeEZx2oY9wGL2RJ2JvGio4=";
   };
 
-  cargoDeps = rustPlatform.fetchCargoVendor {
-    inherit (finalAttrs)
-      pname
-      version
-      src
-      ;
-    hash = "sha256-ljfTJWQfwoVSh/LMrW6VFVN9ViFfM3iH2sEze3f5C+M=";
-    postPatch = ''
-      substituteInPlace Cargo.lock \
-        --replace-fail '"file-id 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",' '"file-id 0.2.3 (git+https://github.com/notify-rs/notify?rev=978fe719b066a8ce76b9a9d346546b1569eecfb6)",'
+  cargoPatches = [
+    (builtins.toFile "gitbutler-cargo-lock.patch" ''
+      diff --git a/Cargo.lock b/Cargo.lock
+      index f94527737..5cbcf54b5 100644
+      --- a/Cargo.lock
+      +++ b/Cargo.lock
+      @@ -3223,15 +3223,6 @@
+       [[package]]
+       name = "file-id"
+       version = "0.2.3"
+      -source = "registry+https://github.com/rust-lang/crates.io-index"
+      -checksum = "e1fc6a637b6dc58414714eddd9170ff187ecb0933d4c7024d1abbd23a3cc26e9"
+      -dependencies = [
+      - "windows-sys 0.60.2",
+      -]
+      -
+      -[[package]]
+      -name = "file-id"
+      -version = "0.2.3"
+       source = "git+https://github.com/notify-rs/notify?rev=978fe719b066a8ce76b9a9d346546b1569eecfb6#978fe719b066a8ce76b9a9d346546b1569eecfb6"
+       dependencies = [
+        "windows-sys 0.60.2",
+      @@ -3971,7 +3962,7 @@
+       version = "0.0.0"
+       dependencies = [
+        "deser-hjson",
+      - "file-id 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+      + "file-id 0.2.3 (git+https://github.com/notify-rs/notify?rev=978fe719b066a8ce76b9a9d346546b1569eecfb6)",
+        "gitbutler-notify-debouncer",
+        "mock_instant",
+        "notify",
+      @@ -4831,7 +4822,7 @@
+       checksum = "7cb06c3e4f8eed6e24fd915fa93145e28a511f4ea0e768bae16673e05ed3f366"
+       dependencies = [
+        "bstr",
+      - "gix-trace 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+      + "gix-trace 0.1.18 (git+https://github.com/GitoxideLabs/gitoxide?branch=main)",
+        "gix-validate 0.10.1",
+        "thiserror 2.0.18",
+       ]
+      @@ -5080,12 +5071,6 @@
+       
+       [[package]]
+       name = "gix-trace"
+      -version = "0.1.18"
+      -source = "registry+https://github.com/rust-lang/crates.io-index"
+      -checksum = "f69a13643b8437d4ca6845e08143e847a36ca82903eed13303475d0ae8b162e0"
+      -
+      -[[package]]
+      -name = "gix-trace"
+       version = "0.1.18"
+       source = "git+https://github.com/GitoxideLabs/gitoxide?branch=main#dad2a825d854734702e44cce8c0dfc45d7a76477"
+       dependencies = [
+        "tracing",
+    '')
+  ];
 
-      substituteInPlace Cargo.lock \
-        --replace-fail $'[[package]]\nname = "file-id"\nversion = "0.2.3"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\nchecksum = "e1fc6a637b6dc58414714eddd9170ff187ecb0933d4c7024d1abbd23a3cc26e9"\ndependencies = [\n "windows-sys 0.60.2",\n]\n\n' ""
-    '';
-  };
+  cargoHash = "sha256-F+Ar6tnJGq+GEKTButbvou4goQbEctKHT8rQ3Z6TVd4=";
 
   # Let Tauri know what version we're building and deactivate the built-in updater.
   # Note: .bundle.externalBin does not include `but`, as that requires extra build changes.
-  prePatch = ''
-    substituteInPlace Cargo.lock \
-      --replace-fail '"file-id 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",' '"file-id 0.2.3 (git+https://github.com/notify-rs/notify?rev=978fe719b066a8ce76b9a9d346546b1569eecfb6)",'
-
-    substituteInPlace Cargo.lock \
-      --replace-fail $'[[package]]\nname = "file-id"\nversion = "0.2.3"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\nchecksum = "e1fc6a637b6dc58414714eddd9170ff187ecb0933d4c7024d1abbd23a3cc26e9"\ndependencies = [\n "windows-sys 0.60.2",\n]\n\n' ""
-  '';
-
   postPatch = ''
     tauriConfRelease="crates/gitbutler-tauri/tauri.conf.release.json"
     jq '.
@@ -82,7 +117,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       src
       ;
     fetcherVersion = 2;
-    hash = "sha256-zzvvRicC2Un+KCJXVrN6vsmMxy+lkBbeKFMDAfoZtTs=";
+    hash = "sha256-lOoQKtdxw7gGLcKJM2XhmWBDUSxGdxl6T/JzXmq/jo8=";
   };
 
   nativeBuildInputs = [
