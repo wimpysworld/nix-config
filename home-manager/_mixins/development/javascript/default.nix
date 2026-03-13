@@ -8,7 +8,7 @@
   home = {
     packages = with pkgs; [
       # Node.js runtime and package manager
-      nodejs_22
+      nodejs
 
       # JavaScript/TypeScript tooling
       unstable.bun
