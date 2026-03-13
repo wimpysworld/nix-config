@@ -178,7 +178,7 @@ my-server = {
 # copilotMcpServers
 my-server = {
   type = "stdio";
-  command = "${pkgs.nodejs_22}/bin/npx";
+  command = "${pkgs.nodejs}/bin/npx";
   args = [
     "-y" "mcp-remote" "https://example.com/mcp"
     "--header" "Authorization: Bearer ${config.sops.placeholder.MY_API_KEY}"

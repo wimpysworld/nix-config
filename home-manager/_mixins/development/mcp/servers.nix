@@ -92,7 +92,7 @@
       enabled = false;
       type = "local";
       command = [
-        "${pkgs.nodejs_22}/bin/npx"
+        "${pkgs.nodejs}/bin/npx"
         "-y"
         "@sveltejs/mcp"
       ];
@@ -189,7 +189,7 @@
     # Servers without secrets
     cloudflare = {
       type = "stdio";
-      command = "${pkgs.nodejs_22}/bin/npx";
+      command = "${pkgs.nodejs}/bin/npx";
       args = [
         "-y"
         "mcp-remote"
@@ -199,7 +199,7 @@
     };
     exa = {
       type = "stdio";
-      command = "${pkgs.nodejs_22}/bin/npx";
+      command = "${pkgs.nodejs}/bin/npx";
       args = [
         "-y"
         "mcp-remote"
@@ -235,7 +235,7 @@
     };
     svelte = {
       type = "stdio";
-      command = "${pkgs.nodejs_22}/bin/npx";
+      command = "${pkgs.nodejs}/bin/npx";
       args = [
         "-y"
         "@sveltejs/mcp"
@@ -245,7 +245,7 @@
     # Servers with secrets
     context7 = {
       type = "stdio";
-      command = "${pkgs.nodejs_22}/bin/npx";
+      command = "${pkgs.nodejs}/bin/npx";
       args = [
         "-y"
         "@upstash/context7-mcp"
@@ -274,7 +274,7 @@
     #};
     jina = {
       type = "stdio";
-      command = "${pkgs.nodejs_22}/bin/npx";
+      command = "${pkgs.nodejs}/bin/npx";
       args = [
         "-y"
         "mcp-remote"
