@@ -151,6 +151,7 @@ IMPACT: <practical effects>
 - Use past tense in subject line
 - Exceed character limits
 - Omit scope when project uses scopes consistently
+- Include `Co-Authored-By:` trailers
 
 **Writing Discipline:**
 
