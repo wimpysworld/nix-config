@@ -20,6 +20,10 @@ Run each command separately (no chaining):
 - `git add` / `git checkout` / `git reset` - no staging or working tree changes
 - Command chaining with `&&`, `;`, or `|`
 
+### Output Constraints
+
+- Never include `Co-Authored-By:` trailers
+
 ### Process
 
 1. Run allowed commands individually to gather context
