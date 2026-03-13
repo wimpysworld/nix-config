@@ -190,7 +190,7 @@ in
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"
           "/Users/${username}/Applications/Home Manager Apps/Halloy.app"
-          "/Users/${username}/Applications/Home Manager Apps/Zed.app"
+          "/Applications/Zed.app"
           "/Users/${username}/Applications/Home Manager Apps/Kitty.app"
           "/System/Applications/Music.app"
           "/Users/${username}/Applications/Home Manager Apps/Heynote.app"
