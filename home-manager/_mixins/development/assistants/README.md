@@ -242,7 +242,7 @@ Interprets objective audio metrics into perceptual descriptions: how a recording
 
 Research partner for exploring ideas, generating options, and framing problems for downstream specialists. Synthesises findings into dense, actionable overviews. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification.
 
-**Model:** `sonnet` (Claude Code) / `github-copilot/claude-sonnet-4.6` (OpenCode) - research synthesis and trade-off analysis suit the mid-tier model; deeper technical judgements are delegated to specialist agents.
+**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - research synthesis, problem framing, and trade-off analysis produce better direct-use results on the stronger model; specialist agents still handle domain-specific validation.
 
 | Command | Purpose |
 |---------|---------|
@@ -298,11 +298,11 @@ Three tiers map to task complexity:
 
 | Tier | Claude Code | OpenCode | Used for |
 |------|------------|----------|----------|
-| Heavy reasoning | `opus` | `gpt-5.4` | Deep analysis, complex implementation, Nix expertise, prompt engineering |
-| General purpose | `sonnet` | `claude-sonnet-4.6` | Writing, research, code review, audio analysis, game dev |
+| Heavy reasoning | `opus` | `gpt-5.4` | Deep analysis, research synthesis, complex implementation, Nix expertise, prompt engineering |
+| General purpose | `sonnet` | `claude-sonnet-4.6` | Writing, code review, audio analysis, game dev |
 | Deterministic tasks | `haiku` | `gpt-5-mini` | Structured formatting with clear rules (Garfield only) |
 
-**Why some commands override the parent model:** An agent's base model reflects its typical workload. Some commands within that agent require a different level of reasoning. Rosey runs on `sonnet` because coordination - writing delegation prompts, relaying output - suits the mid-tier model. Her `create-assistant` and `review-instructions` commands override to `opus` because prompt design requires weighing what to include, what to cut, and when examples are essential - judgements where the stronger model produces measurably better output. The override isolates the cost to the specific commands that need it.
+**Why some commands override the parent model:** An agent's base model reflects its typical workload. Some commands within that agent require a different level of reasoning. Rosey runs on `sonnet` because coordination - writing delegation prompts, relaying output - suits the mid-tier model. Her `create-assistant` and `review-instructions` commands override to `opus` because prompt design requires weighing what to include, what to cut, and when examples are essential - judgements where the stronger model produces measurably better output. Penfold now sits in the heavy-reasoning tier because direct research synthesis and framing work performed better on `opus` and `gpt-5.4` than on the mid-tier models. The override isolates extra cost to the specific agents or commands that need it.
 
 ---
 
