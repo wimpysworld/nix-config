@@ -28,8 +28,8 @@ lib.mkIf host.is.workstation {
         "vhs"
         "xml"
       ];
-      installRemoteServer = true;
-      package = if host.is.darwin then pkgs.zed-editor else pkgs.unstable.zed-editor;
+      installRemoteServer = !host.is.darwin;
+      package = if host.is.darwin then null else pkgs.unstable.zed-editor;
       userSettings = {
         agent = {
           enable_feedback = false;

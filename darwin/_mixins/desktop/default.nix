@@ -23,6 +23,7 @@
       "blender"
       "inkscape"
       "maestral" # GUI
+      "zed"
     ]
     ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       "beyond-compare"
