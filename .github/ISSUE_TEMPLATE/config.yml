@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🛟 Support
+    url: https://github.com/wimpysworld/nix-config/blob/HEAD/SUPPORT.md
+    about: Check the support guide before opening an issue.
+#  - name: Code of Conduct Report
+#    url: https://yourproject.org/community-report/
+#    about: Report a Code of Conduct violation privately to the moderation team.

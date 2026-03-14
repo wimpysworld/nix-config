@@ -1,0 +1,146 @@
+# Initially fitted by tailor on 2026-03-14
+license: BlueOak-1.0.0
+
+repository:
+  description: "Wimpy's NixOS, nix-darwin  & Home Manager Configurations ❄️"
+  has_wiki: false
+  has_discussions: false
+  has_projects: false
+  has_issues: true
+  allow_merge_commit: false
+  allow_squash_merge: true
+  allow_rebase_merge: true
+  squash_merge_commit_title: COMMIT_OR_PR_TITLE
+  squash_merge_commit_message: COMMIT_MESSAGES
+  merge_commit_title: MERGE_MESSAGE
+  merge_commit_message: PR_TITLE
+  delete_branch_on_merge: true
+  allow_update_branch: false
+  allow_auto_merge: true
+  web_commit_signoff_required: false
+  default_workflow_permissions: write
+  can_approve_pull_request_reviews: true
+  topics:
+    - ci-cd
+    - determinate
+    - fish-shell
+    - flakehub
+    - hacktoberfest
+    - home-manager
+    - home-manager-config
+    - macos
+    - nix
+    - nix-darwin
+    - nix-dotfiles
+    - nix-flake
+    - nix-flake-checker
+    - nixos
+    - nixos-config
+    - nixos-configuration
+    - nixos-dotfiles
+    - pantheon
+    - sops-nix
+
+labels:
+  - name: bug
+    color: d20f39
+    description: "Something isn't working"
+
+  - name: documentation
+    color: 04a5e5
+    description: Documentation improvement
+
+  - name: duplicate
+    color: 8839ef
+    description: Already exists
+
+  - name: enhancement
+    color: 1e66f5
+    description: New feature request
+
+  - name: good first issue
+    color: 40a02b
+    description: Good for newcomers
+
+  - name: help wanted
+    color: 179299
+    description: Extra attention needed
+
+  - name: invalid
+    color: e64553
+    description: Not valid or relevant
+
+  - name: question
+    color: 7287fd
+    description: Needs more information
+
+  - name: wontfix
+    color: dc8a78
+    description: Will not be worked on
+
+  - name: dependencies
+    color: fe640b
+    description: Dependency update
+
+  - name: github_actions
+    color: ea76cb
+    description: GitHub Actions update
+
+  - name: hacktoberfest-accepted
+    color: df8e1d
+    description: Hacktoberfest contribution
+
+swatches:
+  - path: .github/workflows/tailor.yml
+    alteration: always
+
+  - path: .github/dependabot.yml
+    alteration: first-fit
+
+  - path: .github/FUNDING.yml
+    alteration: first-fit
+
+  - path: .github/ISSUE_TEMPLATE/bug_report.yml
+    alteration: always
+
+  - path: .github/ISSUE_TEMPLATE/feature_request.yml
+    alteration: always
+
+  - path: .github/ISSUE_TEMPLATE/config.yml
+    alteration: first-fit
+
+  - path: .github/pull_request_template.md
+    alteration: always
+
+  - path: SECURITY.md
+    alteration: always
+
+  - path: CODE_OF_CONDUCT.md
+    alteration: always
+
+  - path: CONTRIBUTING.md
+    alteration: always
+
+  - path: SUPPORT.md
+    alteration: always
+
+  - path: justfile
+    alteration: first-fit
+
+  - path: flake.nix
+    alteration: first-fit
+
+  - path: .gitignore
+    alteration: first-fit
+
+  - path: .envrc
+    alteration: first-fit
+
+  - path: cubic.yaml
+    alteration: first-fit
+
+  - path: .tailor.yml
+    alteration: always
+
+  - path: .github/workflows/tailor-automerge.yml
+    alteration: triggered

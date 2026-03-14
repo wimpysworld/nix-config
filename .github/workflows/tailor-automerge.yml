@@ -1,0 +1,76 @@
+name: Tailor automerge 🤖
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-slim
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Fetch Dependabot metadata
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          skip-commit-verification: true
+
+      - name: Automerge GitHub Actions updates
+        if: >-
+          github.event.pull_request.user.login == 'dependabot[bot]'
+          && steps.metadata.outputs.package-ecosystem == 'github_actions'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Automerge patch and minor dependency updates
+        if: >-
+          github.event.pull_request.user.login == 'dependabot[bot]'
+          && steps.metadata.outputs.package-ecosystem != 'github_actions'
+          && (
+            steps.metadata.outputs.update-type == 'version-update:semver-patch'
+            || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+          )
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Automerge flake.lock update
+        if: >-
+          github.event.pull_request.user.login == 'github-actions[bot]'
+          && startsWith(github.event.pull_request.head.ref, 'update_flake_lock')
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  automerge-existing:
+    runs-on: ubuntu-slim
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Merge open Dependabot PRs
+        run: |
+          gh pr list --repo "$GITHUB_REPOSITORY" \
+            --author "app/dependabot" \
+            --state open \
+            --json number,url \
+            --jq '.[].url' |
+          while read -r pr_url; do
+            echo "::group::Merging $pr_url"
+            if gh pr merge --squash "$pr_url"; then
+              echo "Merged $pr_url"
+            else
+              echo "::warning::Failed to merge $pr_url"
+            fi
+            echo "::endgroup::"
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

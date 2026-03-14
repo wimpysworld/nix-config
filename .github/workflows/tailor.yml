@@ -1,0 +1,52 @@
+name: Tailor 🪡
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Weekly
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  alter:
+    runs-on: ubuntu-slim
+    env:
+      GH_TOKEN: ${{ secrets.TAILOR_TOKEN || secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Tailor
+        uses: wimpysworld/tailor@v0
+        with:
+          alter: true
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: tailor-alter
+          title: "chore: alter tailor swatches"
+
+  update-flake-lock:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check for flake.lock
+        id: check
+        run: test -f flake.lock && echo "found=true" >> "$GITHUB_OUTPUT" || echo "found=false" >> "$GITHUB_OUTPUT"
+
+      - name: Install Nix
+        if: steps.check.outputs.found == 'true'
+        uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Update flake.lock
+        if: steps.check.outputs.found == 'true'
+        uses: DeterminateSystems/update-flake-lock@v28
+        with:
+          pr-title: "chore: update flake.lock"

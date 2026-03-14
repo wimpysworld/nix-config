@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://cubic.dev/schema/cubic-repository-config.schema.json
+version: 1
+
+reviews:
+  enabled: true
+  sensitivity: medium
+  incremental_commits: true
+  check_drafts: false
+  architecture_diagrams: false
+  resolve_threads_when_addressed: true
+  custom_instructions: ""
+  ignore:
+    files:
+      - "dist/**"
+      - "build/**"
+    pr_titles:
+      - "wip:*"
+    pr_labels:
+      - "wontfix"
+    head_branches: []
+    base_branches: []
+  custom_rules: []
+
+pr_descriptions:
+  cubic_review_link: false
+  generate: false
+  instructions: ""
+
+issues:
+  fix_commits_to_pr: false
+  fix_with_cubic_buttons: false
+  pr_comment_fixes: false
