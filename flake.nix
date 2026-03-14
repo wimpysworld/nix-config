@@ -69,6 +69,8 @@
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
     vscode-server.inputs.flake-utils.follows = "flake-utils";
+    nix-packages.url = "github:wimpysworld/nix-packages";
+    nix-packages.inputs.nixpkgs.follows = "nixpkgs";
     xdg-override.url = "github:koiuo/xdg-override";
     xdg-override.inputs.nixpkgs.follows = "nixpkgs";
     xdg-override.inputs.flake-parts.follows = "flake-parts";

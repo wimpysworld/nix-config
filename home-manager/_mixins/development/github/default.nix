@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -23,12 +24,16 @@ in
   catppuccin.gh-dash.enable = config.programs.gh.extensions.gh-dash;
 
   home = {
-    packages = with pkgs; [
-      act # Run GitHub Actions locally
-      actionlint
-      ghbackup # Backup GitHub repositories
-      ghorg # Clone all repositories in a GitHub organization
-    ];
+    packages =
+      (with pkgs; [
+        act # Run GitHub Actions locally
+        actionlint
+        ghbackup # Backup GitHub repositories
+        ghorg # Clone all repositories in a GitHub organization
+      ])
+      ++ [
+        inputs.nix-packages.packages.${pkgs.stdenv.hostPlatform.system}.tailor
+      ];
     sessionVariables = {
       GHORG_CLONE_PROTOCOL = "https";
       GHORG_ABSOLUTE_PATH_TO_CLONE_TO = "${config.home.homeDirectory}/Development";
