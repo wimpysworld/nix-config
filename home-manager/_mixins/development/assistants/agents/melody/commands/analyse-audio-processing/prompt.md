@@ -40,7 +40,7 @@ Centroid and rolloff decreases are often legitimate effects of noise removal, no
 | Speech Kurtosis | Increase | Harmonic structure revealed (not just preserved) |
 | Speech Flatness | Decrease toward <0.15 | Tonality revealed by noise removal |
 | Speech Entropy | Decrease toward <0.25 | Order revealed |
-| Integrated Loudness | Converge to -18.0 LUFS | Normalisation hit target |
+| Integrated Loudness | Converge to -16.0 LUFS | Normalisation hit target |
 | True Peak | ≤ -1.0 dBTP | Headroom maintained per EBU R128 |
 | LRA | Maintain 8-18 LU | Natural dynamics preserved |
 | Crest Factor | Moderate reduction (target 9-14 dB) | Controlled compression |
@@ -75,7 +75,7 @@ Centroid and rolloff decreases are often legitimate effects of noise removal, no
 **Should improve:**
 
 - Noise floor (silence regions): Quieter
-- Loudness consistency: Converge to target (-18 LUFS ±0.5 LU)
+- Loudness consistency: Converge to target (-16 LUFS ±0.5 LU)
 - Peak control: True Peak ≤ -1 dBTP
 - Kurtosis: Increase (harmonics revealed)
 - Flatness: Decrease (tonality revealed)
@@ -100,7 +100,7 @@ Centroid and rolloff decreases are often legitimate effects of noise removal, no
 
 | Parameter | Target | Pass | Marginal | Fail |
 |-----------|--------|------|----------|------|
-| Integrated Loudness | -18.0 LUFS | ±0.5 LU | ±1.0 LU | > 1.0 LU off |
+| Integrated Loudness | -16.0 LUFS | ±0.5 LU | ±1.0 LU | > 1.0 LU off |
 | True Peak | -1.0 dBTP | ≤ -1.0 | -1.0 to 0 | > 0 dBTP |
 | LRA | 8-18 LU | Within range | 6-8 or 18-22 | < 6 or > 22 |
 | Crest Factor | 9-14 dB | Within range | 6-9 or 14-18 | < 6 dB |

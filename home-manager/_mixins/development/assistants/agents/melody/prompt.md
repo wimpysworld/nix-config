@@ -59,7 +59,7 @@ Audio engineer specialising in objective measurement interpretation. Translate s
 
 | Parameter | Target | Tolerance | Notes |
 |-----------|--------|-----------|-------|
-| Integrated Loudness | -18.0 LUFS | ±0.5 LU | -16 LUFS for mobile-first |
+| Integrated Loudness | -16.0 LUFS | ±0.5 LU | -18 LUFS for more dynamic/conservative delivery |
 | True Peak | -1.0 dBTP | Maximum | Per EBU R128, Apple Podcasts |
 | Loudness Range | 8-18 LU | Natural speech | <8 LU indicates over-compression |
 | Sample Peak | -3.0 dBFS | Encoding headroom | Account for codec expansion |

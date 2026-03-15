@@ -8,7 +8,7 @@ Diagnose recording-side issues from audio metrics and provide actionable remedia
 |-------|------------------|-------------|
 | Too close (proximity) | High energy <300 Hz, skewness >2.5, elevated LF | Move back to 8-10cm (4 fingers) |
 | Too far | Low signal, high noise floor, elevated flatness (>0.4) | Move closer, increase gain |
-| Gain too low | RMS far below peaks, crest >25 dB, noise >-60 dBFS | Target -18 dBFS average, peaks -6 dBFS |
+| Gain too low | RMS far below peaks, crest >25 dB, noise >-60 dBFS | Increase input gain; target peaks -12 to -6 dBFS |
 | Gain too high | Flat-topped peaks at 0 dBFS, harmonic distortion | Reduce input gain |
 | Room reverb | Smeared transients, spectral tails after speech | Acoustic treatment, closer mic |
 | Flutter echo | Horizontal striations (rapid repetitions) | Treat parallel walls |
@@ -21,10 +21,13 @@ Diagnose recording-side issues from audio metrics and provide actionable remedia
 
 ### Source Quality Thresholds
 
+Assess source audio using peak levels (dBFS), not integrated loudness. LUFS is a delivery-stage measurement applied during post-production; it is not a recording target. At capture, the goal is clean gain staging with sufficient headroom and signal well above the noise floor.
+
 | Parameter | Good | Acceptable | Problem |
 |-----------|------|------------|---------|
 | Noise Floor | < -70 dBFS | -60 to -70 dBFS | > -60 dBFS |
-| Peak Headroom | -6 to -3 dBFS | -12 to -6 dBFS | Clipping at 0 dBFS |
+| Peak Level (speaking) | -12 to -6 dBFS | -18 to -12 dBFS | < -24 dBFS (under-recorded) or > -3 dBFS (clipping risk) |
+| Absolute Ceiling | Never exceed -3 dBFS | - | Any peak at or above -3 dBFS |
 | Crest Factor | 12-18 dB | 9-20 dB | <9 dB (compressed) or >25 dB (under-recorded) |
 | Speech Centroid | 800-3500 Hz | 500-4000 Hz | <500 Hz (muffled) or >5000 Hz (thin/sibilant) |
 | Speech Kurtosis | > 5 | 3-5 | < 3 (noise contamination) |
