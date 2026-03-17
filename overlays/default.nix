@@ -55,19 +55,6 @@
       }
     );
 
-    # Fix telegram-desktop build failure after zlib moved minizip headers.
-    # See: https://github.com/NixOS/nixpkgs/issues/497549
-    telegram-desktop = prev.telegram-desktop.overrideAttrs (old: {
-      unwrapped = old.unwrapped.overrideAttrs (unwrappedOld: {
-        patches = (unwrappedOld.patches or [ ]) ++ [
-          (prev.fetchpatch {
-            url = "https://gist.github.com/half-duplex/d95e4fda535fb72ad0246ccfbe55cb23/raw/410dc924a317d391226c338ab75fcd1a9aaaf91b/tdesktop-minizip-include.patch";
-            hash = "sha256-lvEE5ZGmOjulZCg/rgrvAOTjUpJsAOcga+sAzr8FtYA=";
-          })
-        ];
-      });
-    });
-
     # Override avizo to use a specific commit that includes these fixes:
     # - https://github.com/heyjuvi/avizo/pull/76 (fix options of lightctl)
     # - https://github.com/heyjuvi/avizo/pull/73 (chore: fix size of dark theme icons)
