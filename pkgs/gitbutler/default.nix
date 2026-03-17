@@ -28,13 +28,13 @@
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "gitbutler";
-  version = "0.19.5";
+  version = "0.19.6";
 
   src = fetchFromGitHub {
     owner = "gitbutlerapp";
     repo = "gitbutler";
     tag = "release/${finalAttrs.version}";
-    hash = "sha256-gVYTt4r4QlVsYewUdiHAsGeEZx2oY9wGL2RJ2JvGio4=";
+    hash = "sha256-5hJmVXIhVEGof+yGUN25nRkFaeiGy0Aya582FPGUldo=";
   };
 
   cargoPatches = [
@@ -94,7 +94,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     '')
   ];
 
-  cargoHash = "sha256-F+Ar6tnJGq+GEKTButbvou4goQbEctKHT8rQ3Z6TVd4=";
+  cargoHash = "sha256-HkO5Xx7TMSvG/v1YA2y3u/TjhlFEhxBkZayKmjQ2H/s=";
 
   # Let Tauri know what version we're building and deactivate the built-in updater.
   # Note: .bundle.externalBin does not include `but`, as that requires extra build changes.
@@ -117,7 +117,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       src
       ;
     fetcherVersion = 2;
-    hash = "sha256-lOoQKtdxw7gGLcKJM2XhmWBDUSxGdxl6T/JzXmq/jo8=";
+    hash = "sha256-HkO5Xx7TMSvG/v1YA2y3u/TjhlFEhxBkZayKmjQ2H/s=";
   };
 
   nativeBuildInputs = [
