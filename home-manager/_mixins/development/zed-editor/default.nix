@@ -45,6 +45,7 @@ lib.mkIf host.is.workstation {
         buffer_font_weight = fontWeight;
         colorize_brackets = true;
         cursor_shape = "block";
+        format_on_save = "off";
         hard_tabs = false;
         inlay_hints = {
           enabled = true;
