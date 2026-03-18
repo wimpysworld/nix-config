@@ -34,6 +34,18 @@
         Authorization = "Bearer ${config.sops.placeholder.CONTEXT7_API_KEY}";
       };
     };
+    semgrep = {
+      type = "stdio";
+      command = "${pkgs.uv}/bin/uvx";
+      args = [
+        "semgrep-mcp"
+        "--semgrep-path"
+        "${pkgs.semgrep}/bin/semgrep"
+      ];
+      env = {
+        SEMGREP_APP_TOKEN = config.sops.placeholder.SEMGREP_APP_TOKEN;
+      };
+    };
     #firecrawl-mcp = {
     #  type = "http";
     #  url = "https://mcp.firecrawl.dev/${config.sops.placeholder.FIRECRAWL_API_KEY}/v2/mcp";
@@ -88,6 +100,18 @@
       url = "https://mcp.context7.com/mcp";
       headers = {
         CONTEXT7_API_KEY = "{env:CONTEXT7_API_KEY}";
+      };
+    };
+    semgrep = {
+      type = "local";
+      command = [
+        "${pkgs.uv}/bin/uvx"
+        "semgrep-mcp"
+        "--semgrep-path"
+        "${pkgs.semgrep}/bin/semgrep"
+      ];
+      environment = {
+        SEMGREP_APP_TOKEN = "{env:SEMGREP_APP_TOKEN}";
       };
     };
     #firecrawl = {
@@ -147,6 +171,17 @@
       auth = {
         type = "bearer";
         token = config.sops.placeholder.JINA_API_KEY;
+      };
+    };
+    semgrep = {
+      command = "${pkgs.uv}/bin/uvx";
+      args = [
+        "semgrep-mcp"
+        "--semgrep-path"
+        "${pkgs.semgrep}/bin/semgrep"
+      ];
+      env = {
+        SEMGREP_APP_TOKEN = config.sops.placeholder.SEMGREP_APP_TOKEN;
       };
     };
   };
@@ -229,6 +264,19 @@
         "Authorization: Bearer ${config.sops.placeholder.JINA_API_KEY}"
       ];
       tools = [ "*" ];
+    };
+    semgrep = {
+      type = "stdio";
+      command = "${pkgs.uv}/bin/uvx";
+      args = [
+        "semgrep-mcp"
+        "--semgrep-path"
+        "${pkgs.semgrep}/bin/semgrep"
+      ];
+      tools = [ "*" ];
+      env = {
+        SEMGREP_APP_TOKEN = config.sops.placeholder.SEMGREP_APP_TOKEN;
+      };
     };
     #mcp-google-cse = {
     #  type = "stdio";

@@ -44,73 +44,6 @@ in
           };
         };
 
-        # Semgrep LSP - security diagnostics via the built-in diagnostics tool
-        lsp = {
-          semgrep = {
-            command = [
-              "${pkgs.semgrep}/bin/semgrep"
-              "lsp"
-            ];
-            extensions = [
-              ".R"
-              ".bash"
-              ".c"
-              ".cc"
-              ".cjs"
-              ".clj"
-              ".cljc"
-              ".cljs"
-              ".cls"
-              ".cpp"
-              ".cs"
-              ".cts"
-              ".cxx"
-              ".dart"
-              ".ex"
-              ".exs"
-              ".go"
-              ".h"
-              ".hcl"
-              ".hh"
-              ".hpp"
-              ".html"
-              ".hxx"
-              ".java"
-              ".jl"
-              ".js"
-              ".json"
-              ".jsonnet"
-              ".jsx"
-              ".kt"
-              ".kts"
-              ".libsonnet"
-              ".lua"
-              ".mjs"
-              ".ml"
-              ".mli"
-              ".mts"
-              ".php"
-              ".py"
-              ".r"
-              ".rb"
-              ".rs"
-              ".scala"
-              ".scm"
-              ".sh"
-              ".sol"
-              ".ss"
-              ".swift"
-              ".tf"
-              ".trigger"
-              ".ts"
-              ".tsx"
-              ".xml"
-              ".yaml"
-              ".yml"
-            ];
-          };
-        };
-
         # Global permissions - applied to all agents including built-in Build and Plan
         # These provide guardrails across the board
         permission = {
@@ -356,6 +289,21 @@ in
             "shfmt --diff *" = "allow";
             "shfmt -d *" = "allow";
             "luacheck *" = "allow";
+
+            # Semgrep - read-only queries and scans
+            "semgrep --version" = "allow";
+            "semgrep lsp" = "allow";
+            "semgrep lsp *" = "allow";
+            "semgrep scan" = "allow";
+            "semgrep scan *" = "allow";
+            "semgrep --config *" = "allow";
+
+            # Semgrep - ask: state-changing operations
+            "semgrep ci" = "ask";
+            "semgrep ci *" = "ask";
+            "semgrep login" = "ask";
+            "semgrep login *" = "ask";
+            "semgrep publish *" = "ask";
 
             # Shell - ask: file modification or redirection risk
             "xdg-open *" = "ask";
