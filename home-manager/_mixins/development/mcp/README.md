@@ -1,6 +1,6 @@
 # MCP Servers
 
-Eight MCP servers providing AI agents with current, authoritative reference material. Defined once in `servers.nix`, distributed to Claude Code, VSCode, GitHub Copilot CLI, OpenCode, oterm, and Zed by `default.nix`.
+Six MCP servers providing AI agents with current, authoritative reference material. Defined once in `servers.nix`, distributed to Claude Code, VSCode, GitHub Copilot CLI, OpenCode, oterm, and Zed by `default.nix`.
 
 The Nix composition is the delivery mechanism, not the strategy. The servers here are information retrieval tools: documentation search, web reading, and package lookup. None orchestrate external systems or write to remote APIs. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -19,14 +19,12 @@ The Nix composition is the delivery mechanism, not the strategy. The servers her
 |--------|-----------|------|---------|
 | `context7` | HTTP | API key | Live library documentation from official sources |
 | `exa` | HTTP | - | Neural web search |
-| `github` | HTTP | Bearer | Repository search, file and issue access |
 | `jina` | HTTP | API key | Web reader and URL content extraction |
 | `cloudflare` | HTTP | - | Cloudflare product documentation |
-| `goreleaser` | stdio | - | GoReleaser configuration validation and documentation |
 | `nixos` | stdio | - | NixOS, Home Manager, nix-darwin package and option search |
 | `svelte` | HTTP | - | Svelte documentation and playground |
 
-Six of the eight are remote HTTP servers. `nixos` and `goreleaser` run as local binaries because no hosted alternatives exist.
+Five of the six are remote HTTP servers. `nixos` runs as a local binary because no hosted alternative exists.
 
 ---
 
@@ -41,14 +39,6 @@ Library APIs change faster than model training cycles. A model asked how to conf
 ### Exa
 
 Neural semantic search across the web. Unlike keyword search, Exa finds pages semantically related to the query. Useful for finding GitHub discussions, blog posts, and documentation that do not match exact phrase searches. Pairs with Jina: Exa identifies which page answers a question; Jina retrieves its content.
-
----
-
-### GitHub
-
-GitHub's official MCP server via the Copilot API. Provides repository search, file content retrieval, and issue and pull request access. The primary use is reading: inspecting a library's source, locating a relevant issue thread, or checking what a function actually does in a dependency.
-
-GitHub is disabled in the Copilot CLI configuration because Copilot already provides GitHub access natively.
 
 ---
 
@@ -68,19 +58,11 @@ Disabled by default in OpenCode (`enabled = false`) where Cloudflare projects ar
 
 ---
 
-### GoReleaser
-
-Validates GoReleaser configurations, flags deprecated options with fix instructions, and serves embedded GoReleaser documentation. Agents working on Go projects with `.goreleaser.yaml` files get current schema validation and migration guidance without relying on training data that may predate the latest GoReleaser release.
-
-The second stdio server in the configuration. `goreleaser-mcp` runs as a local binary packaged in `pkgs/goreleaser-mcp/`; the Nix store path eliminates any PATH dependency.
-
----
-
 ### nixos
 
 Searches NixOS packages and options, Home Manager options, and nix-darwin options. Without `mcp-nixos`, agents working in this repository hallucinate option paths and package attribute names. With it, they verify against the actual option set before recommending.
 
-One of two stdio servers in the configuration. `mcp-nixos` runs as a local binary with no hosted alternative; the Nix package pins it to a Nix store path, so no PATH dependency exists.
+The only stdio server in the configuration. `mcp-nixos` runs as a local binary with no hosted alternative; the Nix package pins it to a Nix store path, so no PATH dependency exists.
 
 ---
 
@@ -113,23 +95,22 @@ Disabled by default in OpenCode (`enabled = false`); available as a Zed extensio
 
 **VSCode** expects a `servers` top-level key where every other platform uses `mcpServers`. The content is otherwise identical. VSCode also receives a separate `userSettings` block that enables the MCP gallery and configures auto-start.
 
-**Zed** receives five servers via `context_servers` (cloudflare, exa, goreleaser, nixos, jina). Context7 and Svelte are delivered as Zed extensions instead, which provide tighter editor integration.
+**Zed** receives four servers via `context_servers` (cloudflare, exa, nixos, jina). Context7 and Svelte are delivered as Zed extensions instead, which provide tighter editor integration.
 
 ---
 
 ## Secrets
 
-Seven secrets stored encrypted in `secrets/mcp.yaml`, managed by sops:
+Six secrets stored encrypted in `secrets/mcp.yaml`, managed by sops:
 
 | Secret | Used by |
 |--------|---------|
 | `CONTEXT7_API_KEY` | context7 |
 | `FIRECRAWL_API_KEY` | firecrawl (disabled) |
-| `GITHUB_TOKEN` | github |
 | `GOOGLE_CSE_API_KEY` | mcp-google-cse (disabled) |
 | `GOOGLE_CSE_ENGINE_ID` | mcp-google-cse (disabled) |
 | `JINA_API_KEY` | jina |
-| `SEMGREP_APP_TOKEN` | reserved, not yet wired |
+| `SEMGREP_APP_TOKEN` | semgrep tooling (not wired to any MCP server) |
 
 Secrets reach each platform differently:
 

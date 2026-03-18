@@ -46,12 +46,13 @@ The LSP wrapper is built as a `symlinkJoin` derivation wrapping `claudePackage`.
 
 ## Language servers
 
-14 LSP fragments across 10 language modules. All `command` values are Nix store paths - no PATH dependency.
+15 LSP fragments across 11 language modules. All `command` values are Nix store paths - no PATH dependency.
 
 | Key | Module | `command` | `args` | Extensions |
 |-----|--------|-----------|--------|------------|
 | `go` | `go/` | `lib.getExe pkgs.gopls` | - | `.go` |
 | `rust` | `rust/` | `lib.getExe pkgs.rust-analyzer` | - | `.rs` |
+| `semgrep` | `semgrep/` | `${pkgs.semgrep}/bin/semgrep` | `lsp` | 57 extensions covering 30+ languages (see `semgrep/default.nix`) |
 | `python` | `python/` | `${pkgs.basedpyright}/bin/basedpyright-langserver` | `--stdio` | `.py` `.pyi` `.pyw` |
 | `typescript` | `javascript/` | `lib.getExe pkgs.typescript-language-server` | `--stdio` | `.ts` `.tsx` `.js` `.jsx` `.mjs` `.mts` `.cjs` `.cts` |
 | `json` | `javascript/` | `${pkgs.vscode-langservers-extracted}/bin/vscode-json-language-server` | `--stdio` | `.json` `.jsonc` |
@@ -66,7 +67,7 @@ The LSP wrapper is built as a `symlinkJoin` derivation wrapping `claudePackage`.
 | `dart` | `dart/` | `${pkgs.dart}/bin/dart` | `language-server` | `.dart` |
 
 <details>
-<summary>Example .lsp.json (Nix store paths remove)</summary>
+<summary>Example .lsp.json (Nix store paths removed; semgrep omitted for brevity)</summary>
 
 ```json
 {
@@ -145,6 +146,8 @@ The LSP wrapper is built as a `symlinkJoin` derivation wrapping `claudePackage`.
 One entry is conditionally included, inheriting the guard already on its parent module - no additional conditions required:
 
 - **`lua`** - only on hosts `phasma` and `vader` (`love/` module is `lib.mkIf (noughtyLib.isHost ["phasma" "vader"])`)
+
+All other servers, including `semgrep`, are unconditionally enabled - no guard.
 
 On hosts where the parent module is disabled, its `claude-code.lspServers` fragment is never evaluated, so the key is absent from `.lsp.json`.
 

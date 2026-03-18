@@ -1,6 +1,6 @@
 # AI Agents
 
-Twelve specialist agents, 29 commands, and three reference skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, GitHub Copilot, and CodeCompanion (Neovim) without duplication.
+Fourteen specialist agents, 29 commands, and seven skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, GitHub Copilot, and CodeCompanion (Neovim) without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -151,6 +151,16 @@ The `opus` commands involve prompt design judgements - choosing what to include,
 
 ## Agents
 
+### Batfink - Infrastructure Security Auditor
+
+Infrastructure security auditor assessing configuration hardening, defensive resilience, and blast radius across cloud, container, and network infrastructure. Identifies misconfigurations, privilege escalation paths, and lateral movement risks. Every finding is mapped to concrete remediation.
+
+**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - infrastructure security assessment requires reasoning across interacting systems, trust boundaries, and attack chains simultaneously.
+
+No standalone commands. Batfink is invoked directly for infrastructure security reviews.
+
+---
+
 ### Brain - Test Engineer
 
 Pragmatic test engineer identifying high-impact unit tests that catch real bugs. Analyses git history to find frequently-fixed files, searches GitHub issues for bug patterns, and reads existing tests before recommending new ones. Focuses on coverage gaps that matter rather than coverage numbers.
@@ -183,6 +193,16 @@ Expert in Nix, Nixpkgs, NixOS, Home Manager, and nix-darwin. Always verifies pac
 **Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - Nix's lazy evaluation semantics, module system interactions, and packaging edge cases require deep reasoning.
 
 No standalone commands. Dexter is invoked directly for Nix questions.
+
+---
+
+### Dibble - Code Security Auditor
+
+Code security auditor methodically patrolling codebases for vulnerabilities, insecure patterns, and dependency risks. Cites CWE and OWASP classifications for every finding. Distinguishes confirmed vulnerabilities from theoretical risks and prioritises by exploitability.
+
+**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - vulnerability identification requires reasoning across data flows, trust boundaries, and exploitation conditions; the strongest model reduces false negatives.
+
+No standalone commands. Dibble is invoked directly for code security reviews.
 
 ---
 
@@ -298,7 +318,7 @@ Three tiers map to task complexity:
 
 | Tier | Claude Code | OpenCode | Used for |
 |------|------------|----------|----------|
-| Heavy reasoning | `opus` | `gpt-5.4` | Deep analysis, research synthesis, complex implementation, Nix expertise, prompt engineering |
+| Heavy reasoning | `opus` | `gpt-5.4` | Deep analysis, research synthesis, complex implementation, Nix expertise, prompt engineering, security auditing |
 | General purpose | `sonnet` | `claude-sonnet-4.6` | Writing, code review, audio analysis, game dev |
 | Deterministic tasks | `haiku` | `gpt-5-mini` | Structured formatting with clear rules (Garfield only) |
 
@@ -319,10 +339,21 @@ Three tiers map to task complexity:
 
 ### Skills
 
-Three reference skills provide background knowledge loaded contextually rather than invoked as commands (`user-invocable: false`):
+Seven skills provide background knowledge and reference material. The original three load automatically; the four new skills are user-invocable.
+
+**Always loaded (agent-invoked):**
 
 | Skill | Loaded by | Purpose |
 |-------|-----------|---------|
 | `meet-the-agents` | Rosey (every session) | Agent registry - roles, delegation triggers |
 | `prose-style-reference` | Casper, Velma | Extended Strunk composition rules, AI pattern catalogue |
 | `writing-clearly-and-concisely` | Any agent writing for humans | Core six principles, banned words and patterns |
+
+**User-invocable (loaded contextually):**
+
+| Skill | Purpose |
+|-------|---------|
+| `gh` | GitHub CLI reference - PR creation, issue management, releases |
+| `code-security` | OWASP Top 10 and infrastructure security rules sourced from `semgrep/skills` |
+| `llm-security` | OWASP Top 10 for LLM 2025 sourced from `semgrep/skills` |
+| `semgrep` | Semgrep CLI usage and custom rule creation reference |

@@ -15,6 +15,7 @@ Prefer MCP tools over built-in commands for all web access:
 - **Screenshots**: use `mcp__jina__capture_screenshot_url` for visual page capture
 - **Code search**: use `mcp__exa__get_code_context_exa` for searching code examples and repositories
 - **Library docs**: use `mcp__context7__resolve-library-id` then `mcp__context7__query-docs` for up-to-date library and framework documentation in preference to training knowledge
+- **GitHub content**: use `gh api` to retrieve files, directory listings, and repository content from GitHub
 
 ## File Operations
 
