@@ -17,8 +17,10 @@ Specify focus (or reviews entire codebase):
 
 1. Identify performance-critical paths in scope
 2. Analyse for bottlenecks (algorithmic, memory, I/O, CPU)
-3. Apply impact rating from agent definition
-4. Skip optimisations rated below 5 unless comprehensive review requested
+3. Reject any suggestion that requires restructuring or contradicts the project's existing architecture, design patterns, or intent - regardless of the performance gain
+4. Apply impact rating from agent definition
+5. Only include improvements that produce human-perceptible results: immediate UI responsiveness, or processing/response time savings a user would notice. Micro-optimisations are justified only when they compound across the primary execution path to produce a measurable aggregate improvement. Discard any suggestion with no demonstrable, observable effect.
+6. Skip optimisations rated below 5 unless comprehensive review requested
 
 ### Example Invocations
 
