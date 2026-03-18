@@ -10,8 +10,4 @@ Infer without asking: output format (default: standard prose), constraints (deri
 
 Create complete agent prompt following standard structure. Target 400-600 words (up to 700 with examples).
 
-**Output:**
-
-1. Complete agent prompt
-2. Word count
-3. Design rationale: why examples were/weren't included, key constraint choices
+**Output:** complete agent prompt only.
