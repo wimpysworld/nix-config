@@ -394,14 +394,25 @@ jobs:
           FAKE_HASH="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
           HASH_LOG="/tmp/gitbutler-hash.log"
 
+          # Extract the got: hash associated with a specific derivation name pattern.
+          # Nix logs "hash mismatch in fixed-output derivation '...name...'" followed
+          # by "specified:" and "got:" lines. We match the derivation name first, then
+          # grab the next got: line.
           extract_hash() {
-            local step="$1"
+            local drv_pattern="$1"
             local hash
-            hash=$(grep -oE 'got:[[:space:]]*sha256-[A-Za-z0-9+/=]+' "$HASH_LOG" | tail -n1 | awk '{ print $2 }')
+            hash=$(awk -v pat="$drv_pattern" '
+              $0 ~ pat { found=1 }
+              found && /got:/ {
+                match($0, /sha256-[A-Za-z0-9+\/=]+/)
+                print substr($0, RSTART, RLENGTH)
+                exit
+              }
+            ' "$HASH_LOG")
 
             if [[ -z "$hash" ]]; then
-              echo "❌ Failed to prefetch ${step} hash"
-              cat "$HASH_LOG"
+              echo "❌ Failed to prefetch hash matching '${drv_pattern}'" >&2
+              cat "$HASH_LOG" >&2
               exit 1
             fi
 
@@ -418,17 +429,24 @@ jobs:
           sed -i "/^  src = fetchFromGitHub {/,/^  };/s|^    hash = \"sha256-[^\"]*\";|    hash = \"${src_hash}\";|" "$PKG_NIX"
           echo "🔑 Source hash: ${src_hash}"
 
-          echo "🧮 Prefetching pnpm deps hash"
+          # Invalidate both pnpm and cargo hashes upfront. After changing the source,
+          # the old cargoHash is also stale. If only pnpmDeps.hash is set to FAKE_HASH,
+          # nix build reports got: lines for both pnpm AND cargo, and tail -n1 picks
+          # the wrong one. By invalidating both and fixing them sequentially with
+          # derivation-name-aware extraction, each step gets the correct hash.
+          echo "🧮 Invalidating pnpm and cargo hashes"
           sed -i "/^  pnpmDeps = fetchPnpmDeps {/,/^  };/s|^    hash = \"sha256-[^\"]*\";|    hash = \"${FAKE_HASH}\";|" "$PKG_NIX"
+          sed -i "s|^  cargoHash = \"sha256-[^\"]*\";|  cargoHash = \"${FAKE_HASH}\";|" "$PKG_NIX"
+
+          echo "🧮 Prefetching pnpm deps hash"
           nix build .#gitbutler --no-link >"$HASH_LOG" 2>&1 || true
-          pnpm_hash=$(extract_hash "pnpm deps")
+          pnpm_hash=$(extract_hash "pnpm-deps")
           sed -i "/^  pnpmDeps = fetchPnpmDeps {/,/^  };/s|^    hash = \"sha256-[^\"]*\";|    hash = \"${pnpm_hash}\";|" "$PKG_NIX"
           echo "🔑 pnpm hash: ${pnpm_hash}"
 
           echo "🧮 Prefetching cargo hash"
-          sed -i "s|^  cargoHash = \"sha256-[^\"]*\";|  cargoHash = \"${FAKE_HASH}\";|" "$PKG_NIX"
           nix build .#gitbutler --no-link >"$HASH_LOG" 2>&1 || true
-          cargo_hash=$(extract_hash "cargo")
+          cargo_hash=$(extract_hash "crates-io")
           sed -i "s|^  cargoHash = \"sha256-[^\"]*\";|  cargoHash = \"${cargo_hash}\";|" "$PKG_NIX"
           echo "🔑 Cargo hash: ${cargo_hash}"
 
