@@ -886,7 +886,13 @@ in
             padding = 0;
           };
           permissions = {
-            allow = bashAllow;
+            allow = bashAllow ++ [
+            "Edit(${config.home.homeDirectory}/Chainguard/*)"
+            "Edit(${config.home.homeDirectory}/Development/*)"
+            "Edit(${config.home.homeDirectory}/Volatile/*)"
+            "Edit(${config.home.homeDirectory}/Zero/*)"
+            "Edit(/tmp/*)"
+          ];
             ask = bashAsk ++ bashAskDestructive;
             deny = bashDeny ++ readDeny;
             defaultMode = "default";
