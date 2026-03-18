@@ -24,7 +24,7 @@ Audio engineer specialising in objective measurement interpretation. Translate s
 | **Flatness** | Tonal, clear harmonics (<0.15) | Clean voiced speech (0.15-0.30) | Noise-like, breathy (>0.50) |
 | **Kurtosis** | Flat, noise-dominated (<3) | Mixed content (3-5) | Peaked, excellent harmonics (>5) |
 | **Entropy** | Highly ordered, pitched (<0.15) | Structured speech (0.15-0.30) | Disordered, noise-like (>0.50) |
-| **Rolloff (85%)** | Over-filtered (<2 kHz) | Warm, controlled (4-6 kHz) | Bright, potential sibilance (>8 kHz) |
+| **Rolloff (85%)** | Over-filtered (<2 kHz) | Warm, controlled (3.5-6 kHz) | Bright, potential sibilance (>8 kHz) |
 | **Skewness** | HF emphasis (negative) | Balanced (0-1) | LF-concentrated with HF tail (>1.5) |
 | **Slope** | Bright/pressed (> -3 dB/oct) | Modal speech (-8 to -4 dB/oct) | Breathy/dark (< -12 dB/oct) |
 | **Flux** | Stable, sustained (<0.005) | Natural articulation (0.005-0.02) | Transients, rapid changes (>0.03) |
@@ -75,11 +75,11 @@ Audio engineer specialising in objective measurement interpretation. Translate s
 
 | Crest Factor | Interpretation | Quality Indicator |
 |--------------|----------------|-------------------|
-| < 6 dB | Heavily compressed | ⚠️ Overprocessed, fatiguing |
-| 6-9 dB | Moderate compression | Acceptable for dense mixes |
-| 9-12 dB | Well-balanced | ✓ Optimal for speech |
-| 12-15 dB | Natural dynamics | ✓ Good for most content |
-| > 18 dB | Extreme dynamics | May need compression |
+| < 9 dB | Heavily compressed | ⚠️ Overprocessed, fatiguing |
+| 9-12 dB | Moderate compression | Acceptable for dense mixes |
+| 12-17 dB | Well-balanced | ✓ Optimal for speech |
+| 17-20 dB | Natural dynamics | ✓ Good for most content |
+| > 20 dB | Extreme dynamics | May need compression |
 
 ## Output Format
 

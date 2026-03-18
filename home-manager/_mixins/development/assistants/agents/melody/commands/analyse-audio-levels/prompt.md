@@ -28,7 +28,7 @@ Assess source audio using peak levels (dBFS), not integrated loudness. LUFS is a
 | Noise Floor | < -70 dBFS | -60 to -70 dBFS | > -60 dBFS |
 | Peak Level (speaking) | -12 to -6 dBFS | -18 to -12 dBFS | < -24 dBFS (under-recorded) or > -3 dBFS (clipping risk) |
 | Absolute Ceiling | Never exceed -3 dBFS | - | Any peak at or above -3 dBFS |
-| Crest Factor | 12-18 dB | 9-20 dB | <9 dB (compressed) or >25 dB (under-recorded) |
+| Crest Factor | 12-17 dB | 9-12 or 17-20 dB | <9 dB (compressed) or >20 dB (under-recorded) |
 | Speech Centroid | 800-3500 Hz | 500-4000 Hz | <500 Hz (muffled) or >5000 Hz (thin/sibilant) |
 | Speech Kurtosis | > 5 | 3-5 | < 3 (noise contamination) |
 | Speech Flatness | < 0.20 | 0.20-0.35 | > 0.40 (noisy/breathy) |
@@ -41,7 +41,7 @@ Assess source audio using peak levels (dBFS), not integrated loudness. LUFS is a
 |--------|---------------|-------------------|
 | Centroid | 800-3500 Hz | < 500 Hz muffled; > 5000 Hz thin/sibilant |
 | Spread | 1000-2500 Hz | > 4000 Hz indicates noise or unvoiced content |
-| Rolloff (85%) | 4-8 kHz | < 2 kHz over-filtered; > 12 kHz sibilance |
+| Rolloff (85%) | 3.5-8 kHz | < 2 kHz over-filtered; > 12 kHz sibilance |
 | Slope | -8 to -4 dB/oct | > -3 bright/pressed; < -15 breathy/dark |
 | Kurtosis | 5-15 | < 3 noise-dominated |
 | Flatness | 0.05-0.25 | > 0.50 noise-dominated |

@@ -26,7 +26,7 @@ Centroid and rolloff decreases are often legitimate effects of noise removal, no
 | Metric | Assess By |
 |--------|-----------|
 | Centroid shift | Compare shift magnitude across tracks with different input noise levels. Noisier inputs should show larger shifts if noise removal is the sole cause. |
-| Rolloff decrease | Check if final values are within normal speech range (4-8 kHz). Values < 2 kHz warrant investigation. |
+| Rolloff decrease | Check if final values are within normal speech range (3.5-8 kHz). Values < 2 kHz warrant investigation. |
 
 **Diagnostic pattern:** If the noisiest input shows the *smallest* spectral shift and lands at typical speech values, while cleaner inputs show larger shifts to atypical values, suspect filtering beyond noise removal.
 
@@ -43,7 +43,7 @@ Centroid and rolloff decreases are often legitimate effects of noise removal, no
 | Integrated Loudness | Converge to -16.0 LUFS | Normalisation hit target |
 | True Peak | ≤ -1.0 dBTP | Headroom maintained per EBU R128 |
 | LRA | Maintain 8-18 LU | Natural dynamics preserved |
-| Crest Factor | Moderate reduction (target 9-14 dB) | Controlled compression |
+| Crest Factor | Moderate reduction (target 12-17 dB) | Controlled compression |
 
 #### Warning Signs (Over-Processing)
 
@@ -91,7 +91,7 @@ Centroid and rolloff decreases are often legitimate effects of noise removal, no
 - Kurtosis dropping from input value
 - Flatness or entropy increasing in speech regions
 - LRA collapsing below 6 LU
-- Crest factor below 6 dB
+- Crest factor below 9 dB
 - Final centroid < 500 Hz or rolloff < 2 kHz
 - True Peak > -1 dBTP
 - New artefacts in spectrogram
@@ -103,10 +103,10 @@ Centroid and rolloff decreases are often legitimate effects of noise removal, no
 | Integrated Loudness | -16.0 LUFS | ±0.5 LU | ±1.0 LU | > 1.0 LU off |
 | True Peak | -1.0 dBTP | ≤ -1.0 | -1.0 to 0 | > 0 dBTP |
 | LRA | 8-18 LU | Within range | 6-8 or 18-22 | < 6 or > 22 |
-| Crest Factor | 9-14 dB | Within range | 6-9 or 14-18 | < 6 dB |
+| Crest Factor | 12-17 dB | Within range | 9-12 or 17-20 | < 9 dB or > 20 dB |
 | Noise Reduction | Effective | > 25 dB reduction | 15-25 dB | < 15 dB |
 | Final Centroid | 800-3500 Hz | Within range | 500-800 Hz | < 500 Hz |
-| Final Rolloff (85%) | 4-8 kHz | Within range | 2-4 kHz | < 2 kHz |
+| Final Rolloff (85%) | 3.5-8 kHz | Within range | 2-3.5 kHz | < 2 kHz |
 | Final Kurtosis | > 5 | > 5 | 3-5 | < 3 (degraded from input) |
 | Final Flatness | < 0.25 | < 0.20 | 0.20-0.35 | > 0.35 (degraded from input) |
 
