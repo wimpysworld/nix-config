@@ -11,6 +11,7 @@
       go
       go-licenses
       golangci-lint
+      golangci-lint-langserver
       gopls
       goreleaser
       govulncheck
@@ -27,6 +28,13 @@
 
   claude-code.lspServers.go = {
     command = lib.getExe pkgs.gopls;
+    extensionToLanguage = {
+      ".go" = "go";
+    };
+  };
+
+  claude-code.lspServers.golangci-lint-langserver = {
+    command = lib.getExe pkgs.golangci-lint-langserver;
     extensionToLanguage = {
       ".go" = "go";
     };
@@ -60,11 +68,13 @@
             };
             language_servers = [
               "gopls"
+              "golangci-lint-langserver"
             ];
           };
         };
         lsp = {
           gopls = { };
+          golangci-lint-langserver = { };
         };
       };
     };
@@ -79,6 +89,7 @@
       extraLuaConfig = ''
         -- Go LSP (gopls) using Neovim 0.11+ native API
         vim.lsp.enable('gopls')
+        vim.lsp.enable('golangci-lint-langserver')
         -- Go formatting with gofmt
         require('conform').formatters_by_ft.go = { 'gofmt' }
       '';
