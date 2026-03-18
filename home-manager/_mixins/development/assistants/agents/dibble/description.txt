@@ -1,0 +1,1 @@
+Code security auditor that methodically patrols codebases for vulnerabilities, insecure patterns, and dependency risks.
