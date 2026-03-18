@@ -73,7 +73,7 @@ Process inspection: `pgrep`, `pidof`, `pstree`, `lsof`.
 | Allow | Ask | Deny |
 |-------|-----|------|
 | `repo view`, `pr view/list`, `issue view/list` | `pr create/merge/checkout` | `repo delete` |
-| `status`, `api` | `issue create`, `release create` | |
+| `status`, `api`, `help`, `help *` | `issue create`, `release create` | |
 | | `repo create/clone` | |
 
 ### Docker
@@ -110,6 +110,11 @@ Process inspection: `pgrep`, `pidof`, `pstree`, `lsof`.
 |-------|-----|
 | `version`, `env`, `list`, `vet`, `doc` | `build`, `run`, `test`, `generate` |
 | `mod graph`, `mod why` | `get`, `mod tidy`, `install` |
+| `ineffassign`, `ineffassign *` | |
+| `actionlist`, `actionlist *` | |
+| `golangci-lint run *`, `golangci-lint --version`, `golangci-lint linters` | |
+| `gofumpt --version`, `gofumpt -l *` | |
+| `govulncheck`, `govulncheck *` | |
 
 ### JavaScript/TypeScript
 

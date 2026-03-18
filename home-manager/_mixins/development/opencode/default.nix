@@ -583,6 +583,8 @@ in
 
             # GitHub CLI - read-only queries
             "gh --version" = "allow";
+            "gh help" = "allow";
+            "gh help *" = "allow";
             "gh auth status*" = "allow";
             "gh status" = "allow";
             "gh status *" = "allow";
@@ -848,6 +850,17 @@ in
             "go mod download" = "allow";
             "go mod download *" = "allow";
             "go help *" = "allow";
+            "ineffassign" = "allow";
+            "ineffassign *" = "allow";
+            "actionlist" = "allow";
+            "actionlist *" = "allow";
+            "golangci-lint run *" = "allow";
+            "golangci-lint --version" = "allow";
+            "golangci-lint linters" = "allow";
+            "gofumpt --version" = "allow";
+            "gofumpt -l *" = "allow";
+            "govulncheck" = "allow";
+            "govulncheck *" = "allow";
 
             "go build*" = "ask";
             "go run *" = "ask";

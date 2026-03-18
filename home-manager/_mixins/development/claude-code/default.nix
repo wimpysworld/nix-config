@@ -254,6 +254,8 @@ let
 
     # GitHub - read-only queries
     "Bash(gh --version)"
+    "Bash(gh help)"
+    "Bash(gh help:*)"
     "Bash(gh repo view:*)"
     "Bash(gh pr view:*)"
     "Bash(gh pr list:*)"
@@ -330,6 +332,17 @@ let
     "Bash(go doc:*)"
     "Bash(go mod graph)"
     "Bash(go mod why:*)"
+    "Bash(ineffassign)"
+    "Bash(ineffassign:*)"
+    "Bash(actionlist)"
+    "Bash(actionlist:*)"
+    "Bash(golangci-lint run:*)"
+    "Bash(golangci-lint --version)"
+    "Bash(golangci-lint linters)"
+    "Bash(gofumpt --version)"
+    "Bash(gofumpt -l:*)"
+    "Bash(govulncheck)"
+    "Bash(govulncheck:*)"
 
     # JavaScript/TypeScript - info and type checking
     "Bash(node --version)"

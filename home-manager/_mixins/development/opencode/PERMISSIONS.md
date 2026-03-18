@@ -101,7 +101,7 @@ Process inspection: `pgrep`, `pidof`, `pstree`, `lsof`.
 
 | Allow | Ask | Deny |
 |-------|-----|------|
-| `--version`, `auth status`, `status` | `pr create/merge/close/reopen/checkout` | `repo delete` |
+| `--version`, `auth status`, `status`, `help`, `help *` | `pr create/merge/close/reopen/checkout` | `repo delete` |
 | `repo view/list`, `pr view/list/status/diff/checks` | `pr review/edit/comment` | `release delete` |
 | `issue view/list/status` | `issue create/close/reopen/edit/comment` | `gist delete` |
 | `run view/list`, `workflow view/list` | `repo create/clone/fork/edit` | |
@@ -148,7 +148,11 @@ Process inspection: `pgrep`, `pidof`, `pstree`, `lsof`.
 |-------|-----|
 | `version`, `env`, `list`, `vet`, `doc` | `build`, `run`, `test`, `generate` |
 | `mod graph/why/verify/download`, `help` | `get`, `install`, `mod tidy/init/edit` |
-| | `fmt`, `gofmt`, `work` |
+| `ineffassign`, `ineffassign *` | `fmt`, `gofmt`, `work` |
+| `actionlist`, `actionlist *` | |
+| `golangci-lint run *`, `golangci-lint --version`, `golangci-lint linters` | |
+| `gofumpt --version`, `gofumpt -l *` | |
+| `govulncheck`, `govulncheck *` | |
 
 ### JavaScript/TypeScript
 
