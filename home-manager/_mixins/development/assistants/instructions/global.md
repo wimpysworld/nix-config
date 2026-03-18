@@ -6,6 +6,16 @@ LSP tools are available for supported file types. Use them to navigate and valid
 - After editing: `hover` to verify types and signatures; `findReferences` to confirm no call sites are broken by renamed or moved symbols
 - For deeper analysis: `workspaceSymbol`, `prepareCallHierarchy`, `incomingCalls`, `outgoingCalls`
 
+## Web and Search Tools
+
+Prefer MCP tools over built-in commands for all web access:
+
+- **Search**: use `mcp__exa__web_search_exa` in preference to the built-in WebSearch tool
+- **Read URLs**: use `mcp__jina__read_url` in preference to the built-in Fetch/WebFetch tool
+- **Screenshots**: use `mcp__jina__capture_screenshot_url` for visual page capture
+- **Code search**: use `mcp__exa__get_code_context_exa` for searching code examples and repositories
+- **Library docs**: use `mcp__context7__resolve-library-id` then `mcp__context7__query-docs` for up-to-date library and framework documentation in preference to training knowledge
+
 ## File Operations
 
 Always use the built-in file manipulation tools (Read, Edit, Write or equivalent) for all file operations, regardless of target location. Never use shell commands for file creation or editing. This applies to multi-line content, configuration files, scripts, and files outside the current workspace.

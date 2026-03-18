@@ -892,6 +892,12 @@ in
             "Edit(${config.home.homeDirectory}/Volatile/*)"
             "Edit(${config.home.homeDirectory}/Zero/*)"
             "Edit(/tmp/*)"
+
+            # MCP tools - allow all unconditionally
+            "mcp__*"
+
+            # Web fetching - allow without prompting
+            "WebFetch"
           ];
             ask = bashAsk ++ bashAskDestructive;
             deny = bashDeny ++ readDeny;

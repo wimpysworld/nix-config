@@ -1192,6 +1192,10 @@ in
           todowrite = "allow"; # Modifying todo lists
           webfetch = "allow"; # Fetching URLs
           websearch = "allow"; # Web searches
+          # MCP tools - allow all unconditionally
+          mcp = {
+            "*" = "allow";
+          };
           codesearch = "allow"; # Code searches
           # Safety guards - always ask
           doom_loop = "ask"; # Repeated identical tool calls

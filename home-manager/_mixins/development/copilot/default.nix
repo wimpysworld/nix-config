@@ -19,6 +19,10 @@ let
     "raw.githubusercontent.com"
     "opencode.ai"
     "zed.dev"
+    "jina.ai"
+    "r.jina.ai"
+    "exa.ai"
+    "api.exa.ai"
   ];
 
   # Generate autoApprove configuration from domain list
@@ -355,7 +359,11 @@ in
           "chat.tools.terminal.blockDetectedFileWrites" = "outsideWorkspace";
           "chat.tools.terminal.terminalProfile.linux" = "bash";
           "chat.tools.terminal.enableAutoApprove" = true;
-          "chat.tools.urls.autoApprove" = mkAutoApprove approvedDomains;
+          "chat.tools.urls.autoApprove" = mkAutoApprove approvedDomains // {
+            # Wildcard catch-all: auto-approve fetch for any URL
+            "https://*" = true;
+            "http://*" = true;
+          };
           "chat.viewSessions.orientation" = "stacked";
           "github.copilot.chat.anthropic.thinking.enabled" = true;
           "github.copilot.chat.codesearch.enabled" = true;
