@@ -13,9 +13,7 @@ Push current branch and create a conventional pull request on GitHub.
    **IMPORTANT**: Run each command individually. Do NOT chain commands with `&&`, `;`, or pipes (`|`). This ensures no manual approval is required.
 2. Push branch with `git push -u origin HEAD`
 3. Apply type selection from agent definition based on commit intent
-4. Create PR:
-   - **Prefer**: GitHub MCP `create_pull_request` tool when available
-   - **Fallback**: `gh pr create --title "<type>(<scope>): <description>" --body "<body>"`
+4. Create PR using `gh pr create --title "<type>(<scope>): <description>" --body "<body>"`
 
 ### Title Format
 
