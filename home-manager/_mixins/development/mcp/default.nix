@@ -111,9 +111,6 @@ in
       FIRECRAWL_API_KEY = {
         sopsFile = mcpSopsFile;
       };
-      GITHUB_TOKEN = {
-        sopsFile = mcpSopsFile;
-      };
       GOOGLE_CSE_API_KEY = {
         sopsFile = mcpSopsFile;
       };

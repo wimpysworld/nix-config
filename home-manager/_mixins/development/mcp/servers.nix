@@ -38,13 +38,6 @@
     #  type = "http";
     #  url = "https://mcp.firecrawl.dev/${config.sops.placeholder.FIRECRAWL_API_KEY}/v2/mcp";
     #};
-    github = {
-      type = "http";
-      url = "https://api.githubcopilot.com/mcp/";
-      headers = {
-        Authorization = "Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
-      };
-    };
     jina = {
       type = "http";
       url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
@@ -102,14 +95,6 @@
     #  type = "remote";
     #  url = "https://mcp.firecrawl.dev/{env:FIRECRAWL_API_KEY}/v2/mcp";
     #};
-    github = {
-      enabled = false;
-      type = "remote";
-      url = "https://api.githubcopilot.com/mcp/";
-      headers = {
-        Authorization = "Bearer {env:GITHUB_TOKEN}";
-      };
-    };
     jina = {
       type = "remote";
       url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
@@ -157,13 +142,6 @@
         token = config.sops.placeholder.CONTEXT7_API_KEY;
       };
     };
-    github = {
-      url = "https://api.githubcopilot.com/mcp/";
-      auth = {
-        type = "bearer";
-        token = config.sops.placeholder.GITHUB_TOKEN;
-      };
-    };
     jina = {
       url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
       auth = {
@@ -195,20 +173,6 @@
       ];
       tools = [ "*" ];
     };
-    # GitHub is disabled because Copilot CLI already uses it by default
-    #github = {
-    #  type = "stdio";
-    #  command = "${pkgs.nodejs_24}/bin/npx";
-    #  args = [
-    #    "-y"
-    #    "mcp-remote"
-    #    "https://api.githubcopilot.com/mcp/"
-    #  ];
-    #  tools = [ "*" ];
-    #  env = {
-    #    MCP_REMOTE_HEADERS = "Authorization: Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
-    #  };
-    #};
     nixos = {
       type = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
