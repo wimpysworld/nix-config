@@ -18,10 +18,6 @@
       type = "http";
       url = "https://mcp.exa.ai/mcp";
     };
-    goreleaser = {
-      type = "stdio";
-      command = "${pkgs.goreleaser-mcp}/bin/goreleaser-mcp";
-    };
     nixos = {
       type = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
@@ -78,10 +74,6 @@
     exa = {
       type = "remote";
       url = "https://mcp.exa.ai/mcp";
-    };
-    goreleaser = {
-      type = "local";
-      command = [ "${pkgs.goreleaser-mcp}/bin/goreleaser-mcp" ];
     };
     nixos = {
       enabled = false;
@@ -143,10 +135,6 @@
   # MCP servers for oterm - uses stdio (command/args) and HTTP (url with optional auth)
   otermMcpServers = {
     # Stdio servers
-    goreleaser = {
-      command = "${pkgs.goreleaser-mcp}/bin/goreleaser-mcp";
-      args = [ ];
-    };
     nixos = {
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
       args = [ ];
@@ -221,12 +209,6 @@
     #    MCP_REMOTE_HEADERS = "Authorization: Bearer ${config.sops.placeholder.GITHUB_TOKEN}";
     #  };
     #};
-    goreleaser = {
-      type = "stdio";
-      command = "${pkgs.goreleaser-mcp}/bin/goreleaser-mcp";
-      args = [ ];
-      tools = [ "*" ];
-    };
     nixos = {
       type = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
