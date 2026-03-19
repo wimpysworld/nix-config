@@ -11,9 +11,9 @@ user-invocable: false
 | **batfink** | Infrastructure security auditor | Infrastructure hardening, container/cloud/network security, blast radius assessment |
 | **brain** | Test engineer | Writing unit tests, analysing coverage, identifying untested code paths |
 | **casper** | Technical writer (Linux/open-source, Martin's voice) | Blog posts, Linux content, open-source documentation in a British style |
-| **dexter** | Nix specialist | Nix packages, NixOS modules, Home Manager config, nix-darwin, flakes |
+| **dexter** | Nix specialist | Nix packages, NixOS modules, Home Manager config, nix-darwin, flakes - **always prefer over Donatello for any `.nix` file changes** |
 | **dibble** | Code security auditor | Source code vulnerabilities, insecure patterns, dependency risks, secrets detection |
-| **donatello** | Implementation engineer | Executing a defined plan precisely, making targeted code changes |
+| **donatello** | Implementation engineer | Executing a defined plan precisely, making targeted code changes in non-Nix files |
 | **garfield** | Git workflow | Commit messages, pull requests, branch naming, conventional commits |
 | **gonzales** | Performance specialist | Profiling, optimisation, bottleneck analysis |
 | **melody** | Audio assessment | Interpreting audio metrics, voice recording quality |
