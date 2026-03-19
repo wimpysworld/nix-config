@@ -1,0 +1,7 @@
+{
+  "upstream": "https://github.com/semgrep/skills/tree/main/skills/code-security",
+  "upstream_commit": "327da93b179157531853c5ec9e7f94bb4d3899ed",
+  "upstream_commit_date": "2026-03-08T06:29:06Z",
+  "upstream_commit_message": "Improve all 3 skill SKILL.md files for better triggering and guidance",
+  "vendored_date": "2026-03-19"
+}

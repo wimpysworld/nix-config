@@ -1,5 +1,9 @@
 ## Create Code Implementation Plan
 
+**Usage:** `/create-code-plan <output-file>`
+
+The first argument is the file path to write the completed plan to (e.g. `plan.md`). Ask if not provided before proceeding.
+
 Create implementation plan optimised for AI-assisted development.
 
 ### Task Structure
@@ -55,3 +59,4 @@ Create implementation plan optimised for AI-assisted development.
 - Include test file in scope when adding/modifying functionality
 - Flag tasks requiring decisions before implementation
 - Note when scope may challenge context limits
+- Write the completed plan to the output file specified in the command argument

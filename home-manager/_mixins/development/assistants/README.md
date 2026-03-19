@@ -1,6 +1,6 @@
 # AI Agents
 
-Fourteen specialist agents, 29 commands, and seven skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, GitHub Copilot, and CodeCompanion (Neovim) without duplication.
+Fourteen specialist agents, 31 commands, and seven skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, GitHub Copilot, and CodeCompanion (Neovim) without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -157,7 +157,9 @@ Infrastructure security auditor assessing configuration hardening, defensive res
 
 **Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - infrastructure security assessment requires reasoning across interacting systems, trust boundaries, and attack chains simultaneously.
 
-No standalone commands. Batfink is invoked directly for infrastructure security reviews.
+| Command | Purpose |
+|---------|---------|
+| `audit-infra-security` | Structured 5-phase infrastructure security audit |
 
 ---
 
@@ -202,7 +204,9 @@ Code security auditor methodically patrolling codebases for vulnerabilities, ins
 
 **Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - vulnerability identification requires reasoning across data flows, trust boundaries, and exploitation conditions; the strongest model reduces false negatives.
 
-No standalone commands. Dibble is invoked directly for code security reviews.
+| Command | Purpose |
+|---------|---------|
+| `audit-code-security` | Structured 5-phase code security audit |
 
 ---
 

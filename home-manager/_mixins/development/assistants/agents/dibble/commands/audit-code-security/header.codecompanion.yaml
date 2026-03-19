@@ -1,0 +1,6 @@
+name: Audit Code Security
+interaction: chat
+opts:
+  alias: audit-code-security
+  is_slash_cmd: true
+  rules: dibble

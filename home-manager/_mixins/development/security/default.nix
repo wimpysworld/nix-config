@@ -7,7 +7,19 @@
   ...
 }:
 {
-  home.packages = [ pkgs.semgrep ];
+  home.packages = [
+    pkgs.dockle
+    pkgs.gitleaks
+    pkgs.grype
+    pkgs.hadolint
+    pkgs.kube-linter
+    pkgs.kubescape
+    pkgs.osv-scanner
+    pkgs.prowler
+    pkgs.semgrep
+    pkgs.syft
+    pkgs.trivy
+  ];
 
   # Claude Code - LSP server plugin
   claude-code.lspServers.semgrep = {
@@ -75,13 +87,56 @@
   # Claude Code - bash permissions for semgrep CLI
   programs.claude-code.settings.permissions = {
     allow = [
+      # Cosign - container image signature verification
+      "Bash(cosign version)"
+      "Bash(cosign verify:*)"
+      "Bash(cosign download:*)"
+      # Dockle - container image CIS benchmark linting
+      "Bash(dockle --version)"
+      "Bash(dockle:*)"
+      # Gitleaks - secret scanning
+      "Bash(gitleaks version)"
+      "Bash(gitleaks detect:*)"
+      "Bash(gitleaks git:*)"
+      # Grype - vulnerability scanning against SBOMs and filesystems
+      "Bash(grype --version)"
+      "Bash(grype:*)"
+      # Hadolint - Dockerfile linting
+      "Bash(hadolint --version)"
+      "Bash(hadolint:*)"
+      # Kube-linter - Kubernetes YAML best-practice linting
+      "Bash(kube-linter version)"
+      "Bash(kube-linter lint:*)"
+      # Kubescape - Kubernetes security scanning (CIS, NSA/CISA)
+      "Bash(kubescape version)"
+      "Bash(kubescape scan:*)"
+      # OSV-Scanner - dependency vulnerability scanning
+      "Bash(osv-scanner --version)"
+      "Bash(osv-scanner scan:*)"
+      "Bash(osv-scanner --lockfile:*)"
+      "Bash(osv-scanner --sbom:*)"
       # Semgrep - read-only queries
       "Bash(semgrep --version)"
       "Bash(semgrep lsp:*)"
       "Bash(semgrep scan:*)"
       "Bash(semgrep --config:*)"
+      # Syft - SBOM generation
+      "Bash(syft --version)"
+      "Bash(syft scan:*)"
+      # Trivy - vulnerability, IaC, and SBOM scanning
+      "Bash(trivy --version)"
+      "Bash(trivy config:*)"
+      "Bash(trivy fs:*)"
+      "Bash(trivy image:*)"
+      "Bash(trivy sbom:*)"
     ];
     ask = [
+      # Cosign - state-changing operations (signing, attesting)
+      "Bash(cosign sign:*)"
+      "Bash(cosign attest:*)"
+      # Prowler - cloud posture scanning (requires cloud credentials)
+      "Bash(prowler --version)"
+      "Bash(prowler:*)"
       # Semgrep - state-changing operations
       "Bash(semgrep ci:*)"
       "Bash(semgrep login:*)"

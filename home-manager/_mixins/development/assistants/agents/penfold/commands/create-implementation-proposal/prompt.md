@@ -1,5 +1,9 @@
 ## Create Implementation Proposal
 
+**Usage:** `/create-implementation-proposal <output-file>`
+
+The first argument is the file path to write the completed proposal to (e.g. `proposal.md`). Ask if not provided before proceeding.
+
 Define what to build, how to build it, and what to reuse - bridging research into a specification Donatello can plan against.
 
 ### Sections
@@ -63,3 +67,4 @@ Search the codebase before proposing new code. For each area of the implementati
 - Skip sections that don't apply
 - No implementation detail beyond what Donatello needs to plan tasks
 - No hedging language ("perhaps", "might", "could potentially")
+- Write the completed proposal to the output file specified in the command argument
