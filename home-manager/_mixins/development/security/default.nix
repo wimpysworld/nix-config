@@ -8,7 +8,6 @@
 }:
 {
   home.packages = [
-    pkgs.dockle
     pkgs.gitleaks
     pkgs.grype
     pkgs.hadolint
@@ -19,6 +18,8 @@
     pkgs.semgrep
     pkgs.syft
     pkgs.trivy
+  ] ++ lib.optionals pkgs.stdenv.isLinux [
+    pkgs.dockle # requires btrfs-progs and lvm2 (Linux-only)
   ];
 
   # Claude Code - LSP server plugin
