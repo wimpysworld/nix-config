@@ -26,8 +26,15 @@
     direnv-instant = {
       enable = true;
       enableBashIntegration = config.programs.bash.enable;
-      enableFishIntegration = config.programs.fish.enable;
+      enableFishIntegration = false; # HM stable 25.11 makes enableFishIntegration read-only; erased in fish init below
       enableZshIntegration = config.programs.zsh.enable;
+    };
+    fish = lib.mkIf config.programs.fish.enable {
+      interactiveShellInit = lib.mkBefore ''
+        # Prevent standard direnv hook from firing; direnv-instant handles this
+        functions --erase __direnv_export_eval 2>/dev/null
+        functions --erase __direnv_cd_hook 2>/dev/null
+      '';
     };
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
