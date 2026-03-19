@@ -24,20 +24,17 @@ let
       pkgs.ollama;
 
   # VRAM-based model tier selection.
-  defaultModel =
-    if vram >= 65 then
-      "gpt-oss:120b"
-    else if vram >= 14 then
-      "gpt-oss:20b"
-    else
-      "rnj-1:8b";
   generalModel =
-    if vram >= 20 then
-      "qwen3:30b"
-    else if vram >= 10 then
-      "qwen3:14b"
+    if vram >= 82 then
+      "qwen3.5:122b"
+    else if vram >= 24 then
+      "qwen3.5:35b"
+    else if vram >= 17 then
+      "qwen3.5:27b"
+    else if vram >= 7 then
+      "qwen3.5:9b"
     else
-      "qwen3:8b";
+      "qwen3.5:4b";
   codingModel =
     if vram >= 20 then
       "qwen3-coder:30b"
@@ -63,7 +60,6 @@ let
 
   allModels = [
     codingModel
-    defaultModel
     embeddingModel
     generalModel
     taskModel
