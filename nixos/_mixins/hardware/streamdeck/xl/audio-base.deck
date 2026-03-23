@@ -3,9 +3,9 @@
   [keys.widget]
     id = "button"
     [keys.widget.config]
-      icon = "~/Studio/StreamDeck/Icons/Cider-Logo.png"
+      icon = "~/Studio/StreamDeck/Icons/sidra.png"
   [keys.action]
-    exec = "cider"
+    exec = "sidra"
 
 [[keys]]
   index = 1
@@ -14,9 +14,9 @@
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-down.jpg"
   [keys.action]
-    exec = "ciderctl vol 5-"
+    exec = "playerctl -p sidra volume 0.05-"
   [keys.action_hold]
-    exec = "ciderctl vol 25"
+    exec = "playerctl -p sidra volume 0.25"
 
 [[keys]]
   index = 2
@@ -25,9 +25,9 @@
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Nebula/Audio/volume-up.jpg"
   [keys.action]
-    exec = "ciderctl vol 5+"
+    exec = "playerctl -p sidra volume 0.05+"
   [keys.action_hold]
-    exec = "ciderctl vol 75"
+    exec = "playerctl -p sidra volume 0.75"
 
 [[keys]]
   index = 3
@@ -35,13 +35,13 @@
     id = "command"
     interval = 2000
     [keys.widget.config]
-      command = "echo 'Cider';echo 'Music';ciderctl vol"
+      command = "echo 'Sidra';echo 'Music';playerctl metadata --format '{{ volume * 100 }}' | cut -c1-2 | sed 's/$/%/'"
       font = "thin;regular;bold"
-      color = "#CA1C35;#CA1C35;#fefefe"
+      color = "#BE5C19;#DC940B;#fefefe"
   [keys.action]
-    exec = "ciderctl vol 50"
+    exec = "playerctl -p sidra volume 0.5"
   [keys.action_hold]
-    exec = "ciderctl vol 100"
+    exec = "playerctl -p sidra volume 1.0"
 
 [[keys]]
   index = 4
@@ -50,7 +50,7 @@
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-previous-track.jpg"
   [keys.action]
-    exec = "ciderctl previous"
+    exec = "playerctl -p sidra previous"
 
 [[keys]]
   index = 5
@@ -59,7 +59,7 @@
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-play-pause.jpg"
   [keys.action]
-    exec = "ciderctl playpause"
+    exec = "playerctl -p sidra play-pause"
 
 [[keys]]
   index = 6
@@ -68,7 +68,7 @@
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
   [keys.action]
-    exec = "ciderctl next"
+    exec = "playerctl -p sidra next"
 
 #[[keys]]
 #  index = 7
@@ -77,7 +77,7 @@
 #    [keys.widget.config]
 #      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
 #  [keys.action]
-#    exec = "ciderctl next"
+#    exec = ""
 
 
 [[keys]]

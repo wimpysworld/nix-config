@@ -183,7 +183,6 @@ prefetch: token-check
 
     # Each entry: "secret_key filename expected_nix32 store_path"
     PACKAGES=(
-        "cider_download_url cider-v3.1.8-linux-x64.deb 0a2lmn042ddc4pf8szksj64y659cw4rqbbv9jv22q4fjh1b592vi /nix/store/d1msri2m8mjpkn2g6wka5wp14ykppdcy-cider-v3.1.8-linux-x64.deb"
         "pico8_download_url pico-8_0.2.7_amd64.zip 1alyii0bc9r9j2519q3jhxn8xazrcffy0kl8k07mnn208y2wxwpd /nix/store/6wlgkm92i70rflc5ijavv6nd1ys9pkn6-pico-8_0.2.7_amd64.zip"
     )
 

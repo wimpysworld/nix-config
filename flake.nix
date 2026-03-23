@@ -23,6 +23,8 @@
     llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     llm-agents.inputs.blueprint.inputs.systems.follows = "systems";
+    sidra.url = "github:wimpysworld/sidra";
+    sidra.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.3.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.inputs.rust-overlay.follows = "rust-overlay";
@@ -116,6 +118,7 @@
             bzmenu
             iwmenu
             pwmenu
+            sidra
             ;
         };
       };

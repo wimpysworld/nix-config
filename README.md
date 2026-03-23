@@ -381,11 +381,6 @@ Things I currently need to do manually after installation.
 Some applications require manual configuration to apply the correct theme.
 
 - [ ] Enable [Stylus](https://github.com/openstyles/stylus) Sync to Dropbox in Brave to get [Catppuccin userstyles](https://github.com/catppuccin/userstyles/releases/tag/all-userstyles-export) and **Enable Patch CSP**
-- [ ] Cider
-  - Open Cider
-  - Menu → Marketplace → Themes
-  - Find Catppuccin and your favorite flavor
-  - Click Install
 - [ ] Discord OpenAsar
   - [ ] Add Catppuccin CSS
 

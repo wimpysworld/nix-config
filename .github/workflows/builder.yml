@@ -152,12 +152,8 @@ jobs:
       - name: Prefetch proprietary packages 📦
         if: contains(matrix.target.system, 'linux')
         env:
-          CIDER_DOWNLOAD_URL: ${{ secrets.CIDER_DOWNLOAD_URL }}
           PICO8_DOWNLOAD_URL: ${{ secrets.PICO8_DOWNLOAD_URL }}
         run: |
-          if [ -n "${CIDER_DOWNLOAD_URL}" ]; then
-            nix-prefetch-url --name "cider-v3.1.8-linux-x64.deb" "${CIDER_DOWNLOAD_URL}" || echo "⚠️  Cider prefetch failed"
-          fi
           if [ -n "${PICO8_DOWNLOAD_URL}" ]; then
             nix-prefetch-url --name "pico-8_0.2.7_amd64.zip" "${PICO8_DOWNLOAD_URL}" || echo "⚠️  PICO-8 prefetch failed"
           fi
@@ -252,12 +248,8 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Prefetch proprietary packages 📦
         env:
-          CIDER_DOWNLOAD_URL: ${{ secrets.CIDER_DOWNLOAD_URL }}
           PICO8_DOWNLOAD_URL: ${{ secrets.PICO8_DOWNLOAD_URL }}
         run: |
-          if [ -n "${CIDER_DOWNLOAD_URL}" ]; then
-            nix-prefetch-url --name "cider-v3.1.8-linux-x64.deb" "${CIDER_DOWNLOAD_URL}" || echo "⚠️  Cider prefetch failed"
-          fi
           if [ -n "${PICO8_DOWNLOAD_URL}" ]; then
             nix-prefetch-url --name "pico-8_0.2.7_amd64.zip" "${PICO8_DOWNLOAD_URL}" || echo "⚠️  PICO-8 prefetch failed"
           fi
@@ -327,12 +319,8 @@ jobs:
       - name: Prefetch proprietary packages 📦
         if: contains(matrix.target.runner, 'ubuntu')
         env:
-          CIDER_DOWNLOAD_URL: ${{ secrets.CIDER_DOWNLOAD_URL }}
           PICO8_DOWNLOAD_URL: ${{ secrets.PICO8_DOWNLOAD_URL }}
         run: |
-          if [ -n "${CIDER_DOWNLOAD_URL}" ]; then
-            nix-prefetch-url --name "cider-v3.1.8-linux-x64.deb" "${CIDER_DOWNLOAD_URL}" || echo "⚠️  Cider prefetch failed"
-          fi
           if [ -n "${PICO8_DOWNLOAD_URL}" ]; then
             nix-prefetch-url --name "pico-8_0.2.7_amd64.zip" "${PICO8_DOWNLOAD_URL}" || echo "⚠️  PICO-8 prefetch failed"
           fi

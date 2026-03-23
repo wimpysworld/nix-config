@@ -74,6 +74,10 @@ let
         case = "^https?://issuer.enforce.dev";
         command = "wavebox";
       }
+      {
+        case = "^https?://oauth2.sigstore.dev/auth";
+        command = "wavebox";
+      }
     ];
   };
 in

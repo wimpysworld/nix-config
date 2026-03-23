@@ -112,9 +112,9 @@
   [keys.widget]
     id = "button"
     [keys.widget.config]
-      icon = "~/Studio/StreamDeck/Icons/Cider-Logo.png"
+      icon = "~/Studio/StreamDeck/Icons/sidra.png"
   [keys.action]
-    exec = "cider"
+    exec = "sidra"
 
 [[keys]]
   index = 25

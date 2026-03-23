@@ -123,7 +123,7 @@
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-play-pause.jpg"
   [keys.action]
-    exec = "ciderctl playpause"
+    exec = "playerctl -p sidra play-pause"
 
 [[keys]]
   index = 16
@@ -191,7 +191,7 @@
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
   [keys.action]
-    exec = "ciderctl next"
+    exec = "playerctl -p sidra next"
 
 [[keys]]
   index = 24

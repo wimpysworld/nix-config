@@ -2,7 +2,6 @@
 # You can build them using 'nix build .#example'
 pkgs: {
   # Local packages
-  cider = pkgs.callPackage ./cider { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   heynote = pkgs.callPackage ./heynote { };

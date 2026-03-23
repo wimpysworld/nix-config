@@ -907,6 +907,7 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "pwmenu": "pwmenu",
         "rust-overlay": "rust-overlay",
+        "sidra": "sidra",
         "sops-nix": "sops-nix",
         "systems": "systems_3",
         "vscode-server": "vscode-server",
@@ -947,6 +948,26 @@
       "original": {
         "owner": "oxalica",
         "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "sidra": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1774285095,
+        "narHash": "sha256-n6GhKGwFeUdo07XWlZ66Nsdlsfwsuu3IQPelowkYmQ0=",
+        "owner": "wimpysworld",
+        "repo": "sidra",
+        "rev": "f82cd07ca4f1baa83c7f05147f27b1539f528963",
+        "type": "github"
+      },
+      "original": {
+        "owner": "wimpysworld",
+        "repo": "sidra",
         "type": "github"
       }
     },
