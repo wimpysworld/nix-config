@@ -16,7 +16,7 @@
   [keys.action]
     exec = "playerctl -p sidra volume 0.05-"
   [keys.action_hold]
-    exec = "playerctl -p sidra volume 0.25"
+    exec = "playerctl -p sidra volume 0.01"
 
 [[keys]]
   index = 2
@@ -27,7 +27,7 @@
   [keys.action]
     exec = "playerctl -p sidra volume 0.05+"
   [keys.action_hold]
-    exec = "playerctl -p sidra volume 0.75"
+    exec = "playerctl -p sidra volume 1.0"
 
 [[keys]]
   index = 3
@@ -35,13 +35,13 @@
     id = "command"
     interval = 2000
     [keys.widget.config]
-      command = "echo 'Sidra';echo 'Music';playerctl metadata --format '{{ volume * 100 }}' | cut -c1-2 | sed 's/$/%/'"
+      command = "echo 'Sidra';echo 'Music';playerctl metadata --format '{{ volume * 100 }}' | awk '{printf \"%.0f%%\\n\", $1}'"
       font = "thin;regular;bold"
       color = "#BE5C19;#DC940B;#fefefe"
   [keys.action]
-    exec = "playerctl -p sidra volume 0.5"
+    exec = "playerctl -p sidra volume 0.25"
   [keys.action_hold]
-    exec = "playerctl -p sidra volume 1.0"
+    exec = "playerctl -p sidra volume 0.5"
 
 [[keys]]
   index = 4
@@ -96,7 +96,7 @@
   [keys.action]
     exec = "ipad-volume vol-down"
   [keys.action_hold]
-    exec = "ipad-volume set 25"
+    exec = "ipad-volume set 1"
 
 [[keys]]
   index = 10
@@ -107,7 +107,7 @@
   [keys.action]
     exec = "ipad-volume vol-up"
   [keys.action_hold]
-    exec = "ipad-volume set 75"
+    exec = "ipad-volume set 100"
 
 [[keys]]
   index = 11
@@ -119,9 +119,9 @@
       font = "thin;regular;bold"
       color = "#CA1C35;#CA1C35;#fefefe"
   [keys.action]
-    exec = "ipad-volume set 50"
+    exec = "ipad-volume set 25"
   [keys.action_hold]
-    exec = "ipad-volume set 100"
+    exec = "ipad-volume set 50"
 
 [[keys]]
   index = 12
