@@ -555,6 +555,15 @@ lib.mkIf (host.is.linux && host.is.workstation) {
 
         .image {
           padding-right: 0.5rem;
+          -gtk-icon-size: 64px;
+          min-width: 64px;
+          min-height: 64px;
+        }
+
+        .app-icon {
+          -gtk-icon-size: 21px;
+          min-width: 21px;
+          min-height: 21px;
         }
       '';
     };
