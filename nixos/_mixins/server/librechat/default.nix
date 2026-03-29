@@ -139,17 +139,17 @@ in
           "-config"
           librechatSmtprelayConfig
         ];
-        User = "root";
+        User = "nullmailer";
+        Group = "nullmailer";
         Restart = "on-failure";
         RestartSec = 5;
 
-        # Allow local SMTP intake while keeping the filesystem read-only,
-        # apart from the nullmailer spool.
+        # Remove the stuck root-owned queue file manually before retrying:
+        # sudo rm /var/spool/nullmailer/queue/1774824705.178363
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectSystem = "strict";
         ProtectHome = true;
-        ReadWritePaths = [ "/var/spool/nullmailer" ];
         RestrictAddressFamilies = [
           "AF_INET"
           "AF_INET6"
