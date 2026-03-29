@@ -66,8 +66,9 @@ in
     };
 
     # Create the LibreChat tunnel in Cloudflare first, then encrypt the
-    # downloaded tunnel credentials JSON into secrets/cloudflare.yaml as
-    # CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT before enabling the tunnel here.
+    # tunnel token from the dashboard install connector flow into
+    # secrets/cloudflare.yaml as CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT before
+    # enabling the tunnel here.
     sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT = lib.mkIf hasCloudflareSopsFile {
       sopsFile = cloudflareSopsFile;
       path = "/run/secrets/CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT";
@@ -114,18 +115,45 @@ in
 
     services.meilisearch.masterKeyFile = config.sops.secrets.MEILI_MASTER_KEY.path;
 
-    services.cloudflared = lib.mkIf hasCloudflareSopsFile {
-      enable = true;
-      tunnels.librechat = {
-        credentialsFile = config.sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT.path;
-        default = lib.mkDefault "http_status:404";
-        ingress = {
-          "librechat.wimpys.world" = {
-            service = "http://localhost:3080";
-          };
-        };
-        originRequest.httpHostHeader = lib.mkDefault "librechat.wimpys.world";
+    systemd.services.cloudflared-librechat = lib.mkIf hasCloudflareSopsFile {
+      description = "Cloudflare Tunnel connector for LibreChat";
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = lib.concatStringsSep " " [
+          (lib.getExe pkgs.cloudflared)
+          "tunnel"
+          "--no-autoupdate"
+          "run"
+          "--token-file"
+          config.sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT.path
+        ];
+        Restart = lib.mkDefault "always";
+        RestartSec = lib.mkDefault 5;
+        User = lib.mkDefault "root";
+        Group = lib.mkDefault "root";
+
+        # Restrict the connector to outbound access and secret reads.
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ProtectControlGroups = true;
+        ProtectKernelLogs = true;
+        ProtectKernelModules = true;
+        ProtectKernelTunables = true;
+        RestrictAddressFamilies = [
+          "AF_INET"
+          "AF_INET6"
+          "AF_UNIX"
+        ];
       };
     };
+
+    # Remotely-managed tunnels store published application routing in
+    # Cloudflare. Configure librechat.wimpys.world -> http://localhost:3080
+    # in the Cloudflare dashboard or API for this tunnel.
   };
 }
