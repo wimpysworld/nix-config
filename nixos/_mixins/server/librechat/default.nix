@@ -16,7 +16,7 @@ let
     '';
   };
   librechatSmtprelayConfig = pkgs.writeText "smtprelay-librechat.conf" ''
-    listen = 127.0.0.1:25
+    listen = 127.0.0.1:1025
     allowed_nets = 127.0.0.0/8
     command = ${lib.getExe librechatSendmail}
   '';
@@ -103,7 +103,7 @@ in
         EMAIL_ENCRYPTION = lib.mkDefault "none";
         EMAIL_FROM = lib.mkDefault "martin@wimpress.org";
         EMAIL_HOST = lib.mkDefault "127.0.0.1";
-        EMAIL_PORT = lib.mkDefault 25;
+        EMAIL_PORT = lib.mkDefault 1025;
         HOST = lib.mkDefault "0.0.0.0";
       };
       credentials = {
