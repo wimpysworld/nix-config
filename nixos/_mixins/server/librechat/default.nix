@@ -5,6 +5,10 @@
   pkgs,
   ...
 }:
+let
+  cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
+  hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
+in
 {
   imports = [
     ./module.nix
@@ -18,6 +22,17 @@
       path = "/run/secrets/ANTHROPIC_API_KEY";
       owner = "librechat";
       group = "librechat";
+      mode = "0400";
+    };
+
+    # Create the LibreChat tunnel in Cloudflare first, then encrypt the
+    # downloaded tunnel credentials JSON into secrets/cloudflare.yaml as
+    # CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT before enabling the tunnel here.
+    sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT = lib.mkIf hasCloudflareSopsFile {
+      sopsFile = cloudflareSopsFile;
+      path = "/run/secrets/CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT";
+      owner = "root";
+      group = "root";
       mode = "0400";
     };
 
@@ -40,6 +55,18 @@
           };
           titleConvo = true;
           titleModel = "claude-haiku-4-5-20251001";
+        };
+      };
+    };
+
+    services.cloudflared = lib.mkIf hasCloudflareSopsFile {
+      enable = true;
+      tunnels.librechat = {
+        credentialsFile = config.sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT.path;
+        default = "http_status:404";
+        ingress."librechat.wimpys.world" = {
+          service = "http://localhost:3080";
+          originRequest.httpHostHeader = "librechat.wimpys.world";
         };
       };
     };
@@ -114,6 +141,7 @@
         {
           printf 'ALLOW_REGISTRATION=false\n'
           printf 'ALLOW_EMAIL_LOGIN=true\n'
+          printf 'ALLOWED_EMAIL_DOMAINS=wimpress.org\n'
           printf 'ANTHROPIC_API_KEY=%s\n' "$(${pkgs.coreutils}/bin/cat /run/secrets/ANTHROPIC_API_KEY)"
           printf 'CREDS_KEY=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/creds_key)"
           printf 'CREDS_IV=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/creds_iv)"
