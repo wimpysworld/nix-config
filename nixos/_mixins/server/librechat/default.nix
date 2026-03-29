@@ -32,10 +32,14 @@
       package = lib.mkDefault pkgs.unstable.librechat;
       port = lib.mkDefault 3080;
       settings = lib.mkDefault {
-        version = "1.2.1";
+        version = "1.3.6";
         endpoints.anthropic = {
+          models = {
+            default = [ "claude-sonnet-4-6-20260205" ];
+            fetch = true;
+          };
           titleConvo = true;
-          titleModel = "claude-3-5-haiku-latest";
+          titleModel = "claude-haiku-4-5-20251001";
         };
       };
     };
@@ -108,6 +112,8 @@
         chmod 0600 "$tmp_file"
 
         {
+          printf 'ALLOW_REGISTRATION=false\n'
+          printf 'ALLOW_EMAIL_LOGIN=true\n'
           printf 'ANTHROPIC_API_KEY=%s\n' "$(${pkgs.coreutils}/bin/cat /run/secrets/ANTHROPIC_API_KEY)"
           printf 'CREDS_KEY=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/creds_key)"
           printf 'CREDS_IV=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/creds_iv)"
