@@ -118,11 +118,13 @@ in
       enable = true;
       tunnels.librechat = {
         credentialsFile = config.sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT.path;
-        default = "http_status:404";
-        ingress."librechat.wimpys.world" = {
-          service = "http://localhost:3080";
-          originRequest.httpHostHeader = "librechat.wimpys.world";
+        default = lib.mkDefault "http_status:404";
+        ingress = {
+          "librechat.wimpys.world" = {
+            service = "http://localhost:3080";
+          };
         };
+        originRequest.httpHostHeader = lib.mkDefault "librechat.wimpys.world";
       };
     };
   };
