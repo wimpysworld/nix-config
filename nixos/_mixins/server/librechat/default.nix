@@ -20,49 +20,49 @@ in
     sops.secrets.ANTHROPIC_API_KEY = {
       sopsFile = ../../../../secrets/ai.yaml;
       path = "/run/secrets/ANTHROPIC_API_KEY";
-      owner = "librechat";
-      group = "librechat";
+      owner = "root";
+      group = "root";
       mode = "0400";
     };
 
     sops.secrets.CREDS_KEY = {
       sopsFile = ../../../../secrets/librechat.yaml;
       path = "/run/secrets/CREDS_KEY";
-      owner = "librechat";
-      group = "librechat";
+      owner = "root";
+      group = "root";
       mode = "0400";
     };
 
     sops.secrets.CREDS_IV = {
       sopsFile = ../../../../secrets/librechat.yaml;
       path = "/run/secrets/CREDS_IV";
-      owner = "librechat";
-      group = "librechat";
+      owner = "root";
+      group = "root";
       mode = "0400";
     };
 
     sops.secrets.JWT_SECRET = {
       sopsFile = ../../../../secrets/librechat.yaml;
       path = "/run/secrets/JWT_SECRET";
-      owner = "librechat";
-      group = "librechat";
+      owner = "root";
+      group = "root";
       mode = "0400";
     };
 
     sops.secrets.JWT_REFRESH_SECRET = {
       sopsFile = ../../../../secrets/librechat.yaml;
       path = "/run/secrets/JWT_REFRESH_SECRET";
-      owner = "librechat";
-      group = "librechat";
+      owner = "root";
+      group = "root";
       mode = "0400";
     };
 
     sops.secrets.MEILI_MASTER_KEY = {
       sopsFile = ../../../../secrets/librechat.yaml;
       path = "/run/secrets/MEILI_MASTER_KEY";
-      owner = "meilisearch";
-      group = "meilisearch";
-      mode = "0400";
+      owner = "root";
+      group = "root";
+      mode = "0440";
     };
 
     # Create the LibreChat tunnel in Cloudflare first, then encrypt the
