@@ -29,6 +29,7 @@
       ];
       host = lib.mkDefault "0.0.0.0";
       openFirewall = lib.mkDefault true;
+      package = lib.mkDefault pkgs.unstable.librechat;
       port = lib.mkDefault 3080;
       settings = lib.mkDefault {
         version = "1.2.1";
