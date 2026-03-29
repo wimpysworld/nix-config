@@ -86,7 +86,8 @@ in
       env = {
         ALLOW_EMAIL_LOGIN = lib.mkDefault true;
         ALLOWED_EMAIL_DOMAINS = lib.mkDefault "wimpress.org";
-        ALLOW_REGISTRATION = lib.mkDefault false;
+        ALLOW_REGISTRATION = lib.mkDefault true;
+        ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         EMAIL_ENCRYPTION = lib.mkDefault "none";
         EMAIL_FROM = lib.mkDefault "martin@wimpress.org";
         EMAIL_HOST = lib.mkDefault "localhost";
