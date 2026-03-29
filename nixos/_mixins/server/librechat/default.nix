@@ -1,143 +1,122 @@
 {
+  config,
   lib,
   noughtyLib,
   pkgs,
   ...
 }:
-let
-  aiSopsFile = ../../../../secrets/ai.yaml;
-  librechatDataDir = "/var/lib/librechat";
-  librechatSecretsDir = "${librechatDataDir}/secrets";
-  anthropicApiKeyPath = "/run/secrets/ANTHROPIC_API_KEY";
-in
-lib.mkIf (noughtyLib.hostHasTag "librechat") {
-  environment.shellAliases.librechat-log = "journalctl _SYSTEMD_UNIT=librechat.service";
-
-  networking.firewall.allowedTCPPorts = lib.mkDefault [ 3080 ];
-
-  sops.secrets.ANTHROPIC_API_KEY = {
-    sopsFile = aiSopsFile;
-    path = anthropicApiKeyPath;
-    owner = "librechat";
-    group = "librechat";
-    mode = "0400";
-  };
-
-  services.mongodb.enable = lib.mkDefault true;
-
-  systemd.tmpfiles.rules = [
-    "d ${librechatDataDir} 0750 librechat librechat"
-    "d ${librechatSecretsDir} 0700 librechat librechat"
+{
+  imports = [
+    ./module.nix
   ];
 
-  systemd.services.librechat = {
-    description = "LibreChat server";
-    wantedBy = [ "multi-user.target" ];
-    after = [
-      "mongodb.service"
-      "librechat-secrets.service"
-      "network-online.target"
-    ];
-    wants = [
-      "mongodb.service"
-      "librechat-secrets.service"
-      "network-online.target"
-    ];
-    environment = {
-      ALLOW_REGISTRATION = lib.mkDefault "false";
-      ENDPOINTS = lib.mkDefault "anthropic";
-      HOST = lib.mkDefault "0.0.0.0";
-      HOME = librechatDataDir;
-      MONGO_URI = lib.mkDefault "mongodb://127.0.0.1:27017/LibreChat";
-      PORT = lib.mkDefault "3080";
-    };
-    serviceConfig = {
-      Type = "simple";
-      User = "librechat";
-      Group = "librechat";
-      WorkingDirectory = librechatDataDir;
-      Restart = "on-failure";
-      RestartSec = 10;
-      StateDirectory = "librechat";
-      UMask = "0077";
+  config = lib.mkIf (noughtyLib.hostHasTag "librechat") {
+    environment.shellAliases.librechat-log = "journalctl _SYSTEMD_UNIT=librechat.service";
 
-      CapabilityBoundingSet = "";
-      NoNewPrivileges = true;
-      PrivateDevices = true;
-      PrivateMounts = true;
-      PrivateTmp = true;
-      PrivateUsers = true;
-      ProtectClock = true;
-      ProtectControlGroups = true;
-      ProtectHome = true;
-      ProtectHostname = true;
-      ProtectKernelLogs = true;
-      ProtectKernelModules = true;
-      ProtectKernelTunables = true;
-      RestrictAddressFamilies = [
-        "AF_INET"
-        "AF_INET6"
-        "AF_UNIX"
+    sops.secrets.ANTHROPIC_API_KEY = {
+      sopsFile = ../../../../secrets/ai.yaml;
+      path = "/run/secrets/ANTHROPIC_API_KEY";
+      owner = "librechat";
+      group = "librechat";
+      mode = "0400";
+    };
+
+    services.librechat = {
+      enable = true;
+      enableLocalDB = lib.mkDefault true;
+      environmentFiles = [
+        "/var/lib/librechat/librechat.env"
       ];
-      RestrictNamespaces = true;
-      RestrictRealtime = true;
-      RestrictSUIDSGID = true;
+      host = lib.mkDefault "0.0.0.0";
+      openFirewall = lib.mkDefault true;
+      port = lib.mkDefault 3080;
+      settings = lib.mkDefault {
+        version = "1.2.1";
+        endpoints.anthropic = {
+          titleConvo = true;
+          titleModel = "claude-3-5-haiku-latest";
+        };
+      };
     };
-    script = ''
-      set -euo pipefail
 
-      export ANTHROPIC_API_KEY="$(${pkgs.coreutils}/bin/cat ${anthropicApiKeyPath})"
-      export CREDS_KEY="$(${pkgs.coreutils}/bin/cat ${librechatSecretsDir}/creds_key)"
-      export CREDS_IV="$(${pkgs.coreutils}/bin/cat ${librechatSecretsDir}/creds_iv)"
-      export JWT_SECRET="$(${pkgs.coreutils}/bin/cat ${librechatSecretsDir}/jwt_secret)"
-      export JWT_REFRESH_SECRET="$(${pkgs.coreutils}/bin/cat ${librechatSecretsDir}/jwt_refresh_secret)"
-
-      exec ${pkgs.librechat}/bin/librechat-server
-    '';
-  };
-
-  systemd.services.librechat-secrets = {
-    description = "Generate local LibreChat application secrets";
-    before = [ "librechat.service" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "librechat";
-      Group = "librechat";
-      StateDirectory = "librechat";
-      UMask = "0077";
-      WorkingDirectory = librechatDataDir;
+    systemd.services.librechat = {
+      after = [
+        "librechat-env.service"
+        "librechat-secrets.service"
+      ];
+      wants = [
+        "librechat-env.service"
+        "librechat-secrets.service"
+      ];
     };
-    script = ''
-      set -euo pipefail
 
-      ${pkgs.coreutils}/bin/mkdir -p "${librechatSecretsDir}"
+    systemd.services.librechat-secrets = {
+      description = "Generate local LibreChat application secrets";
+      before = [ "librechat-env.service" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        User = "librechat";
+        Group = "librechat";
+        StateDirectory = "librechat";
+        UMask = "0077";
+        WorkingDirectory = "/var/lib/librechat";
+      };
+      script = ''
+        set -euo pipefail
 
-      createSecret() {
-        local path="$1"
-        local bytes="$2"
+        ${pkgs.coreutils}/bin/mkdir -p /var/lib/librechat/secrets
 
-        if [ ! -s "$path" ]; then
-          ${pkgs.openssl}/bin/openssl rand -hex "$bytes" > "$path"
-        fi
+        createSecret() {
+          local path="$1"
+          local bytes="$2"
 
-        ${pkgs.coreutils}/bin/chmod 0400 "$path"
-      }
+          if [ ! -s "$path" ]; then
+            ${pkgs.openssl}/bin/openssl rand -hex "$bytes" > "$path"
+          fi
 
-      createSecret "${librechatSecretsDir}/creds_key" 32
-      createSecret "${librechatSecretsDir}/creds_iv" 16
-      createSecret "${librechatSecretsDir}/jwt_secret" 32
-      createSecret "${librechatSecretsDir}/jwt_refresh_secret" 32
-    '';
-  };
+          ${pkgs.coreutils}/bin/chmod 0400 "$path"
+        }
 
-  users.groups.librechat = { };
+        createSecret /var/lib/librechat/secrets/creds_key 32
+        createSecret /var/lib/librechat/secrets/creds_iv 16
+        createSecret /var/lib/librechat/secrets/jwt_secret 32
+        createSecret /var/lib/librechat/secrets/jwt_refresh_secret 32
+      '';
+    };
 
-  users.users.librechat = {
-    isSystemUser = true;
-    group = "librechat";
-    home = librechatDataDir;
-    createHome = true;
-    description = "LibreChat server user";
+    systemd.services.librechat-env = {
+      description = "Assemble LibreChat environment file";
+      before = [ "librechat.service" ];
+      after = [ "librechat-secrets.service" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        User = "librechat";
+        Group = "librechat";
+        StateDirectory = "librechat";
+        UMask = "0077";
+        WorkingDirectory = "/var/lib/librechat";
+      };
+      script = ''
+        set -euo pipefail
+
+        env_file=/var/lib/librechat/librechat.env
+        tmp_file="$(${pkgs.coreutils}/bin/mktemp /var/lib/librechat/librechat.env.XXXXXX)"
+
+        chmod 0600 "$tmp_file"
+
+        {
+          printf 'ANTHROPIC_API_KEY=%s\n' "$(${pkgs.coreutils}/bin/cat /run/secrets/ANTHROPIC_API_KEY)"
+          printf 'CREDS_KEY=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/creds_key)"
+          printf 'CREDS_IV=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/creds_iv)"
+          printf 'JWT_SECRET=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/jwt_secret)"
+          printf 'JWT_REFRESH_SECRET=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/jwt_refresh_secret)"
+        } > "$tmp_file"
+
+        ${pkgs.coreutils}/bin/mv "$tmp_file" "$env_file"
+        ${pkgs.coreutils}/bin/chmod 0400 "$env_file"
+      '';
+    };
   };
 }
