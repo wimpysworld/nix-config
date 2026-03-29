@@ -142,6 +142,10 @@ in
           printf 'ALLOW_REGISTRATION=false\n'
           printf 'ALLOW_EMAIL_LOGIN=true\n'
           printf 'ALLOWED_EMAIL_DOMAINS=wimpress.org\n'
+          printf 'EMAIL_HOST=localhost\n'
+          printf 'EMAIL_PORT=25\n'
+          printf 'EMAIL_ENCRYPTION=none\n'
+          printf 'EMAIL_FROM=martin@wimpress.org\n'
           printf 'ANTHROPIC_API_KEY=%s\n' "$(${pkgs.coreutils}/bin/cat /run/secrets/ANTHROPIC_API_KEY)"
           printf 'CREDS_KEY=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/creds_key)"
           printf 'CREDS_IV=%s\n' "$(${pkgs.coreutils}/bin/cat /var/lib/librechat/secrets/creds_iv)"
