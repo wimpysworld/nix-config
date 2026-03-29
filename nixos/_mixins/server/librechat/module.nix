@@ -135,10 +135,34 @@ in
       example = {
         version = "1.2.1";
         cache = true;
+        interface = {
+          privacyPolicy = {
+            externalUrl = "https://librechat.ai/privacy-policy";
+            openNewTab = true;
+          };
+        };
+        endpoints = {
+          custom = [
+            {
+              name = "OpenRouter";
+              apiKey = "\${OPENROUTER_KEY}";
+              baseURL = "https://openrouter.ai/api/v1";
+              models = {
+                default = [ "meta-llama/llama-3-70b-instruct" ];
+                fetch = true;
+              };
+              titleConvo = true;
+              titleModule = "meta-llama/llama-3-70b-instruct";
+              dropParams = [ "stop" ];
+              modelDisplayLabel = "OpenRouter";
+            }
+          ];
+        };
       };
       description = ''
         A free-form attribute set that will be written to librechat.yaml.
         See the [LibreChat configuration options](https://www.librechat.ai/docs/configuration/librechat_yaml).
+        You can use environment variables by wrapping them in $\{}. Take care to escape the $ character.
       '';
     };
 
@@ -182,7 +206,7 @@ in
           );
         message = ''
           CREDS_KEY, CREDS_IV, JWT_SECRET, and JWT_REFRESH_SECRET must be defined in `services.librechat.credentials` and point to locations of files on the host or in a file that `services.credentialsFile` is pointing to.
-          Alternatively it can be defined in `services.librechat.env` with literal values but they will be saved within the world-readable nix store.
+          Alternatively it can be defined in `services.librechat.env` with literal values but they will be saved within the world-readable nix store.;
           You can use https://www.librechat.ai/toolkit/creds_generator to generate these.
         '';
       }
@@ -210,11 +234,12 @@ in
       wants = lib.optional cfg.meilisearch.enable "meilisearch.service";
       description = "Open-source app for all your AI conversations, fully customizable and compatible with any AI provider";
       environment = cfg.env;
-      script = ''
-        ${exportAllCredentials cfg.credentials}
-        cd ${cfg.dataDir}
-        ${lib.getExe cfg.package}
-      '';
+      script = # sh
+        ''
+          ${exportAllCredentials cfg.credentials}
+          cd ${cfg.dataDir}
+          ${lib.getExe cfg.package}
+        '';
       serviceConfig = {
         Type = "simple";
         User = cfg.user;
@@ -225,6 +250,8 @@ in
         EnvironmentFile = cfg.credentialsFile;
         Restart = "on-failure";
         RestartSec = 10;
+
+        # Hardening
         CapabilityBoundingSet = "";
         NoNewPrivileges = true;
         PrivateUsers = true;
