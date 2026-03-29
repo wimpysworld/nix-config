@@ -8,6 +8,18 @@
 let
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
+  librechatSendmail = pkgs.writeShellApplication {
+    name = "librechat-sendmail";
+    runtimeInputs = [ pkgs.nullmailer ];
+    text = ''
+      exec sendmail -t -i -f "$SMTPRELAY_FROM"
+    '';
+  };
+  librechatSmtprelayConfig = pkgs.writeText "smtprelay-librechat.conf" ''
+    listen = 127.0.0.1:25
+    allowed_nets = 127.0.0.0/8
+    command = ${lib.getExe librechatSendmail}
+  '';
 in
 {
   imports = [
@@ -90,7 +102,7 @@ in
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         EMAIL_ENCRYPTION = lib.mkDefault "none";
         EMAIL_FROM = lib.mkDefault "martin@wimpress.org";
-        EMAIL_HOST = lib.mkDefault "localhost";
+        EMAIL_HOST = lib.mkDefault "127.0.0.1";
         EMAIL_PORT = lib.mkDefault 25;
         HOST = lib.mkDefault "0.0.0.0";
       };
@@ -112,6 +124,39 @@ in
     };
 
     services.meilisearch.masterKeyFile = config.sops.secrets.MEILI_MASTER_KEY.path;
+
+    systemd.services.smtprelay-librechat = {
+      description = "SMTP relay for LibreChat";
+      wantedBy = [ "multi-user.target" ];
+      after = [
+        "network.target"
+        "nullmailer.service"
+      ];
+      wants = [ "nullmailer.service" ];
+      serviceConfig = {
+        ExecStart = lib.concatStringsSep " " [
+          (lib.getExe pkgs.smtprelay)
+          "-config"
+          librechatSmtprelayConfig
+        ];
+        User = "root";
+        Restart = "on-failure";
+        RestartSec = 5;
+
+        # Allow local SMTP intake while keeping the filesystem read-only,
+        # apart from the nullmailer spool.
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ReadWritePaths = [ "/var/spool/nullmailer" ];
+        RestrictAddressFamilies = [
+          "AF_INET"
+          "AF_INET6"
+          "AF_UNIX"
+        ];
+      };
+    };
 
     systemd.services.cloudflared-librechat = lib.mkIf hasCloudflareSopsFile {
       description = "Cloudflare Tunnel connector for LibreChat";
