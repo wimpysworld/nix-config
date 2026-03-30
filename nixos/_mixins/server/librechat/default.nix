@@ -8,18 +8,62 @@
 let
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
-  librechatSendmail = pkgs.writeShellApplication {
-    name = "librechat-sendmail";
-    runtimeInputs = [ pkgs.nullmailer ];
+  librechatProvisionUsers = pkgs.writeShellApplication {
+    name = "librechat-provision-users";
+    runtimeInputs = [ pkgs.mongosh ];
     text = ''
-      exec sendmail -i -f "$SMTPRELAY_FROM" "$@"
+      mongoUri="mongodb://127.0.0.1:27017/librechat"
+
+      : "''${HASH_MARTIN:?}"
+      : "''${HASH_LOUISE:?}"
+      : "''${HASH_AGATHA:?}"
+
+      upsertUser() {
+        local email="$1"
+        local name="$2"
+        local username="$3"
+        local role="$4"
+        local hashFile="$5"
+        local passwordHash
+
+        passwordHash="$(<"$hashFile")"
+
+        EMAIL="$email" \
+        NAME="$name" \
+        USERNAME="$username" \
+        ROLE="$role" \
+        PASSWORD_HASH="$passwordHash" \
+          mongosh --quiet "$mongoUri" --eval '
+            const now = new Date();
+
+            db.users.updateOne(
+              { email: process.env.EMAIL },
+              {
+                $set: {
+                  email: process.env.EMAIL,
+                  name: process.env.NAME,
+                  username: process.env.USERNAME,
+                  password: process.env.PASSWORD_HASH,
+                  provider: "local",
+                  role: process.env.ROLE,
+                  emailVerified: true,
+                  avatar: null,
+                  updatedAt: now,
+                },
+                $setOnInsert: {
+                  createdAt: now,
+                },
+              },
+              { upsert: true },
+            );
+          '
+      }
+
+      upsertUser "martin@wimpress.org" "Martin Wimpress" "martin" "ADMIN" "$HASH_MARTIN"
+      upsertUser "louise@wimpress.org" "Louise Wimpress" "louise" "USER" "$HASH_LOUISE"
+      upsertUser "agatha@wimpress.org" "Agatha Wimpress" "agatha" "USER" "$HASH_AGATHA"
     '';
   };
-  librechatSmtprelayConfig = pkgs.writeText "smtprelay-librechat.conf" ''
-    listen = 127.0.0.1:1025
-    allowed_nets = 127.0.0.0/8
-    command = ${lib.getExe librechatSendmail}
-  '';
 in
 {
   imports = [
@@ -77,6 +121,27 @@ in
       mode = "0440";
     };
 
+    sops.secrets.USER_PW_MARTIN = {
+      sopsFile = ../../../../secrets/librechat.yaml;
+      owner = "root";
+      group = "root";
+      mode = "0400";
+    };
+
+    sops.secrets.USER_PW_LOUISE = {
+      sopsFile = ../../../../secrets/librechat.yaml;
+      owner = "root";
+      group = "root";
+      mode = "0400";
+    };
+
+    sops.secrets.USER_PW_AGATHA = {
+      sopsFile = ../../../../secrets/librechat.yaml;
+      owner = "root";
+      group = "root";
+      mode = "0400";
+    };
+
     # Create the LibreChat tunnel in Cloudflare first, then encrypt the
     # tunnel token from the dashboard install connector flow into
     # secrets/cloudflare.yaml as CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT before
@@ -98,12 +163,9 @@ in
       env = {
         ALLOW_EMAIL_LOGIN = lib.mkDefault true;
         ALLOWED_EMAIL_DOMAINS = lib.mkDefault "wimpress.org";
-        ALLOW_REGISTRATION = lib.mkDefault true;
+        ALLOW_REGISTRATION = lib.mkDefault false;
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
-        EMAIL_ENCRYPTION = lib.mkDefault "none";
-        EMAIL_FROM = lib.mkDefault "martin@wimpress.org";
-        EMAIL_HOST = lib.mkDefault "127.0.0.1";
-        EMAIL_PORT = lib.mkDefault 1025;
+        ALLOW_UNVERIFIED_EMAIL_LOGIN = lib.mkDefault true;
         HOST = lib.mkDefault "0.0.0.0";
       };
       credentials = {
@@ -125,36 +187,22 @@ in
 
     services.meilisearch.masterKeyFile = lib.mkDefault config.sops.secrets.MEILI_MASTER_KEY.path;
 
-    systemd.services.smtprelay-librechat = {
-      description = "SMTP relay for LibreChat";
+    systemd.services.librechat-provision-users = {
+      description = "Provision initial LibreChat user accounts.";
       wantedBy = [ "multi-user.target" ];
-      after = [
-        "network.target"
-        "nullmailer.service"
-      ];
-      wants = [ "nullmailer.service" ];
+      after = [ "mongodb.service" ];
+      wants = [ "mongodb.service" ];
+      restartTriggers = [ config.system.build.toplevel ];
+      environment = {
+        HASH_MARTIN = config.sops.secrets.USER_PW_MARTIN.path;
+        HASH_LOUISE = config.sops.secrets.USER_PW_LOUISE.path;
+        HASH_AGATHA = config.sops.secrets.USER_PW_AGATHA.path;
+      };
       serviceConfig = {
-        ExecStart = lib.concatStringsSep " " [
-          (lib.getExe pkgs.smtprelay)
-          "-config"
-          librechatSmtprelayConfig
-        ];
-        User = "nullmailer";
-        Group = "nullmailer";
-        Restart = "on-failure";
-        RestartSec = 5;
-
-        # Remove the stuck root-owned queue file manually before retrying:
-        # sudo rm /var/spool/nullmailer/queue/1774824705.178363
-        NoNewPrivileges = true;
-        PrivateTmp = true;
-        ProtectSystem = "strict";
-        ProtectHome = true;
-        RestrictAddressFamilies = [
-          "AF_INET"
-          "AF_INET6"
-          "AF_UNIX"
-        ];
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "root";
+        ExecStart = lib.getExe librechatProvisionUsers;
       };
     };
 
