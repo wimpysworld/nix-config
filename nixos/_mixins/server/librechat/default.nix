@@ -192,7 +192,6 @@ in
       wantedBy = [ "multi-user.target" ];
       after = [ "mongodb.service" ];
       wants = [ "mongodb.service" ];
-      restartTriggers = [ config.system.build.toplevel ];
       environment = {
         HASH_MARTIN = config.sops.secrets.USER_PW_MARTIN.path;
         HASH_LOUISE = config.sops.secrets.USER_PW_LOUISE.path;
