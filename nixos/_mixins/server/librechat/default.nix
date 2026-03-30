@@ -12,7 +12,7 @@ let
     name = "librechat-sendmail";
     runtimeInputs = [ pkgs.nullmailer ];
     text = ''
-      exec sendmail -t -i -f "$SMTPRELAY_FROM"
+      exec sendmail -i -f "$SMTPRELAY_FROM" "$@"
     '';
   };
   librechatSmtprelayConfig = pkgs.writeText "smtprelay-librechat.conf" ''
@@ -123,7 +123,7 @@ in
       };
     };
 
-    services.meilisearch.masterKeyFile = config.sops.secrets.MEILI_MASTER_KEY.path;
+    services.meilisearch.masterKeyFile = lib.mkDefault config.sops.secrets.MEILI_MASTER_KEY.path;
 
     systemd.services.smtprelay-librechat = {
       description = "SMTP relay for LibreChat";
