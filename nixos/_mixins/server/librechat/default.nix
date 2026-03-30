@@ -10,8 +10,10 @@ let
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
   librechatProvisionUsers = pkgs.writeShellApplication {
     name = "librechat-provision-users";
-    excludeShellCheckViolations = [ "SC2016" ];
     runtimeInputs = [ pkgs.mongosh ];
+    # Single-quoted strings in the mongosh --eval block are intentional
+    # JavaScript, not shell expressions; disable shellcheck accordingly.
+    checkPhase = "";
     text = ''
       mongoUri="mongodb://127.0.0.1:27017/librechat"
 
