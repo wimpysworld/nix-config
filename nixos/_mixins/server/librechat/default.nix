@@ -10,6 +10,7 @@ let
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
   librechatProvisionUsers = pkgs.writeShellApplication {
     name = "librechat-provision-users";
+    excludeShellCheckViolations = [ "SC2016" ];
     runtimeInputs = [ pkgs.mongosh ];
     text = ''
       mongoUri="mongodb://127.0.0.1:27017/librechat"
