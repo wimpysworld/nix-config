@@ -1,9 +1,6 @@
-{
-  config,
-  ...
-}:
+_:
 let
-  username = config.noughty.user.name;
+  username = "martin";
   # Use ls -la /dev/disk/by-id to find the correct names.
   nvme0 = "/dev/disk/by-id/nvme-Samsung_SSD_990_PRO_4TB_S7DPNU0YA14342Z"; # 4TB — /home
   nvme1 = "/dev/disk/by-id/nvme-WD_BLACK_SN7100_2TB_253925801063"; # 2TB — /boot + root
