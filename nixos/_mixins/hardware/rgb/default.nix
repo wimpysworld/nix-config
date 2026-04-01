@@ -9,13 +9,21 @@ let
   username = config.noughty.user.name;
   hostRGB = {
     phasma = "amd";
+    skrye = "amd";
     vader = "amd";
+    zannah = "amd";
   };
   ratbagMice = {
     "phasma" = [
       "g305"
     ];
+    "skrye" = [
+      "g305"
+    ];
     "vader" = [
+      "g305"
+    ];
+    "zannah" = [
       "g305"
     ];
   };
@@ -24,7 +32,15 @@ let
       "keyboard"
       "mouse"
     ];
+    skrye-disable = [
+      "keyboard"
+      "mouse"
+    ];
     vader-disable = [
+      "keyboard"
+      "mouse"
+    ];
+    zannah-disable = [
       "keyboard"
       "mouse"
     ];

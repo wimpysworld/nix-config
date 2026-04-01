@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 let
@@ -76,6 +75,7 @@ in
     ./tailscale
     ./malak.nix
     ./revan.nix
+    ./skrye.nix
     ./vader.nix
   ];
 

@@ -10,8 +10,8 @@ mic-loopback set 120
 
 # Optimise PipeWire Quantum for OBS Studio; prevent audio crackling
 case "${HOST}" in
-    vader)  pw-metadata --name settings 0 clock.force-quantum 64;;
-    phasma) pw-metadata --name settings 0 clock.force-quantum 64;;
+    vader|skrye)  pw-metadata --name settings 0 clock.force-quantum 64;;
+    phasma|zannah) pw-metadata --name settings 0 clock.force-quantum 64;;
     *) pw-metadata --name settings 0 clock.force-quantum 1024;;
 esac
 

@@ -9,7 +9,7 @@ let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
 in
-lib.mkIf (noughtyLib.isHost [ "vader" ]) {
+lib.mkIf (noughtyLib.isHost [ "skrye" "vader" ]) {
   environment.systemPackages = with pkgs; [ transmission_4 ];
 
   services.transmission = {

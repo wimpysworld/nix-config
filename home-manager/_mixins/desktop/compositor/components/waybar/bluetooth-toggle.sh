@@ -13,7 +13,7 @@ if [[ $state == 'yes' ]]; then
 else
   bluetoothctl power on
   bluetoothctl discoverable on
-  if [ "$HOSTNAME" == "phasma" ]; then
+  if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "zannah" ]; then
     bluetoothctl connect E4:50:EB:7D:86:22
   fi
   notify-desktop "Bluetooth connected" "Your Bluetooth devices have been connected." --urgency=low --app-name="Bluetooth Toggle" --icon=bluetooth-active
