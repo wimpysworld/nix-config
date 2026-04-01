@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   ...
 }:
@@ -30,5 +31,16 @@
   };
 
   hardware.mwProCapture.enable = true;
+
+  systemd.tmpfiles.rules = [
+    "d /home/${config.noughty.user.name}/.cache 0755 ${config.noughty.user.name} users -"
+    "d /home/${config.noughty.user.name}/.lima 0755 ${config.noughty.user.name} users -"
+    "d /home/${config.noughty.user.name}/.local 0755 ${config.noughty.user.name} users -"
+    "d /home/${config.noughty.user.name}/.local/share 0755 ${config.noughty.user.name} users -"
+    "d /home/${config.noughty.user.name}/.local/share/containers 0700 ${config.noughty.user.name} users -"
+    "d /home/${config.noughty.user.name}/Quickemu 0755 ${config.noughty.user.name} users -"
+    "d /home/${config.noughty.user.name}/Development 0755 ${config.noughty.user.name} users -"
+    "d /home/${config.noughty.user.name}/Volatile 0755 ${config.noughty.user.name} users -"
+  ];
 
 }
