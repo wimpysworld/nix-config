@@ -68,17 +68,6 @@ in
     };
   };
 
-  systemd.tmpfiles.rules = [
-    "d /home/${username}/.cache 0755 ${username} users -"
-    "d /home/${username}/.lima 0755 ${username} users -"
-    "d /home/${username}/.local 0755 ${username} users -"
-    "d /home/${username}/.local/share 0755 ${username} users -"
-    "d /home/${username}/.local/share/containers 0700 ${username} users -"
-    "d /home/${username}/Quickemu 0755 ${username} users -"
-    "d /home/${username}/Development 0755 ${username} users -"
-    "d /home/${username}/Volatile 0755 ${username} users -"
-  ];
-
   disko.devices = {
     disk = {
       nvme0 = {
