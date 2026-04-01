@@ -14,6 +14,7 @@
       golangci-lint-langserver
       gopls
       goreleaser
+      gotools
       govulncheck
     ];
     sessionPath = [
