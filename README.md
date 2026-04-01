@@ -18,7 +18,7 @@ These computers are managed by this Nix flake ❄️
 
 |  Hostname   |             Board             |              CPU               |  RAM  |         Primary GPU         |      Secondary GPU       |  Role  | OS  | State |
 | :---------: | :---------------------------: | :----------------------------: | :---: | :-------------------------: | :----------------------: | :----: | :-: | :---: |
-|  `malgus`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  🚧   |
+|  `skrye`    | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  🚧   |
 |  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  |  🚧   |
 |  `sidious`  |      [ThinkPad P1 Gen 1]      |      [Intel Xeon E-2176M]      | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630  | 💻️🎭️  | ❄️  |  ✅   |
 | `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️  | 🪟  |  ✅   |
