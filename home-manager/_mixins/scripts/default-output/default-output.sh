@@ -38,8 +38,8 @@ case "${1}" in
   usb)
       HOST="$(hostnamectl hostname)"
       case "${HOST}" in
-        vader)  ${0} ssl2;;
-        phasma) ${0} ssl2;;
+        vader|skrye)  ${0} ssl2;;
+        phasma|zannah) ${0} ssl2;;
       esac
       ;;
   vr_p10)

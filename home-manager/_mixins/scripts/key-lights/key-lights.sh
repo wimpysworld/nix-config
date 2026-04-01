@@ -9,7 +9,7 @@ BRIGHT=""
 COLOR=""
 
 HOST="$(hostnamectl hostname)"
-if [[ "${HOST}" != *"vader"* ]]; then
+if [[ "${HOST}" != *"vader"* ]] && [[ "${HOST}" != *"skrye"* ]]; then
   exit
 fi
 

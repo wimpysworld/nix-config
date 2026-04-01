@@ -200,10 +200,6 @@ in
                       mountpoint = "/var/log";
                       mountOptions = logBtrfsOpts;
                     };
-                    "@tmp" = {
-                      mountpoint = "/var/tmp";
-                      mountOptions = defaultBtrfsOpts;
-                    };
                   };
                 };
               };
