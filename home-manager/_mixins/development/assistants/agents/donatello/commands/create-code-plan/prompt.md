@@ -24,6 +24,7 @@ Create implementation plan optimised for AI-assisted development.
 - **Chunked:** Group 3-5 related tasks; each chunk produces working code
 - **Stateless:** Assume fresh AI instance per conversation
 - **DRY:** Search for existing utilities and patterns before planning new code; reuse over rewrite
+- **Cohesive:** Each task must not expand a module's responsibility beyond its existing concern; flag with 🔍 any task that concentrates unrelated responsibilities in one module or creates tight coupling between modules
 
 ### Example
 

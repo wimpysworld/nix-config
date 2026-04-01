@@ -15,7 +15,7 @@ Define what to build, how to build it, and what to reuse - bridging research int
 | Reuse Audit | Existing code, utilities, and patterns to leverage - file paths and functions |
 | Scope | Files to create or modify, with high-level intent per file |
 | Acceptance Criteria | How to verify the implementation is complete and correct |
-| Risks | Technical risks, unknowns, and dependencies that could block implementation |
+| Risks | Technical risks, unknowns, structural smell risks (god classes, inappropriate intimacy, shotgun surgery), and dependencies that could block implementation |
 | Out of Scope | What this proposal explicitly does not cover |
 
 ### Reuse Audit
