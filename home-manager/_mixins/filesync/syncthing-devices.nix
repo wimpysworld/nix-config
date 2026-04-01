@@ -12,7 +12,7 @@
     malak = {
       id = "33YEJHX-NZB34VC-KB3LI2V-HFNOALL-7O2OLEB-SE75AWA-DWOC62K-5SRXMAC";
     };
-    malgus = {
+    skrye = {
       id = "L6J7UDJ-O3WXU6L-HV5ANLQ-ADJJZP6-CFMU6G4-ZKRXUYB-3OWXI5A-TRBMGQ7";
     };
     maul = {
@@ -63,7 +63,7 @@
       path = "~/Apps";
       devices = [
         "bane"
-        "malgus"
+        "skrye"
         "momin"
         "phasma"
         "revan"
@@ -78,7 +78,7 @@
       path = "~/Audio";
       devices = [
         "bane"
-        "malgus"
+        "skrye"
         "phasma"
         "revan"
         "vader"
@@ -92,7 +92,7 @@
       path = "~/Chainguard";
       devices = [
         "bane"
-        "malgus"
+        "skrye"
         "phasma"
         "vader"
         "zannah"
@@ -108,7 +108,7 @@
         "bane"
         "felkor"
         "malak"
-        "malgus"
+        "skrye"
         "maul"
         "momin"
         "phasma"
@@ -127,7 +127,7 @@
       path = "~/Development";
       devices = [
         "bane"
-        "malgus"
+        "skrye"
         "momin"
         "phasma"
         "vader"
@@ -141,7 +141,7 @@
       path = "~/Documents";
       devices = [
         "bane"
-        "malgus"
+        "skrye"
         "momin"
         "phasma"
         "revan"
@@ -156,7 +156,7 @@
       path = "~/Downloads";
       devices = [
         "bane"
-        "malgus"
+        "skrye"
         "momin"
         "phasma"
         "revan"
@@ -170,7 +170,7 @@
       maxConflicts = 10;
       path = "~/Games";
       devices = [
-        "malgus"
+        "skrye"
         "phasma"
         "vader"
         "zannah"
@@ -182,7 +182,7 @@
       maxConflicts = 10;
       path = "~/Music";
       devices = [
-        "malgus"
+        "skrye"
         "phasma"
         "vader"
         "zannah"
@@ -195,7 +195,7 @@
       path = "~/Pictures";
       devices = [
         "bane"
-        "malgus"
+        "skrye"
         "phasma"
         "revan"
         "vader"
@@ -208,7 +208,7 @@
       maxConflicts = 10;
       path = "~/Studio";
       devices = [
-        "malgus"
+        "skrye"
         "phasma"
         "revan"
         "vader"
@@ -221,7 +221,7 @@
       maxConflicts = 10;
       path = "~/Videos";
       devices = [
-        "malgus"
+        "skrye"
         "phasma"
         "vader"
         "zannah"
