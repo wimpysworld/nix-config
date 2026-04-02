@@ -6,16 +6,16 @@
 
 buildGoModule rec {
   pname = "goreleaser-mcp";
-  version = "0.3.3";
+  version = "0.3.4";
 
   src = fetchFromGitHub {
     owner = "goreleaser";
     repo = "mcp";
     rev = "v${version}";
-    hash = "sha256-aGvdxAdsMKd81eVROxKbw5kRu4ng8qNvCWZGGzmUxME=";
+    hash = "sha256-VMuP3/u8tTtqC2n/Xrq1bCdUdf6xXMtHgBC2KF0hBhc=";
   };
 
-  vendorHash = "sha256-EkH6ghYfiDTd4jDwMCJFoWmgmzFb3dDWpmB2fq8sa+I=";
+  vendorHash = "sha256-tndQDFg5fANwriXMykU9vU0SEXzQVdk/nbeBDl2Ms5Y=";
 
   ldflags = [
     "-s"
