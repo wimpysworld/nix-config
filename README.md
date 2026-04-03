@@ -18,11 +18,11 @@ These computers are managed by this Nix flake ❄️
 
 |  Hostname   |             Board             |              CPU               |  RAM  |         Primary GPU         |      Secondary GPU       |  Role  | OS  | State |
 | :---------: | :---------------------------: | :----------------------------: | :---: | :-------------------------: | :----------------------: | :----: | :-: | :---: |
-|  `skrye`    | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  🚧   |
-|  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  |  🚧   |
+|  `skrye`    | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  ✅   |
+|  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  | ✅   |
+|   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  ✅   |
 |  `sidious`  |      [ThinkPad P1 Gen 1]      |      [Intel Xeon E-2176M]      | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630  | 💻️🎭️  | ❄️  |  ✅   |
 | `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️  | 🪟  |  ✅   |
-|   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  ✅   |
 |   `tanis`   |     [ThinkPad Z13 Gen 1]      |    [AMD Ryzen 5 PRO 6650U]     | 32GB  |       AMD Radeon 660M       |                          |  💻️   | ❄️  |  ✅   |
 |  `felkor`   |     [ThinkPad X13 Gen 2]      |    [AMD Ryzen 5 PRO 5650U]     | 16GB  |      AMD Radeon Vega 7      |                          |  💻️   | ❄️  |  🚧   |
 |   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
