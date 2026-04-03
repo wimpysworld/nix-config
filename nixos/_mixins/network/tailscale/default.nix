@@ -14,8 +14,6 @@ let
   ];
 in
 lib.mkIf (host.is.workstation || host.is.server) {
-  environment.systemPackages = with pkgs; lib.optionals host.is.workstation [ trayscale ];
-
   services.tailscale = {
     # OAuth client secret is used directly as the auth key value
     authKeyFile = lib.mkIf (!host.is.iso) config.sops.secrets.tailscale-client-secret.path;
@@ -40,6 +38,20 @@ lib.mkIf (host.is.workstation || host.is.server) {
     permitCertUid = lib.mkIf config.services.caddy.enable "caddy";
     openFirewall = true;
     useRoutingFeatures = if noughtyLib.isHost tsExitNodes then "both" else "client";
+  };
+
+  # Run the Tailscale systray as a user service on workstations, bound to
+  # the graphical session so it starts and stops with the desktop environment
+  systemd.user.services.tailscale-systray = lib.mkIf host.is.workstation {
+    description = "Tailscale system tray";
+    after = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    wantedBy = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.tailscale}/bin/tailscale systray";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
   };
 
   sops = lib.mkIf (!host.is.iso) {
