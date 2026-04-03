@@ -26,7 +26,7 @@
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "desktop"
-tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox", "borgbackup"]
+tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox"]
 
 [vader.gpu]
 vendors = ["amd", "nvidia"]
@@ -61,7 +61,7 @@ position = { x = 320, y = 2880 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "desktop"
-tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox", "borgbackup"]
+tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox"]
 
 [phasma.gpu]
 vendors = ["amd", "nvidia"]
@@ -99,7 +99,7 @@ position = { x = 760, y = 2720 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["policy", "workspace", "dropbox", "fprintd"]
+tags = ["policy", "workspace", "dropbox", "fprintd", "wayvnc"]
 
 [bane.gpu]
 vendors = ["amd"]
