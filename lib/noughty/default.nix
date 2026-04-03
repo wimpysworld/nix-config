@@ -334,6 +334,23 @@ in
 
       # ── Display output configuration ──────────────────────────────
 
+      network = {
+        wifi = lib.mkOption {
+          type = lib.types.bool;
+          default =
+            if config.noughty.host.kind == "server" then
+              false
+            else
+              lib.elem config.noughty.host.formFactor [
+                "laptop"
+                "handheld"
+              ];
+          description = "Whether this host has WiFi hardware. Defaults to true for laptops and handhelds, false for servers and all other form factors.";
+        };
+      };
+
+      # ── Display output configuration ──────────────────────────────
+
       displays = lib.mkOption {
         type = lib.types.listOf displaySubmodule;
         default = [ ];

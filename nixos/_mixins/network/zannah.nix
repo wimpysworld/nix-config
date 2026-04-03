@@ -4,12 +4,8 @@
   noughtyLib,
   ...
 }:
-lib.mkIf (noughtyLib.isHost [ "skrye" ]) {
+lib.mkIf (noughtyLib.isHost [ "zannah" ]) {
   networking.networkmanager = lib.mkIf config.networking.networkmanager.enable {
-    # Adjust MTU for Virgin Fibre
-    connectionConfig = {
-      "ethernet.mtu" = 1462;
-    };
     ensureProfiles.profiles = {
       "enp191s0" = {
         connection = {

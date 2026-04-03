@@ -6,7 +6,10 @@
 let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
-  useDoT = if host.is.laptop then "opportunistic" else "true";
+  useDoT =
+  	if host.is.iso then "false"
+  	else if useNetworkManager then "opportunistic"
+  	else "true";
   useNetworkManager = if (host.is.iso || !host.is.server) then true else false;
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
@@ -77,6 +80,7 @@ in
     ./revan.nix
     ./skrye.nix
     ./vader.nix
+    ./zannah.nix
   ];
 
   networking = {
@@ -95,7 +99,6 @@ in
       10.10.10.19    Hue-Bridge-Office hue-bridge-office
       10.10.10.20    Elgato_Key_Light_Air_DAD4 keylight-left key-left
       10.10.10.21    Elgato_Key_Light_Air_EEE9 keylight-right key-right
-      10.10.10.22    moodlamp
       10.10.10.23    small-lamp-bulb
     '';
     firewall = {
@@ -117,8 +120,8 @@ in
       dns = "systemd-resolved";
       enable = true;
       unmanaged = unmanagedInterfaces;
-      wifi.backend = "iwd";
-      wifi.powersave = !host.is.laptop;
+      wifi.backend = lib.mkIf host.network.wifi "iwd";
+      wifi.powersave = lib.mkIf host.network.wifi (!host.is.laptop);
     };
     # https://wiki.nixos.org/wiki/Incus
     nftables.enable = lib.mkIf config.virtualisation.incus.enable true;
@@ -150,7 +153,7 @@ in
 
   sops = lib.mkIf (!host.is.iso) {
     secrets = {
-      psk = lib.mkIf config.networking.networkmanager.enable {
+      psk = lib.mkIf (config.networking.networkmanager.enable && host.network.wifi) {
         mode = "0600";
         path = "/var/lib/iwd/SoroSuub Centroplex.psk";
         sopsFile = ../../../secrets/iwd.yaml;

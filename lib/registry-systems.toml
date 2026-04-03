@@ -211,6 +211,9 @@ tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-cap
 [skrye.gpu]
 vendors = ["amd"]
 
+[skrye.network]
+wifi = false
+
 [[skrye.displays]]
 output = "DP-1"
 width = 2560
@@ -234,6 +237,9 @@ tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-cap
 
 [zannah.gpu]
 vendors = ["amd"]
+
+[zannah.network]
+wifi = false
 
 [[zannah.displays]]
 output = "DP-1"
