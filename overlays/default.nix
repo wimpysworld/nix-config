@@ -7,7 +7,7 @@
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
-  modifiedPackages = final: prev: {
+  modifiedPackages = _final: prev: {
     # Override Python packages to fix Darwin-specific issues
     python3 = prev.python3.override {
       packageOverrides = _pyfinal: pyprev: {

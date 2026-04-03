@@ -31,7 +31,7 @@ let
   # v2.2.0 expanded the schema to include resets_at alongside utilization,
   # so the match pattern covers the full three-line block for each field.
   ccstatuslinePatched =
-    (inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccstatusline).overrideAttrs
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccstatusline.overrideAttrs
       (old: {
         nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.perl ];
         postInstall = (old.postInstall or "") + ''
@@ -731,7 +731,7 @@ let
     "Read(${config.xdg.dataHome}/fish/fish_history)"
   ];
 
-  lspServers = config.claude-code.lspServers;
+  inherit (config.claude-code) lspServers;
 
   # Wrap Claude Code with LSP plugin support when language modules contribute
   # LSP server configurations. Sets ENABLE_LSP_TOOL=1 and passes --plugin-dir
