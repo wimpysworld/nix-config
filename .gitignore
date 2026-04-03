@@ -1,4 +1,3 @@
 .direnv/*
 !home-manager/_mixins/development/direnv/
 result/
-plans/
