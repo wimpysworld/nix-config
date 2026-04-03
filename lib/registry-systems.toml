@@ -297,7 +297,7 @@ vram = 24
 [revan]
 kind = "server"
 platform = "x86_64-linux"
-tags = ["scrutiny", "dropbox"]
+tags = ["scrutiny", "dropbox", "librechat"]
 
 [revan.gpu]
 vendors = ["intel", "nvidia"]
