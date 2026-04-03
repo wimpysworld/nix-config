@@ -39,7 +39,7 @@ lib.mkIf (host.is.workstation || host.is.server) {
     # - https://tailscale.com/blog/caddy
     permitCertUid = lib.mkIf config.services.caddy.enable "caddy";
     openFirewall = true;
-    useRoutingFeatures = "both";
+    useRoutingFeatures = if noughtyLib.isHost tsExitNodes then "both" else "client";
   };
 
   sops = lib.mkIf (!host.is.iso) {

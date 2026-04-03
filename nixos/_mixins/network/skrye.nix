@@ -10,20 +10,5 @@ lib.mkIf (noughtyLib.isHost [ "skrye" ]) {
     connectionConfig = {
       "ethernet.mtu" = 1462;
     };
-    ensureProfiles.profiles = {
-      "enp191s0" = {
-        connection = {
-          id = "enp191s0";
-          type = "ethernet";
-          interface-name = "enp191s0";
-        };
-        ipv4 = {
-          ignore-auto-dns = "true";
-        };
-        ipv6 = {
-          ignore-auto-dns = "true";
-        };
-      };
-    };
   };
 }
