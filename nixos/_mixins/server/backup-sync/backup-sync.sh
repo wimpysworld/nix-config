@@ -8,8 +8,6 @@ fi
 
 # Configuration
 LOCAL_BACKUP="/mnt/data/backup/"
-# "phasma:/mnt/snapshot/backup-malak/"
-# "vader:/mnt/snapshot/backup-malak/"
 REMOTE_HOSTS=(
     "revan:/mnt/snapshot/backup-malak/"
 )

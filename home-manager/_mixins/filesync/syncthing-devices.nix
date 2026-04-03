@@ -51,9 +51,7 @@
       maxConflicts = 10;
       path = "/mnt/snapshot/martin/Archive";
       devices = [
-        "phasma"
         "revan"
-        "vader"
       ];
     };
     apps = {

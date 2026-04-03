@@ -11,10 +11,8 @@ let
 
   # Legacy hosts store backups under /mnt/snapshot; newer hosts use /mnt/data.
   legacyHosts = [
-    "phasma"
     "revan"
     "skrye"
-    "vader"
     "zannah"
   ];
   backupBase = if lib.elem host.name legacyHosts then "/mnt/snapshot" else "/mnt/data";
