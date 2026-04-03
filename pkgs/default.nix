@@ -8,7 +8,6 @@ pkgs: {
   opencode-desktop = pkgs.callPackage ./opencode-desktop { };
   openchamber-desktop = pkgs.callPackage ./openchamber-desktop { };
   openchamber-web = pkgs.callPackage ./openchamber-web { };
-  goreleaser-mcp = pkgs.callPackage ./goreleaser-mcp { };
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
