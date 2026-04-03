@@ -4,9 +4,6 @@
   pkgs,
   ...
 }:
-let
-  inherit (config.noughty) host;
-in
 {
   home = {
     packages = with pkgs; [

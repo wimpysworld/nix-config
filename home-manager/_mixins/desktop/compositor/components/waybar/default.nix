@@ -27,23 +27,6 @@ let
     ];
     text = builtins.readFile ./bluetooth-toggle.sh;
   };
-  tailscaleCheck = pkgs.writeShellApplication {
-    name = "tailscale-check";
-    runtimeInputs = with pkgs; [
-      jq
-      tailscale
-    ];
-    text = builtins.readFile ./tailscale-check.sh;
-  };
-  tailscaleToggle = pkgs.writeShellApplication {
-    name = "tailscale-toggle";
-    runtimeInputs = with pkgs; [
-      jq
-      notify-desktop
-      tailscale
-    ];
-    text = builtins.readFile ./tailscale-toggle.sh;
-  };
   virtualcamCheck = pkgs.writeShellApplication {
     name = "virtualcam-check";
     runtimeInputs = with pkgs; [
@@ -67,12 +50,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
     waybar.enable = config.programs.waybar.enable;
   };
 
-  # Just use trayscale as a UI
-  dconf.settings = {
-    "dev/deedles/Trayscale" = {
-      tray-icon = false;
-    };
-  };
   programs = {
     waybar = {
       enable = true;
@@ -183,7 +160,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         #pulseaudio.input,
         #bluetooth,
         #network,
-        #custom-vpn,
         #battery,
         #backlight,
         #cpu,
@@ -201,7 +177,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         #pulseaudio.input:hover,
         #bluetooth:hover,
         #network:hover,
-        #custom-vpn:hover,
         #battery:hover,
         #backlight:hover,
         #cpu:hover,
@@ -236,11 +211,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         #network {
           border-radius: 0;
           color: @sapphire;
-        }
-
-        #custom-vpn {
-          border-radius: 0;
-          color: @sky;
         }
 
         #battery {
@@ -317,7 +287,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           ++ [
             "bluetooth"
             "network"
-            "custom/vpn"
             "battery"
             "backlight"
             "cpu"
@@ -495,12 +464,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
             tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
             tooltip-format-disconnected = "󰲜  disconnected";
-          };
-          "custom/vpn" = {
-            format = "<big>{}</big>";
-            exec = "${lib.getExe tailscaleCheck}";
-            on-click-middle = "${lib.getExe tailscaleToggle} toggle";
-            interval = 2;
           };
           backlight = {
             # TODO: configure this to use the correct device

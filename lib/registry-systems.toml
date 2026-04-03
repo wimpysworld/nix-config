@@ -26,7 +26,7 @@
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "desktop"
-tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox", "borgbackup"]
+tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox"]
 
 [vader.gpu]
 vendors = ["amd", "nvidia"]
@@ -61,7 +61,7 @@ position = { x = 320, y = 2880 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "desktop"
-tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox", "borgbackup"]
+tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox"]
 
 [phasma.gpu]
 vendors = ["amd", "nvidia"]
@@ -99,7 +99,7 @@ position = { x = 760, y = 2720 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["policy", "workspace", "dropbox", "fprintd"]
+tags = ["policy", "workspace", "dropbox", "fprintd", "wayvnc"]
 
 [bane.gpu]
 vendors = ["amd"]
@@ -201,6 +201,63 @@ height = 1200
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
 position = { x = 0, y = 0 }
+
+[skrye]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "desktop"
+tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox"]
+
+[skrye.gpu]
+vendors = ["amd"]
+
+[skrye.network]
+wifi = false
+
+[[skrye.displays]]
+output = "DP-1"
+width = 2560
+height = 2880
+primary = true
+workspaces = [1, 2, 7, 8]
+position = { x = 0, y = 0 }
+
+[[skrye.displays]]
+output = "DP-2"
+width = 2560
+height = 2880
+workspaces = [3, 4, 5, 6, 9]
+position = { x = 2560, y = 0 }
+
+[zannah]
+kind = "computer"
+platform = "x86_64-linux"
+formFactor = "desktop"
+tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox"]
+
+[zannah.gpu]
+vendors = ["amd"]
+
+[zannah.network]
+wifi = false
+
+[[zannah.displays]]
+output = "DP-1"
+width = 3440
+height = 1440
+refresh = 100
+primary = true
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 0, y = 1280 }
+
+[[zannah.displays]]
+output = "HDMI-A-1"
+width = 2560
+height = 1600
+refresh = 120
+scale = 1.25
+workspaces = [9]
+position = { x = 1920, y = 0 }
 
 # Gaming - non-standard username and desktop, so both explicit
 

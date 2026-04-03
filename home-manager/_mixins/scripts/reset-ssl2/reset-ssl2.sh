@@ -4,8 +4,8 @@ VENDOR="31e9"
 PRODUCT="0001"
 HOST=$(hostnamectl hostname)
 case "${HOST}" in
-  phasma|vader) PRODUCT="0002";;
-  *) echo "This script is only meant to be run on phasma or vader";;
+  phasma|vader|skrye|zannah) PRODUCT="0002";;
+  *) echo "This script is only meant to be run on phasma, vader, skrye, or zannah";;
 esac
 
 sudo true

@@ -111,7 +111,7 @@
       nixosModules = import ./modules/nixos;
 
       packages = builder.mkPackages {
-        overlays = self.overlays;
+        inherit (self) overlays;
         localPackagesPath = ./pkgs;
         linuxOnlyFlakeInputs = {
           inherit (inputs)
@@ -126,7 +126,7 @@
       formatter = builder.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
 
       devShells = builder.mkDevShells {
-        overlays = self.overlays;
+        inherit (self) overlays;
         shellPackages =
           p: with p; [
             deadnix

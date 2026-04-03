@@ -15,7 +15,7 @@ set +o pipefail  # Disable pipefail
 LIGHTS="${1}"
 HOST="$(hostnamectl hostname)"
 
-if [[ "${HOST}" != *"vader"* ]]; then
+if [[ "${HOST}" != *"vader"* ]] && [[ "${HOST}" != *"skrye"* ]]; then
   exit
 fi
 

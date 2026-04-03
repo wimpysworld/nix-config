@@ -54,7 +54,7 @@ for component in "kernel" "kernel-modules" "initrd"; do
 done
 
 if [ -z "$changes" ]; then
-	echo "Reboot  not required"
+	echo "Reboot \e[1mnot\e[0m required"
 	exit 2
 else
 	echo -e "Reboot \e[1madvised\e[0m - kernel/initrd changed:"

@@ -45,7 +45,14 @@
           "items": { "$ref": "#/definitions/display" },
           "description": "List of display outputs."
         },
-        "keyboard": { "$ref": "#/definitions/keyboard" }
+        "keyboard": { "$ref": "#/definitions/keyboard" },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "wifi": { "type": "boolean" }
+          }
+        }
       }
     },
     "gpu": {

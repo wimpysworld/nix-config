@@ -1,2 +1,3 @@
 use-task: true
 model: opus
+argument-hint: "<output-file>"

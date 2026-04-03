@@ -13,7 +13,7 @@
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     ./old/disks.nix
     ./old/disks-home.nix
-    ./old/disks-snapshot.nix
+    #./old/disks-snapshot.nix
   ];
   boot = {
     initrd.availableKernelModules = [

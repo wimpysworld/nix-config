@@ -7,7 +7,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf host.is.laptop {
+lib.mkIf (!host.is.iso && host.network.wifi) {
   # captive-browser: Go tool that starts a local SOCKS5 proxy using
   # DHCP-provided DNS (bypassing systemd-resolved and DoT), then launches
   # a browser through that proxy for portal login.

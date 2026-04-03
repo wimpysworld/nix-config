@@ -8,7 +8,9 @@
 lib.mkIf
   (noughtyLib.isHost [
     "phasma"
+    "skrye"
     "vader"
+    "zannah"
   ])
   {
     claude-code.lspServers.lua = {

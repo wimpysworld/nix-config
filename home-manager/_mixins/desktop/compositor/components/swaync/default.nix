@@ -126,10 +126,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               command = "${lib.getExe swayncRun} ${lib.getExe pkgs.iwgtk}";
             }
             {
-              label = "󰴳";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.trayscale}";
-            }
-            {
               label = "󱁗";
               command = "${lib.getExe swayncRun} ${pkgs.system-config-printer}/bin/system-config-printer";
             }

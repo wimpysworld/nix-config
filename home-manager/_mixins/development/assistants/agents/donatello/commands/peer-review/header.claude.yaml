@@ -1,3 +1,2 @@
-use-task: true
-model: sonnet
 argument-hint: "<output-file>"
+model: opus

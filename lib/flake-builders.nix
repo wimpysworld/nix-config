@@ -85,9 +85,9 @@ rec {
   # (Import From Derivation) which would block evaluation for every host.
   mkCatppuccinPalette =
     {
+      system ? null,
       flavor ? "mocha",
       accent ? "blue",
-      system ? "x86_64-linux",
     }:
     let
       paletteJson = builtins.fromJSON (builtins.readFile ./catppuccin-palette.json);
@@ -168,6 +168,7 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostDisplays ? [ ],
+      hostNetworkWifi ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -200,6 +201,9 @@ rec {
             };
             tags = hostTags;
             displays = hostDisplays;
+            network = lib.optionalAttrs (hostNetworkWifi != null) {
+              wifi = hostNetworkWifi;
+            };
             keyboard = {
               layout = hostKeyboardLayout;
               variant = hostKeyboardVariant;
@@ -225,6 +229,7 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostDisplays ? [ ],
+      hostNetworkWifi ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -263,6 +268,9 @@ rec {
               };
               tags = hostTags;
               displays = hostDisplays;
+              network = lib.optionalAttrs (hostNetworkWifi != null) {
+                wifi = hostNetworkWifi;
+              };
               keyboard = {
                 layout = hostKeyboardLayout;
                 variant = hostKeyboardVariant;
@@ -288,6 +296,7 @@ rec {
       hostGpuCompute ? { },
       hostTags ? [ ],
       hostDisplays ? [ ],
+      hostNetworkWifi ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -323,6 +332,9 @@ rec {
             };
             tags = hostTags;
             displays = hostDisplays;
+            network = lib.optionalAttrs (hostNetworkWifi != null) {
+              wifi = hostNetworkWifi;
+            };
             keyboard = {
               layout = hostKeyboardLayout;
               variant = hostKeyboardVariant;
@@ -359,6 +371,7 @@ rec {
       hostGpuCompute = (resolved.gpu or { }).compute or { };
       hostTags = resolved.tags or [ ];
       hostDisplays = resolved.displays or [ ];
+      hostNetworkWifi = (resolved.network or { }).wifi or null;
       hostKeyboardLayout = (resolved.keyboard or { }).layout or "gb";
       hostKeyboardVariant = (resolved.keyboard or { }).variant or "";
       userTags = (resolved.userEntry or { }).tags or [ ];
