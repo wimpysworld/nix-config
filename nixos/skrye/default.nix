@@ -25,8 +25,7 @@
     ];
     kernelParams = [
       "video=DP-1:2560x2880@60"
-      "video=DP-2:2560x2880@60"
-      "video=DP-3:1920x1080@60"
+      "video=DP-4:2560x2880@60"
     ];
   };
 
