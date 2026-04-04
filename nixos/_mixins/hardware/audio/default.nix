@@ -9,11 +9,20 @@ let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
   useLowLatencyPipewire = noughtyLib.hostHasTag "studio";
+
+  # Audio parameters - centralised for consistency across all configs
+  sampleRate = 48000;
+  # 96 works on Framework Desktop (Ryzen AI MAX); 64 was fine on Ryzen 5000.
+  # Must be consistent across pipewire, pipewire-pulse, and wireplumber.
+  quantum = 128;
+  # Express quantum as a fraction string for pipewire-pulse
+  quantumFrac = "${toString quantum}/${toString sampleRate}";
+  powerOfTwoQuantum = quantum > 0 && builtins.bitAnd quantum (quantum - 1) == 0;
 in
 lib.mkIf (!host.is.iso) {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency
   boot = lib.mkIf config.services.pipewire.enable {
-    # - Inpired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
+    # - Inspired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
     kernelParams = [ "threadirqs" ];
   };
 
@@ -41,48 +50,56 @@ lib.mkIf (!host.is.iso) {
     pipewire = {
       enable = true;
       alsa.enable = true;
-      # Enable 32-bit support
       alsa.support32Bit = lib.mkForce config.hardware.graphics.enable32Bit;
       jack.enable = false;
       pulse.enable = true;
       wireplumber = {
         enable = true;
-        # https://stackoverflow.com/questions/24040672/the-meaning-of-period-in-alsa
         # https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/alsa.html#alsa-buffer-properties
-        # cat /nix/store/*-wireplumber-*/share/wireplumber/main.lua.d/99-alsa-lowlatency.lua
-        # cat /nix/store/*-wireplumber-*/share/wireplumber/wireplumber.conf.d/99-alsa-lowlatency.conf
         configPackages = lib.mkIf useLowLatencyPipewire [
-          (pkgs.writeTextDir "share/wireplumber/main.lua.d/99-alsa-lowlatency.lua" ''
-            alsa_monitor.rules = {
+          # Modern WirePlumber .conf format (replaces Lua config)
+          (pkgs.writeTextDir "share/wireplumber/wireplumber.conf.d/99-alsa-lowlatency.conf" ''
+            monitor.alsa.rules = [
               {
-                matches = {{{ "node.name", "matches", "*_*put.*" }}};
-                apply_properties = {
-                  ["audio.format"] = "S16LE",
-                  ["audio.rate"] = 48000,
-                  -- api.alsa.headroom: defaults to 0
-                  ["api.alsa.headroom"] = 128,
-                  -- api.alsa.period-num: defaults to 2
-                  ["api.alsa.period-num"] = 2,
-                  -- api.alsa.period-size: defaults to 1024, tweak by trial-and-error
-                  ["api.alsa.period-size"] = 512,
-                  -- api.alsa.disable-batch: USB audio interface typically use the batch mode
-                  ["api.alsa.disable-batch"] = false,
-                  ["resample.quality"] = 4,
-                  ["resample.disable"] = false,
-                  ["session.suspend-timeout-seconds"] = 0,
-                },
-              },
-            }
+                matches = [
+                  {
+                    node.name = "~alsa_*put.*"
+                  }
+                ]
+                actions = {
+                  update-props = {
+                    audio.rate = ${toString sampleRate}
+                    # api.alsa.headroom: extra delay between hw and sw pointers.
+                    # Higher values absorb timing jitter from USB batch devices.
+                    api.alsa.headroom = ${toString quantum}
+                    # api.alsa.period-num: number of periods in the hw buffer.
+                    api.alsa.period-num = 2
+                    # api.alsa.period-size: controls IRQ frequency (period-size/2 for batch).
+                    # Should be >= quantum. For batch USB devices, effective period is half this.
+                    api.alsa.period-size = ${toString (quantum * 2)}
+                    # USB audio interfaces are typically batch devices; keep default behaviour
+                    api.alsa.disable-batch = false
+                    resample.quality = 10
+                    resample.disable = false
+                    session.suspend-timeout-seconds = 0
+                  }
+                }
+              }
+            ]
           '')
         ];
       };
       # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
       extraConfig.pipewire."92-low-latency" = lib.mkIf useLowLatencyPipewire {
         "context.properties" = {
-          "default.clock.rate" = 48000;
-          "default.clock.quantum" = 64;
-          "default.clock.min-quantum" = 64;
-          "default.clock.max-quantum" = 64;
+          # OPTIONAL: uncomment to avoid resampling 44.1kHz content
+          "default.clock.allowed-rates" = [ 44100 48000 ];
+          "default.clock.rate" = sampleRate;
+          # Disable power-of-two rounding so non-PoT quantums (96) work correctly
+          "clock.power-of-two-quantum" = powerOfTwoQuantum;
+          "default.clock.quantum" = quantum;
+          "default.clock.min-quantum" = quantum;
+          "default.clock.max-quantum" = quantum;
         };
         "context.modules" = [
           {
@@ -96,20 +113,19 @@ lib.mkIf (!host.is.iso) {
       };
       extraConfig.pipewire-pulse."92-low-latency" = lib.mkIf useLowLatencyPipewire {
         "pulse.properties" = {
-          "pulse.default.format" = "S16";
-          "pulse.fix.format" = "S16LE";
-          "pulse.fix.rate" = "48000";
-          "pulse.min.frag" = "64/48000"; # 1.3ms
-          "pulse.min.req" = "64/48000"; # 1.3ms
-          "pulse.default.frag" = "64/48000"; # 1.3ms
-          "pulse.default.req" = "64/48000"; # 1.3ms
-          "pulse.max.req" = "64/48000"; # 1.3ms
-          "pulse.min.quantum" = "64/48000"; # 1.3ms
-          "pulse.max.quantum" = "64/48000"; # 1.3ms
+          "pulse.fix.rate" = "${toString sampleRate}";
+          # All pulse quantum/frag values must match or exceed the pipewire quantum
+          "pulse.min.frag" = quantumFrac;
+          "pulse.min.req" = quantumFrac;
+          "pulse.default.frag" = quantumFrac;
+          "pulse.default.req" = quantumFrac;
+          "pulse.max.req" = quantumFrac;
+          "pulse.min.quantum" = quantumFrac;
+          "pulse.max.quantum" = quantumFrac;
         };
         "stream.properties" = {
-          "node.latency" = "64/48000"; # 1.3ms
-          "resample.quality" = 4;
+          "node.latency" = quantumFrac;
+          "resample.quality" = 10;
           "resample.disable" = false;
         };
       };
@@ -156,7 +172,7 @@ lib.mkIf (!host.is.iso) {
       ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x1002", ATTR{class}=="0xab28", ATTR{power/control}="auto", ATTR{remove}="1"
       # Remove NVIDIA Audio devices; if present
       ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x040300", ATTR{power/control}="auto", ATTR{remove}="1"
-      # Expose important timers the members of the audio group
+      # Expose important timers to members of the audio group
       # Inspired by musnix: https://github.com/musnix/musnix/blob/master/modules/base.nix#L94
       KERNEL=="rtc0", GROUP="audio"
       KERNEL=="hpet", GROUP="audio"
