@@ -63,7 +63,7 @@ lib.mkIf (!host.is.iso) {
               {
                 matches = [
                   {
-                    node.name = "~alsa_*put.*"
+                    node.name = "~alsa_.*put.*"
                   }
                 ]
                 actions = {
@@ -93,7 +93,10 @@ lib.mkIf (!host.is.iso) {
       extraConfig.pipewire."92-low-latency" = lib.mkIf useLowLatencyPipewire {
         "context.properties" = {
           # OPTIONAL: uncomment to avoid resampling 44.1kHz content
-          "default.clock.allowed-rates" = [ 44100 48000 ];
+          "default.clock.allowed-rates" = [
+            44100
+            48000
+          ];
           "default.clock.rate" = sampleRate;
           # Disable power-of-two rounding so non-PoT quantums (96) work correctly
           "clock.power-of-two-quantum" = powerOfTwoQuantum;

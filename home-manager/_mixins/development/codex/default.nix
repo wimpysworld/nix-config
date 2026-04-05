@@ -7,6 +7,7 @@
 }:
 let
   codexPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
+  tomlMergePython = pkgs.python3.withPackages (ps: [ ps.tomli-w ]);
 
   # Import shared MCP server definitions and translate them into Codex's
   # native config.toml schema.
@@ -542,19 +543,74 @@ let
   # with "failed to persist config.toml at /nix/store/...", so the trust prompt
   # reappears every session despite correct [projects] entries.
   #
-  # Why preserve an existing real file: codex appends new [projects] entries at
-  # runtime when the user trusts a new directory. Overwriting on every switch
-  # would wipe those entries, requiring the user to re-trust on next launch.
-  # A symlink at the target path is replaced unconditionally (it cannot be
-  # written to); a real file is left alone so runtime additions survive.
+  # Why merge instead of copy-once: codex appends new [projects] entries and may
+  # persist other runtime preferences. Home Manager must still apply later
+  # declarative changes. The activation step merges any existing mutable file
+  # with the declarative baseline, preserving unknown runtime keys while the
+  # managed settings in codexSettings take precedence.
   codexConfigToml = (pkgs.formats.toml { }).generate "codex-config.toml" codexSettings;
+  codexConfigMergeScript = pkgs.writeText "merge-codex-config.py" ''
+    import copy
+    import pathlib
+    import sys
+    import tomllib
+
+    import tomli_w
+
+
+    def load_toml(path_str: str) -> dict:
+        path = pathlib.Path(path_str)
+        if not path.exists():
+            return {}
+
+        try:
+            with path.open("rb") as handle:
+                data = tomllib.load(handle)
+        except (tomllib.TOMLDecodeError, OSError):
+            return {}
+
+        return data if isinstance(data, dict) else {}
+
+
+    def merge_config(existing, desired):
+        if not isinstance(existing, dict) or not isinstance(desired, dict):
+            return copy.deepcopy(desired)
+
+        merged = copy.deepcopy(existing)
+        for key, desired_value in desired.items():
+            existing_value = merged.get(key)
+
+            if key == "projects" and isinstance(desired_value, dict):
+                project_entries = copy.deepcopy(existing_value) if isinstance(existing_value, dict) else {}
+                project_entries.update(copy.deepcopy(desired_value))
+                merged[key] = project_entries
+            elif isinstance(existing_value, dict) and isinstance(desired_value, dict):
+                merged[key] = merge_config(existing_value, desired_value)
+            else:
+                merged[key] = copy.deepcopy(desired_value)
+
+        return merged
+
+
+    desired_path, target_path = sys.argv[1:3]
+    desired = load_toml(desired_path)
+    existing = load_toml(target_path)
+    merged = merge_config(existing, desired)
+
+    target = pathlib.Path(target_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_name(f"{target.name}.tmp")
+    tmp.write_text(tomli_w.dumps(merged), encoding="utf-8")
+    tmp.replace(target)
+  '';
   codexConfigActivationScript = ''
     mkdir -p "${codexDir}"
-    # Replace if absent or if a symlink snuck back in; preserve a real file.
-    if [ ! -e "${codexDir}/config.toml" ] || [ -L "${codexDir}/config.toml" ]; then
-      cp --remove-destination ${codexConfigToml} "${codexDir}/config.toml"
-      chmod 644 "${codexDir}/config.toml"
+    # Replace a symlink first, then merge runtime state with the declarative baseline.
+    if [ -L "${codexDir}/config.toml" ]; then
+      rm "${codexDir}/config.toml"
     fi
+    ${tomlMergePython}/bin/python ${codexConfigMergeScript} ${codexConfigToml} "${codexDir}/config.toml"
+    chmod 644 "${codexDir}/config.toml"
   '';
 in
 {

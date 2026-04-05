@@ -31,7 +31,7 @@ Skills are also written as real files via activation script. The codex-rs scanne
 
 SKILL.md frontmatter requires `name:` and `description:` fields. Any `description:` value containing `: ` (colon-space) must be quoted, or codex-rs will fail to parse the skill entirely.
 
-User-defined slash commands do not exist in codex-rs. The `~/codex/prompts/` directory was removed in March 2026; the `/`-prefixed commands (`/skills`, `/agent`, `/review`, `/new`) are a hardcoded enum in the binary. Deploy custom commands as skills instead and invoke them with `$skill-name`.
+User-defined slash commands do not exist in codex-rs. The `~/.codex/prompts/` directory was removed in March 2026; the `/`-prefixed commands (`/skills`, `/agent`, `/review`, `/new`) are a hardcoded enum in the binary. Deploy custom commands as skills instead and invoke them with `$skill-name`.
 
 ### Command skills
 
