@@ -14,7 +14,7 @@ $skill-name            # invoke a skill by name in the composer
 
 All settings live in `~/.codex/config.toml`. The file is written as a real file during Home Manager activation, not a symlink, because codex edits it in-place at runtime to persist trust decisions. A symlinked file points into the read-only Nix store; codex's writes fail silently and every session re-prompts for trust.
 
-The activation script uses `[ ! -f ]` to guard the copy: subsequent `home-manager switch` runs preserve any runtime edits codex has appended (extra project trust entries, model preferences).
+The activation script writes the file only when absent or when a symlink is present. A real file is preserved across `home-manager switch` so runtime trust entries codex appends survive. The guard is `[ ! -e ] || [ -L ]`.
 
 ---
 
@@ -28,6 +28,10 @@ Skills come from two sources:
 - **Command skills** - one skill per agent command, with the agent's full persona embedded directly in the skill body
 
 Skills are also written as real files via activation script. The codex-rs scanner calls `entry.file_type()` without following symlinks on Linux, so symlinked `SKILL.md` files are silently skipped.
+
+SKILL.md frontmatter requires `name:` and `description:` fields. Any `description:` value containing `: ` (colon-space) must be quoted, or codex-rs will fail to parse the skill entirely.
+
+User-defined slash commands do not exist in codex-rs. The `~/codex/prompts/` directory was removed in March 2026; the `/`-prefixed commands (`/skills`, `/agent`, `/review`, `/new`) are a hardcoded enum in the binary. Deploy custom commands as skills instead and invoke them with `$skill-name`.
 
 ### Command skills
 
@@ -102,7 +106,7 @@ Outbound network access from within the sandbox is disabled. MCP servers handle 
 
 ### Project trust
 
-The `[projects]` block pre-seeds trust for the four development roots. Without this, codex prompts "Do you trust this directory?" on every launch. The trust check resolves the git repository root for the current working directory; a single entry for `~/Zero` covers all subdirectories including `~/Zero/nix-config`.
+The `[projects]` block pre-seeds trust for the development roots. Without this, codex prompts "Do you trust this directory?" on every launch. codex matches the cwd's git repository root **exactly** against `[projects]` keys - parent directory entries are not inherited. `/home/martin/Zero/nix-config` has its own `.git` root, so the `~/Zero` entry alone was insufficient. Each git repository you work in regularly needs its own explicit entry. The config currently seeds five entries: the four development roots plus `~/Zero/nix-config`.
 
 ---
 
