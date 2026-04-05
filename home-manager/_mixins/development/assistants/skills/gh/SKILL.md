@@ -1,6 +1,6 @@
 ---
 name: gh
-description: Load when executing GitHub tasks via the gh CLI: creating or reviewing pull requests, managing issues, checking CI runs, creating releases, searching GitHub, or making raw GitHub API calls.
+description: "Load when executing GitHub tasks via the gh CLI: creating or reviewing pull requests, managing issues, checking CI runs, creating releases, searching GitHub, or making raw GitHub API calls."
 user-invocable: true
 ---
 
