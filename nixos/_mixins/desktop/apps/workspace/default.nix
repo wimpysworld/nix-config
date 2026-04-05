@@ -78,6 +78,10 @@ let
         case = "^https?://oauth2.sigstore.dev/auth";
         command = "wavebox";
       }
+      {
+        case = "^https?://auth.openai.com/oauth";
+        command = "wavebox";
+      }
     ];
   };
 in
