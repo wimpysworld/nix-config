@@ -507,11 +507,13 @@ let
 
     # Pre-seed project trust for all personal development directories so
     # codex does not prompt "Do you trust this directory?" on every launch.
-    # Mirrors the writable_roots list above - directories you own and actively
-    # work in are trusted by definition.
     #
-    # codex writes trust decisions back to config.toml at runtime; this only
-    # takes effect because the file is deployed as a real file, not a symlink.
+    # codex matches the cwd (or git repo root) exactly against these keys -
+    # it does NOT walk parent directories. Each git repository you work in
+    # must have its own entry; the parent directory alone is insufficient.
+    #
+    # codex writes new trust decisions back to config.toml at runtime; the
+    # file is deployed as a real mutable file so those writes succeed.
     projects = {
       "${config.home.homeDirectory}/Chainguard" = {
         trust_level = "trusted";
@@ -525,18 +527,32 @@ let
       "${config.home.homeDirectory}/Zero" = {
         trust_level = "trusted";
       };
+      "${config.home.homeDirectory}/Zero/nix-config" = {
+        trust_level = "trusted";
+      };
     };
   };
 
-  # Generate the config.toml content in the nix store, then copy it as a real
-  # file during activation. Using `cp --no-clobber` preserves any runtime edits
-  # codex has written back (e.g. additional project trust entries) across
-  # home-manager switches; the file is only written fresh on first activation.
+  # Generate the config.toml content in the nix store, then deploy it as a real
+  # mutable file during activation.
+  #
+  # Why a real file, not a symlink: codex resolves codex_home from the path of
+  # the config file it loaded, then writes trust decisions back to that same
+  # path. A symlink into the read-only nix store causes every write to fail
+  # with "failed to persist config.toml at /nix/store/...", so the trust prompt
+  # reappears every session despite correct [projects] entries.
+  #
+  # Why preserve an existing real file: codex appends new [projects] entries at
+  # runtime when the user trusts a new directory. Overwriting on every switch
+  # would wipe those entries, requiring the user to re-trust on next launch.
+  # A symlink at the target path is replaced unconditionally (it cannot be
+  # written to); a real file is left alone so runtime additions survive.
   codexConfigToml = (pkgs.formats.toml { }).generate "codex-config.toml" codexSettings;
   codexConfigActivationScript = ''
-    if [ ! -f "${codexDir}/config.toml" ]; then
-      mkdir -p "${codexDir}"
-      cp ${codexConfigToml} "${codexDir}/config.toml"
+    mkdir -p "${codexDir}"
+    # Replace if absent or if a symlink snuck back in; preserve a real file.
+    if [ ! -e "${codexDir}/config.toml" ] || [ -L "${codexDir}/config.toml" ]; then
+      cp --remove-destination ${codexConfigToml} "${codexDir}/config.toml"
       chmod 644 "${codexDir}/config.toml"
     fi
   '';
