@@ -110,6 +110,7 @@ let
     ''
       # Write Codex agent files as real files (not symlinks).
       # codex-rs skips symlinked .toml files during agent role discovery.
+      rm -rf "${codexDir}/agents"
       mkdir -p "${codexDir}/agents"
       ${agentCmds}
     '';
@@ -206,6 +207,7 @@ let
     ''
       # Write Codex skill files as real files (not symlinks).
       # codex-rs skips symlinked SKILL.md files during discovery.
+      rm -rf "${codexDir}/skills"
       ${skillCmds}
     '';
 
