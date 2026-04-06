@@ -1,18 +1,28 @@
-# Slot 1 (PCIEX16):  Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter
-#/dev/disk/by-id/ata-TS2TMTS830S_I121590039
-#/dev/disk/by-id/ata-TS2TMTS830S_I121590044
-#/dev/disk/by-id/ata-TS4TMTS830S_H738980002
-#/dev/disk/by-id/ata-TS4TMTS830S_H760910071
+# Slot 1 (PCIEX16):  Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB) - LIVE
+#/dev/disk/by-id/ata-TS2TMTS830S_I121590039              - data_02   (TV)
+#/dev/disk/by-id/ata-TS2TMTS830S_I121590044              - data_03   (Data)
+#/dev/disk/by-id/ata-TS4TMTS830S_H738980002              - data_01   (Films)
+#/dev/disk/by-id/ata-TS4TMTS830S_H760910071              - parity_01
 
-# Slot 2 (PCIEX1_1): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter
-#/dev/disk/by-id/ata-WDC_WDS200T2B0B-00YS70_23024Y443104
-#/dev/disk/by-id/ata-WDC_WDS200T2B0B-00YS70_23024Z445606
+# Slot 2 (PCIEX1_1): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)  - LIVE
+#/dev/disk/by-id/ata-WDC_WDS200T2B0B-00YS70_23024Y443104 - data_04   (TV)
+#/dev/disk/by-id/ata-WDC_WDS200T2B0B-00YS70_23024Z445606 - data_05   (Data)
 
-# Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter
-#/dev/disk/by-id/ata-TS2TMTS830S_I021610007
-#/dev/disk/by-id/ata-TS2TMTS830S_I021610056
-#/dev/disk/by-id/ata-TS4TMTS830S_H760910070
-#/dev/disk/by-id/ata-TS4TMTS830S_H760910072
+# Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB) - LIVE
+#/dev/disk/by-id/ata-TS2TMTS830S_I021610007              - data_07   (TV)
+#/dev/disk/by-id/ata-TS2TMTS830S_I021610056              - data_08   (Data)
+#/dev/disk/by-id/ata-TS4TMTS830S_H760910070              - parity_02
+#/dev/disk/by-id/ata-TS4TMTS830S_H760910072              - data_06   (Films)
+
+# See ./disks-snapraid-extra.nix
+# Slot 4 (PCIEX1_2): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)  - LIVE
+#/dev/disk/by-id/ata-WDC_WDS200T2B0B-00YS70_23024Z440206 - data_09   (Films)
+#/dev/disk/by-id/ata-WDC_WDS200T2B0B-00YS70_23024Z449709 - data_10   (TV)
+
+# Utilisation: April 6th 2026
+# Films: 4TB Free
+# TV:    5TB Free
+# Data:  6TB Free
 
 _: {
   disko.devices = {
