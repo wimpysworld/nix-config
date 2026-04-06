@@ -9,7 +9,7 @@
 # Slot 1 (PCIEX16):  Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
 # Slot 2 (PCIEX1_1): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)
 # Slot 3 (PCIEX8):   NVIDIA T1000
-# Slot 4 (PCIEX1_2): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB) **NOT INSTALLED**
+# Slot 4 (PCIEX1_2): Sedna PCIe Dual M.2 SATA III (6G) SSD Adapter (4TB)
 # Slot 5 (PCIEX4):   Sedna PCIe Quad M.2 SATA III (6G) SSD Adapter (12TB)
 
 {
@@ -31,6 +31,7 @@ in
     ./disks.nix
     ./disks-home.nix
     ./disks-snapraid.nix
+    ./disks-snapraid-extra.nix
     ./disks-snapshot.nix
   ];
 
@@ -99,14 +100,16 @@ in
         "/mnt/data_06/.snapraid.content"
       ];
       dataDisks = {
-        d1 = "/mnt/data_01/";
-        d2 = "/mnt/data_02/";
-        d3 = "/mnt/data_03/";
-        d4 = "/mnt/data_04/";
-        d5 = "/mnt/data_05/";
-        d6 = "/mnt/data_06/";
-        d7 = "/mnt/data_07/";
-        d8 = "/mnt/data_08/";
+        d1  = "/mnt/data_01/";
+        d2  = "/mnt/data_02/";
+        d3  = "/mnt/data_03/";
+        d4  = "/mnt/data_04/";
+        d5  = "/mnt/data_05/";
+        d6  = "/mnt/data_06/";
+        d7  = "/mnt/data_07/";
+        d8  = "/mnt/data_08/";
+        d9  = "/mnt/data_09/";
+        d10 = "/mnt/data_10/";
       };
       parityFiles = [
         "/mnt/parity_01/snapraid.parity"
@@ -135,6 +138,11 @@ in
     "d /mnt/data_06/Films_Kids      0755 ${username} users"
     "d /mnt/data_06/Films_Short     0755 ${username} users"
     "d /mnt/data_06/Films_Archived  0755 ${username} users"
+    "d /mnt/data_09/Films           0755 ${username} users"
+    "d /mnt/data_09/Films_Education 0755 ${username} users"
+    "d /mnt/data_09/Films_Kids      0755 ${username} users"
+    "d /mnt/data_09/Films_Short     0755 ${username} users"
+    "d /mnt/data_09/Films_Archived  0755 ${username} users"
 
     "d /mnt/data_02/TV              0755 ${username} users"
     "d /mnt/data_02/TV_Kids         0755 ${username} users"
@@ -142,6 +150,8 @@ in
     "d /mnt/data_04/TV_Kids         0755 ${username} users"
     "d /mnt/data_07/TV              0755 ${username} users"
     "d /mnt/data_07/TV_Kids         0755 ${username} users"
+    "d /mnt/data_10/TV              0755 ${username} users"
+    "d /mnt/data_10/TV_Kids         0755 ${username} users"
 
     "d /mnt/data_03/Archive         0755 ${username} users"
     "d /mnt/data_03/Films_Home      0755 ${username} users"
