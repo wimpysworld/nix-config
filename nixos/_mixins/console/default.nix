@@ -14,6 +14,19 @@ let
       rgb = catppuccinPalette.getRGB colorName;
     in
     "${toString rgb.r},${toString rgb.g},${toString rgb.b}";
+  # VTs to pre-activate at boot. Without this, logind only spawns kmscon
+  # reactively when a user switches VTs, which leaves the initial TTY blank
+  # on ISOs and servers until you switch away and back.
+  ttyList = [
+    "tty1"
+    "tty2"
+    "tty3"
+    "tty4"
+    "tty5"
+    "tty6"
+    "tty7"
+    "tty8"
+  ];
   kmsconFontSize = {
     sidious = "24";
     tanis = "18";
@@ -179,33 +192,44 @@ in
   # fallback. This drop-in applies to all instances (including those spawned
   # reactively by logind via the autovt@ alias).
   # Reference: https://github.com/noughtylinux/config/blob/main/system-manager/kmscon.nix
-  systemd.services."kmsconvt@" = {
-    after = [
-      "systemd-user-sessions.service"
-      "plymouth-quit-wait.service"
-      "getty-pre.target"
-      "dbus.service"
-      "systemd-localed.service"
-    ];
-    before = [ "getty.target" ];
-    conflicts = [ "getty@%i.service" ];
-    onFailure = [ "getty@%i.service" ];
-    unitConfig = {
-      IgnoreOnIsolate = true;
-      ConditionPathExists = "/dev/tty0";
-    };
-    serviceConfig = {
-      Type = "idle";
-    };
-  };
-
-  # Explicitly start kmscon on VT1 at boot. NixOS's wantedBy creates raw
+  #
+  # Pre-activate kmscon on all VTs at boot. NixOS's wantedBy creates raw
   # symlinks without consulting DefaultInstance, so wantedBy on a bare template
   # (kmsconvt@) produces getty.target.wants/kmsconvt@.service which systemd
-  # ignores. An explicit instance ensures the correct symlink is created:
-  # getty.target.wants/kmsconvt@tty1.service -> ../kmsconvt@.service
-  # Other VTs are handled reactively by logind via the autovt@ alias.
-  systemd.services."kmsconvt@tty1".wantedBy = [ "getty.target" ];
+  # ignores. Explicit instances ensure the correct symlinks are created:
+  # getty.target.wants/kmsconvt@ttyN.service -> ../kmsconvt@.service
+  # This prevents the blank-screen problem on ISOs and servers where the
+  # reactive autovt@ mechanism does not fire until a VT switch occurs.
+  systemd.services =
+    {
+      "kmsconvt@" = {
+        after = [
+          "systemd-user-sessions.service"
+          "plymouth-quit-wait.service"
+          "getty-pre.target"
+          "dbus.service"
+          "systemd-localed.service"
+        ];
+        before = [ "getty.target" ];
+        conflicts = [ "getty@%i.service" ];
+        onFailure = [ "getty@%i.service" ];
+        unitConfig = {
+          IgnoreOnIsolate = true;
+          ConditionPathExists = "/dev/tty0";
+        };
+        serviceConfig = {
+          Type = "idle";
+        };
+      };
+    }
+    // builtins.listToAttrs (
+      map (tty: {
+        name = "kmsconvt@${tty}";
+        value = {
+          wantedBy = [ "getty.target" ];
+        };
+      }) ttyList
+    );
 
   # Prevent "Failed to open /etc/geoclue/conf.d/:" errors
   systemd.tmpfiles.rules = [

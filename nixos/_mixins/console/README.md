@@ -136,21 +136,33 @@ Key properties:
 | `ConditionPathExists = "/dev/tty0"` | Skips activation in containers or systems without a real VT subsystem |
 | `IgnoreOnIsolate = true` | Survives target isolation transitions (e.g. `rescue.target`) |
 
-#### Fix B: Explicit VT1 instance activation
+#### Fix B: Explicit per-VT instance activation
 
-Bypass the template `wantedBy` limitation by setting `wantedBy` on a concrete instance:
+Bypass the template `wantedBy` limitation by setting `wantedBy` on concrete instances for all VTs:
 
 ```nix
-systemd.services."kmsconvt@tty1".wantedBy = [ "getty.target" ];
+ttyList = [ "tty1" "tty2" "tty3" "tty4" "tty5" "tty6" ];
+
+systemd.services = builtins.listToAttrs (
+  map (tty: {
+    name = "kmsconvt@${tty}";
+    value = {
+      wantedBy = [ "getty.target" ];
+    };
+  }) ttyList
+);
 ```
 
-This creates the correct symlink:
+This creates the correct symlinks:
 
 ```
 getty.target.wants/kmsconvt@tty1.service -> ../kmsconvt@.service
+getty.target.wants/kmsconvt@tty2.service -> ../kmsconvt@.service
+...
+getty.target.wants/kmsconvt@tty6.service -> ../kmsconvt@.service
 ```
 
-systemd can resolve this to a concrete instance and starts `kmsconvt@tty1` proactively at boot. VTs 2 and above continue to be handled reactively by logind via the `autovt@` alias when the user switches to them.
+systemd can resolve these to concrete instances and starts all kmscon VTs proactively at boot. Previously only VT1 was pre-activated, but the reactive `autovt@` mechanism proved unreliable on ISOs and servers, leaving VTs blank until a manual switch occurred.
 
 ### Bug 2: Keyboard Layout Requires D-Bus at Runtime
 
