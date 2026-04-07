@@ -3,10 +3,14 @@
   inputs,
   ...
 }:
+let
+  username = config.noughty.user.name;
+in
 {
   imports = [
     inputs.nixos-hardware.nixosModules.framework-desktop-amd-ai-max-300-series
     ./disks.nix
+    ./disks-snapshot.nix
   ];
 
   boot = {
@@ -27,19 +31,23 @@
       "video=DP-1:2560x2880@60"
       "video=DP-4:2560x2880@60"
     ];
+    swraid = {
+      enable = true;
+      mdadmConf = "MAILADDR=${username}@wimpys.world";
+    };
   };
 
   hardware.mwProCapture.enable = true;
 
   systemd.tmpfiles.rules = [
-    "d /home/${config.noughty.user.name}/.cache 0755 ${config.noughty.user.name} users -"
-    "d /home/${config.noughty.user.name}/.lima 0755 ${config.noughty.user.name} users -"
-    "d /home/${config.noughty.user.name}/.local 0755 ${config.noughty.user.name} users -"
-    "d /home/${config.noughty.user.name}/.local/share 0755 ${config.noughty.user.name} users -"
-    "d /home/${config.noughty.user.name}/.local/share/containers 0700 ${config.noughty.user.name} users -"
-    "d /home/${config.noughty.user.name}/Quickemu 0755 ${config.noughty.user.name} users -"
-    "d /home/${config.noughty.user.name}/Development 0755 ${config.noughty.user.name} users -"
-    "d /home/${config.noughty.user.name}/Volatile 0755 ${config.noughty.user.name} users -"
+    "d /home/${username}/.cache 0755 ${username} users -"
+    "d /home/${username}/.lima 0755 ${username} users -"
+    "d /home/${username}/.local 0755 ${username} users -"
+    "d /home/${username}/.local/share 0755 ${username} users -"
+    "d /home/${username}/.local/share/containers 0700 ${username} users -"
+    "d /home/${username}/Quickemu 0755 ${username} users -"
+    "d /home/${username}/Development 0755 ${username} users -"
+    "d /home/${username}/Volatile 0755 ${username} users -"
   ];
 
 }
