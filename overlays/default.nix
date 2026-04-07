@@ -56,20 +56,6 @@
       }
     );
 
-    # Override avizo to use a specific commit that includes these fixes:
-    # - https://github.com/heyjuvi/avizo/pull/76 (fix options of lightctl)
-    # - https://github.com/heyjuvi/avizo/pull/73 (chore: fix size of dark theme icons)
-    avizo = prev.avizo.overrideAttrs (_old: {
-      pname = "avizo";
-      version = "1.3-unstable-2024-11-03";
-      src = prev.fetchFromGitHub {
-        owner = "misterdanb";
-        repo = "avizo";
-        rev = "5efaa22968b2cc1a3c15a304cac3f22ec2727b17";
-        sha256 = "sha256-KYQPHVxjvqKt4d7BabplnrXP30FuBQ6jQ1NxzR5U7qI=";
-      };
-    });
-
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
       _lpself: lpsuper: {
         mwprocapture = lpsuper.mwprocapture.overrideAttrs (_old: rec {
