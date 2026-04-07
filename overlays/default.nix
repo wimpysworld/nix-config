@@ -2,12 +2,13 @@
 { inputs, ... }:
 {
   # This one brings our custom packages from the 'pkgs' directory
-  localPackages = final: _prev: import ../pkgs final.pkgs;
+  localPackages = final: _prev: import ../pkgs final;
 
   # This one contains whatever you want to overlay
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
-  modifiedPackages = _final: prev: {
+  modifiedPackages = final: prev: {
+    inherit (final.unstable) ollama;
     # Override Python packages to fix Darwin-specific issues
     python3 = prev.python3.override {
       packageOverrides = _pyfinal: pyprev: {
@@ -58,7 +59,7 @@
     # Override avizo to use a specific commit that includes these fixes:
     # - https://github.com/heyjuvi/avizo/pull/76 (fix options of lightctl)
     # - https://github.com/heyjuvi/avizo/pull/73 (chore: fix size of dark theme icons)
-    avizo = prev.avizo.overrideAttrs (_old: rec {
+    avizo = prev.avizo.overrideAttrs (_old: {
       pname = "avizo";
       version = "1.3-unstable-2024-11-03";
       src = prev.fetchFromGitHub {
