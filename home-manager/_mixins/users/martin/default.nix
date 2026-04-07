@@ -42,7 +42,6 @@ in
         text = "export DEB_VENDOR=Ubuntu";
       };
       file."Games/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) { text = ""; };
-      file."Websites/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) { text = ""; };
       file."Zero/.keep".text = "";
       packages = lib.optionals (!(noughtyLib.hostHasTag "lima")) [
         pkgs.gocryptfs # Terminal encrypted filesystem
