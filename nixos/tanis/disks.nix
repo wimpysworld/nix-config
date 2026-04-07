@@ -27,6 +27,13 @@ let
   ];
 in
 {
+  # Ensure cryptroot is unlocked at boot.
+  boot.initrd.luks.devices = {
+    cryptroot = {
+      device = "/dev/disk/by-partlabel/disk-nvme0-cryptroot";
+    };
+  };
+
   disko.devices = {
     disk = {
       nvme0 = {
@@ -36,7 +43,7 @@ in
           type = "gpt";
           partitions = {
             ESP = {
-              size = "1024M";
+              size = "2048M";
               type = "EF00";
               content = {
                 format = "vfat";
