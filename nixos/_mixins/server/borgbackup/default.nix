@@ -38,7 +38,6 @@ let
         "${home}/Downloads"
         "${home}/Dropbox"
         "${home}/Public"
-        "${home}/Websites"
         "${home}/Zero"
       ];
       exclude = [
