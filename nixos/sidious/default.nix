@@ -61,4 +61,7 @@
     "i915"
     "nvidia"
   ];
+
+  # Dual-boot with Windows requires the hardware clock set to local time
+  time.hardwareClockInLocalTime = true;
 }

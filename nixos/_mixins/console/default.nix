@@ -213,7 +213,6 @@ in
   ];
 
   time = {
-    hardwareClockInLocalTime = true;
     timeZone = lib.mkIf host.is.server "UTC";
   };
 }
