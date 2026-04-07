@@ -10,8 +10,7 @@ _: {
           type = "gpt";
           partitions = {
             snapshot-sda = {
-              start = "0%";
-              end = "100%";
+              size = "100%";
               content = {
                 type = "mdraid";
                 name = "snapshot";
@@ -27,8 +26,7 @@ _: {
           type = "gpt";
           partitions = {
             snapshot-sdb = {
-              start = "0%";
-              end = "100%";
+              size = "100%";
               content = {
                 type = "mdraid";
                 name = "snapshot";
@@ -46,8 +44,7 @@ _: {
           type = "gpt";
           partitions = {
             snapshot = {
-              start = "0%";
-              end = "100%";
+              size = "100%";
               content = {
                 type = "filesystem";
                 # Overwirte the existing filesystem
