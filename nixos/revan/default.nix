@@ -36,14 +36,7 @@ in
   ];
 
   boot = {
-    initrd.availableKernelModules = [
-      "ahci"
-      "nvme"
-      "uas"
-      "usbhid"
-      "sd_mod"
-      "xhci_pci"
-    ];
+    initrd.availableKernelModules = [ "thunderbolt" ];
     kernelModules = [
       "kvm-intel"
       "nvidia"
@@ -100,15 +93,15 @@ in
         "/mnt/data_06/.snapraid.content"
       ];
       dataDisks = {
-        d1  = "/mnt/data_01/";
-        d2  = "/mnt/data_02/";
-        d3  = "/mnt/data_03/";
-        d4  = "/mnt/data_04/";
-        d5  = "/mnt/data_05/";
-        d6  = "/mnt/data_06/";
-        d7  = "/mnt/data_07/";
-        d8  = "/mnt/data_08/";
-        d9  = "/mnt/data_09/";
+        d1 = "/mnt/data_01/";
+        d2 = "/mnt/data_02/";
+        d3 = "/mnt/data_03/";
+        d4 = "/mnt/data_04/";
+        d5 = "/mnt/data_05/";
+        d6 = "/mnt/data_06/";
+        d7 = "/mnt/data_07/";
+        d8 = "/mnt/data_08/";
+        d9 = "/mnt/data_09/";
         d10 = "/mnt/data_10/";
       };
       parityFiles = [

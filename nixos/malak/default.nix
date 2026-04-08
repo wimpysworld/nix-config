@@ -29,10 +29,6 @@ in
   boot = {
     initrd = {
       availableKernelModules = [
-        "ahci"
-        "nvme"
-        "sd_mod"
-        "xhci_pci"
         "e1000e"
       ];
       network = {

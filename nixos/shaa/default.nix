@@ -17,11 +17,6 @@
 
   boot = {
     initrd.availableKernelModules = [
-      "nvme"
-      "ehci_pci"
-      "xhci_pci"
-      "uas"
-      "sd_mod"
       "rtsx_pci_sdmmc"
     ];
     initrd.systemd.enable = true;
