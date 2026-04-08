@@ -17,14 +17,6 @@
   ];
 
   boot = {
-    initrd.availableKernelModules = [
-      "nvme"
-      "ahci"
-      "xhci_pci"
-      "usbhid"
-      "uas"
-      "sd_mod"
-    ];
     kernelModules = [
       "amdgpu"
       "kvm-amd"

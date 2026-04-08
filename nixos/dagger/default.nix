@@ -5,16 +5,8 @@
     ./disks.nix
   ];
 
-  boot = {
-    initrd.availableKernelModules = [
-      "xhci_pci"
-      "ohci_pci"
-      "ehci_pci"
-      "virtio_pci"
-      "ahci"
-      "usbhid"
-      "sr_mod"
-      "virtio_blk"
-    ];
-  };
+  boot.initrd.availableKernelModules = [
+    "virtio_pci"
+    "virtio_blk"
+  ];
 }

@@ -54,6 +54,14 @@ in
       ];
     };
     consoleLogLevel = lib.mkDefault 0;
+    initrd.availableKernelModules = [
+      "uas"
+      "usb_storage"
+    ];
+    # Explicitly enable the default initrd modules (nvme, sd_mod, xhci_pci,
+    # usbhid, hid_generic, ahci, and others). This is the NixOS default but
+    # declared here to make the dependency visible rather than implicit.
+    initrd.includeDefaultModules = true;
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
     # Only enable the systemd-boot on installs, not live media (.ISO images)
