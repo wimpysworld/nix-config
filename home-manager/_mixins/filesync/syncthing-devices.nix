@@ -54,19 +54,6 @@
         "revan"
       ];
     };
-    apps = {
-      id = "apps";
-      label = "Apps";
-      maxConflicts = 10;
-      path = "~/Apps";
-      devices = [
-        "bane"
-        "momin"
-        "revan"
-        "skrye"
-        "zannah"
-      ];
-    };
     chainguard = {
       id = "chainguard";
       label = "Chainguard";
@@ -107,6 +94,7 @@
         "bane"
         "momin"
         "skrye"
+        "tanis"
         "zannah"
       ];
     };
@@ -120,6 +108,7 @@
         "momin"
         "revan"
         "skrye"
+        "tanis"
         "zannah"
       ];
     };
@@ -133,6 +122,7 @@
         "momin"
         "revan"
         "skrye"
+        "tanis"
         "zannah"
       ];
     };
@@ -156,6 +146,26 @@
         "zannah"
       ];
     };
+    notes = {
+      id = "notes";
+      label = "Notes";
+      maxConflicts = 10;
+      path = "~/Notes";
+      devices = [
+        "atrius"
+        "bane"
+        "felkor"
+        "malak"
+        "maul"
+        "momin"
+        "revan"
+        "shaa"
+        "sidious"
+        "skrye"
+        "tanis"
+        "zannah"
+      ];
+    };
     pictures = {
       id = "pictures";
       label = "Pictures";
@@ -163,8 +173,9 @@
       path = "~/Pictures";
       devices = [
         "bane"
-        "skrye"
         "revan"
+        "skrye"
+        "tanis"
         "zannah"
       ];
     };
@@ -175,8 +186,9 @@
       path = "~/Studio";
       devices = [
         "bane"
-        "skrye"
         "revan"
+        "skrye"
+        "tanis"
         "zannah"
       ];
     };

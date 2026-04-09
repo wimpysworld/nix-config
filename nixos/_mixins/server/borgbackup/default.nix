@@ -30,13 +30,13 @@ let
       compression = "auto,zstd,3";
       startAt = "hourly";
       paths = [
-        "${home}/Apps"
         "${home}/Chainguard"
         "${home}/Crypt"
         "${home}/Development"
         "${home}/Documents"
         "${home}/Downloads"
         "${home}/Dropbox"
+        "${home}/Notes"
         "${home}/Public"
         "${home}/Zero"
       ];
