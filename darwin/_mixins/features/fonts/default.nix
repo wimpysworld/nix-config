@@ -29,6 +29,7 @@
       fixedsys-excelsior-font
       impact-label-font
       lato
+      merriweather
       mocha-mattari-font
       poppins-font
       spaceport-2006-font

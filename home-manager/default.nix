@@ -104,6 +104,7 @@ in
         impact-label-font
         lato
         liberation_ttf
+        merriweather
         mocha-mattari-font
         nerd-fonts.space-mono
         nerd-fonts.symbols-only
@@ -128,7 +129,7 @@ in
       enable = true;
       defaultFonts = {
         serif = [
-          "Source Serif"
+          "Merriweather"
           "Noto Color Emoji"
         ];
         sansSerif = [
