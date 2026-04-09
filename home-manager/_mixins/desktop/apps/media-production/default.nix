@@ -783,9 +783,4 @@ in
     enable = true;
     preset = "mic-${host.name}-oktava";
   };
-
-  systemd.user.tmpfiles.rules = lib.mkIf (host.is.linux && host.is.workstation) [
-    "d ${config.home.homeDirectory}/Audio 0755 ${username} users - -"
-    "L+ ${config.xdg.dataHome}/org.gnome.SoundRecorder/ - - - - ${config.home.homeDirectory}/Audio/"
-  ];
 }

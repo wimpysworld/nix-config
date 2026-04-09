@@ -61,25 +61,9 @@
       path = "~/Apps";
       devices = [
         "bane"
-        "skrye"
         "momin"
-        "phasma"
         "revan"
-        "vader"
-        "zannah"
-      ];
-    };
-    audio = {
-      id = "audio";
-      label = "Audio";
-      maxConflicts = 10;
-      path = "~/Audio";
-      devices = [
-        "bane"
         "skrye"
-        "phasma"
-        "revan"
-        "vader"
         "zannah"
       ];
     };
@@ -91,8 +75,6 @@
       devices = [
         "bane"
         "skrye"
-        "phasma"
-        "vader"
         "zannah"
       ];
     };
@@ -106,15 +88,13 @@
         "bane"
         "felkor"
         "malak"
-        "skrye"
         "maul"
         "momin"
-        "phasma"
         "revan"
         "shaa"
         "sidious"
+        "skrye"
         "tanis"
-        "vader"
         "zannah"
       ];
     };
@@ -125,10 +105,8 @@
       path = "~/Development";
       devices = [
         "bane"
-        "skrye"
         "momin"
-        "phasma"
-        "vader"
+        "skrye"
         "zannah"
       ];
     };
@@ -139,11 +117,9 @@
       path = "~/Documents";
       devices = [
         "bane"
-        "skrye"
         "momin"
-        "phasma"
         "revan"
-        "vader"
+        "skrye"
         "zannah"
       ];
     };
@@ -154,11 +130,9 @@
       path = "~/Downloads";
       devices = [
         "bane"
-        "skrye"
         "momin"
-        "phasma"
         "revan"
-        "vader"
+        "skrye"
         "zannah"
       ];
     };
@@ -169,8 +143,6 @@
       path = "~/Games";
       devices = [
         "skrye"
-        "phasma"
-        "vader"
         "zannah"
       ];
     };
@@ -181,8 +153,6 @@
       path = "~/Music";
       devices = [
         "skrye"
-        "phasma"
-        "vader"
         "zannah"
       ];
     };
@@ -194,9 +164,7 @@
       devices = [
         "bane"
         "skrye"
-        "phasma"
         "revan"
-        "vader"
         "zannah"
       ];
     };
@@ -206,10 +174,9 @@
       maxConflicts = 10;
       path = "~/Studio";
       devices = [
+        "bane"
         "skrye"
-        "phasma"
         "revan"
-        "vader"
         "zannah"
       ];
     };
@@ -220,8 +187,6 @@
       path = "~/Videos";
       devices = [
         "skrye"
-        "phasma"
-        "vader"
         "zannah"
       ];
     };

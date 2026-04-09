@@ -85,7 +85,6 @@ let
       compression = "auto,lz4";
       startAt = "*-*-* 03:00:00";
       paths = [
-        "${home}/Audio"
         "${home}/Games"
         "${home}/Music"
         "${home}/Pictures"
