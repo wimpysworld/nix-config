@@ -131,6 +131,7 @@
       label = "Games";
       maxConflicts = 10;
       path = "~/Games";
+      rescanIntervalS = 86400;
       devices = [
         "skrye"
         "zannah"
@@ -141,6 +142,7 @@
       label = "Music";
       maxConflicts = 10;
       path = "~/Music";
+      rescanIntervalS = 86400;
       devices = [
         "skrye"
         "zannah"
@@ -184,6 +186,7 @@
       label = "Studio";
       maxConflicts = 10;
       path = "~/Studio";
+      rescanIntervalS = 21600;
       devices = [
         "bane"
         "revan"
@@ -197,6 +200,7 @@
       label = "Videos";
       maxConflicts = 10;
       path = "~/Videos";
+      rescanIntervalS = 21600;
       devices = [
         "skrye"
         "zannah"
