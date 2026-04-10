@@ -27,7 +27,7 @@
   [keys.action]
     exec = "playerctl -p sidra volume 0.05+"
   [keys.action_hold]
-    exec = "playerctl -p sidra volume 1.0"
+    exec = "playerctl -p sidra volume 0.25"
 
 [[keys]]
   index = 3
@@ -35,13 +35,13 @@
     id = "command"
     interval = 2000
     [keys.widget.config]
-      command = "echo 'Sidra';echo 'Music';playerctl metadata --format '{{ volume * 100 }}' | awk '{printf \"%.0f%%\\n\", $1}'"
+      command = "echo 'Sidra';echo 'Music';playerctl -p sidra metadata --format '{{ volume * 100 }}' | awk '{printf \"%.0f%%\\n\", $1}'"
       font = "thin;regular;bold"
       color = "#BE5C19;#DC940B;#fefefe"
   [keys.action]
-    exec = "playerctl -p sidra volume 0.25"
-  [keys.action_hold]
     exec = "playerctl -p sidra volume 0.5"
+  [keys.action_hold]
+    exec = "playerctl -p sidra volume 0.75"
 
 [[keys]]
   index = 4
@@ -107,7 +107,7 @@
   [keys.action]
     exec = "ipad-volume vol-up"
   [keys.action_hold]
-    exec = "ipad-volume set 100"
+    exec = "ipad-volume set 50"
 
 [[keys]]
   index = 11
@@ -119,9 +119,9 @@
       font = "thin;regular;bold"
       color = "#CA1C35;#CA1C35;#fefefe"
   [keys.action]
-    exec = "ipad-volume set 25"
+    exec = "ipad-volume set 75"
   [keys.action_hold]
-    exec = "ipad-volume set 50"
+    exec = "ipad-volume set 100"
 
 [[keys]]
   index = 12
@@ -168,7 +168,7 @@
   [keys.action]
     exec = "pulsemixer --change-volume -5"
   [keys.action_hold]
-    exec = "pulsemixer --set-volume 30"
+    exec = "pulsemixer --set-volume 1"
 
 [[keys]]
   index = 18
@@ -179,7 +179,7 @@
   [keys.action]
     exec = "pulsemixer --change-volume +5"
   [keys.action_hold]
-    exec = "pulsemixer --set-volume 75"
+    exec = "pulsemixer --set-volume 25"
 
 [[keys]]
   index = 19
@@ -193,7 +193,7 @@
   [keys.action]
     exec = "pulsemixer --set-volume 50"
   [keys.action_hold]
-    exec = "pulsemixer --set-volume 100"
+    exec = "pulsemixer --set-volume 75"
 
 [[keys]]
   index = 20
