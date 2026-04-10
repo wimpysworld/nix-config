@@ -13,6 +13,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
     with pkgs;
     lib.optionals host.is.linux [
       cpu-x
+      gnome-firmware
       usbimager
       vaults
     ];
