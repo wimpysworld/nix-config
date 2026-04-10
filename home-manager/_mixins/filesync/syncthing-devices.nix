@@ -45,15 +45,6 @@
   };
 
   folders = {
-    archive = {
-      id = "archive";
-      label = "Archive";
-      maxConflicts = 10;
-      path = "/mnt/snapshot/martin/Archive";
-      devices = [
-        "revan"
-      ];
-    };
     chainguard = {
       id = "chainguard";
       label = "Chainguard";
@@ -144,6 +135,7 @@
       path = "~/Music";
       rescanIntervalS = 86400;
       devices = [
+        "revan"
         "skrye"
         "zannah"
       ];
