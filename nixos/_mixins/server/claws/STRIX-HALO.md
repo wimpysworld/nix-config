@@ -58,25 +58,18 @@ services.ollama = {
 
 ## 3. GPU Clock Configuration
 
-The GPU idles at 600 MHz without intervention, halving token generation throughput. Set `power_dpm_force_performance_level=high` via a udev rule:
+In `auto` DPM mode, the GPU boosts automatically to near-maximum clock (2845 MHz of 2900 MHz peak) during inference workloads. Forcing `power_dpm_force_performance_level=high` locks the clock at 2900 MHz (+2%) but increases idle power draw from ~99 W to ~140 W — a poor trade for a desktop with intermittent agent tasks.
 
-```nix
-services.udev.extraRules = ''
-  ACTION=="add", SUBSYSTEM=="drm", KERNEL=="card[0-9]*", DRIVERS=="amdgpu", \
-    ATTR{device/power_dpm_force_performance_level}="high"
-'';
-```
+**Do not set `power_dpm_force_performance_level=high`.** Leave DPM at `auto`.
 
-Verify after boot:
+`amdgpu.runpm=0` (already set in `boot.extraModprobeConfig`) prevents the GPU from entering deep sleep states between inference calls, which is sufficient to avoid the ROCm discovery timeout issue without pinning the clock.
+
+Verify clock behaviour during inference:
 
 ```bash
-cat /sys/class/drm/card0/device/power_dpm_force_performance_level
-# Expected: high
-cat /sys/class/drm/card0/device/pp_dpm_sclk
-# Expected: top clock entry marked with *
+watch -n1 'cat /sys/class/drm/card1/device/pp_dpm_sclk'
+# Expected: highest clock entry marked with * during active inference
 ```
-
-**Note:** `hardware.amdgpu.overdrive.enable` and `ppfeaturemask` exist in NixOS 25.11 but do not set `power_dpm_force_performance_level`. The udev rule is required in addition to any overdrive settings.
 
 ---
 
@@ -172,13 +165,6 @@ These settings are hardware-specific and belong in a host-level config or a dedi
     # Expand GTT pool to ~120 GB (4 KiB pages: 120 * 1024^3 / 4096 = 31457280).
     options ttm pages_limit=31457280
   '';
-
-  # Force GPU performance clock on device add.
-  # Without this the GPU idles at 600 MHz, halving inference throughput.
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="drm", KERNEL=="card[0-9]*", DRIVERS=="amdgpu", \
-      ATTR{device/power_dpm_force_performance_level}="high"
-  '';
 }
 ```
 
@@ -188,13 +174,13 @@ These settings are hardware-specific and belong in a host-level config or a dedi
 
 ```bash
 # GPU clock and active frequency
-cat /sys/class/drm/card0/device/pp_dpm_sclk
+cat /sys/class/drm/card1/device/pp_dpm_sclk
 
-# Performance level (should read "high" after udev rule applies)
-cat /sys/class/drm/card0/device/power_dpm_force_performance_level
+# Performance level (should read "auto")
+cat /sys/class/drm/card1/device/power_dpm_force_performance_level
 
 # GPU utilisation
-cat /sys/class/drm/card0/device/gpu_busy_percent
+cat /sys/class/drm/card1/device/gpu_busy_percent
 
 # Power draw (milliwatts)
 cat /sys/class/hwmon/hwmon*/power1_average

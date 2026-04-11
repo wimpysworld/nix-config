@@ -40,13 +40,6 @@ in
     options ttm pages_limit=31457280
   '';
 
-  # Force GPU to high performance clock on device add.
-  # Without this the GPU idles at 600 MHz, halving inference throughput.
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="drm", KERNEL=="card[0-9]*", DRIVERS=="amdgpu", \
-      ATTR{device/power_dpm_force_performance_level}="high"
-  '';
-
   hardware.mwProCapture.enable = true;
 
   systemd.tmpfiles.rules = [
