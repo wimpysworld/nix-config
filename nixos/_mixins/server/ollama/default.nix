@@ -80,28 +80,4 @@ lib.mkIf isInference {
       OLLAMA_MAX_LOADED_MODELS = "1";
     };
   };
-  systemd.services.ollama-create-embedding-model = {
-    description = "Create Ollama embedding model alias with num_ctx 8192.";
-    after = [
-      "ollama.service"
-      "ollama-model-loader.service"
-    ];
-    requires = [ "ollama.service" ];
-    wants = [ "ollama-model-loader.service" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      Restart = "on-failure";
-      RestartSec = "5s";
-      ExecStart =
-        let
-          modelfile = pkgs.writeText "qwen3-embedding-modelfile" ''
-            FROM qwen3-embedding:4b-q8_0
-            PARAMETER num_ctx 8192
-          '';
-        in
-        "${ollamaPackage}/bin/ollama create qwen3-embedding:4b-q8_0-8k -f ${modelfile}";
-    };
-  };
 }

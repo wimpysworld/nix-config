@@ -137,7 +137,7 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
 
 **Quantisation:** embedding quality degrades more with aggressive quantisation than generation quality does. The default Ollama tag uses Q4_K_M. On this hardware (128GB), use Q8_0: pull `qwen3-embedding:4b-q8_0`. Memory cost is ~5 GB at Q8 versus ~2.5 GB at Q4 - trivial on 128 GB.
 
-**Context window:** Ollama defaults to 4096 tokens regardless of the model's native 40K context. ZeroClaw's embedding provider cannot pass `num_ctx` to the embeddings endpoint - it sends only `model` and `input`. Set `num_ctx` via a Modelfile alias instead (see §6). 8192 covers most ZeroClaw memory entries and PR diffs; 16384 covers edge cases (large diffs, research documents).
+**Context window:** The official Ollama Modelfile for `qwen3-embedding:4b-q8_0` sets `num_ctx` to the model's full 40,960-token native context. No additional configuration is required.
 
 **Reranker note:** a Qwen3-Reranker-4B on top of qwen3-embedding:0.6B scores 81.20 on MTEB Code, higher than qwen3-embedding:8B alone (80.68). Worth considering as a future enhancement if retrieval quality becomes a bottleneck after deployment.
 
@@ -188,7 +188,7 @@ When splitting would make sense (not applicable here): A/B testing model quality
 
 ~5 GB at Q8_0, 40K context, code retrieval capable. Load permanently alongside inference models. The 4B sits at the quality optimum: +4.96 MTEB retrieval and +4.65 MTEB Code over the 0.6B, with the 8B adding only 0.62 further points at half the throughput. Q8_0 preserves embedding fidelity that Q4_K_M would compromise; the ~5 GB memory cost is trivial on 128 GB.
 
-Use the `qwen3-embedding:4b-q8_0-8k` alias (not the base model tag) in ZeroClaw config. ZeroClaw cannot pass `num_ctx` to the embeddings endpoint; the NixOS Ollama mixin creates this alias via a Modelfile with `num_ctx 8192` baked in. Ollama's 4096 default otherwise discards most of the model's native 40K context window.
+Use `qwen3-embedding:4b-q8_0` directly. The model's native 40K context is fully available — no additional configuration required.
 
 Skip nomic-embed-text-v2-moe (512-token context too short for code chunks) and embeddinggemma (2K context, no advantage over qwen3-embedding).
 
@@ -231,9 +231,7 @@ primary = "primary"
 fallbacks = ["frontier"]
 
 [memory]
-# Use the 8k alias, not the base model. ZeroClaw cannot pass num_ctx to the
-# embeddings endpoint; the alias has num_ctx 8192 baked in via Modelfile.
-embedding_model = "ollama/qwen3-embedding:4b-q8_0-8k"
+embedding_model = "ollama/qwen3-embedding:4b-q8_0"
 embedding_base = "http://<host-container-ip>:11434/v1"
 ```
 
