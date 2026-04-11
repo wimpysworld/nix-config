@@ -55,25 +55,39 @@ Two Framework Desktop mainboard-based workstations, each with:
 
 **Decision**: Run Ollama on each host bare-metal (not containerised). The agent container connects to Ollama over the private network interface.
 
-**Rationale**: GPU/memory-intensive inference should not be containerised. Ollama is Nix-packaged (`services.ollama`), provides an OpenAI-compatible API, and ZeroClaw supports it natively. 128GB unified memory on Strix Halo can load models up to ~120B parameters. Benchmarks show 38 tok/s on GPT-OSS 120B and ~65 tok/s on 20B models on this hardware.
+**Rationale**: GPU/memory-intensive inference should not be containerised. Ollama is Nix-packaged (`services.ollama`), provides an OpenAI-compatible API, and ZeroClaw supports it natively. 128GB unified memory on Strix Halo can load models up to ~120B parameters. Benchmarks show ~33 tok/s on GPT-OSS 120B and ~46 tok/s on GPT-OSS 20B on Ollama ROCm on this hardware.
 
 **Configuration pattern** (`~/.zeroclaw/config.toml`):
 ```toml
 [[model_list]]
-model_name = "local-model"
-model = "ollama/qwen3:32b"
+model_name = "primary"
+model = "ollama/qwen3.5:27b"
 api_base = "http://<host-container-ip>:11434/v1"
 
 [[model_list]]
-model_name = "frontier-claude"
-model = "anthropic/claude-sonnet-4.6"
+model_name = "general"
+model = "ollama/qwen3.5:35b-a3b"
+api_base = "http://<host-container-ip>:11434/v1"
+
+[[model_list]]
+model_name = "small"
+model = "ollama/gemma4:e4b"
+api_base = "http://<host-container-ip>:11434/v1"
+
+[[model_list]]
+model_name = "frontier"
+model = "anthropic/claude-sonnet-4-5"
 
 [agents.defaults.model]
-primary = "local-model"
-fallbacks = ["frontier-claude"]
+primary = "primary"
+fallbacks = ["frontier"]
+
+[memory]
+embedding_model = "ollama/qwen3-embedding:4b-q8_0"
+embedding_base = "http://<host-container-ip>:11434/v1"
 ```
 
-The failover chain retries on 429/rate-limit/timeout errors automatically.
+See [OLLAMA.md](OLLAMA.md) for the full model selection rationale and hardware benchmarks. The failover chain retries on 429/rate-limit/timeout errors automatically.
 
 **Future optimisation**: llama.cpp's `llama-server` can replace Ollama for potentially better performance on Strix Halo's Vulkan backend. The switch is a config-only change - no agent code changes needed.
 

@@ -23,6 +23,7 @@ in
       "kvm-amd"
     ];
     kernelParams = [
+      "iommu=pt"
       "video=DP-1:3440x1440@100"
       "video=HDMI-A-1:2560x1600@120"
     ];
@@ -31,6 +32,20 @@ in
       mdadmConf = "MAILADDR=${username}@wimpys.world";
     };
   };
+
+  boot.extraModprobeConfig = ''
+    # Disable runtime power management to prevent GPU clock gating between inference calls.
+    options amdgpu runpm=0
+    # Expand GTT pool to ~120 GB (4 KiB pages: 120 * 1024^3 / 4096 = 31457280).
+    options ttm pages_limit=31457280
+  '';
+
+  # Force GPU to high performance clock on device add.
+  # Without this the GPU idles at 600 MHz, halving inference throughput.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="drm", KERNEL=="card[0-9]*", DRIVERS=="amdgpu", \
+      ATTR{device/power_dpm_force_performance_level}="high"
+  '';
 
   hardware.mwProCapture.enable = true;
 

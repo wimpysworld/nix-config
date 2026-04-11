@@ -137,7 +137,7 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
 
 **Quantisation:** embedding quality degrades more with aggressive quantisation than generation quality does. The default Ollama tag uses Q4_K_M. On this hardware (128GB), use Q8_0: pull `qwen3-embedding:4b-q8_0`. Memory cost is ~5 GB at Q8 versus ~2.5 GB at Q4 - trivial on 128 GB.
 
-**Context window:** Ollama defaults to 4096 tokens regardless of the model's native 40K context. Set `num_ctx` explicitly via `options.num_ctx` in the API call or via Modelfile. 8192 covers most ZeroClaw memory entries and PR diffs; 16384 covers edge cases (large diffs, research documents).
+**Context window:** Ollama defaults to 4096 tokens regardless of the model's native 40K context. ZeroClaw's embedding provider cannot pass `num_ctx` to the embeddings endpoint - it sends only `model` and `input`. Set `num_ctx` via a Modelfile alias instead (see §6). 8192 covers most ZeroClaw memory entries and PR diffs; 16384 covers edge cases (large diffs, research documents).
 
 **Reranker note:** a Qwen3-Reranker-4B on top of qwen3-embedding:0.6B scores 81.20 on MTEB Code, higher than qwen3-embedding:8B alone (80.68). Worth considering as a future enhancement if retrieval quality becomes a bottleneck after deployment.
 
@@ -188,7 +188,7 @@ When splitting would make sense (not applicable here): A/B testing model quality
 
 ~5 GB at Q8_0, 40K context, code retrieval capable. Load permanently alongside inference models. The 4B sits at the quality optimum: +4.96 MTEB retrieval and +4.65 MTEB Code over the 0.6B, with the 8B adding only 0.62 further points at half the throughput. Q8_0 preserves embedding fidelity that Q4_K_M would compromise; the ~5 GB memory cost is trivial on 128 GB.
 
-Set `num_ctx` to at least 8192 in your API call options; Ollama's 4096 default discards most of the model's native 40K context window.
+Use the `qwen3-embedding:4b-q8_0-8k` alias (not the base model tag) in ZeroClaw config. ZeroClaw cannot pass `num_ctx` to the embeddings endpoint; the NixOS Ollama mixin creates this alias via a Modelfile with `num_ctx 8192` baked in. Ollama's 4096 default otherwise discards most of the model's native 40K context window.
 
 Skip nomic-embed-text-v2-moe (512-token context too short for code chunks) and embeddinggemma (2K context, no advantage over qwen3-embedding).
 
@@ -197,12 +197,12 @@ Skip nomic-embed-text-v2-moe (512-token context too short for code chunks) and e
 | Slot | Model | Disk | Active params | Context | Primary use |
 |---|---|---|---|---|---|
 | Primary workhorse | qwen3.5:27b | 17 GB | 27B | 256K | PR review, code fixes, agentic coding, research |
-| Secondary / prose | gemma4:26b | 18 GB | 3.8B | 256K | Blog posts, general reasoning, vision |
+| General | qwen3.5:35b-a3b | 24 GB | 3.3B (MoE) | 256K | General reasoning, research, tasks not requiring one-shot precision |
 | Small / media | gemma4:e4b | ~5 GB | 4.5B (effective) | 128K | Summarisation, image/video triage, fast text tasks; audio pending Ollama support |
 | Embedding | qwen3-embedding:4b-q8_0 | ~5 GB | 4B | 40K | Memory retrieval |
-| **Total on disk** | | **~45 GB** | | | |
+| **Total on disk** | | **~51 GB** | | | |
 
-Total disk ~40GB leaves ~70GB headroom in the 110GB practical budget. Ollama loads one inference model at a time; all fit comfortably in 128GB with space for context windows and desktop workload.
+Total disk ~51GB leaves ~59GB headroom in the 110GB practical budget. Ollama loads one inference model at a time; all fit comfortably in 128GB with space for context windows and desktop workload.
 
 ### ZeroClaw Config Pattern
 
@@ -213,8 +213,8 @@ model = "ollama/qwen3.5:27b"
 api_base = "http://<host-container-ip>:11434/v1"
 
 [[model_list]]
-model_name = "prose"
-model = "ollama/gemma4:26b"
+model_name = "general"
+model = "ollama/qwen3.5:35b-a3b"
 api_base = "http://<host-container-ip>:11434/v1"
 
 [[model_list]]
@@ -231,14 +231,16 @@ primary = "primary"
 fallbacks = ["frontier"]
 
 [memory]
-embedding_model = "ollama/qwen3-embedding:4b-q8_0"
+# Use the 8k alias, not the base model. ZeroClaw cannot pass num_ctx to the
+# embeddings endpoint; the alias has num_ctx 8192 baked in via Modelfile.
+embedding_model = "ollama/qwen3-embedding:4b-q8_0-8k"
 embedding_base = "http://<host-container-ip>:11434/v1"
 ```
 
 ### Rationale Summary
 
 - **qwen3.5:27b as primary**: Dense 27B - all parameters active per forward pass on the new DeltaNet hybrid architecture. SWE-Bench Verified 72.4%, LiveCodeBench 80.7%, IFEval 95.0%. Beats both qwen3-coder:30b (50.3% SWE-Bench) and qwen3.5:35b-a3b MoE (69.2%) despite being smaller on disk - active parameter count matters more than total parameter count. 256K context for repo-scale work.
-- **gemma4:26b as secondary**: 3.8B active, 256K context, native function calling, configurable thinking mode, vision input. Stronger on general knowledge and prose than the coding specialist; use for blog posts and tasks where broad knowledge matters over code depth.
+- **qwen3.5:35b-a3b as general**: 3.3B active MoE, 256K context, 256K context. Faster than the dense 27B at equivalent or better general reasoning; use for research, broad knowledge tasks, and anything not requiring one-shot structured output precision. Community hard-task testing scores 10/10 on agentic patterns; self-correction in an agent loop compensates for its 0/6 structured output score.
 - **gemma4:e4b as small/media model**: The only local model in the stack with audio and video capability - neither of the larger Gemma 4 models has an audio encoder. Image and video (frame sequences up to 60 seconds) work today. Audio transcription and understanding are model-supported but pending llama.cpp and Ollama implementation; use Q6_K when audio lands. At ~5 GB and ~48-50 tok/s it handles summarisation, fast triage, and lightweight tasks without loading a larger model.
 - **Frontier fallback**: Local models handle the 80-90% routine case; Claude handles deep research and complex multi-step reasoning that exceeds the local tier.
 
@@ -249,7 +251,7 @@ embedding_base = "http://<host-container-ip>:11434/v1"
 | Model | Reason |
 |---|---|
 | qwen3.5:122b | 81GB leaves ~29GB for NixOS + desktop + context; ~3.4 tok/s impractical for interactive work |
-| qwen3.5:35b-a3b | MoE with ~3B active params; scores 69.2% SWE-Bench vs 72.4% for the smaller dense 27B; larger on disk and slower |
+| gemma4:26b | Replaced by qwen3.5:35b-a3b for general tasks; gemma4:e4b covers media and summarisation at lower cost |
 | qwen3-coder:30b | Superseded; old Qwen3 architecture with 3.3B active params scores 50.3% SWE-Bench vs qwen3.5:27b's 72.4% |
 | qwen3-coder-next:80b | **Qwen3-Coder-Next** (80B MoE, 3B active, ~43GB IQ4): SWE-Bench Verified 70.6%, 45 tok/s on Strix Halo, 23/30 on community hard-task benchmark (joint highest). Fits within the 96GB budget alongside embedding and gemma4:e4b (~53GB total). Community hard-task data supports treating this as an optional high-quality coding specialist rather than a future consideration. Add if one-shot coding precision on hard tasks becomes a priority; the 35B-A3B and 27B cover the baseline well without it. |
 | qwen3-embedding:0.6b | Quality plateau at 4B; 0.6B suitable only for resource-constrained hardware |
