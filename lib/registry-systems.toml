@@ -211,6 +211,12 @@ tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-cap
 [skrye.gpu]
 vendors = ["amd"]
 
+[skrye.gpu.compute]
+vendor = "amd"
+vram = 96
+unified = true
+acceleration = "rocm"
+
 [skrye.network]
 wifi = false
 
@@ -237,6 +243,12 @@ tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-cap
 
 [zannah.gpu]
 vendors = ["amd"]
+
+[zannah.gpu.compute]
+vendor = "amd"
+vram = 96
+unified = true
+acceleration = "rocm"
 
 [zannah.network]
 wifi = false

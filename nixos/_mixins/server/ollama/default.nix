@@ -24,46 +24,42 @@ let
       pkgs.ollama;
 
   # VRAM-based model tier selection.
+  codingModel =
+    if vram >= 17 then
+      "qwen3.5:27b"
+    else if vram >= 7 then
+      "qwen3.5:9b"
+    else
+      "qwen3.5:4b";
   generalModel =
-    if vram >= 82 then
-      "qwen3.5:122b"
-    else if vram >= 24 then
-      "qwen3.5:35b"
+    if vram >= 24 then
+      "qwen3.5:35b-a3b"
     else if vram >= 17 then
       "qwen3.5:27b"
     else if vram >= 7 then
       "qwen3.5:9b"
     else
       "qwen3.5:4b";
-  codingModel =
-    if vram >= 20 then
-      "qwen3-coder:30b"
-    else if vram >= 10 then
-      "qwen2.5-coder:14b"
-    else
-      "qwen2.5-coder:7b";
   embeddingModel =
     if vram >= 5 then
-      "qwen3-embedding:8b"
+      "qwen3-embedding:4b-q8_0"
     else if vram > 3 then
       "qwen3-embedding:4b"
     else
       "qwen3-embedding:0.6b";
-  visionModel =
-    if vram >= 21 then
-      "qwen3-vl:32b"
-    else if vram >= 7 then
-      "qwen3-vl:8b"
+  mediaModel =
+    if vram >= 5 then
+      "gemma4:e4b"
+    else if vram >= 3 then
+      "gemma4:e2b"
     else
-      "qwen3-vl:4b";
-  taskModel = "rnj-1:8b";
+      null;
 
-  allModels = [
+  allModels = lib.filter (m: m != null) [
     codingModel
     embeddingModel
     generalModel
-    taskModel
-    visionModel
+    mediaModel
   ];
 in
 lib.mkIf isInference {
