@@ -10,7 +10,7 @@ The following decisions are deferred pending research:
 
 | Question | Options | Notes |
 |---|---|---|
-| Agent software | [picoclaw](https://github.com/sipeed/picoclaw) vs [zeroclaw](https://github.com/zeroclaw-labs/zeroclaw) | May run one on each host; both in `llm-agents.nix` |
+| Agent software | [picoclaw](https://github.com/sipeed/picoclaw) vs [zeroclaw](https://github.com/zeroclaw-labs/zeroclaw) | See [PICO-vs-ZERO.md](PICO-vs-ZERO.md); both in `llm-agents.nix` |
 | Messaging platform | Telegram vs Discord | Long polling preferred; no public endpoint needed |
 | GitHub tooling | [github-mcp-server](https://github.com/github/github-mcp-server) vs `gh` CLI | sith-skrye, sith-zannah accounts created; defer wiring until agent software chosen |
 
