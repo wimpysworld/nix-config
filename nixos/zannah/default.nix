@@ -23,7 +23,6 @@ in
       "kvm-amd"
     ];
     kernelParams = [
-      "iommu=pt"
       "video=DP-1:3440x1440@100"
       "video=HDMI-A-1:2560x1600@120"
     ];
@@ -34,8 +33,6 @@ in
   };
 
   boot.extraModprobeConfig = ''
-    # Disable runtime power management to prevent GPU clock gating between inference calls.
-    options amdgpu runpm=0
     # Expand GTT pool to ~120 GB (4 KiB pages: 120 * 1024^3 / 4096 = 31457280).
     options ttm pages_limit=31457280
   '';

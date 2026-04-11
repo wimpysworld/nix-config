@@ -73,11 +73,8 @@ lib.mkIf isInference {
     host = if host.is.server then "0.0.0.0" else "127.0.0.1";
     loadModels = allModels;
     environmentVariables = {
-      OLLAMA_FLASH_ATTENTION   = "1";
       OLLAMA_KV_CACHE_TYPE     = "q8_0";
       OLLAMA_KEEP_ALIVE        = "-1";
-      OLLAMA_NUM_PARALLEL      = "1";
-      OLLAMA_MAX_LOADED_MODELS = "1";
     };
   };
 }
