@@ -8,7 +8,7 @@
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
   modifiedPackages = final: prev: {
-    inherit (final.unstable) llama-cpp ollama ollama-cuda ollama-rocm ollama-vulkan;
+    inherit (final.unstable) llama-cpp;
     # Override Python packages to fix Darwin-specific issues
     python3 = prev.python3.override {
       packageOverrides = _pyfinal: pyprev: {
@@ -94,7 +94,9 @@
             url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${version}.tar.gz";
             sha256 = "sha256-sYwMVEAvYMKCn4DKQiCtnTxd1chMUd0atgswpC+CZ5g=";
           };
-          meta = old.meta // { broken = false; };
+          meta = old.meta // {
+            broken = false;
+          };
         });
       }
     );
