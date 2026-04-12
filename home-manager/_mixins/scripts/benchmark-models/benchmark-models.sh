@@ -370,13 +370,38 @@ export TMPDIR="${TMP_ROOT}"
 TMPFILE=$(mktemp "${TMPDIR}/benchmark-models.XXXXXX")
 
 cleanup() {
-	if [[ -n "${OLLAMA_PID}" ]] && kill -0 "${OLLAMA_PID}" 2>/dev/null; then
-		kill "${OLLAMA_PID}" 2>/dev/null || true
-		wait "${OLLAMA_PID}" 2>/dev/null || true
-	fi
+	stop_ollama_server
 	rm -f "${TMPFILE}"
 }
 trap cleanup EXIT
+
+stop_ollama_server() {
+	local ollama_pid="${OLLAMA_PID}"
+	local attempt
+
+	if [[ -z "${ollama_pid}" ]]; then
+		return 0
+	fi
+
+	if ! kill -0 "${ollama_pid}" 2>/dev/null; then
+		OLLAMA_PID=''
+		return 0
+	fi
+
+	kill "${ollama_pid}" 2>/dev/null || true
+	for ((attempt = 1; attempt <= 20; attempt += 1)); do
+		if ! kill -0 "${ollama_pid}" 2>/dev/null; then
+			wait "${ollama_pid}" 2>/dev/null || true
+			OLLAMA_PID=''
+			return 0
+		fi
+		sleep 0.5
+	done
+
+	kill -9 "${ollama_pid}" 2>/dev/null || true
+	wait "${ollama_pid}" 2>/dev/null || true
+	OLLAMA_PID=''
+}
 
 run_ollama() {
 	local command_name="$1"
@@ -730,14 +755,28 @@ run_backend_benchmark() {
 restart_ollama_server_for_runner() {
 	local command_name="$1"
 
-	if [[ -n "${OLLAMA_PID}" ]] && kill -0 "${OLLAMA_PID}" 2>/dev/null; then
-		kill "${OLLAMA_PID}" 2>/dev/null || true
-		wait "${OLLAMA_PID}" 2>/dev/null || true
+	if [[ "${OLLAMA_COMMAND}" == "${command_name}" ]] && [[ -n "${OLLAMA_PID}" ]] && kill -0 "${OLLAMA_PID}" 2>/dev/null; then
+		return 0
 	fi
 
-	OLLAMA_PID=''
+	stop_ollama_server
 	OLLAMA_COMMAND="${command_name}"
 	start_ollama_server
+}
+
+run_all_benchmarks() {
+	local index
+	local total_runners="$1"
+	local ollama_stopped='false'
+
+	for index in "${!RUNNER_COMMANDS[@]}"; do
+		if [[ "${RUNNER_TYPES[index]}" != 'ollama' ]] && [[ "${ollama_stopped}" == 'false' ]]; then
+			stop_ollama_server
+			ollama_stopped='true'
+		fi
+
+		run_backend_benchmark "${index}" "${total_runners}"
+	done
 }
 
 print_results() {
@@ -884,9 +923,7 @@ printf '\n'
 if [[ ${#RUNNER_COMMANDS[@]} -eq 0 ]]; then
 	:
 else
-	for index in "${!RUNNER_COMMANDS[@]}"; do
-		run_backend_benchmark "${index}" "${#RUNNER_COMMANDS[@]}"
-	done
+	run_all_benchmarks "${#RUNNER_COMMANDS[@]}"
 fi
 
 print_results
