@@ -8,7 +8,7 @@
   # You can change versions, add patches, set compilation flags, anything really.
   # https://nixos.wiki/wiki/Overlays
   modifiedPackages = final: prev: {
-    inherit (final.unstable) llama-cpp ollama ollama-cuda ollama-rocm ollama-vulkan;
+    inherit (final.unstable) llama-cpp llama-cpp-rocm llama-cpp-vulkan ollama ollama-cuda ollama-rocm ollama-vulkan;
     # Override Python packages to fix Darwin-specific issues
     python3 = prev.python3.override {
       packageOverrides = _pyfinal: pyprev: {

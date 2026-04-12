@@ -27,6 +27,7 @@ OLLAMA_BIND="${BENCHMARK_MODELS_OLLAMA_HOST:-127.0.0.1:11435}"
 OLLAMA_URL="http://${OLLAMA_BIND}"
 TMPFILE=""
 OLLAMA_PID=""
+OLLAMA_COMMAND=""
 HF_REPO=""
 HF_FILE=""
 HF_MODEL_PATH=""
@@ -35,16 +36,14 @@ RUNS="5"
 PURGE_REQUESTED='false'
 HOST_COMPUTE_VENDOR="${BENCHMARK_MODELS_HOST_GPU_COMPUTE_VENDOR:-}"
 BACKEND_MATRIX_REASON=""
-OLLAMA_MEAN=""
-OLLAMA_MIN=""
-OLLAMA_MAX=""
-OLLAMA_SPREAD=""
-declare -a BACKEND_COMMANDS=()
-declare -a BACKEND_MEAN=()
-declare -a BACKEND_MIN=()
-declare -a BACKEND_MAX=()
-declare -a BACKEND_SPREAD=()
-declare -a BACKEND_SKIPPED=()
+declare -a RUNNER_LABELS=()
+declare -a RUNNER_TYPES=()
+declare -a RUNNER_COMMANDS=()
+declare -a RUNNER_MEAN=()
+declare -a RUNNER_MIN=()
+declare -a RUNNER_MAX=()
+declare -a RUNNER_SPREAD=()
+declare -a RUNNER_SKIPPED=()
 
 usage() {
 	cat <<'EOF'
@@ -62,8 +61,8 @@ Options:
            Show this help text
 
 Backend matrix:
-  AMD      rocm-llama-bench, vulkan-llama-bench
-  NVIDIA   cuda-llama-bench, vulkan-llama-bench
+  AMD      rocm-ollama, vulkan-ollama, rocm-llama-bench, vulkan-llama-bench
+  NVIDIA   cuda-ollama, vulkan-ollama, cuda-llama-bench, vulkan-llama-bench
 
 Environment:
   BENCHMARK_MODELS_ROOT        Root directory for caches under ~/Volatile
@@ -290,6 +289,9 @@ cleanup() {
 trap cleanup EXIT
 
 run_ollama() {
+	local command_name="$1"
+	shift
+
 	env \
 		HOME="${OLLAMA_RUNTIME_HOME}" \
 		OLLAMA_HOST="${OLLAMA_BIND}" \
@@ -299,7 +301,7 @@ run_ollama() {
 		XDG_CONFIG_HOME="${XDG_CONFIG_HOME}" \
 		XDG_DATA_HOME="${XDG_DATA_HOME}" \
 		TMPDIR="${TMPDIR}" \
-		ollama "$@"
+		"${command_name}" "$@"
 }
 
 run_hf() {
@@ -326,24 +328,30 @@ run_llama_backend() {
 		"$@"
 }
 
-add_backend() {
-	BACKEND_COMMANDS+=("$1")
-	BACKEND_MEAN+=("")
-	BACKEND_MIN+=("")
-	BACKEND_MAX+=("")
-	BACKEND_SPREAD+=("")
-	BACKEND_SKIPPED+=("")
+add_runner() {
+	RUNNER_LABELS+=("$1")
+	RUNNER_TYPES+=("$2")
+	RUNNER_COMMANDS+=("$3")
+	RUNNER_MEAN+=("")
+	RUNNER_MIN+=("")
+	RUNNER_MAX+=("")
+	RUNNER_SPREAD+=("")
+	RUNNER_SKIPPED+=("")
 }
 
 prepare_backend_matrix() {
 	case "${HOST_COMPUTE_VENDOR}" in
 	amd)
-		add_backend 'rocm-llama-bench'
-		add_backend 'vulkan-llama-bench'
+		add_runner 'rocm-ollama' 'ollama' 'rocm-ollama'
+		add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
+		add_runner 'rocm-llama-bench' 'llama.cpp' 'rocm-llama-bench'
+		add_runner 'vulkan-llama-bench' 'llama.cpp' 'vulkan-llama-bench'
 		;;
 	nvidia)
-		add_backend 'cuda-llama-bench'
-		add_backend 'vulkan-llama-bench'
+		add_runner 'cuda-ollama' 'ollama' 'cuda-ollama'
+		add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
+		add_runner 'cuda-llama-bench' 'llama.cpp' 'cuda-llama-bench'
+		add_runner 'vulkan-llama-bench' 'llama.cpp' 'vulkan-llama-bench'
 		;;
 	'')
 		BACKEND_MATRIX_REASON='Host compute vendor metadata is unavailable, backend comparison skipped.'
@@ -355,13 +363,35 @@ prepare_backend_matrix() {
 }
 
 backend_matrix_label() {
-	local IFS=', '
-	printf '%s' "${BACKEND_COMMANDS[*]}"
+	local runner_label
+	local label=''
+
+	for runner_label in "${RUNNER_LABELS[@]}"; do
+		if [[ -n "${label}" ]]; then
+			label+=', '
+		fi
+		label+="${runner_label}"
+	done
+
+	printf '%s' "${label}"
+}
+
+first_ollama_command() {
+	local index
+
+	for index in "${!RUNNER_COMMANDS[@]}"; do
+		if [[ "${RUNNER_TYPES[index]}" == 'ollama' ]]; then
+			printf '%s\n' "${RUNNER_COMMANDS[index]}"
+			return 0
+		fi
+	done
+
+	return 1
 }
 
 start_ollama_server() {
 	rm -f "${OLLAMA_LOG}"
-	run_ollama serve >"${OLLAMA_LOG}" 2>&1 &
+	run_ollama "${OLLAMA_COMMAND}" serve >"${OLLAMA_LOG}" 2>&1 &
 	OLLAMA_PID="$!"
 
 	for _ in $(seq 1 30); do
@@ -438,7 +468,7 @@ ollama_model_cached() {
 		if [[ "${cached_model}" == "${MODEL}" ]]; then
 			return 0
 		fi
-	done < <(run_ollama list 2>/dev/null | awk 'NR > 1 { print $1 }')
+	done < <(run_ollama "${OLLAMA_COMMAND}" list 2>/dev/null | awk 'NR > 1 { print $1 }')
 
 	return 1
 }
@@ -487,24 +517,29 @@ calculate_stats() {
 }
 
 print_intro() {
-	printf 'Model benchmark  %s  %s runs\n' "${MODEL}" "${RUNS}"
-	printf '\n'
+	printf 'Model benchmark: %s runs\n' "${RUNS}"
+	printf -- '- %-10s %s\n' 'Ollama:' "${MODEL}"
+	printf -- '- %-10s %s\n\n' 'Llama.cpp:' "${HF_FILE}"
 }
 
 prepare_downloads() {
 	printf 'Preparation\n'
 
+	if [[ -z "${OLLAMA_COMMAND}" ]]; then
+		printf 'Error: no Ollama runner is available for preparation.\n' >&2
+		exit 1
+	fi
+
 	if ollama_model_cached; then
 		printf '  [1/2] Ollama model: ready\n'
 	else
 		printf '  [1/2] Ollama model: pulling\n'
-		run_ollama pull "${MODEL}"
+		run_ollama "${OLLAMA_COMMAND}" pull "${MODEL}"
 	fi
 	printf '\n'
 
 	if HF_MODEL_PATH="$(resolve_cached_hf_model_path)"; then
 		printf '  [2/2] Hugging Face GGUF: ready\n'
-		printf '         %s\n' "${HF_FILE}"
 	else
 		printf '  [2/2] Hugging Face GGUF: downloading\n'
 		printf '         %s - %s\n' "${HF_REPO}" "${HF_FILE}"
@@ -522,26 +557,38 @@ prepare_downloads() {
 run_backend_benchmark() {
 	local index="$1"
 	local total_runners="$2"
-	local command_name="${BACKEND_COMMANDS[index]}"
+	local runner_label="${RUNNER_LABELS[index]}"
+	local runner_type="${RUNNER_TYPES[index]}"
+	local command_name="${RUNNER_COMMANDS[index]}"
 	local skipped_reason=""
-	local runner_number=$((index + 2))
+	local runner_number=$((index + 1))
 	local backend_tmpfile
 	local tps
 
-	printf '  Runner %s/%s: %s\n' "${runner_number}" "${total_runners}" "${command_name}"
+	printf '  Runner %s/%s: %s\n' "${runner_number}" "${total_runners}" "${runner_label}"
 	printf '    measured runs: %s\n' "${RUNS}"
 
 	if ! command -v "${command_name}" >/dev/null 2>&1; then
-		BACKEND_SKIPPED[index]="${command_name} not found."
-		printf '    skipped - %s\n\n' "${BACKEND_SKIPPED[index]}"
+		RUNNER_SKIPPED[index]='not found'
+		printf '    skipped - %s\n\n' "${RUNNER_SKIPPED[index]}"
 		return 0
 	fi
 
 	backend_tmpfile=$(mktemp "${TMPDIR}/benchmark-backend.XXXXXX")
 
+	if [[ "${runner_type}" == 'ollama' ]]; then
+		restart_ollama_server_for_runner "${command_name}"
+	fi
+
 	for run_number in $(seq 1 "${RUNS}"); do
 		printf '    run %s/%s... ' "${run_number}" "${RUNS}"
-		if tps=$(run_llama_bench_once "${command_name}" "${HF_MODEL_PATH}"); then
+		if [[ "${runner_type}" == 'ollama' ]]; then
+			tps=$(run_ollama_once)
+		else
+			tps=$(run_llama_bench_once "${command_name}" "${HF_MODEL_PATH}")
+		fi
+
+		if [[ -n "${tps:-}" ]]; then
 			printf '%.3f tok/s\n' "${tps}"
 			printf '%s\n' "${tps}" >>"${backend_tmpfile}"
 		else
@@ -550,22 +597,35 @@ run_backend_benchmark() {
 	done
 
 	if [[ ! -s "${backend_tmpfile}" ]]; then
-		skipped_reason="${command_name} produced no usable tg results."
+		skipped_reason='no usable tg results'
 	else
 		IFS='|' read -r stats_mean stats_min stats_max stats_spread <<<"$(calculate_stats "${backend_tmpfile}")"
-		BACKEND_MEAN[index]="${stats_mean}"
-		BACKEND_MIN[index]="${stats_min}"
-		BACKEND_MAX[index]="${stats_max}"
-		BACKEND_SPREAD[index]="${stats_spread}"
+		RUNNER_MEAN[index]="${stats_mean}"
+		RUNNER_MIN[index]="${stats_min}"
+		RUNNER_MAX[index]="${stats_max}"
+		RUNNER_SPREAD[index]="${stats_spread}"
 	fi
 
 	rm -f "${backend_tmpfile}"
 
-	BACKEND_SKIPPED[index]="${skipped_reason}"
+	RUNNER_SKIPPED[index]="${skipped_reason}"
 	if [[ -n "${skipped_reason}" ]]; then
 		printf '    skipped - %s\n' "${skipped_reason}"
 	fi
 	printf '\n'
+}
+
+restart_ollama_server_for_runner() {
+	local command_name="$1"
+
+	if [[ -n "${OLLAMA_PID}" ]] && kill -0 "${OLLAMA_PID}" 2>/dev/null; then
+		kill "${OLLAMA_PID}" 2>/dev/null || true
+		wait "${OLLAMA_PID}" 2>/dev/null || true
+	fi
+
+	OLLAMA_PID=''
+	OLLAMA_COMMAND="${command_name}"
+	start_ollama_server
 }
 
 print_results() {
@@ -573,16 +633,15 @@ print_results() {
 
 	printf 'Results\n'
 	printf '  %-20s %12s  %s\n' 'Runner' 'Mean tok/s' 'Notes'
-	printf '  %-20s %12.3f  min %.3f, max %.3f, spread %.3f\n' 'Ollama' "${OLLAMA_MEAN}" "${OLLAMA_MIN}" "${OLLAMA_MAX}" "${OLLAMA_SPREAD}"
 
-	if [[ ${#BACKEND_COMMANDS[@]} -eq 0 ]]; then
+	if [[ ${#RUNNER_COMMANDS[@]} -eq 0 ]]; then
 		printf '  %-20s %12s  %s\n' 'Host backends' 'skipped' "${BACKEND_MATRIX_REASON}"
 	else
-		for index in "${!BACKEND_COMMANDS[@]}"; do
-			if [[ -n "${BACKEND_SKIPPED[index]}" ]]; then
-				printf '  %-20s %12s  %s\n' "${BACKEND_COMMANDS[index]}" 'skipped' "${BACKEND_SKIPPED[index]}"
+		for index in "${!RUNNER_COMMANDS[@]}"; do
+			if [[ -n "${RUNNER_SKIPPED[index]}" ]]; then
+				printf '  %-20s %12s  %s\n' "${RUNNER_LABELS[index]}" 'skipped' "${RUNNER_SKIPPED[index]}"
 			else
-				printf '  %-20s %12.3f  min %.3f, max %.3f, spread %.3f\n' "${BACKEND_COMMANDS[index]}" "${BACKEND_MEAN[index]}" "${BACKEND_MIN[index]}" "${BACKEND_MAX[index]}" "${BACKEND_SPREAD[index]}"
+				printf '  %-20s %12.3f  min %.3f, max %.3f, spread %.3f\n' "${RUNNER_LABELS[index]}" "${RUNNER_MEAN[index]}" "${RUNNER_MIN[index]}" "${RUNNER_MAX[index]}" "${RUNNER_SPREAD[index]}"
 			fi
 		done
 	fi
@@ -592,44 +651,92 @@ print_results() {
 
 print_deltas() {
 	local index
-	local delta_backend
-	local delta_pair
-	local direction
-	local pair_direction
+	local pair_backend
+	local ollama_index
+	local llama_index
+	local fastest_index=''
+	local slowest_index=''
 	local printed='false'
+	local delta_backend
+	local direction
 
-	for index in "${!BACKEND_COMMANDS[@]}"; do
-		if [[ -n "${BACKEND_MEAN[index]}" ]]; then
+	print_delta_line() {
+		local line_label="$1"
+		local left_label="$2"
+		local right_label="$3"
+		local left_mean="$4"
+		local right_mean="$5"
+
+		delta_backend=$(awk "BEGIN { printf \"%.3f\", ${left_mean} - ${right_mean} }")
+		if awk "BEGIN { exit (${left_mean} >= ${right_mean}) ? 1 : 0 }"; then
+			direction="${right_label} faster"
+		else
+			direction="${left_label} faster"
+		fi
+
+		printf '  %-34s %+9.3f tok/s  (%s)\n' "${line_label}" "${delta_backend}" "${direction}"
+	}
+
+	for index in "${!RUNNER_COMMANDS[@]}"; do
+		if [[ -z "${RUNNER_MEAN[index]}" ]]; then
+			continue
+		fi
+
+		if [[ -z "${fastest_index}" ]] || awk "BEGIN { exit (${RUNNER_MEAN[index]} > ${RUNNER_MEAN[fastest_index]}) ? 0 : 1 }"; then
+			fastest_index="${index}"
+		fi
+
+		if [[ -z "${slowest_index}" ]] || awk "BEGIN { exit (${RUNNER_MEAN[index]} < ${RUNNER_MEAN[slowest_index]}) ? 0 : 1 }"; then
+			slowest_index="${index}"
+		fi
+	done
+
+	for pair_backend in rocm cuda vulkan; do
+		ollama_index=''
+		llama_index=''
+
+		for index in "${!RUNNER_COMMANDS[@]}"; do
+			if [[ -z "${RUNNER_MEAN[index]}" ]]; then
+				continue
+			fi
+
+			case "${RUNNER_LABELS[index]}" in
+			"${pair_backend}-ollama")
+				ollama_index="${index}"
+				;;
+			"${pair_backend}-llama-bench")
+				llama_index="${index}"
+				;;
+			esac
+		done
+
+		if [[ -n "${ollama_index}" && -n "${llama_index}" ]]; then
 			if [[ "${printed}" == 'false' ]]; then
 				printf 'Deltas\n'
 				printed='true'
 			fi
 
-			delta_backend=$(awk "BEGIN { printf \"%.3f\", ${BACKEND_MEAN[index]} - ${OLLAMA_MEAN} }")
-			if awk "BEGIN { exit (${BACKEND_MEAN[index]} >= ${OLLAMA_MEAN}) ? 1 : 0 }"; then
-				direction='Ollama faster'
-			else
-				direction="${BACKEND_COMMANDS[index]} faster"
-			fi
-
-			printf '  %-20s %+6.3f tok/s  (%s)\n' "${BACKEND_COMMANDS[index]} vs Ollama" "${delta_backend}" "${direction}"
+			print_delta_line \
+				"${RUNNER_LABELS[llama_index]} vs ${RUNNER_LABELS[ollama_index]}" \
+				"${RUNNER_LABELS[llama_index]}" \
+				"${RUNNER_LABELS[ollama_index]}" \
+				"${RUNNER_MEAN[llama_index]}" \
+				"${RUNNER_MEAN[ollama_index]}"
 		fi
 	done
 
-	if [[ ${#BACKEND_COMMANDS[@]} -ge 2 && -n "${BACKEND_MEAN[0]}" && -n "${BACKEND_MEAN[1]}" ]]; then
+	if [[ -n "${fastest_index}" && -n "${slowest_index}" ]]; then
 		if [[ "${printed}" == 'false' ]]; then
 			printf 'Deltas\n'
 			printed='true'
 		fi
 
-		delta_pair=$(awk "BEGIN { printf \"%.3f\", ${BACKEND_MEAN[1]} - ${BACKEND_MEAN[0]} }")
-		if awk "BEGIN { exit (${BACKEND_MEAN[1]} >= ${BACKEND_MEAN[0]}) ? 1 : 0 }"; then
-			pair_direction="${BACKEND_COMMANDS[0]} faster"
-		else
-			pair_direction="${BACKEND_COMMANDS[1]} faster"
-		fi
-
-		printf '  %-20s %+6.3f tok/s  (%s)\n' "${BACKEND_COMMANDS[1]} vs ${BACKEND_COMMANDS[0]}" "${delta_pair}" "${pair_direction}"
+		print_delta_line \
+			'fastest vs slowest' \
+			"${RUNNER_LABELS[fastest_index]}" \
+			"${RUNNER_LABELS[slowest_index]}" \
+			"${RUNNER_MEAN[fastest_index]}" \
+			"${RUNNER_MEAN[slowest_index]}"
 	fi
 
 	if [[ "${printed}" == 'true' ]]; then
@@ -641,37 +748,32 @@ prepare_backend_matrix
 
 print_intro
 
+if [[ ${#RUNNER_COMMANDS[@]} -eq 0 ]]; then
+	printf 'Benchmark\n'
+	printf '  Runners: skipped\n'
+	printf '  Host backends: skipped - %s\n\n' "${BACKEND_MATRIX_REASON}"
+	print_results
+	exit 0
+fi
+
+OLLAMA_COMMAND="$(first_ollama_command)"
 start_ollama_server
 prepare_downloads
 
 printf 'Benchmark\n'
-if [[ ${#BACKEND_COMMANDS[@]} -gt 0 ]]; then
-	printf '  Runners: Ollama, %s\n' "$(backend_matrix_label)"
+if [[ ${#RUNNER_COMMANDS[@]} -gt 0 ]]; then
+	printf '  Runners: %s\n' "$(backend_matrix_label)"
 else
-	printf '  Runners: Ollama\n'
+	printf '  Runners: skipped\n'
 	printf '  Host backends: skipped - %s\n' "${BACKEND_MATRIX_REASON}"
 fi
 printf '\n'
 
-: >"${TMPFILE}"
-
-printf '  Runner 1/%s: Ollama\n' "$((1 + ${#BACKEND_COMMANDS[@]}))"
-printf '    measured runs: %s\n' "${RUNS}"
-for run_number in $(seq 1 "${RUNS}"); do
-	printf '    run %s/%s... ' "${run_number}" "${RUNS}"
-	tps=$(run_ollama_once)
-	printf '%.3f tok/s\n' "${tps}"
-	printf '%s\n' "${tps}" >>"${TMPFILE}"
-done
-
-IFS='|' read -r OLLAMA_MEAN OLLAMA_MIN OLLAMA_MAX OLLAMA_SPREAD <<<"$(calculate_stats "${TMPFILE}")"
-printf '\n'
-
-if [[ ${#BACKEND_COMMANDS[@]} -eq 0 ]]; then
+if [[ ${#RUNNER_COMMANDS[@]} -eq 0 ]]; then
 	:
 else
-	for index in "${!BACKEND_COMMANDS[@]}"; do
-		run_backend_benchmark "${index}" "$((1 + ${#BACKEND_COMMANDS[@]}))"
+	for index in "${!RUNNER_COMMANDS[@]}"; do
+		run_backend_benchmark "${index}" "${#RUNNER_COMMANDS[@]}"
 	done
 fi
 

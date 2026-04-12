@@ -8,13 +8,12 @@ let
   inherit (config.noughty) host;
   name = builtins.baseNameOf (builtins.toString ./.);
   vendor = host.gpu.compute.vendor;
-  accel = host.gpu.compute.acceleration;
   isInference = builtins.elem "inference" host.tags;
 
-  mkPrefixedLlamaCpp =
+  mkPrefixedBackend =
     prefix: package:
     pkgs.symlinkJoin {
-      name = "llama-cpp-${prefix}-prefixed";
+      name = "${package.name}-${prefix}-prefixed";
       paths = [ package ];
       postBuild = ''
         for f in "$out/bin/"*; do
@@ -23,7 +22,7 @@ let
       '';
     };
 
-  cudaLlamaCpp = mkPrefixedLlamaCpp "cuda" (
+  cudaLlamaCpp = mkPrefixedBackend "cuda" (
     pkgs.llama-cpp.override {
       cudaSupport = true;
       rocmSupport = false;
@@ -31,7 +30,7 @@ let
     }
   );
 
-  rocmLlamaCpp = mkPrefixedLlamaCpp "rocm" (
+  rocmLlamaCpp = mkPrefixedBackend "rocm" (
     pkgs.llama-cpp.override {
       rocmSupport = true;
       cudaSupport = false;
@@ -39,7 +38,7 @@ let
     }
   );
 
-  vulkanLlamaCpp = mkPrefixedLlamaCpp "vulkan" (
+  vulkanLlamaCpp = mkPrefixedBackend "vulkan" (
     pkgs.llama-cpp.override {
       vulkanSupport = true;
       rocmSupport = false;
@@ -47,24 +46,22 @@ let
     }
   );
 
-  ollamaPackage =
-    if accel == "cuda" then
-      pkgs.ollama-cuda
-    else if accel == "rocm" then
-      pkgs.ollama-rocm
-    else if accel == "vulkan" then
-      pkgs.ollama-vulkan
-    else
-      pkgs.ollama;
+  cudaOllama = mkPrefixedBackend "cuda" pkgs.ollama-cuda;
+  rocmOllama = mkPrefixedBackend "rocm" pkgs.ollama-rocm;
+  vulkanOllama = mkPrefixedBackend "vulkan" pkgs.ollama-vulkan;
 
   backendPackages =
     if vendor == "nvidia" then
       [
+        cudaOllama
+        vulkanOllama
         cudaLlamaCpp
         vulkanLlamaCpp
       ]
     else if vendor == "amd" then
       [
+        rocmOllama
+        vulkanOllama
         rocmLlamaCpp
         vulkanLlamaCpp
       ]
@@ -83,10 +80,8 @@ let
         coreutils
         curl
         gawk
-        hyperfine
         jq
         python3Packages.huggingface-hub
-        ollamaPackage
       ]
       ++ backendPackages;
     text = benchmarkEnv + builtins.readFile ./${name}.sh;
