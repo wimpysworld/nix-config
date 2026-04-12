@@ -6,12 +6,17 @@ set -euo pipefail
 PROMPT="Write a detailed 500-word essay about the history of optical fibre telecommunications."
 MODEL_SPECS=$(
 	cat <<'EOF'
-	qwen3.5:35b-a3b|unsloth/Qwen3.5-35B-A3B-GGUF|Qwen3.5-35B-A3B-Q4_K_M.gguf
-	qwen3-coder-next|unsloth/Qwen3-Coder-Next-GGUF|Qwen3-Coder-Next-Q4_K_M.gguf
-	gemma4:26b|unsloth/gemma-4-26B-A4B-it-GGUF|gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
-	qwen3.5:9b|unsloth/Qwen3.5-9B-GGUF|Qwen3.5-9B-Q4_K_M.gguf
-	gemma4:e4b|unsloth/gemma-4-E4B-it-GGUF|gemma-4-E4B-it-Q4_K_M.gguf
-	gemma4:e2b|unsloth/gemma-4-E2B-it-GGUF|gemma-4-E2B-it-Q4_K_M.gguf
+	gemma4:26b|unsloth/gemma-4-26B-A4B-it-GGUF|gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf|gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf
+	gemma4:31b|unsloth/gemma-4-31B-it-GGUF|gemma-4-31B-it-UD-Q4_K_XL.gguf|gemma-4-31B-it-UD-Q4_K_XL.gguf
+	gemma4:e2b|unsloth/gemma-4-E2B-it-GGUF|gemma-4-E2B-it-UD-Q4_K_XL.gguf|gemma-4-E2B-it-UD-Q4_K_XL.gguf
+	gemma4:e4b|unsloth/gemma-4-E4B-it-GGUF|gemma-4-E4B-it-UD-Q4_K_XL.gguf|gemma-4-E4B-it-UD-Q4_K_XL.gguf
+	gpt-oss:20b|unsloth/gpt-oss-20b-GGUF|gpt-oss-20b-UD-Q4_K_XL.gguf|gpt-oss-20b-UD-Q4_K_XL.gguf
+	gpt-oss:120b|unsloth/gpt-oss-120b-GGUF|UD-Q4_K_XL/gpt-oss-120b-UD-Q4_K_XL-00001-of-00002.gguf|UD-Q4_K_XL/gpt-oss-120b-UD-Q4_K_XL-00001-of-00002.gguf,UD-Q4_K_XL/gpt-oss-120b-UD-Q4_K_XL-00002-of-00002.gguf
+	qwen3:1.7b|unsloth/Qwen3-1.7B-GGUF|Qwen3-1.7B-UD-Q4_K_XL.gguf|Qwen3-1.7B-UD-Q4_K_XL.gguf
+	qwen3.5:9b|unsloth/Qwen3.5-9B-GGUF|Qwen3.5-9B-UD-Q4_K_XL.gguf|Qwen3.5-9B-UD-Q4_K_XL.gguf
+	qwen3.5:27b|unsloth/Qwen3.5-27B-GGUF|Qwen3.5-27B-UD-Q4_K_XL.gguf|Qwen3.5-27B-UD-Q4_K_XL.gguf
+	qwen3.5:35b-a3b|unsloth/Qwen3.5-35B-A3B-GGUF|Qwen3.5-35B-A3B-UD-Q4_K_XL.gguf|Qwen3.5-35B-A3B-UD-Q4_K_XL.gguf
+	qwen3-coder-next|unsloth/Qwen3-Coder-Next-GGUF|Qwen3-Coder-Next-UD-Q4_K_XL.gguf|Qwen3-Coder-Next-UD-Q4_K_XL.gguf
 EOF
 )
 VOLATILE_ROOT="${BENCHMARK_MODELS_ROOT:-${HOME}/Volatile/benchmark-models}"
@@ -29,7 +34,7 @@ TMPFILE=""
 OLLAMA_PID=""
 OLLAMA_COMMAND=""
 HF_REPO=""
-HF_FILE=""
+HF_PRIMARY_PATH=""
 HF_MODEL_PATH=""
 MODEL=""
 RUNS="5"
@@ -44,6 +49,7 @@ declare -a RUNNER_MIN=()
 declare -a RUNNER_MAX=()
 declare -a RUNNER_SPREAD=()
 declare -a RUNNER_SKIPPED=()
+declare -a HF_DOWNLOAD_PATHS=()
 
 usage() {
 	cat <<'EOF'
@@ -186,20 +192,26 @@ model_spec_field() {
 	local field_name="$2"
 	local model
 	local hf_repo
-	local hf_file
+	local hf_primary_path
+	local hf_download_paths
 
-	while IFS='|' read -r model hf_repo hf_file; do
+	while IFS='|' read -r model hf_repo hf_primary_path hf_download_paths; do
 		model="$(trim_whitespace "${model}")"
 		hf_repo="$(trim_whitespace "${hf_repo}")"
-		hf_file="$(trim_whitespace "${hf_file}")"
+		hf_primary_path="$(trim_whitespace "${hf_primary_path}")"
+		hf_download_paths="$(trim_whitespace "${hf_download_paths}")"
 		if [[ "${model}" == "${requested_model}" ]]; then
 			case "${field_name}" in
 			repo)
 				printf '%s\n' "${hf_repo}"
 				return 0
 				;;
-			file)
-				printf '%s\n' "${hf_file}"
+			primary)
+				printf '%s\n' "${hf_primary_path}"
+				return 0
+				;;
+			downloads)
+				printf '%s\n' "${hf_download_paths}"
 				return 0
 				;;
 			*)
@@ -217,11 +229,39 @@ hf_repo_for_model() {
 	model_spec_field "$1" repo
 }
 
-hf_file_for_model() {
-	model_spec_field "$1" file
+hf_primary_path_for_model() {
+	model_spec_field "$1" primary
+}
+
+hf_download_paths_for_model() {
+	model_spec_field "$1" downloads
+}
+
+validate_repo_relative_path() {
+	local path_value="$1"
+	local path_component
+	local -a path_components=()
+
+	if [[ -z "${path_value}" || "${path_value}" == /* ]]; then
+		return 1
+	fi
+
+	IFS='/' read -r -a path_components <<<"${path_value}"
+	for path_component in "${path_components[@]}"; do
+		if [[ -z "${path_component}" || "${path_component}" == '.' || "${path_component}" == '..' ]]; then
+			return 1
+		fi
+	done
+
+	return 0
 }
 
 validate_model() {
+	local hf_download_paths_raw
+	local download_path
+	local primary_in_downloads='false'
+	local -a validated_download_paths=()
+
 	if ! HF_REPO="$(hf_repo_for_model "${MODEL}")"; then
 		printf 'Error: unsupported model: %s\n' "${MODEL}" >&2
 		printf '\n' >&2
@@ -236,22 +276,72 @@ validate_model() {
 		exit 1
 	fi
 
-	if ! HF_FILE="$(hf_file_for_model "${MODEL}")"; then
-		printf 'Error: no GGUF filename mapping defined for supported model: %s\n' "${MODEL}" >&2
+	if ! HF_PRIMARY_PATH="$(hf_primary_path_for_model "${MODEL}")"; then
+		printf 'Error: no GGUF primary path mapping defined for supported model: %s\n' "${MODEL}" >&2
 		printf '\n' >&2
 		list_supported_models >&2
 		exit 1
 	fi
 
-	if [[ -z "${HF_FILE}" ]]; then
-		printf 'Error: empty GGUF filename mapping for supported model: %s\n' "${MODEL}" >&2
+	if [[ -z "${HF_PRIMARY_PATH}" ]]; then
+		printf 'Error: empty GGUF primary path mapping for supported model: %s\n' "${MODEL}" >&2
 		exit 1
 	fi
 
-	if [[ "${HF_FILE}" != *.gguf ]]; then
-		printf 'Error: GGUF filename mapping must end with .gguf for model: %s\n' "${MODEL}" >&2
+	if [[ "${HF_PRIMARY_PATH}" != *.gguf ]]; then
+		printf 'Error: GGUF primary path mapping must end with .gguf for model: %s\n' "${MODEL}" >&2
 		exit 1
 	fi
+
+	if ! validate_repo_relative_path "${HF_PRIMARY_PATH}"; then
+		printf 'Error: GGUF primary path mapping must be repo-relative for model: %s\n' "${MODEL}" >&2
+		exit 1
+	fi
+
+	if ! hf_download_paths_raw="$(hf_download_paths_for_model "${MODEL}")"; then
+		printf 'Error: no GGUF download paths mapping defined for supported model: %s\n' "${MODEL}" >&2
+		printf '\n' >&2
+		list_supported_models >&2
+		exit 1
+	fi
+
+	if [[ -z "${hf_download_paths_raw}" ]]; then
+		printf 'Error: empty GGUF download paths mapping for supported model: %s\n' "${MODEL}" >&2
+		exit 1
+	fi
+
+	IFS=',' read -r -a HF_DOWNLOAD_PATHS <<<"${hf_download_paths_raw}"
+	if [[ ${#HF_DOWNLOAD_PATHS[@]} -eq 0 ]]; then
+		printf 'Error: GGUF download paths mapping must contain at least one path for model: %s\n' "${MODEL}" >&2
+		exit 1
+	fi
+
+	for download_path in "${HF_DOWNLOAD_PATHS[@]}"; do
+		download_path="$(trim_whitespace "${download_path}")"
+		if [[ -z "${download_path}" ]]; then
+			printf 'Error: GGUF download paths mapping contains an empty path for model: %s\n' "${MODEL}" >&2
+			exit 1
+		fi
+		if [[ "${download_path}" != *.gguf ]]; then
+			printf 'Error: GGUF download path must end with .gguf for model: %s\n' "${MODEL}" >&2
+			exit 1
+		fi
+		if ! validate_repo_relative_path "${download_path}"; then
+			printf 'Error: GGUF download path must be repo-relative for model: %s\n' "${MODEL}" >&2
+			exit 1
+		fi
+		if [[ "${download_path}" == "${HF_PRIMARY_PATH}" ]]; then
+			primary_in_downloads='true'
+		fi
+		validated_download_paths+=("${download_path}")
+	done
+
+	if [[ "${primary_in_downloads}" != 'true' ]]; then
+		printf 'Error: GGUF primary path must be included in download paths for model: %s\n' "${MODEL}" >&2
+		exit 1
+	fi
+
+	HF_DOWNLOAD_PATHS=("${validated_download_paths[@]}")
 }
 
 validate_model
@@ -297,6 +387,7 @@ run_ollama() {
 		OLLAMA_HOST="${OLLAMA_BIND}" \
 		OLLAMA_MODELS="${OLLAMA_MODELS_DIR}" \
 		OLLAMA_FLASH_ATTENTION=1 \
+		OLLAMA_KV_CACHE_TYPE=q8_0 \
 		XDG_CACHE_HOME="${XDG_CACHE_HOME}" \
 		XDG_CONFIG_HOME="${XDG_CONFIG_HOME}" \
 		XDG_DATA_HOME="${XDG_DATA_HOME}" \
@@ -446,6 +537,8 @@ run_llama_bench_once() {
 		-m "${model_path}" \
 		-ngl 99 \
 		-fa 1 \
+		-ctk q8_0 \
+		-ctv q8_0 \
 		-p 0 \
 		-n 512 \
 		-r 1 \
@@ -473,7 +566,8 @@ ollama_model_cached() {
 	return 1
 }
 
-resolve_cached_hf_model_path() {
+resolve_cached_hf_path() {
+	local repo_relative_path="$1"
 	local repo_cache_dir
 	local revision
 	local candidate
@@ -483,7 +577,7 @@ resolve_cached_hf_model_path() {
 
 	if [[ -f "${repo_cache_dir}/refs/main" ]]; then
 		revision="$(<"${repo_cache_dir}/refs/main")"
-		candidate="${repo_cache_dir}/snapshots/${revision}/${HF_FILE}"
+		candidate="${repo_cache_dir}/snapshots/${revision}/${repo_relative_path}"
 		if [[ -e "${candidate}" ]]; then
 			printf '%s\n' "${candidate}"
 			return 0
@@ -491,7 +585,7 @@ resolve_cached_hf_model_path() {
 	fi
 
 	shopt -s nullglob
-	candidates=("${repo_cache_dir}"/snapshots/*/"${HF_FILE}")
+	candidates=("${repo_cache_dir}"/snapshots/*/"${repo_relative_path}")
 	shopt -u nullglob
 
 	if [[ ${#candidates[@]} -gt 0 ]]; then
@@ -519,10 +613,13 @@ calculate_stats() {
 print_intro() {
 	printf 'Model benchmark: %s runs\n' "${RUNS}"
 	printf -- '- %-10s %s\n' 'Ollama:' "${MODEL}"
-	printf -- '- %-10s %s\n\n' 'Llama.cpp:' "${HF_FILE}"
+	printf -- '- %-10s %s\n\n' 'Llama.cpp:' "${HF_PRIMARY_PATH}"
 }
 
 prepare_downloads() {
+	local download_path
+	local missing_download='false'
+
 	printf 'Preparation\n'
 
 	if [[ -z "${OLLAMA_COMMAND}" ]]; then
@@ -538,19 +635,34 @@ prepare_downloads() {
 	fi
 	printf '\n'
 
-	if HF_MODEL_PATH="$(resolve_cached_hf_model_path)"; then
+	for download_path in "${HF_DOWNLOAD_PATHS[@]}"; do
+		if ! resolve_cached_hf_path "${download_path}" >/dev/null; then
+			missing_download='true'
+			break
+		fi
+	done
+
+	if [[ "${missing_download}" == 'false' ]] && HF_MODEL_PATH="$(resolve_cached_hf_path "${HF_PRIMARY_PATH}")"; then
 		printf '  [2/2] Hugging Face GGUF: ready\n'
 	else
 		printf '  [2/2] Hugging Face GGUF: downloading\n'
-		printf '         %s - %s\n' "${HF_REPO}" "${HF_FILE}"
-		run_hf download --repo-type model "${HF_REPO}" "${HF_FILE}"
-		HF_MODEL_PATH="$(resolve_cached_hf_model_path || run_hf download --quiet --repo-type model "${HF_REPO}" "${HF_FILE}")"
+		for download_path in "${HF_DOWNLOAD_PATHS[@]}"; do
+			run_hf download --repo-type model "${HF_REPO}" "${download_path}"
+		done
+		HF_MODEL_PATH="$(resolve_cached_hf_path "${HF_PRIMARY_PATH}")"
 	fi
 
 	if [[ -z "${HF_MODEL_PATH}" ]]; then
 		printf 'Error: failed to resolve downloaded GGUF path for %s\n' "${MODEL}" >&2
 		exit 1
 	fi
+
+	for download_path in "${HF_DOWNLOAD_PATHS[@]}"; do
+		if ! resolve_cached_hf_path "${download_path}" >/dev/null; then
+			printf 'Error: failed to resolve downloaded GGUF path %s for %s\n' "${download_path}" "${MODEL}" >&2
+			exit 1
+		fi
+	done
 	printf '\n'
 }
 
