@@ -87,9 +87,9 @@ embedding_model = "ollama/qwen3-embedding:4b-q8_0"
 embedding_base = "http://<host-container-ip>:11434/v1"
 ```
 
-See [OLLAMA.md](OLLAMA.md) for the full model selection rationale and hardware benchmarks. The failover chain retries on 429/rate-limit/timeout errors automatically.
+See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the full model selection rationale, hardware benchmarks, and backend comparison. The failover chain retries on 429/rate-limit/timeout errors automatically.
 
-**Target inference backend**: `llama-server` (Vulkan) is the planned replacement for Ollama as the primary inference backend, based on the measured 32% throughput advantage at identical power draw. The switch is a config-only change - no agent code changes are needed, as both backends expose the same OpenAI-compatible API. Ollama remains in use for model downloads and embedding serving during the transition. See [STRIX-HALO.md](STRIX-HALO.md) section 4 for the performance case.
+**Target inference backend**: `llama-server` (Vulkan) is the planned replacement for Ollama as the primary inference backend, based on the measured 32% throughput advantage at identical power draw. The switch is a config-only change - no agent code changes are needed, as both backends expose the same OpenAI-compatible API. Ollama remains in use for model downloads and embedding serving during the transition. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the performance case.
 
 ### 3. Discrete Named Instances
 
@@ -275,5 +275,6 @@ The `llm-agents.nix` flake provides packages for ZeroClaw and related tooling - 
 | Framework Desktop ML Benchmarks | https://frame.work/nl/en/desktop?tab=machine-learning |
 | AMD ROCm for Radeon/Ryzen | https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/ |
 | Telegram vs Discord evaluation | [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) |
+| Backend comparison and model selection | [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) |
 
 *ZeroClaw configuration reference: see PICO-vs-ZERO.md for the full evaluation.*
