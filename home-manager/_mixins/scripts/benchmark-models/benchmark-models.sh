@@ -412,7 +412,6 @@ run_ollama() {
 		OLLAMA_HOST="${OLLAMA_BIND}" \
 		OLLAMA_MODELS="${OLLAMA_MODELS_DIR}" \
 		OLLAMA_FLASH_ATTENTION=1 \
-		OLLAMA_KV_CACHE_TYPE=q8_0 \
 		XDG_CACHE_HOME="${XDG_CACHE_HOME}" \
 		XDG_CONFIG_HOME="${XDG_CONFIG_HOME}" \
 		XDG_DATA_HOME="${XDG_DATA_HOME}" \
@@ -562,8 +561,6 @@ run_llama_bench_once() {
 		-m "${model_path}" \
 		-ngl 99 \
 		-fa 1 \
-		-ctk q8_0 \
-		-ctv q8_0 \
 		-p 0 \
 		-n 512 \
 		-r 1 \

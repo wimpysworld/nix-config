@@ -72,8 +72,7 @@ Add these to `services.ollama.environmentVariables` in the Ollama mixin's `isInf
 
 | Variable | Value | Rationale |
 |---|---|---|
-| `OLLAMA_FLASH_ATTENTION` | `"1"` | Reduces KV cache size; faster prompt processing. Required for KV cache quantisation. |
-| `OLLAMA_KV_CACHE_TYPE` | `"q8_0"` | Halves KV cache vs f16 with minimal quality impact. Enables larger context or larger models. |
+| `OLLAMA_FLASH_ATTENTION` | `"1"` | Faster prompt processing. |
 
 
 ### Nix configuration
@@ -88,7 +87,6 @@ services.ollama = {
   loadModels = allModels;
   environmentVariables = {
     OLLAMA_FLASH_ATTENTION = "1";
-    OLLAMA_KV_CACHE_TYPE   = "q8_0";
   };
 };
 ```
@@ -99,31 +97,7 @@ services.ollama = {
 
 ### KV cache quantisation
 
-Pass `--cache-type-k` and `--cache-type-v` to set KV cache quantisation. `-fa` enables flash attention, which is required for KV cache quantisation (equivalent to `OLLAMA_FLASH_ATTENTION=1` on the Ollama side).
-
-```bash
-llama-server \
-    --model your-model.gguf \
-    --cache-type-k q8_0 \
-    --cache-type-v q8_0 \
-    -fa \
-    ...
-```
-
-The K and V cache types can be set independently, though there is rarely a reason to use different types for each. `q8_0` halves memory versus the default `f16` with minimal quality impact, matching the Ollama `OLLAMA_KV_CACHE_TYPE=q8_0` setting.
-
-For llama-bench, the short flags are `-ctk` and `-ctv`:
-
-```bash
-llama-bench \
-    -m your-model.gguf \
-    -ctk q8_0 \
-    -ctv q8_0 \
-    -fa 1 \
-    ...
-```
-
-**Benchmark fairness:** when comparing Ollama against llama.cpp, set `OLLAMA_KV_CACHE_TYPE=q8_0` on the Ollama side and `--cache-type-k q8_0 --cache-type-v q8_0` on the llama-server side. Leaving Ollama at the default `f16` while running llama-server at `q8_0` gives llama.cpp a memory advantage that skews the comparison.
+Not used on Strix Halo. Benchmarking showed `q8_0` KV cache hurts throughput enough that the memory saving is not worth it on 128 GB hardware. The flags are `--cache-type-k q8_0 --cache-type-v q8_0` for llama-server and `OLLAMA_KV_CACHE_TYPE=q8_0` for Ollama - worth revisiting on lower-RAM hardware where fitting a larger model matters more than raw speed.
 
 ### Router mode vs llama-swap
 
