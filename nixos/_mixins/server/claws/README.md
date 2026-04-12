@@ -55,7 +55,7 @@ Two Framework Desktop mainboard-based workstations, each with:
 
 **Decision**: Run Ollama on each host bare-metal (not containerised). The agent container connects to Ollama over the private network interface.
 
-**Rationale**: GPU/memory-intensive inference should not be containerised. Ollama is Nix-packaged (`services.ollama`), provides an OpenAI-compatible API, and ZeroClaw supports it natively. 128GB unified memory on Strix Halo can load models up to ~120B parameters. Benchmarks show ~33 tok/s on GPT-OSS 120B and ~46 tok/s on GPT-OSS 20B on Ollama ROCm on this hardware.
+**Rationale**: GPU/memory-intensive inference should not be containerised. Ollama is Nix-packaged (`services.ollama`), provides an OpenAI-compatible API, and ZeroClaw supports it natively. 128 GB unified memory on Strix Halo can load models up to ~120B parameters. Measured throughput: ~33 tok/s on GPT-OSS 120B and ~46 tok/s on GPT-OSS 20B on Ollama. For the primary deployment model (qwen3.5:35b-a3b), Ollama Vulkan achieves 43.60 tok/s; llama.cpp Vulkan achieves 57-58 tok/s on the same model - a 32% gain at identical power draw. Both Skrye and Zannah are set to `acceleration = "vulkan"` in the registry.
 
 **Configuration pattern** (`~/.zeroclaw/config.toml`):
 ```toml
@@ -89,7 +89,7 @@ embedding_base = "http://<host-container-ip>:11434/v1"
 
 See [OLLAMA.md](OLLAMA.md) for the full model selection rationale and hardware benchmarks. The failover chain retries on 429/rate-limit/timeout errors automatically.
 
-**Future optimisation**: llama.cpp's `llama-server` can replace Ollama for potentially better performance on Strix Halo's Vulkan backend. The switch is a config-only change - no agent code changes needed.
+**Target inference backend**: `llama-server` (Vulkan) is the planned replacement for Ollama as the primary inference backend, based on the measured 32% throughput advantage at identical power draw. The switch is a config-only change - no agent code changes are needed, as both backends expose the same OpenAI-compatible API. Ollama remains in use for model downloads and embedding serving during the transition. See [STRIX-HALO.md](STRIX-HALO.md) section 4 for the performance case.
 
 ### 3. Discrete Named Instances
 

@@ -21,26 +21,31 @@ Measured decode speeds on Strix Halo (Ryzen AI Max+ 395, 128GB, ~212 GB/s practi
 | ~11 GB | gpt-oss:20b | MXFP4 | 3.6B (MoE) | ~77 |
 | ~17 GB | qwen3-30b-a3b | Q4_K_M | 3.3B (MoE) | 83-86 |
 | ~18 GB | Nemotron-3-Nano-30B | IQ4_NL | 3.5B (MoE) | ~76 |
-| ~19 GB | **qwen3.5:35b-a3b** | UD-Q4_K_XL | 3B (DeltaNet+MoE) | 42-49 |
-| ~19 GB | qwen3.5:27b | Q4_K_M | 27B (dense) | ~14 |
-| ~43 GB | Qwen3-Coder-Next 80B | Q4_K_M | 3B (MoE) | ~43 |
+| ~19 GB | **qwen3.5:35b-a3b** | UD-Q4_K_XL | 3B (DeltaNet+MoE) | **~58 (measured)** |
+| ~17 GB | **gemma4:26b** | default | 3.8B (MoE) | **48.28 (measured)** |
+| ~5 GB | **gemma4:e4b** | default | 4.5B (dense eff.) | **56.41 (measured)** |
+| ~19 GB | **gemma4:31b** | default | 30.7B (dense) | **10.42 (measured)** |
+| ~19 GB | qwen3.5:27b | Q4_K_M | 27B (dense) | **11.91 (measured)** |
+| ~51 GB | **qwen3-coder-next** | default | 3B (MoE) | **50.46 (measured)** |
 | ~58 GB | gpt-oss:120b | Q4_K_M | ~12B (MoE) | 53-54 |
 | ~40 GB | Llama 3.3 70B | Q4_K_M | 70B (dense) | ~5 |
 | ~68 GB | Mistral Large 123B | Q4_K_M | 123B (dense) | ~3 |
 
-**Ollama (ROCm) - current deployment backend**
+**Ollama (Vulkan) - current deployment backend**
 
-| RAM | Model example | Decode tok/s | Notes |
-|---|---|---|---|
-| ~17 GB | qwen3-30b-a3b | ~45 | ~48% slower than llama.cpp Vulkan on same model |
-| ~20 GB | **qwen3.5:35b-a3b** | ~40 | Q8_0 measured |
-| ~18 GB | qwen3.5:27b (dense) | ~9 | Dense models hit hardest by Ollama overhead |
-| ~11 GB | gpt-oss:20b | ~46 | |
-| ~58 GB | gpt-oss:120b | ~33 | |
+| RAM | Model | Active params | Decode tok/s | Notes |
+|---|---|---|---|---|
+| ~17 GB | qwen3-30b-a3b | 3.3B (MoE) | ~45 | ~48% slower than llama.cpp Vulkan on same model |
+| ~24 GB | **qwen3.5:35b-a3b** | 3.3B (MoE) | **43.60 (measured)** | 3-run average; Vulkan vs ROCm historical 40.38 |
+| ~17 GB | **gemma4:26b** | 3.8B (MoE) | **28.67 (measured)** | 3-run average |
+| ~5 GB | **gemma4:e4b** | 4.5B (dense eff.) | **34.19 (measured)** | 3-run average |
+| ~19 GB | **gemma4:31b** | 30.7B (dense) | **5.08 (measured)** | Bandwidth-ceilinged; 3-run average |
+| ~17 GB | **qwen3.5:27b** | 27B (dense) | **10.99 (measured)** | Bandwidth-ceilinged; 3-run average |
+| ~51 GB | **qwen3-coder-next** | 3B (MoE) | **34.35 (measured)** | 3-run average |
+| ~11 GB | gpt-oss:20b | 3.6B (MoE) | ~46 | |
+| ~58 GB | gpt-oss:120b | ~12B (MoE) | ~33 | |
 
-Vulkan RADV outperforms ROCm by 17-25% for generation at standard context (ROCm catches up only at very long context prefill). Ollama adds a further ~40-50% overhead vs raw llama.cpp. Switching to `llama-server` with Vulkan RADV is the single highest-impact optimisation - see the README for the planned migration path.
-
-**Note:** GPU clock must be set to high performance (`power_dpm_force_performance_level=high`) or throughput halves. Without this, the GPU idles at 600 MHz.
+Vulkan RADV outperforms ROCm by 17-25% for generation at standard context (ROCm catches up only at very long context prefill). Ollama adds a further ~32% overhead vs raw llama.cpp Vulkan (43.60 vs 57-58 tok/s on qwen3.5:35b-a3b). Dense large models (qwen3.5:27b, gemma4:31b) are memory-bandwidth-ceilinged at 10-11 tok/s regardless of backend; MoE models run at 48-58 tok/s. Switching to `llama-server` with Vulkan RADV is the single highest-impact optimisation for MoE models - see the README for the planned migration path.
 
 **Practical budget**: reserve ~20-30GB for NixOS, desktop, and dev tools. This leaves ~100-110GB for Ollama. Multiple models can be pulled to disk; Ollama loads one at a time into RAM.
 
@@ -54,11 +59,31 @@ ZeroClaw's memory pipeline has three stages: hot cache, FTS5 keyword search, and
 
 Without embeddings, ZeroClaw falls back to `NoopEmbedding`, which returns empty vectors and limits retrieval to keyword matching only. The `EmbeddingProvider` trait uses any OpenAI-compatible `/embeddings` endpoint, so Ollama embedding models work natively.
 
+`llama-server` also exposes an OpenAI-compatible `/v1/embeddings` endpoint alongside a custom `/embedding` endpoint. One operational requirement for Qwen3-Embedding models: `--pooling last` must be passed explicitly at startup — the GGUF metadata does not carry this flag, so omitting it produces incorrect embeddings. One constraint: `--embedding` mode locks the server to embeddings only. A migration to `llama-server` for embeddings therefore requires two server processes — one for generation, one for embeddings.
+
 For agents doing multi-session agentic work - PR reviews that reference earlier discussions, blog drafts that build on prior research - hybrid retrieval is meaningfully better than keyword-only.
 
 ---
 
-## 3. The Models: Inference
+## 3. llama.cpp Model Management
+
+Two approaches exist for running multiple models under a single `llama-server` endpoint.
+
+### Native router mode
+
+Shipped December 2025 (PR #17470). Start `llama-server` without `-m` to enable auto-discovery from `--models-dir`. Models load on demand, are evicted by LRU when the count reaches `--models-max`, and are selected per-request via the `model` field. Manual control is available via `/models/load` and `/models/unload` APIs. Per-model settings go in `--models-preset config.ini`. Marked experimental.
+
+### llama-swap
+
+[llama-swap](https://github.com/mostlygeek/llama-swap) is a Go binary (~3K stars) that sits in front of one or more `llama-server` processes and routes requests by model name. More mature than the native router for mixed generation/embedding workloads. Key features: always-on groups (an embedding model stays resident while generation models swap in and out), per-model TTLs, mixed backends, and `/v1/embeddings` routing. The more reliable choice for production use until the native router matures.
+
+### Comparison to Ollama
+
+Ollama's integrated load/unload is more polished than either option above. Both llama-server router mode and llama-swap are functional but require more manual configuration.
+
+---
+
+## 4. The Models: Inference
 
 ### Gemma 4 (Google DeepMind)
 
@@ -113,7 +138,7 @@ Community hard-task testing on Strix Halo (frank-besson/llama-strix-halo benchma
 
 ---
 
-## 4. The Models: Embedding
+## 5. The Models: Embedding
 
 ### qwen3-embedding (Alibaba)
 
@@ -164,7 +189,7 @@ Built from Gemma 3/T5Gemma, designed for on-device deployment. 2K context is bet
 
 ---
 
-## 5. Split-Host Strategy
+## 6. Split-Host Strategy
 
 Should Skrye and Zannah run different model families - Qwen on one, Gemma on the other?
 
@@ -182,7 +207,7 @@ When splitting would make sense (not applicable here): A/B testing model quality
 
 ---
 
-## 6. Recommendations
+## 7. Recommendations
 
 ### Embedding: qwen3-embedding:4b-q8_0
 
@@ -194,22 +219,22 @@ Skip nomic-embed-text-v2-moe (512-token context too short for code chunks) and e
 
 ### Model Stack Per Host
 
-| Slot | Model | Disk | Active params | Context | Primary use |
-|---|---|---|---|---|---|
-| Primary workhorse | qwen3.5:27b | 17 GB | 27B | 256K | PR review, code fixes, agentic coding, research |
-| General | qwen3.5:35b-a3b | 24 GB | 3.3B (MoE) | 256K | General reasoning, research, tasks not requiring one-shot precision |
-| Small / media | gemma4:e4b | ~5 GB | 4.5B (effective) | 128K | Summarisation, image/video triage, fast text tasks; audio pending Ollama support |
-| Embedding | qwen3-embedding:4b-q8_0 | ~5 GB | 4B | 40K | Memory retrieval |
-| **Total on disk** | | **~51 GB** | | | |
+| Slot | Model | Disk | Active params | Context | tok/s | Primary use |
+|---|---|---|---|---|---|---|
+| Coding | qwen3-coder-next | 51 GB | 3B (MoE) | 256K | ~50 | Agentic coding, PR review, multi-step |
+| General | qwen3.5:35b-a3b | 24 GB | 3.3B (MoE) | 256K | ~58 | Structured output, precision tasks, general reasoning |
+| Small / media | gemma4:e4b | ~5 GB | 4.5B (eff) | 128K | ~56 | Summarisation, image/video triage, fast tasks |
+| Embedding | qwen3-embedding:4b-q8_0 | ~5 GB | 4B | 40K | — | Memory retrieval |
+| **Total** | | **~85 GB** | | | | |
 
-Total disk ~51GB leaves ~59GB headroom in the 110GB practical budget. Ollama loads one inference model at a time; all fit comfortably in 128GB with space for context windows and desktop workload.
+Total disk ~85GB leaves ~25GB headroom in the 110GB practical budget. Ollama loads one inference model at a time; all fit comfortably in 128GB with space for context windows and desktop workload.
 
 ### ZeroClaw Config Pattern
 
 ```toml
 [[model_list]]
 model_name = "primary"
-model = "ollama/qwen3.5:27b"
+model = "ollama/qwen3-coder-next"
 api_base = "http://<host-container-ip>:11434/v1"
 
 [[model_list]]
@@ -237,21 +262,34 @@ embedding_base = "http://<host-container-ip>:11434/v1"
 
 ### Rationale Summary
 
-- **qwen3.5:27b as primary**: Dense 27B - all parameters active per forward pass on the new DeltaNet hybrid architecture. SWE-Bench Verified 72.4%, LiveCodeBench 80.7%, IFEval 95.0%. Beats both qwen3-coder:30b (50.3% SWE-Bench) and qwen3.5:35b-a3b MoE (69.2%) despite being smaller on disk - active parameter count matters more than total parameter count. 256K context for repo-scale work.
-- **qwen3.5:35b-a3b as general**: 3.3B active MoE, 256K context, 256K context. Faster than the dense 27B at equivalent or better general reasoning; use for research, broad knowledge tasks, and anything not requiring one-shot structured output precision. Community hard-task testing scores 10/10 on agentic patterns; self-correction in an agent loop compensates for its 0/6 structured output score.
-- **gemma4:e4b as small/media model**: The only local model in the stack with audio and video capability - neither of the larger Gemma 4 models has an audio encoder. Image and video (frame sequences up to 60 seconds) work today. Audio transcription and understanding are model-supported but pending llama.cpp and Ollama implementation; use Q6_K when audio lands. At ~5 GB and ~48-50 tok/s it handles summarisation, fast triage, and lightweight tasks without loading a larger model.
+- **qwen3-coder-next as coding primary**: 80B total / 3B active MoE - throughput governed by active parameters, not total. Measured 50 tok/s vs qwen3.5:27b's 11 tok/s, a 4.5x speed advantage. SWE-Bench Verified 70.6% vs qwen3.5:27b's 72.4% - a marginal quality trade. LiveCodeBench 58.9% vs 80.7% - weaker on single-shot algorithmic tasks; qwen3.5:35b-a3b covers that precision gap. Designed for agentic retry loops: Pass@5 rank 1 on SWE-rebench. 256K context for repo-scale work.
+- **qwen3.5:35b-a3b as general**: 3.3B active MoE, 256K context. Measured 58 tok/s. Community hard-task testing scores 10/10 on agentic patterns; use for structured output, precision tasks, and the algorithmic reasoning gap qwen3-coder-next leaves open. Self-correction in an agent loop compensates for its 0/6 structured output score on hard-task benchmarks.
+- **gemma4:e4b as small/media model**: The only local model in the stack with audio and video capability - neither of the larger Gemma 4 models has an audio encoder. Image and video (frame sequences up to 60 seconds) work today. Audio transcription and understanding are model-supported but pending llama.cpp and Ollama implementation; use Q6_K when audio lands. At ~5 GB and ~56 tok/s (llama-bench measured) it handles summarisation, fast triage, and lightweight tasks without loading a larger model.
 - **Frontier fallback**: Local models handle the 80-90% routine case; Claude handles deep research and complex multi-step reasoning that exceeds the local tier.
 
-**Community validation:** Independent benchmarking on Strix Halo hardware and ZeroClaw/agent-stack community reports confirm the MoE-for-loops, dense-for-precision role split. No ZeroClaw-specific model list exists - the agent software is model-agnostic. The 35B-A3B / 27B combination appears consistently in high-memory agentic setups. Gemma4:e4b is treated by practitioners as a multimodal model only, consistent with its role in this stack.
+**Community validation:** Independent benchmarking on Strix Halo hardware and ZeroClaw/agent-stack community reports confirm the MoE-for-loops pattern. No ZeroClaw-specific model list exists - the agent software is model-agnostic. Gemma4:e4b is treated by practitioners as a multimodal model only, consistent with its role in this stack.
+
+### NixOS Model Pre-seeding (llama-server)
+
+This is the primary operational gap in a llama-server deployment versus Ollama's `services.ollama.loadModels`.
+
+llama.cpp has no dedicated download tool. The `-hf` flag downloads models at runtime to `~/.cache/llama.cpp`, which is unsuitable for a server deployment. The right pre-seeding tool is `huggingface-cli` from `pkgs.python3Packages.huggingface-hub`:
+
+```bash
+huggingface-cli download <repo> <file> --local-dir /var/lib/llama-models
+```
+
+The NixOS pattern is a systemd oneshot service that runs `huggingface-cli download` before `llama-server` starts, with models stored in `/var/lib/llama-models/`. This requires a custom module — nixpkgs PR #488117 adds `hfRepo`/`hfFile` options directly to `services.llama-cpp` with download at service start, but it has not yet merged. Until it does, the download oneshot must be written by hand.
 
 ### Models Evaluated and Set Aside
 
 | Model | Reason |
 |---|---|
 | qwen3.5:122b | 81GB leaves ~29GB for NixOS + desktop + context; ~3.4 tok/s impractical for interactive work |
-| gemma4:26b | Replaced by qwen3.5:35b-a3b for general tasks; gemma4:e4b covers media and summarisation at lower cost |
-| qwen3-coder:30b | Superseded; old Qwen3 architecture with 3.3B active params scores 50.3% SWE-Bench vs qwen3.5:27b's 72.4% |
-| qwen3-coder-next:80b | **Qwen3-Coder-Next** (80B MoE, 3B active, ~43GB IQ4): SWE-Bench Verified 70.6%, 45 tok/s on Strix Halo, 23/30 on community hard-task benchmark (joint highest). Fits within the 96GB budget alongside embedding and gemma4:e4b (~53GB total). Community hard-task data supports treating this as an optional high-quality coding specialist rather than a future consideration. Add if one-shot coding precision on hard tasks becomes a priority; the 35B-A3B and 27B cover the baseline well without it. |
+| qwen3.5:27b | Dense 27B; measured 11 tok/s - bandwidth-ceilinged regardless of backend. qwen3-coder-next provides 4.5x throughput at comparable SWE-Bench quality (70.6% vs 72.4%). |
+| gemma4:31b | Dense 30.7B; measured 5-10 tok/s - same bandwidth ceiling as qwen3.5:27b. gemma4:26b MoE delivers 48 tok/s at near-identical quality. |
+| gemma4:26b | MoE, 3.8B active, 48 tok/s measured. Considered as alternative general model; qwen3.5:35b-a3b preferred for stronger structured output and Qwen family consistency. |
+| qwen3-coder:30b | Superseded; old Qwen3 architecture with 3.3B active params scores 50.3% SWE-Bench vs qwen3-coder-next's 70.6% |
 | qwen3-embedding:0.6b | Quality plateau at 4B; 0.6B suitable only for resource-constrained hardware |
 | qwen3-embedding:8b | 4B-to-8B delta is 0.62 points on code retrieval; 4B at Q8_0 is the quality/throughput optimum |
 | nomic-embed-text-v2-moe | 512-token context too short for code chunks |
@@ -259,7 +297,7 @@ embedding_base = "http://<host-container-ip>:11434/v1"
 
 ---
 
-## 7. Key References
+## 8. Key References
 
 | Resource | URL |
 |---|---|
@@ -271,3 +309,5 @@ embedding_base = "http://<host-container-ip>:11434/v1"
 | BenchLM - Gemma 4 31B vs Qwen3.5-27B | https://benchlm.ai/compare/gemma-4-31b-vs-qwen3-5-27b |
 | Alibaba Cloud - Qwen3.5 | https://www.alibabacloud.com/blog/602894 |
 | Hacker News - Strix Halo bandwidth | https://news.ycombinator.com/item?id=45877149 |
+| llama-swap | https://github.com/mostlygeek/llama-swap |
+| nixpkgs PR #488117 - llama-cpp hfRepo/hfFile | https://github.com/NixOS/nixpkgs/pull/488117 |

@@ -215,7 +215,7 @@ vendors = ["amd"]
 vendor = "amd"
 vram = 96
 unified = true
-acceleration = "rocm"
+acceleration = "vulkan"
 
 [skrye.network]
 wifi = false
@@ -248,7 +248,7 @@ vendors = ["amd"]
 vendor = "amd"
 vram = 96
 unified = true
-acceleration = "rocm"
+acceleration = "vulkan"
 
 [zannah.network]
 wifi = false
