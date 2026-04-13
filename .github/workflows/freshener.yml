@@ -606,6 +606,144 @@ jobs:
           PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
           gh pr merge --auto --squash "$PR_NUMBER"
 
+  llama-swap:
+    name: llama-swap 📦
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Check for llama-swap update 🔍
+        id: check
+        run: |
+          set -euo pipefail
+
+          OVERLAYS_NIX="overlays/default.nix"
+          current_version=$(sed -n 's/^  llamaSwapVersion = "\(.*\)";/\1/p' "$OVERLAYS_NIX")
+          echo "Current version: ${current_version}"
+
+          latest_tag=$(curl -fsSL "https://api.github.com/repos/mostlygeek/llama-swap/releases/latest" | jq -r '.tag_name')
+          latest_version="${latest_tag#v}"
+
+          if [[ -z "$latest_version" || "$latest_version" == "null" || "$latest_tag" != v* ]]; then
+            echo "❌ Could not determine latest llama-swap version"
+            exit 1
+          fi
+
+          echo "Latest version: ${latest_version}"
+
+          if [[ "$current_version" == "$latest_version" ]]; then
+            echo "✅ llama-swap is up to date"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "version=${latest_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Update llama-swap overlay 📝
+        if: steps.check.outputs.updated == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          OVERLAYS_NIX="overlays/default.nix"
+          FAKE_HASH="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          HASH_LOG="/tmp/llama-swap-hash.log"
+          SRC_EXPR='let flake = builtins.getFlake (toString ./.); pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; overlays = builtins.attrValues flake.outputs.overlays; config.allowUnfree = true; }; in pkgs.llama-swap.src'
+          VENDOR_EXPR='let flake = builtins.getFlake (toString ./.); pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; overlays = builtins.attrValues flake.outputs.overlays; config.allowUnfree = true; }; in pkgs.llama-swap.goModules'
+          UI_EXPR='let flake = builtins.getFlake (toString ./.); pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; overlays = builtins.attrValues flake.outputs.overlays; config.allowUnfree = true; }; in pkgs.llama-swap.ui'
+
+          extract_hash() {
+            local hash
+            hash=$(awk '
+              /got:/ {
+                match($0, /sha256-[A-Za-z0-9+\/=]+/)
+                print substr($0, RSTART, RLENGTH)
+                exit
+              }
+            ' "$HASH_LOG")
+
+            if [[ -z "$hash" ]]; then
+              echo "❌ Failed to extract hash" >&2
+              cat "$HASH_LOG" >&2
+              exit 1
+            fi
+
+            echo "$hash"
+          }
+
+          echo "📝 Updating llama-swap version to ${VERSION}"
+          sed -i "s/^  llamaSwapVersion = \".*\";/  llamaSwapVersion = \"${VERSION}\";/" "$OVERLAYS_NIX"
+
+          echo "🧮 Prefetching source hash"
+          sed -i "s|^  llamaSwapHash = \"sha256-[^\"]*\";|  llamaSwapHash = \"${FAKE_HASH}\";|" "$OVERLAYS_NIX"
+          nix build --impure --expr "$SRC_EXPR" --no-link >"$HASH_LOG" 2>&1 || true
+          src_hash=$(extract_hash)
+          sed -i "s|^  llamaSwapHash = \"sha256-[^\"]*\";|  llamaSwapHash = \"${src_hash}\";|" "$OVERLAYS_NIX"
+          echo "🔑 Source hash: ${src_hash}"
+
+          echo "🧮 Prefetching vendor hash"
+          sed -i "s|^  llamaSwapVendorHash = \"sha256-[^\"]*\";|  llamaSwapVendorHash = \"${FAKE_HASH}\";|" "$OVERLAYS_NIX"
+          nix build --impure --expr "$VENDOR_EXPR" --no-link >"$HASH_LOG" 2>&1 || true
+          vendor_hash=$(extract_hash)
+          sed -i "s|^  llamaSwapVendorHash = \"sha256-[^\"]*\";|  llamaSwapVendorHash = \"${vendor_hash}\";|" "$OVERLAYS_NIX"
+          echo "🔑 Vendor hash: ${vendor_hash}"
+
+          echo "🧮 Prefetching UI npm deps hash"
+          sed -i "s|^  llamaSwapUiNpmDepsHash = \"sha256-[^\"]*\";|  llamaSwapUiNpmDepsHash = \"${FAKE_HASH}\";|" "$OVERLAYS_NIX"
+          nix build --impure --expr "$UI_EXPR" --no-link >"$HASH_LOG" 2>&1 || true
+          ui_hash=$(extract_hash)
+          sed -i "s|^  llamaSwapUiNpmDepsHash = \"sha256-[^\"]*\";|  llamaSwapUiNpmDepsHash = \"${ui_hash}\";|" "$OVERLAYS_NIX"
+          echo "🔑 UI npm deps hash: ${ui_hash}"
+
+          rm -f "$HASH_LOG"
+          echo "✅ Updated ${OVERLAYS_NIX}"
+          git diff "$OVERLAYS_NIX"
+
+      - name: Create pull request 🚀
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          BRANCH="llama-swap-${VERSION}"
+
+          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
+            echo "⏭️  PR already exists for ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add overlays/default.nix
+          git commit -m "chore(llama-swap): update to ${VERSION}"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(llama-swap): update to ${VERSION}" \
+            --body "$(cat <<EOF
+          Automated llama-swap update to version ${VERSION}.
+
+          Release: https://github.com/mostlygeek/llama-swap/releases/tag/v${VERSION}
+          EOF
+          )" \
+            --label "dependencies,automated")
+
+          echo "📋 Created PR: ${PR_URL}"
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge --auto --squash "$PR_NUMBER"
+
   gitbutler:
     name: GitButler 📦
     runs-on: ubuntu-latest

@@ -12,6 +12,12 @@ let
   llamaCppVersion = "8775";
   llamaCppHash = "sha256-oxQUwXgsr8dDY7wqNxdn7tKyGBowjxLO/xJfdb0J9dk=";
   llamaCppNpmDepsHash = "sha256-RAFtsbBGBjteCt5yXhrmHL39rIDJMCFBETgzId2eRRk=";
+
+  # Pinned here for the freshener workflow.
+  llamaSwapVersion = "201";
+  llamaSwapHash = "sha256-xDToD6DBds9zbf7gJ6mCgZYiz/sdHDIwBZ/WvSIrK70=";
+  llamaSwapVendorHash = "sha256-XiDYlw/byu8CWvg4KSPC7m8PGCZXtp08Y1velx4BR8U=";
+  llamaSwapUiNpmDepsHash = "sha256-UX2QAfMgNyzQTDsn3c+QnjVshLWvho7jmQ6s2406qHY=";
 in
 {
   # This one brings our custom packages from the 'pkgs' directory
@@ -41,6 +47,20 @@ in
         leaveDotGit = true;
         postFetch = ''
           git -C "$out" rev-parse --short HEAD > "$out/COMMIT"
+          find "$out" -name .git -print0 | xargs -0 rm -rf
+        '';
+      };
+
+      llamaSwapSrc = prev.fetchFromGitHub {
+        owner = "mostlygeek";
+        repo = "llama-swap";
+        tag = "v${llamaSwapVersion}";
+        hash = llamaSwapHash;
+        leaveDotGit = true;
+        postFetch = ''
+          cd "$out"
+          git rev-parse HEAD > "$out/COMMIT"
+          date -u -d "@$(git log -1 --pretty=%ct)" "+'%Y-%m-%dT%H:%M:%SZ'" > "$out/SOURCE_DATE_EPOCH"
           find "$out" -name .git -print0 | xargs -0 rm -rf
         '';
       };
@@ -131,6 +151,36 @@ in
 
       llama-cpp-rocm = llama-cpp.override { rocmSupport = true; };
       llama-cpp-vulkan = llama-cpp.override { vulkanSupport = true; };
+
+      llama-swap =
+        let
+          llamaSwapUi =
+            (final.callPackage (unstablePkgsPath + "/ll/llama-swap/ui.nix") { llama-swap = llama-swap; })
+            .overrideAttrs
+              (old: {
+                version = llamaSwapVersion;
+                src = llamaSwapSrc;
+                npmDepsHash = llamaSwapUiNpmDepsHash;
+                npmDeps = prev.fetchNpmDeps {
+                  name = "llama-swap-ui-${llamaSwapVersion}-npm-deps";
+                  inherit (old) sourceRoot;
+                  src = llamaSwapSrc;
+                  hash = llamaSwapUiNpmDepsHash;
+                };
+              });
+        in
+        (final.callPackage (unstablePkgsPath + "/ll/llama-swap/package.nix") {
+          buildGoModule = prev.buildGo126Module;
+        }).overrideAttrs
+          (old: {
+            version = llamaSwapVersion;
+            src = llamaSwapSrc;
+            vendorHash = llamaSwapVendorHash;
+            passthru = (old.passthru or { }) // {
+              ui = llamaSwapUi;
+            };
+            ui = llamaSwapUi;
+          });
 
       # Override Python packages to fix Darwin-specific issues
       python3 = prev.python3.override {
