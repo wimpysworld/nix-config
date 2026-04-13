@@ -11,85 +11,14 @@ let
   accel = host.gpu.compute.acceleration;
   hostVramGiB = host.gpu.compute.vram or 0;
 
-  modelMatrix = {
-    # Full local stack for big unified-memory inference hosts.
-    # High-memory embedding tiers pin the 4B model to q8_0.
-    vram64 = {
-      minVramGiB = 64;
-      name = "vram64";
-      models = {
-        coding = "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_XL";
-        general = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
-        embedding = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
-      };
-    };
+  modelPolicy = import ./model-policy.nix { inherit lib; };
+  selectedPolicy = modelPolicy.mkSelection { inherit hostVramGiB; };
+  inherit (selectedPolicy)
+    modelMatrix
+    selectedModelTier
+    selectedModels
+    ;
 
-    # 32 GB keeps the strong Qwen MoE for coding and Gemma4 MoE in the general slot.
-    vram32 = {
-      minVramGiB = 32;
-      name = "vram32";
-      models = {
-        coding = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
-        general = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
-        embedding = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
-      };
-    };
-
-    # 22 GB moves to the smaller Gemma MoE-style fallback tier.
-    vram22 = {
-      minVramGiB = 22;
-      name = "vram22";
-      models = {
-        coding = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
-        general = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
-        embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-      };
-    };
-
-    # 16 GB keeps a single small MoE-capable model for the main slots.
-    vram16 = {
-      minVramGiB = 16;
-      name = "vram16";
-      models = {
-        coding = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
-        general = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
-        embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-      };
-    };
-
-    # 8 GB stays on the same small general MoE tier.
-    vram8 = {
-      minVramGiB = 8;
-      name = "vram8";
-      models = {
-        coding = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
-        general = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E2B-it-GGUF:UD-Q4_K_XL";
-        embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-      };
-    };
-  };
-
-  modelTiers = [
-    modelMatrix.vram64
-    modelMatrix.vram32
-    modelMatrix.vram22
-    modelMatrix.vram16
-    modelMatrix.vram8
-  ];
-
-  selectedModelTier = lib.findFirst (
-    tier: hostVramGiB >= tier.minVramGiB
-  ) modelMatrix.vram4 modelTiers;
-
-  # Derived now so follow-up work can consume a ready host-specific model set.
-  selectedModels = selectedModelTier.models;
-
-  # Package selection based on acceleration framework.
   llamaPackage =
     if accel == "cuda" then
       pkgs.llama-cpp.override {
@@ -107,8 +36,13 @@ let
       }
     else
       pkgs.llama-cpp;
-
 in
-lib.mkIf isInference {
-  environment.systemPackages = [ llamaPackage ];
+{
+  imports = [
+    ./preseed.nix
+  ];
+
+  config = lib.mkIf isInference {
+    environment.systemPackages = [ llamaPackage ];
+  };
 }
