@@ -1,8 +1,24 @@
-# Claws Deployment Plan
+# The Cauldron - Deployment Plan
+
+> This is a work in progress. Technology noted as planned has not yet been set up or configured.
 
 ## Project Overview
 
-Ultra-lightweight AI agent (zeroclaw) on two NixOS workstations. The goal is autonomous agents that manage GitHub projects, review PRs, propose fixes, and draft blog posts - running unattended while Martin is busy or sleeping. Both instances are for personal use only.
+An AI agent system built around Sith-themed identities, designed for autonomous GitHub project management, research, blog drafting, and report preparation. The active agent is **Darth Traya**, running as two identical instances on separate physical hosts. Both instances are for personal use only.
+
+## The Agents
+
+Three GitHub accounts named after female Sith Lords, operating under a shared GitHub organisation:
+
+| Agent | GitHub account | Telegram bot | Role | Status |
+|---|---|---|---|---|
+| Darth Traya | `sith-traya` | `@TrayaSithbot` | Commanding agent | Active - master/padawan deployment |
+| Darth Skrye | `sith-skrye` | `@SkryeSithbot` | Future subordinate agent | Reserved |
+| Darth Zannah | `sith-zannah` | `@ZannahSithbot` | Future subordinate agent | Reserved |
+
+- **GitHub org**: [`the-cauldron`](https://github.com/the-cauldron)
+- **Domain**: `darth.cc` - email aliases `traya@darth.cc`, `skrye@darth.cc`, `zannah@darth.cc` route to the owner
+- **Chat client**: Telegram
 
 ## Research Required
 
@@ -12,7 +28,7 @@ The following decisions are deferred pending research:
 |---|---|---|
 | Agent software | **ZeroClaw** - decided. See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) | Evaluated against picoclaw; ZeroClaw wins on memory, model routing, web UI, and Copilot Pro support |
 | Messaging platform | **Telegram** - decided. See [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) | Long polling only; Discord evaluated and set aside |
-| GitHub tooling | [github-mcp-server](https://github.com/github/github-mcp-server) vs `gh` CLI | sith-skrye, sith-zannah accounts created; defer wiring until GitHub integration phase |
+| GitHub tooling | [github-mcp-server](https://github.com/github/github-mcp-server) vs `gh` CLI | `sith-traya` account created; defer wiring until GitHub integration phase |
 
 ## Infrastructure
 
@@ -25,15 +41,17 @@ Two Framework Desktop mainboard-based workstations, each with:
 - **OS**: NixOS
 - **Network**: Standard internet; outbound only from nspawn containers
 
-| Host | Name | Location | Focus |
-|---|---|---|---|
-| Home workstation | **Skrye** | Home office | Personal projects |
-| Remote workstation | **Zannah** | Remote office | Personal projects |
+| Instance | Role | Location |
+|---|---|---|
+| **master** | Active | Home office |
+| **padawan** | Warm standby | Remote office |
+
+Both hosts run identical NixOS configurations. Data is synced between them to support failover; the mechanism for this sync is not yet specified.
 
 ### Key Software
 
 - **Agent software**: ZeroClaw - see [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the evaluation
-- **Local inference**: Ollama (initially); llama.cpp as a future optimisation path
+- **Local inference**: `llama-server`/`llama-swap` (Vulkan); Ollama retained for model downloads and embedding serving during transition
 - **Messaging**: Telegram - see [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) for the evaluation
 - **CI/cache**: FlakeHub - CI builds and caches all packages
 
@@ -46,22 +64,24 @@ Two Framework Desktop mainboard-based workstations, each with:
 **Rationale**: Deepest Nix integration available. Container config is a NixOS module, rebuilt with `nixos-rebuild switch`. Provides filesystem, process, and network namespace isolation. The agent's own exec guard is explicitly not a full sandbox (cannot inspect child processes from build tools), so container isolation fills this gap.
 
 **Implementation**:
-- Each host runs one agent container (`zeroclaw-skrye` on Skrye, `zeroclaw-zannah` on Zannah)
+- Each host runs one agent container (`zeroclaw-traya`)
 - `privateNetwork = true` with NAT for outbound API/messaging access
 - Bind-mount only specific directories the agent needs (read-only where possible)
 - Agent runs as a systemd service inside the container
 
 ### 2. Local Models + Frontier Fallback
 
-**Decision**: Run Ollama on each host bare-metal (not containerised). The agent container connects to Ollama over the private network interface.
+**Decision**: Run inference on each host bare-metal (not containerised). The agent container connects to the inference server over the private network interface.
 
-**Rationale**: GPU/memory-intensive inference should not be containerised. Ollama is Nix-packaged (`services.ollama`), provides an OpenAI-compatible API, and ZeroClaw supports it natively. 128 GB unified memory on Strix Halo can load models up to ~120B parameters. Measured throughput: ~33 tok/s on GPT-OSS 120B and ~46 tok/s on GPT-OSS 20B on Ollama. For the primary deployment model (qwen3.5:35b-a3b), Ollama Vulkan achieves 43.60 tok/s; llama.cpp Vulkan achieves 57-58 tok/s on the same model - a 32% gain at identical power draw. Both Skrye and Zannah are set to `acceleration = "vulkan"` in the registry.
+**Rationale**: GPU/memory-intensive inference should not be containerised. 128 GB unified memory on Strix Halo can load models up to ~120B parameters.
+
+**Target inference backend**: `llama-server`/`llama-swap` (Vulkan) is the primary inference backend, selected on measured throughput advantages over Ollama. The switch is a config-only change - no agent code changes are needed, as both backends expose the same OpenAI-compatible API. Ollama remains in use for model downloads and embedding serving during the transition. Timing of the migration is TBD. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the performance case.
 
 **Configuration pattern** (`~/.zeroclaw/config.toml`):
 ```toml
 [[model_list]]
 model_name = "primary"
-model = "ollama/qwen3.5:27b"
+model = "ollama/qwen3-coder-next"
 api_base = "http://<host-container-ip>:11434/v1"
 
 [[model_list]]
@@ -89,20 +109,20 @@ embedding_base = "http://<host-container-ip>:11434/v1"
 
 See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the full model selection rationale, hardware benchmarks, and backend comparison. The failover chain retries on 429/rate-limit/timeout errors automatically.
 
-**Target inference backend**: `llama-server` (Vulkan) is the planned replacement for Ollama as the primary inference backend, based on the measured 32% throughput advantage at identical power draw. The switch is a config-only change - no agent code changes are needed, as both backends expose the same OpenAI-compatible API. Ollama remains in use for model downloads and embedding serving during the transition. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the performance case.
+### 3. Master/Padawan Instances
 
-### 3. Discrete Named Instances
+**Decision**: Traya runs as two identical instances - master (active) and padawan (warm standby) - on separate physical hosts. Data is synced between them to support failover.
 
-**Decision**: Skrye and Zannah are fully independent agent instances. They share nothing - no workspace, no heartbeat, no memory, no sessions.
-
-**Rationale**: Clean context separation, security isolation (credentials never cross hosts), independent scheduling and behaviour.
+**Rationale**: Warm standby with synced data provides continuity if one host fails without requiring a cold restart from scratch.
 
 **Each instance has its own**:
 - Data directory
 - Config and security files
-- Messaging bot (separate tokens)
+- Messaging bot token (separate BotFather tokens)
 - Workspace files: `IDENTITY.md`, `SOUL.md`, `USER.md`, `AGENT.md`, `HEARTBEAT.md`
-- GitHub bot account (`sith-skrye` / `sith-zannah`)
+- GitHub bot account: `sith-traya`
+
+The data sync mechanism between master and padawan is not yet specified.
 
 ### 4. Workspace Files: Nix-Declared
 
@@ -110,7 +130,7 @@ See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the full model selection 
 
 **Rationale**: Version-controlled, reproducible, no drift. ZeroClaw detects changes to these files via mtime tracking at runtime - no restart needed after `nixos-rebuild switch`.
 
-**Implementation**: Shared Nix module with parameters for agent name and role, imported by both container configs:
+**Implementation**: Nix module with parameters for agent name and role:
 
 ```nix
 { agentName, agentRole, ... }:
@@ -125,12 +145,12 @@ See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the full model selection 
 
 ### 5. Messaging Interface: Telegram
 
-**Decision**: Telegram is the sole human-agent interface and coordination channel between agents. See [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) for the full evaluation.
+**Decision**: Telegram is the sole human-agent interface. See [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) for the full evaluation.
 
-Webhook-based integrations from external services (GitHub, Grafana, uptime monitors) will use a lightweight HTTP-to-Telegram bridge when needed rather than Discord. The bridge receives HTTP POSTs from external services and relays them to the appropriate Telegram topic via `sendMessage`.
+Webhook-based integrations from external services (GitHub, Grafana, uptime monitors) will use a lightweight HTTP-to-Telegram bridge when needed. The bridge receives HTTP POSTs from external services and relays them to the appropriate Telegram topic via `sendMessage`.
 
 **Implementation**:
-- Separate BotFather token per agent (`@SkryeBot`, `@ZannahBot`)
+- Separate BotFather token per instance (`@TrayaSithbot` for master, padawan token TBD)
 - Long polling only - no webhook, no public endpoint; works behind NAT
 - `allow_from` whitelist restricted to Martin's Telegram user ID
 - Bot tokens stored in the security config file (not main config), permissions `600`
@@ -193,7 +213,7 @@ Tool discovery enabled so MCP tools are loaded on-demand via BM25 search rather 
 
 ### 7. GitHub Access
 
-**Decision**: Dedicated GitHub bot accounts created for each host (`sith-skrye`, `sith-zannah`). Integration deferred until GitHub tooling phase. Access method TBD (see below).
+**Decision**: Traya holds scoped PATs for the owner's personal projects (contributions via pull requests or carefully constrained actions) and full permissions inside the `the-cauldron` org (create, fork, experiment freely). GitHub integration is deferred until the GitHub tooling phase.
 
 **Research required - GitHub MCP vs `gh` CLI**:
 
@@ -205,8 +225,9 @@ Tool discovery enabled so MCP tools are loaded on-demand via BM25 search rather 
 GitHub MCP is cleaner for agents that interact with GitHub as a structured API. `gh` is simpler to provision inside the container and requires no additional MCP server process. Decision pending.
 
 **When implemented** (regardless of method):
-- Fine-grained PAT for `sith-skrye` / `sith-zannah`, scoped to specific personal repositories
+- Fine-grained PAT for `sith-traya`, scoped to specific personal repositories
 - Permissions: issues read/write, PRs read/write, contents read
+- Full permissions within the `the-cauldron` org
 - Token stored in security config file (`chmod 600`)
 - Start read-only, upgrade to write in a later phase
 
@@ -227,7 +248,7 @@ GitHub MCP is cleaner for agents that interact with GitHub as a structured API. 
 | Exec deny patterns | Enabled | Blocks rm -rf, sudo, docker, and similar |
 | API key storage | Security config file, `chmod 600` | Separate from main config |
 | Sensitive data filtering | `filter_sensitive_data: true` | Prevents LLM seeing its own credentials |
-| GitHub credentials | Per-host, scoped PATs | Never cross between Skrye and Zannah |
+| GitHub credentials | Scoped PATs for `sith-traya` | Scoped access to owner projects; full access within `the-cauldron` org |
 | Exec tool | **Enabled** | Scoped to container filesystem only |
 | Cron tool | **Enabled** | Heartbeat tasks defined in `HEARTBEAT.md` |
 
@@ -236,12 +257,12 @@ GitHub MCP is cleaner for agents that interact with GitHub as a structured API. 
 | Phase | Scope | Tools Enabled |
 |---|---|---|
 | 1 | Research: choose agent software and messaging platform | - |
-| 2 | Single ZeroClaw instance (Skrye), messaging, local model | Chat, exec, cron |
+| 2 | Single ZeroClaw instance (master), messaging, local model | Chat, exec, cron |
 | 3 | Add MCP servers (context7, exa, jina, nixos) | Search, read web pages, docs |
 | 4 | Add GitHub tooling (read-only PAT) | Review PRs, read issues |
 | 5 | Upgrade PAT to write | Comment on PRs, propose fixes |
 | 6 | Add workspace file tools + heartbeat tasks | Scheduled reviews, blog post drafts |
-| 7 | Replicate to Zannah | Mirror setup, independent agent |
+| 7 | Bring up padawan instance | Mirror setup, warm standby |
 
 ## Nix Packaging
 
@@ -258,12 +279,16 @@ The `llm-agents.nix` flake provides packages for ZeroClaw and related tooling - 
 
 ## What Is Not In Scope
 
-- **Syncthing**: Messaging platform handles coordination; Nix handles shared configuration.
+- **Syncthing**: Nix handles shared configuration. Data sync between master and padawan is a separate concern, mechanism TBD.
 - **Discord**: Evaluated and set aside. Telegram covers all interaction needs; webhook integrations will use a lightweight bridge service rather than maintaining a second chat platform.
-- **Agent-to-agent (A2A) protocol**: ZeroClaw's A2A feature (#3566) is under review and worth monitoring for future inter-agent delegation between Skrye and Zannah. Not a requirement for initial deployment.
+- **Agent-to-agent (A2A) protocol**: Skrye and Zannah are reserved for future activation. A2A between Traya master/padawan is not required - they are identical standby instances, not collaborating agents. ZeroClaw's A2A feature (#3566) is worth monitoring for future use once subordinate agents are activated.
 - **OCI containers (Docker/Podman)**: Evaluated and rejected in favour of systemd-nspawn for deeper Nix integration.
 - **ClawHub skills marketplace**: Not evaluated for security. Install skills from trusted sources only.
 - **Agent role definitions**: Martin will determine specific agent roles and heartbeat tasks during deployment.
+
+## Future Expansion
+
+Skrye and Zannah are reserved for future activation as subordinate agents, potentially cloud-based, commanded by Traya. The hierarchy mirrors the Sith Triumvirate from which they draw their names. No deployment work is planned for either until Traya's master/padawan setup is stable.
 
 ## Key References
 

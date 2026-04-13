@@ -1,7 +1,7 @@
 # Ollama vs llama.cpp on Strix Halo
 
 > AMD Ryzen AI Max+ 395 (gfx1151, RDNA3.5) · 128 GB LPDDR5X · Framework Desktop · NixOS 25.11
-> Covers Skrye and Zannah. ZeroClaw connects via OpenAI-compatible API on either backend.
+> Covers both Traya hosts (master and padawan). ZeroClaw connects via OpenAI-compatible API on either backend.
 
 ---
 
@@ -47,9 +47,9 @@ For a mixed production stack spanning both model families, neither Ollama backen
 
 Large dense models (27B+) are memory-bandwidth-ceilinged at ~10-12 tok/s regardless of backend - the bottleneck is LPDDR5X throughput, not inference overhead. MoE models and small dense models are compute-bound and show meaningful backend differences. The vulkan llama-bench advantage over the best Ollama backend: qwen3.5:35b-a3b +29%, qwen3-coder-next +23%, gemma4:e4b +27%, gemma4:26b +15%, gpt-oss:20b +78%, gemma4:e2b +51%.
 
-### The case for migrating to llama-server
+### The case for llama-server
 
-Vulkan llama-server delivers the highest throughput across all model families and eliminates the Gemma/Qwen backend split. For production models: qwen3.5:35b-a3b reaches 55.12 tok/s (+29% over best Ollama), qwen3-coder-next reaches 43.39 tok/s (+23%), gemma4:e4b reaches 54.39 tok/s (+27% over ROCm Ollama, +99% over Vulkan Ollama). The migration is a config-only change - ZeroClaw connects via OpenAI-compatible API on either backend, so no agent code changes are required. Ollama would remain for model downloads and embedding serving.
+Vulkan llama-server delivers the highest throughput across all model families and eliminates the Gemma/Qwen backend split. For production models: qwen3.5:35b-a3b reaches 55.12 tok/s (+29% over best Ollama), qwen3-coder-next reaches 43.39 tok/s (+23%), gemma4:e4b reaches 54.39 tok/s (+27% over ROCm Ollama, +99% over Vulkan Ollama). The migration is a config-only change - ZeroClaw connects via OpenAI-compatible API on either backend, so no agent code changes are required. Ollama remains for model downloads and embedding serving during the transition. Timing of the migration is TBD.
 
 ---
 
@@ -57,7 +57,7 @@ Vulkan llama-server delivers the highest throughput across all model families an
 
 ### Vulkan backend
 
-Use `pkgs.ollama-vulkan`. The existing Ollama mixin selects this automatically when `host.gpu.compute.acceleration = "vulkan"`. Both Skrye and Zannah have `acceleration = "vulkan"` in the registry.
+Use `pkgs.ollama-vulkan`. The existing Ollama mixin selects this automatically when `host.gpu.compute.acceleration = "vulkan"`. Both Traya hosts have `acceleration = "vulkan"` in the registry.
 
 Ollama Vulkan works correctly on Strix Halo gfx1151 with Ollama 0.20.2. The following issues were previously reported but are not observed in practice:
 
@@ -180,7 +180,7 @@ boot.extraModprobeConfig = ''
 
 `amdgpu.gttsize` is deprecated; use `ttm.pages_limit` only.
 
-**Registry `vram` field:** Strix Halo hosts (Skrye and Zannah) have `vram = 96` in the registry. With TTM expanded to ~120 GB, effective inference memory is ~112-120 GB. The `vram` registry value represents the conservative inference budget used by the Ollama mixin for model tier selection, not physical memory capacity.
+**Registry `vram` field:** Both Traya hosts have `vram = 96` in the registry. With TTM expanded to ~120 GB, effective inference memory is ~112-120 GB. The `vram` registry value represents the conservative inference budget used by the Ollama mixin for model tier selection, not physical memory capacity.
 
 ### IOMMU
 
@@ -331,6 +331,8 @@ Total disk ~85 GB leaves ~25 GB headroom in the 110 GB practical budget.
 
 ### ZeroClaw config pattern
 
+Current config uses Ollama endpoints. Once the llama-server migration completes, replace `ollama/` model prefixes with `openai/` and update `api_base` to the llama-server port (timing TBD).
+
 ```toml
 [[model_list]]
 model_name = "primary"
@@ -380,9 +382,9 @@ For agents doing multi-session agentic work - PR reviews that reference earlier 
 
 ### Split-host strategy
 
-Run the same model stack on both Skrye and Zannah.
+Run the same model stack on both Traya hosts (master and padawan).
 
-Both hosts run identical agent tasks. Different model families produce different output styles and tool-calling behaviours, creating inconsistent quality that is harder to evaluate and tune. One Nix configuration, one set of system prompts tuned for one model's behaviour, one set of known failure modes. Since instances share no memory, there is no advantage from running different models; you cannot route "this task suits Gemma better" because each host handles whatever arrives independently. Identical stacks mean either host can substitute for the other if one goes down.
+Both hosts run identical agent configurations. Different model families produce different output styles and tool-calling behaviours, creating inconsistent quality that is harder to evaluate and tune. One Nix configuration, one set of system prompts tuned for one model's behaviour, one set of known failure modes. Identical stacks mean either host can substitute for the other if one goes down - which is the point of the warm-standby arrangement.
 
 ### Models evaluated and set aside
 

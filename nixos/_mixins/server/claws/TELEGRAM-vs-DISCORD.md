@@ -4,9 +4,9 @@ Last updated: 2026-04-11
 
 ## Recommendation
 
-Telegram for the primary agent interface, Discord as a supplementary integration bus. Telegram wins on daily usability, long-polling simplicity behind NAT, voice note transcription maturity, and Martin's existing preference. Discord wins narrowly on one specific capability: native incoming webhooks that let external services post messages into channels with zero middleware. Use Discord for that purpose only, not as the primary chat interface.
+Telegram for the primary agent interface. Discord is not currently in use and was evaluated and set aside. Telegram wins on daily usability, long-polling simplicity behind NAT, voice note transcription maturity, and Martin's existing preference. The webhook gap (Discord's one advantage) is closable with lightweight bridges - a small bot that receives HTTP POSTs and calls `sendMessage`.
 
-If running only one platform, choose Telegram. The webhook gap is closable with lightweight bridges (a small bot that receives HTTP POSTs and calls `sendMessage`), whereas Discord's threading and session isolation deficiencies in both picoclaw and zeroclaw are structural and harder to work around.
+Discord is documented here for reference; it was evaluated against Telegram and rejected as a second platform for this deployment.
 
 ## Comparison Table
 
@@ -196,11 +196,9 @@ In Discord, multi-bot in one server works but the thread isolation bugs document
 
 ## Recommendation for This Deployment
 
-**Primary interface: Telegram.** Use a forum-enabled supergroup with topics for different agent concerns. ZeroClaw's `message_thread_id` handling gives per-topic conversation isolation out of the box. Voice notes work well for mobile interaction. Long polling is the correct mode for a containerised deployment behind NAT. Setup is trivial.
+**Primary interface: Telegram.** Use a forum-enabled supergroup with topics for different concerns. ZeroClaw's `message_thread_id` handling gives per-topic conversation isolation out of the box. Voice notes work well for mobile interaction. Long polling is the correct mode for a containerised deployment behind NAT. Setup is trivial.
 
-**Integration bus: Discord, if webhook integrations are a priority.** Create a private Discord server. Set up incoming webhooks for GitHub, Grafana, uptime monitors, and any other service that needs to push events. Run the agent's Discord channel alongside Telegram so the agent can read webhook-posted messages and act on them. This adds one more channel to configure and monitor but provides a genuine capability that Telegram lacks natively.
-
-**Alternative to Discord for integrations: bridge bot.** If maintaining a Discord server solely for webhooks feels excessive, deploy a lightweight HTTP-to-Telegram bridge instead. This is a single container/systemd service that receives webhook POSTs and relays them to a Telegram topic via `sendMessage`. The agent then sees them in Telegram alongside everything else. This keeps the entire interface on one platform at the cost of running one additional small service.
+**Discord**: Evaluated and set aside. Telegram covers all interaction needs. Webhook integrations from external services will use a lightweight HTTP-to-Telegram bridge rather than a separate Discord server.
 
 **Voice input: Telegram voice notes.** Configure Whisper STT (Groq for convenience, local faster-whisper for privacy). Both picoclaw and zeroclaw handle this well.
 
@@ -208,35 +206,37 @@ In Discord, multi-bot in one server works but the thread isolation bugs document
 
 ## Multi-Agent Conversation
 
+> The notes below document Telegram and Discord multi-agent patterns for future reference, when Skrye and Zannah are activated as subordinate agents. The current deployment is a single active agent (Traya) running as master/padawan instances; multi-agent patterns do not apply yet.
+
 Solo conversations work today on both platforms with minimal configuration. Group conversations where both agents participate in the same thread are possible on Discord but blocked on Telegram by a fundamental Bot API limitation: bots cannot see messages from other bots. Agent-to-agent communication across zeroclaw instances has no production-ready path today, though A2A protocol support is in active development (zeroclaw #3566).
 
 ### Telegram: Solo Conversations
 
 Solo conversation is the simplest pattern and works out of the box. Each zeroclaw instance runs as a separate process with its own bot token, config directory, and memory database.
 
-**Private DMs (fully isolated).** Martin messages @SkryeBot in a private chat. The message goes only to the Skrye zeroclaw instance. @ZannahBot never sees it. No configuration beyond the standard channel setup is needed:
+**Private DMs (fully isolated).** Martin messages `@TrayaSithbot` in a private chat. No configuration beyond the standard channel setup is needed:
 
 ```toml
-# Skrye: ~/.zeroclaw-skrye/config.toml
+# master: ~/.zeroclaw/config.toml
 [channels_config.telegram]
-bot_token = "SKRYE_BOT_TOKEN"
+bot_token = "MASTER_BOT_TOKEN"
 allowed_users = ["MARTIN_USER_ID"]
 mention_only = false
 ```
 
 ```toml
-# Zannah: ~/.zeroclaw-zannah/config.toml
+# padawan: ~/.zeroclaw/config.toml
 [channels_config.telegram]
-bot_token = "ZANNAH_BOT_TOKEN"
+bot_token = "PADAWAN_BOT_TOKEN"
 allowed_users = ["MARTIN_USER_ID"]
 mention_only = false
 ```
 
 Each instance has its own `memory.db`, conversation history, and workspace. Context is fully isolated. This is the recommended default for most interactions.
 
-**Forum supergroup with bot-specific topics.** Create a Telegram supergroup with forum mode enabled. Create a "Skrye" topic and a "Zannah" topic. Both bots are members of the group, but each responds only when addressed in its topic. ZeroClaw keys conversation history as `chat_id:thread_id`, so each topic gets isolated context automatically (implemented in `src/channels/telegram.rs`).
+**Forum supergroup with instance-specific topics.** Create a Telegram supergroup with forum mode enabled. Create a "Master" topic and a "Padawan" topic. Both bots are members of the group, but each responds only when addressed in its topic. ZeroClaw keys conversation history as `chat_id:thread_id`, so each topic gets isolated context automatically (implemented in `src/channels/telegram.rs`).
 
-The configuration is identical to the DM setup above. Topic isolation is automatic because each bot only sees messages from humans (Telegram's Bot API filters out other bots' messages). If Martin posts in the "Skrye" topic, both bots technically receive the message, but `mention_only = true` prevents the wrong bot from responding:
+With `mention_only = true`, Martin types `@TrayaSithbot what is the status of X?` in any topic, and only the addressed instance responds:
 
 ```toml
 # Both instances: set mention_only for group contexts
@@ -246,32 +246,15 @@ allowed_users = ["MARTIN_USER_ID"]
 mention_only = true
 ```
 
-With `mention_only = true`, Martin types `@SkryeBot what is the status of X?` in any topic, and only Skrye responds. Messages without an @-mention are silently dropped by both bots. This works for text messages, photos with captions containing the mention, and documents. Voice messages in groups are ignored entirely when `mention_only = true` (zeroclaw #1662, fixed in v0.1.7) because voice notes cannot contain @-mentions.
-
-**PicoClaw equivalent.** The same pattern works with picoclaw using `group_trigger.mention_only`:
-
-```json
-{
-  "channels": {
-    "telegram": {
-      "token": "RESPECTIVE_BOT_TOKEN",
-      "group_trigger": { "mention_only": true }
-    }
-  }
-}
-```
-
-PicoClaw's architecture is one process per bot token (picoclaw #1589). Two picoclaw instances, each with its own config, share a group and use `mention_only` to avoid collisions. This is documented as production-ready.
-
 ### Telegram: Group Conversations
 
 Group conversation where both bots participate in the same thread faces a hard platform constraint.
 
 **The bot-to-bot wall.** Telegram's Bot API does not deliver messages sent by bots to other bots, regardless of privacy mode, admin status, or any configuration. From Telegram's FAQ: "bots will not be able to see messages from other bots regardless of mode." This is enforced server-side and cannot be overridden. OpenClaw #408 documents this limitation and its impact.
 
-Concretely: Martin sends a message in a shared group. Both @SkryeBot and @ZannahBot can see Martin's message and respond. But @SkryeBot's response is invisible to @ZannahBot, and vice versa. There is no configuration in zeroclaw, picoclaw, or any Bot API framework that changes this. The bots cannot have a conversation with each other, cannot build on each other's responses, and cannot coordinate through the Telegram chat.
+Concretely: Martin sends a message in a shared group. Both @SkryeSithbot and @ZannahSithbot can see Martin's message and respond. But @SkryeSithbot's response is invisible to @ZannahSithbot, and vice versa. There is no configuration in zeroclaw, picoclaw, or any Bot API framework that changes this. The bots cannot have a conversation with each other, cannot build on each other's responses, and cannot coordinate through the Telegram chat.
 
-**What works.** Martin can trigger both bots to respond to the same message by @-mentioning both: `@SkryeBot @ZannahBot what do you think about X?`. Both bots independently generate a response to Martin's message. Each sees only Martin's text, not the other bot's reply. This is parallel execution, not a conversation. There is no round-robin, no "respond to what the other bot said", and no arbitration.
+**What works.** Martin can trigger both bots to respond to the same message by @-mentioning both: `@SkryeSithbot @ZannahSithbot what do you think about X?`. Both bots independently generate a response to Martin's message. Each sees only Martin's text, not the other bot's reply. This is parallel execution, not a conversation. There is no round-robin, no "respond to what the other bot said", and no arbitration.
 
 **Bot storm prevention.** With `mention_only = true` on both instances, storms are impossible. Without it, both bots would respond to every human message in the group, which is noisy but not recursive (bot messages are invisible to other bots, so there is no feedback loop). The risk is wasted API calls and cluttered chat, not an infinite loop.
 
@@ -287,27 +270,19 @@ OpenClaw #24633 requests an `allowBots` config option for Telegram, mirroring th
 
 Discord provides stronger isolation primitives than Telegram for solo conversations.
 
-**Private DMs.** Martin DMs @SkryeBot directly. Identical to Telegram DMs: fully isolated, no configuration beyond the standard channel setup. ZeroClaw's Discord channel automatically processes DMs regardless of `guild_id` or `mention_only` settings (DMs bypass both filters in the code).
+**Private DMs.** Martin DMs `@TrayaMasterBot` directly. Identical to Telegram DMs: fully isolated, no configuration beyond the standard channel setup. ZeroClaw's Discord channel automatically processes DMs regardless of `guild_id` or `mention_only` settings (DMs bypass both filters in the code).
 
 ```toml
-# Skrye: ~/.zeroclaw-skrye/config.toml
+# master: ~/.zeroclaw/config.toml
 [channels_config.discord]
-bot_token = "SKRYE_DISCORD_BOT_TOKEN"
+bot_token = "MASTER_DISCORD_BOT_TOKEN"
 guild_id = "SHARED_SERVER_ID"
 allowed_users = ["MARTIN_DISCORD_USER_ID"]
 listen_to_bots = false
 mention_only = false
 ```
 
-**Channel-based isolation.** Create a `#skrye` channel and a `#zannah` channel in the Discord server. Use Discord's channel permissions to grant each bot access only to its own channel:
-
-1. In `#skrye`, deny @ZannahBot the "View Channel" permission. Grant @SkryeBot "View Channel", "Send Messages", "Read Message History".
-2. In `#zannah`, deny @SkryeBot the "View Channel" permission. Grant @ZannahBot the equivalent permissions.
-3. Martin has access to both channels.
-
-This is enforced by Discord's permission system at the platform level. No zeroclaw configuration is needed beyond the standard setup. Each bot literally cannot see the other's channel.
-
-**Guild filtering.** If running separate Discord servers (unlikely for a personal deployment), use `guild_id` to restrict each bot to its own server.
+**Channel-based isolation.** Create a `#master` channel and a `#padawan` channel in the Discord server. Use Discord's channel permissions to grant each bot access only to its own channel. This is enforced at the platform level - no zeroclaw configuration required beyond the standard setup.
 
 ### Discord: Group Conversations
 
@@ -323,17 +298,15 @@ listen_to_bots = true
 mention_only = true
 ```
 
-**Both bots respond to Martin.** In a shared `#roundtable` channel, Martin sends a message. With `mention_only = false` on both bots, both respond. With `mention_only = true`, Martin uses `@SkryeBot @ZannahBot what do you think?` to trigger both.
+**Bot storm risk.** With `listen_to_bots = true` and `mention_only = false`, both bots respond to everything including each other, creating a feedback loop until rate limits intervene. Keep `mention_only = true` to prevent this; Martin controls turn-taking by explicitly @-mentioning the bot they want to respond.
 
-**Bot A reads Bot B's response.** With `listen_to_bots = true`, each bot receives the other's messages as inbound events. The bot processes them through the normal agent loop: the LLM sees the other bot's message as context and may choose to respond. This enables a crude form of agent-to-agent exchange where each bot can read and react to the other's output.
-
-**Bot storm risk.** This is the danger with `listen_to_bots = true`. If both bots have `mention_only = false` and `listen_to_bots = true`, the following happens: Martin sends a message. Bot A responds. Bot B sees Bot A's response and responds. Bot A sees Bot B's response and responds. This continues until the conversation hits a natural stopping point (unlikely) or a rate limit (eventually). Mitigations:
-
-1. **`mention_only = true` on both bots.** Bots only respond when @-mentioned. Bot A's response does not @-mention Bot B, so Bot B ignores it. Martin controls turn-taking by explicitly @-mentioning the bot they want to respond next. This is the safe default.
-2. **`allowed_users` restriction.** Set `allowed_users` to Martin's Discord user ID only. Bot messages come from bot user IDs which are not in the allowlist, so they are filtered. This prevents bot-to-bot entirely while allowing Martin to talk to both. To temporarily enable a round-table, add each bot's user ID to the other's `allowed_users`.
-3. **OpenClaw pattern: `ignoreOtherMentions`.** OpenClaw PR #23689 adds a config option where a bot ignores messages that @-mention another bot but not itself. Messages with no mention pass through. This is not yet in zeroclaw but demonstrates the approach. The implementation is a simple filter: if the message mentions any user and none of them is this bot, drop it.
-
-**Practical round-table pattern.** Martin sends `@SkryeBot @ZannahBot debate the merits of X`. Both bots respond to Martin. Martin then says `@ZannahBot what do you think of Skrye's point?`, quoting or referring to the previous message. Zannah sees both Martin's message and (with `listen_to_bots = true`) Skrye's earlier response in the channel history. This is not automatic turn-taking but it is workable for a moderated multi-agent exchange.
+| Setting | Safe default | Storm risk |
+|---|---|---|
+| `mention_only = true` (both platforms) | Yes | None. Bots only respond when @-mentioned. |
+| `listen_to_bots = false` (Discord) | Yes | None. Bots ignore each other entirely. |
+| `listen_to_bots = true` + `mention_only = true` | Moderate | Low. Bots see each other but only respond if @-mentioned. Martin controls turns. |
+| `listen_to_bots = true` + `mention_only = false` | No | High. Both bots respond to everything including each other. Feedback loop until rate limit. |
+| `allowed_users` restricted to Martin only | Yes | None. Bot user IDs are not in the allowlist. |
 
 ### Agent-to-Agent Communication
 
@@ -351,49 +324,24 @@ agentic = true
 allowed_tools = ["web_search", "knowledge"]
 ```
 
-This is useful for one zeroclaw instance delegating to a cheaper/faster model for specific subtasks, but it does not enable Skrye (on one host) to communicate with Zannah (on another host).
-
 **What does not exist today:**
 
 - No built-in mechanism for two separate zeroclaw instances to exchange messages directly.
-- No way for Bot A's agent to invoke Bot B's agent as a tool or service.
+- No way for one agent to invoke another as a tool or service.
 - No shared memory or context synchronisation between instances.
-- The `swarm` config key exists in the schema (`pub swarms: HashMap<String, ...>`) but documentation is sparse and it appears to be for intra-instance orchestration, not cross-host communication.
+- The `swarm` config key exists in the schema but documentation is sparse and it appears to be for intra-instance orchestration, not cross-host communication.
 
-**A2A protocol support (zeroclaw #3566, open, PR #4166 submitted).** This is the most promising path for cross-instance communication. The proposal adds:
-
-- An `A2ATool` that lets the agent send tasks to remote A2A-compliant agents via HTTP JSON-RPC.
-- An `A2AServer` that exposes a `/.well-known/agent-card.json` endpoint and accepts inbound tasks.
-- Bearer token authentication, localhost-only binding by default.
-
-If merged, Skrye and Zannah could communicate directly over HTTP without routing through a messaging platform. The config would look like:
-
-```toml
-# Skrye's config: knows about Zannah
-[tools.a2a]
-enabled = true
-peers = [
-  { name = "zannah", url = "http://zannah-container:18800", token = "shared-secret" },
-]
-
-[a2a.server]
-enabled = true
-port = 18800
-bind = "0.0.0.0"
-token = "shared-secret"
-```
-
-This is not merged as of April 2026. The PR exists but is under review. Cross-instance agent communication is aspirational, not operational.
-
-**PicoClaw's position.** PicoClaw has no equivalent of the delegate tool or A2A support. Multi-agent in picoclaw means multiple named agents within one process, routed via `bindings`. Cross-instance communication is not on the roadmap.
+**A2A protocol support (zeroclaw #3566, open, PR #4166 submitted).** The proposal adds an `A2ATool` and `A2AServer` for cross-instance communication via HTTP JSON-RPC with bearer token authentication. Not merged as of April 2026. Cross-instance agent communication is aspirational, not operational.
 
 ### Recommended Setup
 
-Concrete steps for running Skrye (on host skrye) and Zannah (on host zannah) with zeroclaw, using Telegram as primary and Discord as secondary.
+> The steps below describe running two zeroclaw instances (master and padawan) with Telegram as the primary interface. Discord steps are included for reference only - Discord is not in active use for this deployment.
+
+Concrete steps for running master (on the home office host) and padawan (on the remote host) with zeroclaw.
 
 **Step 1: Create the Telegram bots.**
 
-- Message @BotFather on Telegram. Create `@SkryeBot` and `@ZannahBot`. Record both tokens.
+- Message @BotFather on Telegram. Create `@TrayaSithbot` (one bot account for the Traya identity; master and padawan share the identity but use separate tokens). Record both tokens.
 - For each bot: `/setprivacy` then `Disable` (allows the bot to see all group messages, not just commands). Note: this must be done before adding the bot to a group to take effect.
 - For each bot: `/setjoingroups` then `Enable`.
 
@@ -401,15 +349,15 @@ Concrete steps for running Skrye (on host skrye) and Zannah (on host zannah) wit
 
 - Create a new Telegram group. Upgrade it to a supergroup (happens automatically when enabling topics).
 - Enable Topics (forum mode) in group settings.
-- Create topics: "General", "Skrye", "Zannah", "Roundtable" (or whatever naming scheme suits).
+- Create topics: "General", "Master", "Padawan" (or whatever naming scheme suits).
 - Add both bots to the group.
 
 **Step 3: Configure each zeroclaw instance for Telegram.**
 
 ```toml
-# Skrye: ~/.zeroclaw/config.toml
+# master: ~/.zeroclaw/config.toml
 [channels_config.telegram]
-bot_token = "${env:SKRYE_TG_TOKEN}"
+bot_token = "${env:MASTER_TG_TOKEN}"
 allowed_users = ["MARTIN_TG_USER_ID"]
 mention_only = true
 stream_mode = "partial"
@@ -417,78 +365,25 @@ draft_update_interval_ms = 1000
 ```
 
 ```toml
-# Zannah: ~/.zeroclaw/config.toml
+# padawan: ~/.zeroclaw/config.toml
 [channels_config.telegram]
-bot_token = "${env:ZANNAH_TG_TOKEN}"
+bot_token = "${env:PADAWAN_TG_TOKEN}"
 allowed_users = ["MARTIN_TG_USER_ID"]
 mention_only = true
 stream_mode = "partial"
 draft_update_interval_ms = 1000
 ```
 
-With `mention_only = true`, Martin addresses `@SkryeBot` or `@ZannahBot` in any topic. Only the addressed bot responds. In the "Skrye" topic, Martin habitually addresses Skrye. In the "Roundtable" topic, Martin can address either or both.
+With `mention_only = true`, Martin addresses `@TrayaSithbot` (master) or the padawan bot in any topic. Only the addressed instance responds.
 
-**Step 4: Create the Discord server (for group conversations).**
-
-- Create a private Discord server.
-- Create channels: `#skrye-only`, `#zannah-only`, `#roundtable`.
-- Create two bot applications in the Discord Developer Portal. Enable Message Content Intent for both. Generate invite URLs with "Send Messages", "Read Message History", "View Channel" permissions.
-- Invite both bots.
-- In `#skrye-only`: deny @ZannahBot "View Channel". In `#zannah-only`: deny @SkryeBot "View Channel". In `#roundtable`: grant both bots all needed permissions.
-
-**Step 5: Configure each zeroclaw instance for Discord.**
-
-```toml
-# Skrye: add to config.toml
-[channels_config.discord]
-bot_token = "${env:SKRYE_DISCORD_TOKEN}"
-guild_id = "YOUR_SERVER_ID"
-allowed_users = ["MARTIN_DISCORD_USER_ID"]
-listen_to_bots = false
-mention_only = true
-```
-
-```toml
-# Zannah: add to config.toml
-[channels_config.discord]
-bot_token = "${env:ZANNAH_DISCORD_TOKEN}"
-guild_id = "YOUR_SERVER_ID"
-allowed_users = ["MARTIN_DISCORD_USER_ID"]
-listen_to_bots = false
-mention_only = true
-```
-
-Default: `listen_to_bots = false` and `mention_only = true`. Safe, no storm risk. Martin @-mentions the bot they want.
-
-**Step 6: Enable round-table mode (Discord only, when needed).**
-
-To have both bots participate in a moderated exchange in `#roundtable`, temporarily update both configs:
-
-```toml
-listen_to_bots = true
-mention_only = true   # keep this on to prevent storms
-```
-
-Martin moderates: `@SkryeBot what do you think about X?`. Skrye responds. Martin then: `@ZannahBot respond to Skrye's point above.` Zannah sees Skrye's message (because `listen_to_bots = true`) and responds with awareness of it. This is not automatic turn-taking but it gives Martin explicit control over the conversation flow.
-
-**Step 7: Prevent storms (checklist).**
-
-| Setting | Safe default | Storm risk |
-|---|---|---|
-| `mention_only = true` (both platforms) | Yes | None. Bots only respond when @-mentioned. |
-| `listen_to_bots = false` (Discord) | Yes | None. Bots ignore each other entirely. |
-| `listen_to_bots = true` + `mention_only = true` | Moderate | Low. Bots see each other but only respond if @-mentioned. Martin controls turns. |
-| `listen_to_bots = true` + `mention_only = false` | No | High. Both bots respond to everything including each other. Feedback loop until rate limit. |
-| `allowed_users` restricted to Martin only | Yes | None. Bot user IDs are not in the allowlist. |
-
-**Summary of what works today vs what is aspirational:**
+**Summary of what works today vs what is aspirational (for future multi-agent use):**
 
 | Capability | Telegram | Discord |
 |---|---|---|
 | Solo DM conversation | Works | Works |
 | Solo topic/channel isolation | Works (forum topics + mention_only) | Works (channel permissions) |
-| Both bots respond to same message | Works (both see Martin's @-mention) | Works |
-| Bot A sees Bot B's response | Blocked (Telegram Bot API limitation) | Works (listen_to_bots = true) |
+| Both instances respond to same message | Works (both see Martin's @-mention) | Works |
+| Instance A sees Instance B's response | Blocked (Telegram Bot API limitation) | Works (listen_to_bots = true) |
 | Moderated round-table | Not possible | Works with mention_only gating |
 | Automatic agent-to-agent exchange | Not possible | Dangerous without careful gating |
 | Cross-instance delegation (A2A) | Not implemented (zeroclaw #3566) | Not implemented |
@@ -519,7 +414,7 @@ Supported by both projects via signal-cli as a bridge. ZeroClaw's Signal channel
 
 ### Verdict
 
-Stick with Telegram + Discord. No alternative platform offers a better combination of daily-driver client quality, voice input, long-polling behind NAT, and agent framework maturity. Matrix is the closest contender but fails on client polish. Mattermost is the best self-hosted option but adds operational overhead without improving the user experience. The Telegram + Discord split (Telegram for interaction, Discord for webhook ingestion) remains the pragmatic choice.
+Telegram is the right choice for this deployment. No alternative platform offers a better combination of daily-driver client quality, voice input, long-polling behind NAT, and agent framework maturity. Discord was evaluated and set aside; the webhook advantage is closable with a lightweight bridge. Matrix is the closest contender but fails on client polish.
 
 ## Sources
 
