@@ -64,8 +64,12 @@ in
       description = "Pre-seed llama.cpp Hugging Face models";
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
-      after = [ "network-online.target" ];
-      before = [
+      after = [
+        "network-online.target"
+        "llama-server.service"
+        "llama-swap.service"
+      ];
+      bindsTo = [
         "llama-server.service"
         "llama-swap.service"
       ];
@@ -88,9 +92,11 @@ in
         python3Packages.huggingface-hub
       ];
       serviceConfig = {
-        Type = "oneshot";
+        Type = "exec";
         User = "root";
         ExecStart = lib.getExe preseedModels;
+        Restart = "on-failure";
+        RestartSec = "30s";
       };
     };
   };

@@ -31,10 +31,17 @@ let
 in
 assert inferenceEval.config.systemd.services ? llama-models-preseed;
 assert !(nonInferenceEval.config.systemd.services ? llama-models-preseed);
-assert service.serviceConfig.Type == "oneshot";
+assert service.serviceConfig.Type == "exec";
 assert service.serviceConfig.User == "root";
+assert service.serviceConfig.Restart == "on-failure";
+assert service.serviceConfig.RestartSec == "30s";
 assert builtins.elem "network-online.target" service.after;
 assert builtins.elem "network-online.target" service.wants;
+assert builtins.elem "llama-server.service" service.after;
+assert builtins.elem "llama-swap.service" service.after;
+assert builtins.elem "llama-server.service" service.bindsTo;
+assert builtins.elem "llama-swap.service" service.bindsTo;
+assert service.before == [ ];
 assert service.environment.LLAMA_PRESEED_CACHE_ROOT == "/var/lib/llama-models/huggingface";
 assert service.environment.HF_HOME == "/var/lib/llama-models/huggingface";
 assert service.environment.HF_HUB_CACHE == "/var/lib/llama-models/huggingface/hub";
