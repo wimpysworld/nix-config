@@ -75,7 +75,11 @@ Both hosts run identical NixOS configurations. Data is synced between them to su
 
 **Rationale**: GPU/memory-intensive inference should not be containerised. 128 GB unified memory on Strix Halo can load models up to ~120B parameters.
 
-**Target inference backend**: `llama-server`/`llama-swap` (Vulkan) is the primary inference backend, selected on measured throughput advantages over Ollama. The switch is a config-only change - no agent code changes are needed, as both backends expose the same OpenAI-compatible API. Ollama remains in use for model downloads and embedding serving during the transition. Timing of the migration is TBD. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the performance case.
+**Target inference backend**: `llama-server`/`llama-swap` (Vulkan) is the primary inference backend, selected on measured throughput advantages over Ollama. The switch is a config-only change - no agent code changes are needed, as both backends expose the same OpenAI-compatible API. Ollama remains in use for some transition work. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the performance case.
+
+**Model pre-seeding**: inference-tagged hosts now enable `llama-models-preseed.service`. The unit derives the host model set from the shared llama policy, resolves each authoritative `repo:quant` reference through the download metadata map, downloads missing GGUF files with `hf download`, and verifies every declared shard before later runtime wiring.
+
+**Shared cache root**: pre-seeded models live under `/var/lib/llama-models/huggingface`. This keeps model state out of user home directories and gives predictable restart behaviour.
 
 **Configuration pattern** (`~/.zeroclaw/config.toml`):
 ```toml
@@ -108,6 +112,15 @@ embedding_base = "http://<host-container-ip>:11434/v1"
 ```
 
 See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the full model selection rationale, hardware benchmarks, and backend comparison. The failover chain retries on 429/rate-limit/timeout errors automatically.
+
+**Inference host operations**:
+- `llama-models-preseed.service` is present only on hosts tagged `inference`
+- The service runs as a root `Type=oneshot` unit after `network-online.target`
+- A successful run leaves the selected models ready in `/var/lib/llama-models/huggingface`
+- A failed run stops at the preseed stage and reports the broken model reference or shard in the journal
+- Inspect status with `systemctl status llama-models-preseed.service`
+- Inspect logs with `journalctl -u llama-models-preseed.service`
+- Start or rerun manually with `systemctl start llama-models-preseed.service`
 
 ### 3. Master/Padawan Instances
 
