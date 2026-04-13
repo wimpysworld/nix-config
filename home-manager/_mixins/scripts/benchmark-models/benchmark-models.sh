@@ -561,6 +561,7 @@ run_llama_bench_once() {
 		-m "${model_path}" \
 		-ngl 99 \
 		-fa 1 \
+		--no-mmap \
 		-p 0 \
 		-n 512 \
 		-r 1 \
