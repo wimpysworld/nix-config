@@ -18,10 +18,10 @@ let
       minVramGiB = 64;
       name = "vram64";
       models = {
-        coding = "unsloth/Qwen3-Coder-Next-GGUF";
-        general = "unsloth/Qwen3.5-35B-A3B-GGUF";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF";
-        embedding = "Qwen/Qwen3-Embedding-4B-GGUF:q8_0";
+        coding = "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_XL";
+        general = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+        embedding = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
       };
     };
 
@@ -30,10 +30,10 @@ let
       minVramGiB = 32;
       name = "vram32";
       models = {
-        coding = "unsloth/Qwen3.5-35B-A3B-GGUF";
-        general = "unsloth/gemma-4-26B-A4B-it-GGUF";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF";
-        embedding = "Qwen/Qwen3-Embedding-4B-GGUF:q8_0";
+        coding = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
+        general = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+        embedding = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
       };
     };
 
@@ -42,10 +42,10 @@ let
       minVramGiB = 22;
       name = "vram22";
       models = {
-        coding = "unsloth/gemma-4-26B-A4B-it-GGUF";
-        general = "unsloth/gemma-4-26B-A4B-it-GGUF";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF";
-        embedding = "Qwen/Qwen3-Embedding-4B-GGUF";
+        coding = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
+        general = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+        embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
       };
     };
 
@@ -54,10 +54,10 @@ let
       minVramGiB = 16;
       name = "vram16";
       models = {
-        coding = "unsloth/Qwen3.5-9B-GGUF";
-        general = "unsloth/Qwen3.5-9B-GGUF";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF";
-        embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF";
+        coding = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
+        general = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+        embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
       };
     };
 
@@ -66,10 +66,10 @@ let
       minVramGiB = 8;
       name = "vram8";
       models = {
-        coding = "unsloth/Qwen3.5-9B-GGUF";
-        general = "unsloth/Qwen3.5-9B-GGUF";
-        smallMedia = "unsloth/gemma-4-E2B-it-GGUF";
-        embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF";
+        coding = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
+        general = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E2B-it-GGUF:UD-Q4_K_XL";
+        embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
       };
     };
   };
