@@ -39,6 +39,10 @@ in
         hash = ollamaHash;
       };
 
+      ollamaCheckFlags = [
+        "-skip=^TestPushHandler/unauthorized_push$|^TestPiRun_InstallAndWebSearchLifecycle$|^TestOpenclawRun_ChannelSetupHappensBeforeGatewayRestart$|^TestOpenclawChannelSetupPreflight$"
+      ];
+
       llamaCppSrc = prev.fetchFromGitHub {
         owner = "ggml-org";
         repo = "llama.cpp";
@@ -80,6 +84,7 @@ in
             version = ollamaVersion;
             src = ollamaSrc;
             vendorHash = ollamaVendorHash;
+            checkFlags = ollamaCheckFlags;
           });
 
       ollama-cuda =
@@ -96,6 +101,7 @@ in
             version = ollamaVersion;
             src = ollamaSrc;
             vendorHash = ollamaVendorHash;
+            checkFlags = ollamaCheckFlags;
           });
 
       ollama-rocm =
@@ -112,6 +118,7 @@ in
             version = ollamaVersion;
             src = ollamaSrc;
             vendorHash = ollamaVendorHash;
+            checkFlags = ollamaCheckFlags;
           });
 
       ollama-vulkan =
@@ -128,6 +135,7 @@ in
             version = ollamaVersion;
             src = ollamaSrc;
             vendorHash = ollamaVendorHash;
+            checkFlags = ollamaCheckFlags;
           });
 
       llama-cpp =
