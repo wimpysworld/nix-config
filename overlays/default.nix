@@ -31,6 +31,9 @@ in
     let
       ollamaPackageFile = unstablePkgsPath + "/ol/ollama/package.nix";
       llamaCppPackageFile = unstablePkgsPath + "/ll/llama-cpp/package.nix";
+      unstableRocmPackages = final.unstable.rocmPackages;
+      unstableRocmGpuTargets =
+        unstableRocmPackages.clr.localGpuTargets or (unstableRocmPackages.clr.gpuTargets or [ ]);
 
       ollamaSrc = prev.fetchFromGitHub {
         owner = "ollama";
@@ -107,6 +110,8 @@ in
       ollama-rocm =
         (final.callPackage ollamaPackageFile {
           acceleration = "rocm";
+          rocmPackages = unstableRocmPackages;
+          rocmGpuTargets = unstableRocmGpuTargets;
           inherit
             ollama
             ollama-cuda
@@ -141,6 +146,8 @@ in
       llama-cpp =
         (final.callPackage llamaCppPackageFile {
           inherit llama-cpp;
+          rocmPackages = unstableRocmPackages;
+          rocmGpuTargets = unstableRocmGpuTargets;
         }).overrideAttrs
           (old: {
             version = llamaCppVersion;
