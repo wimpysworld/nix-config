@@ -459,7 +459,7 @@ jobs:
           sudo mv "result/iso/${ISO}" "iso/${ISO}"
       - name: Release ISO 🎁
         if: steps.check-release.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.sentinel.outputs.ver }}
           files: iso/*
