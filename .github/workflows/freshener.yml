@@ -341,6 +341,271 @@ jobs:
           PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
           gh pr merge --auto --squash "$PR_NUMBER"
 
+  ollama:
+    name: Ollama 📦
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Check for Ollama update 🔍
+        id: check
+        run: |
+          set -euo pipefail
+
+          OVERLAYS_NIX="overlays/default.nix"
+          current_version=$(sed -n 's/^  ollamaVersion = "\(.*\)";/\1/p' "$OVERLAYS_NIX")
+          echo "Current version: ${current_version}"
+
+          latest_tag=$(curl -fsSL "https://api.github.com/repos/ollama/ollama/releases/latest" | jq -r '.tag_name')
+          latest_version="${latest_tag#v}"
+
+          if [[ -z "$latest_version" || "$latest_version" == "null" || "$latest_tag" != v* ]]; then
+            echo "❌ Could not determine latest Ollama version"
+            exit 1
+          fi
+
+          echo "Latest version: ${latest_version}"
+
+          if [[ "$current_version" == "$latest_version" ]]; then
+            echo "✅ Ollama is up to date"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "version=${latest_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Ollama overlay 📝
+        if: steps.check.outputs.updated == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          OVERLAYS_NIX="overlays/default.nix"
+          FAKE_HASH="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          HASH_LOG="/tmp/ollama-hash.log"
+          SRC_EXPR='let flake = builtins.getFlake (toString ./.); pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; overlays = builtins.attrValues flake.outputs.overlays; config.allowUnfree = true; }; in pkgs.ollama.src'
+          VENDOR_EXPR='let flake = builtins.getFlake (toString ./.); pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; overlays = builtins.attrValues flake.outputs.overlays; config.allowUnfree = true; }; in pkgs.ollama.goModules'
+
+          extract_hash() {
+            local hash
+            hash=$(awk '
+              /got:/ {
+                match($0, /sha256-[A-Za-z0-9+\/=]+/)
+                print substr($0, RSTART, RLENGTH)
+                exit
+              }
+            ' "$HASH_LOG")
+
+            if [[ -z "$hash" ]]; then
+              echo "❌ Failed to extract hash" >&2
+              cat "$HASH_LOG" >&2
+              exit 1
+            fi
+
+            echo "$hash"
+          }
+
+          echo "📝 Updating Ollama version to ${VERSION}"
+          sed -i "s/^  ollamaVersion = \".*\";/  ollamaVersion = \"${VERSION}\";/" "$OVERLAYS_NIX"
+
+          echo "🧮 Prefetching source hash"
+          sed -i "s|^  ollamaHash = \"sha256-[^\"]*\";|  ollamaHash = \"${FAKE_HASH}\";|" "$OVERLAYS_NIX"
+          nix build --impure --expr "$SRC_EXPR" --no-link >"$HASH_LOG" 2>&1 || true
+          src_hash=$(extract_hash)
+          sed -i "s|^  ollamaHash = \"sha256-[^\"]*\";|  ollamaHash = \"${src_hash}\";|" "$OVERLAYS_NIX"
+          echo "🔑 Source hash: ${src_hash}"
+
+          echo "🧮 Prefetching vendor hash"
+          sed -i "s|^  ollamaVendorHash = \"sha256-[^\"]*\";|  ollamaVendorHash = \"${FAKE_HASH}\";|" "$OVERLAYS_NIX"
+          nix build --impure --expr "$VENDOR_EXPR" --no-link >"$HASH_LOG" 2>&1 || true
+          vendor_hash=$(extract_hash)
+          sed -i "s|^  ollamaVendorHash = \"sha256-[^\"]*\";|  ollamaVendorHash = \"${vendor_hash}\";|" "$OVERLAYS_NIX"
+          echo "🔑 Vendor hash: ${vendor_hash}"
+
+          rm -f "$HASH_LOG"
+          echo "✅ Updated ${OVERLAYS_NIX}"
+          git diff "$OVERLAYS_NIX"
+
+      - name: Create pull request 🚀
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          BRANCH="ollama-${VERSION}"
+
+          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
+            echo "⏭️  PR already exists for ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add overlays/default.nix
+          git commit -m "chore(ollama): update to ${VERSION}"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(ollama): update to ${VERSION}" \
+            --body "$(cat <<EOF
+          Automated Ollama update to version ${VERSION}.
+
+          Release: https://github.com/ollama/ollama/releases/tag/v${VERSION}
+          EOF
+          )" \
+            --label "dependencies,automated")
+
+          echo "📋 Created PR: ${PR_URL}"
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge --auto --squash "$PR_NUMBER"
+
+  llama-cpp:
+    name: llama.cpp 📦
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Check for llama.cpp update 🔍
+        id: check
+        run: |
+          set -euo pipefail
+
+          OVERLAYS_NIX="overlays/default.nix"
+          current_version=$(sed -n 's/^  llamaCppVersion = "\(.*\)";/\1/p' "$OVERLAYS_NIX")
+          echo "Current version: ${current_version}"
+
+          latest_version=$(
+            git ls-remote --tags --refs https://github.com/ggml-org/llama.cpp.git 'b*' \
+              | awk -F/ '{ print $3 }' \
+              | sed 's/^b//' \
+              | sort -V \
+              | tail -n 1
+          )
+
+          if [[ -z "$latest_version" ]]; then
+            echo "❌ Could not determine latest llama.cpp version"
+            exit 1
+          fi
+
+          echo "Latest version: ${latest_version}"
+
+          if [[ "$current_version" == "$latest_version" ]]; then
+            echo "✅ llama.cpp is up to date"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "version=${latest_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Update llama.cpp overlay 📝
+        if: steps.check.outputs.updated == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          OVERLAYS_NIX="overlays/default.nix"
+          FAKE_HASH="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          HASH_LOG="/tmp/llama-cpp-hash.log"
+          SRC_EXPR='let flake = builtins.getFlake (toString ./.); pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; overlays = builtins.attrValues flake.outputs.overlays; config.allowUnfree = true; }; in pkgs.llama-cpp.src'
+          NPM_EXPR='let flake = builtins.getFlake (toString ./.); pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; overlays = builtins.attrValues flake.outputs.overlays; config.allowUnfree = true; }; in pkgs.llama-cpp.npmDeps'
+
+          extract_hash() {
+            local hash
+            hash=$(awk '
+              /got:/ {
+                match($0, /sha256-[A-Za-z0-9+\/=]+/)
+                print substr($0, RSTART, RLENGTH)
+                exit
+              }
+            ' "$HASH_LOG")
+
+            if [[ -z "$hash" ]]; then
+              echo "❌ Failed to extract hash" >&2
+              cat "$HASH_LOG" >&2
+              exit 1
+            fi
+
+            echo "$hash"
+          }
+
+          echo "📝 Updating llama.cpp version to ${VERSION}"
+          sed -i "s/^  llamaCppVersion = \".*\";/  llamaCppVersion = \"${VERSION}\";/" "$OVERLAYS_NIX"
+
+          echo "🧮 Prefetching source hash"
+          sed -i "s|^  llamaCppHash = \"sha256-[^\"]*\";|  llamaCppHash = \"${FAKE_HASH}\";|" "$OVERLAYS_NIX"
+          nix build --impure --expr "$SRC_EXPR" --no-link >"$HASH_LOG" 2>&1 || true
+          src_hash=$(extract_hash)
+          sed -i "s|^  llamaCppHash = \"sha256-[^\"]*\";|  llamaCppHash = \"${src_hash}\";|" "$OVERLAYS_NIX"
+          echo "🔑 Source hash: ${src_hash}"
+
+          echo "🧮 Prefetching npm deps hash"
+          sed -i "s|^  llamaCppNpmDepsHash = \"sha256-[^\"]*\";|  llamaCppNpmDepsHash = \"${FAKE_HASH}\";|" "$OVERLAYS_NIX"
+          nix build --impure --expr "$NPM_EXPR" --no-link >"$HASH_LOG" 2>&1 || true
+          npm_hash=$(extract_hash)
+          sed -i "s|^  llamaCppNpmDepsHash = \"sha256-[^\"]*\";|  llamaCppNpmDepsHash = \"${npm_hash}\";|" "$OVERLAYS_NIX"
+          echo "🔑 npm deps hash: ${npm_hash}"
+
+          rm -f "$HASH_LOG"
+          echo "✅ Updated ${OVERLAYS_NIX}"
+          git diff "$OVERLAYS_NIX"
+
+      - name: Create pull request 🚀
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          BRANCH="llama-cpp-${VERSION}"
+
+          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
+            echo "⏭️  PR already exists for ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add overlays/default.nix
+          git commit -m "chore(llama-cpp): update to ${VERSION}"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(llama-cpp): update to ${VERSION}" \
+            --body "$(cat <<EOF
+          Automated llama.cpp update to build ${VERSION}.
+
+          Tags: https://github.com/ggml-org/llama.cpp/tags
+          EOF
+          )" \
+            --label "dependencies,automated")
+
+          echo "📋 Created PR: ${PR_URL}"
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge --auto --squash "$PR_NUMBER"
+
   gitbutler:
     name: GitButler 📦
     runs-on: ubuntu-latest
