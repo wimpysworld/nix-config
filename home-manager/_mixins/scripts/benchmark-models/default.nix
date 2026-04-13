@@ -86,7 +86,19 @@ let
       ++ backendPackages;
     text = benchmarkEnv + builtins.readFile ./${name}.sh;
   };
+
+  shellApplicationAll = pkgs.writeShellApplication {
+    name = "${name}-all";
+    runtimeInputs = with pkgs; [
+      coreutils
+      shellApplication
+    ];
+    text = builtins.readFile ./benchmark-models-all.sh;
+  };
 in
 lib.mkIf (host.is.linux && isInference) {
-  home.packages = [ shellApplication ];
+  home.packages = [
+    shellApplication
+    shellApplicationAll
+  ];
 }
