@@ -558,14 +558,14 @@ run_llama_bench_once() {
 
 	output=$(run_llama_backend \
 		"${command_name}" \
-		-m "${model_path}" \
-		-ngl 99 \
-		-fa 1 \
-		--no-mmap \
-		-p 0 \
-		-n 512 \
-		-r 1 \
-		-o jsonl \
+			-m "${model_path}" \
+			-ngl 99 \
+			-fa 1 \
+			--mmap 0 \
+			-p 0 \
+			-n 512 \
+			-r 1 \
+			-o jsonl \
 		2>/dev/null)
 
 	tps=$(printf '%s' "${output}" | jq -ser '[.[] | select(.n_gen > 0)] | .[0].avg_ts // empty')

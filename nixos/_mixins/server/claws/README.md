@@ -111,7 +111,7 @@ embedding_model = "ollama/qwen3-embedding:4b-q8_0"
 embedding_base = "http://<host-container-ip>:11434/v1"
 ```
 
-See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the full model selection rationale, hardware benchmarks, and backend comparison. The failover chain retries on 429/rate-limit/timeout errors automatically.
+See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the full model selection rationale, hardware benchmarks, and backend comparison. On Strix Halo, llama.cpp tools should run with flash attention enabled and mmap disabled, now expressed as `-fa 1 --mmap 0`. The failover chain retries on 429/rate-limit/timeout errors automatically.
 
 **Inference host operations**:
 - `llama-models-preseed.service` is present only on hosts tagged `inference`

@@ -19,7 +19,7 @@ MoE model throughput is governed by active parameters, not total parameters. A 3
 
 ### Measured benchmarks
 
-5-run means across all four runners. llama.cpp runs use UD-Q4_K_XL quantisation with `-fa 1 --no-mmap`, which is required on Strix Halo to avoid crashes and slowdowns; Ollama uses the default tag quant. Models marked † are reference points, not production candidates.
+5-run means across all four runners. llama.cpp runs use UD-Q4_K_XL quantisation with `-fa 1 --mmap 0`, which is required on Strix Halo to avoid crashes and slowdowns; Ollama uses the default tag quant. Models marked † are reference points, not production candidates.
 
 | Model | Architecture | ROCm Ollama | Vulkan Ollama | ROCm llama-bench | Vulkan llama-bench |
 |---|---|---|---|---|---|
@@ -97,7 +97,7 @@ services.ollama = {
 
 ### Required Strix Halo flags
 
-Always start llama.cpp on Strix Halo with flash attention and mmap disabled: `-fa 1 --no-mmap`. This applies to `llama-server`, `llama-bench`, and equivalent llama.cpp tools. Omitting either flag causes crashes or avoidable slowdowns on this hardware.
+Always start llama.cpp on Strix Halo with flash attention and mmap disabled: `-fa 1 --mmap 0`. This applies to `llama-server`, `llama-bench`, and equivalent llama.cpp tools. Older notes may refer to `--no-mmap`, but current llama.cpp tools use the explicit `--mmap 0` form. Omitting either setting causes crashes or avoidable slowdowns on this hardware.
 
 ### KV cache quantisation
 
