@@ -18,11 +18,43 @@ let
       };
     }
     {
+      name = "EssentialAI/rnj-1-instruct-GGUF:Q4_K_M";
+      value = {
+        hfRepo = "EssentialAI/rnj-1-instruct-GGUF";
+        primaryPath = "Rnj-1-Instruct-8B-Q4_K_M.gguf";
+        downloadPaths = [ "Rnj-1-Instruct-8B-Q4_K_M.gguf" ];
+      };
+    }
+    {
       name = "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_XL";
       value = {
         hfRepo = "unsloth/Qwen3-Coder-Next-GGUF";
         primaryPath = "Qwen3-Coder-Next-UD-Q4_K_XL.gguf";
         downloadPaths = [ "Qwen3-Coder-Next-UD-Q4_K_XL.gguf" ];
+      };
+    }
+    {
+      name = "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q4_K_XL";
+      value = {
+        hfRepo = "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF";
+        primaryPath = "Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf";
+        downloadPaths = [ "Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf" ];
+      };
+    }
+    {
+      name = "unsloth/Qwen2.5-Coder-14B-Instruct-128K-GGUF:Q4_K_M";
+      value = {
+        hfRepo = "unsloth/Qwen2.5-Coder-14B-Instruct-128K-GGUF";
+        primaryPath = "Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf";
+        downloadPaths = [ "Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf" ];
+      };
+    }
+    {
+      name = "unsloth/Qwen2.5-Coder-7B-Instruct-128K-GGUF:Q4_K_M";
+      value = {
+        hfRepo = "unsloth/Qwen2.5-Coder-7B-Instruct-128K-GGUF";
+        primaryPath = "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf";
+        downloadPaths = [ "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf" ];
       };
     }
     {
@@ -39,6 +71,14 @@ let
         hfRepo = "unsloth/Qwen3.5-9B-GGUF";
         primaryPath = "Qwen3.5-9B-UD-Q4_K_XL.gguf";
         downloadPaths = [ "Qwen3.5-9B-UD-Q4_K_XL.gguf" ];
+      };
+    }
+    {
+      name = "unsloth/gpt-oss-20b-GGUF:UD-Q4_K_XL";
+      value = {
+        hfRepo = "unsloth/gpt-oss-20b-GGUF";
+        primaryPath = "gpt-oss-20b-UD-Q4_K_XL.gguf";
+        downloadPaths = [ "gpt-oss-20b-UD-Q4_K_XL.gguf" ];
       };
     }
     {
