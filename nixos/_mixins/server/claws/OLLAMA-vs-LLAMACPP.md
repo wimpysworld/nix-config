@@ -21,110 +21,79 @@ MoE model throughput is governed by active parameters, not total parameters. A 3
 
 ### Measured benchmarks
 
-5-run means across all four runners. Ollama uses the default vendor model tag, which is typically standard Q4_K_M (~4.5 bpw); llama.cpp runs use Unsloth UD-Q4_K_XL from Hugging Face with `-fa 1 --mmap 0`, which is required on Strix Halo to avoid crashes and slowdowns. Exception: gemma4:e2b and gemma4:e4b use UD-Q6_K_XL (see ‡ footnote) because the Q6_K floor is required for audio reliability (see §7); all other models use UD-Q4_K_XL. This is not a pure backend comparison: UD-Q4_K_XL is an imatrix-calibrated "dynamic" quant that upcasts important tensors to Q5_K while leaving most weights at Q4_K, yielding a modestly larger file and materially lower KL divergence against the full-precision reference than Q4_K_M. Unsloth's own measurements put imatrix quants at roughly 5-10% slower to decode than plain k-quants at the same bit width, so on token-generation throughput the quant choice slightly favours Ollama; the figures in the table are raw, unadjusted measurements, so where llama.cpp still leads by a wide margin (notably gpt-oss:20b and the Qwen3.5 MoEs) the true backend advantage is larger than it appears, since llama.cpp posts those numbers while carrying the slower quant. Models marked † are reference points, not production candidates. Software versions: Ollama 0.20.6, llama.cpp b8775, Linux 6.19.11, ROCm 7.2.1.
+5-run means across all four runners. The revised harness now records both decode throughput and a synthetic 512-token prompt-processing pass, but the summary table below uses decode means unless stated otherwise. Ollama uses the default vendor model tag, which is typically standard Q4_K_M (~4.5 bpw); llama.cpp runs use Unsloth UD-Q4_K_XL from Hugging Face with `-fa 1 --mmap 0`, which is required on Strix Halo to avoid crashes and slowdowns. Exception: gemma4:e2b and gemma4:e4b use UD-Q6_K_XL (see ‡ footnote) because the Q6_K floor is required for audio reliability (see §7); all other models use UD-Q4_K_XL. This is not a pure backend comparison: UD-Q4_K_XL is an imatrix-calibrated "dynamic" quant that upcasts important tensors to Q5_K while leaving most weights at Q4_K, yielding a modestly larger file and materially lower KL divergence against the full-precision reference than Q4_K_M. Unsloth's own measurements put imatrix quants at roughly 5-10% slower to decode than plain k-quants at the same bit width, so on token-generation throughput the quant choice slightly favours Ollama; the figures in the table are raw, unadjusted measurements, so where llama.cpp still leads by a wide margin the true backend advantage is larger than it appears, since llama.cpp posts those numbers while carrying the slower quant. Models marked † are reference points, not production candidates. Software versions: Ollama 0.20.6, llama.cpp b8775, Linux 6.19.11, ROCm 7.2.1.
 
 | Model | Architecture | ROCm Ollama | Vulkan Ollama | ROCm llama-bench | Vulkan llama-bench |
 |---|---|---|---|---|---|
-| gemma4:e2b‡ | Dense (2.3B eff.) | 87.35 | 45.77 | 72.25 | 80.26 |
-| gemma4:e4b‡ | Dense (4.5B eff.) | 51.05 | 25.90 | 41.05 | 42.93 |
-| gemma4:26b | MoE (3.8B active) | 47.97 | 28.84 | 45.61 | 50.30 |
-| gemma4:31b† | Dense (30.7B) | 10.14 | 10.30 | 10.35 | 10.68 |
-| gpt-oss:20b | MoE (3.6B active) | 44.27 | 46.01 | 76.23 | 82.99 |
-| qwen3:1.7b† | Dense (1.7B) | 123.51 | 117.32 | 136.43 | 150.22 |
-| qwen3-coder-next | MoE (~3B active) | 33.25 | 35.36 | 38.04 | 44.77 |
-| qwen3.5:9b† | Dense (9B) | 32.16 | 32.43 | 34.20 | 36.25 |
-| qwen3.5:27b† | Dense (27B) | 11.04 | 11.19 | 11.56 | 12.10 |
-| qwen3.5:35b-a3b | MoE (3.3B active) | 42.90 | 44.17 | 48.24 | 57.72 |
+| gemma4:e2b‡ | Dense (2.3B eff.) | 88.74 | 46.23 | 73.42 | 82.51 |
+| gemma4:e4b‡ | Dense (4.5B eff.) | 54.06 | 26.81 | 41.83 | 43.42 |
+| gemma4:26b | MoE (3.8B active) | 49.57 | 29.60 | 46.38 | 51.05 |
+| gemma4:31b† | Dense (30.7B) | 10.30 | 10.25 | 10.40 | 10.79 |
+| gpt-oss:20b | MoE (3.6B active) | 45.50 | 46.11 | 77.50 | 82.78 |
+| qwen2.5-coder:7b | Dense (7B) | 45.04 | 44.39 | 45.08 | 45.19 |
+| qwen2.5-coder:14b | Dense (14B) | 23.87 | 24.10 | 23.81 | 24.44 |
+| qwen3:1.7b† | Dense (1.7B) | 123.54 | 117.16 | 136.60 | 149.86 |
+| qwen3-coder:30b-a3b | MoE (3.3B active) | 56.70 | 68.50 | 70.71 | 88.00 |
+| qwen3-coder-next | MoE (~3B active) | 34.38 | 35.59 | 38.27 | 44.87 |
+| qwen3.5:9b | Dense (9B) | 32.14 | 32.37 | 34.20 | 36.15 |
+| qwen3.5:27b† | Dense (27B) | 11.05 | 11.19 | 11.56 | 12.10 |
+| qwen3.5:35b-a3b | MoE (3.3B active) | 42.08 | 44.15 | 48.37 | 57.72 |
+| rnj-1:8b | Dense (8B) | 37.11 | 37.28 | 36.80 | 37.92 |
 
 † Reference model, not a production candidate.
 ‡ llama-bench uses UD-Q6_K_XL (required for audio reliability; see §7); Ollama uses the default Q4_K_M tag. These rows are not a pure backend comparison - the quant difference accounts for the reversal where ROCm Ollama outperforms Vulkan llama-bench.
 
+Most rows in this table now map directly to the live production policy. The remaining reference markers are `gemma4:31b`, `qwen3.5:27b`, and `qwen3:1.7b`.
+
 ### What changed vs the previous benchmark run
 
-Ollama upgraded from 0.20.2 to 0.20.6; llama.cpp upgraded from b8667 to b8775; `--mmap 0` now applied to all llama-bench runs (previously `--mmap` was not passed at all).
+This run keeps the same software stack as the previous pass, but uses the revised benchmark harness with a fixed 512-token decode task and a synthetic 512-token prompt-processing test. The headline Vulkan llama-bench decode figures moved only slightly, which is useful in itself - the revised harness kept the earlier ranking intact.
 
 Key deltas (new vs old Vulkan llama-bench, the headline metric):
 
 | Model | Previous | New | Change |
 |---|---|---|---|
-| gemma4:e2b¶ | 99.21 | 80.26 | -18.95 (-19.1%) |
-| gemma4:e4b¶ | 54.39 | 42.93 | -11.46 (-21.1%) |
-| gemma4:26b | 49.58 | 50.30 | +0.72 (+1.5%) |
-| gemma4:31b† | 10.61 | 10.68 | +0.07 (+0.7%) |
-| gpt-oss:20b | 80.64 | 82.99 | +2.35 (+2.9%) |
-| qwen3:1.7b† | 147.47 | 150.22 | +2.75 (+1.9%) |
-| qwen3-coder-next | 43.39 | 44.77 | +1.38 (+3.2%) |
-| qwen3.5:9b† | 34.35 | 36.25 | +1.90 (+5.5%) |
-| qwen3.5:27b† | 11.89 | 12.10 | +0.21 (+1.8%) |
-| qwen3.5:35b-a3b | 55.12 | 57.72 | +2.60 (+4.7%) |
+| gemma4:e2b | 80.26 | 82.51 | +2.25 (+2.8%) |
+| gemma4:e4b | 42.93 | 43.42 | +0.49 (+1.1%) |
+| gemma4:26b | 50.30 | 51.05 | +0.75 (+1.5%) |
+| gemma4:31b† | 10.68 | 10.79 | +0.11 (+1.0%) |
+| gpt-oss:20b | 82.99 | 82.78 | -0.21 (-0.3%) |
+| qwen3:1.7b† | 150.22 | 149.86 | -0.36 (-0.2%) |
+| qwen3-coder-next | 44.77 | 44.87 | +0.10 (+0.2%) |
+| qwen3.5:9b | 36.25 | 36.15 | -0.10 (-0.3%) |
+| qwen3.5:27b† | 12.10 | 12.10 | ~0.00 |
+| qwen3.5:35b-a3b | 57.72 | 57.72 | ~0.00 |
 
-¶ Not like-for-like: previous figure is UD-Q4_K_XL, new figure is UD-Q6_K_XL. The E2B and E4B benchmarks now use the heavier quant required for audio reliability (see §7), so the delta reflects the quant change, not a regression in llama.cpp.
+Newly benchmarked policy models, not present in the earlier table:
 
-ROCm Ollama changed more substantially for Gemma models: gemma4:e2b rose from 65.80 to 87.47 (+33%), gemma4:e4b from 42.77 to 53.06 (+24%), gemma4:26b from 43.13 to 47.97 (+11%). This is likely due to Ollama 0.20.6 improvements to ROCm dispatch for small-to-mid Gemma MoE/dense models. Vulkan Ollama for Gemma models dropped slightly (gemma4:e2b 50.39 → 44.75, gemma4:e4b 27.33 → 26.52), narrowing the ROCm/Vulkan spread but not changing the ROCm dominance conclusion.
-
-The qwen3-coder-next warmup anomaly (previous ‡ note) is resolved. Root cause: the first llama.cpp run was starting while Ollama still held a model resident, and LRU eviction of that Ollama model partway through the first run dragged the result down. The benchmark script now terminates Ollama and llama.cpp and clears loaded models from memory at the end of each 5-run set, giving a clean baseline for the next model.
+- `qwen2.5-coder:7b` - 45.19 tok/s on Vulkan llama-bench, near-parity with Ollama.
+- `qwen2.5-coder:14b` - 24.44 tok/s on Vulkan llama-bench, again near-parity.
+- `qwen3-coder:30b-a3b` - 88.00 tok/s on Vulkan llama-bench, the fastest production coding model in the current policy.
+- `rnj-1:8b` - 37.92 tok/s on Vulkan llama-bench, with decode throughput close to both Ollama backends.
 
 ### ROCm vs Vulkan on Ollama
 
-The faster Ollama backend is model-family dependent. Gemma models run substantially faster on ROCm Ollama: gemma4:e2b is 91% faster on ROCm (87.35 vs 45.77), gemma4:e4b is 97% faster (51.05 vs 25.90), gemma4:26b is 66% faster (47.97 vs 28.84). Qwen and gpt-oss MoE models favour Vulkan Ollama by a smaller margin: qwen3.5:35b-a3b +3% (44.17 vs 42.90), qwen3-coder-next +6% (35.36 vs 33.25), gpt-oss:20b +4% (46.01 vs 44.27). Dense large models are near-parity on both backends.
+The faster Ollama backend is still model-family dependent. Gemma models run substantially faster on ROCm Ollama: gemma4:e2b is 92% faster on ROCm (88.74 vs 46.23), gemma4:e4b is 102% faster (54.06 vs 26.81), gemma4:26b is 67% faster (49.57 vs 29.60). Qwen and gpt-oss models are more mixed. `qwen3-coder:30b-a3b` strongly favours Vulkan Ollama at 68.50 tok/s versus 56.70 on ROCm. `qwen3-coder-next`, `qwen3.5:35b-a3b`, and `gpt-oss:20b` also favour Vulkan Ollama, but by smaller margins. `qwen2.5-coder:7b`, `qwen2.5-coder:14b`, `qwen3.5:9b`, and `rnj-1:8b` sit close to parity.
 
 For a mixed production stack spanning both model families, neither Ollama backend wins outright. This is one of the motivations for migrating to llama-server.
 
 ### The MoE vs dense bandwidth-ceiling insight
 
-Large dense models (27B+) are memory-bandwidth-ceilinged at ~10-12 tok/s regardless of backend - the bottleneck is LPDDR5X throughput, not inference overhead. MoE models and small dense models are compute-bound and show meaningful backend differences. The vulkan llama-bench advantage over the best Ollama backend: qwen3.5:35b-a3b +31%, qwen3-coder-next +27%, gemma4:26b +5%, gpt-oss:20b +80%.
+Large dense models (27B+) are still memory-bandwidth-ceilinged at ~10-12 tok/s regardless of backend - the bottleneck is LPDDR5X throughput, not inference overhead. The new run reinforces that conclusion: gemma4:31b lands at 10.79 tok/s on Vulkan llama-bench, qwen3.5:27b at 12.10 tok/s. MoE models and smaller dense models are compute-bound and show meaningful backend differences. The Vulkan llama-bench advantage over the best Ollama backend is now: qwen3.5:35b-a3b +31%, qwen3-coder-next +26%, qwen3-coder:30b-a3b +28%, gemma4:26b +3%, gpt-oss:20b +80%.
 
-The E2B and E4B relationship reverses: ROCm Ollama (Q4_K_M) outperforms Vulkan llama-bench (UD-Q6_K_XL) - 87.35 vs 80.26 for E2B, 51.05 vs 42.93 for E4B. The heavier quant required for audio reliability drops llama-bench throughput below Ollama's lighter Q4_K_M baseline. This is an intentional trade: audio capability over raw decode speed.
+The E2B and E4B relationship still reverses: ROCm Ollama (Q4_K_M) outperforms Vulkan llama-bench (UD-Q6_K_XL) - 88.74 vs 82.51 for E2B, 54.06 vs 43.42 for E4B. The heavier quant required for audio reliability drops llama-bench throughput below Ollama's lighter Q4_K_M baseline. This is an intentional trade: audio capability over raw decode speed.
+
+Prompt-processing results add one more useful signal. Ollama still shows a first-run prompt throughput dip after backend restart, while llama-bench prompt figures stay much tighter run to run. That does not change the decode ranking, but it does support the broader operational conclusion that the llama.cpp path is the steadier measurement and serving path.
 
 ### The case for llama-server
 
-Vulkan llama-server delivers the highest throughput across all model families and eliminates the Gemma/Qwen backend split. For production models: qwen3.5:35b-a3b reaches 57.72 tok/s (+31% over best Ollama), qwen3-coder-next reaches 44.77 tok/s (+27%). For gemma4:e4b the case for llama-server is not throughput - ROCm Ollama on Q4_K_M (51.05 tok/s) is faster than Vulkan llama-bench on UD-Q6_K_XL (42.93 tok/s) - but audio reliability: only llama.cpp exposes the Q6_K quant required for stable audio on clips beyond ~17 seconds, and only llama.cpp has a non-experimental conformer encoder path. The migration is a config-only change - ZeroClaw connects via OpenAI-compatible API on either backend, so no agent code changes are required.
+The Vulkan llama.cpp path still delivers the highest throughput across most production model families and removes the Gemma/Qwen backend split. For production models: qwen3.5:35b-a3b reaches 57.72 tok/s (+31% over best Ollama), qwen3-coder-next reaches 44.87 tok/s (+26%), qwen3-coder:30b-a3b reaches 88.00 tok/s (+28%), and gpt-oss:20b reaches 82.78 tok/s (+80%). The qwen2.5 coder models are the exception - they are close enough to parity that the backend choice matters less than the role fit.
+
+For gemma4:e4b the case for llama-server is still not throughput - ROCm Ollama on Q4_K_M (54.06 tok/s) is faster than Vulkan llama-bench on UD-Q6_K_XL (43.42 tok/s) - but audio reliability: only llama.cpp exposes the Q6_K quant required for stable audio on clips beyond ~17 seconds, and only llama.cpp has a non-experimental conformer encoder path. The migration is still a config-only change - ZeroClaw connects via OpenAI-compatible API on either backend, so no agent code changes are required.
 
 ---
 
-## 3. Ollama Configuration (Transitional)
-
-Ollama is superseded by llama-server/llama-swap for production inference. This section is retained for reference during the transition period and for any hosts that still use Ollama for model downloads.
-
-### Vulkan backend
-
-Use `pkgs.ollama-vulkan`. The existing Ollama mixin selects this automatically when `host.gpu.compute.acceleration = "vulkan"`. Both Strix Halo hosts have `acceleration = "vulkan"` in the registry.
-
-Ollama Vulkan works correctly on Strix Halo gfx1151 with Ollama 0.20.2. The following issues were previously reported but are not observed in practice:
-
-- iGPU VRAM detection: no detection issue observed; full unified memory is visible on the Vulkan path.
-- MoE model output: no garbled output observed with `gemma4:e4b` or `qwen3.5:35b-a3b`. The earlier recommendation to avoid Vulkan was based on unverified reports and is retracted.
-
-**Do not set `rocmOverrideGfx`.** Ollama 0.18+ bundles ROCm 7.2 with native gfx1151 detection. `HSA_OVERRIDE_GFX_VERSION=11.5.1` is no longer required and can cause issues. The NixOS `services.ollama.rocmOverrideGfx` option must not be set for this hardware.
-
-### Environment variables
-
-Add these to `services.ollama.environmentVariables` in the Ollama mixin's `isInference` block:
-
-| Variable | Value | Rationale |
-|---|---|---|
-| `OLLAMA_FLASH_ATTENTION` | `"1"` | Faster prompt processing. |
-
-
-### Nix configuration
-
-Proposed `services.ollama` block for `nixos/_mixins/server/ollama/default.nix`:
-
-```nix
-services.ollama = {
-  enable = true;
-  package = pkgs.ollama-vulkan;
-  host = if host.is.server then "0.0.0.0" else "127.0.0.1";
-  loadModels = allModels;
-  environmentVariables = {
-    OLLAMA_FLASH_ATTENTION = "1";
-  };
-};
-```
-
----
-
-## 4. llama-server Configuration
+## 3. llama-server Configuration
 
 ### Required Strix Halo flags
 
@@ -238,7 +207,7 @@ The NixOS pattern is a systemd oneshot service that runs the downloads before `l
 
 ---
 
-## 5. Hardware and OS Configuration
+## 4. Hardware and OS Configuration
 
 ### BIOS settings
 
@@ -297,7 +266,7 @@ NixOS 25.11 ships `pkgs.linuxPackages_latest` on the 6.19 series, which comforta
 
 ---
 
-## 6. NixOS Configuration
+## 5. NixOS Configuration
 
 ### Hardware mixin snippet
 
@@ -323,7 +292,7 @@ Use `amdgpu_top` v0.11.0 - it introspects all SoC metrics on gfx1151, including 
 
 ---
 
-## 7. Model Selection: Inference
+## 6. Model Selection: Inference
 
 ### Gemma 4 (Google DeepMind)
 
@@ -338,7 +307,7 @@ Gemma 4 is Google DeepMind's fourth-generation open model family, spanning edge-
 
 #### Gemma 4 26B MoE
 
-The 26B MoE scores AIME 2026 88.3% versus 89.2% for the 31B dense - a 2% quality trade for meaningfully faster inference. Measured 50.30 tok/s (Vulkan llama-bench) versus the 31B dense at 10.68 tok/s - a 4.7x speed advantage. 256K context window. Native function calling. With 3.8B active parameters (of 128 experts), it is compute-bound on Strix Halo, not memory-bandwidth-ceilinged.
+The 26B MoE scores AIME 2026 88.3% versus 89.2% for the 31B dense - a 2% quality trade for meaningfully faster inference. Measured 51.05 tok/s (Vulkan llama-bench) versus the 31B dense at 10.79 tok/s - a 4.7x speed advantage. 256K context window. Native function calling. With 3.8B active parameters (of 128 experts), it is compute-bound on Strix Halo, not memory-bandwidth-ceilinged.
 
 The 26B MoE occupies a distinct niche from qwen3.5:35b-a3b: comparable throughput (50 vs 58 tok/s) but from the Gemma family, with Google's function-calling conventions and a different training distribution. Useful as an alternative general-purpose model and for workloads where Gemma-family behaviour is preferred.
 
@@ -361,15 +330,15 @@ Audio requires Q6_K quantisation minimum. Q4_K_M fails consistently on clips lon
 
 Unsloth's `gemma-3n-E2B-it-GGUF` and `gemma-3n-E4B-it-GGUF` repositories have shipped UD-Q6_K_XL alongside UD-Q4_K_XL since initial upload on 2025-06-30 (commits 0de8bc85 and fbddbc22 respectively, within minutes of the Q4_K_XL uploads). The Q6_K_XL files were not newly published for audio; they have always been available and are now the production choice for E2B and E4B to meet the Q6_K audio floor.
 
-With UD-Q6_K_XL, the backend ranking reverses versus the lighter quant: ROCm Ollama (on Q4_K_M) outperforms Vulkan llama-bench (on UD-Q6_K_XL) for both models - E2B 87.35 vs 80.26, E4B 51.05 vs 42.93. Throughput is traded for audio reliability; the trade is intentional.
+With UD-Q6_K_XL, the backend ranking reverses versus the lighter quant: ROCm Ollama (on Q4_K_M) outperforms Vulkan llama-bench (on UD-Q6_K_XL) for both models - E2B 88.74 vs 82.51, E4B 54.06 vs 43.42. Throughput is traded for audio reliability; the trade is intentional.
 
 Ollama is not a viable production path for audio on these models for two reasons: (1) its audio implementation is experimental and crashes intermittently (issue #15333 - GGML assertion crashes every 2-4 requests on 0.20.2); (2) the default Ollama tag ships Q4_K_M only and does not expose the Q6_K quantisation variants required for reliable audio on longer clips. llama.cpp with UD-Q6_K_XL is the reliable path.
 
-**E2B 5-run means:** ROCm Ollama 87.35 (Q4_K_M), Vulkan Ollama 45.77 (Q4_K_M), ROCm llama-bench 72.25 (UD-Q6_K_XL), Vulkan llama-bench 80.26 (UD-Q6_K_XL).
+**E2B 5-run means:** ROCm Ollama 88.74 (Q4_K_M), Vulkan Ollama 46.23 (Q4_K_M), ROCm llama-bench 73.42 (UD-Q6_K_XL), Vulkan llama-bench 82.51 (UD-Q6_K_XL).
 
-**E4B 5-run means:** ROCm Ollama 51.05 (Q4_K_M), Vulkan Ollama 25.90 (Q4_K_M), ROCm llama-bench 41.05 (UD-Q6_K_XL), Vulkan llama-bench 42.93 (UD-Q6_K_XL).
+**E4B 5-run means:** ROCm Ollama 54.06 (Q4_K_M), Vulkan Ollama 26.81 (Q4_K_M), ROCm llama-bench 41.83 (UD-Q6_K_XL), Vulkan llama-bench 43.42 (UD-Q6_K_XL).
 
-Speed on Strix Halo (E4B, production quant UD-Q6_K_XL): ROCm Ollama 51.05 tok/s is the fastest runner but uses the lighter Q4_K_M quant which fails audio beyond ~17s. Vulkan llama-bench reaches 42.93 tok/s on UD-Q6_K_XL - the production audio-capable path. At this size the model is compute-bound, not memory-bandwidth-bound.
+Speed on Strix Halo (E4B, production quant UD-Q6_K_XL): ROCm Ollama 54.06 tok/s is the fastest runner but uses the lighter Q4_K_M quant which fails audio beyond ~17s. Vulkan llama-bench reaches 43.42 tok/s on UD-Q6_K_XL - the production audio-capable path. At this size the model is compute-bound, not memory-bandwidth-bound.
 
 ### Qwen 3.5 (Alibaba)
 
@@ -390,9 +359,11 @@ The 27B uses a Gated DeltaNet hybrid architecture - linear attention alternating
 
 ---
 
-## 8. Model Selection: Embedding
+## 7. Model Selection: Embedding
 
 Embedding runs on Revan's RTX 2000e (CUDA), co-located with ZeroClaw. This eliminates network round-trips for RAG embedding and retrieval - the embedding model is local to ZeroClaw's data store.
+
+No apples-to-apples embedding benchmark set exists yet for this document. The current benchmark harness can measure embeddings, but the production notes below still rely on published model quality, context, and fit rather than local throughput figures.
 
 ### qwen3-embedding (Alibaba)
 
@@ -429,7 +400,7 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
 
 ---
 
-## 9. Recommended Stack
+## 8. Recommended Stack
 
 ### Architecture: Revan hub with distributed Strix Halo inference
 
@@ -515,21 +486,21 @@ Generation settings are also policy-driven. At the time of writing, the live pol
 
 | Role | Model | Context | tok/s | Primary use |
 |---|---|---|---|---|
-| Coding | qwen3-coder-next | 256K | 44.77 | Primary coding model on the biggest tier, optimised for agentic coding loops |
-| Coding | qwen3-coder:30b-a3b | 256K | - | Coding model for 22 GB and 32 GB tiers |
-| Coding | qwen2.5-coder:14b | 128K | - | Coding model for 16 GB tiers |
-| Coding | qwen2.5-coder:7b | 128K | - | Coding model for 8 GB tiers |
+| Coding | qwen3-coder-next | 256K | 44.87 | Primary coding model on the biggest tier, optimised for agentic coding loops |
+| Coding | qwen3-coder:30b-a3b | 256K | 88.00 | Coding model for 22 GB and 32 GB tiers |
+| Coding | qwen2.5-coder:14b | 128K | 24.44 | Coding model for 16 GB tiers |
+| Coding | qwen2.5-coder:7b | 128K | 45.19 | Coding model for 8 GB tiers |
 | Agentic | qwen3.5:35b-a3b | 256K | 57.72 | Structured output, tool use, broad local agent loops |
-| Agentic | qwen3.5:9b | 256K | 36.25 | Lightweight local agentic fallback on 16 GB and 8 GB tiers |
-| Agentic | rnj-1:8b | 32K | - | Text-first lightweight agentic model for the 8 GB tier |
-| Reasoning | gemma4:26b | 256K | 50.30 | Gemma-family reasoning and fallback target on large tiers |
-| Reasoning | gpt-oss:20b | 128K | 82.99 | Fast reasoning model for the 16 GB tier |
-| Small / media | gemma4:e4b | 128K | 42.93§ | Audio, vision, summarisation, fast triage |
-| Small / media | gemma4:e2b | 128K | - | Reduced-footprint media model for the 8 GB tier |
+| Agentic | qwen3.5:9b | 256K | 36.15 | Lightweight local agentic fallback on 16 GB and 8 GB tiers |
+| Agentic | rnj-1:8b | 32K | 37.92 | Text-first lightweight agentic model for the 8 GB tier |
+| Reasoning | gemma4:26b | 256K | 51.05 | Gemma-family reasoning and fallback target on large tiers |
+| Reasoning | gpt-oss:20b | 128K | 82.78 | Fast reasoning model for the 16 GB tier |
+| Small / media | gemma4:e4b | 128K | 43.42§ | Audio, vision, summarisation, fast triage |
+| Small / media | gemma4:e2b | 128K | 82.51§ | Reduced-footprint media model for the 8 GB tier |
 | Embedding | qwen3-embedding:4b-q8_0 | 40K | - | Primary embedding model on 16 GB and above |
 | Embedding | qwen3-embedding:0.6b-q8_0 | 32K | - | Embedding fallback for the 8 GB tier |
 
-§ gemma4:e4b tok/s is Vulkan llama-bench on UD-Q6_K_XL - the production quant for audio reliability.
+§ Gemma small-media tok/s uses Vulkan llama-bench on UD-Q6_K_XL, the production quant for audio reliability.
 
 ### Cloud and frontier fallback
 
@@ -723,19 +694,19 @@ step_timeout_secs = 120
 
 ### Rationale per slot
 
-**qwen3-coder-next as top-tier coding primary:** 80B total / 3B active MoE. It remains the best coding fit on the biggest tier, especially for agentic retry loops and repository-scale work.
+**qwen3-coder-next as top-tier coding primary:** 80B total / 3B active MoE. It remains the best coding fit on the biggest tier, especially for agentic retry loops and repository-scale work. The current Vulkan llama-bench mean is 44.87 tok/s.
 
-**qwen3-coder:30b-a3b as mid-tier coding primary:** the policy now uses it for the 22 GB and 32 GB tiers. It keeps a coding-specialised model in those slots instead of reusing the broader agentic model.
+**qwen3-coder:30b-a3b as mid-tier coding primary:** the policy now uses it for the 22 GB and 32 GB tiers. It keeps a coding-specialised model in those slots instead of reusing the broader agentic model. The current Vulkan llama-bench mean is 88.00 tok/s, the fastest production coding result in this benchmark set.
 
-**qwen3.5:35b-a3b as agentic primary:** 3.3B active MoE, 256K context. Measured 57.72 tok/s (Vulkan llama-bench). This is the broad local agentic model for larger tiers, replacing the earlier looser `general` label.
+**qwen3.5:35b-a3b as agentic primary:** 3.3B active MoE, 256K context. Measured 57.72 tok/s on Vulkan llama-bench. This is the broad local agentic model for larger tiers, replacing the earlier looser `general` label.
 
-**qwen3.5:9b and rnj-1 as lightweight agentic models:** the smaller tiers no longer mirror the large-tier mix. `qwen3.5:9b` is the local agentic fallback on 16 GB hosts. `rnj-1:8b` is the narrower text-first agentic choice on the 8 GB tier.
+**qwen3.5:9b and rnj-1 as lightweight agentic models:** the smaller tiers no longer mirror the large-tier mix. `qwen3.5:9b` is the local agentic fallback on 16 GB hosts at 36.15 tok/s on Vulkan llama-bench. `rnj-1:8b` is the narrower text-first agentic choice on the 8 GB tier at 37.92 tok/s.
 
-**gemma4:26b as reasoning primary on larger tiers:** 3.8B active MoE, 256K context. Measured 50.30 tok/s (Vulkan llama-bench). It occupies the reasoning slot where Gemma-family behaviour and function calling are preferred.
+**gemma4:26b as reasoning primary on larger tiers:** 3.8B active MoE, 256K context. Measured 51.05 tok/s on Vulkan llama-bench. It occupies the reasoning slot where Gemma-family behaviour and function calling are preferred.
 
-**gpt-oss:20b as reasoning model for 16 GB:** measured 82.99 tok/s in the local Vulkan benchmark set. It is the current reasoning pick on the 16 GB tier because it offers strong local reasoning throughput at a manageable footprint.
+**gpt-oss:20b as reasoning model for 16 GB:** measured 82.78 tok/s in the local Vulkan benchmark set. It is the current reasoning pick on the 16 GB tier because it offers strong local reasoning throughput at a manageable footprint.
 
-**gemma4:e4b as small/media model:** the only local model in the stack with audio and video capability - neither of the larger Gemma 4 models has an audio encoder. Image and video (frame sequences up to 60 seconds) work today. Audio transcription and understanding are model-supported but pending llama.cpp and Ollama implementation; use Q6_K when audio lands. At ~5 GB and 42.93 tok/s (Vulkan llama-bench, 5-run mean, UD-Q6_K_XL - the production quant required for audio reliability) it handles summarisation, fast triage, and lightweight tasks without loading a larger model.
+**gemma4:e4b as small/media model:** the only local model in the stack with audio and video capability - neither of the larger Gemma 4 models has an audio encoder. Image and video work today. Audio is the reason this slot stays on the llama.cpp path and on UD-Q6_K_XL. At ~5 GB and 43.42 tok/s on Vulkan llama-bench, it handles summarisation, fast triage, and lightweight media work without loading a larger model. `gemma4:e2b` remains the reduced-footprint alternative and benchmarks at 82.51 tok/s on the same Vulkan llama-bench path.
 
 **qwen3-embedding:4b-q8_0 as embedding primary:** load permanently in llama-swap's `always-on` group. The 4B sits at the quality optimum: +4.96 MTEB retrieval and +4.65 MTEB Code over the 0.6B, with the 8B adding only 0.62 further points at half the throughput. Q8_0 preserves embedding fidelity that Q4_K_M would compromise; the ~5 GB VRAM cost is trivial on the RTX 2000e's 16 GB. The current policy uses its full 40K context.
 
@@ -757,7 +728,7 @@ For agents doing multi-session agentic work - PR reviews that reference earlier 
 |---|---|
 | qwen3.5:122b | 81 GB leaves ~29 GB for NixOS + desktop + context; ~3.4 tok/s impractical for interactive work |
 | qwen3.5:27b | Dense 27B; measured 12.10 tok/s (Vulkan llama-bench) - bandwidth-ceilinged regardless of backend. qwen3-coder-next provides 3.7x throughput at comparable SWE-Bench quality (70.6% vs 72.4%). |
-| gemma4:31b | Dense 30.7B; measured 10.68 tok/s (Vulkan llama-bench) - same bandwidth ceiling as qwen3.5:27b. gemma4:26b MoE delivers 50.30 tok/s at near-identical quality. |
+| gemma4:31b | Dense 30.7B; measured 10.79 tok/s (Vulkan llama-bench) - same bandwidth ceiling as qwen3.5:27b. gemma4:26b MoE delivers 51.05 tok/s at near-identical quality. |
 | qwen3-coder:30b | Superseded; old Qwen3 architecture with 3.3B active params scores 50.3% SWE-Bench vs qwen3-coder-next's 70.6% |
 | qwen3-embedding:0.6b | Quality plateau at 4B; 0.6B suitable only for resource-constrained hardware |
 | qwen3-embedding:8b | 4B-to-8B delta is 0.62 points on code retrieval; 4B at Q8_0 is the quality/throughput optimum |
@@ -766,7 +737,7 @@ For agents doing multi-session agentic work - PR reviews that reference earlier 
 
 ---
 
-## 10. NPU: Future Consideration
+## 9. NPU: Future Consideration
 
 The Ryzen AI Max+ 395 includes 40 XDNA2 neural processing units - dedicated silicon for matrix operations, separate from the iGPU.
 
@@ -784,7 +755,7 @@ The Ryzen AI Max+ 395 includes 40 XDNA2 neural processing units - dedicated sili
 
 ---
 
-## 11. References
+## 10. References
 
 | Resource | URL |
 |---|---|
