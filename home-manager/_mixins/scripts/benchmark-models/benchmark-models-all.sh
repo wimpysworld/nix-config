@@ -6,10 +6,14 @@ for model in \
   gemma4:e2b \
   gemma4:e4b \
   gpt-oss:20b \
+  qwen2.5-coder:7b \
+  qwen2.5-coder:14b \
   qwen3:1.7b \
+  qwen3-coder:30b-a3b \
   qwen3-coder-next \
   qwen3.5:9b \
   qwen3.5:27b \
-  qwen3.5:35b-a3b; do
-	benchmark-models "${model}" | tee -a ~/benchmark-models.txt
+  qwen3.5:35b-a3b \
+  rnj-1:8b; do
+    benchmark-models "${model}"
 done
