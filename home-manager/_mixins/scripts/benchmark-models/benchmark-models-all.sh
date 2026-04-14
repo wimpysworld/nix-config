@@ -9,11 +9,11 @@ for model in \
   qwen2.5-coder:7b \
   qwen2.5-coder:14b \
   qwen3:1.7b \
-  qwen3-coder:30b-a3b \
+  qwen3-coder:30b \
   qwen3-coder-next \
   qwen3.5:9b \
   qwen3.5:27b \
-  qwen3.5:35b-a3b \
+  qwen3.5:35b \
   rnj-1:8b; do
     benchmark-models "${model}"
 done

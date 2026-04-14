@@ -18,11 +18,11 @@ let
       };
     }
     {
-      name = "EssentialAI/rnj-1-instruct-GGUF:Q4_K_M";
+      name = "unsloth/rnj-1-instruct-GGUF:UD-Q4_K_XL";
       value = {
-        hfRepo = "EssentialAI/rnj-1-instruct-GGUF";
-        primaryPath = "Rnj-1-Instruct-8B-Q4_K_M.gguf";
-        downloadPaths = [ "Rnj-1-Instruct-8B-Q4_K_M.gguf" ];
+        hfRepo = "unsloth/rnj-1-instruct-GGUF";
+        primaryPath = "rnj-1-instruct-UD-Q4_K_XL.gguf";
+        downloadPaths = [ "rnj-1-instruct-UD-Q4_K_XL.gguf" ];
       };
     }
     {

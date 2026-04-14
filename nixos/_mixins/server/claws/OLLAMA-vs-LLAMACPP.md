@@ -144,6 +144,49 @@ The earlier Strix Halo benchmark note still holds for shorter contexts: `q8_0` K
 
 The current policy lives in `nixos/_mixins/server/llama-server/model-policy.nix`.
 
+### Generation sampler policy
+
+The shared model policy now carries generation settings as well as context and KV cache settings. Where present, the policy emits the corresponding `llama-server` flags from the role entry itself rather than relying on hand-written per-host defaults.
+
+The encoded fields are:
+
+- `temperature`
+- `top_p`
+- `top_k`
+- `repetition_penalty`
+- optional `min_p`
+- optional `presence_penalty`
+
+The settings were not guessed ad hoc. They were lifted from primary-source Unsloth local-run guidance for the same model family, then attached to the relevant policy role. The decision rule is:
+
+- use Unsloth's published local-run defaults when an exact family page exists
+- store them per role entry, not once per VRAM tier, because role intent matters
+- leave the generation block unset when no equivalent primary-source page exists
+- omit generation settings from embedding entries
+
+Current source set:
+
+- `Qwen3-Coder-30B-A3B-Instruct`: https://unsloth.ai/docs/models/tutorials/qwen3-coder-how-to-run-locally
+- `Qwen3-Coder-Next`: https://unsloth.ai/docs/models/qwen3-coder-next
+- `Qwen3.5`: https://unsloth.ai/docs/models/qwen3.5
+- `Gemma 4`: https://unsloth.ai/docs/models/gemma-4
+- `gpt-oss`: https://unsloth.ai/docs/models/gpt-oss-how-to-run-and-fine-tune
+
+Models deliberately left unset in the live policy:
+
+- `Qwen2.5-Coder-14B-Instruct-128K`
+- `Qwen2.5-Coder-7B-Instruct-128K`
+- `rnj-1-instruct`
+- both `Qwen3-Embedding` variants
+
+The reasoning is different for each group:
+
+- `Qwen2.5-Coder-*` has no matching Unsloth local-run page in the current docs set, so copying `Qwen3-Coder` values would be invented policy.
+- `rnj-1-instruct` now uses Unsloth's GGUF requant, but Unsloth does not publish a comparable local-run sampler page for it. The Hugging Face card gives a temperature range, but not a full sampler profile. The policy therefore keeps `rnj-1` unset rather than mixing sources.
+- embedding models do not use text-generation sampling controls in the same way, so they do not belong in the generation block.
+
+The `gpt-oss` case has one extra nuance. Unsloth treats `reasoning_effort` as a first-class control, but that is not yet represented in the Nix model policy because it is a Harmony-level behaviour setting rather than a plain llama.cpp sampler flag. The current policy therefore records the source-backed sampler defaults for `gpt-oss` and leaves `reasoning_effort` for a later dedicated wiring pass.
+
 ### llama-swap as the production model manager
 
 **Decision: llama-swap** (v201, Go binary, https://github.com/mostlygeek/llama-swap) is the production model manager for all hosts. It runs on each of the three hosts (Revan + two Strix Halos) and manages llama-server processes per model. Packaged as a local Nix derivation.
@@ -465,6 +508,8 @@ Current policy matrix:
 | `vram22` | qwen3-coder:30b-a3b | qwen3.5:35b-a3b | gemma4:26b | gemma4:e4b | qwen3-embedding:4b-q8_0 |
 | `vram16` | qwen2.5-coder:14b | qwen3.5:9b | gpt-oss:20b | gemma4:e4b | qwen3-embedding:4b-q8_0 |
 | `vram8` | qwen2.5-coder:7b | rnj-1:8b | qwen3.5:9b | gemma4:e2b | qwen3-embedding:0.6b-q8_0 |
+
+Generation settings are also policy-driven. At the time of writing, the live policy encodes Unsloth-backed sampler defaults for `Qwen3-Coder-Next`, `Qwen3-Coder-30B-A3B`, `Qwen3.5`, `Gemma 4`, and `gpt-oss`. It intentionally leaves `Qwen2.5-Coder-*`, `rnj-1`, and both embedding models without a `generation` block until there is a matching primary-source recommendation.
 
 ### Current model table
 

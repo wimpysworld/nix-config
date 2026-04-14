@@ -104,7 +104,7 @@ See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the ZeroClaw evaluation. See [OLLAMA-
 
 **What was traded**: the master/padawan warm-standby topology. ZeroClaw now runs as a single instance. If Revan is unavailable, ZeroClaw must be manually deployed to a Strix Halo as a degraded-mode fallback. NixOS declarative config makes this recovery fast - the same nspawn module applies on any host. Revan's uptime profile (always-on home server, months between reboots, maintenance is scheduled) makes this an acceptable trade for doubled inference capacity.
 
-**Inference backend**: `llama-server` via `llama-swap` (Vulkan on Strix Halo, CUDA on Revan). On Strix Halo, llama.cpp must run with `-fa 1 --mmap 0`. On Revan (RTX 2000e CUDA), standard flags apply; `--mmap 0` is not required. The shared Nix model policy now also sets `--ctx-size`, `--cache-type-k q8_0`, and `--cache-type-v q8_0` per selected model role.
+**Inference backend**: `llama-server` via `llama-swap` (Vulkan on Strix Halo, CUDA on Revan). On Strix Halo, llama.cpp must run with `-fa 1 --mmap 0`. On Revan (RTX 2000e CUDA), standard flags apply; `--mmap 0` is not required. The shared Nix model policy now also sets `--ctx-size`, `--cache-type-k q8_0`, `--cache-type-v q8_0`, and, where sourced, the generation sampler flags per selected model role.
 
 **Model pre-seeding**: all hosts tagged `inference` (including Revan) enable `llama-models-preseed.service`. The unit derives the host model set from the shared llama policy, resolves each authoritative `repo:quant` reference through the download metadata map, downloads missing GGUF files with `hf download`, and verifies every declared shard before llama-swap starts.
 
@@ -224,6 +224,21 @@ See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) §9 for the full llama-swap c
 | **Frontier** | Anthropic | claude-sonnet-4-6 | Complex reasoning, deep research |
 
 The exact local model bound to each role is selected from `nixos/_mixins/server/llama-server/model-policy.nix` by VRAM tier. ZeroClaw's `[reliability]` section handles automatic failover across tiers. The `[query_classification]` rules automatically select the appropriate model hint based on message content - no manual model selection required for routine use.
+
+**Generation policy**: sampler settings are now documented in the shared llama policy beside each role entry, not hard-coded in per-host `llama-server` commands. The current rule is:
+
+- Copy Unsloth's published local-run defaults when there is a primary-source Unsloth page for that exact model family.
+- Store those values per role entry, because the same family can need different settings for `coding`, `agentic`, and `reasoning`.
+- Leave the generation block unset when there is no primary-source local-run guidance for the chosen model.
+- Do not attach generation settings to embedding models.
+
+That yields the current split:
+
+- `Qwen3-Coder-Next`, `Qwen3-Coder-30B-A3B`, `Qwen3.5`, `Gemma 4`, and `gpt-oss` use source-backed Unsloth sampler values.
+- `Qwen2.5-Coder-14B`, `Qwen2.5-Coder-7B`, and `rnj-1` currently keep sampler settings unset in policy.
+- `Qwen3-Embedding-4B` and `Qwen3-Embedding-0.6B` omit generation settings entirely.
+
+The rationale is operational, not aesthetic. These settings are part of the model contract in the same way context window and KV cache type are. Keeping them in the shared policy makes the serving layer deterministic and keeps future routing work aligned with the model family guidance that produced the settings in the first place.
 
 ### 4. Workspace Files: Nix-Declared
 
