@@ -3,7 +3,11 @@
 
 set -euo pipefail
 
-PROMPT="Write a detailed 500-word essay about the history of optical fibre telecommunications."
+GENERATION_PROMPT="Count from 1 to 512, one number per line."
+GENERATION_MAX_TOKENS="512"
+PROMPT_BENCH_TOKENS="512"
+EMBEDDING_BENCH_TEXT="Optical fibre uses pulses of light to carry data through thin strands of glass or plastic. Modern systems rely on wavelength multiplexing, amplification, and low-loss transmission to move large volumes of traffic over long distances."
+EMBEDDING_BENCH_BATCH="16"
 MODEL_SPECS=$(
 	cat <<'EOF'
 	gemma4:26b|unsloth/gemma-4-26B-A4B-it-GGUF|gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf|gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf
@@ -36,17 +40,25 @@ TMP_ROOT="${VOLATILE_ROOT}/tmp"
 OLLAMA_LOG="${VOLATILE_ROOT}/ollama-server.log"
 OLLAMA_BIND="${BENCHMARK_MODELS_OLLAMA_HOST:-127.0.0.1:11435}"
 OLLAMA_URL="http://${OLLAMA_BIND}"
+LLAMA_SERVER_BIND="127.0.0.1:18080"
+LLAMA_SERVER_URL="http://${LLAMA_SERVER_BIND}"
 TMPFILE=""
 OLLAMA_PID=""
 OLLAMA_COMMAND=""
+LLAMA_SERVER_PID=""
 HF_REPO=""
 HF_PRIMARY_PATH=""
 HF_MODEL_PATH=""
 MODEL=""
+MODEL_KIND="generation"
 RUNS="5"
 PURGE_REQUESTED='false'
 HOST_COMPUTE_VENDOR="${BENCHMARK_MODELS_HOST_GPU_COMPUTE_VENDOR:-}"
 BACKEND_MATRIX_REASON=""
+PRIMARY_METRIC_LABEL=""
+SECONDARY_METRIC_LABEL=""
+BOLD="$(printf '\033[1m')"
+RESET="$(printf '\033[0m')"
 declare -a RUNNER_LABELS=()
 declare -a RUNNER_TYPES=()
 declare -a RUNNER_COMMANDS=()
@@ -54,6 +66,10 @@ declare -a RUNNER_MEAN=()
 declare -a RUNNER_MIN=()
 declare -a RUNNER_MAX=()
 declare -a RUNNER_SPREAD=()
+declare -a RUNNER_SECONDARY_MEAN=()
+declare -a RUNNER_SECONDARY_MIN=()
+declare -a RUNNER_SECONDARY_MAX=()
+declare -a RUNNER_SECONDARY_SPREAD=()
 declare -a RUNNER_SKIPPED=()
 declare -a HF_DOWNLOAD_PATHS=()
 
@@ -64,7 +80,7 @@ Usage: benchmark-models [--purge] [model] [runs]
 Benchmarks one model across the user-scoped Ollama backend and host-specific llama.cpp backends.
 
 Arguments:
-  model   Ollama model name to benchmark, default: qwen3.5:35b-a3b
+  model   Ollama model name to benchmark, default example: qwen3.5:35b
   runs    Number of measured runs, default: 5
 
 Options:
@@ -73,8 +89,8 @@ Options:
            Show this help text
 
 Backend matrix:
-  AMD      rocm-ollama, vulkan-ollama, rocm-llama-bench, vulkan-llama-bench
-  NVIDIA   cuda-ollama, vulkan-ollama, cuda-llama-bench, vulkan-llama-bench
+  AMD      rocm-ollama, vulkan-ollama, rocm-llama-bench or rocm-llama-server
+  NVIDIA   cuda-ollama, vulkan-ollama, cuda-llama-bench or cuda-llama-server
 
 Environment:
   BENCHMARK_MODELS_ROOT        Root directory for caches under ~/Volatile
@@ -243,6 +259,21 @@ hf_download_paths_for_model() {
 	model_spec_field "$1" downloads
 }
 
+configure_benchmark_mode() {
+	case "${HF_REPO}" in
+	*Embedding* | *embedding*)
+		MODEL_KIND='embedding'
+		PRIMARY_METRIC_LABEL='Chars/s'
+		SECONDARY_METRIC_LABEL='Docs/s'
+		;;
+	*)
+		MODEL_KIND='generation'
+		PRIMARY_METRIC_LABEL='Decode tok/s'
+		SECONDARY_METRIC_LABEL='Prompt tok/s'
+		;;
+	esac
+}
+
 validate_repo_relative_path() {
 	local path_value="$1"
 	local path_component
@@ -351,6 +382,7 @@ validate_model() {
 }
 
 validate_model
+configure_benchmark_mode
 
 mkdir -p \
 	"${XDG_ROOT}/cache" \
@@ -376,6 +408,7 @@ export TMPDIR="${TMP_ROOT}"
 TMPFILE=$(mktemp "${TMPDIR}/benchmark-models.XXXXXX")
 
 cleanup() {
+	stop_llama_server
 	stop_ollama_server
 	rm -f "${TMPFILE}"
 }
@@ -407,6 +440,34 @@ stop_ollama_server() {
 	kill -9 "${ollama_pid}" 2>/dev/null || true
 	wait "${ollama_pid}" 2>/dev/null || true
 	OLLAMA_PID=''
+}
+
+stop_llama_server() {
+	local llama_server_pid="${LLAMA_SERVER_PID}"
+	local attempt
+
+	if [[ -z "${llama_server_pid}" ]]; then
+		return 0
+	fi
+
+	if ! kill -0 "${llama_server_pid}" 2>/dev/null; then
+		LLAMA_SERVER_PID=''
+		return 0
+	fi
+
+	kill "${llama_server_pid}" 2>/dev/null || true
+	for ((attempt = 1; attempt <= 20; attempt += 1)); do
+		if ! kill -0 "${llama_server_pid}" 2>/dev/null; then
+			wait "${llama_server_pid}" 2>/dev/null || true
+			LLAMA_SERVER_PID=''
+			return 0
+		fi
+		sleep 0.5
+	done
+
+	kill -9 "${llama_server_pid}" 2>/dev/null || true
+	wait "${llama_server_pid}" 2>/dev/null || true
+	LLAMA_SERVER_PID=''
 }
 
 run_ollama() {
@@ -449,6 +510,17 @@ run_llama_backend() {
 		"$@"
 }
 
+generate_embedding_inputs_json() {
+	jq -cn \
+		--arg text "${EMBEDDING_BENCH_TEXT}" \
+		--argjson count "${EMBEDDING_BENCH_BATCH}" \
+		'[range(0; $count) | $text]'
+}
+
+embedding_total_chars() {
+	printf '%s' "${EMBEDDING_BENCH_TEXT}" | awk -v count="${EMBEDDING_BENCH_BATCH}" '{ printf "%d", length($0) * count }'
+}
+
 add_runner() {
 	RUNNER_LABELS+=("$1")
 	RUNNER_TYPES+=("$2")
@@ -457,6 +529,10 @@ add_runner() {
 	RUNNER_MIN+=("")
 	RUNNER_MAX+=("")
 	RUNNER_SPREAD+=("")
+	RUNNER_SECONDARY_MEAN+=("")
+	RUNNER_SECONDARY_MIN+=("")
+	RUNNER_SECONDARY_MAX+=("")
+	RUNNER_SECONDARY_SPREAD+=("")
 	RUNNER_SKIPPED+=("")
 }
 
@@ -465,14 +541,24 @@ prepare_backend_matrix() {
 	amd)
 		add_runner 'rocm-ollama' 'ollama' 'rocm-ollama'
 		add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
-		add_runner 'rocm-llama-bench' 'llama.cpp' 'rocm-llama-bench'
-		add_runner 'vulkan-llama-bench' 'llama.cpp' 'vulkan-llama-bench'
+		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
+			add_runner 'rocm-llama-server' 'llama-server' 'rocm-llama-server'
+			add_runner 'vulkan-llama-server' 'llama-server' 'vulkan-llama-server'
+		else
+			add_runner 'rocm-llama-bench' 'llama.cpp' 'rocm-llama-bench'
+			add_runner 'vulkan-llama-bench' 'llama.cpp' 'vulkan-llama-bench'
+		fi
 		;;
 	nvidia)
 		add_runner 'cuda-ollama' 'ollama' 'cuda-ollama'
 		add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
-		add_runner 'cuda-llama-bench' 'llama.cpp' 'cuda-llama-bench'
-		add_runner 'vulkan-llama-bench' 'llama.cpp' 'vulkan-llama-bench'
+		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
+			add_runner 'cuda-llama-server' 'llama-server' 'cuda-llama-server'
+			add_runner 'vulkan-llama-server' 'llama-server' 'vulkan-llama-server'
+		else
+			add_runner 'cuda-llama-bench' 'llama.cpp' 'cuda-llama-bench'
+			add_runner 'vulkan-llama-bench' 'llama.cpp' 'vulkan-llama-bench'
+		fi
 		;;
 	'')
 		BACKEND_MATRIX_REASON='Host compute vendor metadata is unavailable, backend comparison skipped.'
@@ -536,51 +622,184 @@ start_ollama_server() {
 
 run_ollama_once() {
 	local payload
-	local tps
+	local metrics
 
 	payload=$(jq -cn \
 		--arg model "${MODEL}" \
-		--arg prompt "${PROMPT}" \
+		--arg prompt "${GENERATION_PROMPT}" \
+		--argjson max_tokens "${GENERATION_MAX_TOKENS}" \
 		'{
 		  model: $model,
 		  prompt: $prompt,
 		  stream: false,
-		  options: { num_predict: 512, temperature: 0.0 },
+		  options: { num_predict: $max_tokens, temperature: 0.0 },
 		  think: false
 		}')
 
-	tps=$(curl --silent --show-error "${OLLAMA_URL}/api/generate" \
+	metrics=$(curl --silent --show-error "${OLLAMA_URL}/api/generate" \
 		-d "${payload}" |
-		jq -er '(.eval_count / (.eval_duration / 1000000000))')
+		jq -er '[
+			(if (.eval_duration // 0) > 0 then (.eval_count / (.eval_duration / 1000000000)) else 0 end),
+			(if (.prompt_eval_duration // 0) > 0 then (.prompt_eval_count / (.prompt_eval_duration / 1000000000)) else 0 end)
+		] | @tsv')
 
-	printf '%s\n' "${tps}"
+	printf '%s\n' "${metrics}"
 }
 
 run_llama_bench_once() {
 	local command_name="$1"
 	local model_path="$2"
-	local output
-	local tps
+	local decode_output
+	local prompt_output
+	local decode_tps
+	local prompt_tps
 
-	output=$(run_llama_backend \
+	decode_output=$(run_llama_backend \
 		"${command_name}" \
 			-m "${model_path}" \
 			-ngl 99 \
 			-fa 1 \
 			--mmap 0 \
 			-p 0 \
-			-n 512 \
+			-n "${GENERATION_MAX_TOKENS}" \
 			-r 1 \
 			-o jsonl \
 		2>/dev/null)
 
-	tps=$(printf '%s' "${output}" | jq -ser '[.[] | select(.n_gen > 0)] | .[0].avg_ts // empty')
-
-	if [[ -z "${tps}" ]]; then
+	decode_tps=$(printf '%s' "${decode_output}" | jq -ser '[.[] | select(.n_gen > 0)] | .[0].avg_ts // empty')
+	if [[ -z "${decode_tps}" ]]; then
 		return 1
 	fi
 
-	printf '%s\n' "${tps}"
+	prompt_output=$(run_llama_backend \
+		"${command_name}" \
+			-m "${model_path}" \
+			-ngl 99 \
+			-fa 1 \
+			--mmap 0 \
+			-p "${PROMPT_BENCH_TOKENS}" \
+			-n 0 \
+			-r 1 \
+			-o jsonl \
+		2>/dev/null)
+
+	prompt_tps=$(printf '%s' "${prompt_output}" | jq -ser '[.[] | select(.n_prompt > 0 and .n_gen == 0)] | .[0].avg_ts // empty')
+	if [[ -z "${prompt_tps}" ]]; then
+		return 1
+	fi
+
+	printf '%s\t%s\n' "${decode_tps}" "${prompt_tps}"
+}
+
+start_llama_server() {
+	local command_name="$1"
+
+	rm -f "${TMPFILE}.llama-server.log"
+	run_llama_backend \
+		"${command_name}" \
+		--model "${HF_MODEL_PATH}" \
+		--host 127.0.0.1 \
+		--port 18080 \
+		-fa 1 \
+		--mmap 0 \
+		--embeddings \
+		--pooling last >"${TMPFILE}.llama-server.log" 2>&1 &
+	LLAMA_SERVER_PID="$!"
+
+	for _ in $(seq 1 60); do
+		if curl --silent --fail "${LLAMA_SERVER_URL}/health" >/dev/null 2>&1; then
+			return 0
+		fi
+
+		if ! kill -0 "${LLAMA_SERVER_PID}" 2>/dev/null; then
+			printf 'Error: temporary llama-server exited early.\n' >&2
+			printf 'Log: %s.llama-server.log\n' "${TMPFILE}" >&2
+			return 1
+		fi
+
+		sleep 1
+	done
+
+	printf 'Error: timed out waiting for temporary llama-server at %s.\n' "${LLAMA_SERVER_URL}" >&2
+	printf 'Log: %s.llama-server.log\n' "${TMPFILE}" >&2
+	return 1
+}
+
+restart_llama_server_for_runner() {
+	local command_name="$1"
+
+	stop_llama_server
+	start_llama_server "${command_name}"
+}
+
+run_ollama_embedding_once() {
+	local payload
+	local embedding_inputs_json
+	local response
+	local start_ns
+	local end_ns
+	local elapsed_ns
+	local total_chars
+	local chars_per_second
+	local docs_per_second
+
+	embedding_inputs_json="$(generate_embedding_inputs_json)"
+	payload=$(jq -cn \
+		--arg model "${MODEL}" \
+		--argjson input "${embedding_inputs_json}" \
+		'{
+		  model: $model,
+		  input: $input
+		}')
+
+	start_ns=$(date +%s%N)
+	response=$(curl --silent --show-error "${OLLAMA_URL}/api/embed" -d "${payload}")
+	end_ns=$(date +%s%N)
+
+	jq -e '.embeddings | length > 0' >/dev/null <<<"${response}"
+
+	elapsed_ns=$((end_ns - start_ns))
+	total_chars="$(embedding_total_chars)"
+	chars_per_second=$(awk "BEGIN { printf \"%.6f\", ${total_chars} / (${elapsed_ns} / 1000000000) }")
+	docs_per_second=$(awk "BEGIN { printf \"%.6f\", ${EMBEDDING_BENCH_BATCH} / (${elapsed_ns} / 1000000000) }")
+
+	printf '%s\t%s\n' "${chars_per_second}" "${docs_per_second}"
+}
+
+run_llama_server_embedding_once() {
+	local payload
+	local embedding_inputs_json
+	local response
+	local start_ns
+	local end_ns
+	local elapsed_ns
+	local total_chars
+	local chars_per_second
+	local docs_per_second
+
+	embedding_inputs_json="$(generate_embedding_inputs_json)"
+	payload=$(jq -cn \
+		--argjson input "${embedding_inputs_json}" \
+		'{
+		  input: $input,
+		  model: "embedding-benchmark"
+		}')
+
+	start_ns=$(date +%s%N)
+	response=$(curl --silent --show-error "${LLAMA_SERVER_URL}/v1/embeddings" \
+		-H 'Content-Type: application/json' \
+		-H 'Authorization: Bearer no-key' \
+		-d "${payload}")
+	end_ns=$(date +%s%N)
+
+	jq -e '.data | length > 0' >/dev/null <<<"${response}"
+
+	elapsed_ns=$((end_ns - start_ns))
+	total_chars="$(embedding_total_chars)"
+	chars_per_second=$(awk "BEGIN { printf \"%.6f\", ${total_chars} / (${elapsed_ns} / 1000000000) }")
+	docs_per_second=$(awk "BEGIN { printf \"%.6f\", ${EMBEDDING_BENCH_BATCH} / (${elapsed_ns} / 1000000000) }")
+
+	printf '%s\t%s\n' "${chars_per_second}" "${docs_per_second}"
 }
 
 ollama_model_cached() {
@@ -641,8 +860,16 @@ calculate_stats() {
 
 print_intro() {
 	printf 'Model benchmark: %s runs\n' "${RUNS}"
+	printf -- '- %-10s %s\n' 'Mode:' "${MODEL_KIND}"
 	printf -- '- %-10s %s\n' 'Ollama:' "${MODEL}"
-	printf -- '- %-10s %s\n\n' 'Llama.cpp:' "${HF_PRIMARY_PATH}"
+	printf -- '- %-10s %s\n' 'Llama.cpp:' "${HF_PRIMARY_PATH}"
+
+	if [[ "${MODEL_KIND}" == 'generation' ]]; then
+		printf -- '- %-10s %s\n' 'Prompt:' "${GENERATION_PROMPT}"
+		printf -- '- %-10s %s output tokens, %s-token synthetic pp test\n\n' 'Metrics:' "${GENERATION_MAX_TOKENS}" "${PROMPT_BENCH_TOKENS}"
+	else
+		printf -- '- %-10s %s documents x %s characters\n\n' 'Batch:' "${EMBEDDING_BENCH_BATCH}" "${#EMBEDDING_BENCH_TEXT}"
+	fi
 }
 
 prepare_downloads() {
@@ -662,7 +889,6 @@ prepare_downloads() {
 		printf '  [1/2] Ollama model: pulling\n'
 		run_ollama "${OLLAMA_COMMAND}" pull "${MODEL}"
 	fi
-	printf '\n'
 
 	for download_path in "${HF_DOWNLOAD_PATHS[@]}"; do
 		if ! resolve_cached_hf_path "${download_path}" >/dev/null; then
@@ -704,7 +930,10 @@ run_backend_benchmark() {
 	local skipped_reason=""
 	local runner_number=$((index + 1))
 	local backend_tmpfile
-	local tps
+	local secondary_tmpfile
+	local metrics
+	local primary_metric
+	local secondary_metric
 
 	printf '  Runner %s/%s: %s\n' "${runner_number}" "${total_runners}" "${runner_label}"
 	printf '    measured runs: %s\n' "${RUNS}"
@@ -716,42 +945,73 @@ run_backend_benchmark() {
 	fi
 
 	backend_tmpfile=$(mktemp "${TMPDIR}/benchmark-backend.XXXXXX")
+	secondary_tmpfile=$(mktemp "${TMPDIR}/benchmark-backend-secondary.XXXXXX")
 
 	if [[ "${runner_type}" == 'ollama' ]]; then
 		restart_ollama_server_for_runner "${command_name}"
+		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
+			run_ollama_embedding_once >/dev/null
+		fi
+	elif [[ "${runner_type}" == 'llama-server' ]]; then
+		restart_llama_server_for_runner "${command_name}"
+		run_llama_server_embedding_once >/dev/null
 	fi
 
 	for run_number in $(seq 1 "${RUNS}"); do
 		printf '    run %s/%s... ' "${run_number}" "${RUNS}"
-		if [[ "${runner_type}" == 'ollama' ]]; then
-			tps=$(run_ollama_once)
+		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
+			if [[ "${runner_type}" == 'ollama' ]]; then
+				metrics=$(run_ollama_embedding_once)
+			else
+				metrics=$(run_llama_server_embedding_once)
+			fi
 		else
-			tps=$(run_llama_bench_once "${command_name}" "${HF_MODEL_PATH}")
+			if [[ "${runner_type}" == 'ollama' ]]; then
+				metrics=$(run_ollama_once)
+			else
+				metrics=$(run_llama_bench_once "${command_name}" "${HF_MODEL_PATH}")
+			fi
 		fi
 
-		if [[ -n "${tps:-}" ]]; then
-			printf '%.3f tok/s\n' "${tps}"
-			printf '%s\n' "${tps}" >>"${backend_tmpfile}"
+		if [[ -n "${metrics:-}" ]]; then
+			IFS=$'\t' read -r primary_metric secondary_metric <<<"${metrics}"
+			printf '%.3f %s, %.3f %s\n' "${primary_metric}" "${PRIMARY_METRIC_LABEL}" "${secondary_metric}" "${SECONDARY_METRIC_LABEL}"
+			printf '%s\n' "${primary_metric}" >>"${backend_tmpfile}"
+			printf '%s\n' "${secondary_metric}" >>"${secondary_tmpfile}"
 		else
 			printf 'failed\n'
 		fi
 	done
 
-	if [[ ! -s "${backend_tmpfile}" ]]; then
-		skipped_reason='no usable tg results'
+	if [[ ! -s "${backend_tmpfile}" ]] || [[ ! -s "${secondary_tmpfile}" ]]; then
+		skipped_reason="no usable ${PRIMARY_METRIC_LABEL} results"
 	else
 		IFS='|' read -r stats_mean stats_min stats_max stats_spread <<<"$(calculate_stats "${backend_tmpfile}")"
 		RUNNER_MEAN[index]="${stats_mean}"
 		RUNNER_MIN[index]="${stats_min}"
 		RUNNER_MAX[index]="${stats_max}"
 		RUNNER_SPREAD[index]="${stats_spread}"
+		IFS='|' read -r stats_mean stats_min stats_max stats_spread <<<"$(calculate_stats "${secondary_tmpfile}")"
+		RUNNER_SECONDARY_MEAN[index]="${stats_mean}"
+		RUNNER_SECONDARY_MIN[index]="${stats_min}"
+		RUNNER_SECONDARY_MAX[index]="${stats_max}"
+		RUNNER_SECONDARY_SPREAD[index]="${stats_spread}"
 	fi
 
 	rm -f "${backend_tmpfile}"
+	rm -f "${secondary_tmpfile}"
 
 	RUNNER_SKIPPED[index]="${skipped_reason}"
 	if [[ -n "${skipped_reason}" ]]; then
 		printf '    skipped - %s\n' "${skipped_reason}"
+	else
+		printf '%s    mean %13.3f %s, %.3f %s%s\n' \
+			"${BOLD}" \
+			"${RUNNER_MEAN[index]}" \
+			"${PRIMARY_METRIC_LABEL}" \
+			"${RUNNER_SECONDARY_MEAN[index]}" \
+			"${SECONDARY_METRIC_LABEL}" \
+			"${RESET}"
 	fi
 	printf '\n'
 }
@@ -785,18 +1045,41 @@ run_all_benchmarks() {
 
 print_results() {
 	local index
+	local last_index
 
 	printf 'Results\n'
-	printf '  %-20s %12s  %s\n' 'Runner' 'Mean tok/s' 'Notes'
+	last_index=$((${#RUNNER_COMMANDS[@]} - 1))
 
 	if [[ ${#RUNNER_COMMANDS[@]} -eq 0 ]]; then
-		printf '  %-20s %12s  %s\n' 'Host backends' 'skipped' "${BACKEND_MATRIX_REASON}"
+		printf '  Host backends: skipped\n'
+		printf '    Reason: %s\n' "${BACKEND_MATRIX_REASON}"
 	else
 		for index in "${!RUNNER_COMMANDS[@]}"; do
 			if [[ -n "${RUNNER_SKIPPED[index]}" ]]; then
-				printf '  %-20s %12s  %s\n' "${RUNNER_LABELS[index]}" 'skipped' "${RUNNER_SKIPPED[index]}"
+				printf '  %s: skipped\n' "${RUNNER_LABELS[index]}"
+				printf '    Reason: %s\n' "${RUNNER_SKIPPED[index]}"
 			else
-				printf '  %-20s %12.3f  min %.3f, max %.3f, spread %.3f\n' "${RUNNER_LABELS[index]}" "${RUNNER_MEAN[index]}" "${RUNNER_MIN[index]}" "${RUNNER_MAX[index]}" "${RUNNER_SPREAD[index]}"
+				printf '  %s\n' "${RUNNER_LABELS[index]}"
+				printf '    %-16s %8s %10.3f %8s %10.3f %8s %10.3f\n' \
+					"${PRIMARY_METRIC_LABEL}" \
+					'min' \
+					"${RUNNER_MIN[index]}" \
+					'max' \
+					"${RUNNER_MAX[index]}" \
+					'spread' \
+					"${RUNNER_SPREAD[index]}"
+				printf '    %-16s %8s %10.3f %8s %10.3f %8s %10.3f\n' \
+					"${SECONDARY_METRIC_LABEL}" \
+					'min' \
+					"${RUNNER_SECONDARY_MIN[index]}" \
+					'max' \
+					"${RUNNER_SECONDARY_MAX[index]}" \
+					'spread' \
+					"${RUNNER_SECONDARY_SPREAD[index]}"
+			fi
+
+			if [[ "${index}" -lt "${last_index}" ]]; then
+				printf '\n'
 			fi
 		done
 	fi
@@ -829,7 +1112,7 @@ print_deltas() {
 			direction="${left_label} faster"
 		fi
 
-		printf '  %-34s %+9.3f tok/s  (%s)\n' "${line_label}" "${delta_backend}" "${direction}"
+		printf '  %-34s %10.3f %-12s (%s)\n' "${line_label}" "${delta_backend}" "${PRIMARY_METRIC_LABEL}" "${direction}"
 	}
 
 	for index in "${!RUNNER_COMMANDS[@]}"; do
@@ -859,7 +1142,7 @@ print_deltas() {
 			"${pair_backend}-ollama")
 				ollama_index="${index}"
 				;;
-			"${pair_backend}-llama-bench")
+			"${pair_backend}-llama-bench" | "${pair_backend}-llama-server")
 				llama_index="${index}"
 				;;
 			esac
