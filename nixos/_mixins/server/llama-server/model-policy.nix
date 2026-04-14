@@ -7,7 +7,7 @@ let
       models = {
         coding = "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_XL";
         general = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
         embedding = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
       };
     };
@@ -18,7 +18,7 @@ let
       models = {
         coding = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
         general = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
         embedding = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
       };
     };
@@ -29,7 +29,7 @@ let
       models = {
         coding = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
         general = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
         embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
       };
     };
@@ -40,7 +40,7 @@ let
       models = {
         coding = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
         general = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
         embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
       };
     };
@@ -51,7 +51,7 @@ let
       models = {
         coding = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
         general = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
-        smallMedia = "unsloth/gemma-4-E2B-it-GGUF:UD-Q4_K_XL";
+        smallMedia = "unsloth/gemma-4-E2B-it-GGUF:UD-Q6_K_XL";
         embedding = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
       };
     };

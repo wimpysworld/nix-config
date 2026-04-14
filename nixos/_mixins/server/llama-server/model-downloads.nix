@@ -50,19 +50,19 @@ let
       };
     }
     {
-      name = "unsloth/gemma-4-E2B-it-GGUF:UD-Q4_K_XL";
+      name = "unsloth/gemma-4-E2B-it-GGUF:UD-Q6_K_XL";
       value = {
         hfRepo = "unsloth/gemma-4-E2B-it-GGUF";
-        primaryPath = "gemma-4-E2B-it-UD-Q4_K_XL.gguf";
-        downloadPaths = [ "gemma-4-E2B-it-UD-Q4_K_XL.gguf" ];
+        primaryPath = "gemma-4-E2B-it-UD-Q6_K_XL.gguf";
+        downloadPaths = [ "gemma-4-E2B-it-UD-Q6_K_XL.gguf" ];
       };
     }
     {
-      name = "unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL";
+      name = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
       value = {
         hfRepo = "unsloth/gemma-4-E4B-it-GGUF";
-        primaryPath = "gemma-4-E4B-it-UD-Q4_K_XL.gguf";
-        downloadPaths = [ "gemma-4-E4B-it-UD-Q4_K_XL.gguf" ];
+        primaryPath = "gemma-4-E4B-it-UD-Q6_K_XL.gguf";
+        downloadPaths = [ "gemma-4-E4B-it-UD-Q6_K_XL.gguf" ];
       };
     }
   ];
