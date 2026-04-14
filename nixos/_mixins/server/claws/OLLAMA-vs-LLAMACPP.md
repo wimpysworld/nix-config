@@ -134,7 +134,15 @@ Always start llama.cpp on Strix Halo with flash attention and mmap disabled: `-f
 
 ### KV cache quantisation
 
-Not used on Strix Halo. Benchmarking showed `q8_0` KV cache hurts throughput enough that the memory saving is not worth it on 128 GB hardware. The flags are `--cache-type-k q8_0 --cache-type-v q8_0` for llama-server and `OLLAMA_KV_CACHE_TYPE=q8_0` for Ollama - worth revisiting on lower-RAM hardware where fitting a larger model matters more than raw speed.
+This deployment now standardises on quantised KV cache for all policy-selected models. The shared Nix model policy carries the KV decision per role entry and emits `--cache-type-k q8_0 --cache-type-v q8_0` alongside the context window for each selected model.
+
+The earlier Strix Halo benchmark note still holds for shorter contexts: `q8_0` KV cache costs some throughput. That is no longer the optimisation target. The policy goal is to expose the full available context on the selected models, which shifts the trade-off decisively towards KV compression. In practice:
+
+- `q8_0/q8_0` is the default across all current VRAM tiers and model roles.
+- `--ctx-size` is set from the model policy, not hard-coded per host.
+- KV cache policy now follows model capability and role, not a single blanket host default.
+
+The current policy lives in `nixos/_mixins/server/llama-server/model-policy.nix`.
 
 ### llama-swap as the production model manager
 
@@ -396,7 +404,7 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
                     │  ┌────────▼────────────────┐  │
                     │  │  llama-swap (host)       │  │
                     │  │  ├─ qwen3-embedding-4b   │  │
-                    │  │  ├─ qwen3-1.7b (simple)  │  │
+                    │  │  ├─ qwen3.5-9b (agentic) │  │
                     │  │  └─ peers:               │  │
                     │  │     ├─ strix-halo-1 (TS) │  │
                     │  │     └─ strix-halo-2 (TS) │  │
@@ -438,14 +446,43 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
 
 NVENC/NVDEC use dedicated fixed-function silicon separate from CUDA and Tensor cores. Jellyfin transcoding and llama.cpp inference coexist without compute contention; they share only VRAM bandwidth.
 
-### Strix Halo inference model table (Vulkan)
+### Shared Nix model policy
 
-| Slot | Model | Disk | Active params | Context | tok/s | Primary use |
-|---|---|---|---|---|---|---|
-| Coding | qwen3-coder-next | 51 GB | 3B (MoE) | 256K | 44.77 | Agentic coding, PR review, multi-step |
-| General | qwen3.5:35b-a3b | 24 GB | 3.3B (MoE) | 256K | 57.72 | Structured output, precision tasks, general reasoning |
-| Efficient general | gemma4:26b | 18 GB | 3.8B (MoE) | 256K | 50.30 | Balanced quality/speed, Gemma-family function calling |
-| Small / media | gemma4:e4b | ~5 GB | 4.5B (eff) | 128K | 42.93§ | Audio, vision, summarisation, fast triage |
+The live deployment no longer uses one fixed Strix Halo model set. Model selection is derived from `nixos/_mixins/server/llama-server/model-policy.nix`, keyed by available VRAM. The role split is now:
+
+- `coding`
+- `agentic`
+- `reasoning`
+- `smallMedia`
+- `embedding`
+
+Current policy matrix:
+
+| VRAM tier | Coding | Agentic | Reasoning | Small / media | Embedding |
+|---|---|---|---|---|---|
+| `vram64` | qwen3-coder-next | qwen3.5:35b-a3b | gemma4:26b | gemma4:e4b | qwen3-embedding:4b-q8_0 |
+| `vram32` | qwen3-coder:30b-a3b | qwen3.5:35b-a3b | gemma4:26b | gemma4:e4b | qwen3-embedding:4b-q8_0 |
+| `vram22` | qwen3-coder:30b-a3b | qwen3.5:35b-a3b | gemma4:26b | gemma4:e4b | qwen3-embedding:4b-q8_0 |
+| `vram16` | qwen2.5-coder:14b | qwen3.5:9b | gpt-oss:20b | gemma4:e4b | qwen3-embedding:4b-q8_0 |
+| `vram8` | qwen2.5-coder:7b | rnj-1:8b | qwen3.5:9b | gemma4:e2b | qwen3-embedding:0.6b-q8_0 |
+
+### Current model table
+
+| Role | Model | Context | tok/s | Primary use |
+|---|---|---|---|---|
+| Coding | qwen3-coder-next | 256K | 44.77 | Primary coding model on the biggest tier, optimised for agentic coding loops |
+| Coding | qwen3-coder:30b-a3b | 256K | - | Coding model for 22 GB and 32 GB tiers |
+| Coding | qwen2.5-coder:14b | 128K | - | Coding model for 16 GB tiers |
+| Coding | qwen2.5-coder:7b | 128K | - | Coding model for 8 GB tiers |
+| Agentic | qwen3.5:35b-a3b | 256K | 57.72 | Structured output, tool use, broad local agent loops |
+| Agentic | qwen3.5:9b | 256K | 36.25 | Lightweight local agentic fallback on 16 GB and 8 GB tiers |
+| Agentic | rnj-1:8b | 32K | - | Text-first lightweight agentic model for the 8 GB tier |
+| Reasoning | gemma4:26b | 256K | 50.30 | Gemma-family reasoning and fallback target on large tiers |
+| Reasoning | gpt-oss:20b | 128K | 82.99 | Fast reasoning model for the 16 GB tier |
+| Small / media | gemma4:e4b | 128K | 42.93§ | Audio, vision, summarisation, fast triage |
+| Small / media | gemma4:e2b | 128K | - | Reduced-footprint media model for the 8 GB tier |
+| Embedding | qwen3-embedding:4b-q8_0 | 40K | - | Primary embedding model on 16 GB and above |
+| Embedding | qwen3-embedding:0.6b-q8_0 | 32K | - | Embedding fallback for the 8 GB tier |
 
 § gemma4:e4b tok/s is Vulkan llama-bench on UD-Q6_K_XL - the production quant for audio reliability.
 
@@ -460,12 +497,11 @@ ZeroClaw's `[reliability]` section handles automatic failover: timeout, connecti
 
 ### Host distribution
 
-| Host | Models loaded | Total disk | Headroom (of ~110 GB) |
-|---|---|---|---|
-| Strix Halo 1 (home office, same LAN) | qwen3.5:35b-a3b, gemma4:26b, gemma4:e4b | ~47 GB | ~63 GB |
-| Strix Halo 2 (remote office) | qwen3-coder-next, qwen3.5:35b-a3b | ~75 GB | ~35 GB |
+Host distribution is now policy-driven rather than documented as a fixed hand-maintained model list. Each inference host selects its local model set from the shared VRAM matrix. Operationally:
 
-qwen3.5:35b-a3b is loaded on both hosts for redundancy - if one Strix Halo is unavailable, general reasoning is still served by the other. The coding model lives on Strix Halo 2; the Gemma models on Strix Halo 1. Both hosts have headroom for context windows and future model additions.
+- Revan prioritises embedding and small local fallback work on the RTX 2000e.
+- Larger inference hosts expose the full `coding`, `agentic`, `reasoning`, and `smallMedia` role set that their VRAM tier allows.
+- The exact per-host model list is derived from `model-policy.nix`, so the Nix policy is the source of truth.
 
 All models are configured in llama-swap `groups` with `persistent: true` and `swap: false` so they remain loaded at all times. No cold-start delay.
 
@@ -479,12 +515,14 @@ models:
     cmd: >
       llama-server --port ${PORT}
       --model /var/lib/llama-models/qwen3-embedding-4b-q8_0.gguf
-      --embedding --pooling last --ctx-size 40960 -fa 1
-  qwen3-1.7b:
+      --embedding --pooling last --ctx-size 40960
+      --cache-type-k q8_0 --cache-type-v q8_0 -fa 1
+  qwen3.5-9b:
     cmd: >
       llama-server --port ${PORT}
-      --model /var/lib/llama-models/qwen3-1.7b.gguf
-      --ctx-size 8192 -fa 1
+      --model /var/lib/llama-models/qwen3.5-9b.gguf
+      --ctx-size 262144
+      --cache-type-k q8_0 --cache-type-v q8_0 -fa 1
 
 groups:
   always-on:
@@ -493,7 +531,7 @@ groups:
     persistent: true
     members:
       - qwen3-embedding-4b
-      - qwen3-1.7b
+      - qwen3.5-9b
 
 peers:
   strix-halo-1:
@@ -505,7 +543,7 @@ peers:
   strix-halo-2:
     proxy: http://<strix-halo-2-ts-ip>:8080
     models:
-      - qwen3-coder-next
+      - qwen3-coder-30b-a3b
       - qwen3.5-35b-a3b
 ```
 
@@ -517,17 +555,20 @@ models:
     cmd: >
       llama-server --port ${PORT}
       --model /var/lib/llama-models/qwen3.5-35b-a3b.gguf
-      --ctx-size 32768 -fa 1 --mmap 0
+      --ctx-size 262144
+      --cache-type-k q8_0 --cache-type-v q8_0 -fa 1 --mmap 0
   gemma4-26b:
     cmd: >
       llama-server --port ${PORT}
       --model /var/lib/llama-models/gemma4-26b.gguf
-      --ctx-size 32768 -fa 1 --mmap 0
+      --ctx-size 262144
+      --cache-type-k q8_0 --cache-type-v q8_0 -fa 1 --mmap 0
   gemma4-e4b:
     cmd: >
       llama-server --port ${PORT}
       --model /var/lib/llama-models/gemma4-e4b-q6k.gguf
-      --ctx-size 16384 -fa 1 --mmap 0
+      --ctx-size 131072
+      --cache-type-k q8_0 --cache-type-v q8_0 -fa 1 --mmap 0
 
 groups:
   always-on:
@@ -540,7 +581,7 @@ groups:
       - gemma4-e4b
 ```
 
-Note the `--mmap 0` flag on Strix Halo commands and its absence on Revan CUDA commands.
+These examples are illustrative. The live Nix policy now generates `--ctx-size`, `--cache-type-k`, and `--cache-type-v` from the shared role definition rather than hard-coding them in per-host notes.
 
 ### ZeroClaw configuration
 
@@ -551,21 +592,21 @@ Configuration pattern (`~/.zeroclaw/config.toml`):
 ```toml
 # --- Provider and default model ---
 default_provider = "custom:http://<host-container-ip>:8080/v1"
-default_model = "hint:general"
+default_model = "hint:agentic"
 
 # --- Model routes (hint-based task dispatch) ---
 [[model_routes]]
 hint = "code"
 provider = "custom:http://<host-container-ip>:8080/v1"
-model = "qwen3-coder-next"
+model = "qwen3-coder-30b-a3b"
 
 [[model_routes]]
-hint = "general"
+hint = "agentic"
 provider = "custom:http://<host-container-ip>:8080/v1"
 model = "qwen3.5-35b-a3b"
 
 [[model_routes]]
-hint = "efficient"
+hint = "reasoning"
 provider = "custom:http://<host-container-ip>:8080/v1"
 model = "gemma4-26b"
 
@@ -573,11 +614,6 @@ model = "gemma4-26b"
 hint = "media"
 provider = "custom:http://<host-container-ip>:8080/v1"
 model = "gemma4-e4b"
-
-[[model_routes]]
-hint = "simple"
-provider = "custom:http://<host-container-ip>:8080/v1"
-model = "qwen3-1.7b"
 
 [[model_routes]]
 hint = "cloud"
@@ -610,15 +646,10 @@ patterns = ["```", "fn ", "def ", "func ", "class "]
 priority = 10
 
 [[query_classification.rules]]
-hint = "general"
+hint = "reasoning"
 keywords = ["explain", "analyze", "research", "compare", "write", "draft"]
 min_length = 100
 priority = 5
-
-[[query_classification.rules]]
-hint = "simple"
-max_length = 50
-priority = 1
 
 # --- Reliability and fallback ---
 [reliability]
@@ -627,7 +658,7 @@ provider_retries = 2
 provider_backoff_ms = 500
 
 [reliability.model_fallbacks]
-"qwen3-coder-next" = ["qwen3.5-35b-a3b"]
+"qwen3-coder-30b-a3b" = ["qwen3.5-35b-a3b"]
 "qwen3.5-35b-a3b" = ["gemma4-26b"]
 "gemma4-26b" = ["qwen3.5-35b-a3b"]
 
@@ -640,24 +671,30 @@ step_timeout_secs = 120
 
 1. User sends a message via Telegram.
 2. ZeroClaw's `[query_classification]` matches the message against rules and selects a hint (e.g. `hint:code` for messages containing code fences).
-3. The hint resolves to a `[[model_routes]]` entry - e.g. `hint:code` → `qwen3-coder-next` via the local llama-swap endpoint.
-4. llama-swap on Revan sees the `model: "qwen3-coder-next"` request and routes it to Strix Halo 2 via the `peers` config.
+3. The hint resolves to a `[[model_routes]]` entry - e.g. `hint:code` → `qwen3-coder-30b-a3b` via the local llama-swap endpoint.
+4. llama-swap on Revan sees the `model: "qwen3-coder-30b-a3b"` request and routes it to the appropriate peer via the `peers` config.
 5. If Strix Halo 2 is unreachable, ZeroClaw's `[reliability]` chain retries, then falls back to `opencode` (OpenCode Zen), then `anthropic` (Claude).
 6. Embedding requests (`v1/embeddings` with `model: "qwen3-embedding-4b"`) stay local to Revan - no peer routing, no network hop.
 
 ### Rationale per slot
 
-**qwen3-coder-next as coding primary:** 80B total / 3B active MoE - throughput governed by active parameters, not total. Measured 44.77 tok/s (Vulkan llama-bench) versus qwen3.5:27b's 12.10 tok/s, a 3.7x speed advantage. SWE-Bench Verified 70.6% vs qwen3.5:27b's 72.4% - a marginal quality trade. LiveCodeBench 58.9% vs 80.7% - weaker on single-shot algorithmic tasks; qwen3.5:35b-a3b covers that precision gap. Designed for agentic retry loops: Pass@5 rank 1 on SWE-rebench. 256K context for repo-scale work.
+**qwen3-coder-next as top-tier coding primary:** 80B total / 3B active MoE. It remains the best coding fit on the biggest tier, especially for agentic retry loops and repository-scale work.
 
-**qwen3.5:35b-a3b as general:** 3.3B active MoE, 256K context. Measured 57.72 tok/s (Vulkan llama-bench). Community hard-task testing scores 10/10 on agentic patterns; use for structured output, precision tasks, and the algorithmic reasoning gap qwen3-coder-next leaves open. Self-correction in an agent loop compensates for its 0/6 structured output score on hard-task benchmarks. Loaded on both Strix Halos for redundancy.
+**qwen3-coder:30b-a3b as mid-tier coding primary:** the policy now uses it for the 22 GB and 32 GB tiers. It keeps a coding-specialised model in those slots instead of reusing the broader agentic model.
 
-**gemma4:26b as efficient general:** 3.8B active MoE, 256K context. Measured 50.30 tok/s (Vulkan llama-bench). Occupies the middle ground between qwen3.5:35b-a3b and gemma4:e4b. Near-parity with the 31B dense on quality benchmarks (AIME 88.3% vs 89.2%) at 4.7x the throughput. Useful for general-purpose tasks where Gemma-family function calling is preferred, and as a ZeroClaw `model_fallbacks` target when qwen3.5:35b-a3b is unavailable on a given host.
+**qwen3.5:35b-a3b as agentic primary:** 3.3B active MoE, 256K context. Measured 57.72 tok/s (Vulkan llama-bench). This is the broad local agentic model for larger tiers, replacing the earlier looser `general` label.
+
+**qwen3.5:9b and rnj-1 as lightweight agentic models:** the smaller tiers no longer mirror the large-tier mix. `qwen3.5:9b` is the local agentic fallback on 16 GB hosts. `rnj-1:8b` is the narrower text-first agentic choice on the 8 GB tier.
+
+**gemma4:26b as reasoning primary on larger tiers:** 3.8B active MoE, 256K context. Measured 50.30 tok/s (Vulkan llama-bench). It occupies the reasoning slot where Gemma-family behaviour and function calling are preferred.
+
+**gpt-oss:20b as reasoning model for 16 GB:** measured 82.99 tok/s in the local Vulkan benchmark set. It is the current reasoning pick on the 16 GB tier because it offers strong local reasoning throughput at a manageable footprint.
 
 **gemma4:e4b as small/media model:** the only local model in the stack with audio and video capability - neither of the larger Gemma 4 models has an audio encoder. Image and video (frame sequences up to 60 seconds) work today. Audio transcription and understanding are model-supported but pending llama.cpp and Ollama implementation; use Q6_K when audio lands. At ~5 GB and 42.93 tok/s (Vulkan llama-bench, 5-run mean, UD-Q6_K_XL - the production quant required for audio reliability) it handles summarisation, fast triage, and lightweight tasks without loading a larger model.
 
-**qwen3-embedding:4b-q8_0 as embedding (on Revan):** load permanently in llama-swap's `always-on` group. The 4B sits at the quality optimum: +4.96 MTEB retrieval and +4.65 MTEB Code over the 0.6B, with the 8B adding only 0.62 further points at half the throughput. Q8_0 preserves embedding fidelity that Q4_K_M would compromise; the ~5 GB VRAM cost is trivial on the RTX 2000e's 16 GB.
+**qwen3-embedding:4b-q8_0 as embedding primary:** load permanently in llama-swap's `always-on` group. The 4B sits at the quality optimum: +4.96 MTEB retrieval and +4.65 MTEB Code over the 0.6B, with the 8B adding only 0.62 further points at half the throughput. Q8_0 preserves embedding fidelity that Q4_K_M would compromise; the ~5 GB VRAM cost is trivial on the RTX 2000e's 16 GB. The current policy uses its full 40K context.
 
-**qwen3:1.7b as simple tasks model (on Revan):** always loaded alongside embedding. Handles classification, quick formatting, and lightweight completions that do not warrant routing to a Strix Halo. On the RTX 2000e with CUDA, expect throughput well above the 150 tok/s measured on Strix Halo Vulkan.
+**qwen3-embedding:0.6b-q8_0 as embedding fallback:** retained for the 8 GB tier where the 4B model is too large a permanent fit.
 
 **OpenCode Zen as cloud fallback:** activated automatically by ZeroClaw's `[reliability]` chain when local inference is unreachable. ZeroClaw has native `opencode` provider support.
 

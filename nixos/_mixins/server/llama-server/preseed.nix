@@ -15,7 +15,9 @@ let
   selectedPolicy = modelPolicy.mkSelection {
     hostVramGiB = host.gpu.compute.vram or 0;
   };
-  selectedModelReferences = lib.unique (builtins.attrValues selectedPolicy.selectedModels);
+  selectedModelReferences = lib.unique (
+    map (model: model.modelRef) (builtins.attrValues selectedPolicy.selectedModels)
+  );
   missingModelReferences = lib.filter (ref: !builtins.hasAttr ref modelDownloads) selectedModelReferences;
   selectedModelDownloads = map (
     modelRef:

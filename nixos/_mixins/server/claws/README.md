@@ -45,7 +45,7 @@ Three NixOS hosts in a hub-and-spoke topology:
 | RAM | 64 GB |
 | GPU | NVIDIA RTX 2000e Ada Generation (16 GB GDDR6 ECC, 50W bus-powered, single-slot, PCIe 4.0 x8) |
 | OS | NixOS |
-| Role | ZeroClaw host, local embedding/re-ranking, small model for simple tasks, Jellyfin media server |
+| Role | ZeroClaw host, local embedding/re-ranking, lightweight local fallback inference, Jellyfin media server |
 | Network | LAN (same network as Strix Halo 1) + Tailscale mesh |
 
 The RTX 2000e is Ada Lovelace architecture with 2816 CUDA cores, 88 Gen 4 Tensor cores (71 AI TOPS), 7th-gen NVENC (AV1 encode/decode), and 5th-gen NVDEC. NVENC/NVDEC are dedicated fixed-function silicon separate from CUDA/Tensor cores, so Jellyfin transcoding and llama.cpp inference coexist without compute contention.
@@ -104,7 +104,7 @@ See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the ZeroClaw evaluation. See [OLLAMA-
 
 **What was traded**: the master/padawan warm-standby topology. ZeroClaw now runs as a single instance. If Revan is unavailable, ZeroClaw must be manually deployed to a Strix Halo as a degraded-mode fallback. NixOS declarative config makes this recovery fast - the same nspawn module applies on any host. Revan's uptime profile (always-on home server, months between reboots, maintenance is scheduled) makes this an acceptable trade for doubled inference capacity.
 
-**Inference backend**: `llama-server` via `llama-swap` (Vulkan on Strix Halo, CUDA on Revan). On Strix Halo, llama.cpp must run with `-fa 1 --mmap 0`. On Revan (RTX 2000e CUDA), standard flags apply; `--mmap 0` is not required.
+**Inference backend**: `llama-server` via `llama-swap` (Vulkan on Strix Halo, CUDA on Revan). On Strix Halo, llama.cpp must run with `-fa 1 --mmap 0`. On Revan (RTX 2000e CUDA), standard flags apply; `--mmap 0` is not required. The shared Nix model policy now also sets `--ctx-size`, `--cache-type-k q8_0`, and `--cache-type-v q8_0` per selected model role.
 
 **Model pre-seeding**: all hosts tagged `inference` (including Revan) enable `llama-models-preseed.service`. The unit derives the host model set from the shared llama policy, resolves each authoritative `repo:quant` reference through the download metadata map, downloads missing GGUF files with `hf download`, and verifies every declared shard before llama-swap starts.
 
@@ -123,21 +123,21 @@ See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the ZeroClaw evaluation. See [OLLAMA-
 ```toml
 # --- Provider and default model ---
 default_provider = "custom:http://<host-container-ip>:8080/v1"
-default_model = "hint:general"
+default_model = "hint:agentic"
 
 # --- Model routes (hint-based task dispatch) ---
 [[model_routes]]
 hint = "code"
 provider = "custom:http://<host-container-ip>:8080/v1"
-model = "qwen3-coder-next"
+model = "qwen3-coder-30b-a3b"
 
 [[model_routes]]
-hint = "general"
+hint = "agentic"
 provider = "custom:http://<host-container-ip>:8080/v1"
 model = "qwen3.5-35b-a3b"
 
 [[model_routes]]
-hint = "efficient"
+hint = "reasoning"
 provider = "custom:http://<host-container-ip>:8080/v1"
 model = "gemma4-26b"
 
@@ -145,11 +145,6 @@ model = "gemma4-26b"
 hint = "media"
 provider = "custom:http://<host-container-ip>:8080/v1"
 model = "gemma4-e4b"
-
-[[model_routes]]
-hint = "simple"
-provider = "custom:http://<host-container-ip>:8080/v1"
-model = "qwen3-1.7b"
 
 [[model_routes]]
 hint = "cloud"
@@ -182,15 +177,10 @@ patterns = ["```", "fn ", "def ", "func ", "class "]
 priority = 10
 
 [[query_classification.rules]]
-hint = "general"
+hint = "reasoning"
 keywords = ["explain", "analyze", "research", "compare", "write", "draft"]
 min_length = 100
 priority = 5
-
-[[query_classification.rules]]
-hint = "simple"
-max_length = 50
-priority = 1
 
 # --- Reliability and fallback ---
 [reliability]
@@ -199,7 +189,7 @@ provider_retries = 2
 provider_backoff_ms = 500
 
 [reliability.model_fallbacks]
-"qwen3-coder-next" = ["qwen3.5-35b-a3b"]
+"qwen3-coder-30b-a3b" = ["qwen3.5-35b-a3b"]
 "qwen3.5-35b-a3b" = ["gemma4-26b"]
 "gemma4-26b" = ["qwen3.5-35b-a3b"]
 
@@ -221,16 +211,19 @@ See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) §9 for the full llama-swap c
 
 ### 3. Model Tier Strategy
 
-**Decision**: Four tiers of model access, routed automatically by ZeroClaw's `[[model_routes]]` hints and `[query_classification]`.
+**Decision**: Five local model roles plus two external fallback tiers, routed automatically by ZeroClaw's `[[model_routes]]` hints and `[query_classification]`.
 
-| Tier | Where | Models | Use |
+| Role / tier | Where | Models | Use |
 |---|---|---|---|
-| **Local (Revan)** | RTX 2000e, CUDA | qwen3-embedding:4b-q8_0, qwen3:1.7b | Embedding, re-ranking (future), simple tasks |
-| **Inference (Strix Halos)** | iGPU, Vulkan, via Tailscale | qwen3-coder-next, qwen3.5:35b-a3b, gemma4:26b, gemma4:e4b | Coding, reasoning, audio/vision, general tasks |
+| **Embedding** | Revan or any inference host with enough VRAM | qwen3-embedding:4b-q8_0, qwen3-embedding:0.6b-q8_0 | Memory retrieval and future re-ranking support |
+| **Coding** | VRAM-tier selected local host | qwen3-coder-next, qwen3-coder:30b-a3b, qwen2.5-coder:14b, qwen2.5-coder:7b | Coding and agentic dev loops |
+| **Agentic** | VRAM-tier selected local host | qwen3.5:35b-a3b, qwen3.5:9b, rnj-1:8b | General local agent loops, structured output, tool use |
+| **Reasoning** | VRAM-tier selected local host | gemma4:26b, gpt-oss:20b, qwen3.5:9b | Deliberate local reasoning where frontier APIs are not required |
+| **Small / media** | Revan or VRAM-tier selected local host | gemma4:e4b, gemma4:e2b | Audio, vision, summarisation, fast triage |
 | **Cloud fallback** | OpenCode Zen | opencode-zen | When local inference is unreachable |
 | **Frontier** | Anthropic | claude-sonnet-4-6 | Complex reasoning, deep research |
 
-ZeroClaw's `[reliability]` section handles automatic failover across tiers. The `[query_classification]` rules automatically select the appropriate model hint based on message content - no manual model selection required for routine use.
+The exact local model bound to each role is selected from `nixos/_mixins/server/llama-server/model-policy.nix` by VRAM tier. ZeroClaw's `[reliability]` section handles automatic failover across tiers. The `[query_classification]` rules automatically select the appropriate model hint based on message content - no manual model selection required for routine use.
 
 ### 4. Workspace Files: Nix-Declared
 
