@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-An AI agent system built around Sith-themed identities, designed for autonomous GitHub project management, research, blog drafting, and report preparation. The active agent is **Darth Traya**, running as two identical instances on separate physical hosts. Both instances are for personal use only.
+An AI agent system built around Sith-themed identities, designed for autonomous GitHub project management, research, blog drafting, and report preparation. The active agent is **Darth Traya**, running on a centralised hub server (Revan) with distributed inference across two Strix Halo workstations connected via Tailscale. All hosts run NixOS. The system is for personal use only.
 
 ## The Agents
 
@@ -12,7 +12,7 @@ Three GitHub accounts named after female Sith Lords, operating under a shared Gi
 
 | Agent | GitHub account | Telegram bot | Role | Status |
 |---|---|---|---|---|
-| Darth Traya | `sith-traya` | `@TrayaSithbot` | Commanding agent | Active - master/padawan deployment |
+| Darth Traya | `sith-traya` | `@TrayaSithbot` | Commanding agent | Active - Revan hub deployment |
 | Darth Skrye | `sith-skrye` | `@SkryeSithbot` | Future subordinate agent | Reserved |
 | Darth Zannah | `sith-zannah` | `@ZannahSithbot` | Future subordinate agent | Reserved |
 
@@ -28,32 +28,58 @@ The following decisions are deferred pending research:
 |---|---|---|
 | Agent software | **ZeroClaw** - decided. See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) | Evaluated against picoclaw; ZeroClaw wins on memory, model routing, web UI, and Copilot Pro support |
 | Messaging platform | **Telegram** - decided. See [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) | Long polling only; Discord evaluated and set aside |
+| Inference architecture | **Revan hub + Strix Halo inference** - decided. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) | llama-swap on all hosts; Tailscale mesh; RTX 2000e for embedding |
 | GitHub tooling | [github-mcp-server](https://github.com/github/github-mcp-server) vs `gh` CLI | `sith-traya` account created; defer wiring until GitHub integration phase |
 
 ## Infrastructure
 
 ### Hardware
 
-Two Framework Desktop mainboard-based workstations, each with:
+Three NixOS hosts in a hub-and-spoke topology:
 
-- **CPU**: AMD Ryzen AI Max 395+ (Strix Halo)
-- **RAM**: 128GB unified LPDDR5X (~270 GB/s bandwidth)
-- **OS**: NixOS
-- **Network**: Standard internet; outbound only from nspawn containers
+**Revan (hub)** - always-on home server:
 
-| Instance | Role | Location |
+| Component | Spec |
+|---|---|
+| CPU | Intel i9 9900K (downclocked, 65W TDP) |
+| RAM | 64 GB |
+| GPU | NVIDIA RTX 2000e Ada Generation (16 GB GDDR6 ECC, 50W bus-powered, single-slot, PCIe 4.0 x8) |
+| OS | NixOS |
+| Role | ZeroClaw host, local embedding/re-ranking, small model for simple tasks, Jellyfin media server |
+| Network | LAN (same network as Strix Halo 1) + Tailscale mesh |
+
+The RTX 2000e is Ada Lovelace architecture with 2816 CUDA cores, 88 Gen 4 Tensor cores (71 AI TOPS), 7th-gen NVENC (AV1 encode/decode), and 5th-gen NVDEC. NVENC/NVDEC are dedicated fixed-function silicon separate from CUDA/Tensor cores, so Jellyfin transcoding and llama.cpp inference coexist without compute contention.
+
+**Strix Halo inference hosts (×2)** - dedicated inference workstations:
+
+| Component | Spec |
+|---|---|
+| CPU | AMD Ryzen AI Max 395+ (Strix Halo) |
+| RAM | 128 GB unified LPDDR5X (~270 GB/s bandwidth) |
+| OS | NixOS |
+| Role | LLM inference via llama-server/llama-swap (Vulkan) |
+| Network | Tailscale mesh; Strix Halo 1 also on Revan's LAN |
+
+| Host | Location | Tailscale latency from Revan |
 |---|---|---|
-| **master** | Active | Home office |
-| **padawan** | Warm standby | Remote office |
+| **Strix Halo 1** | Home office (same LAN as Revan) | Sub-millisecond (direct WireGuard tunnel) |
+| **Strix Halo 2** | Remote office | Internet-path dependent (direct connection via NAT traversal) |
 
-Both hosts run identical NixOS configurations. Data is synced between them to support failover; the mechanism for this sync is not yet specified.
+### Network: Tailscale Mesh
+
+All three hosts join the same Tailnet. The existing Nix Tailscale module auto-registers new hosts via OAuth. Revan's llama-swap uses Tailscale IPs (`100.x.x.x`) for the Strix Halo peer endpoints. Network latency is negligible for LLM inference - token generation time (14-70ms per token on Strix Halo) dwarfs the Tailscale overhead.
 
 ### Key Software
 
-- **Agent software**: ZeroClaw - see [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the evaluation
-- **Local inference**: `llama-server`/`llama-swap` (Vulkan); Ollama retained for model downloads and embedding serving during transition
-- **Messaging**: Telegram - see [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) for the evaluation
-- **CI/cache**: FlakeHub - CI builds and caches all packages
+| Software | Role | Hosts |
+|---|---|---|
+| **ZeroClaw** (v0.6.9) | Agent framework | Revan (nspawn container) |
+| **llama-swap** (v201) | Model manager / routing proxy | All three hosts (local Nix package) |
+| **llama-server** (llama.cpp b8775) | Inference backend | All three hosts (CUDA on Revan, Vulkan on Strix Halos) |
+| **Tailscale** | Mesh VPN | All three hosts (auto-registered via OAuth) |
+| **Telegram** | Human-agent messaging | Revan (via ZeroClaw) |
+
+See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the ZeroClaw evaluation. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the performance case, hardware benchmarks, backend comparison, and full model selection rationale.
 
 ## Architecture Decisions
 
@@ -64,78 +90,147 @@ Both hosts run identical NixOS configurations. Data is synced between them to su
 **Rationale**: Deepest Nix integration available. Container config is a NixOS module, rebuilt with `nixos-rebuild switch`. Provides filesystem, process, and network namespace isolation. The agent's own exec guard is explicitly not a full sandbox (cannot inspect child processes from build tools), so container isolation fills this gap.
 
 **Implementation**:
-- Each host runs one agent container (`zeroclaw-traya`)
+- Revan runs one agent container (`zeroclaw-traya`)
 - `privateNetwork = true` with NAT for outbound API/messaging access
 - Bind-mount only specific directories the agent needs (read-only where possible)
 - Agent runs as a systemd service inside the container
+- The container connects to Revan's host-side llama-swap instance over the private network interface
 
-### 2. Local Models + Frontier Fallback
+### 2. Hub Architecture: Revan + Distributed Inference
 
-**Decision**: Run inference on each host bare-metal (not containerised). The agent container connects to the inference server over the private network interface.
+**Decision**: Run ZeroClaw on Revan as the central hub. Run embedding, re-ranking (future), and a small local model on Revan's RTX 2000e. Run large inference models on the two Strix Halo workstations. Connect all hosts via Tailscale. Use llama-swap on all three hosts to manage model lifecycle and routing.
 
-**Rationale**: GPU/memory-intensive inference should not be containerised. 128 GB unified memory on Strix Halo can load models up to ~120B parameters.
+**Rationale**: This topology plays to each machine's strengths. Revan is always-on, low-power, and reliable - ideal for hosting the agent process, embedding (zero network hop for RAG retrieval), and a small model for quick tasks. The Strix Halos have 128 GB unified memory each for large MoE models. Both Strix Halos are fully utilised for inference rather than one sitting idle as a warm standby.
 
-**Target inference backend**: `llama-server`/`llama-swap` (Vulkan) is the primary inference backend, selected on measured throughput advantages over Ollama. The switch is a config-only change - no agent code changes are needed, as both backends expose the same OpenAI-compatible API. Ollama remains in use for some transition work. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the performance case.
+**What was traded**: the master/padawan warm-standby topology. ZeroClaw now runs as a single instance. If Revan is unavailable, ZeroClaw must be manually deployed to a Strix Halo as a degraded-mode fallback. NixOS declarative config makes this recovery fast - the same nspawn module applies on any host. Revan's uptime profile (always-on home server, months between reboots, maintenance is scheduled) makes this an acceptable trade for doubled inference capacity.
 
-**Model pre-seeding**: inference-tagged hosts now enable `llama-models-preseed.service`. The unit derives the host model set from the shared llama policy, resolves each authoritative `repo:quant` reference through the download metadata map, downloads missing GGUF files with `hf download`, and verifies every declared shard before later runtime wiring.
+**Inference backend**: `llama-server` via `llama-swap` (Vulkan on Strix Halo, CUDA on Revan). On Strix Halo, llama.cpp must run with `-fa 1 --mmap 0`. On Revan (RTX 2000e CUDA), standard flags apply; `--mmap 0` is not required.
 
-**Shared cache root**: pre-seeded models live under `/var/lib/llama-models/huggingface`. This keeps model state out of user home directories and gives predictable restart behaviour.
+**Model pre-seeding**: all hosts tagged `inference` (including Revan) enable `llama-models-preseed.service`. The unit derives the host model set from the shared llama policy, resolves each authoritative `repo:quant` reference through the download metadata map, downloads missing GGUF files with `hf download`, and verifies every declared shard before llama-swap starts.
 
-**Configuration pattern** (`~/.zeroclaw/config.toml`):
+**Shared cache root**: pre-seeded models live under `/var/lib/llama-models/`. This keeps model state out of user home directories and gives predictable restart behaviour.
+
+**Model routing flow**:
+
+1. ZeroClaw sends an API request to Revan's local llama-swap (`http://<host-container-ip>:8080/v1`)
+2. llama-swap inspects the `model` field in the request
+3. If the model is local (embedding, small model), llama-swap routes to its own llama-server process
+4. If the model is served by a Strix Halo peer, llama-swap proxies the request over Tailscale
+5. ZeroClaw's `[reliability]` chain handles fallback to cloud providers if local inference is unreachable
+
+**ZeroClaw configuration** (`~/.zeroclaw/config.toml`):
+
 ```toml
-[[model_list]]
-model_name = "primary"
-model = "ollama/qwen3-coder-next"
-api_base = "http://<host-container-ip>:11434/v1"
+# --- Provider and default model ---
+default_provider = "custom:http://<host-container-ip>:8080/v1"
+default_model = "hint:general"
 
-[[model_list]]
-model_name = "general"
-model = "ollama/qwen3.5:35b-a3b"
-api_base = "http://<host-container-ip>:11434/v1"
+# --- Model routes (hint-based task dispatch) ---
+[[model_routes]]
+hint = "code"
+provider = "custom:http://<host-container-ip>:8080/v1"
+model = "qwen3-coder-next"
 
-[[model_list]]
-model_name = "small"
-model = "ollama/gemma4:e4b"
-api_base = "http://<host-container-ip>:11434/v1"
+[[model_routes]]
+hint = "general"
+provider = "custom:http://<host-container-ip>:8080/v1"
+model = "qwen3.5-35b-a3b"
 
-[[model_list]]
-model_name = "frontier"
-model = "anthropic/claude-sonnet-4-5"
+[[model_routes]]
+hint = "efficient"
+provider = "custom:http://<host-container-ip>:8080/v1"
+model = "gemma4-26b"
 
-[agents.defaults.model]
-primary = "primary"
-fallbacks = ["frontier"]
+[[model_routes]]
+hint = "media"
+provider = "custom:http://<host-container-ip>:8080/v1"
+model = "gemma4-e4b"
 
+[[model_routes]]
+hint = "simple"
+provider = "custom:http://<host-container-ip>:8080/v1"
+model = "qwen3-1.7b"
+
+[[model_routes]]
+hint = "cloud"
+provider = "opencode"
+model = "opencode-zen"
+
+[[model_routes]]
+hint = "frontier"
+provider = "anthropic"
+model = "claude-sonnet-4-6"
+
+# --- Embedding routes ---
 [memory]
-embedding_model = "ollama/qwen3-embedding:4b-q8_0"
-embedding_base = "http://<host-container-ip>:11434/v1"
+backend = "sqlite"
+embedding_model = "hint:local-embed"
+
+[[embedding_routes]]
+hint = "local-embed"
+provider = "custom:http://<host-container-ip>:8080/v1"
+model = "qwen3-embedding-4b"
+dimensions = 4096
+
+# --- Query classification (automatic hint routing) ---
+[query_classification]
+enabled = true
+
+[[query_classification.rules]]
+hint = "code"
+patterns = ["```", "fn ", "def ", "func ", "class "]
+priority = 10
+
+[[query_classification.rules]]
+hint = "general"
+keywords = ["explain", "analyze", "research", "compare", "write", "draft"]
+min_length = 100
+priority = 5
+
+[[query_classification.rules]]
+hint = "simple"
+max_length = 50
+priority = 1
+
+# --- Reliability and fallback ---
+[reliability]
+fallback_providers = ["opencode", "anthropic"]
+provider_retries = 2
+provider_backoff_ms = 500
+
+[reliability.model_fallbacks]
+"qwen3-coder-next" = ["qwen3.5-35b-a3b"]
+"qwen3.5-35b-a3b" = ["gemma4-26b"]
+"gemma4-26b" = ["qwen3.5-35b-a3b"]
+
+# --- Pacing for local inference ---
+[pacing]
+step_timeout_secs = 120
 ```
 
-See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the full model selection rationale, hardware benchmarks, and backend comparison. On Strix Halo, llama.cpp tools should run with flash attention enabled and mmap disabled, now expressed as `-fa 1 --mmap 0`. The failover chain retries on 429/rate-limit/timeout errors automatically.
+See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) §9 for the full llama-swap configurations, model distribution per host, and rationale per model slot.
 
 **Inference host operations**:
-- `llama-models-preseed.service` is present only on hosts tagged `inference`
+- `llama-models-preseed.service` is present on all three hosts
 - The service runs as a root `Type=oneshot` unit after `network-online.target`
-- A successful run leaves the selected models ready in `/var/lib/llama-models/huggingface`
+- A successful run leaves the selected models ready in `/var/lib/llama-models/`
 - A failed run stops at the preseed stage and reports the broken model reference or shard in the journal
 - Inspect status with `systemctl status llama-models-preseed.service`
 - Inspect logs with `journalctl -u llama-models-preseed.service`
 - Start or rerun manually with `systemctl start llama-models-preseed.service`
 
-### 3. Master/Padawan Instances
+### 3. Model Tier Strategy
 
-**Decision**: Traya runs as two identical instances - master (active) and padawan (warm standby) - on separate physical hosts. Data is synced between them to support failover.
+**Decision**: Four tiers of model access, routed automatically by ZeroClaw's `[[model_routes]]` hints and `[query_classification]`.
 
-**Rationale**: Warm standby with synced data provides continuity if one host fails without requiring a cold restart from scratch.
+| Tier | Where | Models | Use |
+|---|---|---|---|
+| **Local (Revan)** | RTX 2000e, CUDA | qwen3-embedding:4b-q8_0, qwen3:1.7b | Embedding, re-ranking (future), simple tasks |
+| **Inference (Strix Halos)** | iGPU, Vulkan, via Tailscale | qwen3-coder-next, qwen3.5:35b-a3b, gemma4:26b, gemma4:e4b | Coding, reasoning, audio/vision, general tasks |
+| **Cloud fallback** | OpenCode Zen | opencode-zen | When local inference is unreachable |
+| **Frontier** | Anthropic | claude-sonnet-4-6 | Complex reasoning, deep research |
 
-**Each instance has its own**:
-- Data directory
-- Config and security files
-- Messaging bot token (separate BotFather tokens)
-- Workspace files: `IDENTITY.md`, `SOUL.md`, `USER.md`, `AGENT.md`, `HEARTBEAT.md`
-- GitHub bot account: `sith-traya`
-
-The data sync mechanism between master and padawan is not yet specified.
+ZeroClaw's `[reliability]` section handles automatic failover across tiers. The `[query_classification]` rules automatically select the appropriate model hint based on message content - no manual model selection required for routine use.
 
 ### 4. Workspace Files: Nix-Declared
 
@@ -163,10 +258,10 @@ The data sync mechanism between master and padawan is not yet specified.
 Webhook-based integrations from external services (GitHub, Grafana, uptime monitors) will use a lightweight HTTP-to-Telegram bridge when needed. The bridge receives HTTP POSTs from external services and relays them to the appropriate Telegram topic via `sendMessage`.
 
 **Implementation**:
-- Separate BotFather token per instance (`@TrayaSithbot` for master, padawan token TBD)
+- BotFather token for `@TrayaSithbot`
 - Long polling only - no webhook, no public endpoint; works behind NAT
 - `allow_from` whitelist restricted to Martin's Telegram user ID
-- Bot tokens stored in the security config file (not main config), permissions `600`
+- Bot token stored in the security config file (not main config), permissions `600`
 - Forum-enabled supergroup for shared context; per-topic session isolation via `message_thread_id`
 
 ### 6. MCP Tools
@@ -264,22 +359,24 @@ GitHub MCP is cleaner for agents that interact with GitHub as a structured API. 
 | GitHub credentials | Scoped PATs for `sith-traya` | Scoped access to owner projects; full access within `the-cauldron` org |
 | Exec tool | **Enabled** | Scoped to container filesystem only |
 | Cron tool | **Enabled** | Heartbeat tasks defined in `HEARTBEAT.md` |
+| Tailscale mesh | WireGuard encryption | All inter-host inference traffic encrypted in transit |
 
 **Phased rollout**:
 
 | Phase | Scope | Tools Enabled |
 |---|---|---|
 | 1 | Research: choose agent software and messaging platform | - |
-| 2 | Single ZeroClaw instance (master), messaging, local model | Chat, exec, cron |
-| 3 | Add MCP servers (context7, exa, jina, nixos) | Search, read web pages, docs |
-| 4 | Add GitHub tooling (read-only PAT) | Review PRs, read issues |
-| 5 | Upgrade PAT to write | Comment on PRs, propose fixes |
-| 6 | Add workspace file tools + heartbeat tasks | Scheduled reviews, blog post drafts |
-| 7 | Bring up padawan instance | Mirror setup, warm standby |
+| 2 | Deploy Revan hub: llama-swap, RTX 2000e, embedding, small model | - |
+| 3 | Deploy Strix Halo inference: llama-swap on both hosts, Tailscale mesh | - |
+| 4 | Single ZeroClaw instance on Revan, Telegram, model routing | Chat, exec, cron |
+| 5 | Add MCP servers (context7, exa, jina, nixos) | Search, read web pages, docs |
+| 6 | Add GitHub tooling (read-only PAT) | Review PRs, read issues |
+| 7 | Upgrade PAT to write | Comment on PRs, propose fixes |
+| 8 | Add workspace file tools + heartbeat tasks | Scheduled reviews, blog post drafts |
 
 ## Nix Packaging
 
-The `llm-agents.nix` flake provides packages for ZeroClaw and related tooling - consistent with how opencode, claude, codex, and similar tools are brought in. CI builds and caches everything via FlakeHub; the Numtide binary cache is not used.
+The `llm-agents.nix` flake provides packages for ZeroClaw and related tooling - consistent with how opencode, claude, codex, and similar tools are brought in. CI builds and caches everything via FlakeHub; the Numtide binary cache is not used. llama-swap v201 is packaged as a local Nix derivation.
 
 ```nix
 {
@@ -292,16 +389,22 @@ The `llm-agents.nix` flake provides packages for ZeroClaw and related tooling - 
 
 ## What Is Not In Scope
 
-- **Syncthing**: Nix handles shared configuration. Data sync between master and padawan is a separate concern, mechanism TBD.
+- **Syncthing**: Nix handles shared configuration. Revan backup/recovery is a separate concern, mechanism TBD.
 - **Discord**: Evaluated and set aside. Telegram covers all interaction needs; webhook integrations will use a lightweight bridge service rather than maintaining a second chat platform.
-- **Agent-to-agent (A2A) protocol**: Skrye and Zannah are reserved for future activation. A2A between Traya master/padawan is not required - they are identical standby instances, not collaborating agents. ZeroClaw's A2A feature (#3566) is worth monitoring for future use once subordinate agents are activated.
+- **Agent-to-agent (A2A) protocol**: Skrye and Zannah are reserved for future activation. ZeroClaw's A2A feature (#3566) is worth monitoring for future use once subordinate agents are activated.
 - **OCI containers (Docker/Podman)**: Evaluated and rejected in favour of systemd-nspawn for deeper Nix integration.
 - **ClawHub skills marketplace**: Not evaluated for security. Install skills from trusted sources only.
 - **Agent role definitions**: Martin will determine specific agent roles and heartbeat tasks during deployment.
+- **Master/padawan topology**: Superseded by the Revan hub architecture. Both Strix Halos are now dedicated inference nodes rather than one sitting idle as a warm standby. If Revan goes down, ZeroClaw can be deployed to either Strix Halo as a degraded-mode fallback using the same Nix config.
+- **Ollama**: Transitional. llama-server via llama-swap is the production inference backend on all hosts. Ollama may remain installed for ad-hoc model downloads but is not in the production path.
 
 ## Future Expansion
 
-Skrye and Zannah are reserved for future activation as subordinate agents, potentially cloud-based, commanded by Traya. The hierarchy mirrors the Sith Triumvirate from which they draw their names. No deployment work is planned for either until Traya's master/padawan setup is stable.
+Skrye and Zannah are reserved for future activation as subordinate agents, potentially cloud-based, commanded by Traya. The hierarchy mirrors the Sith Triumvirate from which they draw their names. No deployment work is planned for either until Traya's Revan hub setup is stable.
+
+**Revan GPU headroom**: the RTX 2000e's 16 GB VRAM is lightly utilised (~7 GB for embedding + small model + Jellyfin). Future options include: a larger local model for more capable on-hub inference, a re-ranking model (qwen3-reranker:4b) for improved retrieval quality, or additional embedding models for specialised domains.
+
+**NPU co-processing**: the Strix Halo NPU (40 XDNA2 units) is not yet usable with llama.cpp. Once tooling matures, it could run embedding or small models concurrently with the iGPU, increasing per-host capacity. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) §10.
 
 ## Key References
 
@@ -309,9 +412,15 @@ Skrye and Zannah are reserved for future activation as subordinate agents, poten
 |---|---|
 | picoclaw GitHub (evaluated, not used) | https://github.com/sipeed/picoclaw |
 | zeroclaw GitHub | https://github.com/zeroclaw-labs/zeroclaw |
+| zeroclaw providers reference | https://github.com/zeroclaw-labs/zeroclaw/blob/master/docs/reference/api/providers-reference.md |
+| zeroclaw config reference | https://github.com/zeroclaw-labs/zeroclaw/blob/master/docs/reference/api/config-reference.md |
+| llama-swap (v201) | https://github.com/mostlygeek/llama-swap |
+| llama-swap configuration docs | https://github.com/mostlygeek/llama-swap/blob/main/docs/configuration.md |
 | NixOS Containers Wiki | https://wiki.nixos.org/wiki/NixOS_Containers |
+| PNY RTX 2000e Ada Generation | https://www.pny.com/rtx-2000e-ada-generation |
 | Framework Desktop ML Benchmarks | https://frame.work/nl/en/desktop?tab=machine-learning |
 | AMD ROCm for Radeon/Ryzen | https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/ |
+| Tailscale performance best practices | https://tailscale.com/docs/reference/best-practices/performance |
 | Telegram vs Discord evaluation | [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) |
 | Backend comparison and model selection | [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) |
 
