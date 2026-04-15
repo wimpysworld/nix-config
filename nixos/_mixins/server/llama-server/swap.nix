@@ -127,7 +127,11 @@ in
       description = "Host-local llama-swap model router";
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
-      after = [ "network-online.target" ];
+      requires = [ "llama-models-preseed.service" ];
+      after = [
+        "network-online.target"
+        "llama-models-preseed.service"
+      ];
       environment = {
         LLAMA_SWAP_CONFIG = "${llamaSwapConfig}";
         LLAMA_SWAP_GROUPS_JSON = builtins.toJSON (builtins.attrNames llamaSwapSettings.groups);

@@ -8,26 +8,17 @@
 let
   inherit (config.noughty) host;
   isInference = noughtyLib.hostHasTag "inference";
-  cacheRoot = "/var/lib/llama-models/huggingface";
-
-  modelPolicy = import ./model-policy.nix { inherit lib; };
-  modelDownloads = import ./model-downloads.nix { inherit lib; };
-  selectedPolicy = modelPolicy.mkSelection {
+  runtime = import ./runtime.nix { inherit lib; };
+  cacheRoot = runtime.defaultCacheRoot;
+  selectedRuntime = runtime.mkRuntime {
+    acceleration = host.gpu.compute.acceleration or null;
+    inherit cacheRoot;
     hostVramGiB = host.gpu.compute.vram or 0;
   };
-  selectedModelReferences = lib.unique (
-    map (model: model.modelRef) (builtins.attrValues selectedPolicy.selectedModels)
-  );
-  missingModelReferences = lib.filter (ref: !builtins.hasAttr ref modelDownloads) selectedModelReferences;
-  selectedModelDownloads = map (
-    modelRef:
-    modelDownloads.${modelRef}
-    // {
-      inherit modelRef;
-    }
-  ) selectedModelReferences;
 
-  preseedModelsJson = pkgs.writeText "llama-models-preseed.json" (builtins.toJSON selectedModelDownloads);
+  preseedModelsJson = pkgs.writeText "llama-models-preseed.json" (
+    builtins.toJSON selectedRuntime.selectedModelDownloads
+  );
   preseedModels = pkgs.writeShellApplication {
     name = "llama-preseed-models";
     runtimeInputs = with pkgs; [
@@ -43,12 +34,8 @@ in
   config = lib.mkIf isInference {
     assertions = [
       {
-        assertion = selectedPolicy.selectedModels != { };
+        assertion = selectedRuntime.selectedModels != { };
         message = "llama-server preseed requires a non-empty selected model set.";
-      }
-      {
-        assertion = missingModelReferences == [ ];
-        message = "llama-server preseed is missing model metadata for: ${lib.concatStringsSep ", " missingModelReferences}";
       }
     ];
 
@@ -64,23 +51,16 @@ in
 
     systemd.services.llama-models-preseed = {
       description = "Pre-seed llama.cpp Hugging Face models";
-      wantedBy = [ "multi-user.target" ];
+      requiredBy = [ "llama-swap.service" ];
       wants = [ "network-online.target" ];
-      after = [
-        "network-online.target"
-        "llama-server.service"
-        "llama-swap.service"
-      ];
-      bindsTo = [
-        "llama-server.service"
-        "llama-swap.service"
-      ];
+      after = [ "network-online.target" ];
+      before = [ "llama-swap.service" ];
       environment = {
         HF_HOME = cacheRoot;
         HF_HUB_CACHE = "${cacheRoot}/hub";
         HUGGINGFACE_HUB_CACHE = "${cacheRoot}/hub";
         LLAMA_PRESEED_CACHE_ROOT = cacheRoot;
-        LLAMA_PRESEED_MODELS_JSON = preseedModelsJson;
+        LLAMA_PRESEED_MODELS_JSON = "${preseedModelsJson}";
         TMPDIR = "${cacheRoot}/tmp";
         TRANSFORMERS_CACHE = "${cacheRoot}/transformers";
         XDG_CACHE_HOME = "${cacheRoot}/xdg/cache";

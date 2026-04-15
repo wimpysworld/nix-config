@@ -47,6 +47,7 @@ let
   groupNames = builtins.fromJSON service.environment.LLAMA_SWAP_GROUPS_JSON;
 in
 assert inferenceEval.config.systemd.services ? llama-swap;
+assert inferenceEval.config.systemd.services ? llama-models-preseed;
 assert !(nonInferenceEval.config.systemd.services ? llama-swap);
 assert service.serviceConfig.Type == "simple";
 assert service.serviceConfig.User == "root";
@@ -61,4 +62,6 @@ assert builtins.elem "qwen3-embedding-4b" modelNames;
 assert builtins.elem "embedding" groupNames;
 assert builtins.elem "generation" groupNames;
 assert service.environment.LLAMA_SWAP_LOCAL_ONLY == "true";
+assert builtins.elem "llama-models-preseed.service" service.requires;
+assert builtins.elem "llama-models-preseed.service" service.after;
 true

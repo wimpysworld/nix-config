@@ -37,14 +37,11 @@ assert service.serviceConfig.Restart == "on-failure";
 assert service.serviceConfig.RestartSec == "30s";
 assert builtins.elem "network-online.target" service.after;
 assert builtins.elem "network-online.target" service.wants;
-assert builtins.elem "llama-server.service" service.after;
-assert builtins.elem "llama-swap.service" service.after;
-assert builtins.elem "llama-server.service" service.bindsTo;
-assert builtins.elem "llama-swap.service" service.bindsTo;
-assert service.before == [ ];
+assert !(builtins.elem "llama-server.service" service.after);
+assert builtins.elem "llama-swap.service" service.before;
+assert builtins.elem "llama-swap.service" service.requiredBy;
 assert service.environment.LLAMA_PRESEED_CACHE_ROOT == "/var/lib/llama-models/huggingface";
 assert service.environment.HF_HOME == "/var/lib/llama-models/huggingface";
 assert service.environment.HF_HUB_CACHE == "/var/lib/llama-models/huggingface/hub";
 assert builtins.elem "llama-server preseed requires a non-empty selected model set." assertionMessages;
-assert builtins.any (message: lib.hasPrefix "llama-server preseed is missing model metadata for:" message) assertionMessages;
 true
