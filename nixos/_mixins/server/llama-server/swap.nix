@@ -54,9 +54,7 @@ let
       port="$2"
       shift 2
 
-      shopt -s nullglob
-      modelPathMatches=($modelPathPattern)
-      shopt -u nullglob
+      mapfile -t modelPathMatches < <(compgen -G "$modelPathPattern")
 
       if [[ "''${#modelPathMatches[@]}" -ne 1 ]]; then
         printf 'Error: expected one model path for pattern %s, got %s\n' \
