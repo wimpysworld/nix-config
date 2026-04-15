@@ -170,7 +170,7 @@ in
       llama-swap =
         let
           llamaSwapUi =
-            (final.callPackage (unstablePkgsPath + "/ll/llama-swap/ui.nix") { llama-swap = llama-swap; })
+            (final.callPackage (unstablePkgsPath + "/ll/llama-swap/ui.nix") { inherit llama-swap; })
             .overrideAttrs
               (old: {
                 version = llamaSwapVersion;

@@ -1,7 +1,7 @@
 { lib }:
 let
   flake = builtins.getFlake (toString ../../../../../.);
-  nixpkgs = flake.inputs.nixpkgs;
+  inherit (flake.inputs) nixpkgs;
 
   evalFor =
     hostTags:

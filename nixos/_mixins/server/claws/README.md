@@ -67,14 +67,14 @@ The RTX 2000e is Ada Lovelace architecture with 2816 CUDA cores, 88 Gen 4 Tensor
 
 ### Network: Tailscale Mesh
 
-All three hosts join the same Tailnet. The existing Nix Tailscale module auto-registers new hosts via OAuth. Revan's llama-swap uses Tailscale IPs (`100.x.x.x`) for the Strix Halo peer endpoints. Network latency is negligible for LLM inference - token generation time (14-70ms per token on Strix Halo) dwarfs the Tailscale overhead.
+All three hosts join the same Tailnet. The existing Nix Tailscale module auto-registers new hosts via OAuth. ZeroClaw reaches the inference hosts over Tailscale, with one host-local llama-swap instance per inference host. Network latency is negligible for LLM inference - token generation time (14-70ms per token on Strix Halo) dwarfs the Tailscale overhead.
 
 ### Key Software
 
 | Software | Role | Hosts |
 |---|---|---|
 | **ZeroClaw** (v0.6.9) | Agent framework | Revan (nspawn container) |
-| **llama-swap** (v201) | Model manager / routing proxy | All three hosts (local Nix package) |
+| **llama-swap** (v201) | Host-local model manager and on-demand launcher | All inference hosts (local Nix package) |
 | **llama-server** (llama.cpp b8775) | Inference backend | All three hosts (CUDA on Revan, Vulkan on Strix Halos) |
 | **Tailscale** | Mesh VPN | All three hosts (auto-registered via OAuth) |
 | **Telegram** | Human-agent messaging | Revan (via ZeroClaw) |
@@ -98,7 +98,7 @@ See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the ZeroClaw evaluation. See [OLLAMA-
 
 ### 2. Hub Architecture: Revan + Distributed Inference
 
-**Decision**: Run ZeroClaw on Revan as the central hub. Run embedding, re-ranking (future), and a small local model on Revan's RTX 2000e. Run large inference models on the two Strix Halo workstations. Connect all hosts via Tailscale. Use llama-swap on all three hosts to manage model lifecycle and routing.
+**Decision**: Run ZeroClaw on Revan as the central hub. Run embedding, re-ranking (future), and a small local model on Revan's RTX 2000e. Run large inference models on the two Strix Halo workstations. Connect all hosts via Tailscale. Use one host-local llama-swap on each inference host to manage on-demand model lifecycle.
 
 **Rationale**: This topology plays to each machine's strengths. Revan is always-on, low-power, and reliable - ideal for hosting the agent process, embedding (zero network hop for RAG retrieval), and a small model for quick tasks. The Strix Halos have 128 GB unified memory each for large MoE models. Both Strix Halos are fully utilised for inference rather than one sitting idle as a warm standby.
 
@@ -112,38 +112,38 @@ See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the ZeroClaw evaluation. See [OLLAMA-
 
 **Model routing flow**:
 
-1. ZeroClaw sends an API request to Revan's local llama-swap (`http://<host-container-ip>:8080/v1`)
-2. llama-swap inspects the `model` field in the request
-3. If the model is local (embedding, small model), llama-swap routes to its own llama-server process
-4. If the model is served by a Strix Halo peer, llama-swap proxies the request over Tailscale
-5. ZeroClaw's `[reliability]` chain handles fallback to cloud providers if local inference is unreachable
+1. ZeroClaw classifies the task and selects both a target host and a target model
+2. ZeroClaw sends the API request directly to that host's llama-swap endpoint over Tailscale
+3. The host-local llama-swap inspects the `model` field and starts the matching local llama-server process on demand if it is not already running
+4. llama-swap forwards the request to that local llama-server process
+5. ZeroClaw's `[reliability]` chain handles fallback to other local hosts or cloud providers if local inference is unreachable
 
 **ZeroClaw configuration** (`~/.zeroclaw/config.toml`):
 
 ```toml
 # --- Provider and default model ---
-default_provider = "custom:http://<host-container-ip>:8080/v1"
+default_provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
 default_model = "hint:agentic"
 
 # --- Model routes (hint-based task dispatch) ---
 [[model_routes]]
 hint = "code"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://skrye.drongo-gamma.ts.net:8080/v1"
 model = "qwen3-coder-30b-a3b"
 
 [[model_routes]]
 hint = "agentic"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://zannah.drongo-gamma.ts.net:8080/v1"
 model = "qwen3.5-35b-a3b"
 
 [[model_routes]]
 hint = "reasoning"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://zannah.drongo-gamma.ts.net:8080/v1"
 model = "gemma4-26b"
 
 [[model_routes]]
 hint = "media"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
 model = "gemma4-e4b"
 
 [[model_routes]]
@@ -163,7 +163,7 @@ embedding_model = "hint:local-embed"
 
 [[embedding_routes]]
 hint = "local-embed"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
 model = "qwen3-embedding-4b"
 dimensions = 4096
 

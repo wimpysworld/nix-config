@@ -9,15 +9,6 @@ let
   inherit (config.noughty) host;
   isInference = noughtyLib.hostHasTag "inference";
   accel = host.gpu.compute.acceleration;
-  hostVramGiB = host.gpu.compute.vram or 0;
-
-  modelPolicy = import ./model-policy.nix { inherit lib; };
-  selectedPolicy = modelPolicy.mkSelection { inherit hostVramGiB; };
-  inherit (selectedPolicy)
-    modelMatrix
-    selectedModelTier
-    selectedModels
-    ;
 
   llamaPackage =
     if accel == "cuda" then

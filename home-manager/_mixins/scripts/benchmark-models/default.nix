@@ -7,7 +7,7 @@
 let
   inherit (config.noughty) host;
   name = builtins.baseNameOf (builtins.toString ./.);
-  vendor = host.gpu.compute.vendor;
+  inherit (host.gpu.compute) vendor;
   isInference = builtins.elem "inference" host.tags;
 
   mkPrefixedBackend =

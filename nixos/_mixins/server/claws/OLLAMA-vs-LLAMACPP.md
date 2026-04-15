@@ -1,7 +1,7 @@
 # Ollama vs llama.cpp on Strix Halo
 
 > AMD Ryzen AI Max+ 395 (gfx1151, RDNA3.5) · 128 GB LPDDR5X · Framework Desktop mainboard · NixOS 25.11 · Linux 6.19.11 · Ollama 0.20.6 · llama.cpp b8775 · ROCm 7.2.1 · linux-firmware 20260309
-> Benchmarks cover the two Strix Halo inference hosts. In production these hosts serve inference over Tailscale to the Revan hub, which runs ZeroClaw, embedding, and a small local model on an RTX 2000e Ada.
+> Benchmarks cover the two Strix Halo inference hosts. In production ZeroClaw selects a target inference host over Tailscale, and that host's local llama-swap launches the requested backend on demand.
 
 ---
 
@@ -9,9 +9,9 @@
 
 **Strix Halo inference hosts (×2):** AMD Ryzen AI Max+ 395, 128 GB unified LPDDR5X, ~270 GB/s peak / ~212 GB/s practical memory bandwidth. One host is on the same LAN as Revan; the other is at a remote site, reachable over Tailscale.
 
-**Practical memory budget:** reserve ~56 GB for NixOS, desktop, and dev tools, leaving ~72 GB for inference. With llama-swap `groups` and `persistent: true`, multiple models stay loaded simultaneously - no hot-swap delay for production models.
+**Practical memory budget:** reserve ~56 GB for NixOS, desktop, and dev tools, leaving ~72 GB for inference. This budget supports the selected local model set for each host, with llama-swap starting each backend on demand rather than preloading everything at boot.
 
-**Revan hub:** Intel i9 9900K (downclocked, 65W), 64 GB RAM, NixOS. Houses an NVIDIA RTX 2000e Ada Generation (16 GB GDDR6 ECC, 50W bus-powered, Ada Lovelace, CUDA) for embedding, re-ranking, a small local model, and Jellyfin NVENC. ZeroClaw runs in a systemd-nspawn container on Revan and connects to the local llama-swap instance, which routes inference requests to the Strix Halo hosts via `peers`.
+**Revan hub:** Intel i9 9900K (downclocked, 65W), 64 GB RAM, NixOS. Houses an NVIDIA RTX 2000e Ada Generation (16 GB GDDR6 ECC, 50W bus-powered, Ada Lovelace, CUDA) for embedding, re-ranking, a small local model, and Jellyfin NVENC. ZeroClaw runs in a systemd-nspawn container on Revan and sends requests directly to the chosen inference host's llama-swap endpoint.
 
 MoE model throughput is governed by active parameters, not total parameters. A 30B MoE with 3B active runs faster than a 7B dense model. Large dense models (27B+) are memory-bandwidth-ceilinged at ~10-11 tok/s regardless of backend.
 
@@ -158,23 +158,22 @@ The `gpt-oss` case has one extra nuance. Unsloth treats `reasoning_effort` as a 
 
 ### llama-swap as the production model manager
 
-**Decision: llama-swap** (v201, Go binary, https://github.com/mostlygeek/llama-swap) is the production model manager for all hosts. It runs on each of the three hosts (Revan + two Strix Halos) and manages llama-server processes per model. Packaged as a local Nix derivation.
+**Decision: llama-swap** (v201, Go binary, https://github.com/mostlygeek/llama-swap) is the production model manager for inference hosts. It runs on each inference host and manages host-local llama-server processes per model. Packaged as a local Nix derivation.
 
 Key features used in this deployment:
 
-- **`groups` with `persistent: true`** - embedding and small models on Revan stay resident permanently; inference models on Strix Halos stay loaded without TTL-based eviction.
-- **`peers`** - Revan's llama-swap routes inference requests to the Strix Halo llama-swap instances over Tailscale. Each peer declares which models it serves.
-- **`v1/embeddings` and `v1/rerank` routing** - embedding and re-ranking requests stay local to Revan's RTX 2000e; generation requests route to peers.
-- **Per-model `cmd`** - each model gets its own llama-server process with appropriate flags (Vulkan + `--mmap 0` on Strix Halo, CUDA on Revan).
+- **Per-model `cmd`** - each model gets its own llama-server process with appropriate flags, Vulkan + `--mmap 0` on Strix Halo, CUDA on Revan.
+- **On-demand process launch** - llama-swap starts the requested local model when the first matching API call arrives.
+- **Separate embedding and generation processes** - embedding models run with `--embedding --pooling last`, while generation models use the normal text-generation path and role-specific sampler settings.
 - **`apiKeys`** - optional; useful if llama-swap instances are exposed beyond the Tailscale mesh.
 
-**Native router mode** (llama-server PR #17470, December 2025) was evaluated. It provides auto-discovery and LRU eviction but is marked experimental and lacks the `peers` feature, persistent groups, and mixed generation/embedding handling that llama-swap provides. Not suitable for the distributed topology.
+**Native router mode** (llama-server PR #17470, December 2025) was evaluated. It provides auto-discovery and LRU eviction but is marked experimental and does not improve the current split where ZeroClaw chooses the host and host-local llama-swap handles local model launch. Not suitable for the deployment.
 
 ### Embedding and re-ranking
 
 Embedding and re-ranking run on Revan's RTX 2000e, co-located with ZeroClaw for zero-network-hop retrieval.
 
-`llama-server` in `--embedding` mode locks the server to embeddings only. llama-swap handles this naturally - it runs a dedicated llama-server process for the embedding model and a separate one for re-ranking, each in its own always-on group. No manual process management required.
+`llama-server` in `--embedding` mode locks the server to embeddings only. llama-swap handles this naturally - it runs a dedicated llama-server process for the embedding model and a separate one for re-ranking. Generation models stay in their own local processes, with no mixed embedding and generation server.
 
 One operational requirement for Qwen3-Embedding models: `--pooling last` must be passed explicitly at startup - the GGUF metadata does not carry this flag, so omitting it produces incorrect embeddings.
 
@@ -402,7 +401,7 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
 
 ## 8. Recommended Stack
 
-### Architecture: Revan hub with distributed Strix Halo inference
+### Architecture: Revan hub with host-local inference launch
 
 ```
                     ┌─────────────────────────────┐
@@ -416,13 +415,10 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
                     │  └────────┬────────────────┘  │
                     │           │                    │
                     │  ┌────────▼────────────────┐  │
-                    │  │  llama-swap (host)       │  │
-                    │  │  ├─ qwen3-embedding-4b   │  │
-                    │  │  ├─ qwen3.5-9b (agentic) │  │
-                    │  │  └─ peers:               │  │
-                    │  │     ├─ strix-halo-1 (TS) │  │
-                    │  │     └─ strix-halo-2 (TS) │  │
-                    │  └─────────────────────────┘  │
+                    │  │  ZeroClaw routing        │  │
+                    │  │  ├─ host selection       │  │
+                    │  │  └─ model selection      │  │
+                    │  └────────┬────────────────┘  │
                     │  Jellyfin (NVENC shared)       │
                     └──────────┬──────────┬─────────┘
                      LAN       │          │  Tailscale
@@ -432,11 +428,9 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
                   │ (same LAN)    │  │  (Tailscale mesh)  │
                   │               │  │                    │
                   │ llama-swap    │  │  llama-swap        │
-                  │ ├ qwen3.5:    │  │  ├ qwen3-coder-   │
-                  │ │ 35b-a3b     │  │  │ next            │
-                  │ ├ gemma4:26b  │  │  ├ qwen3.5:        │
-                  │ └ gemma4:e4b  │  │  │ 35b-a3b         │
-                  │               │  │  └ (headroom)      │
+                  │ ├ local models│  │  ├ local models    │
+                  │ ├ on-demand   │  │  ├ on-demand       │
+                  │ └ llama-server│  │  └ llama-server    │
                   │ Vulkan iGPU   │  │  Vulkan iGPU       │
                   └───────────────┘  └────────────────────┘
 
@@ -444,7 +438,7 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
                   Frontier: Anthropic Claude (via ZeroClaw routing)
 ```
 
-**Tailscale mesh:** all three hosts join the same Tailnet via OAuth auto-registration (already configured in the Nix Tailscale module). Revan's llama-swap uses Tailscale IPs for the Strix Halo peers. The local Strix Halo has sub-millisecond Tailscale overhead (direct WireGuard tunnel on LAN). The remote Strix Halo adds internet-path latency, which is negligible for token-by-token streaming - generation time per token (14-70ms) dwarfs the network hop.
+**Tailscale mesh:** all three hosts join the same Tailnet via OAuth auto-registration, already configured in the Nix Tailscale module. ZeroClaw calls the chosen inference host directly over Tailscale. The local Strix Halo has sub-millisecond Tailscale overhead, direct WireGuard tunnel on LAN. The remote Strix Halo adds internet-path latency, which is negligible for token-by-token streaming - generation time per token, 14-70ms, dwarfs the network hop.
 
 **What was traded:** the master/padawan warm-standby topology. ZeroClaw now runs as a single instance on Revan. If Revan is unavailable, ZeroClaw must be manually deployed to a Strix Halo as a degraded-mode fallback. NixOS declarative config makes this fast - the same nspawn module applies on any host. Both Strix Halos are now fully utilised for inference instead of one sitting idle as a standby.
 
@@ -519,7 +513,7 @@ Host distribution is now policy-driven rather than documented as a fixed hand-ma
 - Larger inference hosts expose the full `coding`, `agentic`, `reasoning`, and `smallMedia` role set that their VRAM tier allows.
 - The exact per-host model list is derived from `model-policy.nix`, so the Nix policy is the source of truth.
 
-All models are configured in llama-swap `groups` with `persistent: true` and `swap: false` so they remain loaded at all times. No cold-start delay.
+Each host exposes only its own selected local models through llama-swap. Models are launched on demand rather than kept resident at all times, so there is a cold-start cost after boot or extended idle.
 
 ### llama-swap configuration
 
@@ -540,27 +534,6 @@ models:
       --ctx-size 262144
       --cache-type-k q8_0 --cache-type-v q8_0 -fa 1
 
-groups:
-  always-on:
-    swap: false
-    exclusive: false
-    persistent: true
-    members:
-      - qwen3-embedding-4b
-      - qwen3.5-9b
-
-peers:
-  strix-halo-1:
-    proxy: http://<strix-halo-1-ts-ip>:8080
-    models:
-      - qwen3.5-35b-a3b
-      - gemma4-26b
-      - gemma4-e4b
-  strix-halo-2:
-    proxy: http://<strix-halo-2-ts-ip>:8080
-    models:
-      - qwen3-coder-30b-a3b
-      - qwen3.5-35b-a3b
 ```
 
 **Each Strix Halo** (example for Strix Halo 1):
@@ -586,49 +559,40 @@ models:
       --ctx-size 131072
       --cache-type-k q8_0 --cache-type-v q8_0 -fa 1 --mmap 0
 
-groups:
-  always-on:
-    swap: false
-    exclusive: false
-    persistent: true
-    members:
-      - qwen3.5-35b-a3b
-      - gemma4-26b
-      - gemma4-e4b
 ```
 
-These examples are illustrative. The live Nix policy now generates `--ctx-size`, `--cache-type-k`, and `--cache-type-v` from the shared role definition rather than hard-coding them in per-host notes.
+These examples are illustrative. The live Nix policy now generates `--ctx-size`, `--cache-type-k`, and `--cache-type-v` from the shared role definition rather than hard-coding them in per-host notes. In the current deployment model, ZeroClaw chooses the host and llama-swap on that host launches only its own local backends.
 
 ### ZeroClaw configuration
 
-ZeroClaw connects to a single endpoint: Revan's local llama-swap instance. llama-swap handles routing to local models (embedding, small) and remote peers (Strix Halo inference). ZeroClaw uses `[[model_routes]]` hints to select models by task type and `[query_classification]` for automatic routing.
+ZeroClaw chooses the target host and model directly. Each `provider` entry points at the chosen host's local llama-swap endpoint. llama-swap then starts the matching local backend on demand. ZeroClaw uses `[[model_routes]]` hints to select models by task type and `[query_classification]` for automatic routing.
 
 Configuration pattern (`~/.zeroclaw/config.toml`):
 
 ```toml
 # --- Provider and default model ---
-default_provider = "custom:http://<host-container-ip>:8080/v1"
+default_provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
 default_model = "hint:agentic"
 
 # --- Model routes (hint-based task dispatch) ---
 [[model_routes]]
 hint = "code"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://skrye.drongo-gamma.ts.net:8080/v1"
 model = "qwen3-coder-30b-a3b"
 
 [[model_routes]]
 hint = "agentic"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://zannah.drongo-gamma.ts.net:8080/v1"
 model = "qwen3.5-35b-a3b"
 
 [[model_routes]]
 hint = "reasoning"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://zannah.drongo-gamma.ts.net:8080/v1"
 model = "gemma4-26b"
 
 [[model_routes]]
 hint = "media"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
 model = "gemma4-e4b"
 
 [[model_routes]]
@@ -648,7 +612,7 @@ embedding_model = "hint:local-embed"
 
 [[embedding_routes]]
 hint = "local-embed"
-provider = "custom:http://<host-container-ip>:8080/v1"
+provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
 model = "qwen3-embedding-4b"
 dimensions = 4096
 
@@ -687,10 +651,10 @@ step_timeout_secs = 120
 
 1. User sends a message via Telegram.
 2. ZeroClaw's `[query_classification]` matches the message against rules and selects a hint (e.g. `hint:code` for messages containing code fences).
-3. The hint resolves to a `[[model_routes]]` entry - e.g. `hint:code` → `qwen3-coder-30b-a3b` via the local llama-swap endpoint.
-4. llama-swap on Revan sees the `model: "qwen3-coder-30b-a3b"` request and routes it to the appropriate peer via the `peers` config.
-5. If Strix Halo 2 is unreachable, ZeroClaw's `[reliability]` chain retries, then falls back to `opencode` (OpenCode Zen), then `anthropic` (Claude).
-6. Embedding requests (`v1/embeddings` with `model: "qwen3-embedding-4b"`) stay local to Revan - no peer routing, no network hop.
+3. The hint resolves to a `[[model_routes]]` entry - e.g. `hint:code` → `qwen3-coder-30b-a3b` on `skrye.drongo-gamma.ts.net`.
+4. llama-swap on that host sees the `model: "qwen3-coder-30b-a3b"` request and starts the matching local llama-server process if it is not already running.
+5. If the chosen host is unreachable, ZeroClaw's `[reliability]` chain retries, then falls back to `opencode` (OpenCode Zen), then `anthropic` (Claude).
+6. Embedding requests (`v1/embeddings` with `model: "qwen3-embedding-4b"`) go directly to Revan's local embedding process - no extra routing layer.
 
 ### Rationale per slot
 
@@ -708,7 +672,7 @@ step_timeout_secs = 120
 
 **gemma4:e4b as small/media model:** the only local model in the stack with audio and video capability - neither of the larger Gemma 4 models has an audio encoder. Image and video work today. Audio is the reason this slot stays on the llama.cpp path and on UD-Q6_K_XL. At ~5 GB and 43.42 tok/s on Vulkan llama-bench, it handles summarisation, fast triage, and lightweight media work without loading a larger model. `gemma4:e2b` remains the reduced-footprint alternative and benchmarks at 82.51 tok/s on the same Vulkan llama-bench path.
 
-**qwen3-embedding:4b-q8_0 as embedding primary:** load permanently in llama-swap's `always-on` group. The 4B sits at the quality optimum: +4.96 MTEB retrieval and +4.65 MTEB Code over the 0.6B, with the 8B adding only 0.62 further points at half the throughput. Q8_0 preserves embedding fidelity that Q4_K_M would compromise; the ~5 GB VRAM cost is trivial on the RTX 2000e's 16 GB. The current policy uses its full 40K context.
+**qwen3-embedding:4b-q8_0 as embedding primary:** served as a dedicated local embedding process on Revan. The 4B sits at the quality optimum: +4.96 MTEB retrieval and +4.65 MTEB Code over the 0.6B, with the 8B adding only 0.62 further points at half the throughput. Q8_0 preserves embedding fidelity that Q4_K_M would compromise; the ~5 GB VRAM cost is trivial on the RTX 2000e's 16 GB. The current policy uses its full 40K context.
 
 **qwen3-embedding:0.6b-q8_0 as embedding fallback:** retained for the 8 GB tier where the 4B model is too large a permanent fit.
 

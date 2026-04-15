@@ -21,7 +21,7 @@ let
   missingModelReferences = lib.filter (ref: !builtins.hasAttr ref modelDownloads) selectedModelReferences;
   selectedModelDownloads = map (
     modelRef:
-    (modelDownloads.${modelRef})
+    modelDownloads.${modelRef}
     // {
       inherit modelRef;
     }
