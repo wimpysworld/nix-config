@@ -43,27 +43,27 @@ let
   };
 
   service = inferenceEval.config.systemd.services.llama-swap;
-  modelNames = builtins.fromJSON service.environment.LLAMA_SWAP_MODELS_JSON;
-  groupNames = builtins.fromJSON service.environment.LLAMA_SWAP_GROUPS_JSON;
+  swapConfig = inferenceEval.config.services.llama-swap;
+  modelNames = builtins.attrNames swapConfig.settings.models;
+  groupNames = builtins.attrNames swapConfig.settings.groups;
 in
 assert inferenceEval.config.systemd.services ? llama-swap;
 assert inferenceEval.config.systemd.services ? llama-models-preseed;
 assert !(nonInferenceEval.config.systemd.services ? llama-swap);
-assert service.serviceConfig.Type == "simple";
-assert service.serviceConfig.User == "root";
+assert swapConfig.enable;
+assert swapConfig.package == inferenceEval.pkgs.llama-swap;
+assert swapConfig.port == 8080;
+assert service.serviceConfig.Type == "exec";
+assert service.serviceConfig.DynamicUser;
 assert service.serviceConfig.Restart == "on-failure";
-assert service.serviceConfig.RestartSec == "10s";
-assert builtins.elem "network-online.target" service.after;
-assert builtins.elem "network-online.target" service.wants;
-assert lib.hasInfix "--listen 0.0.0.0:8080" service.serviceConfig.ExecStart;
-assert lib.hasPrefix "/nix/store/" service.environment.LLAMA_SWAP_CONFIG;
-assert lib.hasSuffix ".yaml" service.environment.LLAMA_SWAP_CONFIG;
+assert service.serviceConfig.RestartSec == 3;
+assert builtins.elem "network.target" service.after;
+assert lib.hasInfix "--listen :8080" service.serviceConfig.ExecStart;
 assert builtins.elem inferenceEval.pkgs.llama-swap inferenceEval.config.environment.systemPackages;
 assert builtins.elem "qwen3-coder-next" modelNames;
 assert builtins.elem "qwen3-embedding-4b" modelNames;
 assert builtins.elem "embedding" groupNames;
 assert builtins.elem "generation" groupNames;
-assert service.environment.LLAMA_SWAP_LOCAL_ONLY == "true";
 assert builtins.elem "llama-models-preseed.service" service.requires;
 assert builtins.elem "llama-models-preseed.service" service.after;
 true

@@ -9,6 +9,7 @@ let
   inherit (config.noughty) host;
   isInference = noughtyLib.hostHasTag "inference";
   accel = host.gpu.compute.acceleration;
+  listenPort = 8080;
 
   llamaPackage =
     if accel == "cuda" then
@@ -33,9 +34,6 @@ let
     acceleration = accel;
     hostVramGiB = host.gpu.compute.vram or 0;
   };
-
-  listenAddress = "0.0.0.0:8080";
-  yamlFormat = pkgs.formats.yaml { };
 
   embeddingMembers = lib.mapAttrsToList (_role: model: model.publicName) (
     lib.filterAttrs (_role: model: model.isEmbedding) selectedRuntime.selectedRuntimeModels
@@ -118,39 +116,19 @@ let
       });
   };
 
-  llamaSwapConfig = yamlFormat.generate "llama-swap.yaml" llamaSwapSettings;
 in
 {
   config = lib.mkIf isInference {
+    services.llama-swap = {
+      enable = true;
+      package = pkgs.llama-swap;
+      port = listenPort;
+      settings = llamaSwapSettings;
+    };
+
     systemd.services.llama-swap = {
-      description = "Host-local llama-swap model router";
-      wantedBy = [ "multi-user.target" ];
-      wants = [ "network-online.target" ];
       requires = [ "llama-models-preseed.service" ];
-      after = [
-        "network-online.target"
-        "llama-models-preseed.service"
-      ];
-      environment = {
-        LLAMA_SWAP_CONFIG = "${llamaSwapConfig}";
-        LLAMA_SWAP_GROUPS_JSON = builtins.toJSON (builtins.attrNames llamaSwapSettings.groups);
-        LLAMA_SWAP_LISTEN = listenAddress;
-        LLAMA_SWAP_LOCAL_ONLY = "true";
-        LLAMA_SWAP_MODELS_JSON = builtins.toJSON (builtins.attrNames llamaSwapSettings.models);
-      };
-      serviceConfig = {
-        ExecStart = lib.concatStringsSep " " [
-          (lib.getExe pkgs.llama-swap)
-          "--config"
-          "${llamaSwapConfig}"
-          "--listen"
-          listenAddress
-        ];
-        Restart = "on-failure";
-        RestartSec = "10s";
-        Type = "simple";
-        User = "root";
-      };
+      after = [ "llama-models-preseed.service" ];
     };
   };
 }
