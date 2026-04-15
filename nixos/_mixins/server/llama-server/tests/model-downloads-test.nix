@@ -8,11 +8,12 @@ let
     pathValue:
     pathValue != ""
     && !lib.hasPrefix "/" pathValue
-    && lib.all (component: component != "" && component != "." && component != "..") (lib.splitString "/" pathValue);
+    && lib.all (component: component != "" && component != "." && component != "..") (
+      lib.splitString "/" pathValue
+    );
 
   validateModelDownloads =
-    refs:
-    downloads:
+    refs: downloads:
     let
       missingRefs = lib.filter (ref: !builtins.hasAttr ref downloads) refs;
       invalidRefs = lib.filter (
@@ -28,8 +29,7 @@ let
         || !(validateRepoRelativePath metadata.primaryPath)
         || downloadPaths == [ ]
         || lib.any (
-          downloadPath:
-          !(lib.hasSuffix ".gguf" downloadPath) || !(validateRepoRelativePath downloadPath)
+          downloadPath: !(lib.hasSuffix ".gguf" downloadPath) || !(validateRepoRelativePath downloadPath)
         ) downloadPaths
         || !(builtins.elem metadata.primaryPath downloadPaths)
       ) refs;
@@ -40,19 +40,18 @@ let
 
   validation = validateModelDownloads selectedRefs modelDownloads;
   unmappedValidation = validateModelDownloads [ "broken:model" ] modelDownloads;
-  invalidMetadataValidation = validateModelDownloads
-    [ "broken:model" ]
-    {
-      "broken:model" = {
-        hfRepo = "example/broken";
-        primaryPath = "../broken.gguf";
-        downloadPaths = [ "../broken.gguf" ];
-      };
+  invalidMetadataValidation = validateModelDownloads [ "broken:model" ] {
+    "broken:model" = {
+      hfRepo = "example/broken";
+      primaryPath = "../broken.gguf";
+      downloadPaths = [ "../broken.gguf" ];
     };
+  };
 in
 assert validation.missingRefs == [ ];
 assert validation.invalidRefs == [ ];
-assert modelDownloads."Qwen/Qwen3-Embedding-4B-GGUF:Q8_0".primaryPath == "Qwen3-Embedding-4B-Q8_0.gguf";
+assert
+  modelDownloads."Qwen/Qwen3-Embedding-4B-GGUF:Q8_0".primaryPath == "Qwen3-Embedding-4B-Q8_0.gguf";
 assert unmappedValidation.missingRefs == [ "broken:model" ];
 assert invalidMetadataValidation.invalidRefs == [ "broken:model" ];
 true

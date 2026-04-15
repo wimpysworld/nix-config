@@ -35,7 +35,12 @@ let
           ];
     in
     {
-      inherit generation kvCache maxContext modelRef;
+      inherit
+        generation
+        kvCache
+        maxContext
+        modelRef
+        ;
       llamaServerArgs = [
         "--ctx-size"
         (toString maxContext)
@@ -43,7 +48,8 @@ let
         kvCache.k
         "--cache-type-v"
         kvCache.v
-      ] ++ generationArgs;
+      ]
+      ++ generationArgs;
     };
 
   modelMatrix = {
@@ -316,7 +322,9 @@ in
   );
 
   mkSelection =
-    { hostVramGiB ? 0 }:
+    {
+      hostVramGiB ? 0,
+    }:
     let
       selectedModelTier = lib.findFirst (tier: hostVramGiB >= tier.minVramGiB) fallbackTier modelTiers;
     in

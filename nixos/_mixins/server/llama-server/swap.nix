@@ -37,13 +37,13 @@ let
   listenAddress = "0.0.0.0:8080";
   yamlFormat = pkgs.formats.yaml { };
 
-  embeddingMembers = lib.mapAttrsToList (
-    _role: model: model.publicName
-  ) (lib.filterAttrs (_role: model: model.isEmbedding) selectedRuntime.selectedRuntimeModels);
+  embeddingMembers = lib.mapAttrsToList (_role: model: model.publicName) (
+    lib.filterAttrs (_role: model: model.isEmbedding) selectedRuntime.selectedRuntimeModels
+  );
 
-  generationMembers = lib.mapAttrsToList (
-    _role: model: model.publicName
-  ) (lib.filterAttrs (_role: model: !model.isEmbedding) selectedRuntime.selectedRuntimeModels);
+  generationMembers = lib.mapAttrsToList (_role: model: model.publicName) (
+    lib.filterAttrs (_role: model: !model.isEmbedding) selectedRuntime.selectedRuntimeModels
+  );
 
   launchLlamaServer = pkgs.writeShellApplication {
     name = "llama-server-launch";
@@ -75,20 +75,19 @@ let
     '';
   };
 
-  mkModelConfig =
-    model: {
-      cmd = ''
-        ${lib.getExe launchLlamaServer} '${model.resolvedPrimaryPathPattern}' ''${PORT} ${lib.escapeShellArgs model.runtimeArgs}
-      '';
-      metadata = {
-        inherit (model)
-          hfRepo
-          modelRef
-          role
-          ;
-      };
-      name = model.publicName;
+  mkModelConfig = model: {
+    cmd = ''
+      ${lib.getExe launchLlamaServer} '${model.resolvedPrimaryPathPattern}' ''${PORT} ${lib.escapeShellArgs model.runtimeArgs}
+    '';
+    metadata = {
+      inherit (model)
+        hfRepo
+        modelRef
+        role
+        ;
     };
+    name = model.publicName;
+  };
 
   llamaSwapModels = builtins.listToAttrs (
     lib.mapAttrsToList (_role: model: {

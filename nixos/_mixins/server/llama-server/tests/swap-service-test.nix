@@ -56,6 +56,8 @@ assert service.serviceConfig.RestartSec == "10s";
 assert builtins.elem "network-online.target" service.after;
 assert builtins.elem "network-online.target" service.wants;
 assert lib.hasInfix "--listen 0.0.0.0:8080" service.serviceConfig.ExecStart;
+assert lib.hasPrefix "/nix/store/" service.environment.LLAMA_SWAP_CONFIG;
+assert lib.hasSuffix ".yaml" service.environment.LLAMA_SWAP_CONFIG;
 assert builtins.elem inferenceEval.pkgs.llama-swap inferenceEval.config.environment.systemPackages;
 assert builtins.elem "qwen3-coder-next" modelNames;
 assert builtins.elem "qwen3-embedding-4b" modelNames;

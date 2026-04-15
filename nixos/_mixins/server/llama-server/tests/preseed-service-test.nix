@@ -4,8 +4,7 @@ let
   inherit (flake.inputs) nixpkgs;
 
   evalFor =
-    hostTags:
-    hostVramGiB:
+    hostTags: hostVramGiB:
     nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
@@ -43,5 +42,6 @@ assert builtins.elem "llama-swap.service" service.requiredBy;
 assert service.environment.LLAMA_PRESEED_CACHE_ROOT == "/var/lib/llama-models/huggingface";
 assert service.environment.HF_HOME == "/var/lib/llama-models/huggingface";
 assert service.environment.HF_HUB_CACHE == "/var/lib/llama-models/huggingface/hub";
-assert builtins.elem "llama-server preseed requires a non-empty selected model set." assertionMessages;
+assert builtins.elem "llama-server preseed requires a non-empty selected model set."
+  assertionMessages;
 true

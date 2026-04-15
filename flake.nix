@@ -123,7 +123,26 @@
         };
       };
 
-      formatter = builder.forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
+      formatter = builder.forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        pkgs.writeShellApplication {
+          name = "nix-config-formatter";
+          runtimeInputs = with pkgs; [
+            nixfmt
+            nixfmt-tree
+          ];
+          text = ''
+            if [ "$#" -eq 0 ]; then
+              exec treefmt
+            fi
+
+            exec nixfmt "$@"
+          '';
+        }
+      );
 
       devShells = builder.mkDevShells {
         inherit (self) overlays;

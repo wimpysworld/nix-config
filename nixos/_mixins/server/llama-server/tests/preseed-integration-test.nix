@@ -1,14 +1,16 @@
 { lib }:
 let
   runtime = import ../runtime.nix { inherit lib; };
-  vram64Manifest = (runtime.mkRuntime {
-    acceleration = null;
-    hostVramGiB = 96;
-  }).selectedModelDownloads;
-  vram16Manifest = (runtime.mkRuntime {
-    acceleration = null;
-    hostVramGiB = 16;
-  }).selectedModelDownloads;
+  vram64Manifest =
+    (runtime.mkRuntime {
+      acceleration = null;
+      hostVramGiB = 96;
+    }).selectedModelDownloads;
+  vram16Manifest =
+    (runtime.mkRuntime {
+      acceleration = null;
+      hostVramGiB = 16;
+    }).selectedModelDownloads;
   vram64Refs = map (entry: entry.modelRef) vram64Manifest;
   vram16Refs = map (entry: entry.modelRef) vram16Manifest;
 in

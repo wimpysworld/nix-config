@@ -131,7 +131,9 @@ in
         map (model: model.modelRef) (builtins.attrValues selectedPolicy.selectedModels)
       );
       missingDownloads = lib.filter (ref: !builtins.hasAttr ref modelDownloads) selectedModelReferences;
-      missingPublicNames = lib.filter (ref: !builtins.hasAttr ref publicModelNames) selectedModelReferences;
+      missingPublicNames = lib.filter (
+        ref: !builtins.hasAttr ref publicModelNames
+      ) selectedModelReferences;
       selectedModelDownloads = map (
         modelRef:
         modelDownloads.${modelRef}

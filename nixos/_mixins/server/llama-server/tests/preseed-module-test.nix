@@ -27,7 +27,8 @@ let
   inferenceEval = evalFor [ "inference" ];
   nonInferenceEval = evalFor [ ];
   preseedMessage = "llama-server preseed requires a non-empty selected model set.";
-  hasPreseedAssertion = assertions: lib.any (assertion: assertion.message == preseedMessage) assertions;
+  hasPreseedAssertion =
+    assertions: lib.any (assertion: assertion.message == preseedMessage) assertions;
 in
 assert hasPreseedAssertion inferenceEval.config.assertions;
 assert !(hasPreseedAssertion nonInferenceEval.config.assertions);
