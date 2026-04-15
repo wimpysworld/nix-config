@@ -25,7 +25,7 @@ let
   ];
 in
 {
-  # Install browser extension for macOS and nix-darwin doesn't support it yet
+  # Install browser extensions for macOS; nix-darwin doesn't support it yet.
   programs = {
     brave = {
       enable = host.is.darwin;

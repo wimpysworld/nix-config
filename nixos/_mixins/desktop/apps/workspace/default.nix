@@ -6,6 +6,10 @@
   ...
 }:
 let
+  # Set to "wavebox" or "zen" to select the productivity browser.
+  # The xdg-override URL routing and Slack wrapper follow this preference.
+  productivityBrowser = "zen";
+
   # Google Meet icon from Wikimedia Commons (public domain)
   googleMeetIcon = pkgs.writeText "google-meet.svg" ''
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 87.5 72">
@@ -19,6 +23,7 @@ let
   '';
 
   # Google Meet desktop entry for launching Meet in a separate Wavebox window.
+  # Wavebox only: uses a Chromium --app-id PWA flag with no Firefox equivalent.
   # Install the icon into hicolor so desktop launchers can find it by name.
   googleMeetDesktopItem = pkgs.symlinkJoin {
     name = "google-meet-desktop";
@@ -44,43 +49,43 @@ let
     '';
   };
 
-  # Wrap Slack to open all URLs in Wavebox
-  slackWavebox = inputs.xdg-override.lib.wrapPackage {
+  # Wrap Slack to open all URLs in the productivity browser.
+  slackProductivityBrowser = inputs.xdg-override.lib.wrapPackage {
     nameMatch = [
       {
         case = "^https?://";
-        command = "wavebox";
+        command = productivityBrowser;
       }
     ];
   } pkgs.slack;
 
-  # Global xdg-open proxy to route specific URLs to Wavebox
-  waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
+  # Global xdg-open proxy to route auth/OAuth URLs to the productivity browser.
+  productivityBrowserXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
       {
         case = "^https?://accounts.google.com";
-        command = "wavebox";
+        command = productivityBrowser;
       }
       {
         case = "^https?://github.com/login/device";
-        command = "wavebox";
+        command = productivityBrowser;
       }
       {
         case = "^https?://auth.chainguard.dev/activate";
-        command = "wavebox";
+        command = productivityBrowser;
       }
       {
         case = "^https?://issuer.enforce.dev";
-        command = "wavebox";
+        command = productivityBrowser;
       }
       {
         case = "^https?://oauth2.sigstore.dev/auth";
-        command = "wavebox";
+        command = productivityBrowser;
       }
       {
         case = "^https?://auth.openai.com/oauth";
-        command = "wavebox";
+        command = productivityBrowser;
       }
     ];
   };
@@ -88,13 +93,18 @@ in
 lib.mkIf (noughtyLib.hostHasTag "workspace") {
   environment.systemPackages = [
     pkgs._1password-gui
+    slackProductivityBrowser
+    productivityBrowserXdgOpen
+  ]
+  ++ lib.optionals (productivityBrowser == "wavebox") [
     pkgs.wavebox
     googleMeetDesktopItem
-    slackWavebox
-    waveboxXdgOpen
+  ]
+  ++ lib.optionals (productivityBrowser == "zen") [
+    googleMeetDesktopItem
   ];
 
-  programs.wavebox = {
+  programs.wavebox = lib.mkIf (productivityBrowser == "wavebox") {
     enable = true;
     extensions = [
       "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
