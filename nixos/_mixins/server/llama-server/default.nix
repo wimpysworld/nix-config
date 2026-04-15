@@ -30,10 +30,14 @@ let
 in
 {
   imports = [
+    ./swap.nix
     ./preseed.nix
   ];
 
   config = lib.mkIf isInference {
-    environment.systemPackages = [ llamaPackage ];
+    environment.systemPackages = [
+      llamaPackage
+      pkgs.llama-swap
+    ];
   };
 }
