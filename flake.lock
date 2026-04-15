@@ -1043,7 +1043,8 @@
         "sops-nix": "sops-nix",
         "systems": "systems_3",
         "vscode-server": "vscode-server",
-        "xdg-override": "xdg-override"
+        "xdg-override": "xdg-override",
+        "zen-browser": "zen-browser"
       }
     },
     "rust-analyzer-src": {
@@ -1281,6 +1282,29 @@
       "original": {
         "owner": "koiuo",
         "repo": "xdg-override",
+        "type": "github"
+      }
+    },
+    "zen-browser": {
+      "inputs": {
+        "home-manager": [
+          "home-manager"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1776144279,
+        "narHash": "sha256-eX3u6wJ34+qu7ZR1qWOaToGWmudYQSOEStZZm6goP+8=",
+        "owner": "0xc000022070",
+        "repo": "zen-browser-flake",
+        "rev": "727de8a44c85e90f899c540cf3ffa0d5d3344f9c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "0xc000022070",
+        "repo": "zen-browser-flake",
         "type": "github"
       }
     }

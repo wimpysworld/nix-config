@@ -78,6 +78,9 @@
     xdg-override.url = "github:koiuo/xdg-override";
     xdg-override.inputs.nixpkgs.follows = "nixpkgs";
     xdg-override.inputs.flake-parts.follows = "flake-parts";
+    zen-browser.url = "github:0xc000022070/zen-browser-flake";
+    zen-browser.inputs.nixpkgs.follows = "nixpkgs";
+    zen-browser.inputs.home-manager.follows = "home-manager";
   };
   outputs =
     {
