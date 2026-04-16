@@ -8,11 +8,11 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "openchamber-desktop";
-  version = "1.9.4";
+  version = "1.9.5";
 
   src = fetchurl {
     url = "https://github.com/btriapitsyn/openchamber/releases/download/v${finalAttrs.version}/OpenChamber_${finalAttrs.version}_darwin-aarch64.dmg";
-    hash = "sha256-MGfw1g10yz77vHg5CfWGcsPT34EWsAVyLDTjoAXr5PA=";
+    hash = "sha256-gFUdIUPd1sg7OxZ5DD3+/lLh1fvRS6jpyviJd7lN5O8=";
   };
 
   dontPatch = true;
