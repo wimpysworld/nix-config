@@ -86,6 +86,24 @@ in
       enable = true;
       addToSystemPackages = true;
       extraPackages = [ pkgs.gh ];
+      mcpServers = {
+        exa = {
+          url = "https://mcp.exa.ai/mcp";
+        };
+        context7 = {
+          url = "https://mcp.context7.com/mcp";
+          headers = {
+            Authorization = "Bearer \${CONTEXT7_API_KEY}";
+          };
+        };
+        nixos = {
+          command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+          args = [ ];
+        };
+        cloudflare = {
+          url = "https://docs.mcp.cloudflare.com/mcp";
+        };
+      };
 
       # Upstream seeds these into ${hermesHome}/auth.json and ${hermesHome}/.env.
       authFile = config.sops.secrets."hermes/auth".path;
