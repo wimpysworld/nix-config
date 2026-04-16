@@ -91,9 +91,9 @@ in
 
       settings = {
         model = {
-          default = "qwen3.5:9b";
+          default = "qwen3.5-9b";
           provider = "custom";
-          base_url = "http://revan.drongo-gamma.ts.net:8080/v1";
+          base_url = "http://127.0.0.1:8080/v1";
         };
 
         fallback_model = {
