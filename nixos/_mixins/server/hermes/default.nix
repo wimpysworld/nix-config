@@ -25,6 +25,9 @@ in
   ];
 
   config = lib.mkIf (noughtyLib.hostHasTag "hermes") {
+    users.users.hermes.uid = 1984;
+    users.groups.hermes.gid = 1984;
+
     sops.secrets = {
       "hermes/auth" = {
         sopsFile = ../../../../secrets/hermes-auth.json;
@@ -103,6 +106,10 @@ in
         enable = true;
         backend = "podman";
         hostUsers = [ username ];
+        extraOptions = [
+          "--tmpfs"
+          "/var/lib/apt/lists:rw,nosuid,nodev"
+        ];
         extraVolumes = [
           "${hermesAptConfig}:/etc/apt/apt.conf.d/99-hermes-retries.conf:ro"
         ];
