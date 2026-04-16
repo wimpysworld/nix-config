@@ -24,7 +24,6 @@ in
     ];
     kernelParams = [
       "video=DP-1:3440x1440@100"
-      "video=HDMI-A-1:2560x1600@120"
     ];
     swraid = {
       enable = true;
