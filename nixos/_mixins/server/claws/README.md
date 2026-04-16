@@ -513,6 +513,492 @@ The Hermes Agent flake provides the NixOS module, packages, and dev shell. The f
 
 Pin the Hermes flake input to a specific commit rather than tracking `main` - the project ships features rapidly (v0.2 to v0.9 in two months) and breaking changes between versions are expected.
 
+I hit the context ceiling on the Wolfi repo (it has 3,500+ package files). But I have everything I need from the wolfi-base image docs, the Nix dockerTools documentation, and the entrypoint source code. Wolfi packages follow the same names as Alpine/standard Linux: `bash`, `coreutils`, `util-linux`, `shadow`, `nodejs`, `git`, `curl` - they're all in the `wolfi-dev/os` repo.
+
+Here's the new section:
+
+---
+
+### 10. Hermes Container Image Strategy
+
+**Decision**: Start with the default Ubuntu 24.04 base image. Evaluate and implement a pre-seeded custom image as a future improvement, published to `ghcr.io/the-cauldron/hermes-base`.
+
+**How container provisioning works**: The Hermes NixOS module's container mode pulls a base OCI image at runtime, creates a podman container with bind mounts (`/nix/store` read-only, `/var/lib/hermes` read-write, `/home/hermes` read-write), and runs a Nix-built entrypoint script inside the container on every start. The entrypoint provisions the `hermes` user (if not already present), optionally installs system packages via apt (Ubuntu/Debian only), sets up `uv` and a Python 3.11 venv, configures sudo, and drops privileges before executing the Hermes binary. The Hermes binary itself runs from the bind-mounted `/nix/store`, not from the container's filesystem.
+
+Every provisioning block in the entrypoint has independent guards (sentinel files, `command -v` checks, existing-user lookups) and graceful fallbacks. The entrypoint explicitly supports arbitrary base images including Debian, Alpine, and glibc-based distros like Wolfi.
+
+The persistent home directory (`/home/hermes`) survives container recreation. The agent can `pip install`, `uv tool install`, and `npm install -g` into the home directory at any time. These installs persist across restarts, rebuilds, and even image changes.
+
+**Four approaches evaluated**, from simplest to most controlled:
+
+#### Option A: Bare Ubuntu 24.04 (default, recommended to start)
+
+No custom image needed. The Hermes NixOS module default.
+
+```nix
+services.hermes-agent.container.image = "ubuntu:24.04";
+```
+
+On first boot, the entrypoint provisions `sudo`, `nodejs`, `npm`, `curl` via apt, installs `uv` via curl, and creates a Python 3.11 venv. A sentinel file (`/var/lib/hermes-tools-provisioned`) prevents re-provisioning on subsequent starts. The writable layer persists across restarts but is lost on container recreation (image/volume/options change).
+
+**Trade-offs**: First boot takes 30-60 seconds for apt/uv provisioning. Writable layer loss on recreation means re-running apt. No CVE scanning of the base layer. Ubuntu's security posture is adequate but not hardened.
+
+#### Option B: Pre-seeded Ubuntu 24.04 (published to ghcr.io)
+
+A Containerfile that bakes in the tools the entrypoint would otherwise install on first boot. Eliminates first-boot provisioning and writable-layer dependency.
+
+```dockerfile
+# Containerfile.ubuntu
+FROM ubuntu:24.04
+
+# Pre-install what the entrypoint would provision on first boot
+RUN apt-get update -qq && \
+    apt-get install -y -qq --no-install-recommends \
+      sudo nodejs npm curl git jq ripgrep && \
+    rm -rf /var/lib/apt/lists/*
+
+# Touch the sentinel so the entrypoint skips apt provisioning
+RUN touch /var/lib/hermes-tools-provisioned
+
+# Sudoers will be configured by the entrypoint based on HERMES_UID
+```
+
+```nix
+services.hermes-agent.container.image = "ghcr.io/the-cauldron/hermes-base:ubuntu";
+```
+
+Built via GitHub Actions, pushed to ghcr.io. The entrypoint still handles user creation and privilege drop, it just skips the apt block.
+
+#### Option C: Pre-seeded Wolfi (published to ghcr.io)
+
+A Wolfi-based image using `cgr.dev/chainguard/wolfi-base`. Wolfi is glibc-based (unlike Alpine's musl), so the Nix-built Hermes binary has no linker issues. The entrypoint's apt block is skipped entirely (no `apt-get` in Wolfi). User creation falls through to the `adduser`/`addgroup` path (busybox-style, present in wolfi-base).
+
+```dockerfile
+# Containerfile.wolfi
+FROM cgr.dev/chainguard/wolfi-base
+
+# Install agent tools via apk
+RUN apk update && apk add --no-cache \
+      bash coreutils util-linux shadow \
+      nodejs npm git curl jq ripgrep
+
+# Touch the sentinel to skip any residual apt checks
+RUN touch /var/lib/hermes-tools-provisioned
+```
+
+```nix
+services.hermes-agent.container.image = "ghcr.io/the-cauldron/hermes-base:wolfi";
+```
+
+**Trade-offs**: Low-to-zero CVE base image (Chainguard's daily rebuild cadence). glibc-based, so Nix store binaries work without issues. No system package manager abuse possible (no apt, and apk is not what the entrypoint looks for). Agent can still `pip install` and `npm install -g` into the persistent home directory.
+
+#### Option D: Nix-composed OCI image (published to ghcr.io)
+
+A fully reproducible image built with `pkgs.dockerTools.buildLayeredImage`. Every byte in the image is declared in Nix. No package manager, no first-boot provisioning, no network calls. The entrypoint's provisioning blocks all become no-ops because the tools and user already exist.
+
+```nix
+# nix/hermes-container-image.nix
+{ pkgs }:
+pkgs.dockerTools.buildLayeredImage {
+  name = "ghcr.io/the-cauldron/hermes-base";
+  tag = "nix";
+
+  contents = with pkgs; [
+    bashInteractive
+    coreutils
+    gnugrep
+    gnused
+    findutils
+    util-linux   # provides setpriv
+    shadow       # provides useradd/groupadd
+    git
+    curl
+    jq
+    ripgrep
+    nodejs
+    cacert       # TLS certificates
+  ];
+
+  fakeRootCommands = ''
+    # Create the hermes tools sentinel
+    mkdir -p ./var/lib
+    touch ./var/lib/hermes-tools-provisioned
+
+    # Create the home directory mount point
+    mkdir -p ./home/hermes
+  '';
+
+  enableFakechroot = true;
+
+  config = {
+    Env = [
+      "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+      "PATH=/usr/bin:/bin:/usr/local/bin"
+    ];
+    Cmd = [ "${pkgs.bashInteractive}/bin/bash" ];
+  };
+}
+```
+
+Build and push via CI:
+
+```bash
+nix build .#hermes-container-image
+podman load < result
+podman push ghcr.io/the-cauldron/hermes-base:nix
+```
+
+```nix
+services.hermes-agent.container.image = "ghcr.io/the-cauldron/hermes-base:nix";
+```
+
+**Trade-offs**: Maximum reproducibility and control. No system package manager at all, the agent can only use baked-in tools plus home-directory installs (pip, uv, npm). The `fakeRootCommands` approach handles user pre-creation and sentinel files. The image requires `shadow` (for `useradd`/`groupadd`) so the entrypoint's user-creation path has tools available if the UID doesn't match a pre-created user.
+
+⚠️ **CAVEAT for Nix images**: `dockerTools.buildLayeredImage` does not create `/etc/passwd` or `/etc/group` by default. Include `pkgs.fakeNss` in `contents` for basic entries (root, nobody), or use `fakeRootCommands` with `shadowSetup` + `useradd` to pre-create the hermes user. Without this, the entrypoint's `getent passwd` call won't find any users, triggering the user-creation path which needs `useradd` from `shadow`.
+
+#### Recommended Path
+
+Start with **Option A** (bare Ubuntu). It works out of the box with zero custom image work. Once the deployment is stable and the agent's tool requirements are understood from real usage, build a pre-seeded image (Option B, C, or D) and switch `container.image`. The self-improvement cycle then becomes:
+
+1. Agent discovers it needs a tool, installs it via `pip`/`npm` into the persistent home dir
+2. Over time, frequently-used tools are candidates for baking into the base image
+3. Traya (with GitHub write access) proposes a PR to the container repo adding the tool
+4. Martin reviews and merges; GitHub Actions builds and pushes the new image
+5. `nixos-rebuild switch` picks up the new image tag, container is recreated with tools pre-installed
+
+The choice between Option B (Ubuntu), C (Wolfi), and D (Nix) is a decision for after operational experience. Wolfi is the natural fit given Martin's Chainguard background and offers the best CVE posture. The Nix-composed image offers maximum reproducibility at the cost of no in-container package manager. Both are viable and the entrypoint handles either gracefully.
+
+
+
+Here are the two new sections:
+
+---
+
+### 11. Databases
+
+Hermes stores all persistent state in `$HERMES_HOME` (`/var/lib/hermes/.hermes/` on the host). This directory is bind-mounted into the podman container at `/data/.hermes` (read-write) and persists across container recreation, image changes, and host reboots. No external database services are required.
+
+**Database files:**
+
+| File | Type | Purpose | Created |
+|---|---|---|---|
+| `state.db` | SQLite (WAL mode) | CLI and messaging sessions, FTS5 full-text search index, gateway state | Always |
+| `memory_store.db` | SQLite | Holographic memory provider: fact store, trust scores, HRR algebraic data | When `memory.provider = "holographic"` |
+| `memories/MEMORY.md` | Markdown | Agent's persistent notes (environment facts, conventions, lessons learned) | Always |
+| `memories/USER.md` | Markdown | User profile (preferences, communication style, role) | Always |
+| `auth.json` | JSON | OAuth credentials (Telegram, provider tokens) | When OAuth is configured |
+| `mcp-tokens/` | Directory | OAuth tokens for MCP servers | When MCP OAuth is used |
+
+Additionally, `sessions/` may contain per-session data files alongside what is indexed in `state.db`. The `skills/` directory holds agent-created and hub-installed skills. The `cron/` directory holds scheduled task definitions.
+
+All databases are SQLite. No PostgreSQL, Redis, or other external database services are needed unless a future memory provider upgrade (Honcho, Hindsight local mode) introduces one. That is not in scope for the initial deployment.
+
+**SQLite WAL mode note**: Hermes uses SQLite in WAL (Write-Ahead Logging) mode for `state.db`. WAL mode means the database consists of three files: `state.db`, `state.db-wal`, and `state.db-shm`. All three must be included in any backup. Copying only `state.db` while the WAL file has uncommitted transactions will produce an incomplete or corrupt backup.
+
+### 12. Backup
+
+**Decision**: Automated daily backups of Hermes state to an internal path on Revan. Simple, local, no external dependencies.
+
+**Scope**: The backup captures the entire Hermes state directory (`/var/lib/hermes/`), which includes all databases, memories, sessions, skills, cron jobs, OAuth tokens, config, and workspace files.
+
+**Strategy**: A systemd timer on Revan runs a daily backup that stops the Hermes service, creates a consistent snapshot, and restarts the service. The stop-snapshot-start approach avoids SQLite WAL consistency issues entirely. Given that Hermes is a personal agent with no SLA requirement, a brief daily interruption (typically under 10 seconds) is acceptable.
+
+**Backup destination**: `/var/backup/hermes/` on Revan, with date-stamped snapshots and automatic retention.
+
+**Implementation**:
+
+```nix
+# Hermes backup service and timer
+systemd.services.hermes-backup = {
+  description = "Backup Hermes Agent state";
+  after = [ "hermes-agent.service" ];
+
+  serviceConfig = {
+    Type = "oneshot";
+    ExecStart = pkgs.writeShellScript "hermes-backup" ''
+      set -euo pipefail
+
+      BACKUP_ROOT="/var/backup/hermes"
+      STATE_DIR="/var/lib/hermes"
+      DATE=$(date +%Y-%m-%d_%H%M%S)
+      BACKUP_DIR="$BACKUP_ROOT/$DATE"
+      RETAIN_DAYS=14
+
+      mkdir -p "$BACKUP_ROOT"
+
+      # Stop Hermes for a consistent snapshot
+      systemctl stop hermes-agent.service || true
+
+      # Snapshot the entire state directory
+      ${pkgs.rsync}/bin/rsync -a --delete "$STATE_DIR/" "$BACKUP_DIR/"
+
+      # Restart Hermes
+      systemctl start hermes-agent.service
+
+      # Prune backups older than retention period
+      ${pkgs.findutils}/bin/find "$BACKUP_ROOT" -maxdepth 1 -type d -mtime +$RETAIN_DAYS -exec rm -rf {} +
+
+      echo "Backup complete: $BACKUP_DIR ($(du -sh "$BACKUP_DIR" | cut -f1))"
+    '';
+  };
+};
+
+systemd.timers.hermes-backup = {
+  description = "Daily Hermes Agent backup";
+  wantedBy = [ "timers.target" ];
+  timerConfig = {
+    OnCalendar = "daily";
+    Persistent = true;       # Run missed backups after downtime
+    RandomizedDelaySec = 900; # Jitter to avoid exact midnight
+  };
+};
+```
+
+**What is backed up:**
+
+| Path | Contents | Size estimate |
+|---|---|---|
+| `.hermes/state.db` + WAL/SHM | All sessions and gateway state | Grows with usage; typically 10-100 MB |
+| `.hermes/memory_store.db` | Holographic facts (if enabled) | Small; < 10 MB for personal use |
+| `.hermes/memories/` | MEMORY.md, USER.md | < 10 KB |
+| `.hermes/config.yaml` | Generated config (Nix-managed, but backup captures runtime state) | < 10 KB |
+| `.hermes/auth.json` | OAuth credentials | < 10 KB |
+| `.hermes/skills/` | Agent-created and installed skills | Varies; typically < 1 MB |
+| `.hermes/sessions/` | Per-session data files | Grows with usage |
+| `.hermes/cron/` | Scheduled task definitions | < 100 KB |
+| `home/` | Agent home dir (uv, pip, npm installs) | Varies; 100 MB - 1 GB depending on installed tools |
+| `workspace/` | SOUL.md, USER.md, agent-created files | Varies |
+
+**Retention**: 14 daily snapshots kept by default. At an estimated 200 MB per snapshot for a moderately active personal agent, this uses approximately 3 GB of backup storage. Adjust `RETAIN_DAYS` based on actual usage.
+
+**Monitoring**: Check backup health with:
+
+```bash
+# List backups
+ls -la /var/backup/hermes/
+
+# Check most recent backup
+systemctl status hermes-backup.service
+journalctl -u hermes-backup.service --since today
+
+# Check timer schedule
+systemctl list-timers hermes-backup.timer
+```
+
+**Recovery**: To restore from a backup:
+
+```bash
+# Stop Hermes
+sudo systemctl stop hermes-agent.service
+
+# Restore from a specific backup
+sudo rsync -a --delete /var/backup/hermes/2026-04-15_030000/ /var/lib/hermes/
+
+# Restart Hermes
+sudo systemctl start hermes-agent.service
+```
+
+**What is not covered by this backup**: The llama-swap model files (`/var/lib/llama-models/`) are not included. Models are large (tens of GB), immutable, and re-downloadable via `llama-models-preseed.service`. Backing them up would waste storage for no benefit. The NixOS configuration itself is version-controlled in git and does not need file-level backup.
+
+**Future consideration**: If Hermes state grows large enough that the stop-snapshot-start window becomes noticeable, switch to an online backup approach using `sqlite3 .backup` for each `.db` file while the service runs, followed by rsync of non-database files. For personal use at this scale, the simple approach is sufficient.
+
+### 13. Coding Agents inside Hermes
+
+**Decision**: Install Claude Code, Codex CLI, and Copilot CLI inside the Hermes podman container. Hermes orchestrates them via ACP (Agent Communication Protocol) for coding task delegation. Each coding agent runs as itself, fully in its own context, using its own subscription auth.
+
+**Rationale**: Hermes handles routine agentic work (research, triage, memory, scheduled tasks) using self-hosted LLMs at zero marginal cost. When serious development work is needed, Hermes delegates to a coding agent that brings frontier model capability and a full development toolset. The coding agent runs autonomously inside the container - reading code, running tests, making edits - and returns the result to Hermes.
+
+This is not Hermes using Claude's API key to make inference calls. Hermes spawns `claude` as a subprocess via ACP. Claude Code runs as Claude Code, with its own tools, its own auth, its own context window. Same for Codex and Copilot. Hermes is the orchestrator, not a proxy.
+
+**Architecture:**
+
+```
+Telegram → Hermes (Revan, self-hosted LLMs via llama-swap)
+               │
+               ├── routine work → llama-swap (Qwen3.5, Gemma4) — zero cost
+               │
+               ├── coding delegation → claude via ACP — Claude Max subscription
+               │     Claude Code runs autonomously inside the container
+               │     reads code, runs tests, makes edits, returns result
+               │
+               ├── coding delegation → codex via ACP — ChatGPT Pro subscription
+               │     Codex CLI runs autonomously inside the container
+               │
+               └── coding delegation → copilot --acp via ACP — Copilot Pro subscription
+                      Copilot CLI runs autonomously inside the container
+```
+
+**Subscriptions:**
+
+| Coding Agent | CLI Tool | Subscription | Status |
+|---|---|---|---|
+| Claude Code | `claude` | Claude Max (gifted by Anthropic) | Available |
+| Codex CLI | `codex` | ChatGPT Pro (gifted by OpenAI) | Available |
+| Copilot CLI | `copilot` | GitHub Copilot Pro | Available |
+
+**Container isolation**: The coding agents run inside the Hermes podman container. They can execute terminal commands, read/write files, and make network calls, but only within the container boundary. They cannot touch the host filesystem, other services on Revan, or llama-swap processes. Hermes's smart approval system adds a second layer: dangerous commands still go through approval even inside the container.
+
+This is a deliberate security design. Coding agents with autonomous tool use need a sandbox. The podman container provides it, with the Hermes approval system as a secondary gate. Permissions can be relaxed within the container without exposing the host.
+
+**Installation**: The CLI tools are npm-installable into the persistent home directory. For the pre-seeded container image (§10), bake them into the base image:
+
+```dockerfile
+# Add to Containerfile
+RUN npm install -g \
+      @anthropic-ai/claude-code \
+      @openai/codex \
+      @githubnext/github-copilot-cli
+```
+
+**First-time auth setup**: Each coding agent needs a one-time interactive login. Credentials persist in the home directory (`/home/hermes/`) across container restarts and recreation.
+
+```bash
+# Interactive login via host CLI routing into container
+podman exec -it hermes-agent claude login
+podman exec -it hermes-agent codex login
+podman exec -it hermes-agent copilot login
+```
+
+**How Hermes delegates**: The `copilot-acp` provider is confirmed working in Hermes. It spawns the Copilot CLI as a subprocess with `--acp --stdio`, sends a task, and receives structured results. The same ACP spawning mechanism should work for Claude Code and Codex CLI, pending verification of their ACP stdio support.
+
+Hermes also has environment variables for customising the ACP command:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `HERMES_COPILOT_ACP_COMMAND` | `copilot` | Override the Copilot CLI binary path |
+| `HERMES_COPILOT_ACP_ARGS` | `--acp --stdio` | Override ACP arguments |
+
+This suggests the ACP spawning mechanism is configurable, which may enable adapting it for `claude` and `codex` if they support a similar stdio protocol.
+
+**Cost model**: Self-hosted LLMs handle 90%+ of interactions at zero API cost. Coding agent delegation is billed against existing subscriptions (Claude Max, ChatGPT Pro, Copilot Pro) which include generous usage allowances. The decision of when to delegate is made by Hermes based on task complexity or explicit user instruction (`/model` switching or natural language like "use Claude Code for this").
+
+**Phased rollout**:
+
+| Phase | Scope |
+|---|---|
+| Day one | Install CLI tools in the container, complete auth flows, verify `copilot-acp` works |
+| Phase 2 | Test ACP delegation with Claude Code and Codex CLI, verify stdio protocol compatibility |
+| Phase 3 | Configure Hermes delegation settings to route coding subtasks to preferred coding agent |
+| Future | Traya proposes Containerfile PRs to bake in new tools or updated CLI versions |
+
+**What needs verification**:
+
+- Whether `claude` supports an ACP stdio mode that Hermes can spawn (similar to `copilot --acp --stdio`)
+- Whether `codex` supports the same pattern
+- Whether Hermes's ACP provider mechanism can be generalised beyond the `copilot-acp` provider to spawn arbitrary coding agents
+- Whether the coding agents' own terminal tool use interacts correctly with Hermes's approval system inside the container
+
+**What does not need verification**: The model provider path. Hermes already supports Anthropic (via Claude Code credentials) and OpenAI Codex (via OAuth) as inference providers. Even if ACP orchestration is not yet working for all three, the subscriptions can be used for direct model access from Hermes immediately.
+
+### 14. Using Codex inside Hermes
+
+**Decision**: Authenticate with OpenAI via the Hermes "Codex" provider to access GPT models directly through Martin's gifted ChatGPT Pro subscription. OAuth tokens managed declaratively via sops-nix.
+
+**What this is**: The Hermes "Codex" provider is OpenAI subscription OAuth. It uses the same device code flow as the Codex CLI to authenticate against your ChatGPT subscription, then provides GPT-5.x, GPT-4o, and other models as a standard Hermes model provider. No Codex CLI installation required. No per-token API billing - usage is covered by the ChatGPT Pro subscription allowance.
+
+**Why this matters**: With Codex OAuth as a provider, the fallback chain no longer needs a per-token Anthropic API key as the first cloud fallback. Subscription-based access to GPT models is available at zero marginal cost, making it the natural choice for cloud escalation when self-hosted models are insufficient.
+
+**Updated fallback chain**:
+
+```nix
+settings = {
+  # Primary: self-hosted agentic model
+  model = {
+    default = "qwen3.5-35b-a3b";
+    provider = "custom";
+    base_url = "http://zannah.drongo-gamma.ts.net:8080/v1";
+  };
+
+  # Fallback: GPT via ChatGPT Pro subscription (zero marginal cost)
+  fallback_model = {
+    provider = "codex";
+    model = "gpt-5.4";
+  };
+};
+```
+
+Per-token Anthropic API (`ANTHROPIC_API_KEY`) becomes a last-resort fallback, retained in `environmentFiles` but no longer the primary cloud escalation path.
+
+**Full model access summary**:
+
+| Provider | Subscription | Hermes provider name | Marginal cost |
+|---|---|---|---|
+| Self-hosted (llama-swap) | Hardware owned | `custom` (named providers: coding, agentic, revan) | Zero |
+| OpenAI GPT | ChatGPT Pro (gifted) | `codex` | Subscription included |
+| Anthropic Claude | Claude Max (gifted) | `anthropic` | Subscription included |
+| GitHub Copilot | Copilot Pro | `copilot` | Subscription included |
+| Anthropic API | Pay-as-you-go | `anthropic` (with API key) | Per-token (last resort) |
+
+**Declarative OAuth via sops-nix**:
+
+The Hermes NixOS module has an `authFile` option that seeds OAuth credentials on first deployment. Combined with sops-nix, this makes the OAuth configuration fully declarative.
+
+```nix
+services.hermes-agent = {
+  # OAuth credentials (Codex, Anthropic, etc.)
+  authFile = config.sops.secrets."hermes/auth".path;
+
+  # Non-OAuth secrets (API keys, bot tokens)
+  environmentFiles = [ config.sops.secrets."hermes-env".path ];
+};
+
+sops.secrets."hermes/auth" = {
+  sopsFile = ./secrets/hermes-auth.json;
+  format = "json";
+  owner = "hermes";
+};
+
+sops.secrets."hermes-env" = {
+  sopsFile = ./secrets/ai.yaml;
+  format = "yaml";
+};
+```
+
+**Secrets split**:
+
+| Secret | Mechanism | Contents |
+|---|---|---|
+| `hermes-env` (sops, `.env` format) | `environmentFiles` | `TELEGRAM_BOT_TOKEN`, `JINA_API_KEY`, `CONTEXT7_API_KEY`, `ANTHROPIC_API_KEY` |
+| `hermes/auth` (sops, JSON) | `authFile` | Codex OAuth token, Anthropic OAuth token, other subscription-based auth |
+
+Both are declared in `configuration.nix`, encrypted in the git repository, and injected by sops-nix at activation time.
+
+**First-time setup (one-time, interactive)**:
+
+The OAuth device code flow is inherently interactive - you approve access in a browser. This is the only imperative step.
+
+```bash
+# Start the container, then auth interactively
+podman exec -it hermes-agent hermes model
+# Select "OpenAI Codex"
+# Browser opens: approve access with your ChatGPT Pro account
+# Hermes stores the token in auth.json
+
+# Optionally, also auth Anthropic
+podman exec -it hermes-agent hermes model
+# Select "Anthropic"
+# Complete Claude Code auth flow
+
+# Extract auth.json for sops encryption
+sudo cat /var/lib/hermes/.hermes/auth.json > /tmp/auth.json
+sops --encrypt /tmp/auth.json > secrets/hermes-auth.json
+rm /tmp/auth.json
+
+# Commit the encrypted secret
+git add secrets/hermes-auth.json
+```
+
+After this, `nixos-rebuild switch` seeds the auth on any fresh deployment. The `authFile` is only copied if `auth.json` does not already exist (default behaviour), so it never clobbers refreshed tokens on a running system.
+
+**Token lifecycle**:
+
+- **Seeding**: `authFile` copies the sops-decrypted `auth.json` to `$HERMES_HOME/auth.json` on first activation
+- **Refresh**: Hermes refreshes OAuth tokens automatically; refreshed tokens are written to the state directory and persist across rebuilds
+- **Expiry**: If a refresh token expires (prolonged inactivity), re-do the device code flow interactively and update the sops secret
+- **Disaster recovery**: The sops-encrypted auth seed in git is the recovery copy; re-deploy on any host and the tokens are injected
+
+**Importing existing credentials**: If the Codex CLI is already authenticated on a local machine, Hermes can import credentials from `~/.codex/auth.json` automatically when present. Copy this file into the container's home directory or extract it for sops encryption as above.
+
 ## What Is Not In Scope
 
 - **Syncthing**: Nix handles shared configuration. Revan backup/recovery is a separate concern, mechanism TBD.
