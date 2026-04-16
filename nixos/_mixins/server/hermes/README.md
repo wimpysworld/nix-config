@@ -127,11 +127,11 @@ This replaces the original plan to use NixOS declarative `containers.<name>` (sy
 
 Hermes provides four complementary routing mechanisms rather than a single automatic classification system:
 
-1. **Smart routing** (automatic): Simple/short messages route to a cheap local model on Revan. Complex messages stay on the default agentic model. This is a binary split based on message length and complexity heuristics, not task classification.
-2. **Manual switching**: `/model custom:coding:qwen3-coder-30b-a3b` switches to the coding endpoint mid-session. `/model custom:agentic:qwen3.5-35b-a3b` switches back. `/model anthropic` escalates to cloud.
+1. **Smart routing** (automatic): Simple and short messages stay on the cheap local model on Revan. Complex messages can be switched manually to a larger remote agentic model. This is a lightweight split based on message length and complexity heuristics, not task classification.
+2. **Manual switching**: `/model custom:coding:qwen3-coder-30b-a3b` switches to the coding endpoint mid-session. `/model custom:agentic:qwen3.5-35b-a3b` switches to the larger remote agentic model when needed. `/model anthropic` escalates to cloud.
 3. **Delegation**: Subagent tasks (spawned via `delegate_task`) automatically route to a different model/provider, configured globally. Coding subtasks go to the coding endpoint.
 4. **Auxiliary models**: Side tasks (vision, web extraction, compression, approvals) each route to a configured endpoint, separate from the main conversation model. These fire automatically.
-5. **Fallback**: If the primary model fails (errors, rate limits), Hermes auto-switches to the configured fallback provider (Anthropic). Fires once per session.
+5. **Fallback**: If the primary model fails, errors, or hits rate limits, Hermes auto-switches to the configured fallback provider (`openai-codex`). Fires once per session.
 
 Full capability-based routing (issue #157 in the Hermes repo) is a future feature. The current mechanisms cover the common cases; manual `/model` switching handles the rest.
 
@@ -163,16 +163,15 @@ Full capability-based routing (issue #157 in the Hermes repo) is a future featur
     # --- Agent identity ---
     documents = {
       "SOUL.md" = builtins.readFile ./traya-soul.md;
-      "USER.md" = builtins.readFile ./traya-user.md;
     };
 
     # --- Model and provider configuration ---
     settings = {
-      # Default: agentic model on Strix Halo 2
+      # Initial default: cheap local model on Revan
       model = {
-        default = "qwen3.5-35b-a3b";
+        default = "qwen3.5:9b";
         provider = "custom";
-        base_url = "http://zannah.drongo-gamma.ts.net:8080/v1";
+        base_url = "http://revan.drongo-gamma.ts.net:8080/v1";
       };
 
       # Named custom providers for /model switching
@@ -191,21 +190,21 @@ Full capability-based routing (issue #157 in the Hermes repo) is a future featur
         }
       ];
 
-      # Smart routing: trivial messages → small local model
+      # Smart routing: trivial messages stay on the same local endpoint
       smart_model_routing = {
         enabled = true;
         max_simple_chars = 160;
         max_simple_words = 28;
         cheap_model = {
           base_url = "http://revan.drongo-gamma.ts.net:8080/v1";
-          model = "gemma4-e4b";
+          model = "qwen3.5:9b";
         };
       };
 
-      # Fallback to cloud on local inference failure
+      # Fallback to ChatGPT Pro subscription on local inference failure
       fallback_model = {
-        provider = "anthropic";
-        model = "claude-sonnet-4-6";
+        provider = "openai-codex";
+        model = "gpt-5.4";
       };
 
       # Subagent delegation → coding model
@@ -357,20 +356,19 @@ The rationale is operational, not aesthetic. These settings are part of the mode
 
 ### 4. Workspace Files: Nix-Declared
 
-**Decision**: Agent identity files (`SOUL.md`, `USER.md`) are declared via the Hermes NixOS module's `documents` option, not manually created or synced.
+**Decision**: Declare `SOUL.md` via the Hermes NixOS module's `documents` option. Leave `USER.md` to Hermes' built-in memory system.
 
-**Rationale**: Version-controlled, reproducible, no drift. Documents are installed into the agent's working directory on every `nixos-rebuild switch`. Managed mode prevents the agent or manual edits from altering the Nix-declared files.
+**Rationale**: `SOUL.md` is durable agent identity, so it belongs in version-controlled Nix config. Hermes treats `USER.md` as mutable user-profile memory under `~/.hermes/memories/USER.md`, maintained by the memory system. Documents are installed into the agent's working directory on every `nixos-rebuild switch`. Managed mode prevents the agent or manual edits from altering the Nix-declared identity file.
 
 **Implementation**:
 
 ```nix
 services.hermes-agent.documents = {
   "SOUL.md" = builtins.readFile ./traya-soul.md;
-  "USER.md" = builtins.readFile ./traya-user.md;
 };
 ```
 
-Hermes reads `SOUL.md` as the agent's primary identity (slot #1 in the system prompt). `USER.md` provides user context. Both are injected at session start alongside the built-in memory.
+Hermes reads `SOUL.md` as the agent's primary identity, slot #1 in the system prompt. `USER.md` lives in the Hermes memory store and captures user preferences, communication style, and workflow habits over time.
 
 ### 5. Messaging Interface: Telegram
 
@@ -767,7 +765,7 @@ systemd.timers.hermes-backup = {
 | `.hermes/sessions/` | Per-session data files | Grows with usage |
 | `.hermes/cron/` | Scheduled task definitions | < 100 KB |
 | `home/` | Agent home dir (uv, pip, npm installs) | Varies; 100 MB - 1 GB depending on installed tools |
-| `workspace/` | SOUL.md, USER.md, agent-created files | Varies |
+| `workspace/` | SOUL.md, agent-created files | Varies |
 
 **Retention**: 14 daily snapshots kept by default. At an estimated 200 MB per snapshot for a moderately active personal agent, this uses approximately 3 GB of backup storage. Adjust `RETAIN_DAYS` based on actual usage.
 
@@ -902,16 +900,16 @@ This suggests the ACP spawning mechanism is configurable, which may enable adapt
 
 ```nix
 settings = {
-  # Primary: self-hosted agentic model
+  # Primary: cheap self-hosted local model
   model = {
-    default = "qwen3.5-35b-a3b";
+    default = "qwen3.5:9b";
     provider = "custom";
-    base_url = "http://zannah.drongo-gamma.ts.net:8080/v1";
+    base_url = "http://revan.drongo-gamma.ts.net:8080/v1";
   };
 
   # Fallback: GPT via ChatGPT Pro subscription (zero marginal cost)
   fallback_model = {
-    provider = "codex";
+    provider = "openai-codex";
     model = "gpt-5.4";
   };
 };
@@ -924,7 +922,7 @@ Per-token Anthropic API (`ANTHROPIC_API_KEY`) becomes a last-resort fallback, re
 | Provider | Subscription | Hermes provider name | Marginal cost |
 |---|---|---|---|
 | Self-hosted (llama-swap) | Hardware owned | `custom` (named providers: coding, agentic, revan) | Zero |
-| OpenAI GPT | ChatGPT Pro (gifted) | `codex` | Subscription included |
+| OpenAI GPT | ChatGPT Pro (gifted) | `openai-codex` | Subscription included |
 | Anthropic Claude | Claude Max (gifted) | `anthropic` | Subscription included |
 | GitHub Copilot | Copilot Pro | `copilot` | Subscription included |
 | Anthropic API | Pay-as-you-go | `anthropic` (with API key) | Per-token (last resort) |
