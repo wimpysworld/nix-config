@@ -9,6 +9,7 @@ let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
   rootlessMode = false;
+  virtualisationEnabled = noughtyLib.isUser [ "martin" ] && host.is.workstation;
 
   # Introspect the root filesystem type from disko configuration
   # Docker storage driver recommendations:
@@ -64,45 +65,51 @@ let
     else
       "overlay2"; # Default for xfs, ext4, and others
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
-  environment = {
-    # https://wiki.nixos.org/wiki/Docker
-    systemPackages =
-      with pkgs;
-      [
-        docker-color-output
-        docker-compose
-        docker-init
-        docker-sbom
-        lazydocker
-      ]
-      ++ lib.optional rootlessMode fuse-overlayfs;
-  };
+lib.mkMerge [
+  (lib.mkIf (noughtyLib.hostHasTag "hermes") {
+    virtualisation.podman.enable = true;
+  })
 
-  hardware.nvidia-container-toolkit.enable = host.gpu.hasNvidia;
+  (lib.mkIf virtualisationEnabled {
+    environment = {
+      # https://wiki.nixos.org/wiki/Docker
+      systemPackages =
+        with pkgs;
+        [
+          docker-color-output
+          docker-compose
+          docker-init
+          docker-sbom
+          lazydocker
+        ]
+        ++ lib.optional rootlessMode fuse-overlayfs;
+    };
 
-  users.users.${username} = {
-    extraGroups = lib.optional config.virtualisation.docker.enable "docker";
-  };
+    hardware.nvidia-container-toolkit.enable = host.gpu.hasNvidia;
 
-  virtualisation = {
-    containers.enable = true;
-    docker = {
-      enable = true;
-      daemon = {
-        settings = {
-          features.cdi = host.gpu.hasNvidia;
+    users.users.${username} = {
+      extraGroups = lib.optional config.virtualisation.docker.enable "docker";
+    };
+
+    virtualisation = {
+      containers.enable = true;
+      docker = {
+        enable = true;
+        daemon = {
+          settings = {
+            features.cdi = host.gpu.hasNvidia;
+          };
         };
+        rootless = lib.mkIf rootlessMode {
+          enable = rootlessMode;
+          setSocketVariable = rootlessMode;
+        };
+        inherit storageDriver;
       };
-      rootless = lib.mkIf rootlessMode {
-        enable = rootlessMode;
-        setSocketVariable = rootlessMode;
+      oci-containers = lib.mkIf config.virtualisation.docker.enable {
+        backend = "docker";
       };
-      inherit storageDriver;
+      spiceUSBRedirection.enable = true;
     };
-    oci-containers = lib.mkIf config.virtualisation.docker.enable {
-      backend = "docker";
-    };
-    spiceUSBRedirection.enable = true;
-  };
-}
+  })
+]

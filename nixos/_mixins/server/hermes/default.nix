@@ -10,14 +10,6 @@ let
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
   username = config.noughty.user.name;
-  podmanEnabled = lib.attrByPath [
-    "home-manager"
-    "users"
-    username
-    "services"
-    "podman"
-    "enable"
-  ] false config;
 in
 {
   imports = [
@@ -74,13 +66,6 @@ in
       group = "root";
       mode = "0400";
     };
-
-    assertions = [
-      {
-        assertion = podmanEnabled;
-        message = "Hermes requires Podman from home-manager/_mixins/development/virtualisation.";
-      }
-    ];
 
     virtualisation.docker.enable = lib.mkForce false;
 
