@@ -21,6 +21,7 @@ in
       "hermes/auth" = {
         sopsFile = ../../../../secrets/hermes-auth.json;
         format = "json";
+        key = "";
         owner = "root";
         group = "root";
         mode = "0400";
