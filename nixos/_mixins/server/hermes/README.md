@@ -290,22 +290,31 @@ Full capability-based routing (issue #157 in the Hermes repo) is a future featur
     }];
   }];
 
-  # sops-nix secret containing API keys and tokens
-  sops.secrets."hermes-env" = {
-    sopsFile = ./secrets/ai.yaml;
-    format = "yaml";
+  sops.secrets = {
+    TELEGRAM_BOT_TOKEN.sopsFile = ./secrets/hermes.yaml;
+    OPENAI_API_KEY.sopsFile = ./secrets/ai.yaml;
+    CONTEXT7_API_KEY.sopsFile = ./secrets/mcp.yaml;
+    JINA_API_KEY.sopsFile = ./secrets/mcp.yaml;
+  };
+
+  sops.templates."hermes-env" = {
+    content = ''
+      TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
+      OPENAI_API_KEY=${config.sops.placeholder.OPENAI_API_KEY}
+      CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
+      JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+    '';
   };
 }
 ```
 
-The sops-encrypted secrets file contains:
+The rendered runtime `.env` contains:
 
-```yaml
-hermes-env: |
-    TELEGRAM_BOT_TOKEN=123456:ABC...
-    ANTHROPIC_API_KEY=sk-ant-...
-    JINA_API_KEY=jina_...
-    CONTEXT7_API_KEY=c7_...
+```dotenv
+TELEGRAM_BOT_TOKEN=123456:ABC...
+OPENAI_API_KEY=sk-proj-...
+JINA_API_KEY=jina_...
+CONTEXT7_API_KEY=c7_...
 ```
 
 MCP server environment variables in `headers` use `${VAR}` syntax, resolved from the `.env` file at runtime.
@@ -401,7 +410,7 @@ Webhook-based integrations from external services (GitHub, Grafana, uptime monit
 | `svelte` | HTTP | - | Svelte documentation |
 | `github` | TBD | PAT | GitHub issues, PRs, code - see §7 |
 
-Most servers are remote HTTP; only `nixos` runs as a local binary (`pkgs.mcp-nixos`). Node.js is not required for any of them. Secrets (Jina API key, Context7 API key) are in `secrets/ai.yaml` and injected via sops into the Hermes environment.
+Most servers are remote HTTP; only `nixos` runs as a local binary (`pkgs.mcp-nixos`). Node.js is not required for any of them. Secrets for Jina and Context7 live in `secrets/mcp.yaml` and are injected into the Hermes environment through the rendered `hermes-env` file.
 
 See the Hermes NixOS configuration in §2 for the full `mcpServers` declaration.
 
@@ -943,12 +952,16 @@ services.hermes-agent = {
 sops.secrets."hermes/auth" = {
   sopsFile = ./secrets/hermes-auth.json;
   format = "json";
-  owner = "hermes";
+  owner = "root";
 };
 
-sops.secrets."hermes-env" = {
-  sopsFile = ./secrets/ai.yaml;
-  format = "yaml";
+sops.templates."hermes-env" = {
+  content = ''
+    TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
+    OPENAI_API_KEY=${config.sops.placeholder.OPENAI_API_KEY}
+    CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
+    JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+  '';
 };
 ```
 
@@ -956,8 +969,10 @@ sops.secrets."hermes-env" = {
 
 | Secret | Mechanism | Contents |
 |---|---|---|
-| `hermes-env` (sops, `.env` format) | `environmentFiles` | `TELEGRAM_BOT_TOKEN`, `JINA_API_KEY`, `CONTEXT7_API_KEY`, `ANTHROPIC_API_KEY` |
-| `hermes/auth` (sops, JSON) | `authFile` | Codex OAuth token, Anthropic OAuth token, other subscription-based auth |
+| `hermes.yaml` (sops, YAML) | secret input to `sops.templates."hermes-env"` | `TELEGRAM_BOT_TOKEN` |
+| `ai.yaml` (sops, YAML) | secret input to `sops.templates."hermes-env"` | `OPENAI_API_KEY` |
+| `mcp.yaml` (sops, YAML) | secret input to `sops.templates."hermes-env"` | `JINA_API_KEY`, `CONTEXT7_API_KEY` |
+| `hermes/auth` (sops, JSON) | `authFile` | Codex OAuth token and other provider auth seeds |
 
 Both are declared in `configuration.nix`, encrypted in the git repository, and injected by sops-nix at activation time.
 
