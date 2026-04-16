@@ -9,6 +9,7 @@ let
   aiSopsFile = ../../../../secrets + "/ai.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
+  username = config.noughty.user.name;
 in
 {
   imports = [
@@ -18,6 +19,7 @@ in
   config = lib.mkIf (noughtyLib.hostHasTag "hermes") {
     users.users.hermes.uid = 1984;
     users.groups.hermes.gid = 1984;
+    users.users.${username}.extraGroups = lib.mkAfter [ "hermes" ];
 
     sops.secrets = {
       "hermes/auth" = {
