@@ -12,6 +12,7 @@ let
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
   hermesAptConfig = pkgs.writeText "hermes-apt.conf" ''
     Acquire::Retries "10";
+    Acquire::ForceIPv4 "true";
     Acquire::http::No-Cache "true";
     Acquire::https::No-Cache "true";
     Acquire::http::Pipeline-Depth "0";
