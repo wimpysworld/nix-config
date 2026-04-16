@@ -95,7 +95,6 @@ in
         enable = true;
         backend = "podman";
         hostUsers = [ username ];
-        extraOptions = [ "--network=host" ];
       };
 
       settings = {
