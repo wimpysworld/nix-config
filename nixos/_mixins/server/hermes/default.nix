@@ -3,12 +3,19 @@
   inputs,
   lib,
   noughtyLib,
+  pkgs,
   ...
 }:
 let
   aiSopsFile = ../../../../secrets + "/ai.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
+  hermesAptConfig = pkgs.writeText "hermes-apt.conf" ''
+    Acquire::Retries "10";
+    Acquire::http::No-Cache "true";
+    Acquire::https::No-Cache "true";
+    Acquire::http::Pipeline-Depth "0";
+  '';
   username = config.noughty.user.name;
 in
 {
@@ -95,6 +102,9 @@ in
         enable = true;
         backend = "podman";
         hostUsers = [ username ];
+        extraVolumes = [
+          "${hermesAptConfig}:/etc/apt/apt.conf.d/99-hermes-retries.conf:ro"
+        ];
       };
 
       settings = {
@@ -110,5 +120,7 @@ in
         };
       };
     };
+
+    systemd.services.hermes-agent.serviceConfig.RestartSec = lib.mkForce 30;
   };
 }
