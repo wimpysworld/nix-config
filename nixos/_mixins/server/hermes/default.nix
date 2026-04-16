@@ -6,6 +6,9 @@
   ...
 }:
 let
+  aiSopsFile = ../../../../secrets + "/ai.yaml";
+  hermesSopsFile = ../../../../secrets + "/hermes.yaml";
+  mcpSopsFile = ../../../../secrets + "/mcp.yaml";
   username = config.noughty.user.name;
   podmanEnabled = lib.attrByPath [
     "home-manager"
@@ -22,6 +25,56 @@ in
   ];
 
   config = lib.mkIf (noughtyLib.hostHasTag "hermes") {
+    sops.secrets = {
+      "hermes/auth" = {
+        sopsFile = ../../../../secrets/hermes-auth.json;
+        format = "json";
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      TELEGRAM_BOT_TOKEN = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      OPENAI_API_KEY = {
+        sopsFile = aiSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      CONTEXT7_API_KEY = {
+        sopsFile = mcpSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      JINA_API_KEY = {
+        sopsFile = mcpSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+    };
+
+    sops.templates."hermes-env" = {
+      content = ''
+        TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
+        OPENAI_API_KEY=${config.sops.placeholder.OPENAI_API_KEY}
+        CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
+        JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+      '';
+      owner = "root";
+      group = "root";
+      mode = "0400";
+    };
+
     assertions = [
       {
         assertion = podmanEnabled;
@@ -46,6 +99,11 @@ in
     services.hermes-agent = {
       enable = true;
       addToSystemPackages = true;
+      authFile = config.sops.secrets."hermes/auth".path;
+      environmentFiles = [ config.sops.templates."hermes-env".path ];
+      documents = {
+        "SOUL.md" = builtins.readFile ./traya-soul.md;
+      };
 
       container = {
         enable = true;
