@@ -85,6 +85,9 @@ in
     services.hermes-agent = {
       enable = true;
       addToSystemPackages = true;
+      environment = {
+        TELEGRAM_HOME_CHANNEL = "-1003933927882";
+      };
       extraPackages = [ pkgs.gh ];
       mcpServers = {
         exa = {
