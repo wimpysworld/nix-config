@@ -3,21 +3,12 @@
   inputs,
   lib,
   noughtyLib,
-  pkgs,
   ...
 }:
 let
   aiSopsFile = ../../../../secrets + "/ai.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
-  hermesAptConfig = pkgs.writeText "hermes-apt.conf" ''
-    Acquire::Retries "10";
-    Acquire::ForceIPv4 "true";
-    Acquire::http::No-Cache "true";
-    Acquire::https::No-Cache "true";
-    Acquire::http::Pipeline-Depth "0";
-  '';
-  username = config.noughty.user.name;
 in
 {
   imports = [
@@ -79,20 +70,6 @@ in
       mode = "0400";
     };
 
-    virtualisation.docker.enable = lib.mkForce false;
-
-    security.sudo.extraRules = [
-      {
-        users = [ username ];
-        commands = [
-          {
-            command = "/run/current-system/sw/bin/podman";
-            options = [ "NOPASSWD" ];
-          }
-        ];
-      }
-    ];
-
     services.hermes-agent = {
       enable = true;
       addToSystemPackages = true;
@@ -100,19 +77,6 @@ in
       environmentFiles = [ config.sops.templates."hermes-env".path ];
       documents = {
         "SOUL.md" = builtins.readFile ./traya-soul.md;
-      };
-
-      container = {
-        enable = true;
-        backend = "podman";
-        hostUsers = [ username ];
-        extraOptions = [
-          "--tmpfs"
-          "/var/lib/apt/lists:rw,nosuid,nodev"
-        ];
-        extraVolumes = [
-          "${hermesAptConfig}:/etc/apt/apt.conf.d/99-hermes-retries.conf:ro"
-        ];
       };
 
       settings = {
@@ -128,7 +92,5 @@ in
         };
       };
     };
-
-    systemd.services.hermes-agent.serviceConfig.RestartSec = lib.mkForce 30;
   };
 }
