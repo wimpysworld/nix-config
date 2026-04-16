@@ -114,9 +114,9 @@ in
 
       settings = {
         model = {
-          default = "qwen3.5-9b";
+          default = "qwen3.5-35b-a3b";
           provider = "custom";
-          base_url = "http://127.0.0.1:8080/v1";
+          base_url = "http://skrye.drongo-gamma.ts.net:8080/v1";
         };
 
         fallback_model = {
