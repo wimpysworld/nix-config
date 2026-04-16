@@ -3,12 +3,14 @@
   inputs,
   lib,
   noughtyLib,
+  pkgs,
   ...
 }:
 let
   aiSopsFile = ../../../../secrets + "/ai.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
+  hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   username = config.noughty.user.name;
 in
 {
@@ -83,11 +85,11 @@ in
     services.hermes-agent = {
       enable = true;
       addToSystemPackages = true;
+      extraPackages = [ pkgs.gh ];
+
+      # Upstream seeds these into ${hermesHome}/auth.json and ${hermesHome}/.env.
       authFile = config.sops.secrets."hermes/auth".path;
       environmentFiles = [ config.sops.templates."hermes-env".path ];
-      documents = {
-        "SOUL.md" = builtins.readFile ./traya-soul.md;
-      };
 
       settings = {
         model = {
@@ -100,7 +102,17 @@ in
           provider = "openai-codex";
           model = "gpt-5.4";
         };
+
+        memory = {
+          memory_enabled = true;
+          user_profile_enabled = true;
+          provider = "holographic";
+        };
       };
     };
+
+    systemd.tmpfiles.rules = [
+      "L+ ${hermesHome}/SOUL.md - - - - ${./traya-soul.md}"
+    ];
   };
 }
