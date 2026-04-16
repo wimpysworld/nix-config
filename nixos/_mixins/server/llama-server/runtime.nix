@@ -67,10 +67,9 @@ let
     acceleration:
     if acceleration == "vulkan" then
       [
-        "-fa"
-        "1"
-        "--mmap"
-        "0"
+        "--flash-attn"
+        "on"
+        "--no-mmap"
       ]
     else
       [ ];

@@ -47,6 +47,7 @@ let
     name = "llama-server-launch";
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.findutils
       llamaPackage
     ];
     text = ''
@@ -54,7 +55,12 @@ let
       port="$2"
       shift 2
 
-      mapfile -t modelPathMatches < <(compgen -G "$modelPathPattern")
+      snapshotRoot="''${modelPathPattern%/*/*}"
+      modelFileName="''${modelPathPattern##*/}"
+
+      mapfile -t modelPathMatches < <(
+        find "$snapshotRoot" -mindepth 2 -maxdepth 2 -name "$modelFileName" -print
+      )
 
       if [[ "''${#modelPathMatches[@]}" -ne 1 ]]; then
         printf 'Error: expected one model path for pattern %s, got %s\n' \
@@ -127,6 +133,27 @@ in
     systemd.services.llama-swap = {
       requires = [ "llama-models-preseed.service" ];
       after = [ "llama-models-preseed.service" ];
+      environment =
+        {
+          HOME = "%S/llama-swap";
+          TMPDIR = "%t/llama-swap";
+          XDG_CACHE_HOME = "%C/llama-swap";
+          XDG_CONFIG_HOME = "%S/llama-swap";
+          XDG_DATA_HOME = "%S/llama-swap";
+        }
+        // lib.optionalAttrs (accel == "vulkan") {
+          LD_LIBRARY_PATH = "/run/opengl-driver/lib:/run/opengl-driver-32/lib";
+          XDG_DATA_DIRS = "/run/opengl-driver/share:/run/opengl-driver-32/share";
+        };
+      serviceConfig = {
+        CacheDirectory = "llama-swap";
+        RuntimeDirectory = "llama-swap";
+        StateDirectory = "llama-swap";
+        SupplementaryGroups = [
+          "render"
+          "video"
+        ];
+      };
     };
   };
 }

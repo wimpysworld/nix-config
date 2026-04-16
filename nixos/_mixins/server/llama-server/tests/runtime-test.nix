@@ -41,10 +41,9 @@ assert
     "1.000000"
     "--min-p"
     "0.010000"
-    "-fa"
-    "1"
-    "--mmap"
-    "0"
+    "--flash-attn"
+    "on"
+    "--no-mmap"
   ];
 assert
   vulkanRuntime.selectedRuntimeModels.embedding.runtimeArgs == [
@@ -57,14 +56,13 @@ assert
     "--embedding"
     "--pooling"
     "last"
-    "-fa"
-    "1"
-    "--mmap"
-    "0"
+    "--flash-attn"
+    "on"
+    "--no-mmap"
   ];
 assert lib.length vulkanRuntime.selectedModelDownloads == 5;
 assert cudaRuntime.selectedModelTier.name == "vram16";
 assert cudaRuntime.selectedRuntimeModels.reasoning.publicName == "gpt-oss-20b";
-assert !(builtins.elem "-fa" cudaRuntime.selectedRuntimeModels.reasoning.runtimeArgs);
-assert !(builtins.elem "--mmap" cudaRuntime.selectedRuntimeModels.reasoning.runtimeArgs);
+assert !(builtins.elem "--flash-attn" cudaRuntime.selectedRuntimeModels.reasoning.runtimeArgs);
+assert !(builtins.elem "--no-mmap" cudaRuntime.selectedRuntimeModels.reasoning.runtimeArgs);
 true
