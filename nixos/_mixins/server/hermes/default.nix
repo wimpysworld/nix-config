@@ -13,6 +13,7 @@ let
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   hermesAgentPackage = inputs.hermes-agent.packages.${pkgs.system}.default;
   hermesExtraPackages = with pkgs; [
+    bat
     curl
     ffmpeg
     gh
@@ -21,6 +22,7 @@ let
     nodejs
     python3Minimal
     ripgrep
+    tree
     uv
   ];
   wrappedHermesBash = pkgs.runCommand "hermes-wrapped-bash" { } ''
