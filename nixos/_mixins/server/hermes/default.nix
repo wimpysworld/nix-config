@@ -19,7 +19,8 @@ let
     git
     jq
     nodejs
-    python3
+    python3Minimal
+    ripgrep
     uv
   ];
   wrappedHermesBash = pkgs.runCommand "hermes-wrapped-bash" { } ''
