@@ -88,7 +88,15 @@ in
       environment = {
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
       };
-      extraPackages = [ pkgs.gh ];
+      extraPackages = with pkgs; [
+        curl
+        ffmpeg
+        gh
+        jq
+        nodejs
+        python3
+        uv
+      ];
       mcpServers = {
         exa = {
           url = "https://mcp.exa.ai/mcp";
