@@ -176,6 +176,7 @@ in
         model = {
           default = "qwen3.5-35b-a3b";
           provider = "custom";
+          context_length = 262144;
           base_url = "http://skrye.drongo-gamma.ts.net:8080/v1";
         };
 
