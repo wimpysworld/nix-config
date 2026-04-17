@@ -97,11 +97,18 @@ Important paths:
 - Managed env file target: `/var/lib/hermes/.hermes/.env`
 - Identity file: `/var/lib/hermes/.hermes/SOUL.md`
 
-`SOUL.md` is currently installed by tmpfiles as a symlink to the repo copy:
+`SOUL.md` is currently installed by tmpfiles as a symlink to a rendered
+template. That template composites the public repo copy in `traya-soul.md`.
 
 ```nix
+sops.templates."hermes-soul" = {
+  content = ''
+    ${builtins.readFile ./traya-soul.md}
+  '';
+};
+
 systemd.tmpfiles.rules = [
-  "L+ ${hermesHome}/SOUL.md - - - - ${./traya-soul.md}"
+  "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
 ];
 ```
 
@@ -112,12 +119,12 @@ That is the current implementation. It is not being declared through
 
 ## Secrets and Auth
 
-Hermes currently draws from four secret sources:
+Hermes currently draws from several secret sources:
 
-- `secrets/hermes.yaml`
 - `secrets/ai.yaml`
-- `secrets/mcp.yaml`
+- `secrets/hermes.yaml`
 - `secrets/hermes-auth.json`
+- `secrets/mcp.yaml`
 
 The live env template is rendered through `sops.templates."hermes-env"` and
 currently exports:

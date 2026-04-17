@@ -8,6 +8,7 @@
 }:
 let
   aiSopsFile = ../../../../secrets + "/ai.yaml";
+  bondSopsFile = ../../../../secrets + "/hermes-bond.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
@@ -103,6 +104,13 @@ in
         mode = "0400";
       };
 
+      BOND_MD = {
+        sopsFile = bondSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
       ANTHROPIC_API_KEY = {
         sopsFile = aiSopsFile;
         owner = "root";
@@ -132,6 +140,17 @@ in
         ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+      '';
+      owner = "root";
+      group = "root";
+      mode = "0400";
+    };
+
+    sops.templates."hermes-soul" = {
+      content = ''
+        ${builtins.readFile ./traya-soul.md}
+
+        ${config.sops.placeholder.BOND_MD}
       '';
       owner = "root";
       group = "root";
@@ -196,7 +215,7 @@ in
     systemd.services.hermes-agent.path = lib.mkBefore [ wrappedHermesBash ];
 
     systemd.tmpfiles.rules = [
-      "L+ ${hermesHome}/SOUL.md - - - - ${./traya-soul.md}"
+      "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
     ];
   };
 }
