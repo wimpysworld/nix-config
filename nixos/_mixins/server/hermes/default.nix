@@ -25,6 +25,7 @@ let
     gnused
     gnutar
     jq
+    just
     lsof
     mawk
     nh
@@ -40,6 +41,7 @@ let
     util-linux
     uv
     wget
+    yq
   ];
   wrappedHermesBash = pkgs.runCommand "hermes-wrapped-bash" { } ''
     mkdir -p "$out/bin"
