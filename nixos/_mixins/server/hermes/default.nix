@@ -218,9 +218,38 @@ in
           base_url = "http://skrye.drongo-gamma.ts.net:8080/v1";
         };
 
+        custom_providers = [
+          {
+            name = "zannah";
+            base_url = "http://zannah.drongo-gamma.ts.net:8080/v1";
+            model = "qwen3-coder-next";
+            models = {
+              qwen3-coder-next = {
+                context_length = 262144;
+              };
+              "qwen3.5-35b-a3b" = {
+                context_length = 262144;
+              };
+            };
+          }
+        ];
+
+        providers = {
+          anthropic = {
+            allowed_models = [
+              "claude-sonnet-4-6"
+              "claude-opus-4-6"
+            ];
+          };
+          openai-codex = {
+            allowed_models = [ "gpt-5.4" ];
+          };
+        };
+
         fallback_model = {
-          provider = "openai-codex";
-          model = "gpt-5.4";
+          provider = "custom";
+          model = "qwen3.5-35b-a3b";
+          base_url = "http://zannah.drongo-gamma.ts.net:8080/v1";
         };
 
         memory = {
