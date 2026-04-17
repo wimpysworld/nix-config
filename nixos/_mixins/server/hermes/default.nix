@@ -15,15 +15,31 @@ let
   hermesExtraPackages = with pkgs; [
     bat
     curl
+    fd
     ffmpeg
+    findutils
+    fzf
     gh
     git
+    gnugrep
+    gnused
+    gnutar
     jq
+    lsof
+    mawk
+    nh
+    nix-direnv
     nodejs
+    poppler-utils
+    procps
     python3Minimal
     ripgrep
+    sd
     tree
+    unzip
+    util-linux
     uv
+    wget
   ];
   wrappedHermesBash = pkgs.runCommand "hermes-wrapped-bash" { } ''
     mkdir -p "$out/bin"
