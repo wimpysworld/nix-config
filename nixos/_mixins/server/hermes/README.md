@@ -20,15 +20,15 @@ Three GitHub accounts named after female Sith Lords, operating under a shared Gi
 - **Domain**: `darth.cc` - email aliases `traya@darth.cc`, `skrye@darth.cc`, `zannah@darth.cc` route to the owner
 - **Chat client**: Telegram
 
-## Research Required
+## Key Decisions
 
-The following decisions are deferred pending research:
+The core platform choices are settled:
 
-| Question | Options | Notes |
+| Question | Decision | Notes |
 |---|---|---|
-| Agent software | **Hermes Agent** - decided. See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) | Originally evaluated PicoClaw vs ZeroClaw; both superseded by Hermes (NousResearch). First-class NixOS module, podman container mode, declarative config, superior memory system. |
-| Messaging platform | **Telegram** - decided. See [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) | Long polling only; Discord evaluated and set aside |
-| Inference architecture | **Revan hub + Strix Halo inference** - decided. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) | llama-swap on all hosts; Tailscale mesh; RTX 2000e for embedding |
+| Agent software | **Hermes Agent** | Chosen because it has a first-class NixOS module, declarative configuration, native and container deployment modes, durable memory primitives, and active upstream development. |
+| Messaging platform | **Telegram** | Chosen because it fits the primary mobile chat workflow, works behind NAT with long polling, handles voice notes well, and avoids running a public webhook endpoint. |
+| Inference architecture | **Revan hub + Strix Halo inference** - decided. See [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) | llama-swap on all hosts; Tailscale mesh; RTX 2000e for embedding |
 | GitHub tooling | [github-mcp-server](https://github.com/github/github-mcp-server) vs `gh` CLI | `sith-traya` account created; defer wiring until GitHub integration phase |
 
 ## Infrastructure
@@ -79,7 +79,7 @@ All three hosts join the same Tailnet. The existing Nix Tailscale module auto-re
 | **Tailscale** | Mesh VPN | All three hosts (auto-registered via OAuth) |
 | **Telegram** | Human-agent messaging | Revan (via Hermes gateway) |
 
-See [PICO-vs-ZERO.md](PICO-vs-ZERO.md) for the agent software evaluation (PicoClaw, ZeroClaw, and the superseding Hermes decision). See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) for the performance case, hardware benchmarks, backend comparison, and full model selection rationale.
+Hermes Agent and Telegram are the settled foundation for the deployment. See [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) for the performance case, hardware benchmarks, backend comparison, and model-serving rationale.
 
 ## Architecture Decisions
 
@@ -321,7 +321,7 @@ MCP server environment variables in `headers` use `${VAR}` syntax, resolved from
 
 **Streaming timeouts**: Hermes auto-adjusts timeouts for local providers (localhost, LAN IPs). Tailscale addresses (100.x.y.z) may not be auto-detected as local. If prefill latency on large models causes timeouts, set `HERMES_STREAM_READ_TIMEOUT=1800` in the environment.
 
-See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) §9 for the full llama-swap configurations, model distribution per host, and rationale per model slot.
+See [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) §9 for the full llama-swap configurations, model distribution per host, and rationale per model slot.
 
 **Inference host operations**:
 - `llama-models-preseed.service` is present on all three hosts
@@ -381,7 +381,9 @@ Hermes reads `SOUL.md` as the agent's primary identity, slot #1 in the system pr
 
 ### 5. Messaging Interface: Telegram
 
-**Decision**: Telegram is the sole human-agent interface. See [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) for the full evaluation.
+**Decision**: Telegram is the sole human-agent interface.
+
+**Rationale**: Telegram matches the intended day-to-day workflow better than Discord. It supports direct mobile-first interaction, long polling without exposing a public endpoint, and practical voice-note handling. Discord's remaining advantage is inbound webhook convenience, and that gap is small enough to cover with a lightweight bridge when external systems need to notify the agent.
 
 Webhook-based integrations from external services (GitHub, Grafana, uptime monitors) will use a lightweight HTTP-to-Telegram bridge when needed. The bridge receives HTTP POSTs from external services and relays them to the appropriate Telegram topic via `sendMessage`.
 
@@ -1032,7 +1034,7 @@ Skrye and Zannah are reserved for future activation as subordinate agents, poten
 
 **Revan GPU headroom**: the RTX 2000e's 16 GB VRAM is lightly utilised (~7 GB for embedding + small model + Jellyfin). Future options include: a larger local model for more capable on-hub inference, a re-ranking model (qwen3-reranker:4b) for improved retrieval quality, or additional embedding models for specialised domains.
 
-**NPU co-processing**: the Strix Halo NPU (40 XDNA2 units) is not yet usable with llama.cpp. Once tooling matures, it could run embedding or small models concurrently with the iGPU, increasing per-host capacity. See [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) §10.
+**NPU co-processing**: the Strix Halo NPU (40 XDNA2 units) is not yet usable with llama.cpp. Once tooling matures, it could run embedding or small models concurrently with the iGPU, increasing per-host capacity. See [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) §10.
 
 **Honcho memory provider**: Graduate from Holographic to Honcho when operational experience justifies the infrastructure. Options: self-host (PostgreSQL + pgvector + FastAPI + deriver), or use the hosted service ($100 free credits, usage-based pricing thereafter). See §9 Memory Architecture.
 
@@ -1054,12 +1056,10 @@ Skrye and Zannah are reserved for future activation as subordinate agents, poten
 | Honcho GitHub | https://github.com/plastic-labs/honcho |
 | Honcho docs | https://docs.honcho.dev/ |
 | Honcho pricing | https://honcho.dev/#pricing |
-| PicoClaw vs ZeroClaw evaluation (historical) | [PICO-vs-ZERO.md](PICO-vs-ZERO.md) |
 | llama-swap (v201) | https://github.com/mostlygeek/llama-swap |
 | llama-swap configuration docs | https://github.com/mostlygeek/llama-swap/blob/main/docs/configuration.md |
 | PNY RTX 2000e Ada Generation | https://www.pny.com/rtx-2000e-ada-generation |
 | Framework Desktop ML Benchmarks | https://frame.work/nl/en/desktop?tab=machine-learning |
 | AMD ROCm for Radeon/Ryzen | https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/ |
 | Tailscale performance best practices | https://tailscale.com/docs/reference/best-practices/performance |
-| Telegram vs Discord evaluation | [TELEGRAM-vs-DISCORD.md](TELEGRAM-vs-DISCORD.md) |
-| Backend comparison and model selection | [OLLAMA-vs-LLAMACPP.md](OLLAMA-vs-LLAMACPP.md) |
+| Backend comparison and model selection | [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) |
