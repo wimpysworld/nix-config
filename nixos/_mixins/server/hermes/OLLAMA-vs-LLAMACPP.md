@@ -1,7 +1,7 @@
 # Ollama vs llama.cpp on Strix Halo
 
 > AMD Ryzen AI Max+ 395 (gfx1151, RDNA3.5) · 128 GB LPDDR5X · Framework Desktop mainboard · NixOS 25.11 · Linux 6.19.11 · Ollama 0.20.6 · llama.cpp b8775 · ROCm 7.2.1 · linux-firmware 20260309
-> Benchmarks cover the two Strix Halo inference hosts. In production ZeroClaw selects a target inference host over Tailscale, and that host's local llama-swap launches the requested backend on demand.
+> Benchmarks cover the two Strix Halo inference hosts. In production an autonomous agent can select a target inference host over Tailscale, and that host's local llama-swap can launch the requested backend on demand.
 
 ---
 
@@ -11,7 +11,7 @@
 
 **Practical memory budget:** reserve ~56 GB for NixOS, desktop, and dev tools, leaving ~72 GB for inference. This budget supports the selected local model set for each host, with llama-swap starting each backend on demand rather than preloading everything at boot.
 
-**Revan hub:** Intel i9 9900K (downclocked, 65W), 64 GB RAM, NixOS. Houses an NVIDIA RTX 2000e Ada Generation (16 GB GDDR6 ECC, 50W bus-powered, Ada Lovelace, CUDA) for embedding, re-ranking, a small local model, and Jellyfin NVENC. ZeroClaw runs in a systemd-nspawn container on Revan and sends requests directly to the chosen inference host's llama-swap endpoint.
+**Revan hub:** Intel i9 9900K (downclocked, 65W), 64 GB RAM, NixOS. Houses an NVIDIA RTX 2000e Ada Generation (16 GB GDDR6 ECC, 50W bus-powered, Ada Lovelace, CUDA) for embedding, re-ranking, a small local model, and Jellyfin NVENC. An autonomous agent runtime on Revan can send requests directly to the chosen inference host's llama-swap endpoint.
 
 MoE model throughput is governed by active parameters, not total parameters. A 30B MoE with 3B active runs faster than a 7B dense model. Large dense models (27B+) are memory-bandwidth-ceilinged at ~10-11 tok/s regardless of backend.
 
@@ -89,7 +89,7 @@ Prompt-processing results add one more useful signal. Ollama still shows a first
 
 The Vulkan llama.cpp path still delivers the highest throughput across most production model families and removes the Gemma/Qwen backend split. For production models: qwen3.5:35b-a3b reaches 57.72 tok/s (+31% over best Ollama), qwen3-coder-next reaches 44.87 tok/s (+26%), qwen3-coder:30b-a3b reaches 88.00 tok/s (+28%), and gpt-oss:20b reaches 82.78 tok/s (+80%). The qwen2.5 coder models are the exception - they are close enough to parity that the backend choice matters less than the role fit.
 
-For gemma4:e4b the case for llama-server is still not throughput - ROCm Ollama on Q4_K_M (54.06 tok/s) is faster than Vulkan llama-bench on UD-Q6_K_XL (43.42 tok/s) - but audio reliability: only llama.cpp exposes the Q6_K quant required for stable audio on clips beyond ~17 seconds, and only llama.cpp has a non-experimental conformer encoder path. The migration is still a config-only change - ZeroClaw connects via OpenAI-compatible API on either backend, so no agent code changes are required.
+For gemma4:e4b the case for llama-server is still not throughput - ROCm Ollama on Q4_K_M (54.06 tok/s) is faster than Vulkan llama-bench on UD-Q6_K_XL (43.42 tok/s) - but audio reliability: only llama.cpp exposes the Q6_K quant required for stable audio on clips beyond ~17 seconds, and only llama.cpp has a non-experimental conformer encoder path. The migration remains a config-only change because both backends expose OpenAI-compatible APIs.
 
 ---
 
@@ -167,11 +167,11 @@ Key features used in this deployment:
 - **Separate embedding and generation processes** - embedding models run with `--embedding --pooling last`, while generation models use the normal text-generation path and role-specific sampler settings.
 - **`apiKeys`** - optional; useful if llama-swap instances are exposed beyond the Tailscale mesh.
 
-**Native router mode** (llama-server PR #17470, December 2025) was evaluated. It provides auto-discovery and LRU eviction but is marked experimental and does not improve the current split where ZeroClaw chooses the host and host-local llama-swap handles local model launch. Not suitable for the deployment.
+**Native router mode** (llama-server PR #17470, December 2025) was evaluated. It provides auto-discovery and LRU eviction but is marked experimental and does not improve the current split where an autonomous agent chooses the host and host-local llama-swap handles local model launch. Not suitable for the deployment.
 
 ### Embedding and re-ranking
 
-Embedding and re-ranking run on Revan's RTX 2000e, co-located with ZeroClaw for zero-network-hop retrieval.
+Embedding and re-ranking run on Revan's RTX 2000e, co-located with the agent runtime for zero-network-hop retrieval.
 
 `llama-server` in `--embedding` mode locks the server to embeddings only. llama-swap handles this naturally - it runs a dedicated llama-server process for the embedding model and a separate one for re-ranking. Generation models stay in their own local processes, with no mixed embedding and generation server.
 
@@ -341,7 +341,7 @@ Speed on Strix Halo (E4B, production quant UD-Q6_K_XL): ROCm Ollama 54.06 tok/s 
 
 ### Qwen 3.5 (Alibaba)
 
-Qwen 3.5 is Alibaba's frontier general-purpose model series, explicitly designed for the "agentic AI era." The architecture combines Gated Delta Networks with sparse MoE, yielding strong knowledge recall and tool use across a wide size range.
+Qwen 3.5 is Alibaba's frontier general-purpose model series. The architecture combines Gated Delta Networks with sparse MoE, yielding strong knowledge recall and tool use across a wide size range.
 
 | Variant | Disk | Architecture | Context | Notes |
 |---|---|---|---|---|
@@ -360,7 +360,7 @@ The 27B uses a Gated DeltaNet hybrid architecture - linear attention alternating
 
 ## 7. Model Selection: Embedding
 
-Embedding runs on Revan's RTX 2000e (CUDA), co-located with ZeroClaw. This eliminates network round-trips for RAG embedding and retrieval - the embedding model is local to ZeroClaw's data store.
+Embedding runs on Revan's RTX 2000e (CUDA), co-located with the agent runtime. This eliminates network round-trips for RAG embedding and retrieval - the embedding model is local to the working data store.
 
 No apples-to-apples embedding benchmark set exists yet for this document. The current benchmark harness can measure embeddings, but the production notes below still rely on published model quality, context, and fit rather than local throughput figures.
 
@@ -372,7 +372,7 @@ No apples-to-apples embedding benchmark set exists yet for this document. The cu
 | 4B | 2.5 GB | ~5 GB | 40K | Up to 4096 |
 | 8B (latest) | 4.7 GB | ~9 GB | 40K | Up to 4096 |
 
-MTEB multilingual leaderboard #1 (8B variant, score 70.58, June 2025). Code retrieval capable. 100+ languages. The 32K-40K context window can embed entire source files - critical for code-aware memory in a coding agent.
+MTEB multilingual leaderboard #1 (8B variant, score 70.58, June 2025). Code retrieval capable. 100+ languages. The 32K-40K context window can embed entire source files - useful for code-aware memory in autonomous coding agents.
 
 **MTEB benchmarks (retrieval / code retrieval):**
 
@@ -410,12 +410,12 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
                     │  RTX 2000e Ada (16 GB, CUDA) │
                     │                               │
                     │  ┌─────────────────────────┐  │
-                    │  │  ZeroClaw (nspawn)       │  │
-                    │  │  Darth Traya             │  │
+                    │  │  Autonomous agent       │  │
+                    │  │  runtime                │  │
                     │  └────────┬────────────────┘  │
                     │           │                    │
                     │  ┌────────▼────────────────┐  │
-                    │  │  ZeroClaw routing        │  │
+                    │  │  Request routing         │  │
                     │  │  ├─ host selection       │  │
                     │  │  └─ model selection      │  │
                     │  └────────┬────────────────┘  │
@@ -435,12 +435,12 @@ The quality plateau is at 4B, not 8B. The 4B-to-8B delta (0.62 points on code re
                   └───────────────┘  └────────────────────┘
 
                   Cloud fallback: OpenCode Zen
-                  Frontier: Anthropic Claude (via ZeroClaw routing)
+                  Frontier: Anthropic Claude
 ```
 
-**Tailscale mesh:** all three hosts join the same Tailnet via OAuth auto-registration, already configured in the Nix Tailscale module. ZeroClaw calls the chosen inference host directly over Tailscale. The local Strix Halo has sub-millisecond Tailscale overhead, direct WireGuard tunnel on LAN. The remote Strix Halo adds internet-path latency, which is negligible for token-by-token streaming - generation time per token, 14-70ms, dwarfs the network hop.
+**Tailscale mesh:** all three hosts join the same Tailnet via OAuth auto-registration, already configured in the Nix Tailscale module. An autonomous agent can call the chosen inference host directly over Tailscale. The local Strix Halo has sub-millisecond Tailscale overhead, direct WireGuard tunnel on LAN. The remote Strix Halo adds internet-path latency, which is negligible for token-by-token streaming - generation time per token, 14-70ms, dwarfs the network hop.
 
-**What was traded:** the master/padawan warm-standby topology. ZeroClaw now runs as a single instance on Revan. If Revan is unavailable, ZeroClaw must be manually deployed to a Strix Halo as a degraded-mode fallback. NixOS declarative config makes this fast - the same nspawn module applies on any host. Both Strix Halos are now fully utilised for inference instead of one sitting idle as a standby.
+**What was traded:** the master/padawan warm-standby topology. The agent runtime now runs as a single instance on Revan. If Revan is unavailable, the runtime must be manually deployed to a Strix Halo as a degraded-mode fallback. NixOS declarative config keeps that recovery path fast. Both Strix Halos are now fully utilised for inference instead of one sitting idle as a standby.
 
 ### Revan model table (RTX 2000e, CUDA)
 
@@ -503,7 +503,7 @@ Generation settings are also policy-driven. At the time of writing, the live pol
 | Cloud fallback | OpenCode Zen | `opencode-zen` | Local inference unreachable or model unavailable |
 | Frontier | Anthropic | `claude-sonnet-4-6` | Complex reasoning, deep research, tasks exceeding local tier |
 
-ZeroClaw's `[reliability]` section handles automatic failover: timeout, connection error, 503, or 429 (after API key rotation) triggers fallback to the next provider in the chain. Cloud fallback does not require manual intervention.
+An autonomous agent's reliability layer can handle automatic failover: timeout, connection error, 503, or 429 can trigger fallback to the next provider in the chain. Cloud fallback does not require manual intervention.
 
 ### Host distribution
 
@@ -561,100 +561,16 @@ models:
 
 ```
 
-These examples are illustrative. The live Nix policy now generates `--ctx-size`, `--cache-type-k`, and `--cache-type-v` from the shared role definition rather than hard-coding them in per-host notes. In the current deployment model, ZeroClaw chooses the host and llama-swap on that host launches only its own local backends.
+These examples are illustrative. The live Nix policy now generates `--ctx-size`, `--cache-type-k`, and `--cache-type-v` from the shared role definition rather than hard-coding them in per-host notes. In the current deployment model, the agent runtime chooses the host and llama-swap on that host launches only its own local backends.
 
-### ZeroClaw configuration
+**How routing flows in a generic autonomous-agent deployment:**
 
-ZeroClaw chooses the target host and model directly. Each `provider` entry points at the chosen host's local llama-swap endpoint. llama-swap then starts the matching local backend on demand. ZeroClaw uses `[[model_routes]]` hints to select models by task type and `[query_classification]` for automatic routing.
-
-Configuration pattern (`~/.zeroclaw/config.toml`):
-
-```toml
-# --- Provider and default model ---
-default_provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
-default_model = "hint:agentic"
-
-# --- Model routes (hint-based task dispatch) ---
-[[model_routes]]
-hint = "code"
-provider = "custom:http://skrye.drongo-gamma.ts.net:8080/v1"
-model = "qwen3-coder-30b-a3b"
-
-[[model_routes]]
-hint = "agentic"
-provider = "custom:http://zannah.drongo-gamma.ts.net:8080/v1"
-model = "qwen3.5-35b-a3b"
-
-[[model_routes]]
-hint = "reasoning"
-provider = "custom:http://zannah.drongo-gamma.ts.net:8080/v1"
-model = "gemma4-26b"
-
-[[model_routes]]
-hint = "media"
-provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
-model = "gemma4-e4b"
-
-[[model_routes]]
-hint = "cloud"
-provider = "opencode"
-model = "opencode-zen"
-
-[[model_routes]]
-hint = "frontier"
-provider = "anthropic"
-model = "claude-sonnet-4-6"
-
-# --- Embedding routes ---
-[memory]
-backend = "sqlite"
-embedding_model = "hint:local-embed"
-
-[[embedding_routes]]
-hint = "local-embed"
-provider = "custom:http://revan.drongo-gamma.ts.net:8080/v1"
-model = "qwen3-embedding-4b"
-dimensions = 4096
-
-# --- Query classification (automatic hint routing) ---
-[query_classification]
-enabled = true
-
-[[query_classification.rules]]
-hint = "code"
-patterns = ["```", "fn ", "def ", "func ", "class "]
-priority = 10
-
-[[query_classification.rules]]
-hint = "reasoning"
-keywords = ["explain", "analyze", "research", "compare", "write", "draft"]
-min_length = 100
-priority = 5
-
-# --- Reliability and fallback ---
-[reliability]
-fallback_providers = ["opencode", "anthropic"]
-provider_retries = 2
-provider_backoff_ms = 500
-
-[reliability.model_fallbacks]
-"qwen3-coder-30b-a3b" = ["qwen3.5-35b-a3b"]
-"qwen3.5-35b-a3b" = ["gemma4-26b"]
-"gemma4-26b" = ["qwen3.5-35b-a3b"]
-
-# --- Pacing for local inference ---
-[pacing]
-step_timeout_secs = 120
-```
-
-**How routing flows:**
-
-1. User sends a message via Telegram.
-2. ZeroClaw's `[query_classification]` matches the message against rules and selects a hint (e.g. `hint:code` for messages containing code fences).
-3. The hint resolves to a `[[model_routes]]` entry - e.g. `hint:code` → `qwen3-coder-30b-a3b` on `skrye.drongo-gamma.ts.net`.
-4. llama-swap on that host sees the `model: "qwen3-coder-30b-a3b"` request and starts the matching local llama-server process if it is not already running.
-5. If the chosen host is unreachable, ZeroClaw's `[reliability]` chain retries, then falls back to `opencode` (OpenCode Zen), then `anthropic` (Claude).
-6. Embedding requests (`v1/embeddings` with `model: "qwen3-embedding-4b"`) go directly to Revan's local embedding process - no extra routing layer.
+1. The agent classifies the request by task type.
+2. The task hint resolves to a host and model choice.
+3. The selected host receives an OpenAI-compatible request for that model.
+4. llama-swap on that host starts the matching local llama-server process if it is not already running.
+5. If the chosen host is unreachable, the reliability layer retries, then falls back to cloud providers.
+6. Embedding requests go directly to the local embedding process on the retrieval host.
 
 ### Rationale per slot
 
@@ -676,15 +592,15 @@ step_timeout_secs = 120
 
 **qwen3-embedding:0.6b-q8_0 as embedding fallback:** retained for the 8 GB tier where the 4B model is too large a permanent fit.
 
-**OpenCode Zen as cloud fallback:** activated automatically by ZeroClaw's `[reliability]` chain when local inference is unreachable. ZeroClaw has native `opencode` provider support.
+**OpenCode Zen as cloud fallback:** activated automatically when local inference is unreachable.
 
 **Frontier (Claude):** local models handle the 80-90% routine case; Claude handles deep research and complex multi-step reasoning that exceeds the local tier.
 
-### Why ZeroClaw needs embeddings
+### Why autonomous agents need embeddings
 
-ZeroClaw's memory pipeline has three stages: hot cache, FTS5 keyword search, and vector similarity search. Embeddings unlock stage 3 - semantic memory recall finds relevant memories even when the query shares no exact keywords with stored entries. Without embeddings, ZeroClaw falls back to `NoopEmbedding`, which returns empty vectors and limits retrieval to keyword matching only. The `EmbeddingProvider` trait uses any OpenAI-compatible `/embeddings` endpoint, so llama-server embedding models work natively. ZeroClaw's `[[embedding_routes]]` with `hint:` patterns route embedding requests to the correct provider.
+An autonomous agent's memory pipeline usually has three stages: hot cache, keyword search, and vector similarity search. Embeddings unlock semantic memory recall, so relevant memories can still be found when the query shares no exact keywords with stored entries. Without embeddings, retrieval falls back to keyword matching only. Any OpenAI-compatible `/embeddings` endpoint can fill this role, so llama-server embedding models fit cleanly into the same serving pattern.
 
-For agents doing multi-session agentic work - PR reviews that reference earlier discussions, blog drafts that build on prior research - hybrid retrieval is meaningfully better than keyword-only.
+For autonomous agents doing multi-session work - PR reviews that reference earlier discussions, blog drafts that build on prior research - hybrid retrieval is meaningfully better than keyword-only.
 
 ### Models evaluated and set aside
 
@@ -742,6 +658,5 @@ The Ryzen AI Max+ 395 includes 40 XDNA2 neural processing units - dedicated sili
 | llama-swap configuration docs | https://github.com/mostlygeek/llama-swap/blob/main/docs/configuration.md |
 | nixpkgs PR #488117 - llama-cpp hfRepo/hfFile | https://github.com/NixOS/nixpkgs/pull/488117 |
 | PNY RTX 2000e Ada Generation | https://www.pny.com/rtx-2000e-ada-generation |
-| ZeroClaw providers reference | https://github.com/zeroclaw-labs/zeroclaw/blob/master/docs/reference/api/providers-reference.md |
 | Tailscale performance best practices | https://tailscale.com/docs/reference/best-practices/performance |
 | Level1Techs Strix Halo LLM benchmarks | https://forum.level1techs.com/t/strix-halo-ryzen-ai-max-395-llm-benchmark-results/233796 |
