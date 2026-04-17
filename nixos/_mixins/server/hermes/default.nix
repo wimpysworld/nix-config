@@ -171,6 +171,8 @@ in
       };
     };
 
+    systemd.services.hermes-agent.path = lib.mkBefore [ wrappedHermesBash ];
+
     systemd.tmpfiles.rules = [
       "L+ ${hermesHome}/SOUL.md - - - - ${./traya-soul.md}"
     ];
