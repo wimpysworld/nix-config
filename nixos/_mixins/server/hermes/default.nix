@@ -11,6 +11,7 @@ let
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
+  hermesAgentPackage = inputs.hermes-agent.packages.${pkgs.system}.default;
   hermesExtraPackages = with pkgs; [
     curl
     ffmpeg
@@ -21,6 +22,25 @@ let
     python3
     uv
   ];
+  wrappedHermesBash = pkgs.runCommand "hermes-wrapped-bash" { } ''
+    mkdir -p "$out/bin"
+
+    cat > "$out/bin/bash" <<EOF
+    #!${pkgs.bash}/bin/bash
+    export PATH="$out/bin:${
+      lib.makeBinPath (
+        [
+          pkgs.coreutils
+          hermesAgentPackage
+        ]
+        ++ hermesExtraPackages
+      )
+    }"
+    exec ${pkgs.bash}/bin/bash --noprofile --norc "\$@"
+    EOF
+
+    chmod 0555 "$out/bin/bash"
+  '';
   username = config.noughty.user.name;
 in
 {
@@ -30,7 +50,11 @@ in
 
   config = lib.mkIf (noughtyLib.hostHasTag "hermes") {
     users.users.hermes.uid = 1984;
-    users.users.hermes.packages = hermesExtraPackages;
+    users.users.hermes.packages = [
+      wrappedHermesBash
+      hermesAgentPackage
+    ]
+    ++ hermesExtraPackages;
     users.groups.hermes.gid = 1984;
     users.users.${username}.extraGroups = lib.mkAfter [ "hermes" ];
 
@@ -99,7 +123,11 @@ in
       environment = {
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
       };
-      extraPackages = hermesExtraPackages;
+      extraPackages = [
+        wrappedHermesBash
+        hermesAgentPackage
+      ]
+      ++ hermesExtraPackages;
       mcpServers = {
         exa = {
           url = "https://mcp.exa.ai/mcp";
