@@ -103,7 +103,7 @@ in
         mode = "0400";
       };
 
-      OPENAI_API_KEY = {
+      ANTHROPIC_API_KEY = {
         sopsFile = aiSopsFile;
         owner = "root";
         group = "root";
@@ -129,7 +129,7 @@ in
       content = ''
         TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
         TELEGRAM_ALLOWED_USERS=${config.sops.placeholder.TELEGRAM_ALLOWED_USERS}
-        OPENAI_API_KEY=${config.sops.placeholder.OPENAI_API_KEY}
+        ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
       '';

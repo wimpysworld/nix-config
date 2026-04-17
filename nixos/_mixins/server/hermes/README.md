@@ -124,7 +124,7 @@ currently exports:
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_ALLOWED_USERS`
-- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
 - `CONTEXT7_API_KEY`
 - `JINA_API_KEY`
 
@@ -141,6 +141,10 @@ Operationally:
 
 - `.env` is generated state, do not edit it by hand
 - `auth.json` is seeded from `secrets/hermes-auth.json`
+- OpenAI device auth for `openai-codex` comes from `auth.json`, not from an
+  `OPENAI_API_KEY` env var
+- `ANTHROPIC_API_KEY` remains available from `secrets/ai.yaml` for future
+  direct Anthropic provider use
 - live token refresh remains in Hermes state after startup
 
 ## Telegram
