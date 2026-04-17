@@ -11,10 +11,14 @@ let
   bondSopsFile = ../../../../secrets + "/hermes-bond.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
+  claudePackage = inputs.llm-agents.packages.${pkgs.system}.claude-code;
+  codexPackage = inputs.llm-agents.packages.${pkgs.system}.codex;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   hermesAgentPackage = inputs.hermes-agent.packages.${pkgs.system}.default;
   hermesExtraPackages = with pkgs; [
     bat
+    claudePackage
+    codexPackage
     curl
     fd
     ffmpeg
