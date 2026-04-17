@@ -28,7 +28,7 @@ The core platform choices are settled:
 |---|---|---|
 | Agent software | **Hermes Agent** | Chosen because it has a first-class NixOS module, declarative configuration, native and container deployment modes, durable memory primitives, and active upstream development. |
 | Messaging platform | **Telegram** | Chosen because it fits the primary mobile chat workflow, works behind NAT with long polling, handles voice notes well, and avoids running a public webhook endpoint. |
-| Inference architecture | **Revan hub + Strix Halo inference** - decided. See [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) | llama-swap on all hosts; Tailscale mesh; RTX 2000e for embedding |
+| Inference architecture | **Revan hub + Strix Halo inference** - decided. See [llama-server README](../llama-server/README.md) | llama-swap on all hosts; Tailscale mesh; RTX 2000e for embedding |
 | GitHub tooling | [github-mcp-server](https://github.com/github/github-mcp-server) vs `gh` CLI | `sith-traya` account created; defer wiring until GitHub integration phase |
 
 ## Infrastructure
@@ -79,7 +79,7 @@ All three hosts join the same Tailnet. The existing Nix Tailscale module auto-re
 | **Tailscale** | Mesh VPN | All three hosts (auto-registered via OAuth) |
 | **Telegram** | Human-agent messaging | Revan (via Hermes gateway) |
 
-Hermes Agent and Telegram are the settled foundation for the deployment. See [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) for the performance case, hardware benchmarks, backend comparison, and model-serving rationale.
+Hermes Agent and Telegram are the settled foundation for the deployment. See [llama-server README](../llama-server/README.md) for the performance case, hardware benchmarks, backend comparison, and model-serving rationale.
 
 ## Architecture Decisions
 
@@ -321,7 +321,7 @@ MCP server environment variables in `headers` use `${VAR}` syntax, resolved from
 
 **Streaming timeouts**: Hermes auto-adjusts timeouts for local providers (localhost, LAN IPs). Tailscale addresses (100.x.y.z) may not be auto-detected as local. If prefill latency on large models causes timeouts, set `HERMES_STREAM_READ_TIMEOUT=1800` in the environment.
 
-See [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) §9 for the full llama-swap configurations, model distribution per host, and rationale per model slot.
+See [llama-server README](../llama-server/README.md) §9 for the full llama-swap configurations, model distribution per host, and rationale per model slot.
 
 **Inference host operations**:
 - `llama-models-preseed.service` is present on all three hosts
@@ -1034,7 +1034,7 @@ Skrye and Zannah are reserved for future activation as subordinate agents, poten
 
 **Revan GPU headroom**: the RTX 2000e's 16 GB VRAM is lightly utilised (~7 GB for embedding + small model + Jellyfin). Future options include: a larger local model for more capable on-hub inference, a re-ranking model (qwen3-reranker:4b) for improved retrieval quality, or additional embedding models for specialised domains.
 
-**NPU co-processing**: the Strix Halo NPU (40 XDNA2 units) is not yet usable with llama.cpp. Once tooling matures, it could run embedding or small models concurrently with the iGPU, increasing per-host capacity. See [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) §10.
+**NPU co-processing**: the Strix Halo NPU (40 XDNA2 units) is not yet usable with llama.cpp. Once tooling matures, it could run embedding or small models concurrently with the iGPU, increasing per-host capacity. See [llama-server README](../llama-server/README.md) §10.
 
 **Honcho memory provider**: Graduate from Holographic to Honcho when operational experience justifies the infrastructure. Options: self-host (PostgreSQL + pgvector + FastAPI + deriver), or use the hosted service ($100 free credits, usage-based pricing thereafter). See §9 Memory Architecture.
 
@@ -1062,4 +1062,4 @@ Skrye and Zannah are reserved for future activation as subordinate agents, poten
 | Framework Desktop ML Benchmarks | https://frame.work/nl/en/desktop?tab=machine-learning |
 | AMD ROCm for Radeon/Ryzen | https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/ |
 | Tailscale performance best practices | https://tailscale.com/docs/reference/best-practices/performance |
-| Backend comparison and model selection | [OLLAMA-vs-LLAMACPP.md](../llama-server/OLLAMA-vs-LLAMACPP.md) |
+| Backend comparison and model selection | [llama-server README](../llama-server/README.md) |
