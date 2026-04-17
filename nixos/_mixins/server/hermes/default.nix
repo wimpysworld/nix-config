@@ -131,6 +131,13 @@ in
         group = "root";
         mode = "0400";
       };
+
+      GITHUB_TOKEN = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
     };
 
     sops.templates."hermes-env" = {
@@ -140,6 +147,8 @@ in
         ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+        GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
+        GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
       '';
       owner = "root";
       group = "root";
