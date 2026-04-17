@@ -21,15 +21,6 @@ let
     python3
     uv
   ];
-  hermesWrappedPackage = pkgs.symlinkJoin {
-    name = "hermes-agent-wrapped";
-    paths = [ config.services.hermes-agent.package ];
-    nativeBuildInputs = [ pkgs.makeWrapper ];
-    postBuild = ''
-      wrapProgram $out/bin/hermes \
-        --suffix PATH : ${lib.makeBinPath hermesExtraPackages}
-    '';
-  };
   username = config.noughty.user.name;
 in
 {
@@ -38,10 +29,8 @@ in
   ];
 
   config = lib.mkIf (noughtyLib.hostHasTag "hermes") {
-    environment.systemPackages = lib.mkAfter [ hermesWrappedPackage ];
-    environment.variables.HERMES_HOME = hermesHome;
-
     users.users.hermes.uid = 1984;
+    users.users.hermes.packages = hermesExtraPackages;
     users.groups.hermes.gid = 1984;
     users.users.${username}.extraGroups = lib.mkAfter [ "hermes" ];
 
@@ -106,7 +95,7 @@ in
 
     services.hermes-agent = {
       enable = true;
-      addToSystemPackages = false;
+      addToSystemPackages = true;
       environment = {
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
       };
