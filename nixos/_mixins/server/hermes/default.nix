@@ -18,6 +18,7 @@ let
   hermesAgentPackage = pkgs.hermesAgent;
   hermesUser = config.services.hermes-agent.user;
   hermesGroup = config.services.hermes-agent.group;
+  hermesAuthFile = "${hermesHome}/auth.json";
   hermesExtraPackages = with pkgs; [
     agentBrowserPackage
     bat
@@ -317,6 +318,13 @@ in
           find ${hermesHome}/skills -type f \
             -exec chown ${hermesUser}:${hermesGroup} {} + \
             -exec chmod u+rwX,g+rwX,o-rwx {} + 2>/dev/null || true
+
+          if [ -f ${hermesAuthFile} ]; then
+            # Interactive CLI use can rewrite auth.json as the calling user.
+            # Reset it here so the service user can always read and refresh it.
+            chown ${hermesUser}:${hermesGroup} ${hermesAuthFile}
+            chmod 0600 ${hermesAuthFile}
+          fi
         '';
   };
 }
