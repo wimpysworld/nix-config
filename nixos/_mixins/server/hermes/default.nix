@@ -11,11 +11,11 @@ let
   bondSopsFile = ../../../../secrets + "/hermes-bond.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
-  claudePackage = inputs.llm-agents.packages.${pkgs.system}.claude-code;
-  codexPackage = inputs.llm-agents.packages.${pkgs.system}.codex;
-  agentBrowserPackage = inputs.llm-agents.packages.${pkgs.system}.agent-browser;
+  claudePackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code;
+  codexPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
+  agentBrowserPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
-  hermesAgentPackage = inputs.hermes-agent.packages.${pkgs.system}.default;
+  hermesAgentPackage = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default;
   hermesExtraPackages = with pkgs; [
     bat
     claudePackage
@@ -274,7 +274,7 @@ in
     };
 
     systemd.services.hermes-agent.path = lib.mkBefore [ wrappedHermesBash ];
-    systemd.services.hermes-agent.serviceConfig.ProtectHome = true;
+    systemd.services.hermes-agent.serviceConfig.ProtectHome = lib.mkForce true;
 
     systemd.tmpfiles.rules = [
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
