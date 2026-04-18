@@ -35,7 +35,7 @@ let
     mawk
     nh
     nix-direnv
-    nodejs
+    nodejs-slim
     poppler-utils
     procps
     python3Minimal
