@@ -234,6 +234,17 @@ in
           }
         ];
 
+        terminal = {
+          backend = "local";
+          cwd = "/var/lib/hermes/workspace";
+          timeout = 180;
+          persistent_shell = true;
+          env_passthrough = [
+            "TERM"
+            "COLORTERM"
+          ];
+        };
+
         providers = {
           anthropic = {
             allowed_models = [
