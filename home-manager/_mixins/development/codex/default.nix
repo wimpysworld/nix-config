@@ -475,9 +475,9 @@ let
       ];
       # Keep /tmp writable (Codex default behaviour).
       exclude_slash_tmp = false;
-      # Disable outbound network from within the sandbox; MCP servers
-      # handle all external network access through their own processes.
-      network_access = false;
+      # Allow outbound network from within the sandbox so CLI tools such as
+      # gh can reach their upstream services directly.
+      network_access = true;
     };
 
     # Shell environment policy: strip secrets from every subprocess
