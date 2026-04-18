@@ -224,13 +224,21 @@ in
 
       settings = {
         model = {
-          default = "qwen3.5-35b-a3b";
-          provider = "custom";
-          context_length = 262144;
-          base_url = "http://skrye.drongo-gamma.ts.net:8080/v1";
+          default = "gpt-5.4";
+          provider = "openai-codex";
         };
 
         custom_providers = [
+          {
+            name = "skrye";
+            base_url = "http://skrye.drongo-gamma.ts.net:8080/v1";
+            model = "qwen3.5-35b-a3b";
+            models = {
+              "qwen3.5-35b-a3b" = {
+                context_length = 262144;
+              };
+            };
+          }
           {
             name = "zannah";
             base_url = "http://zannah.drongo-gamma.ts.net:8080/v1";
@@ -264,15 +272,17 @@ in
               "claude-opus-4-6"
             ];
           };
+          copilot = {
+            allowed_models = [ "gpt-5.4" ];
+          };
           openai-codex = {
             allowed_models = [ "gpt-5.4" ];
           };
         };
 
         fallback_model = {
-          provider = "custom";
-          model = "qwen3.5-35b-a3b";
-          base_url = "http://zannah.drongo-gamma.ts.net:8080/v1";
+          provider = "copilot";
+          model = "gpt-5.4";
         };
 
         memory = {

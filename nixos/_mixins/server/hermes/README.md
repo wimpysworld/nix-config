@@ -1,7 +1,7 @@
 # Hermes on Revan
 
 This document describes the current Hermes deployment as implemented by
-[default.nix](default.nix) and the inference stack under
+[default.nix](default.nix), with related local inference capacity under
 [llama-server](../llama-server/default.nix).
 It is the operational source of truth for the landed setup.
 
@@ -12,11 +12,9 @@ The current deployment is:
 - **Agent framework**: Hermes Agent
 - **Chat interface**: Telegram
 - **Hermes host**: `revan`
-- **Inference path**: remote OpenAI-compatible endpoints exposed by the
-  `llama-server` mixin
-- **Primary model**: `qwen3.5-35b-a3b` via the `custom` provider on
-  `skrye.drongo-gamma.ts.net:8080`
-- **Fallback model**: `openai-codex` with `gpt-5.4`
+- **Inference path**: OAuth-backed cloud providers managed by Hermes
+- **Primary model**: `gpt-5.4` via the `openai-codex` provider
+- **Fallback model**: `gpt-5.4` via the `copilot` provider
 - **Memory provider**: Holographic
 - **Deployment mode**: native NixOS service, not podman container mode
 
@@ -64,14 +62,12 @@ The key current settings are:
 ```nix
 services.hermes-agent.settings = {
   model = {
-    default = "qwen3.5-35b-a3b";
-    provider = "custom";
-    context_length = 262144;
-    base_url = "http://skrye.drongo-gamma.ts.net:8080/v1";
+    default = "gpt-5.4";
+    provider = "openai-codex";
   };
 
   fallback_model = {
-    provider = "openai-codex";
+    provider = "copilot";
     model = "gpt-5.4";
   };
 
@@ -83,8 +79,13 @@ services.hermes-agent.settings = {
 };
 ```
 
-This means the live default is a remote Strix Halo-served model on `skrye`, not
-the smaller local `qwen3.5:9b` layout explored earlier.
+This means the live default is `gpt-5.4` through `openai-codex`, with a second
+`gpt-5.4` route through GitHub Copilot held as fallback.
+
+The remote qwen endpoints remain available as named custom providers:
+
+- `skrye` for `qwen3.5-35b-a3b`
+- `zannah` for `qwen3-coder-next` and `qwen3.5-35b-a3b`
 
 ## Identity and State
 
@@ -134,6 +135,8 @@ currently exports:
 - `ANTHROPIC_API_KEY`
 - `CONTEXT7_API_KEY`
 - `JINA_API_KEY`
+- `GH_TOKEN`
+- `GITHUB_TOKEN`
 
 The current auth seed is separate:
 
@@ -150,6 +153,8 @@ Operationally:
 - `auth.json` is seeded from `secrets/hermes-auth.json`
 - OpenAI device auth for `openai-codex` comes from `auth.json`, not from an
   `OPENAI_API_KEY` env var
+- GitHub Copilot fallback auth is resolved from the exported GitHub token env
+  vars or Hermes-managed auth state
 - `ANTHROPIC_API_KEY` remains available from `secrets/ai.yaml` for future
   direct Anthropic provider use
 - live token refresh remains in Hermes state after startup
@@ -230,25 +235,28 @@ sees the same runtime toolchain.
 
 ## Inference Integration
 
-Hermes talks to the inference layer through OpenAI-compatible HTTP endpoints.
+Hermes currently talks to cloud providers through Hermes-managed provider
+integrations rather than the local llama-server path.
 
 Current source of truth:
 
-- the Hermes module selects the primary provider endpoint
-- the llama-server mixin exposes `llama-swap` on port `8080`
-- the model matrix lives in
-  [model-policy.nix](../llama-server/model-policy.nix)
+- the Hermes module selects the primary and fallback providers
+- `openai-codex` handles the primary `gpt-5.4` route
+- `copilot` handles the fallback `gpt-5.4` route
+- named custom providers preserve remote qwen routes on `skrye` and `zannah`
 
-The live default Hermes model is aligned with the `agentic` tier rather than the
-smaller local tier explored earlier.
+The local llama-server stack remains available in the repo, but it is not the
+active primary or fallback route in the current deployment.
 
-The important current context values are:
+The important current routing values are:
 
-- primary model context length: `262144`
+- primary model: `gpt-5.4`
 - fallback model: `gpt-5.4`
+- fallback provider: `copilot`
+- named custom qwen routes: `skrye:qwen3.5-35b-a3b`, `zannah:qwen3.5-35b-a3b`
 - Holographic memory enabled
 
-For backend and model policy detail, use the llama-server docs:
+For local backend and model policy detail, use the llama-server docs:
 
 - [nixos/_mixins/server/llama-server/README.md](../llama-server/README.md)
 - [nixos/_mixins/server/llama-server/model-policy.nix](../llama-server/model-policy.nix)
@@ -287,8 +295,9 @@ The following are in place now:
 - managed `.env` rendering through sops-nix
 - auth seeding through `authFile`
 - Telegram token and allowlist injection
-- remote primary model on `skrye`
-- `openai-codex` fallback with `gpt-5.4`
+- `openai-codex` primary with `gpt-5.4`
+- `copilot` fallback with `gpt-5.4`
+- named custom qwen providers on `skrye` and `zannah`
 - Holographic memory
 - four live MCP servers: Exa, Context7, NixOS, Cloudflare
 
