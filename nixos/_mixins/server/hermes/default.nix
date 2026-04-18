@@ -99,15 +99,6 @@ in
     users.users.${username}.extraGroups = lib.mkAfter [ "hermes" ];
 
     sops.secrets = {
-      "hermes/auth" = {
-        sopsFile = ../../../../secrets/hermes-auth.json;
-        format = "json";
-        key = "";
-        owner = "root";
-        group = "root";
-        mode = "0400";
-      };
-
       TELEGRAM_BOT_TOKEN = {
         sopsFile = hermesSopsFile;
         owner = "root";
@@ -182,7 +173,6 @@ in
     sops.templates."hermes-soul" = {
       content = ''
         ${builtins.readFile ./traya-soul.md}
-
         ${config.sops.placeholder.BOND_MD}
       '';
       owner = "root";
@@ -221,8 +211,7 @@ in
         };
       };
 
-      # Upstream seeds these into ${hermesHome}/auth.json and ${hermesHome}/.env.
-      authFile = config.sops.secrets."hermes/auth".path;
+      # Upstream seeds these ${hermesHome}/.env.
       environmentFiles = [ config.sops.templates."hermes-env".path ];
 
       settings = {
