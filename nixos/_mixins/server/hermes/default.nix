@@ -274,6 +274,7 @@ in
     };
 
     systemd.services.hermes-agent.path = lib.mkBefore [ wrappedHermesBash ];
+    systemd.services.hermes-agent.serviceConfig.ProtectHome = true;
 
     systemd.tmpfiles.rules = [
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
