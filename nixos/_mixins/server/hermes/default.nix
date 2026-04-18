@@ -17,23 +17,29 @@ let
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   hermesAgentPackage = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default;
   hermesExtraPackages = with pkgs; [
+    agentBrowserPackage
     bat
+    bzip2
     claudePackage
     codexPackage
-    agentBrowserPackage
-    curl
+    (curlMinimal.override { opensslSupport = true; })
+    duf
+    dua
     fd
     ffmpeg
     findutils
     fzf
     gh
-    git
+    gitMinimal
     gnugrep
     gnused
     gnutar
+    gzip
     jq
     just
     lsof
+    ltrace
+    lurk
     mawk
     nh
     nix-direnv
@@ -41,13 +47,17 @@ let
     poppler-utils
     procps
     python3Minimal
+    rclone
     ripgrep
+    rsync
     sd
     tree
     unzip
     util-linux
     uv
     wget
+    wrangler
+    xz
     yq
   ];
   wrappedHermesBash = pkgs.runCommand "hermes-wrapped-bash" { } ''
