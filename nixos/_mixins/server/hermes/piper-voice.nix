@@ -3,6 +3,7 @@ let
   hermesVoiceDir = "${config.services.hermes-agent.stateDir}/.hermes/piper-voices";
   username = config.noughty.user.name;
   voiceHash = "5512791644e2148e4be301d4c7fc2a4bf51a5057"; # Piper voices commit hash for reproducibility
+  shortHash = builtins.substring 0 7 voiceHash; # Nix-native substring extraction (not bash ${:0:7})
 in
 lib.mkIf (noughtyLib.hostHasTag "hermes") {
   # Systemd service to download Piper voice model at boot
@@ -17,7 +18,7 @@ lib.mkIf (noughtyLib.hostHasTag "hermes") {
         Type = "oneshot";
         RemainAfterExit = true;
         User = "root";
-        Group = root;
+        Group = "root"; # Nix strings must be quoted, not bare identifiers
         StandardOutput = "journal";
         StandardError = "journal";
         
@@ -32,17 +33,17 @@ lib.mkIf (noughtyLib.hostHasTag "hermes") {
             VOICE_DIR="${hermesVoiceDir}"
             mkdir -p "$VOICE_DIR"
 
-            echo "Downloading southern_english_female-high voice (commit: ${voiceHash:0:7})..."
+            echo "Downloading southern_english_female-high voice (commit: ${shortHash})..."
 
             # Download using immutable commit hash for reproducibility
-            wget -qO "$VOICE_DIR/en_GB-southern_english_female-high.onnx" \
+            wget -qO "$VOICE_DIR/en_GB-southern_english_female-high.onnx" \\
               "https://huggingface.co/rhasspy/piper-voices/resolve/${voiceHash}/en/en_GB/southern_english_female/high/en_GB-southern_english_female-high.onnx"
 
             # Download the model config file
-            wget -qO "$VOICE_DIR/en_GB-southern_english_female-high.onnx.json" \
+            wget -qO "$VOICE_DIR/en_GB-southern_english_female-high.onnx.json" \\
               "https://huggingface.co/rhasspy/piper-voices/resolve/${voiceHash}/en/en_GB/southern_english_female/high/en_GB-southern_english_female-high.onnx.json"
 
-            # Verify download integrity
+            # Verify both files exist (not just .onnx)
             if [[ ! -f "$VOICE_DIR/en_GB-southern_english_female-high.onnx" ]]; then
               echo "✗ Failed to download voice model (.onnx)" >&2
               exit 1
@@ -71,9 +72,9 @@ lib.mkIf (noughtyLib.hostHasTag "hermes") {
       };
     }
 
-    # Skip download if voice already exists (idempotency)
+    # Skip download if BOTH voice files already exist (complete idempotency)
     {
-      unitConfig.ConditionPathExists = "!${hermesVoiceDir}/en_GB-southern_english_female-high.onnx";
+      unitConfig.ConditionPathExists = "!${hermesVoiceDir}/en_GB-southern_english_female-high.onnx ! ${hermesVoiceDir}/en_GB-southern_english_female-high.onnx.json";
     }
   ];
 
@@ -81,6 +82,6 @@ lib.mkIf (noughtyLib.hostHasTag "hermes") {
   systemd.services.hermes-agent = {
     after = [ "piper-voice-setup.service" ];
     requires = [ "piper-voice-setup.service" ];
-    restartMode = "on-failure";
+    serviceConfig.Restart = "on-failure"; # Correct NixOS option, not restartMode
   };
 }
