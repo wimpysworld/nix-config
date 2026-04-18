@@ -36,6 +36,7 @@ let
     nh
     nix-direnv
     nodejs
+    piper # Piper TTS engine for southern_english_female voice
     poppler-utils
     procps
     python3Minimal
@@ -72,6 +73,7 @@ in
 {
   imports = [
     inputs.hermes-agent.nixosModules.default
+    ./piper-voice.nix
   ];
 
   config = lib.mkIf (noughtyLib.hostHasTag "hermes") {

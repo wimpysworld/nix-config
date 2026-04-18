@@ -1,0 +1,16 @@
+[Unit]
+Description=Piper TTS Voice Download Service
+Documentation=https://huggingface.co/rhasspy/piper-voices
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=root
+Group=root
+Environment="VOICE_DIR=/var/lib/hermes/.hermes/piper-voices"
+ExecStart=/var/lib/hermes/nix-config/nixos/_mixins/server/hermes/scripts/download-piper-voice.sh ${VOICE_DIR}
+
+[Install]
+WantedBy=multi-user.target

@@ -220,6 +220,11 @@ The module also installs a wrapped Bash and a broad toolset for Hermes, which
 currently includes `git`, `gh`, `ripgrep`, `fd`, `jq`, `yq`, `just`, `uv`,
 `nodejs`, `ffmpeg`, `poppler-utils`, and other CLI tools needed by the agent.
 
+Additionally:
+- **Piper TTS**: Text-to-speech engine with southern_english_female-high voice
+  model downloaded at boot from Hugging Face, enabling natural spoken replies
+## Voice Synthesis (TTS)
+
 This is done in two places:
 
 - `users.users.hermes.packages`
@@ -273,6 +278,70 @@ inspect the managed state directly.
 
 The current deployment has already shown that relying on ambient shell state is
 fragile. `HERMES_HOME` should be set explicitly for manual CLI work.
+
+## Voice Synthesis (TTS)
+
+Hermes now includes local text-to-speech synthesis via Piper, enabling natural
+spoken replies in your preferred accent.
+
+### Current Configuration
+
+- **Engine**: `piper` from NixOS packages
+- **Voice Model**: `southern_english_female-high` from Hugging Face (63MB)
+- **Quality**: High quality neural TTS with 28-32M parameters
+- **Location**: Downloaded to `${HERMES_HOME}/piper-voices/` at first boot
+- **Download Service**: `piper-voice-setup.service` runs once during system boot
+
+### How It Works
+
+The voice model is downloaded automatically from the official Piper voices repository:
+
+```
+https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_GB/southern_english_female/high/
+```
+
+This includes:
+- `en_GB-southern_english_female-high.onnx` - the neural network model
+- `en_GB-southern_english_female-high.onnx.json` - voice configuration
+
+### Using TTS from CLI
+
+Once the system is rebuilt and the service restarted, you can test the voice:
+
+```bash
+# Test Piper directly (requires hermes group membership)
+echo "Hello Martin, this is my new southern english voice" | \
+  piper --model /var/lib/hermes/.hermes/piper-voices/en_GB-southern_english_female-high.onnx \
+        --output_file /tmp/test.ogg
+
+# Verify the output
+ffprobe /tmp/test.ogg 2>&1 | grep -i stream
+```
+
+### Future Enhancements
+
+The setup is designed to easily add more voices:
+
+1. **Additional Piper voices**: Download from Hugging Face, configure via hermes settings
+2. **ElevenLabs integration**: Premium quality with voice cloning (requires API key)
+3. **Voice selection per message**: Configure different voices for different contexts
+
+### Troubleshooting
+
+```bash
+# Check if voice model exists
+ls -lh /var/lib/hermes/.hermes/piper-voices/
+
+# Inspect the download service status
+sudo systemctl status piper-voice-setup.service
+
+# Re-download the voice if corrupted
+sudo systemctl daemon-reexec
+sudo systemctl restart piper-voice-setup.service
+
+# View download logs
+sudo journalctl -u piper-voice-setup.service
+```
 
 ## What Is Landed
 
