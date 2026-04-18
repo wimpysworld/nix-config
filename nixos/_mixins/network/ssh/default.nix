@@ -11,7 +11,10 @@ let
 in
 {
   environment = lib.mkIf (!host.is.iso) {
-    systemPackages = with pkgs; [ ssh-to-age ];
+    systemPackages = with pkgs; [
+    	kitty.terminfo
+    	ssh-to-age
+    ];
   };
   programs = {
     # Only start the SSH agent if no other keyring is managing keys

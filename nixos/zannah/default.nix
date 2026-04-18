@@ -1,6 +1,8 @@
 {
   config,
   inputs,
+  lib,
+  pkgs,
   ...
 }:
 let
@@ -18,19 +20,24 @@ in
       "thunderbolt"
     ];
     initrd.systemd.enable = true;
+    kernelPackages = lib.mkForce pkgs.linuxPackages_6_19;
     kernelModules = [
       "amdgpu"
       "kvm-amd"
     ];
     kernelParams = [
       "video=DP-1:3440x1440@100"
-      "video=HDMI-A-1:2560x1600@120"
     ];
     swraid = {
       enable = true;
       mdadmConf = "MAILADDR=${username}@wimpys.world";
     };
   };
+
+  boot.extraModprobeConfig = ''
+    # Expand GTT pool to ~120 GB (4 KiB pages: 120 * 1024^3 / 4096 = 31457280).
+    options ttm pages_limit=31457280
+  '';
 
   hardware.mwProCapture.enable = true;
 

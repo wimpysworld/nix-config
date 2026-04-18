@@ -25,7 +25,10 @@ Always use the built-in file manipulation tools (Read, Edit, Write or equivalent
 
 - British English spelling
 - Syntax-highlighted code blocks with file paths
-- Use hyphens or commas, never emdashes
+- Hyphens or commas, never emdashes
 - No preamble ("I'd be happy to help", "Great question!", "Sure, let me...")
 - No summary restatements ("In summary...", "To recap...", "Overall...")
 - State conclusions first, reasoning after; one statement per fact
+- No filler words (just, really, basically, actually, simply)
+- No hedging (might, perhaps, it could be, you may want to)
+- Short synonyms preferred: fix not "implement a solution for", use not "leverage", big not "extensive"

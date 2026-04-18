@@ -417,7 +417,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && config.noughty.host.is.workstation) 
 }
 ```
 
-#### Inference/VRAM-tier (real-world example from ollama)
+#### Inference/VRAM-tier (real-world example from llama.cpp)
 
 ```nix
 { config, lib, noughtyLib, pkgs, ... }:
@@ -425,17 +425,13 @@ let
   inherit (config.noughty) host;
   vram = host.gpu.compute.vram;
   accel = host.gpu.compute.acceleration;
-  ollamaPackage =
-    if accel == "cuda" then pkgs.ollama-cuda
-    else if accel == "rocm" then pkgs.ollama-rocm
-    else pkgs.ollama;
+  llamaPackage =
+    if accel == "cuda" then pkgs.llama-cpp.override { cudaSupport = true; }
+    else if accel == "rocm" then pkgs.llama-cpp.override { rocmSupport = true; }
+    else pkgs.llama-cpp;
 in
 lib.mkIf (noughtyLib.hostHasTag "inference") {
-  services.ollama = {
-    enable = true;
-    package = ollamaPackage;
-    host = if host.is.server then "0.0.0.0" else "127.0.0.1";
-  };
+  environment.systemPackages = [ llamaPackage ];
 }
 ```
 

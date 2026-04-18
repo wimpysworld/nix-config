@@ -7,6 +7,7 @@
 let
   inherit (config.noughty) host;
   basePath = "/scrutiny";
+  scrutinyPort = 8081;
 in
 lib.mkIf (noughtyLib.hostHasTag "scrutiny") {
   services = {
@@ -16,16 +17,19 @@ lib.mkIf (noughtyLib.hostHasTag "scrutiny") {
       lib.mkIf (config.services.scrutiny.enable && config.services.tailscale.enable)
         ''
           redir ${basePath} ${basePath}/
-          reverse_proxy ${basePath}/* localhost:8080
+          reverse_proxy ${basePath}/* localhost:${toString scrutinyPort}
         '';
     scrutiny = {
       enable = true;
       collector = {
         enable = true;
         settings.host.id = "${host.name}";
-        settings.api.endpoint = "http://localhost:8080${basePath}";
+        settings.api.endpoint = "http://localhost:${toString scrutinyPort}${basePath}";
       };
-      settings.web.listen.basepath = basePath;
+      settings.web.listen = {
+        basepath = basePath;
+        port = scrutinyPort;
+      };
     };
   };
 }

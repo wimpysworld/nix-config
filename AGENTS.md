@@ -4,31 +4,21 @@
 
 NixOS, nix-darwin, and Home Manager flake managing multiple systems declaratively. Mixin pattern for composable modules. Builds workstations, servers, VMs, macOS systems, and ISO images.
 
+## Discovery tools
+
+A NixOS MCP server is available and must be used as the primary reference for NixOS, Home Manager, and nix-darwin options, packages, and modules - do not rely on training data for these.
+
+| Purpose | Tools |
+|---------|-------|
+| NixOS options/packages | `mcp__nixos__nixos_search`, `mcp__nixos__nixos_info` |
+| Home Manager options | `mcp__nixos__home_manager_search`, `mcp__nixos__home_manager_options_by_prefix`, `mcp__nixos__home_manager_list_options` |
+| nix-darwin options | `mcp__nixos__darwin_search`, `mcp__nixos__darwin_options_by_prefix`, `mcp__nixos__darwin_list_options` |
+| Package versions | `mcp__nixos__nixhub_package_versions`, `mcp__nixos__nixhub_find_version` |
+| Flake search | `mcp__nixos__nixos_flakes_search` |
+
 ## Commands
 
-```bash
-just host                           # Build and switch NixOS/nix-darwin
-just home                           # Build and switch Home Manager
-just switch                         # Switch both (home first, then host)
-just apply                          # Apply both from FlakeHub Cache
-just apply-home                     # Apply Home Manager from cache
-just apply-host                     # Apply NixOS/nix-darwin from cache
-just build                          # Build both (no switch)
-just build-host                     # Build NixOS/nix-darwin only
-just build-home                     # Build Home Manager only
-just build-pkg firefox [vader]      # Build package [for specific host]
-just check                          # nix flake check --show-trace
-just eval                           # Evaluate flake syntax and all configs
-just format [*paths]                # Format and lint Nix (deadnix, statix, nixfmt)
-just lint-registry                  # Validate TOML registries against JSON schemas
-just iso                            # Build nihilus ISO image
-just update                         # Update flake.lock
-just gc                             # Clean old generations, keep latest 5
-just boot-host                      # Activate NixOS config on next reboot
-just needs-reboot                   # Check if NixOS needs a reboot
-just install vader 192.168.1.10     # Remote install via nixos-anywhere
-just inject-tokens 192.168.1.10     # Inject age keys to ISO host
-```
+Run `just --list` to see all available recipes with descriptions.
 
 `just install` handles SOPS age key injection, SSH host key decryption, and LUKS setup. Optional: `keep_disks="true"`, `vm_test="true"`. `just inject-tokens` optional: `user="nixos"`.
 
@@ -58,19 +48,7 @@ just inject-tokens 192.168.1.10     # Inject age keys to ISO host
 
 ## System registry
 
-All systems defined in `lib/registry-systems.toml`, users in `lib/registry-users.toml` (read via `builtins.fromTOML`). Schemas in `lib/registry-systems-schema.json` and `lib/registry-users-schema.json`.
-
-Registry fields:
-
-- **kind** (required): `"computer"`, `"server"`, `"vm"`, `"container"`
-- **platform** (required): `"x86_64-linux"`, `"aarch64-darwin"`, etc.
-- **formFactor** (optional): `"laptop"`, `"desktop"`, `"handheld"`, `"tablet"`, `"phone"`
-- **desktop** (optional): derived from kind + platform (Linux computer defaults to `"hyprland"`, Darwin to `"aqua"`)
-- **username** (optional): defaults to `"martin"`
-- **gpu** (optional): `vendors = ["amd", "nvidia"]`, optional `compute` block with `vendor`, `vram`, `unified`
-- **displays** (optional): list with output, width, height, refresh, scale, position, primary, workspaces
-- **tags** (optional): `["studio", "thinkpad", "iso"]`
-- **keyboard** (optional): `layout` (defaults to `"gb"`), `variant`
+All systems defined in `lib/registry-systems.toml`, users in `lib/registry-users.toml` (read via `builtins.fromTOML`). Full field reference: `lib/registry-systems-schema.json` and `lib/registry-users-schema.json`.
 
 ISO hosts use `tags = ["iso"]` which implies `desktop = null`, `username = "nixos"`. The ISO host is `nihilus`.
 
@@ -147,21 +125,14 @@ Three overlays applied in order:
 
 ## CI/CD
 
-Four workflows in `.github/workflows/`:
-
-- **`builder.yml`** - PRs and pushes to main: inventory via `flake-inventory.sh`, parallel per-host/per-package builds, publish to FlakeHub Cache, ISO release on main
-- **`freshener.yml`** - scheduled auto-updates for proprietary packages (Wavebox, Defold) via PR
-- **`updater.yml`** - scheduled `flake.lock` updates via PR
-- **`checker.yml`** - scheduled flake lock health checks and TOML registry schema validation
-
-Auto-merge of update PRs gated on all build jobs passing.
+Four workflows in `.github/workflows/` - read them to understand CI behaviour. Auto-merge of update PRs is gated on all build jobs passing.
 
 ## Troubleshooting
 
 - **Infinite recursion** - `config.noughty.*` used inside `imports`; move to `config` block
 - **Home Manager activation fails** - file conflicts; use `home-manager switch -b backup --flake .`
 - **Secrets not accessible** - verify age keys exist; check `.sops.yaml` recipients; run `sops updatekeys`
-- **Package not found** - verify in `pkgs/default.nix` and overlay applied; `nix search nixpkgs <name>`
+- **Package not found** - verify in `pkgs/default.nix` and overlay applied; use `mcp__nixos__nixos_search` to confirm package name
 - **Shellcheck failure** - use `writeShellApplication` (not `writeShellScriptBin`); add deps to `runtimeInputs`
 
 ## Constraints

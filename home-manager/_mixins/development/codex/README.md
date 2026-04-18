@@ -77,7 +77,7 @@ The sandbox extends to four personal development roots:
 ~/Chainguard   ~/Development   ~/Volatile   ~/Zero
 ```
 
-Outbound network access from within the sandbox is disabled. MCP servers handle all external network requests through their own processes.
+Outbound network access from within the sandbox is enabled. This allows CLI tools such as `gh` to reach upstream services directly when their own authentication is already in place.
 
 ### Approval policy
 
