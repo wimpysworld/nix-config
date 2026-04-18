@@ -173,7 +173,7 @@ in
       '';
       owner = "root";
       group = "root";
-      mode = "0400";
+      mode = "0644";
     };
 
     services.hermes-agent = {
