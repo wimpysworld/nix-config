@@ -288,6 +288,13 @@ in
           model = "gpt-5.4";
         };
 
+        tts = {
+          provider = "edge";
+          edge = {
+            voice = "en-GB-SoniaNeural";
+          };
+        };
+
         memory = {
           memory_enabled = true;
           user_profile_enabled = true;
