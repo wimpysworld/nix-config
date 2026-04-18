@@ -73,6 +73,18 @@ in
       };
     in
     rec {
+      # Downstream Hermes hotfix until upstream honours TERMINAL_LOCAL_PERSISTENT.
+      # Current upstream main always snapshots the local shell and ignores the
+      # local persistence flag when constructing LocalEnvironment, which leaves
+      # gateway sessions restoring stale PATH and shell state after config changes.
+      hermesAgent =
+        inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default.overrideAttrs
+          (old: {
+            patches = (old.patches or [ ]) ++ [
+              ./patches/hermes-agent/fix-local-persistent-shell.patch
+            ];
+          });
+
       ollama =
         (final.callPackage ollamaPackageFile {
           acceleration = null;

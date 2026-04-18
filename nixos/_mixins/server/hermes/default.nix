@@ -15,7 +15,9 @@ let
   codexPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
   agentBrowserPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
-  hermesAgentPackage = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  hermesAgentPackage = pkgs.hermesAgent;
+  hermesUser = config.services.hermes-agent.user;
+  hermesGroup = config.services.hermes-agent.group;
   hermesExtraPackages = with pkgs; [
     agentBrowserPackage
     bat
@@ -191,6 +193,7 @@ in
     services.hermes-agent = {
       enable = true;
       addToSystemPackages = true;
+      package = hermesAgentPackage;
       environment = {
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
       };
@@ -296,8 +299,28 @@ in
     systemd.services.hermes-agent.path = lib.mkBefore [ wrappedHermesBash ];
     systemd.services.hermes-agent.serviceConfig.ProtectHome = lib.mkForce true;
 
-    systemd.tmpfiles.rules = [
+    systemd.tmpfiles.rules = lib.mkAfter [
+      "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
     ];
+
+    system.activationScripts.hermes-agent-skills-permissions =
+      lib.stringAfter [ "hermes-agent-setup" ]
+        ''
+          # Upstream NixOS module does not manage ${hermesHome}/skills yet.
+          # Create it here and repair ownership and mode recursively so skill_view
+          # can read bundled and agent-written skills from the shared Hermes home.
+          mkdir -p ${hermesHome}/skills
+          chown ${hermesUser}:${hermesGroup} ${hermesHome}/skills
+          chmod 2770 ${hermesHome}/skills
+
+          find ${hermesHome}/skills -type d \
+            -exec chown ${hermesUser}:${hermesGroup} {} + \
+            -exec chmod 2770 {} + 2>/dev/null || true
+
+          find ${hermesHome}/skills -type f \
+            -exec chown ${hermesUser}:${hermesGroup} {} + \
+            -exec chmod u+rwX,g+rwX,o-rwx {} + 2>/dev/null || true
+        '';
   };
 }
