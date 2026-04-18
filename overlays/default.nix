@@ -301,6 +301,23 @@ in
         }
       );
 
+      linuxPackages_6_19 = prev.linuxPackages_6_19.extend (
+        _lpself: lpsuper: {
+          mwprocapture = lpsuper.mwprocapture.overrideAttrs (old: rec {
+            pname = "mwprocapture";
+            subVersion = "4429";
+            version = "1.3.${subVersion}";
+            src = prev.fetchurl {
+              url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${version}.tar.gz";
+              sha256 = "sha256-sYwMVEAvYMKCn4DKQiCtnTxd1chMUd0atgswpC+CZ5g=";
+            };
+            meta = old.meta // {
+              broken = false;
+            };
+          });
+        }
+      );
+
       # Override rofi-unwrapped to remove desktop entries (this is where they come from!)
       rofi-unwrapped = prev.rofi-unwrapped.overrideAttrs (oldAttrs: {
         postInstall = (oldAttrs.postInstall or "") + ''

@@ -1,6 +1,8 @@
 {
   config,
   inputs,
+  lib,
+  pkgs,
   ...
 }:
 let
@@ -18,6 +20,7 @@ in
       "thunderbolt"
     ];
     initrd.systemd.enable = true;
+    kernelPackages = lib.mkForce pkgs.linuxPackages_6_19;
     kernelModules = [
       "amdgpu"
       "kvm-amd"
