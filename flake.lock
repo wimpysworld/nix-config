@@ -486,16 +486,17 @@
       "inputs": {
         "flake-parts": "flake-parts_3",
         "nixpkgs": "nixpkgs_4",
+        "npm-lockfile-fix": "npm-lockfile-fix",
         "pyproject-build-systems": "pyproject-build-systems",
         "pyproject-nix": "pyproject-nix_2",
         "uv2nix": "uv2nix_2"
       },
       "locked": {
-        "lastModified": 1776361700,
-        "narHash": "sha256-eUaC0+CwKvrx9KEukmrfyDyGja/dF7ZF+XQ0mRuYN18=",
+        "lastModified": 1776553986,
+        "narHash": "sha256-lJAnMwzNlRqcUZ97/zGZlF2CE1I7TlnJrbKP3V39agU=",
         "owner": "NousResearch",
         "repo": "hermes-agent",
-        "rev": "37913d9109a441db3ed884c668df7002102a1dbe",
+        "rev": "ad99e323713266196f7129158478da402a02ebdc",
         "type": "github"
       },
       "original": {
@@ -605,11 +606,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1776484001,
-        "narHash": "sha256-YBkhD3aKU/5q0G4xABRaPLsg49o8hjgYvEFyZrOr6a4=",
+        "lastModified": 1776523700,
+        "narHash": "sha256-68F6nNwHcuweEv5XWefCGvBujN4n+oCbuq1ZG+S7pCk=",
         "owner": "numtide",
         "repo": "llm-agents.nix",
-        "rev": "a350931b10f337e1d6c32a814c410feb3d4fa97a",
+        "rev": "e69fff4e65dbdf4a87ee4bdeaa4ea0fe156ae8f5",
         "type": "github"
       },
       "original": {
