@@ -179,6 +179,7 @@ let
     findutils
     fzf
     gh
+    himalaya
     gitMinimal
     gnugrep
     gnused
