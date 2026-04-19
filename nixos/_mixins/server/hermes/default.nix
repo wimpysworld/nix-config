@@ -223,6 +223,32 @@ let
         ++ hermesExtraPackages
       )
     }"
+
+    # Interactive CLI sandboxing: systemd hardening does not apply to host
+    # shells, so we reuse bubblewrap to hide the same paths the gateway
+    # service blocks. bwrap sets up a user namespace where the caller keeps
+    # their real UID -- agents like claude-code refuse to run as root, so
+    # unshare -r is not usable here -- and shadows each target with an
+    # empty tmpfs visible only inside the sandbox. /run/current-system is a
+    # symlink, so we shadow its resolved store path. The HERMES_SANDBOXED
+    # guard stops recursive wrapping when an inner shell re-execs us.
+    if [ -z "\''${HERMES_SANDBOXED-}" ] && [ -x ${pkgs.bubblewrap}/bin/bwrap ]; then
+      export HERMES_SANDBOXED=1
+      _hermes_current_system=\$(${pkgs.coreutils}/bin/readlink -f /run/current-system 2>/dev/null || true)
+      _hermes_extra_shadow=()
+      if [ -n "\$_hermes_current_system" ] && [ -d "\$_hermes_current_system" ]; then
+        _hermes_extra_shadow+=(--tmpfs "\$_hermes_current_system")
+      fi
+      exec ${pkgs.bubblewrap}/bin/bwrap \
+        --dev-bind / / \
+        --tmpfs /mnt \
+        --tmpfs /srv \
+        "\''${_hermes_extra_shadow[@]}" \
+        --die-with-parent \
+        -- \
+        ${pkgs.bash}/bin/bash --noprofile --norc "\$@"
+    fi
+
     exec ${pkgs.bash}/bin/bash --noprofile --norc "\$@"
     EOF
 
@@ -494,6 +520,15 @@ in
     # Keep service-created files group-accessible so the host user can inspect
     # and reuse shared state without fighting the upstream default umask.
     systemd.services.hermes-agent.serviceConfig.UMask = lib.mkForce "0007";
+    # Hide host-sensitive trees from the service and any processes it spawns.
+    # InaccessiblePaths makes the target appear as an empty, immutable mount
+    # inside the service's mount namespace, so shell tools (ls, cat, find,
+    # rclone, rsync, etc.) cannot list or read them.
+    systemd.services.hermes-agent.serviceConfig.InaccessiblePaths = [
+      "/mnt"
+      "/srv"
+      "/run/current-system"
+    ];
 
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
