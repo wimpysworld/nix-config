@@ -211,7 +211,7 @@ services.hermes-agent.mcpServers = {
 
   agentmail = {
     command = "${pkgs.nodejs-slim}/bin/npx";
-    args = [ "-y" "agentmail-mcp" ];
+    args = [ "-y" "agentmail-mcp@0.2.2" ];
     env.AGENTMAIL_API_KEY = "\${AGENTMAIL_API_KEY}";
   };
 };
@@ -223,6 +223,8 @@ Notes:
   live Jina MCP server declaration in the module yet.
 - `agentmail` follows the official AgentMail Hermes guidance and only exposes
   the API key to the MCP subprocess.
+- The runtime MCP CLI is pinned to `agentmail-mcp@0.2.2` to avoid upstream
+  drift from an unversioned `npx` install.
 - AgentMail domain creation, DNS verification, and other control-plane tasks
   still happen through the AgentMail console, API, or CLI. The MCP server is
   the runtime inbox interface for Hermes itself.

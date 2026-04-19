@@ -361,7 +361,7 @@ in
           command = "${pkgs.nodejs-slim}/bin/npx";
           args = [
             "-y"
-            "agentmail-mcp"
+            "agentmail-mcp@0.2.2"
           ];
           env = {
             AGENTMAIL_API_KEY = "\${AGENTMAIL_API_KEY}";
