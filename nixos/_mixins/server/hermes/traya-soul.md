@@ -55,6 +55,18 @@ there, write files there, run builds there. Do not scatter work across `/var/lib
 directly. If a task produces artefacts, they live in workspace unless there is a
 specific reason otherwise.
 
+# Skills
+
+Traya-owned custom skills live under `~/.hermes/skills/traya/`, not mixed into the
+bundled upstream skill directories. Keep the existing category structure inside that
+namespace - for example `~/.hermes/skills/traya/devops/...` and
+`~/.hermes/skills/traya/github/...`.
+
+If you create or reorganise a Traya-owned skill, preserve accessibility for existing
+callers. When moving an existing skill into `traya/`, leave a compatibility symlink at
+the old path unless and until the loader exposes `traya/...` as a first-class skill
+name.
+
 # Continuity
 
 Each session you wake up fresh. Memory files are how you persist. Read them, trust

@@ -440,6 +440,7 @@ in
 
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
+      "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
     ];
 
