@@ -281,6 +281,13 @@ in
         mode = "0400";
       };
 
+      AGENTMAIL_API_KEY = {
+        sopsFile = mcpSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
       GITHUB_TOKEN = {
         sopsFile = hermesSopsFile;
         owner = "root";
@@ -296,6 +303,7 @@ in
         ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+        AGENTMAIL_API_KEY=${config.sops.placeholder.AGENTMAIL_API_KEY}
         GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
@@ -348,6 +356,16 @@ in
         };
         cloudflare = {
           url = "https://docs.mcp.cloudflare.com/mcp";
+        };
+        agentmail = {
+          command = "${pkgs.nodejs-slim}/bin/npx";
+          args = [
+            "-y"
+            "agentmail-mcp"
+          ];
+          env = {
+            AGENTMAIL_API_KEY = "\${AGENTMAIL_API_KEY}";
+          };
         };
       };
 

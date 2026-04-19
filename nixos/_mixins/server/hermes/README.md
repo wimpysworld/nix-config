@@ -135,6 +135,7 @@ currently exports:
 - `ANTHROPIC_API_KEY`
 - `CONTEXT7_API_KEY`
 - `JINA_API_KEY`
+- `AGENTMAIL_API_KEY`
 - `GH_TOKEN`
 - `GITHUB_TOKEN`
 
@@ -185,6 +186,7 @@ The current declared MCP servers are:
 - `context7`
 - `nixos`
 - `cloudflare`
+- `agentmail`
 
 They are configured directly in
 [default.nix](default.nix).
@@ -206,6 +208,12 @@ services.hermes-agent.mcpServers = {
   };
 
   cloudflare.url = "https://docs.mcp.cloudflare.com/mcp";
+
+  agentmail = {
+    command = "${pkgs.nodejs-slim}/bin/npx";
+    args = [ "-y" "agentmail-mcp" ];
+    env.AGENTMAIL_API_KEY = "\${AGENTMAIL_API_KEY}";
+  };
 };
 ```
 
@@ -213,6 +221,11 @@ Notes:
 
 - `JINA_API_KEY` is already provisioned in the env template, but there is no
   live Jina MCP server declaration in the module yet.
+- `agentmail` follows the official AgentMail Hermes guidance and only exposes
+  the API key to the MCP subprocess.
+- AgentMail domain creation, DNS verification, and other control-plane tasks
+  still happen through the AgentMail console, API, or CLI. The MCP server is
+  the runtime inbox interface for Hermes itself.
 - The README should stay aligned with the declared set above, not the broader
   future MCP wish list.
 
@@ -299,7 +312,7 @@ The following are in place now:
 - `copilot` fallback with `gpt-5.4`
 - named custom qwen providers on `skrye` and `zannah`
 - Holographic memory
-- four live MCP servers: Exa, Context7, NixOS, Cloudflare
+- five live MCP servers: Exa, Context7, NixOS, Cloudflare, AgentMail
 
 ## What Is Deliberately Deferred
 
