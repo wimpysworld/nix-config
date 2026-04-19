@@ -14,9 +14,11 @@ let
   claudePackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code;
   codexPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
   agentBrowserPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser;
-  # Determinate Nix binary, matching the host-level installation, so agent
-  # shells expose the same `nix` CLI rather than stock upstream nixpkgs Nix.
-  nixPackage = inputs.determinate.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  # Determinate Nix CLI, matching the host-level installation, so agent shells
+  # expose the same `nix` CLI rather than stock upstream nixpkgs Nix. The
+  # `determinate` flake's `packages.default` is `determinate-nixd` (the daemon
+  # helper); the actual `nix` CLI lives in its `nix` input.
+  nixPackage = inputs.determinate.inputs.nix.packages.${pkgs.stdenv.hostPlatform.system}.default;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   # Hermes 0.10 started enforcing owner-only chmods in several Python code paths
   # such as auth.json and cron state. That breaks this deployment because the
