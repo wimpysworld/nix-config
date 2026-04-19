@@ -295,6 +295,13 @@ in
         group = "root";
         mode = "0400";
       };
+
+      HONCHO_API_KEY = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
     };
 
     sops.templates."hermes-env" = {
@@ -326,6 +333,48 @@ in
       owner = "root";
       group = "root";
       mode = "0644";
+    };
+
+    sops.templates."hermes-honcho" = {
+      content = builtins.toJSON {
+        apiKey = config.sops.placeholder.HONCHO_API_KEY;
+        baseUrl = "https://api.honcho.dev";
+        workspace = "darth.cc";
+        peerName = "martin";
+        hosts = {
+          hermes = {
+            enabled = true;
+            aiPeer = "traya";
+            workspace = "darth.cc";
+            peerName = "martin";
+            recallMode = "hybrid";
+            writeFrequency = "async";
+            sessionStrategy = "per-directory";
+            dialecticReasoningLevel = "low";
+            dialecticDynamic = true;
+            dialecticCadence = 3;
+            dialecticDepth = 1;
+            contextCadence = 1;
+            contextTokens = 1200;
+            dialecticMaxChars = 600;
+            messageMaxChars = 25000;
+            saveMessages = true;
+            observation = {
+              user = {
+                observeMe = true;
+                observeOthers = true;
+              };
+              ai = {
+                observeMe = true;
+                observeOthers = true;
+              };
+            };
+          };
+        };
+      };
+      owner = hermesUser;
+      group = hermesGroup;
+      mode = "0440";
     };
 
     services.hermes-agent = {
@@ -435,7 +484,7 @@ in
         memory = {
           memory_enabled = true;
           user_profile_enabled = true;
-          provider = "holographic";
+          provider = "honcho";
         };
       };
     };
@@ -449,6 +498,7 @@ in
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
+      "L+ ${hermesHome}/honcho.json - - - - ${config.sops.templates."hermes-honcho".path}"
     ];
 
     system.activationScripts.hermes-agent-skills-permissions =
