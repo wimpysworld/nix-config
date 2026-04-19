@@ -15,7 +15,95 @@ let
   codexPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
   agentBrowserPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
-  hermesAgentPackage = pkgs.hermesAgent;
+  # Hermes 0.10 started enforcing owner-only chmods in several Python code paths
+  # such as auth.json and cron state. That breaks this deployment because the
+  # service account and the interactive host user intentionally share one
+  # managed HERMES_HOME via the hermes group.
+  hermesManagedPythonPath = pkgs.writeTextDir "sitecustomize.py" ''
+    """Keep managed Hermes state group-accessible."""
+
+    import os
+    from pathlib import Path
+
+
+    def _managed_mode_enabled() -> bool:
+        return os.environ.get("HERMES_MANAGED", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "nixos",
+        }
+
+
+    def _translate_managed_mode(path_like: os.PathLike[str] | str, mode: int) -> int:
+        # Only rewrite chmod calls inside the managed Hermes state tree. This
+        # leaves unrelated files alone while keeping shared state readable and
+        # writable by both the service user and host users in the hermes group.
+        hermes_home_raw = os.environ.get("HERMES_HOME", "").strip()
+        if not hermes_home_raw or not _managed_mode_enabled():
+            return mode
+
+        hermes_home = Path(hermes_home_raw).resolve()
+        candidate = Path(path_like).resolve()
+
+        try:
+          candidate.relative_to(hermes_home)
+        except ValueError:
+          return mode
+
+        if mode == 0o600:
+          return 0o660
+
+        if mode == 0o700:
+          # Directories keep setgid so new files inherit the hermes group.
+          return 0o2770 if candidate.is_dir() else 0o770
+
+        return mode
+
+
+    if _managed_mode_enabled():
+        # Patch chmod at interpreter startup so upstream Python modules do not
+        # need to know about this NixOS shared-state layout.
+        _original_os_chmod = os.chmod
+        _original_path_chmod = Path.chmod
+
+        def _managed_os_chmod(path_like, mode, *args, **kwargs):
+            return _original_os_chmod(
+                path_like,
+                _translate_managed_mode(path_like, mode),
+                *args,
+                **kwargs,
+            )
+
+        def _managed_path_chmod(self, mode, *args, **kwargs):
+            return _original_path_chmod(
+                self,
+                _translate_managed_mode(self, mode),
+                *args,
+                **kwargs,
+            )
+
+        os.chmod = _managed_os_chmod
+        Path.chmod = _managed_path_chmod
+  '';
+  upstreamHermesAgentPackage = pkgs.hermesAgent;
+  hermesAgentPackage = pkgs.symlinkJoin {
+    name = "hermes-agent-host";
+    paths = [ upstreamHermesAgentPackage ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      # Wrap the upstream CLI so manual invocations use the managed state dir
+      # and load the chmod shim above before Hermes imports its Python modules.
+      for program in hermes hermes-agent hermes-acp; do
+        if [ -x "$out/bin/$program" ]; then
+          wrapProgram "$out/bin/$program" \
+            --set-default HERMES_HOME "${hermesHome}" \
+            --prefix PYTHONPATH : "${hermesManagedPythonPath}" \
+            --set-default HERMES_MANAGED "true"
+        fi
+      done
+    '';
+  };
   hermesUser = config.services.hermes-agent.user;
   hermesGroup = config.services.hermes-agent.group;
   hermesAuthFile = "${hermesHome}/auth.json";
@@ -295,6 +383,9 @@ in
 
     systemd.services.hermes-agent.path = lib.mkBefore [ wrappedHermesBash ];
     systemd.services.hermes-agent.serviceConfig.ProtectHome = lib.mkForce true;
+    # Keep service-created files group-accessible so the host user can inspect
+    # and reuse shared state without fighting the upstream default umask.
+    systemd.services.hermes-agent.serviceConfig.UMask = lib.mkForce "0007";
 
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
@@ -304,26 +395,44 @@ in
     system.activationScripts.hermes-agent-skills-permissions =
       lib.stringAfter [ "hermes-agent-setup" ]
         ''
-          # Upstream NixOS module does not manage ${hermesHome}/skills yet.
-          # Create it here and repair ownership and mode recursively so skill_view
-          # can read bundled and agent-written skills from the shared Hermes home.
-          mkdir -p ${hermesHome}/skills
-          chown ${hermesUser}:${hermesGroup} ${hermesHome}/skills
-          chmod 2770 ${hermesHome}/skills
+          # Repair permissions after activation because Hermes can rewrite some
+          # runtime files with owner-only modes during normal CLI or service use.
+          for sharedDir in \
+            ${hermesHome}/cron \
+            ${hermesHome}/logs \
+            ${hermesHome}/memories \
+            ${hermesHome}/sessions \
+            ${hermesHome}/skills
+          do
+            mkdir -p "$sharedDir"
+            chown ${hermesUser}:${hermesGroup} "$sharedDir"
+            chmod 2770 "$sharedDir"
 
-          find ${hermesHome}/skills -type d \
-            -exec chown ${hermesUser}:${hermesGroup} {} + \
-            -exec chmod 2770 {} + 2>/dev/null || true
+            find "$sharedDir" -type d \
+              -exec chown ${hermesUser}:${hermesGroup} {} + \
+              -exec chmod 2770 {} + 2>/dev/null || true
 
-          find ${hermesHome}/skills -type f \
-            -exec chown ${hermesUser}:${hermesGroup} {} + \
-            -exec chmod u+rwX,g+rwX,o-rwx {} + 2>/dev/null || true
+            find "$sharedDir" -type f \
+              -exec chown ${hermesUser}:${hermesGroup} {} + \
+              -exec chmod 0660 {} + 2>/dev/null || true
+          done
+
+          for sharedFile in \
+            ${hermesHome}/.env \
+            ${hermesHome}/config.yaml
+          do
+            if [ -f "$sharedFile" ]; then
+              chown ${hermesUser}:${hermesGroup} "$sharedFile"
+              chmod 0640 "$sharedFile"
+            fi
+          done
 
           if [ -f ${hermesAuthFile} ]; then
-            # Interactive CLI use can rewrite auth.json as the calling user.
-            # Reset it here so the service user can always read and refresh it.
+            # Interactive CLI use can rewrite auth.json with a different owner.
+            # Keep it group-writable so the service and host user share auth
+            # state and token refreshes do not lock each other out.
             chown ${hermesUser}:${hermesGroup} ${hermesAuthFile}
-            chmod 0600 ${hermesAuthFile}
+            chmod 0660 ${hermesAuthFile}
           fi
         '';
   };
