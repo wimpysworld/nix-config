@@ -11,6 +11,7 @@ let
   bondSopsFile = ../../../../secrets + "/hermes-bond.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
+  trayaSopsFile = ../../../../secrets + "/traya.yaml";
   claudePackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code;
   codexPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
   agentBrowserPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser;
@@ -163,6 +164,8 @@ let
   hermesUser = config.services.hermes-agent.user;
   hermesGroup = config.services.hermes-agent.group;
   hermesAuthFile = "${hermesHome}/auth.json";
+  himalayaConfigDir = "${config.services.hermes-agent.stateDir}/.config/himalaya";
+  himalayaConfigPath = "${himalayaConfigDir}/config.toml";
   hermesExtraPackages = with pkgs; [
     agentBrowserPackage
     bat
@@ -336,6 +339,20 @@ in
         group = "root";
         mode = "0400";
       };
+
+      EMAIL_ADDRESS = {
+        sopsFile = trayaSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      EMAIL_PASSWORD = {
+        sopsFile = trayaSopsFile;
+        owner = hermesUser;
+        group = hermesGroup;
+        mode = "0440";
+      };
     };
 
     sops.templates."hermes-env" = {
@@ -406,6 +423,41 @@ in
           };
         };
       };
+      owner = hermesUser;
+      group = hermesGroup;
+      mode = "0440";
+    };
+
+    sops.templates."hermes-himalaya-config" = {
+      content = ''
+        display-name = "Traya"
+
+        [accounts.fastmail]
+        default = true
+        email = "${config.sops.placeholder.EMAIL_ADDRESS}"
+        display-name = "Traya"
+
+        folder.aliases.inbox = "INBOX"
+        folder.aliases.sent = "Sent Items"
+        folder.aliases.drafts = "Drafts"
+        folder.aliases.trash = "Trash"
+
+        backend.type = "imap"
+        backend.host = "imap.fastmail.com"
+        backend.port = 993
+        backend.encryption.type = "tls"
+        backend.login = "${config.sops.placeholder.EMAIL_ADDRESS}"
+        backend.auth.type = "password"
+        backend.auth.cmd = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.EMAIL_PASSWORD.path}"
+
+        message.send.backend.type = "smtp"
+        message.send.backend.host = "smtp.fastmail.com"
+        message.send.backend.port = 465
+        message.send.backend.encryption.type = "tls"
+        message.send.backend.login = "${config.sops.placeholder.EMAIL_ADDRESS}"
+        message.send.backend.auth.type = "password"
+        message.send.backend.auth.cmd = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.EMAIL_PASSWORD.path}"
+      '';
       owner = hermesUser;
       group = hermesGroup;
       mode = "0440";
@@ -550,7 +602,10 @@ in
     ];
 
     systemd.tmpfiles.rules = lib.mkAfter [
+      "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"
+      "d ${himalayaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
+      "L+ ${himalayaConfigPath} - - - - ${config.sops.templates."hermes-himalaya-config".path}"
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
       "L+ ${hermesHome}/honcho.json - - - - ${config.sops.templates."hermes-honcho".path}"
     ];
