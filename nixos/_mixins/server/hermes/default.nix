@@ -166,6 +166,7 @@ let
   hermesExtraPackages = with pkgs; [
     agentBrowserPackage
     bat
+    bubblewrap
     bzip2
     claudePackage
     codexPackage
@@ -200,6 +201,7 @@ let
     ripgrep
     rsync
     sd
+    systemdMinimal
     tree
     unzip
     util-linux
@@ -538,6 +540,7 @@ in
       "/mnt"
       "/srv"
       "/run/current-system"
+      "/run/booted-system"
     ];
 
     systemd.tmpfiles.rules = lib.mkAfter [
