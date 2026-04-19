@@ -181,6 +181,7 @@ let
     gnused
     gnutar
     gzip
+    inetutils
     jq
     just
     lsof
@@ -224,6 +225,7 @@ let
     EOF
 
     chmod 0555 "$out/bin/bash"
+    ln -s bash "$out/bin/sh"
   '';
   username = config.noughty.user.name;
 in
