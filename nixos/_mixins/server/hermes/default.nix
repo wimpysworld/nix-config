@@ -345,7 +345,7 @@ in
           hermes = {
             enabled = true;
             aiPeer = "traya";
-            workspace = "darth.cc";
+            workspace = "Hermes";
             peerName = "martin";
             recallMode = "hybrid";
             writeFrequency = "async";
