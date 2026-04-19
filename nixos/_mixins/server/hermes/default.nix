@@ -237,9 +237,14 @@ let
     if [ -z "\''${HERMES_SANDBOXED-}" ] && [ -x ${pkgs.bubblewrap}/bin/bwrap ]; then
       export HERMES_SANDBOXED=1
       _hermes_current_system=\$(${pkgs.coreutils}/bin/readlink -f /run/current-system 2>/dev/null || true)
+      _hermes_booted_system=\$(${pkgs.coreutils}/bin/readlink -f /run/booted-system 2>/dev/null || true)
       _hermes_extra_shadow=()
       if [ -n "\$_hermes_current_system" ] && [ -d "\$_hermes_current_system" ]; then
         _hermes_extra_shadow+=(--tmpfs "\$_hermes_current_system")
+      fi
+      if [ -n "\$_hermes_booted_system" ] && [ -d "\$_hermes_booted_system" ] \
+        && [ "\$_hermes_booted_system" != "\$_hermes_current_system" ]; then
+        _hermes_extra_shadow+=(--tmpfs "\$_hermes_booted_system")
       fi
       exec ${pkgs.bubblewrap}/bin/bwrap \
         --dev-bind / / \
