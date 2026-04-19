@@ -149,15 +149,18 @@
         inherit (self) overlays;
         shellPackages =
           p: with p; [
+            bash
             deadnix
             direnv
             file
             git
             home-manager
+            hostname
             jq
             just
             micro
             nh
+            nix
             nixfmt-tree
             nixfmt
             nix-output-monitor
