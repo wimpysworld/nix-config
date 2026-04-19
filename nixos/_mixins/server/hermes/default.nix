@@ -358,7 +358,7 @@ in
           url = "https://docs.mcp.cloudflare.com/mcp";
         };
         agentmail = {
-          command = "${pkgs.nodejs-slim}/bin/npx";
+          command = "${pkgs.nodejs}/bin/npx";
           args = [
             "-y"
             "agentmail-mcp@0.2.2"

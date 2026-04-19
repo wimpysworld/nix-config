@@ -210,7 +210,7 @@ services.hermes-agent.mcpServers = {
   cloudflare.url = "https://docs.mcp.cloudflare.com/mcp";
 
   agentmail = {
-    command = "${pkgs.nodejs-slim}/bin/npx";
+    command = "${pkgs.nodejs}/bin/npx";
     args = [ "-y" "agentmail-mcp@0.2.2" ];
     env.AGENTMAIL_API_KEY = "\${AGENTMAIL_API_KEY}";
   };
