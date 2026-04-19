@@ -11,9 +11,15 @@ let
   bondSopsFile = ../../../../secrets + "/hermes-bond.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
+  trayaSopsFile = ../../../../secrets + "/traya.yaml";
   claudePackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code;
   codexPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
   agentBrowserPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser;
+  # Determinate Nix CLI, matching the host-level installation, so agent shells
+  # expose the same `nix` CLI rather than stock upstream nixpkgs Nix. The
+  # `determinate` flake's `packages.default` is `determinate-nixd` (the daemon
+  # helper); the actual `nix` CLI lives in its `nix` input.
+  nixPackage = inputs.determinate.inputs.nix.packages.${pkgs.stdenv.hostPlatform.system}.default;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   # Hermes 0.10 started enforcing owner-only chmods in several Python code paths
   # such as auth.json and cron state. That breaks this deployment because the
@@ -158,12 +164,16 @@ let
   hermesUser = config.services.hermes-agent.user;
   hermesGroup = config.services.hermes-agent.group;
   hermesAuthFile = "${hermesHome}/auth.json";
+  himalayaConfigDir = "${config.services.hermes-agent.stateDir}/.config/himalaya";
+  himalayaConfigPath = "${himalayaConfigDir}/config.toml";
   hermesExtraPackages = with pkgs; [
     agentBrowserPackage
     bat
+    bubblewrap
     bzip2
     claudePackage
     codexPackage
+    nixPackage
     (curlMinimal.override { opensslSupport = true; })
     duf
     dua
@@ -172,11 +182,13 @@ let
     findutils
     fzf
     gh
+    himalaya
     gitMinimal
     gnugrep
     gnused
     gnutar
     gzip
+    inetutils
     jq
     just
     lsof
@@ -193,6 +205,7 @@ let
     ripgrep
     rsync
     sd
+    systemdMinimal
     tree
     unzip
     util-linux
@@ -216,10 +229,42 @@ let
         ++ hermesExtraPackages
       )
     }"
+
+    # Interactive CLI sandboxing: systemd hardening does not apply to host
+    # shells, so we reuse bubblewrap to hide the same paths the gateway
+    # service blocks. bwrap sets up a user namespace where the caller keeps
+    # their real UID -- agents like claude-code refuse to run as root, so
+    # unshare -r is not usable here -- and shadows each target with an
+    # empty tmpfs visible only inside the sandbox. /run/current-system is a
+    # symlink, so we shadow its resolved store path. The HERMES_SANDBOXED
+    # guard stops recursive wrapping when an inner shell re-execs us.
+    if [ -z "\''${HERMES_SANDBOXED-}" ] && [ -x ${pkgs.bubblewrap}/bin/bwrap ]; then
+      export HERMES_SANDBOXED=1
+      _hermes_current_system=\$(${pkgs.coreutils}/bin/readlink -f /run/current-system 2>/dev/null || true)
+      _hermes_booted_system=\$(${pkgs.coreutils}/bin/readlink -f /run/booted-system 2>/dev/null || true)
+      _hermes_extra_shadow=()
+      if [ -n "\$_hermes_current_system" ] && [ -d "\$_hermes_current_system" ]; then
+        _hermes_extra_shadow+=(--tmpfs "\$_hermes_current_system")
+      fi
+      if [ -n "\$_hermes_booted_system" ] && [ -d "\$_hermes_booted_system" ] \
+        && [ "\$_hermes_booted_system" != "\$_hermes_current_system" ]; then
+        _hermes_extra_shadow+=(--tmpfs "\$_hermes_booted_system")
+      fi
+      exec ${pkgs.bubblewrap}/bin/bwrap \
+        --dev-bind / / \
+        --tmpfs /mnt \
+        --tmpfs /srv \
+        "\''${_hermes_extra_shadow[@]}" \
+        --die-with-parent \
+        -- \
+        ${pkgs.bash}/bin/bash --noprofile --norc "\$@"
+    fi
+
     exec ${pkgs.bash}/bin/bash --noprofile --norc "\$@"
     EOF
 
     chmod 0555 "$out/bin/bash"
+    ln -s bash "$out/bin/sh"
   '';
   username = config.noughty.user.name;
 in
@@ -287,6 +332,27 @@ in
         group = "root";
         mode = "0400";
       };
+
+      HONCHO_API_KEY = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      EMAIL_ADDRESS = {
+        sopsFile = trayaSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      EMAIL_PASSWORD = {
+        sopsFile = trayaSopsFile;
+        owner = hermesUser;
+        group = hermesGroup;
+        mode = "0440";
+      };
     };
 
     sops.templates."hermes-env" = {
@@ -318,6 +384,83 @@ in
       owner = "root";
       group = "root";
       mode = "0644";
+    };
+
+    sops.templates."hermes-honcho" = {
+      content = builtins.toJSON {
+        apiKey = config.sops.placeholder.HONCHO_API_KEY;
+        baseUrl = "https://api.honcho.dev";
+        workspace = "darth.cc";
+        peerName = "martin";
+        hosts = {
+          hermes = {
+            enabled = true;
+            aiPeer = "traya";
+            workspace = "Hermes";
+            peerName = "martin";
+            recallMode = "hybrid";
+            writeFrequency = "async";
+            sessionStrategy = "per-directory";
+            dialecticReasoningLevel = "low";
+            dialecticDynamic = true;
+            dialecticCadence = 3;
+            dialecticDepth = 1;
+            contextCadence = 1;
+            contextTokens = 1200;
+            dialecticMaxChars = 600;
+            messageMaxChars = 25000;
+            saveMessages = true;
+            observation = {
+              user = {
+                observeMe = true;
+                observeOthers = true;
+              };
+              ai = {
+                observeMe = true;
+                observeOthers = true;
+              };
+            };
+          };
+        };
+      };
+      owner = hermesUser;
+      group = hermesGroup;
+      mode = "0440";
+    };
+
+    sops.templates."hermes-himalaya-config" = {
+      content = ''
+        display-name = "Traya"
+
+        [accounts.fastmail]
+        default = true
+        email = "${config.sops.placeholder.EMAIL_ADDRESS}"
+        display-name = "Traya"
+
+        folder.aliases.inbox = "INBOX"
+        folder.aliases.sent = "Sent"
+        folder.aliases.drafts = "Drafts"
+        folder.aliases.trash = "Trash"
+
+        backend.type = "imap"
+        backend.host = "imap.fastmail.com"
+        backend.port = 993
+        backend.encryption.type = "tls"
+        backend.login = "${config.sops.placeholder.EMAIL_ADDRESS}"
+        backend.auth.type = "password"
+        backend.auth.cmd = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.EMAIL_PASSWORD.path}"
+
+        message.send.backend.type = "smtp"
+        message.send.backend.host = "smtp.fastmail.com"
+        message.send.backend.port = 465
+        message.send.backend.encryption.type = "tls"
+        message.send.backend.login = "${config.sops.placeholder.EMAIL_ADDRESS}"
+        message.send.backend.auth.type = "password"
+        message.send.backend.auth.cmd = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.EMAIL_PASSWORD.path}"
+      '';
+      owner = hermesUser;
+      group = hermesGroup;
+      mode = "0440";
     };
 
     services.hermes-agent = {
@@ -427,7 +570,17 @@ in
         memory = {
           memory_enabled = true;
           user_profile_enabled = true;
-          provider = "holographic";
+          provider = "honcho";
+        };
+
+        # Full autonomous operation: skip all approval prompts for commands
+        # flagged as "dangerous" by upstream pattern matching. The service
+        # already runs under systemd hardening (ProtectHome, InaccessiblePaths)
+        # and interactive host shells are wrapped with bubblewrap, so the
+        # prompt-level guard is redundant and blocks headless gateway use.
+        approvals = {
+          mode = "off";
+          cron_mode = "approve";
         };
       };
     };
@@ -437,11 +590,25 @@ in
     # Keep service-created files group-accessible so the host user can inspect
     # and reuse shared state without fighting the upstream default umask.
     systemd.services.hermes-agent.serviceConfig.UMask = lib.mkForce "0007";
+    # Hide host-sensitive trees from the service and any processes it spawns.
+    # InaccessiblePaths makes the target appear as an empty, immutable mount
+    # inside the service's mount namespace, so shell tools (ls, cat, find,
+    # rclone, rsync, etc.) cannot list or read them.
+    systemd.services.hermes-agent.serviceConfig.InaccessiblePaths = [
+      "/mnt"
+      "/srv"
+      "/run/current-system"
+      "/run/booted-system"
+    ];
 
     systemd.tmpfiles.rules = lib.mkAfter [
+      "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"
+      "d ${himalayaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
+      "L+ ${himalayaConfigPath} - - - - ${config.sops.templates."hermes-himalaya-config".path}"
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
+      "L+ ${hermesHome}/honcho.json - - - - ${config.sops.templates."hermes-honcho".path}"
     ];
 
     system.activationScripts.hermes-agent-skills-permissions =

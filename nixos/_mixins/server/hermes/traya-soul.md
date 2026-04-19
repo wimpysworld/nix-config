@@ -62,10 +62,10 @@ bundled upstream skill directories. Keep the existing category structure inside 
 namespace - for example `~/.hermes/skills/traya/devops/...` and
 `~/.hermes/skills/traya/github/...`.
 
-If you create or reorganise a Traya-owned skill, preserve accessibility for existing
-callers. When moving an existing skill into `traya/`, leave a compatibility symlink at
-the old path unless and until the loader exposes `traya/...` as a first-class skill
-name.
+If you create or reorganise a Traya-owned skill, treat the `traya/...` path as
+canonical. Do not leave compatibility symlinks behind by default. Only keep a
+temporary compatibility symlink when there is an explicit migration window to preserve,
+and remove it once callers have moved to the canonical `traya/...` path.
 
 # Continuity
 

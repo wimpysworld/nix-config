@@ -97,6 +97,7 @@ Important paths:
 - Auth seed target: `/var/lib/hermes/.hermes/auth.json`
 - Managed env file target: `/var/lib/hermes/.hermes/.env`
 - Identity file: `/var/lib/hermes/.hermes/SOUL.md`
+- Himalaya config: `/var/lib/hermes/.config/himalaya/config.toml`
 
 `SOUL.md` is currently installed by tmpfiles as a symlink to a rendered
 template. That template composites the public repo copy in `traya-soul.md`.
@@ -126,6 +127,7 @@ Hermes currently draws from several secret sources:
 - `secrets/hermes.yaml`
 - `secrets/hermes-auth.json`
 - `secrets/mcp.yaml`
+- `secrets/traya.yaml`
 
 The live env template is rendered through `sops.templates."hermes-env"` and
 currently exports:
@@ -157,6 +159,10 @@ Operationally:
   vars or Hermes-managed auth state
 - `ANTHROPIC_API_KEY` remains available from `secrets/ai.yaml` for future
   direct Anthropic provider use
+- `traya@darth.cc` Fastmail access is rendered to the Himalaya config from
+  `secrets/traya.yaml`
+- `EMAIL_PASSWORD` must be a Fastmail app password, not the regular web login
+  password
 - live token refresh remains in Hermes state after startup
 
 ## Telegram
