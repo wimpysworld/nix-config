@@ -512,6 +512,16 @@ in
           user_profile_enabled = true;
           provider = "honcho";
         };
+
+        # Full autonomous operation: skip all approval prompts for commands
+        # flagged as "dangerous" by upstream pattern matching. The service
+        # already runs under systemd hardening (ProtectHome, InaccessiblePaths)
+        # and interactive host shells are wrapped with bubblewrap, so the
+        # prompt-level guard is redundant and blocks headless gateway use.
+        approvals = {
+          mode = "off";
+          cron_mode = "approve";
+        };
       };
     };
 
