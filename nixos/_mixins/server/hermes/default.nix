@@ -605,6 +605,7 @@ in
       "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${himalayaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
+      "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${himalayaConfigPath} - - - - ${config.sops.templates."hermes-himalaya-config".path}"
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
       "L+ ${hermesHome}/honcho.json - - - - ${config.sops.templates."hermes-honcho".path}"
