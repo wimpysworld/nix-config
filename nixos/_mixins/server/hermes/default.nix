@@ -438,7 +438,7 @@ in
         display-name = "Traya"
 
         folder.aliases.inbox = "INBOX"
-        folder.aliases.sent = "Sent Items"
+        folder.aliases.sent = "Sent"
         folder.aliases.drafts = "Drafts"
         folder.aliases.trash = "Trash"
 
