@@ -150,6 +150,8 @@
         shellPackages =
           p: with p; [
             deadnix
+            direnv
+            file
             git
             home-manager
             jq
@@ -159,10 +161,13 @@
             nixfmt-tree
             nixfmt
             nix-output-monitor
+            nodejs
             openssh
             sops
+            sqlite
             statix
             taplo
+            zstd
           ];
         extraFlakeInputs = with inputs; [
           determinate
