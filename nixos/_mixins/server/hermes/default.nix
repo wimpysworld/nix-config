@@ -20,9 +20,11 @@ let
   # service account and the interactive host user intentionally share one
   # managed HERMES_HOME via the hermes group.
   hermesManagedPythonPath = pkgs.writeTextDir "sitecustomize.py" ''
-    """Keep managed Hermes state group-accessible."""
+    """Keep managed Hermes state group-accessible and patch doctor checks."""
 
+    import builtins
     import os
+    import shutil
     from pathlib import Path
 
 
@@ -66,6 +68,7 @@ let
         # need to know about this NixOS shared-state layout.
         _original_os_chmod = os.chmod
         _original_path_chmod = Path.chmod
+        _original_import = builtins.__import__
 
         def _managed_os_chmod(path_like, mode, *args, **kwargs):
             return _original_os_chmod(
@@ -83,8 +86,53 @@ let
                 **kwargs,
             )
 
+        def _patch_doctor_module(module) -> None:
+            if getattr(module, "_noughty_doctor_patch_applied", False):
+                return
+
+            original_run_doctor = getattr(module, "run_doctor", None)
+            if original_run_doctor is None:
+                return
+
+            def _patched_run_doctor(args):
+                original_exists = Path.exists
+
+                def _doctor_exists(self):
+                    # Hermes doctor assumes agent-browser lives under the
+                    # packaged project root's node_modules tree. In this NixOS
+                    # deployment it is provided as a separate package on PATH.
+                    probe = module.PROJECT_ROOT / "node_modules" / "agent-browser"
+                    resolved = shutil.which("agent-browser")
+                    if self == probe and resolved:
+                        return True
+                    return original_exists(self)
+
+                Path.exists = _doctor_exists
+                try:
+                    return original_run_doctor(args)
+                finally:
+                    Path.exists = original_exists
+
+            module.run_doctor = _patched_run_doctor
+            module._noughty_doctor_patch_applied = True
+
+        def _managed_import(name, globals=None, locals=None, fromlist=(), level=0):
+            module = _original_import(name, globals, locals, fromlist, level)
+
+            if name == "hermes_cli.doctor":
+                _patch_doctor_module(module)
+                builtins.__import__ = _original_import
+            elif name == "hermes_cli" and fromlist and "doctor" in fromlist:
+                doctor_module = getattr(module, "doctor", None)
+                if doctor_module is not None:
+                    _patch_doctor_module(doctor_module)
+                    builtins.__import__ = _original_import
+
+            return module
+
         os.chmod = _managed_os_chmod
         Path.chmod = _managed_path_chmod
+        builtins.__import__ = _managed_import
   '';
   upstreamHermesAgentPackage = pkgs.hermesAgent;
   hermesAgentPackage = pkgs.symlinkJoin {
@@ -94,10 +142,13 @@ let
     postBuild = ''
       # Wrap the upstream CLI so manual invocations use the managed state dir
       # and load the chmod shim above before Hermes imports its Python modules.
+      # Also prepend the extra toolset here because services.hermes-agent.extraPackages
+      # only affects the systemd unit, not host-side `hermes` invocations.
       for program in hermes hermes-agent hermes-acp; do
         if [ -x "$out/bin/$program" ]; then
           wrapProgram "$out/bin/$program" \
             --set-default HERMES_HOME "${hermesHome}" \
+            --prefix PATH : "${lib.makeBinPath hermesExtraPackages}" \
             --prefix PYTHONPATH : "${hermesManagedPythonPath}" \
             --set-default HERMES_MANAGED "true"
         fi
