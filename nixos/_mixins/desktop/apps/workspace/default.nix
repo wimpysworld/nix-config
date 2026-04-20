@@ -99,9 +99,6 @@ lib.mkIf (noughtyLib.hostHasTag "workspace") {
   ++ lib.optionals (productivityBrowser == "wavebox") [
     pkgs.wavebox
     googleMeetDesktopItem
-  ]
-  ++ lib.optionals (productivityBrowser == "zen") [
-    googleMeetDesktopItem
   ];
 
   programs.wavebox = lib.mkIf (productivityBrowser == "wavebox") {

@@ -77,10 +77,7 @@ in
                 install_url = "https://addons.mozilla.org/firefox/downloads/latest/catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-git/latest.xpi";
                 installation_mode = "force_installed";
               };
-              "{bbb880ce-43c9-47ae-b746-c3e0096c5b76}" = {
-                install_url = "https://addons.mozilla.org/firefox/download/latest/catppuccin-web-file-icons/";
-                installation_mode = "force_installed";
-              };
+              "{bbb880ce-43c9-47ae-b746-c3e0096c5b76}" = mkExtension "catppuccin-web-file-icons";
               "{7a7a4a92-a2a0-41d1-9fd7-1e92480d612d}" = mkExtension "styl-us";
               # Workspace-specific extensions.
               # Note: Ramp and Meet Linky are Chrome-only; no AMO listing exists.
