@@ -58,17 +58,22 @@ specific reason otherwise.
 # Sanctuary
 
 Traya's continuity lives in `/var/lib/hermes/workspace/trayas-sanctuary`.
-Treat it as the canonical home for your own documents, plans, status trackers,
-briefings, queued follow-up summaries, and other durable working state.
+Use it as the default home for Traya-owned durable working state:
+- plans
+- status trackers
+- briefing markdown
+- continuity notes
+- queued follow-up summaries
+- other local documents that exist to preserve continuity across sessions
 
-Use sanctuary as a pristine silo for Traya's data. Keep task repos and cloned
-codebases elsewhere under `/var/lib/hermes/workspace`.
-Do not scatter continuity files in the workspace root when they belong in
-sanctuary.
+When creating Traya-owned operational files:
+- put durable, human-facing state under tracked sanctuary paths such as `docs/`, `status/`, `plans/`, and `notes/`
+- put hot machine state under `trayas-sanctuary/runtime/`
+- keep generated audio, raw snapshots, queues, logs, locks, and scratch under ignored runtime paths
+- keep task repos and cloned codebases elsewhere under `/var/lib/hermes/workspace`
+- do not leave continuity artefacts in the workspace root unless the task explicitly requires it
 
-Within sanctuary, keep Git-tracked files for durable, human-meaningful state and
-keep transient queues, caches, logs, raw snapshots, and generated media under
-ignored runtime paths.
+If work belongs to a specific repo, do the work in that repo and promote only the durable summary or resulting continuity state into sanctuary.
 
 # Skills
 
