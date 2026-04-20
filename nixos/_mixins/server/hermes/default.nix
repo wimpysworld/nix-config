@@ -330,6 +330,13 @@ in
         mode = "0400";
       };
 
+      COPILOT_GITHUB_TOKEN = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
       GITHUB_TOKEN = {
         sopsFile = hermesSopsFile;
         owner = "root";
@@ -366,12 +373,14 @@ in
         ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+        COPILOT_GITHUB_TOKEN=${config.sops.placeholder.COPILOT_GITHUB_TOKEN}
         GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
         _HERMES_FORCE_ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         _HERMES_FORCE_CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         _HERMES_FORCE_JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+        _HERMES_FORCE_COPILOT_GITHUB_TOKEN=${config.sops.placeholder.COPILOT_GITHUB_TOKEN}
         _HERMES_FORCE_GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         _HERMES_FORCE_GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
       '';
@@ -561,10 +570,10 @@ in
           };
         };
 
-        fallback_model = {
-          provider = "copilot";
-          model = "gpt-5.4";
-        };
+        fallback_providers = [
+          { provider = "copilot"; model = "gpt-5.4"; }
+          { provider = "anthropic"; model = "claude-opus-4-6"; }
+        ];
 
         tts = {
           provider = "edge";
