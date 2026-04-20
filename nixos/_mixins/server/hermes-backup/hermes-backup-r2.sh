@@ -39,8 +39,10 @@ for varName in "${requiredVars[@]}"; do
   fi
 done
 
-readonly timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
-readonly hostName="$(hostname -s)"
+timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+readonly timestamp
+hostName="$(hostname -s)"
+readonly hostName
 readonly archiveName="${timestamp}.tar.zst"
 readonly manifestName="${timestamp}.manifest.json"
 readonly archivePath="${artifactsDir}/${archiveName}"
