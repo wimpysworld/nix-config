@@ -18,8 +18,9 @@
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
-    hermes-agent.url = "github:NousResearch/hermes-agent";
 
+    hermes-agent.url = "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.4.16.tar.gz";
+    hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
     llm-agents.url = "github:numtide/llm-agents.nix";
     llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
