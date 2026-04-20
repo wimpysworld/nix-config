@@ -46,6 +46,7 @@ hermesWasRunning=0
 
 cleanup() {
   local exitCode="$1"
+  local artifactPath
 
   if [ "${hermesWasRunning}" -eq 1 ] && ! systemctl is-active --quiet hermes-agent.service; then
     echo "Restarting hermes-agent.service after backup interruption." >&2
@@ -53,6 +54,12 @@ cleanup() {
   fi
 
   rm -rf "${snapshotDir}" "${rcloneConfigDir}"
+
+  for artifactPath in "${archivePath:-}" "${manifestPath:-}"; do
+    if [ -n "${artifactPath}" ]; then
+      rm -f "${artifactPath}"
+    fi
+  done
 
   if [ "${exitCode}" -eq 0 ]; then
     find "${artifactsDir}" -maxdepth 1 -type f -mtime +2 -delete
