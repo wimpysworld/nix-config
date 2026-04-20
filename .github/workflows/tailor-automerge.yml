@@ -16,7 +16,7 @@ jobs:
       - name: Fetch Dependabot metadata
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         id: metadata
-        uses: dependabot/fetch-metadata@v3
+        uses: dependabot/fetch-metadata@v2
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           skip-commit-verification: true
