@@ -28,8 +28,8 @@ requiredVars=(
   R2_ENDPOINT
   R2_ACCESS_KEY_ID
   R2_SECRET_ACCESS_KEY
-  RCLONE_CRYPT_PASSWORD
-  RCLONE_CRYPT_PASSWORD2
+  BACKUP_CRYPT_PASSWORD
+  BACKUP_CRYPT_PASSWORD2
 )
 
 for varName in "${requiredVars[@]}"; do
@@ -38,6 +38,8 @@ for varName in "${requiredVars[@]}"; do
     exit 1
   fi
 done
+
+echo "Starting Hermes backup run."
 
 timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 readonly timestamp
@@ -85,6 +87,7 @@ trap 'cleanup "$?"' EXIT
 rm -rf "${snapshotDir}"
 mkdir -p "${snapshotDir}"
 
+echo "Creating filesystem snapshot in ${snapshotDir}."
 rsync -a --delete --numeric-ids \
   --exclude='/.hermes/state.db' \
   --exclude='/.hermes/state.db-wal' \
@@ -94,12 +97,13 @@ rsync -a --delete --numeric-ids \
   --exclude='/.hermes/memory_store.db-shm' \
   "${stateDir}/" "${snapshotDir}/"
 
+echo "Capturing live SQLite backups."
 for databaseName in "${sqliteDatabases[@]}"; do
   backupSqliteDatabase "${databaseName}"
 done
 
-cryptPassword="$(rclone obscure "${RCLONE_CRYPT_PASSWORD}")"
-cryptPassword2="$(rclone obscure "${RCLONE_CRYPT_PASSWORD2}")"
+cryptPassword="$(rclone obscure "${BACKUP_CRYPT_PASSWORD}")"
+cryptPassword2="$(rclone obscure "${BACKUP_CRYPT_PASSWORD2}")"
 
 cat > "${rcloneConfigPath}" <<EOF
 [hermes-r2]
@@ -110,6 +114,7 @@ secret_access_key = ${R2_SECRET_ACCESS_KEY}
 region = auto
 endpoint = ${R2_ENDPOINT}
 acl = private
+no_check_bucket = true
 
 [hermes-encrypted]
 type = crypt
@@ -122,6 +127,7 @@ EOF
 
 rm -f "${archivePath}" "${manifestPath}"
 
+echo "Creating compressed archive ${archiveName}."
 tar \
   --use-compress-program="zstd -T0 -19" \
   -cf "${archivePath}" \
@@ -145,11 +151,13 @@ jq -n \
     archive_name: $archiveName,
     archive_size_bytes: $sizeBytes,
     archive_sha256: $sha256
-  }' > "${manifestPath}"
+}' > "${manifestPath}"
 
+echo "Uploading archive and manifest to Cloudflare R2."
 rclone copyto "${archivePath}" "${remotePrefix}/${archiveName}" --config "${rcloneConfigPath}"
 rclone copyto "${manifestPath}" "${remotePrefix}/${manifestName}" --config "${rcloneConfigPath}"
 
+echo "Verifying remote objects."
 archiveListing="$(rclone lsjson "${remotePrefix}/${archiveName}" --config "${rcloneConfigPath}")"
 manifestListing="$(rclone lsjson "${remotePrefix}/${manifestName}" --config "${rcloneConfigPath}")"
 

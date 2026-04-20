@@ -58,14 +58,14 @@ lib.mkIf (noughtyLib.hostHasTag "hermes") {
       mode = "0400";
     };
 
-    RCLONE_CRYPT_PASSWORD = {
+    BACKUP_CRYPT_PASSWORD = {
       sopsFile = hermesSopsFile;
       owner = "root";
       group = "root";
       mode = "0400";
     };
 
-    RCLONE_CRYPT_PASSWORD2 = {
+    BACKUP_CRYPT_PASSWORD2 = {
       sopsFile = hermesSopsFile;
       owner = "root";
       group = "root";
@@ -79,8 +79,8 @@ lib.mkIf (noughtyLib.hostHasTag "hermes") {
       R2_ENDPOINT=${config.sops.placeholder.R2_ENDPOINT}
       R2_ACCESS_KEY_ID=${config.sops.placeholder.R2_ACCESS_KEY_ID}
       R2_SECRET_ACCESS_KEY=${config.sops.placeholder.R2_SECRET_ACCESS_KEY}
-      RCLONE_CRYPT_PASSWORD=${config.sops.placeholder.RCLONE_CRYPT_PASSWORD}
-      RCLONE_CRYPT_PASSWORD2=${config.sops.placeholder.RCLONE_CRYPT_PASSWORD2}
+      BACKUP_CRYPT_PASSWORD=${config.sops.placeholder.BACKUP_CRYPT_PASSWORD}
+      BACKUP_CRYPT_PASSWORD2=${config.sops.placeholder.BACKUP_CRYPT_PASSWORD2}
     '';
     owner = "root";
     group = "root";
