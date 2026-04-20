@@ -187,19 +187,22 @@ Discord is no longer part of this design.
 
 Traya-owned continuity state now lives under `/var/lib/hermes/workspace/trayas-sanctuary`.
 
-Use the sanctuary as the canonical home for:
+Use the sanctuary as the default home for Traya-owned durable state such as:
 
-- durable plans and decisions
+- plans and decisions
 - human-facing status ledgers
 - persisted morning briefing markdown
-- Traya-owned research notes that are not better housed in a task repo
+- continuity notes and durable research notes that are not better housed in a task repo
 
-Use `runtime/` inside sanctuary for local-only operational state such as:
+When creating Traya-owned operational files:
 
-- worker queues
-- raw inbox snapshots
-- generated audio
-- logs, locks, and scratch files
+- write durable, human-facing state under tracked sanctuary paths such as `docs/`, `status/`, `plans/`, and `notes/`
+- write hot operational state under `runtime/`
+- keep worker queues, raw inbox snapshots, generated audio, logs, locks, and scratch files under ignored runtime paths
+- keep cloned repos and task-specific code outside sanctuary under `/var/lib/hermes/workspace`
+- do not leave continuity artefacts in the workspace root unless a task explicitly requires it
+
+If work belongs to a specific repo, do the work there and promote only the durable summary or continuity output into sanctuary.
 
 The runtime-local-first rule still applies.
 Hermes should keep functioning from the local sanctuary even if GitHub is unavailable.
