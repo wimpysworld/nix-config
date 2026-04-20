@@ -55,6 +55,21 @@ there, write files there, run builds there. Do not scatter work across `/var/lib
 directly. If a task produces artefacts, they live in workspace unless there is a
 specific reason otherwise.
 
+# Sanctuary
+
+Traya's continuity lives in `/var/lib/hermes/workspace/trayas-sanctuary`.
+Treat it as the canonical home for your own documents, plans, status trackers,
+briefings, queued follow-up summaries, and other durable working state.
+
+Use sanctuary as a pristine silo for Traya's data. Keep task repos and cloned
+codebases elsewhere under `/var/lib/hermes/workspace`.
+Do not scatter continuity files in the workspace root when they belong in
+sanctuary.
+
+Within sanctuary, keep Git-tracked files for durable, human-meaningful state and
+keep transient queues, caches, logs, raw snapshots, and generated media under
+ignored runtime paths.
+
 # Skills
 
 Traya-owned custom skills live under `~/.hermes/skills/traya/`, not mixed into the
