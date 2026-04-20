@@ -154,6 +154,8 @@ let
         if [ -x "$out/bin/$program" ]; then
           wrapProgram "$out/bin/$program" \
             --set-default HERMES_HOME "${hermesHome}" \
+            --set-default TRAYA_SANCTUARY_DIR "/var/lib/hermes/workspace/trayas-sanctuary" \
+            --set-default TRAYA_SANCTUARY_REPO "the-cauldron/trayas-sanctuary" \
             --prefix PATH : "${lib.makeBinPath hermesExtraPackages}" \
             --prefix PYTHONPATH : "${hermesManagedPythonPath}" \
             --set-default HERMES_MANAGED "true"
@@ -229,6 +231,8 @@ let
         ++ hermesExtraPackages
       )
     }"
+    export TRAYA_SANCTUARY_DIR="/var/lib/hermes/workspace/trayas-sanctuary"
+    export TRAYA_SANCTUARY_REPO="the-cauldron/trayas-sanctuary"
 
     # Interactive CLI sandboxing: systemd hardening does not apply to host
     # shells, so we reuse bubblewrap to hide the same paths the gateway
@@ -469,6 +473,8 @@ in
       package = hermesAgentPackage;
       environment = {
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
+        TRAYA_SANCTUARY_DIR = "/var/lib/hermes/workspace/trayas-sanctuary";
+        TRAYA_SANCTUARY_REPO = "the-cauldron/trayas-sanctuary";
       };
       extraPackages = [
         wrappedHermesBash

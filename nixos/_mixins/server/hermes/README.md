@@ -183,6 +183,28 @@ That means the current service expects:
 
 Discord is no longer part of this design.
 
+## Sanctuary
+
+Traya-owned continuity state now lives under `/var/lib/hermes/workspace/trayas-sanctuary`.
+
+Use the sanctuary as the canonical home for:
+
+- durable plans and decisions
+- human-facing status ledgers
+- persisted morning briefing markdown
+- Traya-owned research notes that are not better housed in a task repo
+
+Use `runtime/` inside sanctuary for local-only operational state such as:
+
+- worker queues
+- raw inbox snapshots
+- generated audio
+- logs, locks, and scratch files
+
+The runtime-local-first rule still applies.
+Hermes should keep functioning from the local sanctuary even if GitHub is unavailable.
+The private GitHub repo `the-cauldron/trayas-sanctuary` is for durability and audit trail, not as the only live copy.
+
 ## MCP Servers
 
 The current declared MCP servers are:
