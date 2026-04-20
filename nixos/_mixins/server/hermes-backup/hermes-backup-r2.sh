@@ -3,6 +3,7 @@ set -euo pipefail
 umask 077
 
 readonly stateDir="/var/lib/hermes"
+readonly hermesHome="${stateDir}/.hermes"
 readonly cacheDir="/var/cache/hermes-backup"
 readonly workDir="${cacheDir}/work"
 readonly snapshotDir="${workDir}/snapshot"
@@ -10,6 +11,10 @@ readonly artifactsDir="${workDir}/artifacts"
 readonly rcloneConfigDir="${workDir}/rclone"
 readonly rcloneConfigPath="${rcloneConfigDir}/rclone.conf"
 readonly lockPath="${cacheDir}/hermes-backup.lock"
+readonly sqliteDatabases=(
+  "state.db"
+  "memory_store.db"
+)
 
 mkdir -p "${cacheDir}" "${snapshotDir}" "${artifactsDir}" "${rcloneConfigDir}"
 exec 9>"${lockPath}"
@@ -42,16 +47,9 @@ readonly archivePath="${artifactsDir}/${archiveName}"
 readonly manifestPath="${artifactsDir}/${manifestName}"
 readonly remotePrefix="hermes-encrypted:${hostName}/backups"
 
-hermesWasRunning=0
-
 cleanup() {
   local exitCode="$1"
   local artifactPath
-
-  if [ "${hermesWasRunning}" -eq 1 ] && ! systemctl is-active --quiet hermes-agent.service; then
-    echo "Restarting hermes-agent.service after backup interruption." >&2
-    systemctl start hermes-agent.service || true
-  fi
 
   rm -rf "${snapshotDir}" "${rcloneConfigDir}"
 
@@ -66,23 +64,37 @@ cleanup() {
   fi
 }
 
-trap 'cleanup "$?"' EXIT
+backupSqliteDatabase() {
+  local databaseName="$1"
+  local sourcePath="${hermesHome}/${databaseName}"
+  local targetPath="${snapshotDir}/.hermes/${databaseName}"
 
-if systemctl is-active --quiet hermes-agent.service; then
-  hermesWasRunning=1
-  echo "Stopping hermes-agent.service for a consistent snapshot."
-  systemctl stop hermes-agent.service
-fi
+  if [ ! -f "${sourcePath}" ]; then
+    echo "Skipping missing SQLite database: ${sourcePath}"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${targetPath}")"
+  sqlite3 "${sourcePath}" ".backup '${targetPath}'"
+}
+
+trap 'cleanup "$?"' EXIT
 
 rm -rf "${snapshotDir}"
 mkdir -p "${snapshotDir}"
-rsync -a --delete --numeric-ids "${stateDir}/" "${snapshotDir}/"
 
-if [ "${hermesWasRunning}" -eq 1 ]; then
-  echo "Starting hermes-agent.service after snapshot."
-  systemctl start hermes-agent.service
-  hermesWasRunning=0
-fi
+rsync -a --delete --numeric-ids \
+  --exclude='/.hermes/state.db' \
+  --exclude='/.hermes/state.db-wal' \
+  --exclude='/.hermes/state.db-shm' \
+  --exclude='/.hermes/memory_store.db' \
+  --exclude='/.hermes/memory_store.db-wal' \
+  --exclude='/.hermes/memory_store.db-shm' \
+  "${stateDir}/" "${snapshotDir}/"
+
+for databaseName in "${sqliteDatabases[@]}"; do
+  backupSqliteDatabase "${databaseName}"
+done
 
 cryptPassword="$(rclone obscure "${RCLONE_CRYPT_PASSWORD}")"
 cryptPassword2="$(rclone obscure "${RCLONE_CRYPT_PASSWORD2}")"

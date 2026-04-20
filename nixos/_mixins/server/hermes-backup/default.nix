@@ -19,7 +19,7 @@ let
       jq
       rclone
       rsync
-      systemdMinimal
+      sqlite
       util-linux
       zstd
     ];
