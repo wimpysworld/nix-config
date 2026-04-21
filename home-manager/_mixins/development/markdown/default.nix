@@ -65,7 +65,7 @@
           p.markdown
           p.markdown_inline
         ]))
-        # Markdown rendering in buffers (including CodeCompanion chat)
+        # Markdown rendering in buffers
         render-markdown-nvim
         # Paste images from clipboard into markdown
         img-clip-nvim
@@ -100,10 +100,10 @@
 
         -- Render Markdown: Beautiful markdown rendering in Neovim
         -- Renders markdown in real-time with inline code blocks, tables, headings, etc.
-        -- Configured to work with CodeCompanion chat buffers
+        -- Enabled for Markdown buffers only.
         require('render-markdown').setup {
-          file_types = { 'markdown', 'codecompanion' },  -- Enable for markdown and AI chat
-          render_modes = { 'n', 'i', 'v', 'c' },         -- Render in all modes (modeless UX)
+          file_types = { 'markdown' },
+          render_modes = { 'n', 'i', 'v', 'c' },
           anti_conceal = {
             enabled = true,  -- Show raw markdown when cursor is on the line
           },
@@ -154,7 +154,6 @@
         }
 
         -- img-clip: Paste images from clipboard into markdown
-        -- Integrates with CodeCompanion for pasting images into AI chat
         require('img-clip').setup {
           default = {
             prompt_for_file_name = true,     -- Ask for filename when pasting
@@ -165,12 +164,6 @@
             -- Markdown files: save images in same directory
             markdown = {
               template = '![$CURSOR]($FILE_PATH)',
-            },
-            -- CodeCompanion chat: use absolute paths and simple template
-            codecompanion = {
-              prompt_for_file_name = false,  -- Auto-generate name in chat
-              template = '[Image]($FILE_PATH)',
-              use_absolute_path = true,      -- Absolute paths for portability
             },
           },
         }

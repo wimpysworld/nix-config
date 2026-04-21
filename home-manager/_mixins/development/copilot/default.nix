@@ -343,9 +343,7 @@ in
     ];
   };
   programs = {
-    # NOTE: Neovim AI assistance now provided by CodeCompanion in neovim/default.nix
-    # Copilot plugins (copilot-lua, copilot-cmp, CopilotChat-nvim) have been removed
-    # in favour of CodeCompanion's multi-provider LLM integration with agentic tools.
+    # NOTE: Neovim Copilot plugins remain removed.
     vscode = lib.mkIf config.programs.vscode.enable {
       profiles.default = {
         userSettings = {
