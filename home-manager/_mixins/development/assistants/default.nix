@@ -47,8 +47,6 @@ let
       "${config.xdg.configHome}/codex"
     else
       "${config.home.homeDirectory}/.codex";
-  nvimConfigDir = "${config.xdg.configHome}/nvim";
-
   # Import compose module
   compose = import ./compose.nix { inherit lib; };
 
@@ -295,23 +293,6 @@ let
       ${skillCmds}
     '';
 
-  # ============ CODECOMPANION ============
-
-  codecompanionAgents = compose.composeAgents "codecompanion";
-  codecompanionCommands = compose.composeCommands "codecompanion";
-
-  # CodeCompanion rules: agents go in ~/.config/nvim/rules/
-  mkCodeCompanionRuleFiles = lib.mapAttrs' (name: content: {
-    name = "${nvimConfigDir}/rules/${name}.md";
-    value.text = content;
-  }) codecompanionAgents;
-
-  # CodeCompanion prompts: commands go in ~/.config/nvim/prompts/codecompanion/
-  mkCodeCompanionPromptFiles = lib.mapAttrs' (name: content: {
-    name = "${nvimConfigDir}/prompts/codecompanion/${name}.md";
-    value.text = content;
-  }) codecompanionCommands;
-
 in
 {
   sops = {
@@ -385,9 +366,6 @@ in
     # VSCode agent and command files
     // mkVscodeAgentFiles
     // mkVscodeCommandFiles
-    # CodeCompanion rules and prompts
-    // mkCodeCompanionRuleFiles
-    // mkCodeCompanionPromptFiles
     # Claude Code skill files
     // mkClaudeSkillFiles
     # OpenCode skill files
