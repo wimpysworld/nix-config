@@ -13,13 +13,8 @@ let
   opencodePackage = inputs.llm-agents.packages.${system}.opencode;
 in
 {
-  home = {
-    packages = lib.optionals host.is.workstation [
-      pkgs.opencode-desktop
-    ];
-    shellAliases = {
-      oc-traya = "opencode --agent traya --continue";
-    };
+  home.shellAliases = {
+    oc-traya = "opencode --agent traya --continue";
   };
 
   programs = {
