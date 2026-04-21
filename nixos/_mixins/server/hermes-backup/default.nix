@@ -9,25 +9,41 @@ let
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
   backupCacheDir = "/var/cache/hermes-backup";
   backupEnvTemplate = "hermes-backup-env";
-  backupScript = pkgs.writeShellApplication {
-    name = "hermes-backup-r2";
-    runtimeInputs = with pkgs; [
-      coreutils
-      findutils
-      gnutar
-      inetutils
-      jq
-      rclone
-      rsync
-      sqlite
-      util-linux
-      zstd
-    ];
-    text = builtins.readFile ./hermes-backup-r2.sh;
-  };
+  backupRuntimeInputs = with pkgs; [
+    coreutils
+    findutils
+    gnugrep
+    gnutar
+    inetutils
+    jq
+    python3
+    rclone
+    rsync
+    sqlite
+    util-linux
+    zstd
+  ];
+  mkHermesBackupScript =
+    name: scriptFile:
+    pkgs.writeShellApplication {
+      inherit name;
+      runtimeInputs = backupRuntimeInputs;
+      text = ''
+        export HERMES_BACKUP_ENV_FILE="${config.sops.templates.${backupEnvTemplate}.path}"
+        ${builtins.readFile ./hermes-backup-common.sh}
+        ${builtins.readFile scriptFile}
+      '';
+    };
+  backupScript = mkHermesBackupScript "hermes-backup-r2" ./hermes-backup-r2.sh;
+  verifyScript = mkHermesBackupScript "hermes-backup-verify-r2" ./hermes-backup-verify-r2.sh;
+  restoreScript = mkHermesBackupScript "hermes-restore-r2" ./hermes-restore-r2.sh;
 in
 lib.mkIf (noughtyLib.hostHasTag "hermes") {
-  environment.systemPackages = [ backupScript ];
+  environment.systemPackages = [
+    backupScript
+    verifyScript
+    restoreScript
+  ];
 
   sops.secrets = {
     R2_BUCKET = {
@@ -58,14 +74,14 @@ lib.mkIf (noughtyLib.hostHasTag "hermes") {
       mode = "0400";
     };
 
-    BACKUP_CRYPT_PASSWORD = {
+    RCLONE_CRYPT_PASSWORD = {
       sopsFile = hermesSopsFile;
       owner = "root";
       group = "root";
       mode = "0400";
     };
 
-    BACKUP_CRYPT_PASSWORD2 = {
+    RCLONE_CRYPT_PASSWORD2 = {
       sopsFile = hermesSopsFile;
       owner = "root";
       group = "root";
@@ -75,12 +91,12 @@ lib.mkIf (noughtyLib.hostHasTag "hermes") {
 
   sops.templates.${backupEnvTemplate} = {
     content = ''
-      R2_BUCKET=${config.sops.placeholder.R2_BUCKET}
-      R2_ENDPOINT=${config.sops.placeholder.R2_ENDPOINT}
-      R2_ACCESS_KEY_ID=${config.sops.placeholder.R2_ACCESS_KEY_ID}
-      R2_SECRET_ACCESS_KEY=${config.sops.placeholder.R2_SECRET_ACCESS_KEY}
-      BACKUP_CRYPT_PASSWORD=${config.sops.placeholder.BACKUP_CRYPT_PASSWORD}
-      BACKUP_CRYPT_PASSWORD2=${config.sops.placeholder.BACKUP_CRYPT_PASSWORD2}
+      R2_BUCKET_FILE=${config.sops.secrets.R2_BUCKET.path}
+      R2_ENDPOINT_FILE=${config.sops.secrets.R2_ENDPOINT.path}
+      R2_ACCESS_KEY_ID_FILE=${config.sops.secrets.R2_ACCESS_KEY_ID.path}
+      R2_SECRET_ACCESS_KEY_FILE=${config.sops.secrets.R2_SECRET_ACCESS_KEY.path}
+      BACKUP_CRYPT_PASSWORD_FILE=${config.sops.secrets.RCLONE_CRYPT_PASSWORD.path}
+      BACKUP_CRYPT_PASSWORD2_FILE=${config.sops.secrets.RCLONE_CRYPT_PASSWORD2.path}
     '';
     owner = "root";
     group = "root";
