@@ -1,7 +1,9 @@
 readonly stateDir="/var/lib/hermes"
+# shellcheck disable=SC2034
 readonly hermesHome="${stateDir}/.hermes"
 readonly cacheDir="/var/cache/hermes-backup"
 readonly workDir="${cacheDir}/work"
+# shellcheck disable=SC2034
 readonly snapshotDir="${workDir}/snapshot"
 readonly artifactsDir="${workDir}/artifacts"
 rcloneConfigDir=""
@@ -9,160 +11,162 @@ rcloneConfigPath=""
 readonly lockPath="${cacheDir}/hermes-backup.lock"
 readonly archiveExtension=".tar.zst"
 readonly manifestSuffix=".manifest.json"
+# shellcheck disable=SC2034
 readonly sqliteDatabases=(
-  "state.db"
-  "memory_store.db"
+	"state.db"
+	"memory_store.db"
 )
 
 logPhase() {
-  printf '[hermes-backup] %s\n' "$*" >&2
+	printf '[hermes-backup] %s\n' "$*" >&2
 }
 
 die() {
-  printf '[hermes-backup] ERROR: %s\n' "$*" >&2
-  exit 1
+	printf '[hermes-backup] ERROR: %s\n' "$*" >&2
+	exit 1
 }
 
 ensureCacheDirectories() {
-  mkdir -p "${cacheDir}" "${workDir}" "${artifactsDir}"
+	mkdir -p "${cacheDir}" "${workDir}" "${artifactsDir}"
 }
 
 cleanupRcloneConfig() {
-  if [ -n "${rcloneConfigDir}" ]; then
-    rm -rf "${rcloneConfigDir}"
-  fi
+	if [ -n "${rcloneConfigDir}" ]; then
+		rm -rf "${rcloneConfigDir}"
+	fi
 
-  rcloneConfigDir=""
-  rcloneConfigPath=""
+	rcloneConfigDir=""
+	rcloneConfigPath=""
 }
 
 acquireBackupLock() {
-  exec 9>"${lockPath}"
-  flock -n 9 || die "Another Hermes backup run is already in progress."
+	exec 9>"${lockPath}"
+	flock -n 9 || die "Another Hermes backup run is already in progress."
 }
 
 loadEnvVarFromFile() {
-  local varName="$1"
-  local fileVarName="${varName}_FILE"
-  local filePath="${!fileVarName:-}"
+	local varName="$1"
+	local fileVarName="${varName}_FILE"
+	local filePath="${!fileVarName:-}"
 
-  if [ -n "${!varName:-}" ] || [ -z "${filePath}" ]; then
-    return 0
-  fi
+	if [ -n "${!varName:-}" ] || [ -z "${filePath}" ]; then
+		return 0
+	fi
 
-  if [ ! -r "${filePath}" ]; then
-    die "Missing readable environment file for ${varName}: ${filePath}"
-  fi
+	if [ ! -r "${filePath}" ]; then
+		die "Missing readable environment file for ${varName}: ${filePath}"
+	fi
 
-  export "${varName}=$(<"${filePath}")"
+	export "${varName}=$(<"${filePath}")"
 }
 
 loadBackupEnvironment() {
-  if [ -n "${HERMES_BACKUP_ENV_FILE:-}" ] && [ -r "${HERMES_BACKUP_ENV_FILE}" ]; then
-    # shellcheck disable=SC1090
-    set -a
-    . "${HERMES_BACKUP_ENV_FILE}"
-    set +a
-  fi
+	if [ -n "${HERMES_BACKUP_ENV_FILE:-}" ] && [ -r "${HERMES_BACKUP_ENV_FILE}" ]; then
+		set -a
+		# shellcheck source=/dev/null
+		# shellcheck disable=SC1090
+		. "${HERMES_BACKUP_ENV_FILE}"
+		set +a
+	fi
 
-  loadEnvVarFromFile R2_BUCKET
-  loadEnvVarFromFile R2_ENDPOINT
-  loadEnvVarFromFile R2_ACCESS_KEY_ID
-  loadEnvVarFromFile R2_SECRET_ACCESS_KEY
-  loadEnvVarFromFile BACKUP_CRYPT_PASSWORD
-  loadEnvVarFromFile BACKUP_CRYPT_PASSWORD2
+	loadEnvVarFromFile R2_BUCKET
+	loadEnvVarFromFile R2_ENDPOINT
+	loadEnvVarFromFile R2_ACCESS_KEY_ID
+	loadEnvVarFromFile R2_SECRET_ACCESS_KEY
+	loadEnvVarFromFile BACKUP_CRYPT_PASSWORD
+	loadEnvVarFromFile BACKUP_CRYPT_PASSWORD2
 
-  if [ -z "${BACKUP_CRYPT_PASSWORD:-}" ] && [ -n "${RCLONE_CRYPT_PASSWORD:-}" ]; then
-    export BACKUP_CRYPT_PASSWORD="${RCLONE_CRYPT_PASSWORD}"
-  fi
+	if [ -z "${BACKUP_CRYPT_PASSWORD:-}" ] && [ -n "${RCLONE_CRYPT_PASSWORD:-}" ]; then
+		export BACKUP_CRYPT_PASSWORD="${RCLONE_CRYPT_PASSWORD}"
+	fi
 
-  if [ -z "${BACKUP_CRYPT_PASSWORD2:-}" ] && [ -n "${RCLONE_CRYPT_PASSWORD2:-}" ]; then
-    export BACKUP_CRYPT_PASSWORD2="${RCLONE_CRYPT_PASSWORD2}"
-  fi
+	if [ -z "${BACKUP_CRYPT_PASSWORD2:-}" ] && [ -n "${RCLONE_CRYPT_PASSWORD2:-}" ]; then
+		export BACKUP_CRYPT_PASSWORD2="${RCLONE_CRYPT_PASSWORD2}"
+	fi
 
-  requiredVars=(
-    R2_BUCKET
-    R2_ENDPOINT
-    R2_ACCESS_KEY_ID
-    R2_SECRET_ACCESS_KEY
-    BACKUP_CRYPT_PASSWORD
-    BACKUP_CRYPT_PASSWORD2
-  )
+	requiredVars=(
+		R2_BUCKET
+		R2_ENDPOINT
+		R2_ACCESS_KEY_ID
+		R2_SECRET_ACCESS_KEY
+		BACKUP_CRYPT_PASSWORD
+		BACKUP_CRYPT_PASSWORD2
+	)
 
-  for varName in "${requiredVars[@]}"; do
-    if [ -z "${!varName:-}" ]; then
-      die "Missing required environment variable: ${varName}"
-    fi
-  done
+	for varName in "${requiredVars[@]}"; do
+		if [ -z "${!varName:-}" ]; then
+			die "Missing required environment variable: ${varName}"
+		fi
+	done
 }
 
 currentHostName() {
-  hostname -s
+	hostname -s
 }
 
 timestampNowUtc() {
-  date -u +%Y-%m-%dT%H-%M-%SZ
+	date -u +%Y-%m-%dT%H-%M-%SZ
 }
 
 archiveNameFromTimestamp() {
-  printf '%s%s\n' "$1" "${archiveExtension}"
+	printf '%s%s\n' "$1" "${archiveExtension}"
 }
 
 manifestNameFromArchive() {
-  local archiveName="$1"
+	local archiveName="$1"
 
-  case "${archiveName}" in
-    *"${archiveExtension}")
-      printf '%s%s\n' "${archiveName%${archiveExtension}}" "${manifestSuffix}"
-      ;;
-    *)
-      die "Backup name must end with ${archiveExtension}: ${archiveName}"
-      ;;
-  esac
+	case "${archiveName}" in
+	*"${archiveExtension}")
+		printf '%s%s\n' "${archiveName%"${archiveExtension}"}" "${manifestSuffix}"
+		;;
+	*)
+		die "Backup name must end with ${archiveExtension}: ${archiveName}"
+		;;
+	esac
 }
 
 normaliseArchiveSelection() {
-  local selection="${1:-}"
+	local selection="${1:-}"
 
-  if [ -z "${selection}" ]; then
-    die "A backup timestamp or archive name is required."
-  fi
+	if [ -z "${selection}" ]; then
+		die "A backup timestamp or archive name is required."
+	fi
 
-  case "${selection}" in
-    *"${archiveExtension}")
-      printf '%s\n' "${selection}"
-      ;;
-    *"${manifestSuffix}")
-      die "Pass the backup archive name or timestamp, not the manifest name: ${selection}"
-      ;;
-    *)
-      printf '%s%s\n' "${selection}" "${archiveExtension}"
-      ;;
-  esac
+	case "${selection}" in
+	*"${archiveExtension}")
+		printf '%s\n' "${selection}"
+		;;
+	*"${manifestSuffix}")
+		die "Pass the backup archive name or timestamp, not the manifest name: ${selection}"
+		;;
+	*)
+		printf '%s%s\n' "${selection}" "${archiveExtension}"
+		;;
+	esac
 }
 
 remotePrefix() {
-  printf 'hermes-encrypted:%s/backups\n' "$(currentHostName)"
+	printf 'hermes-encrypted:%s/backups\n' "$(currentHostName)"
 }
 
 remoteArchivePath() {
-  printf '%s/%s\n' "$(remotePrefix)" "$1"
+	printf '%s/%s\n' "$(remotePrefix)" "$1"
 }
 
 remoteManifestPath() {
-  printf '%s/%s\n' "$(remotePrefix)" "$(manifestNameFromArchive "$1")"
+	printf '%s/%s\n' "$(remotePrefix)" "$(manifestNameFromArchive "$1")"
 }
 
 createRcloneConfig() {
-  local cryptPassword cryptPassword2
+	local cryptPassword cryptPassword2
 
-  rcloneConfigDir="$(mktemp -d "${workDir}/rclone.XXXXXX")"
-  rcloneConfigPath="${rcloneConfigDir}/rclone.conf"
+	rcloneConfigDir="$(mktemp -d "${workDir}/rclone.XXXXXX")"
+	rcloneConfigPath="${rcloneConfigDir}/rclone.conf"
 
-  cryptPassword="$(printf '%s\n' "${BACKUP_CRYPT_PASSWORD}" | rclone obscure -)"
-  cryptPassword2="$(printf '%s\n' "${BACKUP_CRYPT_PASSWORD2}" | rclone obscure -)"
+	cryptPassword="$(printf '%s\n' "${BACKUP_CRYPT_PASSWORD}" | rclone obscure -)"
+	cryptPassword2="$(printf '%s\n' "${BACKUP_CRYPT_PASSWORD2}" | rclone obscure -)"
 
-  cat > "${rcloneConfigPath}" <<EOF
+	cat >"${rcloneConfigPath}" <<EOF
 [hermes-r2]
 type = s3
 provider = Cloudflare
@@ -184,133 +188,135 @@ EOF
 }
 
 remoteObjectCount() {
-  rclone lsjson "$1" --config "${rcloneConfigPath}" | jq 'length'
+	rclone lsjson "$1" --config "${rcloneConfigPath}" | jq 'length'
 }
 
 remoteObjectSize() {
-  rclone lsjson "$1" --config "${rcloneConfigPath}" | jq -r 'if length == 1 then .[0].Size else empty end'
+	rclone lsjson "$1" --config "${rcloneConfigPath}" | jq -r 'if length == 1 then .[0].Size else empty end'
 }
 
 listRemoteBackupArchives() {
-  rclone lsf "$(remotePrefix)" --config "${rcloneConfigPath}" --files-only \
-    | grep -E '\.tar\.zst$' \
-    || true
+	rclone lsf "$(remotePrefix)" --config "${rcloneConfigPath}" --files-only |
+		grep -E '\.tar\.zst$' ||
+		true
 }
 
 listRemoteBackupManifests() {
-  rclone lsf "$(remotePrefix)" --config "${rcloneConfigPath}" --files-only \
-    | grep -E '\.manifest\.json$' \
-    || true
+	rclone lsf "$(remotePrefix)" --config "${rcloneConfigPath}" --files-only |
+		grep -E '\.manifest\.json$' ||
+		true
 }
 
 selectLatestArchiveName() {
-  local manifestName
+	local manifestName
 
-  manifestName="$(listRemoteBackupManifests | sort | tail -n 1)"
-  if [ -z "${manifestName}" ]; then
-    die "No complete Hermes backups were found under $(remotePrefix)."
-  fi
+	manifestName="$(listRemoteBackupManifests | sort | tail -n 1)"
+	if [ -z "${manifestName}" ]; then
+		die "No complete Hermes backups were found under $(remotePrefix)."
+	fi
 
-  printf '%s%s\n' "${manifestName%${manifestSuffix}}" "${archiveExtension}"
+	printf '%s%s\n' "${manifestName%"${manifestSuffix}"}" "${archiveExtension}"
 }
 
 downloadBackupPair() {
-  local archiveName="$1"
-  local downloadDir="$2"
-  local archivePath="${downloadDir}/${archiveName}"
-  local manifestPath="${downloadDir}/$(manifestNameFromArchive "${archiveName}")"
+	local archiveName="$1"
+	local downloadDir="$2"
+	local archivePath="${downloadDir}/${archiveName}"
+	local manifestPath
 
-  mkdir -p "${downloadDir}"
+	manifestPath="${downloadDir}/$(manifestNameFromArchive "${archiveName}")"
 
-  rclone copyto \
-    "$(remoteArchivePath "${archiveName}")" \
-    "${archivePath}" \
-    --config "${rcloneConfigPath}"
+	mkdir -p "${downloadDir}"
 
-  rclone copyto \
-    "$(remoteManifestPath "${archiveName}")" \
-    "${manifestPath}" \
-    --config "${rcloneConfigPath}"
+	rclone copyto \
+		"$(remoteArchivePath "${archiveName}")" \
+		"${archivePath}" \
+		--config "${rcloneConfigPath}"
 
-  printf '%s\n%s\n' "${archivePath}" "${manifestPath}"
+	rclone copyto \
+		"$(remoteManifestPath "${archiveName}")" \
+		"${manifestPath}" \
+		--config "${rcloneConfigPath}"
+
+	printf '%s\n%s\n' "${archivePath}" "${manifestPath}"
 }
 
 verifyRemoteBackupPair() {
-  local archiveName="$1"
-  local manifestName remoteArchiveSize manifestCount
+	local archiveName="$1"
+	local manifestName remoteArchiveSize manifestCount
 
-  manifestName="$(manifestNameFromArchive "${archiveName}")"
-  remoteArchiveSize="$(remoteObjectSize "$(remoteArchivePath "${archiveName}")")"
-  manifestCount="$(remoteObjectCount "$(remoteManifestPath "${archiveName}")")"
+	manifestName="$(manifestNameFromArchive "${archiveName}")"
+	remoteArchiveSize="$(remoteObjectSize "$(remoteArchivePath "${archiveName}")")"
+	manifestCount="$(remoteObjectCount "$(remoteManifestPath "${archiveName}")")"
 
-  if [ -z "${remoteArchiveSize}" ]; then
-    die "Remote archive verification failed for ${archiveName}."
-  fi
+	if [ -z "${remoteArchiveSize}" ]; then
+		die "Remote archive verification failed for ${archiveName}."
+	fi
 
-  if [ "${manifestCount}" != "1" ]; then
-    die "Remote manifest verification failed for ${manifestName}."
-  fi
+	if [ "${manifestCount}" != "1" ]; then
+		die "Remote manifest verification failed for ${manifestName}."
+	fi
 
-  printf '%s\n' "${remoteArchiveSize}"
+	printf '%s\n' "${remoteArchiveSize}"
 }
 
 verifyBackupArchive() {
-  local archiveName="$1"
-  local archivePath="$2"
-  local manifestPath="$3"
-  local expectedHost="$4"
-  local manifestArchiveName manifestHost manifestSha256 manifestSizeBytes actualSizeBytes actualSha256
+	local archiveName="$1"
+	local archivePath="$2"
+	local manifestPath="$3"
+	local expectedHost="$4"
+	local manifestArchiveName manifestHost manifestSha256 manifestSizeBytes actualSizeBytes actualSha256
 
-  manifestArchiveName="$(jq -r '.archive_name // empty' "${manifestPath}")"
-  manifestHost="$(jq -r '.hostname // empty' "${manifestPath}")"
-  manifestSha256="$(jq -r '.archive_sha256 // empty' "${manifestPath}")"
-  manifestSizeBytes="$(jq -r '.archive_size_bytes // empty' "${manifestPath}")"
+	manifestArchiveName="$(jq -r '.archive_name // empty' "${manifestPath}")"
+	manifestHost="$(jq -r '.hostname // empty' "${manifestPath}")"
+	manifestSha256="$(jq -r '.archive_sha256 // empty' "${manifestPath}")"
+	manifestSizeBytes="$(jq -r '.archive_size_bytes // empty' "${manifestPath}")"
 
-  [ -n "${manifestArchiveName}" ] || die "Backup manifest is missing archive_name."
-  [ -n "${manifestHost}" ] || die "Backup manifest is missing hostname."
-  [ -n "${manifestSha256}" ] || die "Backup manifest is missing archive_sha256."
-  [ -n "${manifestSizeBytes}" ] || die "Backup manifest is missing archive_size_bytes."
+	[ -n "${manifestArchiveName}" ] || die "Backup manifest is missing archive_name."
+	[ -n "${manifestHost}" ] || die "Backup manifest is missing hostname."
+	[ -n "${manifestSha256}" ] || die "Backup manifest is missing archive_sha256."
+	[ -n "${manifestSizeBytes}" ] || die "Backup manifest is missing archive_size_bytes."
 
-  if [ "${manifestArchiveName}" != "${archiveName}" ]; then
-    die "Backup manifest archive_name does not match ${archiveName}."
-  fi
+	if [ "${manifestArchiveName}" != "${archiveName}" ]; then
+		die "Backup manifest archive_name does not match ${archiveName}."
+	fi
 
-  if [ "${manifestHost}" != "${expectedHost}" ]; then
-    die "Backup manifest hostname ${manifestHost} does not match ${expectedHost}."
-  fi
+	if [ "${manifestHost}" != "${expectedHost}" ]; then
+		die "Backup manifest hostname ${manifestHost} does not match ${expectedHost}."
+	fi
 
-  if ! [[ "${manifestSha256}" =~ ^[0-9a-f]{64}$ ]]; then
-    die "Backup manifest archive_sha256 is not a valid SHA-256 digest."
-  fi
+	if ! [[ "${manifestSha256}" =~ ^[0-9a-f]{64}$ ]]; then
+		die "Backup manifest archive_sha256 is not a valid SHA-256 digest."
+	fi
 
-  if ! [[ "${manifestSizeBytes}" =~ ^[0-9]+$ ]]; then
-    die "Backup manifest archive_size_bytes is not an integer."
-  fi
+	if ! [[ "${manifestSizeBytes}" =~ ^[0-9]+$ ]]; then
+		die "Backup manifest archive_size_bytes is not an integer."
+	fi
 
-  actualSizeBytes="$(stat -c '%s' "${archivePath}")"
-  actualSha256="$(sha256sum "${archivePath}" | cut -d ' ' -f 1)"
+	actualSizeBytes="$(stat -c '%s' "${archivePath}")"
+	actualSha256="$(sha256sum "${archivePath}" | cut -d ' ' -f 1)"
 
-  if [ "${manifestSizeBytes}" != "${actualSizeBytes}" ]; then
-    die "Archive size mismatch for ${archiveName}: manifest=${manifestSizeBytes}, actual=${actualSizeBytes}."
-  fi
+	if [ "${manifestSizeBytes}" != "${actualSizeBytes}" ]; then
+		die "Archive size mismatch for ${archiveName}: manifest=${manifestSizeBytes}, actual=${actualSizeBytes}."
+	fi
 
-  if [ "${manifestSha256}" != "${actualSha256}" ]; then
-    die "Archive SHA-256 mismatch for ${archiveName}."
-  fi
+	if [ "${manifestSha256}" != "${actualSha256}" ]; then
+		die "Archive SHA-256 mismatch for ${archiveName}."
+	fi
 
-  processBackupArchive verify "${archivePath}"
+	processBackupArchive verify "${archivePath}"
 }
 
 processBackupArchive() {
-  local mode="$1"
-  local archivePath="$2"
-  local destinationPath="${3:-}"
+	local mode="$1"
+	local archivePath="$2"
+	local destinationPath="${3:-}"
 
-  if [ "${mode}" = "extract" ] && [ -z "${destinationPath}" ]; then
-    die "Archive extraction requires a destination path."
-  fi
+	if [ "${mode}" = "extract" ] && [ -z "${destinationPath}" ]; then
+		die "Archive extraction requires a destination path."
+	fi
 
-  python3 - "${mode}" "${archivePath}" "${destinationPath}" <<'PY'
+	python3 - "${mode}" "${archivePath}" "${destinationPath}" <<'PY'
 import os
 import pathlib
 import posixpath
@@ -398,68 +404,68 @@ PY
 }
 
 prepareRestoreDestination() {
-  local requestedPath="$1"
-  local resolvedPath resolvedParent statePath
+	local requestedPath="$1"
+	local resolvedPath resolvedParent statePath
 
-  if [ -z "${requestedPath}" ]; then
-    die "A destination path argument is required."
-  fi
+	if [ -z "${requestedPath}" ]; then
+		die "A destination path argument is required."
+	fi
 
-  case "${requestedPath}" in
-    /*) ;;
-    *)
-      die "Destination path must be absolute to avoid ambiguous restores: ${requestedPath}"
-      ;;
-  esac
+	case "${requestedPath}" in
+	/*) ;;
+	*)
+		die "Destination path must be absolute to avoid ambiguous restores: ${requestedPath}"
+		;;
+	esac
 
-  resolvedPath="$(realpath -m "${requestedPath}")"
-  resolvedParent="$(dirname "${resolvedPath}")"
-  statePath="$(realpath -m "${stateDir}")"
+	resolvedPath="$(realpath -m "${requestedPath}")"
+	resolvedParent="$(dirname "${resolvedPath}")"
+	statePath="$(realpath -m "${stateDir}")"
 
-  case "${resolvedPath}" in
-    /|/var|/var/lib)
-      die "Refusing to restore into a dangerous top-level path: ${resolvedPath}"
-      ;;
-  esac
+	case "${resolvedPath}" in
+	/ | /var | /var/lib)
+		die "Refusing to restore into a dangerous top-level path: ${resolvedPath}"
+		;;
+	esac
 
-  if [ ! -d "${resolvedParent}" ]; then
-    die "Destination parent directory does not exist: ${resolvedParent}"
-  fi
+	if [ ! -d "${resolvedParent}" ]; then
+		die "Destination parent directory does not exist: ${resolvedParent}"
+	fi
 
-  case "${resolvedPath}" in
-    "${statePath}"|"${statePath}"/*)
-      die "Refusing to restore into the live Hermes state path: ${resolvedPath}"
-      ;;
-  esac
+	case "${resolvedPath}" in
+	"${statePath}" | "${statePath}"/*)
+		die "Refusing to restore into the live Hermes state path: ${resolvedPath}"
+		;;
+	esac
 
-  case "$(realpath -m "${resolvedParent}")" in
-    "${statePath}"|"${statePath}"/*)
-      die "Refusing to restore beneath the live Hermes state path: ${resolvedParent}"
-      ;;
-  esac
+	case "$(realpath -m "${resolvedParent}")" in
+	"${statePath}" | "${statePath}"/*)
+		die "Refusing to restore beneath the live Hermes state path: ${resolvedParent}"
+		;;
+	esac
 
-  if [ -L "${requestedPath}" ] || [ -L "${resolvedPath}" ]; then
-    die "Destination path must not be a symbolic link: ${requestedPath}"
-  fi
+	if [ -L "${requestedPath}" ] || [ -L "${resolvedPath}" ]; then
+		die "Destination path must not be a symbolic link: ${requestedPath}"
+	fi
 
-  if [ -e "${resolvedPath}" ]; then
-    if [ ! -d "${resolvedPath}" ]; then
-      die "Destination exists and is not a directory: ${resolvedPath}"
-    fi
+	if [ -e "${resolvedPath}" ]; then
+		if [ ! -d "${resolvedPath}" ]; then
+			die "Destination exists and is not a directory: ${resolvedPath}"
+		fi
 
-    if [ -n "$(find "${resolvedPath}" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
-      die "Destination directory must be empty before restore: ${resolvedPath}"
-    fi
-  else
-    mkdir -p "${resolvedPath}"
-  fi
+		if [ -n "$(find "${resolvedPath}" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+			die "Destination directory must be empty before restore: ${resolvedPath}"
+		fi
+	else
+		mkdir -p "${resolvedPath}"
+	fi
 
-  printf '%s\n' "${resolvedPath}"
+	printf '%s\n' "${resolvedPath}"
 }
 
 extractBackupArchive() {
-  local archivePath="$1"
-  local destinationPath="$2"
+	local archivePath="$1"
+	local destinationPath="$2"
 
-  processBackupArchive extract "${archivePath}" "${destinationPath}"
+	processBackupArchive extract "${archivePath}" "${destinationPath}"
 }
