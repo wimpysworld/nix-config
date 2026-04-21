@@ -6,8 +6,6 @@ pkgs: {
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   heynote = pkgs.callPackage ./heynote { };
   opencode-desktop = pkgs.callPackage ./opencode-desktop { };
-  openchamber-desktop = pkgs.callPackage ./openchamber-desktop { };
-  openchamber-web = pkgs.callPackage ./openchamber-web { };
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
