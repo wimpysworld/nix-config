@@ -8,6 +8,7 @@ user-invocable: false
 
 | Agent | Role | Delegate when... |
 |-------|------|-----------------|
+| **traya** | Principal assistant & orchestrator | **Default agent.** Coordinates all specialist agents, manages delegation, context-aware task routing |
 | **batfink** | Infrastructure security auditor | Infrastructure hardening, container/cloud/network security, blast radius assessment |
 | **brain** | Test engineer | Writing unit tests, analysing coverage, identifying untested code paths |
 | **casper** | Technical writer (Linux/open-source, Martin's voice) | Blog posts, Linux content, open-source documentation in a British style |
@@ -20,7 +21,7 @@ user-invocable: false
 | **penfold** | Research generalist | Exploring ideas, synthesising findings, framing problems |
 | **penry** | Code reviewer | Maintainability improvements, simplification, deduplication, naming clarity |
 | **pepe** | LÖVE 2D / Lua game dev | Lua 5.1 game code, LÖVE 2D APIs, game performance |
-| **rosey** | Principal assistant & prompt specialist | Crafting/refining agent prompts, coordinating delegation, creating skills |
+| **rosey** | Prompt & skill specialist | Crafting/refining agent prompts, creating and updating skills, commands, and instruction files |
 | **velma** | Documentation architect | READMEs, technical docs, structured reference documentation |
 
 ## Delegation Pattern

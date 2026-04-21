@@ -769,7 +769,7 @@ in
         ccstatuslinePatched
       ];
       shellAliases = {
-        cc-rosey = "claude --agent rosey --continue";
+        cc-traya = "claude --agent traya --continue";
       };
     };
 
@@ -778,111 +778,111 @@ in
     # default path the tool reads on startup. The status line command is injected
     # into Claude Code's settings.json by the claude-code Home Manager module.
     xdg.configFile."ccstatusline/settings.json".text = builtins.toJSON {
-    version = 3;
-    # Plain values required: builtins.toJSON serialises lib.mkDefault wrappers
-    # verbatim as attribute sets, which fails ccstatusline's Zod schema validation.
-    flexMode = "full-minus-40";
-    compactThreshold = 60;
-    colorLevel = 2;
-    defaultPadding = " ";
-    defaultSeparator = "|";
-    inheritSeparatorColors = false;
-    globalBold = false;
-    powerline = {
-      enabled = false;
-      separators = [ "\uE0B0" ];
-      separatorInvertBackground = [ false ];
-      startCaps = [ ];
-      endCaps = [ ];
-      autoAlign = false;
+      version = 3;
+      # Plain values required: builtins.toJSON serialises lib.mkDefault wrappers
+      # verbatim as attribute sets, which fails ccstatusline's Zod schema validation.
+      flexMode = "full-minus-40";
+      compactThreshold = 60;
+      colorLevel = 2;
+      defaultPadding = " ";
+      defaultSeparator = "|";
+      inheritSeparatorColors = false;
+      globalBold = false;
+      powerline = {
+        enabled = false;
+        separators = [ "\uE0B0" ];
+        separatorInvertBackground = [ false ];
+        startCaps = [ ];
+        endCaps = [ ];
+        autoAlign = false;
+      };
+      lines = [
+        [
+          # Line 1: model identity, session information, and block timing.
+          # Explicit separator widgets are intentionally absent: defaultSeparator
+          # already inserts a "|" between every adjacent widget pair automatically.
+          # Adding both causes triple separators (defaultSep + widget + defaultSep).
+          {
+            id = "1";
+            type = "model";
+            color = "cyan";
+          }
+          {
+            id = "3";
+            type = "session-clock";
+            color = "yellow";
+          }
+          {
+            id = "5";
+            type = "session-usage";
+            color = "brightBlue";
+          }
+          {
+            id = "7";
+            type = "session-cost";
+            color = "green";
+          }
+          # Block Reset Timer uses type "reset-timer" per the widget manifest
+          # (BlockResetTimerWidget is registered under that key, not "block-reset-timer").
+          {
+            id = "10";
+            type = "block-timer";
+            color = "yellow";
+          }
+          {
+            id = "12";
+            type = "reset-timer";
+            color = "brightYellow";
+          }
+          # Weekly widgets follow the block timers on the same line. When no
+          # weekly usage data is available they return null and are skipped by the
+          # renderer, so no blank line is ever reserved.
+          {
+            id = "14";
+            type = "weekly-usage";
+            color = "brightBlue";
+          }
+          {
+            id = "16";
+            type = "weekly-reset-timer";
+            color = "brightCyan";
+          }
+          {
+            id = "9";
+            type = "session-name";
+            color = "magenta";
+          }
+        ]
+        [
+          # Line 3: token counts and context bar.
+          {
+            id = "17";
+            type = "tokens-input";
+            color = "brightBlack";
+          }
+          {
+            id = "19";
+            type = "tokens-output";
+            color = "brightBlack";
+          }
+          {
+            id = "21";
+            type = "tokens-cached";
+            color = "brightBlack";
+          }
+          {
+            id = "23";
+            type = "tokens-total";
+            color = "white";
+          }
+          {
+            id = "25";
+            type = "context-bar";
+            color = "brightGreen";
+          }
+        ]
+      ];
     };
-    lines = [
-      [
-        # Line 1: model identity, session information, and block timing.
-        # Explicit separator widgets are intentionally absent: defaultSeparator
-        # already inserts a "|" between every adjacent widget pair automatically.
-        # Adding both causes triple separators (defaultSep + widget + defaultSep).
-        {
-          id = "1";
-          type = "model";
-          color = "cyan";
-        }
-        {
-          id = "3";
-          type = "session-clock";
-          color = "yellow";
-        }
-        {
-          id = "5";
-          type = "session-usage";
-          color = "brightBlue";
-        }
-        {
-          id = "7";
-          type = "session-cost";
-          color = "green";
-        }
-        # Block Reset Timer uses type "reset-timer" per the widget manifest
-        # (BlockResetTimerWidget is registered under that key, not "block-reset-timer").
-        {
-          id = "10";
-          type = "block-timer";
-          color = "yellow";
-        }
-        {
-          id = "12";
-          type = "reset-timer";
-          color = "brightYellow";
-        }
-        # Weekly widgets follow the block timers on the same line. When no
-        # weekly usage data is available they return null and are skipped by the
-        # renderer, so no blank line is ever reserved.
-        {
-          id = "14";
-          type = "weekly-usage";
-          color = "brightBlue";
-        }
-        {
-          id = "16";
-          type = "weekly-reset-timer";
-          color = "brightCyan";
-        }
-        {
-          id = "9";
-          type = "session-name";
-          color = "magenta";
-        }
-      ]
-      [
-        # Line 3: token counts and context bar.
-        {
-          id = "17";
-          type = "tokens-input";
-          color = "brightBlack";
-        }
-        {
-          id = "19";
-          type = "tokens-output";
-          color = "brightBlack";
-        }
-        {
-          id = "21";
-          type = "tokens-cached";
-          color = "brightBlack";
-        }
-        {
-          id = "23";
-          type = "tokens-total";
-          color = "white";
-        }
-        {
-          id = "25";
-          type = "context-bar";
-          color = "brightGreen";
-        }
-      ]
-    ];
-  };
     programs = {
       claude-code = {
         enable = true;
@@ -900,18 +900,18 @@ in
           };
           permissions = {
             allow = bashAllow ++ [
-            "Edit(${config.home.homeDirectory}/Chainguard/*)"
-            "Edit(${config.home.homeDirectory}/Development/*)"
-            "Edit(${config.home.homeDirectory}/Volatile/*)"
-            "Edit(${config.home.homeDirectory}/Zero/*)"
-            "Edit(/tmp/*)"
+              "Edit(${config.home.homeDirectory}/Chainguard/*)"
+              "Edit(${config.home.homeDirectory}/Development/*)"
+              "Edit(${config.home.homeDirectory}/Volatile/*)"
+              "Edit(${config.home.homeDirectory}/Zero/*)"
+              "Edit(/tmp/*)"
 
-            # MCP tools - allow all unconditionally
-            "mcp__*"
+              # MCP tools - allow all unconditionally
+              "mcp__*"
 
-            # Web fetching - allow without prompting
-            "WebFetch"
-          ];
+              # Web fetching - allow without prompting
+              "WebFetch"
+            ];
             ask = bashAsk ++ bashAskDestructive;
             deny = bashDeny ++ readDeny;
             defaultMode = "default";

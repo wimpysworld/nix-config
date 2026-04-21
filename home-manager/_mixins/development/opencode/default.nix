@@ -18,7 +18,7 @@ in
       pkgs.opencode-desktop
     ];
     shellAliases = {
-      oc-rosey = "opencode --agent rosey --continue";
+      oc-traya = "opencode --agent traya --continue";
     };
   };
 

@@ -571,8 +571,14 @@ in
         };
 
         fallback_providers = [
-          { provider = "copilot"; model = "gpt-5.4"; }
-          { provider = "anthropic"; model = "claude-opus-4-6"; }
+          {
+            provider = "copilot";
+            model = "gpt-5.4";
+          }
+          {
+            provider = "anthropic";
+            model = "claude-opus-4-6";
+          }
         ];
 
         tts = {

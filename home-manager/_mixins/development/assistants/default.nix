@@ -5,6 +5,13 @@
 }:
 let
   inherit (config.noughty) host;
+  trayaBondSopsFile = ../../../../secrets/hermes-bond.yaml;
+  trayaPromptTemplateName = "traya-prompt-with-bond";
+  trayaClaudeAgentTemplateName = "traya-claude-agent";
+  trayaOpencodeAgentTemplateName = "traya-opencode-agent";
+  trayaCopilotAgentTemplateName = "traya-copilot-agent";
+  trayaCopilotCliAgentTemplateName = "traya-copilot-cli-agent";
+  trayaCodexAgentTemplateName = "traya-codex-agent";
   readFileTrim = path: lib.trim (builtins.readFile path);
   extractYamlField =
     field: path:
@@ -45,15 +52,21 @@ let
   # Import compose module
   compose = import ./compose.nix { inherit lib; };
 
+  trayaPromptWithBond = lib.trim ''
+    ${builtins.readFile ./agents/traya/prompt.md}
+    ${config.sops.placeholder.BOND_MD}
+  '';
+  trayaDescription = readFileTrim (./agents + "/traya/description.txt");
+
   # ============ CLAUDE CODE ============
 
-  claudeAgents = compose.composeAgents "claude";
+  claudeAgents = lib.removeAttrs (compose.composeAgents "claude") [ "traya" ];
   claudeCommands = compose.composeCommands "claude";
   claudeInstructions = compose.composeInstructions "claude";
 
   # ============ OPENCODE ============
 
-  opencodeAgents = compose.composeAgents "opencode";
+  opencodeAgents = lib.removeAttrs (compose.composeAgents "opencode") [ "traya" ];
   opencodeCommands = compose.composeCommands "opencode";
   opencodeInstructions = compose.composeInstructions "opencode";
 
@@ -92,11 +105,14 @@ let
       description = ${builtins.toJSON description}
       developer_instructions = ${builtins.toJSON prompt}
     ''
-  ) compose.agentDirs;
+  ) (lib.removeAttrs compose.agentDirs [ "traya" ]);
 
   # Activation script that writes Codex agent files as real files (not symlinks).
   codexAgentsActivationScript =
     let
+      cleanupCmds = lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (name: _: ''rm -f "${codexDir}/agents/${name}.toml"'') codexAgents
+      );
       agentCmds = lib.concatStringsSep "\n" (
         lib.mapAttrsToList (
           name: content:
@@ -110,8 +126,8 @@ let
     ''
       # Write Codex agent files as real files (not symlinks).
       # codex-rs skips symlinked .toml files during agent role discovery.
-      rm -rf "${codexDir}/agents"
       mkdir -p "${codexDir}/agents"
+      ${cleanupCmds}
       ${agentCmds}
     '';
 
@@ -213,7 +229,7 @@ let
 
   # ============ COPILOT (VSCODE & CLI) ============
 
-  copilotAgents = compose.composeAgents "copilot";
+  copilotAgents = lib.removeAttrs (compose.composeAgents "copilot") [ "traya" ];
   copilotCommands = compose.composeCommands "copilot";
   copilotInstructions = compose.composeInstructions "copilot";
 
@@ -298,8 +314,66 @@ let
 
 in
 {
+  sops = {
+    secrets.BOND_MD = {
+      sopsFile = trayaBondSopsFile;
+      mode = "0400";
+    };
+
+    templates.${trayaPromptTemplateName} = {
+      content = trayaPromptWithBond;
+      mode = "0600";
+    };
+
+    templates.${trayaClaudeAgentTemplateName} = {
+      content = compose.composeAgentFromPrompt "claude" "traya" trayaPromptWithBond;
+      mode = "0600";
+    };
+
+    templates.${trayaOpencodeAgentTemplateName} = {
+      content = compose.composeAgentFromPrompt "opencode" "traya" trayaPromptWithBond;
+      mode = "0600";
+    };
+
+    templates.${trayaCopilotAgentTemplateName} = {
+      content = compose.composeAgentFromPrompt "copilot" "traya" trayaPromptWithBond;
+      mode = "0600";
+    };
+
+    templates.${trayaCopilotCliAgentTemplateName} = {
+      content = compose.composeAgentFromPrompt "copilot" "traya" trayaPromptWithBond;
+      path = "${copilotCliDir}/agents/traya.agent.md";
+      mode = "0600";
+    };
+
+    templates.${trayaCodexAgentTemplateName} = {
+      content = ''
+        name = ${builtins.toJSON "traya"}
+        description = ${builtins.toJSON trayaDescription}
+        developer_instructions = '''
+        ${trayaPromptWithBond}
+        '''
+      '';
+      path = "${codexDir}/agents/traya.toml";
+      mode = "0600";
+    };
+  };
+
   home = {
     file = {
+      # Traya's prompt is rendered via sops-nix at activation time so the bond
+      # is appended outside the Nix store. These entries symlink the tool paths
+      # to the rendered files.
+      "${config.home.homeDirectory}/.claude/agents/traya.md".source =
+        config.lib.file.mkOutOfStoreSymlink
+          config.sops.templates.${trayaClaudeAgentTemplateName}.path;
+      "${config.xdg.configHome}/opencode/agent/traya.md".source =
+        config.lib.file.mkOutOfStoreSymlink
+          config.sops.templates.${trayaOpencodeAgentTemplateName}.path;
+      "${vscodeUserDir}/prompts/traya.agent.md".source =
+        config.lib.file.mkOutOfStoreSymlink
+          config.sops.templates.${trayaCopilotAgentTemplateName}.path;
+
       # Claude Code global instructions
       "${config.home.homeDirectory}/.claude/rules/instructions.md".text = claudeInstructions;
 
@@ -319,14 +393,20 @@ in
     # OpenCode skill files
     // mkOpencodeSkillFiles;
 
-    # Copilot CLI: files copied via activation script (not symlinks)
-    # Copilot CLI doesn't follow symlinks due to security concerns
-    activation.copilotFiles = lib.hm.dag.entryAfter [ "writeBoundary" ] copilotCliActivationScript;
+    # Copilot CLI: files copied via activation script (not symlinks).
+    # Run this after sops-nix so Traya's rendered bonded prompt exists before
+    # the copy step reads from the rendered templates directory.
+    activation.copilotFiles = lib.hm.dag.entryAfter [
+      "writeBoundary"
+      "sops-nix"
+    ] copilotCliActivationScript;
     # Codex skills and agents: written as real files via activation script (not symlinks).
     # codex-rs uses file_type().is_file() for discovery, which returns false for symlinks
     # on Linux. home.file creates symlinks, so both are invisible without this workaround.
+    # Run this after sops-nix so Traya's rendered bonded agent file exists before
+    # the copy step reads from the rendered templates directory.
     activation.codexFiles = lib.mkIf config.programs.codex.enable (
-      lib.hm.dag.entryAfter [ "writeBoundary" ] (
+      lib.hm.dag.entryAfter [ "writeBoundary" "sops-nix" ] (
         codexSkillsActivationScript + codexAgentsActivationScript
       )
     );

@@ -26,7 +26,7 @@ The built-in `/init` command is overridden to use Rosey's `create-instructions` 
 
 ## Shell alias
 
-`oc-rosey` launches OpenCode with `--agent rosey --continue`, resuming the last Rosey session for ongoing orchestration.
+`oc-traya` launches OpenCode with `--agent traya --continue`, resuming the last Traya session for ongoing orchestration.
 
 ## IDE integration
 

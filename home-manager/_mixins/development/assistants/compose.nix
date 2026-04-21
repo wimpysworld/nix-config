@@ -32,12 +32,11 @@ let
   # Discover all agent directories
   agentDirs = discoverDirs (basePath + "/agents");
 
-  # Compose a single agent for a specific platform
-  composeAgent =
-    platform: agentName:
+  # Compose a single agent for a specific platform using the provided prompt.
+  composeAgentFromPrompt =
+    platform: agentName: prompt:
     let
       agentPath = basePath + "/agents/${agentName}";
-      prompt = readFile (agentPath + "/prompt.md");
       description = readFile (agentPath + "/description.txt");
     in
     if platform == "codecompanion" then
@@ -50,6 +49,15 @@ let
         headerWithDescription = "description: \"${description}\"\n${header}";
       in
       composeWithFrontmatter headerWithDescription prompt;
+
+  # Compose a single agent for a specific platform.
+  composeAgent =
+    platform: agentName:
+    let
+      agentPath = basePath + "/agents/${agentName}";
+      prompt = readFile (agentPath + "/prompt.md");
+    in
+    composeAgentFromPrompt platform agentName prompt;
 
   # Generate all agents for a platform
   # Returns attrset: { agentName = "composed content"; ... }
@@ -172,7 +180,7 @@ let
 in
 {
   # Agent composition functions
-  inherit composeAgents composeAgent;
+  inherit composeAgents composeAgent composeAgentFromPrompt;
 
   # Command composition functions
   inherit composeCommands composeCommand;
