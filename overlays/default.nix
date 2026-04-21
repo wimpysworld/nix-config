@@ -14,10 +14,10 @@ let
   llamaCppNpmDepsHash = "sha256-RAFtsbBGBjteCt5yXhrmHL39rIDJMCFBETgzId2eRRk=";
 
   # Pinned here for the freshener workflow.
-  llamaSwapVersion = "201";
-  llamaSwapHash = "sha256-xDToD6DBds9zbf7gJ6mCgZYiz/sdHDIwBZ/WvSIrK70=";
-  llamaSwapVendorHash = "sha256-XiDYlw/byu8CWvg4KSPC7m8PGCZXtp08Y1velx4BR8U=";
-  llamaSwapUiNpmDepsHash = "sha256-UX2QAfMgNyzQTDsn3c+QnjVshLWvho7jmQ6s2406qHY=";
+  llamaSwapVersion = "204";
+  llamaSwapHash = "sha256-vgtPqgPWU3LWokGvbisbajyXkB5Sg5khncG0D20f6lY=";
+  llamaSwapVendorHash = "sha256-6D4F58sSBkr7FKKO34gDhnZ9uN/SfsyYn1xJjYsMeq4=";
+  llamaSwapUiNpmDepsHash = "sha256-6D4F58sSBkr7FKKO34gDhnZ9uN/SfsyYn1xJjYsMeq4=";
 in
 {
   # This one brings our custom packages from the 'pkgs' directory
