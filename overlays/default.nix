@@ -9,8 +9,8 @@ let
   ollamaVendorHash = "sha256-Lc1Ktdqtv2VhJQssk8K1UOimeEjVNvDWePE9WkamCos=";
 
   # Pinned here for the freshener workflow.
-  llamaCppVersion = "8775";
-  llamaCppHash = "sha256-oxQUwXgsr8dDY7wqNxdn7tKyGBowjxLO/xJfdb0J9dk=";
+  llamaCppVersion = "8864";
+  llamaCppHash = "sha256-IHVBwnjMVKSaDGyA9AYy7dHM9EI1XtCMmXjiKUFXDmg=";
   llamaCppNpmDepsHash = "sha256-RAFtsbBGBjteCt5yXhrmHL39rIDJMCFBETgzId2eRRk=";
 
   # Pinned here for the freshener workflow.
