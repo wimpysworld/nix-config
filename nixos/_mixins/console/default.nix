@@ -200,36 +200,35 @@ in
   # getty.target.wants/kmsconvt@ttyN.service -> ../kmsconvt@.service
   # This prevents the blank-screen problem on ISOs and servers where the
   # reactive autovt@ mechanism does not fire until a VT switch occurs.
-  systemd.services =
-    {
-      "kmsconvt@" = {
-        after = [
-          "systemd-user-sessions.service"
-          "plymouth-quit-wait.service"
-          "getty-pre.target"
-          "dbus.service"
-          "systemd-localed.service"
-        ];
-        before = [ "getty.target" ];
-        conflicts = [ "getty@%i.service" ];
-        onFailure = [ "getty@%i.service" ];
-        unitConfig = {
-          IgnoreOnIsolate = true;
-          ConditionPathExists = "/dev/tty0";
-        };
-        serviceConfig = {
-          Type = "idle";
-        };
+  systemd.services = {
+    "kmsconvt@" = {
+      after = [
+        "systemd-user-sessions.service"
+        "plymouth-quit-wait.service"
+        "getty-pre.target"
+        "dbus.service"
+        "systemd-localed.service"
+      ];
+      before = [ "getty.target" ];
+      conflicts = [ "getty@%i.service" ];
+      onFailure = [ "getty@%i.service" ];
+      unitConfig = {
+        IgnoreOnIsolate = true;
+        ConditionPathExists = "/dev/tty0";
       };
-    }
-    // builtins.listToAttrs (
-      map (tty: {
-        name = "kmsconvt@${tty}";
-        value = {
-          wantedBy = [ "getty.target" ];
-        };
-      }) ttyList
-    );
+      serviceConfig = {
+        Type = "idle";
+      };
+    };
+  }
+  // builtins.listToAttrs (
+    map (tty: {
+      name = "kmsconvt@${tty}";
+      value = {
+        wantedBy = [ "getty.target" ];
+      };
+    }) ttyList
+  );
 
   # Prevent "Failed to open /etc/geoclue/conf.d/:" errors
   systemd.tmpfiles.rules = [

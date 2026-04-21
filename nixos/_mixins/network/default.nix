@@ -7,12 +7,12 @@ let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
   useDoT =
-  	if host.is.iso then
-  		"false"
-  	else if useNetworkManager then
-  		"opportunistic"
-  	else
-  		"true";
+    if host.is.iso then
+      "false"
+    else if useNetworkManager then
+      "opportunistic"
+    else
+      "true";
   useNetworkManager = if (host.is.iso || !host.is.server) then true else false;
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]

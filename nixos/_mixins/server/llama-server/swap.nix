@@ -133,18 +133,17 @@ in
     systemd.services.llama-swap = {
       requires = [ "llama-models-preseed.service" ];
       after = [ "llama-models-preseed.service" ];
-      environment =
-        {
-          HOME = "%S/llama-swap";
-          TMPDIR = "%t/llama-swap";
-          XDG_CACHE_HOME = "%C/llama-swap";
-          XDG_CONFIG_HOME = "%S/llama-swap";
-          XDG_DATA_HOME = "%S/llama-swap";
-        }
-        // lib.optionalAttrs (accel == "vulkan") {
-          LD_LIBRARY_PATH = "/run/opengl-driver/lib:/run/opengl-driver-32/lib";
-          XDG_DATA_DIRS = "/run/opengl-driver/share:/run/opengl-driver-32/share";
-        };
+      environment = {
+        HOME = "%S/llama-swap";
+        TMPDIR = "%t/llama-swap";
+        XDG_CACHE_HOME = "%C/llama-swap";
+        XDG_CONFIG_HOME = "%S/llama-swap";
+        XDG_DATA_HOME = "%S/llama-swap";
+      }
+      // lib.optionalAttrs (accel == "vulkan") {
+        LD_LIBRARY_PATH = "/run/opengl-driver/lib:/run/opengl-driver-32/lib";
+        XDG_DATA_DIRS = "/run/opengl-driver/share:/run/opengl-driver-32/share";
+      };
       serviceConfig = {
         CacheDirectory = "llama-swap";
         RuntimeDirectory = "llama-swap";

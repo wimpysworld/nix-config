@@ -18,7 +18,8 @@
     pkgs.semgrep
     pkgs.syft
     pkgs.trivy
-  ] ++ lib.optionals pkgs.stdenv.isLinux [
+  ]
+  ++ lib.optionals pkgs.stdenv.isLinux [
     pkgs.dockle # requires btrfs-progs and lvm2 (Linux-only)
   ];
 
@@ -233,11 +234,9 @@
       userSettings = {
         "semgrep.path" = "${pkgs.semgrep}/bin/semgrep";
       };
-      extensions =
-        with pkgs;
-        [
-          vscode-marketplace.semgrep.semgrep
-        ];
+      extensions = with pkgs; [
+        vscode-marketplace.semgrep.semgrep
+      ];
     };
   };
 }

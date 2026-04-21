@@ -62,8 +62,14 @@ let
   };
 in
 {
-  systemd.user = lib.mkIf (noughtyLib.isHost [ "skrye" "vader" ]) {
-    services = lib.mkMerge (map mkService games);
-    timers = lib.mkMerge (map mkTimer games);
-  };
+  systemd.user =
+    lib.mkIf
+      (noughtyLib.isHost [
+        "skrye"
+        "vader"
+      ])
+      {
+        services = lib.mkMerge (map mkService games);
+        timers = lib.mkMerge (map mkTimer games);
+      };
 }

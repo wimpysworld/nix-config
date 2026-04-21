@@ -12,8 +12,8 @@ in
 {
   environment = lib.mkIf (!host.is.iso) {
     systemPackages = with pkgs; [
-    	kitty.terminfo
-    	ssh-to-age
+      kitty.terminfo
+      ssh-to-age
     ];
   };
   programs = {
