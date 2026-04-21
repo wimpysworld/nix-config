@@ -4,8 +4,8 @@ let
   unstablePkgsPath = inputs.nixpkgs-unstable.outPath + "/pkgs/by-name";
 
   # Pinned here for the freshener workflow.
-  ollamaVersion = "0.20.6";
-  ollamaHash = "sha256-ol+LsKRxOR37Rpwc9/NouwMg0GOpaeh6zmN5quIBgnA=";
+  ollamaVersion = "0.21.0";
+  ollamaHash = "sha256-DtrYopNtndQXq9Xjriw5Bqell9A8RHPOvgDF8BlKtdU=";
   ollamaVendorHash = "sha256-Lc1Ktdqtv2VhJQssk8K1UOimeEjVNvDWePE9WkamCos=";
 
   # Pinned here for the freshener workflow.
