@@ -46,9 +46,6 @@ in
       ++ lib.optionals (!host.is.darwin) [
         pre-commit # Git pre-commit hooks
         precommitSetup
-      ]
-      ++ lib.optionals (host.is.linux && host.is.workstation) [
-        gitbutler
       ];
     sessionVariables = {
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
