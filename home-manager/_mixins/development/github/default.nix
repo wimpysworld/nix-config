@@ -115,18 +115,6 @@ in
         prompt = "enabled";
       };
     };
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "githubPullRequests.pullBranch" = "never";
-        };
-        extensions = with pkgs; [
-          vscode-marketplace.github.vscode-github-actions
-          vscode-marketplace.github.vscode-pull-request-github
-          vscode-marketplace.sanjulaganepola.github-local-actions
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "github-actions"

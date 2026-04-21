@@ -15,14 +15,6 @@
   };
 
   programs = {
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        extensions = with pkgs; [
-          vscode-marketplace.nefrob.vscode-just-syntax
-          vscode-marketplace.tobiashochguertel.just-formatter
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "just"

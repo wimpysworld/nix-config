@@ -26,19 +26,6 @@
   };
 
   programs = {
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "[python]"."editor.formatOnType" = true;
-        };
-        extensions = with pkgs; [
-          vscode-marketplace.detachhead.basedpyright
-          vscode-marketplace.ms-python.debugpy
-          vscode-marketplace.ms-python.python
-          vscode-marketplace.trond-snekvik.simple-rst
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "python-requirements"

@@ -13,18 +13,6 @@
   };
 
   programs = {
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "[yaml]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-          "redhat.telemetry.enabled" = false;
-          "yaml.keyOrdering" = true;
-        };
-        extensions = with pkgs; [
-          vscode-marketplace.redhat.vscode-yaml
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       userSettings = {
         languages = {

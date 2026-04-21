@@ -1,15 +1,9 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 let
-  inherit (config.noughty) host;
   trayaBondSopsFile = ../../../../secrets/hermes-bond.yaml;
   trayaPromptTemplateName = "traya-prompt-with-bond";
   trayaClaudeAgentTemplateName = "traya-claude-agent";
   trayaOpencodeAgentTemplateName = "traya-opencode-agent";
-  trayaCopilotAgentTemplateName = "traya-copilot-agent";
   trayaCopilotCliAgentTemplateName = "traya-copilot-cli-agent";
   trayaCodexAgentTemplateName = "traya-codex-agent";
   readFileTrim = path: lib.trim (builtins.readFile path);
@@ -31,15 +25,6 @@ let
           value = lib.trim (lib.removePrefix prefix (lib.trim (builtins.head matches)));
         in
         if value == "" then null else value;
-
-  # Platform-specific paths
-  vscodeUserDir =
-    if host.is.linux then
-      "${config.xdg.configHome}/Code/User"
-    else if host.is.darwin then
-      "${config.home.homeDirectory}/Library/Application Support/Code/User"
-    else
-      throw "Unsupported platform";
 
   copilotCliDir = "${config.xdg.configHome}/.copilot";
   codexDir =
@@ -231,17 +216,6 @@ let
   copilotCommands = compose.composeCommands "copilot";
   copilotInstructions = compose.composeInstructions "copilot";
 
-  # Generate VSCode file entries for agents and commands
-  mkVscodeAgentFiles = lib.mapAttrs' (name: content: {
-    name = "${vscodeUserDir}/prompts/${name}.agent.md";
-    value.text = content;
-  }) copilotAgents;
-
-  mkVscodeCommandFiles = lib.mapAttrs' (name: content: {
-    name = "${vscodeUserDir}/prompts/${name}.prompt.md";
-    value.text = content;
-  }) copilotCommands;
-
   # Copilot CLI activation script (copies files as real files, not symlinks)
   copilotCliActivationScript =
     let
@@ -316,11 +290,6 @@ in
       mode = "0600";
     };
 
-    templates.${trayaCopilotAgentTemplateName} = {
-      content = compose.composeAgentFromPrompt "copilot" "traya" trayaPromptWithBond;
-      mode = "0600";
-    };
-
     templates.${trayaCopilotCliAgentTemplateName} = {
       content = compose.composeAgentFromPrompt "copilot" "traya" trayaPromptWithBond;
       path = "${copilotCliDir}/agents/traya.agent.md";
@@ -351,21 +320,10 @@ in
       "${config.xdg.configHome}/opencode/agent/traya.md".source =
         config.lib.file.mkOutOfStoreSymlink
           config.sops.templates.${trayaOpencodeAgentTemplateName}.path;
-      "${vscodeUserDir}/prompts/traya.agent.md".source =
-        config.lib.file.mkOutOfStoreSymlink
-          config.sops.templates.${trayaCopilotAgentTemplateName}.path;
 
       # Claude Code global instructions
       "${config.home.homeDirectory}/.claude/rules/instructions.md".text = claudeInstructions;
-
-      # VSCode Copilot global instructions
-      "${vscodeUserDir}/prompts/copilot.instructions.md".text = copilotInstructions;
-      # Dummy prompt for VSCode compatibility
-      "${vscodeUserDir}/prompts/dummy.prompt.md".text = copilotInstructions;
     }
-    # VSCode agent and command files
-    // mkVscodeAgentFiles
-    // mkVscodeCommandFiles
     # Claude Code skill files
     // mkClaudeSkillFiles
     # OpenCode skill files
@@ -408,18 +366,6 @@ in
 
       # Global rules
       rules = opencodeInstructions;
-    };
-
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "github.copilot.chat.commitMessageGeneration.instructions" = [
-            {
-              file = "${vscodeUserDir}/prompts/create-conventional-commit.prompt.md";
-            }
-          ];
-        };
-      };
     };
   };
 }

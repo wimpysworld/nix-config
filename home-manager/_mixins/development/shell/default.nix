@@ -14,21 +14,6 @@
   };
 
   programs = {
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "shellformat.path" = "${pkgs.shfmt}/bin/shfmt";
-          "shellformat.useEditorConfig" = true;
-        };
-        extensions = with pkgs; [
-          vscode-marketplace.bmalehorn.shell-syntax # shell linter
-          vscode-marketplace.bmalehorn.vscode-fish # fish linter
-          vscode-marketplace.foxundermoon.shell-format # shell formatter
-          vscode-marketplace.jeff-hykin.better-shellscript-syntax # shell syntax highlighing
-          vscode-marketplace.rogalmic.bash-debug # bash debugger
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "basher"

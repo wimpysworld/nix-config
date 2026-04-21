@@ -18,13 +18,6 @@ lib.mkIf (noughtyLib.hostHasTag "gamedev") {
     };
   };
   programs = {
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        extensions = with pkgs; [
-          vscode-marketplace.astronachos.defold
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "defold"

@@ -42,17 +42,6 @@
   };
 
   programs = {
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "go.gopath" = "${config.home.homeDirectory}/.local/go";
-          "go.survey.prompt" = false;
-        };
-        extensions = with pkgs; [
-          vscode-marketplace.golang.go
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "golangci-lint"

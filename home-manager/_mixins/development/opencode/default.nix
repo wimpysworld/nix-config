@@ -1216,13 +1216,6 @@ in
         };
       };
     };
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        extensions = with pkgs; [
-          vscode-marketplace.sst-dev.opencode
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "opencode"

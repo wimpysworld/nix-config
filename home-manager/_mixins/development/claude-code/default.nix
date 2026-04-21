@@ -918,13 +918,6 @@ in
           };
         };
       };
-      vscode = lib.mkIf config.programs.vscode.enable {
-        profiles.default = {
-          extensions = with pkgs; [
-            vscode-marketplace.anthropic.claude-code
-          ];
-        };
-      };
     };
   };
 }

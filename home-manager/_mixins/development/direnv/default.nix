@@ -36,13 +36,6 @@
         functions --erase __direnv_cd_hook 2>/dev/null
       '';
     };
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        extensions = with pkgs; [
-          vscode-marketplace.mkhl.direnv
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       userSettings = {
         load_direnv = "shell_hook";

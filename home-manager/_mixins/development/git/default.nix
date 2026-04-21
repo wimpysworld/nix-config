@@ -149,13 +149,6 @@ in
         };
       };
     };
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "git.openRepositoryInParentFolders" = "always";
-        };
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       userSettings = {
         languages = {
