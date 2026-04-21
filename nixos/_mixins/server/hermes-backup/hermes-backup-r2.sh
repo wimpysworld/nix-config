@@ -2,65 +2,27 @@ set -euo pipefail
 
 umask 077
 
-readonly stateDir="/var/lib/hermes"
-readonly hermesHome="${stateDir}/.hermes"
-readonly cacheDir="/var/cache/hermes-backup"
-readonly workDir="${cacheDir}/work"
-readonly snapshotDir="${workDir}/snapshot"
-readonly artifactsDir="${workDir}/artifacts"
-readonly rcloneConfigDir="${workDir}/rclone"
-readonly rcloneConfigPath="${rcloneConfigDir}/rclone.conf"
-readonly lockPath="${cacheDir}/hermes-backup.lock"
-readonly sqliteDatabases=(
-  "state.db"
-  "memory_store.db"
-)
+loadBackupEnvironment
+ensureCacheDirectories
+acquireBackupLock
 
-mkdir -p "${cacheDir}" "${snapshotDir}" "${artifactsDir}" "${rcloneConfigDir}"
-exec 9>"${lockPath}"
-flock -n 9 || {
-  echo "Another Hermes backup run is already in progress." >&2
-  exit 1
-}
-
-requiredVars=(
-  R2_BUCKET
-  R2_ENDPOINT
-  R2_ACCESS_KEY_ID
-  R2_SECRET_ACCESS_KEY
-  BACKUP_CRYPT_PASSWORD
-  BACKUP_CRYPT_PASSWORD2
-)
-
-for varName in "${requiredVars[@]}"; do
-  if [ -z "${!varName:-}" ]; then
-    echo "Missing required environment variable: ${varName}" >&2
-    exit 1
-  fi
-done
-
-echo "Starting Hermes backup run."
-
-timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
-readonly timestamp
-hostName="$(hostname -s)"
-readonly hostName
-readonly archiveName="${timestamp}.tar.zst"
-readonly manifestName="${timestamp}.manifest.json"
+readonly timestamp="$(timestampNowUtc)"
+readonly hostName="$(currentHostName)"
+readonly archiveName="$(archiveNameFromTimestamp "${timestamp}")"
+readonly manifestName="$(manifestNameFromArchive "${archiveName}")"
 readonly archivePath="${artifactsDir}/${archiveName}"
 readonly manifestPath="${artifactsDir}/${manifestName}"
-readonly remotePrefix="hermes-encrypted:${hostName}/backups"
+readonly remoteBackupPrefix="$(remotePrefix)"
 
 cleanup() {
   local exitCode="$1"
   local artifactPath
 
-  rm -rf "${snapshotDir}" "${rcloneConfigDir}"
+  rm -rf "${snapshotDir}"
+  cleanupRcloneConfig
 
-  for artifactPath in "${archivePath:-}" "${manifestPath:-}"; do
-    if [ -n "${artifactPath}" ]; then
-      rm -f "${artifactPath}"
-    fi
+  for artifactPath in "${archivePath}" "${manifestPath}"; do
+    rm -f "${artifactPath}"
   done
 
   if [ "${exitCode}" -eq 0 ]; then
@@ -74,7 +36,7 @@ backupSqliteDatabase() {
   local targetPath="${snapshotDir}/.hermes/${databaseName}"
 
   if [ ! -f "${sourcePath}" ]; then
-    echo "Skipping missing SQLite database: ${sourcePath}"
+    logPhase "Skipping missing SQLite database: ${sourcePath}"
     return 0
   fi
 
@@ -83,11 +45,13 @@ backupSqliteDatabase() {
 }
 
 trap 'cleanup "$?"' EXIT
+createRcloneConfig
 
+logPhase "Starting Hermes backup for ${hostName}"
+logPhase "Phase: snapshot"
 rm -rf "${snapshotDir}"
 mkdir -p "${snapshotDir}"
 
-echo "Creating filesystem snapshot in ${snapshotDir}."
 rsync -a --delete --numeric-ids \
   --exclude='/.hermes/state.db' \
   --exclude='/.hermes/state.db-wal' \
@@ -97,37 +61,14 @@ rsync -a --delete --numeric-ids \
   --exclude='/.hermes/memory_store.db-shm' \
   "${stateDir}/" "${snapshotDir}/"
 
-echo "Capturing live SQLite backups."
+logPhase "Phase: SQLite capture"
 for databaseName in "${sqliteDatabases[@]}"; do
   backupSqliteDatabase "${databaseName}"
 done
 
-cryptPassword="$(rclone obscure "${BACKUP_CRYPT_PASSWORD}")"
-cryptPassword2="$(rclone obscure "${BACKUP_CRYPT_PASSWORD2}")"
-
-cat > "${rcloneConfigPath}" <<EOF
-[hermes-r2]
-type = s3
-provider = Cloudflare
-access_key_id = ${R2_ACCESS_KEY_ID}
-secret_access_key = ${R2_SECRET_ACCESS_KEY}
-region = auto
-endpoint = ${R2_ENDPOINT}
-acl = private
-no_check_bucket = true
-
-[hermes-encrypted]
-type = crypt
-remote = hermes-r2:${R2_BUCKET}/hermes
-password = ${cryptPassword}
-password2 = ${cryptPassword2}
-filename_encryption = standard
-directory_name_encryption = true
-EOF
-
+logPhase "Phase: archive creation"
 rm -f "${archivePath}" "${manifestPath}"
 
-echo "Creating compressed archive ${archiveName}."
 tar \
   --use-compress-program="zstd -T0 -19" \
   -cf "${archivePath}" \
@@ -151,29 +92,23 @@ jq -n \
     archive_name: $archiveName,
     archive_size_bytes: $sizeBytes,
     archive_sha256: $sha256
-}' > "${manifestPath}"
+  }' > "${manifestPath}"
 
-echo "Uploading archive and manifest to Cloudflare R2."
-rclone copyto "${archivePath}" "${remotePrefix}/${archiveName}" --config "${rcloneConfigPath}"
-rclone copyto "${manifestPath}" "${remotePrefix}/${manifestName}" --config "${rcloneConfigPath}"
+logPhase "Phase: upload"
+rclone copyto "${archivePath}" "$(remoteArchivePath "${archiveName}")" --config "${rcloneConfigPath}"
+rclone copyto "${manifestPath}" "$(remoteManifestPath "${archiveName}")" --config "${rcloneConfigPath}"
 
-echo "Verifying remote objects."
-archiveListing="$(rclone lsjson "${remotePrefix}/${archiveName}" --config "${rcloneConfigPath}")"
-manifestListing="$(rclone lsjson "${remotePrefix}/${manifestName}" --config "${rcloneConfigPath}")"
+logPhase "Phase: verification"
+archiveRemoteSize="$(verifyRemoteBackupPair "${archiveName}")"
 
-archiveRemoteSize="$(printf '%s' "${archiveListing}" | jq -r 'if length == 1 then .[0].Size else empty end')"
-manifestCount="$(printf '%s' "${manifestListing}" | jq 'length')"
-
-if [ -z "${archiveRemoteSize}" ] || [ "${archiveRemoteSize}" != "${archiveSizeBytes}" ]; then
-  echo "Remote archive verification failed for ${archiveName}." >&2
-  exit 1
-fi
-
-if [ "${manifestCount}" != "1" ]; then
-  echo "Remote manifest verification failed for ${manifestName}." >&2
-  exit 1
+if [ "${archiveRemoteSize}" != "${archiveSizeBytes}" ]; then
+  die "Remote archive size mismatch for ${archiveName}: remote=${archiveRemoteSize}, local=${archiveSizeBytes}."
 fi
 
 rm -f "${archivePath}" "${manifestPath}"
 
-echo "Hermes backup uploaded successfully: ${remotePrefix}/${archiveName} (${archiveSizeBytes} bytes, sha256 ${archiveSha256})"
+printf 'Hermes backup uploaded successfully: %s/%s (%s bytes, sha256 %s)\n' \
+  "${remoteBackupPrefix}" \
+  "${archiveName}" \
+  "${archiveSizeBytes}" \
+  "${archiveSha256}"
