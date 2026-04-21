@@ -8,7 +8,7 @@
 let
   # Set to "wavebox" or "zen" to select the productivity browser.
   # The xdg-override URL routing and Slack wrapper follow this preference.
-  productivityBrowser = "zen";
+  productivityBrowser = "wavebox";
 
   # Google Meet icon from Wikimedia Commons (public domain)
   googleMeetIcon = pkgs.writeText "google-meet.svg" ''
