@@ -78,24 +78,6 @@
         };
       };
     };
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          # Set prettier as default formatter for supported languages
-          "[css]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-          "[html]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-          "[javascript]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-          "[javascriptreact]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-          "[json]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-          "[jsonc]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-          "[typescript]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-          "[typescriptreact]"."editor.defaultFormatter" = "esbenp.prettier-vscode";
-        };
-        extensions = with pkgs; [
-          vscode-marketplace.esbenp.prettier-vscode
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       userSettings = {
         # Prettier formatting for web languages

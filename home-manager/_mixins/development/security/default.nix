@@ -227,16 +227,4 @@
       };
     };
   };
-
-  # VSCode - extension and binary path
-  programs.vscode = lib.mkIf config.programs.vscode.enable {
-    profiles.default = {
-      userSettings = {
-        "semgrep.path" = "${pkgs.semgrep}/bin/semgrep";
-      };
-      extensions = with pkgs; [
-        vscode-marketplace.semgrep.semgrep
-      ];
-    };
-  };
 }

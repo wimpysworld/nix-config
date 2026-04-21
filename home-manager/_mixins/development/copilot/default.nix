@@ -329,7 +329,7 @@ let
 
     # NOTE: Many state-modifying commands (git commit/push, npm install,
     # cargo build, docker run, etc.) are intentionally NOT listed here.
-    # They fall through to VS Code's default prompt behavior, which is
+    # They fall through to the tool's default prompt behaviour, which is
     # safer than auto-approving. This provides defense-in-depth while
     # maintaining compatibility with opencode and Claude Code's explicit
     # "ask" behavior. For user convenience, these could be added as false
@@ -343,35 +343,6 @@ in
     ];
   };
   programs = {
-    # NOTE: Neovim Copilot plugins remain removed.
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "chat.checkpoints.showFileChanges" = true;
-          "chat.edits2.enabled" = true;
-          "chat.editor.fontFamily" = "FiraCode Nerd Font Mono";
-          "chat.editor.fontSize" = 16;
-          "chat.fontFamily" = "Work Sans";
-          "chat.fontSize" = 16;
-          "chat.tools.terminal.autoApprove" = terminalAutoApprove;
-          "chat.tools.terminal.blockDetectedFileWrites" = "outsideWorkspace";
-          "chat.tools.terminal.terminalProfile.linux" = "bash";
-          "chat.tools.terminal.enableAutoApprove" = true;
-          "chat.tools.urls.autoApprove" = mkAutoApprove approvedDomains // {
-            # Wildcard catch-all: auto-approve fetch for any URL
-            "https://*" = true;
-            "http://*" = true;
-          };
-          "chat.viewSessions.orientation" = "stacked";
-          "github.copilot.chat.anthropic.thinking.enabled" = true;
-          "github.copilot.chat.codesearch.enabled" = true;
-          "inlineChat.enableV2" = true;
-        };
-        extensions = with pkgs; [
-          vscode-marketplace.github.copilot-chat
-        ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       userSettings = {
         agent = {

@@ -5,16 +5,7 @@
   ...
 }:
 let
-  inherit (config.noughty) host;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
-  vscodeUserDir =
-    if host.is.linux then
-      "${config.xdg.configHome}/Code/User"
-    else if host.is.darwin then
-      "${config.home.homeDirectory}/Library/Application Support/Code/User"
-    else
-      throw "Unsupported platform";
-
   # Import shared MCP server definitions
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
   inherit (mcpServerDefs)
@@ -51,15 +42,6 @@ in
       enableMcpIntegration = true;
       settings = {
         mcp = opencodeServers;
-      };
-    };
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        userSettings = {
-          "chat.mcp.assisted.nuget.enabled" = false;
-          "chat.mcp.autostart" = "newAndOutdated";
-          "chat.mcp.gallery.enabled" = true;
-        };
       };
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
@@ -127,12 +109,6 @@ in
     templates."mcp-config.json" = {
       content = builtins.toJSON { inherit mcpServers; };
       path = "${config.xdg.configHome}/mcp/mcp.json";
-    };
-
-    # MCP servers - used by VSCode which expects "servers" key not "mcpServers"
-    templates."vscode-mcp-config.json" = lib.mkIf config.programs.vscode.enable {
-      content = builtins.toJSON { servers = mcpServers; };
-      path = "${vscodeUserDir}/mcp.json";
     };
 
     # MCP servers - used by GitHub Copilot CLI

@@ -25,7 +25,6 @@ in
     inputs.sops-nix.homeManagerModules.sops
     inputs.mac-app-util.homeManagerModules.default
     inputs.nix-index-database.homeModules.nix-index
-    inputs.vscode-server.nixosModules.home
     ./_mixins/development
     ./_mixins/filesync
     ./_mixins/scripts

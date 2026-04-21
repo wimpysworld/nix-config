@@ -32,20 +32,6 @@ in
   };
 
   programs = {
-    vscode = lib.mkIf config.programs.vscode.enable {
-      profiles.default = {
-        extensions =
-          with pkgs;
-          [
-            vscode-marketplace.ms-vscode.cmake-tools
-            vscode-marketplace.twxs.cmake
-          ]
-          ++ lib.optionals host.is.linux [
-            vscode-extensions.ms-vscode.cpptools-extension-pack
-            vscode-extensions.vadimcn.vscode-lldb
-          ];
-      };
-    };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "neocmake"
