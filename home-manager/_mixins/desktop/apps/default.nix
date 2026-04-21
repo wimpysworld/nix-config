@@ -44,7 +44,6 @@ in
     ./streaming
     ./terminal
     ./utilities
-    ./workspace
   ];
 
   dbus = lib.mkIf (host.is.linux && host.is.workstation) {
