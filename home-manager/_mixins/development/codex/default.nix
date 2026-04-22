@@ -26,16 +26,18 @@ let
     exa = {
       inherit (mcpServerDefs.mcpServers.exa) url;
     };
-    jina = {
-      inherit (mcpServerDefs.mcpServers.jina) url;
-      bearer_token_env_var = "JINA_API_KEY";
-    };
     nixos = {
       inherit (mcpServerDefs.mcpServers.nixos) command;
       args = [ ];
     };
     svelte = {
       inherit (mcpServerDefs.mcpServers.svelte) url;
+    };
+  }
+  // lib.optionalAttrs (mcpServerDefs.mcpServers ? jina) {
+    jina = {
+      inherit (mcpServerDefs.mcpServers.jina) url;
+      bearer_token_env_var = "JINA_API_KEY";
     };
   };
 
