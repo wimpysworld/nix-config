@@ -16,7 +16,7 @@ let
   # Pinned here for the freshener workflow.
   llamaSwapVersion = "204";
   llamaSwapHash = "sha256-vgtPqgPWU3LWokGvbisbajyXkB5Sg5khncG0D20f6lY=";
-  llamaSwapVendorHash = "sha256-6D4F58sSBkr7FKKO34gDhnZ9uN/SfsyYn1xJjYsMeq4=";
+  llamaSwapVendorHash = "sha256-bgDrXNuudKhdwOCBLodG1cTLSRKban+69wA9hWEKkoI=";
   llamaSwapUiNpmDepsHash = "sha256-6D4F58sSBkr7FKKO34gDhnZ9uN/SfsyYn1xJjYsMeq4=";
 in
 {
@@ -155,6 +155,7 @@ in
             version = llamaCppVersion;
             src = llamaCppSrc;
             npmDepsHash = llamaCppNpmDepsHash;
+            buildInputs = (old.buildInputs or [ ]) ++ [ final.spirv-headers ];
             npmDeps = prev.fetchNpmDeps {
               name = "llama-cpp-${llamaCppVersion}-npm-deps";
               inherit (old) npmRoot patches;
