@@ -25,9 +25,9 @@ in
       "amdgpu"
       "kvm-amd"
     ];
-    kernelParams = [
-      "video=DP-1:3440x1440@100"
-    ];
+    #kernelParams = [
+    #  "video=DP-1:3440x1440@100"
+    #];
     swraid = {
       enable = true;
       mdadmConf = "MAILADDR=${username}@wimpys.world";
