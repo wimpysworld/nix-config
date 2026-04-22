@@ -1,2 +1,2 @@
 agent: batfink
-model: github-copilot/gpt-5.4
+model: anthropic/claude-opus-4-7

@@ -1,1 +1,2 @@
 description: "Environment constraints and tool preferences for NixOS workstation"
+model: anthropic/claude-opus-4-7

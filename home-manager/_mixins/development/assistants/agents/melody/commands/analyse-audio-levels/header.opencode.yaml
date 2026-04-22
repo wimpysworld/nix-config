@@ -1,2 +1,2 @@
 agent: melody
-model: github-copilot/claude-sonnet-4.6
+model: anthropic/claude-opus-4-7
