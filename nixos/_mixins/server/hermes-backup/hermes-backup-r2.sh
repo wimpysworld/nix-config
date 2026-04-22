@@ -55,6 +55,7 @@ rm -rf "${snapshotDir}"
 mkdir -p "${snapshotDir}"
 
 rsync -a --delete --numeric-ids \
+	--exclude='/current-entrypoint' \
 	--exclude='/.hermes/state.db' \
 	--exclude='/.hermes/state.db-wal' \
 	--exclude='/.hermes/state.db-shm' \
