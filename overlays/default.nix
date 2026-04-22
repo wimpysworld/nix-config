@@ -4,11 +4,6 @@ let
   unstablePkgsPath = inputs.nixpkgs-unstable.outPath + "/pkgs/by-name";
 
   # Pinned here for the freshener workflow.
-  ollamaVersion = "0.21.0";
-  ollamaHash = "sha256-DtrYopNtndQXq9Xjriw5Bqell9A8RHPOvgDF8BlKtdU=";
-  ollamaVendorHash = "sha256-Lc1Ktdqtv2VhJQssk8K1UOimeEjVNvDWePE9WkamCos=";
-
-  # Pinned here for the freshener workflow.
   llamaCppVersion = "8864";
   llamaCppHash = "sha256-IHVBwnjMVKSaDGyA9AYy7dHM9EI1XtCMmXjiKUFXDmg=";
   llamaCppNpmDepsHash = "sha256-RAFtsbBGBjteCt5yXhrmHL39rIDJMCFBETgzId2eRRk=";
@@ -29,22 +24,10 @@ in
   modifiedPackages =
     final: prev:
     let
-      ollamaPackageFile = unstablePkgsPath + "/ol/ollama/package.nix";
       llamaCppPackageFile = unstablePkgsPath + "/ll/llama-cpp/package.nix";
       unstableRocmPackages = final.unstable.rocmPackages;
       unstableRocmGpuTargets =
         unstableRocmPackages.clr.localGpuTargets or (unstableRocmPackages.clr.gpuTargets or [ ]);
-
-      ollamaSrc = prev.fetchFromGitHub {
-        owner = "ollama";
-        repo = "ollama";
-        tag = "v${ollamaVersion}";
-        hash = ollamaHash;
-      };
-
-      ollamaCheckFlags = [
-        "-skip=^TestPushHandler/unauthorized_push$|^TestPiRun_InstallAndWebSearchLifecycle$|^TestOpenclawRun_ChannelSetupHappensBeforeGatewayRestart$|^TestOpenclawChannelSetupPreflight$"
-      ];
 
       llamaCppSrc = prev.fetchFromGitHub {
         owner = "ggml-org";
@@ -75,75 +58,10 @@ in
     rec {
       hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
 
-      ollama =
-        (final.callPackage ollamaPackageFile {
-          acceleration = null;
-          inherit
-            ollama
-            ollama-cuda
-            ollama-rocm
-            ollama-vulkan
-            ;
-        }).overrideAttrs
-          (_old: {
-            version = ollamaVersion;
-            src = ollamaSrc;
-            vendorHash = ollamaVendorHash;
-            checkFlags = ollamaCheckFlags;
-          });
-
-      ollama-cuda =
-        (final.callPackage ollamaPackageFile {
-          acceleration = "cuda";
-          inherit
-            ollama
-            ollama-cuda
-            ollama-rocm
-            ollama-vulkan
-            ;
-        }).overrideAttrs
-          (_old: {
-            version = ollamaVersion;
-            src = ollamaSrc;
-            vendorHash = ollamaVendorHash;
-            checkFlags = ollamaCheckFlags;
-          });
-
-      ollama-rocm =
-        (final.callPackage ollamaPackageFile {
-          acceleration = "rocm";
-          rocmPackages = unstableRocmPackages;
-          rocmGpuTargets = unstableRocmGpuTargets;
-          inherit
-            ollama
-            ollama-cuda
-            ollama-rocm
-            ollama-vulkan
-            ;
-        }).overrideAttrs
-          (_old: {
-            version = ollamaVersion;
-            src = ollamaSrc;
-            vendorHash = ollamaVendorHash;
-            checkFlags = ollamaCheckFlags;
-          });
-
-      ollama-vulkan =
-        (final.callPackage ollamaPackageFile {
-          acceleration = "vulkan";
-          inherit
-            ollama
-            ollama-cuda
-            ollama-rocm
-            ollama-vulkan
-            ;
-        }).overrideAttrs
-          (_old: {
-            version = ollamaVersion;
-            src = ollamaSrc;
-            vendorHash = ollamaVendorHash;
-            checkFlags = ollamaCheckFlags;
-          });
+      ollama = final.unstable.ollama;
+      ollama-cuda = final.unstable.ollama-cuda;
+      ollama-rocm = final.unstable.ollama-rocm;
+      ollama-vulkan = final.unstable.ollama-vulkan;
 
       llama-cpp =
         (final.callPackage llamaCppPackageFile {
