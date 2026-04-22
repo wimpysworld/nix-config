@@ -35,7 +35,7 @@ For each plan item:
    - Primary sources (author blogs, release notes, changelogs)
    - Reputable technical publications
    - Community content (forums, Stack Overflow)
-3. Read selected URLs using `mcp__jina__read_url` or `mcp__jina__parallel_read_url` for batch reads
+3. Read selected URLs using `mcp__exa__web_fetch_exa`, batching URLs when reading several pages
 
 **Query refinement:** If a search returns fewer than 3 relevant results, reformulate with different keywords, synonyms, or narrower/broader scope before proceeding.
 

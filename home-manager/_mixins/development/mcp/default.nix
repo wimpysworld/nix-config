@@ -23,7 +23,7 @@ in
         set -gx FIRECRAWL_API_KEY (cat ${config.sops.secrets.FIRECRAWL_API_KEY.path} 2>/dev/null; or echo "")
         set -gx GOOGLE_CSE_API_KEY (cat ${config.sops.secrets.GOOGLE_CSE_API_KEY.path} 2>/dev/null; or echo "")
         set -gx GOOGLE_CSE_ENGINE_ID (cat ${config.sops.secrets.GOOGLE_CSE_ENGINE_ID.path} 2>/dev/null; or echo "")
-        set -gx JINA_API_KEY (cat ${config.sops.secrets.JINA_API_KEY.path} 2>/dev/null; or echo "")
+        # set -gx JINA_API_KEY (cat ${config.sops.secrets.JINA_API_KEY.path} 2>/dev/null; or echo "")
         set -gx SEMGREP_APP_TOKEN (cat ${config.sops.secrets.SEMGREP_APP_TOKEN.path} 2>/dev/null; or echo "")
       '';
     };
@@ -34,7 +34,7 @@ in
         export FIRECRAWL_API_KEY=$(cat ${config.sops.secrets.FIRECRAWL_API_KEY.path} 2>/dev/null || echo "")
         export GOOGLE_CSE_API_KEY=$(cat ${config.sops.secrets.GOOGLE_CSE_API_KEY.path} 2>/dev/null || echo "")
         export GOOGLE_CSE_ENGINE_ID=$(cat ${config.sops.secrets.GOOGLE_CSE_ENGINE_ID.path} 2>/dev/null || echo "")
-        export JINA_API_KEY=$(cat ${config.sops.secrets.JINA_API_KEY.path} 2>/dev/null || echo "")
+        # export JINA_API_KEY=$(cat ${config.sops.secrets.JINA_API_KEY.path} 2>/dev/null || echo "")
         export SEMGREP_APP_TOKEN=$(cat ${config.sops.secrets.SEMGREP_APP_TOKEN.path} 2>/dev/null || echo "")
       '';
     };
@@ -65,21 +65,21 @@ in
             args = [
               "-y"
               "mcp-remote"
-              "https://mcp.exa.ai/mcp"
+              "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa"
             ];
           };
           nixos = {
             command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
             args = [ ];
           };
-          jina = {
-            command = "${pkgs.nodejs}/bin/npx";
-            args = [
-              "-y"
-              "mcp-remote"
-              "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web"
-            ];
-          };
+          # jina = {
+          #   command = "${pkgs.nodejs}/bin/npx";
+          #   args = [
+          #     "-y"
+          #     "mcp-remote"
+          #     "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web"
+          #   ];
+          # };
         };
       };
     };
@@ -98,9 +98,9 @@ in
       GOOGLE_CSE_ENGINE_ID = {
         sopsFile = mcpSopsFile;
       };
-      JINA_API_KEY = {
-        sopsFile = mcpSopsFile;
-      };
+      # JINA_API_KEY = {
+      #   sopsFile = mcpSopsFile;
+      # };
       SEMGREP_APP_TOKEN = {
         sopsFile = mcpSopsFile;
       };

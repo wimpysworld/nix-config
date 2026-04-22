@@ -16,7 +16,7 @@
     };
     exa = {
       type = "http";
-      url = "https://mcp.exa.ai/mcp";
+      url = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa";
     };
     nixos = {
       type = "stdio";
@@ -38,13 +38,13 @@
     #  type = "http";
     #  url = "https://mcp.firecrawl.dev/${config.sops.placeholder.FIRECRAWL_API_KEY}/v2/mcp";
     #};
-    jina = {
-      type = "http";
-      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
-      headers = {
-        Authorization = "Bearer ${config.sops.placeholder.JINA_API_KEY}";
-      };
-    };
+    # jina = {
+    #   type = "http";
+    #   url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
+    #   headers = {
+    #     Authorization = "Bearer ${config.sops.placeholder.JINA_API_KEY}";
+    #   };
+    # };
     #mcp-google-cse = {
     #  type = "stdio";
     #  command = "${pkgs.uv}/bin/uvx";
@@ -66,10 +66,10 @@
     };
     exa = {
       type = "remote";
-      url = "https://mcp.exa.ai/mcp";
+      url = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa";
     };
     nixos = {
-      enabled = false;
+      enabled = true;
       type = "local";
       command = [ "${pkgs.mcp-nixos}/bin/mcp-nixos" ];
     };
@@ -95,13 +95,13 @@
     #  type = "remote";
     #  url = "https://mcp.firecrawl.dev/{env:FIRECRAWL_API_KEY}/v2/mcp";
     #};
-    jina = {
-      type = "remote";
-      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
-      headers = {
-        Authorization = "Bearer {env:JINA_API_KEY}";
-      };
-    };
+    # jina = {
+    #   type = "remote";
+    #   url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
+    #   headers = {
+    #     Authorization = "Bearer {env:JINA_API_KEY}";
+    #   };
+    # };
     #mcp-google-cse = {
     #  enabled = false;
     #  type = "local";
@@ -135,7 +135,7 @@
       args = [
         "-y"
         "mcp-remote"
-        "https://mcp.exa.ai/mcp"
+        "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa"
       ];
       tools = [ "*" ];
     };
@@ -184,18 +184,18 @@
     #    FIRECRAWL_API_KEY = config.sops.placeholder.FIRECRAWL_API_KEY;
     #  };
     #};
-    jina = {
-      type = "stdio";
-      command = "${pkgs.nodejs}/bin/npx";
-      args = [
-        "-y"
-        "mcp-remote"
-        "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web"
-        "--header"
-        "Authorization: Bearer ${config.sops.placeholder.JINA_API_KEY}"
-      ];
-      tools = [ "*" ];
-    };
+    # jina = {
+    #   type = "stdio";
+    #   command = "${pkgs.nodejs}/bin/npx";
+    #   args = [
+    #     "-y"
+    #     "mcp-remote"
+    #     "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web"
+    #     "--header"
+    #     "Authorization: Bearer ${config.sops.placeholder.JINA_API_KEY}"
+    #   ];
+    #   tools = [ "*" ];
+    # };
     #mcp-google-cse = {
     #  type = "stdio";
     #  command = "${pkgs.uv}/bin/uvx";
