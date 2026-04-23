@@ -18,8 +18,17 @@ stdenvNoCC.mkDerivation rec {
   };
 
   installPhase = ''
+    fontList=$(mktemp)
+    find . -type f -name '*.otf' -print > "$fontList"
+    if ! [ -s "$fontList" ]; then
+      echo "error: expected at least one .otf file in the source archive" >&2
+      exit 1
+    fi
+
     install -d $out/share/fonts/opentype/${pname}
-    find . -type f -name '*.otf' -exec install -m444 -t $out/share/fonts/opentype/${pname} {} +
+    while IFS= read -r fontFile; do
+      install -m444 "$fontFile" $out/share/fonts/opentype/${pname}/
+    done < "$fontList"
   '';
 
   meta = {
