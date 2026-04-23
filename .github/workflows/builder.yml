@@ -33,6 +33,8 @@ jobs:
       has_orphan_homes: ${{ steps.inventory.outputs.has_orphan_homes }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
         with:
           hatchet-protocol: "holster"
@@ -62,6 +64,8 @@ jobs:
         target: ${{ fromJSON(needs.inventory.outputs.devshells) }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
         if: contains(matrix.target.system, 'linux')
         with:
@@ -140,6 +144,8 @@ jobs:
         target: ${{ fromJSON(needs.inventory.outputs.packages) }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
         if: contains(matrix.target.system, 'linux')
         with:
@@ -238,6 +244,8 @@ jobs:
         target: ${{ fromJSON(needs.inventory.outputs.nixos) }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
         with:
           hatchet-protocol: "holster"
@@ -278,6 +286,8 @@ jobs:
         target: ${{ fromJSON(needs.inventory.outputs.darwin) }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
@@ -308,6 +318,8 @@ jobs:
         target: ${{ fromJSON(needs.inventory.outputs.orphan_homes) }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
         with:
           hatchet-protocol: "holster"
