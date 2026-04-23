@@ -154,6 +154,7 @@ let
         if [ -x "$out/bin/$program" ]; then
           wrapProgram "$out/bin/$program" \
             --set-default HERMES_HOME "${hermesHome}" \
+            --set-default GNUPGHOME "${hermesGnupgHome}" \
             --set-default TRAYA_SANCTUARY_DIR "/var/lib/hermes/workspace/trayas-sanctuary" \
             --set-default TRAYA_SANCTUARY_REPO "the-cauldron/trayas-sanctuary" \
             --prefix PATH : "${lib.makeBinPath hermesExtraPackages}" \
@@ -169,6 +170,16 @@ let
   himalayaConfigDir = "${config.services.hermes-agent.stateDir}/.config/himalaya";
   himalayaConfigPath = "${himalayaConfigDir}/config.toml";
   hermesSshDir = "${config.services.hermes-agent.stateDir}/.ssh";
+  hermesGnupgHome = "${config.services.hermes-agent.stateDir}/.gnupg";
+  # GPG runtime config for Traya's keyring. Loopback pinentry guards against
+  # any tool that later tries to prompt for a passphrase; the key itself is
+  # generated with %no-protection so there is nothing to prompt for.
+  hermesGpgConf = pkgs.writeText "hermes-gpg.conf" ''
+    pinentry-mode loopback
+  '';
+  hermesGpgAgentConf = pkgs.writeText "hermes-gpg-agent.conf" ''
+    allow-loopback-pinentry
+  '';
   hermesExtraPackages = with pkgs; [
     agentBrowserPackage
     bat
@@ -188,6 +199,7 @@ let
     himalaya
     gitMinimal
     gnugrep
+    gnupg
     gnused
     gnutar
     gzip
@@ -234,6 +246,7 @@ let
     }"
     export TRAYA_SANCTUARY_DIR="/var/lib/hermes/workspace/trayas-sanctuary"
     export TRAYA_SANCTUARY_REPO="the-cauldron/trayas-sanctuary"
+    export GNUPGHOME=${hermesGnupgHome}
 
     # Interactive CLI sandboxing: systemd hardening does not apply to host
     # shells, so we reuse bubblewrap to hide the same paths the gateway
@@ -379,6 +392,27 @@ in
         group = hermesGroup;
         mode = "0444";
       };
+
+      GPG_PRIVATE_KEY = {
+        sopsFile = trayaSopsFile;
+        owner = hermesUser;
+        group = hermesGroup;
+        mode = "0400";
+      };
+
+      GPG_PUBLIC_KEY = {
+        sopsFile = trayaSopsFile;
+        owner = hermesUser;
+        group = hermesGroup;
+        mode = "0444";
+      };
+
+      GPG_KEY_ID = {
+        sopsFile = trayaSopsFile;
+        owner = hermesUser;
+        group = hermesGroup;
+        mode = "0444";
+      };
     };
 
     sops.templates."hermes-env" = {
@@ -456,6 +490,27 @@ in
       mode = "0440";
     };
 
+    sops.templates."hermes-gitconfig" = {
+      content = ''
+        [user]
+            name = Traya
+            email = traya@darth.cc
+            signingkey = ${config.sops.placeholder.GPG_KEY_ID}
+
+        [commit]
+            gpgsign = true
+
+        [tag]
+            gpgsign = true
+
+        [gpg]
+            program = ${pkgs.gnupg}/bin/gpg2
+      '';
+      owner = hermesUser;
+      group = hermesGroup;
+      mode = "0440";
+    };
+
     sops.templates."hermes-himalaya-config" = {
       content = ''
         display-name = "Traya"
@@ -496,6 +551,7 @@ in
       addToSystemPackages = true;
       package = hermesAgentPackage;
       environment = {
+        GNUPGHOME = hermesGnupgHome;
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
         TRAYA_SANCTUARY_DIR = "/var/lib/hermes/workspace/trayas-sanctuary";
         TRAYA_SANCTUARY_REPO = "the-cauldron/trayas-sanctuary";
@@ -641,11 +697,17 @@ in
       "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${himalayaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesSshDir} 0700 ${hermesUser} ${hermesGroup} - -"
+      "d ${hermesGnupgHome} 0700 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${himalayaConfigPath} - - - - ${config.sops.templates."hermes-himalaya-config".path}"
       "L+ ${hermesSshDir}/id_ed25519 - - - - ${config.sops.secrets.SSH_PRIVATE_KEY.path}"
       "L+ ${hermesSshDir}/id_ed25519.pub - - - - ${config.sops.secrets.SSH_PUBLIC_KEY.path}"
+      "L+ ${hermesGnupgHome}/gpg.conf - - - - ${hermesGpgConf}"
+      "L+ ${hermesGnupgHome}/gpg-agent.conf - - - - ${hermesGpgAgentConf}"
+      "L+ ${config.services.hermes-agent.stateDir}/.gitconfig - - - - ${
+        config.sops.templates."hermes-gitconfig".path
+      }"
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
       "L+ ${hermesHome}/honcho.json - - - - ${config.sops.templates."hermes-honcho".path}"
     ];
@@ -691,6 +753,32 @@ in
             # state and token refreshes do not lock each other out.
             chown ${hermesUser}:${hermesGroup} ${hermesAuthFile}
             chmod 0660 ${hermesAuthFile}
+          fi
+        '';
+
+    system.activationScripts.hermes-agent-gpg-import =
+      lib.stringAfter [ "hermes-agent-setup" "specialfs" ]
+        ''
+          # Import Traya's GPG key into the hermes user's keyring so git commit
+          # signing and encryption work without per-session setup. Idempotent:
+          # gpg silently ignores already-imported keys. Ultimate trust so the
+          # key signs without warnings. gpg.conf and gpg-agent.conf are
+          # provisioned via tmpfiles symlinks into the Nix store.
+          if [ -f ${config.sops.secrets.GPG_PRIVATE_KEY.path} ] \
+             && [ -f ${config.sops.secrets.GPG_KEY_ID.path} ]; then
+            install -d -m 0700 -o ${hermesUser} -g ${hermesGroup} ${hermesGnupgHome}
+
+            ${pkgs.util-linux}/bin/runuser -u ${hermesUser} -- \
+              env GNUPGHOME=${hermesGnupgHome} \
+              ${pkgs.gnupg}/bin/gpg --batch --quiet --import \
+              ${config.sops.secrets.GPG_PRIVATE_KEY.path} || true
+
+            fpr=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.GPG_KEY_ID.path})
+            if [ -n "$fpr" ]; then
+              ${pkgs.util-linux}/bin/runuser -u ${hermesUser} -- \
+                env GNUPGHOME=${hermesGnupgHome} \
+                ${pkgs.bash}/bin/bash -c "echo \"$fpr:6:\" | ${pkgs.gnupg}/bin/gpg --batch --import-ownertrust" || true
+            fi
           fi
         '';
   };
