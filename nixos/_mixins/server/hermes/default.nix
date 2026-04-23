@@ -213,6 +213,7 @@ let
     nh
     nix-direnv
     nodejs-slim
+    openssh
     poppler-utils
     procps
     python3Minimal
