@@ -642,16 +642,6 @@ in
             model = "gpt-5.3-codex-spark";
             timeout = 30;
           };
-          compression = {
-            provider = "openai-codex";
-            model = "gpt-5.3-codex-spark";
-            timeout = 120;
-          };
-          flush_memories = {
-            provider = "openai-codex";
-            model = "gpt-5.3-codex-spark";
-            timeout = 30;
-          };
           session_search = {
             provider = "openai-codex";
             model = "gpt-5.3-codex-spark";
