@@ -9,9 +9,9 @@ let
   llamaCppNpmDepsHash = "sha256-RAFtsbBGBjteCt5yXhrmHL39rIDJMCFBETgzId2eRRk=";
 
   # Pinned here for the freshener workflow.
-  llamaSwapVersion = "204";
-  llamaSwapHash = "sha256-vgtPqgPWU3LWokGvbisbajyXkB5Sg5khncG0D20f6lY=";
-  llamaSwapVendorHash = "sha256-bgDrXNuudKhdwOCBLodG1cTLSRKban+69wA9hWEKkoI=";
+  llamaSwapVersion = "205";
+  llamaSwapHash = "sha256-b6AaWAoDeauH7XBUYWjVwLT29aDv6fTkryR1l4eqaPc=";
+  llamaSwapVendorHash = "sha256-tOOZgugiVcICYg9HyeTolyAg+YZWtxSJTvAuwfMazHQ=";
   llamaSwapUiNpmDepsHash = "sha256-6D4F58sSBkr7FKKO34gDhnZ9uN/SfsyYn1xJjYsMeq4=";
 in
 {
