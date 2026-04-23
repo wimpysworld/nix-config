@@ -658,6 +658,11 @@ in
             model = "gpt-5.3-codex-spark";
             timeout = 30;
           };
+          web_extract = {
+            provider = "openai-codex";
+            model = "gpt-5.3-codex-spark";
+            timeout = 30;
+          };
         };
 
         providers = {
