@@ -168,6 +168,7 @@ let
   hermesAuthFile = "${hermesHome}/auth.json";
   himalayaConfigDir = "${config.services.hermes-agent.stateDir}/.config/himalaya";
   himalayaConfigPath = "${himalayaConfigDir}/config.toml";
+  hermesSshDir = "${config.services.hermes-agent.stateDir}/.ssh";
   hermesExtraPackages = with pkgs; [
     agentBrowserPackage
     bat
@@ -363,6 +364,20 @@ in
         owner = hermesUser;
         group = hermesGroup;
         mode = "0440";
+      };
+
+      SSH_PRIVATE_KEY = {
+        sopsFile = trayaSopsFile;
+        owner = hermesUser;
+        group = hermesGroup;
+        mode = "0400";
+      };
+
+      SSH_PUBLIC_KEY = {
+        sopsFile = trayaSopsFile;
+        owner = hermesUser;
+        group = hermesGroup;
+        mode = "0444";
       };
     };
 
@@ -625,9 +640,12 @@ in
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${himalayaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
+      "d ${hermesSshDir} 0700 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${himalayaConfigPath} - - - - ${config.sops.templates."hermes-himalaya-config".path}"
+      "L+ ${hermesSshDir}/id_ed25519 - - - - ${config.sops.secrets.SSH_PRIVATE_KEY.path}"
+      "L+ ${hermesSshDir}/id_ed25519.pub - - - - ${config.sops.secrets.SSH_PUBLIC_KEY.path}"
       "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
       "L+ ${hermesHome}/honcho.json - - - - ${config.sops.templates."hermes-honcho".path}"
     ];
