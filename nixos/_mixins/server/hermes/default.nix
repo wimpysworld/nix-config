@@ -636,6 +636,30 @@ in
           ];
         };
 
+        auxiliary = {
+          approval = {
+            provider = "openai-codex";
+            model = "gpt-5.3-codex-spark";
+            timeout = 30;
+          };
+          session_search = {
+            provider = "openai-codex";
+            model = "gpt-5.3-codex-spark";
+            timeout = 30;
+            max_concurrency = 2;
+          };
+          skills_hub = {
+            provider = "openai-codex";
+            model = "gpt-5.3-codex-spark";
+            timeout = 30;
+          };
+          mcp = {
+            provider = "openai-codex";
+            model = "gpt-5.3-codex-spark";
+            timeout = 30;
+          };
+        };
+
         providers = {
           anthropic = {
             allowed_models = [
@@ -647,7 +671,10 @@ in
             allowed_models = [ "gpt-5.4" ];
           };
           openai-codex = {
-            allowed_models = [ "gpt-5.4" ];
+            allowed_models = [
+              "gpt-5.4"
+              "gpt-5.3-codex-spark"
+            ];
           };
         };
 
