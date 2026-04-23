@@ -302,6 +302,15 @@ in
     users.groups.hermes.gid = 1984;
     users.users.${username}.extraGroups = lib.mkAfter [ "hermes" ];
 
+    # Nixpkgs wires systemd's ssh proxy fragment into /etc/ssh/ssh_config by
+    # default, which makes OpenSSH fail strict-mode checks on the resolved
+    # store path with "Bad owner or permissions on .../20-systemd-ssh-proxy.conf".
+    # The proxy plugin only matters for machinectl/container SSH which Traya
+    # never uses, so disable the Include entirely and let plain ssh-to-remote
+    # work for the hermes service user. Tracked upstream at
+    # https://github.com/NixOS/nixpkgs/pull/495610 but fix hasn't reached us yet.
+    programs.ssh.systemd-ssh-proxy.enable = false;
+
     sops.secrets = {
       TELEGRAM_BOT_TOKEN = {
         sopsFile = hermesSopsFile;
