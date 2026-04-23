@@ -9,13 +9,17 @@ stdenvNoCC.mkDerivation rec {
   version = "1.000";
 
   src = fetchzip {
-    url = "https://ifonts.xyz/wp-content/ifonts-files/downloads/559747/bw-fusiona-font-family.zip";
-    hash = "sha256-8FNKeTJTumpkGqj1aIvuXdkODPhWg2D0rF6k137/IOI=";
+    # Use the official demo archive directly. The previous third-party mirror
+    # started returning intermittent 403 responses to GitHub Actions runners,
+    # which made the builder workflow flaky.
+    url = "https://brandingwithtype.com/storage/Bw%20Fusiona%20DEMO-4.zip";
+    hash = "sha256-iG63fSKK/O1U88mNMgn1tHB+Zvfk8Z3z4VdOUaj+7qc=";
     stripRoot = false;
   };
 
   installPhase = ''
-    install -m444 -Dt $out/share/fonts/opentype/${pname} *.otf
+    install -d $out/share/fonts/opentype/${pname}
+    find . -type f -name '*.otf' -exec install -m444 -t $out/share/fonts/opentype/${pname} {} +
   '';
 
   meta = {
