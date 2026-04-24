@@ -25,6 +25,14 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
           pr-title: "chore: update flake.lock"
+          # Keep llm-agents on a manual cadence. Large Codex bumps regularly blow up
+          # Home and NixOS matrix builds on GitHub-hosted runners.
+          inputs: >-
+            determinate fh home-manager nixpkgs nixpkgs-unstable nix-darwin
+            systems flake-utils rust-overlay flake-parts sidra bzmenu iwmenu
+            pwmenu catppuccin direnv-instant disko kolide-launcher nixos-hardware
+            nix-homebrew nix-index-database nix-vscode-extensions nix-flatpak
+            mac-app-util sops-nix vscode-server nix-packages xdg-override
           # Labels to be set on the PR
           pr-labels: |
             dependencies
