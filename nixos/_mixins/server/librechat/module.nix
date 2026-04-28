@@ -193,7 +193,7 @@ in
     assertions = [
       {
         assertion = cfg.env ? MONGO_URI || cfg.credentials ? MONGO_URI;
-        message = "MongoDB is not configured, either set `services.librechat.enableLocalDB = true` or provide your own MongoDB instance by setting `services.librechat.env.MONGO_URI` or `services.credentials.MONGO_URI`.";
+        message = "MongoDB is not configured, either set `services.librechat.enableLocalDB = true` or provide your own MongoDB instance by setting `services.librechat.env.MONGO_URI` or `services.librechat.credentials.MONGO_URI`.";
       }
       {
         assertion =
