@@ -4,8 +4,8 @@ let
   unstablePkgsPath = inputs.nixpkgs-unstable.outPath + "/pkgs/by-name";
 
   # Pinned here for the freshener workflow.
-  llamaCppVersion = "8895";
-  llamaCppHash = "sha256-yIgVbJvIRzdSB7oigBGqPGSzT5rpnKWeSzVA9I3xzM4=";
+  llamaCppVersion = "8953";
+  llamaCppHash = "sha256-FwQnfyojKbbBYhJ2wHMVMgb2XHyiZ69qvsKWtyS/oNo=";
   llamaCppNpmDepsHash = "sha256-RAFtsbBGBjteCt5yXhrmHL39rIDJMCFBETgzId2eRRk=";
 
   # Pinned here for the freshener workflow.
