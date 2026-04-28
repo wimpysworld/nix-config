@@ -6,7 +6,6 @@
   ...
 }:
 let
-  cfg = config.services.librechat;
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
   librechatProvisionUsers = pkgs.writeShellApplication {
@@ -16,16 +15,11 @@ let
     # JavaScript, not shell expressions; disable shellcheck accordingly.
     checkPhase = "";
     text = ''
-      : "''${MONGO_URI_FILE:?}"
+      mongoUri="mongodb://127.0.0.1:27017/librechat"
+
       : "''${HASH_MARTIN:?}"
       : "''${HASH_LOUISE:?}"
       : "''${HASH_AGATHA:?}"
-
-      readSecret() {
-        tr -d '\n' < "$1"
-      }
-
-      mongoUri=$(readSecret "$MONGO_URI_FILE")
 
       upsertUser() {
         local email="$1"
@@ -35,7 +29,7 @@ let
         local hashFile="$5"
         local passwordHash
 
-        passwordHash=$(readSecret "$hashFile")
+        passwordHash="$(<"$hashFile")"
 
         EMAIL="$email" \
         NAME="$name" \
@@ -151,14 +145,6 @@ in
       mode = "0400";
     };
 
-    sops.secrets.MONGO_URI = {
-      sopsFile = ../../../../secrets/librechat.yaml;
-      path = "/run/secrets/MONGO_URI";
-      owner = "root";
-      group = "root";
-      mode = "0400";
-    };
-
     # Create the LibreChat tunnel in Cloudflare first, then encrypt the
     # tunnel token from the dashboard install connector flow into
     # secrets/cloudflare.yaml as CLOUDFLARE_TUNNEL_TOKEN_LIBRECHAT before
@@ -173,7 +159,7 @@ in
 
     services.librechat = {
       enable = true;
-      enableLocalDB = lib.mkDefault false;
+      enableLocalDB = lib.mkDefault true;
       package = lib.mkDefault pkgs.unstable.librechat;
       openFirewall = lib.mkDefault true;
       meilisearch.enable = lib.mkDefault true;
@@ -191,7 +177,6 @@ in
         CREDS_KEY = config.sops.secrets.CREDS_KEY.path;
         JWT_REFRESH_SECRET = config.sops.secrets.JWT_REFRESH_SECRET.path;
         JWT_SECRET = config.sops.secrets.JWT_SECRET.path;
-        MONGO_URI = config.sops.secrets.MONGO_URI.path;
       };
       settings = lib.mkDefault {
         version = "1.3.6";
@@ -204,17 +189,17 @@ in
     };
 
     services.meilisearch.masterKeyFile = lib.mkDefault config.sops.secrets.MEILI_MASTER_KEY.path;
+    services.mongodb.package = lib.mkDefault pkgs.mongodb-ce;
 
     systemd.services.librechat-provision-users = {
       description = "Provision initial LibreChat user accounts.";
       wantedBy = [ "multi-user.target" ];
-      after = lib.optionals cfg.enableLocalDB [ "mongodb.service" ] ++ [ "network-online.target" ];
-      wants = lib.optionals cfg.enableLocalDB [ "mongodb.service" ] ++ [ "network-online.target" ];
+      after = [ "mongodb.service" ];
+      wants = [ "mongodb.service" ];
       environment = {
         HASH_MARTIN = config.sops.secrets.USER_PW_MARTIN.path;
         HASH_LOUISE = config.sops.secrets.USER_PW_LOUISE.path;
         HASH_AGATHA = config.sops.secrets.USER_PW_AGATHA.path;
-        MONGO_URI_FILE = config.sops.secrets.MONGO_URI.path;
       };
       serviceConfig = {
         Type = "oneshot";
