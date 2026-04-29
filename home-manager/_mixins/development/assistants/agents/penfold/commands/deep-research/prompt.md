@@ -30,12 +30,13 @@ Before any search, create a research plan as a numbered checklist. Each item: on
 For each plan item:
 1. Mark it `[~]` in RESEARCH-PLAN.md before starting
 2. Search using `mcp__exa__web_search_exa` - prefer specific queries over broad ones
-2. Evaluate results before reading - prioritise by source quality:
+3. Use `mcp__exa__web_search_advanced_exa` for date ranges, domain filters, categories, highlights, summaries, or subpage crawling
+4. Evaluate results before reading - prioritise by source quality:
    - Official documentation and specifications
    - Primary sources (author blogs, release notes, changelogs)
    - Reputable technical publications
    - Community content (forums, Stack Overflow)
-3. Read selected URLs using `mcp__exa__web_fetch_exa`, batching URLs when reading several pages
+5. Read selected URLs using `mcp__exa__web_fetch_exa`, batching URLs when reading several pages
 
 **Query refinement:** If a search returns fewer than 3 relevant results, reformulate with different keywords, synonyms, or narrower/broader scope before proceeding.
 

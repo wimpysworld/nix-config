@@ -1,4 +1,0 @@
-# Penry
-
-## System Prompt
-

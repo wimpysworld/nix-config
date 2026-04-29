@@ -1,6 +1,0 @@
-name: Review Plan
-interaction: chat
-opts:
-  alias: review-plan
-  is_slash_cmd: true
-  rules: penfold

@@ -1,4 +1,0 @@
-# Casper
-
-## System Prompt
-

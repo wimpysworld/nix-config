@@ -1,6 +1,6 @@
 # AI Agents
 
-Fourteen specialist agents, 31 commands, and seven skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, GitHub Copilot, and CodeCompanion (Neovim) without duplication.
+Fourteen specialist agents, 31 commands, and seven skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, and Codex without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -26,15 +26,6 @@ The Nix composition is the delivery mechanism, not the strategy. Everything belo
 ```
 
 Global instructions in OpenCode are set via the `rules` option in `settings.json` rather than a file.
-
-**GitHub Copilot:**
-
-```
-~/.config/Code/User/prompts/
-├── <name>.agent.md                 # Agent definitions
-├── <name>.prompt.md                # Slash commands
-└── copilot.instructions.md         # Global instructions (inline)
-```
 
 Each file is Markdown with YAML frontmatter specifying `name`, `description`, and optionally `model`. The prompt body follows the `---` delimiters. No build step required - drop the files in and they work.
 
@@ -69,7 +60,7 @@ Agent prompts inherit the global constraints and add specialisation. Command pro
 
 Rosey coordinates the team. She never implements, researches, or reads files directly. Her sole job is to understand the task, select the right agent, write a tight delegation prompt, and relay the result verbatim.
 
-**Model:** `sonnet` (Claude Code) / `github-copilot/claude-sonnet-4.6` (OpenCode)
+**Model:** `sonnet` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode)
 
 ### Session Priming
 
@@ -179,7 +170,7 @@ Pragmatic test engineer identifying high-impact unit tests that catch real bugs.
 
 Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversational British English combining Linux expertise with accessible humour. First-person narrative, direct reader address, British colloquialisms integrated naturally. Loads `prose-style-reference` for extended writing.
 
-**Model:** `sonnet` (Claude Code) / `github-copilot/claude-sonnet-4.6` (OpenCode) - voice emulation and style calibration suit the mid-tier model.
+**Model:** `sonnet` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - voice emulation and style calibration suit the mid-tier model.
 
 | Command | Purpose |
 |---------|---------|
@@ -253,7 +244,7 @@ Performance optimisation specialist focused on user-perceivable improvements. Ra
 
 Interprets objective audio metrics into perceptual descriptions: how a recording actually sounds to a listener. Specialises in spectral analysis, EBU R128 loudness measurement, dynamic range, and before/after processing comparison.
 
-**Model:** `sonnet` (Claude Code) / `github-copilot/claude-sonnet-4.6` (OpenCode) - metric interpretation follows structured lookup tables; sonnet handles this accurately.
+**Model:** `sonnet` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - metric interpretation follows structured lookup tables; sonnet handles this accurately.
 
 | Command | Purpose |
 |---------|---------|
@@ -282,7 +273,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 
 Maintainability specialist reviewing for simplification, duplication, dead code, and naming clarity. Every suggestion is small, safe, and preserves exact functionality. Uses an impact scale; only flags changes where the maintainability benefit justifies the diff.
 
-**Model:** `sonnet` (Claude Code) / `github-copilot/claude-sonnet-4.6` (OpenCode) - pattern recognition across a codebase suits sonnet; the review criteria are explicit enough that the stronger model adds little.
+**Model:** `sonnet` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - pattern recognition across a codebase suits sonnet; the review criteria are explicit enough that the stronger model adds little.
 
 | Command | Purpose |
 |---------|---------|
@@ -296,7 +287,7 @@ Maintainability specialist reviewing for simplification, duplication, dead code,
 
 Expert in LÖVE 2D 11.5 and Lua 5.1/LuaJIT 2.1. Provides complete, runnable code examples. Selects architecture (plain tables / OOP / ECS) based on project scope. Verifies LÖVE API syntax via Context7 before recommendations.
 
-**Model:** `sonnet` (Claude Code) / `github-copilot/claude-sonnet-4.6` (OpenCode) - game development assistance is a well-defined domain; sonnet produces accurate Lua and LÖVE API usage.
+**Model:** `sonnet` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - game development assistance is a well-defined domain; sonnet produces accurate Lua and LÖVE API usage.
 
 No standalone commands. Pepe is invoked directly for LÖVE questions.
 
@@ -306,7 +297,7 @@ No standalone commands. Pepe is invoked directly for LÖVE questions.
 
 Documentation architect creating technically precise guides through progressive disclosure. Transforms codebases into accessible documentation. Loads `prose-style-reference` for extended writing tasks.
 
-**Model:** `sonnet` (Claude Code) / `github-copilot/claude-sonnet-4.6` (OpenCode) - documentation writing is a structured task where voice, clarity, and organisation matter more than deep reasoning.
+**Model:** `sonnet` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - documentation writing is a structured task where voice, clarity, and organisation matter more than deep reasoning.
 
 | Command | Purpose |
 |---------|---------|
@@ -323,7 +314,7 @@ Three tiers map to task complexity:
 | Tier | Claude Code | OpenCode | Used for |
 |------|------------|----------|----------|
 | Heavy reasoning | `opus` | `gpt-5.4` | Deep analysis, research synthesis, complex implementation, Nix expertise, prompt engineering, security auditing |
-| General purpose | `sonnet` | `claude-sonnet-4.6` | Writing, code review, audio analysis, game dev |
+| General purpose | `sonnet` | `anthropic/claude-opus-4-7` | Writing, code review, audio analysis, game dev |
 | Deterministic tasks | `haiku` | `gpt-5-mini` | Structured formatting with clear rules (Garfield only) |
 
 **Why some commands override the parent model:** An agent's base model reflects its typical workload. Some commands within that agent require a different level of reasoning. Rosey runs on `sonnet` because coordination - writing delegation prompts, relaying output - suits the mid-tier model. Her `create-assistant` and `review-instructions` commands override to `opus` because prompt design requires weighing what to include, what to cut, and when examples are essential - judgements where the stronger model produces measurably better output. Penfold now sits in the heavy-reasoning tier because direct research synthesis and framing work performed better on `opus` and `gpt-5.4` than on the mid-tier models. The override isolates extra cost to the specific agents or commands that need it.
@@ -332,14 +323,13 @@ Three tiers map to task complexity:
 
 ## Platform Delivery
 
-`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and per-platform `header.<platform>.yaml` files. The composition engine injects frontmatter, handles heading escaping for CodeCompanion, and copies (not symlinks) files for Copilot CLI due to its security restrictions.
+`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and per-platform `header.<platform>.yaml` files for Claude Code and OpenCode. Codex agents and command skills are generated directly from prompts.
 
 | Platform | Agents | Commands | Global rules | Skills |
 |----------|--------|----------|-------------|--------|
 | Claude Code | `~/.claude/agents/*.agent.md` | `~/.claude/commands/*.prompt.md` | `~/.claude/rules/instructions.md` | `~/.claude/skills/*/SKILL.md` |
 | OpenCode | `~/.config/opencode/agents/*.agent.md` | `~/.config/opencode/commands/*.prompt.md` | `rules` option | `~/.config/opencode/skills/*/SKILL.md` |
-| GitHub Copilot | `~/.config/Code/User/prompts/*.agent.md` | Same directory, `*.prompt.md` | `copilot.instructions.md` | - |
-| CodeCompanion | `~/.config/nvim/rules/*.md` | `~/.config/nvim/prompts/codecompanion/*.md` | Inline | - |
+| Codex | `~/.config/codex/agents/*.toml` | `~/.config/codex/skills/*/SKILL.md` | `programs.codex.custom-instructions` | `~/.config/codex/skills/*/SKILL.md` |
 
 ### Skills
 

@@ -1,6 +1,0 @@
-name: Create Readme
-interaction: chat
-opts:
-  alias: create-readme
-  is_slash_cmd: true
-  rules: velma

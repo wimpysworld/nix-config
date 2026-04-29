@@ -1,4 +1,0 @@
-# Traya
-
-## System Prompt
-

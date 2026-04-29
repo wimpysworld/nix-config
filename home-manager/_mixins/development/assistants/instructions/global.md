@@ -12,8 +12,8 @@ Prefer MCP tools over built-in commands for all web access:
 
 - **Search**: use `mcp__exa__web_search_exa` in preference to the built-in WebSearch tool
 - **Read URLs**: use `mcp__exa__web_fetch_exa` in preference to the built-in Fetch/WebFetch tool
-- **Screenshots**: use `mcp__jina__capture_screenshot_url` for visual page capture
-- **Code search**: use `mcp__exa__get_code_context_exa` for searching code examples and repositories
+- **Advanced search**: use `mcp__exa__web_search_advanced_exa` when filters, date ranges, domains, categories, highlights, summaries, or subpage crawling are needed
+- **Code search**: use `mcp__exa__web_search_exa`; the old Exa code-context tool is deprecated
 - **Library docs**: use `mcp__context7__resolve-library-id` then `mcp__context7__query-docs` for up-to-date library and framework documentation in preference to training knowledge
 - **GitHub content**: use `gh api` to retrieve files, directory listings, and repository content from GitHub
 

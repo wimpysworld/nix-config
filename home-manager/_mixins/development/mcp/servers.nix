@@ -1,13 +1,13 @@
 # Shared MCP server definitions
-# Used by Claude Code, VSCode, Copilot CLI, OpenCode, Zed, and other tools
+# Used by Claude Code, OpenCode, Zed, Codex, and other MCP clients.
 {
   config,
   pkgs,
   ...
 }:
 {
-  # MCP servers for Claude Code, VSCode, and generic MCP clients
-  # Uses config.sops.placeholder to inject secrets at activation time
+  # MCP servers for Claude Code and generic MCP clients.
+  # Uses config.sops.placeholder to inject secrets at activation time.
   mcpServers = {
     # Servers without secrets
     cloudflare = {
@@ -116,95 +116,4 @@
     #};
   };
 
-  # MCP servers for Copilot CLI - only supports stdio/local with required tools/args arrays
-  copilotMcpServers = {
-    # Servers without secrets
-    cloudflare = {
-      type = "stdio";
-      command = "${pkgs.nodejs}/bin/npx";
-      args = [
-        "-y"
-        "mcp-remote"
-        "https://docs.mcp.cloudflare.com/mcp"
-      ];
-      tools = [ "*" ];
-    };
-    exa = {
-      type = "stdio";
-      command = "${pkgs.nodejs}/bin/npx";
-      args = [
-        "-y"
-        "mcp-remote"
-        "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa"
-      ];
-      tools = [ "*" ];
-    };
-    nixos = {
-      type = "stdio";
-      command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
-      args = [ ];
-      tools = [ "*" ];
-    };
-    svelte = {
-      type = "stdio";
-      command = "${pkgs.nodejs}/bin/npx";
-      args = [
-        "-y"
-        "@sveltejs/mcp"
-      ];
-      tools = [ "*" ];
-    };
-    # Servers with secrets
-    context7 = {
-      type = "stdio";
-      command = "${pkgs.nodejs}/bin/npx";
-      args = [
-        "-y"
-        "@upstash/context7-mcp"
-        "--api-key"
-        config.sops.placeholder.CONTEXT7_API_KEY
-      ];
-      tools = [ "*" ];
-    };
-    #firecrawl-mcp = {
-    #  type = "stdio";
-    #  command = "${pkgs.nodejs_24}/bin/npx";
-    #  args = [
-    #    "-y"
-    #    "firecrawl-mcp"
-    #  ];
-    #  tools = [
-    #    "scrape"
-    #    "batch_scrape"
-    #    "map"
-    #    "crawl"
-    #    "extract"
-    #  ];
-    #  env = {
-    #    FIRECRAWL_API_KEY = config.sops.placeholder.FIRECRAWL_API_KEY;
-    #  };
-    #};
-    # jina = {
-    #   type = "stdio";
-    #   command = "${pkgs.nodejs}/bin/npx";
-    #   args = [
-    #     "-y"
-    #     "mcp-remote"
-    #     "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web"
-    #     "--header"
-    #     "Authorization: Bearer ${config.sops.placeholder.JINA_API_KEY}"
-    #   ];
-    #   tools = [ "*" ];
-    # };
-    #mcp-google-cse = {
-    #  type = "stdio";
-    #  command = "${pkgs.uv}/bin/uvx";
-    #  args = [ "mcp-google-cse" ];
-    #  tools = [ "*" ];
-    #  env = {
-    #    API_KEY = config.sops.placeholder.GOOGLE_CSE_API_KEY;
-    #    ENGINE_ID = config.sops.placeholder.GOOGLE_CSE_ENGINE_ID;
-    #  };
-    #};
-  };
 }

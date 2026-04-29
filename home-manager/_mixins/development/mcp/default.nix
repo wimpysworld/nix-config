@@ -11,7 +11,6 @@ let
   inherit (mcpServerDefs)
     mcpServers
     opencodeServers
-    copilotMcpServers
     ;
 in
 {
@@ -107,13 +106,6 @@ in
     templates."mcp-config.json" = {
       content = builtins.toJSON { inherit mcpServers; };
       path = "${config.xdg.configHome}/mcp/mcp.json";
-    };
-
-    # MCP servers - used by GitHub Copilot CLI
-    # NOTE: Copilot CLI uses ~/.config/.copilot/ (hidden folder inside .config)
-    templates."copilot-cli-mcp-config.json" = {
-      content = builtins.toJSON { mcpServers = copilotMcpServers; };
-      path = "${config.xdg.configHome}/.copilot/mcp-config.json";
     };
   };
 }

@@ -1,6 +1,0 @@
-name: Draft Blog Post
-interaction: chat
-opts:
-  alias: draft-blog-post
-  is_slash_cmd: true
-  rules: casper

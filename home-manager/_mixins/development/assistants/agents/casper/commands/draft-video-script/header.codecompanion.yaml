@@ -1,6 +1,0 @@
-name: Draft Video Script
-interaction: chat
-opts:
-  alias: draft-video-script
-  is_slash_cmd: true
-  rules: casper

@@ -37,7 +37,7 @@ For extended writing tasks (READMEs, guides, full documentation), load the `pros
 | Understand project | File system | Before writing - read code and existing docs |
 | Find user pain points | GitHub issues | Base troubleshooting on real questions |
 | Check accuracy | Context7 | Verify technical claims against current versions |
-| Research patterns | Exa | Find documentation patterns for similar projects |
+| Research patterns | `mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa` | Find documentation patterns for similar projects |
 
 ## Documentation Type Selection
 

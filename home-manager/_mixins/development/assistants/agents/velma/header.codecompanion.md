@@ -1,4 +1,0 @@
-# Velma
-
-## System Prompt
-

@@ -4,7 +4,6 @@ let
   trayaPromptTemplateName = "traya-prompt-with-bond";
   trayaClaudeAgentTemplateName = "traya-claude-agent";
   trayaOpencodeAgentTemplateName = "traya-opencode-agent";
-  trayaCopilotCliAgentTemplateName = "traya-copilot-cli-agent";
   trayaCodexAgentTemplateName = "traya-codex-agent";
   readFileTrim = path: lib.trim (builtins.readFile path);
   extractYamlField =
@@ -26,7 +25,6 @@ let
         in
         if value == "" then null else value;
 
-  copilotCliDir = "${config.xdg.configHome}/.copilot";
   codexDir =
     if config.home.preferXdgDirectories then
       "${config.xdg.configHome}/codex"
@@ -188,7 +186,7 @@ let
   # only follows symlinked directories, not symlinked files; it skips symlinked
   # SKILL.md files entirely. home.file creates symlinks, so skills written via
   # home.file are invisible to codex. Writing real files via activation avoids
-  # this limitation - same technique used for Copilot CLI above.
+  # this limitation.
   codexSkillsActivationScript =
     let
       skillCmds = lib.concatStringsSep "\n" (
@@ -207,63 +205,6 @@ let
       # Write Codex skill files as real files (not symlinks).
       # codex-rs skips symlinked SKILL.md files during discovery.
       rm -rf "${codexDir}/skills"
-      ${skillCmds}
-    '';
-
-  # ============ COPILOT (VSCODE & CLI) ============
-
-  copilotAgents = lib.removeAttrs (compose.composeAgents "copilot") [ "traya" ];
-  copilotCommands = compose.composeCommands "copilot";
-  copilotInstructions = compose.composeInstructions "copilot";
-
-  # Copilot CLI activation script (copies files as real files, not symlinks)
-  copilotCliActivationScript =
-    let
-      agentCmds = lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (
-          name: content:
-          let
-            escaped = lib.escapeShellArg content;
-          in
-          ''printf '%s' ${escaped} > "${copilotCliDir}/agents/${name}.agent.md"''
-        ) copilotAgents
-      );
-      commandCmds = lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (
-          name: content:
-          let
-            escaped = lib.escapeShellArg content;
-          in
-          ''printf '%s' ${escaped} > "${copilotCliDir}/prompts/${name}.prompt.md"''
-        ) copilotCommands
-      );
-      skillCmds = lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (
-          name: content:
-          let
-            escaped = lib.escapeShellArg content;
-          in
-          ''
-            mkdir -p "${copilotCliDir}/skills/${name}"
-            printf '%s' ${escaped} > "${copilotCliDir}/skills/${name}/SKILL.md"''
-        ) skills
-      );
-    in
-    ''
-      # Create Copilot CLI directories
-      mkdir -p "${copilotCliDir}/agents"
-      mkdir -p "${copilotCliDir}/prompts"
-
-      # Write agent files
-      ${agentCmds}
-
-      # Write command files
-      ${commandCmds}
-
-      # Write instructions file
-      printf '%s' ${lib.escapeShellArg copilotInstructions} > "${copilotCliDir}/copilot-instructions.md"
-
-      # Write skill files
       ${skillCmds}
     '';
 
@@ -287,12 +228,6 @@ in
 
     templates.${trayaOpencodeAgentTemplateName} = {
       content = compose.composeAgentFromPrompt "opencode" "traya" trayaPromptWithBond;
-      mode = "0600";
-    };
-
-    templates.${trayaCopilotCliAgentTemplateName} = {
-      content = compose.composeAgentFromPrompt "copilot" "traya" trayaPromptWithBond;
-      path = "${copilotCliDir}/agents/traya.agent.md";
       mode = "0600";
     };
 
@@ -329,13 +264,6 @@ in
     # OpenCode skill files
     // mkOpencodeSkillFiles;
 
-    # Copilot CLI: files copied via activation script (not symlinks).
-    # Run this after sops-nix so Traya's rendered bonded prompt exists before
-    # the copy step reads from the rendered templates directory.
-    activation.copilotFiles = lib.hm.dag.entryAfter [
-      "writeBoundary"
-      "sops-nix"
-    ] copilotCliActivationScript;
     # Codex skills and agents: written as real files via activation script (not symlinks).
     # codex-rs uses file_type().is_file() for discovery, which returns false for symlinks
     # on Linux. home.file creates symlinks, so both are invisible without this workaround.

@@ -1,4 +1,0 @@
-# Batfink
-
-## System Prompt
-

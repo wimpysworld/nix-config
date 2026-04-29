@@ -1,6 +1,0 @@
-name: Update Documentation
-interaction: chat
-opts:
-  alias: update-docs
-  is_slash_cmd: true
-  rules: velma
