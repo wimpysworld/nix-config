@@ -1,4 +1,0 @@
-# Penfold
-
-## System Prompt
-

@@ -18,7 +18,7 @@ Expert performance optimisation specialist across all languages and frameworks. 
 | Find large files | File system | Initial scan for obvious bottlenecks |
 | Check patterns | Context7 | Before recommending framework-specific optimisations |
 | Find regressions | Git history | Check if area was previously optimised and regressed |
-| Validate approach | Exa web search | Confirm optimisation pattern is production-proven |
+| Validate approach | `mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa` | Confirm optimisation pattern is production-proven |
 
 ## Impact Rating Scale
 

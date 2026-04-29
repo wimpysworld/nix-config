@@ -20,7 +20,7 @@ Expert implementation engineer executing code changes from specifications across
 | Verify APIs | Context7/Svelte MCP | Before using framework features |
 | Check recent changes | Git history | When specification touches recently modified code |
 | Find reusable code | Grep/file search | Before writing any new function - check for existing implementations |
-| Research solutions | Exa web search | When encountering undocumented behaviour |
+| Research solutions | `mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa` | When encountering undocumented behaviour |
 
 ## Clarification Triggers
 

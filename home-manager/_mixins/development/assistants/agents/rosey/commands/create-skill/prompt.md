@@ -1,10 +1,10 @@
 ## Create Skill
 
-Create a `SKILL.md` for a reusable agent skill compatible with Claude Code, OpenCode, and GitHub Copilot.
+Create a `SKILL.md` for a reusable agent skill compatible with Claude Code, OpenCode, and Codex.
 
 **Gather from user (ask if not provided):**
 
-- **Required:** Skill name (lowercase, hyphens only), purpose, when Claude/Copilot should load it
+- **Required:** Skill name (lowercase, hyphens only), purpose, when the agent should load it
 - **Optional:** Supporting files needed (scripts, examples, reference docs)
 
 **Skill types - clarify which applies:**

@@ -1,6 +1,6 @@
 # MCP Servers
 
-Six MCP servers providing AI agents with current, authoritative reference material. Defined once in `servers.nix`, distributed to Claude Code, VSCode, GitHub Copilot CLI, OpenCode, oterm, and Zed by `default.nix`.
+Five MCP servers providing AI agents with current, authoritative reference material. Defined once in `servers.nix`, distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients.
 
 The Nix composition is the delivery mechanism, not the strategy. The servers here are information retrieval tools: documentation search, web reading, and package lookup. None orchestrate external systems or write to remote APIs. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -18,13 +18,12 @@ The Nix composition is the delivery mechanism, not the strategy. The servers her
 | Server | Transport | Auth | Purpose |
 |--------|-----------|------|---------|
 | `context7` | HTTP | API key | Live library documentation from official sources |
-| `exa` | HTTP | - | Neural web search |
-| `jina` | HTTP | API key | Web reader and URL content extraction |
+| `exa` | HTTP | - | Neural web search and URL content extraction |
 | `cloudflare` | HTTP | - | Cloudflare product documentation |
 | `nixos` | stdio | - | NixOS, Home Manager, nix-darwin package and option search |
 | `svelte` | HTTP | - | Svelte documentation and playground |
 
-Five of the six are remote HTTP servers. `nixos` runs as a local binary because no hosted alternative exists.
+Four of the five are remote HTTP servers. `nixos` runs as a local binary because no hosted alternative exists.
 
 ---
 
@@ -38,15 +37,17 @@ Library APIs change faster than model training cycles. A model asked how to conf
 
 ### Exa
 
-Neural semantic search across the web. Unlike keyword search, Exa finds pages semantically related to the query. Useful for finding GitHub discussions, blog posts, and documentation that do not match exact phrase searches. Pairs with Jina: Exa identifies which page answers a question; Jina retrieves its content.
+Neural semantic search across the web. Unlike keyword search, Exa finds pages semantically related to the query. Useful for finding GitHub discussions, blog posts, and documentation that do not match exact phrase searches. Exa also fetches page content, so it handles both discovery and URL reading.
 
----
+The configured Exa MCP URL enables three tools:
 
-### Jina
+| Tool | Use |
+|------|-----|
+| `web_search_exa` | General web search, code search, and current source discovery |
+| `web_fetch_exa` | Clean Markdown extraction from one or more known URLs |
+| `web_search_advanced_exa` | Search with domains, dates, categories, highlights, summaries, or subpage crawling |
 
-Fetches a URL and returns clean extracted text. Handles web pages, PDFs, and screenshots. Several tools are excluded via URL parameters, stripping the academic search tools (arXiv, SSRN) and duplicate utilities that add noise without benefit for software development tasks.
-
-Jina fills the gap between knowing which page answers a question and reading what it says.
+Deprecated Exa tools stay disabled. Use `web_search_exa` instead of the old code-context tool, `web_fetch_exa` instead of the old crawling tool, and `web_search_advanced_exa` instead of the old company, people, LinkedIn, and deep-search tools.
 
 ---
 
@@ -76,32 +77,26 @@ Disabled by default in OpenCode (`enabled = false`); available as a Zed extensio
 
 ## Platform Delivery
 
-`servers.nix` exports four named attribute sets. `default.nix` writes each to the correct path at activation time via sops templates (for secrets injection) or Home Manager options (for Zed and OpenCode).
+`servers.nix` exports shared Claude/generic and OpenCode server sets. `default.nix` writes them to the correct path at activation time via sops templates or Home Manager options. Zed receives its context server config directly from `default.nix`; Codex imports the shared definitions from its own mixin.
 
 | Platform | Config path | Format notes |
 |----------|-------------|--------------|
 | Claude Code | `~/.config/mcp/mcp.json` | `mcpServers` key, HTTP or stdio |
-| VSCode | `~/.config/Code/User/mcp.json` (Linux) / `~/Library/Application Support/Code/User/mcp.json` (macOS) | `servers` key, not `mcpServers` |
-| Copilot CLI | `~/.config/.copilot/mcp-config.json` | stdio only; HTTP servers proxied via `npx mcp-remote` |
 | OpenCode | `~/.config/opencode/settings.json` `mcp` block | `{env:VAR}` syntax for secrets; `remote`/`local` types |
-| oterm | `~/.local/share/oterm/config.json` | Separate `auth { type = "bearer"; }` block for tokens |
 | Zed | `~/.config/zed/settings.json` `context_servers` | `command`/`args` format; Context7 and Svelte via extensions |
+| Codex | `~/.config/codex/config.toml` | Translated in the Codex mixin from shared definitions |
 
 ### Platform differences
 
-**Copilot CLI** accepts only stdio servers. Every HTTP server is wrapped with `npx mcp-remote <url>`, which proxies the HTTP transport over stdio. This adds a Node.js subprocess per server but requires no changes to the server configuration itself.
-
 **OpenCode** resolves secrets via `{env:VAR}` at startup. The shell init for both fish and bash exports each secret by reading its sops-managed path at shell start, making the variables available when OpenCode launches.
 
-**VSCode** expects a `servers` top-level key where every other platform uses `mcpServers`. The content is otherwise identical. VSCode also receives a separate `userSettings` block that enables the MCP gallery and configures auto-start.
-
-**Zed** receives four servers via `context_servers` (cloudflare, exa, nixos, jina). Context7 and Svelte are delivered as Zed extensions instead, which provide tighter editor integration.
+**Zed** receives three servers via `context_servers` (cloudflare, exa, nixos). Context7 and Svelte are delivered as Zed extensions instead, which provide tighter editor integration.
 
 ---
 
 ## Secrets
 
-Six secrets stored encrypted in `secrets/mcp.yaml`, managed by sops:
+Six secrets are stored encrypted in `secrets/mcp.yaml`, managed by sops. Only `CONTEXT7_API_KEY` is used by active MCP server configuration.
 
 | Secret | Used by |
 |--------|---------|
@@ -109,34 +104,34 @@ Six secrets stored encrypted in `secrets/mcp.yaml`, managed by sops:
 | `FIRECRAWL_API_KEY` | firecrawl (disabled) |
 | `GOOGLE_CSE_API_KEY` | mcp-google-cse (disabled) |
 | `GOOGLE_CSE_ENGINE_ID` | mcp-google-cse (disabled) |
-| `JINA_API_KEY` | jina |
+| `JINA_API_KEY` | jina (disabled) |
 | `SEMGREP_APP_TOKEN` | semgrep tooling (not wired to any MCP server) |
 
 Secrets reach each platform differently:
 
-- **Claude Code, VSCode, oterm** - `config.sops.placeholder.*` injects the decrypted secret value directly into the JSON template at Home Manager activation
-- **Copilot CLI** - placeholder injected as a CLI flag (`--header`, `--api-key`) passed to the npx subprocess
+- **Claude Code** - `config.sops.placeholder.*` injects the decrypted secret value directly into the JSON template at Home Manager activation
 - **OpenCode** - shell exports the secret path; `{env:VAR}` resolved at startup from the environment
 
 Edit secrets with `sops secrets/mcp.yaml`. Re-activate with `just home` after changes.
 
 ### Disabled servers
 
-Two servers are present but commented out:
+Three servers are present but commented out:
 
-- **firecrawl** - web scraping and crawling. Commented out because Jina covers the primary use case (single URL reading) without the additional API dependency.
+- **firecrawl** - web scraping and crawling. Commented out because Exa covers the primary use case without the additional API dependency.
+- **jina** - web reading and screenshots. Commented out because Exa covers search and URL content extraction.
 - **mcp-google-cse** - Google Custom Search Engine. Commented out because Exa's semantic search covers the same need with better results for technical queries.
 
 ---
 
 ## Adding a Server
 
-Add an entry to all four sets in `servers.nix`. The sets differ only in syntax; the server definition is the same concept in each.
+Add an entry to `mcpServers` and `opencodeServers` in `servers.nix`. Add a Zed entry in `default.nix` if the server should be available there.
 
 **HTTP server with a bearer token:**
 
 ```nix
-# mcpServers (Claude Code, VSCode)
+# mcpServers
 my-server = {
   type = "http";
   url = "https://example.com/mcp";
@@ -150,22 +145,6 @@ my-server = {
   headers.Authorization = "Bearer {env:MY_API_KEY}";
 };
 
-# otermMcpServers
-my-server = {
-  url = "https://example.com/mcp";
-  auth = { type = "bearer"; token = config.sops.placeholder.MY_API_KEY; };
-};
-
-# copilotMcpServers
-my-server = {
-  type = "stdio";
-  command = "${pkgs.nodejs}/bin/npx";
-  args = [
-    "-y" "mcp-remote" "https://example.com/mcp"
-    "--header" "Authorization: Bearer ${config.sops.placeholder.MY_API_KEY}"
-  ];
-  tools = [ "*" ];
-};
 ```
 
 If the server needs a secret:

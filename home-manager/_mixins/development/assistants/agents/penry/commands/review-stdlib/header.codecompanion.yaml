@@ -1,6 +1,0 @@
-name: Review Standard Library
-interaction: chat
-opts:
-  alias: review-stdlib
-  is_slash_cmd: true
-  rules: penry

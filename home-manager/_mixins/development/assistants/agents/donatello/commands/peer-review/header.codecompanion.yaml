@@ -1,6 +1,0 @@
-name: Peer Review
-interaction: chat
-opts:
-  alias: peer-review
-  is_slash_cmd: true
-  rules: donatello

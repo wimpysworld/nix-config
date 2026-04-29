@@ -1,6 +1,0 @@
-name: Review Tests
-interaction: chat
-opts:
-  alias: review-tests
-  is_slash_cmd: true
-  rules: brain

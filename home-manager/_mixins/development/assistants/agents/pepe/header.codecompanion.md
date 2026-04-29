@@ -1,4 +1,0 @@
-# Pepe
-
-## System Prompt
-

@@ -22,7 +22,8 @@ Specify focus (or reviews entire codebase):
    (`go.mod`, `pyproject.toml`, `Cargo.toml`, `.tool-versions`, `.python-version`,
    `package.json`, etc.)
 2. For each language, establish stdlib capabilities at the project's target version
-   using language-specific MCP or official docs first, then Context7, then Exa
+   using language-specific MCP or official docs first, then Context7, then
+   `mcp__exa__web_search_exa` and `mcp__exa__web_fetch_exa`
 3. Identify code reimplementing stdlib functionality:
    custom utilities, helper functions, vendored snippets, third-party packages
    with stdlib equivalents

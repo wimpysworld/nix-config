@@ -1,6 +1,0 @@
-name: Update Skill
-interaction: chat
-opts:
-  alias: update-skill
-  is_slash_cmd: true
-  rules: rosey

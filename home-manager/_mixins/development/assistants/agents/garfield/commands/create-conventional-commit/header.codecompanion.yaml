@@ -1,6 +1,0 @@
-name: Create Conventional Commit
-interaction: chat
-opts:
-  alias: create-conventional-commit
-  is_slash_cmd: true
-  rules: garfield

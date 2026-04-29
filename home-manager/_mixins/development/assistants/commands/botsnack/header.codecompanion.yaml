@@ -1,5 +1,0 @@
-name: Botsnack
-interaction: chat
-opts:
-  alias: botsnack
-  is_slash_cmd: true

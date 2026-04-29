@@ -1,6 +1,0 @@
-name: Create Overview
-interaction: chat
-opts:
-  alias: create-overview
-  is_slash_cmd: true
-  rules: penfold

@@ -1,6 +1,0 @@
-name: Audit Infrastructure Security
-interaction: chat
-opts:
-  alias: audit-infra-security
-  is_slash_cmd: true
-  rules: batfink

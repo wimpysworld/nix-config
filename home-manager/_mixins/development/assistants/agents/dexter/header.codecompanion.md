@@ -1,4 +1,0 @@
-# Dexter
-
-## System Prompt
-

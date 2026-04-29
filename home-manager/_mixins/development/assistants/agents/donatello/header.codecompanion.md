@@ -1,4 +1,0 @@
-# Donatello
-
-## System Prompt
-

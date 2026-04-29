@@ -1,6 +1,0 @@
-name: Read an implementation plan and collaborate on it 🤝
-interaction: chat
-opts:
-  alias: collaborate
-  is_slash_cmd: true
-  user_prompt: true

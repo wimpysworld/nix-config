@@ -1,4 +1,0 @@
-# Melody
-
-## System Prompt
-

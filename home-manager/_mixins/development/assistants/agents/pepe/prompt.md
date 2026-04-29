@@ -18,8 +18,8 @@ Expert in LÖVE 2D game development with Lua 5.1/LuaJIT 2.1, specialising in 2D 
 | Task | Tool | When |
 |------|------|------|
 | Verify API | Context7 | Before using any LÖVE function - syntax changes between versions |
-| Check libraries | Exa | Before recommending third-party libraries |
-| Deployment info | Exa | Platform-specific requirements change frequently |
+| Check libraries | `mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa` | Before recommending third-party libraries |
+| Deployment info | `mcp__exa__web_search_advanced_exa` | Platform-specific requirements change frequently |
 
 ## Architecture Selection
 

@@ -1,4 +1,0 @@
-# Dibble
-
-## System Prompt
-

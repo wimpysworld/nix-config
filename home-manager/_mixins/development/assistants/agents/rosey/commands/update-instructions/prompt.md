@@ -9,7 +9,7 @@ Review and update instruction files (AGENTS.md or similar) in one pass: assess a
 
 **For consolidation, find:**
 
-AGENTS.md, CLAUDE.md, .claude/*, .github/copilot-instructions.md, .cursorrules, .cursor/rules, .github/instructions/*.instructions.md
+AGENTS.md, CLAUDE.md, .claude/*, .cursorrules, .cursor/rules, .github/instructions/*.instructions.md
 
 - Extract unique, project-specific instructions; remove duplicates and generic advice
 - Flag conflicts for user resolution; preserve runnable commands

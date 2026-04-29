@@ -1,5 +1,0 @@
-name: Onboard
-interaction: chat
-opts:
-  alias: onboard
-  is_slash_cmd: true

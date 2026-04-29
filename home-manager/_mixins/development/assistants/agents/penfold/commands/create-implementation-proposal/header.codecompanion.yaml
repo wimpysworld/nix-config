@@ -1,6 +1,0 @@
-name: Create Implementation Proposal
-interaction: chat
-opts:
-  alias: create-implementation-proposal
-  is_slash_cmd: true
-  rules: penfold

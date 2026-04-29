@@ -1,4 +1,0 @@
-# Brain
-
-## System Prompt
-

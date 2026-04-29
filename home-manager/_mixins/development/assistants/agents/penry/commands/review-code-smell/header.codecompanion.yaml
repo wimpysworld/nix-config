@@ -1,6 +1,0 @@
-name: Review Code Smell
-interaction: chat
-opts:
-  alias: review-code-smell
-  is_slash_cmd: true
-  rules: penry

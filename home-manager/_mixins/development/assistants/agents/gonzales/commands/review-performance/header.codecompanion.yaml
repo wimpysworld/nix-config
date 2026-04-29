@@ -1,6 +1,0 @@
-name: Review Performance
-interaction: chat
-opts:
-  alias: review-performance
-  is_slash_cmd: true
-  rules: gonzales
