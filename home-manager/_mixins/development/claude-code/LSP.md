@@ -145,7 +145,7 @@ The LSP wrapper is built as a `symlinkJoin` derivation wrapping `claudePackage`.
 
 One entry is conditionally included, inheriting the guard already on its parent module - no additional conditions required:
 
-- **`lua`** - only on hosts `phasma` and `vader` (`love/` module is `lib.mkIf (noughtyLib.isHost ["phasma" "vader"])`)
+- **`lua`** - only on hosts `skrye` and `zannah` (`love/` module is `lib.mkIf (noughtyLib.isHost ["skrye" "zannah"])`)
 
 All other servers, including `semgrep`, are unconditionally enabled - no guard.
 

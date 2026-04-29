@@ -32,7 +32,6 @@ let
     tanis = "18";
     felkor = "18";
     skrye = "20";
-    vader = "20";
   };
   kmsconExtraConfig =
     (

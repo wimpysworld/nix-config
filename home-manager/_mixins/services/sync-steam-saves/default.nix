@@ -66,7 +66,6 @@ in
     lib.mkIf
       (noughtyLib.isHost [
         "skrye"
-        "vader"
       ])
       {
         services = lib.mkMerge (map mkService games);

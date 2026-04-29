@@ -90,7 +90,7 @@ Every host is registered in the system registry (`lib/registry-systems.toml`, re
 
 **Adding a new host** = add a registry entry to `lib/registry-systems.toml` and create a hardware config. That's it. The new host automatically gets the right desktop, GPU drivers, services, shell, everything - because the modules gate themselves based on the host's properties, not its name.
 
-**Host-specific directories** (`nixos/vader/`, `nixos/sidious/`, etc.) contain *only* hardware: disk layouts and kernel modules. All behaviour lives in the self-gating modules reacting to host properties.
+**Host-specific directories** (`nixos/skrye/`, `nixos/sidious/`, etc.) contain *only* hardware: disk layouts and kernel modules. All behaviour lives in the self-gating modules reacting to host properties.
 
 The full noughty option reference, helper functions, and usage patterns are documented in [`lib/noughty/README.md`](./lib/noughty/README.md).
 
@@ -146,12 +146,10 @@ The full noughty option reference, helper functions, and usage patterns are docu
 │  ├── malak
 │  ├── maul
 │  ├── nihilus
-│  ├── phasma
 │  ├── revan
 │  ├── shaa
 │  ├── sidious
 │  ├── tanis
-│  ├── vader
 │  └── default.nix
 ├── overlays
 │  └── default.nix
