@@ -69,7 +69,7 @@ let
           };
         };
         agentic = mkModel {
-          modelRef = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
+          modelRef = "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
           maxContext = 262144;
           generation = {
             temperature = 1.0;
@@ -123,7 +123,7 @@ let
           };
         };
         agentic = mkModel {
-          modelRef = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
+          modelRef = "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
           maxContext = 262144;
           generation = {
             temperature = 1.0;
@@ -177,7 +177,7 @@ let
           };
         };
         agentic = mkModel {
-          modelRef = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
+          modelRef = "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
           maxContext = 262144;
           generation = {
             temperature = 1.0;

@@ -12,8 +12,8 @@ for model in \
   qwen3-coder:30b \
   qwen3-coder-next \
   qwen3.5:9b \
-  qwen3.5:27b \
-  qwen3.5:35b \
+  qwen3.6:27b \
+  qwen3.6:35b \
   rnj-1:8b; do
     benchmark-models "${model}"
 done
