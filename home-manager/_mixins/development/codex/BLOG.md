@@ -68,7 +68,7 @@ NIX_REMOTE = "daemon"
 That tells Nix to use the daemon store rather than trying to write directly to **`/nix/store`**. With Determinate Nix, this still uses the normal local daemon store protocol. The proof is simple:
 
 ```bash
-nix store ping
+nix store info
 ```
 
 On my system that reports the daemon store, Determinate Nix `2.33.3`, and trusted access.
@@ -139,14 +139,12 @@ nixos
 svelte
 ```
 
-I removed `jina` because it needs `JINA_API_KEY`, and I do not want Codex warning about a server I did not mean to start. Declarative config is lovely, but declarative noise is still noise.
-
 ## The Result
 
 The final smoke test is pleasingly boring:
 
 ```bash
-nix store ping
+nix store info
 just eval
 ```
 
