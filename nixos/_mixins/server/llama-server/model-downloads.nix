@@ -58,11 +58,11 @@ let
       };
     }
     {
-      name = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
+      name = "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
       value = {
-        hfRepo = "unsloth/Qwen3.5-35B-A3B-GGUF";
-        primaryPath = "Qwen3.5-35B-A3B-UD-Q4_K_XL.gguf";
-        downloadPaths = [ "Qwen3.5-35B-A3B-UD-Q4_K_XL.gguf" ];
+        hfRepo = "unsloth/Qwen3.6-35B-A3B-GGUF";
+        primaryPath = "Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf";
+        downloadPaths = [ "Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf" ];
       };
     }
     {

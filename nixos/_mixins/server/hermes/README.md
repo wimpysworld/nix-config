@@ -84,8 +84,8 @@ This means the live default is `gpt-5.4` through `openai-codex`, with a second
 
 The remote qwen endpoints remain available as named custom providers:
 
-- `skrye` for `qwen3.5-35b-a3b`
-- `zannah` for `qwen3-coder-next` and `qwen3.5-35b-a3b`
+- `skrye` for `qwen3.6-35b-a3b`
+- `zannah` for `qwen3-coder-next` and `qwen3.6-35b-a3b`
 
 ## Identity and State
 
@@ -284,7 +284,7 @@ The important current routing values are:
 - primary model: `gpt-5.4`
 - fallback model: `gpt-5.4`
 - fallback provider: `copilot`
-- named custom qwen routes: `skrye:qwen3.5-35b-a3b`, `zannah:qwen3.5-35b-a3b`
+- named custom qwen routes: `skrye:qwen3.6-35b-a3b`, `zannah:qwen3.6-35b-a3b`
 - Holographic memory enabled
 
 For local backend and model policy detail, use the llama-server docs:

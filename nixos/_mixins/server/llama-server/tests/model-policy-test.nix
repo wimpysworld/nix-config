@@ -8,7 +8,7 @@ let
 in
 assert selection.selectedModelTier.name == "vram64";
 assert selection.selectedModels.coding.modelRef == "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_XL";
-assert selection.selectedModels.agentic.modelRef == "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
+assert selection.selectedModels.agentic.modelRef == "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
 assert selection.selectedModels.reasoning.modelRef == "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
 assert selection.selectedModels.embedding.modelRef == "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
 assert selection.selectedModels.agentic.maxContext == 262144;

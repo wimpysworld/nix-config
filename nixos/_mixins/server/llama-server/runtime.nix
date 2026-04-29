@@ -35,8 +35,8 @@ let
       value = "qwen2.5-coder-7b";
     }
     {
-      name = "unsloth/Qwen3.5-35B-A3B-GGUF:UD-Q4_K_XL";
-      value = "qwen3.5-35b-a3b";
+      name = "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
+      value = "qwen3.6-35b-a3b";
     }
     {
       name = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";

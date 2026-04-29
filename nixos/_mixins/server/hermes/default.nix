@@ -368,7 +368,6 @@ in
         mode = "0400";
       };
 
-
       EMAIL_ADDRESS = {
         sopsFile = trayaSopsFile;
         owner = "root";
@@ -451,7 +450,6 @@ in
       group = "root";
       mode = "0644";
     };
-
 
     sops.templates."hermes-gitconfig" = {
       content = ''
@@ -556,9 +554,9 @@ in
           {
             name = "skrye";
             base_url = "http://skrye.drongo-gamma.ts.net:8080/v1";
-            model = "qwen3.5-35b-a3b";
+            model = "qwen3.6-35b-a3b";
             models = {
-              "qwen3.5-35b-a3b" = {
+              "qwen3.6-35b-a3b" = {
                 context_length = 262144;
               };
             };
@@ -571,7 +569,7 @@ in
               qwen3-coder-next = {
                 context_length = 262144;
               };
-              "qwen3.5-35b-a3b" = {
+              "qwen3.6-35b-a3b" = {
                 context_length = 262144;
               };
             };
