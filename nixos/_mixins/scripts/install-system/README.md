@@ -102,7 +102,7 @@ just inject-tokens 192.168.1.42
 ssh nixos@192.168.1.42
 
 # 3. Run the installer
-install-system vader
+install-system skrye
 ```
 
 The script will prompt for FlakeHub login during install if `determinate-nixd` is available but not authenticated.

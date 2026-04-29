@@ -27,8 +27,8 @@ let
     "45L"
     "bane"
     "keyring"
-    "phasma"
-    "vader"
+    "skrye"
+    "zannah"
   ];
   # Generate the attribute set for all ed25519_sk key secrets
   allEd25519SkSecrets = lib.foldl lib.recursiveUpdate { } (

@@ -12,7 +12,6 @@ in
 lib.mkIf
   (noughtyLib.isHost [
     "skrye"
-    "vader"
   ])
   {
     environment.systemPackages = with pkgs; [ transmission_4 ];

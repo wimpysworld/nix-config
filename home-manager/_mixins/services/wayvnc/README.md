@@ -33,7 +33,7 @@ Caddy serves the noVNC static assets from the Nix store (`pkgs.novnc`) and rever
 
 Enabled when both conditions are met:
 
-1. The host has the `"wayvnc"` tag in `lib/registry-systems.nix` (currently vader and phasma).
+1. The host has the `"wayvnc"` tag in `lib/registry-systems.toml` (currently bane, skrye, and zannah).
 2. A Wayland compositor (Hyprland or Wayfire) is enabled.
 
 The Caddy noVNC block additionally requires Tailscale to be active.

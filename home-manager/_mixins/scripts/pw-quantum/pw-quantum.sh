@@ -6,8 +6,7 @@ set +u
 # Use pw-top to monitor
 HOST="$(hostnamectl hostname)"
 case "${HOST}" in
-  vader|skrye)  QUANT=1024;;
-  phasma|zannah) QUANT=1024;; #2048 originally but crackles since NixOS 23.11
+  skrye|zannah) QUANT=1024;;
   *) QUANT=2048;;
 esac
 

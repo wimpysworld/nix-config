@@ -82,7 +82,6 @@ in
     ./malak.nix
     ./revan.nix
     ./skrye.nix
-    ./vader.nix
   ];
 
   networking = {

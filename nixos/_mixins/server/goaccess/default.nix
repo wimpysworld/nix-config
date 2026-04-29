@@ -11,9 +11,7 @@ in
 lib.mkIf
   (noughtyLib.isHost [
     "malak"
-    "phasma"
     "skrye"
-    "vader"
     "zannah"
   ])
   {

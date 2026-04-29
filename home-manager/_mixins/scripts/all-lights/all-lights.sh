@@ -6,7 +6,7 @@ set +u  # Disable nounset
 STATE="${1}"
 HOST="$(hostnamectl hostname)"
 
-if [[ "${HOST}" != *"vader"* ]] && [[ "${HOST}" != *"skrye"* ]]; then
+if [[ "${HOST}" != *"skrye"* ]]; then
   exit
 fi
 

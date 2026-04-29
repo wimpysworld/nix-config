@@ -77,7 +77,7 @@ Key gating patterns:
 - `host.is.workstation`, `host.is.server`, `host.is.laptop`, `host.is.iso`, `host.is.vm`, `host.is.darwin`, `host.is.linux`
 - `host.gpu.hasNvidia`, `host.gpu.hasCuda`, `host.gpu.hasAmd`, `host.gpu.hasROCm`
 - `host.display.primaryOutput`, `host.display.isMultiMonitor`
-- `noughtyLib.isUser [ "martin" ]`, `noughtyLib.isHost [ "vader" "phasma" ]`
+- `noughtyLib.isUser [ "martin" ]`, `noughtyLib.isHost [ "skrye" "zannah" ]`
 - `noughtyLib.hostHasTag "studio"`, `noughtyLib.userHasTag "developer"`
 
 Full reference: `lib/noughty/README.md`.

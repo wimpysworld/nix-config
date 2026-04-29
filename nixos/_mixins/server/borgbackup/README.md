@@ -278,11 +278,11 @@ services.borgbackup.jobs = {
 Home Server as Remote Repo Target
 On the home server, use services.borgbackup.repos to serve repos for workstations:
 services.borgbackup.repos = {
-  vader = {
-    path = "/mnt/backup-array/borg/remote/vader";
-    authorizedKeys = [ "ssh-ed25519 AAAA... borg@vader" ];
+  skrye = {
+    path = "/mnt/backup-array/borg/remote/skrye";
+    authorizedKeys = [ "ssh-ed25519 AAAA... borg@skrye" ];
     # Or append-only for defence against compromised workstations:
-    # authorizedKeysAppendOnly = [ "ssh-ed25519 AAAA... borg@vader" ];
+    # authorizedKeysAppendOnly = [ "ssh-ed25519 AAAA... borg@skrye" ];
     quota = "500G";
   };
   # Repeat for each workstation

@@ -23,7 +23,7 @@ just build-pkg heynote
 nix build .#heynote
 
 # Build for a specific host
-just build-pkg heynote vader
+just build-pkg heynote skrye
 ```
 
 The built application is available at `./result/bin/heynote`.

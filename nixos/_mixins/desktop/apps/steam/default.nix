@@ -7,9 +7,7 @@
 }:
 lib.mkIf
   (noughtyLib.isHost [
-    "phasma"
     "skrye"
-    "vader"
     "zannah"
   ])
   {

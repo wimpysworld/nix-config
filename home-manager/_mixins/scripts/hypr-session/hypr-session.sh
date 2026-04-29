@@ -7,7 +7,7 @@ HOSTNAME=$(hostname -s)
 function bluetooth_devices() {
 	case "$1" in
 	connect | disconnect)
-		if [ "$HOSTNAME" == "phasma" ] || [ "$HOSTNAME" == "zannah" ]; then
+		if [ "$HOSTNAME" == "zannah" ]; then
 			bluetoothctl "$1" E4:50:EB:7D:86:22
 		fi
 		;;
