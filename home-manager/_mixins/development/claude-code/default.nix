@@ -19,6 +19,18 @@ let
   # Import shared MCP server definitions
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 
+  claudeAbsolutePattern = path: "//${lib.removePrefix "/" path}";
+  claudeWorkspaceRoots = [
+    "${config.home.homeDirectory}/Chainguard"
+    "${config.home.homeDirectory}/Development"
+    "${config.home.homeDirectory}/Volatile"
+    "${config.home.homeDirectory}/Zero"
+    "/tmp"
+  ];
+  claudeWorkspaceEditRules = map (
+    path: "Edit(${claudeAbsolutePattern "${path}/**"})"
+  ) claudeWorkspaceRoots;
+
   # Patch ccstatusline to accept null values for the five_hour and seven_day
   # fields in the Anthropic usage API response. The API returns null for these
   # fields when no usage data is available, but ccstatusline's Zod schema uses
@@ -161,7 +173,9 @@ let
     "Bash(bat:*)"
     "Bash(most:*)"
 
-    # Task tool - subagent spawning
+    # Agent/task delegation and skills
+    "Agent"
+    "Skill"
     "Task"
 
     # Development helpers
@@ -318,7 +332,9 @@ let
     "Bash(nix store verify:*)"
     "Bash(nix-store --query:*)"
     "Bash(nix-store -q:*)"
+    "Bash(nix-instantiate)"
     "Bash(nix-instantiate:*)"
+    "Bash(nixfmt)"
     "Bash(nixfmt:*)"
     "Bash(statix:*)"
     "Bash(deadnix:*)"
@@ -680,8 +696,9 @@ let
     "Bash(wrangler delete:*)"
   ];
 
-  # File patterns to deny reading (sensitive files)
-  # Use fully qualified paths with ${config.home.homeDirectory} for reliability
+  # Claude's file permission rules use gitignore-style patterns. Absolute
+  # filesystem paths must use the documented //path form; a single leading slash
+  # is relative to the project root and does not protect home-directory secrets.
   readDeny = [
     # Environment files (relative and absolute)
     "Read(./.env)"
@@ -695,7 +712,7 @@ let
     "Read(**/.secrets/**)"
 
     # SSH keys (fully qualified paths)
-    "Read(${config.home.homeDirectory}/.ssh/**)"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.ssh/**"})"
     "Read(**/*_rsa)"
     "Read(**/*_rsa.*)"
     "Read(**/*_ed25519)"
@@ -708,27 +725,27 @@ let
     "Read(*.key)"
 
     # GPG keys (fully qualified paths)
-    "Read(${config.home.homeDirectory}/.gnupg/**)"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.gnupg/**"})"
 
     # Cloud credentials (fully qualified paths)
-    "Read(${config.home.homeDirectory}/.aws/**)"
-    "Read(${config.home.homeDirectory}/.azure/**)"
-    "Read(${config.xdg.configHome}/gcloud/**)"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.aws/**"})"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.azure/**"})"
+    "Read(${claudeAbsolutePattern "${config.xdg.configHome}/gcloud/**"})"
 
     # VCS credentials (fully qualified paths)
-    "Read(${config.xdg.configHome}/gh/hosts.yml)"
-    "Read(${config.home.homeDirectory}/.git-credentials)"
-    "Read(${config.home.homeDirectory}/.netrc)"
+    "Read(${claudeAbsolutePattern "${config.xdg.configHome}/gh/hosts.yml"})"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.git-credentials"})"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.netrc"})"
 
     # Container/Kubernetes secrets (fully qualified paths)
-    "Read(${config.home.homeDirectory}/.docker/config.json)"
-    "Read(${config.home.homeDirectory}/.kube/**)"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.docker/config.json"})"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.kube/**"})"
 
     # Shell history (fully qualified paths - may contain passwords)
-    "Read(${config.home.homeDirectory}/.bash_history)"
-    "Read(${config.home.homeDirectory}/.zsh_history)"
-    "Read(${config.home.homeDirectory}/.fish_history)"
-    "Read(${config.xdg.dataHome}/fish/fish_history)"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.bash_history"})"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.zsh_history"})"
+    "Read(${claudeAbsolutePattern "${config.home.homeDirectory}/.fish_history"})"
+    "Read(${claudeAbsolutePattern "${config.xdg.dataHome}/fish/fish_history"})"
   ];
 
   inherit (config.claude-code) lspServers;
@@ -890,6 +907,16 @@ in
         # Use Home Manager's native MCP support with shared server definitions
         inherit (mcpServerDefs) mcpServers;
         settings = {
+          # MCP servers are selected declaratively through Home Manager. Their
+          # tools are allowed below with mcp__*, while arbitrary project MCP
+          # servers remain opt-in instead of being silently trusted.
+          enableAllProjectMcpServers = false;
+
+          # These roots are treated like the launch directory for file access.
+          # With defaultMode = "acceptEdits", workspace edits in these roots do
+          # not prompt, and the same policy applies to delegated subagents.
+          additionalDirectories = claudeWorkspaceRoots;
+
           # Wire ccstatusline into Claude Code's status bar. The module writes
           # this value to ~/.claude/settings.json under the "statusLine" key,
           # which Claude Code reads on startup to invoke the formatter.
@@ -899,22 +926,19 @@ in
             padding = 0;
           };
           permissions = {
-            allow = bashAllow ++ [
-              "Edit(${config.home.homeDirectory}/Chainguard/*)"
-              "Edit(${config.home.homeDirectory}/Development/*)"
-              "Edit(${config.home.homeDirectory}/Volatile/*)"
-              "Edit(${config.home.homeDirectory}/Zero/*)"
-              "Edit(/tmp/*)"
+            allow =
+              bashAllow
+              ++ claudeWorkspaceEditRules
+              ++ [
+                # MCP tools - allow all unconditionally
+                "mcp__*"
 
-              # MCP tools - allow all unconditionally
-              "mcp__*"
-
-              # Web fetching - allow without prompting
-              "WebFetch"
-            ];
+                # Web fetching - allow without prompting
+                "WebFetch"
+              ];
             ask = bashAsk ++ bashAskDestructive;
             deny = bashDeny ++ readDeny;
-            defaultMode = "default";
+            defaultMode = "acceptEdits";
           };
         };
       };

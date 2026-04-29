@@ -1,10 +1,16 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   trayaBondSopsFile = ../../../../secrets/hermes-bond.yaml;
   trayaPromptTemplateName = "traya-prompt-with-bond";
   trayaClaudeAgentTemplateName = "traya-claude-agent";
   trayaOpencodeAgentTemplateName = "traya-opencode-agent";
   trayaCodexAgentTemplateName = "traya-codex-agent";
+  tomlWriterPython = pkgs.python3.withPackages (ps: [ ps.tomli-w ]);
   readFileTrim = path: lib.trim (builtins.readFile path);
   extractYamlField =
     field: path:
@@ -38,6 +44,31 @@ let
     ${config.sops.placeholder.BOND_MD}
   '';
   trayaDescription = readFileTrim (./agents + "/traya/description.txt");
+  trayaCodexAgentWriter = pkgs.writeText "write-traya-codex-agent.py" (
+    builtins.concatStringsSep "\n" [
+      "import pathlib"
+      "import sys"
+      ""
+      "import tomli_w"
+      ""
+      "prompt_path, description_path, bond_path, output_path = sys.argv[1:5]"
+      "prompt = pathlib.Path(prompt_path).read_text(encoding=\"utf-8\").strip()"
+      "description = pathlib.Path(description_path).read_text(encoding=\"utf-8\").strip()"
+      "bond = pathlib.Path(bond_path).read_text(encoding=\"utf-8\").strip()"
+      "developer_instructions = prompt if not bond else f\"{prompt}\\n{bond}\""
+      "agent = {"
+      "    \"name\": \"traya\","
+      "    \"description\": description,"
+      "    \"developer_instructions\": developer_instructions,"
+      "}"
+      "output = pathlib.Path(output_path)"
+      "output.parent.mkdir(parents=True, exist_ok=True)"
+      "tmp = output.with_name(f\"{output.name}.tmp\")"
+      "tmp.write_text(tomli_w.dumps(agent), encoding=\"utf-8\")"
+      "tmp.replace(output)"
+    ]
+    + "\n"
+  );
 
   # ============ CLAUDE CODE ============
 
@@ -91,9 +122,6 @@ let
   # Activation script that writes Codex agent files as real files (not symlinks).
   codexAgentsActivationScript =
     let
-      cleanupCmds = lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (name: _: ''rm -f "${codexDir}/agents/${name}.toml"'') codexAgents
-      );
       agentCmds = lib.concatStringsSep "\n" (
         lib.mapAttrsToList (
           name: content:
@@ -107,10 +135,16 @@ let
     ''
       # Write Codex agent files as real files (not symlinks).
       # codex-rs skips symlinked .toml files during agent role discovery.
-      mkdir -p "${codexDir}/agents"
-      ${cleanupCmds}
-      ${agentCmds}
-    '';
+    rm -rf "${codexDir}/agents"
+    mkdir -p "${codexDir}/agents"
+    ${agentCmds}
+    ${tomlWriterPython}/bin/python ${trayaCodexAgentWriter} \
+      ${./agents/traya/prompt.md} \
+      ${./agents/traya/description.txt} \
+      ${config.sops.secrets.BOND_MD.path} \
+      "${codexDir}/agents/traya.toml"
+    chmod 600 "${codexDir}/agents/traya.toml"
+  '';
 
   # Build a Codex skill file (SKILL.md) for a command.
   # Custom prompt support was removed from codex-rs in March 2026. Commands
@@ -231,17 +265,14 @@ in
       mode = "0600";
     };
 
-    templates.${trayaCodexAgentTemplateName} = {
-      content = ''
-        name = ${builtins.toJSON "traya"}
-        description = ${builtins.toJSON trayaDescription}
-        developer_instructions = '''
-        ${trayaPromptWithBond}
-        '''
-      '';
-      path = "${codexDir}/agents/traya.toml";
-      mode = "0600";
-    };
+      templates.${trayaCodexAgentTemplateName} = {
+        content = ''
+          name = ${builtins.toJSON "traya"}
+          description = ${builtins.toJSON trayaDescription}
+          developer_instructions = ${builtins.toJSON trayaPromptWithBond}
+        '';
+        mode = "0600";
+      };
   };
 
   home = {

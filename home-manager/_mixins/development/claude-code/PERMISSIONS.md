@@ -2,23 +2,41 @@
 
 This policy is not YOLO-mode. Rather than disabling confirmation globally, it divides every operation into one of three outcomes: allow safe, read-only commands without interruption; ask before anything that changes state worth reviewing; deny access to secrets and destructive commands unconditionally.
 
-The practical effect: agents work fluidly on navigation, inspection, and analysis without prompting. Commits, installs, and file modifications pause for approval. Credential files, cloud keys, and shell history are inaccessible regardless of what the agent requests.
+The practical effect: agents work fluidly on navigation, inspection, analysis, MCP calls, and workspace edits without prompting. Commits, installs, and other state-changing shell commands pause for approval. Credential files, cloud keys, and shell history are inaccessible regardless of what the agent requests.
 
 Claude Code uses ordered allow/ask/deny lists evaluated at startup. Rules use prefix matching with `Bash(command:*)` syntax.
 
 ## Matching semantics
 
-Rules are checked in order: allow list first, then ask, then deny. The `defaultMode` is `default` (Claude Code's built-in behaviour for unlisted tools). File read denials use `Read(pattern)` syntax and block access entirely.
+Rules are checked in order: deny, then ask, then allow. The first matching rule wins, so deny rules take precedence over allow rules. The `defaultMode` is `acceptEdits`, which automatically accepts file edits and common filesystem commands for the launch directory and configured `additionalDirectories`.
+
+File read denials use `Read(pattern)` syntax and block access entirely. Absolute filesystem paths use Claude Code's `//path` form. A single leading slash is project-root-relative, not filesystem-root-relative.
 
 ## Three-tier model
 
 | Tier | Effect | Examples |
 |------|--------|----------|
 | `allow` | Executes without prompting | `git status`, `ls`, `cat`, read-only queries |
-| `ask` | Prompts for confirmation | `git commit`, `npm install`, file modifications |
+| `ask` | Prompts for confirmation | `git commit`, `npm install`, non-workspace state changes |
 | `deny` | Blocked entirely | `sudo`, `git push --force`, `dd`, subshell execution |
 
-The `Task` tool (sub-agent delegation) is included in the allow list.
+The `Agent`/`Task` tools for delegation and the `Skill` tool for skill loading are included in the allow list, so subagents and subtasks can use skills without prompting. The same workspace edit and MCP allow rules apply inside delegated work.
+
+## Workspace edits and MCP
+
+Claude Code is configured with these persistent `additionalDirectories`:
+
+| Directory | Purpose |
+|-----------|---------|
+| `~/Chainguard` | Workspace root |
+| `~/Development` | Workspace root |
+| `~/Volatile` | Workspace root |
+| `~/Zero` | Workspace root |
+| `/tmp` | Scratch space |
+
+`Edit(//.../**)` rules allow edits throughout those roots without approval. Claude Code applies `Edit` rules to its built-in file editing tools.
+
+`mcp__*` is allowed, so every tool from every declaratively configured MCP server runs without approval. Project MCP servers are not enabled wholesale; MCP servers are selected through Home Manager.
 
 ## Read denials
 

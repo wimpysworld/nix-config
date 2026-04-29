@@ -2,7 +2,7 @@
 
 OpenCode with built-in LSP, permission policy, IDE integration, and CUA-standard keybindings.
 
-Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for OpenCode (alongside Claude Code, Copilot, and CodeCompanion) by `assistants/compose.nix`.
+Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for OpenCode, Claude Code, and Codex by `assistants/compose.nix`.
 
 ## Package selection
 
@@ -11,7 +11,7 @@ Agents, commands, skills, and global instructions are managed separately in the 
 ## Contents
 
 - **LSP configuration** - Built-in language server support; only Semgrep is configured explicitly for security diagnostics
-- **[MCP servers](../mcp/README.md)** - Seven reference retrieval servers shared with Claude Code, VSCode, Copilot CLI, and oterm; delivered to OpenCode via `settings.json`
+- **[MCP servers](../mcp/README.md)** - Five reference retrieval servers shared with Claude Code, Codex, and Zed; delivered to OpenCode via `settings.json`
 - **[Permission policy](PERMISSIONS.md)** - Three-tier allow/ask/deny rules with `.findLast()` matching; covers 12 tool domains, read denials for credentials, and external directory access
 - **IDE integration** - VSCode extension, Zed editor as external agent
 - **TUI configuration** - Catppuccin theme, CUA-standard keybindings

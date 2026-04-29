@@ -2,7 +2,7 @@
 
 Claude Code with LSP integration, MCP servers, permission policy, and a ccstatusline status bar.
 
-Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for Claude Code (alongside OpenCode, Copilot, and CodeCompanion) by `assistants/compose.nix`.
+Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for Claude Code, OpenCode, and Codex by `assistants/compose.nix`.
 
 ## Package selection
 
@@ -15,7 +15,7 @@ The package source varies by platform:
 ## Contents
 
 - **[LSP configuration](LSP.md)** - Language server integration via the plugin system; 14 servers across 10 language modules, contributed by each language module via the `claude-code.lspServers` option
-- **[MCP servers](../mcp/README.md)** - Seven reference retrieval servers (Context7, Exa, GitHub, Jina, Cloudflare, NixOS, Svelte) defined in the shared MCP module and delivered to Claude Code via `~/.config/mcp/mcp.json`
+- **[MCP servers](../mcp/README.md)** - Five reference retrieval servers (Context7, Exa, Cloudflare, NixOS, Svelte) defined in the shared MCP module and delivered to Claude Code via `~/.config/mcp/mcp.json`
 - **[Permission policy](PERMISSIONS.md)** - Three-tier allow/ask/deny rules with prefix matching; covers 12 tool domains, read denials for credentials, and bash command categories
 - **ccstatusline** - Status bar integration reporting active session state
 

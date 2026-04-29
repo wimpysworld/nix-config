@@ -22,6 +22,10 @@ in
       enable = true;
       package = opencodePackage;
       settings = {
+        # Nix owns the installed OpenCode version, so upstream self-updates are
+        # disabled. Updates should flow through the flake inputs instead.
+        autoupdate = false;
+
         # Context compaction - manual control
         # Use /compact slash command when context gets full
         # OpenCode displays token usage in the interface to help monitor
@@ -42,6 +46,11 @@ in
         # Global permissions - applied to all agents including built-in Build and Plan
         # These provide guardrails across the board
         permission = {
+          # Unknown tools prompt by default. Explicit rules below keep MCP,
+          # workspace edits, safe shell commands, skills, and subagents flowing
+          # without approvals.
+          "*" = "ask";
+
           # Safe operations - allow without prompting
           # CRITICAL: Deny rules must be LAST due to .findLast() matching
           read = {
@@ -111,8 +120,16 @@ in
           list = "allow"; # Listing directories
           todoread = "allow"; # Reading todo lists
           lsp = "allow"; # Language server queries
-          # Potentially destructive operations - require approval
-          edit = "allow"; # All file modifications (edit, write, patch)
+          edit = "allow"; # Workspace file modifications (edit, write, patch)
+          question = "allow"; # Let subagents ask clarifying questions directly.
+
+          # MCP tools - allow every tool from explicitly configured servers.
+          "cloudflare_*" = "allow";
+          "context7_*" = "allow";
+          "exa_*" = "allow";
+          "nixos_*" = "allow";
+          "svelte_*" = "allow";
+
           bash = {
             # ══════════════════════════════════════════════════════════════
             # Shell - read-only utilities (safe with any arguments)
@@ -1142,8 +1159,7 @@ in
           };
           task = "allow"; # Launching subagents
           skill = {
-            "meet-the-agents" = "allow";
-            "*" = "ask";
+            "*" = "allow"; # Loading skills never prompts, including in subagents.
           };
           todowrite = "allow"; # Modifying todo lists
           webfetch = "allow"; # Fetching URLs
