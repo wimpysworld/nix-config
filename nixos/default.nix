@@ -107,11 +107,8 @@ in
     daemonIOSchedPriority = lib.mkIf host.is.workstation 7;
     settings = {
       experimental-features = "nix-command flakes";
-      extra-experimental-features = "parallel-eval";
       # Disable global registry
       flake-registry = "";
-      lazy-trees = true;
-      eval-cores = 0; # Enable parallel evaluation across all cores
       # Workaround for NixOS/nix#1254; avoids HTTP/2 framing errors from CDN servers
       http2 = false;
       # Increase download parallelism for faster substitution
