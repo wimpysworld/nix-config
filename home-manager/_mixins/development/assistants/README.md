@@ -323,7 +323,7 @@ Three tiers map to task complexity:
 
 ## Platform Delivery
 
-`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and per-platform `header.<platform>.yaml` files for Claude Code and OpenCode. Codex agents and command skills are generated directly from prompts.
+`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and per-platform `header.<platform>.yaml` files for Claude Code and OpenCode. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
 
 | Platform | Agents | Commands | Global rules | Skills |
 |----------|--------|----------|-------------|--------|

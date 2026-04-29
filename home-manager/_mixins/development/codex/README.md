@@ -81,7 +81,7 @@ SKILL.md frontmatter requires `name:` and `description:` fields. Quote any `desc
 
 Codex no longer supports user-defined slash commands. The `/` commands are built into the binary. Custom commands are deployed as skills instead.
 
-Each agent command becomes a skill named `<agent>-<command>`. The generated skill embeds the agent persona plus the command task prompt, because Codex has no runtime mechanism to say "run this skill as Garfield".
+Each agent command becomes a skill named `<agent>-<command>`. When the command has `header.codex.toml` with `spawn-agent = true`, the generated skill tells Codex to launch that specialist with `spawn_agent` and keep the parent thread as the orchestrator. Commands without that flag still embed the agent persona plus the command task prompt.
 
 ```text
 $garfield-create-conventional-commit
@@ -101,7 +101,11 @@ $botsnack
 
 ## Agents
 
-Agent role files live in `~/.codex/agents/*.toml`. They define roles available to Codex's `spawn_agent` tool, alongside built-in roles such as `default`, `explorer`, and `worker`.
+Agent role files live in `~/.codex/agents/*.toml`. They define roles available to Codex's `spawn_agent` tool, alongside built-in roles such as `explorer` and `worker`.
+
+Agent files are composed from `prompt.md`, `description.txt`, and `header.codex.toml`. The Codex header carries role-local config such as `model = "gpt-5.5"` and `model_reasoning_effort = "high"`.
+
+The generated `default.toml` role is a Traya alias, so omitted `agent_type` values use Traya's orchestrator prompt instead of Codex's built-in default role.
 
 The files must be real TOML files, not symlinks. Codex's role discovery skips symlinked role files on Linux.
 
