@@ -21,6 +21,8 @@ let
   # helper); the actual `nix` CLI lives in its `nix` input.
   nixPackage = inputs.determinate.inputs.nix.packages.${pkgs.stdenv.hostPlatform.system}.default;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
+  hermesDashboardHost = "127.0.0.1";
+  hermesDashboardPort = 9119;
   # Hermes 0.10 started enforcing owner-only chmods in several Python code paths
   # such as auth.json and cron state. That breaks this deployment because the
   # service account and the interactive host user intentionally share one
@@ -354,13 +356,6 @@ in
         mode = "0400";
       };
 
-      COPILOT_GITHUB_TOKEN = {
-        sopsFile = hermesSopsFile;
-        owner = "root";
-        group = "root";
-        mode = "0400";
-      };
-
       GITHUB_TOKEN = {
         sopsFile = hermesSopsFile;
         owner = "root";
@@ -425,14 +420,12 @@ in
         ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
-        COPILOT_GITHUB_TOKEN=${config.sops.placeholder.COPILOT_GITHUB_TOKEN}
         GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
         _HERMES_FORCE_ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         _HERMES_FORCE_CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         _HERMES_FORCE_JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
-        _HERMES_FORCE_COPILOT_GITHUB_TOKEN=${config.sops.placeholder.COPILOT_GITHUB_TOKEN}
         _HERMES_FORCE_GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         _HERMES_FORCE_GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
       '';
@@ -546,7 +539,7 @@ in
 
       settings = {
         model = {
-          default = "gpt-5.4";
+          default = "gpt-5.5";
           provider = "openai-codex";
         };
 
@@ -620,15 +613,12 @@ in
           anthropic = {
             allowed_models = [
               "claude-sonnet-4-6"
-              "claude-opus-4-6"
+              "claude-opus-4-7"
             ];
-          };
-          copilot = {
-            allowed_models = [ "gpt-5.4" ];
           };
           openai-codex = {
             allowed_models = [
-              "gpt-5.4"
+              "gpt-5.5"
               "gpt-5.3-codex-spark"
             ];
           };
@@ -636,12 +626,8 @@ in
 
         fallback_providers = [
           {
-            provider = "copilot";
-            model = "gpt-5.4";
-          }
-          {
             provider = "anthropic";
-            model = "claude-opus-4-6";
+            model = "claude-opus-4-7";
           }
         ];
 
@@ -669,6 +655,56 @@ in
         };
       };
     };
+
+    # Upstream does not expose the dashboard through the NixOS module. Start it
+    # separately so the CLI-managed web server can stay bound to localhost.
+    systemd.services.hermes-agent-dashboard = {
+      description = "Hermes Agent Web Dashboard";
+      wantedBy = [ "multi-user.target" ];
+      wants = [ "network-online.target" ];
+      after = [
+        "network-online.target"
+        "hermes-agent.service"
+      ];
+      environment = {
+        GNUPGHOME = hermesGnupgHome;
+        HERMES_HOME = hermesHome;
+        HERMES_MANAGED = "true";
+        HOME = config.services.hermes-agent.stateDir;
+        TRAYA_SANCTUARY_DIR = "/var/lib/hermes/workspace/trayas-sanctuary";
+        TRAYA_SANCTUARY_REPO = "the-cauldron/trayas-sanctuary";
+      };
+      path = [
+        wrappedHermesBash
+        hermesAgentPackage
+      ]
+      ++ hermesExtraPackages;
+      serviceConfig = {
+        User = hermesUser;
+        Group = hermesGroup;
+        WorkingDirectory = "/var/lib/hermes/workspace";
+        ExecStart = "${hermesAgentPackage}/bin/hermes dashboard --host ${hermesDashboardHost} --port ${toString hermesDashboardPort} --no-open";
+        Restart = "always";
+        RestartSec = 5;
+        UMask = "0007";
+        NoNewPrivileges = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        PrivateTmp = true;
+        ReadWritePaths = [
+          config.services.hermes-agent.stateDir
+          "/var/lib/hermes/workspace"
+        ];
+      };
+    };
+
+    services.caddy.virtualHosts."${config.noughty.host.name}.${config.noughty.network.tailNet}".extraConfig =
+      lib.mkIf (config.services.caddy.enable && config.services.tailscale.enable) ''
+        @hermesDashboard not path /syncthing* /netdata* /scrutiny* /novnc*
+        reverse_proxy @hermesDashboard ${hermesDashboardHost}:${toString hermesDashboardPort} {
+          header_up Host ${hermesDashboardHost}:${toString hermesDashboardPort}
+        }
+      '';
 
     systemd.services.hermes-agent.path = lib.mkBefore [ wrappedHermesBash ];
     systemd.services.hermes-agent.serviceConfig.ProtectHome = lib.mkForce true;
