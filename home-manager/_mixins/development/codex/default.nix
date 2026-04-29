@@ -1350,6 +1350,8 @@ in
   programs.codex = {
     enable = true;
     package = codexLauncherPackage;
-    custom-instructions = builtins.readFile ../assistants/instructions/global.md;
+    # The assistants mixin writes AGENTS.md after sops-nix renders Traya's
+    # bonded prompt, keeping secret-derived content out of the Nix store.
+    custom-instructions = "";
   };
 }

@@ -12,6 +12,36 @@ let
   trayaCodexAgentTemplateName = "traya-codex-agent";
   tomlWriterPython = pkgs.python3.withPackages (ps: [ ps.tomli-w ]);
   readFileTrim = path: lib.trim (builtins.readFile path);
+  readFileTrimIfExists = path: if builtins.pathExists path then readFileTrim path else "";
+  readTomlOrEmpty =
+    path: if builtins.pathExists path then builtins.fromTOML (builtins.readFile path) else { };
+  codexAgentPrompt =
+    prompt:
+    lib.replaceStrings
+      [
+        "Task tool"
+        "Permitted tools: Task tool for delegation, direct conversation"
+      ]
+      [
+        "`spawn_agent` tool"
+        "Permitted tools: `spawn_agent` for delegation, direct conversation"
+      ]
+      prompt;
+  tomlMultilineLiteral =
+    value: if lib.hasInfix "'''" value then builtins.toJSON value else "'''\n${value}\n'''";
+  renderCodexAgentToml =
+    {
+      name,
+      description,
+      developerInstructions,
+      header ? "",
+    }:
+    ''
+      ${lib.optionalString (header != "") "${header}\n"}
+      name = ${builtins.toJSON name}
+      description = ${builtins.toJSON description}
+      developer_instructions = ${tomlMultilineLiteral developerInstructions}
+    '';
   extractYamlField =
     field: path:
     if !(builtins.pathExists path) then
@@ -48,23 +78,61 @@ let
     builtins.concatStringsSep "\n" [
       "import pathlib"
       "import sys"
+      "import tomllib"
       ""
       "import tomli_w"
       ""
-      "prompt_path, description_path, bond_path, output_path = sys.argv[1:5]"
+      "def developer_instructions_toml(value):"
+      "    if \"'''\" in value:"
+      "        return tomli_w.dumps({\"developer_instructions\": value})"
+      "    return \"developer_instructions = '''\\n\" + value + \"\\n'''\\n\""
+      ""
+      "def agent_toml(data):"
+      "    data = dict(data)"
+      "    developer_instructions = data.pop(\"developer_instructions\")"
+      "    return tomli_w.dumps(data) + developer_instructions_toml(developer_instructions)"
+      ""
+      "prompt_path, description_path, header_path, bond_path, output_path, default_output_path = sys.argv[1:7]"
       "prompt = pathlib.Path(prompt_path).read_text(encoding=\"utf-8\").strip()"
+      "prompt = prompt.replace(\"Task tool\", \"`spawn_agent` tool\")"
+      "prompt = prompt.replace(\"Permitted tools: `spawn_agent` tool for delegation, direct conversation\", \"Permitted tools: `spawn_agent` for delegation, direct conversation\")"
       "description = pathlib.Path(description_path).read_text(encoding=\"utf-8\").strip()"
+      "header = tomllib.loads(pathlib.Path(header_path).read_text(encoding=\"utf-8\"))"
       "bond = pathlib.Path(bond_path).read_text(encoding=\"utf-8\").strip()"
       "developer_instructions = prompt if not bond else f\"{prompt}\\n{bond}\""
-      "agent = {"
+      "agent = dict(header)"
+      "agent.update({"
       "    \"name\": \"traya\","
       "    \"description\": description,"
       "    \"developer_instructions\": developer_instructions,"
-      "}"
+      "})"
+      "default_agent = dict(agent)"
+      "default_agent[\"name\"] = \"default\""
+      "for output_path, data in ((output_path, agent), (default_output_path, default_agent)):"
+      "    output = pathlib.Path(output_path)"
+      "    output.parent.mkdir(parents=True, exist_ok=True)"
+      "    tmp = output.with_name(f\"{output.name}.tmp\")"
+      "    tmp.write_text(agent_toml(data), encoding=\"utf-8\")"
+      "    tmp.replace(output)"
+    ]
+    + "\n"
+  );
+  trayaCodexRootInstructionsWriter = pkgs.writeText "write-traya-codex-root-instructions.py" (
+    builtins.concatStringsSep "\n" [
+      "import pathlib"
+      "import sys"
+      ""
+      "prompt_path, bond_path, output_path = sys.argv[1:4]"
+      "prompt = pathlib.Path(prompt_path).read_text(encoding=\"utf-8\").strip()"
+      "prompt = prompt.replace(\"Task tool\", \"`spawn_agent` tool\")"
+      "prompt = prompt.replace(\"Permitted tools: `spawn_agent` tool for delegation, direct conversation\", \"Permitted tools: `spawn_agent` for delegation, direct conversation\")"
+      "bond = pathlib.Path(bond_path).read_text(encoding=\"utf-8\").strip()"
+      "content = prompt if not bond else f\"{prompt}\\n{bond}\""
       "output = pathlib.Path(output_path)"
       "output.parent.mkdir(parents=True, exist_ok=True)"
       "tmp = output.with_name(f\"{output.name}.tmp\")"
-      "tmp.write_text(tomli_w.dumps(agent), encoding=\"utf-8\")"
+      "tmp.write_text(content + \"\\n\", encoding=\"utf-8\")"
+      "tmp.chmod(0o600)"
       "tmp.replace(output)"
     ]
     + "\n"
@@ -110,13 +178,14 @@ let
     let
       agentPath = ./agents + "/${name}";
       description = readFileTrim (agentPath + "/description.txt");
-      prompt = readFileTrim (agentPath + "/prompt.md");
+      prompt = codexAgentPrompt (readFileTrim (agentPath + "/prompt.md"));
+      header = readFileTrimIfExists (agentPath + "/header.codex.toml");
     in
-    ''
-      name = ${builtins.toJSON name}
-      description = ${builtins.toJSON description}
-      developer_instructions = ${builtins.toJSON prompt}
-    ''
+    renderCodexAgentToml {
+      inherit name description;
+      developerInstructions = prompt;
+      inherit header;
+    }
   ) (lib.removeAttrs compose.agentDirs [ "traya" ]);
 
   # Activation script that writes Codex agent files as real files (not symlinks).
@@ -133,18 +202,21 @@ let
       );
     in
     ''
-      # Write Codex agent files as real files (not symlinks).
-      # codex-rs skips symlinked .toml files during agent role discovery.
-    rm -rf "${codexDir}/agents"
-    mkdir -p "${codexDir}/agents"
-    ${agentCmds}
-    ${tomlWriterPython}/bin/python ${trayaCodexAgentWriter} \
-      ${./agents/traya/prompt.md} \
-      ${./agents/traya/description.txt} \
-      ${config.sops.secrets.BOND_MD.path} \
-      "${codexDir}/agents/traya.toml"
-    chmod 600 "${codexDir}/agents/traya.toml"
-  '';
+        # Write Codex agent files as real files (not symlinks).
+        # codex-rs skips symlinked .toml files during agent role discovery.
+      rm -rf "${codexDir}/agents"
+      mkdir -p "${codexDir}/agents"
+      ${agentCmds}
+      ${tomlWriterPython}/bin/python ${trayaCodexAgentWriter} \
+        ${./agents/traya/prompt.md} \
+        ${./agents/traya/description.txt} \
+        ${./agents/traya/header.codex.toml} \
+        ${config.sops.secrets.BOND_MD.path} \
+        "${codexDir}/agents/traya.toml" \
+        "${codexDir}/agents/default.toml"
+      chmod 600 "${codexDir}/agents/traya.toml"
+      chmod 600 "${codexDir}/agents/default.toml"
+    '';
 
   # Build a Codex skill file (SKILL.md) for a command.
   # Custom prompt support was removed from codex-rs in March 2026. Commands
@@ -157,9 +229,24 @@ let
     let
       description = readFileTrim (cmdPath + "/description.txt");
       prompt = readFileTrim (cmdPath + "/prompt.md");
+      codexHeader = readTomlOrEmpty (cmdPath + "/header.codex.toml");
+      spawnAgent = agentName != null && (codexHeader."spawn-agent" or false);
       body =
         if agentName == null then
           prompt
+        else if spawnAgent then
+          ''
+            Use the `spawn_agent` tool to launch the `${agentName}` agent for this task. Keep the parent thread as the orchestrator.
+
+            - Pass the task below and the user's request to the spawned agent.
+            - Set `agent_type` to `${agentName}`.
+            - Do not set `model` or `reasoning_effort`; the Codex agent role config sets them.
+            - Wait for the spawned agent when its result is needed, then relay the final answer.
+
+            ## Task
+
+            ${prompt}
+          ''
         else
           let
             agentPrompt = readFileTrim (./agents + "/${agentName}/prompt.md");
@@ -242,6 +329,15 @@ let
       ${skillCmds}
     '';
 
+  codexRootInstructionsActivationScript = ''
+    # Write Codex root instructions after sops-nix renders Traya's BOND secret.
+    ${pkgs.python3}/bin/python ${trayaCodexRootInstructionsWriter} \
+      ${./agents/traya/prompt.md} \
+      ${config.sops.secrets.BOND_MD.path} \
+      "${codexDir}/AGENTS.md"
+    chmod 600 "${codexDir}/AGENTS.md"
+  '';
+
 in
 {
   sops = {
@@ -265,14 +361,16 @@ in
       mode = "0600";
     };
 
-      templates.${trayaCodexAgentTemplateName} = {
-        content = ''
-          name = ${builtins.toJSON "traya"}
-          description = ${builtins.toJSON trayaDescription}
-          developer_instructions = ${builtins.toJSON trayaPromptWithBond}
-        '';
-        mode = "0600";
+    templates.${trayaCodexAgentTemplateName} = {
+      content = renderCodexAgentToml {
+        name = "traya";
+        description = trayaDescription;
+        developerInstructions = codexAgentPrompt trayaPromptWithBond;
+        header = readFileTrimIfExists (./agents + "/traya/header.codex.toml");
       };
+      mode = "0600";
+    };
+
   };
 
   home = {
@@ -298,11 +396,11 @@ in
     # Codex skills and agents: written as real files via activation script (not symlinks).
     # codex-rs uses file_type().is_file() for discovery, which returns false for symlinks
     # on Linux. home.file creates symlinks, so both are invisible without this workaround.
-    # Run this after sops-nix so Traya's rendered bonded agent file exists before
-    # the copy step reads from the rendered templates directory.
+    # Run this after sops-nix so Traya's BOND secret is available to the
+    # activation-time Codex writers.
     activation.codexFiles = lib.mkIf config.programs.codex.enable (
       lib.hm.dag.entryAfter [ "writeBoundary" "sops-nix" ] (
-        codexSkillsActivationScript + codexAgentsActivationScript
+        codexRootInstructionsActivationScript + codexSkillsActivationScript + codexAgentsActivationScript
       )
     );
   };
