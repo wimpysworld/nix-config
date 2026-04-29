@@ -2,7 +2,7 @@
 
 This policy is not YOLO-mode. Rather than disabling confirmation globally, it divides every operation into one of three outcomes: allow safe, read-only commands without interruption; ask before anything that changes state worth reviewing; deny access to secrets and destructive commands unconditionally.
 
-The practical effect: agents work fluidly on navigation, inspection, and analysis without prompting. Commits, installs, and file modifications pause for approval. Credential files, cloud keys, and shell history are inaccessible regardless of what the agent requests.
+The practical effect: agents work fluidly on navigation, inspection, analysis, MCP calls, and workspace edits without prompting. Commits, installs, and unknown shell commands pause for approval. Credential files, cloud keys, and shell history are inaccessible regardless of what the agent requests.
 
 OpenCode uses `.findLast()` matching: rules are evaluated top-to-bottom and the last match wins. Deny rules must appear after allow rules to take priority.
 
@@ -18,16 +18,20 @@ OpenCode uses `.findLast()` matching: rules are evaluated top-to-bottom and the 
 
 | Tool | Permission | Notes |
 |------|-----------|-------|
+| `*` | `ask` | Unknown tools require approval |
 | `read` | `allow` with credential deny-list | `.env`, SSH keys, cloud credentials, shell history blocked |
 | `glob`, `grep`, `list`, `lsp` | `allow` | Read-only navigation |
 | `edit` | `allow` | All file modifications permitted |
 | `bash` | Per-command rules | See categories below |
 | `task` | `allow` | Sub-agent delegation |
-| `skill` | `meet-the-agents`: allow, others: ask | |
+| `skill` | `allow` | Skills load without prompting, including in subagents |
+| `mcp` | `allow` | Every configured MCP server tool runs without prompting |
 | `webfetch`, `websearch`, `codesearch` | `allow` | |
-| `todoread`, `todowrite` | `allow` | |
+| `todoread`, `todowrite`, `question` | `allow` | |
 | `external_directory` | Granular | Nix store, XDG dirs allowed; sensitive dirs denied |
 | `doom_loop` | `ask` | Guards against repeated identical tool calls |
+
+The permission block is global, so built-in agents, custom agents, subagents, and subtasks inherit the same no-prompt rules for MCP, edits, safe commands, skills, and task delegation.
 
 ## Read denials
 
