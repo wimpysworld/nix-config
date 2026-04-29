@@ -13,9 +13,10 @@ The current deployment is:
 - **Chat interface**: Telegram
 - **Hermes host**: `revan`
 - **Inference path**: OAuth-backed cloud providers managed by Hermes
-- **Primary model**: `gpt-5.4` via the `openai-codex` provider
-- **Fallback model**: `gpt-5.4` via the `copilot` provider
+- **Primary model**: `gpt-5.5` via the `openai-codex` provider
+- **Fallback model**: `claude-opus-4-7` via the `anthropic` provider
 - **Memory provider**: Holographic
+- **Web dashboard**: `https://revan.<tailnet>/` through Caddy/Tailscale
 - **Deployment mode**: native NixOS service, not podman container mode
 
 Earlier research notes in this directory were useful while choosing the stack.
@@ -62,14 +63,16 @@ The key current settings are:
 ```nix
 services.hermes-agent.settings = {
   model = {
-    default = "gpt-5.4";
+    default = "gpt-5.5";
     provider = "openai-codex";
   };
 
-  fallback_model = {
-    provider = "copilot";
-    model = "gpt-5.4";
-  };
+  fallback_providers = [
+    {
+      provider = "anthropic";
+      model = "claude-opus-4-7";
+    }
+  ];
 
   memory = {
     memory_enabled = true;
@@ -79,13 +82,30 @@ services.hermes-agent.settings = {
 };
 ```
 
-This means the live default is `gpt-5.4` through `openai-codex`, with a second
-`gpt-5.4` route through GitHub Copilot held as fallback.
+This means the live default is `gpt-5.5` through `openai-codex`, with
+Anthropic held as fallback.
 
 The remote qwen endpoints remain available as named custom providers:
 
 - `skrye` for `qwen3.6-35b-a3b`
 - `zannah` for `qwen3-coder-next` and `qwen3.6-35b-a3b`
+
+## Web Dashboard
+
+Hermes Agent v2026.4.23 adds `hermes dashboard`, but the upstream NixOS module
+still only manages `hermes gateway`. It does not expose dashboard options.
+
+This mixin starts the dashboard as a separate service:
+
+```nix
+systemd.services.hermes-agent-dashboard.serviceConfig.ExecStart =
+  "hermes dashboard --host 127.0.0.1 --port 9119 --no-open";
+```
+
+Port `9119` is the upstream dashboard default and avoids the existing service
+on `8080`. The dashboard binds to localhost only. Caddy exposes it on the
+Tailnet virtual host root, while path-based services such as Syncthing keep
+their existing routes.
 
 ## Identity and State
 
@@ -155,10 +175,7 @@ Operationally:
 - `auth.json` is seeded from `secrets/hermes-auth.json`
 - OpenAI device auth for `openai-codex` comes from `auth.json`, not from an
   `OPENAI_API_KEY` env var
-- GitHub Copilot fallback auth is resolved from the exported GitHub token env
-  vars or Hermes-managed auth state
-- `ANTHROPIC_API_KEY` remains available from `secrets/ai.yaml` for future
-  direct Anthropic provider use
+- `ANTHROPIC_API_KEY` provides the Anthropic fallback route
 - `traya@darth.cc` Fastmail access is rendered to the Himalaya config from
   `secrets/traya.yaml`
 - `EMAIL_PASSWORD` must be a Fastmail app password, not the regular web login
@@ -272,8 +289,8 @@ integrations rather than the local llama-server path.
 Current source of truth:
 
 - the Hermes module selects the primary and fallback providers
-- `openai-codex` handles the primary `gpt-5.4` route
-- `copilot` handles the fallback `gpt-5.4` route
+- `openai-codex` handles the primary `gpt-5.5` route
+- `anthropic` handles the fallback `claude-opus-4-7` route
 - named custom providers preserve remote qwen routes on `skrye` and `zannah`
 
 The local llama-server stack remains available in the repo, but it is not the
@@ -281,9 +298,9 @@ active primary or fallback route in the current deployment.
 
 The important current routing values are:
 
-- primary model: `gpt-5.4`
-- fallback model: `gpt-5.4`
-- fallback provider: `copilot`
+- primary model: `gpt-5.5`
+- fallback model: `claude-opus-4-7`
+- fallback provider: `anthropic`
 - named custom qwen routes: `skrye:qwen3.6-35b-a3b`, `zannah:qwen3.6-35b-a3b`
 - Holographic memory enabled
 
@@ -326,8 +343,8 @@ The following are in place now:
 - managed `.env` rendering through sops-nix
 - auth seeding through `authFile`
 - Telegram token and allowlist injection
-- `openai-codex` primary with `gpt-5.4`
-- `copilot` fallback with `gpt-5.4`
+- `openai-codex` primary with `gpt-5.5`
+- `anthropic` fallback with `claude-opus-4-7`
 - named custom qwen providers on `skrye` and `zannah`
 - Holographic memory
 - four live MCP servers: Exa, Context7, NixOS, Cloudflare
