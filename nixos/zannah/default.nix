@@ -20,14 +20,10 @@ in
       "thunderbolt"
     ];
     initrd.systemd.enable = true;
-    kernelPackages = lib.mkForce pkgs.linuxPackages_6_19;
     kernelModules = [
       "amdgpu"
       "kvm-amd"
     ];
-    #kernelParams = [
-    #  "video=DP-1:3440x1440@100"
-    #];
     swraid = {
       enable = true;
       mdadmConf = "MAILADDR=${username}@wimpys.world";
