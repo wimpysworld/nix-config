@@ -1,1 +1,4 @@
 model: anthropic/claude-opus-4-7
+permission:
+  task: deny
+  question: allow
