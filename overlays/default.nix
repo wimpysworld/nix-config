@@ -21,53 +21,6 @@
 
     llama-swap = final.unstable.llama-swap;
 
-    # Override Python packages to fix Darwin-specific issues
-    python3 = prev.python3.override {
-      packageOverrides = _pyfinal: pyprev: {
-        # Fix setproctitle test failures on Darwin with multiprocessing fork
-        # See: https://github.com/NixOS/nixpkgs/issues/479313
-        setproctitle = pyprev.setproctitle.overridePythonAttrs (old: {
-          disabledTests =
-            (old.disabledTests or [ ])
-            ++ prev.lib.optionals prev.stdenv.isDarwin [
-              "test_fork_segfault"
-              "test_thread_fork_segfault"
-            ];
-        });
-      };
-    };
-
-    python313 = prev.python313.override {
-      packageOverrides = _pyfinal: pyprev: {
-        # Fix setproctitle test failures on Darwin with multiprocessing fork
-        # See: https://github.com/NixOS/nixpkgs/issues/479313
-        setproctitle = pyprev.setproctitle.overridePythonAttrs (old: {
-          disabledTests =
-            (old.disabledTests or [ ])
-            ++ prev.lib.optionals prev.stdenv.isDarwin [
-              "test_fork_segfault"
-              "test_thread_fork_segfault"
-            ];
-        });
-      };
-    };
-
-    # Fix inetutils build failure on Darwin with clang 21
-    # gnulib's error() macro passes dgettext() results as format strings,
-    # triggering -Werror,-Wformat-security in openat-die.c
-    # See: https://github.com/NixOS/nixpkgs/issues/488689
-    inetutils = prev.inetutils.overrideAttrs (
-      old:
-      prev.lib.optionalAttrs prev.stdenv.isDarwin {
-        env = (old.env or { }) // {
-          NIX_CFLAGS_COMPILE = toString [
-            (old.env.NIX_CFLAGS_COMPILE or "")
-            "-Wno-format-security"
-          ];
-        };
-      }
-    );
-
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
       _lpself: lpsuper: {
         mwprocapture = lpsuper.mwprocapture.overrideAttrs (_old: rec {
