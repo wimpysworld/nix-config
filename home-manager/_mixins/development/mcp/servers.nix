@@ -5,7 +5,13 @@
   pkgs,
   ...
 }:
-{
+let
+  # `lib` is sourced from `pkgs` so callers (codex/default.nix and
+  # claude-code/default.nix) do not need to pass it explicitly. Both
+  # currently invoke this file with `{ inherit config pkgs; }`.
+  inherit (pkgs) lib;
+in
+rec {
   # MCP servers for Claude Code and generic MCP clients.
   # Uses config.sops.placeholder to inject secrets at activation time.
   mcpServers = {
@@ -249,4 +255,171 @@
     #};
   };
 
+  # ---------------------------------------------------------------------------
+  # Renderers
+  # ---------------------------------------------------------------------------
+  # Each renderer is a pure function of the canonical `servers` attrset above
+  # and produces the shape its target consumer expects. While phase 1 is in
+  # flight, consumers still read the legacy `mcpServers` and `opencodeServers`
+  # exports above; the renderers are dormant until phase 2 swaps each
+  # consumer over.
+  #
+  # Filter rules (shared except where noted):
+  #   * Skip servers with global `enabled = false` (firecrawl, jina,
+  #     mcpGoogleCse today).
+  #   * For Claude Code, Codex, and Zed, also skip servers where
+  #     `consumers.<tool>.enabled` is explicitly false (default true).
+  #   * OpenCode is the exception: per-consumer `enabled = false` keeps the
+  #     server in the output with `enabled = false` so the TUI can toggle it
+  #     at runtime. See AC 8 of MCP-PROPOSAL.md.
+
+  # claudeServers: Claude Code and any generic MCP client that follows the
+  # original `mcpServers` schema. Output is byte-equivalent to today's
+  # `mcpServers` attribute for the five active servers.
+  claudeServers =
+    let
+      keep = _: s: (s.enabled or true) && (s.consumers.claudeCode.enabled or true);
+      render =
+        _: s:
+        if s.transport == "http" then
+          {
+            type = "http";
+            url = s.url;
+          }
+          // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
+            headers = {
+              Authorization = "Bearer ${config.sops.placeholder.${s.auth.envVar}}";
+            };
+          }
+        else
+          {
+            type = "stdio";
+            command = s.command;
+          }
+          // lib.optionalAttrs ((s.args or [ ]) != [ ]) { args = s.args; }
+          // lib.optionalAttrs ((s.env or { }) != { }) {
+            # Translate canonical `env.KEY = "SECRET_NAME"` into the
+            # placeholder interpolation Claude Code reads at activation time.
+            env = lib.mapAttrs (_: secretName: config.sops.placeholder.${secretName}) s.env;
+          };
+    in
+    lib.mapAttrs render (lib.filterAttrs keep servers);
+
+  # codexServers: Codex's `config.toml` `[mcp_servers.<name>]` tables.
+  # Codex enforces `additionalProperties = false`, so the renderer must
+  # never emit a `type` field or any other key beyond the four below:
+  # `url`, `bearer_token_env_var`, `command`, `args`, plus an optional
+  # `env` for stdio servers with a static environment.
+  codexServers =
+    let
+      keep = _: s: (s.enabled or true) && (s.consumers.codex.enabled or true);
+      render =
+        _: s:
+        if s.transport == "http" then
+          {
+            url = s.url;
+          }
+          // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
+            bearer_token_env_var = s.auth.envVar;
+          }
+        else
+          {
+            command = s.command;
+            args = s.args or [ ];
+          }
+          // lib.optionalAttrs ((s.env or { }) != { }) {
+            # Codex consumes the env table as static literals; the canonical
+            # value is the sops secret name, which Codex resolves itself at
+            # process-launch time via `bearer_token_env_var`-style hooks.
+            # No active server uses this today; shape preserved for parity.
+            env = s.env;
+          };
+    in
+    lib.mapAttrs render (lib.filterAttrs keep servers);
+
+  # opencodeServersRendered: OpenCode's `mcp` settings block. Renamed
+  # internally from `opencodeServers` because the legacy alias of that name
+  # still lives above; phase 2 task 2.3 swaps the consumer onto this
+  # renderer and phase 3 task 3.2 removes the alias.
+  #
+  # Bug fix vs the legacy alias: bearer-auth servers now emit
+  # `headers.Authorization = "Bearer {env:<envVar>}"` instead of the
+  # malformed `headers.<envVar> = "{env:<envVar>}"` shape that today's
+  # `opencodeServers.context7` carries. AC 7 of MCP-PROPOSAL.md.
+  #
+  # Per-consumer disable does NOT omit the entry: AC 8 requires the server
+  # to remain visible in the OpenCode TUI with `enabled = false` so it can
+  # be toggled at runtime. The renderer therefore filters only on the
+  # global `enabled` flag and reflects `consumers.opencode.enabled` into
+  # the emitted `enabled` field.
+  opencodeServersRendered =
+    let
+      keep = _: s: s.enabled or true;
+      render =
+        _: s:
+        let
+          enabled = s.consumers.opencode.enabled or true;
+        in
+        if s.transport == "http" then
+          {
+            type = "remote";
+            inherit enabled;
+            url = s.url;
+          }
+          // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
+            headers = {
+              Authorization = "Bearer {env:${s.auth.envVar}}";
+            };
+          }
+        else
+          {
+            type = "local";
+            inherit enabled;
+            # Canonical schema stores `command` as a string and `args` as a
+            # list; OpenCode wants them concatenated into a single argv list.
+            command = [ s.command ] ++ (s.args or [ ]);
+          }
+          // lib.optionalAttrs ((s.env or { }) != { }) {
+            environment = lib.mapAttrs (_: secretName: "{env:${secretName}}") s.env;
+          };
+    in
+    lib.mapAttrs render (lib.filterAttrs keep servers);
+
+  # zedContextServers: entries Zed launches as local context servers, either
+  # by spawning the canonical stdio command directly or by wrapping an HTTP
+  # endpoint with `npx mcp-remote <url>` (Zed's standard pattern for remote
+  # MCP servers). Servers tagged `zed.mode = "extension"` install via Zed's
+  # extension marketplace instead and appear in `zedExtensions` below.
+  zedContextServers =
+    let
+      keep =
+        _: s: (s.enabled or true) && ((s.consumers.zed.mode or "context_server") == "context_server");
+      render =
+        _: s:
+        if s.transport == "http" then
+          {
+            command = "${pkgs.nodejs}/bin/npx";
+            args = [
+              "-y"
+              "mcp-remote"
+              s.url
+            ];
+          }
+        else
+          {
+            command = s.command;
+            args = s.args or [ ];
+          };
+    in
+    lib.mapAttrs render (lib.filterAttrs keep servers);
+
+  # zedExtensions: alphabetically sorted list of Zed extension ids for
+  # servers tagged `zed.mode = "extension"`. Zed installs these from its
+  # extension marketplace; they do not need a context_servers entry.
+  zedExtensions =
+    let
+      keep = _: s: (s.enabled or true) && ((s.consumers.zed.mode or null) == "extension");
+      ids = lib.mapAttrsToList (_: s: s.consumers.zed.id) (lib.filterAttrs keep servers);
+    in
+    lib.sort lib.lessThan ids;
 }
