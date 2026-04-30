@@ -40,7 +40,6 @@ Collaboration & Remote Development
 AI & Assistant Integration
 | Feature | VSCode | Zed | Priority | Notes |
 |---------|--------|-----|----------|-------|
-| Copilot Chat | github.copilot-chat | ✅ Built-in Agent | ✅ Superior | Zed's agent panel is more integrated |
 | Claude Code | claude-code extension | ✅ External via keymap | ✅ Parity | OpenCode integration configured |
 | MCP Servers | Via mcp.json | ✅ context_servers | ✅ Parity | Both configured identically |
 ---
@@ -265,7 +264,7 @@ Features Where Zed Excels
 |---------|---------------|-------|
 | Performance | Native, GPU-accelerated | Noticeably faster than VSCode |
 | Collaboration | Built-in Channels with voice/screen sharing | No need for Live Share extension + separate voice tools |
-| AI Integration | Built-in agent panel | More integrated than Copilot Chat extension |
+| AI Integration | Built-in agent panel | Native AI assistant integrated into the editor |
 | Just support | LSP + formatter out of box | VSCode requires manual setup |
 | Rust tooling | Native, first-class | rust-analyzer deeply integrated |
 | Remote development | Built-in, no extension needed | installRemoteServer = true |
@@ -293,14 +292,14 @@ Features are scored on a 0-1 scale:
 | **Core Editor Extensions** | 10 | 8.0 | 10.0 | 80% | Missing: invisible char detection (0.0), code screenshots (0.0) |
 | **File Type Support** | 8 | 7.0 | 8.0 | 88% | Missing: Debian control files (0.0) |
 | **Collaboration** | 14 | 12.0 | 14.0 | 86% | Zed Channels superior in most areas; minor gaps in terminal sharing (0.5) and localhost forwarding (0.0) |
-| **AI & Assistants** | 3 | 3.0 | 3.0 | 100% | Full parity, Copilot integration superior |
+| **AI & Assistants** | 2 | 2.0 | 2.0 | 100% | Full parity via built-in agent and Claude Code |
 | **Language Support** | 46 | 43.5 | 46.0 | 95% | Excellent coverage; minor gaps in language-specific tooling |
 | **Git Integration** | 3 | 2.5 | 3.0 | 83% | Missing: PR/Issues management (0.0); GitHub Actions partial (0.5) |
 | **Debugging** | 10 | 9.0 | 10.0 | 90% | Comprehensive DAP support; missing shell debugging (0.0) |
 
 ### Overall Score
 
-**Total: 85.0 / 94.0 = 90.4% feature parity**
+**Total: 84.0 / 93.0 = 90.3% feature parity**
 
 Zed achieves excellent feature parity with VSCode, with superior performance and modern architecture. Key advantages include native collaboration features, integrated AI tooling, and first-class support for modern languages like Rust and Go.
 

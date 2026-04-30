@@ -104,7 +104,6 @@ in
     gh = {
       enable = true;
       extensions = with pkgs; [
-        gh-copilot
         gh-dash
         gh-markdown-preview
         gh-notify
