@@ -26,6 +26,11 @@ let
     # even though this module currently avoids split filesystem profiles.
     pkgs.ripgrep
   ];
+
+  # ACP adapter that lets Zed drive Codex over the Agent Client Protocol.
+  # The binary is `codex-acp`, pinned via the llm-agents flake input so the
+  # adapter version stays in lockstep with the codex CLI it speaks to.
+  codexAcpPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex-acp;
   codexLegacyDir = "${config.home.homeDirectory}/.codex";
   codexXdgDir = "${config.xdg.configHome}/codex";
   codexStableBin = "${config.xdg.dataHome}/codex/bin/codex";
@@ -1320,7 +1325,7 @@ let
 in
 {
   home = {
-    packages = codexRuntimePackages;
+    packages = codexRuntimePackages ++ [ codexAcpPackage ];
     file."${codexDir}/rules/default.rules".text = rulesFileContent;
     # config.toml is written as a real mutable file (not a symlink) so that
     # codex can edit it in-place at runtime. See codexConfigActivationScript.
@@ -1333,5 +1338,37 @@ in
     # The assistants mixin writes AGENTS.md after sops-nix renders Traya's
     # bonded prompt, keeping secret-derived content out of the Nix store.
     custom-instructions = "";
+  };
+
+  # Register Codex ACP as an external agent in Zed when Zed is enabled on
+  # this host. Each agent mixin owns its own Zed wiring; Home Manager merges
+  # these contributions into a single settings file.
+  programs.zed-editor = lib.mkIf config.programs.zed-editor.enable {
+    userKeymaps = [
+      {
+        bindings = {
+          "ctrl-alt-shift-x" = [
+            "agent::NewExternalAgentThread"
+            {
+              agent = {
+                custom = {
+                  name = "codex-acp";
+                };
+              };
+            }
+          ];
+        };
+      }
+    ];
+    userSettings = {
+      agent_servers = {
+        codex-acp = {
+          type = "custom";
+          command = "codex-acp";
+          args = [ ];
+          env = { };
+        };
+      };
+    };
   };
 }

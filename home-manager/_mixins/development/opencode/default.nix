@@ -1239,16 +1239,6 @@ in
       userKeymaps = [
         {
           bindings = {
-            "ctrl-alt-shift-c" = [
-              "agent::NewExternalAgentThread"
-              {
-                agent = {
-                  custom = {
-                    name = "claude-acp";
-                  };
-                };
-              }
-            ];
             "ctrl-alt-shift-p" = [
               "agent::NewExternalAgentThread"
               {
@@ -1273,9 +1263,6 @@ in
             command = "opencode";
             args = [ "acp" ];
             env = { };
-          };
-          claude-acp = {
-            type = "registry";
           };
         };
       };
