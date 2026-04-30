@@ -1,41 +1,102 @@
 # MCP Servers
 
-Five MCP servers providing AI agents with current, authoritative reference material. Defined once in `servers.nix`, distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients.
+Five active MCP servers providing AI agents with current, authoritative reference material. Defined once in `servers.nix`, distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. The servers here are information retrieval tools: documentation search, web reading, and package lookup. None orchestrate external systems or write to remote APIs. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
 ## Contents
 
+- [Architecture](#architecture)
+- [Canonical schema](#canonical-schema)
 - [Servers](#servers)
-- [Platform Delivery](#platform-delivery)
+- [Platform delivery](#platform-delivery)
 - [Secrets](#secrets)
-- [Adding a Server](#adding-a-server)
+- [Adding a server](#adding-a-server)
+
+---
+
+## Architecture
+
+`servers.nix` is the single source of truth. It exports:
+
+| Attribute | Purpose |
+|-----------|---------|
+| `servers` | Canonical attrset; one entry per MCP server |
+| `claudeServers` | Renderer for Claude Code's `mcpServers` and the generic JSON template |
+| `codexServers` | Renderer for Codex's `[mcp_servers.*]` TOML tables |
+| `opencodeServers` | Renderer for OpenCode's `mcp` settings block |
+| `zedContextServers` | Renderer for Zed's `context_servers` setting |
+| `zedExtensions` | Sorted list of Zed extension marketplace ids |
+| `requiredSecrets` | Sorted list of env var names referenced by enabled servers |
+
+Each renderer is a pure function of the canonical `servers` attrset. Adding or modifying a server means editing one entry; the renderers and `requiredSecrets` derivation pick up the change automatically.
+
+---
+
+## Canonical schema
+
+Each entry in `servers` carries the following fields. Only `transport` is mandatory; everything else has sensible defaults or is conditional on transport.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `enabled` | bool | no | Default `true`. Global on/off; `false` removes the server from every renderer and from `requiredSecrets`. |
+| `transport` | `"http"` \| `"stdio"` | yes | Determines which other fields apply. |
+| `url` | string | http | The MCP endpoint URL. |
+| `command` | string | stdio | Executable path; usually a Nix store reference such as `${pkgs.mcp-nixos}/bin/mcp-nixos`. |
+| `args` | list of strings | no | Stdio only. Defaults to `[]`. |
+| `auth` | attrset | no | Currently only `{ kind = "bearer"; envVar = "..."; }`. The `envVar` value is a sops secret name. |
+| `env` | attrset | no | Stdio env passthrough. Schema is `{ ENV_VAR_IN_PROCESS = "SOPS_SECRET_NAME"; }`. |
+| `consumers` | attrset | no | Per-consumer overrides; see below. |
+
+### Per-consumer overrides
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `consumers.claudeCode.enabled` | bool | `true` | When `false`, the server is omitted from Claude Code output. |
+| `consumers.codex.enabled` | bool | `true` | When `false`, the server is omitted from Codex output. |
+| `consumers.opencode.enabled` | bool | `true` | When `false`, the server is **still emitted** with `enabled = false` so the OpenCode TUI can toggle it at runtime. |
+| `consumers.zed.mode` | `"context_server"` \| `"extension"` \| `"skip"` | `"context_server"` | How Zed installs the server. `"extension"` requires `consumers.zed.id` to name the marketplace slug. `"skip"` excludes Zed entirely. |
+| `consumers.zed.id` | string | - | Required when `mode = "extension"`. |
+
+### Global vs per-consumer disable
+
+Two layers control whether a server reaches a consumer:
+
+- **Global `enabled = false`** — removes the server from every renderer's output and from `requiredSecrets`. Use this to retire or pause a server entirely.
+- **Per-consumer `consumers.<tool>.enabled = false`** — removes the server from one tool's output (or, for OpenCode, marks it disabled within the output). Other tools are unaffected.
+
+Worked example. Setting `servers.context7.consumers.opencode.enabled = false;` removes context7 from OpenCode's runtime tool list (the entry stays in OpenCode's settings with `enabled = false` so it can be toggled back on without a Home Manager run); Claude Code, Codex, and Zed continue to see context7 unchanged. The `CONTEXT7_API_KEY` secret stays in `requiredSecrets` because the server's global `enabled` flag is still `true`.
 
 ---
 
 ## Servers
 
+Five active servers and three disabled placeholders.
+
 | Server | Transport | Auth | Purpose |
 |--------|-----------|------|---------|
-| `context7` | HTTP | API key | Live library documentation from official sources |
+| `context7` | HTTP | bearer | Live library documentation from official sources |
 | `exa` | HTTP | - | Neural web search and URL content extraction |
 | `cloudflare` | HTTP | - | Cloudflare product documentation |
 | `nixos` | stdio | - | NixOS, Home Manager, nix-darwin package and option search |
 | `svelte` | HTTP | - | Svelte documentation and playground |
+| `firecrawl` | HTTP | - | Disabled (`enabled = false`); web scraping and crawling |
+| `jina` | HTTP | bearer | Disabled; web reading and screenshots |
+| `mcpGoogleCse` | stdio | env | Disabled; Google Custom Search Engine |
 
-Four of the five are remote HTTP servers. `nixos` runs as a local binary because no hosted alternative exists.
+Four of the five active servers are remote HTTP. `nixos` runs as a local binary because no hosted alternative exists.
 
----
+### Active servers
 
-### Context7
+#### context7
 
 Fetches live documentation from official library sources. Given a library name, Context7 resolves the canonical documentation and retrieves the relevant section: current API signatures, option names, and examples rather than the training snapshot. The [Dexter](../assistants/) agent invokes Context7 for every Nix package and option recommendation.
 
 Library APIs change faster than model training cycles. A model asked how to configure a Vite plugin produces a confident but potentially stale answer. A model with Context7 retrieves the answer from current documentation.
 
----
+Zed installs context7 via the `mcp-server-context7` extension rather than as a context server.
 
-### Exa
+#### exa
 
 Neural semantic search across the web. Unlike keyword search, Exa finds pages semantically related to the query. Useful for finding GitHub discussions, blog posts, and documentation that do not match exact phrase searches. Exa also fetches page content, so it handles both discovery and URL reading.
 
@@ -49,108 +110,149 @@ The configured Exa MCP URL enables three tools:
 
 Deprecated Exa tools stay disabled. Use `web_search_exa` instead of the old code-context tool, `web_fetch_exa` instead of the old crawling tool, and `web_search_advanced_exa` instead of the old company, people, LinkedIn, and deep-search tools.
 
----
-
-### Cloudflare
+#### cloudflare
 
 Cloudflare's official documentation MCP. Covers Workers, Pages, D1, R2, KV, and Durable Objects. Useful for projects deployed on Cloudflare infrastructure.
 
-Disabled by default in OpenCode (`enabled = false`) where Cloudflare projects are less common than in full AI CLI workflows.
+Disabled in OpenCode via `consumers.opencode.enabled = false` because Cloudflare projects are less common in OpenCode's workflow than in the full AI CLI tools. The entry remains visible in the OpenCode TUI for ad-hoc enabling.
 
----
-
-### nixos
+#### nixos
 
 Searches NixOS packages and options, Home Manager options, and nix-darwin options. Without `mcp-nixos`, agents working in this repository hallucinate option paths and package attribute names. With it, they verify against the actual option set before recommending.
 
-The only stdio server in the configuration. `mcp-nixos` runs as a local binary with no hosted alternative; the Nix package pins it to a Nix store path, so no PATH dependency exists.
+The only stdio server in the active set. `mcp-nixos` runs as a local binary with no hosted alternative; the Nix package pins it to a Nix store path, so no PATH dependency exists.
 
----
-
-### Svelte
+#### svelte
 
 The official Svelte MCP server, maintained by the Svelte team. Provides documentation, component examples, and playground links directly from the Svelte source.
 
-Disabled by default in OpenCode (`enabled = false`); available as a Zed extension (`svelte-mcp`) in addition to the manual context server entry.
+Disabled in OpenCode via `consumers.opencode.enabled = false`. Zed installs it through the `svelte-mcp` extension rather than as a context server.
+
+### Disabled servers
+
+These three carry `enabled = false` at the top level. They stay declared so re-enabling one is a single edit (flip `enabled` to `true`) without rediscovering URLs or schemas.
+
+- **firecrawl** — web scraping and crawling. Disabled because Exa covers the primary use case. Note that firecrawl embeds the API key in the URL path, which doesn't fit the `auth.kind = "bearer"` shape; re-enabling will need renderer logic to handle URL-embedded secrets.
+- **jina** — web reading and screenshots. Disabled because Exa covers search and URL content extraction.
+- **mcpGoogleCse** — Google Custom Search Engine. Disabled because Exa's semantic search covers the same need with better results for technical queries.
 
 ---
 
-## Platform Delivery
+## Platform delivery
 
-`servers.nix` exports shared Claude/generic and OpenCode server sets. `default.nix` writes them to the correct path at activation time via sops templates or Home Manager options. Zed receives its context server config directly from `default.nix`; Codex imports the shared definitions from its own mixin.
+`mcp/default.nix` consumes the renderer outputs and writes them to the correct path at activation time. Zed and OpenCode are wired here directly; Claude Code reads via Home Manager's native `programs.claude-code.mcpServers`; Codex's mixin imports `servers.nix` and reads `codexServers`.
 
-| Platform | Config path | Format notes |
-|----------|-------------|--------------|
-| Claude Code | `~/.config/mcp/mcp.json` | `mcpServers` key, HTTP or stdio |
-| OpenCode | `~/.config/opencode/settings.json` `mcp` block | `{env:VAR}` syntax for secrets; `remote`/`local` types |
-| Zed | `~/.config/zed/settings.json` `context_servers` | `command`/`args` format; Context7 and Svelte via extensions |
-| Codex | `~/.config/codex/config.toml` | Translated in the Codex mixin from shared definitions |
+| Platform | Config path | Source |
+|----------|-------------|--------|
+| Claude Code | `~/.config/mcp/mcp.json` | `claudeServers` |
+| OpenCode | `~/.config/opencode/settings.json` `mcp` block | `opencodeServers` |
+| Zed | `~/.config/zed/settings.json` `context_servers` and `extensions` | `zedContextServers`, `zedExtensions` |
+| Codex | `~/.config/codex/config.toml` `[mcp_servers.*]` | `codexServers` |
 
-### Platform differences
+### Platform-specific shapes
 
-**OpenCode** resolves secrets via `{env:VAR}` at startup. The shell init for both fish and bash exports each secret by reading its sops-managed path at shell start, making the variables available when OpenCode launches.
-
-**Zed** receives three servers via `context_servers` (cloudflare, exa, nixos). Context7 and Svelte are delivered as Zed extensions instead, which provide tighter editor integration.
+- **Claude Code** — bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
+- **Codex** — schema strictness rejects unknown fields, so `codexServers` never emits `type`. Bearer auth becomes `bearer_token_env_var = "<envVar>"`.
+- **OpenCode** — bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
+- **Zed** — HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers`.
 
 ---
 
 ## Secrets
 
-Six secrets are stored encrypted in `secrets/mcp.yaml`, managed by sops. Only `CONTEXT7_API_KEY` is used by active MCP server configuration.
+Two sources feed `sops.secrets` and the shell init exports.
 
-| Secret | Used by |
-|--------|---------|
-| `CONTEXT7_API_KEY` | context7 |
-| `FIRECRAWL_API_KEY` | firecrawl (disabled) |
-| `GOOGLE_CSE_API_KEY` | mcp-google-cse (disabled) |
-| `GOOGLE_CSE_ENGINE_ID` | mcp-google-cse (disabled) |
-| `JINA_API_KEY` | jina (disabled) |
-| `SEMGREP_APP_TOKEN` | semgrep tooling (not wired to any MCP server) |
+### `requiredSecrets` (derived)
 
-Secrets reach each platform differently:
+Computed from the `auth.envVar` and `env` values of every enabled server in `servers`. Today this resolves to `["CONTEXT7_API_KEY"]` because context7 is the only enabled server with bearer auth. Disabled servers do not contribute, so flipping a server's global `enabled` flag automatically adds or removes its secrets from this list.
 
-- **Claude Code** - `config.sops.placeholder.*` injects the decrypted secret value directly into the JSON template at Home Manager activation
-- **OpenCode** - shell exports the secret path; `{env:VAR}` resolved at startup from the environment
+Per-consumer overrides do **not** gate inclusion. A server with `consumers.opencode.enabled = false` still ships its secret, because Claude Code or Codex may still consume it.
+
+### `additionalSecrets` (hand-maintained)
+
+Secrets that don't belong to any active MCP server but still need decryption and shell export. Defined in `mcp/default.nix`:
+
+| Secret | Reason it stays declared |
+|--------|--------------------------|
+| `FIRECRAWL_API_KEY` | Belongs to disabled firecrawl; declared so re-enabling skips a sops-rekey round-trip |
+| `GOOGLE_CSE_API_KEY` | Belongs to disabled mcpGoogleCse; same reason |
+| `GOOGLE_CSE_ENGINE_ID` | Belongs to disabled mcpGoogleCse; same reason |
+| `SEMGREP_APP_TOKEN` | Used by the security scanner skill, not by any MCP server |
+
+The union (`allSecrets`) drives both `sops.secrets = lib.genAttrs allSecrets ...` and the fish/bash shell init blocks. Today this union is `[CONTEXT7_API_KEY, FIRECRAWL_API_KEY, GOOGLE_CSE_API_KEY, GOOGLE_CSE_ENGINE_ID, SEMGREP_APP_TOKEN]`.
+
+### How secrets reach each platform
+
+- **Claude Code** — `config.sops.placeholder.*` injects the decrypted value directly into the generated JSON at Home Manager activation. No environment variable is read at runtime.
+- **Codex** — `bearer_token_env_var = "<NAME>"` tells Codex which env var to read at process start.
+- **OpenCode** — `{env:<NAME>}` placeholder resolved at process start from the shell environment.
+- **Shell** — fish `shellInit` and bash `initExtra` export each secret by reading its sops-managed path. This makes the env vars available to OpenCode, Codex, and any other tool launched from a shell.
 
 Edit secrets with `sops secrets/mcp.yaml`. Re-activate with `just home` after changes.
 
-### Disabled servers
-
-Three servers are present but commented out:
-
-- **firecrawl** - web scraping and crawling. Commented out because Exa covers the primary use case without the additional API dependency.
-- **jina** - web reading and screenshots. Commented out because Exa covers search and URL content extraction.
-- **mcp-google-cse** - Google Custom Search Engine. Commented out because Exa's semantic search covers the same need with better results for technical queries.
-
 ---
 
-## Adding a Server
+## Adding a server
 
-Add an entry to `mcpServers` and `opencodeServers` in `servers.nix`. Add a Zed entry in `default.nix` if the server should be available there.
+One entry in `servers.nix` is enough. Renderers and `requiredSecrets` pick up the change automatically; `mcp/default.nix` does not need editing for the server itself.
 
-**HTTP server with a bearer token:**
+### HTTP server with bearer token
 
 ```nix
-# mcpServers
 my-server = {
-  type = "http";
+  transport = "http";
   url = "https://example.com/mcp";
-  headers.Authorization = "Bearer ${config.sops.placeholder.MY_API_KEY}";
+  auth = {
+    kind = "bearer";
+    envVar = "MY_API_KEY";
+  };
+  consumers = {
+    # Optional. Defaults: claudeCode/codex/opencode enabled, zed.mode = "context_server".
+    zed.mode = "context_server";
+  };
 };
-
-# opencodeServers
-my-server = {
-  type = "remote";
-  url = "https://example.com/mcp";
-  headers.Authorization = "Bearer {env:MY_API_KEY}";
-};
-
 ```
 
-If the server needs a secret:
+### HTTP server with no auth
+
+```nix
+my-server = {
+  transport = "http";
+  url = "https://example.com/mcp";
+};
+```
+
+### Stdio server
+
+```nix
+my-server = {
+  transport = "stdio";
+  command = "${pkgs.my-mcp-package}/bin/my-mcp";
+  args = [ "--flag" "value" ];
+  consumers.zed.mode = "context_server";
+};
+```
+
+### Server installed via Zed extension
+
+```nix
+my-server = {
+  transport = "http";
+  url = "https://example.com/mcp";
+  consumers.zed = {
+    mode = "extension";
+    id = "my-server-extension-id";
+  };
+};
+```
+
+### If the server needs a secret
+
+The renderer reads the secret from `auth.envVar` or `env` values, but the secret itself still needs to exist in sops:
 
 1. Add the key to `secrets/mcp.yaml` via `sops secrets/mcp.yaml`
-2. Declare it under `sops.secrets` in `default.nix`
-3. Add the shell export to both the fish `shellInit` and bash `initExtra` blocks in `default.nix`
+2. The `requiredSecrets` derivation picks it up automatically; no changes to `mcp/default.nix` are needed
+
+If the secret should also be exported to the shell when no MCP server uses it directly (the `SEMGREP_APP_TOKEN` pattern), add the name to `additionalSecrets` in `mcp/default.nix`.
 
 Run `just home` to activate.

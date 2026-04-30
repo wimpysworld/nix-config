@@ -12,56 +12,6 @@ let
   inherit (pkgs) lib;
 in
 rec {
-  # MCP servers for Claude Code and generic MCP clients.
-  # Uses config.sops.placeholder to inject secrets at activation time.
-  mcpServers = {
-    # Servers without secrets
-    cloudflare = {
-      type = "http";
-      url = "https://docs.mcp.cloudflare.com/mcp";
-    };
-    exa = {
-      type = "http";
-      url = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa";
-    };
-    nixos = {
-      type = "stdio";
-      command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
-    };
-    svelte = {
-      type = "http";
-      url = "https://mcp.svelte.dev/mcp";
-    };
-    # Servers with secrets
-    context7 = {
-      type = "http";
-      url = "https://mcp.context7.com/mcp";
-      headers = {
-        Authorization = "Bearer ${config.sops.placeholder.CONTEXT7_API_KEY}";
-      };
-    };
-    #firecrawl-mcp = {
-    #  type = "http";
-    #  url = "https://mcp.firecrawl.dev/${config.sops.placeholder.FIRECRAWL_API_KEY}/v2/mcp";
-    #};
-    # jina = {
-    #   type = "http";
-    #   url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
-    #   headers = {
-    #     Authorization = "Bearer ${config.sops.placeholder.JINA_API_KEY}";
-    #   };
-    # };
-    #mcp-google-cse = {
-    #  type = "stdio";
-    #  command = "${pkgs.uv}/bin/uvx";
-    #  args = [ "mcp-google-cse" ];
-    #  env = {
-    #    API_KEY = config.sops.placeholder.GOOGLE_CSE_API_KEY;
-    #    ENGINE_ID = config.sops.placeholder.GOOGLE_CSE_ENGINE_ID;
-    #  };
-    #};
-  };
-
   # Canonical MCP server definitions.
   # Phase 1 of the MCP refactor: this attrset is the single source of truth
   # for every MCP server and its per-consumer state. Renderers added in later
@@ -195,74 +145,13 @@ rec {
     };
   };
 
-  # MCP servers for OpenCode - uses {env:VAR} syntax for secrets
-  opencodeServers = {
-    # Servers without secrets
-    cloudflare = {
-      enabled = false;
-      type = "remote";
-      url = "https://docs.mcp.cloudflare.com/mcp";
-    };
-    exa = {
-      type = "remote";
-      url = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa";
-    };
-    nixos = {
-      enabled = true;
-      type = "local";
-      command = [ "${pkgs.mcp-nixos}/bin/mcp-nixos" ];
-    };
-    svelte = {
-      enabled = false;
-      type = "local";
-      command = [
-        "${pkgs.nodejs}/bin/npx"
-        "-y"
-        "@sveltejs/mcp"
-      ];
-    };
-    # Servers with secrets - using OpenCode's {env:VAR} syntax
-    context7 = {
-      type = "remote";
-      url = "https://mcp.context7.com/mcp";
-      headers = {
-        CONTEXT7_API_KEY = "{env:CONTEXT7_API_KEY}";
-      };
-    };
-    #firecrawl = {
-    #  enabled = false;
-    #  type = "remote";
-    #  url = "https://mcp.firecrawl.dev/{env:FIRECRAWL_API_KEY}/v2/mcp";
-    #};
-    # jina = {
-    #   type = "remote";
-    #   url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
-    #   headers = {
-    #     Authorization = "Bearer {env:JINA_API_KEY}";
-    #   };
-    # };
-    #mcp-google-cse = {
-    #  enabled = false;
-    #  type = "local";
-    #  command = [
-    #    "${pkgs.uv}/bin/uvx"
-    #    "mcp-google-cse"
-    #  ];
-    #  environment = {
-    #    API_KEY = "{env:GOOGLE_CSE_API_KEY}";
-    #    ENGINE_ID = "{env:GOOGLE_CSE_ENGINE_ID}";
-    #  };
-    #};
-  };
-
   # ---------------------------------------------------------------------------
   # Renderers
   # ---------------------------------------------------------------------------
   # Each renderer is a pure function of the canonical `servers` attrset above
-  # and produces the shape its target consumer expects. While phase 1 is in
-  # flight, consumers still read the legacy `mcpServers` and `opencodeServers`
-  # exports above; the renderers are dormant until phase 2 swaps each
-  # consumer over.
+  # and produces the shape its target consumer expects. Consumers
+  # (`claude-code`, `codex`, `mcp/default.nix` for OpenCode and Zed) read
+  # these renderer outputs directly.
   #
   # Filter rules (shared except where noted):
   #   * Skip servers with global `enabled = false` (firecrawl, jina,
@@ -337,22 +226,16 @@ rec {
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
-  # opencodeServersRendered: OpenCode's `mcp` settings block. Renamed
-  # internally from `opencodeServers` because the legacy alias of that name
-  # still lives above; phase 2 task 2.3 swaps the consumer onto this
-  # renderer and phase 3 task 3.2 removes the alias.
-  #
-  # Bug fix vs the legacy alias: bearer-auth servers now emit
-  # `headers.Authorization = "Bearer {env:<envVar>}"` instead of the
-  # malformed `headers.<envVar> = "{env:<envVar>}"` shape that today's
-  # `opencodeServers.context7` carries. AC 7 of MCP-PROPOSAL.md.
+  # opencodeServers: OpenCode's `mcp` settings block. Bearer-auth servers
+  # emit `headers.Authorization = "Bearer {env:<envVar>}"` per AC 7 of
+  # MCP-PROPOSAL.md.
   #
   # Per-consumer disable does NOT omit the entry: AC 8 requires the server
   # to remain visible in the OpenCode TUI with `enabled = false` so it can
   # be toggled at runtime. The renderer therefore filters only on the
   # global `enabled` flag and reflects `consumers.opencode.enabled` into
   # the emitted `enabled` field.
-  opencodeServersRendered =
+  opencodeServers =
     let
       keep = _: s: s.enabled or true;
       render =
