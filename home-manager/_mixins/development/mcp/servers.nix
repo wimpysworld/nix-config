@@ -422,4 +422,25 @@ rec {
       ids = lib.mapAttrsToList (_: s: s.consumers.zed.id) (lib.filterAttrs keep servers);
     in
     lib.sort lib.lessThan ids;
+
+  # requiredSecrets: sorted list of distinct env var names referenced by any
+  # enabled server's `auth.envVar` or `env` values. Task 3.1 will feed this
+  # into `sops.secrets` so a server's secret declarations follow the canonical
+  # entry rather than living in a separate hand-maintained list.
+  #
+  # Per-consumer `consumers.<tool>.enabled = false` does NOT gate inclusion;
+  # only the global `enabled` flag does. A server consumed only by tools that
+  # opt out still needs its secret available at activation, otherwise the
+  # `config.sops.placeholder` interpolation in the renderer outputs would
+  # fail to resolve. With current data this list resolves to
+  # `["CONTEXT7_API_KEY"]`.
+  requiredSecrets =
+    let
+      enabledServers = lib.filterAttrs (_: s: s.enabled or true) servers;
+      authSecrets = lib.mapAttrsToList (
+        _: s: if (s.auth or null) != null && s.auth.kind or null == "bearer" then [ s.auth.envVar ] else [ ]
+      ) enabledServers;
+      envSecrets = lib.mapAttrsToList (_: s: lib.attrValues (s.env or { })) enabledServers;
+    in
+    lib.sort lib.lessThan (lib.unique (lib.flatten (authSecrets ++ envSecrets)));
 }
