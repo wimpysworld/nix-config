@@ -52,26 +52,6 @@ let
   };
   assistantCompose = import ../assistants/compose.nix { inherit lib; };
 
-  codexMcpServers = {
-    cloudflare = {
-      inherit (mcpServerDefs.mcpServers.cloudflare) url;
-    };
-    context7 = {
-      inherit (mcpServerDefs.mcpServers.context7) url;
-      bearer_token_env_var = "CONTEXT7_API_KEY";
-    };
-    exa = {
-      inherit (mcpServerDefs.mcpServers.exa) url;
-    };
-    nixos = {
-      inherit (mcpServerDefs.mcpServers.nixos) command;
-      args = [ ];
-    };
-    svelte = {
-      inherit (mcpServerDefs.mcpServers.svelte) url;
-    };
-  };
-
   # Determine CODEX_HOME path, mirroring the Home Manager module logic.
   # The HM module sets CODEX_HOME = xdg.configHome/codex when
   # home.preferXdgDirectories is true (and package >= 0.2.0, which it is).
@@ -1118,7 +1098,7 @@ let
   # state; a symlink into the read-only nix store silently swallows those
   # writes, which causes the trust prompt to appear on every launch.
   codexSettings = {
-    mcp_servers = codexMcpServers;
+    mcp_servers = mcpServerDefs.codexServers;
 
     # Approval policy: never lets trusted workspace sessions run without
     # interactive approval prompts. Dangerous command prefixes remain blocked

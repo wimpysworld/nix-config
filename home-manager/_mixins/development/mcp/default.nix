@@ -8,10 +8,10 @@ let
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   # Import shared MCP server definitions
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
-  inherit (mcpServerDefs)
-    mcpServers
-    opencodeServers
-    ;
+  # OpenCode now reads from the canonical renderer; the legacy
+  # `mcpServerDefs.opencodeServers` alias remains in `servers.nix` until
+  # phase 3 task 3.2 removes it.
+  opencodeServers = mcpServerDefs.opencodeServersRendered;
 in
 {
   programs = {
@@ -42,42 +42,9 @@ in
       };
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
-      extensions = [
-        "mcp-server-context7"
-        #"mcp-server-firecrawl"
-        "svelte-mcp"
-      ];
+      extensions = mcpServerDefs.zedExtensions;
       userSettings = {
-        context_servers = {
-          cloudflare = {
-            command = "${pkgs.nodejs}/bin/npx";
-            args = [
-              "-y"
-              "mcp-remote"
-              "https://docs.mcp.cloudflare.com/mcp"
-            ];
-          };
-          exa = {
-            command = "${pkgs.nodejs}/bin/npx";
-            args = [
-              "-y"
-              "mcp-remote"
-              "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa"
-            ];
-          };
-          nixos = {
-            command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
-            args = [ ];
-          };
-          # jina = {
-          #   command = "${pkgs.nodejs}/bin/npx";
-          #   args = [
-          #     "-y"
-          #     "mcp-remote"
-          #     "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web"
-          #   ];
-          # };
-        };
+        context_servers = mcpServerDefs.zedContextServers;
       };
     };
   };
@@ -104,7 +71,7 @@ in
     };
     # MCP servers - used by other agents
     templates."mcp-config.json" = {
-      content = builtins.toJSON { inherit mcpServers; };
+      content = builtins.toJSON { mcpServers = mcpServerDefs.claudeServers; };
       path = "${config.xdg.configHome}/mcp/mcp.json";
     };
   };

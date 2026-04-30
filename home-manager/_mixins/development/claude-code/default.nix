@@ -905,7 +905,7 @@ in
         enable = true;
         package = claudePackageWithLsp;
         # Use Home Manager's native MCP support with shared server definitions
-        inherit (mcpServerDefs) mcpServers;
+        mcpServers = mcpServerDefs.claudeServers;
         settings = {
           # MCP servers are selected declaratively through Home Manager. Their
           # tools are allowed below with mcp__*, while arbitrary project MCP
