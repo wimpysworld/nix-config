@@ -16,6 +16,12 @@ let
     else
       pkgs.claude-code;
 
+  # ACP adapter that lets Zed drive Claude Code over the Agent Client
+  # Protocol. The binary is `claude-agent-acp`, sourced from the same
+  # llm-agents flake input so the version is pinned alongside claude-code.
+  claudeAgentAcpPackage =
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-agent-acp;
+
   # Import shared MCP server definitions
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 
@@ -784,6 +790,7 @@ in
       packages = [
         inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.ccusage
         ccstatuslinePatched
+        claudeAgentAcpPackage
       ];
       shellAliases = {
         cc-traya = "claude --agent traya --continue";
@@ -901,6 +908,37 @@ in
       ];
     };
     programs = {
+      # Register Claude Agent ACP as an external agent in Zed when Zed is
+      # enabled on this host. Each agent mixin owns its own Zed wiring;
+      # Home Manager merges these contributions into a single settings file.
+      zed-editor = lib.mkIf config.programs.zed-editor.enable {
+        userKeymaps = [
+          {
+            bindings = {
+              "ctrl-alt-shift-c" = [
+                "agent::NewExternalAgentThread"
+                {
+                  agent = {
+                    custom = {
+                      name = "claude-acp";
+                    };
+                  };
+                }
+              ];
+            };
+          }
+        ];
+        userSettings = {
+          agent_servers = {
+            claude-acp = {
+              type = "custom";
+              command = "claude-agent-acp";
+              args = [ ];
+              env = { };
+            };
+          };
+        };
+      };
       claude-code = {
         enable = true;
         package = claudePackageWithLsp;
