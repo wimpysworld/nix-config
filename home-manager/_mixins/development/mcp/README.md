@@ -25,8 +25,9 @@ The Nix composition is the delivery mechanism, not the strategy. The servers her
 | `claudeServers` | Renderer for Claude Code's `mcpServers` and the generic JSON template |
 | `codexServers` | Renderer for Codex's `[mcp_servers.*]` TOML tables |
 | `opencodeServers` | Renderer for OpenCode's `mcp` settings block |
-| `zedContextServers` | Renderer for Zed's `context_servers` setting |
+| `zedContextServers` | Renderer for Zed's `context_servers` setting (stdio + HTTP) |
 | `zedExtensions` | Sorted list of Zed extension marketplace ids |
+| `zedExtensionDisables` | Stub `context_servers` entries that flip extension-mode servers off |
 | `requiredSecrets` | Sorted list of env var names referenced by enabled servers |
 
 Each renderer is a pure function of the canonical `servers` attrset. Adding or modifying a server means editing one entry; the renderers and `requiredSecrets` derivation pick up the change automatically.
@@ -55,6 +56,7 @@ Each entry in `servers` carries the following fields. Only `transport` is mandat
 | `consumers.claudeCode.enabled` | bool | `true` | When `false`, the server is omitted from Claude Code output. |
 | `consumers.codex.enabled` | bool | `true` | When `false`, the server is omitted from Codex output. |
 | `consumers.opencode.enabled` | bool | `true` | When `false`, the server is **still emitted** with `enabled = false` so the OpenCode TUI can toggle it at runtime. |
+| `consumers.zed.enabled` | bool | `true` | Mirrors OpenCode. When `false`, the server is **still emitted** with `enabled = false` so Zed's agent panel can toggle it at runtime. Works for stdio, HTTP, and extension-mode servers. |
 | `consumers.zed.mode` | `"context_server"` \| `"extension"` \| `"skip"` | `"context_server"` | How Zed installs the server. `"extension"` requires `consumers.zed.id` to name the marketplace slug. `"skip"` excludes Zed entirely. |
 | `consumers.zed.id` | string | - | Required when `mode = "extension"`. |
 
@@ -66,6 +68,8 @@ Two layers control whether a server reaches a consumer:
 - **Per-consumer `consumers.<tool>.enabled = false`** — removes the server from one tool's output (or, for OpenCode, marks it disabled within the output). Other tools are unaffected.
 
 Worked example. Setting `servers.context7.consumers.opencode.enabled = false;` removes context7 from OpenCode's runtime tool list (the entry stays in OpenCode's settings with `enabled = false` so it can be toggled back on without a Home Manager run); Claude Code, Codex, and Zed continue to see context7 unchanged. The `CONTEXT7_API_KEY` secret stays in `requiredSecrets` because the server's global `enabled` flag is still `true`.
+
+The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false;` keeps the `mcp-server-context7` extension installed and adds a `context_servers."mcp-server-context7" = { enabled = false; settings = {}; }` stub. Zed's agent panel shows the server as a disabled toggleable entry; flipping the toggle in the UI re-enables it without a Home Manager run.
 
 ---
 
@@ -154,7 +158,7 @@ These three carry `enabled = false` at the top level. They stay declared so re-e
 - **Claude Code** — bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
 - **Codex** — schema strictness rejects unknown fields, so `codexServers` never emits `type`. Bearer auth becomes `bearer_token_env_var = "<envVar>"`.
 - **OpenCode** — bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
-- **Zed** — HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers`.
+- **Zed** — HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.
 
 ---
 

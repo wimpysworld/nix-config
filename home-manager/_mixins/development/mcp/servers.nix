@@ -32,6 +32,10 @@ rec {
   #                  claudeCode.enabled (default true)
   #                  codex.enabled      (default true)
   #                  opencode.enabled   (default true)
+  #                  zed.enabled        (default true) - mirrors OpenCode:
+  #                                     `false` keeps the entry visible in
+  #                                     Zed's agent panel with `enabled = false`
+  #                                     so the user can toggle at runtime.
   #                  zed.mode           "context_server" | "extension" | "skip"
   #                  zed.id             extension id when mode = "extension"
   servers = {
@@ -42,7 +46,13 @@ rec {
         # OpenCode keeps cloudflare visible but disabled so the TUI can toggle
         # it at runtime; matches today's `opencodeServers.cloudflare.enabled = false`.
         opencode.enabled = false;
-        zed.mode = "context_server";
+        # Mirror the OpenCode disabled state in Zed; the entry stays in
+        # `context_servers` with `enabled = false` so the agent panel can
+        # toggle it at runtime.
+        zed = {
+          mode = "context_server";
+          enabled = false;
+        };
       };
     };
 
@@ -86,9 +96,13 @@ rec {
       consumers = {
         # Mirrors today's `opencodeServers.svelte.enabled = false`.
         opencode.enabled = false;
+        # Mirror the OpenCode disabled state in Zed. The extension stays
+        # installed via `programs.zed-editor.extensions`; a stub entry under
+        # `context_servers."svelte-mcp"` flips it off in the agent panel.
         zed = {
           mode = "extension";
           id = "svelte-mcp";
+          enabled = false;
         };
       };
     };
@@ -156,11 +170,11 @@ rec {
   # Filter rules (shared except where noted):
   #   * Skip servers with global `enabled = false` (firecrawl, jina,
   #     mcpGoogleCse today).
-  #   * For Claude Code, Codex, and Zed, also skip servers where
+  #   * For Claude Code and Codex, also skip servers where
   #     `consumers.<tool>.enabled` is explicitly false (default true).
-  #   * OpenCode is the exception: per-consumer `enabled = false` keeps the
-  #     server in the output with `enabled = false` so the TUI can toggle it
-  #     at runtime. See AC 8 of MCP-PROPOSAL.md.
+  #   * OpenCode and Zed are exceptions: per-consumer `enabled = false`
+  #     keeps the server in the output with `enabled = false` so the TUI /
+  #     agent panel can toggle it at runtime. See AC 8 of MCP-PROPOSAL.md.
 
   # claudeServers: Claude Code and any generic MCP client that follows the
   # original `mcpServers` schema. Output is byte-equivalent to today's
@@ -273,14 +287,24 @@ rec {
   # endpoint with `npx mcp-remote <url>` (Zed's standard pattern for remote
   # MCP servers). Servers tagged `zed.mode = "extension"` install via Zed's
   # extension marketplace instead and appear in `zedExtensions` below.
+  #
+  # Per-consumer disable mirrors OpenCode: `consumers.zed.enabled = false`
+  # keeps the entry in the output with `enabled = false` so Zed's agent
+  # panel shows it as a toggleable disabled server. Zed's
+  # `ContextServerSettingsContent` enum (Stdio / Http / Extension) accepts
+  # `enabled` on every variant, defaulting to true.
   zedContextServers =
     let
       keep =
         _: s: (s.enabled or true) && ((s.consumers.zed.mode or "context_server") == "context_server");
       render =
         _: s:
+        let
+          enabled = s.consumers.zed.enabled or true;
+        in
         if s.transport == "http" then
           {
+            inherit enabled;
             command = "${pkgs.nodejs}/bin/npx";
             args = [
               "-y"
@@ -290,6 +314,7 @@ rec {
           }
         else
           {
+            inherit enabled;
             command = s.command;
             args = s.args or [ ];
           };
@@ -298,13 +323,42 @@ rec {
 
   # zedExtensions: alphabetically sorted list of Zed extension ids for
   # servers tagged `zed.mode = "extension"`. Zed installs these from its
-  # extension marketplace; they do not need a context_servers entry.
+  # extension marketplace; they do not need a context_servers entry when
+  # enabled.
+  #
+  # Disabling an extension-mode server (`consumers.zed.enabled = false`)
+  # keeps the extension installed but pairs it with a disabled stub entry
+  # in `zedExtensionDisables` so Zed's agent panel can toggle it back on.
   zedExtensions =
     let
       keep = _: s: (s.enabled or true) && ((s.consumers.zed.mode or null) == "extension");
       ids = lib.mapAttrsToList (_: s: s.consumers.zed.id) (lib.filterAttrs keep servers);
     in
     lib.sort lib.lessThan ids;
+
+  # zedExtensionDisables: stub `context_servers` entries for extension-mode
+  # servers whose `consumers.zed.enabled` is false. Zed identifies the
+  # `Extension` variant by the presence of a `settings` field; an empty
+  # object means "no overrides" while `enabled = false` flips the toggle off.
+  # Merged into `userSettings.context_servers` alongside `zedContextServers`.
+  zedExtensionDisables =
+    let
+      keep =
+        _: s:
+        (s.enabled or true)
+        && ((s.consumers.zed.mode or null) == "extension")
+        && ((s.consumers.zed.enabled or true) == false);
+      disabled = lib.filterAttrs keep servers;
+    in
+    lib.listToAttrs (
+      lib.mapAttrsToList (_: s: {
+        name = s.consumers.zed.id;
+        value = {
+          enabled = false;
+          settings = { };
+        };
+      }) disabled
+    );
 
   # requiredSecrets: sorted list of distinct env var names referenced by any
   # enabled server's `auth.envVar` or `env` values. Task 3.1 will feed this
