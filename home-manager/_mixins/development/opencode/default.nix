@@ -43,6 +43,29 @@ in
           };
         };
 
+        # Built-in agent permission overrides.
+        # Workaround for anomalyco/opencode#13715: the TUI only collects
+        # permission and question events from direct child sessions, so
+        # sub-sub-agent prompts hang silently. Capping delegation depth at 1
+        # by denying `task` on every subagent (except traya, the orchestrator)
+        # avoids the hang. Custom Markdown agents pin this in their own
+        # frontmatter; the built-in `general` and `explore` agents are not
+        # user-defined files, so we configure them here.
+        agent = {
+          general = {
+            permission = {
+              task = "deny";
+              question = "allow";
+            };
+          };
+          explore = {
+            permission = {
+              task = "deny";
+              question = "allow";
+            };
+          };
+        };
+
         # Global permissions - applied to all agents including built-in Build and Plan
         # These provide guardrails across the board
         permission = {
