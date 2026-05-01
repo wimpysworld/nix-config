@@ -1339,36 +1339,4 @@ in
     # bonded prompt, keeping secret-derived content out of the Nix store.
     custom-instructions = "";
   };
-
-  # Register Codex ACP as an external agent in Zed when Zed is enabled on
-  # this host. Each agent mixin owns its own Zed wiring; Home Manager merges
-  # these contributions into a single settings file.
-  programs.zed-editor = lib.mkIf config.programs.zed-editor.enable {
-    userKeymaps = [
-      {
-        bindings = {
-          "ctrl-alt-shift-x" = [
-            "agent::NewExternalAgentThread"
-            {
-              agent = {
-                custom = {
-                  name = "codex-acp";
-                };
-              };
-            }
-          ];
-        };
-      }
-    ];
-    userSettings = {
-      agent_servers = {
-        codex-acp = {
-          type = "custom";
-          command = "codex-acp";
-          args = [ ];
-          env = { };
-        };
-      };
-    };
-  };
 }
