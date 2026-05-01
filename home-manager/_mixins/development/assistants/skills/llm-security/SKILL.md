@@ -16,7 +16,7 @@ Security rules for building secure LLM applications, based on the OWASP Top 10 f
 ### Workflow
 1. Identify what the user is building (see "What Are You Building?" below)
 2. Check the priority rules for that pattern
-3. Read the specific rule files from `rules/` for code examples
+3. Read the specific rule files from `references/` for code examples
 4. Apply the secure patterns or flag vulnerable ones
 
 ## What Are You Building?
@@ -35,20 +35,20 @@ Use this to quickly identify which rules matter most for the user's task:
 ## Categories
 
 ### Critical Impact
-- **LLM01: Prompt Injection** (`rules/prompt-injection.md`) - Prevent direct and indirect prompt manipulation
-- **LLM02: Sensitive Information Disclosure** (`rules/sensitive-disclosure.md`) - Protect PII, credentials, and proprietary data
-- **LLM03: Supply Chain** (`rules/supply-chain.md`) - Secure model sources, training data, and dependencies
-- **LLM04: Data and Model Poisoning** (`rules/data-poisoning.md`) - Prevent training data manipulation and backdoors
-- **LLM05: Improper Output Handling** (`rules/output-handling.md`) - Sanitise LLM outputs before downstream use
+- **LLM01: Prompt Injection** (`references/prompt-injection.md`) - Prevent direct and indirect prompt manipulation
+- **LLM02: Sensitive Information Disclosure** (`references/sensitive-disclosure.md`) - Protect PII, credentials, and proprietary data
+- **LLM03: Supply Chain** (`references/supply-chain.md`) - Secure model sources, training data, and dependencies
+- **LLM04: Data and Model Poisoning** (`references/data-poisoning.md`) - Prevent training data manipulation and backdoors
+- **LLM05: Improper Output Handling** (`references/output-handling.md`) - Sanitise LLM outputs before downstream use
 
 ### High Impact
-- **LLM06: Excessive Agency** (`rules/excessive-agency.md`) - Limit LLM permissions, functionality, and autonomy
-- **LLM07: System Prompt Leakage** (`rules/system-prompt-leakage.md`) - Protect system prompts from disclosure
-- **LLM08: Vector and Embedding Weaknesses** (`rules/vector-embedding.md`) - Secure RAG systems and embeddings
-- **LLM09: Misinformation** (`rules/misinformation.md`) - Mitigate hallucinations and false outputs
-- **LLM10: Unbounded Consumption** (`rules/unbounded-consumption.md`) - Prevent DoS, cost attacks, and model theft
+- **LLM06: Excessive Agency** (`references/excessive-agency.md`) - Limit LLM permissions, functionality, and autonomy
+- **LLM07: System Prompt Leakage** (`references/system-prompt-leakage.md`) - Protect system prompts from disclosure
+- **LLM08: Vector and Embedding Weaknesses** (`references/vector-embedding.md`) - Secure RAG systems and embeddings
+- **LLM09: Misinformation** (`references/misinformation.md`) - Mitigate hallucinations and false outputs
+- **LLM10: Unbounded Consumption** (`references/unbounded-consumption.md`) - Prevent DoS, cost attacks, and model theft
 
-See `rules/_sections.md` for the full index with OWASP/MITRE references.
+See `references/_sections.md` for the full index with OWASP/MITRE references.
 
 ## Quick Reference
 

@@ -152,20 +152,31 @@ let
 
   # ============ SKILLS ============
 
+  # composeSkills returns { name = { content; path; extras; }; ... }
+  # where `extras` enumerates sibling files and subdirectories alongside
+  # SKILL.md (e.g. references/, rules/, metadata.json) that must be deployed
+  # for the skill to function.
   skills = compose.composeSkills;
 
-  # Generate home.file entries for Claude Code skills
-  # Each skill goes in ~/.claude/skills/<name>/SKILL.md
-  mkClaudeSkillFiles = lib.mapAttrs' (name: content: {
-    name = "${config.home.homeDirectory}/.claude/skills/${name}/SKILL.md";
-    value.text = content;
+  # Codex's activation script expects { name = "SKILL.md content"; ... } so
+  # it can merge in command-derived skill texts. Project skills only.
+  skillContents = lib.mapAttrs (_: skill: skill.content) skills;
+
+  # Generate home.file entries for Claude Code skills.
+  # Symlink the entire skill directory so SKILL.md plus all supporting files
+  # and subdirectories (references/, rules/, metadata.json, ...) deploy as
+  # a single tree under ~/.claude/skills/<name>/.
+  mkClaudeSkillFiles = lib.mapAttrs' (name: skill: {
+    name = "${config.home.homeDirectory}/.claude/skills/${name}";
+    value.source = skill.path;
   }) skills;
 
-  # Generate home.file entries for OpenCode skills
-  # Each skill goes in ~/.config/opencode/skills/<name>/SKILL.md
-  mkOpencodeSkillFiles = lib.mapAttrs' (name: content: {
-    name = "${config.xdg.configHome}/opencode/skills/${name}/SKILL.md";
-    value.text = content;
+  # Generate home.file entries for OpenCode skills.
+  # Same approach: symlink the whole skill directory under
+  # ${XDG_CONFIG_HOME}/opencode/skills/<name>/.
+  mkOpencodeSkillFiles = lib.mapAttrs' (name: skill: {
+    name = "${config.xdg.configHome}/opencode/skills/${name}";
+    value.source = skill.path;
   }) skills;
 
   # Collect all Codex agent name -> TOML content pairs.
@@ -271,7 +282,7 @@ let
   # Collect all Codex skill name -> content pairs: shared skills + standalone
   # command skills + agent-scoped command skills.
   codexSkills =
-    skills
+    skillContents
     // lib.mapAttrs' (
       cmdName: _:
       let
@@ -308,6 +319,11 @@ let
   # SKILL.md files entirely. home.file creates symlinks, so skills written via
   # home.file are invisible to codex. Writing real files via activation avoids
   # this limitation.
+  #
+  # Supporting entries beside SKILL.md (e.g. references/, rules/, metadata.json)
+  # are symlinked into place. The scanner only inspects SKILL.md itself for the
+  # is_file() check, and it does follow symlinked directories, so symlinks for
+  # extras are safe and avoid copying large reference trees.
   codexSkillsActivationScript =
     let
       skillCmds = lib.concatStringsSep "\n" (
@@ -315,16 +331,32 @@ let
           name: content:
           let
             escaped = lib.escapeShellArg content;
+            # Project skills carry `extras`; command-derived skills do not
+            # appear in `skills` and so contribute nothing here.
+            extras = (skills.${name} or { extras = { }; }).extras;
+            extrasCmds = lib.concatStringsSep "\n" (
+              lib.mapAttrsToList (
+                entryName: _:
+                let
+                  src = "${skills.${name}.path}/${entryName}";
+                  dst = "${codexDir}/skills/${name}/${entryName}";
+                in
+                "ln -sfn ${lib.escapeShellArg src} ${lib.escapeShellArg dst}"
+              ) extras
+            );
           in
           ''
             mkdir -p "${codexDir}/skills/${name}"
-            printf '%s' ${escaped} > "${codexDir}/skills/${name}/SKILL.md"''
+            printf '%s' ${escaped} > "${codexDir}/skills/${name}/SKILL.md"
+            ${extrasCmds}''
         ) codexSkills
       );
     in
     ''
       # Write Codex skill files as real files (not symlinks).
-      # codex-rs skips symlinked SKILL.md files during discovery.
+      # codex-rs skips symlinked SKILL.md files during discovery; supporting
+      # entries (subdirectories and sibling files) are symlinked into the
+      # skill directory beside the real SKILL.md.
       rm -rf "${codexDir}/skills"
       ${skillCmds}
     '';
