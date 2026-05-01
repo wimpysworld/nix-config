@@ -1303,6 +1303,19 @@ in
             "sudo" = "deny";
             "sudo *" = "deny";
 
+            # Wrapper-leading bypasses. The glob matcher anchors the first
+            # token, so `sudo *` does not cover `xargs sudo rm` or similar
+            # wrapper-disguised invocations. Each common wrapper-plus-target
+            # combination needs its own deny rule.
+            "xargs sudo*" = "deny";
+            "xargs rm*" = "deny";
+            "xargs dd*" = "deny";
+            "xargs shred*" = "deny";
+            "nohup sudo*" = "deny";
+            "nohup rm*" = "deny";
+            "env sudo*" = "deny";
+            "setsid sudo*" = "deny";
+
             # Subshell execution bypasses (arbitrary code execution).
             # Both -c and -lc variants are forbidden because login shells
             # bypass per-command approval just as plainly as -c.
