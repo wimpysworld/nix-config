@@ -10,6 +10,8 @@ let
   aiSopsFile = ../../../../secrets + "/ai.yaml";
   bondSopsFile = ../../../../secrets + "/hermes-bond.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
+  cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
+  hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
   trayaSopsFile = ../../../../secrets + "/traya.yaml";
   claudePackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code;
@@ -328,6 +330,21 @@ in
         mode = "0400";
       };
 
+      WEBHOOK_SECRET = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      CLOUDFLARE_TUNNEL_TOKEN_HERMES = lib.mkIf hasCloudflareSopsFile {
+        sopsFile = cloudflareSopsFile;
+        path = "/run/secrets/CLOUDFLARE_TUNNEL_TOKEN_HERMES";
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
       BOND_MD = {
         sopsFile = bondSopsFile;
         owner = "root";
@@ -417,6 +434,9 @@ in
       content = ''
         TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
         TELEGRAM_ALLOWED_USERS=${config.sops.placeholder.TELEGRAM_ALLOWED_USERS}
+        WEBHOOK_ENABLED=true
+        WEBHOOK_PORT=8644
+        WEBHOOK_SECRET=${config.sops.placeholder.WEBHOOK_SECRET}
         ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
@@ -538,6 +558,17 @@ in
       environmentFiles = [ config.sops.templates."hermes-env".path ];
 
       settings = {
+        platforms = {
+          webhook = {
+            enabled = true;
+            extra = {
+              host = "127.0.0.1";
+              port = 8644;
+              secret = "\${WEBHOOK_SECRET}";
+            };
+          };
+        };
+
         model = {
           default = "gpt-5.5";
           provider = "openai-codex";
@@ -721,6 +752,48 @@ in
       "/run/current-system"
       "/run/booted-system"
     ];
+
+    systemd.services.cloudflared-hermes = lib.mkIf hasCloudflareSopsFile {
+      description = "Cloudflare Tunnel connector for Hermes webhooks";
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = lib.concatStringsSep " " [
+          (lib.getExe pkgs.cloudflared)
+          "tunnel"
+          "--no-autoupdate"
+          "run"
+          "--token-file"
+          config.sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_HERMES.path
+        ];
+        Restart = lib.mkDefault "always";
+        RestartSec = lib.mkDefault 5;
+        User = lib.mkDefault "root";
+        Group = lib.mkDefault "root";
+
+        # Restrict the connector to outbound access and secret reads.
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ProtectControlGroups = true;
+        ProtectKernelLogs = true;
+        ProtectKernelModules = true;
+        ProtectKernelTunables = true;
+        RestrictAddressFamilies = [
+          "AF_INET"
+          "AF_INET6"
+          "AF_UNIX"
+        ];
+      };
+    };
+
+    # Create a dedicated remotely-managed Hermes tunnel in Cloudflare, then
+    # encrypt its connector token into secrets/cloudflare.yaml as
+    # CLOUDFLARE_TUNNEL_TOKEN_HERMES. Configure the published application in
+    # Cloudflare to route the chosen webhook hostname to http://127.0.0.1:8644.
 
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"

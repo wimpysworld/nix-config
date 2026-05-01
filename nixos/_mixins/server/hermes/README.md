@@ -145,6 +145,7 @@ Hermes currently draws from several secret sources:
 
 - `secrets/ai.yaml`
 - `secrets/hermes.yaml`
+- `secrets/cloudflare.yaml`
 - `secrets/hermes-auth.json`
 - `secrets/mcp.yaml`
 - `secrets/traya.yaml`
@@ -154,6 +155,9 @@ currently exports:
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_ALLOWED_USERS`
+- `WEBHOOK_ENABLED`
+- `WEBHOOK_PORT`
+- `WEBHOOK_SECRET`
 - `ANTHROPIC_API_KEY`
 - `CONTEXT7_API_KEY`
 - `JINA_API_KEY`
@@ -180,6 +184,9 @@ Operationally:
   `secrets/traya.yaml`
 - `EMAIL_PASSWORD` must be a Fastmail app password, not the regular web login
   password
+- `WEBHOOK_SECRET` must be a dedicated HMAC secret in `secrets/hermes.yaml`
+- `CLOUDFLARE_TUNNEL_TOKEN_HERMES` must be a dedicated Cloudflare Tunnel
+  connector token in `secrets/cloudflare.yaml`
 - live token refresh remains in Hermes state after startup
 
 ## Telegram
@@ -199,6 +206,42 @@ That means the current service expects:
 - a configured Telegram home channel ID
 
 Discord is no longer part of this design.
+
+## Webhooks
+
+The Hermes webhook platform is enabled on localhost:
+
+```nix
+services.hermes-agent.settings.platforms.webhook = {
+  enabled = true;
+  extra = {
+    host = "127.0.0.1";
+    port = 8644;
+    secret = "\${WEBHOOK_SECRET}";
+  };
+};
+```
+
+The public endpoint is exposed through a dedicated remotely-managed Cloudflare
+Tunnel connector, not by opening port `8644` directly. The connector service is
+`cloudflared-hermes` and uses `CLOUDFLARE_TUNNEL_TOKEN_HERMES` from
+`secrets/cloudflare.yaml`.
+
+The LibreChat tunnel configuration is the reusable pattern, but the LibreChat
+tunnel token is not reused. Keep a separate Hermes tunnel token so webhook
+routing and token rotation stay isolated from LibreChat.
+
+In Cloudflare, publish the chosen webhook hostname to:
+
+```text
+http://127.0.0.1:8644
+```
+
+After deployment, the local health check should return OK:
+
+```bash
+curl http://127.0.0.1:8644/health
+```
 
 ## Sanctuary
 
