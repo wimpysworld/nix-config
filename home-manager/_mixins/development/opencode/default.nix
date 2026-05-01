@@ -1255,41 +1255,6 @@ in
         };
       };
     };
-    zed-editor = lib.mkIf config.programs.zed-editor.enable {
-      extensions = [
-        "opencode"
-      ];
-      userKeymaps = [
-        {
-          bindings = {
-            "ctrl-alt-shift-p" = [
-              "agent::NewExternalAgentThread"
-              {
-                agent = {
-                  custom = {
-                    name = "OpenCode";
-                    command = {
-                      command = "opencode";
-                      args = [ "acp" ];
-                    };
-                  };
-                };
-              }
-            ];
-          };
-        }
-      ];
-      userSettings = {
-        agent_servers = {
-          OpenCode = {
-            type = "custom";
-            command = "opencode";
-            args = [ "acp" ];
-            env = { };
-          };
-        };
-      };
-    };
   };
 
   xdg.configFile."opencode/tui.json".text = builtins.toJSON {

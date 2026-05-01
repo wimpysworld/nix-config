@@ -908,37 +908,6 @@ in
       ];
     };
     programs = {
-      # Register Claude Agent ACP as an external agent in Zed when Zed is
-      # enabled on this host. Each agent mixin owns its own Zed wiring;
-      # Home Manager merges these contributions into a single settings file.
-      zed-editor = lib.mkIf config.programs.zed-editor.enable {
-        userKeymaps = [
-          {
-            bindings = {
-              "ctrl-alt-shift-c" = [
-                "agent::NewExternalAgentThread"
-                {
-                  agent = {
-                    custom = {
-                      name = "claude-acp";
-                    };
-                  };
-                }
-              ];
-            };
-          }
-        ];
-        userSettings = {
-          agent_servers = {
-            claude-acp = {
-              type = "custom";
-              command = "claude-agent-acp";
-              args = [ ];
-              env = { };
-            };
-          };
-        };
-      };
       claude-code = {
         enable = true;
         package = claudePackageWithLsp;
