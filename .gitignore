@@ -1,3 +1,10 @@
 .direnv/*
 !home-manager/_mixins/development/direnv/
 result/
+
+# Codex sandbox deny-read stubs (created at config load, must stay empty)
+.codex
+.env
+.env.local
+.env.*
+.env.*.local
