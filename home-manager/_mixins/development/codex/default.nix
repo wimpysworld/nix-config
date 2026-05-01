@@ -797,6 +797,70 @@ let
       justification = "Privilege escalation is never permitted.";
     }
 
+    # Wrapper-leading bypasses. prefix_rule matches positional tokens, so a
+    # bare `[ "sudo" ]` forbidden does not cover invocations such as
+    # `xargs sudo rm` where the first token is the wrapper. Each common
+    # wrapper-plus-target combination needs its own explicit entry.
+    # `timeout` is omitted intentionally: it takes a duration as its first
+    # positional argument (e.g. `timeout 5s sudo rm`), which positional
+    # token matching cannot capture cleanly.
+    {
+      pattern = [
+        "xargs"
+        "sudo"
+      ];
+      justification = "Wrapper-disguised privilege escalation is forbidden.";
+    }
+    {
+      pattern = [
+        "xargs"
+        "rm"
+      ];
+      justification = "Wrapper-disguised destructive deletion is forbidden.";
+    }
+    {
+      pattern = [
+        "xargs"
+        "dd"
+      ];
+      justification = "Wrapper-disguised disk write is forbidden.";
+    }
+    {
+      pattern = [
+        "xargs"
+        "shred"
+      ];
+      justification = "Wrapper-disguised secure deletion is forbidden.";
+    }
+    {
+      pattern = [
+        "nohup"
+        "sudo"
+      ];
+      justification = "Wrapper-disguised privilege escalation is forbidden.";
+    }
+    {
+      pattern = [
+        "nohup"
+        "rm"
+      ];
+      justification = "Wrapper-disguised destructive deletion is forbidden.";
+    }
+    {
+      pattern = [
+        "env"
+        "sudo"
+      ];
+      justification = "Wrapper-disguised privilege escalation is forbidden.";
+    }
+    {
+      pattern = [
+        "setsid"
+        "sudo"
+      ];
+      justification = "Wrapper-disguised privilege escalation is forbidden.";
+    }
+
     # Secure deletion / truncation
     {
       pattern = [ "shred" ];
@@ -1143,6 +1207,14 @@ let
     {
       pattern = [
         "git"
+        "push"
+        "--force-with-lease"
+      ];
+      justification = "Force push with lease still rewrites history; it is not permitted.";
+    }
+    {
+      pattern = [
+        "git"
         "reset"
         "--hard"
       ];
@@ -1315,6 +1387,79 @@ let
       # Allow outbound network from within the sandbox so CLI tools such as
       # gh can reach their upstream services directly.
       network_access = true;
+    };
+
+    # Filesystem read denials. These are appended to the effective
+    # FileSystemSandboxPolicy after sandbox_mode resolves, so reads of the
+    # listed paths and globs are blocked even though sandbox_mode =
+    # "workspace-write" otherwise permits reads anywhere. This complements
+    # OpenCode's read.{path} = "deny" rules and Claude Code's Read(...) hook
+    # gating, keeping the credential read-tier consistent across the three
+    # agents without switching to default_permissions (which would break Nix
+    # daemon socket access on Linux).
+    #
+    # Glob support in deny_read is limited to `*` and `**`. Patterns are
+    # expanded against the live filesystem at config load, so brand new
+    # secret files created mid-session are not retroactively covered until
+    # Codex reloads its config.
+    permissions = {
+      filesystem = {
+        deny_read = [
+          # Environment files
+          ".env"
+          ".env.local"
+          # Bare-glob match: Codex limits globs to * and **, so we cover
+          # arbitrary suffixes with a single trailing wildcard.
+          ".env.*"
+          ".env.*.local"
+
+          # Secrets directories (workspace-relative and absolute mirrors)
+          "**/secrets/**"
+          "**/.secrets/**"
+          "secrets/**"
+          ".secrets/**"
+
+          # SSH keys and key-shaped filenames
+          "${config.home.homeDirectory}/.ssh/**"
+          "**/id_rsa"
+          "**/id_rsa.*"
+          "**/id_ed25519"
+          "**/id_ed25519.*"
+          "**/id_ecdsa"
+          "**/id_ecdsa.*"
+          "**/*_rsa"
+          "**/*_rsa.*"
+          "**/*_ed25519"
+          "**/*_ed25519.*"
+          "**/*_ecdsa"
+          "**/*_ecdsa.*"
+          "*.pem"
+          "*.key"
+
+          # GPG keys
+          "${config.home.homeDirectory}/.gnupg/**"
+
+          # Cloud credentials
+          "${config.home.homeDirectory}/.aws/**"
+          "${config.home.homeDirectory}/.azure/**"
+          "${config.xdg.configHome}/gcloud/**"
+
+          # VCS credentials
+          "${config.xdg.configHome}/gh/hosts.yml"
+          "${config.home.homeDirectory}/.git-credentials"
+          "${config.home.homeDirectory}/.netrc"
+
+          # Container and Kubernetes secrets
+          "${config.home.homeDirectory}/.docker/config.json"
+          "${config.home.homeDirectory}/.kube/**"
+
+          # Shell history (often contains credentials pasted on the CLI)
+          "${config.home.homeDirectory}/.bash_history"
+          "${config.home.homeDirectory}/.zsh_history"
+          "${config.home.homeDirectory}/.fish_history"
+          "${config.xdg.dataHome}/fish/fish_history"
+        ];
+      };
     };
 
     # Shell environment policy: strip secrets from every subprocess
