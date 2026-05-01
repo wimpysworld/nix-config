@@ -113,14 +113,35 @@ let
 
   # ============ SKILLS ============
 
-  # Discover all skill directories
-  skillDirs = discoverDirs (basePath + "/skills");
+  # Discover all candidate skill directories, then keep only those containing
+  # a SKILL.md. Stray empty directories under skills/ are ignored so they do
+  # not break evaluation.
+  skillDirs = lib.filterAttrs (name: _: builtins.pathExists (basePath + "/skills/${name}/SKILL.md")) (
+    discoverDirs (basePath + "/skills")
+  );
 
-  # Compose a single skill: read SKILL.md verbatim (no transformation needed)
-  composeSkill = skillName: readFile (basePath + "/skills/${skillName}/SKILL.md");
+  # Compose a single skill into a structured value:
+  #   - content: the SKILL.md body (verbatim, trimmed)
+  #   - path:    the source skill directory in the Nix store (used to copy
+  #              the entire tree wholesale for Claude Code and OpenCode)
+  #   - extras:  attrset of sibling entries beside SKILL.md ({ name = type; ... })
+  #              so callers (e.g. the Codex activation script) can deploy
+  #              supporting files and subdirectories generically
+  composeSkill =
+    skillName:
+    let
+      skillPath = basePath + "/skills/${skillName}";
+      entries = builtins.readDir skillPath;
+      extras = lib.filterAttrs (name: _: name != "SKILL.md") entries;
+    in
+    {
+      content = readFile (skillPath + "/SKILL.md");
+      path = skillPath;
+      inherit extras;
+    };
 
   # Generate all skills
-  # Returns attrset: { skillName = "SKILL.md content"; ... }
+  # Returns attrset: { skillName = { content; path; extras; }; ... }
   composeSkills = lib.mapAttrs (name: _: composeSkill name) skillDirs;
 
   # ============ GLOBAL INSTRUCTIONS ============
