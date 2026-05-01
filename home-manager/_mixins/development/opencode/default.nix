@@ -183,7 +183,9 @@ in
             "rg *" = "allow";
             "grep" = "allow";
             "grep *" = "allow";
+            "egrep" = "allow";
             "egrep *" = "allow";
+            "fgrep" = "allow";
             "fgrep *" = "allow";
             "mkdir" = "ask";
             "mkdir *" = "ask";
@@ -218,8 +220,11 @@ in
             "groups *" = "allow";
             "printenv" = "allow";
             "printenv *" = "allow";
+            "basename" = "allow";
             "basename *" = "allow";
+            "dirname" = "allow";
             "dirname *" = "allow";
+            "realpath" = "allow";
             "realpath *" = "allow";
             "stat" = "allow";
             "stat *" = "allow";
@@ -237,16 +242,23 @@ in
             "diff *" = "allow";
             "cmp" = "allow";
             "cmp *" = "allow";
+            "less" = "allow";
             "less *" = "allow";
+            "more" = "allow";
             "more *" = "allow";
+            "tr" = "allow";
             "tr *" = "allow";
             "tac" = "allow";
             "tac *" = "allow";
             "rev" = "allow";
             "rev *" = "allow";
+            "seq" = "allow";
             "seq *" = "allow";
+            "md5sum" = "allow";
             "md5sum *" = "allow";
+            "sha256sum" = "allow";
             "sha256sum *" = "allow";
+            "shasum" = "allow";
             "shasum *" = "allow";
             "jq" = "allow";
             "jq *" = "allow";
@@ -254,23 +266,36 @@ in
             "yq *" = "allow";
             "bc" = "allow";
             "bc *" = "allow";
+            "man" = "allow";
             "man *" = "allow";
+            "tldr" = "allow";
             "tldr *" = "allow";
+            "strings" = "allow";
             "strings *" = "allow";
             "test *" = "allow";
             "true" = "allow";
             "false" = "allow";
             "sleep *" = "allow";
 
-            # Text processing - additional
+            # Text processing - additional. Both bare and space forms are
+            # listed so each leaf of a pipeline auto-resolves without prompts.
+            "column" = "allow";
             "column *" = "allow";
+            "fold" = "allow";
             "fold *" = "allow";
+            "nl" = "allow";
             "nl *" = "allow";
+            "pr" = "allow";
             "pr *" = "allow";
+            "expand" = "allow";
             "expand *" = "allow";
+            "unexpand" = "allow";
             "unexpand *" = "allow";
+            "paste" = "allow";
             "paste *" = "allow";
+            "join" = "allow";
             "join *" = "allow";
+            "comm" = "allow";
             "comm *" = "allow";
 
             # Archive inspection (read-only)
@@ -288,9 +313,12 @@ in
 
             # Network inspection (read-only)
             "ip addr" = "allow";
-            "ip addr show*" = "allow";
-            "ip link show*" = "allow";
-            "ip route show*" = "allow";
+            "ip addr show" = "allow";
+            "ip addr show *" = "allow";
+            "ip link show" = "allow";
+            "ip link show *" = "allow";
+            "ip route show" = "allow";
+            "ip route show *" = "allow";
             "ss -t*" = "allow";
             "ss -u*" = "allow";
             "ss -l*" = "allow";
@@ -312,13 +340,19 @@ in
             # Alternative file viewers
             "bat" = "allow";
             "bat *" = "allow";
+            "most" = "allow";
             "most *" = "allow";
 
             # Development helpers
+            "xxd" = "allow";
             "xxd *" = "allow";
+            "hexdump" = "allow";
             "hexdump *" = "allow";
+            "od" = "allow";
             "od *" = "allow";
+            "base64" = "allow";
             "base64 *" = "allow";
+            "base32" = "allow";
             "base32 *" = "allow";
             "shellcheck *" = "allow";
             "shfmt --diff *" = "allow";
@@ -383,8 +417,10 @@ in
             "systemctl list-dependencies *" = "allow";
             "systemctl list-jobs" = "allow";
             "systemctl list-jobs *" = "allow";
-            "systemctl list-sockets*" = "allow";
-            "systemctl list-timers*" = "allow";
+            "systemctl list-sockets" = "allow";
+            "systemctl list-sockets *" = "allow";
+            "systemctl list-timers" = "allow";
+            "systemctl list-timers *" = "allow";
             "systemctl show *" = "allow";
             "systemctl cat *" = "allow";
             "systemctl help *" = "allow";
@@ -460,9 +496,11 @@ in
             "docker history *" = "allow";
             "docker search *" = "allow";
             "docker-compose --version" = "allow";
-            "docker-compose config*" = "allow";
+            "docker-compose config" = "allow";
+            "docker-compose config *" = "allow";
             "docker compose --version" = "allow";
-            "docker compose config*" = "allow";
+            "docker compose config" = "allow";
+            "docker compose config *" = "allow";
 
             # Docker - ask: container operations
             "docker build *" = "ask";
@@ -568,27 +606,49 @@ in
             "gh --version" = "allow";
             "gh help" = "allow";
             "gh help *" = "allow";
-            "gh auth status*" = "allow";
+            # Normalise to bare + space-form so that pipelines and redirected
+            # invocations like `gh pr view 123 | head` and `gh pr view > out`
+            # are matched by the rewritten "( .*)?" pattern.
+            "gh auth status" = "allow";
+            "gh auth status *" = "allow";
             "gh status" = "allow";
             "gh status *" = "allow";
-            "gh repo view*" = "allow";
-            "gh repo list*" = "allow";
-            "gh pr view*" = "allow";
-            "gh pr list*" = "allow";
-            "gh pr status*" = "allow";
-            "gh pr diff*" = "allow";
-            "gh pr checks*" = "allow";
-            "gh issue view*" = "allow";
-            "gh issue list*" = "allow";
-            "gh issue status*" = "allow";
-            "gh run view*" = "allow";
-            "gh run list*" = "allow";
-            "gh workflow view*" = "allow";
-            "gh workflow list*" = "allow";
-            "gh release view*" = "allow";
-            "gh release list*" = "allow";
-            "gh gist view*" = "allow";
-            "gh gist list*" = "allow";
+            "gh repo view" = "allow";
+            "gh repo view *" = "allow";
+            "gh repo list" = "allow";
+            "gh repo list *" = "allow";
+            "gh pr view" = "allow";
+            "gh pr view *" = "allow";
+            "gh pr list" = "allow";
+            "gh pr list *" = "allow";
+            "gh pr status" = "allow";
+            "gh pr status *" = "allow";
+            "gh pr diff" = "allow";
+            "gh pr diff *" = "allow";
+            "gh pr checks" = "allow";
+            "gh pr checks *" = "allow";
+            "gh issue view" = "allow";
+            "gh issue view *" = "allow";
+            "gh issue list" = "allow";
+            "gh issue list *" = "allow";
+            "gh issue status" = "allow";
+            "gh issue status *" = "allow";
+            "gh run view" = "allow";
+            "gh run view *" = "allow";
+            "gh run list" = "allow";
+            "gh run list *" = "allow";
+            "gh workflow view" = "allow";
+            "gh workflow view *" = "allow";
+            "gh workflow list" = "allow";
+            "gh workflow list *" = "allow";
+            "gh release view" = "allow";
+            "gh release view *" = "allow";
+            "gh release list" = "allow";
+            "gh release list *" = "allow";
+            "gh gist view" = "allow";
+            "gh gist view *" = "allow";
+            "gh gist list" = "allow";
+            "gh gist list *" = "allow";
             "gh api *" = "allow";
             "gh search *" = "allow";
 
@@ -649,8 +709,10 @@ in
             "git tag" = "allow";
             "git tag -l*" = "allow";
             "git tag --list*" = "allow";
-            "git stash list*" = "allow";
-            "git stash show*" = "allow";
+            "git stash list" = "allow";
+            "git stash list *" = "allow";
+            "git stash show" = "allow";
+            "git stash show *" = "allow";
             "git reflog" = "allow";
             "git reflog *" = "allow";
             "git rev-parse *" = "allow";
@@ -667,7 +729,8 @@ in
             "git worktree list" = "allow";
             "git name-rev *" = "allow";
             "git cat-file *" = "allow";
-            "git count-objects*" = "allow";
+            "git count-objects" = "allow";
+            "git count-objects *" = "allow";
             "git for-each-ref *" = "allow";
             "git symbolic-ref *" = "allow";
             "git verify-commit *" = "allow";
@@ -730,7 +793,8 @@ in
             "hugo env" = "allow";
             "hugo env *" = "allow";
             "hugo list *" = "allow";
-            "hugo config*" = "allow";
+            "hugo config" = "allow";
+            "hugo config *" = "allow";
 
             "hugo" = "ask";
             "hugo *" = "ask";
@@ -754,25 +818,61 @@ in
             "composite *" = "ask";
 
             # ══════════════════════════════════════════════════════════════
-            # Nix - deny garbage collection first
+            # Nix - deny garbage collection and destructive store ops first
             # ══════════════════════════════════════════════════════════════
             "nix-collect-garbage" = "deny";
             "nix-collect-garbage *" = "deny";
             "nix store gc*" = "deny";
             "nix store delete*" = "deny";
+            "nix upgrade-nix" = "deny";
+            "nix upgrade-nix *" = "deny";
+            "nix-store --gc" = "deny";
+            "nix-store --gc *" = "deny";
+            "nix-store --delete" = "deny";
+            "nix-store --delete *" = "deny";
 
             # Nix - read-only info and evaluation
             "nix --version" = "allow";
-            "nix flake show*" = "allow";
-            "nix flake check*" = "allow";
-            "nix flake metadata*" = "allow";
-            "nix flake info*" = "allow";
+            "nix --help" = "allow";
+            "nix help" = "allow";
+            "nix help *" = "allow";
+            "nix help-stores" = "allow";
+            "nix help-stores *" = "allow";
+            "nix config show" = "allow";
+            "nix config show *" = "allow";
+            "nix config check" = "allow";
+            # Bare + space-form pairs cover both `nix flake show` alone and
+            # pipelines/redirects such as `nix flake show | jq` or
+            # `nix flake metadata > out`.
+            "nix flake show" = "allow";
+            "nix flake show *" = "allow";
+            "nix flake check" = "allow";
+            "nix flake check *" = "allow";
+            "nix flake metadata" = "allow";
+            "nix flake metadata *" = "allow";
+            "nix flake info" = "allow";
+            "nix flake info *" = "allow";
             "nix eval *" = "allow";
             "nix search *" = "allow";
             "nix path-info *" = "allow";
             "nix why-depends *" = "allow";
             "nix derivation show *" = "allow";
+            "nix store ping" = "allow";
+            "nix store info" = "allow";
             "nix store ls *" = "allow";
+            "nix store cat *" = "allow";
+            "nix store dump-path *" = "allow";
+            "nix store diff-closures *" = "allow";
+            "nix store path-from-hash-part *" = "allow";
+            "nix nar ls *" = "allow";
+            "nix nar cat *" = "allow";
+            "nix nar dump-path *" = "allow";
+            "nix registry list" = "allow";
+            "nix registry list *" = "allow";
+            "nix print-dev-env *" = "allow";
+            "nix realisation info *" = "allow";
+            "nix key convert-secret-to-public" = "allow";
+            "nix key convert-secret-to-public *" = "allow";
             "nix hash *" = "allow";
             "nix-instantiate" = "allow";
             "nix-instantiate *" = "allow";
@@ -785,8 +885,29 @@ in
             "nix store verify *" = "allow";
             "nix-store --query *" = "allow";
             "nix-store -q *" = "allow";
+            "nix-store --read-log *" = "allow";
+            "nix-store -l *" = "allow";
+            "nix-store --dump *" = "allow";
+            "nix-store --verify" = "allow";
+            "nix-hash" = "allow";
+            "nix-hash *" = "allow";
+            "nix-channel --list" = "allow";
+            "nix-info" = "allow";
+            "nix-info *" = "allow";
+            "nix-tree" = "allow";
+            "nix-tree *" = "allow";
+            "nix-diff" = "allow";
+            "nix-diff *" = "allow";
+            "nvd" = "allow";
+            "nvd *" = "allow";
             "nixfmt" = "allow";
             "nixfmt *" = "allow";
+            # The `nix fmt` dispatcher invokes the formatter declared by the
+            # flake. Both bare and space-form rules are needed because the
+            # latter rewrites to "( .*)?" and so also covers redirected
+            # invocations like `nix fmt > out`.
+            "nix fmt" = "allow";
+            "nix fmt *" = "allow";
             "statix *" = "allow";
             "deadnix *" = "allow";
             "alejandra *" = "allow";
@@ -806,6 +927,17 @@ in
             "home-manager *" = "ask";
             "nixos-rebuild *" = "ask";
             "darwin-rebuild *" = "ask";
+
+            # Read-only `nix profile` subcommands. These rules sit AFTER
+            # the broader `"nix profile *" = "ask"` above because OpenCode
+            # uses `.findLast()` to resolve precedence, so the most specific
+            # later-declared rule wins.
+            "nix profile list" = "allow";
+            "nix profile list *" = "allow";
+            "nix profile history" = "allow";
+            "nix profile history *" = "allow";
+            "nix profile diff-closures" = "allow";
+            "nix profile diff-closures *" = "allow";
 
             # ══════════════════════════════════════════════════════════════
             # Cloudflare Wrangler - deny deletion first
@@ -883,23 +1015,31 @@ in
             "npm audit" = "allow";
             "npm audit *" = "allow";
             "npm doctor" = "allow";
-            "npm config list*" = "allow";
-            "npm config get*" = "allow";
+            "npm config list" = "allow";
+            "npm config list *" = "allow";
+            "npm config get" = "allow";
+            "npm config get *" = "allow";
             "npm help *" = "allow";
-            "npm pack --dry-run*" = "allow";
+            "npm pack --dry-run" = "allow";
+            "npm pack --dry-run *" = "allow";
             "npx --version" = "allow";
 
             "pnpm --version" = "allow";
             "pnpm -v" = "allow";
-            "pnpm ls*" = "allow";
-            "pnpm list*" = "allow";
-            "pnpm outdated*" = "allow";
-            "pnpm audit*" = "allow";
+            "pnpm ls" = "allow";
+            "pnpm ls *" = "allow";
+            "pnpm list" = "allow";
+            "pnpm list *" = "allow";
+            "pnpm outdated" = "allow";
+            "pnpm outdated *" = "allow";
+            "pnpm audit" = "allow";
+            "pnpm audit *" = "allow";
             "pnpm why *" = "allow";
 
             "yarn --version" = "allow";
             "yarn -v" = "allow";
-            "yarn list*" = "allow";
+            "yarn list" = "allow";
+            "yarn list *" = "allow";
             "yarn info *" = "allow";
             "yarn why *" = "allow";
 
@@ -993,9 +1133,12 @@ in
             "rustc --version" = "allow";
             "rustc --print *" = "allow";
             "rustup --version" = "allow";
-            "rustup show*" = "allow";
-            "rustup target list*" = "allow";
-            "rustup component list*" = "allow";
+            "rustup show" = "allow";
+            "rustup show *" = "allow";
+            "rustup target list" = "allow";
+            "rustup target list *" = "allow";
+            "rustup component list" = "allow";
+            "rustup component list *" = "allow";
             "rustup which *" = "allow";
 
             "cargo build*" = "ask";
@@ -1042,8 +1185,10 @@ in
             "uv pip list" = "allow";
             "uv pip list *" = "allow";
             "uv pip show *" = "allow";
-            "uv pip freeze*" = "allow";
-            "uv pip check*" = "allow";
+            "uv pip freeze" = "allow";
+            "uv pip freeze *" = "allow";
+            "uv pip check" = "allow";
+            "uv pip check *" = "allow";
 
             "pytest --version" = "allow";
             "pytest --collect-only*" = "allow";
@@ -1120,6 +1265,24 @@ in
             "*" = "ask";
 
             # ══════════════════════════════════════════════════════════════
+            # Universal --help and --version
+            #
+            # By convention these flags are read-only across virtually every
+            # modern CLI tool. Allowing them universally avoids prompting on
+            # invocations like `make --help` or `cargo build --version` where
+            # the parent command is otherwise gated at "ask".
+            #
+            # Placement matters: these rules sit AFTER the catch-all and
+            # BEFORE the GLOBAL OVERRIDES so that .findLast() resolves
+            # `git add --help` to allow (matching both "git add *" ask and
+            # "* --help" allow, with the latter winning), while dangerous
+            # commands like `sudo --help` still resolve to deny because the
+            # GLOBAL OVERRIDES `sudo *` deny rule comes later.
+            # ══════════════════════════════════════════════════════════════
+            "* --help" = "allow";
+            "* --version" = "allow";
+
+            # ══════════════════════════════════════════════════════════════
             # GLOBAL OVERRIDES - MUST BE LAST (highest priority with .findLast())
             # These rules match last and override earlier patterns
             # ══════════════════════════════════════════════════════════════
@@ -1140,11 +1303,16 @@ in
             "sudo" = "deny";
             "sudo *" = "deny";
 
-            # Subshell execution bypasses (arbitrary code execution)
+            # Subshell execution bypasses (arbitrary code execution).
+            # Both -c and -lc variants are forbidden because login shells
+            # bypass per-command approval just as plainly as -c.
             "bash -c*" = "deny";
+            "bash -lc*" = "deny";
             "sh -c*" = "deny";
+            "sh -lc*" = "deny";
             "fish -c*" = "deny";
             "zsh -c*" = "deny";
+            "zsh -lc*" = "deny";
             "dash -c*" = "deny";
 
             # Direct code execution via interpreters

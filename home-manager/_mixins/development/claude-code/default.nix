@@ -25,6 +25,14 @@ let
   # Import shared MCP server definitions
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 
+  # PreToolUse auto-approve hook. Closes the gaps in Claude Code's static
+  # `Bash(cmd:*)` matcher around redirects, command substitution, heredocs,
+  # env-var prefixes, and wrapper-disguised invocations. Auto-approves only
+  # when every decomposed leaf is on a known-safe set or is a `--help` /
+  # `--version` invocation, and hard-denies dangerous shapes the static
+  # `bashDeny` rules cannot catch.
+  autoApproveHook = pkgs.callPackage ./hooks/auto-approve { };
+
   claudeAbsolutePattern = path: "//${lib.removePrefix "/" path}";
   claudeWorkspaceRoots = [
     "${config.home.homeDirectory}/Chainguard"
@@ -320,6 +328,14 @@ let
 
     # Nix - info and evaluation
     "Bash(nix --version)"
+    "Bash(nix --help)"
+    "Bash(nix help)"
+    "Bash(nix help:*)"
+    "Bash(nix help-stores)"
+    "Bash(nix help-stores:*)"
+    "Bash(nix config show)"
+    "Bash(nix config show:*)"
+    "Bash(nix config check)"
     "Bash(nix flake show:*)"
     "Bash(nix flake check:*)"
     "Bash(nix flake metadata:*)"
@@ -329,7 +345,28 @@ let
     "Bash(nix path-info:*)"
     "Bash(nix why-depends:*)"
     "Bash(nix derivation show:*)"
+    "Bash(nix store ping)"
+    "Bash(nix store info)"
     "Bash(nix store ls:*)"
+    "Bash(nix store cat:*)"
+    "Bash(nix store dump-path:*)"
+    "Bash(nix store diff-closures:*)"
+    "Bash(nix store path-from-hash-part:*)"
+    "Bash(nix nar ls:*)"
+    "Bash(nix nar cat:*)"
+    "Bash(nix nar dump-path:*)"
+    "Bash(nix profile list)"
+    "Bash(nix profile list:*)"
+    "Bash(nix profile history)"
+    "Bash(nix profile history:*)"
+    "Bash(nix profile diff-closures)"
+    "Bash(nix profile diff-closures:*)"
+    "Bash(nix registry list)"
+    "Bash(nix registry list:*)"
+    "Bash(nix print-dev-env:*)"
+    "Bash(nix realisation info:*)"
+    "Bash(nix key convert-secret-to-public)"
+    "Bash(nix key convert-secret-to-public:*)"
     "Bash(nix hash:*)"
     "Bash(nix repl:*)"
     "Bash(nix log:*)"
@@ -338,8 +375,23 @@ let
     "Bash(nix store verify:*)"
     "Bash(nix-store --query:*)"
     "Bash(nix-store -q:*)"
+    "Bash(nix-store --read-log:*)"
+    "Bash(nix-store -l:*)"
+    "Bash(nix-store --dump:*)"
+    "Bash(nix-store --verify)"
     "Bash(nix-instantiate)"
     "Bash(nix-instantiate:*)"
+    "Bash(nix-hash)"
+    "Bash(nix-hash:*)"
+    "Bash(nix-channel --list)"
+    "Bash(nix-info)"
+    "Bash(nix-info:*)"
+    "Bash(nix-tree)"
+    "Bash(nix-tree:*)"
+    "Bash(nix-diff)"
+    "Bash(nix-diff:*)"
+    "Bash(nvd)"
+    "Bash(nvd:*)"
     "Bash(nixfmt)"
     "Bash(nixfmt:*)"
     "Bash(statix:*)"
@@ -451,6 +503,13 @@ let
     "Bash(kill:*)"
     "Bash(pkill:*)"
     "Bash(ln:*)" # Symlink creation - can overwrite files
+
+    # Destructive file operations - supervised deletion. Inlined from the
+    # former `bashAskDestructive` list: Claude Code has no mode that treats
+    # these differently from the rest of the ask list, so the split was
+    # vestigial.
+    "Bash(rm:*)"
+    "Bash(rmdir:*)"
 
     # Systemd - service state modifications
     "Bash(systemctl start:*)"
@@ -614,12 +673,6 @@ let
     "Bash(wrangler d1:*)"
   ];
 
-  bashAskDestructive = [
-    # Shell - destructive file operations (supervised deletion)
-    "Bash(rm:*)"
-    "Bash(rmdir:*)"
-  ];
-
   bashDeny = [
     # Shell - privilege escalation and secure deletion
     "Bash(sudo:*)"
@@ -692,8 +745,11 @@ let
     "Bash(git clean:*)"
     "Bash(git filter-branch:*)"
 
-    # Nix - garbage collection
+    # Nix - garbage collection and destructive store ops
     "Bash(nix-collect-garbage:*)"
+    "Bash(nix upgrade-nix:*)"
+    "Bash(nix-store --gc:*)"
+    "Bash(nix-store --delete:*)"
 
     # JavaScript - cache corruption
     "Bash(npm cache clean --force:*)"
@@ -943,9 +999,30 @@ in
                 # Web fetching - allow without prompting
                 "WebFetch"
               ];
-            ask = bashAsk ++ bashAskDestructive;
+            ask = bashAsk;
             deny = bashDeny ++ readDeny;
             defaultMode = "acceptEdits";
+
+            # PreToolUse hook: auto-approves safe pipelines, --help / --version
+            # invocations, and command-substitution shapes the static rules
+            # can't express. Hard-denies wrapper-disguised dangerous patterns
+            # (e.g. `xargs sudo rm`, `bash -c '...'`). Defers to the static
+            # rules for everything uncertain, so `bashAsk` and `bashDeny`
+            # remain the source of truth for the security boundary.
+            hooks = {
+              PreToolUse = [
+                {
+                  matcher = "Bash";
+                  hooks = [
+                    {
+                      type = "command";
+                      command = lib.getExe autoApproveHook;
+                      timeout = 10;
+                    }
+                  ];
+                }
+              ];
+            };
           };
         };
       };

@@ -91,6 +91,145 @@ let
       pattern = [ "nixfmt" ];
       justification = "Nix formatting is an approved project maintenance command.";
     }
+    {
+      pattern = [
+        "nix"
+        "help"
+      ];
+      justification = "Nix help output is read-only.";
+    }
+    {
+      pattern = [
+        "nix"
+        "help-stores"
+      ];
+      justification = "Nix store help output is read-only.";
+    }
+    {
+      pattern = [
+        "nix"
+        "config"
+        "show"
+      ];
+      justification = "Showing the resolved Nix configuration is read-only.";
+    }
+    {
+      pattern = [
+        "nix"
+        "config"
+        "check"
+      ];
+      justification = "Validating the Nix configuration is read-only.";
+    }
+    {
+      pattern = [
+        "nix"
+        "store"
+        [
+          "ping"
+          "info"
+          "cat"
+          "dump-path"
+          "diff-closures"
+          "path-from-hash-part"
+        ]
+      ];
+      justification = "Read-only Nix store inspection commands.";
+    }
+    {
+      pattern = [
+        "nix"
+        "nar"
+        [
+          "ls"
+          "cat"
+          "dump-path"
+        ]
+      ];
+      justification = "Read-only NAR archive inspection commands.";
+    }
+    {
+      pattern = [
+        "nix"
+        "profile"
+        [
+          "list"
+          "history"
+          "diff-closures"
+        ]
+      ];
+      justification = "Read-only profile inspection commands.";
+    }
+    {
+      pattern = [
+        "nix"
+        "registry"
+        "list"
+      ];
+      justification = "Listing flake registry entries is read-only.";
+    }
+    {
+      pattern = [
+        "nix"
+        "print-dev-env"
+      ];
+      justification = "Printing the development environment is read-only.";
+    }
+    {
+      pattern = [
+        "nix"
+        "realisation"
+        "info"
+      ];
+      justification = "Realisation information is read-only.";
+    }
+    {
+      pattern = [
+        "nix"
+        "key"
+        "convert-secret-to-public"
+      ];
+      justification = "Deriving a public key from a secret key prints the public key only.";
+    }
+    {
+      pattern = [
+        "nix-store"
+        [
+          "--read-log"
+          "-l"
+          "--dump"
+          "--verify"
+        ]
+      ];
+      justification = "Read-only legacy nix-store inspection commands.";
+    }
+    {
+      pattern = [ "nix-hash" ];
+      justification = "Computing Nix hashes is read-only.";
+    }
+    {
+      pattern = [
+        "nix-channel"
+        "--list"
+      ];
+      justification = "Listing Nix channels is read-only.";
+    }
+    {
+      pattern = [ "nix-info" ];
+      justification = "Reporting the Nix installation summary is read-only.";
+    }
+    {
+      pattern = [ "nix-tree" ];
+      justification = "Browsing the Nix store dependency tree is read-only.";
+    }
+    {
+      pattern = [ "nix-diff" ];
+      justification = "Diffing two Nix derivations is read-only.";
+    }
+    {
+      pattern = [ "nvd" ];
+      justification = "Comparing Nix package versions is read-only.";
+    }
   ];
 
   promptRules = [
@@ -400,8 +539,15 @@ let
       pattern = [
         "nix"
         "profile"
+        [
+          "install"
+          "remove"
+          "upgrade"
+          "rollback"
+          "wipe-history"
+        ]
       ];
-      justification = "Profile changes require approval.";
+      justification = "Profile mutations require approval.";
     }
     {
       pattern = [ "nix-shell" ];
@@ -1037,6 +1183,27 @@ let
         "delete"
       ];
       justification = "Nix store deletion is not permitted.";
+    }
+    {
+      pattern = [
+        "nix"
+        "upgrade-nix"
+      ];
+      justification = "Upgrading Nix itself is not permitted.";
+    }
+    {
+      pattern = [
+        "nix-store"
+        "--gc"
+      ];
+      justification = "Legacy Nix garbage collection is not permitted.";
+    }
+    {
+      pattern = [
+        "nix-store"
+        "--delete"
+      ];
+      justification = "Legacy Nix store deletion is not permitted.";
     }
 
     # JavaScript cache corruption
