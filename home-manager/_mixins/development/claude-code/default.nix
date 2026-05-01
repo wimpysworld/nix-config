@@ -291,6 +291,7 @@ let
     "Bash(gh issue list:*)"
     "Bash(gh status)"
     "Bash(gh api:*)"
+    "Bash(gh search:*)"
 
     # Git - read-only queries
     "Bash(git status:*)"
@@ -995,6 +996,10 @@ in
               ++ [
                 # MCP tools - allow all unconditionally
                 "mcp__*"
+                # Nix store is immutable and world-readable; reading from it
+                # never needs a prompt. The `//` prefix anchors the pattern at
+                # the filesystem root rather than the project root.
+                "Read(//nix/store/**)"
 
                 # Web fetching - allow without prompting
                 "WebFetch"

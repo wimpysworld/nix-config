@@ -230,6 +230,15 @@ let
       pattern = [ "nvd" ];
       justification = "Comparing Nix package versions is read-only.";
     }
+
+    # GitHub - read-only queries
+    {
+      pattern = [
+        "gh"
+        "search"
+      ];
+      justification = "GitHub search queries are read-only.";
+    }
   ];
 
   promptRules = [
@@ -1397,6 +1406,12 @@ let
     # gating, keeping the credential read-tier consistent across the three
     # agents without switching to default_permissions (which would break Nix
     # daemon socket access on Linux).
+    #
+    # No allow_read counterpart is required: workspace-write defaults
+    # ReadOnlyAccess::FullAccess, so unlisted paths (including the immutable
+    # /nix/store and other system locations) are already readable. The other
+    # two assistants need explicit rules because their default policies
+    # restrict reads outside the workspace.
     #
     # Glob support in deny_read is limited to `*` and `**`. Patterns are
     # expanded against the live filesystem at config load, so brand new
