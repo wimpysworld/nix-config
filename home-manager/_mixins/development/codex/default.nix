@@ -1351,7 +1351,25 @@ let
   # state; a symlink into the read-only nix store silently swallows those
   # writes, which causes the trust prompt to appear on every launch.
   codexSettings = {
+    # codex_apps (a built-in ChatGPT-hosted connector) cannot be overridden
+    # from user config: any [mcp_servers.codex_apps] entry without command
+    # or url is rejected by Codex's config parser with "invalid transport",
+    # and runtime code unconditionally rebuilds the built-in entry on top of
+    # any user-supplied stub. Its 30s startup timeout is hard-coded in
+    # codex-rs/codex-mcp/src/mcp/mod.rs and there is no user-facing knob.
+    # See openai/codex#18068 for the underlying TUI routing bug; max_threads
+    # below caps sub-agent concurrency so the codex_apps ceiling applies
+    # once per sub-agent rather than overlapping in the leader's status header.
     mcp_servers = mcpServerDefs.codexServers;
+
+    # Serialise sub-agents so their MCP startup events do not pile up on the
+    # leader's status header while the upstream TUI routing bug is unfixed
+    # (openai/codex #18068, #16821, #19542). Capping max_threads at 1 means
+    # only one sub-agent runs at a time, trading sub-agent throughput for a
+    # readable leader status. Raise this once the upstream fix lands.
+    agents = {
+      max_threads = 1;
+    };
 
     # Approval policy: never lets trusted workspace sessions run without
     # interactive approval prompts. Dangerous command prefixes remain blocked

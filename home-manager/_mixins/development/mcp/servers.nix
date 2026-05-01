@@ -28,6 +28,13 @@ rec {
   #   args       - optional, stdio only, defaults to []
   #   auth       - optional, currently only { kind = "bearer"; envVar = "..."; }
   #   env        - optional, stdio env passthrough; values are env var names
+  #   startupTimeoutSec
+  #              - optional, integer seconds; rendered into Codex's
+  #                `startup_timeout_sec` to bound how long the leader waits for
+  #                the server to come up. Used to bound the visible window of
+  #                the upstream sub-agent MCP startup leak (openai/codex
+  #                #18068, #16821, #19542) where sub-agent startup events
+  #                surface in the leader TUI's status header.
   #   consumers  - optional per-consumer overrides:
   #                  claudeCode.enabled (default true)
   #                  codex.enabled      (default true) - mirrors OpenCode:
@@ -71,6 +78,10 @@ rec {
         kind = "bearer";
         envVar = "CONTEXT7_API_KEY";
       };
+      # Cap startup wait so a slow context7 handshake does not leave the
+      # leader's "Starting MCP servers" indicator stuck when sub-agents
+      # spawn. See the schema note above and openai/codex #18068.
+      startupTimeoutSec = 10;
       consumers = {
         # Zed installs context7 via its extension marketplace rather than as a
         # context server; the extension id is the Zed registry slug.
@@ -249,6 +260,9 @@ rec {
           // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
             bearer_token_env_var = s.auth.envVar;
           }
+          // lib.optionalAttrs (s ? startupTimeoutSec) {
+            startup_timeout_sec = s.startupTimeoutSec;
+          }
         else
           {
             inherit enabled;
@@ -261,6 +275,9 @@ rec {
             # process-launch time via `bearer_token_env_var`-style hooks.
             # No active server uses this today; shape preserved for parity.
             env = s.env;
+          }
+          // lib.optionalAttrs (s ? startupTimeoutSec) {
+            startup_timeout_sec = s.startupTimeoutSec;
           };
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
