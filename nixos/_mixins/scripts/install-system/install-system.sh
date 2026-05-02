@@ -18,6 +18,18 @@ TARGET_HOST="${1:-}"
 TARGET_USER="${2:-martin}"
 TARGET_BRANCH="${3:-main}"
 
+function validate_target_identifiers() {
+	if [[ ! "$TARGET_HOST" =~ ^[A-Za-z0-9._-]+$ ]]; then
+		echo "ERROR! Hostname contains unsupported characters: $TARGET_HOST"
+		exit 1
+	fi
+
+	if [[ ! "$TARGET_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+		echo "ERROR! Username contains unsupported characters: $TARGET_USER"
+		exit 1
+	fi
+}
+
 function run_disko() {
 	local DISKO_CONFIG="$1"
 	local REPLY="n"
@@ -102,6 +114,30 @@ function run_with_retry() {
 	exit 1
 }
 
+function prepare_home_manager_activation() {
+	sudo nixos-enter --root /mnt --command "install -d -o $TARGET_USER -g users /nix/var/nix/profiles/per-user/$TARGET_USER"
+	sudo nixos-enter --root /mnt --command "install -d -o $TARGET_USER -g users /home/$TARGET_USER/.local/state/nix/profiles"
+	sudo nixos-enter --root /mnt --command "install -d -o $TARGET_USER -g users /home/$TARGET_USER/.local/share/home-manager"
+}
+
+function activate_home_manager_as_user() {
+	local HM_ACTIVATION_PATH="$1"
+	local ACTIVATE_COMMAND
+
+	ACTIVATE_COMMAND="cd /home/$TARGET_USER && env USER=$TARGET_USER LOGNAME=$TARGET_USER HOME=/home/$TARGET_USER XDG_STATE_HOME=/home/$TARGET_USER/.local/state HOME_MANAGER_BACKUP_EXT=backup $HM_ACTIVATION_PATH/activate --driver-version 1"
+	run_with_retry sudo nixos-enter --root /mnt --command "su -s /bin/sh $TARGET_USER -c '$ACTIVATE_COMMAND'"
+}
+
+function build_home_manager_activation() {
+	local HM_ATTR
+
+	HM_ATTR=".#homeConfigurations.\"$TARGET_USER@$TARGET_HOST\".activationPackage"
+	sudo nix build --store /mnt --no-link --print-out-paths "$HM_ATTR" \
+		--option http2 false \
+		--option max-substitution-jobs 128 \
+		--option http-connections 256
+}
+
 sudo umount -R /mnt || true
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -116,7 +152,7 @@ fi
 pushd "$HOME/Zero/nix-config" || exit 1
 
 if [[ -n "$TARGET_BRANCH" ]]; then
-	git checkout "$TARGET_BRANCH"
+	git checkout -- "$TARGET_BRANCH"
 fi
 
 if [[ -z "$TARGET_HOST" ]]; then
@@ -132,6 +168,8 @@ if [[ -z "$TARGET_USER" ]]; then
 	find nixos/_mixins/users/ -mindepth 1 -maxdepth 1 -type d | cut -d'/' -f4 | grep -v -E "nixos|root"
 	exit 1
 fi
+
+validate_target_identifiers
 
 # --- Ingest injected tokens ---
 # If just inject-tokens was run from the workstation, files will be
@@ -377,6 +415,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
 	# Apply the Home Manager configuration.
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
+	prepare_home_manager_activation
 	if [[ "$USE_FLAKEHUB" -eq 1 ]]; then
 		HM_REF="wimpysworld/nix-config/*#homeConfigurations.$TARGET_USER@$TARGET_HOST"
 		echo "Resolving Home Manager configuration from FlakeHub Cache..."
@@ -393,16 +432,18 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 				--option http-connections 256 \
 				--option narinfo-cache-negative-ttl 0 || true
 			echo "Activating Home Manager from FlakeHub Cache..."
-			run_with_retry sudo nixos-enter --root /mnt --command "env USER=$TARGET_USER HOME=/home/$TARGET_USER $HM_PATH/activate"
+			activate_home_manager_as_user "$HM_PATH"
 		else
 			echo "WARNING! FlakeHub resolve failed; falling back to local build..."
-			run_with_retry sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\""
+			HM_PATH=$(build_home_manager_activation)
+			activate_home_manager_as_user "$HM_PATH"
 		fi
 	else
 		echo "Applying Home Manager configuration..."
-		run_with_retry sudo nixos-enter --root /mnt --command "cd /home/$TARGET_USER/Zero/nix-config && env USER=$TARGET_USER HOME=/home/$TARGET_USER nix run nixpkgs#home-manager -- switch -b backup --flake \".#$TARGET_USER@$TARGET_HOST\""
+		HM_PATH=$(build_home_manager_activation)
+		activate_home_manager_as_user "$HM_PATH"
 	fi
-	# Fix ownership after activation. Home Manager runs as root inside
-	# nixos-enter, so all created files and directories are owned by root:root.
+	# Fix ownership after activation in case any earlier install steps left
+	# root-owned files in the target user's home directory.
 	sudo nixos-enter --root /mnt --command "chown -R $TARGET_USER:users /home/$TARGET_USER"
 fi
