@@ -212,7 +212,7 @@ rec {
         if s.transport == "http" then
           {
             type = "http";
-            url = s.url;
+            inherit (s) url;
           }
           // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
             headers = {
@@ -222,9 +222,9 @@ rec {
         else
           {
             type = "stdio";
-            command = s.command;
+            inherit (s) command;
           }
-          // lib.optionalAttrs ((s.args or [ ]) != [ ]) { args = s.args; }
+          // lib.optionalAttrs ((s.args or [ ]) != [ ]) { inherit (s) args; }
           // lib.optionalAttrs ((s.env or { }) != { }) {
             # Translate canonical `env.KEY = "SECRET_NAME"` into the
             # placeholder interpolation Claude Code reads at activation time.
@@ -247,6 +247,14 @@ rec {
   codexServers =
     let
       keep = _: s: s.enabled or true;
+      # Auto-approve every MCP tool from every Codex server without an
+      # interactive confirmation prompt. Codex's `RawMcpServerConfig` accepts
+      # `default_tools_approval_mode` with values `auto`, `prompt`, or
+      # `approve`; the alternatives `auto` and `prompt` would gate each tool
+      # invocation behind a TUI prompt, which defeats unattended agent runs.
+      common = {
+        default_tools_approval_mode = "approve";
+      };
       render =
         _: s:
         let
@@ -255,8 +263,9 @@ rec {
         if s.transport == "http" then
           {
             inherit enabled;
-            url = s.url;
+            inherit (s) url;
           }
+          // common
           // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
             bearer_token_env_var = s.auth.envVar;
           }
@@ -266,15 +275,16 @@ rec {
         else
           {
             inherit enabled;
-            command = s.command;
+            inherit (s) command;
             args = s.args or [ ];
           }
+          // common
           // lib.optionalAttrs ((s.env or { }) != { }) {
             # Codex consumes the env table as static literals; the canonical
             # value is the sops secret name, which Codex resolves itself at
             # process-launch time via `bearer_token_env_var`-style hooks.
             # No active server uses this today; shape preserved for parity.
-            env = s.env;
+            inherit (s) env;
           }
           // lib.optionalAttrs (s ? startupTimeoutSec) {
             startup_timeout_sec = s.startupTimeoutSec;
@@ -303,7 +313,7 @@ rec {
           {
             type = "remote";
             inherit enabled;
-            url = s.url;
+            inherit (s) url;
           }
           // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
             headers = {
@@ -357,7 +367,7 @@ rec {
         else
           {
             inherit enabled;
-            command = s.command;
+            inherit (s) command;
             args = s.args or [ ];
           };
     in
@@ -389,7 +399,7 @@ rec {
         _: s:
         (s.enabled or true)
         && ((s.consumers.zed.mode or null) == "extension")
-        && ((s.consumers.zed.enabled or true) == false);
+        && (!(s.consumers.zed.enabled or true));
       disabled = lib.filterAttrs keep servers;
     in
     lib.listToAttrs (

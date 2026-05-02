@@ -25,6 +25,15 @@ let
   # Import shared MCP server definitions
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 
+  # Per-server allow entries derived from `mcpServerDefs.claudeServers`. Each
+  # `mcp__<servername>` rule matches every tool exposed by that server, so
+  # adding a server in `mcp/servers.nix` auto-extends this list with no edits
+  # here. The previous bare `"mcp__*"` rule was a no-op because Claude Code's
+  # permission matcher does not accept that wildcard form; valid shapes are
+  # `mcp__<servername>`, `mcp__<servername>__*`, or
+  # `mcp__<servername>__<toolname>`.
+  mcpAllow = map (name: "mcp__${name}") (lib.attrNames mcpServerDefs.claudeServers);
+
   # PreToolUse auto-approve hook. Closes the gaps in Claude Code's static
   # `Bash(cmd:*)` matcher around redirects, command substitution, heredocs,
   # env-var prefixes, and wrapper-disguised invocations. Auto-approves only
@@ -972,8 +981,9 @@ in
         mcpServers = mcpServerDefs.claudeServers;
         settings = {
           # MCP servers are selected declaratively through Home Manager. Their
-          # tools are allowed below with mcp__*, while arbitrary project MCP
-          # servers remain opt-in instead of being silently trusted.
+          # tools are allowed below via the derived `mcpAllow` list, while
+          # arbitrary project MCP servers remain opt-in instead of being
+          # silently trusted.
           enableAllProjectMcpServers = false;
 
           # These roots are treated like the launch directory for file access.
@@ -993,9 +1003,8 @@ in
             allow =
               bashAllow
               ++ claudeWorkspaceEditRules
+              ++ mcpAllow
               ++ [
-                # MCP tools - allow all unconditionally
-                "mcp__*"
                 # Nix store is immutable and world-readable; reading from it
                 # never needs a prompt. The `//` prefix anchors the pattern at
                 # the filesystem root rather than the project root.
