@@ -337,9 +337,9 @@ in
         mode = "0400";
       };
 
-      CLOUDFLARE_TUNNEL_TOKEN_HERMES = lib.mkIf hasCloudflareSopsFile {
+      CLOUDFLARE_TUNNEL_TOKEN_HERMES_WEBHOOK = lib.mkIf hasCloudflareSopsFile {
         sopsFile = cloudflareSopsFile;
-        path = "/run/secrets/CLOUDFLARE_TUNNEL_TOKEN_HERMES";
+        path = "/run/secrets/CLOUDFLARE_TUNNEL_TOKEN_HERMES_WEBHOOK";
         owner = "root";
         group = "root";
         mode = "0400";
@@ -766,7 +766,7 @@ in
           "--no-autoupdate"
           "run"
           "--token-file"
-          config.sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_HERMES.path
+          config.sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_HERMES_WEBHOOK.path
         ];
         Restart = lib.mkDefault "always";
         RestartSec = lib.mkDefault 5;
