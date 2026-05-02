@@ -66,7 +66,7 @@ No files need to be injected for FlakeHub, authentication is handled interactive
 7. **Copy secrets to target** - Copies the host age key and user age key to the mounted target filesystem
 8. **Inject SSH keys** - Cleans and recreates `/mnt/etc/ssh/`, then decrypts initrd and per-host SSH keys from sops-encrypted secrets
 9. **Rsync the flake** - Copies `~/Zero/` to the target user's home directory
-10. **Activate Home Manager** - When FlakeHub is available, resolves the Home Manager store path and copies the closure to the target's Nix store outside the chroot (where FlakeHub auth works), then activates directly from that store path inside the chroot. Falls back to a local build via `nix run nixpkgs#home-manager` if FlakeHub resolution fails. Without FlakeHub, builds locally from the flake
+10. **Activate Home Manager** - Resolves or builds the Home Manager activation package into the target's Nix store, then activates it as the target user inside the chroot so Home Manager package profiles are not written to root's default profile
 
 ## LUKS disk encryption
 
