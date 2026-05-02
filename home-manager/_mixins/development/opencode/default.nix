@@ -805,6 +805,68 @@ in
             "git -C * verify-commit *" = "allow";
             "git -C * verify-tag *" = "allow";
 
+            # `git -C <path> ...` deny/ask mirrors. OpenCode's `.findLast()`
+            # matcher means a `git -C /path reset --hard` invocation does not
+            # match the plain `git reset --hard*` rule, so we mirror every
+            # deny and ask from the plain git block above to keep parity
+            # between both shapes. Order matches the plain block: denies
+            # first, then asks, with the force-push deny placed AFTER the
+            # general push ask so it overrides.
+            "git -C * reset --hard*" = "deny";
+            "git -C * clean*" = "deny";
+            "git -C * filter-branch*" = "deny";
+            "git -C * filter-repo*" = "deny";
+            "git -C * reflog expire*" = "deny";
+
+            "git -C * add *" = "ask";
+            "git -C * commit" = "ask";
+            "git -C * commit *" = "ask";
+            "git -C * push" = "ask";
+            "git -C * push *" = "ask";
+
+            # Force push - explicit deny (must come AFTER general push patterns)
+            "git -C * push*--force*" = "deny";
+            "git -C * push*-f *" = "deny";
+            "git -C * push * --force*" = "deny";
+            "git -C * push * -f*" = "deny";
+
+            "git -C * pull" = "ask";
+            "git -C * pull *" = "ask";
+            "git -C * fetch" = "ask";
+            "git -C * fetch *" = "ask";
+            "git -C * checkout *" = "ask";
+            "git -C * switch *" = "ask";
+            "git -C * branch -d *" = "ask";
+            "git -C * branch -D *" = "ask";
+            "git -C * branch -m *" = "ask";
+            "git -C * branch -M *" = "ask";
+            "git -C * branch --set-upstream*" = "ask";
+            "git -C * branch *" = "ask";
+            "git -C * merge *" = "ask";
+            "git -C * rebase *" = "ask";
+            "git -C * cherry-pick *" = "ask";
+            "git -C * stash" = "ask";
+            "git -C * stash *" = "ask";
+            "git -C * restore *" = "ask";
+            "git -C * reset *" = "ask";
+            "git -C * revert *" = "ask";
+            "git -C * tag -a *" = "ask";
+            "git -C * tag -d *" = "ask";
+            "git -C * tag -s *" = "ask";
+            "git -C * tag *" = "ask";
+            "git -C * worktree add *" = "ask";
+            "git -C * worktree remove *" = "ask";
+            "git -C * worktree prune*" = "ask";
+            "git -C * am *" = "ask";
+            "git -C * apply *" = "ask";
+            "git -C * bisect *" = "ask";
+            "git -C * clone *" = "ask";
+            "git -C * config *" = "ask";
+            "git -C * init*" = "ask";
+            "git -C * mv *" = "ask";
+            "git -C * rm *" = "ask";
+            "git -C * submodule *" = "ask";
+
             # Git - ask: state modifications
             "git add *" = "ask";
             "git commit" = "ask";

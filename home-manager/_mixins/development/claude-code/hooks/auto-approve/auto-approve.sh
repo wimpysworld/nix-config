@@ -128,11 +128,16 @@ DENY_COMMANDS=(
 # safe through the hook. The static allow already covers plain
 # `git <subcommand>` so this list is consulted only when the leaf carries the
 # `-C <path>` prefix.
+#
+# Subcommands with both read-only and write modes (branch, tag, remote, config,
+# worktree, reflog, stash) are NOT listed here - they are special-cased below
+# so that only known-read-only forms approve and write forms defer to the
+# static ask rules.
 GIT_READONLY_SUBCOMMANDS=(
-	status diff log show branch remote tag reflog rev-parse describe
-	shortlog blame ls-files ls-tree ls-remote grep config worktree
+	status diff log show rev-parse describe
+	shortlog blame ls-files ls-tree ls-remote grep
 	name-rev cat-file count-objects for-each-ref symbolic-ref
-	verify-commit verify-tag stash
+	verify-commit verify-tag
 )
 
 # ---------------------------------------------------------------------------
@@ -595,19 +600,109 @@ classify_leaf() {
 	# read-only set above; for write operations like `git -C <path> commit`
 	# this falls through to the static ask rules.
 	#
-	# Special-case `stash`: only `stash list` and `stash show` are read-only.
+	# Subcommands that are mostly read-only but have write modes are
+	# special-cased: only known-read-only forms approve, everything else
+	# defers so the static ask rules can prompt.
+	#   stash    : list, show only
+	#   branch   : bare or list/inspect flags only; -d/-D/-m/-M/--set-upstream defer
+	#   tag      : bare or -l/--list only; -d/-a/-s defer
+	#   remote   : bare, -v, show <name>, get-url <name> only; add/remove/rename/set-url defer
+	#   config   : --list, --get, --get-all, --get-regexp only; mutations defer
+	#   worktree : list only; add/remove/move/prune/lock/unlock/repair defer
+	#   reflog   : bare or show only; expire/delete/exists defer
 	if [[ $cmd == "git" && $leaf =~ ^git[[:space:]]+-C[[:space:]]+[^[:space:]]+[[:space:]]+([A-Za-z][A-Za-z0-9_-]*)([[:space:]]+(.*))?$ ]]; then
 		local git_sub=${BASH_REMATCH[1]}
 		local git_rest=${BASH_REMATCH[3]:-}
-		if [[ $git_sub == "stash" ]]; then
-			if [[ $git_rest =~ ^(list|show)([[:space:]]|$) ]]; then
-				printf 'safe\n'
-				return
-			fi
-		elif _in_list "$git_sub" "${GIT_READONLY_SUBCOMMANDS[@]}"; then
-			printf 'safe\n'
-			return
-		fi
+		case $git_sub in
+			stash)
+				if [[ $git_rest =~ ^(list|show)([[:space:]]|$) ]]; then
+					printf 'safe\n'
+					return
+				fi
+				;;
+			branch)
+				# Bare `git -C <path> branch` -> approve
+				if [[ -z $git_rest ]]; then
+					printf 'safe\n'
+					return
+				fi
+				# Read-only flags: -a, -r, -v(v), --list, --contains,
+				# --merged, --no-merged, --points-at, --show-current,
+				# --column, --sort, --format. Anything starting with
+				# something else (e.g. -d, -D, -m, -M, --set-upstream,
+				# bare branch name to create) defers.
+				if [[ $git_rest =~ ^(-a|-r|-v|-vv|-av|-rv|-arv|--list|--contains|--no-contains|--merged|--no-merged|--points-at|--show-current|--column|--no-column|--sort|--format|--all|--remotes|--verbose)([[:space:]]|=|$) ]]; then
+					printf 'safe\n'
+					return
+				fi
+				;;
+			tag)
+				# Bare `git -C <path> tag` -> approve (lists tags)
+				if [[ -z $git_rest ]]; then
+					printf 'safe\n'
+					return
+				fi
+				# Read-only flags only: -l, --list, -n, --contains,
+				# --points-at, --merged, --no-merged, --sort, --format.
+				if [[ $git_rest =~ ^(-l|--list|-n|--contains|--no-contains|--points-at|--merged|--no-merged|--sort|--format|--column|--no-column)([[:space:]]|=|$) ]]; then
+					printf 'safe\n'
+					return
+				fi
+				;;
+			remote)
+				# Bare `git -C <path> remote` -> approve (lists remotes)
+				if [[ -z $git_rest ]]; then
+					printf 'safe\n'
+					return
+				fi
+				# Read-only forms: -v / --verbose, show <name>,
+				# get-url <name>.
+				if [[ $git_rest =~ ^(-v|--verbose)([[:space:]]|$) ]]; then
+					printf 'safe\n'
+					return
+				fi
+				if [[ $git_rest =~ ^(show|get-url)([[:space:]]|$) ]]; then
+					printf 'safe\n'
+					return
+				fi
+				;;
+			config)
+				# Only --list / --get / --get-all / --get-regexp /
+				# --get-urlmatch are read-only. A bare `git config` or
+				# `git config <key> <value>` mutates and must defer.
+				if [[ $git_rest =~ ^(--list|--get|--get-all|--get-regexp|--get-urlmatch)([[:space:]]|=|$) ]]; then
+					printf 'safe\n'
+					return
+				fi
+				;;
+			worktree)
+				# Only `worktree list` is read-only. add/remove/move/
+				# prune/lock/unlock/repair all mutate.
+				if [[ $git_rest =~ ^list([[:space:]]|$) ]]; then
+					printf 'safe\n'
+					return
+				fi
+				;;
+			reflog)
+				# Bare `git -C <path> reflog` (defaults to show) -> approve.
+				if [[ -z $git_rest ]]; then
+					printf 'safe\n'
+					return
+				fi
+				# `reflog show [args...]` is read-only. expire/delete/
+				# exists rewrite history and must defer.
+				if [[ $git_rest =~ ^show([[:space:]]|$) ]]; then
+					printf 'safe\n'
+					return
+				fi
+				;;
+			*)
+				if _in_list "$git_sub" "${GIT_READONLY_SUBCOMMANDS[@]}"; then
+					printf 'safe\n'
+					return
+				fi
+				;;
+		esac
 	fi
 
 	# Known-safe read-only command. Match by basename.
