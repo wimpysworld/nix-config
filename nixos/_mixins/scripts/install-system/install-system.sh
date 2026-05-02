@@ -152,7 +152,7 @@ fi
 pushd "$HOME/Zero/nix-config" || exit 1
 
 if [[ -n "$TARGET_BRANCH" ]]; then
-	git checkout -- "$TARGET_BRANCH"
+	git checkout "$TARGET_BRANCH"
 fi
 
 if [[ -z "$TARGET_HOST" ]]; then

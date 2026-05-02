@@ -53,7 +53,11 @@ fi
 
 # `fzf --filter` exits 1 when no matches are found; `|| true` keeps that from
 # tripping `errexit`. `fd` output is captured into a variable so that the
-# `head`-style trim downstream does not SIGPIPE the walker.
+# `head`-style trim downstream does not SIGPIPE the walker. When fzf returns
+# zero matches `$RANKED` is empty; printing it would emit a blank result line
+# the picker shows as a phantom row, so skip the print in that case.
 ALL=$(fd --type f --hidden --follow --color never 2>/dev/null || true)
 RANKED=$(printf '%s\n' "$ALL" | fzf --filter "$QUERY" 2>/dev/null || true)
-printf '%s\n' "$RANKED" | take15
+if [[ -n "$RANKED" ]]; then
+  printf '%s\n' "$RANKED" | take15
+fi
