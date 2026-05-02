@@ -34,9 +34,9 @@ window {
 
 mainbox {
   enabled:           true;
-  spacing:           100px;
+  spacing:           @mainbox_spacing@;
   margin:            0px;
-  padding:           100px 225px;
+  padding:           @mainbox_padding@;
   border:            0px solid;
   border-radius:     0px;
   background-color:  transparent;
@@ -46,7 +46,7 @@ mainbox {
 inputbar {
   enabled:           true;
   spacing:           10px;
-  margin:            0% 25%;
+  margin:            @inputbar_margin@;
   padding:           16px;
   border:            2px solid;
   border-color:      @accent_color@;
@@ -107,17 +107,18 @@ entry {
 
 listview {
   enabled:           true;
-  columns:           8;
-  lines:             4;
+  columns:           @listview_columns@;
+  lines:             @listview_lines@;
   cycle:             true;
   dynamic:           true;
-  scrollbar:         false;
+  scrollbar:         true;
+  scrollbar-width:   8px;
   layout:            vertical;
   reverse:           false;
   fixed-height:      true;
   fixed-columns:     true;
 
-  spacing:           0px;
+  spacing:           @listview_spacing@;
   margin:            0px;
   padding:           0px;
   border:            0px solid;
@@ -126,11 +127,23 @@ listview {
   cursor:            "default";
 }
 
+scrollbar {
+  enabled:           true;
+  margin:            0px 0px 0px 16px;
+  padding:           0px;
+  border:            0px solid;
+  border-radius:     8px;
+  background-color:  transparent;
+  handle-color:      @accent_color_alpha@;
+  handle-width:      4px;
+  cursor:            "default";
+}
+
 element {
   enabled:           true;
-  spacing:           15px;
+  spacing:           @element_spacing@;
   margin:            0px;
-  padding:           35px 10px;
+  padding:           @element_padding@;
   border:            0px solid;
   border-radius:     15px;
   background-color:  transparent;
@@ -148,7 +161,7 @@ element selected.normal {
 
 element-icon {
   background-color:  transparent;
-  size:              72px;
+  size:              @element_icon_size@;
   cursor:            inherit;
 }
 element-text {
