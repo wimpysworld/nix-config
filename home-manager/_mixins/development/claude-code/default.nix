@@ -127,6 +127,7 @@ let
     "Bash(basename:*)"
     "Bash(dirname:*)"
     "Bash(realpath:*)"
+    "Bash(readlink:*)"
     "Bash(stat:*)"
     "Bash(du:*)"
     "Bash(sort:*)"
@@ -219,8 +220,9 @@ let
     "Bash(base64:*)"
     "Bash(base32:*)"
     "Bash(shellcheck:*)"
-    "Bash(shfmt --diff:*)"
-    "Bash(shfmt -d:*)"
+    # shfmt rewrites are workspace-bounded; both diff and write modes are
+    # allowed without prompting.
+    "Bash(shfmt:*)"
     "Bash(luacheck:*)"
 
     # Systemd - read-only status and log queries
@@ -284,20 +286,34 @@ let
     "Bash(nm:*)"
     "Bash(readelf:*)"
 
-    # FFmpeg - info and probing
-    "Bash(ffmpeg -version)"
-    "Bash(ffmpeg -formats)"
-    "Bash(ffmpeg -codecs)"
-    "Bash(ffmpeg -encoders)"
-    "Bash(ffmpeg -decoders)"
-    "Bash(ffmpeg -bsfs)"
-    "Bash(ffmpeg -protocols)"
-    "Bash(ffmpeg -pix_fmts)"
-    "Bash(ffmpeg -layouts)"
-    "Bash(ffmpeg -sample_fmts)"
-    "Bash(ffmpeg -filters)"
-    "Bash(ffmpeg -loglevel:*)"
-    "Bash(ffmpeg -hwaccels)"
+    # Build tools - configuration, builds, and compilation. Workspace edits
+    # are bounded by `acceptEdits` and the workspace-write sandbox; out-of-tree
+    # installation (`make install`, `cmake --install`) is intentionally still
+    # routed through bashAsk below.
+    "Bash(./configure:*)"
+    "Bash(configure:*)"
+    "Bash(autoreconf:*)"
+    "Bash(autoconf:*)"
+    "Bash(automake:*)"
+    "Bash(make:*)"
+    "Bash(cmake:*)"
+    "Bash(meson:*)"
+    "Bash(ninja:*)"
+    "Bash(clang:*)"
+    "Bash(clang++:*)"
+    "Bash(gcc:*)"
+    "Bash(g++:*)"
+    "Bash(ar:*)"
+    "Bash(ranlib:*)"
+    "Bash(clang-tidy:*)"
+    "Bash(clang-format:*)"
+
+    # FFmpeg - allowed broadly; the workspace-write sandbox is the actual
+    # security boundary. ffmpeg can read/write network protocols (http://,
+    # ftp://, rtmp://, etc.) and arbitrary filesystem paths, so this rule
+    # does not by itself contain media processing - sandbox containment
+    # does. ffprobe is read-only.
+    "Bash(ffmpeg:*)"
     "Bash(ffprobe:*)"
 
     # GitHub - read-only queries
@@ -441,6 +457,12 @@ let
     "Bash(govulncheck)"
     "Bash(govulncheck:*)"
 
+    # Go - builds, tests, and formatting are workspace-bounded.
+    "Bash(go build:*)"
+    "Bash(go test:*)"
+    "Bash(go fmt:*)"
+    "Bash(gofmt:*)"
+
     # JavaScript/TypeScript - info and type checking
     "Bash(node --version)"
     "Bash(npm --version)"
@@ -452,6 +474,10 @@ let
     "Bash(npx --version)"
     "Bash(tsc --version)"
     "Bash(tsc --noEmit:*)"
+
+    # JavaScript/TypeScript - tests are workspace-bounded.
+    "Bash(npm test:*)"
+    "Bash(pnpm test:*)"
 
     # Just - listing only
     "Bash(just --version)"
@@ -491,6 +517,11 @@ let
     "Bash(rustup target list:*)"
     "Bash(rustup component list:*)"
 
+    # Rust - builds, tests, and formatting are workspace-bounded.
+    "Bash(cargo build:*)"
+    "Bash(cargo test:*)"
+    "Bash(cargo fmt:*)"
+
     # Python - info and read-only
     "Bash(python --version)"
     "Bash(python3 --version)"
@@ -503,12 +534,24 @@ let
     "Bash(python -m pytest --collect-only:*)"
     "Bash(mypy --version)"
     "Bash(ruff --version)"
-    "Bash(ruff check:*)"
     "Bash(uv --version)"
     "Bash(uv pip list:*)"
 
-    # Svelte - info
+    # Python - tests, linters, and formatters are workspace-bounded. Includes
+    # `ruff` in full (not just `ruff check`) so `ruff format` and `ruff check
+    # --fix` invocations run without prompting.
+    "Bash(pytest:*)"
+    "Bash(python -m pytest:*)"
+    "Bash(python3 -m pytest:*)"
+    "Bash(mypy:*)"
+    "Bash(ruff:*)"
+    "Bash(black:*)"
+    "Bash(isort:*)"
+
+    # Svelte - info and type checking. svelte-check is read-only across the
+    # workspace; rewrites are out of scope for the tool.
     "Bash(svelte-check --help)"
+    "Bash(svelte-check:*)"
 
     # Wails - info only
     "Bash(wails --version)"
@@ -574,27 +617,11 @@ let
     "Bash(docker pull:*)"
     "Bash(docker push:*)"
 
-    # Build tools - configuration and builds
-    "Bash(./configure:*)"
-    "Bash(configure:*)"
-    "Bash(autoreconf:*)"
-    "Bash(autoconf:*)"
-    "Bash(automake:*)"
-    "Bash(make:*)"
-    "Bash(cmake:*)"
-    "Bash(meson:*)"
-    "Bash(ninja:*)"
-    "Bash(clang:*)"
-    "Bash(clang++:*)"
-    "Bash(gcc:*)"
-    "Bash(g++:*)"
-    "Bash(ar:*)"
-    "Bash(ranlib:*)"
-    "Bash(clang-tidy:*)"
-    "Bash(clang-format:*)"
-
-    # FFmpeg - file processing
-    "Bash(ffmpeg:*)"
+    # Build tools - out-of-workspace installation. Build, compile, and lint
+    # invocations themselves now sit on bashAllow above; only installation
+    # subcommands continue to prompt because they reach outside the workspace.
+    "Bash(make install:*)"
+    "Bash(cmake --install:*)"
 
     # GitHub - state modifications
     "Bash(gh pr create:*)"
@@ -630,29 +657,36 @@ let
     "Bash(compare:*)"
     "Bash(composite:*)"
 
-    # Nix - builds and environment
+    # Nix - builds and environment.
+    # `home-manager:*`, `nixos-rebuild:*`, and `darwin-rebuild:*` cover every
+    # subcommand (switch, build, generations, expire-generations, news, etc.)
+    # because the consistent rule is "any state-mutating system rebuild must
+    # prompt"; read-only subcommands like `generations` and `news` are not
+    # carved out so the boundary stays uniform.
     "Bash(nix build:*)"
     "Bash(nix develop:*)"
     "Bash(nix-shell:*)"
     "Bash(nix flake update:*)"
     "Bash(nix-env:*)"
-    "Bash(home-manager switch:*)"
+    "Bash(home-manager:*)"
     "Bash(nixos-rebuild:*)"
     "Bash(darwin-rebuild:*)" # macOS system rebuild (nix-darwin)
 
-    # Go - builds and code execution
-    "Bash(go build:*)"
+    # Go - code execution and out-of-workspace effects.
+    # `go build`, `go test`, `go fmt`, and `gofmt` now sit on bashAllow above;
+    # invocations that run code or install outside the workspace continue to
+    # prompt.
     "Bash(go run:*)"
-    "Bash(go test:*)"
     "Bash(go generate:*)"
     "Bash(go get:*)"
     "Bash(go mod tidy)"
     "Bash(go install:*)"
 
-    # JavaScript/TypeScript - installs and execution
+    # JavaScript/TypeScript - installs and execution.
+    # `npm test` and `pnpm test` now sit on bashAllow above; lifecycle scripts
+    # (`install`, `run`) and arbitrary `npx` invocations keep prompting.
     "Bash(npm install:*)"
     "Bash(npm run:*)"
-    "Bash(npm test:*)"
     "Bash(npm publish:*)"
     "Bash(pnpm install:*)"
     "Bash(pnpm run:*)"
@@ -672,9 +706,10 @@ let
     "Bash(luarocks install:*)"
     "Bash(luarocks remove:*)"
 
-    # Rust - builds and code execution
-    "Bash(cargo build:*)"
-    "Bash(cargo test:*)"
+    # Rust - code execution and out-of-workspace effects.
+    # `cargo build`, `cargo test`, and `cargo fmt` now sit on bashAllow above;
+    # invocations that run code, install outside the workspace, or publish to
+    # crates.io continue to prompt.
     "Bash(cargo run:*)"
     "Bash(cargo install:*)"
     "Bash(cargo publish:*)"
@@ -682,21 +717,20 @@ let
     "Bash(rustup update:*)"
     "Bash(rustup default:*)"
 
-    # Python - installs and execution
+    # Python - installs and execution.
+    # `pytest`, `mypy`, `ruff`, `black`, and `isort` now sit on bashAllow
+    # above. Bare `python`/`python3` invocations are arbitrary code execution
+    # and continue to prompt; `python -m pytest` is allow-listed separately.
     "Bash(pip install:*)"
     "Bash(pip uninstall:*)"
     "Bash(python:*)"
     "Bash(python3:*)"
-    "Bash(pytest:*)"
-    "Bash(mypy:*)"
-    "Bash(ruff:*)"
     "Bash(uv pip install:*)"
     "Bash(uv sync:*)"
     "Bash(uv run:*)"
 
-    # Svelte - builds and type checking
+    # Svelte - builds and dev sync. `svelte-check` now sits on bashAllow above.
     "Bash(svelte-kit sync:*)"
-    "Bash(svelte-check:*)"
     "Bash(svelte-kit build:*)"
 
     # Wails - builds and dev server
@@ -1066,27 +1100,33 @@ in
             ask = bashAsk;
             deny = bashDeny ++ readDeny;
             defaultMode = "acceptEdits";
+          };
 
-            # PreToolUse hook: auto-approves safe pipelines, --help / --version
-            # invocations, and command-substitution shapes the static rules
-            # can't express. Hard-denies wrapper-disguised dangerous patterns
-            # (e.g. `xargs sudo rm`, `bash -c '...'`). Defers to the static
-            # rules for everything uncertain, so `bashAsk` and `bashDeny`
-            # remain the source of truth for the security boundary.
-            hooks = {
-              PreToolUse = [
-                {
-                  matcher = "Bash";
-                  hooks = [
-                    {
-                      type = "command";
-                      command = lib.getExe autoApproveHook;
-                      timeout = 10;
-                    }
-                  ];
-                }
-              ];
-            };
+          # PreToolUse hook: auto-approves safe pipelines, --help / --version
+          # invocations, and command-substitution shapes the static rules
+          # can't express. Hard-denies wrapper-disguised dangerous patterns
+          # (e.g. `xargs sudo rm`, `bash -c '...'`). Defers to the static
+          # rules for everything uncertain, so `bashAsk` and `bashDeny`
+          # remain the source of truth for the security boundary.
+          #
+          # `hooks` is a top-level settings key in Claude Code, NOT nested
+          # under `permissions`. The previous placement under `permissions`
+          # silently failed: settings still validated, but Claude Code never
+          # invoked the hook, so `git -C <path> <subcmd>` shapes (and other
+          # gap-closers) kept prompting.
+          hooks = {
+            PreToolUse = [
+              {
+                matcher = "Bash";
+                hooks = [
+                  {
+                    type = "command";
+                    command = lib.getExe autoApproveHook;
+                    timeout = 10;
+                  }
+                ];
+              }
+            ];
           };
         };
       };

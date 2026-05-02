@@ -241,6 +241,8 @@ in
             "dirname *" = "allow";
             "realpath" = "allow";
             "realpath *" = "allow";
+            "readlink" = "allow";
+            "readlink *" = "allow";
             "stat" = "allow";
             "stat *" = "allow";
             "du" = "allow";
@@ -370,8 +372,10 @@ in
             "base32" = "allow";
             "base32 *" = "allow";
             "shellcheck *" = "allow";
-            "shfmt --diff *" = "allow";
-            "shfmt -d *" = "allow";
+            # shfmt rewrites are workspace-bounded by design; both diff and
+            # write modes are allowed.
+            "shfmt" = "allow";
+            "shfmt *" = "allow";
             "luacheck *" = "allow";
 
             # Semgrep - read-only queries and scans
@@ -569,46 +573,45 @@ in
             "readelf" = "allow";
             "readelf *" = "allow";
 
-            # Build tools - ask: configuration and builds
-            "./configure*" = "ask";
-            "configure *" = "ask";
-            "autoreconf*" = "ask";
-            "autoconf *" = "ask";
-            "automake *" = "ask";
-            "make" = "ask";
-            "make *" = "ask";
-            "cmake *" = "ask";
-            "meson *" = "ask";
-            "ninja" = "ask";
-            "ninja *" = "ask";
-            "clang *" = "ask";
-            "clang++ *" = "ask";
-            "gcc *" = "ask";
-            "g++ *" = "ask";
-            "ar *" = "ask";
-            "ranlib *" = "ask";
-            "clang-tidy *" = "ask";
-            "clang-format *" = "ask";
+            # Build tools - allow: configuration, builds, and compilation.
+            # Builds and compilations rewrite files inside the workspace by
+            # design; they cannot escape the OpenCode workspace sandbox so the
+            # ask prompt was friction without a security benefit.
+            "./configure*" = "allow";
+            "configure *" = "allow";
+            "autoreconf*" = "allow";
+            "autoconf *" = "allow";
+            "automake *" = "allow";
+            "make" = "allow";
+            "make *" = "allow";
+            "cmake *" = "allow";
+            "meson *" = "allow";
+            "ninja" = "allow";
+            "ninja *" = "allow";
+            "clang *" = "allow";
+            "clang++ *" = "allow";
+            "gcc *" = "allow";
+            "g++ *" = "allow";
+            "ar *" = "allow";
+            "ranlib *" = "allow";
+            "clang-tidy *" = "allow";
+            "clang-format *" = "allow";
+
+            # Build tools - ask: out-of-workspace installation
+            "make install*" = "ask";
+            "cmake --install*" = "ask";
 
             # ══════════════════════════════════════════════════════════════
-            # FFmpeg - info and probing
+            # FFmpeg - allowed broadly; the workspace-write sandbox is the
+            # actual security boundary. ffmpeg can read/write network
+            # protocols (http://, ftp://, rtmp://, etc.) and arbitrary
+            # filesystem paths, so this rule does not by itself contain
+            # media processing - sandbox containment does. ffprobe is
+            # read-only.
             # ══════════════════════════════════════════════════════════════
-            "ffmpeg -version" = "allow";
-            "ffmpeg -formats" = "allow";
-            "ffmpeg -codecs" = "allow";
-            "ffmpeg -encoders" = "allow";
-            "ffmpeg -decoders" = "allow";
-            "ffmpeg -bsfs" = "allow";
-            "ffmpeg -protocols" = "allow";
-            "ffmpeg -pix_fmts" = "allow";
-            "ffmpeg -layouts" = "allow";
-            "ffmpeg -sample_fmts" = "allow";
-            "ffmpeg -filters" = "allow";
-            "ffmpeg -hwaccels" = "allow";
+            "ffmpeg" = "allow";
+            "ffmpeg *" = "allow";
             "ffprobe *" = "allow";
-
-            # FFmpeg - ask: file processing
-            "ffmpeg *" = "ask";
 
             # ══════════════════════════════════════════════════════════════
             # GitHub CLI - deny destructive first
@@ -750,6 +753,57 @@ in
             "git symbolic-ref *" = "allow";
             "git verify-commit *" = "allow";
             "git verify-tag *" = "allow";
+
+            # `git -C <path> <subcommand>` for read-only subcommands. Mirrors
+            # every read-only entry above so the same queries auto-resolve
+            # when targeted at a sibling worktree via `-C`.
+            "git -C * status" = "allow";
+            "git -C * status *" = "allow";
+            "git -C * diff" = "allow";
+            "git -C * diff *" = "allow";
+            "git -C * log" = "allow";
+            "git -C * log *" = "allow";
+            "git -C * show" = "allow";
+            "git -C * show *" = "allow";
+            "git -C * branch" = "allow";
+            "git -C * branch -a*" = "allow";
+            "git -C * branch -v*" = "allow";
+            "git -C * branch -r*" = "allow";
+            "git -C * branch --list*" = "allow";
+            "git -C * branch --contains*" = "allow";
+            "git -C * branch --merged*" = "allow";
+            "git -C * branch --no-merged*" = "allow";
+            "git -C * remote" = "allow";
+            "git -C * remote *" = "allow";
+            "git -C * tag" = "allow";
+            "git -C * tag -l*" = "allow";
+            "git -C * tag --list*" = "allow";
+            "git -C * stash list" = "allow";
+            "git -C * stash list *" = "allow";
+            "git -C * stash show" = "allow";
+            "git -C * stash show *" = "allow";
+            "git -C * reflog" = "allow";
+            "git -C * reflog *" = "allow";
+            "git -C * rev-parse *" = "allow";
+            "git -C * describe *" = "allow";
+            "git -C * shortlog *" = "allow";
+            "git -C * blame *" = "allow";
+            "git -C * ls-files" = "allow";
+            "git -C * ls-files *" = "allow";
+            "git -C * ls-tree *" = "allow";
+            "git -C * ls-remote *" = "allow";
+            "git -C * grep *" = "allow";
+            "git -C * config --list*" = "allow";
+            "git -C * config --get*" = "allow";
+            "git -C * worktree list" = "allow";
+            "git -C * name-rev *" = "allow";
+            "git -C * cat-file *" = "allow";
+            "git -C * count-objects" = "allow";
+            "git -C * count-objects *" = "allow";
+            "git -C * for-each-ref *" = "allow";
+            "git -C * symbolic-ref *" = "allow";
+            "git -C * verify-commit *" = "allow";
+            "git -C * verify-tag *" = "allow";
 
             # Git - ask: state modifications
             "git add *" = "ask";
@@ -939,8 +993,15 @@ in
             "nix-shell *" = "ask";
             "nix-build *" = "ask";
             "nix-env *" = "ask";
+            # Both bare and space forms cover invocations with no arguments
+            # (`home-manager`, `nixos-rebuild`, `darwin-rebuild`) as well as
+            # any subcommand. The boundary is uniform: every invocation of
+            # these state-mutating system rebuild tools must prompt.
+            "home-manager" = "ask";
             "home-manager *" = "ask";
+            "nixos-rebuild" = "ask";
             "nixos-rebuild *" = "ask";
+            "darwin-rebuild" = "ask";
             "darwin-rebuild *" = "ask";
 
             # Read-only `nix profile` subcommands. These rules sit AFTER
@@ -992,9 +1053,14 @@ in
             "govulncheck" = "allow";
             "govulncheck *" = "allow";
 
-            "go build*" = "ask";
+            # Allow: builds, tests, and formatting are workspace-bounded.
+            "go build*" = "allow";
+            "go test*" = "allow";
+            "go fmt *" = "allow";
+            "gofmt *" = "allow";
+
+            # Ask: arbitrary code execution and out-of-workspace effects.
             "go run *" = "ask";
-            "go test*" = "ask";
             "go generate*" = "ask";
             "go get *" = "ask";
             "go install *" = "ask";
@@ -1002,8 +1068,6 @@ in
             "go mod init*" = "ask";
             "go mod edit*" = "ask";
             "go work *" = "ask";
-            "go fmt *" = "ask";
-            "gofmt *" = "ask";
 
             # ══════════════════════════════════════════════════════════════
             # JavaScript/TypeScript - deny cache corruption first
@@ -1061,13 +1125,16 @@ in
             "tsc --version" = "allow";
             "tsc --noEmit*" = "allow";
 
+            # JavaScript/TypeScript - allow: tests are workspace-bounded.
+            "npm test*" = "allow";
+            "pnpm test*" = "allow";
+
             # JavaScript/TypeScript - ask: installs and execution
             "npm install*" = "ask";
             "npm i" = "ask";
             "npm i *" = "ask";
             "npm ci*" = "ask";
             "npm run *" = "ask";
-            "npm test*" = "ask";
             "npm start*" = "ask";
             "npm exec *" = "ask";
             "npm publish*" = "ask";
@@ -1080,7 +1147,6 @@ in
             "pnpm i" = "ask";
             "pnpm i *" = "ask";
             "pnpm run *" = "ask";
-            "pnpm test*" = "ask";
             "pnpm exec *" = "ask";
             "pnpm dlx *" = "ask";
             "pnpm add *" = "ask";
@@ -1156,8 +1222,13 @@ in
             "rustup component list *" = "allow";
             "rustup which *" = "allow";
 
-            "cargo build*" = "ask";
-            "cargo test*" = "ask";
+            # Allow: builds, tests, and formatting are workspace-bounded.
+            "cargo build*" = "allow";
+            "cargo test*" = "allow";
+            "cargo fmt" = "allow";
+            "cargo fmt *" = "allow";
+
+            # Ask: arbitrary code execution and out-of-workspace effects.
             "cargo run*" = "ask";
             "cargo bench*" = "ask";
             "cargo install*" = "ask";
@@ -1168,8 +1239,6 @@ in
             "cargo remove *" = "ask";
             "cargo init*" = "ask";
             "cargo new *" = "ask";
-            "cargo fmt" = "ask";
-            "cargo fmt *" = "ask";
             "cargo fix*" = "ask";
             "cargo generate*" = "ask";
             "rustup update*" = "ask";
@@ -1238,16 +1307,17 @@ in
             "uv add *" = "ask";
             "uv remove *" = "ask";
 
-            "pytest" = "ask";
-            "pytest *" = "ask";
-            "python -m pytest*" = "ask";
-            "python3 -m pytest*" = "ask";
-            "mypy" = "ask";
-            "mypy *" = "ask";
-            "ruff" = "ask";
-            "ruff *" = "ask";
-            "black *" = "ask";
-            "isort *" = "ask";
+            # Allow: tests, lint, and formatters are workspace-bounded.
+            "pytest" = "allow";
+            "pytest *" = "allow";
+            "python -m pytest*" = "allow";
+            "python3 -m pytest*" = "allow";
+            "mypy" = "allow";
+            "mypy *" = "allow";
+            "ruff" = "allow";
+            "ruff *" = "allow";
+            "black *" = "allow";
+            "isort *" = "allow";
 
             # ══════════════════════════════════════════════════════════════
             # Svelte/SvelteKit
@@ -1255,9 +1325,11 @@ in
             "svelte-check --help" = "allow";
             "svelte-check --version" = "allow";
 
+            # Allow: type-checking is workspace-bounded.
+            "svelte-check" = "allow";
+            "svelte-check *" = "allow";
+
             "svelte-kit sync*" = "ask";
-            "svelte-check" = "ask";
-            "svelte-check *" = "ask";
             "svelte-kit *" = "ask";
 
             # ══════════════════════════════════════════════════════════════

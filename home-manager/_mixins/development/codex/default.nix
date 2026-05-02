@@ -239,6 +239,216 @@ let
       ];
       justification = "GitHub search queries are read-only.";
     }
+
+    # Read-only filesystem inspection.
+    {
+      pattern = [ "readlink" ];
+      justification = "Reading symlink targets is read-only.";
+    }
+
+    # Build tools - configuration, builds, and compilation. Workspace edits
+    # are bounded by the workspace-write sandbox; out-of-tree installation
+    # (`make install`, `cmake --install`) is intentionally still routed
+    # through prompt rules below.
+    {
+      pattern = [ "./configure" ];
+      justification = "Build configuration scripts produce workspace artefacts.";
+    }
+    {
+      pattern = [ "configure" ];
+      justification = "Build configuration scripts produce workspace artefacts.";
+    }
+    {
+      pattern = [ "autoreconf" ];
+      justification = "Build system regeneration writes inside the workspace.";
+    }
+    {
+      pattern = [ "autoconf" ];
+      justification = "Build system regeneration writes inside the workspace.";
+    }
+    {
+      pattern = [ "automake" ];
+      justification = "Build system regeneration writes inside the workspace.";
+    }
+    {
+      pattern = [ "make" ];
+      justification = "Build commands write inside the workspace; `make install` is still prompted.";
+    }
+    {
+      pattern = [ "cmake" ];
+      justification = "Build commands write inside the workspace; `cmake --install` is still prompted.";
+    }
+    {
+      pattern = [ "meson" ];
+      justification = "Build commands write inside the workspace.";
+    }
+    {
+      pattern = [ "ninja" ];
+      justification = "Build commands write inside the workspace.";
+    }
+    {
+      pattern = [ "clang" ];
+      justification = "Compilation produces workspace artefacts.";
+    }
+    {
+      pattern = [ "clang++" ];
+      justification = "Compilation produces workspace artefacts.";
+    }
+    {
+      pattern = [ "gcc" ];
+      justification = "Compilation produces workspace artefacts.";
+    }
+    {
+      pattern = [ "g++" ];
+      justification = "Compilation produces workspace artefacts.";
+    }
+    {
+      pattern = [ "ar" ];
+      justification = "Archive creation writes inside the workspace.";
+    }
+    {
+      pattern = [ "ranlib" ];
+      justification = "Archive index updates write inside the workspace.";
+    }
+    {
+      pattern = [ "clang-tidy" ];
+      justification = "clang-tidy edits and reports run inside the workspace.";
+    }
+    {
+      pattern = [ "clang-format" ];
+      justification = "clang-format rewrites are workspace-bounded.";
+    }
+
+    # Per-language test, build, and format runners. Splitting these out of
+    # the parent prompt rules below lets Codex's `Forbidden > Prompt > Allow`
+    # ordering match each more-specific allow without the parent prompt
+    # winning. See the comment near the parent rules for the full rationale.
+    {
+      pattern = [
+        "go"
+        "build"
+      ];
+      justification = "Go builds produce workspace artefacts.";
+    }
+    {
+      pattern = [
+        "go"
+        "test"
+      ];
+      justification = "Go test runs project test code inside the workspace.";
+    }
+    {
+      pattern = [
+        "go"
+        "fmt"
+      ];
+      justification = "go fmt rewrites are workspace-bounded.";
+    }
+    {
+      pattern = [ "gofmt" ];
+      justification = "gofmt rewrites are workspace-bounded.";
+    }
+    {
+      pattern = [
+        "cargo"
+        "build"
+      ];
+      justification = "Cargo builds produce workspace artefacts.";
+    }
+    {
+      pattern = [
+        "cargo"
+        "test"
+      ];
+      justification = "Cargo test runs project test code inside the workspace.";
+    }
+    {
+      pattern = [
+        "cargo"
+        "fmt"
+      ];
+      justification = "cargo fmt rewrites are workspace-bounded.";
+    }
+    {
+      pattern = [
+        "npm"
+        "test"
+      ];
+      justification = "npm test runs project test code inside the workspace.";
+    }
+    {
+      pattern = [
+        "pnpm"
+        "test"
+      ];
+      justification = "pnpm test runs project test code inside the workspace.";
+    }
+
+    # Python test, lint, and formatter runners. The parent `[ "python" ]` and
+    # `[ "python3" ]` prompt rules have been removed (see comment in the
+    # promptRules block) so these specific allows are the only matches.
+    {
+      pattern = [
+        "python"
+        "-m"
+        "pytest"
+      ];
+      justification = "pytest runs project test code inside the workspace.";
+    }
+    {
+      pattern = [
+        "python3"
+        "-m"
+        "pytest"
+      ];
+      justification = "pytest runs project test code inside the workspace.";
+    }
+    {
+      pattern = [ "pytest" ];
+      justification = "pytest runs project test code inside the workspace.";
+    }
+    {
+      pattern = [ "mypy" ];
+      justification = "mypy is read-only type-checking.";
+    }
+    {
+      pattern = [ "ruff" ];
+      justification = "ruff is workspace-bounded; `ruff format` and `ruff check --fix` rewrite project files.";
+    }
+    {
+      pattern = [ "black" ];
+      justification = "black rewrites are workspace-bounded.";
+    }
+    {
+      pattern = [ "isort" ];
+      justification = "isort rewrites are workspace-bounded.";
+    }
+    {
+      pattern = [ "shfmt" ];
+      justification = "shfmt rewrites are workspace-bounded.";
+    }
+
+    # svelte-check is read-only.
+    {
+      pattern = [ "svelte-check" ];
+      justification = "svelte-check is read-only type-checking.";
+    }
+
+    # ffmpeg is allowed broadly; the workspace-write sandbox is the actual
+    # security boundary. ffmpeg can read/write network protocols (http://,
+    # ftp://, rtmp://, etc.) and arbitrary filesystem paths, so this rule
+    # does not by itself contain media processing - sandbox containment does.
+    {
+      pattern = [ "ffmpeg" ];
+      justification = "Media processing in workspace-bounded sandbox.";
+    }
+
+    # `git -C <path> <subcommand>` for read-only subcommands cannot be
+    # expressed as a prefix_rule: Codex's prefix patterns are positional and
+    # offer no wildcard token between literals to skip over the path
+    # argument. Read-only git inspection through `-C` therefore falls back to
+    # Codex's prompt heuristics; auto-approval lives only in OpenCode and the
+    # Claude Code auto-approve hook.
   ];
 
   promptRules = [
@@ -384,80 +594,25 @@ let
       justification = "Docker Compose state changes require approval.";
     }
 
-    # Build tools - configuration and builds
+    # Build tools - the C/C++ build pipeline (./configure, autoreconf, make,
+    # cmake, meson, ninja, gcc, clang, ar, ranlib, clang-tidy, clang-format)
+    # was moved to allowedRules above. Out-of-tree installation
+    # (`make install`, `cmake --install`) keeps prompting through the entries
+    # below.
     {
-      pattern = [ "./configure" ];
-      justification = "Build configuration scripts require approval.";
+      pattern = [
+        "make"
+        "install"
+      ];
+      justification = "make install writes outside the workspace.";
     }
     {
-      pattern = [ "configure" ];
-      justification = "Build configuration scripts require approval.";
+      pattern = [
+        "cmake"
+        "--install"
+      ];
+      justification = "cmake --install writes outside the workspace.";
     }
-    {
-      pattern = [ "autoreconf" ];
-      justification = "Build system generation requires approval.";
-    }
-    {
-      pattern = [ "autoconf" ];
-      justification = "Build system generation requires approval.";
-    }
-    {
-      pattern = [ "automake" ];
-      justification = "Build system generation requires approval.";
-    }
-    {
-      pattern = [ "make" ];
-      justification = "Build commands can execute arbitrary project code.";
-    }
-    {
-      pattern = [ "cmake" ];
-      justification = "Build commands can execute arbitrary project code.";
-    }
-    {
-      pattern = [ "meson" ];
-      justification = "Build commands can execute arbitrary project code.";
-    }
-    {
-      pattern = [ "ninja" ];
-      justification = "Build commands can execute arbitrary project code.";
-    }
-    {
-      pattern = [ "clang" ];
-      justification = "Compilation can execute build hooks and write outputs.";
-    }
-    {
-      pattern = [ "clang++" ];
-      justification = "Compilation can execute build hooks and write outputs.";
-    }
-    {
-      pattern = [ "gcc" ];
-      justification = "Compilation can execute build hooks and write outputs.";
-    }
-    {
-      pattern = [ "g++" ];
-      justification = "Compilation can execute build hooks and write outputs.";
-    }
-    {
-      pattern = [ "ar" ];
-      justification = "Archive writes require approval.";
-    }
-    {
-      pattern = [ "ranlib" ];
-      justification = "Archive writes require approval.";
-    }
-    {
-      pattern = [ "clang-tidy" ];
-      justification = "clang-tidy can apply source edits.";
-    }
-    {
-      pattern = [ "clang-format" ];
-      justification = "clang-format can rewrite source files.";
-    }
-    {
-      pattern = [ "ffmpeg" ];
-      justification = "Media processing can overwrite files.";
-    }
-
     # GitHub and Git - state modifications
     {
       pattern = [
@@ -584,19 +739,23 @@ let
     }
 
     # Common language and application toolchains
+    #
+    # Several alternative-list rules below were shrunk after `build`, `test`,
+    # and `fmt` were promoted to allow. Codex resolves overlapping matches
+    # via `Forbidden > Prompt > Allow` (max), so a parent prompt would still
+    # win against a more-specific allow; splitting the alternatives removes
+    # that conflict.
     {
       pattern = [
         "go"
         [
-          "build"
           "run"
-          "test"
           "generate"
           "get"
           "install"
         ]
       ];
-      justification = "Go build and execution commands require approval.";
+      justification = "Go execution and out-of-workspace installation require approval.";
     }
     {
       pattern = [
@@ -612,7 +771,6 @@ let
         [
           "install"
           "run"
-          "test"
           "publish"
         ]
       ];
@@ -688,15 +846,13 @@ let
       pattern = [
         "cargo"
         [
-          "build"
-          "test"
           "run"
           "install"
           "publish"
           "update"
         ]
       ];
-      justification = "Cargo build and package commands require approval.";
+      justification = "Cargo execution and package changes require approval.";
     }
     {
       pattern = [
@@ -718,26 +874,13 @@ let
       ];
       justification = "Python package changes require approval.";
     }
-    {
-      pattern = [ "python" ];
-      justification = "Python execution requires approval.";
-    }
-    {
-      pattern = [ "python3" ];
-      justification = "Python execution requires approval.";
-    }
-    {
-      pattern = [ "pytest" ];
-      justification = "Test execution can run project code.";
-    }
-    {
-      pattern = [ "mypy" ];
-      justification = "Type checking can run project plugins.";
-    }
-    {
-      pattern = [ "ruff" ];
-      justification = "ruff can rewrite files when invoked with fixes.";
-    }
+    # Note: bare `[ "python" ]` and `[ "python3" ]` prompt rules were
+    # intentionally removed. Codex resolves overlapping rules via
+    # `Forbidden > Prompt > Allow` (max), so a parent `python` prompt would
+    # win against the more-specific `python -m pytest` allow above. Bare
+    # `python script.py` invocations now fall through to Codex's heuristics
+    # fallback rather than to a static prompt rule. `pytest`, `mypy`, and
+    # `ruff` were also moved to allowedRules above.
     {
       pattern = [
         "uv"
@@ -765,10 +908,6 @@ let
         ]
       ];
       justification = "SvelteKit build and generated file updates require approval.";
-    }
-    {
-      pattern = [ "svelte-check" ];
-      justification = "Svelte checking can run project code.";
     }
     {
       pattern = [
