@@ -42,6 +42,12 @@ let
   # `bashDeny` rules cannot catch.
   autoApproveHook = pkgs.callPackage ./hooks/auto-approve { };
 
+  # Replacement for Claude Code's built-in `@` file picker. Pipes `fd` into
+  # `fzf --filter` so queries get real fuzzy scoring and untracked files,
+  # gitignored files, and symlinked trees all participate. Wired into
+  # `settings.fileSuggestion` below.
+  fileSuggestionCommand = pkgs.callPackage ./file-suggestion { };
+
   claudeAbsolutePattern = path: "//${lib.removePrefix "/" path}";
   claudeWorkspaceRoots = [
     "${config.home.homeDirectory}/Chainguard"
@@ -886,6 +892,14 @@ in
       shellAliases = {
         cc-traya = "claude --agent traya --continue";
       };
+      # Skip Claude Code's bundled ripgrep in favour of the system binary on
+      # PATH. The bundled `rg` crashes on 16 KB-page kernels (Apple Silicon,
+      # some Linux configs), silently emptying the file picker. Using the Nix
+      # ripgrep is harmless on every other host and avoids the failure mode
+      # entirely. See CLAUDE-FUZZY-FINDER-IS-DOGSHIT.md and upstream #11307.
+      sessionVariables = {
+        USE_BUILTIN_RIPGREP = "0";
+      };
     };
 
     # Declarative configuration for ccstatusline.
@@ -1023,6 +1037,17 @@ in
             type = "command";
             command = lib.getExe ccstatuslinePatched;
             padding = 0;
+          };
+
+          # Replace the built-in `@` file picker with `fd | fzf --filter`.
+          # The built-in matcher is a bespoke subsequence scorer capped at 15
+          # results and gated on `git ls-files`, so untracked or word-fragment
+          # queries fail. Claude Code invokes this command per keystroke with
+          # JSON `{"query": "..."}` on stdin. See ./file-suggestion for the
+          # script body and CLAUDE-FUZZY-FINDER-IS-DOGSHIT.md for context.
+          fileSuggestion = {
+            type = "command";
+            command = lib.getExe fileSuggestionCommand;
           };
           permissions = {
             allow =
