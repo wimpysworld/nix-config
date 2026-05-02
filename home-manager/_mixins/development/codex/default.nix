@@ -1501,15 +1501,6 @@ let
     # once per sub-agent rather than overlapping in the leader's status header.
     mcp_servers = mcpServerDefs.codexServers;
 
-    # Serialise sub-agents so their MCP startup events do not pile up on the
-    # leader's status header while the upstream TUI routing bug is unfixed
-    # (openai/codex #18068, #16821, #19542). Capping max_threads at 1 means
-    # only one sub-agent runs at a time, trading sub-agent throughput for a
-    # readable leader status. Raise this once the upstream fix lands.
-    agents = {
-      max_threads = 1;
-    };
-
     # Approval policy: never lets trusted workspace sessions run without
     # interactive approval prompts. Dangerous command prefixes remain blocked
     # by the generated exec policy rules.
