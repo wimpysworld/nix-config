@@ -10,6 +10,8 @@ Claude Code uses ordered allow/ask/deny lists evaluated at startup. Rules use pr
 
 Rules are checked in order: deny, then ask, then allow. The first matching rule wins, so deny rules take precedence over allow rules. The `defaultMode` is `acceptEdits`, which automatically accepts file edits and common filesystem commands for the launch directory and configured `additionalDirectories`.
 
+A consequence of tier ordering: a broad ask rule like `Bash(just:*)` shadows every more-specific allow such as `Bash(just eval)`. The `bashAsk` list intentionally omits broad globs for commands whose safe subcommands are explicitly allow-listed (currently `just`); unknown subcommands of those tools fall through to the default prompt. PreToolUse hooks cannot rescue this case: per the [Claude Code hooks documentation](https://code.claude.com/docs/en/hooks.md), an ask rule still prompts even when a hook returns `"allow"`.
+
 File read denials use `Read(pattern)` syntax and block access entirely. Absolute filesystem paths use Claude Code's `//path` form. A single leading slash is project-root-relative, not filesystem-root-relative.
 
 ## Three-tier model
@@ -62,11 +64,12 @@ Rules cover 13 tool domains. Each follows the same pattern: version checks and r
 | Allow | Ask | Deny |
 |-------|-----|------|
 | `ls`, `cat`, `head`, `tail`, `wc`, `file`, `tree`, `pwd` | `sed`, `sd`, `mkdir`, `touch`, `mv`, `cp` | `sudo`, `shred`, `wipe`, `srm`, `truncate` |
-| `which`, `type`, `env`, `fd`, `rg`, `grep` | `tee`, `echo`, `printf`, `curl`, `wget` | `dd` |
+| `which`, `type`, `env`, `fd`, `rg`, `grep` | `tee`, `curl`, `wget` | `dd` |
 | `whoami`, `hostname`, `uname`, `df`, `free`, `ps` | `chmod`, `chown`, `kill`, `pkill`, `ln` | `bash -c`, `sh -c`, `fish -c`, `zsh -c`, `dash -c` |
 | `stat`, `du`, `sort`, `uniq`, `cut`, `awk`, `diff` | `xdg-open` | `python -c`, `node -e`, `perl -e`, `ruby -e`, `lua -e`, `php -r` |
 | `jq`, `yq`, `bc`, `man`, `tldr`, `strings` | `rm`, `rmdir` (supervised) | `sysctl`, `modprobe`, `insmod`, `rmmod` |
-| `xxd`, `hexdump`, `od`, `base64`, `shellcheck` | | `grub-install`, `efibootmgr`, `fdisk`, `parted`, `mkfs`, `mount` |
+| `echo`, `printf` (pipeline sources) | | `grub-install`, `efibootmgr`, `fdisk`, `parted`, `mkfs`, `mount` |
+| `xxd`, `hexdump`, `od`, `base64`, `shellcheck` | | |
 | `bat`, `most`, `less`, `more`, `tr`, `tac`, `rev` | | |
 
 Additional text processing: `column`, `fold`, `nl`, `pr`, `expand`, `paste`, `join`, `comm`.
@@ -120,7 +123,7 @@ Process inspection: `pgrep`, `pidof`, `pstree`, `lsof`.
 | `derivation show`, `store ls/verify`, `hash` | `home-manager switch` | |
 | `repl`, `log`, `show-config`, `doctor` | `nixos-rebuild`, `darwin-rebuild` | |
 | `nix-instantiate`, `nix-store --query/-q` | | |
-| `nixfmt`, `statix`, `deadnix`, `alejandra` | | |
+| `nix fmt`, `nixfmt`, `statix`, `deadnix`, `alejandra` | | |
 
 ### Go
 
@@ -184,7 +187,7 @@ Process inspection: `pgrep`, `pidof`, `pstree`, `lsof`.
 |--------|-------|-----|------|
 | Hugo | `version`, `env` | All other `hugo` commands | - |
 | ImageMagick | `identify`, version checks | `convert`, `magick`, `mogrify`, `compare`, `composite` | - |
-| Just | `--version`, `--list`, `--summary`, `eval`, `build` | All other `just` commands | - |
+| Just | `--version`, `--list`, `--summary`, `build`, `build-home`, `build-host`, `eval`, `lint`, `list`, `test` | Other `just` commands prompt by default (no broad ask rule, to avoid shadowing the specific allows) | - |
 | Lua/LÖVE | `lua -v`, `love --version` | `lua`, `love`, `luarocks install/remove` | - |
 | Svelte | `svelte-check --help` | `svelte-kit sync/build`, `svelte-check` | - |
 | Wails | `--version`, `doctor` | `build`, `dev`, `init` | - |

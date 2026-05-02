@@ -144,6 +144,11 @@ let
     "Bash(man:*)"
     "Bash(tldr:*)"
     "Bash(strings:*)"
+    # Plain output and pipeline sources. Redirection (`echo x > file`) is
+    # bounded by the workspace-write sandbox and the auto-approve hook's
+    # hard-deny shapes still catch dangerous substitution patterns.
+    "Bash(echo:*)"
+    "Bash(printf:*)"
 
     # Text processing - additional
     "Bash(column:*)"
@@ -404,6 +409,8 @@ let
     "Bash(nvd:*)"
     "Bash(nixfmt)"
     "Bash(nixfmt:*)"
+    "Bash(nix fmt)"
+    "Bash(nix fmt:*)"
     "Bash(statix:*)"
     "Bash(deadnix:*)"
     "Bash(alejandra:*)"
@@ -445,8 +452,20 @@ let
     "Bash(just --list)"
     "Bash(just -l)"
     "Bash(just --summary)"
-    "Bash(just eval)"
     "Bash(just build)"
+    "Bash(just build:*)"
+    "Bash(just build-home)"
+    "Bash(just build-home:*)"
+    "Bash(just build-host)"
+    "Bash(just build-host:*)"
+    "Bash(just eval)"
+    "Bash(just eval:*)"
+    "Bash(just lint)"
+    "Bash(just lint:*)"
+    "Bash(just list)"
+    "Bash(just list:*)"
+    "Bash(just test)"
+    "Bash(just test:*)"
 
     # Lua - info only
     "Bash(lua -v)"
@@ -495,7 +514,12 @@ let
   ];
 
   bashAsk = [
-    # Shell - file modification or redirection risk
+    # Shell - file modification or redirection risk.
+    # Note: `echo` and `printf` are intentionally NOT listed here. Both are
+    # heavily used as pipeline sources (`echo "x" | jq`), and the broad ask
+    # shadowed every specific use. Plain output is harmless; the redirection
+    # risk is bounded by the workspace-write sandbox and the auto-approve
+    # hook's hard-deny shapes still catch dangerous substitution patterns.
     "Bash(xdg-open:*)"
     "Bash(sed:*)"
     "Bash(sd:*)"
@@ -504,8 +528,6 @@ let
     "Bash(mv:*)"
     "Bash(cp:*)"
     "Bash(tee:*)"
-    "Bash(echo:*)"
-    "Bash(printf:*)"
     "Bash(curl:*)"
     "Bash(wget:*)"
     "Bash(chmod:*)"
@@ -632,8 +654,11 @@ let
     "Bash(yarn install:*)"
     "Bash(vite:*)"
 
-    # Just - recipe execution
-    "Bash(just:*)"
+    # Just - recipe execution. The broad `just:*` rule was deliberately
+    # removed: it shadowed the specific allows above (`just eval`, `just
+    # build`, etc.) under Claude Code's first-match-wins-within-tier ordering
+    # (deny -> ask -> allow). Unknown `just` subcommands now fall through to
+    # the default prompt behaviour, while listed safe recipes auto-approve.
 
     # Lua - execution
     "Bash(lua:*)"
