@@ -112,6 +112,27 @@ DENY_COMMANDS=(
 	grub-install update-grub efibootmgr
 	rm rmdir
 	nix-collect-garbage
+	# System-state rebuild tools must always prompt, even for `--help` /
+	# `--version` / read-only subcommands like `home-manager generations`
+	# or `home-manager news`. The boundary is uniform: any invocation of
+	# these tools requires explicit approval, so they sit on DENY_COMMANDS
+	# to short-circuit the help/version auto-approve rule. The leaf still
+	# falls through to defer (it is not on KNOWN_SAFE_COMMANDS), which
+	# routes to the static `Bash(home-manager:*)` ask rule in default.nix.
+	home-manager nixos-rebuild darwin-rebuild
+)
+
+# Read-only git subcommands. Mirrors the `Bash(git <subcommand>:*)` entries in
+# `bashAllow` (see default.nix) so that `git -C <path> <subcommand>` shapes,
+# which Claude Code's positional static matcher cannot express, evaluate to
+# safe through the hook. The static allow already covers plain
+# `git <subcommand>` so this list is consulted only when the leaf carries the
+# `-C <path>` prefix.
+GIT_READONLY_SUBCOMMANDS=(
+	status diff log show branch remote tag reflog rev-parse describe
+	shortlog blame ls-files ls-tree ls-remote grep config worktree
+	name-rev cat-file count-objects for-each-ref symbolic-ref
+	verify-commit verify-tag stash
 )
 
 # ---------------------------------------------------------------------------
@@ -562,6 +583,28 @@ classify_leaf() {
 		fi
 		# Bare `cmd --help` (no extra args) and bare `cmd help` (no subcommand)
 		if [[ $leaf =~ ^[A-Za-z][A-Za-z0-9._/+-]*[[:space:]]+(--help|-h|--version|-V|help|version)$ ]]; then
+			printf 'safe\n'
+			return
+		fi
+	fi
+
+	# `git -C <path> <subcommand> [args...]` shape. The static `Bash(git
+	# <subcommand>:*)` allow rules in default.nix cannot cover this form
+	# because Claude Code's matcher is positional and `-C` slides every later
+	# token along by two. Approve only when the subcommand sits on the
+	# read-only set above; for write operations like `git -C <path> commit`
+	# this falls through to the static ask rules.
+	#
+	# Special-case `stash`: only `stash list` and `stash show` are read-only.
+	if [[ $cmd == "git" && $leaf =~ ^git[[:space:]]+-C[[:space:]]+[^[:space:]]+[[:space:]]+([A-Za-z][A-Za-z0-9_-]*)([[:space:]]+(.*))?$ ]]; then
+		local git_sub=${BASH_REMATCH[1]}
+		local git_rest=${BASH_REMATCH[3]:-}
+		if [[ $git_sub == "stash" ]]; then
+			if [[ $git_rest =~ ^(list|show)([[:space:]]|$) ]]; then
+				printf 'safe\n'
+				return
+			fi
+		elif _in_list "$git_sub" "${GIT_READONLY_SUBCOMMANDS[@]}"; then
 			printf 'safe\n'
 			return
 		fi
