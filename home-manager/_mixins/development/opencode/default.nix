@@ -6,11 +6,28 @@
   ...
 }:
 let
-  inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   # Use the pre-built binary from numtide's llm-agents.nix flake.
   # This avoids upstream source build issues entirely.
   opencodePackage = inputs.llm-agents.packages.${system}.opencode;
+
+  # Import shared MCP server definitions so the permission allowlist is
+  # derived from the canonical server list rather than hand-maintained.
+  mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
+
+  # Per-server permission entries for OpenCode. OpenCode names every MCP
+  # tool `<sanitised-server>_<sanitised-tool>` (see `mcp.tools()` in
+  # anomalyco/opencode `packages/opencode/src/mcp/index.ts` line 657), and
+  # each tool call evaluates against a top-level permission key matching
+  # that name (see `prompt.ts` line 467 calling `ask({ permission: key, ...
+  # })`). A `<server>_*` entry at the top level therefore allows every
+  # tool from that server. The global `mcp = { "*" = "allow"; }` block
+  # below does not apply to MCP tools - it only matches a tool literally
+  # named `mcp` - so these per-server entries are load-bearing. Adding a
+  # server in `mcp/servers.nix` auto-extends this list with no edits here.
+  mcpServerAllow = lib.listToAttrs (
+    map (name: lib.nameValuePair "${name}_*" "allow") (lib.attrNames mcpServerDefs.opencodeServers)
+  );
 in
 {
   home.shellAliases = {
@@ -68,7 +85,7 @@ in
 
         # Global permissions - applied to all agents including built-in Build and Plan
         # These provide guardrails across the board
-        permission = {
+        permission = mcpServerAllow // {
           # Unknown tools prompt by default. Explicit rules below keep MCP,
           # workspace edits, safe shell commands, skills, and subagents flowing
           # without approvals.
@@ -147,11 +164,9 @@ in
           question = "allow"; # Let subagents ask clarifying questions directly.
 
           # MCP tools - allow every tool from explicitly configured servers.
-          "cloudflare_*" = "allow";
-          "context7_*" = "allow";
-          "exa_*" = "allow";
-          "nixos_*" = "allow";
-          "svelte_*" = "allow";
+          # The per-server `<name>_*` entries are derived from
+          # `mcpServerDefs.opencodeServers` and merged into this attrset via
+          # `mcpServerAllow //` at the top of the `permission` block.
 
           bash = {
             # ══════════════════════════════════════════════════════════════
@@ -1368,10 +1383,14 @@ in
           todowrite = "allow"; # Modifying todo lists
           webfetch = "allow"; # Fetching URLs
           websearch = "allow"; # Web searches
-          # MCP tools - allow all unconditionally
-          mcp = {
-            "*" = "allow";
-          };
+          # MCP tool permissions are granted by the derived `<server>_*`
+          # entries merged in at the top of this `permission` block. A bare
+          # `mcp = { "*" = "allow"; }` stanza is a no-op in OpenCode because
+          # MCP tool calls evaluate against permission keys of the form
+          # `<sanitised-server>_<sanitised-tool>` (see anomalyco/opencode
+          # `packages/opencode/src/mcp/index.ts` line 657 and
+          # `packages/opencode/src/session/prompt.ts` line 467), so a key of
+          # exactly `mcp` would only match a tool literally named `mcp`.
           codesearch = "allow"; # Code searches
           # Safety guards - always ask
           doom_loop = "ask"; # Repeated identical tool calls
