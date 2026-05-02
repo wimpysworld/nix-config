@@ -86,8 +86,12 @@ KNOWN_SAFE_COMMANDS=(
 	identify
 	# Nix inspection-only commands
 	nix-info nix-tree nix-diff nvd statix deadnix nixfmt alejandra
-	# Just listing
-	just
+	# Note: `just` is intentionally NOT listed. It used to be here so the
+	# hook could auto-approve safe recipes, but Claude Code's hook contract
+	# states ask rules still prompt even when a hook returns "allow"
+	# (https://code.claude.com/docs/en/hooks.md). Specific `just` recipes
+	# are allow-listed in default.nix instead, and unknown subcommands fall
+	# through to the default prompt.
 )
 
 # Commands that this hook will NEVER auto-approve, even for `--help`/`--version`.
