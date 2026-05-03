@@ -255,6 +255,10 @@ is intentionally hybrid. A webhook can reduce latency for configured
 repositories or organisations, but it cannot replace the Notifications REST API
 poller as the source of truth.
 
+The `github-notifications` route is explicitly tombstoned in the Nix config so
+the Hermes config merge step removes the previously deployed static route from
+runtime use.
+
 ## Sanctuary
 
 Traya-owned continuity state now lives under `/var/lib/hermes/workspace/trayas-sanctuary`.

@@ -566,6 +566,7 @@ in
               host = "127.0.0.1";
               port = 8644;
               secret = "\${WEBHOOK_SECRET}";
+              routes.github-notifications = null;
             };
           };
         };
