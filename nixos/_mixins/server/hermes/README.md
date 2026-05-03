@@ -243,6 +243,55 @@ After deployment, the local health check should return OK:
 curl http://127.0.0.1:8644/health
 ```
 
+### GitHub Notifications trigger
+
+Hermes declares a static `github-notifications` webhook route under
+`services.hermes-agent.settings.platforms.webhook.extra.routes`.
+
+This route exists to replace fixed-interval GitHub notification polling with an
+event-driven wake-up path. GitHub does not provide a standard webhook for a
+user's personal Notifications inbox, so this route treats repository,
+organisation, or GitHub App activity as the trigger. The agent then re-checks
+the live Notifications REST API and uses that API as the source of truth before
+acting.
+
+The route accepts common notification-producing GitHub events such as:
+
+- `issues`
+- `issue_comment`
+- `pull_request`
+- `pull_request_review`
+- `pull_request_review_comment`
+- `discussion`
+- `discussion_comment`
+- `workflow_run`
+- `check_run`
+- `check_suite`
+- `dependabot_alert`
+
+Operational shape:
+
+- endpoint: `/webhooks/github-notifications`
+- secret: inherited from `WEBHOOK_SECRET`
+- mode: agent-backed, not `deliver_only`
+- skill: `github-notifications-follow-up-sweep`
+- delivery target: Telegram chat `-1003933927882`, topic `11`
+
+In GitHub, configure a repository, organisation, or GitHub App webhook with:
+
+```text
+Payload URL: https://<hermes-webhook-hostname>/webhooks/github-notifications
+Content type: application/json
+Secret: <WEBHOOK_SECRET from secrets/hermes.yaml>
+Events: select the same event set as the Nix route
+```
+
+Do not remove the low-frequency fallback notification poller until the webhook
+has been exercised against the repositories and organisations that cover the
+notifications Martin cares about. The webhook trigger cannot see personal inbox
+updates from repositories or organisations that are not configured to send
+events to this endpoint.
+
 ## Sanctuary
 
 Traya-owned continuity state now lives under `/var/lib/hermes/workspace/trayas-sanctuary`.
