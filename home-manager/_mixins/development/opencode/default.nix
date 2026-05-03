@@ -705,7 +705,16 @@ in
             "git filter-repo*" = "deny";
             "git reflog expire*" = "deny";
 
-            # Git - read-only queries
+            # Git - read-only queries.
+            #
+            # Read-only narrow allows for subcommands that ALSO have a broader
+            # `<subcommand> *` ask later in this block (branch, tag, stash,
+            # config) are NOT placed here. OpenCode resolves precedence with
+            # `.findLast()`, so a later-declared broad ask shadows an earlier
+            # narrow allow. Those narrow allows are relocated AFTER each
+            # corresponding broad ask so they win the precedence battle.
+            # Mirror of the `nix profile list/history/diff-closures` pattern
+            # below.
             "git status" = "allow";
             "git status *" = "allow";
             "git diff" = "allow";
@@ -715,22 +724,9 @@ in
             "git show" = "allow";
             "git show *" = "allow";
             "git branch" = "allow";
-            "git branch -a*" = "allow";
-            "git branch -v*" = "allow";
-            "git branch -r*" = "allow";
-            "git branch --list*" = "allow";
-            "git branch --contains*" = "allow";
-            "git branch --merged*" = "allow";
-            "git branch --no-merged*" = "allow";
             "git remote" = "allow";
             "git remote *" = "allow";
             "git tag" = "allow";
-            "git tag -l*" = "allow";
-            "git tag --list*" = "allow";
-            "git stash list" = "allow";
-            "git stash list *" = "allow";
-            "git stash show" = "allow";
-            "git stash show *" = "allow";
             "git reflog" = "allow";
             "git reflog *" = "allow";
             "git rev-parse *" = "allow";
@@ -742,8 +738,6 @@ in
             "git ls-tree *" = "allow";
             "git ls-remote *" = "allow";
             "git grep *" = "allow";
-            "git config --list*" = "allow";
-            "git config --get*" = "allow";
             "git worktree list" = "allow";
             "git name-rev *" = "allow";
             "git cat-file *" = "allow";
@@ -756,7 +750,10 @@ in
 
             # `git -C <path> <subcommand>` for read-only subcommands. Mirrors
             # every read-only entry above so the same queries auto-resolve
-            # when targeted at a sibling worktree via `-C`.
+            # when targeted at a sibling worktree via `-C`. Same precedence
+            # caveat: narrow read-only allows for subcommands with a broader
+            # later ask (branch, tag, stash, config) are relocated AFTER
+            # those asks below.
             "git -C * status" = "allow";
             "git -C * status *" = "allow";
             "git -C * diff" = "allow";
@@ -766,22 +763,9 @@ in
             "git -C * show" = "allow";
             "git -C * show *" = "allow";
             "git -C * branch" = "allow";
-            "git -C * branch -a*" = "allow";
-            "git -C * branch -v*" = "allow";
-            "git -C * branch -r*" = "allow";
-            "git -C * branch --list*" = "allow";
-            "git -C * branch --contains*" = "allow";
-            "git -C * branch --merged*" = "allow";
-            "git -C * branch --no-merged*" = "allow";
             "git -C * remote" = "allow";
             "git -C * remote *" = "allow";
             "git -C * tag" = "allow";
-            "git -C * tag -l*" = "allow";
-            "git -C * tag --list*" = "allow";
-            "git -C * stash list" = "allow";
-            "git -C * stash list *" = "allow";
-            "git -C * stash show" = "allow";
-            "git -C * stash show *" = "allow";
             "git -C * reflog" = "allow";
             "git -C * reflog *" = "allow";
             "git -C * rev-parse *" = "allow";
@@ -793,8 +777,6 @@ in
             "git -C * ls-tree *" = "allow";
             "git -C * ls-remote *" = "allow";
             "git -C * grep *" = "allow";
-            "git -C * config --list*" = "allow";
-            "git -C * config --get*" = "allow";
             "git -C * worktree list" = "allow";
             "git -C * name-rev *" = "allow";
             "git -C * cat-file *" = "allow";
@@ -867,6 +849,35 @@ in
             "git -C * rm *" = "ask";
             "git -C * submodule *" = "ask";
 
+            # Read-only `git -C * <subcommand>` narrow allows. These rules sit
+            # AFTER the broader `<subcommand> *` asks above because OpenCode
+            # uses `.findLast()` to resolve precedence, so the most specific
+            # later-declared rule wins. Mirror of the `nix profile
+            # list/history/diff-closures` pattern below.
+            "git -C * branch -a*" = "allow";
+            "git -C * branch -v*" = "allow";
+            "git -C * branch -r*" = "allow";
+            "git -C * branch --list*" = "allow";
+            "git -C * branch --contains*" = "allow";
+            "git -C * branch --merged*" = "allow";
+            "git -C * branch --no-merged*" = "allow";
+            "git -C * tag -l*" = "allow";
+            "git -C * tag --list*" = "allow";
+            "git -C * stash list" = "allow";
+            "git -C * stash list *" = "allow";
+            "git -C * stash show" = "allow";
+            "git -C * stash show *" = "allow";
+            "git -C * config --list" = "allow";
+            "git -C * config --list *" = "allow";
+            "git -C * config --get" = "allow";
+            "git -C * config --get *" = "allow";
+            "git -C * config --get-all" = "allow";
+            "git -C * config --get-all *" = "allow";
+            "git -C * config --get-regexp" = "allow";
+            "git -C * config --get-regexp *" = "allow";
+            "git -C * config --get-urlmatch" = "allow";
+            "git -C * config --get-urlmatch *" = "allow";
+
             # Git - ask: state modifications
             "git add *" = "ask";
             "git commit" = "ask";
@@ -916,6 +927,35 @@ in
             "git mv *" = "ask";
             "git rm *" = "ask";
             "git submodule *" = "ask";
+
+            # Read-only `git <subcommand>` narrow allows. These rules sit
+            # AFTER the broader `<subcommand> *` asks above because OpenCode
+            # uses `.findLast()` to resolve precedence, so the most specific
+            # later-declared rule wins. Mirror of the `nix profile
+            # list/history/diff-closures` pattern below.
+            "git branch -a*" = "allow";
+            "git branch -v*" = "allow";
+            "git branch -r*" = "allow";
+            "git branch --list*" = "allow";
+            "git branch --contains*" = "allow";
+            "git branch --merged*" = "allow";
+            "git branch --no-merged*" = "allow";
+            "git tag -l*" = "allow";
+            "git tag --list*" = "allow";
+            "git stash list" = "allow";
+            "git stash list *" = "allow";
+            "git stash show" = "allow";
+            "git stash show *" = "allow";
+            "git config --list" = "allow";
+            "git config --list *" = "allow";
+            "git config --get" = "allow";
+            "git config --get *" = "allow";
+            "git config --get-all" = "allow";
+            "git config --get-all *" = "allow";
+            "git config --get-regexp" = "allow";
+            "git config --get-regexp *" = "allow";
+            "git config --get-urlmatch" = "allow";
+            "git config --get-urlmatch *" = "allow";
 
             # ══════════════════════════════════════════════════════════════
             # Hugo
