@@ -259,7 +259,7 @@ Nix fetcher locks.
 After changing the policy, run:
 
 ```bash
-nixfmt --check home-manager/_mixins/development/codex/default.nix
+nixfmt --check home-manager/_mixins/agentic/codex/default.nix
 just eval
 ```
 

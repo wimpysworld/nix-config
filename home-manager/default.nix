@@ -25,6 +25,7 @@ in
     inputs.sops-nix.homeManagerModules.sops
     inputs.mac-app-util.homeManagerModules.default
     inputs.nix-index-database.homeModules.nix-index
+    ./_mixins/agentic
     ./_mixins/development
     ./_mixins/filesync
     ./_mixins/scripts
