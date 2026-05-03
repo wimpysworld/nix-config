@@ -276,6 +276,9 @@ Operational shape:
 - mode: agent-backed, not `deliver_only`
 - skill: `github-notifications-follow-up-sweep`
 - delivery target: Telegram chat `-1003933927882`, topic `11`
+- prompt-input policy: the route does not include the raw webhook payload in
+  the agent prompt; it treats the webhook as a wake-up signal and fetches live
+  state from GitHub before acting
 
 In GitHub, configure a repository, organisation, or GitHub App webhook with:
 
