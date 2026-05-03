@@ -632,7 +632,7 @@ classify_leaf() {
 				# cannot rely on the leading flag alone. This guard runs
 				# BEFORE the read-only flag check so write flags reject
 				# the whole invocation no matter their position.
-				if ! [[ $git_rest =~ (^|[[:space:]])(-d|-D|-m|-M|-c|-C|--delete|--move|--copy|--set-upstream-to|--unset-upstream|--edit-description|--track|--no-track|--create-reflog)([[:space:]]|=|$) ]]; then
+				if ! [[ $git_rest =~ (^|[[:space:]])(-d|-D|-m|-M|-c|-C|-f|--delete|--move|--copy|--force|--set-upstream-to|--unset-upstream|--edit-description|--track|--no-track|--create-reflog|--recurse-submodules)([[:space:]]|=|$) ]]; then
 					# Read-only flags: -a, -r, -v(v), --list, --contains,
 					# --merged, --no-merged, --points-at, --show-current,
 					# --column, --sort, --format. Anything starting with
