@@ -626,14 +626,22 @@ classify_leaf() {
 					printf 'safe\n'
 					return
 				fi
-				# Read-only flags: -a, -r, -v(v), --list, --contains,
-				# --merged, --no-merged, --points-at, --show-current,
-				# --column, --sort, --format. Anything starting with
-				# something else (e.g. -d, -D, -m, -M, --set-upstream,
-				# bare branch name to create) defers.
-				if [[ $git_rest =~ ^(-a|-r|-v|-vv|-av|-rv|-arv|--list|--contains|--no-contains|--merged|--no-merged|--points-at|--show-current|--column|--no-column|--sort|--format|--all|--remotes|--verbose)([[:space:]]|=|$) ]]; then
-					printf 'safe\n'
-					return
+				# Defer if any write-capable flag appears anywhere in
+				# the rest. `git branch` accepts mixed flag orders, e.g.
+				# `git branch -v -d feature` lists then deletes, so we
+				# cannot rely on the leading flag alone. This guard runs
+				# BEFORE the read-only flag check so write flags reject
+				# the whole invocation no matter their position.
+				if ! [[ $git_rest =~ (^|[[:space:]])(-d|-D|-m|-M|-c|-C|--delete|--move|--copy|--set-upstream-to|--unset-upstream|--edit-description|--track|--no-track|--create-reflog)([[:space:]]|=|$) ]]; then
+					# Read-only flags: -a, -r, -v(v), --list, --contains,
+					# --merged, --no-merged, --points-at, --show-current,
+					# --column, --sort, --format. Anything starting with
+					# something else (e.g. bare branch name to create)
+					# also defers.
+					if [[ $git_rest =~ ^(-a|-r|-v|-vv|-av|-rv|-arv|--list|--contains|--no-contains|--merged|--no-merged|--points-at|--show-current|--column|--no-column|--sort|--format|--all|--remotes|--verbose)([[:space:]]|=|$) ]]; then
+						printf 'safe\n'
+						return
+					fi
 				fi
 				;;
 			tag)
@@ -655,9 +663,11 @@ classify_leaf() {
 					printf 'safe\n'
 					return
 				fi
-				# Read-only forms: -v / --verbose, show <name>,
-				# get-url <name>.
-				if [[ $git_rest =~ ^(-v|--verbose)([[:space:]]|$) ]]; then
+				# Read-only forms: bare `-v`/`--verbose`, `show <name>`,
+				# `get-url <name>`. `-v` followed by a write subcommand
+				# (e.g. `remote -v remove origin`) must defer, so the
+				# verbose check anchors to end-of-string.
+				if [[ $git_rest =~ ^(-v|--verbose)$ ]]; then
 					printf 'safe\n'
 					return
 				fi
