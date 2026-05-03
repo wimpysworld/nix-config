@@ -199,7 +199,7 @@ let
     ffmpeg
     findutils
     fzf
-    getent-glibc
+    getent
     gh
     himalaya
     gitMinimal
