@@ -22,6 +22,7 @@ let
   # `determinate` flake's `packages.default` is `determinate-nixd` (the daemon
   # helper); the actual `nix` CLI lives in its `nix` input.
   nixPackage = inputs.determinate.inputs.nix.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  inherit (config.noughty) host;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   hermesDashboardHost = "127.0.0.1";
   hermesDashboardPort = 9119;
@@ -39,6 +40,83 @@ let
     ln -s ${piperVctkMediumModel} "$out/en_GB-vctk-medium.onnx"
     ln -s ${piperVctkMediumConfig} "$out/en_GB-vctk-medium.onnx.json"
   '';
+  onnxruntimeCuda = pkgs.onnxruntime.override {
+    cudaSupport = true;
+  };
+  python3PackagesWithCudaOnnxruntime = pkgs.python3Packages.override {
+    overrides = pyFinal: pyPrev: {
+      onnxruntime = pyPrev.onnxruntime.override {
+        onnxruntime = onnxruntimeCuda;
+      };
+    };
+  };
+  piperTtsCuda = pkgs.piper-tts.override {
+    python3Packages = python3PackagesWithCudaOnnxruntime;
+  };
+  piperTtsPackage = if host.gpu.hasCuda then piperTtsCuda else pkgs.piper-tts;
+  piperCudaFlag = lib.optionalString host.gpu.hasCuda "--cuda";
+  # Jivetalking's benchmarked production tunings keep these FFmpeg filters on
+  # the fast/transparent frontier for podcast voice. Piper still emits WAV, then
+  # this wrapper denoises and repairs clicks into the requested Hermes output.
+  # See: https://github.com/linuxmatters/jivetalking/blob/main/docs/Benchmarks.md
+  piperPostFilter = "anlmdn=s=0.00001:p=0.0060:r=0.0020:m=3,adeclick=t=2.0:w=55:o=50:m=s";
+  piperVctkP276Command = pkgs.writeShellApplication {
+    name = "hermes-piper-vctk-p276";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.ffmpeg
+      piperTtsPackage
+    ];
+    text = ''
+      set -euo pipefail
+
+      input_file=""
+      output_file=""
+
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --input-file)
+            input_file="$2"
+            shift 2
+            ;;
+          --output-file)
+            output_file="$2"
+            shift 2
+            ;;
+          *)
+            echo "Unknown argument: $1" >&2
+            exit 64
+            ;;
+        esac
+      done
+
+      if [[ -z "$input_file" || -z "$output_file" ]]; then
+        echo "Usage: hermes-piper-vctk-p276 --input-file PATH --output-file PATH" >&2
+        exit 64
+      fi
+
+      tmp_wav="$(mktemp --tmpdir hermes-piper-vctk-p276.XXXXXX.wav)"
+      cleanup() {
+        rm -f "$tmp_wav"
+      }
+      trap cleanup EXIT
+
+      piper \
+        ${piperCudaFlag} \
+        --model ${piperVctkMediumVoice}/en_GB-vctk-medium.onnx \
+        --speaker 11 \
+        --output-file "$tmp_wav" \
+        --input-file "$input_file"
+
+      ffmpeg \
+        -hide_banner \
+        -loglevel error \
+        -y \
+        -i "$tmp_wav" \
+        -af ${lib.escapeShellArg piperPostFilter} \
+        "$output_file"
+    '';
+  };
   # Hermes 0.10 started enforcing owner-only chmods in several Python code paths
   # such as auth.json and cron state. That breaks this deployment because the
   # service account and the interactive host user intentionally share one
@@ -244,7 +322,7 @@ let
     openhue-cli
     openssh
     poppler-utils
-    piper-tts
+    piperTtsPackage
     procps
     python3
     python3Packages.tinytuya
@@ -770,7 +848,7 @@ in
           provider = "piper-vctk-p276";
           providers.piper-vctk-p276 = {
             type = "command";
-            command = "${pkgs.piper-tts}/bin/piper --model ${piperVctkMediumVoice}/en_GB-vctk-medium.onnx --speaker 11 --output-file {output_path} --input-file {input_path}";
+            command = "${piperVctkP276Command}/bin/hermes-piper-vctk-p276 --input-file {input_path} --output-file {output_path}";
             output_format = "wav";
             voice_compatible = true;
             timeout = 120;

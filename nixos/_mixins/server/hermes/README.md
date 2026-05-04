@@ -92,9 +92,13 @@ Hermes 0.12.0 supports local TTS providers. This deployment uses Piper by
 default through a command provider so Hermes can select the VCTK multi-speaker
 voice explicitly.
 
-The shell exposes `piper` through `services.hermes-agent.extraPackages`, and
-the managed Hermes wrapper prepends the same package set to `PATH` for manual
-host-side `hermes` invocations.
+The shell exposes the same Piper package selected for the service through
+`services.hermes-agent.extraPackages`, and the managed Hermes wrapper prepends
+the same package set to `PATH` for manual host-side `hermes` invocations. On
+CUDA-capable hosts this is a CUDA-enabled Piper build: `piper-tts` is rebuilt
+against an ONNX Runtime derivation with `cudaSupport = true`, and the service
+wrapper passes `--cuda` automatically. Non-CUDA hosts keep the stock CPU Piper
+package.
 
 The voice assets are fixed-output Nix fetches from
 `rhasspy/piper-voices` at revision
@@ -105,6 +109,18 @@ The voice assets are fixed-output Nix fetches from
 - speaker: `p276`
 - speaker id: `11`
 
+The command provider wraps Piper with a small FFmpeg post-processing step. Piper
+still writes a temporary WAV first, then the wrapper writes the requested Hermes
+WAV output after applying the production Jivetalking voice-cleanup tunings:
+
+- `anlmdn=s=0.00001:p=0.0060:r=0.0020:m=3`
+- `adeclick=t=2.0:w=55:o=50:m=s`
+
+Those settings come from the measured optimum in
+[`linuxmatters/jivetalking/docs/Benchmarks.md`](https://github.com/linuxmatters/jivetalking/blob/main/docs/Benchmarks.md):
+`anlmdn` keeps the FFmpeg minimum research radius with stricter smoothing, and
+`adeclick` uses a less sensitive threshold, lower overlap, and spline repair.
+
 The config shape is:
 
 ```nix
@@ -112,7 +128,7 @@ tts = {
   provider = "piper-vctk-p276";
   providers.piper-vctk-p276 = {
     type = "command";
-    command = "piper --model <voice-dir>/en_GB-vctk-medium.onnx --speaker 11 --output-file {output_path} --input-file {input_path}";
+    command = "<wrapper>/bin/hermes-piper-vctk-p276 --input-file {input_path} --output-file {output_path}";
     output_format = "wav";
     voice_compatible = true;
     model = "en_GB-vctk-medium";
