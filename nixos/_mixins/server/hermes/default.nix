@@ -25,6 +25,20 @@ let
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   hermesDashboardHost = "127.0.0.1";
   hermesDashboardPort = 9119;
+  piperVoiceRevision = "7a6c333ec560f0e688371adc2fbb7bbe105028c6";
+  piperVctkMediumModel = pkgs.fetchurl {
+    url = "https://huggingface.co/rhasspy/piper-voices/resolve/${piperVoiceRevision}/en/en_GB/vctk/medium/en_GB-vctk-medium.onnx";
+    hash = "sha256-Tp/IWrkAk4Uxn8a65/VVd/ii1+53/ZFZpVAOtlMfQeY=";
+  };
+  piperVctkMediumConfig = pkgs.fetchurl {
+    url = "https://huggingface.co/rhasspy/piper-voices/resolve/${piperVoiceRevision}/en/en_GB/vctk/medium/en_GB-vctk-medium.onnx.json";
+    hash = "sha256-f4XmOR7Q9/RuSr0ZNFkpoWvpMaDJlFCG+WaS3OIIf6g=";
+  };
+  piperVctkMediumVoice = pkgs.runCommand "piper-en_GB-vctk-medium-voice" { } ''
+    mkdir -p "$out"
+    ln -s ${piperVctkMediumModel} "$out/en_GB-vctk-medium.onnx"
+    ln -s ${piperVctkMediumConfig} "$out/en_GB-vctk-medium.onnx.json"
+  '';
   # Hermes 0.10 started enforcing owner-only chmods in several Python code paths
   # such as auth.json and cron state. That breaks this deployment because the
   # service account and the interactive host user intentionally share one
@@ -220,6 +234,7 @@ let
     nodejs-slim
     openssh
     poppler-utils
+    piper-tts
     procps
     python3Minimal
     rclone
@@ -665,9 +680,20 @@ in
         ];
 
         tts = {
-          provider = "edge";
-          edge = {
-            voice = "en-GB-SoniaNeural";
+          provider = "piper-vctk-p276";
+          providers.piper-vctk-p276 = {
+            type = "command";
+            command = "${pkgs.piper-tts}/bin/piper --model ${piperVctkMediumVoice}/en_GB-vctk-medium.onnx --speaker 11 --output-file {output_path} --input-file {input_path}";
+            output_format = "wav";
+            voice_compatible = true;
+            timeout = 120;
+            model = "en_GB-vctk-medium";
+            voice = "p276";
+          };
+          piper = {
+            voice = "${piperVctkMediumVoice}/en_GB-vctk-medium.onnx";
+            voices_dir = "${hermesHome}/cache/piper-voices";
+            use_cuda = false;
           };
         };
 
