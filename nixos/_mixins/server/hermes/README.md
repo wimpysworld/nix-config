@@ -16,6 +16,7 @@ The current deployment is:
 - **Primary model**: `gpt-5.5` via the `openai-codex` provider
 - **Fallback model**: `claude-opus-4-7` via the `anthropic` provider
 - **Memory provider**: Holographic
+- **Default TTS**: local Piper using `en_GB-vctk-medium`, speaker `p276`/`11`
 - **Web dashboard**: `https://revan.<tailnet>/` through Caddy/Tailscale
 - **Deployment mode**: native NixOS service, not podman container mode
 
@@ -84,6 +85,45 @@ services.hermes-agent.settings = {
 
 This means the live default is `gpt-5.5` through `openai-codex`, with
 Anthropic held as fallback.
+
+## Local Piper TTS
+
+Hermes 0.12.0 supports local TTS providers. This deployment uses Piper by
+default through a command provider so Hermes can select the VCTK multi-speaker
+voice explicitly.
+
+The shell exposes `piper` through `services.hermes-agent.extraPackages`, and
+the managed Hermes wrapper prepends the same package set to `PATH` for manual
+host-side `hermes` invocations.
+
+The voice assets are fixed-output Nix fetches from
+`rhasspy/piper-voices` at revision
+`7a6c333ec560f0e688371adc2fbb7bbe105028c6`:
+
+- model: `en/en_GB/vctk/medium/en_GB-vctk-medium.onnx`
+- config: `en/en_GB/vctk/medium/en_GB-vctk-medium.onnx.json`
+- speaker: `p276`
+- speaker id: `11`
+
+The config shape is:
+
+```nix
+tts = {
+  provider = "piper-vctk-p276";
+  providers.piper-vctk-p276 = {
+    type = "command";
+    command = "piper --model <voice-dir>/en_GB-vctk-medium.onnx --speaker 11 --output-file {output_path} --input-file {input_path}";
+    output_format = "wav";
+    voice_compatible = true;
+    model = "en_GB-vctk-medium";
+    voice = "p276";
+  };
+};
+```
+
+The model and JSON config are symlinked into one Nix store directory before
+use. Piper resolves `<model>.json` next to the ONNX model at runtime, so the
+two fetched files must remain adjacent.
 
 The remote qwen endpoints remain available as named custom providers:
 
