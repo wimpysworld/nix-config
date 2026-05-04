@@ -117,11 +117,24 @@ tts = {
     voice = "${piperVctkMediumVoice}/en_GB-vctk-medium.onnx";
     voices_dir = "${piperVctkMediumVoice}";
     speaker_id = 11;
+    length_scale = 1.25;
+    noise_scale = 0.35;
+    noise_w_scale = 0.80;
     use_cuda = false;
     normalize_audio = true;
   };
 };
 ```
+
+The synthesis tuning above keeps the VCTK `p276` voice a little quicker than
+the upstream model defaults while preserving a soft, breathy cadence:
+
+- `length_scale = 1.25` shortens phoneme duration from the model's slower `1.4`
+  default.
+- `noise_scale = 0.35` keeps acoustic texture close to the model's `0.333`
+  default without roughening the voice.
+- `noise_w_scale = 0.80` increases timing variation for a shy, less mechanical
+  delivery.
 
 The model and JSON config are symlinked into one Nix store directory before
 use. Piper resolves `<model>.json` next to the ONNX model at runtime, so the
