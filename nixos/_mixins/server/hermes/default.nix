@@ -29,6 +29,11 @@ let
   # such as auth.json and cron state. That breaks this deployment because the
   # service account and the interactive host user intentionally share one
   # managed HERMES_HOME via the hermes group.
+  hermesTuyaPythonPackages = with pkgs.python3Packages; [
+    tinytuya
+    tuyaha
+  ];
+  hermesTuyaPythonPath = pkgs.python3Packages.makePythonPath hermesTuyaPythonPackages;
   hermesManagedPythonPath = pkgs.writeTextDir "sitecustomize.py" ''
     """Keep managed Hermes state group-accessible and patch doctor checks."""
 
@@ -162,7 +167,7 @@ let
             --set-default TRAYA_SANCTUARY_DIR "/var/lib/hermes/workspace/trayas-sanctuary" \
             --set-default TRAYA_SANCTUARY_REPO "the-cauldron/trayas-sanctuary" \
             --prefix PATH : "${lib.makeBinPath hermesExtraPackages}" \
-            --prefix PYTHONPATH : "${hermesManagedPythonPath}" \
+            --prefix PYTHONPATH : "${hermesManagedPythonPath}:${hermesTuyaPythonPath}" \
             --set-default HERMES_MANAGED "true"
         fi
       done
@@ -225,6 +230,7 @@ let
     poppler-utils
     procps
     python3Minimal
+    python3Packages.tinytuya
     rclone
     ripgrep
     rsync
@@ -256,6 +262,7 @@ let
     export TRAYA_SANCTUARY_DIR="/var/lib/hermes/workspace/trayas-sanctuary"
     export TRAYA_SANCTUARY_REPO="the-cauldron/trayas-sanctuary"
     export GNUPGHOME=${hermesGnupgHome}
+    export PYTHONPATH="${hermesManagedPythonPath}:${hermesTuyaPythonPath}:\''${PYTHONPATH-}"
 
     # Interactive CLI sandboxing: systemd hardening does not apply to host
     # shells, so we reuse bubblewrap to hide the same paths the gateway
