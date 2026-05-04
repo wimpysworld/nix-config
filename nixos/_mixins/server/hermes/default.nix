@@ -229,7 +229,7 @@ let
     openssh
     poppler-utils
     procps
-    python3Minimal
+    python3
     python3Packages.tinytuya
     rclone
     ripgrep
