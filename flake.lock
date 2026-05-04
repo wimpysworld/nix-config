@@ -493,14 +493,18 @@
         "uv2nix": "uv2nix_2"
       },
       "locked": {
-        "lastModified": 1777573861,
-        "narHash": "sha256-whY/1WL2fQUhPqDp7CGm3MSwOOo7FB1eADhNVnHeCRU=",
-        "type": "tarball",
-        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.4.30.tar.gz"
+        "lastModified": 1777542800,
+        "narHash": "sha256-wzNl+TWSnH88Nsh8SxPovuebbrBsgZpVaS5LK6sd0n8=",
+        "owner": "NousResearch",
+        "repo": "hermes-agent",
+        "rev": "8d302e37a8966a20c472c6ef202524685b864021",
+        "type": "github"
       },
       "original": {
-        "type": "tarball",
-        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.4.30.tar.gz"
+        "owner": "NousResearch",
+        "repo": "hermes-agent",
+        "rev": "8d302e37a8966a20c472c6ef202524685b864021",
+        "type": "github"
       }
     },
     "home-manager": {

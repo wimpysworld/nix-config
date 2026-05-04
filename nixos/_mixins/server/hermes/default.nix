@@ -40,45 +40,29 @@ let
     ln -s ${piperVctkMediumModel} "$out/en_GB-vctk-medium.onnx"
     ln -s ${piperVctkMediumConfig} "$out/en_GB-vctk-medium.onnx.json"
   '';
-  piperTtsPackage = pkgs.piper-tts;
-  piperVctkP276Command = pkgs.writeShellApplication {
-    name = "hermes-piper-vctk-p276";
-    runtimeInputs = [ piperTtsPackage ];
-    text = ''
-      set -euo pipefail
-
-      input_file=""
-      output_file=""
-
-      while [[ $# -gt 0 ]]; do
-        case "$1" in
-          --input-file)
-            input_file="$2"
-            shift 2
-            ;;
-          --output-file)
-            output_file="$2"
-            shift 2
-            ;;
-          *)
-            echo "Unknown argument: $1" >&2
-            exit 64
-            ;;
-        esac
-      done
-
-      if [[ -z "$input_file" || -z "$output_file" ]]; then
-        echo "Usage: hermes-piper-vctk-p276 --input-file PATH --output-file PATH" >&2
-        exit 64
-      fi
-
-      piper \
-        --model ${piperVctkMediumVoice}/en_GB-vctk-medium.onnx \
-        --speaker 11 \
-        --output-file "$output_file" \
-        --input-file "$input_file"
-    '';
-  };
+  patchedOnnxruntimePythonPackage =
+    pkgs.runCommand "python312-onnxruntime-execstack-cleared"
+      {
+        nativeBuildInputs = [ pkgs.pax-utils ];
+      }
+      ''
+        cp -a --no-preserve=mode,ownership ${pkgs.python312Packages.onnxruntime} "$out"
+        chmod -R u+w "$out"
+        find "$out/${pkgs.python312.sitePackages}/onnxruntime/capi" -name "*.so" -print0 \
+          | xargs -0 -r scanelf -X -e
+      '';
+  piperTtsPythonPackage = pkgs.python312Packages.toPythonModule (
+    pkgs.callPackage "${inputs.nixpkgs}/pkgs/by-name/pi/piper-tts/package.nix" {
+      python3Packages = pkgs.python312Packages;
+      withAlignment = false;
+      withHTTP = false;
+      withTrain = false;
+    }
+  );
+  piperPythonPath = lib.makeSearchPath pkgs.python312.sitePackages (
+    [ patchedOnnxruntimePythonPackage ]
+    ++ pkgs.python312Packages.requiredPythonModules [ piperTtsPythonPackage ]
+  );
   managedHermesConfig =
     (pkgs.formats.yaml { }).generate "hermes-managed-config.yaml"
       config.services.hermes-agent.settings;
@@ -92,7 +76,7 @@ let
   ];
   hermesTuyaPythonPath = pkgs.python3Packages.makePythonPath hermesTuyaPythonPackages;
   hermesManagedPythonPath = pkgs.writeTextDir "sitecustomize.py" ''
-    """Keep managed Hermes state group-accessible and patch doctor checks."""
+    """Keep managed Hermes state group-accessible, patch Piper speaker selection, and patch doctor checks."""
 
     import builtins
     import os
@@ -158,6 +142,47 @@ let
                 **kwargs,
             )
 
+        def _managed_piper_speaker_id() -> int | None:
+            value = os.environ.get("HERMES_PIPER_SPEAKER_ID", "").strip()
+            if not value:
+                return None
+
+            try:
+                return int(value)
+            except ValueError:
+                return None
+
+        def _patch_piper_module(module) -> None:
+            if getattr(module, "_noughty_piper_patch_applied", False):
+                return
+
+            speaker_id = _managed_piper_speaker_id()
+            if speaker_id is None:
+                return
+
+            original_synthesis_config = getattr(module, "SynthesisConfig", None)
+            if original_synthesis_config is None:
+                return
+
+            class ManagedSynthesisConfig(original_synthesis_config):
+                def __init__(self, *args, **kwargs):
+                    if kwargs.get("speaker_id") in (None, ""):
+                        kwargs["speaker_id"] = speaker_id
+                    super().__init__(*args, **kwargs)
+
+            module.SynthesisConfig = ManagedSynthesisConfig
+            try:
+                module.config.SynthesisConfig = ManagedSynthesisConfig
+            except AttributeError:
+                pass
+
+            try:
+                module.voice._DEFAULT_SYNTHESIS_CONFIG.speaker_id = speaker_id
+            except AttributeError:
+                pass
+
+            module._noughty_piper_patch_applied = True
+
         def _patch_doctor_module(module) -> None:
             if getattr(module, "_noughty_doctor_patch_applied", False):
                 return
@@ -191,7 +216,9 @@ let
         def _managed_import(name, globals=None, locals=None, fromlist=(), level=0):
             module = _original_import(name, globals, locals, fromlist, level)
 
-            if name == "hermes_cli.doctor":
+            if name == "piper":
+                _patch_piper_module(module)
+            elif name == "hermes_cli.doctor":
                 _patch_doctor_module(module)
                 builtins.__import__ = _original_import
             elif name == "hermes_cli" and fromlist and "doctor" in fromlist:
@@ -224,8 +251,9 @@ let
             --set-default TRAYA_SANCTUARY_DIR "/var/lib/hermes/workspace/trayas-sanctuary" \
             --set-default TRAYA_SANCTUARY_REPO "the-cauldron/trayas-sanctuary" \
             --prefix PATH : "${lib.makeBinPath hermesExtraPackages}" \
-            --prefix PYTHONPATH : "${hermesManagedPythonPath}:${hermesTuyaPythonPath}" \
-            --set-default HERMES_MANAGED "true"
+            --prefix PYTHONPATH : "${hermesManagedPythonPath}:${hermesTuyaPythonPath}:${piperPythonPath}" \
+            --set-default HERMES_MANAGED "true" \
+            --set-default HERMES_PIPER_SPEAKER_ID "11"
         fi
       done
     '';
@@ -287,7 +315,7 @@ let
     openhue-cli
     openssh
     poppler-utils
-    piperTtsPackage
+    piperTtsPythonPackage
     procps
     python3
     python3Packages.tinytuya
@@ -322,7 +350,7 @@ let
     export TRAYA_SANCTUARY_DIR="/var/lib/hermes/workspace/trayas-sanctuary"
     export TRAYA_SANCTUARY_REPO="the-cauldron/trayas-sanctuary"
     export GNUPGHOME=${hermesGnupgHome}
-    export PYTHONPATH="${hermesManagedPythonPath}:${hermesTuyaPythonPath}:\''${PYTHONPATH-}"
+    export PYTHONPATH="${hermesManagedPythonPath}:${hermesTuyaPythonPath}:${piperPythonPath}:\''${PYTHONPATH-}"
 
     # Interactive CLI sandboxing: systemd hardening does not apply to host
     # shells, so we reuse bubblewrap to hide the same paths the gateway
@@ -665,6 +693,8 @@ in
       package = hermesAgentPackage;
       environment = {
         GNUPGHOME = hermesGnupgHome;
+        HERMES_PIPER_SPEAKER_ID = "11";
+        PYTHONPATH = "${hermesManagedPythonPath}:${hermesTuyaPythonPath}:${piperPythonPath}";
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
         TRAYA_SANCTUARY_DIR = "/var/lib/hermes/workspace/trayas-sanctuary";
         TRAYA_SANCTUARY_REPO = "the-cauldron/trayas-sanctuary";
@@ -810,15 +840,13 @@ in
         ];
 
         tts = {
-          provider = "piper-vctk-p276";
-          providers.piper-vctk-p276 = {
-            type = "command";
-            command = "${piperVctkP276Command}/bin/hermes-piper-vctk-p276 --input-file {input_path} --output-file {output_path}";
-            output_format = "wav";
-            voice_compatible = true;
-            timeout = 120;
-            model = "en_GB-vctk-medium";
-            voice = "p276";
+          provider = "piper";
+          piper = {
+            voice = "${piperVctkMediumVoice}/en_GB-vctk-medium.onnx";
+            voices_dir = "${piperVctkMediumVoice}";
+            speaker_id = 11;
+            use_cuda = false;
+            normalize_audio = true;
           };
         };
 
