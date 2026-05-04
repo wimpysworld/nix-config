@@ -180,6 +180,8 @@ let
   himalayaConfigPath = "${himalayaConfigDir}/config.toml";
   openhueConfigDir = "${config.services.hermes-agent.stateDir}/.openhue";
   openhueConfigPath = "${openhueConfigDir}/config.yaml";
+  tinytuyaConfigDir = "${config.services.hermes-agent.stateDir}/.config/tinytuya";
+  tinytuyaConfigPath = "${tinytuyaConfigDir}/tinytuya.json";
   hermesSshDir = "${config.services.hermes-agent.stateDir}/.ssh";
   hermesGnupgHome = "${config.services.hermes-agent.stateDir}/.gnupg";
   # GPG runtime config for Traya's keyring. Loopback pinentry guards against
@@ -362,6 +364,34 @@ in
         mode = "0400";
       };
 
+      TUYA_API_KEY = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      TUYA_API_SECRET = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      TUYA_API_REGION = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      TUYA_API_DEVICE_ID = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
       CLOUDFLARE_TUNNEL_TOKEN_HERMES_WEBHOOK = lib.mkIf hasCloudflareSopsFile {
         sopsFile = cloudflareSopsFile;
         path = "/run/secrets/CLOUDFLARE_TUNNEL_TOKEN_HERMES_WEBHOOK";
@@ -467,6 +497,10 @@ in
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
+        TUYA_API_KEY=${config.sops.placeholder.TUYA_API_KEY}
+        TUYA_API_SECRET=${config.sops.placeholder.TUYA_API_SECRET}
+        TUYA_API_REGION=${config.sops.placeholder.TUYA_API_REGION}
+        TUYA_API_DEVICE_ID=${config.sops.placeholder.TUYA_API_DEVICE_ID}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
         _HERMES_FORCE_ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         _HERMES_FORCE_CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
@@ -550,6 +584,18 @@ in
         bridge: ${config.sops.placeholder.HUE_BRIDGE_IP}
         key: ${config.sops.placeholder.HUE_BRIDGE_APPLICATION_KEY}
       '';
+      owner = hermesUser;
+      group = hermesGroup;
+      mode = "0440";
+    };
+
+    sops.templates."hermes-tinytuya-config" = {
+      content = builtins.toJSON {
+        apiDeviceID = config.sops.placeholder.TUYA_API_DEVICE_ID;
+        apiKey = config.sops.placeholder.TUYA_API_KEY;
+        apiRegion = config.sops.placeholder.TUYA_API_REGION;
+        apiSecret = config.sops.placeholder.TUYA_API_SECRET;
+      };
       owner = hermesUser;
       group = hermesGroup;
       mode = "0440";
@@ -841,12 +887,14 @@ in
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${himalayaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
+      "d ${tinytuyaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesSshDir} 0700 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesGnupgHome} 0700 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${openhueConfigDir} 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${himalayaConfigPath} - - - - ${config.sops.templates."hermes-himalaya-config".path}"
+      "L+ ${tinytuyaConfigPath} - - - - ${config.sops.templates."hermes-tinytuya-config".path}"
       "L+ ${openhueConfigPath} - - - - ${config.sops.templates."hermes-openhue-config".path}"
       "L+ ${hermesSshDir}/id_ed25519 - - - - ${config.sops.secrets.SSH_PRIVATE_KEY.path}"
       "L+ ${hermesSshDir}/id_ed25519.pub - - - - ${config.sops.secrets.SSH_PUBLIC_KEY.path}"
