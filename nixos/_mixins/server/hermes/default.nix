@@ -173,6 +173,8 @@ let
   hermesAuthFile = "${hermesHome}/auth.json";
   himalayaConfigDir = "${config.services.hermes-agent.stateDir}/.config/himalaya";
   himalayaConfigPath = "${himalayaConfigDir}/config.toml";
+  openhueConfigDir = "${config.services.hermes-agent.stateDir}/.openhue";
+  openhueConfigPath = "${openhueConfigDir}/config.yaml";
   hermesSshDir = "${config.services.hermes-agent.stateDir}/.ssh";
   hermesGnupgHome = "${config.services.hermes-agent.stateDir}/.gnupg";
   # GPG runtime config for Traya's keyring. Loopback pinentry guards against
@@ -218,6 +220,7 @@ let
     nh
     nix-direnv
     nodejs-slim
+    openhue-cli
     openssh
     poppler-utils
     procps
@@ -332,6 +335,20 @@ in
       };
 
       WEBHOOK_SECRET = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      HUE_BRIDGE_IP = {
+        sopsFile = hermesSopsFile;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
+      HUE_BRIDGE_APPLICATION_KEY = {
         sopsFile = hermesSopsFile;
         owner = "root";
         group = "root";
@@ -521,6 +538,16 @@ in
       mode = "0440";
     };
 
+    sops.templates."hermes-openhue-config" = {
+      content = ''
+        bridge: ${config.sops.placeholder.HUE_BRIDGE_IP}
+        key: ${config.sops.placeholder.HUE_BRIDGE_APPLICATION_KEY}
+      '';
+      owner = hermesUser;
+      group = hermesGroup;
+      mode = "0440";
+    };
+
     services.hermes-agent = {
       enable = true;
       addToSystemPackages = true;
@@ -549,6 +576,13 @@ in
         nixos = {
           command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
           args = [ ];
+        };
+        openhue = {
+          command = "${pkgs.openhue-cli}/bin/openhue";
+          args = [ "mcp" ];
+          env = {
+            HOME = config.services.hermes-agent.stateDir;
+          };
         };
         cloudflare = {
           url = "https://docs.mcp.cloudflare.com/mcp";
@@ -804,7 +838,9 @@ in
       "d ${hermesGnupgHome} 0700 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
+      "d ${openhueConfigDir} 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${himalayaConfigPath} - - - - ${config.sops.templates."hermes-himalaya-config".path}"
+      "L+ ${openhueConfigPath} - - - - ${config.sops.templates."hermes-openhue-config".path}"
       "L+ ${hermesSshDir}/id_ed25519 - - - - ${config.sops.secrets.SSH_PRIVATE_KEY.path}"
       "L+ ${hermesSshDir}/id_ed25519.pub - - - - ${config.sops.secrets.SSH_PUBLIC_KEY.path}"
       "L+ ${hermesGnupgHome}/gpg.conf - - - - ${hermesGpgConf}"
