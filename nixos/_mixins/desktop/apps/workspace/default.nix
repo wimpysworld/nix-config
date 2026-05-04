@@ -6,6 +6,16 @@
   ...
 }:
 let
+  # Strix Halo (AMD Ryzen AI Max 300, dcn35) workaround: disable hardware video
+  # decode/encode in Chromium-family browsers. The full hardware acceleration
+  # path stays on; only the VPE ring that wedges the AMDGPU SMU is avoided.
+  videoAccelDisableFlags = "--disable-accelerated-video-decode --disable-accelerated-video-encode";
+  wavebox =
+    if noughtyLib.hostHasTag "strix-halo" then
+      pkgs.wavebox.override { commandLineArgs = videoAccelDisableFlags; }
+    else
+      pkgs.wavebox;
+
   # Google Meet icon from Wikimedia Commons (public domain)
   googleMeetIcon = pkgs.writeText "google-meet.svg" ''
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 87.5 72">
@@ -88,7 +98,7 @@ in
 lib.mkIf (noughtyLib.hostHasTag "workspace") {
   environment.systemPackages = [
     pkgs._1password-gui
-    pkgs.wavebox
+    wavebox
     googleMeetDesktopItem
     slackWavebox
     waveboxXdgOpen
