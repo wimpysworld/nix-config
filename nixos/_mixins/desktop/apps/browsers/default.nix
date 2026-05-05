@@ -42,7 +42,7 @@ let
   ];
   extraExtensions = [
     "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
-    "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
+    "lodbfhdipoipcjmlebjbgmmgekckhpfb" # Harper
     "mdjildafknihdffpkfmmpnpoiajfjnjd" # Consent-O-Matic
     "mnjggcdmjocbbbhaepdhchncahnbgone" # SponsorBlock for YouTube
     "gebbhagfogifgggkldgodflihgfeippi" # Return YouTube Dislike

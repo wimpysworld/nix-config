@@ -345,7 +345,7 @@ Things I currently need to do manually after installation.
   - [ ] Authenticate with GitHub
   - [ ] Create Personal Profile
   - [ ] Create Work Profile
-- [ ] Grammarly - authenticate
+- [ ] Harper - review browser extension settings
 - [ ] Maelstral - `maestral_qt`
 - [ ] Matrix - authenticate
 - [ ] Slack - authenticate
