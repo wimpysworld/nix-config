@@ -452,3 +452,47 @@ The current boot uses the same kernel (`7.0.2 #1-NixOS`), same command line, sam
 - `/var/lib/systemd/coredump/` — no relevant userspace coredumps from boot -1
 - `/sys/class/drm/card1/device/devcoredump/` — gone, was the AMDGPU GPU state at reset time
 - Boot -1 ID for journalctl queries: `af4e68f3c117457cbdf20b753f1c4b43`
+
+## Kernel patch investigation (2026-05-04)
+
+### Outcome
+
+No defensible kernel patch produced. The Linux kernel was forked to `https://github.com/flexiondotorg/linux`, cloned to `~/Volatile/linux`, branch `fix/strix-halo-vpe-video-decode-hang` exists at `upstream/master` (`6d35786de281`) with no commits. The workaround in this repo (`--disable-accelerated-video-decode --disable-accelerated-video-encode` on `strix-halo`-tagged hosts) remains the active mitigation.
+
+### Hypotheses tested and ruled out
+
+Three candidate patch shapes were evaluated against the actual kernel source:
+
+1. **Ring-activity debounce in the power-gate guard** — would require a settle window between `vpe_ring_end_use` and the `vpe_idle_work_handler` running the SMU PowerDownVpe. The idle work is already scheduled `VPE_IDLE_TIMEOUT` (1000 ms) after the most recent ring use, so any debounce smaller than 1 s is a no-op and any larger is functionally a `VPE_IDLE_TIMEOUT` increase (shape 3 below).
+
+2. **SMU retry/backoff on `PowerDownVpe` ETIMEDOUT** — does not fit. A wedged SMU mailbox does not recover by re-poking; the cascade observed in the boot -1 log (`Failed to power gate VCN`, `Failed to disable gfxoff`, `Failed to retrieve enabled ppfeatures` repeating every ~5 s) confirms the mailbox is fully wedged after the first timeout. SMU send retries are also wider AMD policy territory not appropriate for an outsider patch.
+
+3. **Increase `VPE_IDLE_TIMEOUT` for `IP_VERSION(6, 1, 1)`** — Antheas Kapenekakis's [August 2025 patch](https://lists.freedesktop.org/archives/dri-devel/2025-August/521491.html) took this approach and was superseded by `3ac635367eb5`. Re-submitting the same shape would not constitute new evidence.
+
+### IP_VERSION confirmation (refutes earlier hypothesis)
+
+Investigation suggested an "extend the switch in `vpe_need_dpm0_at_power_down()` to add `IP_VERSION(6, 1, 0)`" one-line patch was possible, motivated by the boot-log line `detected ip block number 11 <vpe_v6_1_0> (vpe_v6_1)`. **Refuted** by reading the kernel source plus on-die discovery sysfs:
+
+- `/sys/class/drm/card1/device/ip_discovery/die/0/VPE/0/{major,minor,revision}` reports `6, 1, 1` on `skrye`.
+- The boot-log string `<vpe_v6_1_0>` is the hard-coded `.rev = 0` field of the static `vpe_v6_1_ip_block` (`drivers/gpu/drm/amd/amdgpu/amdgpu_vpe.c`); it is constant across all VPE 6.1.x parts and is unrelated to the runtime `IP_VERSION` value used in the dispatch switch.
+- `vpe_early_init()` only enables `collaborate_mode` for `IP_VERSION(6, 1, 1)`; skrye's boot log shows `VPE: collaborate mode true`, consistent with the sysfs reading.
+
+The existing guard `vpe_need_dpm0_at_power_down()` (added by `3ac635367eb5`) does cover Strix Halo's IP_VERSION. The PMFW threshold `< 0x0a640500` is the active determinant: skrye on BIOS 03.05 is above that threshold, so the guard returns `false` and the upstream workaround does not run.
+
+### What's needed before a patch is defensible
+
+Three items, in order of leverage:
+
+1. A fresh **AMDGPU devcoredump** captured from `/sys/class/drm/card1/device/devcoredump/data` immediately after the next reproduction (within the 5-minute auto-expiry). A udev rule or systemd path unit is the right scaffolding.
+2. **SMU mailbox tracing** (`echo 'file *smu* +p' > /sys/kernel/debug/dynamic_debug/control` plus `dyndbg='file *smu* +p'` boot param) to capture the message immediately preceding `PowerDownVpe` and the inter-message timing.
+3. Engagement with **Mario Limonciello** (commit `3ac635367eb5` author) on LP #2148686 with skrye's crash log, asking whether the PMFW `0x0a640500` threshold is correct for sustained VA-API video-decode workloads or whether the gate needs lifting / removing on (6, 1, 1).
+
+### Source paths inspected
+
+```
+/home/martin/Volatile/linux/drivers/gpu/drm/amd/amdgpu/amdgpu_vpe.c   (lines 304-333, 1012-1018)
+/home/martin/Volatile/linux/drivers/gpu/drm/amd/amdgpu/amdgpu_discovery.c   (lines 2732-2745)
+/home/martin/Volatile/linux/drivers/gpu/drm/amd/amdgpu/amdgpu_ip.c   (lines 241-245)
+/home/martin/Volatile/linux/drivers/gpu/drm/amd/amdgpu/vpe_v6_1.c   (lines 35-37, 135-145)
+/home/martin/Volatile/linux/drivers/gpu/drm/amd/pm/swsmu/smu14/smu_v14_0_0_ppt.c (smu_v14_0_0_set_vpe_enable, ~line 1557)
+```
