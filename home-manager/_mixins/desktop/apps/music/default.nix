@@ -54,7 +54,8 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
   home.packages =
     with pkgs;
     lib.optionals hasOBS [
-      inputs.sidra.packages.${pkgs.stdenv.hostPlatform.system}.default # Apple Music client
       rhythmbox # Music player for streaming
+    ] ++ [
+      inputs.sidra.packages.${pkgs.stdenv.hostPlatform.system}.default # Apple Music client
     ];
 }
