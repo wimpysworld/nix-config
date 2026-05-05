@@ -20,6 +20,7 @@
     llama-cpp-vulkan = llama-cpp.override { vulkanSupport = true; };
 
     llama-swap = final.unstable.llama-swap;
+    harper = final.unstable.harper;
 
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
       _lpself: lpsuper: {
