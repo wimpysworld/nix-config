@@ -32,8 +32,8 @@ lib.mkIf (host.is.workstation && noughtyLib.isUser [ "martin" ]) {
             install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
             installation_mode = "force_installed";
           };
-          "87677a2c52b84ad3a151a4a72f5bd3c4@jetpack" = {
-            install_url = "https://addons.mozilla.org/firefox/downloads/latest/grammarly-1/latest.xpi";
+          "harper@writewithharper.com" = {
+            install_url = "https://addons.mozilla.org/firefox/downloads/latest/private-grammar-checker-harper/latest.xpi";
             installation_mode = "force_installed";
           };
           "gdpr@cavi.au.dk" = {

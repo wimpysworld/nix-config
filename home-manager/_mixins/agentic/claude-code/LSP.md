@@ -46,7 +46,7 @@ The LSP wrapper is built as a `symlinkJoin` derivation wrapping `claudePackage`.
 
 ## Language servers
 
-15 LSP fragments across 11 language modules. All `command` values are Nix store paths - no PATH dependency.
+16 LSP fragments across 12 language modules. All `command` values are Nix store paths - no PATH dependency.
 
 | Key | Module | `command` | `args` | Extensions |
 |-----|--------|-----------|--------|------------|
@@ -57,6 +57,7 @@ The LSP wrapper is built as a `symlinkJoin` derivation wrapping `claudePackage`.
 | `typescript` | `javascript/` | `lib.getExe pkgs.typescript-language-server` | `--stdio` | `.ts` `.tsx` `.js` `.jsx` `.mjs` `.mts` `.cjs` `.cts` |
 | `json` | `javascript/` | `${pkgs.vscode-langservers-extracted}/bin/vscode-json-language-server` | `--stdio` | `.json` `.jsonc` |
 | `html` | `javascript/` | `${pkgs.vscode-langservers-extracted}/bin/vscode-html-language-server` | `--stdio` | `.html` |
+| `harper` | `harper/` | `${pkgs.harper}/bin/harper-ls` | `--stdio` | 40+ prose and comment-aware language extensions (see `harper/default.nix`) |
 | `css` | `javascript/` | `${pkgs.vscode-langservers-extracted}/bin/vscode-css-language-server` | `--stdio` | `.css` `.scss` `.less` |
 | `svelte` | `svelte/` | `lib.getExe pkgs.svelte-language-server` | `--stdio` | `.svelte` |
 | `lua` | `love/` | `lib.getExe pkgs.lua-language-server` | - | `.lua` |

@@ -108,7 +108,7 @@ lib.mkIf (noughtyLib.hostHasTag "workspace") {
     enable = true;
     extensions = [
       "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-      "kbfnbcaeplbcioakkpcpgfkobkghlhen" # Grammarly
+      "lodbfhdipoipcjmlebjbgmmgekckhpfb" # Harper
       "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
       "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
       "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
