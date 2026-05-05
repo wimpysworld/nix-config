@@ -13,7 +13,6 @@ lib.mkIf host.is.workstation (
   in
   {
     home.packages = [
-      pkgs.fastmail-desktop
       libreofficePackage
     ];
   }
