@@ -43,14 +43,6 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Automerge flake.lock update
-        if: >-
-          github.event.pull_request.user.login == 'github-actions[bot]'
-          && startsWith(github.event.pull_request.head.ref, 'update_flake_lock')
-        run: gh pr merge --auto --squash "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   automerge-existing:
     runs-on: ubuntu-slim
