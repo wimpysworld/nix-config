@@ -183,7 +183,12 @@ let
     };
     retry = {
       enabled = true;
-      maxRetries = 2;
+      maxRetries = 5;
+      baseDelayMs = 3000;
+      provider = {
+        maxRetries = 3;
+        maxRetryDelayMs = 120000;
+      };
     };
     markdown.codeBlockIndent = " ";
     warnings.anthropicExtraUsage = true;
