@@ -153,9 +153,12 @@ These three carry `enabled = false` at the top level. They stay declared so re-e
 
 `mcp/default.nix` consumes the renderer outputs and writes them to the correct path at activation time. Zed and OpenCode are wired here directly; Claude Code reads via Home Manager's native `programs.claude-code.mcpServers`; Codex's mixin imports `servers.nix` and reads `codexServers`.
 
+Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manager-owned `~/.pi/agent/settings.json`. The adapter reads `~/.config/mcp/mcp.json` automatically, so Pi consumes the shared generic MCP file rather than a Pi-specific copy of the server list. Pi-specific adapter settings live in the Home Manager-owned `~/.pi/agent/mcp.json`.
+
 | Platform | Config path | Source |
 |----------|-------------|--------|
 | Claude Code | `~/.config/mcp/mcp.json` | `claudeServers` |
+| Pi Agent | `~/.config/mcp/mcp.json` plus `~/.pi/agent/mcp.json` settings | `claudeServers` plus Pi adapter settings |
 | OpenCode | `~/.config/opencode/settings.json` `mcp` block | `opencodeServers` |
 | Zed | `~/.config/zed/settings.json` `context_servers` and `extensions` | `zedContextServers`, `zedExtensions` |
 | Codex | `~/.config/codex/config.toml` `[mcp_servers.*]` | `codexServers` |
@@ -163,6 +166,7 @@ These three carry `enabled = false` at the top level. They stay declared so re-e
 ### Platform-specific shapes
 
 - **Claude Code** — bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
+- **Pi Agent** — `pi-mcp-adapter` reads the same generic `mcpServers` JSON as Claude Code. The Home Manager-owned Pi override file keeps `directTools`, `autoAuth`, and sampling disabled so the default surface is the adapter's single proxy tool.
 - **Codex** — schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits keys Codex accepts: `url`, `bearer_token_env_var`, `command`, `args`, `env`, and `enabled`. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Every entry carries an `enabled` field (default `true`); flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
 - **OpenCode** — bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
 - **Zed** — HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.

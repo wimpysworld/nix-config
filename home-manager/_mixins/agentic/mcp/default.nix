@@ -115,7 +115,7 @@ in
     secrets = lib.genAttrs allSecrets (_: {
       sopsFile = mcpSopsFile;
     });
-    # MCP servers - used by other agents
+    # Shared MCP servers used by Claude Code, Pi Agent, and generic clients.
     templates."mcp-config.json" = {
       content = builtins.toJSON { mcpServers = mcpServerDefs.claudeServers; };
       path = "${config.xdg.configHome}/mcp/mcp.json";
