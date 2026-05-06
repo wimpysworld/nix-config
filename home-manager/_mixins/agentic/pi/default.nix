@@ -13,8 +13,14 @@ let
   piPackage = inputs.llm-agents.packages.${system}.pi;
   piMcpAdapterVersion = "2.5.4";
   piSubagentsVersion = "0.24.0";
+  rpivArgsVersion = "1.1.5";
+  rpivBtwVersion = "1.1.5";
+  rpivTodoVersion = "1.1.5";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:pi-subagents@${piSubagentsVersion}";
+  rpivArgsSource = "npm:@juicesharp/rpiv-args@${rpivArgsVersion}";
+  rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
+  rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
   piThemeName = "catppuccin-${catppuccinPalette.flavor}";
@@ -198,6 +204,9 @@ let
     packages = [
       piMcpAdapterSource
       piSubagentsSource
+      rpivArgsSource
+      rpivBtwSource
+      rpivTodoSource
     ];
     extensions = [ ];
     skills = [

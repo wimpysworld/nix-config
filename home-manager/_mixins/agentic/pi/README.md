@@ -69,6 +69,32 @@ Anthropic can return `overloaded_error` during provider-side capacity pressure. 
 
 `enableSkillCommands` is enabled so shared skills are invocable as `/skill:<name>`.
 
+## Pinned packages
+
+Pi packages are installed through the Home Manager-owned package setting:
+
+```json
+{
+  "packages": [
+    "npm:pi-mcp-adapter@2.5.4",
+    "npm:pi-subagents@0.24.0",
+    "npm:@juicesharp/rpiv-args@1.1.5",
+    "npm:@juicesharp/rpiv-btw@1.1.5",
+    "npm:@juicesharp/rpiv-todo@1.1.5"
+  ]
+}
+```
+
+Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix.
+
+The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
+
+- `rpiv-args` adds skill argument placeholders
+- `rpiv-btw` performs an explicit side model call using current conversation context
+- `rpiv-todo` adds a model-visible todo tool and `/todos` UI
+
+`@juicesharp/rpiv-i18n` is not installed.
+
 ## Theme
 
 Pi supports JSON themes loaded from `~/.pi/agent/themes/*.json`, package theme directories, or the `themes` setting.
@@ -85,15 +111,7 @@ This module does not manage `~/.pi/agent/auth.json`. Pi can still create that fi
 
 ## MCP
 
-Pi MCP support is provided by [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter), installed through Pi's pinned package setting:
-
-```json
-{
-  "packages": [
-    "npm:pi-mcp-adapter@2.5.4"
-  ]
-}
-```
+Pi MCP support is provided by [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter), installed through the pinned package setting.
 
 The adapter reads the shared MCP config at `~/.config/mcp/mcp.json` automatically. That file is rendered by `../mcp` from `mcp/servers.nix`, so Pi uses the same canonical server definitions as Claude Code and other generic MCP clients.
 
@@ -126,15 +144,7 @@ The Playwright MCP server remains gated by the shared MCP module. It appears onl
 
 ## Subagents
 
-[`pi-subagents`](https://github.com/nicobailon/pi-subagents) is installed through Pi's pinned package setting:
-
-```json
-{
-  "packages": [
-    "npm:pi-subagents@0.24.0"
-  ]
-}
-```
+[`pi-subagents`](https://github.com/nicobailon/pi-subagents) is installed through the pinned package setting.
 
 The extension config is managed at `~/.pi/agent/extensions/subagent/config.json`:
 
