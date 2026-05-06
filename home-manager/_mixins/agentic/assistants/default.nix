@@ -150,6 +150,162 @@ let
   opencodeCommands = compose.composeCommands "opencode";
   opencodeInstructions = compose.composeInstructions "opencode";
 
+  # ============ PI AGENT ============
+
+  piAgentPrompt =
+    prompt:
+    lib.replaceStrings
+      [
+        "Task tool"
+        "Permitted tools: Task tool for delegation, direct conversation"
+      ]
+      [
+        "subagent tool"
+        "Permitted tools: subagent tool for delegation, direct conversation"
+      ]
+      prompt;
+  renderPiMarkdown = header: body: ''
+    ---
+    ${header}
+    ---
+
+    ${body}
+  '';
+  renderPiAgentMarkdown =
+    {
+      name,
+      description,
+      prompt,
+    }:
+    renderPiMarkdown (lib.concatStringsSep "\n" [
+      "name: ${name}"
+      "description: ${builtins.toJSON description}"
+      "systemPromptMode: append"
+      "inheritProjectContext: true"
+      "inheritSkills: true"
+      "maxSubagentDepth: 0"
+    ]) (piAgentPrompt prompt);
+  renderPiPromptMarkdown =
+    {
+      description,
+      argumentHint ? null,
+      prompt,
+    }:
+    let
+      headerLines = [
+        "description: ${builtins.toJSON description}"
+      ]
+      ++ lib.optional (argumentHint != null) "argument-hint: ${builtins.toJSON argumentHint}";
+    in
+    renderPiMarkdown (lib.concatStringsSep "\n" headerLines) prompt;
+  piTrayaWriter = pkgs.writeText "write-traya-pi-agent.py" (
+    builtins.concatStringsSep "\n" [
+      "import pathlib"
+      "import sys"
+      ""
+      "prompt_path, description_path, bond_path, output_path = sys.argv[1:5]"
+      "prompt = pathlib.Path(prompt_path).read_text(encoding=\"utf-8\").strip()"
+      "prompt = prompt.replace(\"Task tool\", \"subagent tool\")"
+      "prompt = prompt.replace(\"Permitted tools: subagent tool for delegation, direct conversation\", \"Permitted tools: subagent tool for delegation, direct conversation\")"
+      "description = pathlib.Path(description_path).read_text(encoding=\"utf-8\").strip()"
+      "bond = pathlib.Path(bond_path).read_text(encoding=\"utf-8\").strip()"
+      "body = prompt if not bond else f\"{prompt}\\n{bond}\""
+      "content = \"---\\n\""
+      "content += \"name: traya\\n\""
+      "content += f\"description: {description!r}\\n\""
+      "content += \"systemPromptMode: append\\n\""
+      "content += \"inheritProjectContext: true\\n\""
+      "content += \"inheritSkills: true\\n\""
+      "content += \"maxSubagentDepth: 0\\n\""
+      "content += \"---\\n\\n\""
+      "content += body + \"\\n\""
+      "output = pathlib.Path(output_path)"
+      "output.parent.mkdir(parents=True, exist_ok=True)"
+      "tmp = output.with_name(f\"{output.name}.tmp\")"
+      "tmp.write_text(content, encoding=\"utf-8\")"
+      "tmp.chmod(0o600)"
+      "tmp.replace(output)"
+    ]
+    + "\n"
+  );
+  piAgents = lib.removeAttrs compose.agentDirs [ "traya" ];
+  piAgentFiles = lib.mapAttrs' (
+    name: _:
+    let
+      agentPath = ./agents + "/${name}";
+      description = readFileTrim (agentPath + "/description.txt");
+      prompt = readFileTrim (agentPath + "/prompt.md");
+    in
+    {
+      name = ".pi/agent/agents/${name}.md";
+      value.text = renderPiAgentMarkdown {
+        inherit name description prompt;
+      };
+    }
+  ) piAgents;
+  piSkillFiles = lib.mapAttrs' (name: skill: {
+    name = ".pi/agent/skills/${name}";
+    value.source = skill.path;
+  }) skills;
+  piStandalonePromptFiles = lib.mapAttrs' (
+    cmdName: _:
+    let
+      cmdPath = ./commands + "/${cmdName}";
+      description = readFileTrim (cmdPath + "/description.txt");
+      prompt = readFileTrim (cmdPath + "/prompt.md");
+      argumentHint = extractYamlField "argument-hint" (cmdPath + "/header.claude.yaml");
+    in
+    {
+      name = ".pi/agent/prompts/${cmdName}.md";
+      value.text = renderPiPromptMarkdown {
+        inherit description argumentHint prompt;
+      };
+    }
+  ) compose.standaloneCommandDirs;
+  piAgentPromptFiles = lib.foldlAttrs (
+    acc: agentName: _:
+    let
+      commandDirs = compose.discoverAgentCommands agentName;
+    in
+    acc
+    // lib.mapAttrs' (
+      cmdName: _:
+      let
+        cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
+        description = readFileTrim (cmdPath + "/description.txt");
+        prompt = readFileTrim (cmdPath + "/prompt.md");
+        argumentHint = extractYamlField "argument-hint" (cmdPath + "/header.claude.yaml");
+        piPrompt = ''
+          Use the subagent tool to launch the `${agentName}` agent for the task below.
+
+          ${prompt}
+        '';
+      in
+      {
+        name = ".pi/agent/prompts/${agentName}-${cmdName}.md";
+        value.text = renderPiPromptMarkdown {
+          inherit description argumentHint;
+          prompt = piPrompt;
+        };
+      }
+    ) commandDirs
+  ) { } compose.agentDirs;
+  piGlobalInstructions = readFileTrim ./instructions/global.md;
+  piHomeFiles = {
+    ".pi/agent/AGENTS.md".text = piGlobalInstructions;
+  }
+  // piAgentFiles
+  // piSkillFiles
+  // piStandalonePromptFiles
+  // piAgentPromptFiles;
+  piTrayaActivation = ''
+    ${pkgs.python3}/bin/python ${piTrayaWriter} \
+      ${./agents/traya/prompt.md} \
+      ${./agents/traya/description.txt} \
+      ${config.sops.secrets.BOND_MD.path} \
+      "${config.home.homeDirectory}/.pi/agent/agents/traya.md"
+  '';
+
   # ============ SKILLS ============
 
   # composeSkills returns { name = { content; path; extras; }; ... }
@@ -372,89 +528,112 @@ let
 
 in
 {
-  sops = {
-    secrets.BOND_MD = {
-      sopsFile = trayaBondSopsFile;
-      mode = "0400";
+  options.agentic.assistants.pi = {
+    homeFiles = lib.mkOption {
+      type = lib.types.attrs;
+      default = { };
+      internal = true;
+      description = "Home Manager file entries for Pi Agent assistant resources.";
     };
 
-    templates.${trayaPromptTemplateName} = {
-      content = trayaPromptWithBond;
-      mode = "0600";
+    trayaActivation = lib.mkOption {
+      type = lib.types.lines;
+      default = "";
+      internal = true;
+      description = "Activation script that writes Traya's Pi Agent file outside the Nix store.";
+    };
+  };
+
+  config = {
+    agentic.assistants.pi = {
+      homeFiles = piHomeFiles;
+      trayaActivation = piTrayaActivation;
     };
 
-    templates.${trayaClaudeAgentTemplateName} = {
-      content = compose.composeAgentFromPrompt "claude" "traya" trayaPromptWithBond;
-      mode = "0600";
-    };
-
-    templates.${trayaOpencodeAgentTemplateName} = {
-      content = compose.composeAgentFromPrompt "opencode" "traya" trayaPromptWithBond;
-      mode = "0600";
-    };
-
-    templates.${trayaCodexAgentTemplateName} = {
-      content = renderCodexAgentToml {
-        name = "traya";
-        description = trayaDescription;
-        developerInstructions = codexAgentPrompt trayaPromptWithBond;
-        header = readFileTrimIfExists (./agents + "/traya/header.codex.toml");
+    sops = {
+      secrets.BOND_MD = {
+        sopsFile = trayaBondSopsFile;
+        mode = "0400";
       };
-      mode = "0600";
+
+      templates.${trayaPromptTemplateName} = {
+        content = trayaPromptWithBond;
+        mode = "0600";
+      };
+
+      templates.${trayaClaudeAgentTemplateName} = {
+        content = compose.composeAgentFromPrompt "claude" "traya" trayaPromptWithBond;
+        mode = "0600";
+      };
+
+      templates.${trayaOpencodeAgentTemplateName} = {
+        content = compose.composeAgentFromPrompt "opencode" "traya" trayaPromptWithBond;
+        mode = "0600";
+      };
+
+      templates.${trayaCodexAgentTemplateName} = {
+        content = renderCodexAgentToml {
+          name = "traya";
+          description = trayaDescription;
+          developerInstructions = codexAgentPrompt trayaPromptWithBond;
+          header = readFileTrimIfExists (./agents + "/traya/header.codex.toml");
+        };
+        mode = "0600";
+      };
+
     };
 
-  };
+    home = {
+      file = {
+        # Traya's prompt is rendered via sops-nix at activation time so the bond
+        # is appended outside the Nix store. These entries symlink the tool paths
+        # to the rendered files.
+        "${config.home.homeDirectory}/.claude/agents/traya.md".source =
+          config.lib.file.mkOutOfStoreSymlink
+            config.sops.templates.${trayaClaudeAgentTemplateName}.path;
+        "${config.xdg.configHome}/opencode/agent/traya.md".source =
+          config.lib.file.mkOutOfStoreSymlink
+            config.sops.templates.${trayaOpencodeAgentTemplateName}.path;
 
-  home = {
-    file = {
-      # Traya's prompt is rendered via sops-nix at activation time so the bond
-      # is appended outside the Nix store. These entries symlink the tool paths
-      # to the rendered files.
-      "${config.home.homeDirectory}/.claude/agents/traya.md".source =
-        config.lib.file.mkOutOfStoreSymlink
-          config.sops.templates.${trayaClaudeAgentTemplateName}.path;
-      "${config.xdg.configHome}/opencode/agent/traya.md".source =
-        config.lib.file.mkOutOfStoreSymlink
-          config.sops.templates.${trayaOpencodeAgentTemplateName}.path;
+        # Claude Code global instructions
+        "${config.home.homeDirectory}/.claude/rules/instructions.md".text = claudeInstructions;
+      }
+      # Claude Code skill files
+      // mkClaudeSkillFiles
+      # OpenCode skill files
+      // mkOpencodeSkillFiles;
 
-      # Claude Code global instructions
-      "${config.home.homeDirectory}/.claude/rules/instructions.md".text = claudeInstructions;
-    }
-    # Claude Code skill files
-    // mkClaudeSkillFiles
-    # OpenCode skill files
-    // mkOpencodeSkillFiles;
-
-    # Codex skills and agents: written as real files via activation script (not symlinks).
-    # codex-rs uses file_type().is_file() for discovery, which returns false for symlinks
-    # on Linux. home.file creates symlinks, so both are invisible without this workaround.
-    # Run this after sops-nix so Traya's BOND secret is available to the
-    # activation-time Codex writers.
-    activation.codexFiles = lib.mkIf config.programs.codex.enable (
-      lib.hm.dag.entryAfter [ "writeBoundary" "sops-nix" ] (
-        codexRootInstructionsActivationScript + codexSkillsActivationScript + codexAgentsActivationScript
-      )
-    );
-  };
-
-  programs = {
-    claude-code = lib.mkIf config.programs.claude-code.enable {
-      # Custom agents (auto-generated from agents/ directory)
-      agents = claudeAgents;
-
-      # Reusable commands (auto-generated from commands/ directories)
-      commands = claudeCommands;
+      # Codex skills and agents: written as real files via activation script (not symlinks).
+      # codex-rs uses file_type().is_file() for discovery, which returns false for symlinks
+      # on Linux. home.file creates symlinks, so both are invisible without this workaround.
+      # Run this after sops-nix so Traya's BOND secret is available to the
+      # activation-time Codex writers.
+      activation.codexFiles = lib.mkIf config.programs.codex.enable (
+        lib.hm.dag.entryAfter [ "writeBoundary" "sops-nix" ] (
+          codexRootInstructionsActivationScript + codexSkillsActivationScript + codexAgentsActivationScript
+        )
+      );
     };
 
-    opencode = lib.mkIf config.programs.opencode.enable {
-      # Custom agents (auto-generated from agents/ directory)
-      agents = opencodeAgents;
+    programs = {
+      claude-code = lib.mkIf config.programs.claude-code.enable {
+        # Custom agents (auto-generated from agents/ directory)
+        agents = claudeAgents;
 
-      # Reusable commands (auto-generated from commands/ directories)
-      commands = opencodeCommands;
+        # Reusable commands (auto-generated from commands/ directories)
+        commands = claudeCommands;
+      };
 
-      # Global rules
-      rules = opencodeInstructions;
+      opencode = lib.mkIf config.programs.opencode.enable {
+        # Custom agents (auto-generated from agents/ directory)
+        agents = opencodeAgents;
+
+        # Reusable commands (auto-generated from commands/ directories)
+        commands = opencodeCommands;
+
+        # Global rules
+        rules = opencodeInstructions;
+      };
     };
   };
 }
