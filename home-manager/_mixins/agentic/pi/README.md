@@ -97,7 +97,7 @@ Pi MCP support is provided by [pi-mcp-adapter](https://github.com/nicobailon/pi-
 
 The adapter reads the shared MCP config at `~/.config/mcp/mcp.json` automatically. That file is rendered by `../mcp` from `mcp/servers.nix`, so Pi uses the same canonical server definitions as Claude Code and other generic MCP clients.
 
-`~/.pi/agent/mcp.json` is Pi-specific and only carries adapter settings:
+`~/.pi/agent/mcp.json` is Pi-specific and is rendered through sops-nix because the full Context7 server entry includes an auth header. It carries conservative global adapter settings:
 
 - `directTools = false`
 - `disableProxyTool = false`
@@ -105,7 +105,22 @@ The adapter reads the shared MCP config at `~/.config/mcp/mcp.json` automaticall
 - `sampling = false`
 - `samplingAutoApprove = false`
 
-That keeps the default surface to the adapter's single `mcp` proxy tool and prevents MCP servers from sampling through Pi. Project-level `.pi/mcp.json` files can override these settings deliberately.
+That keeps the adapter's proxy tool enabled, disables direct tools by default, and prevents MCP servers from sampling through Pi. Project-level `.pi/mcp.json` files can override these settings deliberately.
+
+Pi's adapter does not support a per-server `enabled` flag. Server presence in `mcpServers` means Pi can use it, and servers connect lazily when a tool call needs them.
+
+Pi follows OpenCode's enabled-by-default MCP preference through `directTools`:
+
+| Server | Pi default |
+|--------|------------|
+| `context7` | Direct tools promoted |
+| `exa` | Direct tools promoted |
+| `nixos` | Direct tools promoted |
+| `cloudflare` | Present, proxy-only |
+| `svelte` | Present, proxy-only |
+| `playwright` | Present only on browser automation hosts, proxy-only when present |
+
+The Pi-specific file emits full server entries, not partial overrides, because `pi-mcp-adapter` shallow-merges MCP config files by server name. A partial entry that only set `directTools` would replace the shared command, args, URL, or auth fields.
 
 The Playwright MCP server remains gated by the shared MCP module. It appears only where browser automation is enabled, so server hosts such as `malak` do not receive it.
 

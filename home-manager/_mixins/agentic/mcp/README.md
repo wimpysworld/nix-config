@@ -25,6 +25,7 @@ The Nix composition is the delivery mechanism, not the strategy. Most servers he
 | `claudeServers` | Renderer for Claude Code's `mcpServers` and the generic JSON template |
 | `codexServers` | Renderer for Codex's `[mcp_servers.*]` TOML tables |
 | `opencodeServers` | Renderer for OpenCode's `mcp` settings block |
+| `piServers` | Renderer for Pi's `pi-mcp-adapter` server overrides with Pi-native `directTools` |
 | `zedContextServers` | Renderer for Zed's `context_servers` setting (stdio + HTTP) |
 | `zedExtensions` | Sorted list of Zed extension marketplace ids |
 | `zedExtensionDisables` | Stub `context_servers` entries that flip extension-mode servers off |
@@ -56,6 +57,7 @@ Each entry in `servers` carries the following fields. Only `transport` is mandat
 | `consumers.claudeCode.enabled` | bool | `true` | When `false`, the server is omitted from Claude Code output. |
 | `consumers.codex.enabled` | bool | `true` | Mirrors OpenCode. When `false`, the server is **still emitted** with `enabled = false` so `codex mcp list` continues to show it, but Codex skips initialising the server. |
 | `consumers.opencode.enabled` | bool | `true` | When `false`, the server is **still emitted** with `enabled = false` so the OpenCode TUI can toggle it at runtime. |
+| `consumers.pi.directTools` | bool or list of strings | follows `consumers.opencode.enabled` | Pi has no per-server `enabled` flag. `true` promotes all tools from that server into Pi's first-class tool list. `false` keeps the server proxy-only through the adapter's `mcp` tool. A list promotes only the named original MCP tools. |
 | `consumers.zed.enabled` | bool | `true` | Mirrors OpenCode. When `false`, the server is **still emitted** with `enabled = false` so Zed's agent panel can toggle it at runtime. Works for stdio, HTTP, and extension-mode servers. |
 | `consumers.zed.mode` | `"context_server"` \| `"extension"` \| `"skip"` | `"context_server"` | How Zed installs the server. `"extension"` requires `consumers.zed.id` to name the marketplace slug. `"skip"` excludes Zed entirely. |
 | `consumers.zed.id` | string | - | Required when `mode = "extension"`. |
@@ -131,7 +133,7 @@ Searches NixOS packages and options, Home Manager options, and nix-darwin option
 
 Playwright MCP gives agents browser automation for page inspection, navigation, screenshots, and interaction tests. It is configured as a local stdio server using Nixpkgs' `playwright-mcp` package only when browser automation is enabled.
 
-The shared browser automation policy requires both Chromium and Firefox. Servers that do not meet that policy omit Playwright entirely, so generated MCP config does not reference the `playwright-mcp` closure. Where emitted, Codex, OpenCode, and Zed keep the server visible but disabled by default through their per-server `enabled = false` settings. Claude Code receives the server through the shared `mcpServers` output because its renderer has no visible disabled state.
+The shared browser automation policy requires both Chromium and Firefox. Servers that do not meet that policy omit Playwright entirely, so generated MCP config does not reference the `playwright-mcp` closure. Where emitted, Codex, OpenCode, and Zed keep the server visible but disabled by default through their per-server `enabled = false` settings. Pi keeps it present but proxy-only with `directTools = false`, since Pi has no per-server `enabled` flag. Claude Code receives the server through the shared `mcpServers` output because its renderer has no visible disabled state.
 
 #### svelte
 
@@ -151,14 +153,14 @@ These three carry `enabled = false` at the top level. They stay declared so re-e
 
 ## Platform delivery
 
-`mcp/default.nix` consumes the renderer outputs and writes them to the correct path at activation time. Zed and OpenCode are wired here directly; Claude Code reads via Home Manager's native `programs.claude-code.mcpServers`; Codex's mixin imports `servers.nix` and reads `codexServers`.
+`mcp/default.nix` consumes the renderer outputs and writes them to the correct path at activation time. Zed and OpenCode are wired here directly; Claude Code reads via Home Manager's native `programs.claude-code.mcpServers`; Codex's mixin imports `servers.nix` and reads `codexServers`. Pi's mixin imports `servers.nix` and reads `piServers`.
 
-Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manager-owned `~/.pi/agent/settings.json`. The adapter reads `~/.config/mcp/mcp.json` automatically, so Pi consumes the shared generic MCP file rather than a Pi-specific copy of the server list. Pi-specific adapter settings live in the Home Manager-owned `~/.pi/agent/mcp.json`.
+Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manager-owned `~/.pi/agent/settings.json`. The adapter reads `~/.config/mcp/mcp.json` automatically, then shallow-merges Pi's Home Manager-owned `~/.pi/agent/mcp.json`. Because that merge is shallow by server name, `piServers` emits full server definitions with Pi-specific `directTools` values rather than partial overrides.
 
 | Platform | Config path | Source |
 |----------|-------------|--------|
 | Claude Code | `~/.config/mcp/mcp.json` | `claudeServers` |
-| Pi Agent | `~/.config/mcp/mcp.json` plus `~/.pi/agent/mcp.json` settings | `claudeServers` plus Pi adapter settings |
+| Pi Agent | `~/.config/mcp/mcp.json` plus `~/.pi/agent/mcp.json` settings and server overrides | `claudeServers` plus `piServers` |
 | OpenCode | `~/.config/opencode/settings.json` `mcp` block | `opencodeServers` |
 | Zed | `~/.config/zed/settings.json` `context_servers` and `extensions` | `zedContextServers`, `zedExtensions` |
 | Codex | `~/.config/codex/config.toml` `[mcp_servers.*]` | `codexServers` |
@@ -166,7 +168,7 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 ### Platform-specific shapes
 
 - **Claude Code** — bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
-- **Pi Agent** — `pi-mcp-adapter` reads the same generic `mcpServers` JSON as Claude Code. The Home Manager-owned Pi override file keeps `directTools`, `autoAuth`, and sampling disabled so the default surface is the adapter's single proxy tool.
+- **Pi Agent** — `pi-mcp-adapter` has no per-server `enabled` field. Server presence means Pi can use the server, and servers connect lazily when used. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference: context7, exa, and nixos are promoted to direct tools; cloudflare, svelte, and Playwright remain proxy-only when present. Globally disabled servers are omitted. Playwright is still omitted entirely unless the shared browser automation policy enables both Chromium and Firefox.
 - **Codex** — schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits keys Codex accepts: `url`, `bearer_token_env_var`, `command`, `args`, `env`, and `enabled`. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Every entry carries an `enabled` field (default `true`); flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
 - **OpenCode** — bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
 - **Zed** — HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.

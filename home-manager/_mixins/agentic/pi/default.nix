@@ -16,6 +16,7 @@ let
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:pi-subagents@${piSubagentsVersion}";
   piAssistant = config.agentic.assistants.pi;
+  mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
   piThemeName = "catppuccin-${catppuccinPalette.flavor}";
   piCatppuccinTheme =
     let
@@ -232,10 +233,10 @@ let
       sampling = false;
       samplingAutoApprove = false;
     };
-    # The adapter reads the shared server definitions from
-    # `~/.config/mcp/mcp.json`; this Home Manager-owned file only carries
-    # Pi-specific adapter settings.
-    mcpServers = { };
+    # The adapter shallow-merges files by server name, so Pi-specific
+    # `directTools` preferences must include full server entries rather than
+    # partial overrides.
+    mcpServers = mcpServerDefs.piServers;
   };
 
   piSubagentsConfig = {
@@ -256,6 +257,12 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     mode = "0400";
   };
 
+  sops.templates."pi-mcp-config" = {
+    content = builtins.toJSON piMcpConfig;
+    path = "${config.home.homeDirectory}/.pi/agent/mcp.json";
+    mode = "0600";
+  };
+
   home = {
     packages = [
       piWrapperPackage
@@ -263,7 +270,6 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     ];
     file = {
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
-      ".pi/agent/mcp.json".text = builtins.toJSON piMcpConfig;
       ".pi/agent/extensions/subagent/config.json".text = builtins.toJSON piSubagentsConfig;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
     }
