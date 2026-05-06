@@ -127,13 +127,18 @@ let
 
   # Pi's npm package installer uses global npm operations. Nix's default npm
   # global prefix is the read-only store, so give Pi a user-owned prefix while
-  # keeping the npm binary itself from Nixpkgs.
+  # keeping the npm binary itself from Nixpkgs. Keep routine npm advisory
+  # chatter quiet while preserving npm errors and exit status.
   piNpmPackage = pkgs.writeShellApplication {
     name = "pi-npm";
     runtimeInputs = [ pkgs.nodejs ];
     text = ''
       export NPM_CONFIG_PREFIX="${config.home.homeDirectory}/.pi/agent/npm-global"
-      exec npm "$@"
+      export NPM_CONFIG_AUDIT=false
+      export NPM_CONFIG_FUND=false
+      export NPM_CONFIG_LOGLEVEL=error
+
+      exec npm --loglevel=error --no-audit --no-fund "$@"
     '';
   };
 

@@ -9,7 +9,7 @@ The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, match
 - Adds a `pi` wrapper to `home.packages`
 - Gates installation with `noughtyLib.userHasTag "developer"`
 - Exports `ANTHROPIC_API_KEY` from the sops-nix runtime secret path before execing the Nix-provided Pi binary
-- Adds a `pi-npm` wrapper backed by Nixpkgs `nodejs`, with npm's global prefix redirected to `~/.pi/agent/npm-global`
+- Adds a `pi-npm` wrapper backed by Nixpkgs `nodejs`, with npm's global prefix redirected to `~/.pi/agent/npm-global` and routine npm advisory output disabled
 - Owns Pi config and resource files through Home Manager:
   - `~/.pi/agent/settings.json`
   - `~/.pi/agent/mcp.json`
