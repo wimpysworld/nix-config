@@ -2,21 +2,68 @@
 
 Installs [Pi Agent](https://github.com/badlogic/pi-mono), the `pi` coding-agent CLI, for developer-tagged Home Manager users.
 
-The package comes from `inputs.llm-agents.packages.${system}.pi`, matching the other coding-agent packages sourced from `numtide/llm-agents.nix`.
+The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, matching the other coding-agent packages sourced from `numtide/llm-agents.nix`.
 
 ## Behaviour
 
-- Adds `pi` to `home.packages`
+- Adds a `pi` wrapper to `home.packages`
 - Gates installation with `noughtyLib.userHasTag "developer"`
+- Exports `ANTHROPIC_API_KEY` from the sops-nix runtime secret path before execing the Nix-provided Pi binary
 - Adds a `pi-npm` wrapper backed by Nixpkgs `nodejs`, with npm's global prefix redirected to `~/.pi/agent/npm-global`
-- Owns Pi config files through Home Manager `home.file`:
+- Owns Pi config and resource files through Home Manager:
   - `~/.pi/agent/settings.json`
   - `~/.pi/agent/mcp.json`
+  - `~/.pi/agent/extensions/subagent/config.json`
+  - `~/.pi/agent/AGENTS.md`
+  - `~/.pi/agent/agents/*.md`
+  - `~/.pi/agent/prompts/*.md`
+  - `~/.pi/agent/skills/*/SKILL.md`
+  - `~/.pi/agent/themes/catppuccin-mocha.json`
 - Does not enable services
-- Does not add secrets or token material
+- Does not write literal token material into the Nix store
 - Does not run `pi install` during activation
 
-The `llm-agents` package wrapper disables Pi's version check and telemetry at runtime.
+The `llm-agents` package wrapper disables Pi's version check and telemetry at runtime. Pi's own install telemetry is also disabled in `settings.json`.
+
+## Native settings
+
+Home Manager owns `~/.pi/agent/settings.json` completely. Project-specific or mutable package settings should live in `.pi/settings.json`, which Pi merges over the global settings. Nested objects merge.
+
+The managed settings use Anthropic by default:
+
+```json
+{
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-4-7",
+  "defaultThinkingLevel": "high",
+  "hideThinkingBlock": true,
+  "enabledModels": [
+    "anthropic/claude-opus-4-7",
+    "anthropic/claude-sonnet-4-6",
+    "anthropic/claude-haiku-4-5"
+  ],
+  "theme": "catppuccin-mocha",
+  "themes": [
+    "themes/*.json"
+  ]
+}
+```
+
+Compaction and retry are enabled with conservative defaults. `enableSkillCommands` is enabled so shared skills are invocable as `/skill:<name>`.
+
+## Theme
+
+Pi supports JSON themes loaded from `~/.pi/agent/themes/*.json`, package theme directories, or the `themes` setting.
+
+This module writes `~/.pi/agent/themes/catppuccin-mocha.json` from the repository's `catppuccinPalette` and sets Pi's default theme to `catppuccin-mocha`. No third-party theme package is installed.
+
+## Authentication
+
+`secrets/ai.yaml` provides `ANTHROPIC_API_KEY`.
+
+The `pi` wrapper reads `config.sops.secrets.ANTHROPIC_API_KEY.path` at runtime and exports the key only for the Pi process. The managed `settings.json` and all managed Pi resource files contain no literal secret values.
+
+This module does not manage `~/.pi/agent/auth.json`. Pi can still create that file through `/login` for subscription providers or manually entered API keys.
 
 ## MCP
 
@@ -24,15 +71,13 @@ Pi MCP support is provided by [pi-mcp-adapter](https://github.com/nicobailon/pi-
 
 ```json
 {
-  "packages": ["npm:pi-mcp-adapter@2.5.4"]
+  "packages": [
+    "npm:pi-mcp-adapter@2.5.4"
+  ]
 }
 ```
 
-Pi installs the package into the user-owned npm prefix on first startup if it is missing. The versioned package spec is skipped by `pi update`, so updates stay explicit.
-
-Home Manager owns `~/.pi/agent/settings.json` completely. Project-specific or mutable package settings should live outside this file.
-
-The adapter reads the shared MCP config at `~/.config/mcp/mcp.json` automatically. That file is still rendered by `../mcp` from `mcp/servers.nix`, so Pi uses the same canonical server definitions as Claude Code and other generic MCP clients.
+The adapter reads the shared MCP config at `~/.config/mcp/mcp.json` automatically. That file is rendered by `../mcp` from `mcp/servers.nix`, so Pi uses the same canonical server definitions as Claude Code and other generic MCP clients.
 
 `~/.pi/agent/mcp.json` is Pi-specific and only carries adapter settings:
 
@@ -42,6 +87,58 @@ The adapter reads the shared MCP config at `~/.config/mcp/mcp.json` automaticall
 - `sampling = false`
 - `samplingAutoApprove = false`
 
-That keeps the default surface to the adapter's single `mcp` proxy tool and prevents MCP servers from sampling through Pi. Home Manager owns the user-level `~/.pi/agent/mcp.json`; project-level `.pi/mcp.json` files can override these settings deliberately.
+That keeps the default surface to the adapter's single `mcp` proxy tool and prevents MCP servers from sampling through Pi. Project-level `.pi/mcp.json` files can override these settings deliberately.
 
-Upstream limitation: Pi package settings support npm, git, and local path package sources. The adapter's npm package needs runtime dependencies, so this module declares the pinned npm package source and leaves the first install to Pi's package manager rather than copying an incomplete Nix store path into Pi's package list.
+The Playwright MCP server remains gated by the shared MCP module. It appears only where browser automation is enabled, so server hosts such as `malak` do not receive it.
+
+## Subagents
+
+[`pi-subagents`](https://github.com/nicobailon/pi-subagents) is installed through Pi's pinned package setting:
+
+```json
+{
+  "packages": [
+    "npm:pi-subagents@0.24.0"
+  ]
+}
+```
+
+The extension config is managed at `~/.pi/agent/extensions/subagent/config.json`:
+
+```json
+{
+  "asyncByDefault": false,
+  "forceTopLevelAsync": false,
+  "parallel": {
+    "maxTasks": 4,
+    "concurrency": 2
+  },
+  "defaultSessionDir": "~/.pi/agent/sessions/subagent",
+  "maxSubagentDepth": 1,
+  "intercomBridge": {
+    "mode": "off"
+  }
+}
+```
+
+`maxSubagentDepth = 1` allows explicit direct subagent use and blocks nested subagent chains by default. Each generated assistant agent also sets `maxSubagentDepth: 0`, so child sessions cannot delegate further.
+
+The builtin `researcher` agent is disabled by default because it requires `pi-web-access`, which this module does not install.
+
+## Assistant mapping
+
+Source content comes from `home-manager/_mixins/agentic/assistants`. Rendering for Pi lives in `home-manager/_mixins/agentic/assistants/default.nix`; this module consumes the generated Home Manager file entries.
+
+| Source | Pi destination | Mapping |
+|--------|----------------|---------|
+| `instructions/global.md` | `~/.pi/agent/AGENTS.md` | Global context file loaded by Pi |
+| `agents/<name>/prompt.md` and `description.txt` | `~/.pi/agent/agents/<name>.md` | Pi subagent Markdown with YAML frontmatter |
+| `agents/<name>/commands/<command>/prompt.md` | `~/.pi/agent/prompts/<name>-<command>.md` | Prompt template that asks Pi to call the matching subagent |
+| `commands/<command>/prompt.md` | `~/.pi/agent/prompts/<command>.md` | Native Pi prompt template |
+| `skills/<name>/` | `~/.pi/agent/skills/<name>/` | Symlinked Agent Skills directory |
+
+Traya is written during Home Manager activation rather than through `home.file`, because her prompt appends the sops-backed bond text outside the Nix store. Other agents and prompts contain no secrets and are rendered declaratively.
+
+Pi agent frontmatter uses `name`, `description`, `systemPromptMode: append`, `inheritProjectContext: true`, `inheritSkills: true`, and `maxSubagentDepth: 0`. Prompt templates carry `description` and reuse Claude's `argument-hint` field where present, because Pi supports the same prompt-template field.
+
+OpenCode-specific permission headers are not mapped. Pi subagent Markdown supports tool allowlists, but OpenCode's allow/deny permission policy does not translate cleanly into Pi's explicit `tools` allowlist.

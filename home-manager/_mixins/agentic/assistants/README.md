@@ -1,6 +1,6 @@
 # AI Agents
 
-Fourteen specialist agents, 31 commands, and seven skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, and Codex without duplication.
+Fourteen specialist agents, 31 commands, and seven skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -26,6 +26,18 @@ The Nix composition is the delivery mechanism, not the strategy. Everything belo
 ```
 
 Global instructions in OpenCode are set via the `rules` option in `settings.json` rather than a file.
+
+**Pi Agent:**
+
+```
+~/.pi/agent/
+├── AGENTS.md                       # Global instructions (loaded every session)
+├── agents/<name>.md                # Subagent definitions for pi-subagents
+├── prompts/<name>.md               # Prompt templates (invocable with /<name>)
+└── skills/<name>/SKILL.md          # Agent Skills (loaded contextually)
+```
+
+Pi Agent resources are rendered here and consumed by `../pi`, which owns the Pi package, runtime wrapper, settings, MCP adapter, subagent extension config, and theme files.
 
 Each file is Markdown with YAML frontmatter specifying `name`, `description`, and optionally `model`. The prompt body follows the `---` delimiters. No build step required - drop the files in and they work.
 
@@ -325,11 +337,16 @@ Three tiers map to task complexity:
 
 `compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and per-platform `header.<platform>.yaml` files for Claude Code and OpenCode. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
 
+Pi Agent rendering lives in `default.nix` beside the shared secret-aware Traya rendering. Generated Pi subagents use `systemPromptMode: append`, inherit project context and skills, and set `maxSubagentDepth: 0` so child sessions cannot delegate further. Prompt templates carry `description` and reuse Claude `argument-hint` values where present.
+
+OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
+
 | Platform | Agents | Commands | Global rules | Skills |
 |----------|--------|----------|-------------|--------|
 | Claude Code | `~/.claude/agents/*.agent.md` | `~/.claude/commands/*.prompt.md` | `~/.claude/rules/instructions.md` | `~/.claude/skills/*/SKILL.md` |
 | OpenCode | `~/.config/opencode/agents/*.agent.md` | `~/.config/opencode/commands/*.prompt.md` | `rules` option | `~/.config/opencode/skills/*/SKILL.md` |
 | Codex | `~/.config/codex/agents/*.toml` | `~/.config/codex/skills/*/SKILL.md` | `programs.codex.custom-instructions` | `~/.config/codex/skills/*/SKILL.md` |
+| Pi Agent | `~/.pi/agent/agents/*.md` | `~/.pi/agent/prompts/*.md` | `~/.pi/agent/AGENTS.md` | `~/.pi/agent/skills/*/SKILL.md` |
 
 ### Skills
 
