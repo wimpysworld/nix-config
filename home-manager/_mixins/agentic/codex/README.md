@@ -55,7 +55,10 @@ Configured servers:
 | `context7` | HTTP | Uses `CONTEXT7_API_KEY` via `bearer_token_env_var` |
 | `exa` | HTTP | Web search and fetch |
 | `nixos` | stdio | Shared NixOS/Home Manager/nix-darwin reference server |
+| `playwright` | stdio | Conditional browser automation server; configured with `enabled = false` by default |
 | `svelte` | HTTP | Svelte documentation tools |
+
+`playwright` is emitted only when both Chromium and Firefox are enabled under the shared browser automation policy.
 
 `jina` is intentionally not wired here. It requires `JINA_API_KEY`, and Codex startup should not warn about an MCP server that is not explicitly enabled.
 

@@ -11,7 +11,7 @@ Agents, commands, skills, and global instructions are managed separately in the 
 ## Contents
 
 - **LSP configuration** - Built-in language server support; only Semgrep is configured explicitly for security diagnostics
-- **[MCP servers](../mcp/README.md)** - Five reference retrieval servers shared with Claude Code, Codex, and Zed; delivered to OpenCode via `settings.json`
+- **[MCP servers](../mcp/README.md)** - Shared MCP servers, with browser automation included only on systems that enable both Chromium and Firefox; delivered to OpenCode via `settings.json`
 - **[Permission policy](PERMISSIONS.md)** - Three-tier allow/ask/deny rules with `.findLast()` matching; covers 12 tool domains, read denials for credentials, and external directory access
 - **IDE integration** - VSCode extension, Zed editor as external agent
 - **TUI configuration** - Catppuccin theme, CUA-standard keybindings

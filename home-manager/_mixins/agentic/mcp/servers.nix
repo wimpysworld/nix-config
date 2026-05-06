@@ -10,6 +10,10 @@ let
   # claude-code/default.nix) do not need to pass it explicitly. Both
   # currently invoke this file with `{ inherit config pkgs; }`.
   inherit (pkgs) lib;
+  inherit (config.noughty) host;
+  chromiumEnabled = config.programs.chromium.enable || (host.is.linux && host.is.workstation);
+  firefoxEnabled = config.programs.firefox.enable || (host.is.linux && host.is.workstation);
+  browserAutomationEnabled = chromiumEnabled && firefoxEnabled;
 in
 rec {
   # Canonical MCP server definitions.
@@ -109,6 +113,25 @@ rec {
       };
     };
 
+  }
+  // lib.optionalAttrs browserAutomationEnabled {
+    playwright = {
+      transport = "stdio";
+      command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
+      args = [ ];
+      consumers = {
+        # Keep the browser automation server configured but disabled by
+        # default for clients that support per-server toggles.
+        codex.enabled = false;
+        opencode.enabled = false;
+        zed = {
+          mode = "context_server";
+          enabled = false;
+        };
+      };
+    };
+  }
+  // {
     svelte = {
       transport = "http";
       url = "https://mcp.svelte.dev/mcp";

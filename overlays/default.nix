@@ -21,6 +21,7 @@
 
     llama-swap = final.unstable.llama-swap;
     harper = final.unstable.harper;
+    playwright-mcp = final.unstable.playwright-mcp;
 
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
       _lpself: lpsuper: {

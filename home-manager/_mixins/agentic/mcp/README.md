@@ -1,8 +1,8 @@
 # MCP Servers
 
-Five active MCP servers providing AI agents with current, authoritative reference material. Defined once in `servers.nix`, distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients via per-consumer renderers.
+Five always-active MCP servers provide AI agents with current reference material. A sixth, Playwright, is emitted only on browser-automation systems. Definitions live once in `servers.nix` and are distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients via per-consumer renderers.
 
-The Nix composition is the delivery mechanism, not the strategy. The servers here are information retrieval tools: documentation search, web reading, and package lookup. None orchestrate external systems or write to remote APIs. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
+The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. Playwright is local browser automation for agent-driven page inspection and only appears when both Chromium and Firefox are enabled under the shared browser automation policy. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
 ## Contents
 
@@ -75,7 +75,7 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Five active servers and three disabled placeholders.
+Five always-active servers, one conditional browser automation server, and three disabled placeholders.
 
 | Server | Transport | Auth | Purpose |
 |--------|-----------|------|---------|
@@ -83,12 +83,13 @@ Five active servers and three disabled placeholders.
 | `exa` | HTTP | - | Neural web search and URL content extraction |
 | `cloudflare` | HTTP | - | Cloudflare product documentation |
 | `nixos` | stdio | - | NixOS, Home Manager, nix-darwin package and option search |
+| `playwright` | stdio | - | Conditional; browser automation via Playwright MCP; disabled by default where per-server toggles exist |
 | `svelte` | HTTP | - | Svelte documentation and playground |
 | `firecrawl` | HTTP | - | Disabled (`enabled = false`); web scraping and crawling |
 | `jina` | HTTP | bearer | Disabled; web reading and screenshots |
 | `mcpGoogleCse` | stdio | env | Disabled; Google Custom Search Engine |
 
-Four of the five active servers are remote HTTP. `nixos` runs as a local binary because no hosted alternative exists.
+Four of the always-active servers are remote HTTP. `nixos` runs as a local binary. When enabled, `playwright` also runs as a local binary.
 
 ### Active servers
 
@@ -124,7 +125,13 @@ Disabled in OpenCode via `consumers.opencode.enabled = false` because Cloudflare
 
 Searches NixOS packages and options, Home Manager options, and nix-darwin options. Without `mcp-nixos`, agents working in this repository hallucinate option paths and package attribute names. With it, they verify against the actual option set before recommending.
 
-The only stdio server in the active set. `mcp-nixos` runs as a local binary with no hosted alternative; the Nix package pins it to a Nix store path, so no PATH dependency exists.
+`mcp-nixos` runs as a local binary with no hosted alternative; the Nix package pins it to a Nix store path, so no PATH dependency exists.
+
+#### playwright
+
+Playwright MCP gives agents browser automation for page inspection, navigation, screenshots, and interaction tests. It is configured as a local stdio server using Nixpkgs' `playwright-mcp` package only when browser automation is enabled.
+
+The shared browser automation policy requires both Chromium and Firefox. Servers that do not meet that policy omit Playwright entirely, so generated MCP config does not reference the `playwright-mcp` closure. Where emitted, Codex, OpenCode, and Zed keep the server visible but disabled by default through their per-server `enabled = false` settings. Claude Code receives the server through the shared `mcpServers` output because its renderer has no visible disabled state.
 
 #### svelte
 
