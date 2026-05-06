@@ -47,6 +47,13 @@ rec {
   #                                     `codex mcp list` still sees it but
   #                                     Codex skips initialising the server.
   #                  opencode.enabled   (default true)
+  #                  pi.directTools     bool | list of strings, default follows
+  #                                     `consumers.opencode.enabled`: `true`
+  #                                     promotes the server's tools into Pi's
+  #                                     first-class tool list, `false` leaves
+  #                                     the server proxy-only through Pi's
+  #                                     single `mcp` tool, and a list promotes
+  #                                     only the named original MCP tools.
   #                  zed.enabled        (default true) - mirrors OpenCode:
   #                                     `false` keeps the entry visible in
   #                                     Zed's agent panel with `enabled = false`
@@ -353,6 +360,55 @@ rec {
           }
           // lib.optionalAttrs ((s.env or { }) != { }) {
             environment = lib.mapAttrs (_: secretName: "{env:${secretName}}") s.env;
+          };
+    in
+    lib.mapAttrs render (lib.filterAttrs keep servers);
+
+  # piServers: Pi adapter server entries for `~/.pi/agent/mcp.json`.
+  # `pi-mcp-adapter` has no per-server `enabled` field: server presence means
+  # Pi can use it, and servers connect lazily when a tool call needs them.
+  #
+  # The adapter shallow-merges MCP config files by server name. Entries here
+  # therefore include the complete server definition, not only Pi-specific
+  # overrides, otherwise adding `directTools` would replace the shared entry
+  # and drop command, args, URL, or auth data.
+  #
+  # Pi's direct-tool preference follows OpenCode's enabled-by-default state:
+  # OpenCode-enabled servers get `directTools = true`, while OpenCode-disabled
+  # servers remain present but proxy-only with `directTools = false`. A future
+  # `consumers.pi.directTools = [ ... ]` override can promote only selected
+  # original MCP tool names where Pi needs a narrower direct surface.
+  piServers =
+    let
+      keep = _: s: s.enabled or true;
+      directToolsFor = s: s.consumers.pi.directTools or (s.consumers.opencode.enabled or true);
+      render =
+        _: s:
+        let
+          common = {
+            directTools = directToolsFor s;
+          };
+        in
+        if s.transport == "http" then
+          {
+            type = "http";
+            inherit (s) url;
+          }
+          // common
+          // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
+            headers = {
+              Authorization = "Bearer ${config.sops.placeholder.${s.auth.envVar}}";
+            };
+          }
+        else
+          {
+            type = "stdio";
+            inherit (s) command;
+            args = s.args or [ ];
+          }
+          // common
+          // lib.optionalAttrs ((s.env or { }) != { }) {
+            env = lib.mapAttrs (_: secretName: config.sops.placeholder.${secretName}) s.env;
           };
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
