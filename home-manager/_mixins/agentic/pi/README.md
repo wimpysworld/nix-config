@@ -49,7 +49,25 @@ The managed settings use Anthropic by default:
 }
 ```
 
-Compaction and retry are enabled with conservative defaults. `enableSkillCommands` is enabled so shared skills are invocable as `/skill:<name>`.
+Compaction and retry are enabled. Retry settings favour longer backoff for transient provider overloads:
+
+```json
+{
+  "retry": {
+    "enabled": true,
+    "maxRetries": 5,
+    "baseDelayMs": 3000,
+    "provider": {
+      "maxRetries": 3,
+      "maxRetryDelayMs": 120000
+    }
+  }
+}
+```
+
+Anthropic can return `overloaded_error` during provider-side capacity pressure. These settings give Pi more time to recover before the error reaches chat. Pi still displays provider errors after retries are exhausted, and the failed request remains recorded in the session logs.
+
+`enableSkillCommands` is enabled so shared skills are invocable as `/skill:<name>`.
 
 ## Theme
 
