@@ -392,6 +392,7 @@ let
 in
 {
   imports = [
+    ./catppuccin.nix
     inputs.hermes-agent.nixosModules.default
   ];
 
@@ -741,7 +742,7 @@ in
               host = "127.0.0.1";
               port = 8644;
               secret = "\${WEBHOOK_SECRET}";
-              routes.github-notifications = null;
+              routes = { };
             };
           };
         };
@@ -811,6 +812,11 @@ in
             timeout = 30;
           };
           web_extract = {
+            provider = "openai-codex";
+            model = "gpt-5.3-codex-spark";
+            timeout = 30;
+          };
+          title_generation = {
             provider = "openai-codex";
             model = "gpt-5.3-codex-spark";
             timeout = 30;
