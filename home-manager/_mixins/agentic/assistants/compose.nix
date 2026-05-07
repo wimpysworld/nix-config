@@ -3,9 +3,24 @@ let
   # Read a file, stripping trailing whitespace
   readFile = path: lib.trim (builtins.readFile path);
 
+  # Read a file if it exists, otherwise return an empty string. Used for
+  # optional per-platform headers such as `header.pi.yaml`, where absence
+  # means "use defaults".
+  readOptionalFile = path: if builtins.pathExists path then readFile path else "";
+
   # Compose with YAML frontmatter: ---\n{header}\n---\n\n{body}\n
   # Adds blank line after frontmatter and trailing newline
   composeWithFrontmatter = header: body: "---\n${header}\n---\n\n${body}\n";
+
+  # Default Pi subagent header lines. Each generated agent inherits these
+  # unless `header.pi.yaml` provides an override (sparse-override semantics:
+  # YAML uses the last occurrence of a duplicate key).
+  piAgentDefaultLines = [
+    "systemPromptMode: append"
+    "inheritProjectContext: true"
+    "inheritSkills: true"
+    "maxSubagentDepth: 0"
+  ];
 
   # Discover directories in a path
   discoverDirs =
@@ -29,13 +44,29 @@ let
     let
       agentPath = basePath + "/agents/${agentName}";
       description = readFile (agentPath + "/description.txt");
+      headerPath = agentPath + "/header.${platform}.yaml";
     in
-    let
-      header = readFile (agentPath + "/header.${platform}.yaml");
-      # Inject description from description.txt into header
-      headerWithDescription = "description: \"${description}\"\n${header}";
-    in
-    composeWithFrontmatter headerWithDescription prompt;
+    if platform == "pi" then
+      # Pi: header.pi.yaml is optional. Inject `name` and `description`,
+      # then the four hardcoded subagent defaults, then any sparse overrides
+      # from header.pi.yaml verbatim.
+      let
+        rawHeader = readOptionalFile headerPath;
+        baseLines = [
+          "name: ${agentName}"
+          "description: ${builtins.toJSON description}"
+        ]
+        ++ piAgentDefaultLines;
+        lines = baseLines ++ lib.optional (rawHeader != "") rawHeader;
+      in
+      composeWithFrontmatter (lib.concatStringsSep "\n" lines) prompt
+    else
+      let
+        header = readFile headerPath;
+        # Inject description from description.txt into header
+        headerWithDescription = "description: \"${description}\"\n${header}";
+      in
+      composeWithFrontmatter headerWithDescription prompt;
 
   # Compose a single agent for a specific platform.
   composeAgent =
@@ -58,6 +89,27 @@ let
   # Discover standalone commands
   standaloneCommandDirs = discoverDirs (basePath + "/commands");
 
+  # Compose a Pi command markdown using the provided body. Used by
+  # `default.nix` for agent-scoped commands that wrap the body with
+  # subagent-launch boilerplate before emitting frontmatter, and internally
+  # by `composeCommand` for standalone commands.
+  composePiCommandFromPrompt =
+    agentName: cmdName: body:
+    let
+      cmdPath =
+        if agentName != null then
+          basePath + "/agents/${agentName}/commands/${cmdName}"
+        else
+          basePath + "/commands/${cmdName}";
+      description = readFile (cmdPath + "/description.txt");
+      rawHeader = readOptionalFile (cmdPath + "/header.pi.yaml");
+      lines = [
+        "description: ${builtins.toJSON description}"
+      ]
+      ++ lib.optional (rawHeader != "") rawHeader;
+    in
+    composeWithFrontmatter (lib.concatStringsSep "\n" lines) body;
+
   # Compose a single command for a specific platform
   # agentName is null for standalone commands
   composeCommand =
@@ -69,25 +121,30 @@ let
         else
           basePath + "/commands/${cmdName}";
       prompt = readFile (cmdPath + "/prompt.md");
-      description = readFile (cmdPath + "/description.txt");
-      rawHeader = readFile (cmdPath + "/header.${platform}.yaml");
-      # Inject description from description.txt into header
-      header = "description: \"${description}\"\n${rawHeader}";
-      # Check if this command should use Task tool for subagent execution
-      useTask = lib.hasInfix "use-task: true" rawHeader;
     in
-    if platform == "claude" && agentName != null && useTask then
-      # Claude Code with agent + use-task: instruct to use Task tool for subagent
-      composeWithFrontmatter header ''
-        Use the Task tool to launch the ${agentName} agent for the following task:
-
-        ${prompt}''
-    else if platform == "claude" && agentName != null then
-      # Claude Code with agent (no use-task): prepend @agent on its own line before body
-      composeWithFrontmatter header "@${agentName}\n\n${prompt}"
+    if platform == "pi" then
+      composePiCommandFromPrompt agentName cmdName prompt
     else
-      # All other cases: standard frontmatter + prompt
-      composeWithFrontmatter header prompt;
+      let
+        description = readFile (cmdPath + "/description.txt");
+        rawHeader = readFile (cmdPath + "/header.${platform}.yaml");
+        # Inject description from description.txt into header
+        header = "description: \"${description}\"\n${rawHeader}";
+        # Check if this command should use Task tool for subagent execution
+        useTask = lib.hasInfix "use-task: true" rawHeader;
+      in
+      if platform == "claude" && agentName != null && useTask then
+        # Claude Code with agent + use-task: instruct to use Task tool for subagent
+        composeWithFrontmatter header ''
+          Use the Task tool to launch the ${agentName} agent for the following task:
+
+          ${prompt}''
+      else if platform == "claude" && agentName != null then
+        # Claude Code with agent (no use-task): prepend @agent on its own line before body
+        composeWithFrontmatter header "@${agentName}\n\n${prompt}"
+      else
+        # All other cases: standard frontmatter + prompt
+        composeWithFrontmatter header prompt;
 
   # Generate all commands for a platform (both agent-specific and standalone)
   # Returns attrset: { cmdName = "composed content"; ... }
@@ -161,7 +218,7 @@ in
   inherit composeAgents composeAgent composeAgentFromPrompt;
 
   # Command composition functions
-  inherit composeCommands composeCommand;
+  inherit composeCommands composeCommand composePiCommandFromPrompt;
 
   # Instructions composition
   inherit composeInstructions;
