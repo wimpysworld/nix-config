@@ -30,10 +30,6 @@ let
   );
 in
 {
-  home.shellAliases = {
-    oc-traya = "opencode --agent traya --continue";
-  };
-
   programs = {
     opencode = {
       enable = true;
@@ -64,8 +60,8 @@ in
         # Workaround for anomalyco/opencode#13715: the TUI only collects
         # permission and question events from direct child sessions, so
         # sub-sub-agent prompts hang silently. Capping delegation depth at 1
-        # by denying `task` on every subagent (except traya, the orchestrator)
-        # avoids the hang. Custom Markdown agents pin this in their own
+        # by denying `task` on built-in subagents avoids the hang.
+        # Custom Markdown agents pin this in their own
         # frontmatter; the built-in `general` and `explore` agents are not
         # user-defined files, so we configure them here.
         agent = {

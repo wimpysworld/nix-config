@@ -1810,8 +1810,7 @@ in
   programs.codex = {
     enable = true;
     package = codexLauncherPackage;
-    # The assistants mixin writes AGENTS.md after sops-nix renders Traya's
-    # bonded prompt, keeping secret-derived content out of the Nix store.
+    # The assistants mixin writes AGENTS.md from the canonical global prompt.
     custom-instructions = "";
   };
 }

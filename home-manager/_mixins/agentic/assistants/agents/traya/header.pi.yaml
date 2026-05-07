@@ -1,4 +1,0 @@
-systemPromptMode: append
-inheritProjectContext: true
-inheritSkills: true
-maxSubagentDepth: 0
