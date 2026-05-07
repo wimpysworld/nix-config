@@ -310,9 +310,9 @@ is intentionally hybrid. A webhook can reduce latency for configured
 repositories or organisations, but it cannot replace the Notifications REST API
 poller as the source of truth.
 
-The `github-notifications` route is explicitly tombstoned in the Nix config so
-the Hermes config merge step removes the previously deployed static route from
-runtime use.
+The `github-notifications` route is left absent in the Nix config. Do not use a
+`null` tombstone here: Hermes v2026.4.30 validates route values at startup and a
+rendered `null` entry prevents the webhook listener from binding.
 
 ## Sanctuary
 
