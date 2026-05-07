@@ -132,6 +132,9 @@ let
   // piSkillFiles
   // piStandalonePromptFiles
   // piAgentPromptFiles;
+  piProviderRouterMap = lib.filterAttrs (_: models: models != { }) (
+    lib.mapAttrs (name: _: compose.extractAgentProviderModels name) codingAgentDirs
+  );
 
   # ============ SKILLS ============
 
@@ -354,11 +357,18 @@ in
       internal = true;
       description = "Home Manager file entries for Pi Agent assistant resources.";
     };
+    providerRouterMap = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.attrsOf lib.types.str);
+      default = { };
+      internal = true;
+      description = "Per-agent provider->modelId map harvested from header.pi.yaml. Consumed by the local pi-provider-router extension.";
+    };
   };
 
   config = {
     agentic.assistants.pi = {
       homeFiles = piHomeFiles;
+      providerRouterMap = piProviderRouterMap;
     };
 
     home = {
