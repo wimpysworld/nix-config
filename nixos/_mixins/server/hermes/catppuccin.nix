@@ -230,7 +230,7 @@ let
 in
 {
   config = lib.mkIf (noughtyLib.hostHasTag "hermes") {
-    services.hermes-agent.settings.display.skin = "catppuccin-mocha";
+    services.hermes-agent.settings.display.skin = lib.mkDefault "catppuccin-mocha";
 
     system.activationScripts.hermes-catppuccin-skins =
       lib.stringAfter
@@ -241,6 +241,7 @@ in
         ]
         ''
           install -d -m 2770 -o ${hermesUser} -g ${hermesGroup} ${hermesHome}/skins
+          rm -f ${hermesHome}/skins/catppuccin-*.yaml
           for skin in ${catppuccinSkinPackage}/share/hermes/skins/*.yaml; do
             install -m 0640 -o ${hermesUser} -g ${hermesGroup} "$skin" ${hermesHome}/skins/"$(basename "$skin")"
           done
