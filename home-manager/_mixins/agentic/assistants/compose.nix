@@ -15,6 +15,43 @@ let
   # Adds blank line after frontmatter and trailing newline
   composeWithFrontmatter = header: body: "---\n${header}\n---\n\n${body}\n";
 
+  stripMatchingQuotes =
+    value:
+    let
+      length = builtins.stringLength value;
+      first = builtins.substring 0 1 value;
+      last = builtins.substring (length - 1) 1 value;
+    in
+    if length >= 2 && ((first == "\"" && last == "\"") || (first == "'" && last == "'")) then
+      builtins.substring 1 (length - 2) value
+    else
+      value;
+
+  normaliseProviderModelValue =
+    value:
+    let
+      trimmed = lib.trim value;
+      length = builtins.stringLength trimmed;
+      first = builtins.substring 0 1 trimmed;
+      last = builtins.substring (length - 1) 1 trimmed;
+      hasMatchingQuotes =
+        length >= 2 && ((first == "\"" && last == "\"") || (first == "'" && last == "'"));
+      startsUnsupportedYaml = lib.any (prefix: lib.hasPrefix prefix trimmed) [
+        "|"
+        ">"
+        "&"
+        "*"
+      ];
+    in
+    if trimmed == "" || startsUnsupportedYaml then
+      null
+    else if hasMatchingQuotes then
+      stripMatchingQuotes trimmed
+    else if first == "\"" || first == "'" || lib.hasInfix ":" trimmed then
+      null
+    else
+      trimmed;
+
   # Default Pi subagent header lines. Each generated agent inherits these
   # unless `header.pi.yaml` provides an override (sparse-override semantics:
   # YAML uses the last occurrence of a duplicate key).
@@ -70,6 +107,38 @@ let
         headerWithDescription = "description: \"${description}\"\n${header}";
       in
       composeWithFrontmatter headerWithDescription prompt;
+
+  parseAgentProviderModelLine =
+    line:
+    let
+      uncommented = lib.head (lib.splitString "#" line);
+      matched = builtins.match "^[[:space:]]*model-([A-Za-z0-9_-]+):[[:space:]]*(.+?)[[:space:]]*$" uncommented;
+    in
+    if matched == null then
+      null
+    else
+      let
+        value = normaliseProviderModelValue (builtins.elemAt matched 1);
+      in
+      if value == null then
+        null
+      else
+        {
+          name = builtins.elemAt matched 0;
+          inherit value;
+        };
+
+  # Regex-only harvester for flat `model-<provider>: <id>` keys in Pi
+  # headers. This is intentionally narrower than a YAML parser.
+  extractAgentProviderModels =
+    agentName:
+    let
+      header = readOptionalFile (basePath + "/agents/${agentName}/header.pi.yaml");
+      entries = lib.filter (entry: entry != null) (
+        map parseAgentProviderModelLine (lib.splitString "\n" header)
+      );
+    in
+    lib.foldl' (acc: entry: acc // { "${entry.name}" = entry.value; }) { } entries;
 
   # Compose a single agent for a specific platform.
   composeAgent =
@@ -287,7 +356,12 @@ let
 in
 {
   # Agent composition functions
-  inherit composeAgents composeAgent composeAgentFromPrompt;
+  inherit
+    composeAgents
+    composeAgent
+    composeAgentFromPrompt
+    extractAgentProviderModels
+    ;
 
   # Command composition functions
   inherit composeCommands composeCommand composePiCommandFromPrompt;

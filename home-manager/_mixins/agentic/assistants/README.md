@@ -48,6 +48,7 @@ Each file is Markdown with YAML frontmatter specifying `name`, `description`, an
 - [Agents](#agents)
 - [Model Selection](#model-selection)
 - [Platform Delivery](#platform-delivery)
+- [Provider Routing](#provider-routing)
 
 ---
 
@@ -342,6 +343,29 @@ Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose
 `header.pi.yaml` is optional and uses sparse-override semantics. When absent, Pi subagents inherit four hardcoded defaults: `systemPromptMode: append`, `inheritProjectContext: false`, `inheritSkills: true`, and `maxSubagentDepth: 0`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, plus per-command `argument-hint`. Fields present in the file override the defaults; fields absent fall through.
 
 OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
+
+### Provider routing
+
+Pi can route a subagent to a provider-specific model through extra
+`model-<provider>` keys in the agent's `header.pi.yaml`:
+
+```yaml
+model-anthropic: claude-haiku-4-5
+model-openai: "gpt-5-mini"
+model-google: 'gemini-3-flash'
+```
+
+The suffix after `model-` must match the active Pi provider name. The value must
+be a plain scalar, with optional matching single or double quotes. The Nix
+harvester uses a regex-only parser, so block scalars, anchors, aliases,
+unmatched quotes, and unquoted values containing `:` are ignored.
+
+Provider routing covers Pi's LLM tool-call path only. Slash commands such as
+`/run`, `/chain`, `/parallel`, `/run-chain`, and prompt-template bridge calls
+keep their normal Pi and `pi-subagents` model resolution.
+
+Runtime behaviour lives in
+[`../pi/extensions/provider-router/README.md`](../pi/extensions/provider-router/README.md).
 
 ### Prompt vs skill argument semantics
 

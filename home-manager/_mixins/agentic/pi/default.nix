@@ -282,6 +282,13 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     file = {
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/extensions/subagent/config.json".text = builtins.toJSON piSubagentsConfig;
+      # Provider-router deploys its static extension files beside the generated
+      # provider map consumed at runtime.
+      ".pi/agent/extensions/provider-router/agents.json".text =
+        builtins.toJSON piAssistant.providerRouterMap;
+      ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
+      ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
+      ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
     }
     // piAssistant.homeFiles;
