@@ -68,7 +68,7 @@ Skills inject instructions into the active conversation. Type `$` in the compose
 
 Skills come from three generated sets:
 
-- Shared skills from `assistants/skills/*/SKILL.md`
+- Shared skills from `assistants/skills/*/SKILL.md`, plus generated shared skills
 - Standalone assistant commands from `assistants/commands/*`
 - Agent command skills named `<agent>-<command>`
 
@@ -108,11 +108,9 @@ Agent role files live in `~/.codex/agents/*.toml`. They define roles available t
 
 Agent files are composed from `prompt.md`, `description.txt`, and `header.codex.toml`. The Codex header carries role-local config such as `model = "gpt-5.5"` and `model_reasoning_effort = "high"`.
 
-The generated `default.toml` role is a Traya alias, so omitted `agent_type` values use Traya's orchestrator prompt instead of Codex's built-in default role.
-
 The files must be real TOML files, not symlinks. Codex's role discovery skips symlinked role files on Linux.
 
-The `traya` role is written by an activation-time TOML writer instead of an inline Nix string. That avoids malformed TOML when long developer instructions contain multiline text, quotes, or secret-provided bond content.
+The unnamed default prompt is written to `AGENTS.md` from `instructions/global.md`. Traya is not exposed as a named Codex role.
 
 Agent roles are not a TUI persona picker. `/agent` shows active live threads. The model chooses these roles only when it calls the sub-agent tools.
 
