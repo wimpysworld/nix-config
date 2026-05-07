@@ -182,20 +182,44 @@ let
       };
       spinner = {
         waiting_faces = [
-          "𓃭"
-          "◆"
-          "◉"
+          "⠋"
+          "⠙"
+          "⠹"
+          "⠸"
+          "⠼"
+          "⠴"
+          "⠦"
+          "⠧"
+          "⠇"
+          "⠏"
         ];
         thinking_faces = [
-          "◌"
-          "◎"
-          "◈"
+          "◐"
+          "◓"
+          "◑"
+          "◒"
         ];
         thinking_verbs = [
-          "brewing"
-          "steeping"
-          "fermenting thoughts"
-          "distilling"
+          "Noodling"
+          "Marinating"
+          "Percolating"
+          "Cogitating"
+          "Ruminating"
+          "Mulling"
+          "Pondering"
+          "Brainstorming"
+          "Wool-gathering"
+          "Head-scratching"
+          "Brain-juggling"
+          "Synapse-tickling"
+          "Neuron-nudging"
+          "Thought-wrangling"
+          "Idea-whisking"
+          "Chin-stroking"
+          "Mind-fizzing"
+          "Cerebrating"
+          "Brain-wobbling"
+          "Cortex-tumbling"
         ];
         wings = [
           [
@@ -203,14 +227,14 @@ let
             " ◆╯"
           ]
           [
-            "╰◈ "
-            " ◈╯"
+            "╰◇ "
+            " ◇╯"
           ]
         ];
       };
       branding = {
-        agent_name = "Hermes Agent";
-        response_label = " ⚕ Hermes ";
+        agent_name = "Traya";
+        response_label = " ⚕ Traya ";
         prompt_symbol = "❯";
         help_header = "(?) Available Commands";
       };
