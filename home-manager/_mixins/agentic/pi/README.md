@@ -93,6 +93,25 @@ The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 
 `@juicesharp/rpiv-args` and `@juicesharp/rpiv-i18n` are not installed. Pi natively substitutes `$1`/`$@`/`$ARGUMENTS` inside prompt templates and appends trailing arguments as a follow-up `User:` message after skill bodies. `rpiv-args` extended placeholder substitution into skill bodies as well, which silently rewrites incidental `$1` and `$NNNN` matches inside reference content (for example SQL placeholder syntax and currency strings in the security skills); the Pi-native split is preferred.
 
+## Local extensions
+
+Home Manager deploys local Pi extensions under `~/.pi/agent/extensions/`.
+
+`provider-router` lives at `~/.pi/agent/extensions/provider-router/`. It routes
+Pi `subagent` tool calls to provider-specific models declared in assistant
+`header.pi.yaml` files.
+
+Managed files:
+
+- `~/.pi/agent/extensions/provider-router/index.ts`
+- `~/.pi/agent/extensions/provider-router/agents.json`
+- `~/.pi/agent/extensions/provider-router/README.md`
+- `~/.pi/agent/extensions/provider-router/LICENSE`
+
+See
+[`extensions/provider-router/README.md`](extensions/provider-router/README.md)
+for declaration rules, runtime constraints, and verification commands.
+
 ## Theme
 
 Pi supports JSON themes loaded from `~/.pi/agent/themes/*.json`, package theme directories, or the `themes` setting.
