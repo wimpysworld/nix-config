@@ -230,7 +230,9 @@ let
 in
 {
   config = lib.mkIf (noughtyLib.hostHasTag "hermes") {
-    services.hermes-agent.settings.display.skin = lib.mkDefault "catppuccin-mocha";
+    # services.hermes-agent.settings is serialised directly to YAML, so do not
+    # use lib.mkDefault here: override metadata leaks into Hermes' config.yaml.
+    services.hermes-agent.settings.display.skin = "catppuccin-mocha";
 
     system.activationScripts.hermes-catppuccin-skins =
       lib.stringAfter
