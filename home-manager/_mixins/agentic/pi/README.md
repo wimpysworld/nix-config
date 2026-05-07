@@ -78,7 +78,6 @@ Pi packages are installed through the Home Manager-owned package setting:
   "packages": [
     "npm:pi-mcp-adapter@2.5.4",
     "npm:pi-subagents@0.24.0",
-    "npm:@juicesharp/rpiv-args@1.1.5",
     "npm:@juicesharp/rpiv-btw@1.1.5",
     "npm:@juicesharp/rpiv-todo@1.1.5"
   ]
@@ -89,11 +88,10 @@ Versioned Pi package specs are pinned and skipped by `pi update`. These packages
 
 The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 
-- `rpiv-args` adds skill argument placeholders
 - `rpiv-btw` performs an explicit side model call using current conversation context
 - `rpiv-todo` adds a model-visible todo tool and `/todos` UI
 
-`@juicesharp/rpiv-i18n` is not installed.
+`@juicesharp/rpiv-args` and `@juicesharp/rpiv-i18n` are not installed. Pi natively substitutes `$1`/`$@`/`$ARGUMENTS` inside prompt templates and appends trailing arguments as a follow-up `User:` message after skill bodies. `rpiv-args` extended placeholder substitution into skill bodies as well, which silently rewrites incidental `$1` and `$NNNN` matches inside reference content (for example SQL placeholder syntax and currency strings in the security skills); the Pi-native split is preferred.
 
 ## Theme
 
@@ -182,6 +180,6 @@ Source content comes from `home-manager/_mixins/agentic/assistants`. Rendering f
 
 Traya is written during Home Manager activation rather than through `home.file`, because her prompt appends the sops-backed bond text outside the Nix store. Other agents and prompts contain no secrets and are rendered declaratively.
 
-Pi agent frontmatter uses `name`, `description`, `systemPromptMode: append`, `inheritProjectContext: true`, `inheritSkills: true`, and `maxSubagentDepth: 0`. Prompt templates carry `description` and reuse Claude's `argument-hint` field where present, because Pi supports the same prompt-template field.
+Pi agent frontmatter is sourced from `header.pi.yaml`. When the file is absent the agent inherits four defaults: `systemPromptMode: append`, `inheritProjectContext: true`, `inheritSkills: true`, and `maxSubagentDepth: 0`. `name` and `description` are injected automatically from the directory name and `description.txt`. Per-agent overrides for `model`, `thinking`, `tools`, `defaultContext`, and other Pi-native fields go in `header.pi.yaml` alongside `header.claude.yaml` and `header.codex.toml`. Prompt templates use `header.pi.yaml` for `argument-hint` rather than reading the Claude header.
 
 OpenCode-specific permission headers are not mapped. Pi subagent Markdown supports tool allowlists, but OpenCode's allow/deny permission policy does not translate cleanly into Pi's explicit `tools` allowlist.

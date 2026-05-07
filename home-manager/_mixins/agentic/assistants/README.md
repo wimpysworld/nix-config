@@ -335,11 +335,23 @@ Three tiers map to task complexity:
 
 ## Platform Delivery
 
-`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and per-platform `header.<platform>.yaml` files for Claude Code and OpenCode. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
+`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and per-platform headers: `header.claude.yaml`, `header.opencode.yaml`, `header.codex.toml`, and `header.pi.yaml`. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
 
-Pi Agent rendering lives in `default.nix` beside the shared secret-aware Traya rendering. Generated Pi subagents use `systemPromptMode: append`, inherit project context and skills, and set `maxSubagentDepth: 0` so child sessions cannot delegate further. Prompt templates carry `description` and reuse Claude `argument-hint` values where present.
+Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude ("Use the subagent tool to launch the `<agent>` agent...") is assembled in `default.nix` and wraps `compose.composePiCommandFromPrompt`, mirroring how the Codex side wraps `spawn_agent` guidance around skill bodies.
+
+`header.pi.yaml` is optional and uses sparse-override semantics. When absent, Pi subagents inherit four hardcoded defaults: `systemPromptMode: append`, `inheritProjectContext: true`, `inheritSkills: true`, and `maxSubagentDepth: 0`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, plus per-command `argument-hint`. Fields present in the file override the defaults; fields absent fall through.
 
 OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
+
+### Prompt vs skill argument semantics
+
+Pi exposes two surfaces that can take user input, and they handle arguments differently.
+
+**Prompts** (`/<cmd>`) substitute placeholders inside the prompt body. The Pi-native syntax is `$1`, `$2`, `$@`, `$ARGUMENTS`, `${@:N}`, `${@:N:L}`. A prompt template that says "Review the plan at $1" receives the plan path as `$1` at invocation. This is the same syntax bash uses for positional parameters.
+
+**Skills** (`/skill:<name>`) do not substitute. Trailing arguments after the skill invocation become a follow-up `User:` message appended after the skill body. A skill is reference content the model loads for context; trailing args are the user request that follows.
+
+This split keeps the surfaces semantically clean: prompts take inputs, skills provide guidance. `argument-hint` in `header.pi.yaml` documents the expected positional arguments for prompt autocomplete; skills carry no equivalent because they do not pattern-match arguments.
 
 | Platform | Agents | Commands | Global rules | Skills |
 |----------|--------|----------|-------------|--------|

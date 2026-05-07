@@ -42,25 +42,6 @@ let
       description = ${builtins.toJSON description}
       developer_instructions = ${tomlMultilineLiteral developerInstructions}
     '';
-  extractYamlField =
-    field: path:
-    if !(builtins.pathExists path) then
-      null
-    else
-      let
-        prefix = "${field}:";
-        matches = lib.filter (line: lib.hasPrefix prefix (lib.trim line)) (
-          lib.splitString "\n" (builtins.readFile path)
-        );
-      in
-      if matches == [ ] then
-        null
-      else
-        let
-          value = lib.trim (lib.removePrefix prefix (lib.trim (builtins.head matches)));
-        in
-        if value == "" then null else value;
-
   codexDir =
     if config.home.preferXdgDirectories then
       "${config.xdg.configHome}/codex"
@@ -152,6 +133,11 @@ let
 
   # ============ PI AGENT ============
 
+  # Pi agent prompts replace Claude's "Task tool" wording with Pi's
+  # "subagent tool" terminology so subagent invocation prose is platform-
+  # appropriate. The transformation is applied to the agent prompt body
+  # before composition; command bodies are unchanged because the subagent-
+  # launch boilerplate for agent-scoped commands is composed below.
   piAgentPrompt =
     prompt:
     lib.replaceStrings
@@ -164,61 +150,23 @@ let
         "Permitted tools: subagent tool for delegation, direct conversation"
       ]
       prompt;
-  renderPiMarkdown = header: body: ''
-    ---
-    ${header}
-    ---
-
-    ${body}
-  '';
-  renderPiAgentMarkdown =
-    {
-      name,
-      description,
-      prompt,
-    }:
-    renderPiMarkdown (lib.concatStringsSep "\n" [
-      "name: ${name}"
-      "description: ${builtins.toJSON description}"
-      "systemPromptMode: append"
-      "inheritProjectContext: true"
-      "inheritSkills: true"
-      "maxSubagentDepth: 0"
-    ]) (piAgentPrompt prompt);
-  renderPiPromptMarkdown =
-    {
-      description,
-      argumentHint ? null,
-      prompt,
-    }:
-    let
-      headerLines = [
-        "description: ${builtins.toJSON description}"
-      ]
-      ++ lib.optional (argumentHint != null) "argument-hint: ${builtins.toJSON argumentHint}";
-    in
-    renderPiMarkdown (lib.concatStringsSep "\n" headerLines) prompt;
   piTrayaWriter = pkgs.writeText "write-traya-pi-agent.py" (
     builtins.concatStringsSep "\n" [
+      "import json"
       "import pathlib"
       "import sys"
       ""
-      "prompt_path, description_path, bond_path, output_path = sys.argv[1:5]"
+      "prompt_path, description_path, header_path, bond_path, output_path = sys.argv[1:6]"
       "prompt = pathlib.Path(prompt_path).read_text(encoding=\"utf-8\").strip()"
       "prompt = prompt.replace(\"Task tool\", \"subagent tool\")"
-      "prompt = prompt.replace(\"Permitted tools: subagent tool for delegation, direct conversation\", \"Permitted tools: subagent tool for delegation, direct conversation\")"
       "description = pathlib.Path(description_path).read_text(encoding=\"utf-8\").strip()"
+      "header = pathlib.Path(header_path).read_text(encoding=\"utf-8\").strip()"
       "bond = pathlib.Path(bond_path).read_text(encoding=\"utf-8\").strip()"
       "body = prompt if not bond else f\"{prompt}\\n{bond}\""
-      "content = \"---\\n\""
-      "content += \"name: traya\\n\""
-      "content += f\"description: {description!r}\\n\""
-      "content += \"systemPromptMode: append\\n\""
-      "content += \"inheritProjectContext: true\\n\""
-      "content += \"inheritSkills: true\\n\""
-      "content += \"maxSubagentDepth: 0\\n\""
-      "content += \"---\\n\\n\""
-      "content += body + \"\\n\""
+      "lines = [\"name: traya\", f\"description: {json.dumps(description)}\"]"
+      "if header:"
+      "    lines.append(header)"
+      "content = \"---\\n\" + \"\\n\".join(lines) + \"\\n---\\n\\n\" + body + \"\\n\""
       "output = pathlib.Path(output_path)"
       "output.parent.mkdir(parents=True, exist_ok=True)"
       "tmp = output.with_name(f\"{output.name}.tmp\")"
@@ -233,35 +181,21 @@ let
     name: _:
     let
       agentPath = ./agents + "/${name}";
-      description = readFileTrim (agentPath + "/description.txt");
       prompt = readFileTrim (agentPath + "/prompt.md");
     in
     {
       name = ".pi/agent/agents/${name}.md";
-      value.text = renderPiAgentMarkdown {
-        inherit name description prompt;
-      };
+      value.text = compose.composeAgentFromPrompt "pi" name (piAgentPrompt prompt);
     }
   ) piAgents;
   piSkillFiles = lib.mapAttrs' (name: skill: {
     name = ".pi/agent/skills/${name}";
     value.source = skill.path;
   }) skills;
-  piStandalonePromptFiles = lib.mapAttrs' (
-    cmdName: _:
-    let
-      cmdPath = ./commands + "/${cmdName}";
-      description = readFileTrim (cmdPath + "/description.txt");
-      prompt = readFileTrim (cmdPath + "/prompt.md");
-      argumentHint = extractYamlField "argument-hint" (cmdPath + "/header.claude.yaml");
-    in
-    {
-      name = ".pi/agent/prompts/${cmdName}.md";
-      value.text = renderPiPromptMarkdown {
-        inherit description argumentHint prompt;
-      };
-    }
-  ) compose.standaloneCommandDirs;
+  piStandalonePromptFiles = lib.mapAttrs' (cmdName: _: {
+    name = ".pi/agent/prompts/${cmdName}.md";
+    value.text = compose.composeCommand "pi" null cmdName;
+  }) compose.standaloneCommandDirs;
   piAgentPromptFiles = lib.foldlAttrs (
     acc: agentName: _:
     let
@@ -272,9 +206,12 @@ let
       cmdName: _:
       let
         cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
-        description = readFileTrim (cmdPath + "/description.txt");
         prompt = readFileTrim (cmdPath + "/prompt.md");
-        argumentHint = extractYamlField "argument-hint" (cmdPath + "/header.claude.yaml");
+        # Wrap the command body with Pi's subagent-launch prelude. The
+        # prelude is Pi-specific and mirrors how the Codex side wraps
+        # spawn_agent guidance around skill bodies; see compose.nix's
+        # claude branch for the symmetric `@<agent>` and `use-task`
+        # variants.
         piPrompt = ''
           Use the subagent tool to launch the `${agentName}` agent for the task below.
 
@@ -283,10 +220,7 @@ let
       in
       {
         name = ".pi/agent/prompts/${agentName}-${cmdName}.md";
-        value.text = renderPiPromptMarkdown {
-          inherit description argumentHint;
-          prompt = piPrompt;
-        };
+        value.text = compose.composePiCommandFromPrompt agentName cmdName piPrompt;
       }
     ) commandDirs
   ) { } compose.agentDirs;
@@ -302,6 +236,7 @@ let
     ${pkgs.python3}/bin/python ${piTrayaWriter} \
       ${./agents/traya/prompt.md} \
       ${./agents/traya/description.txt} \
+      ${./agents/traya/header.pi.yaml} \
       ${config.sops.secrets.BOND_MD.path} \
       "${config.home.homeDirectory}/.pi/agent/agents/traya.md"
   '';
