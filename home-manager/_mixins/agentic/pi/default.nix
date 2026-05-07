@@ -286,8 +286,5 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     }
     // piAssistant.homeFiles;
 
-    activation.piTrayaAgent = lib.hm.dag.entryAfter [ "writeBoundary" "sops-nix" ] ''
-      ${piAssistant.trayaActivation}
-    '';
   };
 }

@@ -1,4 +1,7 @@
-{ lib }:
+{
+  lib,
+  pkgs ? null,
+}:
 let
   # Read a file, stripping trailing whitespace
   readFile = path: lib.trim (builtins.readFile path);
@@ -17,7 +20,7 @@ let
   # YAML uses the last occurrence of a duplicate key).
   piAgentDefaultLines = [
     "systemPromptMode: append"
-    "inheritProjectContext: true"
+    "inheritProjectContext: false"
     "inheritSkills: true"
     "maxSubagentDepth: 0"
   ];
@@ -80,6 +83,20 @@ let
   # Generate all agents for a platform
   # Returns attrset: { agentName = "composed content"; ... }
   composeAgents = platform: lib.mapAttrs (name: _: composeAgent platform name) agentDirs;
+
+  sortedAgentNames = lib.sort (a: b: a < b) (builtins.attrNames agentDirs);
+  escapeMarkdownTableCell =
+    value:
+    lib.replaceStrings
+      [
+        "|"
+        "\n"
+      ]
+      [
+        "\\|"
+        " "
+      ]
+      value;
 
   # ============ COMMANDS ============
 
@@ -172,10 +189,65 @@ let
 
   # Discover all candidate skill directories, then keep only those containing
   # a SKILL.md. Stray empty directories under skills/ are ignored so they do
-  # not break evaluation.
-  skillDirs = lib.filterAttrs (name: _: builtins.pathExists (basePath + "/skills/${name}/SKILL.md")) (
-    discoverDirs (basePath + "/skills")
-  );
+  # not break evaluation. `meet-the-agents` is generated below from the agent
+  # registry, so a stale static directory is ignored if it exists.
+  physicalSkillDirs = lib.removeAttrs (lib.filterAttrs (
+    name: _: builtins.pathExists (basePath + "/skills/${name}/SKILL.md")
+  ) (discoverDirs (basePath + "/skills"))) [ "meet-the-agents" ];
+
+  meetTheAgentsSkillContent =
+    let
+      agentLines = lib.concatStringsSep "\n" (
+        map (
+          agentName:
+          let
+            agentPath = basePath + "/agents/${agentName}";
+            description = escapeMarkdownTableCell (readFile (agentPath + "/description.txt"));
+          in
+          "- **${agentName}**: ${description}"
+        ) sortedAgentNames
+      );
+    in
+    ''
+      ---
+      name: meet-the-agents
+      description: Registry of available specialist agents and their task domains. Load when delegating a task, selecting an agent, or unsure which agent to use.
+      user-invocable: false
+      ---
+
+      ## Agents
+
+      ${agentLines}
+
+      ## Routing
+
+      Delegate before parent-thread discovery. Put unknown files, searches, and web checks in `Research scope`.
+
+      Priority rules:
+      - Nix, NixOS, Home Manager, nix-darwin, flakes, or `.nix` files: dexter.
+      - Source-code security: dibble. Infrastructure security: batfink.
+      - Non-Nix implementation from a defined plan: donatello.
+      - Prompts, skills, commands, or instruction files: rosey.
+
+      Delegation prompt fields: `Task`, `Context`, `Research scope`, `Output format`, `Response discipline`.
+      `Response discipline`: dense, no preamble, no task restatement, raw artefacts when requested.
+    '';
+
+  generatedSkills = {
+    meet-the-agents = {
+      content = lib.trim meetTheAgentsSkillContent;
+      path =
+        if pkgs != null then
+          pkgs.writeTextDir "SKILL.md" meetTheAgentsSkillContent
+        else
+          throw "composeSkills requires pkgs to materialise generated skills";
+      extras = { };
+    };
+  };
+
+  skillDirs = physicalSkillDirs // {
+    meet-the-agents = "generated";
+  };
 
   # Compose a single skill into a structured value:
   #   - content: the SKILL.md body (verbatim, trimmed)
@@ -199,7 +271,7 @@ let
 
   # Generate all skills
   # Returns attrset: { skillName = { content; path; extras; }; ... }
-  composeSkills = lib.mapAttrs (name: _: composeSkill name) skillDirs;
+  composeSkills = generatedSkills // lib.mapAttrs (name: _: composeSkill name) physicalSkillDirs;
 
   # ============ GLOBAL INSTRUCTIONS ============
 

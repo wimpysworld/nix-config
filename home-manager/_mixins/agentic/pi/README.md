@@ -178,8 +178,8 @@ Source content comes from `home-manager/_mixins/agentic/assistants`. Rendering f
 | `commands/<command>/prompt.md` | `~/.pi/agent/prompts/<command>.md` | Native Pi prompt template |
 | `skills/<name>/` | `~/.pi/agent/skills/<name>/` | Symlinked Agent Skills directory |
 
-Traya is written during Home Manager activation rather than through `home.file`, because her prompt appends the sops-backed bond text outside the Nix store. Other agents and prompts contain no secrets and are rendered declaratively.
+Traya is the unnamed default prompt through `instructions/global.md`. She is not emitted as a named Pi subagent.
 
-Pi agent frontmatter is sourced from `header.pi.yaml`. When the file is absent the agent inherits four defaults: `systemPromptMode: append`, `inheritProjectContext: true`, `inheritSkills: true`, and `maxSubagentDepth: 0`. `name` and `description` are injected automatically from the directory name and `description.txt`. Per-agent overrides for `model`, `thinking`, `tools`, `defaultContext`, and other Pi-native fields go in `header.pi.yaml` alongside `header.claude.yaml` and `header.codex.toml`. Prompt templates use `header.pi.yaml` for `argument-hint` rather than reading the Claude header.
+Pi agent frontmatter is sourced from `header.pi.yaml`. When the file is absent the agent inherits four defaults: `systemPromptMode: append`, `inheritProjectContext: false`, `inheritSkills: true`, and `maxSubagentDepth: 0`. `name` and `description` are injected automatically from the directory name and `description.txt`. Per-agent overrides for `model`, `thinking`, `tools`, `defaultContext`, and other Pi-native fields go in `header.pi.yaml` alongside `header.claude.yaml` and `header.codex.toml`. Prompt templates use `header.pi.yaml` for `argument-hint` rather than reading the Claude header.
 
 OpenCode-specific permission headers are not mapped. Pi subagent Markdown supports tool allowlists, but OpenCode's allow/deny permission policy does not translate cleanly into Pi's explicit `tools` allowlist.

@@ -923,9 +923,6 @@ in
         ccstatuslinePatched
         claudeAgentAcpPackage
       ];
-      shellAliases = {
-        cc-traya = "claude --agent traya --continue";
-      };
       # Skip Claude Code's bundled ripgrep in favour of the system binary on
       # PATH. The bundled `rg` crashes on 16 KB-page kernels (Apple Silicon,
       # some Linux configs), silently emptying the file picker. Using the Nix

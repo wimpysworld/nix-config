@@ -26,7 +26,7 @@ The built-in `/init` command is overridden to use Rosey's `create-instructions` 
 
 ## Shell alias
 
-`oc-traya` launches OpenCode with `--agent traya --continue`, resuming the last Traya session for ongoing orchestration.
+OpenCode uses the unnamed global prompt from `instructions/global.md` for default orchestration. Traya is not exposed as a named OpenCode agent.
 
 ## IDE integration
 

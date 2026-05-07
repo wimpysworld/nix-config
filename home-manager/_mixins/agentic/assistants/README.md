@@ -62,7 +62,7 @@ instructions/global.md          ← environment constraints, tool preferences, r
                     └── command prompt  ← single task, optionally overrides model
 ```
 
-**`instructions/global.md`** is the foundation. It sets universal constraints applied across every agent on every platform: LSP tool usage patterns, built-in file manipulation tools over shell commands, and response standards (British English, no preamble, no summary restatements, conclusions before reasoning). These rules never change per-project or per-agent; anything project-specific belongs in `AGENTS.md`.
+**`instructions/global.md`** is the foundation and the unnamed Traya prompt. It sets universal constraints applied across every agent on every platform: LSP tool usage patterns, built-in file manipulation tools over shell commands, and response standards (British English, no preamble, no summary restatements, conclusions before reasoning). These rules never change per-project or per-agent; anything project-specific belongs in `AGENTS.md`.
 
 Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. Commands that need deeper reasoning can override the parent model without rewriting the agent.
 
@@ -339,7 +339,7 @@ Three tiers map to task complexity:
 
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude ("Use the subagent tool to launch the `<agent>` agent...") is assembled in `default.nix` and wraps `compose.composePiCommandFromPrompt`, mirroring how the Codex side wraps `spawn_agent` guidance around skill bodies.
 
-`header.pi.yaml` is optional and uses sparse-override semantics. When absent, Pi subagents inherit four hardcoded defaults: `systemPromptMode: append`, `inheritProjectContext: true`, `inheritSkills: true`, and `maxSubagentDepth: 0`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, plus per-command `argument-hint`. Fields present in the file override the defaults; fields absent fall through.
+`header.pi.yaml` is optional and uses sparse-override semantics. When absent, Pi subagents inherit four hardcoded defaults: `systemPromptMode: append`, `inheritProjectContext: false`, `inheritSkills: true`, and `maxSubagentDepth: 0`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, plus per-command `argument-hint`. Fields present in the file override the defaults; fields absent fall through.
 
 OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
 
@@ -362,13 +362,13 @@ This split keeps the surfaces semantically clean: prompts take inputs, skills pr
 
 ### Skills
 
-Seven skills provide background knowledge and reference material. The original three load automatically; the four new skills are user-invocable.
+Shared skills provide background knowledge and reference material. Most are sourced from `skills/*/SKILL.md`; `meet-the-agents` is generated from the agent registry so delegation guidance cannot drift from the configured agents.
 
 **Always loaded (agent-invoked):**
 
 | Skill | Loaded by | Purpose |
 |-------|-----------|---------|
-| `meet-the-agents` | Rosey (every session) | Agent registry - roles, delegation triggers |
+| `meet-the-agents` | Traya (every session) | Generated agent registry - roles, delegation triggers |
 | `prose-style-reference` | Casper, Velma | Extended Strunk composition rules, AI pattern catalogue |
 | `writing-clearly-and-concisely` | Any agent writing for humans | Core six principles, banned words and patterns |
 
