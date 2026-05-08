@@ -25,12 +25,12 @@ jobs:
       packages: ${{ steps.inventory.outputs.packages }}
       nixos: ${{ steps.inventory.outputs.nixos }}
       darwin: ${{ steps.inventory.outputs.darwin }}
-      orphan_homes: ${{ steps.inventory.outputs.orphan_homes }}
+      homes: ${{ steps.inventory.outputs.homes }}
       has_devshells: ${{ steps.inventory.outputs.has_devshells }}
       has_packages: ${{ steps.inventory.outputs.has_packages }}
       has_nixos: ${{ steps.inventory.outputs.has_nixos }}
       has_darwin: ${{ steps.inventory.outputs.has_darwin }}
-      has_orphan_homes: ${{ steps.inventory.outputs.has_orphan_homes }}
+      has_homes: ${{ steps.inventory.outputs.has_homes }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -264,10 +264,6 @@ jobs:
       - name: Build NixOS ${{ matrix.target.name }}
         run: |
           nix build ".#nixosConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
-      - name: Build Home ${{ matrix.target.home }}
-        if: matrix.target.home != ''
-        run: |
-          nix build ".#homeConfigurations.\"${{ matrix.target.home }}\".activationPackage" --no-link -L
 
   # ──────────────────────────────────────────────
   # Darwin Configurations (per-host)
@@ -296,18 +292,14 @@ jobs:
       - name: Build Darwin ${{ matrix.target.name }}
         run: |
           nix build ".#darwinConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
-      - name: Build Home ${{ matrix.target.home }}
-        if: matrix.target.home != ''
-        run: |
-          nix build ".#homeConfigurations.\"${{ matrix.target.home }}\".activationPackage" --no-link -L
 
   # ──────────────────────────────────────────────
-  # Orphan Home Configurations (lima, wsl, gaming)
+  # Home Manager Configurations (per-profile)
   # ──────────────────────────────────────────────
-  orphan-homes:
+  homes:
     name: Home 🏠 ${{ matrix.target.name }}
     needs: inventory
-    if: needs.inventory.outputs.has_orphan_homes == 'true'
+    if: needs.inventory.outputs.has_homes == 'true'
     runs-on: ${{ matrix.target.runner }}
     permissions:
       id-token: write
@@ -315,7 +307,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(needs.inventory.outputs.orphan_homes) }}
+        target: ${{ fromJSON(needs.inventory.outputs.homes) }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -345,7 +337,7 @@ jobs:
   # ──────────────────────────────────────────────
   sentinel:
     name: Sentinel 👁️
-    needs: [devshells, packages, nixos, darwin, orphan-homes]
+    needs: [devshells, packages, nixos, darwin, homes]
     if: always()
     runs-on: ubuntu-latest
     permissions:

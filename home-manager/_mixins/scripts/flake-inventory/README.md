@@ -4,7 +4,7 @@ Discovery script for Nix flake outputs. Enumerates all buildable outputs and emi
 
 ## Why this exists
 
-CI workflows need to build every flake output in parallel across multiple platforms (`x86_64-linux`, `aarch64-darwin`). GitHub Actions requires a JSON matrix to spawn parallel jobs, but there was no tool to generate these matrices from flake outputs without triggering full evaluation.
+CI workflows need to build every flake output in parallel across multiple platforms (`x86_64-linux`, `aarch64-linux`, `aarch64-darwin`). GitHub Actions requires a JSON matrix to spawn parallel jobs, but there was no tool to generate these matrices from flake outputs without triggering full evaluation.
 
 Previously, `DeterminateSystems/flake-iter` handled discovery, but it has a fundamental design flaw: it evaluates **all** flake outputs across **all** platforms before filtering by system. The `--system` flag filters in Rust code **after** `nix eval` completes. If any foreign-platform configuration references a broken package, the entire evaluation fails, preventing discovery of even native outputs.
 
@@ -12,7 +12,7 @@ Previously, `DeterminateSystems/flake-iter` handled discovery, but it has a fund
 
 ## Why per-host parallelism
 
-NixOS and Darwin configurations are built **one per runner** (parallel matrix jobs) rather than sequentially on a single runner per platform. The primary constraint is disk capacity: GitHub Actions runners provide roughly 28-75GB of usable space (depending on runner type and `nothing-but-nix` reclamation), while a single NixOS configuration closure can consume 15-30GB. With 13+ NixOS configurations in this flake, sequential builds on one runner would require far more disk than any single runner can provide.
+NixOS, Darwin, and Home Manager configurations are built **one per runner** (parallel matrix jobs) rather than sequentially on a single runner per platform. The primary constraint is disk capacity: GitHub Actions runners provide roughly 28-75GB of usable space (depending on runner type and `nothing-but-nix` reclamation), while a single NixOS configuration closure can consume 15-30GB. With 13+ NixOS configurations and large Home Manager profiles in this flake, sequential builds on one runner would require far more disk than any single runner can provide.
 
 Per-host runners also allow FlakeHub Cache to push artefacts incrementally during each build, so parallel runners benefit from each other's cache pushes mid-flight. Wall-clock time drops from 90+ minutes (if sequential were even feasible) to roughly 20 minutes.
 
@@ -20,7 +20,7 @@ Per-host runners also allow FlakeHub Cache to push artefacts incrementally durin
 
 ### 1. DevShells and formatter discovery
 
-For each platform in `PLATFORMS` (`x86_64-linux`, `aarch64-darwin`):
+For each platform in `PLATFORMS` (`x86_64-linux`, `aarch64-linux`, `aarch64-darwin`):
 
 - Discovers devShell names via `nix eval .#devShells.<system> --apply builtins.attrNames --json`
 - Checks whether a formatter exists for the platform
@@ -35,24 +35,26 @@ For each platform:
 
 ### 3. System configuration discovery
 
-Enumerates `nixosConfigurations`, `darwinConfigurations`, and `homeConfigurations` attribute names. These are used for cross-referencing in the next phases.
+Enumerates `nixosConfigurations`, `darwinConfigurations`, and `homeConfigurations` attribute names. These are used to build per-configuration matrices.
 
 ### 4. NixOS matrix (per-host)
 
 For each `nixosConfiguration`:
 
-- Pairs it with a matching `homeConfiguration` by finding `user@hostname` entries where the hostname matches
-- Emits one matrix entry per host with: `name`, `runner` (`ubuntu-latest`), `home` (paired homeConfiguration name or empty)
+- Derives the platform from the configuration's `pkgs.stdenv.hostPlatform.system`
+- Emits one matrix entry per host with: `name`, `runner`
 
 ### 5. Darwin matrix (per-host)
 
-Same as NixOS but for `darwinConfigurations`, using `macos-latest` runner.
+Same as NixOS but for `darwinConfigurations`, using the configured runner for the derived platform.
 
-### 6. Orphan homeConfigurations
+### 6. Home Manager matrix
 
-Home configs whose hostname doesn't match any `nixosConfiguration` or `darwinConfiguration` (e.g. lima, wsl, gaming types that only have Home Manager configs). All assumed to be `x86_64-linux` in this flake.
+All `homeConfigurations` are built independently from NixOS and Darwin configurations. This prevents paired system and home builds from sharing a runner Nix store, which is especially important for macOS disk pressure.
 
-- Emits one matrix entry per orphan with: `name`, `runner`
+- Derives the platform from each Home Manager configuration's `pkgs.stdenv.hostPlatform.system`
+- Falls back to the matching `user@host` NixOS or Darwin configuration when a cross-platform Home Manager configuration cannot expose `hostPlatform` from the Linux inventory runner
+- Emits one matrix entry per Home Manager configuration with: `name`, `runner`
 
 ## Outputs emitted
 
@@ -62,19 +64,20 @@ Five JSON matrix arrays written to `$GITHUB_OUTPUT`:
 |---|---|
 | `devshells` | Per-platform devShell + formatter matrix |
 | `packages` | Per-platform package matrix |
-| `nixos` | Per-host NixOS matrix (with paired home configs) |
-| `darwin` | Per-host Darwin matrix (with paired home configs) |
-| `orphan_homes` | Orphan Home Manager configs |
+| `nixos` | Per-host NixOS matrix |
+| `darwin` | Per-host Darwin matrix |
+| `homes` | Per-profile Home Manager matrix |
 
 Five boolean guards to prevent empty-matrix failures in downstream jobs:
 
-`has_devshells`, `has_packages`, `has_nixos`, `has_darwin`, `has_orphan_homes`
+`has_devshells`, `has_packages`, `has_nixos`, `has_darwin`, `has_homes`
 
 ## Runner mapping
 
 | Nix system | GitHub Actions runner |
 |---|---|
 | `x86_64-linux` | `ubuntu-latest` |
+| `aarch64-linux` | `ubuntu-24.04-arm` |
 | `aarch64-darwin` | `macos-latest` |
 
 ## Environment variables
@@ -89,7 +92,7 @@ Five boolean guards to prevent empty-matrix failures in downstream jobs:
 
 ### CI
 
-Called from `.github/workflows/ci.yml` in the inventory job:
+Called from `.github/workflows/builder.yml` in the inventory job:
 
 ```yaml
 - name: Inventory
