@@ -308,7 +308,7 @@ let
     lsof
     ltrace
     lurk
-    mawk
+    gawk
     nh
     nix-direnv
     nodejs-slim
