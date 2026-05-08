@@ -162,7 +162,7 @@ log_debug "darwinConfigurations: ${darwin_names}"
 log_debug "homeConfigurations: ${home_names}"
 
 # ═══════════════════════════════════════════════════
-# 4. NixOS matrix (per-host, with paired home config)
+# 4. NixOS matrix (per-host)
 # ═══════════════════════════════════════════════════
 
 log_info "Building NixOS matrix..."
@@ -179,25 +179,20 @@ while IFS= read -r name; do
 		continue
 	fi
 
-	# Find the matching homeConfiguration (username@hostname pattern).
-	home_match=$(echo "${home_names}" | jq -r --arg h "${name}" \
-		'[.[] | select(endswith("@" + $h))] | first // empty')
-
 	entry=$(jq -n -c \
 		--arg name "${name}" \
 		--arg runner "${runner}" \
-		--arg home "${home_match}" \
-		'{name: $name, runner: $runner, home: $home}')
+		'{name: $name, runner: $runner}')
 	nixos_json=$(echo "${nixos_json}" | jq -c --argjson e "${entry}" '. + [$e]')
 
-	log_debug "nixos: ${name} → ${host_system} (${runner}), home: ${home_match:-none}"
+	log_debug "nixos: ${name} → ${host_system} (${runner})"
 done < <(echo "${nixos_names}" | jq -r '.[]')
 
 nixos_matrix_count=$(echo "${nixos_json}" | jq 'length')
 log_info "NixOS matrix: ${nixos_matrix_count} host(s)"
 
 # ═══════════════════════════════════════════════════
-# 5. Darwin matrix (per-host, with paired home config)
+# 5. Darwin matrix (per-host)
 # ═══════════════════════════════════════════════════
 
 log_info "Building Darwin matrix..."
@@ -214,65 +209,61 @@ while IFS= read -r name; do
 		continue
 	fi
 
-	# Find the matching homeConfiguration.
-	home_match=$(echo "${home_names}" | jq -r --arg h "${name}" \
-		'[.[] | select(endswith("@" + $h))] | first // empty')
-
 	entry=$(jq -n -c \
 		--arg name "${name}" \
 		--arg runner "${runner}" \
-		--arg home "${home_match}" \
-		'{name: $name, runner: $runner, home: $home}')
+		'{name: $name, runner: $runner}')
 	darwin_json=$(echo "${darwin_json}" | jq -c --argjson e "${entry}" '. + [$e]')
 
-	log_debug "darwin: ${name} → ${host_system} (${runner}), home: ${home_match:-none}"
+	log_debug "darwin: ${name} → ${host_system} (${runner})"
 done < <(echo "${darwin_names}" | jq -r '.[]')
 
 darwin_matrix_count=$(echo "${darwin_json}" | jq 'length')
 log_info "Darwin matrix: ${darwin_matrix_count} host(s)"
 
 # ═══════════════════════════════════════════════════
-# 6. Orphan homeConfigurations (not paired with any system config)
-#    These are lima, wsl, gaming types that only have Home Manager configs.
-#    Platform is dynamically detected from the configuration.
+# 6. Home Manager configurations
+#    Run all Home Manager builds independently from NixOS and nix-darwin
+#    builds so each configuration gets a fresh runner and Nix store.
 # ═══════════════════════════════════════════════════
 
-log_info "Discovering orphan homeConfigurations..."
-orphan_homes_json="[]"
-
-# Combine all system hostnames for cross-reference.
-all_system_hosts=$(echo "${nixos_names} ${darwin_names}" | jq -s 'add')
+log_info "Building Home Manager matrix..."
+homes_json="[]"
 
 while IFS= read -r home; do
 	[ -z "${home}" ] && continue
 
-	# Extract hostname from "user@hostname" format.
-	hostname="${home#*@}"
+	home_system=$(nix eval "${FLAKE_DIR}#homeConfigurations.\"${home}\".pkgs.stdenv.hostPlatform.system" --raw --no-write-lock-file 2>/dev/null || echo "unknown")
 
-	# Check whether this hostname belongs to a system configuration.
-	is_paired=$(echo "${all_system_hosts}" | jq -r --arg h "${hostname}" \
-		'if index($h) then "yes" else "no" end')
-
-	if [ "${is_paired}" = "no" ]; then
-		# Orphan home config; derive platform from the configuration itself.
-		orphan_system=$(nix eval "${FLAKE_DIR}#homeConfigurations.\"${home}\".pkgs.stdenv.hostPlatform.system" --raw --no-write-lock-file 2>/dev/null || echo "unknown")
-		orphan_runner=$(get_runner "${orphan_system}")
-		if [ -z "${orphan_runner}" ]; then
-			log_debug "orphan home: ${home} → platform ${orphan_system} has no runner, skipping"
-			continue
+	# Some cross-platform Home Manager configurations cannot expose their
+	# hostPlatform cleanly from the Linux inventory runner. Fall back to the
+	# paired system host when the home name follows the usual user@host shape.
+	if [ "${home_system}" = "unknown" ] && [[ "${home}" == *@* ]]; then
+		host="${home##*@}"
+		if echo "${darwin_names}" | jq -e --arg host "${host}" 'index($host) != null' >/dev/null; then
+			home_system=$(nix eval "${FLAKE_DIR}#darwinConfigurations.${host}.pkgs.stdenv.hostPlatform.system" --raw --no-write-lock-file 2>/dev/null || echo "unknown")
+		elif echo "${nixos_names}" | jq -e --arg host "${host}" 'index($host) != null' >/dev/null; then
+			home_system=$(nix eval "${FLAKE_DIR}#nixosConfigurations.${host}.pkgs.stdenv.hostPlatform.system" --raw --no-write-lock-file 2>/dev/null || echo "unknown")
 		fi
-		entry=$(jq -n -c \
-			--arg name "${home}" \
-			--arg runner "${orphan_runner}" \
-			'{name: $name, runner: $runner}')
-		orphan_homes_json=$(echo "${orphan_homes_json}" | jq -c --argjson e "${entry}" '. + [$e]')
-
-		log_debug "orphan home: ${home}"
 	fi
+
+	home_runner=$(get_runner "${home_system}")
+	if [ -z "${home_runner}" ]; then
+		log_debug "home: ${home} → platform ${home_system} has no runner, skipping"
+		continue
+	fi
+
+	entry=$(jq -n -c \
+		--arg name "${home}" \
+		--arg runner "${home_runner}" \
+		'{name: $name, runner: $runner}')
+	homes_json=$(echo "${homes_json}" | jq -c --argjson e "${entry}" '. + [$e]')
+
+	log_debug "home: ${home} → ${home_system} (${home_runner})"
 done < <(echo "${home_names}" | jq -r '.[]')
 
-orphan_count=$(echo "${orphan_homes_json}" | jq 'length')
-log_info "Orphan homeConfigurations: ${orphan_count}"
+homes_count=$(echo "${homes_json}" | jq 'length')
+log_info "Home Manager matrix: ${homes_count} configuration(s)"
 
 # ═══════════════════════════════════════════════════
 # Emit GitHub Actions Outputs
@@ -285,14 +276,14 @@ emit_output "devshells" "${devshells_json}"
 emit_output "packages" "${packages_json}"
 emit_output "nixos" "${nixos_json}"
 emit_output "darwin" "${darwin_json}"
-emit_output "orphan_homes" "${orphan_homes_json}"
+emit_output "homes" "${homes_json}"
 
 # Boolean guards to prevent empty-matrix failures in downstream jobs.
 emit_output "has_devshells" "$(echo "${devshells_json}" | jq 'length > 0')"
 emit_output "has_packages" "$(echo "${packages_json}" | jq 'length > 0')"
 emit_output "has_nixos" "$(echo "${nixos_json}" | jq 'length > 0')"
 emit_output "has_darwin" "$(echo "${darwin_json}" | jq 'length > 0')"
-emit_output "has_orphan_homes" "$(echo "${orphan_homes_json}" | jq 'length > 0')"
+emit_output "has_homes" "$(echo "${homes_json}" | jq 'length > 0')"
 
 # --- Summary ---
 
@@ -304,7 +295,7 @@ echo "  DevShell platforms:    ${devshells_count}"
 echo "  Package platforms:     ${packages_count}"
 echo "  NixOS hosts:           ${nixos_matrix_count}"
 echo "  Darwin hosts:          ${darwin_matrix_count}"
-echo "  Orphan homes:          ${orphan_count}"
+echo "  Home configurations:   ${homes_count}"
 echo "════════════════════════════════════════════════"
 echo ""
 
@@ -312,7 +303,7 @@ log_debug "devshells=${devshells_json}"
 log_debug "packages=${packages_json}"
 log_debug "nixos=${nixos_json}"
 log_debug "darwin=${darwin_json}"
-log_debug "orphan_homes=${orphan_homes_json}"
+log_debug "homes=${homes_json}"
 
 log_success "Inventory complete!"
 echo ""
