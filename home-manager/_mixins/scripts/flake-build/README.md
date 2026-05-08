@@ -67,7 +67,7 @@ Packages that evaluate successfully but set `meta.hydraPlatforms = []` are skipp
 
 ### CI
 
-`flake-build` is no longer used in CI. The workflow in `.github/workflows/ci.yml` now uses `flake-inventory` for output discovery and has inline build steps per job type (devshells, packages, nixos, darwin, orphan-homes). Each NixOS and Darwin configuration builds on its own runner via a matrix strategy, driven by the per-host matrices that `flake-inventory` emits. See the [flake-inventory README](../flake-inventory/README.md) for details.
+`flake-build` is no longer used in CI. The workflow in `.github/workflows/builder.yml` now uses `flake-inventory` for output discovery and has inline build steps per job type (devshells, packages, nixos, darwin, homes). Each NixOS, Darwin, and Home Manager configuration builds on its own runner via a matrix strategy, driven by the matrices that `flake-inventory` emits. See the [flake-inventory README](../flake-inventory/README.md) for details.
 
 ### Local
 
