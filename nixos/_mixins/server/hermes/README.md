@@ -320,6 +320,9 @@ Traya's live operational state belongs in Hermes Kanban.
 The `traya-ops` board is the source of truth for task and state tracking,
 including active work, blocked work, waiting-on-Martin items, recurring
 automation follow-up, and durable hand-offs that must survive session loss.
+Read and update that board only through the Hermes Kanban CLI tool
+(`hermes kanban ...`). Do not read or mutate Kanban database files, runtime
+snapshots, API internals, or markdown exports directly.
 
 Traya-owned report files and continuity records live under
 `/var/lib/hermes/workspace/trayas-sanctuary`.

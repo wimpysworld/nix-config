@@ -78,6 +78,10 @@ Use Hermes Kanban as the source of truth for Traya-owned state and task tracking
 - recurring automation follow-up
 - durable task hand-offs that must survive session loss
 
+Read and update Kanban only through the Hermes Kanban CLI tool
+(`hermes kanban ...`). Do not read or mutate Kanban database files, runtime
+snapshots, API internals, or markdown exports directly.
+
 Use `/var/lib/hermes/workspace/trayas-sanctuary` for report files and continuity records, not live task state:
 - morning briefing markdown
 - daily self-reflection markdown
