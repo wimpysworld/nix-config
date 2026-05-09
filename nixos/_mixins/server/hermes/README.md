@@ -314,30 +314,41 @@ The `github-notifications` route is left absent in the Nix config. Do not use a
 `null` tombstone here: Hermes v2026.4.30 validates route values at startup and a
 rendered `null` entry prevents the webhook listener from binding.
 
-## Sanctuary
+## Kanban and Sanctuary
 
-Traya-owned continuity state now lives under `/var/lib/hermes/workspace/trayas-sanctuary`.
+Traya's live operational state belongs in Hermes Kanban.
+The `traya-ops` board is the source of truth for task and state tracking,
+including active work, blocked work, waiting-on-Martin items, recurring
+automation follow-up, and durable hand-offs that must survive session loss.
 
-Use the sanctuary as the default home for Traya-owned durable state such as:
+Traya-owned report files and continuity records live under
+`/var/lib/hermes/workspace/trayas-sanctuary`.
+Use sanctuary for Git-backed artefacts such as:
 
-- plans and decisions
-- human-facing status ledgers
 - persisted morning briefing markdown
-- continuity notes and durable research notes that are not better housed in a task repo
+- daily self-reflection markdown
+- plans and decisions
+- runbooks and policies
+- durable research notes and historical summaries that are not better housed in a task repo
 
 When creating Traya-owned operational files:
 
-- write durable, human-facing state under tracked sanctuary paths such as `docs/`, `status/`, `plans/`, and `notes/`
-- write hot operational state under `runtime/`
-- keep worker queues, raw inbox snapshots, generated audio, logs, locks, and scratch files under ignored runtime paths
+- write live tasks, blockers, and follow-up state to `traya-ops` Kanban cards
+- write human-facing reports under tracked sanctuary paths such as `docs/`,
+  `plans/`, `notes/briefings/`, `notes/reflections/`, and `notes/research/`
+- keep raw evidence, local snapshots, generated audio, logs, locks, cursors,
+  and scratch files under ignored `runtime/` paths only when they are not task state
+- do not use sanctuary `status/work/*`, runtime queues, or ad-hoc markdown
+  ledgers as live operational state once a Kanban card can represent the work
 - keep cloned repos and task-specific code outside sanctuary under `/var/lib/hermes/workspace`
 - do not leave continuity artefacts in the workspace root unless a task explicitly requires it
 
-If work belongs to a specific repo, do the work there and promote only the durable summary or continuity output into sanctuary.
+If work belongs to a specific repo, do the work there and track the task in Kanban.
+Promote only durable reports, decisions, research notes, or final continuity summaries into sanctuary.
 
 The runtime-local-first rule still applies.
-Hermes should keep functioning from the local sanctuary even if GitHub is unavailable.
-The private GitHub repo `the-cauldron/trayas-sanctuary` is for durability and audit trail, not as the only live copy.
+Hermes should keep functioning from local Kanban and local sanctuary files even if GitHub is unavailable.
+The private GitHub repo `the-cauldron/trayas-sanctuary` is for report durability and audit trail, not as the only live copy.
 
 ## MCP Servers
 
