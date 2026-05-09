@@ -5,7 +5,7 @@
   pkgs,
   ...
 }:
-lib.mkIf (noughtyLib.isHost [ "malak" ]) {
+lib.mkIf (noughtyLib.hostHasTag "gatus") {
   environment = {
     shellAliases = {
       gatus-log = "journalctl _SYSTEMD_UNIT=gatus.service";
