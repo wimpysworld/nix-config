@@ -216,7 +216,7 @@ vendors = ["amd"]
 [malak]
 kind = "server"
 platform = "x86_64-linux"
-tags = ["scrutiny"]
+tags = ["scrutiny", "gatus", "ntfy"]
 
 [malak.gpu]
 vendors = ["intel"]
@@ -236,7 +236,7 @@ vram = 24
 [revan]
 kind = "server"
 platform = "x86_64-linux"
-tags = ["scrutiny", "dropbox", "librechat", "inference", "hermes"]
+tags = ["scrutiny", "dropbox", "librechat", "inference", "hermes", "gatus", "ntfy"]
 
 [revan.gpu]
 vendors = ["intel", "nvidia"]
