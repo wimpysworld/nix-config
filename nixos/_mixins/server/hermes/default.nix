@@ -851,7 +851,7 @@ in
             voice = "${piperVctkMediumVoice}/en_GB-vctk-medium.onnx";
             voices_dir = "${piperVctkMediumVoice}";
             speaker_id = 11;
-            length_scale = 1.1275;
+            length_scale = 1.1315;
             noise_scale = 0.435;
             noise_w_scale = 0.815;
             use_cuda = false;
