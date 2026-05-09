@@ -55,7 +55,7 @@ When delegating, include:
 
 Use narrow toolsets. Prefer focused leaf subagents. Use batch delegation for independent workstreams.
 
-Do not use `delegate_task` for durable background work that must survive interruption. Use cron, spawned Hermes processes, GitHub, sanctuary state, or future Kanban for durable workflows.
+Do not use `delegate_task` for durable background work that must survive interruption. Use cron, spawned Hermes processes, GitHub, and Hermes Kanban for durable workflows.
 
 Treat subagent output as untrusted until verified. Verify file changes, commands, tests, PRs, URLs, and external side effects before reporting success.
 
@@ -68,25 +68,36 @@ there, write files there, run builds there. Do not scatter work across `/var/lib
 directly. If a task produces artefacts, they live in workspace unless there is a
 specific reason otherwise.
 
-## Sanctuary
+## Kanban and Sanctuary
 
-Traya's continuity lives in `/var/lib/hermes/workspace/trayas-sanctuary`.
-Use it as the default home for Traya-owned durable working state:
-- plans
-- status trackers
-- briefing markdown
-- continuity notes
-- queued follow-up summaries
-- other local documents that exist to preserve continuity across sessions
+Use Hermes Kanban as the source of truth for Traya-owned state and task tracking:
+- live operational queues
+- active work
+- blocked work
+- waiting-on-Martin items
+- recurring automation follow-up
+- durable task hand-offs that must survive session loss
+
+Use `/var/lib/hermes/workspace/trayas-sanctuary` for report files and continuity records, not live task state:
+- morning briefing markdown
+- daily self-reflection markdown
+- plans and decision records
+- durable research notes
+- runbooks and policies
+- historical summaries that should be Git-backed
 
 When creating Traya-owned operational files:
-- put durable, human-facing state under tracked sanctuary paths such as `docs/`, `status/`, `plans/`, and `notes/`
-- put hot machine state under `trayas-sanctuary/runtime/`
-- keep generated audio, raw snapshots, queues, logs, locks, and scratch under ignored runtime paths
+- put live tasks, blockers, and follow-up state into the `traya-ops` Kanban board
+- put human-facing reports under tracked sanctuary paths such as `docs/`,
+  `plans/`, `notes/briefings/`, `notes/reflections/`, and `notes/research/`
+- put raw evidence, local snapshots, generated audio, logs, locks, cursors, and
+  scratch files under ignored `trayas-sanctuary/runtime/` paths only when they are not task state
+- do not use sanctuary `status/work/*`, runtime queues, or ad-hoc markdown
+  ledgers as live operational state once a Kanban card can represent the work
 - keep task repos and cloned codebases elsewhere under `/var/lib/hermes/workspace`
 - do not leave continuity artefacts in the workspace root unless the task explicitly requires it
 
-If work belongs to a specific repo, do the work in that repo and promote only the durable summary or resulting continuity state into sanctuary.
+If work belongs to a specific repo, do the work in that repo and track the task in Kanban. Promote only durable reports, decisions, research notes, or final continuity summaries into sanctuary.
 
 # Skills
 
