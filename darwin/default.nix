@@ -191,7 +191,6 @@ in
           "/Users/${username}/Applications/Home Manager Apps/Kitty.app"
           "/System/Applications/Music.app"
           "/Users/${username}/Applications/Home Manager Apps/Heynote.app"
-          "/Users/${username}/Applications/Home Manager Apps/Notesnook.app"
           "/System/Applications/Apps.app"
         ];
         show-recents = false;
