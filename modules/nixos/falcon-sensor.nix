@@ -232,11 +232,24 @@ in
         TimeoutStopSec = "60s";
         KillMode = "control-group";
         KillSignal = "SIGTERM";
-        # The Falcon binaries are patched with patchelf to use the Nix glibc
-        # interpreter, but the linker still needs to find shared libraries
-        # (libssl, libnl, libz, etc.) which nix-ld provides at this path.
+        # LD_LIBRARY_PATH is for our own Falcon binaries, which are patched
+        # with patchelf to use the Nix glibc interpreter and rely on nix-ld's
+        # library directory to resolve shared objects (libssl, libnl, libz,
+        # etc.) at runtime.
+        #
+        # NIX_LD and NIX_LD_LIBRARY_PATH cover any child processes falcond
+        # spawns from cloud-staged sensor binaries. Those binaries are not
+        # patched by us and still reference the generic
+        # /lib64/ld-linux-x86-64.so.2 interpreter, which on NixOS is the
+        # nix-ld shim; without these variables in the service environment
+        # the shim has nothing to dispatch to and execs fail with
+        # STATUS_GENERIC_COMMAND_FAILED (c0150026). Values come from the
+        # programs.nix-ld module so we track the current system symlink
+        # rather than hardcoding a store path.
         Environment = [
           "LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib"
+          "NIX_LD=${config.environment.variables.NIX_LD}"
+          "NIX_LD_LIBRARY_PATH=${config.environment.variables.NIX_LD_LIBRARY_PATH}"
         ];
         ReadWritePaths = [
           installDir
