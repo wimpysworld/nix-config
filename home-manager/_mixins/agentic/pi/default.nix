@@ -253,6 +253,14 @@ let
     mcpServers = mcpServerDefs.piServers;
   };
 
+  piKeybindings = {
+    # Bind Ctrl+Q to quit alongside the default Ctrl+D (when editor is empty).
+    "app.exit" = [
+      "ctrl+d"
+      "ctrl+q"
+    ];
+  };
+
   piSubagentsConfig = {
     asyncByDefault = false;
     forceTopLevelAsync = false;
@@ -284,6 +292,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     ];
     file = {
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
+      ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;
       ".pi/agent/extensions/subagent/config.json".text = builtins.toJSON piSubagentsConfig;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
     }
