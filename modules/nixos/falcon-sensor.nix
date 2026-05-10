@@ -29,17 +29,14 @@ let
   falconStartPre = pkgs.writeShellScript "falcon-start-pre" ''
     set -euo pipefail
 
-    # Ensure /var/log/falconctl.log is a real file, not a symlink.
-    # The Falcon install script sometimes creates a symlink to /dev/stdout
-    # which falconctl cannot write to (errno 6: ENXIO).
-    if [ -L /var/log/falconctl.log ]; then
-      rm -f /var/log/falconctl.log
-      touch /var/log/falconctl.log
-      chmod 0640 /var/log/falconctl.log
-    elif [ ! -f /var/log/falconctl.log ]; then
-      touch /var/log/falconctl.log
-      chmod 0640 /var/log/falconctl.log
-    fi
+    # /var/log/falconctl.log is owned by Falcon's own startup logic, which
+    # recreates it as a symlink to /dev/stdout on every service start.
+    # systemd captures that output to the journal, so falconctl messages
+    # remain observable via `journalctl -u falcon-sensor`. We deliberately
+    # do not try to manage this file here: previous attempts to convert it
+    # to a regular file were silently overwritten by Falcon on every boot,
+    # and each ExecStartPre falconctl invocation logged ENXIO without any
+    # observable impact on sensor health.
 
     ${optionalString (cfg.cidFile != null) ''
       if [ -f "${cfg.cidFile}" ]; then
@@ -163,8 +160,9 @@ in
 
     # Ensure /opt/CrowdStrike persists across reboots.
     # Permissions are 0750 - non-root users have no reason to access this.
-    # The log file /var/log/falconctl.log is managed by ExecStartPre to ensure
-    # it is always a real file (not a symlink) when the service starts.
+    # /var/log/falconctl.log is intentionally not managed here: Falcon
+    # recreates it as a symlink to /dev/stdout at every service start,
+    # and journald captures that output via systemd stdout capture.
     systemd.tmpfiles.rules = [
       "d ${installDir} 0750 root root - -"
     ];

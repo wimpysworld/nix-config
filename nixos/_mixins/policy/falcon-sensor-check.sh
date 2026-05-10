@@ -9,6 +9,7 @@ FALCONCTL="${INSTALL_DIR}/falconctl"
 PASS="PASS"
 FAIL="FAIL"
 WARN="WARN"
+INFO="INFO"
 ERRORS=0
 
 # Must run as root to query falconctl.
@@ -130,13 +131,24 @@ fi
 echo ""
 
 # Check log file.
+# Falcon's own startup logic recreates /var/log/falconctl.log as a
+# symlink to /dev/stdout on every service start. systemd captures that
+# output to the journal, so a symlink to /dev/stdout is the expected,
+# healthy state and not a warning. Anything else is genuinely unusual.
 echo "--- Log File ---"
 if [[ -L /var/log/falconctl.log ]]; then
-	echo "  ${WARN}: /var/log/falconctl.log is a symlink (should be a regular file)"
-	echo "         Target: $(readlink /var/log/falconctl.log)"
-	echo "         Restart falcon-sensor to fix this automatically."
+	target="$(readlink /var/log/falconctl.log)"
+	if [[ "${target}" == "/dev/stdout" ]]; then
+		echo "  ${INFO}: /var/log/falconctl.log -> /dev/stdout (expected)"
+		echo "         Falcon recreates this symlink at service start;"
+		echo "         all output is captured by journald."
+		echo "         View with: journalctl -u falcon-sensor"
+	else
+		echo "  ${WARN}: /var/log/falconctl.log is a symlink to an unexpected target"
+		echo "         Target: ${target}"
+	fi
 elif [[ -f /var/log/falconctl.log ]]; then
-	echo "  ${PASS}: /var/log/falconctl.log exists"
+	echo "  ${PASS}: /var/log/falconctl.log exists as a regular file"
 else
 	echo "  ${WARN}: /var/log/falconctl.log does not exist"
 fi
