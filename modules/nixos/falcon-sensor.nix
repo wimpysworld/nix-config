@@ -152,6 +152,41 @@ in
       "d ${installDir} 0750 root root - -"
     ];
 
+    # Log rotation for Falcon's sensor logs.
+    # The Falcon sensor is a proprietary forking daemon (falcond) with no
+    # documented log-reopen signal, so the usual postrotate + kill -HUP
+    # pattern is not safe here. Restarting a security sensor purely to
+    # rotate its logs would create blind windows in EDR coverage and is
+    # unacceptable. copytruncate sidesteps this: logrotate copies the
+    # current file then truncates the original in place, so the daemon's
+    # open file descriptor keeps writing to the same inode.
+    # falconctl.log is deliberately excluded: it is managed by
+    # ExecStartPre (which recreates it as a real file each start), and on
+    # first boot it is a symlink to /dev/stdout so its output already
+    # flows to journald via systemd. Rotating it would fight ExecStartPre.
+    services.logrotate.settings."falcon-sensor" = lib.mkDefault {
+      files = [
+        "/var/log/falcon-sensor.log"
+        "/var/log/falcon-libbpf.log"
+        "/var/log/falcond.log"
+      ];
+      frequency = "daily";
+      rotate = 7;
+      compress = true;
+      delaycompress = true;
+      missingok = true;
+      notifempty = true;
+      # Required: the daemon holds the file descriptor open and offers no
+      # reopen signal, so we copy then truncate in place rather than
+      # rename + signal.
+      copytruncate = true;
+      # Catch runaway growth (the main sensor log has hit 15 GB in the
+      # wild) by rotating mid-day if a single file balloons past 100 MB.
+      maxsize = "100M";
+      # Falcon writes its logs as 0640 root:root.
+      su = "root root";
+    };
+
     # The falcon-sensor systemd service.
     # falcond is a forking daemon that manages the sensor process.
     systemd.services.falcon-sensor = {
