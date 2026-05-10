@@ -1,5 +1,7 @@
 {
   inputs,
+  lib,
+  pkgs,
   ...
 }:
 {
@@ -17,6 +19,7 @@
       "amdgpu"
       "kvm-amd"
     ];
+    kernelPackages = lib.mkForce pkgs.linuxPackages_6_18;
   };
 
 }
