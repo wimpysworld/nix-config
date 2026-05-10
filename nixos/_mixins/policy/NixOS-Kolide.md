@@ -8,8 +8,9 @@ manually before the first deployment.
 
 ## Prerequisites
 
-- The target host must be listed in the `installOn` list in
-  `nixos/_mixins/policy/default.nix`.
+- The target host must carry the `policy` tag in
+  `lib/registry-systems.toml`. The mixin gates itself with
+  `noughtyLib.hostHasTag "policy"`.
 - The host must have sops-nix configured with age keys at
   `/var/lib/private/sops/age/keys.txt`.
 
@@ -123,6 +124,12 @@ systemctl status kolide-launcher
 journalctl -u kolide-launcher -f
 ```
 
+Confirm the stop-grace override is in effect (should report `3min`):
+
+```bash
+systemctl show kolide-launcher.service -p TimeoutStopUSec
+```
+
 ## Updating Kolide
 
 The Kolide launcher auto-updates itself and its osquery installation via the
@@ -149,6 +156,30 @@ just switch
   `journalctl -u kolide-launcher | grep -i enroll`
 - Ensure network connectivity to `k2device.kolide.com` on port 443.
 
+### Launcher SIGKILLed during shutdown
+
+If the journal shows the launcher being killed during stop:
+
+```
+kolide-launcher.service: State 'stop-sigterm' timed out. Killing.
+kolide-launcher.service: Killing process NNNN (launcher) with signal SIGKILL.
+kolide-launcher.service: Failed with result 'timeout'.
+```
+
+the launcher exceeded systemd's default 90 s SIGTERM grace while flushing
+osquery state. Long-running launchers accumulate event-store data and the
+final drain on shutdown can take longer than the default. Observed once on
+`bane` after a ~9 h uptime.
+
+The policy mixin defends against this by setting:
+
+```nix
+systemd.services.kolide-launcher.serviceConfig.TimeoutStopSec = lib.mkDefault 180;
+```
+
+180 s gives generous headroom without delaying boot meaningfully. `lib.mkDefault`
+lets a host raise the value further if 180 s ever proves insufficient.
+
 ## Architecture notes
 
 - **Flake input**: `kolide-launcher` in `flake.nix` points to
@@ -156,6 +187,10 @@ just switch
 - **NixOS module**: Imported in `nixos/default.nix` as
   `inputs.kolide-launcher.nixosModules.kolide-launcher`.
 - **Policy mixin**: `nixos/_mixins/policy/default.nix` enables the service and
-  deploys the secret via sops-nix for hosts in the `installOn` list.
+  deploys the secret via sops-nix for hosts carrying the `policy` tag.
+- **Stop-grace override**: the policy mixin sets
+  `systemd.services.kolide-launcher.serviceConfig.TimeoutStopSec` to 180 s
+  via `lib.mkDefault` to accommodate osquery state-flush latency on
+  long-running launchers.
 - **Secret storage**: `secrets/policy.yaml` encrypted with age keys defined in
   `.sops.yaml`.

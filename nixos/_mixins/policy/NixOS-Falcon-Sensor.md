@@ -10,8 +10,9 @@ This is unofficial and unsupported by CrowdStrike.
 
 ## Prerequisites
 
-- The target host must be listed in the `installOn` list in
-  `nixos/_mixins/policy/default.nix`.
+- The target host must carry the `policy` tag in
+  `lib/registry-systems.toml`. The mixin gates itself with
+  `noughtyLib.hostHasTag "policy"`.
 - The host must have sops-nix configured with age keys at
   `/var/lib/private/sops/age/keys.txt`.
 - The CrowdStrike CID must be encrypted in `secrets/policy.yaml` (see below).
@@ -24,9 +25,10 @@ This is unofficial and unsupported by CrowdStrike.
 The declarative setup has three layers:
 
 1. **NixOS module** (`modules/nixos/falcon-sensor.nix`): declares the systemd
-   service (with CID/BPF configuration in ExecStartPre) and tmpfiles rules.
+   service (with CID/BPF configuration in ExecStartPre), tmpfiles rules, and
+   a `logrotate` policy for the sensor's log files.
 2. **Policy mixin** (`nixos/_mixins/policy/default.nix`): enables the module
-   and wires up the CID via sops-nix for hosts in the `installOn` list.
+   and wires up the CID via sops-nix for hosts carrying the `policy` tag.
 3. **Bootstrap script** (`falcon-sensor-install`): automates the one-time
    extraction and patching of the sensor binaries into `/opt/CrowdStrike/`.
 
@@ -140,6 +142,27 @@ This will:
 
 ## Verifying the installation
 
+The quickest health check is the bundled diagnostic script:
+
+```bash
+sudo falcon-sensor-check
+```
+
+It walks the service state, sensor configuration, RFM, kernel compatibility,
+and log file ownership, and reports each item as `PASS`, `INFO`, or `WARN`.
+A healthy host looks roughly like this:
+
+```
+Service:    PASS  active (running)
+CID:       PASS  configured
+AID:        PASS  assigned
+Backend:   PASS  bpf
+RFM:        PASS  false
+Log File:   INFO  /var/log/falconctl.log -> /dev/stdout (captured by journald)
+```
+
+For manual checks:
+
 ```bash
 # Check the service is running
 systemctl status falcon-sensor
@@ -156,6 +179,39 @@ sudo /opt/CrowdStrike/falcon-kernel-check
 # Follow the logs
 journalctl -u falcon-sensor -f
 ```
+
+A few `errno = 6` lines per boot from `ExecStartPre` are expected and
+harmless; see the troubleshooting entry on `/var/log/falconctl.log` below.
+If you see repeated `Could not retrieve DisableProxy value: c0000225`
+entries, see the corresponding troubleshooting entry.
+
+## Log rotation
+
+The module declares a `services.logrotate.settings."falcon-sensor"` policy
+covering the sensor's three on-disk log files:
+
+- `/var/log/falcon-sensor.log`
+- `/var/log/falcon-libbpf.log`
+- `/var/log/falcond.log`
+
+Retention is daily with seven generations kept, compressed (with
+`delaycompress` so the most recent rotation stays plain text for grep),
+`missingok`, `notifempty`, and `su root root`. A `maxsize 100M` guard
+triggers an out-of-band rotation if a file grows quickly between daily
+runs, as a belt-and-braces defence against runaway logging. The policy is
+rendered into `/etc/logrotate.conf` and invoked by `logrotate.timer` at
+12:00 daily.
+
+Rotation uses `copytruncate` rather than the usual rename-and-reopen dance.
+`falcond` holds the log file descriptor open and offers no SIGHUP-style
+reopen signal; restarting the EDR sensor purely to reopen its log would
+open a blind window in security telemetry, which is unacceptable.
+`copytruncate` accepts a brief race on the very last bytes written during
+the copy in exchange for keeping the sensor uninterrupted.
+
+`/var/log/falconctl.log` is deliberately excluded. Falcon owns that path
+and recreates it as a symlink to `/dev/stdout` at every service start; see
+the troubleshooting entry below.
 
 ## Updating the sensor
 
@@ -229,6 +285,44 @@ If it does not show `bpf`, set it manually:
 ```bash
 sudo /opt/CrowdStrike/falconctl -s --backend=bpf
 ```
+
+### Spurious `DisableProxy` / `c0000225` messages
+
+On hosts with no HTTP proxy in use, `falcond` logs
+`Could not retrieve DisableProxy value: c0000225` (NT-status
+`STATUS_NOT_FOUND`) on every connect attempt. The sensor falls back to a
+direct connection regardless, but the noise drowns out useful log lines.
+
+The module sets `services.falcon-sensor.disableAutoProxyDetection = true`
+by default, which adds `falconctl -s --apd=true -f` to `ExecStartPre` and
+suppresses the message at source. On `bane` this dropped the count from
+505 occurrences in seven days to zero immediately after activation. If a
+host genuinely needs proxy auto-detection, override the option to `false`
+in its host module.
+
+### `/var/log/falconctl.log` is a symlink to `/dev/stdout`
+
+This is expected. Falcon recreates `/var/log/falconctl.log` as a symlink to
+`/dev/stdout` at every service start, regardless of what is on disk; the
+file's mtime tracks `ActiveEnterTimestamp` to sub-second precision and
+`falconctl` reports `errno = 6` (`ENXIO`) against it on every boot. An
+earlier version of the module tried to convert the symlink to a regular
+file in `ExecStartPre`; the cleanup never had a chance to take effect
+because `falcond` overwrites our touch immediately, and it has been
+removed.
+
+All `falconctl` output is captured by journald via systemd's stdout
+handling, so observability is unchanged - run `journalctl -u falcon-sensor`
+to read it. The four to five `errno = 6` lines per boot from
+`ExecStartPre` are harmless and document the historical fight.
+
+Older revisions of `falcon-sensor-check` reported the symlink as `WARN`.
+The current script distinguishes the cases:
+
+- symlink to `/dev/stdout` -> `INFO` (expected)
+- symlink to anything else -> `WARN` (genuinely unexpected target)
+- regular file -> `PASS`
+- missing -> `WARN`
 
 ### CID not configured
 
