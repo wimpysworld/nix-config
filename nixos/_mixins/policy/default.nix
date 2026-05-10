@@ -54,6 +54,14 @@ lib.mkIf (noughtyLib.hostHasTag "policy") {
     enable = true;
   };
 
+  # Give Kolide longer to flush osquery state on shutdown.
+  # Default systemd TimeoutStopSec=90s is occasionally insufficient for
+  # long-running launcher processes on busy workstations and results in
+  # a SIGKILL of launcher + osqueryd, leaving event-store writes
+  # half-flushed. 180 s gives generous headroom without delaying boot
+  # meaningfully.
+  systemd.services.kolide-launcher.serviceConfig.TimeoutStopSec = lib.mkDefault 180;
+
   # CrowdStrike Falcon sensor for security monitoring and intrusion detection.
   # The NixOS module (modules/nixos/falcon-sensor.nix) manages the systemd service
   # and CID/BPF configuration. The sensor binaries are bootstrapped to
@@ -62,6 +70,9 @@ lib.mkIf (noughtyLib.hostHasTag "policy") {
     enable = true;
     cidFile = config.sops.secrets.falcon-cid.path;
     traceLevel = "err";
+    # Silence repeated "Could not retrieve DisableProxy value: c0000225"
+    # log noise on hosts with no proxy in use.
+    disableAutoProxyDetection = true;
   };
 
   # Deploy secrets for policy/compliance agents via sops-nix.

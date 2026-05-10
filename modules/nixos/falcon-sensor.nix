@@ -75,6 +75,10 @@ let
       echo "Setting trace level to ${cfg.traceLevel}..."
       "${installDir}/falconctl" -s --trace="${cfg.traceLevel}" -f
     ''}
+    ${optionalString cfg.disableAutoProxyDetection ''
+      echo "Disabling auto proxy detection..."
+      "${installDir}/falconctl" -s --apd=true -f
+    ''}
     echo "Setting backend to bpf..."
     "${installDir}/falconctl" -s --backend=bpf -f
     # Verify CID is set; informational only - do not block startup.
@@ -128,6 +132,19 @@ in
         Path to a file containing a provisioning token for sensor registration.
         Required in environments that mandate tokens for new sensor enrolment.
         Typically managed by sops-nix.
+      '';
+    };
+
+    disableAutoProxyDetection = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Whether to disable Falcon's auto proxy detection.
+        When true, falconctl is invoked with --apd=true during
+        ExecStartPre, which suppresses repeated "Could not retrieve
+        DisableProxy value: c0000225" log noise on hosts with no proxy.
+        Falcon falls back to direct connection regardless; this only
+        silences the spurious error logging.
       '';
     };
   };
