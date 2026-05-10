@@ -5,6 +5,9 @@
   pkgs,
   ...
 }:
+let
+  hermesSopsFile = ../../../../secrets + "/hermes.yaml";
+in
 lib.mkIf (noughtyLib.hostHasTag "gatus") {
   environment = {
     shellAliases = {
@@ -21,6 +24,20 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
         path = "/etc/gatus/secrets.env";
         sopsFile = ../../../../secrets/gatus.yaml;
       };
+      TELEGRAM_BOT_TOKEN = {
+        group = "root";
+        mode = "0400";
+        owner = "root";
+        sopsFile = hermesSopsFile;
+      };
+    };
+    templates."gatus-telegram-env" = {
+      content = ''
+        GATUS_TELEGRAM_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
+      '';
+      group = "root";
+      mode = "0400";
+      owner = "root";
     };
   };
   services = {
@@ -42,10 +59,10 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
       environmentFile = config.sops.secrets.gatus-env.path;
       settings = {
         alerting = {
-          ntfy = {
-            topic = "$GATUS_NTFY_TOPIC";
-            url = "$GATUS_NTFY_URL";
-            click = "https://status.wimpys.world";
+          telegram = {
+            token = "$GATUS_TELEGRAM_TOKEN";
+            id = "-1003933927882";
+            topic-id = "5657";
             default-alert = {
               description = "Gatus health check";
               send-on-resolved = true;
@@ -83,7 +100,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -98,7 +115,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -112,7 +129,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -127,7 +144,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -141,7 +158,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -155,7 +172,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -170,7 +187,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -185,7 +202,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -200,7 +217,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -215,7 +232,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -230,7 +247,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -245,7 +262,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -260,7 +277,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -275,7 +292,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -290,7 +307,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -304,7 +321,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ];
             alerts = [
               {
-                type = "ntfy";
+                type = "telegram";
               }
             ];
           }
@@ -312,6 +329,10 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
       };
     };
   };
+
+  systemd.services.gatus.serviceConfig.EnvironmentFile = [
+    config.sops.templates."gatus-telegram-env".path
+  ];
 
   systemd.services.goaccess-gatus = {
     description = "Generate goaccess gatus report";
