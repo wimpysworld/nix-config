@@ -11,6 +11,7 @@ let
   # currently invoke this file with `{ inherit config pkgs; }`.
   inherit (pkgs) lib;
   inherit (config.noughty) host;
+  isBane = host.name == "bane";
   chromiumEnabled = config.programs.chromium.enable || (host.is.linux && host.is.workstation);
   firefoxEnabled = config.programs.firefox.enable || (host.is.linux && host.is.workstation);
   browserAutomationEnabled = chromiumEnabled && firefoxEnabled;
@@ -136,6 +137,12 @@ rec {
           enabled = false;
         };
       };
+    };
+  }
+  // lib.optionalAttrs isBane {
+    rag = {
+      transport = "http";
+      url = "https://rag-mcp.enforce.dev/mcp";
     };
   }
   // {

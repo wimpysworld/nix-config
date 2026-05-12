@@ -1,6 +1,6 @@
 # MCP Servers
 
-Five always-active MCP servers provide AI agents with current reference material. A sixth, Playwright, is emitted only on browser-automation systems. Definitions live once in `servers.nix` and are distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients via per-consumer renderers.
+Five always-active MCP servers provide AI agents with current reference material. Playwright is emitted only on browser-automation systems. The Chainguard RAG server is emitted only on `bane`. Definitions live once in `servers.nix` and are distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. Playwright is local browser automation for agent-driven page inspection and only appears when both Chromium and Firefox are enabled under the shared browser automation policy. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -77,7 +77,7 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Five always-active servers, one conditional browser automation server, and three disabled placeholders.
+Five always-active servers, two conditional servers, and three disabled placeholders.
 
 | Server | Transport | Auth | Purpose |
 |--------|-----------|------|---------|
@@ -86,6 +86,7 @@ Five always-active servers, one conditional browser automation server, and three
 | `cloudflare` | HTTP | - | Cloudflare product documentation |
 | `nixos` | stdio | - | NixOS, Home Manager, nix-darwin package and option search |
 | `playwright` | stdio | - | Conditional; browser automation via Playwright MCP; disabled by default where per-server toggles exist |
+| `rag` | HTTP | - | Conditional on `bane`; Chainguard RAG search |
 | `svelte` | HTTP | - | Svelte documentation and playground |
 | `firecrawl` | HTTP | - | Disabled (`enabled = false`); web scraping and crawling |
 | `jina` | HTTP | bearer | Disabled; web reading and screenshots |
@@ -134,6 +135,10 @@ Searches NixOS packages and options, Home Manager options, and nix-darwin option
 Playwright MCP gives agents browser automation for page inspection, navigation, screenshots, and interaction tests. It is configured as a local stdio server using Nixpkgs' `playwright-mcp` package only when browser automation is enabled.
 
 The shared browser automation policy requires both Chromium and Firefox. Servers that do not meet that policy omit Playwright entirely, so generated MCP config does not reference the `playwright-mcp` closure. Where emitted, Codex, OpenCode, and Zed keep the server visible but disabled by default through their per-server `enabled = false` settings. Pi keeps it present but proxy-only with `directTools = false`, since Pi has no per-server `enabled` flag. Claude Code receives the server through the shared `mcpServers` output because its renderer has no visible disabled state.
+
+#### rag
+
+Chainguard RAG is a hosted HTTP MCP server for Chainguard-specific retrieval. It is gated to `bane` via `config.noughty.host.name`, and uses the default enabled state for every renderer: Claude Code and generic clients receive it in `mcpServers`, Codex receives an enabled `[mcp_servers.rag]` table, OpenCode receives an enabled `mcp.rag` entry, Pi promotes it to direct tools, and Zed receives it as an enabled context server.
 
 #### svelte
 
