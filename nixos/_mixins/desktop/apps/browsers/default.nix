@@ -8,6 +8,7 @@
 let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
+  isWorkspace = noughtyLib.hostHasTag "workspace";
   forFamily = [
     "agatha"
     "louise"
@@ -58,7 +59,7 @@ let
 in
 {
   imports = [ ./martin.nix ];
-  config = lib.mkIf host.is.workstation {
+  config = lib.mkIf (host.is.workstation && !isWorkspace) {
     environment.systemPackages =
       lib.optionals (builtins.elem username forFamily) familyPackages
       ++ lib.optionals (builtins.elem username forMartin) martinPackages;

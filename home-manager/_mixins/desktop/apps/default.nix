@@ -2,6 +2,7 @@
   catppuccinPalette,
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -9,7 +10,8 @@ let
   inherit (config.noughty) host;
   audioPlayer = [ "org.gnome.Decibels.desktop" ];
   archiveManager = [ "org.gnome.FileRoller.desktop" ];
-  webBrowser = [ "brave-browser.desktop" ];
+  webBrowser =
+    if noughtyLib.hostHasTag "workspace" then [ "wavebox.desktop" ] else [ "brave-browser.desktop" ];
   documentViewer = [ "org.gnome.Papers.desktop" ];
   imageViewer = [ "org.gnome.Loupe.desktop" ];
   videoPlayer = [ "io.github.celluloid_player.Celluloid.desktop" ];

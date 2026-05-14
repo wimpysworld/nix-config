@@ -106,6 +106,17 @@ lib.mkIf (noughtyLib.hostHasTag "workspace") {
 
   programs.wavebox = {
     enable = true;
+    extraOpts = {
+      "AutofillAddressEnabled" = false;
+      "AutofillCreditCardEnabled" = false;
+      "PasswordManagerEnabled" = false;
+      "PromptForDownloadLocation" = true;
+      "SpellcheckEnabled" = true;
+      "SpellcheckLanguage" = [
+        "en-GB"
+        "en-US"
+      ];
+    };
     extensions = [
       "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
       "lodbfhdipoipcjmlebjbgmmgekckhpfb" # Harper

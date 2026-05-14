@@ -7,8 +7,9 @@
 }:
 let
   inherit (config.noughty) host;
+  isWorkspace = noughtyLib.hostHasTag "workspace";
 in
-lib.mkIf (host.is.workstation && noughtyLib.isUser [ "martin" ]) {
+lib.mkIf (host.is.workstation && !isWorkspace && noughtyLib.isUser [ "martin" ]) {
   programs = {
     chromium = {
       # - https://help.kagi.com/kagi/getting-started/setting-default.html
