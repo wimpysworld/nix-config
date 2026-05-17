@@ -11,6 +11,10 @@ stdenvNoCC.mkDerivation rec {
   src = fetchzip {
     url = "https://www.dfonts.org/wp-content/uploads/fonts/Mocha_Mattari.zip";
     hash = "sha256-wsP0SKbO71Z0kwHBqOc+CQZ0XHoWjHCtKOqQ1Zs0FeU=";
+    curlOptsList = [
+      "-A"
+      "Mozilla/5.0"
+    ];
     stripRoot = false;
   };
 
