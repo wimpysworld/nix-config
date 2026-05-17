@@ -11,6 +11,10 @@ stdenvNoCC.mkDerivation rec {
   src = fetchzip {
     url = "https://www.dfonts.org/wp-content/uploads/fonts/Bebas_Neue_SemiRounded.zip";
     hash = "sha256-UV6HN8ECfvwnWtvPxdKLmBeV99w/r/DClBBBd4+MmEA=";
+    curlOptsList = [
+      "-A"
+      "Mozilla/5.0"
+    ];
     stripRoot = false;
   };
 

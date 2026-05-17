@@ -74,6 +74,10 @@ stdenv.mkDerivation rec {
     homepage = "https://www.lexaloffle.com/pico-8.php";
     license = lib.licenses.unfree;
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    # PICO-8 is non-redistributable and requires a secret-backed local source.
+    # Keep the package available for real systems, but do not require CI to
+    # rebuild it when the proprietary source is unavailable.
+    hydraPlatforms = [ ];
     maintainers = with lib.maintainers; [ flexiondotorg ];
     platforms = [ "x86_64-linux" ];
     mainProgram = "pico8";
