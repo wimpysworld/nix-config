@@ -1,6 +1,6 @@
 # LSP configuration
 
-Claude Code with LSP integration, MCP servers, permission policy, and a ccstatusline status bar.
+Claude Code with LSP integration, MCP servers, default Claude permissions, and a ccstatusline status bar.
 
 ## Why LSP matters for AI agents
 

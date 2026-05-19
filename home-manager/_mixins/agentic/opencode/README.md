@@ -1,6 +1,6 @@
 # OpenCode module
 
-OpenCode with built-in LSP, permission policy, IDE integration, and CUA-standard keybindings.
+OpenCode with built-in LSP, IDE integration, and CUA-standard keybindings.
 
 Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for OpenCode, Claude Code, and Codex by `assistants/compose.nix`.
 
@@ -12,7 +12,7 @@ Agents, commands, skills, and global instructions are managed separately in the 
 
 - **LSP configuration** - Built-in language server support; only Semgrep is configured explicitly for security diagnostics
 - **[MCP servers](../mcp/README.md)** - Shared MCP servers, with browser automation included only on systems that enable both Chromium and Firefox; delivered to OpenCode via `settings.json`
-- **[Permission policy](PERMISSIONS.md)** - Three-tier allow/ask/deny rules with `.findLast()` matching; covers 12 tool domains, read denials for credentials, and external directory access
+- **Permissions** - Plain `opencode` uses OpenCode's default permission behaviour. Use `opencode-fenced` for the Fence-isolated entry point.
 - **IDE integration** - VSCode extension, Zed editor as external agent
 - **TUI configuration** - Catppuccin theme, CUA-standard keybindings
 
@@ -27,6 +27,15 @@ The built-in `/init` command is overridden to use Rosey's `create-instructions` 
 ## Shell alias
 
 OpenCode uses the unnamed global prompt from `instructions/global.md` for default orchestration. Traya is not exposed as a named OpenCode agent.
+
+This module provides `opencode-fenced` for the Fence-isolated entry point. It
+runs the normal `opencode` TUI under Fence with
+`OPENCODE_PERMISSION='{"*":"allow"}'`, so OpenCode loads the same configuration
+as plain `opencode` while Fence is the permission boundary. Plain `opencode`
+keeps OpenCode's default permission behaviour.
+
+The old OpenCode permission policy was removed. Fence is the maintained
+isolation and command policy for the fenced entry point.
 
 ## IDE integration
 

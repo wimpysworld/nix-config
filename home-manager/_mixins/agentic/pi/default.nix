@@ -8,9 +8,11 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   aiSopsFile = ../../../../secrets/ai.yaml;
   piPackage = inputs.llm-agents.packages.${system}.pi;
+  fencePackage = inputs.llm-agents.packages.${system}.fence;
   piMcpAdapterVersion = "2.5.4";
   piSubagentsVersion = "0.24.0";
   rpivBtwVersion = "1.1.5";
@@ -160,6 +162,14 @@ let
     '';
   };
 
+  piFencedPackage = pkgs.writeShellApplication {
+    name = "pi-fenced";
+    runtimeInputs = [ fencePackage ];
+    text = ''
+      exec fence -- pi "$@"
+    '';
+  };
+
   piSettings = {
     defaultProvider = "anthropic";
     defaultModel = "claude-opus-4-7";
@@ -286,7 +296,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     packages = [
       piWrapperPackage
       piNpmPackage
-    ];
+    ]
+    ++ lib.optional host.is.linux piFencedPackage;
     file = {
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;
@@ -302,5 +313,11 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     }
     // piAssistant.homeFiles;
 
+  };
+
+  programs = lib.mkIf host.is.linux {
+    bash.shellAliases.pi-fenced = lib.getExe piFencedPackage;
+    fish.shellAliases.pi-fenced = lib.getExe piFencedPackage;
+    zsh.shellAliases.pi-fenced = lib.getExe piFencedPackage;
   };
 }

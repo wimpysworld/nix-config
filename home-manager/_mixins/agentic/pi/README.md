@@ -7,6 +7,7 @@ The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, match
 ## Behaviour
 
 - Adds a `pi` wrapper to `home.packages`
+- Adds `pi-fenced`, which runs the standard `pi` wrapper under Fence
 - Gates installation with `noughtyLib.userHasTag "developer"`
 - Exports `ANTHROPIC_API_KEY` from the sops-nix runtime secret path before execing the Nix-provided Pi binary
 - Adds a `pi-npm` wrapper backed by Nixpkgs `nodejs`, with npm's global prefix redirected to `~/.pi/agent/npm-global` and routine npm advisory output disabled
@@ -125,6 +126,13 @@ This module writes `~/.pi/agent/themes/catppuccin-mocha.json` from the repositor
 The `pi` wrapper reads `config.sops.secrets.ANTHROPIC_API_KEY.path` at runtime and exports the key only for the Pi process. The managed `settings.json` and all managed Pi resource files contain no literal secret values.
 
 This module does not manage `~/.pi/agent/auth.json`. Pi can still create that file through `/login` for subscription providers or manually entered API keys.
+
+## Fenced mode
+
+Use `pi-fenced` for the Fence-isolated entry point. It runs the same Home
+Manager-managed `pi` wrapper as plain `pi`, so the Anthropic key handling and
+Pi configuration path remain identical while Fence enforces filesystem and
+command policy.
 
 ## MCP
 
