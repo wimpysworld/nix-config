@@ -111,7 +111,7 @@ let
         "~/.cargo/credentials.toml"
 
         # SOPS
-        "~/.config/sops/**"
+        "${config.xdg.configHome}/sops/**"
 
         # History
         "${homeDirectory}/.bash_history"
