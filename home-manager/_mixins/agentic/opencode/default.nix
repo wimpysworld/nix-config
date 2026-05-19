@@ -21,23 +21,8 @@ let
     '';
   };
 
-  # Import shared MCP server definitions so the permission allowlist is
-  # derived from the canonical server list rather than hand-maintained.
+  # Import shared MCP server definitions.
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
-
-  # Per-server permission entries for OpenCode. OpenCode names every MCP
-  # tool `<sanitised-server>_<sanitised-tool>` (see `mcp.tools()` in
-  # anomalyco/opencode `packages/opencode/src/mcp/index.ts` line 657), and
-  # each tool call evaluates against a top-level permission key matching
-  # that name (see `prompt.ts` line 467 calling `ask({ permission: key, ...
-  # })`). A `<server>_*` entry at the top level therefore allows every
-  # tool from that server. The global `mcp = { "*" = "allow"; }` block
-  # below does not apply to MCP tools - it only matches a tool literally
-  # named `mcp` - so these per-server entries are load-bearing. Adding a
-  # server in `mcp/servers.nix` auto-extends this list with no edits here.
-  mcpServerAllow = lib.listToAttrs (
-    map (name: lib.nameValuePair "${name}_*" "allow") (lib.attrNames mcpServerDefs.opencodeServers)
-  );
 in
 {
   home.packages = lib.optional host.is.linux opencodeFencedPackage;

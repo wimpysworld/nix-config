@@ -52,14 +52,13 @@ let
     else
       trimmed;
 
-  # Default Pi subagent header lines. Each generated agent inherits these
-  # unless `header.pi.yaml` provides an override (sparse-override semantics:
-  # YAML uses the last occurrence of a duplicate key).
+  # Default Pi subagent header lines. Each generated agent inherits these.
+  # Optional `header.pi.yaml` content is appended verbatim so agent-specific
+  # Pi-native fields, including explicit depth limits, are preserved.
   piAgentDefaultLines = [
     "systemPromptMode: append"
     "inheritProjectContext: false"
     "inheritSkills: true"
-    "maxSubagentDepth: 0"
   ];
 
   # Discover directories in a path
@@ -88,8 +87,8 @@ let
     in
     if platform == "pi" then
       # Pi: header.pi.yaml is optional. Inject `name` and `description`,
-      # then the four hardcoded subagent defaults, then any sparse overrides
-      # from header.pi.yaml verbatim.
+      # then the generated subagent defaults, then any agent-specific
+      # Pi-native fields from header.pi.yaml verbatim.
       let
         rawHeader = readOptionalFile headerPath;
         baseLines = [

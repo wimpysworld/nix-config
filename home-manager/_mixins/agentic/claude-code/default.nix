@@ -48,15 +48,6 @@ let
   # Import shared MCP server definitions
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 
-  # Per-server allow entries derived from `mcpServerDefs.claudeServers`. Each
-  # `mcp__<servername>` rule matches every tool exposed by that server, so
-  # adding a server in `mcp/servers.nix` auto-extends this list with no edits
-  # here. The previous bare `"mcp__*"` rule was a no-op because Claude Code's
-  # permission matcher does not accept that wildcard form; valid shapes are
-  # `mcp__<servername>`, `mcp__<servername>__*`, or
-  # `mcp__<servername>__<toolname>`.
-  mcpAllow = map (name: "mcp__${name}") (lib.attrNames mcpServerDefs.claudeServers);
-
   # Replacement for Claude Code's built-in `@` file picker. Pipes `fd` into
   # `fzf --filter` so queries get real fuzzy scoring and untracked files,
   # gitignored files, and symlinked trees all participate. Wired into

@@ -340,7 +340,7 @@ Three tiers map to task complexity:
 
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude ("Use the subagent tool to launch the `<agent>` agent...") is assembled in `default.nix` and wraps `compose.composePiCommandFromPrompt`, mirroring how the Codex side wraps `spawn_agent` guidance around skill bodies.
 
-`header.pi.yaml` is optional and uses sparse-override semantics. When absent, Pi subagents inherit four hardcoded defaults: `systemPromptMode: append`, `inheritProjectContext: false`, `inheritSkills: true`, and `maxSubagentDepth: 0`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, plus per-command `argument-hint`. Fields present in the file override the defaults; fields absent fall through.
+`header.pi.yaml` is optional. When absent, Pi subagents inherit three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, `maxSubagentDepth`, plus per-command `argument-hint`. Fields present in the file are appended verbatim, so explicit per-agent depth limits are preserved.
 
 OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
 
