@@ -88,8 +88,7 @@ let
         "/etc/shadow"
 
         # SSH private keys and config
-        "~/.ssh/id_*"
-        "~/.ssh/*.pem"
+        "~/.ssh/**"
 
         # GPG keys
         "~/.gnupg/**"
