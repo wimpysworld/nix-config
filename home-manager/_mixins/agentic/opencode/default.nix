@@ -11,13 +11,13 @@ let
   # Use the pre-built binary from numtide's llm-agents.nix flake.
   # This avoids upstream source build issues entirely.
   opencodePackage = inputs.llm-agents.packages.${system}.opencode;
-  fencePackage = inputs.llm-agents.packages.${system}.fence;
+  fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   opencodeFencedPackage = pkgs.writeShellApplication {
     name = "opencode-fenced";
     runtimeInputs = [ fencePackage ];
     text = ''
       export OPENCODE_PERMISSION='{"*":"allow"}'
-      exec fence -- opencode "$@"
+      exec fence -- ${lib.getExe' opencodePackage "opencode"} "$@"
     '';
   };
 

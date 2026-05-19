@@ -1,5 +1,9 @@
 # Making Codex Behave on NixOS
 
+> Historical note: this describes the pre-Fence Codex sandbox work. The current
+> module keeps plain `codex` usable with workspace-write defaults, while
+> `codex-fenced` uses Fence as the shared sandbox and command policy.
+
 Right, confession time. I thought wiring **Codex** into my NixOS and Home Manager setup would be the usual declarative victory lap. Add the package, write the config, sprinkle in some MCP servers, enjoy the smug glow of reproducibility.
 
 Then Codex started doing what all useful tools eventually do on NixOS: it found the one assumption I had not modelled.

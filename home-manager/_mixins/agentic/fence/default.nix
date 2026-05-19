@@ -9,8 +9,7 @@
 let
   inherit (config.noughty) host;
   inherit (config.home) homeDirectory profileDirectory;
-  system = pkgs.stdenv.hostPlatform.system;
-  fencePackage = inputs.llm-agents.packages.${system}.fence;
+  fencePackage = import ./package.nix { inherit inputs pkgs; };
 
   fenceConfig = {
     allowPty = true;
@@ -22,104 +21,114 @@ let
     };
     devices.mode = "minimal";
     filesystem = {
+      defaultDenyRead = false;
       allowRead = [
-        # Fence stages its Linux bootstrap binaries from the Nix store. Without
-        # this explicit read rule Landlock blocks the staged shell on NixOS.
         "/nix"
         "/nix/**"
-
-        # Keep Home Manager profile shims visible so `fence -- pi` and
-        # `fence -- claude` work like their unsandboxed defaults.
-        profileDirectory
+        "${profileDirectory}"
         "${profileDirectory}/**"
-
-        # Pi's wrapper reads the Anthropic API key from the sops-nix runtime
-        # symlink under XDG config before execing the packaged agent.
         "${config.xdg.configHome}/sops-nix"
         "${config.xdg.configHome}/sops-nix/**"
-
-        "${config.xdg.configHome}/ccstatusline"
-        "${config.xdg.configHome}/ccstatusline/**"
-
-        "${homeDirectory}/.codex"
-        "${homeDirectory}/.codex/**"
-
-        "${config.xdg.configHome}/opencode"
-        "${config.xdg.configHome}/opencode/**"
       ];
       allowWrite = [
+        "."
         "${homeDirectory}/Chainguard"
+        "${homeDirectory}/Chainguard/**"
         "${homeDirectory}/Development"
+        "${homeDirectory}/Development/**"
         "${homeDirectory}/Volatile"
+        "${homeDirectory}/Volatile/**"
         "${homeDirectory}/Zero"
+        "${homeDirectory}/zero/**"
 
-        # Agent runtime state. Declarative resources below are still protected
-        # with denyWrite so Fence remains the policy boundary.
-        "${homeDirectory}/.claude"
-        "${homeDirectory}/.claude.json"
-        "${homeDirectory}/.pi/agent"
-        "${config.xdg.cacheHome}/opencode"
-        "${config.xdg.dataHome}/opencode"
-        "${config.xdg.stateHome}/opencode"
+        # Temp files
+        "/tmp/**"
 
-        "/tmp"
-        "${config.xdg.cacheHome}/nix"
+        # Claude Code
+        "~/.claude*"
+        "~/.claude/**"
+
+        # Codex
+        "~/.codex/**"
+
+        # Copilot
+        "~/.copilot/**"
+
+        # OpenCode
+        "~/.opencode/**"
+
+        # Pi
+        "~/.pi/**"
+
+        # Package manager caches
+        "~/.npm/_cacache"
+        "~/.npm/_npx"
+        "~/.bun/**"
+
+        # Cargo cache (Rust, used by Codex)
+        "~/.cargo/registry/**"
+        "~/.cargo/git/**"
+        "~/.cargo/.package-cache"
+
+        # Shell completion cache
+        "~/.zcompdump*"
+
+        # XDG directories
+		"${config.xdg.cacheHome}/**"
+        "${config.xdg.dataHome}/**"
+        "${config.xdg.stateHome}/**"
+        "~/.local/go"
+        "~/.local/go/**"
       ];
+
       denyRead = [
-        ".env"
-        ".env.local"
-        ".env.*"
-        ".env.*.local"
-        ".secrets/**"
-        "${homeDirectory}/.ssh/**"
-        "*.pem"
-        "*.key"
-        "${homeDirectory}/.gnupg/**"
-        "${config.xdg.configHome}/sops/**"
-        "${homeDirectory}/.aws/**"
-        "${homeDirectory}/.azure/**"
-        "${config.xdg.configHome}/gcloud/**"
-        "${homeDirectory}/.git-credentials"
-        "${homeDirectory}/.netrc"
-        "${homeDirectory}/.docker/config.json"
-        "${homeDirectory}/.kube/**"
+        "/etc/passwd"
+        "/etc/shadow"
+
+        # SSH private keys and config
+        "~/.ssh/id_*"
+        "~/.ssh/*.pem"
+
+        # GPG keys
+        "~/.gnupg/**"
+
+        # Cloud provider credentials
+        "~/.aws/**"
+        "~/.azure/**"
+        "~/.config/gcloud/**"
+        "~/.kube/**"
+
+        # Docker config (may contain registry auth)
+        "~/.docker/**"
+
+        # Package manager auth tokens
+        "~/.pypirc"
+        "~/.netrc"
+        "~/.git-credentials"
+        "~/.cargo/credentials"
+        "~/.cargo/credentials.toml"
+
+        # SOPS
+        "~/.config/sops/**"
+
+        # History
         "${homeDirectory}/.bash_history"
         "${homeDirectory}/.zsh_history"
         "${homeDirectory}/.fish_history"
         "${config.xdg.dataHome}/fish/fish_history"
       ];
-      denyWrite = [
-        ".git/hooks/**"
-        ".github/workflows/**"
-
-        "${homeDirectory}/.claude/settings.json"
-        "${homeDirectory}/.claude/agents/**"
-        "${homeDirectory}/.claude/commands/**"
-        "${homeDirectory}/.claude/skills/**"
-        "${homeDirectory}/.claude/plugins/nix-lsp/**"
-
-        "${homeDirectory}/.pi/agent/settings.json"
-        "${homeDirectory}/.pi/agent/keybindings.json"
-        "${homeDirectory}/.pi/agent/mcp.json"
-        "${homeDirectory}/.pi/agent/AGENTS.md"
-        "${homeDirectory}/.pi/agent/agents/**"
-        "${homeDirectory}/.pi/agent/prompts/**"
-        "${homeDirectory}/.pi/agent/skills/**"
-        "${homeDirectory}/.pi/agent/themes/**"
-        "${homeDirectory}/.pi/agent/extensions/provider-router/**"
-        "${homeDirectory}/.pi/agent/extensions/subagent/config.json"
-
-        "${config.xdg.configHome}/opencode/AGENTS.md"
-        "${config.xdg.configHome}/opencode/config.json"
-        "${config.xdg.configHome}/opencode/tui.json"
-        "${config.xdg.configHome}/opencode/agent/**"
-        "${config.xdg.configHome}/opencode/command/**"
-        "${config.xdg.configHome}/opencode/skills/**"
-      ];
     };
     command = {
       useDefaults = true;
       runtimeExecPolicy = "argv";
+      acceptSharedBinaryCannotRuntimeDeny = [
+        # Nixpkgs coreutils is a multicall binary. Runtime-masking any of
+        # these would also mask `env`, breaking common shebangs.
+        "chroot"
+        "dd"
+        "shred"
+        "truncate"
+      ];
       allow = [
         "git reset --soft"
         "git reset --mixed"

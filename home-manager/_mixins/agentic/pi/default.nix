@@ -12,7 +12,7 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   aiSopsFile = ../../../../secrets/ai.yaml;
   piPackage = inputs.llm-agents.packages.${system}.pi;
-  fencePackage = inputs.llm-agents.packages.${system}.fence;
+  fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   piMcpAdapterVersion = "2.5.4";
   piSubagentsVersion = "0.24.0";
   rpivBtwVersion = "1.1.5";
@@ -166,7 +166,7 @@ let
     name = "pi-fenced";
     runtimeInputs = [ fencePackage ];
     text = ''
-      exec fence -- pi "$@"
+      exec fence -- ${lib.getExe' piWrapperPackage "pi"} "$@"
     '';
   };
 
