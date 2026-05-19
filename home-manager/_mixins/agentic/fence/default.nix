@@ -39,7 +39,7 @@ let
         "${homeDirectory}/Volatile"
         "${homeDirectory}/Volatile/**"
         "${homeDirectory}/Zero"
-        "${homeDirectory}/zero/**"
+        "${homeDirectory}/Zero/**"
 
         # Temp files
         "/tmp/**"
