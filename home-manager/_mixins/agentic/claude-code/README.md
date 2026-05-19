@@ -1,6 +1,6 @@
 # Claude Code module
 
-Claude Code with LSP integration, MCP servers, default Claude permissions, and a ccstatusline status bar.
+Claude Code with LSP integration, MCP servers, a [Fence](../fence)-isolated entry point, and a ccstatusline status bar.
 
 Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for Claude Code, OpenCode, and Codex by `assistants/compose.nix`.
 
@@ -16,16 +16,11 @@ The package source varies by platform:
 
 - **[LSP configuration](LSP.md)** - Language server integration via the plugin system; 14 servers across 10 language modules, contributed by each language module via the `claude-code.lspServers` option
 - **[MCP servers](../mcp/README.md)** - Shared MCP servers (Context7, Exa, Cloudflare, NixOS, Svelte, plus conditional Playwright) defined in the shared MCP module and delivered to Claude Code via `~/.config/mcp/mcp.json`
-- **Permissions** - Plain `claude` uses Claude Code's default permission behaviour. Use `claude-fenced` for the Fence-isolated entry point.
+- **Fence** - `claude-fenced` runs Claude Code under the shared Fence permission and isolation policy.
 - **ccstatusline** - Status bar integration reporting active session state
 
 ## Fenced mode
 
-Claude Code's internal permissions are not managed here. This module provides
-`claude-fenced`, which runs Claude through Fence with
-`--dangerously-skip-permissions` so Fence is the single permission boundary for
-that entry point.
-
-The old Claude Code permission policy and PreToolUse auto-approve hook were
-removed. Fence is the maintained isolation and command policy for the fenced
-entry point.
+This module provides `claude-fenced`, which runs Claude Code through Fence with
+`--dangerously-skip-permissions`. Fence is the managed filesystem, network, and
+command policy provider for that entry point.

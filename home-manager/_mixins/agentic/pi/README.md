@@ -7,7 +7,7 @@ The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, match
 ## Behaviour
 
 - Adds a `pi` wrapper to `home.packages`
-- Adds `pi-fenced`, which runs the standard `pi` wrapper under Fence
+- Adds `pi-fenced`, which runs the standard `pi` wrapper under the shared [Fence](../fence) permission and isolation policy
 - Gates installation with `noughtyLib.userHasTag "developer"`
 - Exports `ANTHROPIC_API_KEY` from the sops-nix runtime secret path before execing the Nix-provided Pi binary
 - Adds a `pi-npm` wrapper backed by Nixpkgs `nodejs`, with npm's global prefix redirected to `~/.pi/agent/npm-global` and routine npm advisory output disabled
@@ -131,8 +131,8 @@ This module does not manage `~/.pi/agent/auth.json`. Pi can still create that fi
 
 Use `pi-fenced` for the Fence-isolated entry point. It runs the same Home
 Manager-managed `pi` wrapper as plain `pi`, so the Anthropic key handling and
-Pi configuration path remain identical while Fence enforces filesystem and
-command policy.
+Pi configuration path remain identical while Fence provides the managed
+filesystem, network, and command policy.
 
 ## MCP
 
@@ -209,4 +209,5 @@ Traya is the unnamed default prompt through `instructions/global.md`. She is not
 
 Pi agent frontmatter is sourced from `header.pi.yaml`. When the file is absent the agent inherits three defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. `name` and `description` are injected automatically from the directory name and `description.txt`. Per-agent values for `model`, `thinking`, `tools`, `defaultContext`, `maxSubagentDepth`, and other Pi-native fields go in `header.pi.yaml` alongside `header.claude.yaml` and `header.codex.toml`. Prompt templates use `header.pi.yaml` for `argument-hint` rather than reading the Claude header.
 
-OpenCode-specific permission headers are not mapped. Pi subagent Markdown supports tool allowlists, but OpenCode's allow/deny permission policy does not translate cleanly into Pi's explicit `tools` allowlist.
+Pi subagent Markdown supports explicit `tools` allowlists through Pi-native
+frontmatter when an individual agent needs a narrower tool surface.
