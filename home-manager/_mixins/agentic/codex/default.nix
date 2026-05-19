@@ -125,6 +125,15 @@ let
 
     allow_login_shell = false;
 
+    # Explicitly enable every generated skill so command/agent skills are
+    # always available from the generated ~/.codex/skills tree.
+    skills = {
+      config = map (skillName: {
+        path = "${codexDir}/skills/${skillName}/SKILL.md";
+        enabled = true;
+      }) codexSkillNames;
+    };
+
     # Pre-seed project trust for all personal development directories so
     # codex does not prompt "Do you trust this directory?" on every launch.
     #
