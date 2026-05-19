@@ -97,7 +97,7 @@ let
         # Cloud provider credentials
         "~/.aws/**"
         "~/.azure/**"
-        "~/.config/gcloud/**"
+        "${config.xdg.configHome}/gcloud/**"
         "~/.kube/**"
 
         # Docker config (may contain registry auth)
