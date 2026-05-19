@@ -16,7 +16,7 @@ let
       pkgs.unstable.claude-code
     else
       pkgs.claude-code;
-  fencePackage = inputs.llm-agents.packages.${system}.fence;
+  fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
 
   # ACP adapter that lets Zed drive Claude Code over the Agent Client
   # Protocol. The binary is `claude-agent-acp`, sourced from the same
@@ -41,7 +41,7 @@ let
         esac
       fi
 
-      exec fence -- claude --dangerously-skip-permissions "$@"
+      exec fence -- ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
     '';
   };
 

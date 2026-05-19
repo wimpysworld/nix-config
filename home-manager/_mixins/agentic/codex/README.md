@@ -1,9 +1,10 @@
 # Codex
 
-[Codex CLI](https://github.com/openai/codex) configured declaratively via Home Manager. The module writes Codex configuration, MCP servers, generated skills, agent roles, sandbox settings, and command policy from Nix while keeping Codex's runtime state mutable.
+[Codex CLI](https://github.com/openai/codex) configured declaratively via Home Manager. The module writes Codex configuration, MCP servers, generated skills, and agent roles from Nix while keeping Codex's runtime state mutable.
 
 ```bash
 codex                  # start interactive TUI
+codex-fenced           # start Codex under Fence
 /skills                # list all skills
 $skill-name            # invoke a skill by name in the composer
 ```
@@ -25,7 +26,9 @@ The launcher tries those paths in order. This avoids two Linux sandbox failure m
 
 The source package is deliberately unwrapped by clearing `postFixup`. Wrapping changes the executable path and breaks the sandbox re-exec assumptions.
 
-On Linux, `bubblewrap` and `ripgrep` are added to `home.packages`. Codex's sandbox prefers the first usable `bwrap` on `PATH`, and `rg` is used by Codex when expanding filesystem glob policies.
+The source package and stable binary copy are retained so plain `codex` can use
+Codex's native behaviour. The fenced entry point bypasses Codex's own sandbox
+and approval prompts because Fence is the isolation boundary for that mode.
 
 ## Configuration
 
@@ -39,7 +42,7 @@ Activation merges the generated baseline into existing runtime config:
 - Unknown runtime keys are preserved.
 - Existing `[projects]` entries are preserved and updated.
 - `mcp_servers` is replaced from Nix so removed MCP servers do not linger.
-- Stale `default_permissions` and `permissions` keys are deleted when absent from the Nix baseline.
+- Stale Codex-native policy keys are deleted when absent from the Nix baseline.
 
 Both legacy `~/.codex` and XDG Codex homes are seeded because Codex, Home Manager, and older runtime state can disagree about which home exists first.
 
@@ -114,110 +117,37 @@ The unnamed default prompt is written to `AGENTS.md` from `instructions/global.m
 
 Agent roles are not a TUI persona picker. `/agent` shows active live threads. The model chooses these roles only when it calls the sub-agent tools.
 
-## Sandbox
+## Plain Codex
 
-The module uses the legacy workspace-write sandbox:
-
-```toml
-sandbox_mode = "workspace-write"
-
-[sandbox_workspace_write]
-network_access = true
-```
-
-Do not use Codex `default_permissions` split profiles here on Linux. Current Codex split permission profiles cannot combine custom filesystem rules with normal Unix-socket network access:
-
-- Without `permissions.<profile>.network`, Codex installs restricted network seccomp and Nix cannot connect to its daemon socket.
-- With `permissions.<profile>.network.enabled = true`, Codex enters managed proxy mode. On Linux, that mode blocks new `AF_UNIX` and `socketpair` creation inside commands.
-- Determinate Nix, the Nix daemon, Tokio-based CLIs, and similar developer tools need normal local Unix socket support.
-
-Writable roots:
-
-```text
-~/Chainguard
-~/Development
-~/Volatile
-~/Zero
-~/.cache/nix
-```
-
-`~/.cache/nix` is required because Nix writes flake fetcher lock files there before it talks to the daemon. Without this writable root, `just eval` fails with a read-only filesystem error under `~/.cache/nix/fetcher-locks`.
-
-Activation creates `~/.cache/nix/fetcher-locks` so the mount target exists before Codex starts.
-
-Outbound network is enabled for sandboxed commands so tools such as `gh`, `nix`, and package managers can reach upstream services directly.
-
-## Nix And Determinate Nix
-
-Subprocesses get:
-
-```toml
-[shell_environment_policy.set]
-NIX_REMOTE = "daemon"
-```
-
-`NIX_REMOTE=daemon` makes Nix use the daemon store rather than trying to write directly to `/nix/store`. With Determinate Nix this still resolves to the normal local daemon store protocol. `nix store ping` should report the daemon store and trusted access.
-
-Determinate Nixd has its own socket for Determinate-specific APIs, but normal Nix store operations still use the Nix daemon store path.
-
-## Approval Policy And Rules
-
-Codex runs with:
+Plain `codex` keeps Codex-native usable defaults:
 
 ```toml
 approval_policy = "never"
-allow_login_shell = false
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+writable_roots = ["~/Chainguard", "~/Development", "~/Volatile", "~/Zero", "~/.cache/nix"]
+exclude_slash_tmp = false
+network_access = true
 ```
 
-This matches the desired local workflow: trusted workspaces should not prompt for every edit or MCP call. Dangerous command prefixes are still blocked by generated exec policy rules in `~/.codex/rules/default.rules`.
+The writable roots cover the normal project directories and the per-user Nix cache path used for flake fetcher locks. Network access stays enabled so Nix, `gh`, package managers, and MCP-backed workflows can reach upstream services.
 
-Rules are rendered from Nix as `prefix_rule()` calls. Decision precedence is:
+Codex `default_permissions`, `permissions`, and generated exec rules are not managed. Split permission profiles still break the Unix socket behaviour needed by Nix on Linux, and command policy belongs to Fence.
 
-```text
-forbidden > prompt > allow
+## Fenced Mode
+
+Use `codex-fenced` for the Fence-isolated entry point. It runs:
+
+```console
+fence -- codex --dangerously-bypass-approvals-and-sandbox
 ```
 
-Allow rules cover narrow maintenance commands:
+Fence owns filesystem isolation, network access, and command denials for that entry point. The bypass flag disables Codex approval prompts and Codex sandbox enforcement for this mode, even though plain `codex` has those defaults configured.
 
-| Category | Commands |
-|----------|----------|
-| Nix evaluation and formatting | `nix-instantiate`, `nixfmt` |
+Activation removes stale Codex split-permission and shell environment policy keys from `config.toml` and deletes the old generated `rules/default.rules` file from both legacy and XDG Codex homes. This prevents old Codex permissions, environment policy, or command policy from surviving alongside Fence.
 
-Prompt rules mirror the Claude Code and OpenCode ask lists for mutating shell commands, network fetches, process termination, service changes, Docker state changes, builds, package managers, Git/GitHub mutations, Nix builds and rebuilds, and Cloudflare deployments.
-
-With `approval_policy = "never"`, prompt rules do not become interactive prompts in non-interactive contexts. They still document the intended policy shape and keep parity with the other assistants.
-
-### Forbidden Commands
-
-Forbidden rules are unconditional. They block high-risk commands regardless of approval mode.
-
-| Category | Commands |
-|----------|----------|
-| Privilege escalation | `sudo` |
-| Disk operations | `dd`, `fdisk`, `parted`, `mkfs`, `mkswap`, `mount`, `umount` |
-| Kernel modification | `sysctl`, `modprobe`, `insmod`, `rmmod` |
-| Boot and firmware | `grub-install`, `efibootmgr` |
-| Subshell bypasses | `bash -c`, `sh -c`, `python -c`, `node -e`, `perl -e`, etc. |
-| System power | `systemctl poweroff/reboot/halt/suspend/hibernate` |
-| Destructive git | `git push --force`, `git reset --hard`, `git clean`, `git filter-branch` |
-| Mass deletion | `docker system prune`, `docker volume prune` |
-| Secure deletion | `shred`, `wipe`, `srm`, `truncate` |
-| Nix store deletion | `nix-collect-garbage`, `nix store gc`, `nix store delete` |
-
-`allow_login_shell = false` rejects login-shell requests before command policy evaluation. The rules file also blocks shell `-c` and `-lc` prefixes so compound shell commands cannot bypass per-command policy.
-
-## Environment
-
-`shell_environment_policy` uses the `core` inheritance baseline and removes common credential variables from every subprocess environment:
-
-```text
-AWS_* AZURE_* GOOGLE_* GCLOUD_* GH_TOKEN GITHUB_TOKEN
-ANTHROPIC_API_KEY OPENAI_API_KEY GEMINI_API_KEY
-*_API_KEY *_SECRET *_TOKEN
-SSH_AUTH_SOCK SSH_AGENT_PID GPG_AGENT_INFO
-```
-
-This keeps authentication material out of command environments by default while preserving core process variables such as `PATH` and `HOME`.
+Use `codex-fenced` when the shared Fence policy should be the only isolation and command boundary.
 
 ## Project Trust
 
@@ -242,7 +172,7 @@ Codex can append new trust decisions at runtime. The merge script preserves unkn
 ```text
 codex/
 ├── README.md
-└── default.nix          # config.toml, launcher, sandbox, rules, MCP servers
+└── default.nix          # config.toml, launcher, fenced wrapper, MCP servers
 
 assistants/
 ├── agents/<name>/
@@ -276,5 +206,6 @@ Useful runtime checks after activation and a fresh Codex restart:
 ```bash
 nix store ping
 test -w ~/.cache/nix/fetcher-locks
-rg -n 'default_permissions|\[permissions|permissions\.|network_access|NIX_REMOTE' ~/.codex/config.toml
+rg -n 'approval_policy|sandbox_mode|sandbox_workspace_write|allow_login_shell' ~/.codex/config.toml ~/.config/codex/config.toml
+! rg -n 'default_permissions|\[permissions\]|permissions\.|shell_environment_policy' ~/.codex/config.toml ~/.config/codex/config.toml
 ```
