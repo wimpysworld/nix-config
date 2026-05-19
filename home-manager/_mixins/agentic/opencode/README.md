@@ -12,7 +12,7 @@ Agents, commands, skills, and global instructions are managed separately in the 
 
 - **LSP configuration** - Built-in language server support; only Semgrep is configured explicitly for security diagnostics
 - **[MCP servers](../mcp/README.md)** - Shared MCP servers, with browser automation included only on systems that enable both Chromium and Firefox; delivered to OpenCode via `settings.json`
-- **Permissions** - Plain `opencode` uses OpenCode's default permission behaviour. Use `opencode-fenced` for the Fence-isolated entry point.
+- **[Fence](../fence)** - `opencode-fenced` runs OpenCode under the shared Fence permission and isolation policy.
 - **IDE integration** - VSCode extension, Zed editor as external agent
 - **TUI configuration** - Catppuccin theme, CUA-standard keybindings
 
@@ -31,11 +31,8 @@ OpenCode uses the unnamed global prompt from `instructions/global.md` for defaul
 This module provides `opencode-fenced` for the Fence-isolated entry point. It
 runs the normal `opencode` TUI under Fence with
 `OPENCODE_PERMISSION='{"*":"allow"}'`, so OpenCode loads the same configuration
-as plain `opencode` while Fence is the permission boundary. Plain `opencode`
-keeps OpenCode's default permission behaviour.
-
-The old OpenCode permission policy was removed. Fence is the maintained
-isolation and command policy for the fenced entry point.
+as plain `opencode` while Fence provides the managed filesystem, network, and
+command policy.
 
 ## IDE integration
 

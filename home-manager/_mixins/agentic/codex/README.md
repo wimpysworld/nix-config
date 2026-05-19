@@ -2,6 +2,8 @@
 
 [Codex CLI](https://github.com/openai/codex) configured declaratively via Home Manager. The module writes Codex configuration, MCP servers, generated skills, and agent roles from Nix while keeping Codex's runtime state mutable.
 
+The [Fence](../fence)-isolated entry point is `codex-fenced`.
+
 ```bash
 codex                  # start interactive TUI
 codex-fenced           # start Codex under Fence
@@ -27,8 +29,8 @@ The launcher tries those paths in order. This avoids two Linux sandbox failure m
 The source package is deliberately unwrapped by clearing `postFixup`. Wrapping changes the executable path and breaks the sandbox re-exec assumptions.
 
 The source package and stable binary copy are retained so plain `codex` can use
-Codex's native behaviour. The fenced entry point bypasses Codex's own sandbox
-and approval prompts because Fence is the isolation boundary for that mode.
+the standard Codex runtime. The fenced entry point uses the same launcher while
+Fence provides the managed filesystem, network, and command policy.
 
 ## Configuration
 
@@ -42,7 +44,7 @@ Activation merges the generated baseline into existing runtime config:
 - Unknown runtime keys are preserved.
 - Existing `[projects]` entries are preserved and updated.
 - `mcp_servers` is replaced from Nix so removed MCP servers do not linger.
-- Stale Codex-native policy keys are deleted when absent from the Nix baseline.
+- Managed keys removed from the Nix baseline are deleted from runtime config.
 
 Both legacy `~/.codex` and XDG Codex homes are seeded because Codex, Home Manager, and older runtime state can disagree about which home exists first.
 
@@ -75,9 +77,7 @@ Skills come from three generated sets:
 - Standalone assistant commands from `assistants/commands/*`
 - Agent command skills named `<agent>-<command>`
 
-Every generated skill is explicitly enabled in `config.toml` with `[[skills.config]]`. Codex does not prompt when loading instruction-only skills, so root sessions and spawned agents can use them without an approval round trip.
-
-The `approval_policy.granular.skill_approval` setting is not used. Codex documents that field as controlling skill-script approval prompts; setting it to `false` auto-rejects those prompts rather than allowing skill use.
+Every generated skill is explicitly enabled in `config.toml` with `[[skills.config]]`, so root sessions and spawned agents can use the same declarative skill set.
 
 Skills are written as real files via the shared assistants activation. Codex's scanner does not reliably follow symlinked skill files on Linux.
 
@@ -117,24 +117,6 @@ The unnamed default prompt is written to `AGENTS.md` from `instructions/global.m
 
 Agent roles are not a TUI persona picker. `/agent` shows active live threads. The model chooses these roles only when it calls the sub-agent tools.
 
-## Plain Codex
-
-Plain `codex` keeps Codex-native usable defaults:
-
-```toml
-approval_policy = "never"
-sandbox_mode = "workspace-write"
-
-[sandbox_workspace_write]
-writable_roots = ["~/Chainguard", "~/Development", "~/Volatile", "~/Zero", "~/.cache/nix"]
-exclude_slash_tmp = false
-network_access = true
-```
-
-The writable roots cover the normal project directories and the per-user Nix cache path used for flake fetcher locks. Network access stays enabled so Nix, `gh`, package managers, and MCP-backed workflows can reach upstream services.
-
-Codex `default_permissions`, `permissions`, and generated exec rules are not managed. Split permission profiles still break the Unix socket behaviour needed by Nix on Linux, and command policy belongs to Fence.
-
 ## Fenced Mode
 
 Use `codex-fenced` for the Fence-isolated entry point. It runs:
@@ -143,9 +125,13 @@ Use `codex-fenced` for the Fence-isolated entry point. It runs:
 fence -- codex --dangerously-bypass-approvals-and-sandbox
 ```
 
-Fence owns filesystem isolation, network access, and command denials for that entry point. The bypass flag disables Codex approval prompts and Codex sandbox enforcement for this mode, even though plain `codex` has those defaults configured.
+Fence owns filesystem isolation, network access, and command denials for this
+entry point. The Codex bypass flag prevents a second policy layer from
+interfering with the shared Fence configuration.
 
-Activation removes stale Codex split-permission and shell environment policy keys from `config.toml` and deletes the old generated `rules/default.rules` file from both legacy and XDG Codex homes. This prevents old Codex permissions, environment policy, or command policy from surviving alongside Fence.
+Activation removes stale policy keys and generated rule files from both legacy
+and XDG Codex homes so Fence remains the only managed permission and isolation
+provider.
 
 Use `codex-fenced` when the shared Fence policy should be the only isolation and command boundary.
 
@@ -206,6 +192,6 @@ Useful runtime checks after activation and a fresh Codex restart:
 ```bash
 nix store ping
 test -w ~/.cache/nix/fetcher-locks
-rg -n 'approval_policy|sandbox_mode|sandbox_workspace_write|allow_login_shell' ~/.codex/config.toml ~/.config/codex/config.toml
-! rg -n 'default_permissions|\[permissions\]|permissions\.|shell_environment_policy' ~/.codex/config.toml ~/.config/codex/config.toml
+fence show config
+codex-fenced --version
 ```
