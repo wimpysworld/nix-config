@@ -189,7 +189,7 @@ The extension config is managed at `~/.pi/agent/extensions/subagent/config.json`
 }
 ```
 
-`maxSubagentDepth = 1` allows explicit direct subagent use and blocks nested subagent chains by default. Each generated assistant agent also sets `maxSubagentDepth: 0`, so child sessions cannot delegate further.
+`maxSubagentDepth = 1` allows explicit direct subagent use from top-level Pi sessions. Generated assistant agents do not add a per-agent `maxSubagentDepth` by default; set `maxSubagentDepth` in an individual `header.pi.yaml` only when that agent needs its own depth limit.
 
 The builtin `researcher` agent is disabled by default because it requires `pi-web-access`, which this module does not install.
 
@@ -207,6 +207,6 @@ Source content comes from `home-manager/_mixins/agentic/assistants`. Rendering f
 
 Traya is the unnamed default prompt through `instructions/global.md`. She is not emitted as a named Pi subagent.
 
-Pi agent frontmatter is sourced from `header.pi.yaml`. When the file is absent the agent inherits four defaults: `systemPromptMode: append`, `inheritProjectContext: false`, `inheritSkills: true`, and `maxSubagentDepth: 0`. `name` and `description` are injected automatically from the directory name and `description.txt`. Per-agent overrides for `model`, `thinking`, `tools`, `defaultContext`, and other Pi-native fields go in `header.pi.yaml` alongside `header.claude.yaml` and `header.codex.toml`. Prompt templates use `header.pi.yaml` for `argument-hint` rather than reading the Claude header.
+Pi agent frontmatter is sourced from `header.pi.yaml`. When the file is absent the agent inherits three defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. `name` and `description` are injected automatically from the directory name and `description.txt`. Per-agent values for `model`, `thinking`, `tools`, `defaultContext`, `maxSubagentDepth`, and other Pi-native fields go in `header.pi.yaml` alongside `header.claude.yaml` and `header.codex.toml`. Prompt templates use `header.pi.yaml` for `argument-hint` rather than reading the Claude header.
 
 OpenCode-specific permission headers are not mapped. Pi subagent Markdown supports tool allowlists, but OpenCode's allow/deny permission policy does not translate cleanly into Pi's explicit `tools` allowlist.

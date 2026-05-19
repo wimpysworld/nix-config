@@ -45,6 +45,7 @@ let
         "/tmp/**"
 
         # Claude Code
+        "${config.xdg.configHome}/ccstatusline"
         "~/.claude*"
         "~/.claude/**"
 
@@ -55,6 +56,7 @@ let
         "~/.copilot/**"
 
         # OpenCode
+		"${config.xdg.configHome}/opencode"
         "~/.opencode/**"
 
         # Pi
