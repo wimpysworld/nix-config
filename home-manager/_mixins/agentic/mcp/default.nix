@@ -1,10 +1,14 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
 }:
 let
+  system = pkgs.stdenv.hostPlatform.system;
+  agentPackages = inputs.llm-agents.packages.${system} or { };
+  mcporterPackage = agentPackages.mcporter or null;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   # Import shared MCP server definitions.
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
@@ -41,6 +45,8 @@ let
   zedSettingsPath = "${config.xdg.configHome}/zed/settings.json";
 in
 {
+  home.packages = lib.optional (mcporterPackage != null) mcporterPackage;
+
   programs = {
     fish = {
       shellInit = ''
