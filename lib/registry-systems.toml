@@ -133,7 +133,7 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "desktop"
-tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox", "borgbackup", "strix-halo"]
+tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "scrutiny", "dropbox", "borgbackup", "strix-halo"]
 
 [skrye.gpu]
 vendors = ["amd"]
@@ -166,7 +166,7 @@ position = { x = 2560, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "desktop"
-tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "workspace", "scrutiny", "dropbox", "borgbackup", "strix-halo"]
+tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "scrutiny", "dropbox", "borgbackup", "strix-halo"]
 
 [zannah.gpu]
 vendors = ["amd"]
