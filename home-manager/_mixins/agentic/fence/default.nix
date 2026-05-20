@@ -178,6 +178,22 @@ let
         # the current argv-prefix matcher; the family-wide `git config`
         # deny remains below.
         "git config --bool core.bare"
+        # Claude Code probes the working tree at startup with the
+        # positional reads `git config user.name` and
+        # `git config user.email`. The bare positional form reads the
+        # configured value but does not match any of the subcommand or
+        # legacy-flag carve-outs above, so it falls through to the
+        # family-wide `git config` deny. Allow these two argv prefixes
+        # so `claude-fenced` can start. Fence allow rules are
+        # token-prefix matches, so a trailing value token is also
+        # permitted, which means `git config user.name <value>` and
+        # `git config user.email <value>` writes slip through. This
+        # widening is accepted as the narrowest practical carve-out
+        # under the current argv-prefix matcher; the family-wide
+        # `git config` deny remains below and still blocks every other
+        # key, including `user.signingkey` and scope-flag variants.
+        "git config user.email"
+        "git config user.name"
         # gh auth: identity inspection and credential rotation are
         # non-destructive under Fence. Claude Code shells out to
         # `gh auth token`, so token disclosure is explicitly allowed
