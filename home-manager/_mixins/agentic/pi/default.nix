@@ -18,6 +18,7 @@ let
   piLensVersion = "3.8.44";
   piFooterVersion = "0.3.0";
   piSubCoreVersion = "1.5.0";
+  piLogoVersion = "1.0.0";
   rpivBtwVersion = "1.10.2";
   rpivTodoVersion = "1.10.2";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
@@ -25,6 +26,7 @@ let
   piLensSource = "npm:pi-lens@${piLensVersion}";
   piFooterSource = "npm:pi-footer@${piFooterVersion}";
   piSubCoreSource = "npm:@marckrenn/pi-sub-core@${piSubCoreVersion}";
+  piLogoSource = "npm:pi-logo@${piLogoVersion}";
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
@@ -257,6 +259,10 @@ let
       piLensSource
       piFooterSource
       piSubCoreSource
+      {
+        source = piLogoSource;
+        extensions = [ ];
+      }
       rpivBtwSource
       rpivTodoSource
     ];
@@ -470,6 +476,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
+      ".pi/agent/extensions/pi-logo-filter/index.ts".source = ./extensions/pi-logo-filter/index.ts;
       ".pi/agent/extensions/quota-status/index.ts".source = ./extensions/quota-status/index.ts;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
     }

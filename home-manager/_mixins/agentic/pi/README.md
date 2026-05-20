@@ -85,13 +85,19 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-lens@3.8.44",
     "npm:pi-footer@0.3.0",
     "npm:@marckrenn/pi-sub-core@1.5.0",
+    {
+      "source": "npm:pi-logo@1.0.0",
+      "extensions": []
+    },
     "npm:@juicesharp/rpiv-btw@1.10.2",
     "npm:@juicesharp/rpiv-todo@1.10.2"
   ]
 }
 ```
 
-Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix.
+Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `pi-logo` is installed with its package extension disabled so the local `pi-logo-filter` wrapper can constrain startup logos while reusing upstream rendering code.
+
+`pi-logo-filter` keeps only `logo-001` through `logo-009` on random. These are the compact line-art logos that animate with Pi theme colours.
 
 The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 
@@ -132,6 +138,10 @@ Home Manager deploys local Pi extensions under `~/.pi/agent/extensions/`.
 Pi `subagent` tool calls to provider-specific models declared in assistant
 `header.pi.yaml` files.
 
+`pi-logo-filter` lives at `~/.pi/agent/extensions/pi-logo-filter/`. It imports
+`pi-logo`'s header and animation helpers, but restricts random selection to
+`logo-001` through `logo-009`.
+
 `quota-status` lives at `~/.pi/agent/extensions/quota-status/`. It listens to
 `sub-core` quota updates and publishes the compact quota segment consumed by
 `pi-footer`.
@@ -142,6 +152,7 @@ Managed files:
 - `~/.pi/agent/extensions/provider-router/agents.json`
 - `~/.pi/agent/extensions/provider-router/README.md`
 - `~/.pi/agent/extensions/provider-router/LICENSE`
+- `~/.pi/agent/extensions/pi-logo-filter/index.ts`
 - `~/.pi/agent/extensions/quota-status/index.ts`
 
 See
