@@ -162,6 +162,14 @@ let
       ANTHROPIC_API_KEY="$(cat "$anthropic_api_key_path")"
       export ANTHROPIC_API_KEY
 
+      gemini_api_key_path="${config.sops.secrets.GEMINI_API_KEY.path}"
+      if [ -r "$gemini_api_key_path" ]; then
+        GEMINI_API_KEY="$(cat "$gemini_api_key_path")"
+        export GEMINI_API_KEY
+        GOOGLE_GENERATIVE_AI_API_KEY="$GEMINI_API_KEY"
+        export GOOGLE_GENERATIVE_AI_API_KEY
+      fi
+
       exec "${lib.getExe piPackage}" "$@"
     '';
   };

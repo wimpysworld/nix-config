@@ -8,9 +8,37 @@
 let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
+  aiSopsFile = ../../../../secrets/ai.yaml;
   # Use the pre-built binary from numtide's llm-agents.nix flake.
   # This avoids upstream source build issues entirely.
-  opencodePackage = inputs.llm-agents.packages.${system}.opencode;
+  opencodeUpstreamPackage = inputs.llm-agents.packages.${system}.opencode;
+  geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
+  # Wrap opencode so its process inherits Gemini env vars sourced from sops at
+  # invocation time. opencode's loader recognises GEMINI_API_KEY; the
+  # underlying @ai-sdk/google SDK reads GOOGLE_GENERATIVE_AI_API_KEY. Export
+  # both so the Google provider works regardless of which path opencode
+  # follows. The read is non-fatal because opencode is multi-provider and
+  # must still launch for non-Google providers when the key is absent.
+  opencodePackage = pkgs.symlinkJoin {
+    name = "opencode-wrapped-${opencodeUpstreamPackage.version or "unknown"}";
+    paths = [ opencodeUpstreamPackage ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/opencode \
+        --run '
+          if [ -r "${geminiKeyPath}" ]; then
+            GEMINI_API_KEY="$(cat "${geminiKeyPath}")"
+            export GEMINI_API_KEY
+            GOOGLE_GENERATIVE_AI_API_KEY="$GEMINI_API_KEY"
+            export GOOGLE_GENERATIVE_AI_API_KEY
+          fi
+        '
+    '';
+    inherit (opencodeUpstreamPackage) meta;
+    passthru = (opencodeUpstreamPackage.passthru or { }) // {
+      unwrapped = opencodeUpstreamPackage;
+    };
+  };
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   opencodeFencedPackage = pkgs.writeShellApplication {
     name = "opencode-fenced";
@@ -25,6 +53,11 @@ let
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 in
 {
+  sops.secrets.GEMINI_API_KEY = {
+    sopsFile = aiSopsFile;
+    mode = "0400";
+  };
+
   home.packages = lib.optional host.is.linux opencodeFencedPackage;
 
   programs = {
