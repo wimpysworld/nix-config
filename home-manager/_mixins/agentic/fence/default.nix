@@ -60,7 +60,9 @@ let
         "~/.opencode/**"
 
         # Pi
-        "~/.pi/**"
+        "${homeDirectory}/.pi/**"
+        "${homeDirectory}/.pi-lens"
+        "${homeDirectory}/.pi-lens/**"
 
         # Package manager caches
         "~/.npm/_cacache"
@@ -310,13 +312,6 @@ let
         "wipe"
         "srm"
         "truncate"
-        "python -c"
-        "python3 -c"
-        "node -e"
-        "perl -e"
-        "ruby -e"
-        "lua -e"
-        "php -r"
         "npm publish"
         "pnpm publish"
         "yarn publish"

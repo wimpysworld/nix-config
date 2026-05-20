@@ -13,12 +13,16 @@ let
   aiSopsFile = ../../../../secrets/ai.yaml;
   piPackage = inputs.llm-agents.packages.${system}.pi;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
-  piMcpAdapterVersion = "2.5.4";
-  piSubagentsVersion = "0.24.0";
-  rpivBtwVersion = "1.1.5";
-  rpivTodoVersion = "1.1.5";
+  piMcpAdapterVersion = "2.6.1";
+  piSubagentsVersion = "0.24.3";
+  piLensVersion = "3.8.44";
+  piBarVersion = "0.3.38";
+  rpivBtwVersion = "1.10.2";
+  rpivTodoVersion = "1.10.2";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:pi-subagents@${piSubagentsVersion}";
+  piLensSource = "npm:pi-lens@${piLensVersion}";
+  piBarSource = "npm:pi-bar@${piBarVersion}";
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
@@ -217,9 +221,17 @@ let
     packages = [
       piMcpAdapterSource
       piSubagentsSource
+      piLensSource
+      piBarSource
       rpivBtwSource
       rpivTodoSource
     ];
+
+    # pi-bar reads `bar.progressModel` from Pi settings to pick the model used
+    # for one-line "what is pi doing right now" updates in the footer. Use a
+    # fast Anthropic model already enabled above so pi-bar does not have to
+    # auto-discover a provider at launch.
+    bar.progressModel = "anthropic/claude-haiku-4-5";
     extensions = [ ];
     skills = [
       "skills"
@@ -268,6 +280,29 @@ let
     ];
   };
 
+  # pi-bar persists footer segment choices and extension-status filters in
+  # ~/.pi/agent/pi-bar.json. Declare the full segment set so pi-bar's footer
+  # mirrors Codex's verbose `tui.status_line` as closely as the extension
+  # supports (model+thinking ~ Codex `model-with-reasoning`,
+  # context ~ Codex `context-window-size`/`context-used`, progress ~ Codex
+  # `run-state`, extensions ~ Codex `permissions`). pi-bar has no analogue
+  # for Codex `fast-mode`, `current-dir`, `five-hour-limit`, `weekly-limit`,
+  # or `codex-version`. `statusFilter.mode = "all"` keeps every extension
+  # status badge visible by default.
+  piBarConfig = {
+    segments = [
+      "model"
+      "thinking"
+      "context"
+      "extensions"
+      "progress"
+    ];
+    statusFilter = {
+      mode = "all";
+      hidden = [ ];
+    };
+  };
+
   piSubagentsConfig = {
     asyncByDefault = false;
     forceTopLevelAsync = false;
@@ -293,6 +328,14 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
   };
 
   home = {
+    # Pi Lens creates its state directory at startup. Fence cannot allow
+    # creation of this leaf directory without also allowing writes to $HOME, so
+    # create it during Home Manager activation before fenced Pi sessions start.
+    activation.piLensStateDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      mkdir -p "${config.home.homeDirectory}/.pi-lens"
+      chmod 700 "${config.home.homeDirectory}/.pi-lens"
+    '';
+
     packages = [
       piWrapperPackage
       piNpmPackage
@@ -301,6 +344,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     file = {
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;
+      ".pi/agent/pi-bar.json".text = builtins.toJSON piBarConfig;
       ".pi/agent/extensions/subagent/config.json".text = builtins.toJSON piSubagentsConfig;
       # Provider-router deploys its static extension files beside the generated
       # provider map consumed at runtime.
