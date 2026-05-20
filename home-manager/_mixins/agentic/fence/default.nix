@@ -165,10 +165,24 @@ let
         "git config --get-colorbool"
         "git config --list"
         "git config -l"
+        # OpenCode probes the working tree at startup with
+        # `git config --bool core.bare`, which reads the boolean
+        # interpretation of `core.bare`. The `--bool` flag is a
+        # type filter rather than a read verb, so it does not match
+        # any of the carve-outs above and falls through to the
+        # family-wide `git config` deny. Allow this argv prefix so
+        # `opencode-fenced` can start. Fence allow rules are
+        # token-prefix matches, so additional trailing arguments are
+        # also permitted, including boolean writes if git accepts later
+        # scope flags. This is the narrowest practical carve-out under
+        # the current argv-prefix matcher; the family-wide `git config`
+        # deny remains below.
+        "git config --bool core.bare"
         # gh auth: identity inspection and credential rotation are
-        # non-destructive under Fence. The git-config-rewriting
-        # subcommand, token disclosure, and stdin-driven token
-        # injection stay denied below. `gh auth login` is deliberately
+        # non-destructive under Fence. Claude Code shells out to
+        # `gh auth token`, so token disclosure is explicitly allowed
+        # while git-config rewriting and stdin-driven token injection
+        # stay denied below. `gh auth login` is deliberately
         # not allow-listed here because Fence's allow rules take
         # precedence over denies, so a bare `gh auth login` allow
         # would shadow the longer-prefix `gh auth login --with-token`
@@ -178,6 +192,7 @@ let
         "gh auth refresh"
         "gh auth status"
         "gh auth switch"
+        "gh auth token"
         # Literal-path `gh api` allows that pair with the family-wide
         # `gh api` deny below. These three endpoints are read-only,
         # body-free, and method-fixed, so allowing them directly avoids
@@ -328,15 +343,12 @@ let
         "gh alias set"
         # gh auth: the git-config-rewriting subcommand is denied to
         # protect the Nix-managed git configuration. `gh auth token`
-        # is denied because it prints the OAuth token to stdout,
-        # which an agent can capture and exfiltrate; the token still
-        # lives in `~/.config/gh/hosts.yml` for legitimate uses that
-        # need to read it. `gh auth login --with-token` accepts a
-        # token on stdin (or via `--with-token=PATH`) and silently
-        # rebinds the active credential, so both the positional and
-        # `=`-presence forms are denied.
+        # is allow-listed above because Claude Code requires it.
+        # `gh auth login --with-token` accepts a token on stdin (or
+        # via `--with-token=PATH`) and silently rebinds the active
+        # credential, so both the positional and `=`-presence forms
+        # are denied.
         "gh auth setup-git"
-        "gh auth token"
         "gh auth login --with-token"
         "gh auth login --with-token="
         # gh cache: deletion mutates CI cache state.

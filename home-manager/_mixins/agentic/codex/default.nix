@@ -128,7 +128,6 @@ let
     tui = {
       theme = "catppuccin-mocha";
       status_line = [
-        "run-state"
         "model-with-reasoning"
         "fast-mode"
         "current-dir"

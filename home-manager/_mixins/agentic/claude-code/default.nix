@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   inputs,
   lib,
@@ -17,30 +18,200 @@ let
     else
       pkgs.claude-code;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  ccColor = colorName: "hex:${builtins.substring 1 (-1) (catppuccinPalette.getColor colorName)}";
 
   # ACP adapter that lets Zed drive Claude Code over the Agent Client
   # Protocol. The binary is `claude-agent-acp`, sourced from the same
   # llm-agents flake input so the version is pinned alongside claude-code.
   claudeAgentAcpPackage = inputs.llm-agents.packages.${system}.claude-agent-acp;
+  ccstatuslinePackage = inputs.llm-agents.packages.${system}.ccstatusline;
+  usageRemainingPackage = pkgs.writeTextFile {
+    name = "ccstatusline-usage-remaining";
+    destination = "/bin/ccstatusline-usage-remaining";
+    executable = true;
+    text = ''
+      #!${lib.getExe pkgs.nodejs}
+      const fs = require("fs");
+      const https = require("https");
+      const os = require("os");
+      const path = require("path");
+
+      const bucketName = process.argv[2];
+      if (!["five_hour", "seven_day"].includes(bucketName)) {
+        process.exit(0);
+      }
+
+      const cacheMaxAgeMs = 180 * 1000;
+      const home = process.env.HOME || os.homedir();
+      const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, ".claude");
+      const cacheDir = process.env.XDG_CACHE_HOME
+        ? path.join(process.env.XDG_CACHE_HOME, "ccstatusline")
+        : path.join(home, ".cache", "ccstatusline");
+      const cacheFile = path.join(cacheDir, "usage-api.json");
+
+      function printRemaining(data) {
+        const bucket = data && Object.prototype.hasOwnProperty.call(data, bucketName)
+          ? data[bucketName]
+          : undefined;
+        const used = bucket === null ? 0 : bucket && bucket.utilization;
+        if (typeof used !== "number" || !Number.isFinite(used)) {
+          return false;
+        }
+        const remaining = Math.max(0, Math.min(100, 100 - used));
+        process.stdout.write(Math.round(remaining).toString() + "%\n");
+        return true;
+      }
+
+      function readJson(file) {
+        try {
+          return JSON.parse(fs.readFileSync(file, "utf8"));
+        } catch {
+          return null;
+        }
+      }
+
+      function tryFreshCache() {
+        try {
+          const stat = fs.statSync(cacheFile);
+          if (Date.now() - stat.mtimeMs > cacheMaxAgeMs) {
+            return false;
+          }
+          return printRemaining(readJson(cacheFile));
+        } catch {
+          return false;
+        }
+      }
+
+      function tryStaleCache() {
+        return printRemaining(readJson(cacheFile));
+      }
+
+      function readToken() {
+        const credentials = readJson(path.join(configDir, ".credentials.json"));
+        return credentials && credentials.claudeAiOauth && credentials.claudeAiOauth.accessToken;
+      }
+
+      function fetchUsage(token) {
+        const request = https.request({
+          hostname: "api.anthropic.com",
+          path: "/api/oauth/usage",
+          method: "GET",
+          timeout: 5000,
+          headers: {
+            Authorization: "Bearer " + token,
+            "anthropic-beta": "oauth-2025-04-20",
+          },
+        }, (response) => {
+          let body = "";
+          response.setEncoding("utf8");
+          response.on("data", (chunk) => {
+            body += chunk;
+          });
+          response.on("end", () => {
+            if (response.statusCode !== 200 || body.length === 0) {
+              tryStaleCache();
+              return;
+            }
+            const data = JSON.parse(body);
+            fs.mkdirSync(cacheDir, { recursive: true });
+            fs.writeFileSync(cacheFile, JSON.stringify(data));
+            printRemaining(data);
+          });
+        });
+
+        request.on("error", tryStaleCache);
+        request.on("timeout", () => {
+          request.destroy();
+          tryStaleCache();
+        });
+        request.end();
+      }
+
+      if (!tryFreshCache()) {
+        const token = readToken();
+        if (typeof token === "string" && token.length > 0) {
+          fetchUsage(token);
+        } else {
+          tryStaleCache();
+        }
+      }
+    '';
+  };
+  contextUsedPackage = pkgs.writeTextFile {
+    name = "ccstatusline-context-used";
+    destination = "/bin/ccstatusline-context-used";
+    executable = true;
+    text = ''
+      #!${lib.getExe pkgs.nodejs}
+      const fs = require("fs");
+
+      function toNumber(value) {
+        if (typeof value === "number" && Number.isFinite(value)) {
+          return value;
+        }
+        if (typeof value === "string" && value.trim().length > 0) {
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+      }
+
+      function usageTokens(usage) {
+        const direct = toNumber(usage);
+        if (direct !== null) {
+          return direct;
+        }
+        if (!usage || typeof usage !== "object") {
+          return null;
+        }
+        return [
+          usage.input_tokens,
+          usage.output_tokens,
+          usage.cache_creation_input_tokens,
+          usage.cache_read_input_tokens,
+        ].reduce((total, value) => total + (toNumber(value) || 0), 0);
+      }
+
+      function contextUsedPercentage(data) {
+        const contextWindow = data && data.context_window;
+        if (!contextWindow || typeof contextWindow !== "object") {
+          return 0;
+        }
+
+        const explicitUsed = toNumber(contextWindow.used_percentage);
+        if (explicitUsed !== null) {
+          return explicitUsed;
+        }
+
+        const windowSize = toNumber(contextWindow.context_window_size);
+        if (!windowSize || windowSize <= 0) {
+          return 0;
+        }
+
+        const currentUsage = usageTokens(contextWindow.current_usage);
+        if (currentUsage !== null) {
+          return currentUsage / windowSize * 100;
+        }
+
+        const totalInput = toNumber(contextWindow.total_input_tokens) || 0;
+        const totalOutput = toNumber(contextWindow.total_output_tokens) || 0;
+        return (totalInput + totalOutput) / windowSize * 100;
+      }
+
+      try {
+        const data = JSON.parse(fs.readFileSync(0, "utf8"));
+        const used = Math.max(0, Math.min(100, contextUsedPercentage(data)));
+        process.stdout.write(Math.round(used).toString() + "%\n");
+      } catch {
+        process.stdout.write("0%\n");
+      }
+    '';
+  };
 
   claudeFencedPackage = pkgs.writeShellApplication {
     name = "claude-fenced";
-    runtimeInputs = [
-      fencePackage
-      pkgs.ncurses
-    ];
+    runtimeInputs = [ fencePackage ];
     text = ''
-      if [ -z "''${CCSTATUSLINE_WIDTH:-}" ]; then
-        width="$(tput cols 2>/dev/null || true)"
-        case "$width" in
-          "" | *[!0-9]*)
-            ;;
-          *)
-            export CCSTATUSLINE_WIDTH="$width"
-            ;;
-        esac
-      fi
-
       exec fence -- ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
     '';
   };
@@ -53,32 +224,6 @@ let
   # gitignored files, and symlinked trees all participate. Wired into
   # `settings.fileSuggestion` below.
   fileSuggestionCommand = pkgs.callPackage ./file-suggestion { };
-
-  # Patch ccstatusline to accept null values for the five_hour and seven_day
-  # fields in the Anthropic usage API response. The API returns null for these
-  # fields when no usage data is available, but ccstatusline's Zod schema uses
-  # `.optional()` rather than `.nullish()` for the outer object wrapper.
-  # `.optional()` permits `undefined` but rejects `null`, so safeParse fails
-  # and the session-usage and weekly-usage widgets render "[Parse Error]"
-  # indefinitely. Replacing `.optional()` with `.nullish()` on the outer object
-  # accepts both undefined and null, matching the actual API contract.
-  #
-  # v2.2.0 expanded the schema to include resets_at alongside utilization,
-  # so the match pattern covers the full three-line block for each field.
-  ccstatuslinePatched = inputs.llm-agents.packages.${system}.ccstatusline.overrideAttrs (old: {
-    nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.perl ];
-    postInstall = (old.postInstall or "") + ''
-      # Patch five_hour and seven_day outer object wrappers from .optional()
-      # to .nullish() so that the Zod schema accepts null (not just undefined)
-      # when the Anthropic API returns null for those fields. The v2.2.0
-      # schema spans multiple lines; perl -0pe slurps the whole file so
-      # [^}]+ matches across newlines inside the object literal.
-      perl -i -0pe \
-        's/(five_hour: exports_external\.object\(\{[^}]+\}\))\.optional\(\),/$1.nullish(),/s;
-         s/(seven_day: exports_external\.object\(\{[^}]+\}\))\.optional\(\),/$1.nullish(),/s' \
-        "$out/bin/ccstatusline"
-    '';
-  });
 
   inherit (config.claude-code) lspServers;
 
@@ -115,8 +260,10 @@ in
       };
       packages = [
         inputs.llm-agents.packages.${system}.ccusage
-        ccstatuslinePatched
+        ccstatuslinePackage
         claudeAgentAcpPackage
+        usageRemainingPackage
+        contextUsedPackage
       ]
       ++ lib.optional host.is.linux claudeFencedPackage;
       # Skip Claude Code's bundled ripgrep in favour of the system binary on
@@ -137,11 +284,11 @@ in
       version = 3;
       # Plain values required: builtins.toJSON serialises lib.mkDefault wrappers
       # verbatim as attribute sets, which fails ccstatusline's Zod schema validation.
-      flexMode = "full-minus-40";
+      flexMode = "full";
       compactThreshold = 60;
       colorLevel = 2;
-      defaultPadding = " ";
-      defaultSeparator = "|";
+      defaultPadding = "";
+      defaultSeparator = " · ";
       inheritSeparatorColors = false;
       globalBold = false;
       powerline = {
@@ -154,91 +301,96 @@ in
       };
       lines = [
         [
-          # Line 1: model identity, session information, and block timing.
-          # Explicit separator widgets are intentionally absent: defaultSeparator
-          # already inserts a "|" between every adjacent widget pair automatically.
-          # Adding both causes triple separators (defaultSep + widget + defaultSep).
+          # Single-line layout mirroring the Codex status line ordering as
+          # closely as ccstatusline permits. Claude has no native equivalents
+          # for Codex run-state, fast-mode, or permissions segments.
           {
             id = "1";
             type = "model";
-            color = "cyan";
+            color = ccColor "yellow";
+            rawValue = true;
+          }
+          {
+            id = "2";
+            type = "thinking-effort";
+            color = ccColor "mauve";
+            rawValue = true;
           }
           {
             id = "3";
-            type = "session-clock";
-            color = "yellow";
+            type = "current-working-dir";
+            color = ccColor "green";
+            rawValue = true;
+            metadata = {
+              abbreviateHome = "true";
+            };
+          }
+          {
+            id = "4";
+            type = "custom-text";
+            color = ccColor "red";
+            customText = "5h ";
+            merge = "no-padding";
           }
           {
             id = "5";
-            type = "session-usage";
-            color = "brightBlue";
+            type = "custom-command";
+            color = ccColor "red";
+            commandPath = "${lib.getExe usageRemainingPackage} five_hour";
+            timeout = 1000;
+          }
+          {
+            id = "6";
+            type = "custom-text";
+            color = ccColor "red";
+            customText = "weekly ";
+            merge = "no-padding";
           }
           {
             id = "7";
-            type = "session-cost";
-            color = "green";
-          }
-          # Block Reset Timer uses type "reset-timer" per the widget manifest
-          # (BlockResetTimerWidget is registered under that key, not "block-reset-timer").
-          {
-            id = "10";
-            type = "block-timer";
-            color = "yellow";
+            type = "custom-command";
+            color = ccColor "red";
+            commandPath = "${lib.getExe usageRemainingPackage} seven_day";
+            timeout = 1000;
           }
           {
-            id = "12";
-            type = "reset-timer";
-            color = "brightYellow";
-          }
-          # Weekly widgets follow the block timers on the same line. When no
-          # weekly usage data is available they return null and are skipped by the
-          # renderer, so no blank line is ever reserved.
-          {
-            id = "14";
-            type = "weekly-usage";
-            color = "brightBlue";
-          }
-          {
-            id = "16";
-            type = "weekly-reset-timer";
-            color = "brightCyan";
+            id = "8";
+            type = "context-window";
+            color = ccColor "peach";
+            rawValue = true;
+            merge = "no-padding";
           }
           {
             id = "9";
-            type = "session-name";
-            color = "magenta";
-          }
-        ]
-        [
-          # Line 3: token counts and context bar.
-          {
-            id = "17";
-            type = "tokens-input";
-            color = "brightBlack";
+            type = "custom-text";
+            color = ccColor "peach";
+            customText = " window";
           }
           {
-            id = "19";
-            type = "tokens-output";
-            color = "brightBlack";
+            id = "10";
+            type = "custom-text";
+            color = ccColor "peach";
+            customText = "Context ";
+            merge = "no-padding";
           }
           {
-            id = "21";
-            type = "tokens-cached";
-            color = "brightBlack";
+            id = "11";
+            type = "custom-command";
+            color = ccColor "peach";
+            commandPath = lib.getExe contextUsedPackage;
+            timeout = 1000;
+            merge = "no-padding";
           }
           {
-            id = "23";
-            type = "tokens-total";
-            color = "white";
-          }
-          {
-            id = "25";
-            type = "context-bar";
-            color = "brightGreen";
+            id = "12";
+            type = "custom-text";
+            color = ccColor "peach";
+            customText = " used";
           }
         ]
       ];
     };
+
     programs = {
       bash.shellAliases = lib.mkIf host.is.linux {
         claude-fenced = lib.getExe claudeFencedPackage;
@@ -258,7 +410,7 @@ in
           # which Claude Code reads on startup to invoke the formatter.
           statusLine = {
             type = "command";
-            command = lib.getExe ccstatuslinePatched;
+            command = lib.getExe ccstatuslinePackage;
             padding = 0;
           };
 

@@ -18,8 +18,7 @@ command is declared by the corresponding agent mixin so it appears only when
 the standard agent entry point is also installed.
 
 The wrappers use `fence -- <agent>` so any following flags are passed to the
-agent rather than parsed as Fence flags. `claude-fenced` captures the terminal
-width in `CCSTATUSLINE_WIDTH` before entering Fence, then runs Claude with
+agent rather than parsed as Fence flags. `claude-fenced` runs Claude with
 `--dangerously-skip-permissions`; Fence is the permission boundary for that
 entry point. `codex-fenced` runs Codex with
 `--dangerously-bypass-approvals-and-sandbox`, leaving Fence as the only sandbox
@@ -89,12 +88,13 @@ exposed inside the sandbox.
 The GitHub CLI needs `~/.config/gh/hosts.yml` at startup, so that file is not
 read-denied. It cannot expose the `gh` credential only to the `gh` process.
 Fence allows the `gh auth` subcommands so the agent can inspect its identity
-and rotate credentials, but `gh auth setup-git`, `gh auth token`, and
-`gh auth login --with-token` (both the bare flag and the `--with-token=`
-forms) stay denied. `setup-git` would rewrite the Nix-managed git
-configuration, `token` discloses the OAuth credential to stdout, and
-`--with-token` silently rebinds the active credential from stdin or a file
-path. The git side of that closure is enforced directly: `git config` is a
+and rotate credentials. `gh auth token` is also allowed because Claude Code
+requires it, even though it prints the OAuth credential to stdout. `gh auth
+setup-git` and `gh auth login --with-token` (both the bare flag and the
+`--with-token=` forms) stay denied. `setup-git` would rewrite the Nix-managed
+git configuration, and `--with-token` silently rebinds the active credential
+from stdin or a file path. The git side of that closure is enforced directly:
+`git config` is a
 family-wide deny, with read-shaped subcommands and flags carved out so
 inspection still works. The modern reads (`git config get`, `get-all`,
 `get-regexp`, `get-urlmatch`, `list`) match on the first token after
