@@ -197,6 +197,12 @@ let
         export GOOGLE_GENERATIVE_AI_API_KEY
       fi
 
+      if [ "''${NOUGHTY_AGENT_LAUNCH_COMMAND:-pi}" = "pi-fenced" ]; then
+        export NOUGHTY_AGENT_ISOLATION="Fenced"
+      else
+        export NOUGHTY_AGENT_ISOLATION="Unfenced"
+      fi
+
       exec "${lib.getExe piPackage}" "$@"
     '';
   };
@@ -205,6 +211,7 @@ let
     name = "pi-fenced";
     runtimeInputs = [ fencePackage ];
     text = ''
+      export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
       exec fence -- ${lib.getExe' piWrapperPackage "pi"} "$@"
     '';
   };
@@ -323,12 +330,14 @@ let
 
   piFooterColors = {
     # Match the Catppuccin roles used by ccstatusline:
-    # model yellow, thinking mauve, cwd green, quota red, context peach.
+    # model yellow, thinking mauve, cwd green, quota red, context peach,
+    # isolation purple.
     model = "pi:warning";
     thinking = "pi:thinkingHigh";
     cwd = "pi:success";
     quota = "pi:error";
     context = "pi:bashMode";
+    isolation = "pi:thinkingHigh";
   };
 
   # pi-footer owns the full footer layout while quota-status publishes compact
@@ -349,8 +358,14 @@ let
       colorLevel = "ansi256";
     };
     extensionStatusRow = {
-      hiddenKeys = [ "noughty-quota:usage" ];
-      knownKeys = [ "noughty-quota:usage" ];
+      hiddenKeys = [
+        "noughty-quota:usage"
+        "noughty-isolation:status"
+      ];
+      knownKeys = [
+        "noughty-quota:usage"
+        "noughty-isolation:status"
+      ];
     };
     lines = [
       [
@@ -403,9 +418,49 @@ let
           fg = piFooterColors.context;
           text = " used";
         })
+        (piFooterWidget "isolation" "external-status" {
+          icon = " · ";
+          fg = piFooterColors.isolation;
+          externalStatusKey = "noughty-isolation:status";
+          hideWhenEmpty = true;
+          trimValue = 0;
+          preserveTrimStyles = true;
+        })
       ]
     ];
   };
+
+  piIsolationStatusExtension = ''
+    import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+
+    declare const process: {
+      env: Record<string, string | undefined>;
+    };
+
+    const STATUS_KEY = "noughty-isolation:status";
+
+    function isolationStatus(): string {
+      return process.env.NOUGHTY_AGENT_ISOLATION === "Fenced" ? "Fenced" : "Unfenced";
+    }
+
+    export default function registerIsolationStatus(pi: ExtensionAPI): void {
+      let ctx: ExtensionContext | undefined;
+
+      function publish(): void {
+        ctx?.ui.setStatus(STATUS_KEY, isolationStatus());
+      }
+
+      pi.on("session_start", (_event, context) => {
+        ctx = context;
+        publish();
+      });
+
+      pi.on("session_shutdown", () => {
+        ctx?.ui.setStatus(STATUS_KEY, undefined);
+        ctx = undefined;
+      });
+    }
+  '';
 
   # sub-core does not fetch quota data on session start; it first renders cached
   # state, then waits for its refresh timer. Keep that timer short enough that
@@ -476,6 +531,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
+      ".pi/agent/extensions/isolation-status/index.ts".text = piIsolationStatusExtension;
       ".pi/agent/extensions/pi-logo-filter/index.ts".source = ./extensions/pi-logo-filter/index.ts;
       ".pi/agent/extensions/quota-status/index.ts".source = ./extensions/quota-status/index.ts;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;

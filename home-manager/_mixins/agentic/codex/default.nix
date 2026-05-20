@@ -135,7 +135,6 @@ let
         "weekly-limit"
         "context-window-size"
         "context-used"
-        "codex-version"
         "permissions"
       ];
       status_line_use_colors = true;

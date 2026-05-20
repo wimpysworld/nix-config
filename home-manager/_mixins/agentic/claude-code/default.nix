@@ -207,12 +207,22 @@ let
       }
     '';
   };
-
   claudeFencedPackage = pkgs.writeShellApplication {
     name = "claude-fenced";
-    runtimeInputs = [ fencePackage ];
+    runtimeInputs = [
+      fencePackage
+      pkgs.ncurses
+    ];
     text = ''
-      exec fence -- ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+      width="$(tput cols 2>/dev/null || true)"
+      case "$width" in
+        "" | *[!0-9]*)
+          exec fence -- "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+          ;;
+        *)
+          exec fence -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+          ;;
+      esac
     '';
   };
 
@@ -386,6 +396,13 @@ in
             type = "custom-text";
             color = ccColor "peach";
             customText = " used";
+          }
+          {
+            id = "13";
+            type = "custom-command";
+            color = ccColor "mauve";
+            commandPath = "${lib.getExe pkgs.bash} -c 'printf \"%s\\n\" \"\${NOUGHTY_AGENT_ISOLATION:-Unfenced}\"'";
+            timeout = 1000;
           }
         ]
       ];
