@@ -16,13 +16,15 @@ let
   piMcpAdapterVersion = "2.6.1";
   piSubagentsVersion = "0.24.3";
   piLensVersion = "3.8.44";
-  piBarVersion = "0.3.38";
+  piFooterVersion = "0.3.0";
+  piSubCoreVersion = "1.5.0";
   rpivBtwVersion = "1.10.2";
   rpivTodoVersion = "1.10.2";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:pi-subagents@${piSubagentsVersion}";
   piLensSource = "npm:pi-lens@${piLensVersion}";
-  piBarSource = "npm:pi-bar@${piBarVersion}";
+  piFooterSource = "npm:pi-footer@${piFooterVersion}";
+  piSubCoreSource = "npm:@marckrenn/pi-sub-core@${piSubCoreVersion}";
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
@@ -151,6 +153,7 @@ let
     runtimeInputs = [
       piPackage
       pkgs.coreutils
+      pkgs.jq
     ];
     text = ''
       anthropic_api_key_path="${config.sops.secrets.ANTHROPIC_API_KEY.path}"
@@ -161,6 +164,28 @@ let
 
       ANTHROPIC_API_KEY="$(cat "$anthropic_api_key_path")"
       export ANTHROPIC_API_KEY
+
+      # pi-sub-core reads Anthropic quota data from the OAuth usage endpoint.
+      # Reuse Claude Code's login token when available; API keys cannot query
+      # the plan quota windows.
+      claude_config_dir="''${CLAUDE_CONFIG_DIR:-${config.home.homeDirectory}/.claude}"
+      claude_credentials_path="$claude_config_dir/.credentials.json"
+      if [ -z "''${ANTHROPIC_OAUTH_TOKEN:-}" ] && [ -r "$claude_credentials_path" ]; then
+        anthropic_oauth_token="$(
+          jq --raw-output '
+            (.claudeAiOauth.scopes // []) as $scopes
+            | .claudeAiOauth.accessToken? as $token
+            | if (($scopes | index("user:profile")) and ($token | type == "string") and ($token | length > 0))
+              then $token
+              else empty
+              end
+          ' "$claude_credentials_path" 2>/dev/null || true
+        )"
+        if [ -n "$anthropic_oauth_token" ]; then
+          ANTHROPIC_OAUTH_TOKEN="$anthropic_oauth_token"
+          export ANTHROPIC_OAUTH_TOKEN
+        fi
+      fi
 
       gemini_api_key_path="${config.sops.secrets.GEMINI_API_KEY.path}"
       if [ -r "$gemini_api_key_path" ]; then
@@ -230,16 +255,12 @@ let
       piMcpAdapterSource
       piSubagentsSource
       piLensSource
-      piBarSource
+      piFooterSource
+      piSubCoreSource
       rpivBtwSource
       rpivTodoSource
     ];
 
-    # pi-bar reads `bar.progressModel` from Pi settings to pick the model used
-    # for one-line "what is pi doing right now" updates in the footer. Use a
-    # fast Anthropic model already enabled above so pi-bar does not have to
-    # auto-discover a provider at launch.
-    bar.progressModel = "anthropic/claude-haiku-4-5";
     extensions = [ ];
     skills = [
       "skills"
@@ -288,26 +309,108 @@ let
     ];
   };
 
-  # pi-bar persists footer segment choices and extension-status filters in
-  # ~/.pi/agent/pi-bar.json. Declare the full segment set so pi-bar's footer
-  # mirrors Codex's verbose `tui.status_line` as closely as the extension
-  # supports (model+thinking ~ Codex `model-with-reasoning`,
-  # context ~ Codex `context-window-size`/`context-used`, progress ~ Codex
-  # `run-state`, extensions ~ Codex `permissions`). pi-bar has no analogue
-  # for Codex `fast-mode`, `current-dir`, `five-hour-limit`, `weekly-limit`,
-  # or `codex-version`. `statusFilter.mode = "all"` keeps every extension
-  # status badge visible by default.
-  piBarConfig = {
-    segments = [
-      "model"
-      "thinking"
-      "context"
-      "extensions"
-      "progress"
+  piFooterWidget = id: type: options: {
+    inherit id type;
+    enabled = true;
+    inherit options;
+  };
+
+  piFooterColors = {
+    # Match the Catppuccin roles used by ccstatusline:
+    # model yellow, thinking mauve, cwd green, quota red, context peach.
+    model = "pi:warning";
+    thinking = "pi:thinkingHigh";
+    cwd = "pi:success";
+    quota = "pi:error";
+    context = "pi:bashMode";
+  };
+
+  # pi-footer owns the full footer layout while quota-status publishes compact
+  # provider quota text through `ctx.ui.setStatus("noughty-quota:usage", ...)`.
+  # Prefix separators live in widget icons so optional thinking/quota fields
+  # disappear without leaving stray separators.
+  piFooterConfig = {
+    version = 1;
+    enabled = true;
+    preset = "pi-footer";
+    separator = "none";
+    separatorFg = "default";
+    separatorBg = "default";
+    iconMode = "text";
+    minimalist = false;
+    terminal = {
+      widthMode = "full";
+      colorLevel = "ansi256";
+    };
+    extensionStatusRow = {
+      hiddenKeys = [ "noughty-quota:usage" ];
+      knownKeys = [ "noughty-quota:usage" ];
+    };
+    lines = [
+      [
+        (piFooterWidget "model-provider" "model-provider" {
+          raw = true;
+          fg = piFooterColors.model;
+        })
+        (piFooterWidget "thinking" "thinking-level" {
+          icon = " · ";
+          fg = piFooterColors.thinking;
+          hideWhenEmpty = true;
+        })
+        (piFooterWidget "cwd" "cwd" {
+          icon = " · ";
+          fg = piFooterColors.cwd;
+          cwdDisplayStyle = "full-home";
+          segments = 3;
+        })
+        (piFooterWidget "quota" "external-status" {
+          icon = " · ";
+          fg = piFooterColors.quota;
+          externalStatusKey = "noughty-quota:usage";
+          hideWhenEmpty = true;
+          trimValue = 0;
+          preserveTrimStyles = true;
+        })
+        (piFooterWidget "context-window" "context-window" {
+          icon = " · ";
+          fg = piFooterColors.context;
+          tokenFormatStyle = "compact";
+          contextConditionalColors = true;
+          warningFg = "pi:warning";
+          dangerFg = "pi:error";
+        })
+        (piFooterWidget "context-window-label" "custom-text" {
+          raw = true;
+          fg = piFooterColors.context;
+          text = " window";
+        })
+        (piFooterWidget "context-used" "context" {
+          icon = " · Context ";
+          fg = piFooterColors.context;
+          tokenFormatStyle = "compact";
+          contextConditionalColors = true;
+          warningFg = "pi:warning";
+          dangerFg = "pi:error";
+        })
+        (piFooterWidget "context-used-label" "custom-text" {
+          raw = true;
+          fg = piFooterColors.context;
+          text = " used";
+        })
+      ]
     ];
-    statusFilter = {
-      mode = "all";
-      hidden = [ ];
+  };
+
+  # sub-core does not fetch quota data on session start; it first renders cached
+  # state, then waits for its refresh timer. Keep that timer short enough that
+  # the footer fills in promptly, and refresh again when work starts.
+  piSubCoreConfig = {
+    version = 3;
+    behavior = {
+      refreshInterval = 5;
+      minRefreshInterval = 5;
+      refreshOnTurnStart = true;
+      refreshOnToolResult = false;
     };
   };
 
@@ -325,6 +428,11 @@ let
 in
 lib.mkIf (noughtyLib.userHasTag "developer") {
   sops.secrets.ANTHROPIC_API_KEY = {
+    sopsFile = aiSopsFile;
+    mode = "0400";
+  };
+
+  sops.secrets.GEMINI_API_KEY = {
     sopsFile = aiSopsFile;
     mode = "0400";
   };
@@ -352,7 +460,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     file = {
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;
-      ".pi/agent/pi-bar.json".text = builtins.toJSON piBarConfig;
+      ".pi/agent/extensions/pi-footer.json".text = builtins.toJSON piFooterConfig;
+      ".pi/agent/pi-sub-core-settings.json".text = builtins.toJSON piSubCoreConfig;
       ".pi/agent/extensions/subagent/config.json".text = builtins.toJSON piSubagentsConfig;
       # Provider-router deploys its static extension files beside the generated
       # provider map consumed at runtime.
@@ -361,6 +470,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
+      ".pi/agent/extensions/quota-status/index.ts".source = ./extensions/quota-status/index.ts;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
     }
     // piAssistant.homeFiles;
