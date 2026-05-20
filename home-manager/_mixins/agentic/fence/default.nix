@@ -56,7 +56,7 @@ let
         "~/.copilot/**"
 
         # OpenCode
-		"${config.xdg.configHome}/opencode"
+        "${config.xdg.configHome}/opencode"
         "~/.opencode/**"
 
         # Pi
@@ -76,7 +76,7 @@ let
         "~/.zcompdump*"
 
         # XDG directories
-		"${config.xdg.cacheHome}/**"
+        "${config.xdg.cacheHome}/**"
         "${config.xdg.dataHome}/**"
         "${config.xdg.stateHome}/**"
         "~/.local/go"
@@ -109,8 +109,9 @@ let
         "~/.cargo/credentials"
         "~/.cargo/credentials.toml"
 
-        # SOPS
+        # SOPS: user age key, host age key, and runtime decrypted secrets.
         "${config.xdg.configHome}/sops/**"
+        "/var/lib/private/sops/**"
 
         # History
         "${homeDirectory}/.bash_history"
@@ -136,6 +137,14 @@ let
         "git rebase --abort"
         "git rebase --continue"
         "gh auth token"
+        # Literal-path `gh api` allows that pair with the broad `gh api`
+        # deny below. These three endpoints are read-only, body-free, and
+        # method-fixed, so allowing them directly avoids forcing every
+        # invocation through `gh-api-safe`. All other read-shaped requests
+        # must go via the wrapper.
+        "gh api rate_limit"
+        "gh api meta"
+        "gh api octocat"
       ];
       deny = [
         "just switch"

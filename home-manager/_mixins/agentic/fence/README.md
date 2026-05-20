@@ -41,13 +41,15 @@ keeps the generated config reviewable: full outbound network access is expressed
 as `allowedDomains = ["*"]`, with no inherited domain deny-list. Filesystem and
 command policy still apply.
 
-The Home Manager mixin uses a local Fence package override with
-`skip-proxy-bridge-for-direct-network.patch`. The patch skips Fence's
-HTTP/SOCKS proxies and Linux proxy bridges only when `allowedDomains` contains
-the exact wildcard `"*"` and `deniedDomains` is empty. This keeps concurrent
-fenced agents from colliding on the sandbox-side fixed proxy listener ports in
-direct-network mode while preserving proxy behaviour for explicit allowlists,
-empty allowlists, and wildcard configurations that also define denials.
+The Home Manager mixin builds Fence from the `llm-agents` flake input with a
+single local override in [`package.nix`](./package.nix). The override rewrites
+`linuxArgvExecMaxArgs` in `internal/sandbox/runtime_exec_argv_linux.go` to
+`4096`, raising the per-process argv vector cap that Fence's Linux argv
+runtime-exec policy will inspect. The upstream default is too low for
+long-running native-toolchain builds (C, C++, Go, Rust), whose compile and
+link invocations exceed Fence's argv cap and would otherwise be rejected
+before the policy could decide; raising it lets those builds complete under
+the policy.
 
 The launch directory is writable through Fence's `"."` path rule. This matters
 on Linux because Fence may otherwise re-bind the current project read-only while
@@ -76,6 +78,13 @@ Landlock can execute Nix-store binaries and the sandbox can resolve Home Manager
 profile shims. Secret paths remain read-denied. Writes are allowed to the launch
 directory, common agent state, package caches, XDG config/data/state paths, and
 `/tmp`.
+
+SOPS material is denied across both the Home Manager and NixOS sides of this
+flake: the user age key under `~/.config/sops/`, and the host age key under
+`/var/lib/private/sops/`. Runtime mounts at `/run/secrets` and `/run/secrets.d`
+are protected via on-disk file permissions. The user-facing sops-nix render
+directory at `~/.config/sops-nix` is intentionally read-allowed so API keys are
+exposed inside the sandbox.
 
 The GitHub CLI needs `~/.config/gh/hosts.yml` at startup, so that file is not
 read-denied. Fence allows `gh auth token` because Claude Code calls it, but
