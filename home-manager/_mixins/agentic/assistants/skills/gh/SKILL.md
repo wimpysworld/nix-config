@@ -24,7 +24,8 @@ gh pr create --fill                                             # title/body fro
 gh pr create --title "feat: add X" --body "..." --draft
 gh pr create --base main --reviewer alice,bob --label "needs-review"
 
-# Merge
+# Merge — `gh pr merge` is denied under Fence. Output the command for
+# the operator to run in an unfenced shell; do not execute it.
 gh pr merge 123 --squash --delete-branch
 gh pr merge 123 --auto --squash                                 # merge once CI passes
 
@@ -101,7 +102,8 @@ gh run rerun 12345678
 gh run rerun 12345678 --failed                                  # only failed jobs
 gh run rerun 12345678 --debug                                   # with debug logging
 
-# Trigger workflow_dispatch
+# Trigger workflow_dispatch — `gh workflow run`, `enable`, and `disable`
+# are denied under Fence. Output the command for operator consent.
 gh workflow run deploy.yml --ref main
 gh workflow run deploy.yml -f env=staging -f version=1.2.3
 
@@ -113,18 +115,19 @@ gh workflow view build.yml
 ## Releases
 
 ```bash
-# Create
+# Create / upload — the `gh release` family is denied under Fence except
+# for `list`, `view`, and `download`. Mutations below require an unfenced
+# shell with explicit operator consent.
 gh release create v1.2.3 --generate-notes
 gh release create v1.2.3 --title "v1.2.3" --notes "Fixes #123" dist/*.tar.gz
 gh release create v1.2.3 --draft --prerelease
 gh release create v1.2.3 --notes-from-tag                      # use annotated tag message
+gh release upload v1.2.3 dist/binary.tar.gz
 
-# List / view
+# List / view / download (allow-listed reads)
 gh release list
 gh release view v1.2.3
-
-# Upload asset to existing release
-gh release upload v1.2.3 dist/binary.tar.gz
+gh release download v1.2.3
 ```
 
 ## Repository
@@ -138,11 +141,12 @@ gh repo view owner/repo --json name,description,defaultBranchRef,isPrivate
 gh repo clone owner/repo
 gh repo fork owner/repo --clone
 
-# Create
+# Create / edit — denied under Fence (`gh repo create`, `gh repo edit`,
+# `rename`, `set-default`, `sync`, `archive`, `unarchive`, `deploy-key`).
+# Output for operator-run unfenced shell.
 gh repo create my-project --private --clone
 gh repo create my-project --public --source=. --push
 
-# Edit settings
 gh repo edit --default-branch main --enable-auto-merge
 gh repo edit --description "New description" --homepage "https://example.com"
 
@@ -175,9 +179,9 @@ input, gated on explicit operator consent.
 |---|---|
 | Read-only REST fetch | `gh-api-safe <path>` |
 | GraphQL read (queries only) | `gh-api-safe graphql -f query='…'` |
-| Dedicated subcommand exists | that subcommand (`gh pr edit`, `gh label create`, ...) |
+| Dedicated subcommand exists | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
 | Mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell |
-| Field input from file (`-F x=@file`) | raw `gh api` |
+| Field input from file (`-F x=@file`) | raw `gh api` in unfenced shell |
 
 `gh-api-safe` wraps `gh api`, enforces a read-shaped allow-list with a
 defence-in-depth deny-list on the REST path, blocks
@@ -215,9 +219,11 @@ gh-api-safe graphql -f query=@query.graphql
 gh-api-safe notifications --jq '.[] | {reason, subject: .subject.title}'
 ```
 
-See `home-manager/_mixins/agentic/fence/README.md` for the read-only
-fence policy and `home-manager/_mixins/development/github/gh-api-safe.sh`
-for the wrapper source.
+See `home-manager/_mixins/agentic/fence/default.nix` for the
+authoritative `command.allow` / `command.deny` lists,
+`home-manager/_mixins/agentic/fence/README.md` for the policy overview,
+and `home-manager/_mixins/development/github/gh-api-safe.sh` for the
+wrapper source.
 
 ### Unsafe: requires unfenced shell
 

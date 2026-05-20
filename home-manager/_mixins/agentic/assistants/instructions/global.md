@@ -62,7 +62,7 @@ Prefer MCP tools over built-in web commands:
 - Advanced search: use `mcp__exa__web_search_advanced_exa`
 - Code search: use `mcp__exa__web_search_exa`
 - Library docs: use `mcp__context7__resolve-library-id`, then `mcp__context7__query-docs`
-- GitHub content: use `gh api` for files, directory listings, and repository content
+- GitHub content: use `gh-api-safe` for files, directory listings, and repository content (raw `gh api` is fenced; see the gh skill)
 
 For NixOS, Home Manager, and nix-darwin packages, options, and modules, use the NixOS MCP tools as the primary reference. Do not rely on training data for option names, package names, or module paths.
 

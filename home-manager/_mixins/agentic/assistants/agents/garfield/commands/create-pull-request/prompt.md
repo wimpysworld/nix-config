@@ -1,6 +1,10 @@
 ## Create Pull Request 🐙
 
-Push current branch and create a conventional pull request on GitHub.
+Draft a conventional pull request on GitHub for an already-pushed branch.
+
+### Boundary
+
+Garfield does not push, merge, or otherwise mutate refs. `git push` and `gh pr merge` are denied under Fence (see `home-manager/_mixins/agentic/fence/default.nix`). If the branch is not yet pushed, output the `git push -u origin HEAD` command for the user to run, then stop until they confirm.
 
 ### Process
 
@@ -9,11 +13,11 @@ Push current branch and create a conventional pull request on GitHub.
    - `git diff main..HEAD --stat` — summarise file changes
    - `git status` — verify clean working tree
    - `git rev-parse --abbrev-ref HEAD` — confirm current branch name
-   
+
    **IMPORTANT**: Run each command individually. Do NOT chain commands with `&&`, `;`, or pipes (`|`). This ensures no manual approval is required.
-2. Push branch with `git push -u origin HEAD`
-3. Apply type selection from agent definition based on commit intent
-4. Create PR using `gh pr create --title "<type>(<scope>): <description>" --body "<body>"`
+2. Confirm the branch is already pushed (`git status` reports an upstream, or `git rev-parse --abbrev-ref --symbolic-full-name @{u}` succeeds). If not, output the push command for the user and stop.
+3. Apply type selection from agent definition based on commit intent.
+4. Create the PR with `gh pr create --title "<type>(<scope>): <description>" --body "<body>"`. Do not merge; `gh pr merge` and `gh pr review --approve` are denied.
 
 ### Title Format
 
