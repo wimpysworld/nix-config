@@ -117,7 +117,7 @@ in
       # Full CUA (Common User Access) clipboard support.
 
       # Application control
-      app_exit = "ctrl+q"; # Quit application (Ctrl+Q instead of Ctrl+C/D)
+      app_exit = "ctrl+d"; # Quit application, unified across all agents on Ctrl+D
       session_interrupt = "escape"; # Interrupt model (keep default)
 
       # Text input cursor movement - standard arrow keys only

@@ -315,11 +315,14 @@ let
   };
 
   piKeybindings = {
-    # Bind Ctrl+Q to quit alongside the default Ctrl+D (when editor is empty).
-    "app.exit" = [
-      "ctrl+d"
-      "ctrl+q"
-    ];
+    # Unify quit across agents on Ctrl+D: works natively in Claude Code,
+    # Codex, OpenCode, and Pi, so a single keybind covers every TUI.
+    # `app.interrupt` stays on Escape, `app.clear` keeps Ctrl+C as the
+    # editor-clear shortcut (non-exit semantics).
+    "app.exit" = [ "ctrl+d" ];
+    # Default is ["escape", "ctrl+c"]; drop Ctrl+C from list-cancel so the
+    # key is reserved for editor-clear only.
+    "tui.select.cancel" = [ "escape" ];
   };
 
   piFooterWidget = id: type: options: {
