@@ -29,7 +29,9 @@ gh pr merge 123 --squash --delete-branch
 gh pr merge 123 --auto --squash                                 # merge once CI passes
 
 # Review & comment
-gh pr review 123 --approve
+# Note: --approve is denied under Fence (no self-approval). Use
+# --comment or --request-changes for review feedback.
+gh pr review 123 --comment --body "LGTM"
 gh pr review 123 --request-changes --body "Please fix X"
 gh pr comment 123 --body "LGTM"
 gh pr comment 123 --edit-last --body "Updated: LGTM"
@@ -159,34 +161,79 @@ gh search issues "memory leak" --repo owner/repo --state open
 gh search prs "fix authentication" --author alice --merged
 gh search prs --repo owner/repo --checks failure --state open   # failing CI
 
-# Code (legacy engine - use gh api for regex)
+# Code (legacy engine; for regex use `gh-api-safe 'search/code?q=...'`)
 gh search code "sops.placeholder" --repo owner/repo --language nix
 ```
 
-## Raw API (escape hatch)
+## Raw API
 
-Placeholders `{owner}`, `{repo}`, `{branch}` are replaced from current git context. Default method is GET; switches to POST when parameters are added.
+Default to a dedicated `gh` subcommand. Use `gh-api-safe` only when no
+subcommand fits. Reserve raw `gh api` for mutations or `@file` field
+input, gated on explicit operator consent.
+
+| Situation | Use |
+|---|---|
+| Read-only REST fetch | `gh-api-safe <path>` |
+| GraphQL read (queries only) | `gh-api-safe graphql -f query='…'` |
+| Dedicated subcommand exists | that subcommand (`gh pr edit`, `gh label create`, ...) |
+| Mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell |
+| Field input from file (`-F x=@file`) | raw `gh api` |
+
+`gh-api-safe` wraps `gh api`, enforces a read-shaped allow-list with a
+defence-in-depth deny-list on the REST path, blocks
+`-X`/`--method`/`-f`/`-F`/`--field`/`--raw-field`/`--input` (except `query=` value under `graphql`, where `@file` is still rejected), and runs a
+best-effort GraphQL heuristic that rejects any query whose body contains
+a surviving `mutation` or `subscription` keyword after comments and
+string literals have been stripped. The heuristic is not a real GraphQL
+parser; aliased mutations are out of scope and `@file` queries are
+rejected outright. Policy rejections exit 64 with a single-line reason
+on stderr; on rejection, switch to the matching dedicated subcommand or
+escalate to an unfenced shell rather than retrying the same call. Run
+`gh-api-safe --help` for the full policy summary.
+
+Placeholders `{owner}`, `{repo}`, `{branch}` are replaced from current
+git context. Default method is GET.
 
 ```bash
 # GET with jq
-gh api repos/{owner}/{repo}/actions/runs \
+gh-api-safe repos/{owner}/{repo}/actions/runs \
   --jq '.workflow_runs[:5] | .[] | {name, conclusion, html_url}'
 
 # Paginate all results
-gh api repos/{owner}/{repo}/issues --paginate --jq '.[].title'
+gh-api-safe repos/{owner}/{repo}/issues --paginate --jq '.[].title'
 
+# GraphQL (heuristic-screened; mutations and subscriptions are rejected)
+gh-api-safe graphql -f query='{ viewer { login } }'
+
+# Rejected: surviving `mutation` keyword (exit 64 on stderr)
+gh-api-safe graphql -f query='mutation { addStar(input: {starrableId: "X"}) { starrable { id } } }'
+
+# Out of scope: `@file` query bodies are rejected outright (exit 64)
+gh-api-safe graphql -f query=@query.graphql
+
+# Notifications (read only; PUT mark-as-read is blocked by the wrapper)
+gh-api-safe notifications --jq '.[] | {reason, subject: .subject.title}'
+```
+
+See `home-manager/_mixins/agentic/fence/README.md` for the read-only
+fence policy and `home-manager/_mixins/development/github/gh-api-safe.sh`
+for the wrapper source.
+
+### Unsafe: requires unfenced shell
+
+> ⚠️ The commands below mutate GitHub state. They use `gh api` directly
+> with `-X` / `-F` / `--input` and are rejected by `gh-api-safe`. They must
+> only be run in an unfenced shell with explicit operator consent. Prefer
+> the dedicated `gh` subcommands (`gh issue edit`, `gh label create`, etc.)
+> wherever they exist.
+
+```bash
 # PATCH / POST
 gh api repos/{owner}/{repo}/issues/456 -X PATCH -F state=closed
 gh api repos/{owner}/{repo}/labels -F name="triage" -F color="e4e669"
 
 # Typed fields (-F): true/false/null/integers become JSON types; @file reads file
 gh api repos/{owner}/{repo}/issues -F title="Bug" -F body=@issue.md
-
-# GraphQL
-gh api graphql -f query='{ viewer { login } }'
-
-# Notifications
-gh api notifications --jq '.[] | {reason, subject: .subject.title}'
 ```
 
 ## JSON Output Pattern
@@ -214,5 +261,6 @@ gh issue list --json number,title,labels | jq '.[] | select(.labels | any(.name 
 ```bash
 gh status                  # cross-repo overview: assigned PRs, review requests, mentions
 gh auth status             # active account, token scopes, expiry
-gh auth token              # print current token
+# `gh auth token` is denied under Fence. If a tool needs the token,
+# read it from ~/.config/gh/hosts.yml directly (filesystem-allowed).
 ```

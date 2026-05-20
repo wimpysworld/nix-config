@@ -136,15 +136,100 @@ let
         "git reset --mixed"
         "git rebase --abort"
         "git rebase --continue"
-        "gh auth token"
-        # Literal-path `gh api` allows that pair with the broad `gh api`
-        # deny below. These three endpoints are read-only, body-free, and
-        # method-fixed, so allowing them directly avoids forcing every
-        # invocation through `gh-api-safe`. All other read-shaped requests
-        # must go via the wrapper.
+        # git config: read-shaped subcommands and flags carved out
+        # of the family-wide `git config` deny below. The modern
+        # subcommand reads (`get`, `get-all`, `get-regexp`,
+        # `get-urlmatch`, `list`) are matched on the first token
+        # after `config`, so any destination flag (`--global`,
+        # `--system`, `--local`, `--file`, `--worktree`, `--blob`)
+        # trails the read token and the rule still fires. The
+        # legacy flag reads (`--get`, `--get-all`, `--get-regexp`,
+        # `--get-urlmatch`, `--get-color`, `--get-colorbool`,
+        # `--list`, `-l`) only match when the read flag is the
+        # first token after `config`; a destination flag placed
+        # before the read flag (e.g. `git config --global --get
+        # user.email`) is not carved out and falls through to the
+        # family-wide deny.
+        "git config get"
+        "git config get-all"
+        "git config get-regexp"
+        "git config get-urlmatch"
+        "git config list"
+        "git config --get"
+        "git config --get-all"
+        "git config --get-regexp"
+        "git config --get-urlmatch"
+        "git config --get-color"
+        "git config --get-colorbool"
+        "git config --list"
+        "git config -l"
+        # gh auth: identity inspection and credential rotation are
+        # non-destructive under Fence. The git-config-rewriting
+        # subcommand, token disclosure, and stdin-driven token
+        # injection stay denied below. `gh auth login` is deliberately
+        # not allow-listed here because Fence's allow rules take
+        # precedence over denies, so a bare `gh auth login` allow
+        # would shadow the longer-prefix `gh auth login --with-token`
+        # deny. The bare interactive form remains permitted by default
+        # because nothing else denies it.
+        "gh auth logout"
+        "gh auth refresh"
+        "gh auth status"
+        "gh auth switch"
+        # Literal-path `gh api` allows that pair with the family-wide
+        # `gh api` deny below. These three endpoints are read-only,
+        # body-free, and method-fixed, so allowing them directly avoids
+        # forcing every invocation through `gh-api-safe`. All other
+        # read-shaped requests must go via the wrapper.
         "gh api rate_limit"
         "gh api meta"
         "gh api octocat"
+        # gh extension discovery reads. These pair with the family-wide
+        # `gh extension`, `gh extensions`, and `gh ext` denies below so
+        # the agent can search and browse without being able to install,
+        # remove, exec, or upgrade extensions.
+        "gh extension list"
+        "gh extension search"
+        "gh extension browse"
+        "gh extensions list"
+        "gh extensions search"
+        "gh extensions browse"
+        "gh ext list"
+        "gh ext search"
+        "gh ext browse"
+        # gh release reads. These pair with the family-wide `gh release`
+        # deny below so the agent can inspect and download published
+        # artefacts without being able to publish, edit, or delete them.
+        "gh release list"
+        "gh release view"
+        "gh release download"
+        # gh project reads. These pair with the family-wide `gh project`
+        # deny below so the agent can inspect project boards without
+        # being able to mutate items, fields, or project state.
+        "gh project view"
+        "gh project list"
+        "gh project field-list"
+        "gh project item-list"
+        # Discovery reads under otherwise family-wide-denied gh
+        # namespaces. The principle is: list-like subcommands stay
+        # available so the agent can inspect state, while any mutation
+        # remains denied by the family-wide entry below. Name and
+        # fingerprint disclosure under identity-material and
+        # CI-configuration namespaces is accepted as the cost of
+        # discovery; secret values are not exposed because the only
+        # read subcommand carved out is the name-listing one.
+        "gh codespace list"
+        "gh codespace view"
+        "gh cs list"
+        "gh cs view"
+        "gh gpg-key list"
+        "gh ssh-key list"
+        "gh label list"
+        "gh label view"
+        "gh secret list"
+        "gh variable list"
+        "gh variable get"
+        "gh repo deploy-key list"
       ];
       deny = [
         "just switch"
@@ -154,6 +239,18 @@ let
         "git reset"
         "git clean"
         "git rebase"
+        # git config: family-wide deny to protect the Nix-managed
+        # git configuration and stop the agent rewriting
+        # credential helpers, `safe.directory` entries, aliases,
+        # remote URLs, or any other config surface. Read-shaped
+        # subcommands and flags are carved out in the allow block
+        # above; every write shape (bare positional assignment,
+        # `--add`, `--unset`, `--unset-all`, `--replace-all`,
+        # `--rename-section`, `--remove-section`, `--edit`, the
+        # modern `set`/`unset`/`rename-section`/`remove-section`
+        # subcommands) and every uncarved destination flag
+        # (`--file`, `--blob`, etc.) falls through to this deny.
+        "git config"
         "home-manager switch"
         "home-manager switch-generation"
         "nixos-rebuild switch"
@@ -226,100 +323,115 @@ let
         "cargo publish"
         "twine upload"
         "gem push"
+        # Raw gh api is the escape hatch. Reads must go via
+        # gh-api-safe; the literal allow entries above are the only
+        # bypass.
         "gh api"
+        # gh alias: shell aliasing is a configuration surface.
         "gh alias delete"
         "gh alias import"
         "gh alias set"
-        "gh auth login"
-        "gh auth logout"
-        "gh auth refresh"
+        # gh auth: the git-config-rewriting subcommand is denied to
+        # protect the Nix-managed git configuration. `gh auth token`
+        # is denied because it prints the OAuth token to stdout,
+        # which an agent can capture and exfiltrate; the token still
+        # lives in `~/.config/gh/hosts.yml` for legitimate uses that
+        # need to read it. `gh auth login --with-token` accepts a
+        # token on stdin (or via `--with-token=PATH`) and silently
+        # rebinds the active credential, so both the positional and
+        # `=`-presence forms are denied.
         "gh auth setup-git"
-        "gh auth status"
-        "gh auth switch"
+        "gh auth token"
+        "gh auth login --with-token"
+        "gh auth login --with-token="
+        # gh cache: deletion mutates CI cache state.
         "gh cache delete"
-        "gh codespace create"
-        "gh codespace delete"
-        "gh codespace edit"
-        "gh codespace ports visibility"
-        "gh codespace rebuild"
-        "gh codespace stop"
-        "gh cs create"
-        "gh cs delete"
-        "gh cs edit"
-        "gh cs ports visibility"
-        "gh cs rebuild"
-        "gh cs stop"
-        "gh config set"
-        "gh extension browse"
-        "gh extension exec"
-        "gh extension install"
-        "gh extension remove"
-        "gh extension upgrade"
-        "gh extensions browse"
-        "gh extensions exec"
-        "gh extensions install"
-        "gh extensions remove"
-        "gh extensions upgrade"
-        "gh ext browse"
-        "gh ext exec"
-        "gh ext install"
-        "gh ext remove"
-        "gh ext upgrade"
-        "gh gist delete"
+        # gh codespace: creates and operates remote infrastructure.
+        # Family-wide deny covers both the canonical name and the `cs`
+        # alias, including `logs`, which can stream secret values
+        # printed by codespace processes. Discovery reads (`list`,
+        # `view`) are carved out above.
+        "gh codespace"
+        "gh cs"
+        # gh config: the entire CLI-configuration namespace, including
+        # reads. `gh config get oauth_token --host github.com` can
+        # disclose the OAuth token stored in `~/.config/gh/hosts.yml`,
+        # so no read carve-outs are offered here even though the rest
+        # of the gh policy applies the list-like-read principle.
+        "gh config"
+        # gh extension: family-wide deny. Discovery reads are carved
+        # out in the allow block above.
+        "gh extension"
+        "gh extensions"
+        "gh ext"
+        # gh gist: creation, edit, and deletion are denied. Gists are
+        # a public-by-default exfiltration channel: the agent can
+        # publish arbitrary file contents in a single command and the
+        # action is invisible to repo-level review. This reverses the
+        # earlier "git-tracked, safe" decision on batfink's
+        # exfil-channel finding. Reads (`view`, `list`, `clone`) stay
+        # allow-by-default.
+        "gh gist create"
         "gh gist edit"
-        "gh gist rename"
-        "gh gpg-key add"
-        "gh gpg-key delete"
-        "gh issue close"
+        "gh gist delete"
+        # gh gpg-key and gh ssh-key: identity material. The `list`
+        # subcommand is carved out above so the agent can enumerate
+        # registered keys; addition and removal remain denied.
+        "gh gpg-key"
+        "gh ssh-key"
+        # gh issue: destructive and moderation-config subcommands.
         "gh issue delete"
         "gh issue lock"
-        "gh issue transfer"
         "gh issue unlock"
-        "gh label clone"
-        "gh label create"
-        "gh label delete"
-        "gh label edit"
-        "gh project close"
-        "gh project delete"
-        "gh project field-delete"
-        "gh project item-archive"
-        "gh project item-delete"
-        "gh project unlink"
+        "gh issue transfer"
+        "gh issue pin"
+        "gh issue unpin"
+        # gh label: repo-level configuration of triage taxonomy.
+        # Family-wide deny so per-project label management stays under
+        # separate tooling. `gh label list` is carved out above for
+        # discovery.
+        "gh label"
+        # gh pr: merges, moderation, and self-approval. `update-branch`
+        # is intentionally not denied so the agent can resolve
+        # out-of-date PR branches. Both the positional `--approve` and
+        # `--approve=` forms are denied so the agent cannot rubber-stamp
+        # its own pull requests; `--comment` and `--request-changes`
+        # remain available for review feedback.
         "gh pr merge"
-        "gh pr close"
         "gh pr lock"
         "gh pr unlock"
-        "gh pr update-branch"
-        "gh release new"
-        "gh release create"
-        "gh release delete"
-        "gh release delete-asset"
-        "gh release edit"
-        "gh release upload"
+        "gh pr review --approve"
+        "gh pr review --approve="
+        # gh project: family-wide deny. Reads are carved out above.
+        "gh project"
+        # gh release: family-wide deny. Reads are carved out above.
+        "gh release"
+        # gh repo: enumerated mutations. Reads (view, list, clone, fork)
+        # remain allow-by-default. `gh repo deploy-key` is family-wide
+        # denied with `gh repo deploy-key list` carved out above.
         "gh repo create"
         "gh repo new"
         "gh repo archive"
+        "gh repo unarchive"
         "gh repo autolink create"
         "gh repo autolink new"
         "gh repo autolink delete"
         "gh repo delete"
-        "gh repo deploy-key add"
-        "gh repo deploy-key delete"
+        "gh repo deploy-key"
         "gh repo edit"
         "gh repo rename"
+        "gh repo set-default"
         "gh repo sync"
-        "gh repo unarchive"
-        "gh run cancel"
+        # gh run: only deletion is denied; rerun and cancel remain
+        # available as CI-debugging affordances.
         "gh run delete"
-        "gh run rerun"
-        "gh secret remove"
-        "gh secret delete"
-        "gh secret set"
-        "gh ssh-key add"
-        "gh ssh-key delete"
-        "gh variable remove"
-        "gh variable delete"
-        "gh variable set"
+        # gh secret and gh variable: family-wide. Name listing is
+        # carved out above (and `gh variable get` for non-secret
+        # values); setting, deleting, and reading secret values stay
+        # denied.
+        "gh secret"
+        "gh variable"
+        # gh workflow: dispatch and enable/disable mutate CI state.
         "gh workflow disable"
         "gh workflow enable"
         "gh workflow run"

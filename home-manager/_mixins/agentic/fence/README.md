@@ -87,9 +87,40 @@ directory at `~/.config/sops-nix` is intentionally read-allowed so API keys are
 exposed inside the sandbox.
 
 The GitHub CLI needs `~/.config/gh/hosts.yml` at startup, so that file is not
-read-denied. Fence allows `gh auth token` because Claude Code calls it, but
-still blocks `gh auth status`, auth mutation, and the broad `gh api` escape
-hatch. It cannot expose the `gh` credential only to the `gh` process.
+read-denied. It cannot expose the `gh` credential only to the `gh` process.
+Fence allows the `gh auth` subcommands so the agent can inspect its identity
+and rotate credentials, but `gh auth setup-git`, `gh auth token`, and
+`gh auth login --with-token` (both the bare flag and the `--with-token=`
+forms) stay denied. `setup-git` would rewrite the Nix-managed git
+configuration, `token` discloses the OAuth credential to stdout, and
+`--with-token` silently rebinds the active credential from stdin or a file
+path. The git side of that closure is enforced directly: `git config` is a
+family-wide deny, with read-shaped subcommands and flags carved out so
+inspection still works. The modern reads (`git config get`, `get-all`,
+`get-regexp`, `get-urlmatch`, `list`) match on the first token after
+`config`, so any destination flag (`--global`, `--system`, `--local`,
+`--file`, `--worktree`, `--blob`) may trail the read token and the carve-out
+still fires. The legacy flag reads (`--get`, `--get-all`, `--get-regexp`,
+`--get-urlmatch`, `--get-color`, `--get-colorbool`, `--list`, `-l`) only
+match when the read flag is the first token after `config`; placing a
+destination flag before the read flag (e.g. `git config --global --get
+user.email`) is not carved out and falls through to the family-wide deny.
+Prefer the modern subcommand form, or put the destination flag after the
+read flag, when scripting against Fence. Every write shape (bare positional
+assignment, `--add`, `--unset`, `--replace-all`, `--rename-section`,
+`--remove-section`, `--edit`, and the modern `set`/`unset`/`rename-section`/
+`remove-section` subcommands) is denied. Raw `gh api` is the escape hatch
+and stays denied; read-shaped requests go through the `gh-api-safe` wrapper,
+with literal allowances only for `gh api rate_limit`, `gh api meta`, and
+`gh api octocat`. The wider `gh` policy follows the same family-wide deny
+plus longer-prefix allow pattern: list-like discovery reads under
+`gh extension`, `gh release`, `gh project`, `gh codespace`, `gh label`,
+`gh secret`, `gh variable`, `gh gpg-key`, `gh ssh-key`, and
+`gh repo deploy-key` are carved out above their respective family-wide
+denies. `gh config` is the sole exception and is denied wholesale
+because `gh config get oauth_token --host github.com` can disclose the
+OAuth token stored in `~/.config/gh/hosts.yml`. The source of truth is
+[`default.nix`](./default.nix).
 
 Project-level `fence.jsonc` files should extend the user policy:
 

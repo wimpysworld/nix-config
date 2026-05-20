@@ -6,6 +6,17 @@
   ...
 }:
 let
+  # Fence-friendly wrapper around `gh api`. Lives in the GitHub mixin
+  # rather than the Fence mixin so the policy enforcement is available
+  # to agents whether or not they are running under Fence. The script
+  # implements its own allow-list, deny-list, and best-effort GraphQL
+  # heuristic; see `gh-api-safe.sh` for the policy details.
+  gh-api-safe = pkgs.writeShellApplication {
+    name = "gh-api-safe";
+    runtimeInputs = [ pkgs.gh ];
+    text = builtins.readFile ./gh-api-safe.sh;
+  };
+
   ghUnsetFish = ''
     set -e GH_TOKEN; set -e GITHUB_TOKEN; set -e GHORG_GITHUB_TOKEN; set -e HOMEBREW_GITHUB_API_TOKEN
   '';
@@ -32,6 +43,7 @@ in
         ghorg # Clone all repositories in a GitHub organization
       ])
       ++ [
+        gh-api-safe
         inputs.nix-packages.packages.${pkgs.stdenv.hostPlatform.system}.tailor
       ];
     sessionVariables = {
