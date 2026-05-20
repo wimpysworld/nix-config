@@ -78,10 +78,9 @@ let
     lib.sort (a: b: a < b) (sharedSkillNames ++ commandSkillNames ++ agentCommandSkillNames);
 
   # Codex config.toml settings. These are written via activation script (not
-  # home.file) so the deployed file is a real mutable file. codex edits
-  # config.toml in-place when writing back trust decisions and other runtime
-  # state; a symlink into the read-only nix store silently swallows those
-  # writes, which causes the trust prompt to appear on every launch.
+  # home.file) so the deployed file is a real mutable file. Codex can persist
+  # edits through symlink chains, but a Home Manager symlink into the read-only
+  # Nix store is still the wrong target for runtime config writes.
   codexSettings = {
     # codex_apps (a built-in ChatGPT-hosted connector) cannot be overridden
     # from user config: any [mcp_servers.codex_apps] entry without command
@@ -89,9 +88,7 @@ let
     # and runtime code unconditionally rebuilds the built-in entry on top of
     # any user-supplied stub. Its 30s startup timeout is hard-coded in
     # codex-rs/codex-mcp/src/mcp/mod.rs and there is no user-facing knob.
-    # See openai/codex#18068 for the underlying TUI routing bug; max_threads
-    # below caps sub-agent concurrency so the codex_apps ceiling applies
-    # once per sub-agent rather than overlapping in the leader's status header.
+    # See openai/codex#18068 for the underlying TUI routing bug.
     mcp_servers = mcpServerDefs.codexServers;
 
     # Plain `codex` remains usable without Fence by keeping Codex's native
@@ -99,6 +96,9 @@ let
     # `codex-fenced` entry point bypasses these at launch so Fence owns that
     # mode's filesystem, network, and command policy.
     approval_policy = "never";
+
+    model = "gpt-5.5";
+    model_reasoning_effort = "high";
 
     # Sandbox: workspace-write confines writes to the current project, /tmp,
     # and the explicit writable roots below. Do not use default_permissions
@@ -125,6 +125,23 @@ let
 
     allow_login_shell = false;
 
+    tui = {
+      theme = "catppuccin-mocha";
+      status_line = [
+        "run-state"
+        "model-with-reasoning"
+        "fast-mode"
+        "current-dir"
+        "five-hour-limit"
+        "weekly-limit"
+        "context-window-size"
+        "context-used"
+        "codex-version"
+        "permissions"
+      ];
+      status_line_use_colors = true;
+    };
+
     # Explicitly enable every generated skill so command/agent skills are
     # always available from the generated ~/.codex/skills tree.
     skills = {
@@ -141,8 +158,9 @@ let
     # it does NOT walk parent directories. Each git repository you work in
     # must have its own entry; the parent directory alone is insufficient.
     #
-    # codex writes new trust decisions back to config.toml at runtime; the
-    # file is deployed as a real mutable file so those writes succeed.
+    # codex writes new trust decisions back to config.toml at runtime. The
+    # file is writable so those writes succeed during a session, and activation
+    # rewrites it from this Nix baseline so only declared trust remains.
     projects = {
       "${config.home.homeDirectory}/Chainguard" = {
         trust_level = "trusted";
@@ -165,17 +183,13 @@ let
   # Generate the config.toml content in the nix store, then deploy it as a real
   # mutable file during activation.
   #
-  # Why a real file, not a symlink: codex resolves codex_home from the path of
-  # the config file it loaded, then writes trust decisions back to that same
-  # path. A symlink into the read-only nix store causes every write to fail
-  # with "failed to persist config.toml at /nix/store/...", so the trust prompt
-  # reappears every session despite correct [projects] entries.
+  # Why a real file, not a store-backed symlink: codex follows symlink chains
+  # when persisting config.toml. A Home Manager link into the read-only Nix
+  # store leaves codex with a target it cannot rewrite.
   #
-  # Why merge instead of copy-once: codex appends new [projects] entries and may
-  # persist other runtime preferences. Home Manager must still apply later
-  # declarative changes. The activation step merges any existing mutable file
-  # with the declarative baseline, preserving unknown runtime keys while the
-  # managed settings in codexSettings take precedence.
+  # Why merge instead of copy-once: the helper starts from the declarative
+  # baseline and can selectively import future allowlisted runtime state. No
+  # runtime keys are currently preserved, so activation scrubs config drift.
   codexConfigToml = (pkgs.formats.toml { }).generate "codex-config.toml" codexSettings;
   codexConfigMergeScriptFixed = pkgs.writeText "merge-codex-config.py" (
     builtins.concatStringsSep "\n" [
@@ -199,41 +213,21 @@ let
       ""
       "    return data if isinstance(data, dict) else {}"
       ""
+      "def runtime_state_allowlist(existing, _desired):"
+      "    if not isinstance(existing, dict):"
+      "        return {}"
+      ""
+      "    # Runtime keys must be explicitly copied here after verifying that"
+      "    # Codex still stores them in config.toml and that they are safe to"
+      "    # preserve across Home Manager activations."
+      "    return {}"
+      ""
       "def merge_config(existing, desired):"
-      "    if not isinstance(existing, dict) or not isinstance(desired, dict):"
-      "        return copy.deepcopy(desired)"
+      "    if not isinstance(desired, dict):"
+      "        return {}"
       ""
-      "    merged = copy.deepcopy(existing)"
-      "    # These keys are fully declarative. If they disappear from the Nix"
-      "    # baseline, remove stale runtime copies instead of preserving them."
-      "    managed_keys = ("
-      "        \"allow_login_shell\","
-      "        \"default_permissions\","
-      "        \"permissions\","
-      "        \"shell_environment_policy\","
-      "    )"
-      "    for managed_key in managed_keys:"
-      "        if managed_key not in desired:"
-      "            merged.pop(managed_key, None)"
-      ""
-      "    for key, desired_value in desired.items():"
-      "        existing_value = merged.get(key)"
-      ""
-      "        if key == \"projects\" and isinstance(desired_value, dict):"
-      "            project_entries = copy.deepcopy(existing_value) if isinstance(existing_value, dict) else {}"
-      "            project_entries.update(copy.deepcopy(desired_value))"
-      "            merged[key] = project_entries"
-      "            continue"
-      ""
-      "        if key == \"mcp_servers\":"
-      "            merged[key] = copy.deepcopy(desired_value)"
-      "            continue"
-      ""
-      "        if isinstance(existing_value, dict) and isinstance(desired_value, dict):"
-      "            merged[key] = merge_config(existing_value, desired_value)"
-      "            continue"
-      ""
-      "        merged[key] = copy.deepcopy(desired_value)"
+      "    merged = copy.deepcopy(desired)"
+      "    merged.update(runtime_state_allowlist(existing, desired))"
       ""
       "    return merged"
       ""
@@ -263,7 +257,7 @@ let
     merge_codex_config() {
       target_dir="$1"
       mkdir -p "$target_dir"
-      # Replace a symlink first, then merge runtime state with the declarative baseline.
+      # Replace a symlink first, then rewrite from the declarative baseline.
       if [ -L "$target_dir/config.toml" ]; then
         rm "$target_dir/config.toml"
       fi
