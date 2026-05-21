@@ -10,6 +10,7 @@ let
   aiSopsFile = ../../../../secrets + "/ai.yaml";
   bondSopsFile = ../../../../secrets + "/hermes-bond.yaml";
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
+  agentsviewSopsFile = ../../../../secrets + "/agentsview.yaml";
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
@@ -17,6 +18,8 @@ let
   claudePackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code;
   codexPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
   agentBrowserPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser;
+  agentsviewPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agentsview;
+  agentsviewConfigPython = pkgs.python3.withPackages (pythonPackages: [ pythonPackages.tomlkit ]);
   # Determinate Nix CLI, matching the host-level installation, so agent shells
   # expose the same `nix` CLI rather than stock upstream nixpkgs Nix. The
   # `determinate` flake's `packages.default` is `determinate-nixd` (the daemon
@@ -24,6 +27,9 @@ let
   nixPackage = inputs.determinate.inputs.nix.packages.${pkgs.stdenv.hostPlatform.system}.default;
   inherit (config.noughty) host;
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
+  hermesAgentsviewDataDir = "${config.services.hermes-agent.stateDir}/.agentsview";
+  hermesAgentsviewConfigPath = "${hermesAgentsviewDataDir}/config.toml";
+  hermesAgentsviewMachine = "${host.name}-hermes";
   hermesDashboardHost = "127.0.0.1";
   hermesDashboardPort = 9119;
   piperVoiceRevision = "7a6c333ec560f0e688371adc2fbb7bbe105028c6";
@@ -529,6 +535,14 @@ in
         mode = "0400";
       };
 
+      HERMES_AGENTSVIEW_PG_URL = {
+        sopsFile = agentsviewSopsFile;
+        key = "AGENTSVIEW_PG_URL";
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
       EMAIL_ADDRESS = {
         sopsFile = trayaSopsFile;
         owner = "root";
@@ -605,6 +619,18 @@ in
       owner = "root";
       group = "root";
       mode = "0400";
+    };
+
+    sops.templates."hermes-agentsview-env" = {
+      content = ''
+        AGENTSVIEW_PG_URL=${config.sops.placeholder.HERMES_AGENTSVIEW_PG_URL}
+        AGENTSVIEW_PG_SCHEMA=agentsview
+        AGENTSVIEW_PG_MACHINE=${hermesAgentsviewMachine}
+        AGENTSVIEW_DISABLE_UPDATE_CHECK=1
+      '';
+      owner = hermesUser;
+      group = hermesGroup;
+      mode = "0440";
     };
 
     sops.templates."hermes-soul" = {
@@ -926,6 +952,54 @@ in
       };
     };
 
+    systemd.services.hermes-agentsview-pg-push = {
+      description = "Push Hermes AgentsView data to PostgreSQL";
+      after = [
+        "network-online.target"
+        "postgresql.service"
+      ];
+      wants = [
+        "network-online.target"
+        "postgresql.service"
+      ];
+      environment = {
+        AGENTSVIEW_DATA_DIR = hermesAgentsviewDataDir;
+        HERMES_SESSIONS_DIR = "${hermesHome}/sessions";
+        HOME = config.services.hermes-agent.stateDir;
+      };
+      serviceConfig = {
+        Type = "exec";
+        User = hermesUser;
+        Group = hermesGroup;
+        WorkingDirectory = config.services.hermes-agent.stateDir;
+        EnvironmentFile = config.sops.templates."hermes-agentsview-env".path;
+        ExecStart = "${agentsviewPackage}/bin/agentsview pg push";
+        UMask = "0007";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ReadWritePaths = [ config.services.hermes-agent.stateDir ];
+        RestrictAddressFamilies = [
+          "AF_INET"
+          "AF_INET6"
+          "AF_UNIX"
+        ];
+      };
+    };
+
+    systemd.timers.hermes-agentsview-pg-push = {
+      description = "Push Hermes AgentsView data to PostgreSQL on a schedule";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnBootSec = "7m";
+        OnUnitActiveSec = "15m";
+        RandomizedDelaySec = "2m";
+        Persistent = true;
+        Unit = "hermes-agentsview-pg-push.service";
+      };
+    };
+
     services.caddy.virtualHosts."${config.noughty.host.name}.${config.noughty.network.tailNet}".extraConfig =
       lib.mkIf (config.services.caddy.enable && config.services.tailscale.enable) ''
         @hermesDashboard not path /agentsview* /syncthing* /netdata* /scrutiny* /novnc*
@@ -955,6 +1029,39 @@ in
       # Revan's Hermes config is Nix-managed, so replace the whole file after
       # that merge to prevent stale providers and retired settings lingering.
       install -m 0640 -o ${hermesUser} -g ${hermesGroup} ${managedHermesConfig} ${hermesHome}/config.yaml
+    '';
+
+    system.activationScripts.hermes-agentsview-config = lib.stringAfter [ "hermes-agent-setup" ] ''
+      ${agentsviewConfigPython}/bin/python - <<'PY'
+      import pathlib
+      import tomlkit
+
+      path = pathlib.Path("${hermesAgentsviewConfigPath}")
+      path.parent.mkdir(mode=0o750, parents=True, exist_ok=True)
+
+      if path.exists() and path.is_file():
+          document = tomlkit.parse(path.read_text(encoding="utf-8"))
+      else:
+          document = tomlkit.document()
+
+      pg = document.get("pg")
+      if pg is None or not hasattr(pg, "__setitem__"):
+          pg = tomlkit.table()
+          document["pg"] = pg
+
+      pg["schema"] = "agentsview"
+      pg["machine_name"] = "${hermesAgentsviewMachine}"
+      pg["allow_insecure"] = True
+
+      tmp = path.with_name(f"{path.name}.tmp")
+      tmp.write_text(tomlkit.dumps(document), encoding="utf-8")
+      tmp.chmod(0o640)
+      tmp.replace(path)
+      PY
+
+      chown -R ${hermesUser}:${hermesGroup} ${hermesAgentsviewDataDir}
+      chmod 0750 ${hermesAgentsviewDataDir}
+      chmod 0640 ${hermesAgentsviewConfigPath}
     '';
 
     systemd.services.cloudflared-hermes = lib.mkIf hasCloudflareSopsFile {
@@ -1005,6 +1112,7 @@ in
       "d ${tinytuyaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesSshDir} 0700 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesGnupgHome} 0700 ${hermesUser} ${hermesGroup} - -"
+      "d ${hermesAgentsviewDataDir} 0750 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${openhueConfigDir} 2770 ${hermesUser} ${hermesGroup} - -"
