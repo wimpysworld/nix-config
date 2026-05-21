@@ -1,7 +1,7 @@
 # System registry - central definition of all systems and their properties
 #
 # Canonical tag vocabulary:
-#   Host tags: studio, davinci, gamedev, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup, fprintd, strix-halo
+#   Host tags: studio, davinci, gamedev, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus
 #   User tags: developer, admin, family
 #
 # Registry fields:
@@ -216,7 +216,7 @@ vendors = ["amd"]
 [malak]
 kind = "server"
 platform = "x86_64-linux"
-tags = ["scrutiny", "gatus"]
+tags = ["scrutiny"]
 
 [malak.gpu]
 vendors = ["intel"]

@@ -6,17 +6,26 @@
   ...
 }:
 let
+  cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
+  hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
+  gatusPort = 8741;
   hermesSopsFile = ../../../../secrets + "/hermes.yaml";
 in
 lib.mkIf (noughtyLib.hostHasTag "gatus") {
   environment = {
     shellAliases = {
       gatus-log = "journalctl _SYSTEMD_UNIT=gatus.service";
-      goaccess-gatus = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/gatus.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
     };
   };
   sops = {
     secrets = {
+      CLOUDFLARE_TUNNEL_TOKEN_GATUS = lib.mkIf hasCloudflareSopsFile {
+        group = "root";
+        mode = "0400";
+        owner = "root";
+        path = "/run/secrets/CLOUDFLARE_TUNNEL_TOKEN_GATUS";
+        sopsFile = cloudflareSopsFile;
+      };
       gatus-env = {
         group = "root";
         mode = "0644";
@@ -41,22 +50,10 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
     };
   };
   services = {
-    caddy = lib.mkIf config.services.gatus.enable {
-      virtualHosts."gatus.wimpys.world" = {
-        extraConfig = ''
-          reverse_proxy localhost:${toString config.services.gatus.settings.web.port}
-        '';
-        logFormat = lib.mkDefault ''
-          output file /var/log/caddy/gatus.log
-        '';
-        serverAliases = [
-          "status.wimpys.world"
-        ];
-      };
-    };
     gatus = {
       enable = true;
       environmentFile = config.sops.secrets.gatus-env.path;
+      openFirewall = lib.mkDefault false;
       settings = {
         alerting = {
           telegram = {
@@ -88,7 +85,10 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
           link = "https://wimpysworld.com/";
           logo = "https://wimpysworld.com/profile.webp";
         };
-        web.port = 8181;
+        web = {
+          address = "127.0.0.1";
+          port = gatusPort;
+        };
         endpoints = [
           {
             name = "Website";
@@ -334,21 +334,44 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
     config.sops.templates."gatus-telegram-env".path
   ];
 
-  systemd.services.goaccess-gatus = {
-    description = "Generate goaccess gatus report";
+  systemd.services.cloudflared-gatus = lib.mkIf hasCloudflareSopsFile {
+    description = "Cloudflare Tunnel connector for Gatus";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/gatus.log --log-format=CADDY -o /mnt/data/www/goaccess/gatus.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
-      User = "${config.services.caddy.user}";
+      Type = "simple";
+      ExecStart = lib.concatStringsSep " " [
+        (lib.getExe pkgs.cloudflared)
+        "tunnel"
+        "--no-autoupdate"
+        "run"
+        "--token-file"
+        config.sops.secrets.CLOUDFLARE_TUNNEL_TOKEN_GATUS.path
+      ];
+      Restart = lib.mkDefault "always";
+      RestartSec = lib.mkDefault 5;
+      User = lib.mkDefault "root";
+      Group = lib.mkDefault "root";
+
+      # Restrict the connector to outbound access and secret reads.
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      ProtectControlGroups = true;
+      ProtectKernelLogs = true;
+      ProtectKernelModules = true;
+      ProtectKernelTunables = true;
+      RestrictAddressFamilies = [
+        "AF_INET"
+        "AF_INET6"
+        "AF_UNIX"
+      ];
     };
   };
 
-  systemd.timers.goaccess-gatus = {
-    description = "Run goaccess gatus report every hour";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnBootSec = "5min";
-      OnUnitActiveSec = "1h";
-      RandomizedDelaySec = 300;
-    };
-  };
+  # Remotely-managed tunnels store published application routing in
+  # Cloudflare. Configure gatus.wimpys.world -> http://127.0.0.1:8741 in
+  # the Cloudflare dashboard or API for this tunnel.
 }

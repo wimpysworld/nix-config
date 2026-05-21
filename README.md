@@ -368,12 +368,6 @@ Things I currently need to do manually after installation.
 - [ ] On macOS run
   - Run Docker Desktop to complete the setup.
 
-#### Malak
-
-- [ ] Create ntfy user and ACLs
-      `sudo ntfy user add --role=admin <username>`
-      `sudo ntfy access everyone <topic> rw`
-
 ### Themes
 
 Some applications require manual configuration to apply the correct theme.
