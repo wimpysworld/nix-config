@@ -54,9 +54,11 @@ lib.mkIf (noughtyLib.hostHasTag "postgres") {
   # Apply the agentsview role password from sops on every start. `initialScript`
   # only runs on the first init, so it cannot rotate the password when the sops
   # value changes. `postStart` runs idempotently after the upstream ensureUsers
-  # logic and survives password rotation.
+  # logic and survives password rotation. Use the absolute path to `psql` and
+  # connect via the local Unix socket; the upstream postStart no longer exposes
+  # a `$PSQL` helper variable in NixOS 25.11.
   systemd.services.postgresql.postStart = lib.mkAfter ''
-    $PSQL -tAc "ALTER ROLE agentsview WITH PASSWORD '$(<${config.sops.secrets.AGENTSVIEW_PG_PASSWORD.path})';"
+    ${config.services.postgresql.package}/bin/psql -h /run/postgresql -tAc "ALTER ROLE agentsview WITH PASSWORD '$(<${config.sops.secrets.AGENTSVIEW_PG_PASSWORD.path})';"
   '';
 
   # Native pg_dump backups to /mnt/snapshot/backup-postgres. Retention policy
