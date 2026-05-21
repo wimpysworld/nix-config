@@ -44,7 +44,7 @@ in
     kernelModules = [
       "kvm-intel"
     ];
-    kernelPackages = lib.mkForce pkgs.linuxPackages_6_12;
+    kernelPackages = lib.mkForce pkgs.linuxPackages_6_18;
     # Make sure the initrd has the necessary IPv4 configuration
     # - ip=ip-addr:<ignore>:gw-addr:netmask:hostname:interface:autoconf:dns1-addr:dns2-addr
     # - https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt
