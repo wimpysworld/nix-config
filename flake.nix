@@ -25,6 +25,10 @@
     llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     llm-agents.inputs.blueprint.inputs.systems.follows = "systems";
+    fresh.url = "github:sinelaw/fresh";
+    fresh.inputs.nixpkgs.follows = "nixpkgs-unstable";
+    fresh.inputs.flake-parts.follows = "flake-parts";
+    fresh.inputs.fenix.inputs.nixpkgs.follows = "nixpkgs-unstable";
     sidra.url = "github:wimpysworld/sidra";
     sidra.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.3.0.tar.gz";
