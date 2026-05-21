@@ -51,13 +51,14 @@ lib.mkIf (noughtyLib.hostHasTag "postgres") {
     '';
   };
 
-  # Apply the agentsview role password from sops on every start. `initialScript`
-  # only runs on the first init, so it cannot rotate the password when the sops
-  # value changes. `postStart` runs idempotently after the upstream ensureUsers
-  # logic and survives password rotation. Use the absolute path to `psql` and
-  # connect via the local Unix socket; the upstream postStart no longer exposes
-  # a `$PSQL` helper variable in NixOS 25.11.
-  systemd.services.postgresql.postStart = lib.mkAfter ''
+  # Apply the agentsview role password from sops after the upstream
+  # postgresql-setup oneshot has created the role via `ensureUsers`. Attaching
+  # to `postgresql.service.postStart` is too early in NixOS 25.11 because role
+  # creation moved into a separate `postgresql-setup.service` unit. `ALTER ROLE`
+  # is idempotent and re-applies on every restart of postgresql-setup, so this
+  # also handles password rotation (rotate the sops value, then
+  # `systemctl restart postgresql-setup.service`).
+  systemd.services.postgresql-setup.postStart = lib.mkAfter ''
     ${config.services.postgresql.package}/bin/psql -h /run/postgresql -tAc "ALTER ROLE agentsview WITH PASSWORD '$(<${config.sops.secrets.AGENTSVIEW_PG_PASSWORD.path})';"
   '';
 
