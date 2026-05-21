@@ -14,6 +14,15 @@ let
   agentsviewConfigPath = "${config.home.homeDirectory}/.agentsview/config.toml";
   agentsviewEnvPath = config.sops.templates."agentsview-pg.env".path;
   agentsviewConfigPython = pkgs.python3.withPackages (ps: [ ps.tomlkit ]);
+  agentsviewWrappedPackage = pkgs.symlinkJoin {
+    name = "agentsview-wrapped";
+    paths = [ agentsviewPackage ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram "$out/bin/agentsview" \
+        --run 'if [ -r "${agentsviewEnvPath}" ]; then set -a; . "${agentsviewEnvPath}"; set +a; fi'
+    '';
+  };
   agentsviewConfigActivationScript = ''
     ${agentsviewConfigPython}/bin/python - <<'PY'
     import pathlib
@@ -21,7 +30,6 @@ let
     import tomlkit
 
     path = pathlib.Path("${agentsviewConfigPath}")
-    env_path = pathlib.Path("${agentsviewEnvPath}")
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
 
     if path.exists() and path.is_file():
@@ -34,14 +42,7 @@ let
         pg = tomlkit.table()
         document["pg"] = pg
 
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        key, separator, value = line.partition("=")
-        if separator and key == "AGENTSVIEW_PG_URL":
-            pg["url"] = value
-            break
-    else:
-        raise RuntimeError(f"AGENTSVIEW_PG_URL is missing from {env_path}")
-
+    pg.pop("url", None)
     pg["schema"] = "agentsview"
     pg["machine_name"] = "${host.name}"
     pg["allow_insecure"] = True
@@ -70,7 +71,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
   };
 
   home.packages = [
-    agentsviewPackage
+    agentsviewWrappedPackage
   ];
 
   home.activation.agentsviewConfig = lib.hm.dag.entryAfter [
