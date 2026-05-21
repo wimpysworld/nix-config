@@ -7,7 +7,11 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   agentsviewPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agentsview;
+  agentsviewConfigPython = pkgs.python3.withPackages (pythonPackages: [ pythonPackages.tomlkit ]);
+  agentsviewStateDir = "/var/lib/agentsview";
+  agentsviewConfigPath = "${agentsviewStateDir}/config.toml";
 in
 lib.mkIf (noughtyLib.hostHasTag "agentsview") {
   # Static system user for the agentsview service. A static UID lets the sops
@@ -61,7 +65,7 @@ lib.mkIf (noughtyLib.hostHasTag "agentsview") {
       # AgentsView writes a small SQLite/cursor cache alongside its config; the
       # default location is $HOME/.agentsview, which for systemd-managed users
       # is /var/empty (read-only). Point it at the StateDirectory instead.
-      Environment = [ "AGENTSVIEW_DATA_DIR=/var/lib/agentsview" ];
+      Environment = [ "AGENTSVIEW_DATA_DIR=${agentsviewStateDir}" ];
 
       User = "agentsview";
       Group = "agentsview";
@@ -88,4 +92,48 @@ lib.mkIf (noughtyLib.hostHasTag "agentsview") {
       ];
     };
   };
+
+  # Seed the agentsview config.toml so `pg serve` accepts the tailnet
+  # PostgreSQL URL. Agentsview's plaintext-PG guard refuses to connect
+  # to a non-local host unless `pg.allow_insecure = true` is set, and
+  # the tailnet hostname looks non-local from its perspective even
+  # though the Tailscale boundary is the real auth and confidentiality
+  # layer. Without this seed, `agentsview pg serve` exits before
+  # binding :18080 and the unit restart-loops. The script mirrors the
+  # producer-side activation in nixos/_mixins/server/hermes/default.nix
+  # so behaviour stays consistent across producer and consumer
+  # services; any pre-existing keys in the TOML are preserved.
+  system.activationScripts.agentsview-config = lib.stringAfter [ "users" ] ''
+    install -d -m 0750 -o agentsview -g agentsview ${agentsviewStateDir}
+
+    ${agentsviewConfigPython}/bin/python - <<'PY'
+    import pathlib
+    import tomlkit
+
+    path = pathlib.Path("${agentsviewConfigPath}")
+    path.parent.mkdir(mode=0o750, parents=True, exist_ok=True)
+
+    if path.exists() and path.is_file():
+        document = tomlkit.parse(path.read_text(encoding="utf-8"))
+    else:
+        document = tomlkit.document()
+
+    pg = document.get("pg")
+    if pg is None or not hasattr(pg, "__setitem__"):
+        pg = tomlkit.table()
+        document["pg"] = pg
+
+    pg["schema"] = "agentsview"
+    pg["machine_name"] = "${host.name}"
+    pg["allow_insecure"] = True
+
+    tmp = path.with_name(f"{path.name}.tmp")
+    tmp.write_text(tomlkit.dumps(document), encoding="utf-8")
+    tmp.chmod(0o640)
+    tmp.replace(path)
+    PY
+
+    chown agentsview:agentsview ${agentsviewConfigPath}
+    chmod 0640 ${agentsviewConfigPath}
+  '';
 }
