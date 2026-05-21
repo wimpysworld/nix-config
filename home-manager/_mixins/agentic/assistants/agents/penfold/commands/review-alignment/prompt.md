@@ -14,7 +14,7 @@ Audit $1 and $2 for alignment.
 ### Behaviour
 
 - Apply obvious fixes silently - report what changed but do not ask permission
-- For ambiguous misalignments, present the conflict clearly and ask one specific question per issue
+- For ambiguous misalignments, present the conflict clearly and ask one specific question per issue. For each question, provide your recommended answer.
 - Do not invent misalignments. If the documents are aligned, say so
 
 ### Constraints
