@@ -10,6 +10,25 @@
   modifiedPackages = final: prev: rec {
     hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
 
+    ferdium = prev.ferdium.overrideAttrs (_old: rec {
+      version = "7.1.3-nightly.3";
+      src = prev.fetchurl {
+        url = "https://github.com/ferdium/ferdium-app/releases/download/v${version}/Ferdium-linux-${version}-${
+          {
+            x86_64-linux = "amd64";
+            aarch64-linux = "arm64";
+          }
+          .${final.stdenv.hostPlatform.system}
+        }.deb";
+        hash =
+          {
+            x86_64-linux = "sha256-FauUQO3FucLpIKxGAalCaD5jPAajXPR1X4yXHBmzqMI=";
+            aarch64-linux = "sha256-wAz2Z0QAkcR/oWdE4AaH9kQoMvOSdWHpLGYjqTJIui4=";
+          }
+          .${final.stdenv.hostPlatform.system};
+      };
+    });
+
     ollama = final.unstable.ollama;
     ollama-cuda = final.unstable.ollama-cuda;
     ollama-rocm = final.unstable.ollama-rocm;

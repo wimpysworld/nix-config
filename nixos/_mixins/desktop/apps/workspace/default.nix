@@ -64,6 +64,30 @@ let
     ];
   } pkgs.slack;
 
+  workspaceBrowserOpts = {
+    "AutofillAddressEnabled" = false;
+    "AutofillCreditCardEnabled" = false;
+    "PasswordManagerEnabled" = false;
+    "PromptForDownloadLocation" = true;
+    "SpellcheckEnabled" = true;
+    "SpellcheckLanguage" = [
+      "en-GB"
+      "en-US"
+    ];
+  };
+
+  workspaceBrowserExtensions = [
+    "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
+    "lodbfhdipoipcjmlebjbgmmgekckhpfb" # Harper
+    "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
+    "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
+    "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
+    "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
+    "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
+    "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
+    "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
+  ];
+
   # Global xdg-open proxy to route specific URLs to Wavebox
   waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
@@ -98,6 +122,7 @@ in
 lib.mkIf (noughtyLib.hostHasTag "workspace") {
   environment.systemPackages = [
     pkgs._1password-gui
+    pkgs.ferdium
     wavebox
     googleMeetDesktopItem
     slackWavebox
@@ -106,27 +131,13 @@ lib.mkIf (noughtyLib.hostHasTag "workspace") {
 
   programs.wavebox = {
     enable = true;
-    extraOpts = {
-      "AutofillAddressEnabled" = false;
-      "AutofillCreditCardEnabled" = false;
-      "PasswordManagerEnabled" = false;
-      "PromptForDownloadLocation" = true;
-      "SpellcheckEnabled" = true;
-      "SpellcheckLanguage" = [
-        "en-GB"
-        "en-US"
-      ];
-    };
-    extensions = [
-      "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
-      "lodbfhdipoipcjmlebjbgmmgekckhpfb" # Harper
-      "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
-      "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
-      "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks
-      "glnpjglilkicbckjpbgcfkogebgllemb" # Okta
-      "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
-      "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
-      "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
-    ];
+    extraOpts = workspaceBrowserOpts;
+    extensions = workspaceBrowserExtensions;
+  };
+
+  programs.ferdium = {
+    enable = true;
+    extraOpts = workspaceBrowserOpts;
+    extensions = workspaceBrowserExtensions;
   };
 }
