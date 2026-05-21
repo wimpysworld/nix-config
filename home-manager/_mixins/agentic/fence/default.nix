@@ -59,6 +59,9 @@ let
         "${config.xdg.configHome}/opencode"
         "~/.opencode/**"
 
+        # GCP
+        "${config.xdg.configHome}/gcloud/**"
+
         # Pi
         "${homeDirectory}/.pi/**"
         "${homeDirectory}/.pi-lens"
@@ -98,7 +101,6 @@ let
         # Cloud provider credentials
         "~/.aws/**"
         "~/.azure/**"
-        "${config.xdg.configHome}/gcloud/**"
         "~/.kube/**"
 
         # Docker config (may contain registry auth)
