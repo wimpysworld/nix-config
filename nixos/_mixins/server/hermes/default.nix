@@ -233,7 +233,14 @@ let
         Path.chmod = _managed_path_chmod
         builtins.__import__ = _managed_import
   '';
-  upstreamHermesAgentPackage = pkgs.hermesAgent;
+  # v2026.5.16 dropped messaging SDKs (python-telegram-bot, discord.py,
+  # slack-bolt, …) from the default install in favour of a runtime
+  # lazy-install path. That path cannot write into the sealed /nix/store
+  # venv, so opt the SDKs back in declaratively via the upstream module's
+  # extraDependencyGroups override (uv resolves them at build time).
+  upstreamHermesAgentPackage = pkgs.hermesAgent.override {
+    extraDependencyGroups = [ "messaging" ];
+  };
   hermesAgentPackage = pkgs.symlinkJoin {
     name = "hermes-agent-host";
     paths = [ upstreamHermesAgentPackage ];
