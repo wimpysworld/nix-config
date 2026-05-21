@@ -269,7 +269,6 @@ in
         ".claude/plugins/nix-lsp/.lsp.json".text = builtins.toJSON lspServers;
       };
       packages = [
-        inputs.llm-agents.packages.${system}.ccusage
         ccstatuslinePackage
         claudeAgentAcpPackage
         usageRemainingPackage
