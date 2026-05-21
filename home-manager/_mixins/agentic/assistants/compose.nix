@@ -111,7 +111,7 @@ let
     line:
     let
       uncommented = lib.head (lib.splitString "#" line);
-      matched = builtins.match "^[[:space:]]*model-([A-Za-z0-9_-]+):[[:space:]]*(.+?)[[:space:]]*$" uncommented;
+      matched = builtins.match "^[[:space:]]*model-([A-Za-z0-9_-]+):[[:space:]]*(.+)[[:space:]]*$" uncommented;
     in
     if matched == null then
       null
