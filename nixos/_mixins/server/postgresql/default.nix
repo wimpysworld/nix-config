@@ -63,7 +63,10 @@ lib.mkIf (noughtyLib.hostHasTag "postgres") {
   # also handles password rotation (rotate the sops value, then
   # `systemctl restart postgresql-setup.service`).
   systemd.services.postgresql-setup.postStart = lib.mkAfter ''
-    ${config.services.postgresql.package}/bin/psql -h /run/postgresql -tAc "ALTER ROLE agentsview WITH PASSWORD '$(<${config.sops.secrets.AGENTSVIEW_PG_PASSWORD.path})';"
+    ${config.services.postgresql.package}/bin/psql -h /run/postgresql --no-psqlrc -v ON_ERROR_STOP=1 <<'SQL'
+    \set role_password `${pkgs.coreutils}/bin/cat ${config.sops.secrets.AGENTSVIEW_PG_PASSWORD.path}`
+    ALTER ROLE agentsview WITH PASSWORD :'role_password';
+    SQL
   '';
 
   # Native pg_dump backups to /mnt/snapshot/backup-postgres. Retention policy
