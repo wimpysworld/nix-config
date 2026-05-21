@@ -38,7 +38,10 @@ lib.mkIf (noughtyLib.hostHasTag "agentsview") {
       # AgentsView 0.29.0 takes host/port/base-path as CLI flags only; there
       # is no PG_SERVE / AGENTSVIEW_PORT / AGENTSVIEW_LISTEN env var. The only
       # env var consumed for `pg serve` is AGENTSVIEW_PG_URL, supplied via the
-      # sops-templated EnvironmentFile.
+      # sops-templated EnvironmentFile. `--public-url` tells AgentsView which
+      # browser origin (via Caddy) is trusted; without it, requests proxied
+      # from the tailnet hostname prompt for a bearer token even though the
+      # tailnet itself is the auth boundary.
       ExecStart = lib.concatStringsSep " " [
         "${agentsviewPackage}/bin/agentsview"
         "pg"
@@ -49,6 +52,8 @@ lib.mkIf (noughtyLib.hostHasTag "agentsview") {
         "18080"
         "--base-path"
         "/agentsview"
+        "--public-url"
+        "https://${config.noughty.host.name}.${config.noughty.network.tailNet}"
         "--no-browser"
         "--no-update-check"
       ];
