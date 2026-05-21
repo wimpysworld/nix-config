@@ -53,6 +53,10 @@ lib.mkIf (noughtyLib.hostHasTag "agentsview") {
         "--no-update-check"
       ];
       EnvironmentFile = config.sops.templates."agentsview.env".path;
+      # AgentsView writes a small SQLite/cursor cache alongside its config; the
+      # default location is $HOME/.agentsview, which for systemd-managed users
+      # is /var/empty (read-only). Point it at the StateDirectory instead.
+      Environment = [ "AGENTSVIEW_DATA_DIR=/var/lib/agentsview" ];
 
       User = "agentsview";
       Group = "agentsview";
