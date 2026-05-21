@@ -38,7 +38,11 @@ lib.mkIf (noughtyLib.hostHasTag "postgres") {
     ];
 
     settings = {
-      listen_addresses = lib.mkDefault "*";
+      # Force "*" because the upstream NixOS module sets a non-mkDefault value
+      # for `listen_addresses` (loopback only); without mkForce, `mkDefault "*"`
+      # loses the priority fight and PG only binds 127.0.0.1 / ::1. Access is
+      # still tightly restricted at the pg_hba layer below.
+      listen_addresses = lib.mkForce "*";
     };
 
     authentication = lib.mkOverride 10 ''
