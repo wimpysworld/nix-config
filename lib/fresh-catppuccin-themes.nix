@@ -35,10 +35,10 @@ let
       overlayBg = if isDark then c "surface0" else c "mantle";
       deepBg = c "crust";
       raisedBg = c "surface0";
-      currentLineBg = c "surface0";
+      currentLineBg = c "surface1";
       selectionBg = c "surface1";
       activeBg = c "surface1";
-      afterEofBg = c "mantle";
+      afterEofBg = c "surface0";
       faint = c "surface2";
       muted = c "overlay0";
 
