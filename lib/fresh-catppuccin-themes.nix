@@ -26,23 +26,26 @@ let
     let
       flavourData = paletteJson.${flavour};
       colours = flavourData.colors;
+      isDark = flavourData.dark;
       c = rgb colours;
 
-      isDark = flavourData.dark;
-      onAccent = if isDark then c "base" else c "text";
-      onPanel = c "text";
-      faint = c "surface2";
-      border = c "surface2";
-      separator = c "surface2";
       editorBg = c "base";
+      panelBg = c "mantle";
+      floatingBg = if isDark then c "base" else c "mantle";
+      overlayBg = if isDark then c "surface0" else c "mantle";
+      deepBg = c "crust";
       raisedBg = c "surface0";
-      activeBg = c "surface1";
+      currentLineBg = c "surface0";
       selectionBg = c "surface1";
-      currentLineBg = c "surface1";
-      afterEofBg = c "surface0";
-      floatingBg = c "surface0";
-      accent = c "mauve";
-      secondaryAccent = c "sky";
+      activeBg = c "surface1";
+      afterEofBg = c "mantle";
+      faint = c "surface2";
+      muted = c "overlay0";
+
+      accent = c "blue";
+      secondaryAccent = c "mauve";
+      onAccent = c "base";
+      onPanel = c "text";
     in
     {
       name = "catppuccin-${flavour}";
@@ -51,11 +54,11 @@ let
         bg = editorBg;
         fg = onPanel;
         cursor = c "pink";
-        inactive_cursor = faint;
+        inactive_cursor = muted;
         selection_bg = selectionBg;
         selection_modifier = null;
         current_line_bg = currentLineBg;
-        line_number_fg = faint;
+        line_number_fg = muted;
         line_number_bg = editorBg;
         diff_add_bg = raisedBg;
         diff_remove_bg = raisedBg;
@@ -66,7 +69,7 @@ let
         diff_remove_collision_fg = onAccent;
         diff_modify_collision_fg = onAccent;
         ruler_bg = currentLineBg;
-        whitespace_indicator_fg = faint;
+        whitespace_indicator_fg = muted;
         after_eof_bg = afterEofBg;
       };
 
@@ -75,11 +78,11 @@ let
         tab_active_bg = accent;
         tab_inactive_fg = onPanel;
         tab_inactive_bg = currentLineBg;
-        tab_separator_bg = editorBg;
+        tab_separator_bg = deepBg;
         tab_close_hover_fg = c "red";
         tab_hover_bg = raisedBg;
 
-        menu_bg = editorBg;
+        menu_bg = panelBg;
         menu_fg = onPanel;
         menu_active_bg = activeBg;
         menu_active_fg = c "sky";
@@ -87,11 +90,11 @@ let
         menu_dropdown_fg = onPanel;
         menu_highlight_bg = accent;
         menu_highlight_fg = onAccent;
-        menu_border_fg = border;
-        menu_separator_fg = separator;
+        menu_border_fg = muted;
+        menu_separator_fg = muted;
         menu_hover_bg = activeBg;
         menu_hover_fg = onPanel;
-        menu_disabled_fg = faint;
+        menu_disabled_fg = muted;
         menu_disabled_bg = floatingBg;
 
         status_bar_fg = onAccent;
@@ -108,30 +111,30 @@ let
         prompt_selection_fg = onAccent;
         prompt_selection_bg = accent;
 
-        popup_border_fg = border;
-        popup_bg = currentLineBg;
+        popup_border_fg = accent;
+        popup_bg = overlayBg;
         popup_selection_bg = accent;
-        text_input_selection_bg = selectionBg;
+        text_input_selection_bg = accent;
         popup_selection_fg = onAccent;
         popup_text_fg = onPanel;
 
-        suggestion_bg = currentLineBg;
+        suggestion_bg = overlayBg;
         suggestion_selected_bg = accent;
 
         help_bg = editorBg;
         help_fg = onPanel;
         help_key_fg = c "sky";
-        help_separator_fg = separator;
+        help_separator_fg = muted;
         help_indicator_fg = c "red";
         help_indicator_bg = editorBg;
 
         inline_code_bg = raisedBg;
-        split_separator_fg = border;
+        split_separator_fg = muted;
         split_separator_hover_fg = accent;
-        scrollbar_track_fg = editorBg;
-        scrollbar_thumb_fg = currentLineBg;
+        scrollbar_track_fg = panelBg;
+        scrollbar_thumb_fg = activeBg;
         scrollbar_track_hover_fg = raisedBg;
-        scrollbar_thumb_hover_fg = faint;
+        scrollbar_thumb_hover_fg = muted;
         compose_margin_bg = editorBg;
         semantic_highlight_bg = raisedBg;
         semantic_highlight_modifier = [ "bold" ];
@@ -149,14 +152,14 @@ let
 
         tab_drop_zone_bg = accent;
         tab_drop_zone_border = c "sapphire";
-        settings_selected_bg = currentLineBg;
+        settings_selected_bg = activeBg;
         settings_selected_fg = onPanel;
 
         file_status_added_fg = c "green";
         file_status_modified_fg = c "yellow";
         file_status_deleted_fg = c "red";
         file_status_renamed_fg = c "sky";
-        file_status_untracked_fg = faint;
+        file_status_untracked_fg = muted;
         file_status_conflicted_fg = c "maroon";
       };
 

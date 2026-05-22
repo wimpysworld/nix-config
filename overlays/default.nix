@@ -10,6 +10,13 @@
   modifiedPackages = final: prev: rec {
     hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
 
+    # Fresh editor with our theme-key-resolution patch layered on top of the
+    # upstream flake-input build. See pkgs/fresh/default.nix and
+    # pkgs/patches/fresh-fix-theme-key-resolution.patch.
+    fresh = final.callPackage ../pkgs/fresh {
+      fresh-upstream = inputs.fresh.packages.${final.stdenv.hostPlatform.system}.fresh;
+    };
+
     ferdium = prev.ferdium.overrideAttrs (_old: rec {
       version = "7.1.3-nightly.3";
       src = prev.fetchurl {
