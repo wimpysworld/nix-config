@@ -1,0 +1,328 @@
+{
+  "name": "catppuccin-latte",
+  "editor": {
+    "bg": [
+      239,
+      241,
+      245
+    ],
+    "fg": [
+      76,
+      79,
+      105
+    ],
+    "cursor": [
+      220,
+      138,
+      120
+    ],
+    "selection_bg": [
+      188,
+      192,
+      204
+    ],
+    "current_line_bg": [
+      204,
+      208,
+      218
+    ],
+    "line_number_fg": [
+      156,
+      160,
+      176
+    ],
+    "line_number_bg": [
+      239,
+      241,
+      245
+    ]
+  },
+  "ui": {
+    "tab_active_fg": [
+      220,
+      224,
+      232
+    ],
+    "tab_active_bg": [
+      30,
+      102,
+      245
+    ],
+    "tab_inactive_fg": [
+      76,
+      79,
+      105
+    ],
+    "tab_inactive_bg": [
+      188,
+      192,
+      204
+    ],
+    "tab_separator_bg": [
+      239,
+      241,
+      245
+    ],
+    "status_bar_fg": [
+      220,
+      224,
+      232
+    ],
+    "status_bar_bg": [
+      30,
+      102,
+      245
+    ],
+    "prompt_fg": [
+      220,
+      224,
+      232
+    ],
+    "prompt_bg": [
+      64,
+      160,
+      43
+    ],
+    "prompt_selection_fg": [
+      76,
+      79,
+      105
+    ],
+    "prompt_selection_bg": [
+      30,
+      102,
+      245
+    ],
+    "popup_border_fg": [
+      156,
+      160,
+      176
+    ],
+    "popup_bg": [
+      204,
+      208,
+      218
+    ],
+    "popup_selection_bg": [
+      30,
+      102,
+      245
+    ],
+    "popup_text_fg": [
+      76,
+      79,
+      105
+    ],
+    "suggestion_bg": [
+      204,
+      208,
+      218
+    ],
+    "suggestion_selected_bg": [
+      30,
+      102,
+      245
+    ],
+    "help_bg": [
+      239,
+      241,
+      245
+    ],
+    "help_fg": [
+      76,
+      79,
+      105
+    ],
+    "help_key_fg": [
+      4,
+      165,
+      229
+    ],
+    "help_separator_fg": [
+      156,
+      160,
+      176
+    ],
+    "help_indicator_fg": [
+      210,
+      15,
+      57
+    ],
+    "help_indicator_bg": [
+      239,
+      241,
+      245
+    ],
+    "split_separator_fg": [
+      156,
+      160,
+      176
+    ],
+    "menu_bg": [
+      230,
+      233,
+      239
+    ],
+    "menu_fg": [
+      76,
+      79,
+      105
+    ],
+    "menu_active_bg": [
+      188,
+      192,
+      204
+    ],
+    "menu_active_fg": [
+      76,
+      79,
+      105
+    ],
+    "menu_dropdown_bg": [
+      204,
+      208,
+      218
+    ],
+    "menu_dropdown_fg": [
+      76,
+      79,
+      105
+    ],
+    "menu_highlight_bg": [
+      30,
+      102,
+      245
+    ],
+    "menu_highlight_fg": [
+      220,
+      224,
+      232
+    ],
+    "menu_border_fg": [
+      156,
+      160,
+      176
+    ],
+    "menu_separator_fg": [
+      172,
+      176,
+      190
+    ],
+    "menu_hover_bg": [
+      188,
+      192,
+      204
+    ],
+    "menu_hover_fg": [
+      76,
+      79,
+      105
+    ],
+    "menu_disabled_fg": [
+      156,
+      160,
+      176
+    ],
+    "menu_disabled_bg": [
+      204,
+      208,
+      218
+    ]
+  },
+  "search": {
+    "match_bg": [
+      223,
+      142,
+      29
+    ],
+    "match_fg": [
+      239,
+      241,
+      245
+    ]
+  },
+  "diagnostic": {
+    "error_fg": [
+      210,
+      15,
+      57
+    ],
+    "error_bg": [
+      245,
+      220,
+      225
+    ],
+    "warning_fg": [
+      223,
+      142,
+      29
+    ],
+    "warning_bg": [
+      250,
+      240,
+      220
+    ],
+    "info_fg": [
+      4,
+      165,
+      229
+    ],
+    "info_bg": [
+      220,
+      240,
+      250
+    ],
+    "hint_fg": [
+      156,
+      160,
+      176
+    ],
+    "hint_bg": [
+      239,
+      241,
+      245
+    ]
+  },
+  "syntax": {
+    "keyword": [
+      136,
+      57,
+      239
+    ],
+    "string": [
+      64,
+      160,
+      43
+    ],
+    "comment": [
+      156,
+      160,
+      176
+    ],
+    "function": [
+      30,
+      102,
+      245
+    ],
+    "type": [
+      223,
+      142,
+      29
+    ],
+    "variable": [
+      76,
+      79,
+      105
+    ],
+    "constant": [
+      254,
+      100,
+      11
+    ],
+    "operator": [
+      4,
+      165,
+      229
+    ]
+  }
+}
