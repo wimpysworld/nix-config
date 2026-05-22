@@ -13,6 +13,17 @@
     };
   };
 
+  fresh.settings.lsp.dart = {
+    command = "${pkgs.dart}/bin/dart";
+    args = [
+      "language-server"
+      "--protocol=lsp"
+    ];
+    enabled = true;
+    auto_start = true;
+    initialization_options.lineLength = 80;
+  };
+
   home = {
     packages = with pkgs; [
       # lowPrio to avoid bin/resources collision with pkgs.resources (GNOME system monitor)

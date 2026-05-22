@@ -55,4 +55,11 @@
       ".zsh" = "shellscript";
     };
   };
+
+  fresh.settings.lsp.bash = {
+    command = lib.getExe pkgs.bash-language-server;
+    args = [ "start" ];
+    enabled = true;
+    auto_start = true;
+  };
 }

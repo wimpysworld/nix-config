@@ -18,6 +18,12 @@
     };
   };
 
+  fresh.settings.lsp.rust = {
+    command = lib.getExe pkgs.rust-analyzer;
+    enabled = true;
+    auto_start = true;
+  };
+
   programs = {
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [

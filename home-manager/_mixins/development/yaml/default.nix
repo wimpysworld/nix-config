@@ -70,4 +70,12 @@
       ".yml" = "yaml";
     };
   };
+
+  fresh.settings.lsp.yaml = {
+    command = lib.getExe pkgs.yaml-language-server;
+    args = [ "--stdio" ];
+    enabled = true;
+    auto_start = true;
+    initialization_options.yaml.keyOrdering = true;
+  };
 }

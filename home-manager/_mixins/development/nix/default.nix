@@ -23,6 +23,12 @@
     };
   };
 
+  fresh.settings.lsp.nix = {
+    command = lib.getExe pkgs.nixd;
+    enabled = true;
+    auto_start = true;
+  };
+
   programs = {
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       userSettings = {
