@@ -17,17 +17,20 @@
     # Common packages available on all platforms.
     # Platform-specific packages are added in nixos/default.nix and darwin/default.nix.
     systemPackages = with pkgs; [
+      fresh
       git
       just
-      micro
       nix-output-monitor
       nvd
       sops
     ];
 
     variables = {
-      EDITOR = "micro";
-      VISUAL = "micro";
+      EDITOR = "fresh";
+      GIT_EDITOR = "fresh";
+      SUDO_EDITOR = "fresh";
+      SYSTEMD_EDITOR = "fresh";
+      VISUAL = "fresh";
     };
   };
 

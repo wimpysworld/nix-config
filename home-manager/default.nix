@@ -117,10 +117,11 @@ in
       ];
     sessionVariables = {
       COLORTERM = "truecolor";
-      EDITOR = "micro";
-      SUDO_EDITOR = "micro";
-      SYSTEMD_EDITOR = "micro";
-      VISUAL = "micro";
+      EDITOR = "fresh";
+      GIT_EDITOR = "fresh";
+      SUDO_EDITOR = "fresh";
+      SYSTEMD_EDITOR = "fresh";
+      VISUAL = "fresh";
     };
   };
 

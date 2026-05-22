@@ -152,11 +152,11 @@
             deadnix
             direnv
             file
+            fresh
             git
             home-manager
             jq
             just
-            micro
             nh
             nixfmt-tree
             nixfmt

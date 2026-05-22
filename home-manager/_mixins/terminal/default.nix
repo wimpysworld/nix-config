@@ -20,6 +20,8 @@ let
     lolcat = "${pkgs.dotacat}/bin/dotacat";
     lsusb = "${pkgs.cyme}/bin/cyme --headings";
     moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
+    micro = "fresh";
+    nano = "fresh";
     rsync-copy = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --human-readable --info=progress2 --inplace --no-compress --partial --stats";
     rsync-mirror = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --delete --human-readable --info=progress2 --no-compress --inplace --partial --stats";
     ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
@@ -38,9 +40,9 @@ in
     ./eza.nix # Modern Unix `ls`
     ./fastfetch.nix # Modern Unix `neofetch`
     ./fd.nix # Modern Unix `find`
+    ./fresh.nix # Terminal text editor
     ./fzf.nix # Terminal fuzzy finder
     ./gpg.nix # Terminal GPG
-    ./micro.nix # Terminal text editor
     ./pueue.nix # Terminal task manager
     ./rclone.nix # Terminal cloud storage sync
     ./ripgrep.nix # Modern Unix `grep`

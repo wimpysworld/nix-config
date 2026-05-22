@@ -96,7 +96,8 @@ in
   programs = {
     fish = {
       shellAliases = {
-        nano = "micro";
+        micro = "fresh";
+        nano = "fresh";
       };
     };
     gnupg.agent = {

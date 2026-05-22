@@ -121,7 +121,7 @@ in
         gh-notify
       ];
       settings = {
-        #editor = "micro";
+        #editor = "fresh";
         git_protocol = "https";
         prompt = "enabled";
       };
