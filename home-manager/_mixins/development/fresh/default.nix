@@ -8,6 +8,14 @@
 let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
+
+  catppuccinFresh = import ../../../../lib/fresh-catppuccin-themes.nix { inherit lib; };
+  catppuccinThemeFiles = lib.mapAttrs' (
+    name: theme:
+    lib.nameValuePair "fresh/themes/${name}.json" {
+      text = builtins.toJSON theme;
+    }
+  ) catppuccinFresh.themes;
 in
 {
   options.fresh.settings = lib.mkOption {
@@ -23,13 +31,8 @@ in
       inputs.fresh.packages.${system}.fresh
     ];
 
-    xdg.configFile = {
+    xdg.configFile = catppuccinThemeFiles // {
       "fresh/config.json".text = lib.mkDefault (builtins.toJSON config.fresh.settings);
-
-      "fresh/themes/catppuccin-frappe.json".source = ./themes/catppuccin-frappe.json;
-      "fresh/themes/catppuccin-latte.json".source = ./themes/catppuccin-latte.json;
-      "fresh/themes/catppuccin-macchiato.json".source = ./themes/catppuccin-macchiato.json;
-      "fresh/themes/catppuccin-mocha.json".source = ./themes/catppuccin-mocha.json;
     };
   };
 }
