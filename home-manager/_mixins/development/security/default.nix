@@ -86,6 +86,15 @@
     };
   };
 
+  # Fresh Editor - universal static-analysis LSP.
+  fresh.settings.universal_lsp.semgrep = {
+    command = "${pkgs.semgrep}/bin/semgrep";
+    args = [ "lsp" ];
+    enabled = true;
+    auto_start = true;
+    only_features = [ "diagnostics" ];
+  };
+
   # OpenCode - LSP server
   programs.opencode.settings.lsp.semgrep = {
     command = [

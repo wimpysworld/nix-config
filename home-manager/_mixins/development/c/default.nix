@@ -20,6 +20,19 @@ in
     };
   };
 
+  fresh.settings.lsp = {
+    c = {
+      command = "${pkgs.clang-tools}/bin/clangd";
+      enabled = true;
+      auto_start = true;
+    };
+    cpp = {
+      command = "${pkgs.clang-tools}/bin/clangd";
+      enabled = true;
+      auto_start = true;
+    };
+  };
+
   home = {
     packages = with pkgs; [
       bear # Generate compile_commands.json for non-CMake projects

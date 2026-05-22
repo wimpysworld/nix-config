@@ -34,6 +34,32 @@
     };
   };
 
+  fresh.settings.lsp.go = [
+    {
+      name = "gopls";
+      command = lib.getExe pkgs.gopls;
+      enabled = true;
+      auto_start = true;
+      root_markers = [
+        "go.mod"
+        "go.work"
+        ".git"
+      ];
+    }
+    {
+      name = "golangci-lint-langserver";
+      command = lib.getExe pkgs.golangci-lint-langserver;
+      enabled = true;
+      auto_start = true;
+      only_features = [ "diagnostics" ];
+      root_markers = [
+        "go.mod"
+        "go.work"
+        ".git"
+      ];
+    }
+  ];
+
   claude-code.lspServers.golangci-lint-langserver = {
     command = lib.getExe pkgs.golangci-lint-langserver;
     extensionToLanguage = {

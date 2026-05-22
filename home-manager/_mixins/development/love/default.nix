@@ -18,6 +18,12 @@ lib.mkIf
       };
     };
 
+    fresh.settings.lsp.lua = {
+      command = lib.getExe pkgs.lua-language-server;
+      enabled = true;
+      auto_start = true;
+    };
+
     home = {
       packages = with pkgs; [
         glslang

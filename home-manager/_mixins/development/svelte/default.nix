@@ -55,4 +55,11 @@
       ".svelte" = "svelte";
     };
   };
+
+  fresh.settings.lsp.svelte = {
+    command = lib.getExe pkgs.svelte-language-server;
+    args = [ "--stdio" ];
+    enabled = true;
+    auto_start = true;
+  };
 }

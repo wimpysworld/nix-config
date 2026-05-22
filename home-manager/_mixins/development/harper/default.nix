@@ -83,6 +83,18 @@ in
     };
   };
 
+  # Fresh Editor - universal grammar and spelling LSP.
+  fresh.settings.universal_lsp.harper = {
+    command = harperLs;
+    args = [ "--stdio" ];
+    enabled = true;
+    auto_start = true;
+    only_features = [ "diagnostics" ];
+    initialization_options = {
+      "harper-ls" = harperSettings;
+    };
+  };
+
   # OpenCode - LSP server.
   programs.opencode.settings.lsp.harper = {
     command = [

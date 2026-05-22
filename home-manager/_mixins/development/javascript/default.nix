@@ -204,4 +204,37 @@
       };
     };
   };
+
+  fresh.settings.lsp = {
+    javascript = {
+      command = lib.getExe pkgs.typescript-language-server;
+      args = [ "--stdio" ];
+      enabled = true;
+      auto_start = true;
+    };
+    typescript = {
+      command = lib.getExe pkgs.typescript-language-server;
+      args = [ "--stdio" ];
+      enabled = true;
+      auto_start = true;
+    };
+    json = {
+      command = "${pkgs.vscode-langservers-extracted}/bin/vscode-json-language-server";
+      args = [ "--stdio" ];
+      enabled = true;
+      auto_start = true;
+    };
+    html = {
+      command = "${pkgs.vscode-langservers-extracted}/bin/vscode-html-language-server";
+      args = [ "--stdio" ];
+      enabled = true;
+      auto_start = true;
+    };
+    css = {
+      command = "${pkgs.vscode-langservers-extracted}/bin/vscode-css-language-server";
+      args = [ "--stdio" ];
+      enabled = true;
+      auto_start = true;
+    };
+  };
 }
