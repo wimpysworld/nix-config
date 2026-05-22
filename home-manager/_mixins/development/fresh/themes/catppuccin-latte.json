@@ -35,6 +35,67 @@
       239,
       241,
       245
+    ],
+    "inactive_cursor": [
+      156,
+      160,
+      176
+    ],
+    "selection_modifier": null,
+    "ruler_bg": [
+      204,
+      208,
+      218
+    ],
+    "whitespace_indicator_fg": [
+      156,
+      160,
+      176
+    ],
+    "after_eof_bg": [
+      239,
+      241,
+      245
+    ],
+    "diff_add_collision_fg": [
+      64,
+      160,
+      43
+    ],
+    "diff_remove_collision_fg": [
+      210,
+      15,
+      57
+    ],
+    "diff_modify_collision_fg": [
+      223,
+      142,
+      29
+    ],
+    "diff_add_bg": [
+      208,
+      226,
+      209
+    ],
+    "diff_add_highlight_bg": [
+      186,
+      217,
+      184
+    ],
+    "diff_remove_bg": [
+      234,
+      200,
+      211
+    ],
+    "diff_remove_highlight_bg": [
+      230,
+      173,
+      189
+    ],
+    "diff_modify_bg": [
+      236,
+      223,
+      206
     ]
   },
   "ui": {
@@ -227,6 +288,197 @@
       204,
       208,
       218
+    ],
+    "tab_close_hover_fg": [
+      210,
+      15,
+      57
+    ],
+    "tab_hover_bg": [
+      204,
+      208,
+      218
+    ],
+    "tab_drop_zone_bg": [
+      30,
+      102,
+      245
+    ],
+    "tab_drop_zone_border": [
+      4,
+      165,
+      229
+    ],
+    "status_palette_fg": [
+      220,
+      224,
+      232
+    ],
+    "status_palette_bg": [
+      136,
+      57,
+      239
+    ],
+    "status_lsp_on_fg": [
+      220,
+      224,
+      232
+    ],
+    "status_lsp_on_bg": [
+      64,
+      160,
+      43
+    ],
+    "status_lsp_actionable_fg": [
+      220,
+      224,
+      232
+    ],
+    "status_lsp_actionable_bg": [
+      223,
+      142,
+      29
+    ],
+    "status_warning_indicator_bg": [
+      223,
+      142,
+      29
+    ],
+    "status_warning_indicator_fg": [
+      220,
+      224,
+      232
+    ],
+    "status_warning_indicator_hover_bg": [
+      254,
+      100,
+      11
+    ],
+    "status_warning_indicator_hover_fg": [
+      220,
+      224,
+      232
+    ],
+    "status_error_indicator_bg": [
+      210,
+      15,
+      57
+    ],
+    "status_error_indicator_fg": [
+      220,
+      224,
+      232
+    ],
+    "status_error_indicator_hover_bg": [
+      230,
+      69,
+      83
+    ],
+    "status_error_indicator_hover_fg": [
+      220,
+      224,
+      232
+    ],
+    "popup_selection_fg": [
+      220,
+      224,
+      232
+    ],
+    "text_input_selection_bg": [
+      30,
+      102,
+      245
+    ],
+    "inline_code_bg": [
+      204,
+      208,
+      218
+    ],
+    "scrollbar_track_fg": [
+      204,
+      208,
+      218
+    ],
+    "scrollbar_thumb_fg": [
+      188,
+      192,
+      204
+    ],
+    "scrollbar_track_hover_fg": [
+      188,
+      192,
+      204
+    ],
+    "scrollbar_thumb_hover_fg": [
+      172,
+      176,
+      190
+    ],
+    "split_separator_hover_fg": [
+      30,
+      102,
+      245
+    ],
+    "compose_margin_bg": [
+      230,
+      233,
+      239
+    ],
+    "semantic_highlight_bg": [
+      204,
+      208,
+      218
+    ],
+    "semantic_highlight_modifier": null,
+    "terminal_bg": [
+      239,
+      241,
+      245
+    ],
+    "terminal_fg": [
+      76,
+      79,
+      105
+    ],
+    "settings_selected_bg": [
+      204,
+      208,
+      218
+    ],
+    "settings_selected_fg": [
+      76,
+      79,
+      105
+    ],
+    "file_status_added_fg": [
+      64,
+      160,
+      43
+    ],
+    "file_status_modified_fg": [
+      223,
+      142,
+      29
+    ],
+    "file_status_deleted_fg": [
+      210,
+      15,
+      57
+    ],
+    "file_status_renamed_fg": [
+      30,
+      102,
+      245
+    ],
+    "file_status_untracked_fg": [
+      254,
+      100,
+      11
+    ],
+    "file_status_conflicted_fg": [
+      136,
+      57,
+      239
     ]
   },
   "search": {
@@ -239,6 +491,16 @@
       239,
       241,
       245
+    ],
+    "label_bg": [
+      136,
+      57,
+      239
+    ],
+    "label_fg": [
+      220,
+      224,
+      232
     ]
   },
   "diagnostic": {
@@ -323,6 +585,16 @@
       4,
       165,
       229
+    ],
+    "punctuation_bracket": [
+      124,
+      127,
+      147
+    ],
+    "punctuation_delimiter": [
+      124,
+      127,
+      147
     ]
   }
 }

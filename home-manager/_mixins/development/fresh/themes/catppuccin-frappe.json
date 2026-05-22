@@ -35,6 +35,67 @@
       48,
       52,
       70
+    ],
+    "inactive_cursor": [
+      115,
+      121,
+      148
+    ],
+    "selection_modifier": null,
+    "ruler_bg": [
+      65,
+      69,
+      89
+    ],
+    "whitespace_indicator_fg": [
+      115,
+      121,
+      148
+    ],
+    "after_eof_bg": [
+      48,
+      52,
+      70
+    ],
+    "diff_add_collision_fg": [
+      166,
+      209,
+      137
+    ],
+    "diff_remove_collision_fg": [
+      231,
+      130,
+      132
+    ],
+    "diff_modify_collision_fg": [
+      229,
+      200,
+      144
+    ],
+    "diff_add_bg": [
+      69,
+      80,
+      82
+    ],
+    "diff_add_highlight_bg": [
+      83,
+      99,
+      90
+    ],
+    "diff_remove_bg": [
+      81,
+      66,
+      81
+    ],
+    "diff_remove_highlight_bg": [
+      103,
+      75,
+      89
+    ],
+    "diff_modify_bg": [
+      81,
+      79,
+      83
     ]
   },
   "ui": {
@@ -227,6 +288,197 @@
       65,
       69,
       89
+    ],
+    "tab_close_hover_fg": [
+      231,
+      130,
+      132
+    ],
+    "tab_hover_bg": [
+      65,
+      69,
+      89
+    ],
+    "tab_drop_zone_bg": [
+      140,
+      170,
+      238
+    ],
+    "tab_drop_zone_border": [
+      153,
+      209,
+      219
+    ],
+    "status_palette_fg": [
+      35,
+      38,
+      52
+    ],
+    "status_palette_bg": [
+      202,
+      158,
+      230
+    ],
+    "status_lsp_on_fg": [
+      35,
+      38,
+      52
+    ],
+    "status_lsp_on_bg": [
+      166,
+      209,
+      137
+    ],
+    "status_lsp_actionable_fg": [
+      35,
+      38,
+      52
+    ],
+    "status_lsp_actionable_bg": [
+      229,
+      200,
+      144
+    ],
+    "status_warning_indicator_bg": [
+      229,
+      200,
+      144
+    ],
+    "status_warning_indicator_fg": [
+      35,
+      38,
+      52
+    ],
+    "status_warning_indicator_hover_bg": [
+      239,
+      159,
+      118
+    ],
+    "status_warning_indicator_hover_fg": [
+      35,
+      38,
+      52
+    ],
+    "status_error_indicator_bg": [
+      231,
+      130,
+      132
+    ],
+    "status_error_indicator_fg": [
+      35,
+      38,
+      52
+    ],
+    "status_error_indicator_hover_bg": [
+      234,
+      153,
+      156
+    ],
+    "status_error_indicator_hover_fg": [
+      35,
+      38,
+      52
+    ],
+    "popup_selection_fg": [
+      35,
+      38,
+      52
+    ],
+    "text_input_selection_bg": [
+      140,
+      170,
+      238
+    ],
+    "inline_code_bg": [
+      65,
+      69,
+      89
+    ],
+    "scrollbar_track_fg": [
+      65,
+      69,
+      89
+    ],
+    "scrollbar_thumb_fg": [
+      81,
+      87,
+      109
+    ],
+    "scrollbar_track_hover_fg": [
+      81,
+      87,
+      109
+    ],
+    "scrollbar_thumb_hover_fg": [
+      98,
+      104,
+      128
+    ],
+    "split_separator_hover_fg": [
+      140,
+      170,
+      238
+    ],
+    "compose_margin_bg": [
+      41,
+      44,
+      60
+    ],
+    "semantic_highlight_bg": [
+      65,
+      69,
+      89
+    ],
+    "semantic_highlight_modifier": null,
+    "terminal_bg": [
+      48,
+      52,
+      70
+    ],
+    "terminal_fg": [
+      198,
+      208,
+      245
+    ],
+    "settings_selected_bg": [
+      65,
+      69,
+      89
+    ],
+    "settings_selected_fg": [
+      198,
+      208,
+      245
+    ],
+    "file_status_added_fg": [
+      166,
+      209,
+      137
+    ],
+    "file_status_modified_fg": [
+      229,
+      200,
+      144
+    ],
+    "file_status_deleted_fg": [
+      231,
+      130,
+      132
+    ],
+    "file_status_renamed_fg": [
+      140,
+      170,
+      238
+    ],
+    "file_status_untracked_fg": [
+      239,
+      159,
+      118
+    ],
+    "file_status_conflicted_fg": [
+      202,
+      158,
+      230
     ]
   },
   "search": {
@@ -239,6 +491,16 @@
       48,
       52,
       70
+    ],
+    "label_bg": [
+      202,
+      158,
+      230
+    ],
+    "label_fg": [
+      35,
+      38,
+      52
     ]
   },
   "diagnostic": {
@@ -323,6 +585,16 @@
       153,
       209,
       219
+    ],
+    "punctuation_bracket": [
+      148,
+      156,
+      187
+    ],
+    "punctuation_delimiter": [
+      148,
+      156,
+      187
     ]
   }
 }
