@@ -8,6 +8,7 @@
   home = {
     packages = with pkgs; [
       deadnix
+      nil
       nixd
       nix-diff
       nixfmt
@@ -24,7 +25,7 @@
   };
 
   fresh.settings.lsp.nix = {
-    command = lib.getExe pkgs.nixd;
+    command = lib.getExe pkgs.nil;
     enabled = true;
     auto_start = true;
   };
