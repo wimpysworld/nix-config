@@ -45,6 +45,7 @@ in
     ./rclone.nix # Terminal cloud storage sync
     ./ripgrep.nix # Modern Unix `grep`
     ./starship.nix # Modern Unix prompt
+    ./superfile.nix # Modern terminal file manager
     ./tldr.nix # Modern Unix `man`
     ./yazi.nix # Modern Unix `mc`
     ./yt-dlp.nix # Terminal YouTube downloader
