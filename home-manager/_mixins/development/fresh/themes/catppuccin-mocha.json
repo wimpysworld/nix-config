@@ -1,0 +1,328 @@
+{
+  "name": "catppuccin-mocha",
+  "editor": {
+    "bg": [
+      30,
+      30,
+      46
+    ],
+    "fg": [
+      205,
+      214,
+      244
+    ],
+    "cursor": [
+      245,
+      224,
+      220
+    ],
+    "selection_bg": [
+      69,
+      71,
+      90
+    ],
+    "current_line_bg": [
+      49,
+      50,
+      68
+    ],
+    "line_number_fg": [
+      108,
+      112,
+      134
+    ],
+    "line_number_bg": [
+      30,
+      30,
+      46
+    ]
+  },
+  "ui": {
+    "tab_active_fg": [
+      17,
+      17,
+      27
+    ],
+    "tab_active_bg": [
+      137,
+      180,
+      250
+    ],
+    "tab_inactive_fg": [
+      205,
+      214,
+      244
+    ],
+    "tab_inactive_bg": [
+      69,
+      71,
+      90
+    ],
+    "tab_separator_bg": [
+      30,
+      30,
+      46
+    ],
+    "status_bar_fg": [
+      17,
+      17,
+      27
+    ],
+    "status_bar_bg": [
+      137,
+      180,
+      250
+    ],
+    "prompt_fg": [
+      17,
+      17,
+      27
+    ],
+    "prompt_bg": [
+      166,
+      227,
+      161
+    ],
+    "prompt_selection_fg": [
+      205,
+      214,
+      244
+    ],
+    "prompt_selection_bg": [
+      137,
+      180,
+      250
+    ],
+    "popup_border_fg": [
+      108,
+      112,
+      134
+    ],
+    "popup_bg": [
+      49,
+      50,
+      68
+    ],
+    "popup_selection_bg": [
+      137,
+      180,
+      250
+    ],
+    "popup_text_fg": [
+      205,
+      214,
+      244
+    ],
+    "suggestion_bg": [
+      49,
+      50,
+      68
+    ],
+    "suggestion_selected_bg": [
+      137,
+      180,
+      250
+    ],
+    "help_bg": [
+      30,
+      30,
+      46
+    ],
+    "help_fg": [
+      205,
+      214,
+      244
+    ],
+    "help_key_fg": [
+      137,
+      220,
+      235
+    ],
+    "help_separator_fg": [
+      108,
+      112,
+      134
+    ],
+    "help_indicator_fg": [
+      243,
+      139,
+      168
+    ],
+    "help_indicator_bg": [
+      30,
+      30,
+      46
+    ],
+    "split_separator_fg": [
+      108,
+      112,
+      134
+    ],
+    "menu_bg": [
+      24,
+      24,
+      37
+    ],
+    "menu_fg": [
+      205,
+      214,
+      244
+    ],
+    "menu_active_bg": [
+      69,
+      71,
+      90
+    ],
+    "menu_active_fg": [
+      205,
+      214,
+      244
+    ],
+    "menu_dropdown_bg": [
+      49,
+      50,
+      68
+    ],
+    "menu_dropdown_fg": [
+      205,
+      214,
+      244
+    ],
+    "menu_highlight_bg": [
+      137,
+      180,
+      250
+    ],
+    "menu_highlight_fg": [
+      17,
+      17,
+      27
+    ],
+    "menu_border_fg": [
+      108,
+      112,
+      134
+    ],
+    "menu_separator_fg": [
+      88,
+      91,
+      112
+    ],
+    "menu_hover_bg": [
+      69,
+      71,
+      90
+    ],
+    "menu_hover_fg": [
+      205,
+      214,
+      244
+    ],
+    "menu_disabled_fg": [
+      108,
+      112,
+      134
+    ],
+    "menu_disabled_bg": [
+      49,
+      50,
+      68
+    ]
+  },
+  "search": {
+    "match_bg": [
+      249,
+      226,
+      175
+    ],
+    "match_fg": [
+      30,
+      30,
+      46
+    ]
+  },
+  "diagnostic": {
+    "error_fg": [
+      243,
+      139,
+      168
+    ],
+    "error_bg": [
+      53,
+      42,
+      54
+    ],
+    "warning_fg": [
+      249,
+      226,
+      175
+    ],
+    "warning_bg": [
+      53,
+      50,
+      42
+    ],
+    "info_fg": [
+      137,
+      220,
+      235
+    ],
+    "info_bg": [
+      35,
+      45,
+      55
+    ],
+    "hint_fg": [
+      108,
+      112,
+      134
+    ],
+    "hint_bg": [
+      30,
+      30,
+      46
+    ]
+  },
+  "syntax": {
+    "keyword": [
+      203,
+      166,
+      247
+    ],
+    "string": [
+      166,
+      227,
+      161
+    ],
+    "comment": [
+      108,
+      112,
+      134
+    ],
+    "function": [
+      137,
+      180,
+      250
+    ],
+    "type": [
+      249,
+      226,
+      175
+    ],
+    "variable": [
+      205,
+      214,
+      244
+    ],
+    "constant": [
+      250,
+      179,
+      135
+    ],
+    "operator": [
+      137,
+      220,
+      235
+    ]
+  }
+}
