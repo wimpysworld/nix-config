@@ -57,7 +57,7 @@ in
   programs = {
     neovim = {
       enable = true;
-      defaultEditor = false; # micro is the default
+      defaultEditor = false; # Fresh is the default.
       viAlias = true;
       vimAlias = true;
       vimdiffAlias = true;

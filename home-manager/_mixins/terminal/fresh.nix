@@ -5,9 +5,7 @@
   ...
 }:
 let
-  inherit (config.noughty) host;
-
-  catppuccinFresh = import ../../../../lib/fresh-catppuccin-themes.nix { inherit lib; };
+  catppuccinFresh = import ../../../lib/fresh-catppuccin-themes.nix { inherit lib; };
   catppuccinThemeFiles = lib.mapAttrs' (
     name: theme:
     lib.nameValuePair "fresh/themes/${name}.json" {
@@ -22,7 +20,7 @@ in
     description = "Fresh editor settings contributed by development modules, merged into config.json.";
   };
 
-  config = lib.mkIf host.is.workstation {
+  config = {
     fresh.settings.theme = "catppuccin-mocha.json";
 
     # `pkgs.fresh` comes from the `modifiedPackages` overlay, which wraps the

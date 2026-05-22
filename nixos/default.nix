@@ -117,9 +117,6 @@ in
         smartmontools
       ];
 
-    variables = {
-      SYSTEMD_EDITOR = "micro";
-    };
   };
 
   nix = {
