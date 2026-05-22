@@ -1,13 +1,11 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
-  inherit (pkgs.stdenv.hostPlatform) system;
 
   catppuccinFresh = import ../../../../lib/fresh-catppuccin-themes.nix { inherit lib; };
   catppuccinThemeFiles = lib.mapAttrs' (
@@ -27,8 +25,10 @@ in
   config = lib.mkIf host.is.workstation {
     fresh.settings.theme = "catppuccin-mocha.json";
 
+    # `pkgs.fresh` comes from the `modifiedPackages` overlay, which wraps the
+    # upstream flake-input build with our theme-key-resolution patch.
     home.packages = [
-      inputs.fresh.packages.${system}.fresh
+      pkgs.fresh
     ];
 
     xdg.configFile = catppuccinThemeFiles // {
