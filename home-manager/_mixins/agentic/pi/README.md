@@ -247,7 +247,7 @@ Source content comes from `home-manager/_mixins/agentic/assistants`. Rendering f
 |--------|----------------|---------|
 | `instructions/global.md` | `~/.pi/agent/AGENTS.md` | Global context file loaded by Pi |
 | `agents/<name>/prompt.md` and `description.txt` | `~/.pi/agent/agents/<name>.md` | Pi subagent Markdown with YAML frontmatter |
-| `agents/<name>/commands/<command>/prompt.md` | `~/.pi/agent/prompts/<name>-<command>.md` | Prompt template that asks Pi to call the matching subagent |
+| `agents/<name>/commands/<command>/prompt.md` | `~/.pi/agent/prompts/<command>.md` | Prompt template that asks Pi to call the matching subagent. The owning agent is pinned by a `Use the subagent tool to launch the <name> agent` prelude in the body, not by the filename. Evaluation fails if two source directories (across agents or with standalone commands) produce the same `<command>` name. |
 | `commands/<command>/prompt.md` | `~/.pi/agent/prompts/<command>.md` | Native Pi prompt template |
 | `skills/<name>/` | `~/.pi/agent/skills/<name>/` | Symlinked Agent Skills directory |
 

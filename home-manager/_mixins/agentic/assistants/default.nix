@@ -97,6 +97,14 @@ let
     name = ".pi/agent/prompts/${cmdName}.md";
     value.text = compose.composeCommand "pi" null cmdName;
   }) compose.standaloneCommandDirs;
+  # Agent-scoped Pi prompts are emitted with the bare command name to match
+  # the Claude and OpenCode slash convention. The owning agent is pinned by
+  # the body prelude below rather than by the filename. Because Pi's
+  # `~/.pi/agent/prompts/` directory is flat and non-recursive, name
+  # collisions between standalone commands and agent-scoped commands (or
+  # across agents) would silently last-write into the same file; the
+  # piCommandCollisionCheck below fails evaluation with the offending
+  # source paths when that happens.
   piAgentPromptFiles = lib.foldlAttrs (
     acc: agentName: _:
     let
@@ -112,7 +120,8 @@ let
         # prelude is Pi-specific and mirrors how the Codex side wraps
         # spawn_agent guidance around skill bodies; see compose.nix's
         # claude branch for the symmetric `@<agent>` and `use-task`
-        # variants.
+        # variants. The prelude is the sole carrier of agent routing now
+        # that the filename no longer encodes the owning agent.
         piPrompt = ''
           Use the subagent tool to launch the `${agentName}` agent for the task below.
 
@@ -120,18 +129,61 @@ let
         '';
       in
       {
-        name = ".pi/agent/prompts/${agentName}-${cmdName}.md";
+        name = ".pi/agent/prompts/${cmdName}.md";
         value.text = compose.composePiCommandFromPrompt agentName cmdName piPrompt;
       }
     ) commandDirs
   ) { } codingAgentDirs;
-  piHomeFiles = {
-    ".pi/agent/AGENTS.md".text = globalInstructions;
-  }
-  // piAgentFiles
-  // piSkillFiles
-  // piStandalonePromptFiles
-  // piAgentPromptFiles;
+  # Collision guard for the Pi prompt namespace. Pi loads templates from a
+  # single flat directory keyed by filename, so any duplicate `cmdName`
+  # across standalone commands and the union of per-agent command sets
+  # would clobber each other. Fail evaluation with the colliding command
+  # name and every source path that produces it; the operator renames one
+  # source before the next `home-manager switch`.
+  piCommandSources =
+    lib.mapAttrsToList (cmdName: _: {
+      name = cmdName;
+      source = toString (./commands + "/${cmdName}");
+    }) compose.standaloneCommandDirs
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        agentName: _:
+        lib.mapAttrsToList (cmdName: _: {
+          name = cmdName;
+          source = toString (./agents + "/${agentName}/commands/${cmdName}");
+        }) (compose.discoverAgentCommands agentName)
+      ) codingAgentDirs
+    );
+  piCommandSourceGroups = lib.foldl' (
+    acc: entry: acc // { ${entry.name} = (acc.${entry.name} or [ ]) ++ [ entry.source ]; }
+  ) { } piCommandSources;
+  piCommandCollisions = lib.filterAttrs (_: sources: lib.length sources > 1) piCommandSourceGroups;
+  piCommandCollisionCheck =
+    if piCommandCollisions == { } then
+      true
+    else
+      let
+        formatGroup =
+          cmdName: sources: "  - ${cmdName}:\n${lib.concatMapStringsSep "\n" (s: "      ${s}") sources}";
+        message = lib.concatStringsSep "\n" (lib.mapAttrsToList formatGroup piCommandCollisions);
+      in
+      throw ''
+        Pi prompt name collision in ~/.pi/agent/prompts/. The following command names are produced by more than one source directory and would overwrite each other in Pi's flat prompt namespace. Rename one source before switching:
+        ${message}
+      '';
+  # Force the collision check before assembling the Pi home files. The
+  # `seq` forces evaluation of `piCommandCollisionCheck`, which either
+  # returns `true` or throws with the colliding command name and source
+  # paths.
+  piHomeFiles = builtins.seq piCommandCollisionCheck (
+    {
+      ".pi/agent/AGENTS.md".text = globalInstructions;
+    }
+    // piAgentFiles
+    // piSkillFiles
+    // piStandalonePromptFiles
+    // piAgentPromptFiles
+  );
   piProviderRouterMap = lib.filterAttrs (_: models: models != { }) (
     lib.mapAttrs (name: _: compose.extractAgentProviderModels name) codingAgentDirs
   );
