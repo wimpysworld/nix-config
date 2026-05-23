@@ -63,27 +63,5 @@
         "nix"
       ];
     };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.nix
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- Nix LSP (nixd) using Neovim 0.11+ native API
-        vim.lsp.config('nixd', {
-          settings = {
-            nixd = {
-              diagnostics = {
-                suppress = { 'sema-extra-with' },
-              },
-            },
-          },
-        })
-        vim.lsp.enable('nixd')
-        -- Nix formatting with nixfmt
-        require('conform').formatters_by_ft.nix = { 'nixfmt' }
-      '';
-    };
   };
 }

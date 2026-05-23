@@ -81,13 +81,12 @@ lib.mkIf host.is.workstation {
         map shift+enter send_text all \x1b[13;2u
         map ctrl+enter send_text all \x1b[13;5u
 
-        # Send proper escape sequences for Shift+Ins and Shift+Del (for Neovim CUA keybindings)
+        # Send proper escape sequences for Shift+Ins and Shift+Del.
         # Without this, Kitty intercepts these for its own clipboard operations
         map shift+insert send_text all \x1b[2;2~
         map shift+delete send_text all \x1b[3;2~
 
         # Ensure Ctrl+Shift+P is passed through to applications (not intercepted by Kitty)
-        # This is needed for Neovim command palette
         map ctrl+shift+p send_text all \x1b[80;6u
       '';
     };

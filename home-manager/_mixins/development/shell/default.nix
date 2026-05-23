@@ -29,21 +29,6 @@
         };
       };
     };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.bash
-          p.fish
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- Bash LSP using Neovim 0.11+ native API
-        vim.lsp.enable('bashls')
-        -- Shell formatting with shfmt
-        require('conform').formatters_by_ft.sh = { 'shfmt' }
-        require('conform').formatters_by_ft.bash = { 'shfmt' }
-      '';
-    };
   };
 
   claude-code.lspServers.bash = {

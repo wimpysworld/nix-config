@@ -94,21 +94,5 @@
         };
       };
     };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.go
-          p.gomod
-          p.gosum
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- Go LSP (gopls) using Neovim 0.11+ native API
-        vim.lsp.enable('gopls')
-        vim.lsp.enable('golangci-lint-langserver')
-        -- Go formatting with gofmt
-        require('conform').formatters_by_ft.go = { 'gofmt' }
-      '';
-    };
   };
 }

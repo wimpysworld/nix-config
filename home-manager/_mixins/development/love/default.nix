@@ -62,27 +62,5 @@ lib.mkIf
           };
         };
       };
-      neovim = lib.mkIf config.programs.neovim.enable {
-        plugins = [
-          (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-            p.lua
-          ]))
-        ];
-        extraLuaConfig = ''
-          -- Lua LSP using Neovim 0.11+ native API
-          vim.lsp.config('lua_ls', {
-            settings = {
-              Lua = {
-                runtime = { version = 'LuaJIT' },
-                workspace = { checkThirdParty = false },
-                telemetry = { enable = false },
-              },
-            },
-          })
-          vim.lsp.enable('lua_ls')
-          -- Lua formatting with stylua
-          require('conform').formatters_by_ft.lua = { 'stylua' }
-        '';
-      };
     };
   }

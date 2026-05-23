@@ -25,33 +25,6 @@
   };
 
   programs = {
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.css
-          p.html
-          p.javascript
-          p.json
-          p.tsx
-          p.typescript
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- JavaScript/TypeScript LSP (ts_ls) using Neovim 0.11+ native API
-        vim.lsp.enable('ts_ls')
-        -- JSON/CSS/HTML LSPs using Neovim 0.11+ native API
-        vim.lsp.enable({'jsonls', 'cssls', 'html'})
-        -- Prettier formatting for web languages (CSS, HTML, JS, JSON, TS)
-        require('conform').formatters_by_ft.css = { 'prettier' }
-        require('conform').formatters_by_ft.html = { 'prettier' }
-        require('conform').formatters_by_ft.javascript = { 'prettier' }
-        require('conform').formatters_by_ft.javascriptreact = { 'prettier' }
-        require('conform').formatters_by_ft.json = { 'prettier' }
-        require('conform').formatters_by_ft.jsonc = { 'prettier' }
-        require('conform').formatters_by_ft.typescript = { 'prettier' }
-        require('conform').formatters_by_ft.typescriptreact = { 'prettier' }
-      '';
-    };
     opencode = lib.mkIf config.programs.opencode.enable {
       settings = {
         formatter = {

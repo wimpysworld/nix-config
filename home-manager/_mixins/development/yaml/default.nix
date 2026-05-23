@@ -40,26 +40,6 @@
         };
       };
     };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.yaml
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- YAML LSP using Neovim 0.11+ native API
-        vim.lsp.config('yamlls', {
-          settings = {
-            yaml = {
-              keyOrdering = true,
-            },
-          },
-        })
-        vim.lsp.enable('yamlls')
-        -- YAML formatting with prettier
-        require('conform').formatters_by_ft.yaml = { 'prettier' }
-      '';
-    };
   };
 
   claude-code.lspServers.yaml = {

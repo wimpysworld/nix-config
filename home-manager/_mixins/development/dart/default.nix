@@ -55,18 +55,5 @@
         };
       };
     };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.dart
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- Dart LSP using Neovim 0.11+ native API
-        vim.lsp.enable('dartls')
-        -- Dart formatting with dart format
-        require('conform').formatters_by_ft.dart = { 'dart_format' }
-      '';
-    };
   };
 }

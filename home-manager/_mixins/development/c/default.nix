@@ -72,24 +72,5 @@ in
         };
       };
     };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.c
-          p.cmake
-          p.cpp
-          p.make
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- C/C++ LSP (clangd) using Neovim 0.11+ native API
-        vim.lsp.enable('clangd')
-        -- CMake LSP (neocmakelsp)
-        vim.lsp.enable('neocmakelsp')
-        -- C/C++ formatting with clang-format
-        require('conform').formatters_by_ft.c = { 'clang-format' }
-        require('conform').formatters_by_ft.cpp = { 'clang-format' }
-      '';
-    };
   };
 }

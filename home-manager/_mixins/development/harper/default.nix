@@ -14,13 +14,6 @@ let
     diagnosticSeverity = "hint";
   };
 
-  neovimFiletypes = [
-    "markdown"
-    "text"
-    "tex"
-    "typst"
-  ];
-
   extensionToLanguage = {
     ".adoc" = "asciidoc";
     ".asciidoc" = "asciidoc";
@@ -117,23 +110,5 @@ in
       };
       settings."harper-ls" = harperSettings;
     };
-  };
-
-  # Neovim - native LSP configuration.
-  programs.neovim = lib.mkIf config.programs.neovim.enable {
-    extraLuaConfig = ''
-      -- Harper grammar and spelling LSP using Neovim 0.11+ native API.
-      vim.lsp.config('harper', {
-        cmd = { '${harperLs}', '--stdio' },
-        filetypes = ${builtins.toJSON neovimFiletypes},
-        settings = {
-          ['harper-ls'] = {
-            dialect = 'British',
-            diagnosticSeverity = 'hint',
-          },
-        },
-      })
-      vim.lsp.enable('harper')
-    '';
   };
 }

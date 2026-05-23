@@ -180,7 +180,7 @@ CI/CD workflows in [.github] are Nix ❄️ supercharged ⚡️ by [**Determinat
 
 A fully _"oxidised"_ 🦀 [Modern Unix] shell experience is provided by [Fish shell](https://fishshell.com/) 🐟️ with [Starship](https://starship.rs/) 🚀 and a collection of tools that deliver a contempory UX to my terminal ‍🧑‍💻
 
-The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale] and, of course, a gloriously unrepentant modeless Neovim config that treats modal editing as Stockholm syndrome. (_Fight me!_ 🥊)
+The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], and a [Fresh] terminal editor configuration.
 Useful shell scripts I used to keep in muddle of git repos are now migrated to [NixOS scripts](./nixos/_mixins/scripts) and [Home Manager scripts](./home-manager/_mixins/scripts) to provide a declarative, reproducible and `shellcheck` validated toolbox 🧰
 
 ![fastfetch on Phasma](.github/screenshots/fastfetch.png)
@@ -450,7 +450,7 @@ Some applications require manual configuration to apply the correct theme.
 [flake.nix]: ./flake.nix
 [Modern Unix]: ./home-manager/default.nix
 [OpenSSH]: ./nixos/_mixins/network/ssh/default.nix
-[micro]: https://micro-editor.github.io/
+[Fresh]: https://github.com/sinelaw/fresh
 [Tailscale]: https://tailscale.com/
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
 [Wayfire NixOS]: ./nixos/_mixins/desktop/wayfire/default.nix

@@ -32,19 +32,5 @@
         "toml"
       ];
     };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.rust
-          p.toml
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- Rust LSP (rust-analyzer) using Neovim 0.11+ native API
-        vim.lsp.enable('rust_analyzer')
-        -- Rust formatting with rustfmt
-        require('conform').formatters_by_ft.rust = { 'rustfmt' }
-      '';
-    };
   };
 }

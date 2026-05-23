@@ -307,7 +307,7 @@ These do not fix the algorithm, but they reduce the worst symptoms.
 - Drag-and-drop a file into the terminal; most terminals paste an absolute path that Claude Code recognises.
 - Pipe a list into the prompt: ``$(fzf -m | xargs -I{} echo "@{}")``. Crude but reliable.
 - Use the `Read` tool by name and let Claude search via `Glob`/`Grep` rather than mentioning files inline.
-- Editor pickers — Telescope, fzf-lua, Snacks.nvim — copy paths to the system clipboard, then paste with `@`.
+- Editor-integrated pickers can copy paths to the system clipboard, then paste with `@`.
 
 ### 5. MCP servers
 

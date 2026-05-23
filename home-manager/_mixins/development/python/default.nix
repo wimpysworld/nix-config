@@ -59,19 +59,6 @@
         };
       };
     };
-    neovim = lib.mkIf config.programs.neovim.enable {
-      plugins = [
-        (pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
-          p.python
-        ]))
-      ];
-      extraLuaConfig = ''
-        -- Python LSP (basedpyright) using Neovim 0.11+ native API
-        vim.lsp.enable('basedpyright')
-        -- Python formatting with ruff
-        require('conform').formatters_by_ft.python = { 'ruff_format' }
-      '';
-    };
     opencode = lib.mkIf config.programs.opencode.enable {
       settings = {
         formatter = {
