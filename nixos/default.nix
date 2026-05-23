@@ -145,6 +145,11 @@ in
       max-substitution-jobs = 64;
       http-connections = 128;
       connect-timeout = 10;
+      # Use Numtide's cache for llm-agents.nix packages such as Codex.
+      extra-substituters = [ "https://cache.numtide.com" ];
+      extra-trusted-public-keys = [
+        "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
+      ];
       warn-dirty = false;
       # Allow wheel users to set client-side Nix options (e.g. netrc-file
       # for FlakeHub Cache authentication via fh apply).

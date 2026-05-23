@@ -13,11 +13,11 @@ let
   # CODEX_HOME/.codex paths are special protected paths inside the Linux
   # sandbox. The interactive entry point must therefore exec a stable
   # user-owned binary copy outside CODEX_HOME.
-  # Keep the source package unwrapped so that copied binary remains self-same
-  # for arg0 dispatch, including codex-linux-sandbox.
-  codexPackage = inputs.llm-agents.packages.${system}.codex.overrideAttrs (_oldAttrs: {
-    postFixup = "";
-  });
+  # Keep the source package unchanged so Numtide's cache can substitute the
+  # large Rust build. On Linux, the upstream wrapper hides the real binary at
+  # `bin/.codex-wrapped`; activation copies that binary into a stable user path
+  # so current_exe re-exec keeps working after Home Manager generation changes.
+  codexPackage = inputs.llm-agents.packages.${system}.codex;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
@@ -49,6 +49,7 @@ let
 
   codexLauncherPackage = pkgs.writeShellApplication {
     name = "codex";
+    runtimeInputs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.bubblewrap ];
     text = ''
       export CODEX_HOME=${lib.escapeShellArg codexDir}
 
@@ -271,7 +272,11 @@ let
       target="$1"
       mkdir -p "$(dirname "$target")"
       codex_tmp="$(mktemp "$(dirname "$target")/codex.XXXXXX")"
-      cp "${codexPackage}/bin/codex" "$codex_tmp"
+      if [ -x "${codexPackage}/bin/.codex-wrapped" ]; then
+        cp "${codexPackage}/bin/.codex-wrapped" "$codex_tmp"
+      else
+        cp "${codexPackage}/bin/codex" "$codex_tmp"
+      fi
       chmod 755 "$codex_tmp"
       mv -f "$codex_tmp" "$target"
     }
