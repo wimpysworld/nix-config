@@ -72,7 +72,11 @@ rec {
     cloudflare = {
       transport = "http";
       url = "https://docs.mcp.cloudflare.com/mcp";
-      consumers.zed.mode = "context_server";
+      consumers = {
+        claudeCode.enabled = false;
+        codex.enabled = false;
+        zed.mode = "context_server";
+      };
     };
 
     codex = {
@@ -123,7 +127,11 @@ rec {
       transport = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
       args = [ ];
-      consumers.zed.mode = "context_server";
+      consumers = {
+        claudeCode.enabled = false;
+        codex.enabled = false;
+        zed.mode = "context_server";
+      };
     };
 
   }
@@ -132,7 +140,11 @@ rec {
       transport = "stdio";
       command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
       args = [ ];
-      consumers.zed.mode = "context_server";
+      consumers = {
+        claudeCode.enabled = false;
+        codex.enabled = false;
+        zed.mode = "context_server";
+      };
     };
   }
   // lib.optionalAttrs isBane {
@@ -146,6 +158,8 @@ rec {
       transport = "http";
       url = "https://mcp.svelte.dev/mcp";
       consumers = {
+        claudeCode.enabled = false;
+        codex.enabled = false;
         zed = {
           mode = "extension";
           id = "svelte-mcp";
