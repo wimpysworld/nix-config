@@ -15,7 +15,6 @@ let
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  piBuiltinTools = "read,bash,edit,write,grep,find,ls";
   piMcpAdapterVersion = "2.6.1";
   piSubagentsVersion = "0.24.3";
   piLensVersion = "3.8.44";
@@ -206,23 +205,13 @@ let
         export NOUGHTY_AGENT_ISOLATION="Unfenced"
       fi
 
-      use_default_tools=true
-      for arg in "$@"; do
-        case "$arg" in
-          --)
-            break
-            ;;
-          --tools | --tools=* | --no-tools | --no-builtin-tools)
-            use_default_tools=false
-            break
-            ;;
-        esac
-      done
-
-      if [ "$use_default_tools" = true ]; then
-        set -- --tools "${piBuiltinTools}" "$@"
-      fi
-
+      # Pi enables built-in tools (read, bash, edit, write, grep, find, ls)
+      # and discovered extension tools by default. Do not inject `--tools`
+      # here: that flag is a strict allowlist that applies to built-in,
+      # extension, and custom tools, so injecting only the built-in names
+      # would hide every extension tool (subtask, lens, footer widgets,
+      # MCP/adapter tools, etc.). Per-agent allowlists are expressed in the
+      # agent's Pi-native frontmatter (`tools:` in `header.pi.yaml`).
       exec "${lib.getExe piPackage}" "$@"
     '';
   };
