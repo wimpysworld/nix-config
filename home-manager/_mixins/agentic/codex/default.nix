@@ -29,9 +29,27 @@ let
   codexStableBin = "${config.xdg.dataHome}/codex/bin/codex";
   codexLegacyStableBin = "${codexLegacyDir}/bin/codex";
   codexXdgStableBin = "${codexXdgDir}/bin/codex";
+
+  # Determine CODEX_HOME path, mirroring the Home Manager module logic.
+  # The HM module sets CODEX_HOME = xdg.configHome/codex when
+  # home.preferXdgDirectories is true (and package >= 0.2.0, which it is).
+  codexDir = if config.home.preferXdgDirectories then codexXdgDir else codexLegacyDir;
+  codexDirs = lib.unique [
+    codexDir
+    codexLegacyDir
+    codexXdgDir
+  ];
+  codexStableBins = lib.unique [
+    codexStableBin
+    codexLegacyStableBin
+    codexXdgStableBin
+  ];
+
   codexLauncherPackage = pkgs.writeShellApplication {
     name = "codex";
     text = ''
+      export CODEX_HOME=${lib.escapeShellArg codexDir}
+
       if [ -x "${codexStableBin}" ]; then
         exec "${codexStableBin}" "$@"
       fi
@@ -56,11 +74,6 @@ let
     inherit config pkgs;
   };
   assistantCompose = import ../assistants/compose.nix { inherit lib; };
-
-  # Determine CODEX_HOME path, mirroring the Home Manager module logic.
-  # The HM module sets CODEX_HOME = xdg.configHome/codex when
-  # home.preferXdgDirectories is true (and package >= 0.2.0, which it is).
-  codexDir = if config.home.preferXdgDirectories then codexXdgDir else codexLegacyDir;
 
   codexSkillNames =
     let
@@ -270,12 +283,8 @@ let
     # Keep all plausible Codex homes seeded. The active home depends on
     # Codex's own config discovery, the Home Manager module, and whether an
     # older ~/.codex tree already exists.
-    install_codex_binary "${codexStableBin}"
-    install_codex_binary "${codexLegacyStableBin}"
-    install_codex_binary "${codexXdgStableBin}"
-    merge_codex_config "${codexDir}"
-    merge_codex_config "${codexLegacyDir}"
-    merge_codex_config "${codexXdgDir}"
+    ${lib.concatMapStringsSep "\n" (target: ''install_codex_binary "${target}"'') codexStableBins}
+    ${lib.concatMapStringsSep "\n" (targetDir: ''merge_codex_config "${targetDir}"'') codexDirs}
   '';
 in
 {
@@ -287,6 +296,9 @@ in
     # config.toml is written as a real mutable file (not a symlink) so that
     # codex can edit it in-place at runtime. See codexConfigActivationScript.
     activation.codexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] codexConfigActivationScript;
+    sessionVariables = {
+      CODEX_HOME = codexDir;
+    };
   };
 
   programs = {
