@@ -209,6 +209,17 @@ let
   };
   sharedMcpConfigPath = "${config.xdg.configHome}/mcp/mcp.json";
   renderedMcpConfigPath = "${config.xdg.configHome}/sops-nix/secrets/rendered/mcp-config.json";
+  claudeEnvironment = {
+    CLAUDE_CODE_HIDE_CWD = "1";
+    ENABLE_CLAUDEAI_MCP_SERVERS = "false";
+    IS_DEMO = "1";
+  };
+  claudeEnvironmentExports = lib.concatLines (
+    lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") claudeEnvironment
+  );
+  claudeEnvironmentArgs = lib.concatStringsSep " " (
+    lib.mapAttrsToList (name: value: lib.escapeShellArg "${name}=${value}") claudeEnvironment
+  );
 
   # Replacement for Claude Code's built-in `@` file picker. Pipes `fd` into
   # `fzf --filter` so queries get real fuzzy scoring and untracked files,
@@ -257,7 +268,7 @@ let
         )
         claude=${lib.escapeShellArg (lib.getExe' claudePackageWithLsp "claude")}
 
-        export ENABLE_CLAUDEAI_MCP_SERVERS=false
+        ${claudeEnvironmentExports}
 
         for mcp_config in "''${mcp_configs[@]}"; do
           if [[ -f "$mcp_config" ]]; then
@@ -306,16 +317,16 @@ let
       case "$width" in
         "" | *[!0-9]*)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "NOUGHTY_AGENT_ISOLATION=Fenced" "ENABLE_CLAUDEAI_MCP_SERVERS=false" ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
           else
-            fence "''${fence_args[@]}" -- "NOUGHTY_AGENT_ISOLATION=Fenced" "ENABLE_CLAUDEAI_MCP_SERVERS=false" ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
           fi
           ;;
         *)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" "ENABLE_CLAUDEAI_MCP_SERVERS=false" ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
           else
-            fence "''${fence_args[@]}" -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" "ENABLE_CLAUDEAI_MCP_SERVERS=false" ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
           fi
           ;;
       esac
