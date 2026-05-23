@@ -31,15 +31,15 @@
     fresh.inputs.fenix.inputs.nixpkgs.follows = "nixpkgs-unstable";
     sidra.url = "github:wimpysworld/sidra";
     sidra.inputs.nixpkgs.follows = "nixpkgs";
-    bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.3.0.tar.gz";
+    bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.4.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.inputs.rust-overlay.follows = "rust-overlay";
     bzmenu.inputs.flake-utils.follows = "flake-utils";
-    iwmenu.url = "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.3.0.tar.gz";
+    iwmenu.url = "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.4.0.tar.gz";
     iwmenu.inputs.nixpkgs.follows = "nixpkgs";
     iwmenu.inputs.rust-overlay.follows = "rust-overlay";
     iwmenu.inputs.flake-utils.follows = "flake-utils";
-    pwmenu.url = "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.3.0.tar.gz";
+    pwmenu.url = "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.4.0.tar.gz";
     pwmenu.inputs.nixpkgs.follows = "nixpkgs";
     pwmenu.inputs.rust-overlay.follows = "rust-overlay";
     pwmenu.inputs.flake-utils.follows = "flake-utils";
@@ -57,7 +57,7 @@
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
     nix-index-database.url = "github:Mic92/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
-    nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.6.0.tar.gz";
+    nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.7.0.tar.gz";
     mac-app-util.url = "github:hraban/mac-app-util";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
     mac-app-util.inputs.cl-nix-lite.inputs.nixpkgs.follows = "nixpkgs";
