@@ -85,6 +85,22 @@ in
         # disabled. Updates should flow through the flake inputs instead.
         autoupdate = false;
 
+        # Default to GPT 5.5 via the OpenAI provider with high reasoning effort.
+        # The per-model option goes under provider.openai.models so OpenCode
+        # forwards `reasoning.effort` on the Responses API call.
+        model = "openai/gpt-5.5";
+        provider = {
+          openai = {
+            models = {
+              "gpt-5.5" = {
+                options = {
+                  reasoningEffort = "high";
+                };
+              };
+            };
+          };
+        };
+
         # Context compaction - manual control
         # Use /compact slash command when context gets full
         # OpenCode displays token usage in the interface to help monitor

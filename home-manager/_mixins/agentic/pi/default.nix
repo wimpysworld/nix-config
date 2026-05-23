@@ -246,8 +246,8 @@ let
   };
 
   piSettings = {
-    defaultProvider = "anthropic";
-    defaultModel = "claude-opus-4-7";
+    defaultProvider = "openai-codex";
+    defaultModel = "gpt-5.5";
     defaultThinkingLevel = "high";
     thinkingBudgets = {
       minimal = 1024;
@@ -261,6 +261,9 @@ let
       "anthropic/claude-opus-4-7"
       "anthropic/claude-sonnet-4-6"
       "anthropic/claude-haiku-4-5"
+      "openai-codex/gpt-5.5"
+      "openai-codex/gpt-5.3-codex-spark"
+      "openai-codex/gpt-5.4-mini"
     ];
 
     theme = piThemeName;
