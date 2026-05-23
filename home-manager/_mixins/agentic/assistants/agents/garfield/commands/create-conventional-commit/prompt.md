@@ -29,7 +29,16 @@ Run each command separately (no chaining):
 1. Run allowed commands individually to gather context
 2. If nothing staged, summarise recent implementation work from conversation
 3. Apply type selection from agent definition
-4. **Output commit message in a code block** - user will copy and commit
+4. **Output commit message in a fenced code block** - this block is the user-facing deliverable and must reach the user unchanged
+
+### Relay Contract (for invoking agent)
+
+The fenced commit-message code block is the final deliverable for the user, not intermediate data for further processing.
+
+- Return the entire fenced code block verbatim
+- Do not summarise, paraphrase, shorten, or describe its contents
+- Preserve the code block fencing exactly as produced
+- No preamble or trailing commentary unless strictly necessary to answer a follow-up question
 
 ### Body Decision
 
