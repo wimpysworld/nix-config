@@ -159,7 +159,6 @@ in
 
     services.librechat = {
       enable = true;
-      enableLocalDB = lib.mkDefault true;
       package = lib.mkDefault pkgs.unstable.librechat;
       openFirewall = lib.mkDefault true;
       meilisearch.enable = lib.mkDefault true;
@@ -170,6 +169,9 @@ in
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         ALLOW_UNVERIFIED_EMAIL_LOGIN = lib.mkDefault true;
         HOST = lib.mkDefault "0.0.0.0";
+        MONGO_URI = lib.mkIf (noughtyLib.hostHasTag "mongodb") (
+          lib.mkDefault "mongodb://localhost:27017/librechat"
+        );
       };
       credentials = {
         ANTHROPIC_API_KEY = config.sops.secrets.ANTHROPIC_API_KEY.path;
@@ -189,9 +191,13 @@ in
     };
 
     services.meilisearch.masterKeyFile = lib.mkDefault config.sops.secrets.MEILI_MASTER_KEY.path;
-    services.mongodb.package = lib.mkDefault pkgs.mongodb-ce;
 
-    systemd.services.librechat-provision-users = {
+    systemd.services.librechat = lib.mkIf (noughtyLib.hostHasTag "mongodb") {
+      after = [ "mongodb.service" ];
+      wants = [ "mongodb.service" ];
+    };
+
+    systemd.services.librechat-provision-users = lib.mkIf (noughtyLib.hostHasTag "mongodb") {
       description = "Provision initial LibreChat user accounts.";
       wantedBy = [ "multi-user.target" ];
       after = [ "mongodb.service" ];
