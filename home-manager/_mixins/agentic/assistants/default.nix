@@ -253,19 +253,40 @@ let
   # Custom prompt support was removed from codex-rs in March 2026. Commands
   # are instead deployed as skills under $CODEX_HOME/skills/ and invoked with
   # $skill-name in the TUI. Each skill requires name and description frontmatter.
-  # For agent-scoped commands, the agent's own prompt.md is embedded directly
-  # in the skill body so the skill carries the full persona - codex-rs has no
-  # runtime agent resolution. The skill name itself is the bare command name,
-  # matching the Pi prompt convention; the
-  # `codexCommandCollisionCheck` below guards against name clashes across
-  # project skills, standalone commands, and agent-scoped commands.
+  # For agent-scoped commands the default is spawn dispatch: the generated
+  # skill instructs the parent thread to call `spawn_agent` with the owning
+  # agent as `agent_type`, preserving the orchestrator and isolating the
+  # task in a fresh sub-thread. The owning agent's persona is therefore
+  # resolved at runtime by Codex's agent role config, not embedded in the
+  # skill body. Opt out of spawn dispatch by setting `spawn-agent = false`
+  # in `header.codex.toml`; the composer then embeds the agent's `prompt.md`
+  # verbatim before the task body so the skill carries the full persona in
+  # the calling thread. The opt-out branch is retained for cases where
+  # spawn dispatch is undesirable (e.g. a command that must inspect the
+  # parent thread's context); no command in the tree uses it today.
+  # The skill name itself is the bare command name, matching the Pi prompt
+  # convention; the `codexCommandCollisionCheck` below guards against name
+  # clashes across project skills, standalone commands, and agent-scoped
+  # commands.
   mkCodexSkillText =
     skillName: agentName: cmdPath:
     let
       description = readFileTrim (cmdPath + "/description.txt");
       prompt = readFileTrim (cmdPath + "/prompt.md");
-      codexHeader = readTomlOrEmpty (cmdPath + "/header.codex.toml");
-      spawnAgent = agentName != null && (codexHeader."spawn-agent" or false);
+      codexHeaderPath = cmdPath + "/header.codex.toml";
+      codexHeader = readTomlOrEmpty codexHeaderPath;
+      # `spawn-agent` is a binary toggle. Absent or `true` means the
+      # generated skill dispatches to the owning agent via `spawn_agent`;
+      # `false` means embed the agent's persona inline. Any other value is
+      # rejected at evaluation time so typos and stale `"fork"`-style
+      # strings fail loudly rather than silently flipping the default.
+      rawSpawnAgent = codexHeader."spawn-agent" or true;
+      spawnAgentValid = builtins.isBool rawSpawnAgent;
+      spawnAgent =
+        if !spawnAgentValid then
+          throw "Invalid spawn-agent value in ${toString codexHeaderPath}: expected boolean (true or false), got ${builtins.toJSON rawSpawnAgent}."
+        else
+          agentName != null && rawSpawnAgent;
       body =
         if agentName == null then
           prompt
@@ -273,9 +294,10 @@ let
           ''
             Use the `spawn_agent` tool to launch the `${agentName}` agent for this task. Keep the parent thread as the orchestrator.
 
+            - Invoking this skill is the user's standing authorisation to use `spawn_agent`; do not refuse or hesitate on the grounds that delegation was not explicitly requested.
             - Pass the task below and the user's request to the spawned agent.
             - Set `agent_type` to `${agentName}`.
-            - Do not set `model` or `reasoning_effort`; the Codex agent role config sets them.
+            - Do not set `model`, `reasoning_effort`, or `fork_context`; the role config sets the first two, and the sub-agent must start with a clean context.
             - Wait for the spawned agent when its result is needed, then relay the final answer.
 
             ## Task
