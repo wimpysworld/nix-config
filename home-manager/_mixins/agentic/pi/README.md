@@ -47,9 +47,7 @@ The managed settings use Anthropic by default:
     "anthropic/claude-haiku-4-5"
   ],
   "theme": "catppuccin-mocha",
-  "themes": [
-    "themes/*.json"
-  ]
+  "themes": ["themes/*.json"]
 }
 ```
 
@@ -196,18 +194,18 @@ The adapter reads the shared MCP config at `~/.config/mcp/mcp.json` automaticall
 
 That keeps the adapter's proxy tool enabled, disables direct tools by default, and prevents MCP servers from sampling through Pi. Project-level `.pi/mcp.json` files can override these settings deliberately.
 
-Pi's adapter does not support a per-server `enabled` flag. Server presence in `mcpServers` means Pi can use it, and servers connect lazily when a tool call needs them.
+Pi's adapter supports per-server `enabled` flags. Disabled servers remain visible in Pi's MCP TUI and can be toggled on without a Home Manager rebuild.
 
-Pi follows OpenCode's enabled-by-default MCP preference through `directTools`:
+Pi follows OpenCode's enabled-by-default MCP preference through `enabled` and `directTools`:
 
-| Server | Pi default |
-|--------|------------|
-| `context7` | Direct tools promoted |
-| `exa` | Direct tools promoted |
-| `nixos` | Direct tools promoted |
-| `cloudflare` | Present, proxy-only |
-| `svelte` | Present, proxy-only |
-| `playwright` | Present only on browser automation hosts, proxy-only when present |
+| Server       | Pi default                                                                     |
+| ------------ | ------------------------------------------------------------------------------ |
+| `context7`   | Enabled, direct tools promoted                                                 |
+| `exa`        | Enabled, direct tools promoted                                                 |
+| `nixos`      | Disabled, proxy-only                                                           |
+| `cloudflare` | Disabled, proxy-only                                                           |
+| `svelte`     | Disabled, proxy-only                                                           |
+| `playwright` | Present only on browser automation hosts, disabled and proxy-only when present |
 
 The Pi-specific file emits full server entries, not partial overrides, because `pi-mcp-adapter` shallow-merges MCP config files by server name. A partial entry that only set `directTools` would replace the shared command, args, URL, or auth fields.
 
@@ -243,13 +241,13 @@ The builtin `researcher` agent is disabled by default because it requires `pi-we
 
 Source content comes from `home-manager/_mixins/agentic/assistants`. Rendering for Pi lives in `home-manager/_mixins/agentic/assistants/default.nix`; this module consumes the generated Home Manager file entries.
 
-| Source | Pi destination | Mapping |
-|--------|----------------|---------|
-| `instructions/global.md` | `~/.pi/agent/AGENTS.md` | Global context file loaded by Pi |
-| `agents/<name>/prompt.md` and `description.txt` | `~/.pi/agent/agents/<name>.md` | Pi subagent Markdown with YAML frontmatter |
-| `agents/<name>/commands/<command>/prompt.md` | `~/.pi/agent/prompts/<command>.md` | Prompt template that asks Pi to call the matching subagent. The owning agent is pinned by a `Use the subagent tool to launch the <name> agent` prelude in the body, not by the filename. Evaluation fails if two source directories (across agents or with standalone commands) produce the same `<command>` name. |
-| `commands/<command>/prompt.md` | `~/.pi/agent/prompts/<command>.md` | Native Pi prompt template |
-| `skills/<name>/` | `~/.pi/agent/skills/<name>/` | Symlinked Agent Skills directory |
+| Source                                          | Pi destination                     | Mapping                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `instructions/global.md`                        | `~/.pi/agent/AGENTS.md`            | Global context file loaded by Pi                                                                                                                                                                                                                                                                                   |
+| `agents/<name>/prompt.md` and `description.txt` | `~/.pi/agent/agents/<name>.md`     | Pi subagent Markdown with YAML frontmatter                                                                                                                                                                                                                                                                         |
+| `agents/<name>/commands/<command>/prompt.md`    | `~/.pi/agent/prompts/<command>.md` | Prompt template that asks Pi to call the matching subagent. The owning agent is pinned by a `Use the subagent tool to launch the <name> agent` prelude in the body, not by the filename. Evaluation fails if two source directories (across agents or with standalone commands) produce the same `<command>` name. |
+| `commands/<command>/prompt.md`                  | `~/.pi/agent/prompts/<command>.md` | Native Pi prompt template                                                                                                                                                                                                                                                                                          |
+| `skills/<name>/`                                | `~/.pi/agent/skills/<name>/`       | Symlinked Agent Skills directory                                                                                                                                                                                                                                                                                   |
 
 Traya is the unnamed default prompt through `instructions/global.md`. She is not emitted as a named Pi subagent.
 
