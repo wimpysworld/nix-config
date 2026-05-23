@@ -128,23 +128,6 @@ rec {
       };
     };
 
-    linear = {
-      # Official hosted Linear MCP server. It uses Streamable HTTP with OAuth
-      # 2.1 dynamic client registration by default; Linear also supports
-      # bearer API keys, but no Linear secret is currently declared here.
-      transport = "http";
-      url = "https://mcp.linear.app/mcp";
-      consumers = {
-        # Linear exposes issue/project/comment reads and mutations. Keep it
-        # active only in the requested clients, and make Codex ask before tool
-        # calls rather than inheriting the unattended default.
-        codex.defaultToolsApprovalMode = "prompt";
-        opencode.enabled = false;
-        pi.enabled = false;
-        zed.enabled = false;
-      };
-    };
-
     nixos = {
       transport = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
@@ -170,6 +153,23 @@ rec {
     };
   }
   // lib.optionalAttrs isBane {
+    linear = {
+      # Official hosted Linear MCP server. It uses Streamable HTTP with OAuth
+      # 2.1 dynamic client registration by default; Linear also supports
+      # bearer API keys, but no Linear secret is currently declared here.
+      transport = "http";
+      url = "https://mcp.linear.app/mcp";
+      consumers = {
+        # Linear exposes issue/project/comment reads and mutations. Keep it
+        # active only in the requested clients, and make Codex ask before tool
+        # calls rather than inheriting the unattended default.
+        codex.defaultToolsApprovalMode = "prompt";
+        opencode.enabled = false;
+        pi.enabled = false;
+        zed.enabled = false;
+      };
+    };
+
     rag = {
       transport = "http";
       url = "https://rag-mcp.enforce.dev/mcp";
