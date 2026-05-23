@@ -41,7 +41,10 @@ rec {
   #                #18068, #16821, #19542) where sub-agent startup events
   #                surface in the leader TUI's status header.
   #   consumers  - optional per-consumer overrides:
-  #                  claudeCode.enabled (default true)
+  #                  claudeCode.enabled (default true) - Claude Code's JSON
+  #                                     MCP schema has no disabled/server
+  #                                     toggle field, so `false` omits the
+  #                                     server from Claude's active config.
   #                  codex.enabled      (default true) - mirrors OpenCode:
   #                                     `false` keeps the `[mcp_servers.<name>]`
   #                                     table with `enabled = false` so
@@ -65,22 +68,7 @@ rec {
     cloudflare = {
       transport = "http";
       url = "https://docs.mcp.cloudflare.com/mcp";
-      consumers = {
-        # OpenCode keeps cloudflare visible but disabled so the TUI can toggle
-        # it at runtime; matches today's `opencodeServers.cloudflare.enabled = false`.
-        opencode.enabled = false;
-        # Mirror the OpenCode disabled state in Codex; the `[mcp_servers.cloudflare]`
-        # table stays in config.toml with `enabled = false` so `codex mcp list`
-        # still sees it but Codex skips initialising the server.
-        codex.enabled = false;
-        # Mirror the OpenCode disabled state in Zed; the entry stays in
-        # `context_servers` with `enabled = false` so the agent panel can
-        # toggle it at runtime.
-        zed = {
-          mode = "context_server";
-          enabled = false;
-        };
-      };
+      consumers.zed.mode = "context_server";
     };
 
     context7 = {
@@ -116,9 +104,7 @@ rec {
       transport = "stdio";
       command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
       args = [ ];
-      consumers = {
-        zed.mode = "context_server";
-      };
+      consumers.zed.mode = "context_server";
     };
 
   }
@@ -127,16 +113,7 @@ rec {
       transport = "stdio";
       command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
       args = [ ];
-      consumers = {
-        # Keep the browser automation server configured but disabled by
-        # default for clients that support per-server toggles.
-        codex.enabled = false;
-        opencode.enabled = false;
-        zed = {
-          mode = "context_server";
-          enabled = false;
-        };
-      };
+      consumers.zed.mode = "context_server";
     };
   }
   // lib.optionalAttrs isBane {
@@ -150,19 +127,9 @@ rec {
       transport = "http";
       url = "https://mcp.svelte.dev/mcp";
       consumers = {
-        # Mirrors today's `opencodeServers.svelte.enabled = false`.
-        opencode.enabled = false;
-        # Mirror the OpenCode disabled state in Codex; the `[mcp_servers.svelte]`
-        # table stays in config.toml with `enabled = false` so `codex mcp list`
-        # still sees it but Codex skips initialising the server.
-        codex.enabled = false;
-        # Mirror the OpenCode disabled state in Zed. The extension stays
-        # installed via `programs.zed-editor.extensions`; a stub entry under
-        # `context_servers."svelte-mcp"` flips it off in the agent panel.
         zed = {
           mode = "extension";
           id = "svelte-mcp";
-          enabled = false;
         };
       };
     };
@@ -232,15 +199,14 @@ rec {
   #     mcpGoogleCse today).
   #   * For Claude Code, skip servers where `consumers.claudeCode.enabled`
   #     is explicitly false (default true).
-  #   * Codex, OpenCode, and Zed share the emit-with-disabled pattern:
-  #     per-consumer `enabled = false` keeps the server in the output with
-  #     `enabled = false` so each tool's surface (codex mcp list, OpenCode
-  #     TUI, Zed agent panel) can toggle it at runtime. See AC 8 of
-  #     MCP-PROPOSAL.md.
+  #   * Codex, OpenCode, and Zed share the emit-with-disabled pattern when a
+  #     future server opts out for that consumer: per-consumer
+  #     `enabled = false` keeps the server in the output with `enabled = false`
+  #     so each tool's surface (codex mcp list, OpenCode TUI, Zed agent panel)
+  #     can toggle it at runtime. See AC 8 of MCP-PROPOSAL.md.
 
   # claudeServers: Claude Code and any generic MCP client that follows the
-  # original `mcpServers` schema. Output is byte-equivalent to today's
-  # `mcpServers` attribute for the five active servers.
+  # original `mcpServers` schema.
   claudeServers =
     let
       keep = _: s: (s.enabled or true) && (s.consumers.claudeCode.enabled or true);
