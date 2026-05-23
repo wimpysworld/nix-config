@@ -207,7 +207,8 @@ let
       }
     '';
   };
-  mcpConfigPath = "${config.xdg.configHome}/mcp/mcp.json";
+  sharedMcpConfigPath = "${config.xdg.configHome}/mcp/mcp.json";
+  renderedMcpConfigPath = "${config.xdg.configHome}/sops-nix/secrets/rendered/mcp-config.json";
 
   # Replacement for Claude Code's built-in `@` file picker. Pipes `fd` into
   # `fzf --filter` so queries get real fuzzy scoring and untracked files,
@@ -241,35 +242,72 @@ let
   # (`<configs...>`), so commands like `claude mcp list` are swallowed as
   # extra config paths. Own the wrapper here with `--mcp-config=<path>`,
   # which keeps argument parsing intact and reads the sops-rendered file.
-  claudePackageWithMcp = pkgs.runCommand "claude-code-with-mcp" {
-    inherit (claudePackageWithLsp) meta;
-  } ''
-    mkdir -p "$out/bin"
-    cat > "$out/bin/claude" <<'EOF'
-    #!${lib.getExe pkgs.bash}
-    mcp_config=${lib.escapeShellArg mcpConfigPath}
-    claude=${lib.escapeShellArg (lib.getExe' claudePackageWithLsp "claude")}
+  claudePackageWithMcp =
+    pkgs.runCommand "claude-code-with-mcp"
+      {
+        inherit (claudePackageWithLsp) meta;
+      }
+      ''
+        mkdir -p "$out/bin"
+        cat > "$out/bin/claude" <<'EOF'
+        #!${lib.getExe pkgs.bash}
+        mcp_configs=(
+          ${lib.escapeShellArg sharedMcpConfigPath}
+          ${lib.escapeShellArg renderedMcpConfigPath}
+        )
+        claude=${lib.escapeShellArg (lib.getExe' claudePackageWithLsp "claude")}
 
-    if [[ -f "$mcp_config" ]]; then
-      exec "$claude" "--mcp-config=$mcp_config" "$@"
-    fi
+        export ENABLE_CLAUDEAI_MCP_SERVERS=false
 
-    exec "$claude" "$@"
-    EOF
-    chmod +x "$out/bin/claude"
-  '';
+        for mcp_config in "''${mcp_configs[@]}"; do
+          if [[ -f "$mcp_config" ]]; then
+            exec "$claude" "--mcp-config=$mcp_config" "$@"
+          fi
+        done
+
+        exec "$claude" "$@"
+        EOF
+        chmod +x "$out/bin/claude"
+      '';
 
   claudeFencedPackage = pkgs.writeShellApplication {
     name = "claude-fenced";
     runtimeInputs = [
       fencePackage
+      pkgs.coreutils
       pkgs.ncurses
     ];
     text = ''
       fence_args=()
-      if [[ -f ${lib.escapeShellArg mcpConfigPath} ]]; then
-        fence_args+=(--expose-host-path ${lib.escapeShellArg mcpConfigPath})
-      fi
+      exposed_paths=()
+
+      add_exposed_path() {
+        local path="$1"
+        local candidate existing resolved
+
+        if [[ ! -e "$path" ]]; then
+          return 0
+        fi
+
+        resolved="$(readlink -f "$path" 2>/dev/null || true)"
+        for candidate in "$path" "$resolved"; do
+          if [[ -z "$candidate" || ! -e "$candidate" ]]; then
+            continue
+          fi
+
+          for existing in "''${exposed_paths[@]}"; do
+            if [[ "$existing" == "$candidate" ]]; then
+              continue 2
+            fi
+          done
+
+          exposed_paths+=("$candidate")
+          fence_args+=(--expose-host-path "$candidate")
+        done
+      }
+
+      add_exposed_path ${lib.escapeShellArg sharedMcpConfigPath}
+      add_exposed_path ${lib.escapeShellArg renderedMcpConfigPath}
 
       width="$(tput cols 2>/dev/null || true)"
       case "$width" in
