@@ -75,7 +75,7 @@ Skills come from three generated sets:
 
 - Shared skills from `assistants/skills/*/SKILL.md`, plus generated shared skills
 - Standalone assistant commands from `assistants/commands/*`
-- Agent command skills named `<agent>-<command>`
+- Agent command skills named `<command>` (bare command name)
 
 Every generated skill is explicitly enabled in `config.toml` with `[[skills.config]]`, so root sessions and spawned agents can use the same declarative skill set.
 
@@ -87,15 +87,15 @@ SKILL.md frontmatter requires `name:` and `description:` fields. Quote any `desc
 
 Codex no longer supports user-defined slash commands. The `/` commands are built into the binary. Custom commands are deployed as skills instead.
 
-Each agent command becomes a skill named `<agent>-<command>`. When the command has `header.codex.toml` with `spawn-agent = true`, the generated skill tells Codex to launch that specialist with `spawn_agent` and keep the parent thread as the orchestrator. Commands without that flag still embed the agent persona plus the command task prompt.
+Each agent command becomes a skill named after the bare command (matching the Pi prompt convention; e.g. `$create-conventional-commit` rather than `$garfield-create-conventional-commit`). When the command has `header.codex.toml` with `spawn-agent = true`, the generated skill tells Codex to launch that specialist with `spawn_agent` and keep the parent thread as the orchestrator. Commands without that flag still embed the agent persona plus the command task prompt.
 
 ```text
-$garfield-create-conventional-commit
-$donatello-implement-code
-$penfold-deep-research
+$create-conventional-commit
+$implement-code
+$deep-research
 ```
 
-Standalone commands become unprefixed skills:
+Standalone commands sit in the same namespace under the same shape:
 
 ```text
 $ready
@@ -104,6 +104,8 @@ $orientate
 $collaborate
 $botsnack
 ```
+
+The shared composer asserts at evaluation time that no two sources (project skill, standalone command, or agent-scoped command) produce the same skill name. Renaming the offending source is the fix; the throw message names both the duplicate and every source path that produces it.
 
 ## Agents
 

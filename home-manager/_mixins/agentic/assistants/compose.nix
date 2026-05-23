@@ -301,6 +301,37 @@ let
     in
     agentCommands // standaloneCmds;
 
+  # ============ COLLISION GUARDS ============
+
+  # Throw on duplicate `name` entries across a union of source groups. Each
+  # entry in `sources` is a `{ name; source; }` record; the caller flattens
+  # one or more origin groups into the single list. `context` is a short
+  # label used in the throw lead-in so the operator immediately sees which
+  # namespace collided (e.g. "Pi prompts (~/.pi/agent/prompts/)" or
+  # "Codex skills (~/.codex/skills/)"). Returns `true` on success so the
+  # caller can chain through `builtins.seq` before constructing the
+  # consumer attrset.
+  assertNoCommandCollisions =
+    {
+      context,
+      sources,
+    }:
+    let
+      groups = lib.foldl' (
+        acc: entry: acc // { ${entry.name} = (acc.${entry.name} or [ ]) ++ [ entry.source ]; }
+      ) { } sources;
+      collisions = lib.filterAttrs (_: srcs: lib.length srcs > 1) groups;
+      formatGroup = name: srcs: "  - ${name}:\n${lib.concatMapStringsSep "\n" (s: "      ${s}") srcs}";
+      message = lib.concatStringsSep "\n" (lib.mapAttrsToList formatGroup collisions);
+    in
+    if collisions == { } then
+      true
+    else
+      throw ''
+        ${context} name collision. The following command names are produced by more than one source and would overwrite each other in a flat namespace. Rename one source before switching:
+        ${message}
+      '';
+
   # ============ SKILLS ============
 
   # Discover all candidate skill directories, then keep only those containing
@@ -413,6 +444,9 @@ in
 
   # Command composition functions
   inherit composeCommands composeCommand composePiCommandFromPrompt;
+
+  # Collision guard (shared between Pi prompts and Codex skills).
+  inherit assertNoCommandCollisions;
 
   # Instructions composition
   inherit composeInstructions;

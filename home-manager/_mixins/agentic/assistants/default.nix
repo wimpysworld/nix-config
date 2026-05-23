@@ -137,9 +137,10 @@ let
   # Collision guard for the Pi prompt namespace. Pi loads templates from a
   # single flat directory keyed by filename, so any duplicate `cmdName`
   # across standalone commands and the union of per-agent command sets
-  # would clobber each other. Fail evaluation with the colliding command
-  # name and every source path that produces it; the operator renames one
-  # source before the next `home-manager switch`.
+  # would clobber each other. The shared
+  # `compose.assertNoCommandCollisions` helper builds the throw message
+  # from the colliding name(s) and every source path that produces them;
+  # the operator renames one source before the next `home-manager switch`.
   piCommandSources =
     lib.mapAttrsToList (cmdName: _: {
       name = cmdName;
@@ -154,23 +155,10 @@ let
         }) (compose.discoverAgentCommands agentName)
       ) codingAgentDirs
     );
-  piCommandSourceGroups = lib.foldl' (
-    acc: entry: acc // { ${entry.name} = (acc.${entry.name} or [ ]) ++ [ entry.source ]; }
-  ) { } piCommandSources;
-  piCommandCollisions = lib.filterAttrs (_: sources: lib.length sources > 1) piCommandSourceGroups;
-  piCommandCollisionCheck =
-    if piCommandCollisions == { } then
-      true
-    else
-      let
-        formatGroup =
-          cmdName: sources: "  - ${cmdName}:\n${lib.concatMapStringsSep "\n" (s: "      ${s}") sources}";
-        message = lib.concatStringsSep "\n" (lib.mapAttrsToList formatGroup piCommandCollisions);
-      in
-      throw ''
-        Pi prompt name collision in ~/.pi/agent/prompts/. The following command names are produced by more than one source directory and would overwrite each other in Pi's flat prompt namespace. Rename one source before switching:
-        ${message}
-      '';
+  piCommandCollisionCheck = compose.assertNoCommandCollisions {
+    context = "Pi prompts (~/.pi/agent/prompts/)";
+    sources = piCommandSources;
+  };
   # Force the collision check before assembling the Pi home files. The
   # `seq` forces evaluation of `piCommandCollisionCheck`, which either
   # returns `true` or throws with the colliding command name and source
@@ -265,8 +253,12 @@ let
   # Custom prompt support was removed from codex-rs in March 2026. Commands
   # are instead deployed as skills under $CODEX_HOME/skills/ and invoked with
   # $skill-name in the TUI. Each skill requires name and description frontmatter.
-  # For agent-scoped commands, the agent's own prompt.md is embedded directly so
-  # the skill carries the full persona - codex-rs has no runtime agent resolution.
+  # For agent-scoped commands, the agent's own prompt.md is embedded directly
+  # in the skill body so the skill carries the full persona - codex-rs has no
+  # runtime agent resolution. The skill name itself is the bare command name,
+  # matching the Pi prompt convention; the
+  # `codexCommandCollisionCheck` below guards against name clashes across
+  # project skills, standalone commands, and agent-scoped commands.
   mkCodexSkillText =
     skillName: agentName: cmdPath:
     let
@@ -311,9 +303,40 @@ let
       ${body}
     '';
 
+  # Collision guard for the Codex skill namespace. Codex loads every skill
+  # from `$CODEX_HOME/skills/<name>/SKILL.md`, so the keyspace is the union
+  # of project skills, standalone commands, and agent-scoped commands.
+  # Project skills have no single source path, so a synthetic `skill:<name>`
+  # identifier is used in the throw message to make the origin obvious.
+  codexCommandSources =
+    lib.mapAttrsToList (name: _: {
+      inherit name;
+      source = "skill: ${name}";
+    }) skillContents
+    ++ lib.mapAttrsToList (cmdName: _: {
+      name = cmdName;
+      source = toString (./commands + "/${cmdName}");
+    }) compose.standaloneCommandDirs
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        agentName: _:
+        lib.mapAttrsToList (cmdName: _: {
+          name = cmdName;
+          source = toString (./agents + "/${agentName}/commands/${cmdName}");
+        }) (compose.discoverAgentCommands agentName)
+      ) codingAgentDirs
+    );
+  codexCommandCollisionCheck = compose.assertNoCommandCollisions {
+    context = "Codex skills (~/.codex/skills/)";
+    sources = codexCommandSources;
+  };
+
   # Collect all Codex skill name -> content pairs: shared skills + standalone
-  # command skills + agent-scoped command skills.
-  codexSkills =
+  # command skills + agent-scoped command skills. Agent-scoped command skills
+  # now emit under the bare `cmdName` to match the Pi convention; the
+  # `codexCommandCollisionCheck` above guarantees the merge order below does
+  # not silently overwrite anything.
+  codexSkills = builtins.seq codexCommandCollisionCheck (
     skillContents
     // lib.mapAttrs' (
       cmdName: _:
@@ -335,14 +358,14 @@ let
         cmdName: _:
         let
           cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
-          skillName = "${agentName}-${cmdName}";
         in
         {
-          name = skillName;
-          value = mkCodexSkillText skillName agentName cmdPath;
+          name = cmdName;
+          value = mkCodexSkillText cmdName agentName cmdPath;
         }
       ) commandDirs
-    ) { } codingAgentDirs;
+    ) { } codingAgentDirs
+  );
 
   # Activation script that writes Codex skills as real files.
   # codex-rs scans for SKILL.md using entry.file_type() which does NOT follow
