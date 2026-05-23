@@ -50,6 +50,11 @@ rec {
   #                                     table with `enabled = false` so
   #                                     `codex mcp list` still sees it but
   #                                     Codex skips initialising the server.
+  #                  codex.defaultToolsApprovalMode
+  #                                     "auto" | "prompt" | "approve"; defaults
+  #                                     to "approve" to preserve unattended
+  #                                     agent runs unless a server needs a
+  #                                     narrower human-review posture.
   #                  opencode.enabled   (default true)
   #                  pi.enabled         (default true) - Pi's MCP adapter has
   #                                     no disabled/server toggle field, so
@@ -120,6 +125,23 @@ rec {
       url = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa";
       consumers = {
         zed.mode = "context_server";
+      };
+    };
+
+    linear = {
+      # Official hosted Linear MCP server. It uses Streamable HTTP with OAuth
+      # 2.1 dynamic client registration by default; Linear also supports
+      # bearer API keys, but no Linear secret is currently declared here.
+      transport = "http";
+      url = "https://mcp.linear.app/mcp";
+      consumers = {
+        # Linear exposes issue/project/comment reads and mutations. Keep it
+        # active only in the requested clients, and make Codex ask before tool
+        # calls rather than inheriting the unattended default.
+        codex.defaultToolsApprovalMode = "prompt";
+        opencode.enabled = false;
+        pi.enabled = false;
+        zed.enabled = false;
       };
     };
 
@@ -283,13 +305,12 @@ rec {
   codexServers =
     let
       keep = _: s: s.enabled or true;
-      # Auto-approve every MCP tool from every Codex server without an
-      # interactive confirmation prompt. Codex's `RawMcpServerConfig` accepts
-      # `default_tools_approval_mode` with values `auto`, `prompt`, or
-      # `approve`; the alternatives `auto` and `prompt` would gate each tool
-      # invocation behind a TUI prompt, which defeats unattended agent runs.
-      common = {
-        default_tools_approval_mode = "approve";
+      # Auto-approve MCP tools by default for unattended agent runs. Individual
+      # servers can tighten this when their tool surface can mutate external
+      # state. Codex's `RawMcpServerConfig` accepts `auto`, `prompt`, and
+      # `approve`.
+      common = s: {
+        default_tools_approval_mode = s.consumers.codex.defaultToolsApprovalMode or "approve";
       };
       render =
         _: s:
@@ -301,7 +322,7 @@ rec {
             inherit enabled;
             inherit (s) url;
           }
-          // common
+          // common s
           // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
             bearer_token_env_var = s.auth.envVar;
           }
@@ -314,7 +335,7 @@ rec {
             inherit (s) command;
             args = s.args or [ ];
           }
-          // common
+          // common s
           // lib.optionalAttrs ((s.env or { }) != { }) {
             # Codex consumes the env table as static literals; the canonical
             # value is the sops secret name, which Codex resolves itself at
