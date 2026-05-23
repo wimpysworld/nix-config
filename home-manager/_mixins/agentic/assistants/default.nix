@@ -310,7 +310,7 @@ let
             escaped = lib.escapeShellArg content;
             # Project skills carry `extras`; command-derived skills do not
             # appear in `skills` and so contribute nothing here.
-            extras = (skills.${name} or { extras = { }; }).extras;
+            inherit ((skills.${name} or { extras = { }; })) extras;
             extrasCmds = lib.concatStringsSep "\n" (
               lib.mapAttrsToList (
                 entryName: _:

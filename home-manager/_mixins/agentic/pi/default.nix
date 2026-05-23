@@ -14,6 +14,7 @@ let
   piPackage = inputs.llm-agents.packages.${system}.pi;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceLogging = import ../fence/logging.nix { inherit pkgs; };
   piBuiltinTools = "read,bash,edit,write,grep,find,ls";
   piMcpAdapterVersion = "2.6.1";
   piSubagentsVersion = "0.24.3";
@@ -71,7 +72,7 @@ let
         "crust"
       ] getColor;
       colors = {
-        accent = catppuccinPalette.accent;
+        inherit (catppuccinPalette) accent;
         border = "surface2";
         borderAccent = "blue";
         borderMuted = "surface0";
@@ -228,9 +229,16 @@ let
 
   piFencedPackage = pkgs.writeShellApplication {
     name = "pi-fenced";
-    runtimeInputs = [ fencePackage ] ++ fenceWaylandBridge.runtimeInputs;
+    runtimeInputs = [
+      fencePackage
+    ]
+    ++ fenceWaylandBridge.runtimeInputs
+    ++ fenceLogging.runtimeInputs;
     text = ''
       ${fenceWaylandBridge.setupShell}
+
+      fence_log_agent="pi"
+      ${fenceLogging.setupShell}
 
       export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
       fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"

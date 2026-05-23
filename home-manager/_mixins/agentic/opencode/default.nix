@@ -41,11 +41,19 @@ let
   };
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceLogging = import ../fence/logging.nix { inherit pkgs; };
   opencodeFencedPackage = pkgs.writeShellApplication {
     name = "opencode-fenced";
-    runtimeInputs = [ fencePackage ] ++ fenceWaylandBridge.runtimeInputs;
+    runtimeInputs = [
+      fencePackage
+    ]
+    ++ fenceWaylandBridge.runtimeInputs
+    ++ fenceLogging.runtimeInputs;
     text = ''
       ${fenceWaylandBridge.setupShell}
+
+      fence_log_agent="opencode"
+      ${fenceLogging.setupShell}
 
       export OPENCODE_PERMISSION='{"*":"allow"}'
       fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' opencodePackage "opencode"} "$@"
@@ -53,7 +61,6 @@ let
   };
 
   # Import shared MCP server definitions.
-  mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
 in
 {
   sops.secrets.GEMINI_API_KEY = {

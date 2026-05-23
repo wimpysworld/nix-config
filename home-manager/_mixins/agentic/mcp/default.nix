@@ -6,7 +6,7 @@
   ...
 }:
 let
-  system = pkgs.stdenv.hostPlatform.system;
+  inherit (pkgs.stdenv.hostPlatform) system;
   agentPackages = inputs.llm-agents.packages.${system} or { };
   mcporterPackage = agentPackages.mcporter or null;
   mcpSopsFile = ../../../../secrets/mcp.yaml;

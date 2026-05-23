@@ -141,6 +141,42 @@ Project-level `fence.jsonc` files should extend the user policy:
 }
 ```
 
+## Per-launch logs
+
+Every fenced wrapper sources [`logging.nix`](./logging.nix) alongside the
+Wayland bridge helper. The helper sets `fence_log_agent` per wrapper
+(`claude`, `codex`, `opencode`, `pi`), then writes a per-launch log path
+into `fence_args` so each invocation runs as:
+
+```console
+fence -m --fence-log-file "$XDG_STATE_HOME/fence/<agent>-<timestamp>-<pid>.log" -- ...
+```
+
+`-m` (monitor) routes Fence's `[fence:http]`, `[fence:socks]`,
+`[fence:logstream]` (macOS), and `[fence:ebpf]` (Linux, needs `CAP_BPF`)
+prefixes through `fencelog`, which the flag then redirects off the agent's
+stderr. Preflight `CommandBlockedError`/`SSHBlockedError` text is written
+through cobra and stays on stderr, so the agent still sees denials in the
+TUI. Per-launch filenames sidestep Fence's truncate-on-open behaviour for
+`--fence-log-file`, so each session has its own audit trail. A
+`<agent>-current.log` symlink in the same directory always points at the
+latest file.
+
+The log directory is mode `0700` and Fence opens log files mode `0600`.
+A user-level systemd-tmpfiles rule under `fence/default.nix` ages files out
+after 14 days. Logs can contain argv, blocked URLs, and filesystem paths,
+so this window is deliberately short.
+
+Use the `fence-log` helper to browse:
+
+```console
+fence-log claude            # page the current Claude log
+fence-log codex tail        # tail -F the current Codex log
+fence-log opencode list     # list historical OpenCode logs, newest first
+fence-log pi path           # print the resolved current log path
+fence-log --list-agents     # print the whitelist of agent names
+```
+
 Useful validation commands:
 
 ```console
@@ -148,10 +184,8 @@ fence config show
 fence config show --settings ~/.config/fence/fence.jsonc
 fence --list-templates
 fence --linux-features
-fence -m --fence-log-file /tmp/fence-claude.log claude
-fence -m --fence-log-file /tmp/fence-codex.log codex
-fence -m --fence-log-file /tmp/fence-pi.log pi
 claude-fenced --help
+fence-log claude
 ```
 
 To validate Wayland clipboard visibility through the wrapper, run a fenced

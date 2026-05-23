@@ -474,5 +474,16 @@ in
     ];
 
     xdg.configFile."fence/fence.jsonc".text = builtins.toJSON fenceConfig;
+
+    # Per-launch Fence logs land in ${XDG_STATE_HOME}/fence. The fenced
+    # wrappers create the directory on demand, but pin permissions and
+    # retention here so a 14-day window applies even when the wrappers
+    # have not run recently. The directory holds argv, blocked URLs, and
+    # filesystem paths, so it stays mode 0700 with `e` for stat-time
+    # ageing of regular files only.
+    systemd.user.tmpfiles.rules = [
+      "d ${config.xdg.stateHome}/fence 0700 - - - -"
+      "e ${config.xdg.stateHome}/fence - - - 14d"
+    ];
   };
 }

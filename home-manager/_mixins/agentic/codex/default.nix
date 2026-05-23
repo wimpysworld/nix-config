@@ -20,6 +20,7 @@ let
   });
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceLogging = import ../fence/logging.nix { inherit pkgs; };
 
   # ACP adapter that lets Zed drive Codex over the Agent Client Protocol.
   # The binary is `codex-acp`, pinned via the llm-agents flake input so the
@@ -62,9 +63,16 @@ let
   };
   codexFencedPackage = pkgs.writeShellApplication {
     name = "codex-fenced";
-    runtimeInputs = [ fencePackage ] ++ fenceWaylandBridge.runtimeInputs;
+    runtimeInputs = [
+      fencePackage
+    ]
+    ++ fenceWaylandBridge.runtimeInputs
+    ++ fenceLogging.runtimeInputs;
     text = ''
       ${fenceWaylandBridge.setupShell}
+
+      fence_log_agent="codex"
+      ${fenceLogging.setupShell}
 
       fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' codexLauncherPackage "codex"} --dangerously-bypass-approvals-and-sandbox "$@"
     '';

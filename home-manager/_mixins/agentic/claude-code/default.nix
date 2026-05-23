@@ -19,6 +19,7 @@ let
       pkgs.claude-code;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceLogging = import ../fence/logging.nix { inherit pkgs; };
   ccColor = colorName: "hex:${builtins.substring 1 (-1) (catppuccinPalette.getColor colorName)}";
 
   # ACP adapter that lets Zed drive Claude Code over the Agent Client
@@ -288,9 +289,13 @@ let
       fencePackage
       pkgs.ncurses
     ]
-    ++ fenceWaylandBridge.runtimeInputs;
+    ++ fenceWaylandBridge.runtimeInputs
+    ++ fenceLogging.runtimeInputs;
     text = ''
       ${fenceWaylandBridge.setupShell}
+
+      fence_log_agent="claude"
+      ${fenceLogging.setupShell}
 
       mcp_configs=(
         ${lib.escapeShellArg sharedMcpConfigPath}
