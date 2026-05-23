@@ -13,6 +13,7 @@ let
   aiSopsFile = ../../../../secrets/ai.yaml;
   piPackage = inputs.llm-agents.packages.${system}.pi;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   piBuiltinTools = "read,bash,edit,write,grep,find,ls";
   piMcpAdapterVersion = "2.6.1";
   piSubagentsVersion = "0.24.3";
@@ -227,10 +228,12 @@ let
 
   piFencedPackage = pkgs.writeShellApplication {
     name = "pi-fenced";
-    runtimeInputs = [ fencePackage ];
+    runtimeInputs = [ fencePackage ] ++ fenceWaylandBridge.runtimeInputs;
     text = ''
+      ${fenceWaylandBridge.setupShell}
+
       export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
-      exec fence -- ${lib.getExe' piWrapperPackage "pi"} "$@"
+      fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
     '';
   };
 

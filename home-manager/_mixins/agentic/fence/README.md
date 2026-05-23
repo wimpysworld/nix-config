@@ -28,6 +28,14 @@ environment, so it loads the same configuration path as plain `opencode` while
 leaving Fence as the permission boundary. `pi-fenced` runs the standard `pi`
 wrapper under Fence.
 
+On Wayland, the fenced wrappers create a private per-launch runtime directory
+with a symlink to the host Wayland socket for clipboard access. They expose
+that temporary directory and the socket path to Fence, pass `XDG_RUNTIME_DIR`
+and `WAYLAND_DISPLAY` to the fenced agent, and leave `/run/user/$UID` unexposed
+as a directory. This is deliberately narrower than binding the host runtime
+wholesale: image paste needs the compositor socket, and the session bus is not
+exposed.
+
 Claude Code's user settings include
 `skipDangerousModePermissionPrompt = true` so `claude-fenced` starts
 directly instead of stopping at the bypass-mode responsibility prompt. Fence
@@ -143,4 +151,14 @@ fence --linux-features
 fence -m --fence-log-file /tmp/fence-claude.log claude
 fence -m --fence-log-file /tmp/fence-codex.log codex
 fence -m --fence-log-file /tmp/fence-pi.log pi
+claude-fenced --help
+```
+
+To validate Wayland clipboard visibility through the wrapper, run a fenced
+agent from a Wayland session and check that image paste works. For a raw shell
+probe, compare the current Fence behaviour with the wrapper bridge:
+
+```console
+fence fish -c 'wl-paste --list-types'
+claude-fenced --help
 ```

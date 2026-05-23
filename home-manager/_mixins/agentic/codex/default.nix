@@ -19,6 +19,7 @@ let
     postFixup = "";
   });
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
 
   # ACP adapter that lets Zed drive Codex over the Agent Client Protocol.
   # The binary is `codex-acp`, pinned via the llm-agents flake input so the
@@ -61,9 +62,11 @@ let
   };
   codexFencedPackage = pkgs.writeShellApplication {
     name = "codex-fenced";
-    runtimeInputs = [ fencePackage ];
+    runtimeInputs = [ fencePackage ] ++ fenceWaylandBridge.runtimeInputs;
     text = ''
-      exec fence -- ${lib.getExe' codexLauncherPackage "codex"} --dangerously-bypass-approvals-and-sandbox "$@"
+      ${fenceWaylandBridge.setupShell}
+
+      fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' codexLauncherPackage "codex"} --dangerously-bypass-approvals-and-sandbox "$@"
     '';
   };
   tomlMergePython = pkgs.python3.withPackages (ps: [ ps.tomli-w ]);

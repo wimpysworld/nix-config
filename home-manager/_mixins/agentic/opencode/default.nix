@@ -40,12 +40,15 @@ let
     };
   };
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   opencodeFencedPackage = pkgs.writeShellApplication {
     name = "opencode-fenced";
-    runtimeInputs = [ fencePackage ];
+    runtimeInputs = [ fencePackage ] ++ fenceWaylandBridge.runtimeInputs;
     text = ''
+      ${fenceWaylandBridge.setupShell}
+
       export OPENCODE_PERMISSION='{"*":"allow"}'
-      exec fence -- ${lib.getExe' opencodePackage "opencode"} "$@"
+      fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' opencodePackage "opencode"} "$@"
     '';
   };
 

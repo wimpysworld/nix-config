@@ -18,6 +18,7 @@ let
     else
       pkgs.claude-code;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   ccColor = colorName: "hex:${builtins.substring 1 (-1) (catppuccinPalette.getColor colorName)}";
 
   # ACP adapter that lets Zed drive Claude Code over the Agent Client
@@ -285,11 +286,12 @@ let
     name = "claude-fenced";
     runtimeInputs = [
       fencePackage
-      pkgs.coreutils
       pkgs.ncurses
-    ];
+    ]
+    ++ fenceWaylandBridge.runtimeInputs;
     text = ''
-      fence_args=()
+      ${fenceWaylandBridge.setupShell}
+
       mcp_configs=(
         ${lib.escapeShellArg sharedMcpConfigPath}
         ${lib.escapeShellArg renderedMcpConfigPath}
@@ -310,23 +312,23 @@ let
         chmod 600 "$tmp_mcp_config"
         cp "$mcp_config" "$tmp_mcp_config"
         fence_args+=(--expose-host-path "$tmp_mcp_config")
-        trap 'rm -f "$tmp_mcp_config"' EXIT
+        trap 'rm -f "$tmp_mcp_config"; cleanup_fence_wayland_bridge' EXIT
       fi
 
       width="$(tput cols 2>/dev/null || true)"
       case "$width" in
         "" | *[!0-9]*)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
           else
-            fence "''${fence_args[@]}" -- "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
           fi
           ;;
         *)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
           else
-            fence "''${fence_args[@]}" -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
           fi
           ;;
       esac
