@@ -207,27 +207,7 @@ let
       }
     '';
   };
-  claudeFencedPackage = pkgs.writeShellApplication {
-    name = "claude-fenced";
-    runtimeInputs = [
-      fencePackage
-      pkgs.ncurses
-    ];
-    text = ''
-      width="$(tput cols 2>/dev/null || true)"
-      case "$width" in
-        "" | *[!0-9]*)
-          exec fence -- "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
-          ;;
-        *)
-          exec fence -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
-          ;;
-      esac
-    '';
-  };
-
-  # Import shared MCP server definitions
-  mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
+  mcpConfigPath = "${config.xdg.configHome}/mcp/mcp.json";
 
   # Replacement for Claude Code's built-in `@` file picker. Pipes `fd` into
   # `fzf --filter` so queries get real fuzzy scoring and untracked files,
@@ -255,6 +235,53 @@ let
       }
     else
       claudePackage;
+
+  # Home Manager's native `mcpServers` wrapper emits `--mcp-config <path>`
+  # before user arguments. Claude Code treats that option as variadic
+  # (`<configs...>`), so commands like `claude mcp list` are swallowed as
+  # extra config paths. Own the wrapper here with `--mcp-config=<path>`,
+  # which keeps argument parsing intact and reads the sops-rendered file.
+  claudePackageWithMcp = pkgs.runCommand "claude-code-with-mcp" {
+    inherit (claudePackageWithLsp) meta;
+  } ''
+    mkdir -p "$out/bin"
+    cat > "$out/bin/claude" <<'EOF'
+    #!${lib.getExe pkgs.bash}
+    mcp_config=${lib.escapeShellArg mcpConfigPath}
+    claude=${lib.escapeShellArg (lib.getExe' claudePackageWithLsp "claude")}
+
+    if [[ -f "$mcp_config" ]]; then
+      exec "$claude" "--mcp-config=$mcp_config" "$@"
+    fi
+
+    exec "$claude" "$@"
+    EOF
+    chmod +x "$out/bin/claude"
+  '';
+
+  claudeFencedPackage = pkgs.writeShellApplication {
+    name = "claude-fenced";
+    runtimeInputs = [
+      fencePackage
+      pkgs.ncurses
+    ];
+    text = ''
+      fence_args=()
+      if [[ -f ${lib.escapeShellArg mcpConfigPath} ]]; then
+        fence_args+=(--expose-host-path ${lib.escapeShellArg mcpConfigPath})
+      fi
+
+      width="$(tput cols 2>/dev/null || true)"
+      case "$width" in
+        "" | *[!0-9]*)
+          exec fence "''${fence_args[@]}" -- "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe' claudePackageWithMcp "claude"} --dangerously-skip-permissions "$@"
+          ;;
+        *)
+          exec fence "''${fence_args[@]}" -- "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe' claudePackageWithMcp "claude"} --dangerously-skip-permissions "$@"
+          ;;
+      esac
+    '';
+  };
 in
 {
   options.claude-code.lspServers = lib.mkOption {
@@ -413,11 +440,9 @@ in
       };
       claude-code = {
         enable = true;
-        package = claudePackageWithLsp;
-        # Use Home Manager's native MCP support with shared server definitions
-        mcpServers = mcpServerDefs.claudeServers;
+        package = claudePackageWithMcp;
         settings = {
-          # MCP servers are selected declaratively through Home Manager. Project
+          # MCP servers are selected by the shared MCP mixin. Project
           # MCP servers remain opt-in instead of being silently trusted.
           enableAllProjectMcpServers = false;
 
