@@ -51,6 +51,10 @@ rec {
   #                                     `codex mcp list` still sees it but
   #                                     Codex skips initialising the server.
   #                  opencode.enabled   (default true)
+  #                  pi.enabled         (default true) - Pi's MCP adapter has
+  #                                     no disabled/server toggle field, so
+  #                                     `false` omits the server from Pi's
+  #                                     active config.
   #                  pi.directTools     bool | list of strings, default follows
   #                                     `consumers.opencode.enabled`: `true`
   #                                     promotes the server's tools into Pi's
@@ -69,6 +73,21 @@ rec {
       transport = "http";
       url = "https://docs.mcp.cloudflare.com/mcp";
       consumers.zed.mode = "context_server";
+    };
+
+    codex = {
+      transport = "stdio";
+      command = lib.getExe config.programs.codex.package;
+      args = [ "mcp-server" ];
+      consumers = {
+        # Native Codex MCP is an agent-calling-agent surface. Keep it
+        # available only to Claude Code and avoid recursive Codex exposure.
+        claudeCode.enabled = true;
+        codex.enabled = false;
+        opencode.enabled = false;
+        pi.enabled = false;
+        zed.enabled = false;
+      };
     };
 
     context7 = {
@@ -340,6 +359,7 @@ rec {
   # piServers: Pi adapter server entries for `~/.pi/agent/mcp.json`.
   # `pi-mcp-adapter` has no per-server `enabled` field: server presence means
   # Pi can use it, and servers connect lazily when a tool call needs them.
+  # `consumers.pi.enabled = false` therefore omits the server entirely.
   #
   # The adapter shallow-merges MCP config files by server name. Entries here
   # therefore include the complete server definition, not only Pi-specific
@@ -353,7 +373,7 @@ rec {
   # original MCP tool names where Pi needs a narrower direct surface.
   piServers =
     let
-      keep = _: s: s.enabled or true;
+      keep = _: s: (s.enabled or true) && (s.consumers.pi.enabled or true);
       directToolsFor = s: s.consumers.pi.directTools or (s.consumers.opencode.enabled or true);
       render =
         _: s:
