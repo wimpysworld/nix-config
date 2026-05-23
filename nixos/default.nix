@@ -87,6 +87,14 @@ in
     initrd.includeDefaultModules = true;
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
+    kernelPackages = lib.mkIf (lib.elem host.name [
+      "atrius"
+      "crawler"
+      "dagger"
+      "felkor"
+      "nihilus"
+      "tanis"
+    ]) (lib.mkDefault pkgs.linuxPackages_latest);
     # Only enable the systemd-boot on installs, not live media (.ISO images)
     loader = lib.mkIf (!host.is.iso) {
       efi.canTouchEfiVariables = true;

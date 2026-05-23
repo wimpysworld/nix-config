@@ -21,7 +21,7 @@
         "nvidia"
       ];
     };
-    kernelPackages = lib.mkForce pkgs.linuxPackages_6_12;
+    kernelPackages = lib.mkForce pkgs.linuxPackages_6_18;
   };
 
   hardware = {
