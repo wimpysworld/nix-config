@@ -127,6 +127,41 @@ let
           inherit value;
         };
 
+  # Valid Pi thinking levels. `defaultThinkingLevel` and per-call `thinking`
+  # both use this set. Invalid values fail evaluation rather than silently
+  # entering the generated map.
+  validThinkingLevels = [
+    "off"
+    "minimal"
+    "low"
+    "medium"
+    "high"
+    "xhigh"
+  ];
+
+  parseAgentProviderThinkingLine =
+    agentName: line:
+    let
+      uncommented = lib.head (lib.splitString "#" line);
+      matched = builtins.match "^[[:space:]]*thinking-([A-Za-z0-9_-]+):[[:space:]]*(.+)[[:space:]]*$" uncommented;
+    in
+    if matched == null then
+      null
+    else
+      let
+        provider = builtins.elemAt matched 0;
+        value = normaliseProviderModelValue (builtins.elemAt matched 1);
+      in
+      if value == null then
+        null
+      else if !(lib.elem value validThinkingLevels) then
+        throw "Invalid thinking level ${builtins.toJSON value} for thinking-${provider} in agent ${agentName}/header.pi.yaml. Expected one of: ${lib.concatStringsSep ", " validThinkingLevels}."
+      else
+        {
+          name = provider;
+          inherit value;
+        };
+
   # Regex-only harvester for flat `model-<provider>: <id>` keys in Pi
   # headers. This is intentionally narrower than a YAML parser.
   extractAgentProviderModels =
@@ -135,6 +170,19 @@ let
       header = readOptionalFile (basePath + "/agents/${agentName}/header.pi.yaml");
       entries = lib.filter (entry: entry != null) (
         map parseAgentProviderModelLine (lib.splitString "\n" header)
+      );
+    in
+    lib.foldl' (acc: entry: acc // { "${entry.name}" = entry.value; }) { } entries;
+
+  # Sibling harvester for `thinking-<provider>: <level>` keys in Pi headers.
+  # Mirrors extractAgentProviderModels but validates against the closed set of
+  # Pi thinking levels; invalid values fail evaluation with a clear message.
+  extractAgentProviderThinking =
+    agentName:
+    let
+      header = readOptionalFile (basePath + "/agents/${agentName}/header.pi.yaml");
+      entries = lib.filter (entry: entry != null) (
+        map (parseAgentProviderThinkingLine agentName) (lib.splitString "\n" header)
       );
     in
     lib.foldl' (acc: entry: acc // { "${entry.name}" = entry.value; }) { } entries;
@@ -360,6 +408,7 @@ in
     composeAgent
     composeAgentFromPrompt
     extractAgentProviderModels
+    extractAgentProviderThinking
     ;
 
   # Command composition functions

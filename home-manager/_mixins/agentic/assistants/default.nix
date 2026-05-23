@@ -135,6 +135,9 @@ let
   piProviderRouterMap = lib.filterAttrs (_: models: models != { }) (
     lib.mapAttrs (name: _: compose.extractAgentProviderModels name) codingAgentDirs
   );
+  piProviderRouterThinkingMap = lib.filterAttrs (_: levels: levels != { }) (
+    lib.mapAttrs (name: _: compose.extractAgentProviderThinking name) codingAgentDirs
+  );
 
   # ============ SKILLS ============
 
@@ -363,12 +366,19 @@ in
       internal = true;
       description = "Per-agent provider->modelId map harvested from header.pi.yaml. Consumed by the local pi-provider-router extension.";
     };
+    providerRouterThinkingMap = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.attrsOf lib.types.str);
+      default = { };
+      internal = true;
+      description = "Per-agent provider->thinking-level map harvested from header.pi.yaml. Consumed by the local pi-provider-router extension as a sidecar to providerRouterMap.";
+    };
   };
 
   config = {
     agentic.assistants.pi = {
       homeFiles = piHomeFiles;
       providerRouterMap = piProviderRouterMap;
+      providerRouterThinkingMap = piProviderRouterThinkingMap;
     };
 
     home = {

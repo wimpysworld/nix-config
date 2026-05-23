@@ -237,7 +237,7 @@ let
   piSettings = {
     defaultProvider = "openai-codex";
     defaultModel = "gpt-5.5";
-    defaultThinkingLevel = "high";
+    defaultThinkingLevel = "medium";
     thinkingBudgets = {
       minimal = 1024;
       low = 4096;
@@ -552,6 +552,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       # provider map consumed at runtime.
       ".pi/agent/extensions/provider-router/agents.json".text =
         builtins.toJSON piAssistant.providerRouterMap;
+      ".pi/agent/extensions/provider-router/thinking.json".text =
+        builtins.toJSON piAssistant.providerRouterThinkingMap;
       ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;

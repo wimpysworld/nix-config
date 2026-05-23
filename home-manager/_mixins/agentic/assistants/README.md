@@ -346,19 +346,45 @@ OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `too
 
 ### Provider routing
 
-Pi can route a subagent to a provider-specific model through extra
-`model-<provider>` keys in the agent's `header.pi.yaml`:
+Pi can route a subagent to a provider-specific model and/or reasoning effort
+through extra `model-<provider>` and `thinking-<provider>` keys in the agent's
+`header.pi.yaml`:
 
 ```yaml
 model-anthropic: claude-haiku-4-5
-model-openai: "gpt-5-mini"
+model-openai-codex: gpt-5.4-mini
 model-google: 'gemini-3-flash'
+thinking-openai-codex: xhigh
 ```
 
-The suffix after `model-` must match the active Pi provider name. The value must
-be a plain scalar, with optional matching single or double quotes. The Nix
-harvester uses a regex-only parser, so block scalars, anchors, aliases,
-unmatched quotes, and unquoted values containing `:` are ignored.
+The suffix after `model-` or `thinking-` must match the active Pi provider
+name exactly, including hyphens (this repo's default provider is
+`openai-codex`, not `openai`). The value must be a plain scalar, with optional
+matching single or double quotes. The Nix harvester uses a regex-only parser,
+so block scalars, anchors, aliases, unmatched quotes, and unquoted values
+containing `:` are ignored.
+
+`thinking-<provider>` values are validated at evaluation time against
+`off|minimal|low|medium|high|xhigh`; invalid values fail `nix eval` rather than
+silently entering the generated map.
+
+When both keys are present, Pi receives `provider/modelId:thinking`. When only
+`thinking-<provider>` is set, the runtime reuses the active session model id
+as the bare model, so the agent keeps the parent model and only its reasoning
+effort changes.
+
+This repo's convention is **explicit headers**: every named agent declares
+`model-anthropic`, `model-openai-codex`, and `thinking-openai-codex` so the
+active model and reasoning effort are visible in the agent's own header
+rather than inferred from Pi's `defaultModel` and `defaultThinkingLevel`.
+Additional providers (e.g. `model-google`) are added per-agent where
+relevant. The router still supports thinking-only entries (the runtime then
+reuses the active session model id), but explicit `model-<provider>` plus
+`thinking-<provider>` is preferred.
+
+Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-5.5"`
+remain the fallback for the unnamed Traya prompt and any future agent that
+omits a header.
 
 Provider routing covers Pi's LLM tool-call path only. Slash commands such as
 `/run`, `/chain`, `/parallel`, `/run-chain`, and prompt-template bridge calls
