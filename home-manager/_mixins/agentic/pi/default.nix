@@ -13,6 +13,7 @@ let
   aiSopsFile = ../../../../secrets/ai.yaml;
   piPackage = inputs.llm-agents.packages.${system}.pi;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  piBuiltinTools = "read,bash,edit,write,grep,find,ls";
   piMcpAdapterVersion = "2.6.1";
   piSubagentsVersion = "0.24.3";
   piLensVersion = "3.8.44";
@@ -201,6 +202,23 @@ let
         export NOUGHTY_AGENT_ISOLATION="Fenced"
       else
         export NOUGHTY_AGENT_ISOLATION="Unfenced"
+      fi
+
+      use_default_tools=true
+      for arg in "$@"; do
+        case "$arg" in
+          --)
+            break
+            ;;
+          --tools | --tools=* | --no-tools | --no-builtin-tools)
+            use_default_tools=false
+            break
+            ;;
+        esac
+      done
+
+      if [ "$use_default_tools" = true ]; then
+        set -- --tools "${piBuiltinTools}" "$@"
       fi
 
       exec "${lib.getExe piPackage}" "$@"
