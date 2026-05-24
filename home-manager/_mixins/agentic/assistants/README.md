@@ -1,6 +1,6 @@
 # AI Agents
 
-Fourteen specialist agents, 31 commands, and seven skills - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
+Fourteen specialist agents, 38 commands, seven physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -144,12 +144,23 @@ Rosey's commands handle agent orchestration and prompt engineering. Several over
 | `create-assistant` | `opus` | Generate a new agent prompt from requirements |
 | `create-instructions` | `opus` | Create `AGENTS.md` from codebase analysis |
 | `create-skill` | `opus` | Create a reusable `SKILL.md` |
-| `review-instructions` | `opus` | Assess prompts against high/low-value pattern criteria |
 | `update-assistant` | `sonnet` | Apply context-efficiency pass to an existing agent |
 | `update-instructions` | `sonnet` | Apply targeted changes or consolidate scattered instruction files |
+| `update-skill` | `opus` | Improve an existing reusable skill |
 | `offboard` | `sonnet` | Write structured handover document for next engineer |
 
 The `opus` commands involve prompt design judgements - choosing what to include, what to cut, when examples are essential - that benefit from the stronger reasoning model. The `sonnet` commands follow a clear structure (`update-assistant` has a template; `offboard` has a fixed section schema) where sonnet is sufficient.
+
+### Standalone Commands
+
+| Command | Purpose |
+|---------|---------|
+| `ack` | Acknowledge a phase or message and yield |
+| `botsnack` | Celebrate agent work |
+| `collaborate` | Read an implementation plan and prepare to collaborate |
+| `onboard` | Summarise current project context |
+| `orientate` | Inspect the repository and report orientation notes |
+| `ready` | Prime the session for a broad activity |
 
 ---
 
@@ -159,7 +170,7 @@ The `opus` commands involve prompt design judgements - choosing what to include,
 
 Infrastructure security auditor assessing configuration hardening, defensive resilience, and blast radius across cloud, container, and network infrastructure. Identifies misconfigurations, privilege escalation paths, and lateral movement risks. Every finding is mapped to concrete remediation.
 
-**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - infrastructure security assessment requires reasoning across interacting systems, trust boundaries, and attack chains simultaneously.
+**Model:** `opus` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - infrastructure security assessment requires reasoning across interacting systems, trust boundaries, and attack chains simultaneously.
 
 | Command | Purpose |
 |---------|---------|
@@ -171,7 +182,7 @@ Infrastructure security auditor assessing configuration hardening, defensive res
 
 Pragmatic test engineer identifying high-impact unit tests that catch real bugs. Analyses git history to find frequently-fixed files, searches GitHub issues for bug patterns, and reads existing tests before recommending new ones. Focuses on coverage gaps that matter rather than coverage numbers.
 
-**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - deep codebase analysis with risk-based reasoning requires the strongest model.
+**Model:** `opus` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - deep codebase analysis with risk-based reasoning requires the strongest model.
 
 | Command | Purpose |
 |---------|---------|
@@ -196,7 +207,7 @@ Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversationa
 
 Expert in Nix, Nixpkgs, NixOS, Home Manager, and nix-darwin. Always verifies packages and options exist before recommending them using the NixOS MCP tools. Prefers modern Nix: flakes and new CLI. Explains rationale behind every suggestion.
 
-**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - Nix's lazy evaluation semantics, module system interactions, and packaging edge cases require deep reasoning.
+**Model:** `opus` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - Nix's lazy evaluation semantics, module system interactions, and packaging edge cases require deep reasoning.
 
 No standalone commands. Dexter is invoked directly for Nix questions.
 
@@ -206,7 +217,7 @@ No standalone commands. Dexter is invoked directly for Nix questions.
 
 Code security auditor methodically patrolling codebases for vulnerabilities, insecure patterns, and dependency risks. Cites CWE and OWASP classifications for every finding. Distinguishes confirmed vulnerabilities from theoretical risks and prioritises by exploitability.
 
-**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - vulnerability identification requires reasoning across data flows, trust boundaries, and exploitation conditions; the strongest model reduces false negatives.
+**Model:** `opus` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - vulnerability identification requires reasoning across data flows, trust boundaries, and exploitation conditions; the strongest model reduces false negatives.
 
 | Command | Purpose |
 |---------|---------|
@@ -218,13 +229,14 @@ Code security auditor methodically patrolling codebases for vulnerabilities, ins
 
 Precise implementation engineer executing code changes from specifications. Reads related files before any implementation, reuses existing utilities before writing new ones, identifies blockers early. Preserves existing conventions and architectural decisions.
 
-**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - multi-file implementation with consistency requirements across the codebase demands the strongest reasoning.
+**Model:** `opus` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - multi-file implementation with consistency requirements across the codebase demands the strongest reasoning.
 
 | Command | Purpose |
 |---------|---------|
 | `create-code-plan` | Break implementation into atomic, sequenced tasks |
 | `implement-code` | Execute tasks from a plan |
 | `review-feedback` | Classify PR review comments: critical / robustness / quality / style |
+| `peer-review` | Give an ecosystem-specific codebase verdict |
 
 ---
 
@@ -232,7 +244,7 @@ Precise implementation engineer executing code changes from specifications. Read
 
 Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, and breaking change footers.
 
-**Model:** `haiku` (Claude Code) / `gpt-5-mini` (OpenCode) - commit message generation is a structured, deterministic task with clear rules. The smallest model handles it correctly at minimum cost.
+**Model:** `haiku` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - commit message generation is a structured, deterministic task with clear rules. The smallest Claude Code model handles it correctly at minimum cost.
 
 | Command | Purpose |
 |---------|---------|
@@ -245,7 +257,7 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 
 Performance optimisation specialist focused on user-perceivable improvements. Rates optimisations on a 1-10 impact scale. Only recommends changes where the user-perceivable effect justifies the maintainability cost.
 
-**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - identifying true bottlenecks versus theoretical micro-optimisations requires reasoning across algorithmic complexity, memory patterns, and I/O behaviour simultaneously.
+**Model:** `opus` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - identifying true bottlenecks versus theoretical micro-optimisations requires reasoning across algorithmic complexity, memory patterns, and I/O behaviour simultaneously.
 
 | Command | Purpose |
 |---------|---------|
@@ -270,7 +282,7 @@ Interprets objective audio metrics into perceptual descriptions: how a recording
 
 Research partner for exploring ideas, generating options, and framing problems for downstream specialists. Synthesises findings into dense, actionable overviews. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification.
 
-**Model:** `opus` (Claude Code) / `gpt-5.4` (OpenCode) - research synthesis, problem framing, and trade-off analysis produce better direct-use results on the stronger model; specialist agents still handle domain-specific validation.
+**Model:** `opus` (Claude Code) / `anthropic/claude-opus-4-7` (OpenCode) - research synthesis, problem framing, and trade-off analysis produce better direct-use results on the stronger model; specialist agents still handle domain-specific validation.
 
 | Command | Purpose |
 |---------|---------|
@@ -326,11 +338,11 @@ Three tiers map to task complexity:
 
 | Tier | Claude Code | OpenCode | Used for |
 |------|------------|----------|----------|
-| Heavy reasoning | `opus` | `gpt-5.4` | Deep analysis, research synthesis, complex implementation, Nix expertise, prompt engineering, security auditing |
+| Heavy reasoning | `opus` | `anthropic/claude-opus-4-7` | Deep analysis, research synthesis, complex implementation, Nix expertise, prompt engineering, security auditing |
 | General purpose | `sonnet` | `anthropic/claude-opus-4-7` | Writing, code review, audio analysis, game dev |
-| Deterministic tasks | `haiku` | `gpt-5-mini` | Structured formatting with clear rules (Garfield only) |
+| Deterministic tasks | `haiku` | `anthropic/claude-opus-4-7` | Structured formatting with clear rules (Garfield only) |
 
-**Why some commands override the parent model:** An agent's base model reflects its typical workload. Some commands within that agent require a different level of reasoning. Rosey runs on `sonnet` because coordination - writing delegation prompts, relaying output - suits the mid-tier model. Her `create-assistant` and `review-instructions` commands override to `opus` because prompt design requires weighing what to include, what to cut, and when examples are essential - judgements where the stronger model produces measurably better output. Penfold now sits in the heavy-reasoning tier because direct research synthesis and framing work performed better on `opus` and `gpt-5.4` than on the mid-tier models. The override isolates extra cost to the specific agents or commands that need it.
+**Why some commands override the parent model:** An agent's base model reflects its typical workload. Some commands within that agent require a different level of reasoning. Rosey runs on `sonnet` because coordination - writing delegation prompts, relaying output - suits the mid-tier model. Her `create-assistant`, `create-instructions`, `create-skill`, and `update-skill` commands override to `opus` because prompt design requires weighing what to include, what to cut, and when examples are essential - judgements where the stronger model produces measurably better output. Penfold sits in the heavy-reasoning tier because direct research synthesis and framing work performed better on `opus` than on the mid-tier model. OpenCode headers currently pin generated agents and commands to `anthropic/claude-opus-4-7` until a provider-specific tier policy is decided.
 
 ---
 
@@ -407,7 +419,7 @@ This split keeps the surfaces semantically clean: prompts take inputs, skills pr
 |----------|--------|----------|-------------|--------|
 | Claude Code | `~/.claude/agents/*.agent.md` | `~/.claude/commands/*.prompt.md` | `~/.claude/rules/instructions.md` | `~/.claude/skills/*/SKILL.md` |
 | OpenCode | `~/.config/opencode/agents/*.agent.md` | `~/.config/opencode/commands/*.prompt.md` | `rules` option | `~/.config/opencode/skills/*/SKILL.md` |
-| Codex | `~/.config/codex/agents/*.toml` | `~/.config/codex/skills/*/SKILL.md` | `programs.codex.custom-instructions` | `~/.config/codex/skills/*/SKILL.md` |
+| Codex | `~/.config/codex/agents/*.toml` | `~/.config/codex/skills/*/SKILL.md` | `~/.config/codex/AGENTS.md` | `~/.config/codex/skills/*/SKILL.md` |
 | Pi Agent | `~/.pi/agent/agents/*.md` | `~/.pi/agent/prompts/*.md` | `~/.pi/agent/AGENTS.md` | `~/.pi/agent/skills/*/SKILL.md` |
 
 ### Skills

@@ -15,6 +15,62 @@ let
   # Adds blank line after frontmatter and trailing newline
   composeWithFrontmatter = header: body: "---\n${header}\n---\n\n${body}\n";
 
+  isQuotedString =
+    value:
+    let
+      length = builtins.stringLength value;
+      first = builtins.substring 0 1 value;
+      last = builtins.substring (length - 1) 1 value;
+    in
+    length >= 2 && ((first == "\"" && last == "\"") || (first == "'" && last == "'"));
+
+  validateYamlHeader =
+    path:
+    if !(builtins.pathExists path) then
+      true
+    else
+      let
+        lines = lib.splitString "\n" (builtins.readFile path);
+        numberedLines = lib.imap0 (index: text: {
+          line = index + 1;
+          inherit text;
+        }) lines;
+        isHeaderLine =
+          entry:
+          let
+            trimmed = lib.trim entry.text;
+          in
+          trimmed == ""
+          || lib.hasPrefix "#" trimmed
+          || builtins.match "^[A-Za-z0-9_-]+:[[:space:]]*.*$" trimmed != null
+          || builtins.match "^[[:space:]]+[A-Za-z0-9_-]+:[[:space:]]*.*$" entry.text != null;
+        argumentHintValue =
+          line:
+          let
+            matched = builtins.match "^argument-hint:[[:space:]]*(.*)$" (lib.trim line);
+          in
+          if matched == null then null else builtins.elemAt matched 0;
+        invalidSyntax = lib.filter (entry: !(isHeaderLine entry)) numberedLines;
+        invalidArgumentHints = lib.filter (
+          entry:
+          let
+            value = argumentHintValue entry.text;
+          in
+          value != null && !(isQuotedString value)
+        ) numberedLines;
+        formatLine = entry: "${toString path}:${toString entry.line}: ${entry.text}";
+      in
+      if invalidSyntax != [ ] then
+        throw "Invalid YAML header syntax in ${toString path}:\n${
+          lib.concatMapStringsSep "\n" formatLine invalidSyntax
+        }"
+      else if invalidArgumentHints != [ ] then
+        throw "Invalid argument-hint in ${toString path}: expected a quoted string, got:\n${
+          lib.concatMapStringsSep "\n" formatLine invalidArgumentHints
+        }"
+      else
+        true;
+
   stripMatchingQuotes =
     value:
     let
@@ -90,7 +146,7 @@ let
       # then the generated subagent defaults, then any agent-specific
       # Pi-native fields from header.pi.yaml verbatim.
       let
-        rawHeader = readOptionalFile headerPath;
+        rawHeader = builtins.seq (validateYamlHeader headerPath) (readOptionalFile headerPath);
         baseLines = [
           "name: ${agentName}"
           "description: ${builtins.toJSON description}"
@@ -101,7 +157,7 @@ let
       composeWithFrontmatter (lib.concatStringsSep "\n" lines) prompt
     else
       let
-        header = readFile headerPath;
+        header = builtins.seq (validateYamlHeader headerPath) (readFile headerPath);
         # Inject description from description.txt into header
         headerWithDescription = "description: \"${description}\"\n${header}";
       in
@@ -222,6 +278,23 @@ let
   # Discover standalone commands
   standaloneCommandDirs = discoverDirs (basePath + "/commands");
 
+  # Flat command namespaces must be collision-free for every provider that
+  # emits slash commands or command-derived skills.
+  commandSources =
+    lib.mapAttrsToList (cmdName: _: {
+      name = cmdName;
+      source = toString (basePath + "/commands/${cmdName}");
+    }) standaloneCommandDirs
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        agentName: _:
+        lib.mapAttrsToList (cmdName: _: {
+          name = cmdName;
+          source = toString (basePath + "/agents/${agentName}/commands/${cmdName}");
+        }) (discoverAgentCommands agentName)
+      ) agentDirs
+    );
+
   # Compose a Pi command markdown using the provided body. Used by
   # `default.nix` for agent-scoped commands that wrap the body with
   # subagent-launch boilerplate before emitting frontmatter, and internally
@@ -235,7 +308,8 @@ let
         else
           basePath + "/commands/${cmdName}";
       description = readFile (cmdPath + "/description.txt");
-      rawHeader = readOptionalFile (cmdPath + "/header.pi.yaml");
+      headerPath = cmdPath + "/header.pi.yaml";
+      rawHeader = builtins.seq (validateYamlHeader headerPath) (readOptionalFile headerPath);
       lines = [
         "description: ${builtins.toJSON description}"
       ]
@@ -260,7 +334,8 @@ let
     else
       let
         description = readFile (cmdPath + "/description.txt");
-        rawHeader = readFile (cmdPath + "/header.${platform}.yaml");
+        headerPath = cmdPath + "/header.${platform}.yaml";
+        rawHeader = builtins.seq (validateYamlHeader headerPath) (readFile headerPath);
         # Inject description from description.txt into header
         header = "description: \"${description}\"\n${rawHeader}";
         # Check if this command should use Task tool for subagent execution
@@ -298,8 +373,16 @@ let
       standaloneCmds = lib.mapAttrs (
         cmdName: _: composeCommand platform null cmdName
       ) standaloneCommandDirs;
+      commandCollisionCheck = composeCommandsNoCollisions platform;
     in
-    agentCommands // standaloneCmds;
+    builtins.seq commandCollisionCheck (agentCommands // standaloneCmds);
+
+  composeCommandsNoCollisions =
+    platform:
+    assertNoCommandCollisions {
+      context = "${platform} commands";
+      sources = commandSources;
+    };
 
   # ============ COLLISION GUARDS ============
 
@@ -426,7 +509,8 @@ let
     platform:
     let
       instructionsPath = basePath + "/instructions";
-      header = readFile (instructionsPath + "/header.${platform}.yaml");
+      headerPath = instructionsPath + "/header.${platform}.yaml";
+      header = builtins.seq (validateYamlHeader headerPath) (readFile headerPath);
       body = readFile (instructionsPath + "/global.md");
     in
     composeWithFrontmatter header body;
@@ -445,8 +529,8 @@ in
   # Command composition functions
   inherit composeCommands composeCommand composePiCommandFromPrompt;
 
-  # Collision guard (shared between Pi prompts and Codex skills).
-  inherit assertNoCommandCollisions;
+  # Collision guards.
+  inherit assertNoCommandCollisions commandSources composeCommandsNoCollisions;
 
   # Instructions composition
   inherit composeInstructions;

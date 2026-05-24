@@ -2,7 +2,7 @@
 
 **Usage:** `/peer-review <output-file>`
 
-The first argument is the file path to write the peer review to (e.g. `peer-review.md`). Ask if not provided before proceeding.
+The first argument (`$1`) is the file path to write the peer review to (e.g. `peer-review.md`). Ask if not provided before proceeding.
 
 Review this project as a seasoned developer of the associated language ecosystem. Give an honest verdict: **impressed**, **ambivalent**, or **disgusted** - and make the case for it.
 
@@ -32,4 +32,4 @@ Review this project as a seasoned developer of the associated language ecosystem
 
 - No diplomatic hedging - give the honest verdict a peer would give in a code review
 - Cite specific code, not vague impressions
-- Write the completed review to the output file specified in the command argument
+- Write the completed review to `$1`

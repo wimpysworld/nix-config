@@ -2,7 +2,7 @@
 
 **Usage:** `/audit-infra-security <output-file>`
 
-The first argument is the file path to write the completed audit report to (e.g. `infra-audit-2026-03-18.md`). Ask if not provided before proceeding.
+The first argument (`$1`) is the file path to write the completed audit report to (e.g. `infra-audit-2026-03-18.md`). Ask if not provided before proceeding.
 
 Conduct a layered infrastructure security audit following a five-phase methodology. This command overrides Batfink's default sweep with a structured, outside-in approach ordered by blast radius and exploitability.
 
@@ -153,7 +153,7 @@ Use Batfink's standard Shield Assessment format (defined in Batfink's system pro
 
 **Remediation Roadmap** - Prioritised fix list ordered by blast radius first, then remediation effort. Group related findings. Include the specific tool or configuration change required for each item.
 
-Write the completed report to the output file specified in the command argument.
+Write the completed report to `$1`.
 
 ### Constraints
 

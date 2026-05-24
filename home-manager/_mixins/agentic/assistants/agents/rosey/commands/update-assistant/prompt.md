@@ -2,6 +2,8 @@
 
 Review referenced agent prompt for context efficiency.
 
+Agent prompt argument: $1. If blank, ask for the target prompt path.
+
 **Reduction:** Apply ineffective patterns list from base instructions. Preserve output format templates and constraints.
 
 **Gap check:** Flag if missing examples (required for style/judgment agents), decision criteria, or constraints section.

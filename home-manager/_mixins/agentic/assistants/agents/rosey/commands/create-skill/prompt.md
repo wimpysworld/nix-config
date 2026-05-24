@@ -2,6 +2,8 @@
 
 Create a `SKILL.md` for a reusable agent skill compatible with Claude Code, OpenCode, and Codex.
 
+Skill name argument: $1. Use it if provided; otherwise ask for the name.
+
 **Gather from user (ask if not provided):**
 
 - **Required:** Skill name (lowercase, hyphens only), purpose, when the agent should load it

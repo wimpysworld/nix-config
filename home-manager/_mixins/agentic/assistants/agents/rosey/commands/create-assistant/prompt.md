@@ -1,5 +1,7 @@
 ## Create AI Assistant
 
+Agent name argument: $1. Use it if provided; otherwise ask for the name.
+
 Gather from user (ask if not provided):
 
 - **Required:** Agent name, role/purpose, key capabilities

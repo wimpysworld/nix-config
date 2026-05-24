@@ -2,6 +2,8 @@
 
 Review and update instruction files (AGENTS.md or similar) in one pass: assess against best practices, then apply improvements.
 
+Target file argument: $1. If blank, discover instruction files using the consolidation search list.
+
 **Two modes:**
 
 1. **Targeted update** - user provides specific changes to incorporate

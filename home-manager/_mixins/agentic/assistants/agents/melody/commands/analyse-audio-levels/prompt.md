@@ -2,6 +2,8 @@
 
 Diagnose recording-side issues from audio metrics and provide actionable remediation for voice artists.
 
+Audio file argument: $1. If blank, ask for the audio metrics or file path before analysis.
+
 ### Issue Detection Reference
 
 | Issue | Metric Signature | Remediation |

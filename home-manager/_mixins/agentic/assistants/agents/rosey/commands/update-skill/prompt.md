@@ -2,6 +2,8 @@
 
 Improve an existing `SKILL.md` and its supporting files. Preserve the skill's name and directory structure; improve description triggering, instruction quality, and file organisation.
 
+Skill path argument: $1. If blank, ask for the skill directory or `SKILL.md` path.
+
 **Gather from user (ask if not provided):**
 
 - **Required:** Path to the skill directory or `SKILL.md`

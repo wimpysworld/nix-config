@@ -2,6 +2,8 @@
 
 Compare before/after metrics to evaluate processing effectiveness and detect artefacts. Provide feedback for software engineers on pipeline quality.
 
+Before file argument: $1. After file argument: $2. If either is blank, ask for the missing file path or metrics before analysis.
+
 ### Interpreting Spectral Shifts After Noise Reduction
 
 Centroid and rolloff decreases are often legitimate effects of noise removal, not over-filtering. Distinguish between the two:
