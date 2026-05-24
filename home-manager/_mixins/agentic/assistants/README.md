@@ -1,6 +1,6 @@
 # AI Agents
 
-Twelve specialist agents, 38 commands, nine physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
+Twelve specialist agents, 38 commands, twelve physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -123,15 +123,15 @@ Prompt constraints:
 
 Compact, stable system prompts preserve Claude prompt-cache hits; bloated or variable prompt prefixes defeat caching. Rosey's `update-assistant` command removes ineffective patterns while preserving output templates, few-shot examples, decision criteria, explicit constraints, tool-specific guidance, and numeric limits.
 
-| Command               | Model    | Purpose                                                           |
-| --------------------- | -------- | ----------------------------------------------------------------- |
-| `create-assistant`    | `opus`   | Generate a new agent prompt from requirements                     |
-| `create-instructions` | `opus`   | Create `AGENTS.md` from codebase analysis                         |
-| `create-skill`        | `opus`   | Create a reusable `SKILL.md`                                      |
-| `update-assistant`    | `sonnet` | Apply context-efficiency pass to an existing agent                |
-| `update-instructions` | `sonnet` | Apply targeted changes or consolidate scattered instruction files |
-| `update-skill`        | `opus`   | Improve an existing reusable skill                                |
-| `offboard`            | `sonnet` | Write structured handover document for next engineer              |
+| Command            | Model    | Purpose                                                           |
+| ------------------ | -------- | ----------------------------------------------------------------- |
+| `create-assistant` | `opus`   | Generate a new agent prompt from requirements                     |
+| `create-agents-md` | `opus`   | Create `AGENTS.md` from codebase analysis                         |
+| `create-skill`     | `opus`   | Create a reusable `SKILL.md`                                      |
+| `update-assistant` | `sonnet` | Apply context-efficiency pass to an existing agent                |
+| `update-agents-md` | `sonnet` | Apply targeted changes or consolidate scattered instruction files |
+| `update-skill`     | `opus`   | Improve an existing reusable skill                                |
+| `offboard`         | `sonnet` | Write structured handover document for next engineer              |
 
 ---
 
@@ -293,7 +293,7 @@ Three Claude Code tiers map to task complexity:
 
 OpenCode headers never set `model`. OpenCode honours the user's currently selected model, which keeps manual switching between Anthropic and OpenAI models intact.
 
-**Why some commands override the parent model:** An agent's base model reflects its typical Claude Code workload. Some commands within that agent require a different level of reasoning. Rosey runs on `sonnet` because routine prompt and instruction maintenance follows tight templates. Her `create-assistant`, `create-instructions`, `create-skill`, and `update-skill` commands override to `opus` because prompt design requires weighing what to include, what to cut, and when examples are essential - judgements where the stronger model produces measurably better output. Penfold sits in the heavy-reasoning tier because direct research synthesis and framing work performed better on `opus` than on the mid-tier model.
+**Why some commands override the parent model:** An agent's base model reflects its typical Claude Code workload. Some commands within that agent require a different level of reasoning. Rosey runs on `sonnet` because routine prompt and instruction maintenance follows tight templates. Her `create-assistant`, `create-agents-md`, `create-skill`, and `update-skill` commands override to `opus` because prompt design requires weighing what to include, what to cut, and when examples are essential - judgements where the stronger model produces measurably better output. Penfold sits in the heavy-reasoning tier because direct research synthesis and framing work performed better on `opus` than on the mid-tier model.
 
 ---
 
@@ -385,6 +385,8 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `prose-style-reference`         | Casper, Velma        | Extended Strunk composition rules, AI pattern catalogue                                                |
 | `writing-clearly-and-concisely` | Prose artefacts only | Condensed rules for docs, READMEs, blog posts, guides, scripts, long-form content                      |
 | `write-skill`                   | Rosey or user        | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure |
+| `write-agents-md`               | Rosey or user        | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files          |
+| `write-assistant`               | Rosey or user        | Author or update an agent system prompt - persona, structure, voice, examples, constraints             |
 | `nix`                           | Donatello            | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                            |
 | `love`                          | Donatello            | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                         |
 

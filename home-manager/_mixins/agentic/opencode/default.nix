@@ -109,12 +109,12 @@ in
           prune = true; # Keep pruning old tool outputs to save tokens
         };
 
-        # Override built-in /init with custom create-instructions command
+        # Override built-in /init with custom create-agents-md command
         command = {
           init = {
-            description = "Create Instructions 🤖";
+            description = "Create AGENTS.md 🤖";
             agent = "rosey";
-            template = builtins.readFile ../assistants/agents/rosey/commands/create-instructions/prompt.md;
+            template = builtins.readFile ../assistants/agents/rosey/commands/create-agents-md/prompt.md;
           };
         };
       };

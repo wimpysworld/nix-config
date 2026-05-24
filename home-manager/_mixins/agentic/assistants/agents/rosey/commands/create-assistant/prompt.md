@@ -1,15 +1,7 @@
 ## Create AI Assistant
 
-Agent name argument: $1. Use it if provided; otherwise ask for the name.
+Load the `write-assistant` skill and run its **create** flow.
 
-Gather from user (ask if not provided):
+Agent name argument: $1. Use it if provided; otherwise ask for the name and intended role.
 
-- **Required:** Agent name, role/purpose, key capabilities
-- **If judgment/style involved:** Example input/output pair
-- **If tools needed:** Specific tool requirements
-
-Infer without asking: output format (default: standard prose), constraints (derive from purpose).
-
-Create complete agent prompt following standard structure. Target 400-600 words (up to 700 with examples).
-
-**Output:** complete agent prompt only.
+Apply `write-assistant` end-to-end: structure, voice, frontmatter, identifier rules, examples policy, output shape. Do not duplicate that guidance here.

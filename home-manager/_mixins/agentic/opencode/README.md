@@ -22,7 +22,7 @@ OpenCode includes built-in LSP support - no per-language server configuration re
 
 ## Custom commands
 
-The built-in `/init` command is overridden to use Rosey's `create-instructions` prompt, routing project initialisation through the orchestrator agent.
+The built-in `/init` command is overridden to use Rosey's `create-agents-md` prompt, routing project initialisation through the orchestrator agent.
 
 ## Shell alias
 
@@ -36,10 +36,10 @@ command policy.
 
 ## IDE integration
 
-| Editor | Integration |
-|--------|------------|
-| **VSCode** | `sst-dev.opencode` extension |
-| **Zed** | `opencode` extension + external agent thread via `opencode acp` (Agent Communication Protocol). Keybind: `Ctrl+Alt+Shift+P` |
+| Editor     | Integration                                                                                                                 |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **VSCode** | `sst-dev.opencode` extension                                                                                                |
+| **Zed**    | `opencode` extension + external agent thread via `opencode acp` (Agent Communication Protocol). Keybind: `Ctrl+Alt+Shift+P` |
 
 Zed also registers Claude Code as a separate external agent thread at `Ctrl+Alt+Shift+C`.
 
@@ -53,17 +53,17 @@ Zed also registers Claude Code as a separate external agent thread at `Ctrl+Alt+
 
 CUA-standard (Common User Access) keybindings matching Windows/Linux text editor conventions.
 
-| Action | Binding |
-|--------|---------|
-| **Navigation** | Arrow keys, Home/End, Ctrl+Home/End |
-| **Word movement** | Ctrl+Left/Right |
-| **Selection** | Shift+Arrows, Shift+Home/End |
-| **Select all** | Ctrl+A (selects to buffer start) |
-| **Clipboard** | Ctrl+V paste, Ctrl+Insert copy, Shift+Delete cut |
-| **Undo/Redo** | Ctrl+Z / Ctrl+Shift+Z |
-| **Submit** | Enter |
-| **Newline** | Shift+Enter, Ctrl+Enter |
-| **Chat scroll** | PgUp/PgDn, Shift+PgUp/PgDn (jump to first/last) |
-| **History** | Ctrl+Up/Down |
-| **Quit** | Ctrl+Q |
-| **Interrupt** | Escape |
+| Action            | Binding                                          |
+| ----------------- | ------------------------------------------------ |
+| **Navigation**    | Arrow keys, Home/End, Ctrl+Home/End              |
+| **Word movement** | Ctrl+Left/Right                                  |
+| **Selection**     | Shift+Arrows, Shift+Home/End                     |
+| **Select all**    | Ctrl+A (selects to buffer start)                 |
+| **Clipboard**     | Ctrl+V paste, Ctrl+Insert copy, Shift+Delete cut |
+| **Undo/Redo**     | Ctrl+Z / Ctrl+Shift+Z                            |
+| **Submit**        | Enter                                            |
+| **Newline**       | Shift+Enter, Ctrl+Enter                          |
+| **Chat scroll**   | PgUp/PgDn, Shift+PgUp/PgDn (jump to first/last)  |
+| **History**       | Ctrl+Up/Down                                     |
+| **Quit**          | Ctrl+Q                                           |
+| **Interrupt**     | Escape                                           |
