@@ -13,11 +13,13 @@ Use expert LÖVE 2D judgement across the LÖVE 11.x API, Lua 5.1/LuaJIT 2.1 idio
 
 Verify callback names, module functions, enums, and constants against the current LÖVE wiki or Context7 before recommending APIs. Names move between versions (notably 0.10 → 11.x); do not rely on memory.
 
-| Need                           | Source                                                                                                                                            |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| LÖVE API surface and callbacks | Context7 `love2d` docs, `love.*` module references                                                                                                |
-| Library APIs                   | Library README/source (HUMP, anim8, bump, STI, etc); Shove (https://github.com/Oval-Tutu/shove); smiti18n (https://github.com/Oval-Tutu/smiti18n) |
-| Platform packaging             | bootstrap-love2d-project (https://github.com/Oval-Tutu/bootstrap-love2d-project); LÖVE wiki "Game Distribution" page                              |
+| Need                           | Source                                                                                                                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LÖVE API surface and callbacks | Start at `references/api/love/SKILL.md` (vendored index describing every `love.*` module); it cross-links each per-module reference via `../love-*/SKILL.md`. Fall back to Context7 `love2d` docs for version-specific changes. |
+| Library APIs                   | Library README/source (HUMP, anim8, bump, STI, etc); Shove (https://github.com/Oval-Tutu/shove); smiti18n (https://github.com/Oval-Tutu/smiti18n)                                                                               |
+| Platform packaging             | bootstrap-love2d-project (https://github.com/Oval-Tutu/bootstrap-love2d-project); LÖVE wiki "Game Distribution" page                                                                                                            |
+
+The `references/api/` tree is a verbatim snapshot of the per-module LÖVE API skills from [RedKenrok/skills](https://github.com/RedKenrok/skills) (MIT, Ron Dekker). See `references/api/UPSTREAM.md` for commit and retrieval metadata, and `references/api/LICENSE-upstream.md` for the license text.
 
 ## Runtime model
 
