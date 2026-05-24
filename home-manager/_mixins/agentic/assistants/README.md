@@ -1,6 +1,6 @@
 # AI Agents
 
-Twelve specialist agents, 38 commands, twelve physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
+Twelve specialist agents, 40 commands, thirteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -127,9 +127,11 @@ Compact, stable system prompts preserve Claude prompt-cache hits; bloated or var
 | `create-assistant` | `opus`   | Generate a new agent prompt from requirements                     |
 | `create-agents-md` | `opus`   | Create `AGENTS.md` from codebase analysis                         |
 | `create-skill`     | `opus`   | Create a reusable `SKILL.md`                                      |
+| `create-command`   | `opus`   | Create a slash command (shim or standalone)                       |
 | `update-assistant` | `sonnet` | Apply context-efficiency pass to an existing agent                |
 | `update-agents-md` | `sonnet` | Apply targeted changes or consolidate scattered instruction files |
 | `update-skill`     | `opus`   | Improve an existing reusable skill                                |
+| `update-command`   | `sonnet` | Update an existing slash command and its provider headers         |
 | `handover`         | `sonnet` | Write structured handover document for next engineer              |
 
 ---
@@ -386,6 +388,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `write-skill`                   | Rosey or user        | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure |
 | `write-agents-md`               | Rosey or user        | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files          |
 | `write-assistant`               | Rosey or user        | Author or update an agent system prompt - persona, structure, voice, examples, constraints             |
+| `write-command`                 | Rosey or user        | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model      |
 | `nix`                           | Donatello            | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                            |
 | `love`                          | Donatello            | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                         |
 

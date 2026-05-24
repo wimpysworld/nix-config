@@ -1,2 +1,2 @@
-argument-hint: "<agent-prompt>"
+argument-hint: "[agent-prompt]"
 model: sonnet
