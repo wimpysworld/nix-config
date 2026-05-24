@@ -1,6 +1,6 @@
 # AI Agents
 
-Fourteen specialist agents, 38 commands, seven physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
+Thirteen specialist agents, 38 commands, eight physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -81,7 +81,7 @@ Every session begins with `/ready We are going to <broad activity description>`.
 
 Parent context is permanent and finite. Specialist context windows are ephemeral. Protect the parent window by using fresh context for file reads, code search, web research, implementation, audits, and other tool-heavy work. Fork only when the user explicitly requires it or when the parent transcript is essential.
 
-When the coordinator lacks context, it delegates discovery instead of researching first. `delegate-task` owns routing, packet fields, the response contract, default discipline, fresh-context rule, and relay policy.
+When the coordinator lacks context, it delegates discovery instead of researching first. `delegate-task` owns routing, packet fields, the response contract, default discipline, fresh-context rule, and relay policy. Nix work routes to Donatello with the `nix` skill.
 
 ### Response Discipline
 
@@ -174,16 +174,6 @@ Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversationa
 
 ---
 
-### Dexter - Nix Expert
-
-Expert in Nix, Nixpkgs, NixOS, Home Manager, and nix-darwin. Always verifies packages and options exist before recommending them using the NixOS MCP tools. Prefers modern Nix: flakes and new CLI. Explains rationale behind every suggestion.
-
-**Model:** `opus` (Claude Code) - Nix's lazy evaluation semantics, module system interactions, and packaging edge cases require deep reasoning.
-
-No standalone commands. Dexter is invoked directly for Nix questions.
-
----
-
 ### Dibble - Code Security Auditor
 
 Code security auditor methodically patrolling codebases for vulnerabilities, insecure patterns, and dependency risks. Cites CWE and OWASP classifications for every finding. Distinguishes confirmed vulnerabilities from theoretical risks and prioritises by exploitability.
@@ -198,7 +188,7 @@ Code security auditor methodically patrolling codebases for vulnerabilities, ins
 
 ### Donatello - Implementation Engineer
 
-Precise implementation engineer executing code changes from specifications. Reads related files before any implementation, reuses existing utilities before writing new ones, identifies blockers early. Preserves existing conventions and architectural decisions.
+Precise implementation engineer executing code changes from specifications. Reads related files before any implementation, reuses existing utilities before writing new ones, identifies blockers early. Preserves existing conventions and architectural decisions. Loads the `nix` skill for Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, and `.nix` files.
 
 **Model:** `opus` (Claude Code) - multi-file implementation with consistency requirements across the codebase demands the strongest reasoning.
 
@@ -307,11 +297,11 @@ Documentation architect creating technically precise guides through progressive 
 
 Three Claude Code tiers map to task complexity:
 
-| Tier                | Claude Code | Used for                                                                                                        |
-| ------------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
-| Heavy reasoning     | `opus`      | Deep analysis, research synthesis, complex implementation, Nix expertise, prompt engineering, security auditing |
-| General purpose     | `sonnet`    | Writing, code review, audio analysis, game dev                                                                  |
-| Deterministic tasks | `haiku`     | Structured formatting with clear rules (Garfield only)                                                          |
+| Tier                | Claude Code | Used for                                                                                         |
+| ------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| Heavy reasoning     | `opus`      | Deep analysis, research synthesis, complex implementation, prompt engineering, security auditing |
+| General purpose     | `sonnet`    | Writing, code review, audio analysis, game dev                                                   |
+| Deterministic tasks | `haiku`     | Structured formatting with clear rules (Garfield only)                                           |
 
 OpenCode headers never set `model`. OpenCode honours the user's currently selected model, which keeps manual switching between Anthropic and OpenAI models intact.
 
@@ -401,11 +391,12 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 **Generated and agent-loaded:**
 
-| Skill                           | Loaded by                    | Purpose                                                    |
-| ------------------------------- | ---------------------------- | ---------------------------------------------------------- |
-| `delegate-task`                 | Coordinator or user          | Generated routing, packet, response contract, relay policy |
-| `prose-style-reference`         | Casper, Velma                | Extended Strunk composition rules, AI pattern catalogue    |
-| `writing-clearly-and-concisely` | Any agent writing for humans | Core six principles, banned words and patterns             |
+| Skill                           | Loaded by                    | Purpose                                                                     |
+| ------------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
+| `delegate-task`                 | Coordinator or user          | Generated routing, packet, response contract, relay policy                  |
+| `prose-style-reference`         | Casper, Velma                | Extended Strunk composition rules, AI pattern catalogue                     |
+| `writing-clearly-and-concisely` | Any agent writing for humans | Core six principles, banned words and patterns                              |
+| `nix`                           | Donatello                    | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries |
 
 **User-invocable support skills:**
 

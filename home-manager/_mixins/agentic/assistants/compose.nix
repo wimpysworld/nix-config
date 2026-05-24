@@ -454,7 +454,7 @@ let
       Delegate before parent-thread discovery for non-trivial tool, file, research, implementation, review, validation, or documentation work. Answer directly only when delegation clearly costs more than it saves. Launch the selected specialist via the current platform's delegation mechanism.
 
       Priority rules:
-      - Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, or `.nix` files: dexter.
+      - Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, overlays, options, registries, or `.nix` files: donatello with the `nix` skill.
       - Source-code security: dibble. Infrastructure, cloud, container, or network security: batfink.
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
