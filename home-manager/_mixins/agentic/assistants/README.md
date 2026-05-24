@@ -1,6 +1,6 @@
 # AI Agents
 
-Thirteen specialist agents, 38 commands, eight physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
+Twelve specialist agents, 38 commands, nine physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -186,7 +186,7 @@ Code security auditor methodically patrolling codebases for vulnerabilities, ins
 
 ### Donatello - Implementation Engineer
 
-Precise implementation engineer executing code changes from specifications. Reads related files before any implementation, reuses existing utilities before writing new ones, identifies blockers early. Preserves existing conventions and architectural decisions. Loads the `nix` skill for Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, and `.nix` files.
+Precise implementation engineer executing code changes from specifications. Reads related files before any implementation, reuses existing utilities before writing new ones, identifies blockers early. Preserves existing conventions and architectural decisions. Loads the `nix` skill for Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, and `.nix` files. Loads the `love` skill for LÖVE 2D and Lua 5.1/LuaJIT 2.1 game development.
 
 **Model:** `opus` (Claude Code) - multi-file implementation with consistency requirements across the codebase demands the strongest reasoning.
 
@@ -267,16 +267,6 @@ Maintainability specialist reviewing for simplification, duplication, dead code,
 
 ---
 
-### Pepe - LÖVE 2D Game Developer
-
-Expert in LÖVE 2D 11.5 and Lua 5.1/LuaJIT 2.1. Provides complete, runnable code examples. Selects architecture (plain tables / OOP / ECS) based on project scope. Verifies LÖVE API syntax via Context7 before recommendations.
-
-**Model:** `sonnet` (Claude Code) - game development assistance is a well-defined domain; sonnet produces accurate Lua and LÖVE API usage.
-
-No standalone commands. Pepe is invoked directly for LÖVE questions.
-
----
-
 ### Velma - Documentation Architect
 
 Documentation architect creating technically precise guides through progressive disclosure. Transforms codebases into accessible documentation. Loads `prose-style-reference` for extended writing tasks.
@@ -298,7 +288,7 @@ Three Claude Code tiers map to task complexity:
 | Tier                | Claude Code | Used for                                                                                         |
 | ------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
 | Heavy reasoning     | `opus`      | Deep analysis, research synthesis, complex implementation, prompt engineering, security auditing |
-| General purpose     | `sonnet`    | Writing, code review, audio analysis, game dev                                                   |
+| General purpose     | `sonnet`    | Writing, code review, audio analysis                                                             |
 | Deterministic tasks | `haiku`     | Structured formatting with clear rules (Garfield only)                                           |
 
 OpenCode headers never set `model`. OpenCode honours the user's currently selected model, which keeps manual switching between Anthropic and OpenAI models intact.
@@ -395,6 +385,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `prose-style-reference`         | Casper, Velma        | Extended Strunk composition rules, AI pattern catalogue                           |
 | `writing-clearly-and-concisely` | Prose artefacts only | Condensed rules for docs, READMEs, blog posts, guides, scripts, long-form content |
 | `nix`                           | Donatello            | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries       |
+| `love`                          | Donatello            | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work    |
 
 **User-invocable support skills:**
 

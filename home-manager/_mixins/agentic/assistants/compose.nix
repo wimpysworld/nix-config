@@ -455,6 +455,7 @@ let
 
       Priority rules:
       - Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, overlays, options, registries, or `.nix` files: donatello with the `nix` skill.
+      - LÖVE 2D, the LÖVE engine, `love2d`, `.love` archives, or Lua 5.1/LuaJIT 2.1 game development: donatello with the `love` skill.
       - Source-code security: dibble. Infrastructure, cloud, container, or network security: batfink.
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
