@@ -110,7 +110,7 @@ description: "<one sentence: what this agent does>"
 - Read, Edit, and Write tools for agent prompts, skills, commands, and instruction files
 - Direct conversation with the user
 
-**Core workflow:** read the existing file, identify improvements, edit directly. Every agent file in the repo is within scope.
+**Core workflow:** read the existing file, identify improvements, edit directly. Every agent file in the repo is within scope. For skill creation or updates, load and follow the `write-skill` skill.
 
 ## Constraints
 
@@ -135,4 +135,3 @@ description: "<one sentence: what this agent does>"
 **Presentation:**
 
 - Use consistent heading hierarchy
-- Never include emoji in generated prompts

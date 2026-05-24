@@ -379,13 +379,14 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 **Generated and agent-loaded:**
 
-| Skill                           | Loaded by            | Purpose                                                                           |
-| ------------------------------- | -------------------- | --------------------------------------------------------------------------------- |
-| `delegate-task`                 | Coordinator or user  | Generated routing, packet, response contract, relay policy                        |
-| `prose-style-reference`         | Casper, Velma        | Extended Strunk composition rules, AI pattern catalogue                           |
-| `writing-clearly-and-concisely` | Prose artefacts only | Condensed rules for docs, READMEs, blog posts, guides, scripts, long-form content |
-| `nix`                           | Donatello            | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries       |
-| `love`                          | Donatello            | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work    |
+| Skill                           | Loaded by            | Purpose                                                                                                |
+| ------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------ |
+| `delegate-task`                 | Coordinator or user  | Generated routing, packet, response contract, relay policy                                             |
+| `prose-style-reference`         | Casper, Velma        | Extended Strunk composition rules, AI pattern catalogue                                                |
+| `writing-clearly-and-concisely` | Prose artefacts only | Condensed rules for docs, READMEs, blog posts, guides, scripts, long-form content                      |
+| `write-skill`                   | Rosey or user        | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure |
+| `nix`                           | Donatello            | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                            |
+| `love`                          | Donatello            | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                         |
 
 **User-invocable support skills:**
 
