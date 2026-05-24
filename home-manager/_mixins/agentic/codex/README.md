@@ -54,14 +54,14 @@ MCP servers are imported from `../mcp/servers.nix` and translated into Codex's n
 
 Configured servers:
 
-| Server | Transport | Notes |
-|--------|-----------|-------|
-| `cloudflare` | HTTP | Shared Cloudflare docs/tools server |
-| `context7` | HTTP | Uses `CONTEXT7_API_KEY` via `bearer_token_env_var` |
-| `exa` | HTTP | Web search and fetch |
-| `nixos` | stdio | Shared NixOS/Home Manager/nix-darwin reference server |
-| `playwright` | stdio | Conditional browser automation server; configured with `enabled = false` by default |
-| `svelte` | HTTP | Svelte documentation tools |
+| Server       | Transport | Notes                                                                               |
+| ------------ | --------- | ----------------------------------------------------------------------------------- |
+| `cloudflare` | HTTP      | Shared Cloudflare docs/tools server                                                 |
+| `context7`   | HTTP      | Uses `CONTEXT7_API_KEY` via `bearer_token_env_var`                                  |
+| `exa`        | HTTP      | Web search and fetch                                                                |
+| `nixos`      | stdio     | Shared NixOS/Home Manager/nix-darwin reference server                               |
+| `playwright` | stdio     | Conditional browser automation server; configured with `enabled = false` by default |
+| `svelte`     | HTTP      | Svelte documentation tools                                                          |
 
 `playwright` is emitted only when both Chromium and Firefox are enabled under the shared browser automation policy.
 
@@ -99,7 +99,6 @@ Standalone commands sit in the same namespace under the same shape:
 
 ```text
 $ready
-$onboard
 $orientate
 $collaborate
 $botsnack

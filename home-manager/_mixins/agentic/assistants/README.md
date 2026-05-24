@@ -94,7 +94,6 @@ Global response rules stay compact: concise peer-to-peer British English, no em 
 | `ack`         | Acknowledge a phase or message and yield               |
 | `botsnack`    | Celebrate agent work                                   |
 | `collaborate` | Read an implementation plan and prepare to collaborate |
-| `onboard`     | Summarise current project context                      |
 | `orientate`   | Inspect the repository and report orientation notes    |
 | `ready`       | Prime the session for a broad activity                 |
 
@@ -131,7 +130,7 @@ Compact, stable system prompts preserve Claude prompt-cache hits; bloated or var
 | `update-assistant` | `sonnet` | Apply context-efficiency pass to an existing agent                |
 | `update-agents-md` | `sonnet` | Apply targeted changes or consolidate scattered instruction files |
 | `update-skill`     | `opus`   | Improve an existing reusable skill                                |
-| `offboard`         | `sonnet` | Write structured handover document for next engineer              |
+| `handover`         | `sonnet` | Write structured handover document for next engineer              |
 
 ---
 
