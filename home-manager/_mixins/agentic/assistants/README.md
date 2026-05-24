@@ -63,7 +63,7 @@ instructions/global.md          ← environment constraints, tool preferences, r
                     └── command prompt  ← single task, optionally overrides model
 ```
 
-**`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, response standards, and verbatim relay. Full specialist routing and output contracts live in the generated `delegate-task` skill.
+**`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, response standards, and verbatim relay. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
 Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. Commands that need deeper reasoning can override the parent model without rewriting the agent.
 
@@ -103,9 +103,9 @@ Global response rules stay compact: concise peer-to-peer British English, no em 
 
 ### Rosey - Prompt & Skill Specialist
 
-Prompt and skill specialist for agent prompts, skills, commands, and instruction files. Rosey edits these artefacts directly, applies context-efficiency constraints, and keeps prompt guidance short enough to hold. She is not the global coordinator; `instructions/global.md` owns default delegation policy.
+Prompt and skill specialist for agent prompts, skills, commands, and instruction files. Rosey edits these artefacts directly, applies context-efficiency constraints, and keeps prompt guidance short enough to hold. She is not the global coordinator; `instructions/global.md` owns default delegation policy. See [`agents/rosey/README.md`](agents/rosey/README.md) for the research that informs Rosey's prompt, skills, and command shims.
 
-**Model:** `sonnet` (Claude Code) - prompt maintenance is structured enough for the mid-tier model. OpenCode uses the current session model.
+**Model:** `opus` (Claude Code) - every Rosey command and the agent itself run on `opus`; prompt and skill authoring rewards the stronger model for structure, terseness, and cross-platform reasoning. OpenCode uses the current session model.
 
 Rosey's prompt engineering rules:
 
@@ -122,17 +122,17 @@ Prompt constraints:
 
 Compact, stable system prompts preserve Claude prompt-cache hits; bloated or variable prompt prefixes defeat caching. Rosey's `update-assistant` command removes ineffective patterns while preserving output templates, few-shot examples, decision criteria, explicit constraints, tool-specific guidance, and numeric limits.
 
-| Command            | Model    | Purpose                                                           |
-| ------------------ | -------- | ----------------------------------------------------------------- |
-| `create-assistant` | `opus`   | Generate a new agent prompt from requirements                     |
-| `create-agents-md` | `opus`   | Create `AGENTS.md` from codebase analysis                         |
-| `create-skill`     | `opus`   | Create a reusable `SKILL.md`                                      |
-| `create-command`   | `opus`   | Create a slash command (shim or standalone)                       |
-| `update-assistant` | `sonnet` | Apply context-efficiency pass to an existing agent                |
-| `update-agents-md` | `sonnet` | Apply targeted changes or consolidate scattered instruction files |
-| `update-skill`     | `opus`   | Improve an existing reusable skill                                |
-| `update-command`   | `sonnet` | Update an existing slash command and its provider headers         |
-| `handover`         | `sonnet` | Write structured handover document for next engineer              |
+| Command            | Model  | Purpose                                                           |
+| ------------------ | ------ | ----------------------------------------------------------------- |
+| `create-assistant` | `opus` | Generate a new agent prompt from requirements                     |
+| `create-agents-md` | `opus` | Create `AGENTS.md` from codebase analysis                         |
+| `create-skill`     | `opus` | Create a reusable `SKILL.md`                                      |
+| `create-command`   | `opus` | Create a slash command (shim or standalone)                       |
+| `update-assistant` | `opus` | Apply context-efficiency pass to an existing agent                |
+| `update-agents-md` | `opus` | Apply targeted changes or consolidate scattered instruction files |
+| `update-skill`     | `opus` | Improve an existing reusable skill                                |
+| `update-command`   | `opus` | Update an existing slash command and its provider headers         |
+| `handover`         | `opus` | Write structured handover document for next engineer              |
 
 ---
 
