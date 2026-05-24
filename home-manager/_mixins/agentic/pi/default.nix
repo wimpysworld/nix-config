@@ -16,7 +16,8 @@ let
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
   piMcpAdapterVersion = "2.6.1";
-  piSubagentsVersion = "0.24.3";
+  # When bumping pi-subagents, verify the surface still matches the provider-router and prelude assumptions: the MCP tool name remains `subagent`; the parameter set still includes `agent`, `task`, `context`, `model`, and `thinking`; and `context` still accepts `"fresh"` and `"fork"` with `"fresh"` as the safer non-forking default. If any of these change, update `extensions/provider-router/index.ts` and the agent-launch prelude in `assistants/default.nix` before merging.
+  piSubagentsVersion = "0.25.0";
   piLensVersion = "3.8.44";
   piFooterVersion = "0.3.0";
   piSubCoreVersion = "1.5.0";
