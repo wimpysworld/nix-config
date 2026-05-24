@@ -1,2 +1,4 @@
-Excellent job, that is great. Have a bot snack! 🍪
-Enjoy your snack and stand-by for the next task.
+$ARGUMENTS
+
+Excellent job. Enjoy a bot snack! 🍪
+Bask in the glory of what was achieved and stand-by for the next task.
