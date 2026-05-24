@@ -3,8 +3,10 @@
 Provider Router is a local Pi extension for subagent model routing. It
 intercepts Pi `tool_call` events for the `subagent` tool. When the requested
 subagent has a model and/or thinking-level mapping for the active provider, it
-writes `params.model` in Pi's canonical `provider/id[:thinking]` form. It only
-rewrites calls where `model` is unset. Pi then hands the call to `pi-subagents`.
+writes `params.model` in Pi's canonical `provider/id[:thinking]` form. For known
+agents the routing is authoritative: the per-agent mapping always wins, even if
+the orchestrator passed an explicit `model` on the tool call. Pi then hands the
+call to `pi-subagents`.
 
 ## Deployed Scope
 
@@ -92,12 +94,23 @@ calls produced by the model during a Pi session. It does not cover slash
 commands such as `/run`, `/chain`, `/parallel`, or `/run-chain`. It does not
 cover prompt-template-bridge invocations. v1 has no per-project override.
 
-The runtime never overwrites an existing `model` field. Explicit model choices
-in a tool call take precedence; the runtime also never appends a thinking
-suffix when the task already carries a `model` value. The runtime validates
-the bare model via `ctx.modelRegistry.find(provider, modelId)` before writing
-anything; only models available to the authenticated Pi session are used. The
-suffixed string is never passed to the registry.
+For known agents - those with a `model-<provider>` and/or
+`thinking-<provider>` entry for the active provider - the runtime is
+authoritative. It rewrites `params.model` whether or not the orchestrator
+supplied one, and applies the thinking suffix consistently. Unknown agents
+(no entry for the active provider in either map) pass through untouched. The
+runtime validates the bare model via `ctx.modelRegistry.find(provider, modelId)`
+before writing anything; only models available to the authenticated Pi session
+are used. The suffixed string is never passed to the registry.
+
+When the extension overrides a value the orchestrator passed (i.e. `task.model`
+was set and differs from the routed value), it emits a single line to stderr:
+
+```
+provider-router: override model for agent=<name> orchestrator=<orig> -> routed=<new>
+```
+
+No log is emitted in the common case where the orchestrator left `model` unset.
 
 ## Graceful No-Ops
 

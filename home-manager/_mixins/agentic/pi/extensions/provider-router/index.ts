@@ -110,10 +110,6 @@ function loadThinkingMap(): AgentThinkingMap {
   }
 }
 
-function hasUnsetModel(task: RoutedTask): boolean {
-  return task.model === undefined;
-}
-
 function applyModel(
   task: RoutedTask,
   provider: string | undefined,
@@ -121,11 +117,14 @@ function applyModel(
   thinkingMap: AgentThinkingMap,
   ctx: ExtensionContext,
 ): void {
-  if (typeof task.agent !== "string" || !hasUnsetModel(task) || !provider)
-    return;
+  if (typeof task.agent !== "string" || !provider) return;
 
   const mappedModel = map[task.agent]?.[provider];
   const thinking = thinkingMap[task.agent]?.[provider];
+
+  // Known-agent gate: only act when the agent has at least one routing entry
+  // (model or thinking) for the active provider. Unknown agents pass through.
+  if (mappedModel === undefined && thinking === undefined) return;
 
   // Pick the bare model id. Prefer an explicit model-<provider> override; if
   // only a thinking-<provider> entry exists, fall back to the active session
@@ -147,9 +146,19 @@ function applyModel(
   // Pi-specific routing syntax and must never reach modelRegistry.find.
   if (!ctx.modelRegistry.find(provider, bareModel)) return;
 
-  task.model = thinking
+  const routedModel = thinking
     ? `${provider}/${bareModel}:${thinking}`
     : `${provider}/${bareModel}`;
+
+  // Log when the extension overrides an orchestrator-supplied value. The
+  // common case (orchestrator left model unset) emits nothing.
+  if (typeof task.model === "string" && task.model !== routedModel) {
+    console.error(
+      `provider-router: override model for agent=${task.agent} orchestrator=${task.model} -> routed=${routedModel}`,
+    );
+  }
+
+  task.model = routedModel;
 }
 
 export default function registerProviderRouter(pi: ExtensionAPI): void {

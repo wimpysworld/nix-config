@@ -125,6 +125,8 @@ let
         piPrompt = ''
           Use the subagent tool to launch the `${agentName}` agent for the task below.
 
+          - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
+
           ${prompt}
         '';
       in
