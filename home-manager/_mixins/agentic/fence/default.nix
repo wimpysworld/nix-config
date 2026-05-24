@@ -41,8 +41,9 @@ let
         "${homeDirectory}/Zero"
         "${homeDirectory}/Zero/**"
 
-        # Temp files
-        "/tmp/**"
+        # Fence mounts /tmp as a private tmpfs. Use the bare directory so the
+        # Landlock rule covers runtime-created temp paths inside the sandbox.
+        "/tmp"
 
         # Claude Code
         "${config.xdg.configHome}/ccstatusline"
