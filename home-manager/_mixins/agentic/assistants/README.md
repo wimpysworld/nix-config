@@ -87,8 +87,6 @@ When the coordinator lacks context, it delegates discovery instead of researchin
 
 Global response rules stay compact: concise peer-to-peer British English, no em dashes, one statement per fact, fenced blocks for code, file content, and commit messages. A single specialist output is relayed verbatim, with intervention only for safety.
 
-Phase 2 removed duplicated style text from agent prompts; specialist-specific voice, structure, and output constraints remain local.
-
 ### Standalone Commands
 
 | Command       | Purpose                                                |
@@ -391,12 +389,12 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 **Generated and agent-loaded:**
 
-| Skill                           | Loaded by                    | Purpose                                                                     |
-| ------------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
-| `delegate-task`                 | Coordinator or user          | Generated routing, packet, response contract, relay policy                  |
-| `prose-style-reference`         | Casper, Velma                | Extended Strunk composition rules, AI pattern catalogue                     |
-| `writing-clearly-and-concisely` | Any agent writing for humans | Core six principles, banned words and patterns                              |
-| `nix`                           | Donatello                    | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries |
+| Skill                           | Loaded by            | Purpose                                                                           |
+| ------------------------------- | -------------------- | --------------------------------------------------------------------------------- |
+| `delegate-task`                 | Coordinator or user  | Generated routing, packet, response contract, relay policy                        |
+| `prose-style-reference`         | Casper, Velma        | Extended Strunk composition rules, AI pattern catalogue                           |
+| `writing-clearly-and-concisely` | Prose artefacts only | Condensed rules for docs, READMEs, blog posts, guides, scripts, long-form content |
+| `nix`                           | Donatello            | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries       |
 
 **User-invocable support skills:**
 

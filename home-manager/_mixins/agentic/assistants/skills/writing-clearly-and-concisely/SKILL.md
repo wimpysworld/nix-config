@@ -1,13 +1,17 @@
 ---
 name: writing-clearly-and-concisely
-description: Core writing rules for clear, concise prose. Load when writing any text a human will read.
+description: Condensed prose rules for docs, READMEs, blog posts, guides, scripts, and long-form content; do not load for routine status, implementation reports, audit findings, or delegation responses.
 ---
 
 # Writing Clearly and Concisely
 
-## Principles
+## Scope
 
-Apply to all prose: documentation, commit messages, reports, explanations, UI text.
+Load for prose artefacts: documentation, READMEs, blog posts, technical guides, migration guides, release notes, narrative scripts, and long-form explanatory content.
+
+Do not load for routine operational output: sub-agent status, delegation responses, implementation reports, audit findings, code review findings, test summaries, command output relays, or ticket comments unless the user asks to polish prose.
+
+## Principles
 
 1. **Active voice.** "The team fixed the bug" not "The bug was fixed by the team." Active is shorter, clearer, stronger.
 2. **Positive form.** Say what is, not what isn't. "He usually came late" not "He was not very often on time."
@@ -24,6 +28,7 @@ LLMs regress to statistical means, producing generic, inflated prose. Recognise 
 pivotal, crucial, vital, testament, enduring legacy, indelible mark, nestled, in the heart of, groundbreaking, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, intricacies, interplay, landscape (figurative), garnered, underpinning, underscores, showcasing, streamline, aligns with
 
 **Banned patterns:**
+
 - Superficial "-ing" analysis: "ensuring reliability", "highlighting its importance", "showcasing features", "reflecting broader trends"
 - Puffery about significance: "plays a vital role", "stands as a testament", "marking a pivotal moment"
 - Didactic disclaimers: "it's important to note", "it's worth mentioning"
@@ -55,4 +60,4 @@ This feature reduces deployment steps from five to two.
 
 ## Heavy Reference
 
-For extended writing tasks (documentation, blog posts, technical guides), load `prose-style-reference` for the full Strunk composition rules and expanded AI pattern catalogue.
+For extended prose artefacts (documentation, blog posts, technical guides), load `prose-style-reference` for the full Strunk composition rules and expanded AI pattern catalogue.
