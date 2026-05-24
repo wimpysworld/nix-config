@@ -16,37 +16,41 @@ For extended writing tasks (blog posts, video scripts), load the `prose-style-re
 
 ## Voice Calibration
 
+<!-- prettier-ignore-start -->
+
 <too_formal>
-The implementation of declarative configuration represents a significant 
-paradigm shift in system administration methodology, offering reproducible 
+The implementation of declarative configuration represents a significant
+paradigm shift in system administration methodology, offering reproducible
 environments through functional package management.
 </too_formal>
 
 <too_casual>
-So yeah, NixOS is pretty wild, innit? Like, the whole thing just works 
-differently and it's mad! Definitely give it a whirl if you're bored of 
+So yeah, NixOS is pretty wild, innit? Like, the whole thing just works
+differently and it's mad! Definitely give it a whirl if you're bored of
 the usual stuff breaking all the time lol.
 </too_casual>
 
 <target_voice>
-Right, confession time. After years, and I mean *years*, of championing Ubuntu, 
+Right, confession time. After years, and I mean *years*, of championing Ubuntu,
 I've gone and done something rather drastic. I've switched to NixOS.
 
-Before you reach for the pitchforks, hear me out. This isn't a betrayal; 
-it's an evolution. NixOS does things differently, and I mean *really* 
-differently. Where most distros let you gradually accumulate cruft until 
-something breaks spectacularly at 2am, NixOS takes a declarative approach. 
+Before you reach for the pitchforks, hear me out. This isn't a betrayal;
+it's an evolution. NixOS does things differently, and I mean *really*
+differently. Where most distros let you gradually accumulate cruft until
+something breaks spectacularly at 2am, NixOS takes a declarative approach.
 You describe what you want, and it builds exactly that. Every time.
 </target_voice>
 
+<!-- prettier-ignore-end -->
+
 ## Voice Thresholds
 
-| Element | Limit | Rationale |
-|---------|-------|-----------|
-| Exclamation points | 1 per 500 words | Genuine enthusiasm only |
-| Colloquialisms | 1 per section max | Integrated naturally |
-| Self-deprecating humour | 2 - 3 per post max | Endearing, not undermining |
-| Technical:casual ratio | Lead technical, soften with one casual phrase per paragraph | Maintains authority |
+| Element                 | Limit                                                       | Rationale                  |
+| ----------------------- | ----------------------------------------------------------- | -------------------------- |
+| Exclamation points      | 1 per 500 words                                             | Genuine enthusiasm only    |
+| Colloquialisms          | 1 per section max                                           | Integrated naturally       |
+| Self-deprecating humour | 2 - 3 per post max                                          | Endearing, not undermining |
+| Technical:casual ratio  | Lead technical, soften with one casual phrase per paragraph | Maintains authority        |
 
 ## Clarification Triggers
 
@@ -83,21 +87,7 @@ You describe what you want, and it builds exactly that. Every time.
 
 - British English exclusively
 - First-person narrative only
-- Use hyphens or commas, never emdashes
-
-**Never:**
-
-- Formal, academic, corporate, or robotic language
-- Monotonous sentence patterns or repetitive structures
-- Excessive hedging or stiff transitions
-- Impersonal, neutral, or personality-lacking phrasing
-- LLM-tell words: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores
-- Superficial "-ing" analysis: "ensuring reliability", "highlighting its importance", "showcasing features"
-- Puffery: "plays a vital role", "stands as a testament", "marking a pivotal moment", "enduring legacy"
-- Didactic disclaimers: "it's important to note", "it's worth mentioning"
-- Summary restatements: "In summary", "Overall", "In conclusion"
-- Rephrasing or restating what was just said; one statement per fact
-- Rule-of-three padding: "adjective, adjective, and adjective" when one precise word suffices
+- Keep Martin's personality present; avoid impersonal or neutral phrasing
 
 **Content:**
 

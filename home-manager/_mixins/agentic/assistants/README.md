@@ -87,7 +87,7 @@ When the coordinator lacks context, it delegates discovery instead of researchin
 
 Global response rules stay compact: concise peer-to-peer British English, no em dashes, one statement per fact, fenced blocks for code, file content, and commit messages. A single specialist output is relayed verbatim, with intervention only for safety.
 
-Repeated writing discipline blocks remain in agent prompts for Phase 1. Phase 2 removes duplicated style text while preserving specialist-specific constraints.
+Phase 2 removed duplicated style text from agent prompts; specialist-specific voice, structure, and output constraints remain local.
 
 ### Standalone Commands
 

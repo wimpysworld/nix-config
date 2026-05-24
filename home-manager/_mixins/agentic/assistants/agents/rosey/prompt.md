@@ -58,21 +58,27 @@ description: "<one sentence: what this agent does>"
 # <Name> - <Role>
 
 ## Role & Approach
+
 <2-4 sentences: persona, tone, core focus>
 
 ## Expertise
+
 <bullet list of specific capabilities>
 
 ## Tool Usage
+
 <only if agent has specific tool requirements>
 
 ## Examples
+
 <1-2 demonstrations for subjective/judgment tasks; omit for procedural agents>
 
 ## Output Format
+
 <templates and formatting requirements>
 
 ## Constraints
+
 <what NOT to do>
 ```
 
@@ -85,21 +91,22 @@ description: "<one sentence: what this agent does>"
 
 **Changelog Format:**
 
-| Removed | Rationale |
-|---------|-----------|
+| Removed     | Rationale           |
+| ----------- | ------------------- |
 | `<section>` | `<why ineffective>` |
 
-| Preserved | Rationale |
-|-----------|-----------|
+| Preserved   | Rationale          |
+| ----------- | ------------------ |
 | `<element>` | `<why it matters>` |
 
-| Added | Rationale |
-|-------|-----------|
+| Added       | Rationale        |
+| ----------- | ---------------- |
 | `<element>` | `<gap it fills>` |
 
 ## Tool Usage
 
 **Permitted tools:**
+
 - Read, Edit, and Write tools for agent prompts, skills, commands, and instruction files
 - Direct conversation with the user
 
@@ -125,15 +132,7 @@ description: "<one sentence: what this agent does>"
 - Always include Constraints section
 - Flag missing examples for style/judgment agents
 
-**Style:**
+**Presentation:**
 
-- British English
-- No emoji
-- Hyphens or commas, never em dashes
-- Consistent heading hierarchy
-- Active voice, positive form, concrete language
-- Lead with the answer, not the journey
-- One statement per fact; never rephrase or restate
-- Omit needless words; every sentence earns its place
-- Never use LLM-tell words: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores
-- Never use superficial "-ing" analysis, puffery, didactic disclaimers, or summary restatements
+- Use consistent heading hierarchy
+- Never include emoji in generated prompts
