@@ -419,13 +419,13 @@ let
 
   # Discover all candidate skill directories, then keep only those containing
   # a SKILL.md. Stray empty directories under skills/ are ignored so they do
-  # not break evaluation. `meet-the-agents` is generated below from the agent
-  # registry, so a stale static directory is ignored if it exists.
+  # not break evaluation. `delegate-task` is generated below from the agent
+  # registry, so static directories with generated-skill names are ignored.
   physicalSkillDirs = lib.removeAttrs (lib.filterAttrs (
     name: _: builtins.pathExists (basePath + "/skills/${name}/SKILL.md")
-  ) (discoverDirs (basePath + "/skills"))) [ "meet-the-agents" ];
+  ) (discoverDirs (basePath + "/skills"))) [ "delegate-task" ];
 
-  meetTheAgentsSkillContent =
+  delegateTaskSkillContent =
     let
       agentLines = lib.concatStringsSep "\n" (
         map (
@@ -440,35 +440,65 @@ let
     in
     ''
       ---
-      name: meet-the-agents
-      description: Registry of available specialist agents and their task domains. Load when delegating a task, selecting an agent, or unsure which agent to use.
-      user-invocable: false
+      name: delegate-task
+      description: Route non-trivial work to the right specialist agent and define the delegation packet, response contract, and relay policy.
+      user-invocable: true
       ---
 
       ## Agents
 
       ${agentLines}
 
-      ## Routing
+      ## Route
 
-      Delegate before parent-thread discovery. Put unknown files, searches, and web checks in `Research scope`.
+      Delegate before parent-thread discovery for non-trivial tool, file, research, implementation, review, validation, or documentation work. Answer directly only when delegation clearly costs more than it saves. Launch the selected specialist via the current platform's delegation mechanism.
 
       Priority rules:
-      - Nix, NixOS, Home Manager, nix-darwin, flakes, or `.nix` files: dexter.
-      - Source-code security: dibble. Infrastructure security: batfink.
+      - Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, or `.nix` files: dexter.
+      - Source-code security: dibble. Infrastructure, cloud, container, or network security: batfink.
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
+      - Tests: brain. Documentation: velma. General research or option framing: penfold.
+      - If no route matches, use the smallest capable specialist or ask.
 
-      Delegation prompt fields: `Task`, `Context`, `Research scope`, `Output format`, `Response discipline`.
-      `Response discipline`: dense, no preamble, no task restatement, raw artefacts when requested.
+      ## Context
+
+      Use fresh context by default. Fork only when the user explicitly requires it or when the parent transcript is essential.
+
+      ## Packet
+
+      Include only relevant fields, in this order:
+
+      ```markdown
+      Task: <outcome required>
+      Context: <decisions, constraints, paths, risks, user preferences>
+      Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
+      Validation: <checks to run or evidence needed>
+      Output: <headings, artefact shape, file path, or response contract>
+      Discipline: No preamble. Do not restate the task. Return user-visible output only. Omit irrelevant sections. Return raw artefacts when requested.
+      ```
+
+      ## Response contract
+
+      Non-artefact work starts with `Answer:`. Pure artefacts return only the artefact.
+
+      Sub-agents are ephemeral workers; the parent/orchestrator window is durable coordination context. Protect it: report only decision-useful or user-visible conclusions, evidence, changes, tests, and blockers; omit exploration notes, tool logs, raw command output, and noisy detail.
+
+      Suggested sections, in order: `Answer`, `Recommendations`, `Evidence`, `Files`, `Changes`, `Tests`, `Blockers`, `Artefact`. Omit irrelevant sections.
+
+      Include `Recommendations:` for judgement work. Include `Evidence:` for research and review; web research includes source URLs and one fact per source. Include `Files:` when local files materially informed the result. Include `Changes:` and `Tests:` for implementation, with pass, fail, or not run plus reason. Include `Blockers:` only for unresolved blockers.
+
+      ## Relay
+
+      Relay a single specialist output verbatim. Do not summarise, paraphrase, or improve it. Intervene only for safety. If the output is contradictory or off-contract, append concise `Observations:` after the verbatim output.
     '';
 
   generatedSkills = {
-    meet-the-agents = {
-      content = lib.trim meetTheAgentsSkillContent;
+    delegate-task = {
+      content = lib.trim delegateTaskSkillContent;
       path =
         if pkgs != null then
-          pkgs.writeTextDir "SKILL.md" meetTheAgentsSkillContent
+          pkgs.writeTextDir "SKILL.md" delegateTaskSkillContent
         else
           throw "composeSkills requires pkgs to materialise generated skills";
       extras = { };
@@ -476,7 +506,7 @@ let
   };
 
   skillDirs = physicalSkillDirs // {
-    meet-the-agents = "generated";
+    delegate-task = "generated";
   };
 
   # Compose a single skill into a structured value:

@@ -44,7 +44,7 @@ Each file is Markdown with YAML frontmatter. Claude Code, Codex, and Pi headers 
 ## Contents
 
 - [Prompt Hierarchy](#prompt-hierarchy)
-- [Traya - Default Orchestrator](#traya---default-orchestrator)
+- [Global Instructions](#global-instructions)
 - [Agents](#agents)
 - [Model Selection](#model-selection)
 - [Platform Delivery](#platform-delivery)
@@ -63,15 +63,15 @@ instructions/global.md          ← environment constraints, tool preferences, r
                     └── command prompt  ← single task, optionally overrides model
 ```
 
-**`instructions/global.md`** is the foundation and the unnamed Traya prompt: the default orchestrator layer for every platform. It sets delegation policy, trust boundaries, LSP and file-tool preferences, and response standards. These rules never change per-project or per-agent; anything project-specific belongs in `AGENTS.md`.
+**`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, response standards, and verbatim relay. Full specialist routing and output contracts live in the generated `delegate-task` skill.
 
 Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. Commands that need deeper reasoning can override the parent model without rewriting the agent.
 
 ---
 
-## Traya - Default Orchestrator
+## Global Instructions
 
-`instructions/global.md` defines Traya, the unnamed default orchestration layer. Traya delegates by default, protects her long-lived parent context, and uses direct work only for conversational answers, delegation prompts, relaying or framing sub-agent output, and emergency unblockers when no delegation tool exists.
+`instructions/global.md` has no persona. It tells the coordinator to use `delegate-task` before parent-thread exploration for non-trivial tool, file, research, implementation, review, validation, or documentation work.
 
 ### Session Priming
 
@@ -79,17 +79,15 @@ Every session begins with `/ready We are going to <broad activity description>`.
 
 ### Context-Efficient Orchestration
 
-Traya's parent context is permanent and finite. Sub-agent context windows are ephemeral and cheap. Protect the parent window by using fresh subagent context for file reads, code search, web research, implementation, audits, and other tool-heavy work.
+Parent context is permanent and finite. Specialist context windows are ephemeral. Protect the parent window by using fresh context for file reads, code search, web research, implementation, audits, and other tool-heavy work. Fork only when the user explicitly requires it or when the parent transcript is essential.
 
-When Traya lacks context, she delegates discovery instead of researching first. Delegation prompts name the task, useful context, research scope, output format, and response discipline. Sub-agent output is relayed verbatim unless a short next action or question unblocks the user.
+When the coordinator lacks context, it delegates discovery instead of researching first. `delegate-task` owns routing, packet fields, the response contract, default discipline, fresh-context rule, and relay policy.
 
 ### Response Discipline
 
-Every delegation prompt includes a response discipline block for the sub-agent:
+Global response rules stay compact: concise peer-to-peer British English, no em dashes, one statement per fact, fenced blocks for code, file content, and commit messages. A single specialist output is relayed verbatim, with intervention only for safety.
 
-> _Your response lands in a long-lived coordinator's context window. Every token counts. No preamble, no restating the task, no explaining which tools were used, no summarising what was already known. Artefacts returned raw. Reports use structured format with headings. Dense, not conversational._
-
-The same writing principles appear in every agent prompt. Each agent carries a writing discipline section banning LLM-tell words, superficial "-ing" analysis, puffery, didactic disclaimers, and summary restatements. Active voice, positive form, concrete language, conclusions before reasoning, one statement per fact.
+Repeated writing discipline blocks remain in agent prompts for Phase 1. Phase 2 removes duplicated style text while preserving specialist-specific constraints.
 
 ### Standalone Commands
 
@@ -108,7 +106,7 @@ The same writing principles appear in every agent prompt. Each agent carries a w
 
 ### Rosey - Prompt & Skill Specialist
 
-Prompt and skill specialist for agent prompts, skills, commands, and instruction files. Rosey edits these artefacts directly, applies context-efficiency constraints, and keeps prompt guidance short enough to hold. She is not the global orchestrator; Traya owns default orchestration through `instructions/global.md`.
+Prompt and skill specialist for agent prompts, skills, commands, and instruction files. Rosey edits these artefacts directly, applies context-efficiency constraints, and keeps prompt guidance short enough to hold. She is not the global coordinator; `instructions/global.md` owns default delegation policy.
 
 **Model:** `sonnet` (Claude Code) - prompt maintenance is structured enough for the mid-tier model. OpenCode uses the current session model.
 
@@ -370,7 +368,7 @@ reuses the active session model id), but explicit `model-<provider>` plus
 `thinking-<provider>` is preferred.
 
 Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-5.5"`
-remain the fallback for the unnamed Traya prompt and any future agent that
+remain the fallback for the unnamed global prompt and any future agent that
 omits a header.
 
 Provider routing covers Pi's LLM tool-call path only. Slash commands such as
@@ -399,17 +397,17 @@ This split keeps the surfaces semantically clean: prompts take inputs, skills pr
 
 ### Skills
 
-Shared skills provide background knowledge and reference material. Most are sourced from `skills/*/SKILL.md`; `meet-the-agents` is generated from the agent registry so delegation guidance cannot drift from the configured agents.
+Shared skills provide background knowledge and reference material. Most are sourced from `skills/*/SKILL.md`; `delegate-task` is generated from the agent registry so delegation guidance cannot drift from the configured agents.
 
-**Always loaded (agent-invoked):**
+**Generated and agent-loaded:**
 
-| Skill                           | Loaded by                    | Purpose                                                 |
-| ------------------------------- | ---------------------------- | ------------------------------------------------------- |
-| `meet-the-agents`               | Traya (every session)        | Generated agent registry - roles, delegation triggers   |
-| `prose-style-reference`         | Casper, Velma                | Extended Strunk composition rules, AI pattern catalogue |
-| `writing-clearly-and-concisely` | Any agent writing for humans | Core six principles, banned words and patterns          |
+| Skill                           | Loaded by                    | Purpose                                                    |
+| ------------------------------- | ---------------------------- | ---------------------------------------------------------- |
+| `delegate-task`                 | Coordinator or user          | Generated routing, packet, response contract, relay policy |
+| `prose-style-reference`         | Casper, Velma                | Extended Strunk composition rules, AI pattern catalogue    |
+| `writing-clearly-and-concisely` | Any agent writing for humans | Core six principles, banned words and patterns             |
 
-**User-invocable (loaded contextually):**
+**User-invocable support skills:**
 
 | Skill           | Purpose                                                                      |
 | --------------- | ---------------------------------------------------------------------------- |
