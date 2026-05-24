@@ -38,11 +38,11 @@ QUERY=$(printf '%s' "$INPUT" | sed -n 's/.*"query"[[:space:]]*:[[:space:]]*"\([^
 cd "${CLAUDE_PROJECT_DIR:-$PWD}" || exit 0
 
 if [[ -z "$QUERY" ]]; then
-  fd --type f --hidden --follow --color never --changed-within 7d 2>/dev/null | head -15
+  fd --type f --type d --hidden --follow --exclude .git --exclude .direnv --color never --changed-within 7d 2>/dev/null | head -15
   exit 0
 fi
 
-fd --type f --hidden --follow --color never 2>/dev/null \
+fd --type f --type d --hidden --follow --exclude .git --exclude .direnv --color never 2>/dev/null \
   | fzf --filter "$QUERY" \
   | head -15
 ```
@@ -257,13 +257,13 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 cd "$PROJECT_DIR" || exit 0
 
 if [[ -z "$QUERY" ]]; then
-  # Empty query: most-recently-modified files, newest first.
-  fd --type f --hidden --follow --color never --changed-within 7d 2>/dev/null \
+  # Empty query: most-recently-modified files and directories, newest first.
+  fd --type f --type d --hidden --follow --exclude .git --exclude .direnv --color never --changed-within 7d 2>/dev/null \
     | head -15
   exit 0
 fi
 
-fd --type f --hidden --follow --color never 2>/dev/null \
+fd --type f --type d --hidden --follow --exclude .git --exclude .direnv --color never 2>/dev/null \
   | fzf --filter "$QUERY" \
   | head -15
 ```

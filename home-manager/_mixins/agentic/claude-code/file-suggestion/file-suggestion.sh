@@ -43,9 +43,9 @@ if [[ -z "$QUERY" ]]; then
   # last 7 days; fall back to the full tree when the recency filter would
   # otherwise return nothing (fresh checkouts, long-idle projects). Both
   # branches go through `take15` to enforce the 15-result cap.
-  RECENT=$(fd --type f --hidden --follow --color never --changed-within 7d 2>/dev/null || true)
+  RECENT=$(fd --type f --type d --hidden --follow --exclude .git --exclude .direnv --color never --changed-within 7d 2>/dev/null || true)
   if [[ -z "$RECENT" ]]; then
-    RECENT=$(fd --type f --hidden --follow --color never 2>/dev/null || true)
+    RECENT=$(fd --type f --type d --hidden --follow --exclude .git --exclude .direnv --color never 2>/dev/null || true)
   fi
   printf '%s\n' "$RECENT" | take15
   exit 0
@@ -56,7 +56,7 @@ fi
 # `head`-style trim downstream does not SIGPIPE the walker. When fzf returns
 # zero matches `$RANKED` is empty; printing it would emit a blank result line
 # the picker shows as a phantom row, so skip the print in that case.
-ALL=$(fd --type f --hidden --follow --color never 2>/dev/null || true)
+ALL=$(fd --type f --type d --hidden --follow --exclude .git --exclude .direnv --color never 2>/dev/null || true)
 RANKED=$(printf '%s\n' "$ALL" | fzf --filter "$QUERY" 2>/dev/null || true)
 if [[ -n "$RANKED" ]]; then
   printf '%s\n' "$RANKED" | take15
