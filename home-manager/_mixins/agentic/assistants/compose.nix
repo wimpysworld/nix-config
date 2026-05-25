@@ -462,6 +462,10 @@ let
       - Tests: brain. Documentation: velma. General research or option framing: penfold.
       - If no route matches, use the smallest capable specialist or ask.
 
+      ## Depth
+
+      Specialists do not launch further specialists. If a delegated task would require another specialist, return early with a packet describing what is needed; the parent routes the follow-up.
+
       ## Context
 
       Use fresh context by default. Fork only when the user explicitly requires it or when the parent transcript is essential.

@@ -157,6 +157,15 @@ If no route in `delegate-task` matches, use the smallest capable specialist
 or ask the user. Picking a slightly imperfect specialist is cheaper than
 researching first.
 
+Delegation depth is bounded at one level: specialists do not spawn further
+specialists. Sub-sub-agents have been observed to wedge in practice, and
+cost grows combinatorially once depth exceeds one. Each extra layer
+multiplies token spend, latency, and failure modes without adding
+coordination value the parent cannot supply itself. The safe alternative is
+for a specialist to return early with a packet describing what is needed,
+leaving sub-orchestration where it belongs: in the durable parent context,
+where every routing decision is already visible.
+
 ### 4.3 The response contract
 
 The contract exists so that the parent can relay one specialist output
