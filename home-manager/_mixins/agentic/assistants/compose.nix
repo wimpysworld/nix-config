@@ -468,7 +468,7 @@ let
 
       ## Context
 
-      Use fresh context by default. Fork only when the user explicitly requires it or when the parent transcript is essential.
+      Use fresh context by default. Fork only when the user explicitly requires it or when the parent transcript is essential. When the parent context is essential but bulky, run `handover-fork` first and pass its output as the packet's `Context:` field; do not inherit the raw transcript. Use `handover-fresh` for cross-session handovers where a new session continues the work.
 
       ## Packet
 

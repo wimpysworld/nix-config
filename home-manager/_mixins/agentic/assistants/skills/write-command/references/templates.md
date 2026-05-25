@@ -79,12 +79,12 @@ argument-hint: "[phase]"
 
 ## Shape C: standalone with output format
 
-30-60 line body owning a non-trivial output template, sections table, and constraints. Mirrors `handover`, `orientate`. No persona; persona lives in the bound agent.
+30-60 line body owning a non-trivial output template, sections table, and constraints. Mirrors `handover-fresh`, `handover-fork`, `orientate`. No persona; persona lives in the bound agent.
 
 `prompt.md`:
 
 ```markdown
-## Project Handover Document
+## Project Handover (Fresh Session)
 
 Create a handover enabling a fresh engineer or agent to continue without reverse-engineering decisions.
 

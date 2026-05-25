@@ -1,8 +1,10 @@
-## Project Handover Document
+## Project Handover (Fresh Session)
 
-Create a handover enabling a fresh engineer or agent to continue without reverse-engineering decisions.
+Create a handover enabling a fresh engineer or agent - in a new session, with no inherited context - to continue without reverse-engineering decisions.
 
 If the user supplied a focus, tailor the handover to that next-session goal rather than documenting the entire project.
+
+For in-session briefings to a single specialist subagent, use `handover-fork` instead - it produces a shorter, packet-shaped briefing rather than a full handover document.
 
 **Length:** 800-1200 words (typical), 1500-2000 (major systems)
 

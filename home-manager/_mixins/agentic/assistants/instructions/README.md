@@ -145,6 +145,17 @@ fork only when the user explicitly requires it or when the parent transcript
 is essential. Pi command preludes and Codex `spawn_agent` wrappers in
 `default.nix` express the same policy in platform terms.
 
+For the middle ground - the specialist needs the parent's _conclusions_ but
+not its _exploration_ - the repo provides a fork-compact pattern. Rosey's
+`handover-fork` command produces a 200-500 word briefing covering Goal,
+Decisions, Constraints & Paths, Open Questions, and Suggested Skills. The
+parent runs it before spawning and inlines the output as the packet's
+`Context:` field; the specialist still starts a fresh window and never sees
+the raw transcript. The `delegate-task` skill's `## Context` section names
+this as the recommended path when fresh is too thin and fork is too heavy.
+Use `handover-fresh` instead when a new session, not a sibling subagent,
+continues the work.
+
 ### 4.2 Specialist routing, not parent research
 
 Discovery is delegated, not performed. When the coordinator lacks context,

@@ -38,7 +38,7 @@ This dispatches the command through Claude's Task tool instead of the `@agent` p
 
 ## Pi header optionality
 
-`header.pi.yaml` is the only optional header. Omit it when the command takes no positional argument (matches `handover`, `orientate`, `botsnack`). `compose.nix` uses `readOptionalFile` for it; an empty file is also acceptable but adds noise.
+`header.pi.yaml` is the only optional header. Omit it when the command takes no positional argument (matches `handover-fresh`, `orientate`, `botsnack`); supply it when the command accepts one (matches `handover-fork`, `create-skill`). `compose.nix` uses `readOptionalFile` for it; an empty file is also acceptable but adds noise.
 
 ## Codex output
 

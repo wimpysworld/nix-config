@@ -132,7 +132,8 @@ Compact, stable system prompts preserve Claude prompt-cache hits; bloated or var
 | `update-agents-md` | `opus` | Apply targeted changes or consolidate scattered instruction files |
 | `update-skill`     | `opus` | Improve an existing reusable skill                                |
 | `update-command`   | `opus` | Update an existing slash command and its provider headers         |
-| `handover`         | `opus` | Write structured handover document for next engineer              |
+| `handover-fresh`   | `opus` | Write structured handover document for a new session              |
+| `handover-fork`    | `opus` | Fork-compact briefing for an in-session specialist subagent       |
 
 ---
 
