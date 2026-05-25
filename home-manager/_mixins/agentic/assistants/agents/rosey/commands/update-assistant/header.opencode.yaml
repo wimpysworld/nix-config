@@ -1,1 +1,2 @@
 agent: rosey
+argument-hint: "[agent-prompt]"

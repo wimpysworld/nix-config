@@ -81,6 +81,8 @@ Skills are not currently emitted as commands by this repo's Codex output; reach 
 
 ## Per-provider field matrix
 
+When a command accepts arguments, every provider header for a runtime that supports `argument-hint` carries the same hint text. Claude Code, OpenCode, and Pi all display it; do not skip a provider.
+
 See `references/portability.md` for the full table. Headlines:
 
 - **Claude Code:** `description`, `argument-hint`, `model`, `allowed-tools`, `disable-model-invocation`. Legacy `.claude/commands/<name>.md` and the new skill-as-command format both yield `/<name>`.
