@@ -23,8 +23,8 @@ in
   config = {
     fresh.settings.theme = "catppuccin-mocha.json";
 
-    # `pkgs.fresh` comes from the `modifiedPackages` overlay, which wraps the
-    # upstream flake-input build with our theme-key-resolution patch.
+    # `pkgs.fresh` comes from the `modifiedPackages` overlay, which exposes the
+    # upstream flake-input build directly.
     home.packages = [
       pkgs.fresh
     ];
