@@ -67,13 +67,13 @@ Structure of a standalone-with-format command:
 
 This repo composes platform headers from per-command files. `compose.nix` reads:
 
-| File                   | Required? | Purpose                                                           |
-| ---------------------- | --------- | ----------------------------------------------------------------- |
-| `prompt.md`            | yes       | Body. Shared across Claude / OpenCode / Pi.                       |
-| `description.txt`      | yes       | One-line label, trailing emoji conventional.                      |
-| `header.claude.yaml`   | yes       | `argument-hint`, `model`, `allowed-tools`, `use-task`.            |
-| `header.opencode.yaml` | yes       | `agent:` binding, optional `model`, optional `subtask: true`.     |
-| `header.pi.yaml`       | no        | `argument-hint` only - Pi has no model/agent at the prompt layer. |
+| File                   | Required? | Purpose                                                             |
+| ---------------------- | --------- | ------------------------------------------------------------------- |
+| `prompt.md`            | yes       | Body. Shared across Claude / OpenCode / Pi.                         |
+| `description.txt`      | yes       | One-line label, trailing emoji conventional.                        |
+| `header.claude.yaml`   | yes       | `argument-hint`, `model`, `allowed-tools`, `use-task`.              |
+| `header.opencode.yaml` | yes       | `agent:` binding, optional `model`, optional `subtask` (see below). |
+| `header.pi.yaml`       | no        | `argument-hint` only - Pi has no model/agent at the prompt layer.   |
 
 `header.claude.yaml` and `header.opencode.yaml` are read with `readFile` and **must exist for every command, even if no per-provider fields are set** - leave them as empty files; omitting them makes Nix evaluation fail. `header.pi.yaml` is genuinely optional (read with `readOptionalFile`) and can be omitted when the command takes no arguments. On Claude Code, an agent binding via `header.opencode.yaml: agent:` causes `compose.nix` to prepend `@<agent>` to the body automatically; do not write `@agent` into `prompt.md`. The repo-local `use-task: true` field in `header.claude.yaml` rewrites the body into "Use the Task tool to launch the `<agent>` agent for the following task: …". `compose.nix` discovers commands by directory; no codegen edits are required when adding a new command.
 
@@ -84,9 +84,15 @@ Skills are not currently emitted as commands by this repo's Codex output; reach 
 See `references/portability.md` for the full table. Headlines:
 
 - **Claude Code:** `description`, `argument-hint`, `model`, `allowed-tools`, `disable-model-invocation`. Legacy `.claude/commands/<name>.md` and the new skill-as-command format both yield `/<name>`.
-- **OpenCode:** `description`, `agent`, `model`, `subtask`. Per-command `model` was ignored on 0.6.4 and below; treat it as a hint, not a guarantee.
+- **OpenCode:** `description`, `agent`, `model`, `subtask`. Per-command `model` was ignored on 0.6.4 and below; treat it as a hint, not a guarantee. `subtask` controls fresh-context execution - see below.
 - **Pi:** `description`, `argument-hint`. Model and routing live in the agent layer, not the prompt template.
 - **Codex (legacy):** `description`, `argument-hint`, `$ARGUMENTS`, `$1..$9`, `$NAMED`. Custom prompts are deprecated; point new Codex work at `write-skill`.
+
+## OpenCode `subtask`
+
+OpenCode's slash commands invoke in the caller's session by default. The exception is when `agent:` binds to a subagent: that binding alone triggers a subagent invocation, so the command body runs in a fresh context owned by the named agent. `subtask: true` **forces** subagent invocation even when the bound agent is `mode: primary`, so the body still runs in a fresh subagent context without polluting the caller's session. `subtask: false` explicitly opts out and keeps execution in the caller's session even if the bound agent is a subagent (honoured by spec; some 2026-era builds ignore it - see sst/opencode#10431).
+
+Repo convention for Rosey's shims: **omit `subtask`**. The `agent: <name>` binding already owns the context boundary, and OpenCode's default subagent invocation gives the fresh context for free. Set `subtask: true` only on a standalone command that needs a fresh context without changing the active agent (e.g. a `/review`-style command bound to a primary agent that you want isolated from the main thread).
 
 ## Model selection
 

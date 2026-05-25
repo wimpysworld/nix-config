@@ -4,15 +4,15 @@ Use the smallest portable set. Add fields only when a target needs them.
 
 ## Frontmatter matrix
 
-| Field                      | Claude Code (legacy + skill-as-command) | OpenCode                                | Pi                  | Codex (legacy `/prompts:`) |
-| -------------------------- | --------------------------------------- | --------------------------------------- | ------------------- | -------------------------- |
-| `description`              | optional (fallback: first body line)    | optional but recommended                | optional (fallback) | required for popup label   |
-| `argument-hint`            | yes                                     | inferred from `$N`/`$ARGUMENTS` in body | yes                 | yes                        |
-| `model`                    | yes (`sonnet`/`opus`/`haiku`/full id)   | yes; ignored on ≤0.6.4                  | no                  | no                         |
-| `allowed-tools`            | yes, with `Bash(cmd:*)` filters         | no                                      | no                  | no                         |
-| `agent` binding            | implicit via `@<agent>` body prepend    | yes                                     | no                  | no                         |
-| `subtask` (fresh context)  | implicit per invocation                 | `subtask: true`                         | implicit            | no                         |
-| `disable-model-invocation` | yes                                     | no                                      | no                  | no                         |
+| Field                      | Claude Code (legacy + skill-as-command) | OpenCode                                               | Pi                          | Codex (legacy `/prompts:`) |
+| -------------------------- | --------------------------------------- | ------------------------------------------------------ | --------------------------- | -------------------------- |
+| `description`              | optional (fallback: first body line)    | optional but recommended                               | optional (fallback)         | required for popup label   |
+| `argument-hint`            | yes                                     | inferred from `$N`/`$ARGUMENTS` in body                | yes                         | yes                        |
+| `model`                    | yes (`sonnet`/`opus`/`haiku`/full id)   | yes; ignored on ≤0.6.4                                 | no                          | no                         |
+| `allowed-tools`            | yes, with `Bash(cmd:*)` filters         | no                                                     | no                          | no                         |
+| `agent` binding            | implicit via `@<agent>` body prepend    | yes                                                    | no                          | no                         |
+| `subtask` (fresh context)  | per-invocation (always fresh)           | `subtask: true` forces; default depends on bound agent | always fresh per invocation | no                         |
+| `disable-model-invocation` | yes                                     | no                                                     | no                          | no                         |
 
 ## File location and invocation
 
@@ -39,6 +39,17 @@ Use the smallest portable set. Add fields only when a target needs them.
 `$1` does not mean the same thing everywhere. Pi, OpenCode, and Codex treat `$1` as the **first** positional argument. The new Claude Code skill-as-command format treats `$N` as `$ARGUMENTS[N]` with **0-based indexing**, so `$0` is the first argument and `$1` is the second. The legacy Claude Code command format does not document positional placeholders at all.
 
 Rule for portable shims: use `$ARGUMENTS` when the whole user-typed string can pass through unchanged. Reserve `$1..$9` for command bodies consumed exclusively by Pi / OpenCode / Codex where position-by-position split is essential.
+
+## OpenCode `subtask` semantics
+
+Default behaviour:
+
+- No `agent:` bound, or `agent:` bound to a primary agent → command body runs in the **caller's session** (pollutes main context).
+- `agent:` bound to a subagent → command body runs as a **subagent invocation** in a fresh context (no extra config needed).
+
+`subtask: true` forces subagent invocation even when the bound agent is `mode: primary`. `subtask: false` keeps execution in the caller's session even when the bound agent is a subagent (spec-honoured; sst/opencode#10431 reports it ignored on some builds).
+
+Claude Code and Pi have no equivalent field: every slash invocation runs in the caller's session unless the body explicitly dispatches through the Task tool (Claude) or `/skill:` / sub-agent invocation (Pi). For Claude Code, the repo-local `use-task: true` field in `header.claude.yaml` is the closest analogue.
 
 ## OpenCode `model:` honouring
 
