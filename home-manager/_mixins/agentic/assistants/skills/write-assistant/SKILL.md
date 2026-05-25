@@ -64,7 +64,9 @@ See `references/voice.md` for imperative-vs-descriptive rewrites.
 
 - 400-700 words / 500-3,000 chars / ≤200 lines.
 - Up to 1,200 words / ~10,000 chars hard cap for prompts with examples.
-- Total system context (all prompts + tools + project rules) under 10K tokens for near-100% compliance; 10-20K is viable but compliance drops to ~60%.
+- Keep OpenCode direct startup near the measured floor: about 15K tokens with MCPs disabled.
+- Keep `/ready` close to direct startup and do not eager-load `delegate-task`; delegated sessions around 17K-18K are acceptable today.
+- Under-10K total context remains useful compliance evidence, not a current OpenCode startup target; reduce `delegate-task` and always-listed skill or agent metadata first.
 - Terse instructions outperform verbose ones (~5x fewer tokens, ~8% better compliance).
 
 ## Identifier rules

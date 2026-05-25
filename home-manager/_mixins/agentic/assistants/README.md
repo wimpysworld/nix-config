@@ -117,8 +117,11 @@ Rosey's prompt engineering rules:
 Prompt constraints:
 
 - 500-800 tokens per agent prompt, 1,200 max for prompts with examples
-- Total system context under 10K tokens for near-100% instruction compliance
-- 10-20K tokens is viable but compliance drops to ~60%
+- OpenCode direct startup should stay near the measured floor: about 15K tokens with MCPs disabled
+- `/ready` should stay close to direct startup, about 16K today, without eager-loading `delegate-task`
+- Delegated sessions around 17K-18K are acceptable today because loading `delegate-task` adds about 2K tokens
+
+The older under-10K target remains useful as compliance evidence, not as the OpenCode startup baseline. The controllable costs discussed so far are repo `AGENTS.md` at about 1.7K tokens, `instructions/global.md` at about 0.6K, and generated `delegate-task` at about +2K. Context7 and Exa MCPs stay enabled in the normal setup; the quoted baseline excludes MCPs to isolate assistant and repo guidance. Reduce `delegate-task` and always-listed skill or agent metadata before chasing a 10K total that the platform floor already exceeds.
 
 Compact, stable system prompts preserve Claude prompt-cache hits; bloated or variable prompt prefixes defeat caching. Rosey's `update-assistant` command removes ineffective patterns while preserving output templates, few-shot examples, decision criteria, explicit constraints, tool-specific guidance, and numeric limits.
 

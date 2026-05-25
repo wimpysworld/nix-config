@@ -118,6 +118,17 @@ The numbers are guidance, not religion. The "would removing this cause the
 agent to make mistakes?" test from Anthropic's `CLAUDE.md` guidance is the
 real arbiter. If the answer is no, cut it.
 
+OpenCode startup targets sit above the old 10K total-context goal because the
+measured platform floor is already about 15K tokens with MCPs disabled. Keep
+direct startup near that floor, keep `/ready` close to it by avoiding eager
+`delegate-task` loading, and accept real delegated sessions around 17K-18K
+today. The controllable costs discussed so far are repo `AGENTS.md` at about
+1.7K tokens, `instructions/global.md` at about 0.6K, and `delegate-task` at
+about +2K. Context7 and Exa remain required in normal setup; MCP-disabled
+measurements isolate the costs Rosey's artefacts can control. The next
+reduction targets are `delegate-task` and always-listed skill or agent
+metadata.
+
 ### 3.2 Imperatives over descriptions
 
 "Use TypeScript strict mode for new files" beats "the project uses TypeScript".

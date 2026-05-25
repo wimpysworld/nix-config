@@ -254,12 +254,23 @@ Concise instructions produce better adherence. Anthropic's memory guidance
 targets fewer than 200 lines per instruction file and states that concise,
 specific instructions outperform verbose ones. Community evidence cited in
 Rosey's research shows roughly 5x fewer tokens and around 8% higher
-compliance on terse variants. Total system context under 10K tokens
-correlates with near-100% instruction compliance; 10-20K tokens drops
-compliance to around 60%.
+compliance on terse variants. Total system context under 10K tokens still
+correlates with near-100% instruction compliance; 10-20K tokens still drops
+compliance to around 60%. Treat that as evidence, not as the current OpenCode
+startup target.
 
-`global.md` targets under 400 words and the generated `delegate-task` under
-700 words for that reason.
+With MCPs disabled, the measured OpenCode floor is about 15K tokens for a
+direct "Hi", about 16K after `/ready`, and about 18K after loading the
+generated `delegate-task` skill. Context7 and Exa MCPs remain required in the
+normal setup, so the MCP-disabled numbers isolate the assistant and repo
+guidance that this tree can control.
+
+`global.md` still targets under 400 words and generated `delegate-task` still
+targets under 700 words. The practical baseline is to keep direct startup near
+15K, keep `/ready` close to that without eager-loading `delegate-task`, and
+accept delegated sessions around 17K-18K today. Further savings should come
+from `delegate-task` and always-listed skill or agent metadata, not from
+chasing a 10K total that the platform floor already exceeds.
 
 ### 5.3 The rules in service of the loop
 
