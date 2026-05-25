@@ -166,8 +166,6 @@ in
       '';
     };
 
-    enableLocalDB = lib.mkEnableOption "a local mongodb instance";
-
     meilisearch = lib.mkOption {
       type = lib.types.submodule {
         options = {
@@ -193,7 +191,7 @@ in
     assertions = [
       {
         assertion = cfg.env ? MONGO_URI || cfg.credentials ? MONGO_URI;
-        message = "MongoDB is not configured, either set `services.librechat.enableLocalDB = true` or provide your own MongoDB instance by setting `services.librechat.env.MONGO_URI` or `services.librechat.credentials.MONGO_URI`.";
+        message = "MongoDB is not configured; set `services.librechat.env.MONGO_URI` or `services.librechat.credentials.MONGO_URI`. Hosts using the local MongoDB mixin should have both the `librechat` and `mongodb` tags.";
       }
       {
         assertion =
@@ -285,9 +283,6 @@ in
     };
 
     users.groups.librechat = lib.mkIf (cfg.user == "librechat") { };
-
-    services.librechat.env.MONGO_URI = lib.mkIf cfg.enableLocalDB "mongodb://localhost:27017/librechat";
-    services.mongodb.enable = lib.mkIf cfg.enableLocalDB true;
 
     services.meilisearch.enable = lib.mkIf cfg.meilisearch.enable true;
     services.librechat.env.SEARCH = lib.mkIf cfg.meilisearch.enable true;
