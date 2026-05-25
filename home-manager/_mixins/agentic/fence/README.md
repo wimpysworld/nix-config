@@ -84,7 +84,8 @@ default-readable paths with extra NixOS profile and `/nix` allowances so
 Landlock can execute Nix-store binaries and the sandbox can resolve Home Manager
 profile shims. Secret paths remain read-denied. Writes are allowed to the launch
 directory, common agent state, package caches, XDG config/data/state paths, and
-`/tmp`.
+the private `/tmp` tmpfs. `/tmp` is allowed as a bare directory rather than a
+glob so Landlock covers temp paths created after Fence starts.
 
 SOPS material is denied across both the Home Manager and NixOS sides of this
 flake: the user age key under `~/.config/sops/`, and the host age key under

@@ -2,6 +2,8 @@
 
 Update documentation to reflect recent code changes.
 
+Scope argument: $ARGUMENTS. If blank, analyse recent commits to infer the documentation scope.
+
 ### Scope
 
 Specify what changed (or will analyse recent commits):

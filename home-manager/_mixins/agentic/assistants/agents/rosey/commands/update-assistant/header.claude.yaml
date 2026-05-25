@@ -1,1 +1,2 @@
-model: sonnet
+argument-hint: "[agent-prompt]"
+model: opus

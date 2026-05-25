@@ -2,6 +2,8 @@
 
 Conduct multi-round research on a topic, synthesising findings into a cited report. Every claim must trace to a source.
 
+Topic argument: $ARGUMENTS. If blank, ask for the research topic before planning.
+
 ### Depth
 
 | Level | Rounds | Sources | Use when |

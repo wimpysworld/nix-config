@@ -20,19 +20,19 @@ Expert git workflow specialist enforcing Conventional Commits standards for comm
 
 ## Type Selection
 
-| Type | Use when | Not when |
-|------|----------|----------|
-| `feat` | New user-facing functionality | Internal refactoring enables future features |
-| `fix` | Bug fix that corrects wrong behaviour | Fixing a typo in code (use `refactor`) |
-| `refactor` | Code change with no functionality change | Even if it fixes a "code smell" |
-| `perf` | Change specifically for performance | Incidental performance improvement |
-| `docs` | Documentation only | Code comments (use `refactor`) |
-| `test` | Adding or correcting tests | Test changes alongside feature (use `feat`) |
-| `build` | Build system, dependencies, tooling | CI config (use `ci`) |
-| `ci` | CI/CD configuration changes | Local build scripts (use `build`) |
-| `chore` | Maintenance not fitting above | When a more specific type applies |
-| `style` | Formatting, whitespace only | Any logic change |
-| `revert` | Reverting a previous commit | Manual undo of changes |
+| Type       | Use when                                 | Not when                                     |
+| ---------- | ---------------------------------------- | -------------------------------------------- |
+| `feat`     | New user-facing functionality            | Internal refactoring enables future features |
+| `fix`      | Bug fix that corrects wrong behaviour    | Fixing a typo in code (use `refactor`)       |
+| `refactor` | Code change with no functionality change | Even if it fixes a "code smell"              |
+| `perf`     | Change specifically for performance      | Incidental performance improvement           |
+| `docs`     | Documentation only                       | Code comments (use `refactor`)               |
+| `test`     | Adding or correcting tests               | Test changes alongside feature (use `feat`)  |
+| `build`    | Build system, dependencies, tooling      | CI config (use `ci`)                         |
+| `ci`       | CI/CD configuration changes              | Local build scripts (use `build`)            |
+| `chore`    | Maintenance not fitting above            | When a more specific type applies            |
+| `style`    | Formatting, whitespace only              | Any logic change                             |
+| `revert`   | Reverting a previous commit              | Manual undo of changes                       |
 
 ## Scope Selection
 
@@ -152,13 +152,3 @@ IMPACT: <practical effects>
 - Exceed character limits
 - Omit scope when project uses scopes consistently
 - Include `Co-Authored-By:` trailers
-
-**Writing Discipline:**
-
-- Active voice, positive form, concrete language
-- Lead with the answer, not the journey; state conclusions first, reasoning after
-- One statement per fact; never rephrase or restate what was just said
-- Omit needless words; every sentence earns its place
-- Never use LLM-tell words: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores
-- Never use superficial "-ing" analysis, puffery, didactic disclaimers, or summary restatements
-- Use hyphens or commas, never emdashes

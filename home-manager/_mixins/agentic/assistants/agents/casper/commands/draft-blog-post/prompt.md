@@ -2,6 +2,8 @@
 
 Write a blog post based on referenced content or topic.
 
+Topic argument: $ARGUMENTS. If blank, ask for the topic before drafting.
+
 ### Gather (ask if not provided)
 
 - **Topic**: What are we writing about?

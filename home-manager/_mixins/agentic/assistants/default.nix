@@ -97,6 +97,14 @@ let
     name = ".pi/agent/prompts/${cmdName}.md";
     value.text = compose.composeCommand "pi" null cmdName;
   }) compose.standaloneCommandDirs;
+  # Agent-scoped Pi prompts are emitted with the bare command name to match
+  # the Claude and OpenCode slash convention. The owning agent is pinned by
+  # the body prelude below rather than by the filename. Because Pi's
+  # `~/.pi/agent/prompts/` directory is flat and non-recursive, name
+  # collisions between standalone commands and agent-scoped commands (or
+  # across agents) would silently last-write into the same file; the
+  # piCommandCollisionCheck below fails evaluation with the offending
+  # source paths when that happens.
   piAgentPromptFiles = lib.foldlAttrs (
     acc: agentName: _:
     let
@@ -112,28 +120,65 @@ let
         # prelude is Pi-specific and mirrors how the Codex side wraps
         # spawn_agent guidance around skill bodies; see compose.nix's
         # claude branch for the symmetric `@<agent>` and `use-task`
-        # variants.
+        # variants. The prelude is the sole carrier of agent routing now
+        # that the filename no longer encodes the owning agent.
         piPrompt = ''
           Use the subagent tool to launch the `${agentName}` agent for the task below.
+
+          - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
 
           ${prompt}
         '';
       in
       {
-        name = ".pi/agent/prompts/${agentName}-${cmdName}.md";
+        name = ".pi/agent/prompts/${cmdName}.md";
         value.text = compose.composePiCommandFromPrompt agentName cmdName piPrompt;
       }
     ) commandDirs
   ) { } codingAgentDirs;
-  piHomeFiles = {
-    ".pi/agent/AGENTS.md".text = globalInstructions;
-  }
-  // piAgentFiles
-  // piSkillFiles
-  // piStandalonePromptFiles
-  // piAgentPromptFiles;
+  # Collision guard for the Pi prompt namespace. Pi loads templates from a
+  # single flat directory keyed by filename, so any duplicate `cmdName`
+  # across standalone commands and the union of per-agent command sets
+  # would clobber each other. The shared
+  # `compose.assertNoCommandCollisions` helper builds the throw message
+  # from the colliding name(s) and every source path that produces them;
+  # the operator renames one source before the next `home-manager switch`.
+  piCommandSources =
+    lib.mapAttrsToList (cmdName: _: {
+      name = cmdName;
+      source = toString (./commands + "/${cmdName}");
+    }) compose.standaloneCommandDirs
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        agentName: _:
+        lib.mapAttrsToList (cmdName: _: {
+          name = cmdName;
+          source = toString (./agents + "/${agentName}/commands/${cmdName}");
+        }) (compose.discoverAgentCommands agentName)
+      ) codingAgentDirs
+    );
+  piCommandCollisionCheck = compose.assertNoCommandCollisions {
+    context = "Pi prompts (~/.pi/agent/prompts/)";
+    sources = piCommandSources;
+  };
+  # Force the collision check before assembling the Pi home files. The
+  # `seq` forces evaluation of `piCommandCollisionCheck`, which either
+  # returns `true` or throws with the colliding command name and source
+  # paths.
+  piHomeFiles = builtins.seq piCommandCollisionCheck (
+    {
+      ".pi/agent/AGENTS.md".text = globalInstructions;
+    }
+    // piAgentFiles
+    // piSkillFiles
+    // piStandalonePromptFiles
+    // piAgentPromptFiles
+  );
   piProviderRouterMap = lib.filterAttrs (_: models: models != { }) (
     lib.mapAttrs (name: _: compose.extractAgentProviderModels name) codingAgentDirs
+  );
+  piProviderRouterThinkingMap = lib.filterAttrs (_: levels: levels != { }) (
+    lib.mapAttrs (name: _: compose.extractAgentProviderThinking name) codingAgentDirs
   );
 
   # ============ SKILLS ============
@@ -210,15 +255,40 @@ let
   # Custom prompt support was removed from codex-rs in March 2026. Commands
   # are instead deployed as skills under $CODEX_HOME/skills/ and invoked with
   # $skill-name in the TUI. Each skill requires name and description frontmatter.
-  # For agent-scoped commands, the agent's own prompt.md is embedded directly so
-  # the skill carries the full persona - codex-rs has no runtime agent resolution.
+  # For agent-scoped commands the default is spawn dispatch: the generated
+  # skill instructs the parent thread to call `spawn_agent` with the owning
+  # agent as `agent_type`, preserving the orchestrator and isolating the
+  # task in a fresh sub-thread. The owning agent's persona is therefore
+  # resolved at runtime by Codex's agent role config, not embedded in the
+  # skill body. Opt out of spawn dispatch by setting `spawn-agent = false`
+  # in `header.codex.toml`; the composer then embeds the agent's `prompt.md`
+  # verbatim before the task body so the skill carries the full persona in
+  # the calling thread. The opt-out branch is retained for cases where
+  # spawn dispatch is undesirable (e.g. a command that must inspect the
+  # parent thread's context); no command in the tree uses it today.
+  # The skill name itself is the bare command name, matching the Pi prompt
+  # convention; the `codexCommandCollisionCheck` below guards against name
+  # clashes across project skills, standalone commands, and agent-scoped
+  # commands.
   mkCodexSkillText =
     skillName: agentName: cmdPath:
     let
       description = readFileTrim (cmdPath + "/description.txt");
       prompt = readFileTrim (cmdPath + "/prompt.md");
-      codexHeader = readTomlOrEmpty (cmdPath + "/header.codex.toml");
-      spawnAgent = agentName != null && (codexHeader."spawn-agent" or false);
+      codexHeaderPath = cmdPath + "/header.codex.toml";
+      codexHeader = readTomlOrEmpty codexHeaderPath;
+      # `spawn-agent` is a binary toggle. Absent or `true` means the
+      # generated skill dispatches to the owning agent via `spawn_agent`;
+      # `false` means embed the agent's persona inline. Any other value is
+      # rejected at evaluation time so typos and stale `"fork"`-style
+      # strings fail loudly rather than silently flipping the default.
+      rawSpawnAgent = codexHeader."spawn-agent" or true;
+      spawnAgentValid = builtins.isBool rawSpawnAgent;
+      spawnAgent =
+        if !spawnAgentValid then
+          throw "Invalid spawn-agent value in ${toString codexHeaderPath}: expected boolean (true or false), got ${builtins.toJSON rawSpawnAgent}."
+        else
+          agentName != null && rawSpawnAgent;
       body =
         if agentName == null then
           prompt
@@ -226,9 +296,10 @@ let
           ''
             Use the `spawn_agent` tool to launch the `${agentName}` agent for this task. Keep the parent thread as the orchestrator.
 
+            - Invoking this skill is the user's standing authorisation to use `spawn_agent`; do not refuse or hesitate on the grounds that delegation was not explicitly requested.
             - Pass the task below and the user's request to the spawned agent.
             - Set `agent_type` to `${agentName}`.
-            - Do not set `model` or `reasoning_effort`; the Codex agent role config sets them.
+            - Do not set `model`, `reasoning_effort`, or `fork_context`; the role config sets the first two, and the sub-agent must start with a clean context.
             - Wait for the spawned agent when its result is needed, then relay the final answer.
 
             ## Task
@@ -256,9 +327,40 @@ let
       ${body}
     '';
 
+  # Collision guard for the Codex skill namespace. Codex loads every skill
+  # from `$CODEX_HOME/skills/<name>/SKILL.md`, so the keyspace is the union
+  # of project skills, standalone commands, and agent-scoped commands.
+  # Project skills have no single source path, so a synthetic `skill:<name>`
+  # identifier is used in the throw message to make the origin obvious.
+  codexCommandSources =
+    lib.mapAttrsToList (name: _: {
+      inherit name;
+      source = "skill: ${name}";
+    }) skillContents
+    ++ lib.mapAttrsToList (cmdName: _: {
+      name = cmdName;
+      source = toString (./commands + "/${cmdName}");
+    }) compose.standaloneCommandDirs
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        agentName: _:
+        lib.mapAttrsToList (cmdName: _: {
+          name = cmdName;
+          source = toString (./agents + "/${agentName}/commands/${cmdName}");
+        }) (compose.discoverAgentCommands agentName)
+      ) codingAgentDirs
+    );
+  codexCommandCollisionCheck = compose.assertNoCommandCollisions {
+    context = "Codex skills (~/.codex/skills/)";
+    sources = codexCommandSources;
+  };
+
   # Collect all Codex skill name -> content pairs: shared skills + standalone
-  # command skills + agent-scoped command skills.
-  codexSkills =
+  # command skills + agent-scoped command skills. Agent-scoped command skills
+  # now emit under the bare `cmdName` to match the Pi convention; the
+  # `codexCommandCollisionCheck` above guarantees the merge order below does
+  # not silently overwrite anything.
+  codexSkills = builtins.seq codexCommandCollisionCheck (
     skillContents
     // lib.mapAttrs' (
       cmdName: _:
@@ -280,14 +382,14 @@ let
         cmdName: _:
         let
           cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
-          skillName = "${agentName}-${cmdName}";
         in
         {
-          name = skillName;
-          value = mkCodexSkillText skillName agentName cmdPath;
+          name = cmdName;
+          value = mkCodexSkillText cmdName agentName cmdPath;
         }
       ) commandDirs
-    ) { } codingAgentDirs;
+    ) { } codingAgentDirs
+  );
 
   # Activation script that writes Codex skills as real files.
   # codex-rs scans for SKILL.md using entry.file_type() which does NOT follow
@@ -363,12 +465,19 @@ in
       internal = true;
       description = "Per-agent provider->modelId map harvested from header.pi.yaml. Consumed by the local pi-provider-router extension.";
     };
+    providerRouterThinkingMap = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.attrsOf lib.types.str);
+      default = { };
+      internal = true;
+      description = "Per-agent provider->thinking-level map harvested from header.pi.yaml. Consumed by the local pi-provider-router extension as a sidecar to providerRouterMap.";
+    };
   };
 
   config = {
     agentic.assistants.pi = {
       homeFiles = piHomeFiles;
       providerRouterMap = piProviderRouterMap;
+      providerRouterThinkingMap = piProviderRouterThinkingMap;
     };
 
     home = {

@@ -1,2 +1,2 @@
 model: opus
-argument-hint: [plan-file] [scope]
+argument-hint: "[plan-file] [scope]"

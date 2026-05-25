@@ -1,1 +1,1 @@
-Read $1 and let me know when you are ready to collaborate.
+Read $ARGUMENTS and let me know when you are ready to collaborate.

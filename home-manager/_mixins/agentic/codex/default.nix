@@ -91,12 +91,14 @@ let
     let
       sharedSkillNames = builtins.attrNames assistantCompose.skillDirs;
       commandSkillNames = builtins.attrNames assistantCompose.standaloneCommandDirs;
+      # Agent-scoped command skills are emitted under the bare `cmdName` to
+      # match the Pi prompt convention. The collision guard in the shared
+      # assistants composer enforces uniqueness across project skills,
+      # standalone commands, and agent-scoped commands, so flattening here
+      # is safe.
       agentCommandSkillNames = lib.flatten (
         lib.mapAttrsToList (
-          agentName: _:
-          map (cmdName: "${agentName}-${cmdName}") (
-            builtins.attrNames (assistantCompose.discoverAgentCommands agentName)
-          )
+          agentName: _: builtins.attrNames (assistantCompose.discoverAgentCommands agentName)
         ) assistantCompose.agentDirs
       );
     in

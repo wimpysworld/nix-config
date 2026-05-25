@@ -1,2 +1,2 @@
 agent: rosey
-model: anthropic/claude-opus-4-7
+argument-hint: "[skill-name]"

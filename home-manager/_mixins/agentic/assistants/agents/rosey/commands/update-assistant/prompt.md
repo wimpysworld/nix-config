@@ -1,15 +1,7 @@
 ## Update AI Assistant
 
-Review referenced agent prompt for context efficiency.
+Load the `write-assistant` skill and run its **update** flow on the target.
 
-**Reduction:** Apply ineffective patterns list from base instructions. Preserve output format templates and constraints.
+Agent prompt argument: $ARGUMENTS. If blank, ask for the target prompt path.
 
-**Gap check:** Flag if missing examples (required for style/judgment agents), decision criteria, or constraints section.
-
-**Target:** 400-600 words (700 max with examples).
-
-**Output:**
-
-1. Optimised agent prompt
-2. Changelog table (Removed | Preserved | Added - each with rationale)
-3. Word count
+Apply `write-assistant`: diagnose voice, structure, redundancy, missing examples, and contradictions; preserve output templates, examples, decision criteria, and constraints; emit the edited prompt plus the changelog and word count. Do not duplicate that guidance here.

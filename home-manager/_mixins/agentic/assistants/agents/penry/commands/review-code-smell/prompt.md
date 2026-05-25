@@ -3,6 +3,8 @@
 Hunt for code smells. Not faint aromas - real stench that would make a seasoned developer
 in this language ecosystem physically recoil. If it wouldn't make them puke, it doesn't belong here.
 
+Scope argument: $ARGUMENTS. If blank, review the entire codebase.
+
 ### Scope
 
 Specify focus (or reviews entire codebase):

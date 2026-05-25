@@ -93,10 +93,13 @@ rec {
   #                                     agent runs unless a server needs a
   #                                     narrower human-review posture.
   #                  opencode.enabled   (default true)
-  #                  pi.enabled         (default true) - Pi's MCP adapter has
-  #                                     no disabled/server toggle field, so
-  #                                     `false` omits the server from Pi's
-  #                                     active config.
+  #                  pi.enabled         (default true) - mirrors OpenCode:
+  #                                     `false` keeps the server visible in
+  #                                     Pi's MCP TUI with `enabled = false` so
+  #                                     it can be toggled at runtime.
+  #                  pi.omit            bool, default false - hard-omits the
+  #                                     server from Pi when even a manual toggle
+  #                                     would be unsafe or unwanted.
   #                  pi.directTools     bool | list of strings, default follows
   #                                     `consumers.opencode.enabled`: `true`
   #                                     promotes the server's tools into Pi's
@@ -117,6 +120,8 @@ rec {
       consumers = {
         claudeCode.enabled = false;
         codex.enabled = false;
+        opencode.enabled = false;
+        pi.enabled = false;
         zed.mode = "context_server";
       };
     };
@@ -131,7 +136,10 @@ rec {
         claudeCode.enabled = true;
         codex.enabled = false;
         opencode.enabled = false;
-        pi.enabled = false;
+        pi = {
+          enabled = false;
+          omit = true;
+        };
         zed.enabled = false;
       };
     };
@@ -172,6 +180,8 @@ rec {
       consumers = {
         claudeCode.enabled = false;
         codex.enabled = false;
+        opencode.enabled = false;
+        pi.enabled = false;
         zed.mode = "context_server";
       };
     };
@@ -189,6 +199,8 @@ rec {
       consumers = {
         claudeCode.enabled = false;
         codex.enabled = false;
+        opencode.enabled = false;
+        pi.enabled = false;
         zed.mode = "context_server";
       };
     };
@@ -206,7 +218,10 @@ rec {
         # calls rather than inheriting the unattended default.
         codex.defaultToolsApprovalMode = "prompt";
         opencode.enabled = false;
-        pi.enabled = false;
+        pi = {
+          enabled = false;
+          omit = true;
+        };
         zed.enabled = false;
       };
     };
@@ -223,6 +238,8 @@ rec {
       consumers = {
         claudeCode.enabled = false;
         codex.enabled = false;
+        opencode.enabled = false;
+        pi.enabled = false;
         zed = {
           mode = "extension";
           id = "svelte-mcp";
@@ -433,9 +450,10 @@ rec {
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
   # piServers: Pi adapter server entries for `~/.pi/agent/mcp.json`.
-  # `pi-mcp-adapter` has no per-server `enabled` field: server presence means
-  # Pi can use it, and servers connect lazily when a tool call needs them.
-  # `consumers.pi.enabled = false` therefore omits the server entirely.
+  # `pi-mcp-adapter` supports per-server `enabled` flags, so
+  # `consumers.pi.enabled = false` keeps the server visible but disabled by
+  # default for runtime toggling in Pi's MCP TUI. `consumers.pi.omit = true`
+  # hard-excludes servers that should not be toggleable in Pi.
   #
   # The adapter shallow-merges MCP config files by server name. Entries here
   # therefore include the complete server definition, not only Pi-specific
@@ -449,13 +467,16 @@ rec {
   # original MCP tool names where Pi needs a narrower direct surface.
   piServers =
     let
-      keep = _: s: (s.enabled or true) && (s.consumers.pi.enabled or true);
+      keep = _: s: (s.enabled or true) && (!(s.consumers.pi.omit or false));
+      enabledFor = s: s.consumers.pi.enabled or true;
       directToolsFor = s: s.consumers.pi.directTools or (s.consumers.opencode.enabled or true);
       render =
         _: s:
         let
+          enabled = enabledFor s;
           common = {
-            directTools = directToolsFor s;
+            inherit enabled;
+            directTools = if enabled then directToolsFor s else false;
           };
         in
         if s.transport == "http" then

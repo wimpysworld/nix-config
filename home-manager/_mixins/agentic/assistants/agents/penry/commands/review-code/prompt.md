@@ -2,6 +2,8 @@
 
 Review code for maintainability defects that can be fixed by removing, simplifying, or clarifying code.
 
+Scope argument: $ARGUMENTS. If blank, review the entire codebase.
+
 ### Scope
 
 Specify focus (or reviews entire codebase):

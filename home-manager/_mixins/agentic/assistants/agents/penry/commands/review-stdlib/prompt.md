@@ -4,6 +4,8 @@ Hunt for code that reimplements what the standard library already provides. Cust
 hand-rolled helpers, vendored snippets - if the stdlib covers it at the project's target version,
 it has no business being here.
 
+Scope argument: $ARGUMENTS. If blank, review the entire codebase.
+
 ### Scope
 
 Specify focus (or reviews entire codebase):

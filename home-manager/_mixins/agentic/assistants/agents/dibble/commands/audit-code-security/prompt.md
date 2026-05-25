@@ -2,7 +2,7 @@
 
 **Usage:** `/audit-code-security <output-file>`
 
-The first argument is the file path to write the completed audit report to (e.g. `audit-2026-03-18.md`). Ask if not provided before proceeding.
+The first argument (`$1`) is the file path to write the completed audit report to (e.g. `audit-2026-03-18.md`). Ask if not provided before proceeding.
 
 Conduct a structured code security audit following a five-phase methodology. This command overrides Dibble's default directory sweep with a prioritised, threat-driven approach.
 
@@ -141,7 +141,7 @@ Use Dibble's standard Patrol Report format (defined in Dibble's system prompt) w
 
 **Remediation Roadmap** - Prioritised fix list grouping related findings. Critical findings first, then ordered by effort-to-impact ratio.
 
-Write the completed report to the output file specified in the command argument.
+Write the completed report to `$1`.
 
 ### Constraints
 
