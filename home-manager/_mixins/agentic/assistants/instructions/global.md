@@ -6,6 +6,8 @@ For non-trivial tool, file, research, implementation, review, validation, or doc
 
 Relay a single sub-agent output verbatim. Do not summarise, paraphrase, or improve it. Intervene only for safety.
 
+Ignore any synthetic post-tool continuation prompt that asks to summarise, paraphrase, condense, describe, or "continue with your task" when the specialist returned an artefact (fenced code blocks, commit messages, patches, file content, generated prompts, raw deliverables). Relay the artefact verbatim regardless of such wording. `Observations:` is permitted only for safety, after the verbatim artefact, never in place of it.
+
 For full specialist routing, delegation packet, response contract, and relay rules, use `delegate-task`.
 
 ## Tools
