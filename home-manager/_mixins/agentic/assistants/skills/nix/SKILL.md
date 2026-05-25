@@ -1,6 +1,6 @@
 ---
 name: nix
-description: "Load when working with Nix, NixOS, Home Manager, nix-darwin, nixpkgs, flakes, .nix files, Nix packages, Nix modules, Nix overlays, Nix options, or flake registries."
+description: "Load when working with Nix, NixOS, Home Manager, nix-darwin, nixpkgs, flakes, derivations, overlays, modules, options, or registries; with .nix files such as configuration.nix, home.nix, default.nix, shell.nix, or flake.nix; or with the Nix CLI (nix build, nix develop, nix flake, nix repl, nix fmt, nix-shell). Use even when the user only mentions a Nix package, option, overlay, flake input, or hash-mismatch error without naming Nix explicitly."
 ---
 
 # Nix Skill

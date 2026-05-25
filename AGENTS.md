@@ -39,6 +39,17 @@ Run `just --list --unsorted` before inventing commands.
 
 Run `just eval` before finishing Nix changes. Run `just lint-registry` after editing registry TOML.
 
+## Nix style
+
+- British English spelling; comments use full sentences with proper punctuation.
+- Format with `nixfmt` via `nix fmt` or `just format`.
+- Prefer `lib.mkDefault` and `lib.mkForce` over plain values for overridability.
+- Use `lib.optional` and `lib.optionals` for conditional lists.
+- Use explicit `inherit` statements for clarity.
+- Use string interpolation inside strings: `"${variable}"`.
+- Use camelCase for Nix attributes and functions; kebab-case for files and directories.
+- Hostnames follow themes: Sith Lords for workstations/servers, TIE fighters for VMs.
+
 ## Layout
 
 - `common/default.nix` - shared cross-platform config imported by NixOS and nix-darwin.
@@ -91,17 +102,6 @@ Use the long-form pattern for hub modules with imports:
 
 Keep imports unconditional; each sub-module gates itself. Never use `lib.optional config.noughty.* ./foo` in `imports`, because it causes infinite recursion.
 
-## Nix style
-
-- British English spelling; comments use full sentences with proper punctuation.
-- Format with `nixfmt` via `nix fmt` or `just format`.
-- Prefer `lib.mkDefault` and `lib.mkForce` over plain values for overridability.
-- Use `lib.optional` and `lib.optionals` for conditional lists.
-- Use explicit `inherit` statements for clarity.
-- Use string interpolation inside strings: `"${variable}"`.
-- Use camelCase for Nix attributes and functions; kebab-case for files and directories.
-- Hostnames follow themes: Sith Lords for workstations/servers, TIE fighters for VMs.
-
 ## Scripts, packages, and secrets
 
 Shell scripts use `pkgs.writeShellApplication`, never `writeShellScriptBin`. Each script lives in its own directory with `default.nix` and `script-name.sh`. Put runtime tools in `runtimeInputs`; shellcheck runs automatically. Use `home-manager/_mixins/scripts/_template/` for new script modules.
@@ -112,11 +112,13 @@ Secrets are encrypted with sops-nix using age keys: user key `~/.config/sops/age
 
 `just inject-tokens` sends age keys to `/tmp/injected-tokens/` on ISO media. Both user and host keys are required for `install-system`.
 
-## Catppuccin, overlays, and CI
+## Catppuccin and overlays
 
 Catppuccin Mocha is available through `catppuccinPalette`: `getColor "base"` includes `#`; `getHyprlandColor "blue"` omits `#`; `colors` is the raw palette; `isDark = true`; `preferShade = "prefer-dark"`.
 
 Overlays apply in this order: `localPackages`, `modifiedPackages`, `unstablePackages`.
+
+## CI
 
 Read `.github/workflows/` before changing CI assumptions. Auto-merge of update PRs requires every build job to pass.
 

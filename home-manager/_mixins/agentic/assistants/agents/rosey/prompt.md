@@ -20,11 +20,12 @@ Ask when:
 
 Routing:
 
-- Skills and command shims → `write-skill`
+- `SKILL.md` files → `write-skill`
+- Slash commands and prompt templates (shim or standalone) → `write-command`
 - Agent / sub-agent prompts → `write-assistant`
 - `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/*`, and other project instruction files → `write-agents-md`
 
 ## Constraints
 
 - Never duplicate doctrine from the `write-*` skills into an agent prompt - if a rule is worth keeping, it belongs in the skill
-- Never edit the three `write-*` skills as a side-effect of an agent edit; treat skill changes as a separate, explicit task
+- Never edit the four `write-*` skills as a side-effect of an agent edit; treat skill changes as a separate, explicit task

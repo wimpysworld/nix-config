@@ -10,6 +10,7 @@ Author and maintain slash commands across Claude Code, OpenCode, Pi prompt templ
 ## Decide first
 
 - **Shim** vs **standalone** vs **standalone-with-format** vs **split into two**. A shim is a 3-8 line body that names the flow and loads a skill. A standalone command carries its own one-verb body. Add an inline output format only when the shape is non-trivial and not reused.
+- **Single-purpose output-format commands stay standalone.** Do not refactor a working standalone-with-format command into a shim speculatively; only convert once a sibling command appears that would share ≥30% of the body.
 - **Command** vs **skill**. Commands are user-invoked and deterministic; skills are description-triggered and reusable. If the workflow needs an argument and a fixed name, build a shim that loads a skill. If the workflow has no argument and should auto-load on description, build a skill instead.
 - **Shared doctrine extraction.** If a body copies ≥30% from another command, lift the shared part into a skill and reduce both commands to shims.
 
@@ -34,7 +35,7 @@ Rules:
 
 - `description` ≤60 chars where possible. Imperative or noun phrase. No trailing period. Trailing emoji is fine and conventional in this repo.
 - `argument-hint` ≤25 chars. `[arg]` for optional, `<arg>` for required. Anthropic's own examples use `[arg]` for both; if the body falls back to "ask if blank", the argument is optional and the hint must use `[…]`.
-- Vendor-specific fields (`model`, `allowed-tools`, `agent`, `subtask`, `disable-model-invocation`, repo-local `use-task`) belong in the per-platform header files; see `references/portability.md`.
+- Vendor-specific fields (`model`, `allowed-tools`, `agent`, `subtask`, `disable-model-invocation`, repo-local `use-task` - Claude Code only; rewrites the body to dispatch through the Task tool) belong in the per-platform header files; see `references/portability.md`.
 
 ## Body
 
@@ -74,7 +75,7 @@ This repo composes platform headers from per-command files. `compose.nix` reads:
 | `header.opencode.yaml` | yes       | `agent:` binding, optional `model`, optional `subtask: true`.     |
 | `header.pi.yaml`       | no        | `argument-hint` only - Pi has no model/agent at the prompt layer. |
 
-`header.claude.yaml` and `header.opencode.yaml` are always read (may be empty). `header.pi.yaml` is optional and omitted when the command takes no arguments. On Claude Code, an agent binding via `header.opencode.yaml: agent:` causes `compose.nix` to prepend `@<agent>` to the body automatically; do not write `@agent` into `prompt.md`. The repo-local `use-task: true` field in `header.claude.yaml` rewrites the body into "Use the Task tool to launch the `<agent>` agent for the following task: …". `compose.nix` discovers commands by directory; no codegen edits are required when adding a new command.
+`header.claude.yaml` and `header.opencode.yaml` are read with `readFile` and **must exist for every command, even if no per-provider fields are set** - leave them as empty files; omitting them makes Nix evaluation fail. `header.pi.yaml` is genuinely optional (read with `readOptionalFile`) and can be omitted when the command takes no arguments. On Claude Code, an agent binding via `header.opencode.yaml: agent:` causes `compose.nix` to prepend `@<agent>` to the body automatically; do not write `@agent` into `prompt.md`. The repo-local `use-task: true` field in `header.claude.yaml` rewrites the body into "Use the Task tool to launch the `<agent>` agent for the following task: …". `compose.nix` discovers commands by directory; no codegen edits are required when adding a new command.
 
 Skills are not currently emitted as commands by this repo's Codex output; reach Codex via skills instead (see anti-patterns).
 
@@ -91,10 +92,10 @@ See `references/portability.md` for the full table. Headlines:
 
 In this repo:
 
-- `create-*` shims pin `model: opus` (Claude Code). Authoring work benefits from the strongest model.
-- `update-*` shims pin `model: sonnet`. Surgical edits suit the mid-tier model.
+- Rosey's `create-*` and `update-*` shims pin `model: opus` (Claude Code). Prompt and skill authoring rewards the strongest model for structure, terseness, and cross-platform reasoning; surgical edits benefit from the same judgement as creation.
 - Standalone formatting / fact-finding commands may pin `model: haiku` (e.g. `orientate`).
-- OpenCode headers omit `model` so the user's session model wins.
+- OpenCode headers omit `model` so the user's session model wins. Per-command `model` was ignored on OpenCode 0.6.4 and below; treat it as a hint, not a guarantee.
+- Pi has no model field at the prompt-template layer; model and routing live on the agent.
 
 ## Side-effect declaration
 
@@ -115,7 +116,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 
 1. Read `prompt.md`, `description.txt`, and every `header.*.yaml`.
 2. Identify the shape band (shim / standalone / standalone-with-format) and confirm length is within the cap.
-3. Diagnose: argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model-tier mismatch with sibling commands, missing side-effect declaration.
+3. Diagnose: argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration.
 4. Edit narrowly. Preserve `description.txt` and `argument-hint` unless they are wrong. Do not rewrite a working body.
 5. If a shim and an existing skill both grew the same doctrine, cut the shim back to the skill body's surface.
 6. Emit changed files plus a short changelog: `Changed`, `Rationale`.
