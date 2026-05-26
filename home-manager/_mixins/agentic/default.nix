@@ -23,6 +23,7 @@ in
   config = lib.mkIf (noughtyLib.userHasTag "developer") {
     home.packages = [
       agentPackages.cubic
+      pkgs.tcount
     ]
     ++ lib.optionals browserAutomationEnabled [
       agentPackages.agent-browser
