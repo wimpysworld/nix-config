@@ -240,12 +240,16 @@ let
         builtins.__import__ = _managed_import
   '';
   # v2026.5.16 dropped messaging SDKs (python-telegram-bot, discord.py,
-  # slack-bolt, …) from the default install in favour of a runtime
-  # lazy-install path. That path cannot write into the sealed /nix/store
-  # venv, so opt the SDKs back in declaratively via the upstream module's
-  # extraDependencyGroups override (uv resolves them at build time).
+  # slack-bolt, …) and local voice packages (faster-whisper, sounddevice,
+  # numpy) from the default install in favour of a runtime lazy-install path.
+  # That path cannot write into the sealed /nix/store venv, so opt the SDKs
+  # back in declaratively via the upstream module's extraDependencyGroups
+  # override (uv resolves them at build time).
   upstreamHermesAgentPackage = pkgs.hermesAgent.override {
-    extraDependencyGroups = [ "messaging" ];
+    extraDependencyGroups = [
+      "messaging"
+      "voice"
+    ];
   };
   hermesAgentPackage = pkgs.symlinkJoin {
     name = "hermes-agent-host";
@@ -877,6 +881,14 @@ in
             model = "claude-opus-4-7";
           }
         ];
+
+        stt = {
+          enabled = true;
+          provider = "local";
+          local = {
+            model = "base";
+          };
+        };
 
         tts = {
           provider = "piper";
