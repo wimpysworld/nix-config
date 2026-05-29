@@ -479,12 +479,12 @@ format *paths:
 
     if [ $# -eq 0 ]; then
       echo "Nix 󰉼 Formatting: all files"
-      deadnix --edit .
+      deadnix --no-lambda-pattern-names --edit .
       statix fix .
       treefmt
     else
       echo "Nix 󰉼 Formatting: $*"
-      deadnix --edit "$@"
+      deadnix --no-lambda-pattern-names --edit "$@"
       for target in "$@"; do
         statix fix "$target"
       done
