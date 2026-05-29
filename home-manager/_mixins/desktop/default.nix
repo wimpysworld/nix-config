@@ -132,6 +132,8 @@ in
           };
         };
         gtk4 = {
+          # Mirror `gtk.theme` into GTK4; the 26.05 default stopped doing this.
+          inherit (config.gtk) theme;
           extraConfig = {
             gtk-decoration-layout = "${buttonLayout}";
           };
