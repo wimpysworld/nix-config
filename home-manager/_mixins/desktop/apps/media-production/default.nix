@@ -8,6 +8,19 @@
 let
   inherit (config.noughty) host;
   davinciResolve = pkgs.davinci-resolve.override { studioVariant = true; };
+  # Blender's GPU render backend follows the host's compute GPU vendor:
+  # AMD uses HIP (rocmSupport), NVIDIA uses CUDA/OptiX (cudaSupport). Other
+  # vendors (Apple Metal, Intel) fall back to the default build. Derived from
+  # gpu.compute.vendor rather than hasROCm/hasCuda, because those track
+  # compute.acceleration, which the strix-halo hosts set to "vulkan" (a backend
+  # Blender's renderer does not provide).
+  blenderPackage =
+    if host.gpu.compute.vendor == "amd" then
+      pkgs.blender.override { rocmSupport = true; }
+    else if host.gpu.compute.vendor == "nvidia" then
+      pkgs.blender.override { cudaSupport = true; }
+    else
+      pkgs.blender;
 in
 {
   dconf = lib.mkIf (host.is.linux && host.is.workstation) {
@@ -416,7 +429,7 @@ in
       inkscape
     ]
     ++ lib.optionals (noughtyLib.hostHasTag "gamedev") [
-      blender-hip
+      blenderPackage
     ]
     ++ lib.optionals (noughtyLib.hostHasTag "davinci") [
       davinciResolve
