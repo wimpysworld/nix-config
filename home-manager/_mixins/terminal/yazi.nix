@@ -308,6 +308,9 @@ in
   programs = {
     yazi = {
       enable = true;
+      # Set explicitly to the 26.05 default `y`; pinning silences the
+      # default-change warning while tracking the new default.
+      shellWrapperName = "y";
       enableBashIntegration = config.programs.bash.enable;
       enableFishIntegration = config.programs.fish.enable;
       enableZshIntegration = config.programs.zsh.enable;
