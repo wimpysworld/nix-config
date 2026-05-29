@@ -327,7 +327,7 @@ in
       enable = true;
       package = codexLauncherPackage;
       # The assistants mixin writes AGENTS.md from the canonical global prompt.
-      custom-instructions = "";
+      context = "";
     };
     fish.shellAliases = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       codex-fenced = lib.getExe codexFencedPackage;
