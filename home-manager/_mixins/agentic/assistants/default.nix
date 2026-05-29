@@ -517,7 +517,7 @@ in
         commands = opencodeCommands;
 
         # Global rules
-        rules = opencodeInstructions;
+        context = opencodeInstructions;
       };
     };
   };
