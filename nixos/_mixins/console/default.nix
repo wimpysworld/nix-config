@@ -171,8 +171,10 @@ in
     # TODO: Does compiling without fbterm help by odd sized displays?
     # - https://github.com/Aetf/kmscon/issues/18#issuecomment-612003371
 
+    # kmscon delegates autologin to the agetty module in 26.05.
+    getty.autologinUser = if host.is.iso then "nixos" else null;
+
     kmscon = {
-      autologinUser = if host.is.iso then "nixos" else null;
       enable = true;
       hwRender = false;
       fonts = [
