@@ -122,7 +122,6 @@ in
 lib.mkIf (noughtyLib.hostHasTag "workspace") {
   environment.systemPackages = [
     pkgs._1password-gui
-    pkgs.ferdium
     wavebox
     googleMeetDesktopItem
     slackWavebox
@@ -130,12 +129,6 @@ lib.mkIf (noughtyLib.hostHasTag "workspace") {
   ];
 
   programs.wavebox = {
-    enable = true;
-    extraOpts = workspaceBrowserOpts;
-    extensions = workspaceBrowserExtensions;
-  };
-
-  programs.ferdium = {
     enable = true;
     extraOpts = workspaceBrowserOpts;
     extensions = workspaceBrowserExtensions;
