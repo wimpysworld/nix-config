@@ -244,7 +244,7 @@ in
           };
           # Add xset to satisfy xdg-screensaver requirements
           configPackages = [
-            pkgs.xorg.xset
+            pkgs.xset
           ];
           enable = true;
           extraPortals = [
