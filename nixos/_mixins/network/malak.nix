@@ -48,8 +48,8 @@ lib.mkIf (noughtyLib.isHost [ "malak" ]) {
     useDHCP = lib.mkForce false;
     usePredictableInterfaceNames = false;
   };
-  services.resolved = {
-    fallbackDns = lib.mkForce cloudflareDns;
-    dnsovertls = lib.mkForce "false";
+  services.resolved.settings.Resolve = {
+    FallbackDNS = lib.mkForce cloudflareDns;
+    DNSOverTLS = lib.mkForce "false";
   };
 }

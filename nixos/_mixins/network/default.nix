@@ -146,10 +146,12 @@ in
     # Use resolved for DNS resolution; tailscale MagicDNS requires it
     resolved = {
       enable = true;
-      domains = [ "~." ];
-      dnsovertls = useDoT;
-      dnssec = "false";
-      inherit fallbackDns;
+      settings.Resolve = {
+        Domains = [ "~." ];
+        DNSOverTLS = useDoT;
+        DNSSEC = "false";
+        FallbackDNS = fallbackDns;
+      };
     };
   };
 
