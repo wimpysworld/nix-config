@@ -7,13 +7,13 @@
   copyDesktopItems,
   makeDesktopItem,
   darwin,
-  electron_39,
+  electron_40,
   nodejs,
   ripgrep,
   commandLineArgs ? "",
 }:
 let
-  electron = electron_39;
+  electron = electron_40;
   electronPlatformTag =
     if stdenv.hostPlatform.isDarwin then
       "darwin-${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}"
