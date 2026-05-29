@@ -32,6 +32,7 @@ let
     "2a07:e340::2#dns.mullvad.net"
   ];
   # adblock.dns.mullvad.net; ads, trackers
+  # deadnix: skip -- kept as a documented DNS tier, switched in per host as needed.
   mullvadAdblockDns = [
     "194.242.2.3#adblock.dns.mullvad.net"
     "2a07:e340::3#adblock.dns.mullvad.net"
