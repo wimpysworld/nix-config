@@ -87,6 +87,8 @@ in
     ];
     wayland.windowManager.hyprland = {
       enable = true;
+      # Keep generating hyprlang config; the 26.05 default changed to `lua`.
+      configType = "hyprlang";
       settings = {
         inherit (monitors) monitor workspace;
         "$mod" = "SUPER";
