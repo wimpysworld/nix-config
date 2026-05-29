@@ -13,7 +13,7 @@ lib.mkIf host.is.linux {
   home = {
     file = {
       ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && host.is.workstation) {
-        text = "${pkgs.xorg.xhost}/bin/xhost +si:localuser:$USER";
+        text = "${pkgs.xhost}/bin/xhost +si:localuser:$USER";
       };
       "Quickemu/nihilus/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
         text = "";
