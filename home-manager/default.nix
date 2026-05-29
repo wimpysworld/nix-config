@@ -256,8 +256,11 @@ in
       # Do not create XDG directories for LIMA; it is confusing
       enable = host.is.linux && !(noughtyLib.hostHasTag "lima");
       createDirectories = lib.mkDefault true;
+      # The default flips to false for stateVersion >= 26.05; pin true to keep
+      # exporting XDG_*_DIR session variables as before.
+      setSessionVariables = lib.mkDefault true;
       extraConfig = {
-        XDG_SCREENSHOTS_DIR = "${config.xdg.userDirs.pictures}/Screenshots";
+        SCREENSHOTS = "${config.xdg.userDirs.pictures}/Screenshots";
       };
     };
   };
