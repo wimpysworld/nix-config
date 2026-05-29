@@ -473,6 +473,9 @@ lint-registry:
     @taplo lint --schema "file://$(pwd)/lib/registry-users-schema.json" lib/registry-users.toml
 
 # Format and lint Nix files
+# Keep this in lockstep with the `formatter` in flake.nix. The deadnix flag
+# `--no-lambda-pattern-names` stops it stripping function arguments whose call
+# sites it cannot see, which breaks strict `{ }:` patterns.
 format *paths:
     #!/usr/bin/env bash
     set -euo pipefail

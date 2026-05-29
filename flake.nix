@@ -132,14 +132,26 @@
         pkgs.writeShellApplication {
           name = "nix-config-formatter";
           runtimeInputs = with pkgs; [
+            deadnix
             nixfmt
             nixfmt-tree
+            statix
           ];
+          # Keep this in lockstep with the `format` recipe in the justfile.
+          # `--no-lambda-pattern-names` stops deadnix stripping function
+          # arguments whose call sites it cannot see, which breaks strict
+          # `{ }:` patterns such as `mkCatppuccinPalette`.
           text = ''
             if [ "$#" -eq 0 ]; then
+              deadnix --no-lambda-pattern-names --edit .
+              statix fix .
               exec treefmt
             fi
 
+            deadnix --no-lambda-pattern-names --edit "$@"
+            for target in "$@"; do
+              statix fix "$target"
+            done
             exec nixfmt "$@"
           '';
         }
