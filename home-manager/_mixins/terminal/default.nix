@@ -62,7 +62,7 @@ in
         bmon # Modern Unix `iftop`
         croc # Terminal file transfer
         cyme # Modern Unix `lsusb`
-        dogdns # Modern Unix `dig`
+        doggo # Modern Unix `dig`
         dotacat # Modern Unix lolcat
         dua # Modern Unix `du`
         duf # Modern Unix `df`
