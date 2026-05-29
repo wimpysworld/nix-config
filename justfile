@@ -481,7 +481,7 @@ format *paths:
       echo "Nix 󰉼 Formatting: all files"
       deadnix --edit .
       statix fix .
-      nixfmt-tree
+      treefmt
     else
       echo "Nix 󰉼 Formatting: $*"
       deadnix --edit "$@"
