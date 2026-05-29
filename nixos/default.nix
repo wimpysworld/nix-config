@@ -20,7 +20,6 @@ in
     ../lib/noughty
     # Use modules this flake exports; from modules/nixos
     outputs.nixosModules.falcon-sensor
-    outputs.nixosModules.ferdium
     outputs.nixosModules.wavebox
     # Use modules from other flakes
     inputs.catppuccin.nixosModules.catppuccin
