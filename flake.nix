@@ -86,8 +86,8 @@
     }@inputs:
     let
       inherit (self) outputs;
-      stateVersion = "25.11";
-      darwinStateVersion = 6;
+      stateVersion = "26.05";
+      darwinStateVersion = 7;
       users = builtins.fromTOML (builtins.readFile ./lib/registry-users.toml);
       systems = builtins.fromTOML (builtins.readFile ./lib/registry-systems.toml);
 
