@@ -136,9 +136,79 @@ build:
     @just build-home
     @just build-host
 
-# Build OS and Home configurations
+# Check current-platform configurations and per-system outputs
 check:
-    @nix flake check --show-trace
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # `nix flake check` deep-evaluates the flat *Configurations attrsets for
+    # every platform regardless of --systems (flat attrsets are not per-system),
+    # which triggers cross-platform catppuccin IFD on this host. Scope the check
+    # to the native platform's configurations plus this system's per-system
+    # outputs instead. Foreign-platform configurations are covered by CI runners.
+    system=$(nix eval --impure --raw --expr 'builtins.currentSystem')
+    echo "Flake 󱄅 Check: ${system}"
+
+    # Check NixOS configurations (native platform only)
+    echo "󱄅 NixOS configurations:"
+    if [[ "$(grep ^ID= /etc/os-release | cut -d'=' -f2)" == "nixos" ]]; then
+        for config in $(nix eval .#nixosConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
+            echo "    Checking nixosConfigurations.${config}..."
+            nix eval .#nixosConfigurations.${config}.config.system.build.toplevel.drvPath --raw >/dev/null
+        done
+    else
+        echo "    Skipping NixOS configurations (not on NixOS)"
+    fi
+
+    # Check Darwin configurations (native platform only)
+    echo " Darwin configurations:"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        for config in $(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
+            echo "    Checking darwinConfigurations.${config}..."
+            nix eval .#darwinConfigurations.${config}.system.drvPath --raw >/dev/null
+        done
+    else
+        echo "    Skipping Darwin configurations (not on macOS)"
+    fi
+
+    # Check Home Manager configurations for native-platform systems
+    echo " Home Manager configurations:"
+    nixos_configs=$(nix eval .#nixosConfigurations --apply builtins.attrNames --json | jq -r '.[]' | tr '\n' ' ')
+    darwin_configs=$(nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[]' | tr '\n' ' ')
+
+    for config in $(nix eval .#homeConfigurations --apply builtins.attrNames --json | jq -r '.[]'); do
+        hostname=$(echo "$config" | sed 's/.*@//')
+        should_check=false
+
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+            if echo "$darwin_configs" | grep -q "\b$hostname\b"; then
+                should_check=true
+            fi
+        else
+            if echo "$nixos_configs" | grep -q "\b$hostname\b"; then
+                should_check=true
+            fi
+        fi
+
+        if $should_check; then
+            echo "    Checking homeConfigurations.${config}..."
+            nix eval .#homeConfigurations.${config}.activationPackage.drvPath --raw >/dev/null
+        else
+            echo "    Skipping homeConfigurations.${config} (cross-platform)"
+        fi
+    done
+
+    # Check this system's per-system outputs (packages, devShells, formatter)
+    echo " Per-system outputs (${system}):"
+    nix eval .#formatter.${system}.drvPath --raw >/dev/null
+    for shell in $(nix eval .#devShells.${system} --apply builtins.attrNames --json | jq -r '.[]'); do
+        nix eval .#devShells.${system}.${shell}.drvPath --raw >/dev/null
+    done
+    for pkg in $(nix eval .#packages.${system} --apply builtins.attrNames --json | jq -r '.[]'); do
+        nix eval .#packages.${system}.${pkg}.drvPath --raw >/dev/null
+    done
+
+    echo "󰸞 Flake check passed for ${system}"
 
 # Evaluate configurations without building
 eval:
@@ -147,8 +217,32 @@ eval:
 
 # Evaluate flake syntax and structure
 eval-flake:
-    @echo "Flake 󱄅 Evaluation: syntax and structure"
-    @nix flake show --allow-import-from-derivation
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # `nix flake show` force-traverses every config across all platforms, which
+    # triggers cross-platform catppuccin IFD on this host. Enumerate the output
+    # structure lazily (attrnames only, no deep eval) for the foreign-platform
+    # *Configurations, and validate this system's per-system outputs directly.
+    system=$(nix eval --impure --raw --expr 'builtins.currentSystem')
+    echo "Flake 󱄅 Evaluation: syntax and structure"
+
+    echo "󱄅 NixOS configurations:"
+    nix eval .#nixosConfigurations --apply builtins.attrNames --json | jq -r '.[] | "    " + .'
+
+    echo " Darwin configurations:"
+    nix eval .#darwinConfigurations --apply builtins.attrNames --json | jq -r '.[] | "    " + .'
+
+    echo " Home Manager configurations:"
+    nix eval .#homeConfigurations --apply builtins.attrNames --json | jq -r '.[] | "    " + .'
+
+    echo " Per-system outputs (${system}):"
+    nix eval .#packages.${system} --apply builtins.attrNames --json | jq -r '.[] | "    packages." + .'
+    nix eval .#devShells.${system} --apply builtins.attrNames --json | jq -r '.[] | "    devShells." + .'
+    nix eval .#formatter.${system}.name --raw | sed 's/^/    formatter: /'
+    echo
+
+    echo "󰸞 Flake structure evaluated successfully"
 
 # Evaluate all configurations for syntax errors
 eval-configs:
