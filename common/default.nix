@@ -12,6 +12,7 @@
   documentation.doc.enable = false;
   documentation.info.enable = false;
   documentation.man.enable = true;
+  documentation.man.generateCaches = false;
 
   environment = {
     # Common packages available on all platforms.
