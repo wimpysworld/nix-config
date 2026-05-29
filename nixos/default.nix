@@ -114,7 +114,7 @@ in
 
   # NixOS-only option, unavailable on nix-darwin, so it lives here rather than
   # in ../common. Skip the expensive mandb cache generation to speed up builds.
-  documentation.man.generateCaches = false;
+  documentation.man.cache.generateAtRuntime = true;
 
   environment = {
     # NixOS-specific packages; common packages are in ../common
