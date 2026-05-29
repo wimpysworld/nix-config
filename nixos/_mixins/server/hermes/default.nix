@@ -860,21 +860,6 @@ in
           };
         };
 
-        providers = {
-          anthropic = {
-            allowed_models = [
-              "claude-sonnet-4-6"
-              "claude-opus-4-7"
-            ];
-          };
-          openai-codex = {
-            allowed_models = [
-              "gpt-5.5"
-              "gpt-5.3-codex-spark"
-            ];
-          };
-        };
-
         fallback_providers = [
           {
             provider = "anthropic";
@@ -919,6 +904,11 @@ in
           mode = "off";
           cron_mode = "approve";
         };
+
+        # The bundled google_chat-platform plugin auto-loads and fails because
+        # google_chat is not a valid Platform here, so deny-list it to silence
+        # the startup error.
+        plugins.disabled = [ "google_chat-platform" ];
       };
     };
 
@@ -1035,6 +1025,10 @@ in
       "/run/current-system"
       "/run/booted-system"
     ];
+    # The upstream unit injects the deprecated MESSAGING_CWD environment
+    # variable on every start, which logs a deprecation warning. The canonical
+    # replacement, settings.terminal.cwd, is already set, so unset the variable.
+    systemd.services.hermes-agent.environment.MESSAGING_CWD = lib.mkForce null;
     # The app drains for up to 180s on shutdown, but the upstream unit ships
     # TimeoutStopSec=10s, so systemd SIGKILLs the gateway mid-drain and it
     # exits non-zero. 210s matches the app's expected minimum stop timeout.
