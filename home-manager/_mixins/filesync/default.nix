@@ -79,13 +79,15 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
       key = config.sops.secrets.syncthing_key.path;
       overrideDevices = true;
       overrideFolders = true;
-      passwordFile = config.sops.secrets.pass.path;
+      guiCredentials = {
+        inherit username;
+        passwordFile = config.sops.secrets.pass.path;
+      };
       settings = {
         devices = otherDevices;
         folders = hostFolders;
         gui = {
           theme = "dark";
-          user = username;
         };
         options = {
           localAnnounceEnabled = true;
