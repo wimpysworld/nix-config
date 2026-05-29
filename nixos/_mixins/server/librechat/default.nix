@@ -69,10 +69,6 @@ let
   };
 in
 {
-  imports = [
-    ./module.nix
-  ];
-
   config = lib.mkIf (noughtyLib.hostHasTag "librechat") {
     environment.shellAliases.librechat-log = "journalctl _SYSTEMD_UNIT=librechat.service";
 
@@ -157,10 +153,16 @@ in
       mode = "0400";
     };
 
+    # Upstream's services.librechat.openFirewall references an undefined
+    # cfg.port in nixpkgs ec942ba, so it throws when enabled. Leave it off and
+    # open the firewall from env.PORT, matching the previous vendored module.
+    networking.firewall.allowedTCPPorts = [
+      (lib.toInt config.services.librechat.env.PORT)
+    ];
+
     services.librechat = {
       enable = true;
       package = lib.mkDefault pkgs.librechat;
-      openFirewall = lib.mkDefault true;
       meilisearch.enable = lib.mkDefault true;
       env = {
         ALLOW_EMAIL_LOGIN = lib.mkDefault true;
