@@ -30,7 +30,7 @@
     inherit (final.unstable) bun;
     inherit (final.unstable) zed-editor;
     inherit (final.unstable) lima;
-    
+
     # Claude Code tracks the llm-agents flake on Linux (pinned alongside the
     # other agent tooling there) and unstable nixpkgs elsewhere.
     # https://github.com/numtide/llm-agents.nix
@@ -72,16 +72,19 @@
         });
       }
     );
-    
+
     linuxPackages = prev.linuxPackages.extend (
       _lpself: lpsuper: {
-        mwprocapture = lpsuper.mwprocapture.overrideAttrs (_old: rec {
+        mwprocapture = lpsuper.mwprocapture.overrideAttrs (old: rec {
           pname = "mwprocapture";
           subVersion = "4429";
           version = "1.3.${subVersion}";
           src = prev.fetchurl {
             url = "https://www.magewell.com/files/drivers/ProCaptureForLinux_${version}.tar.gz";
             sha256 = "sha256-sYwMVEAvYMKCn4DKQiCtnTxd1chMUd0atgswpC+CZ5g=";
+          };
+          meta = old.meta // {
+            broken = false;
           };
         });
       }
