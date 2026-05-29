@@ -1035,6 +1035,10 @@ in
       "/run/current-system"
       "/run/booted-system"
     ];
+    # The app drains for up to 180s on shutdown, but the upstream unit ships
+    # TimeoutStopSec=10s, so systemd SIGKILLs the gateway mid-drain and it
+    # exits non-zero. 210s matches the app's expected minimum stop timeout.
+    systemd.services.hermes-agent.serviceConfig.TimeoutStopSec = lib.mkForce "210s";
 
     system.activationScripts.hermes-agent-managed-config = lib.stringAfter [ "hermes-agent-setup" ] ''
       # The upstream NixOS module deep-merges settings into mutable config.yaml.
