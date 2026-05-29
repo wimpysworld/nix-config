@@ -10,7 +10,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = fetchurl (
     let
-      system = stdenv.hostPlatform.system;
+      inherit (stdenv.hostPlatform) system;
       sources = {
         x86_64-linux = {
           name = "openhue_Linux_x86_64.tar.gz";

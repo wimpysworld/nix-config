@@ -6,7 +6,6 @@
   ...
 }:
 let
-  username = config.noughty.user.name;
   inherit (config.noughty) host;
   davinciResolve = pkgs.davinci-resolve.override { studioVariant = true; };
 in

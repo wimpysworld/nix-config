@@ -4,9 +4,6 @@
   pkgs,
   ...
 }:
-let
-  inherit (config.noughty) host;
-in
 {
   claude-code.lspServers.cpp = {
     command = "${pkgs.clang-tools}/bin/clangd";

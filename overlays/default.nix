@@ -33,18 +33,18 @@
       };
     });
 
-    ollama = final.unstable.ollama;
-    ollama-cuda = final.unstable.ollama-cuda;
-    ollama-rocm = final.unstable.ollama-rocm;
-    ollama-vulkan = final.unstable.ollama-vulkan;
+    inherit (final.unstable) ollama;
+    inherit (final.unstable) ollama-cuda;
+    inherit (final.unstable) ollama-rocm;
+    inherit (final.unstable) ollama-vulkan;
 
-    llama-cpp = final.unstable.llama-cpp;
+    inherit (final.unstable) llama-cpp;
     llama-cpp-rocm = llama-cpp.override { rocmSupport = true; };
     llama-cpp-vulkan = llama-cpp.override { vulkanSupport = true; };
 
-    llama-swap = final.unstable.llama-swap;
-    harper = final.unstable.harper;
-    playwright-mcp = final.unstable.playwright-mcp;
+    inherit (final.unstable) llama-swap;
+    inherit (final.unstable) harper;
+    inherit (final.unstable) playwright-mcp;
 
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
       _lpself: lpsuper: {

@@ -14,9 +14,7 @@ let
   # directory if the user previously installed via the UI; the
   # `zedDisabledExtensionsPurge` activation hook below handles that.
   disabledExtensions = lib.attrNames (
-    lib.filterAttrs (_: v: v == false) (
-      config.programs.zed-editor.userSettings.auto_install_extensions or { }
-    )
+    lib.filterAttrs (_: v: !v) (config.programs.zed-editor.userSettings.auto_install_extensions or { })
   );
 
   zedExtensionsDir = "${config.xdg.dataHome}/zed/extensions/installed";
