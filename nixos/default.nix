@@ -76,6 +76,11 @@ in
       ];
     };
     consoleLogLevel = lib.mkDefault 0;
+    # Adopt the recommended 26.11 default early. No host boots from a ZFS root
+    # (filesystems are xfs/btrfs/bcachefs/vfat), and ZFS support is only pulled
+    # in by the live ISO installer module, so force-import is never needed.
+    # mkDefault keeps it overridable if a future host ever roots on ZFS.
+    zfs.forceImportRoot = lib.mkDefault false;
     initrd.availableKernelModules = [
       "uas"
       "usb_storage"
