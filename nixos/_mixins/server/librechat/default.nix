@@ -159,7 +159,7 @@ in
 
     services.librechat = {
       enable = true;
-      package = lib.mkDefault pkgs.unstable.librechat;
+      package = lib.mkDefault pkgs.librechat;
       openFirewall = lib.mkDefault true;
       meilisearch.enable = lib.mkDefault true;
       env = {

@@ -6,7 +6,7 @@
 {
   programs.superfile = {
     enable = true;
-    package = pkgs.unstable.superfile;
+    package = pkgs.superfile;
 
     settings = {
       theme = lib.mkDefault "catppuccin-mocha";

@@ -46,6 +46,23 @@
     inherit (final.unstable) harper;
     inherit (final.unstable) playwright-mcp;
 
+    # Packages tracking the unstable channel ahead of their stable releases.
+    inherit (final.unstable) bun;
+    inherit (final.unstable) zed-editor;
+    inherit (final.unstable) lima;
+    inherit (final.unstable) notesnook;
+    inherit (final.unstable) superfile;
+    # Claude Code tracks the llm-agents flake on Linux (pinned alongside the
+    # other agent tooling there) and unstable nixpkgs elsewhere.
+    # https://github.com/numtide/llm-agents.nix
+    claude-code =
+      if final.stdenv.hostPlatform.isLinux then
+        inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.claude-code
+      else
+        final.unstable.claude-code;
+    inherit (final.unstable) librechat;
+    inherit (final.unstable) playwright-driver;
+
     linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
       _lpself: lpsuper: {
         mwprocapture = lpsuper.mwprocapture.overrideAttrs (_old: rec {

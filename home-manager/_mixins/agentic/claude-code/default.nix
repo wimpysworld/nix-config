@@ -9,14 +9,9 @@
 let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
-  # https://github.com/numtide/llm-agents.nix
-  claudePackage =
-    if host.is.linux then
-      inputs.llm-agents.packages.${system}.claude-code
-    else if host.is.darwin then
-      pkgs.unstable.claude-code
-    else
-      pkgs.claude-code;
+  # claude-code package selection (Linux llm-agents vs unstable) lives in
+  # overlays/default.nix.
+  claudePackage = pkgs.claude-code;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };

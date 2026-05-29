@@ -11,7 +11,7 @@
       nodejs
 
       # JavaScript/TypeScript tooling
-      unstable.bun
+      bun
       prettier
       tsx
       typescript

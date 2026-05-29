@@ -14,7 +14,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
       pkgs.heynote
     ]
     ++ lib.optionals host.is.linux [
-      pkgs.unstable.notesnook
+      pkgs.notesnook
     ];
   };
 }

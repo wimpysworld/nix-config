@@ -45,8 +45,7 @@ let
       exec ${pkgs.playwright-mcp}/bin/.playwright-mcp-wrapped "$@"
     '';
   };
-  playwrightChromiumHeadlessShell =
-    pkgs.unstable.playwright-driver.components."chromium-headless-shell";
+  playwrightChromiumHeadlessShell = pkgs.playwright-driver.components."chromium-headless-shell";
   playwrightChromiumExecutable =
     if pkgs.stdenv.hostPlatform.isLinux then
       "${playwrightChromiumHeadlessShell}/chrome-headless-shell-linux64/chrome-headless-shell"
