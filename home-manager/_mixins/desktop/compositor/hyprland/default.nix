@@ -260,7 +260,9 @@ in
           focus_on_activate = true;
           key_press_enables_dpms = true;
           mouse_move_enables_dpms = true;
-          vfr = true;
+          # `misc:vfr` was removed in Hyprland 0.55; variable-refresh handling is
+          # now internal and the knob moved to `debug:` as an internal-only flag.
+          # See https://hypr.land/news/update55/.
         };
         plugin = {
           hyprtrails = {
@@ -271,69 +273,76 @@ in
             history_step = 2; # 2
           };
         };
-        windowrulev2 = [
+        # Window rules use the 0.53+ unified `windowrule` grammar: `windowrulev2`
+        # was deprecated in 0.48 and removed thereafter. Match props now take a
+        # `match:` prefix, effect names are snake_case, and boolean effects need an
+        # explicit `on`. See https://wiki.hypr.land/Configuring/Window-Rules/.
+        windowrule = [
           # only allow shadows for floating windows
-          "noshadow, floating:0"
+          "no_shadow on, match:float false"
           # make floating windows opaque
-          "opacity 0.72, floating:1"
+          "opacity 0.72, match:float true"
           # Some windows should never be opaque
-          "opacity 1.0, class: com.obsproject.Studio"
-          "opacity 1.0, class: resolve"
-          "opacity 1.0, class: com.defold.editor.Start"
-          "opacity 1.0, class: class: dmengine"
-          "opacity 1.0, title: UNIGINE Engine"
-          "opacity 1.0, title: Steam Big Picture Mode"
-          "opacity 1.0, class: Gimp"
-          "opacity 1.0, class: love"
-          "opacity 1.0, title: ^QEMU"
+          "opacity 1.0, match:class com.obsproject.Studio"
+          "opacity 1.0, match:class resolve"
+          "opacity 1.0, match:class com.defold.editor.Start"
+          "opacity 1.0, match:class dmengine"
+          "opacity 1.0, match:title UNIGINE Engine"
+          "opacity 1.0, match:title Steam Big Picture Mode"
+          "opacity 1.0, match:class Gimp"
+          "opacity 1.0, match:class love"
+          "opacity 1.0, match:title ^QEMU"
 
           # make pop-up file dialogs floating, centred, and pinned
-          "float, title:(Open|Progress|Save File)"
-          "center, title:(Open|Progress|Save File)"
-          "pin, title:(Open|Progress|Save File)"
-          "float, class:(xdg-desktop-portal-gtk)"
-          "center, class:(xdg-desktop-portal-gtk)"
-          "pin, class:(xdg-desktop-portal-gtk)"
-          "float, class:^(code)$, initialTitle:not:Visual Studio Code"
-          "center, class:^(code)$, initialTitle:not:Visual Studio Code"
-          "pin, class:^(code)$, initialTitle:not:Visual Studio Code"
+          "float on, match:title (Open|Progress|Save File)"
+          "center on, match:title (Open|Progress|Save File)"
+          "pin on, match:title (Open|Progress|Save File)"
+          "float on, match:class (xdg-desktop-portal-gtk)"
+          "center on, match:class (xdg-desktop-portal-gtk)"
+          "pin on, match:class (xdg-desktop-portal-gtk)"
+          "float on, match:class ^(code)$, match:initial_title negative:Visual Studio Code"
+          "center on, match:class ^(code)$, match:initial_title negative:Visual Studio Code"
+          "pin on, match:class ^(code)$, match:initial_title negative:Visual Studio Code"
 
           # Apps that should be floating
-          "float, title:(Maestral Settings|MainPicker|overskride|Pipewire Volume Control|Trayscale)"
-          "center, title:(Maestral Settings|MainPicker|overskride|Pipewire Volume Control|Trayscale)"
-          "float, initialTitle:(Polychromatic|Syncthing Tray)"
-          "center, initialTitle:(Polychromatic|Syncthing Tray)"
-          "float, class:(.blueman-manager-wrapped|blueberry.py|nm-connection-editor|org.gnome.Calculator|polkit-gnome-authentication-agent-1)"
-          "center, class:(.blueman-manager-wrapped|blueberry.py|nm-connection-editor|org.gnome.Calculator|polkit-gnome-authentication-agent-1)"
-          "size 700 580, title:(.blueman-manager-wrapped)"
-          "size 580 640, title:(blueberry.py)"
-          "size 600 402, title:(Maestral Settings)"
-          "size 512 290, title:(MainPicker)"
-          "size 395 496, class:(org.gnome.Calculator)"
-          "size 700 500, class:(nm-connection-editor)"
-          "size 1134 880, title:(Pipewire Volume Control)"
-          "size 960 640, initialTitle:(Polychromatic)"
-          "size 880 1010, title:(overskride)"
-          "size 886 960, title:(Trayscale)"
+          "float on, match:title (Maestral Settings|MainPicker|overskride|Pipewire Volume Control|Trayscale)"
+          "center on, match:title (Maestral Settings|MainPicker|overskride|Pipewire Volume Control|Trayscale)"
+          "float on, match:initial_title (Polychromatic|Syncthing Tray)"
+          "center on, match:initial_title (Polychromatic|Syncthing Tray)"
+          "float on, match:class (.blueman-manager-wrapped|blueberry.py|nm-connection-editor|org.gnome.Calculator|polkit-gnome-authentication-agent-1)"
+          "center on, match:class (.blueman-manager-wrapped|blueberry.py|nm-connection-editor|org.gnome.Calculator|polkit-gnome-authentication-agent-1)"
+          "size 700 580, match:title (.blueman-manager-wrapped)"
+          "size 580 640, match:title (blueberry.py)"
+          "size 600 402, match:title (Maestral Settings)"
+          "size 512 290, match:title (MainPicker)"
+          "size 395 496, match:class (org.gnome.Calculator)"
+          "size 700 500, match:class (nm-connection-editor)"
+          "size 1134 880, match:title (Pipewire Volume Control)"
+          "size 960 640, match:initial_title (Polychromatic)"
+          "size 880 1010, match:title (overskride)"
+          "size 886 960, match:title (Trayscale)"
 
           # Apps for streaming from dummy workspace
-          "float, onworkspace:10"
-          "opacity 1.0 0.6 1.0, onworkspace:10"
-          "size 1596 1076, onworkspace:10"
-          "maxsize 1596 1076, onworkspace:10"
-          "minsize 1596 1076, onworkspace:10"
-          "move 322 2, onworkspace:10"
-          "noshadow, onworkspace:10"
+          "float on, match:workspace 10"
+          "opacity 1.0 0.6 1.0, match:workspace 10"
+          "size 1596 1076, match:workspace 10"
+          "max_size 1596 1076, match:workspace 10"
+          "min_size 1596 1076, match:workspace 10"
+          "move 322 2, match:workspace 10"
+          "no_shadow on, match:workspace 10"
         ];
+        # Layer rules also moved to the 0.53+ grammar: effects are snake_case with
+        # an explicit value and the namespace prop takes a `match:namespace` prefix.
+        # `ignorezero` is now `ignore_alpha 0`. See the same wiki page.
         layerrule = [
-          "blur, launcher" # fuzzel
-          "ignorezero, launcher"
-          "blur, logout_dialog" # wlogout
-          "blur, rofi"
-          "blur, swaync-control-center"
-          "blur, swaync-notification-window"
-          "ignorealpha 0.7, swaync-control-center"
-          "ignorealpha 0.7, swaync-notification-window"
+          "blur on, match:namespace launcher" # fuzzel
+          "ignore_alpha 0, match:namespace launcher"
+          "blur on, match:namespace logout_dialog" # wlogout
+          "blur on, match:namespace rofi"
+          "blur on, match:namespace swaync-control-center"
+          "blur on, match:namespace swaync-notification-window"
+          "ignore_alpha 0.7, match:namespace swaync-control-center"
+          "ignore_alpha 0.7, match:namespace swaync-notification-window"
         ];
         xwayland = {
           force_zero_scaling = true;
