@@ -15,16 +15,22 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       enable = true;
       settings = {
         splash = false;
-        preload =
-          if displays != [ ] then
-            lib.unique (lib.imap0 wallpaperPath displays)
-          else
-            [ "/etc/backgrounds/Catppuccin-1920x1080.png" ];
+        # hyprpaper 0.8.x dropped preload= and the flat wallpaper=MONITOR,path
+        # syntax. Wallpapers are now anonymous "wallpaper" sections with a
+        # monitor and path; an empty monitor is the fallback.
         wallpaper =
           if displays != [ ] then
-            lib.imap0 (i: d: "${d.output}, ${wallpaperPath i d}") displays
+            lib.imap0 (i: d: {
+              monitor = d.output;
+              path = wallpaperPath i d;
+            }) displays
           else
-            [ ", /etc/backgrounds/Catppuccin-1920x1080.png" ];
+            [
+              {
+                monitor = "";
+                path = "/etc/backgrounds/Catppuccin-1920x1080.png";
+              }
+            ];
       };
     };
   };
