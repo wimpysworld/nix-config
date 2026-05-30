@@ -77,8 +77,14 @@ in
   ];
 
   config = lib.mkIf (host.desktop == "hyprland") {
+    # Disable the Catppuccin Hyprland module. It only works under `lua`, where it
+    # injects a `local colors = require('themes.catppuccin')` block plus a
+    # `colors._var` lua-inline; under `hyprlang` that breaks with
+    # `config option <colors:_var:_type> does not exist`. This config sets every
+    # colour explicitly from `catppuccinPalette.getHyprlandColor` (Mocha), so the
+    # module provides nothing we consume.
     catppuccin = {
-      hyprland.enable = config.wayland.windowManager.hyprland.enable;
+      hyprland.enable = false;
     };
 
     home.packages = with pkgs; [
@@ -87,7 +93,12 @@ in
     ];
     wayland.windowManager.hyprland = {
       enable = true;
-      # Keep generating hyprlang config; the 26.05 default changed to `lua`.
+      # Force the hyprlang config format. The 26.05 default flipped to `lua`, which
+      # makes the HM module emit `hyprland.lua` and drop `hyprland.conf`. Hyprland
+      # 0.52.1 core reads `hyprland.conf`, and the session manager (Hyprshim) launches
+      # it the normal way, so under `lua` it finds no `hyprland.conf` and falls back to
+      # a built-in default config. hyprlang is the format this setup actually uses, and
+      # setting it explicitly silences the 26.05 default-change warning.
       configType = "hyprlang";
       settings = {
         inherit (monitors) monitor workspace;
