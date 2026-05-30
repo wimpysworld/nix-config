@@ -62,10 +62,21 @@ let
 in
 {
   boot.initrd.luks.devices = {
-    # Priority ensures cryptroot is unlocked before crypthome.
     cryptroot = {
       device = "/dev/disk/by-partlabel/disk-nvme1-cryptroot";
     };
+  };
+
+  # Both LUKS devices share one passphrase, so systemd-cryptsetup caches the
+  # first entry in the kernel keyring and reuses it for the second. The two
+  # generated systemd-cryptsetup@ units otherwise start in parallel, so when
+  # crypthome's password agent fires before cryptroot has populated the cache
+  # the passphrase is prompted twice. Order crypthome after cryptroot so the
+  # cache is always warm by the time crypthome unlocks. crypthome is generated
+  # by disko, so override the generator unit with a drop-in.
+  boot.initrd.systemd.services."systemd-cryptsetup@crypthome" = {
+    overrideStrategy = "asDropin";
+    after = [ "systemd-cryptsetup@cryptroot.service" ];
   };
 
   disko.devices = {
