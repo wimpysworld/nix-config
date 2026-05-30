@@ -368,7 +368,7 @@ operational requirements differed.
 | **CID storage** | Plain string in Nix configuration | Encrypted via sops-nix (`/run/secrets/falcon-cid`) |
 | **Service ordering** | `sysinit.target` with `DefaultDependencies = false` | `multi-user.target` after `network.target` and `sops-nix.service` |
 | **Backend** | Kernel module (default) | BPF (explicitly set via `falconctl`) |
-| **Kernel version** | Pinned via `boot.kernelPackages = mkForce` | No kernel pinning |
+| **Kernel version** | Forced to a project-specific kernel | Uses the host-wide kernel policy |
 
 ### Why we diverged
 

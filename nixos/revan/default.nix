@@ -15,7 +15,6 @@
 {
   config,
   inputs,
-  lib,
   pkgs,
   ...
 }:
@@ -41,7 +40,6 @@ in
       "kvm-intel"
       "nvidia"
     ];
-    kernelPackages = lib.mkForce pkgs.linuxPackages_6_18;
     swraid = {
       enable = true;
       mdadmConf = "MAILADDR=${username}@wimpys.world";
