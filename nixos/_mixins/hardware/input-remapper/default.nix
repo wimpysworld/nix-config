@@ -28,6 +28,7 @@ lib.mkIf (!host.is.iso) {
     '';
     serviceConfig = {
       Type = "oneshot";
+      User = username;
       RemainAfterExit = true;
     };
   };
