@@ -12,6 +12,9 @@ let
   palette = catppuccinPalette;
   mkRgb = colorName: "rgb(${palette.getHyprlandColor colorName})";
   inherit (palette) mkRgba;
+  # hyprlang treats `#` as a comment start; escape it as `##` so the hex colour
+  # survives config parsing and reaches pango markup intact (## becomes # in the
+  # parsed value). getColor already returns a leading `#`, so prepend one more.
   mkPangoHex = colorName: "#${palette.getColor colorName}";
   catSize =
     if display.primaryIsPortrait then
@@ -32,7 +35,7 @@ let
   catResolution = toString display.primaryWidth;
   monitor = display.primaryOutput;
   onPrimaryOutput = lib.optionalAttrs (!host.is.laptop) { inherit monitor; };
-  lockCmd = "${lib.getExe' pkgs.procps "pgrep"} -xu \"$USER\" hyprlock >/dev/null || ${lib.getExe pkgs.hyprlock} --immediate";
+  lockCmd = "${lib.getExe' pkgs.procps "pgrep"} -xu \"$USER\" hyprlock >/dev/null || ${lib.getExe pkgs.hyprlock} --immediate-render";
   unlockGlyph = if noughtyLib.hostHasTag "fprintd" then "󰈷" else "󰌋";
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
@@ -284,8 +287,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
   wayland.windowManager.hyprland = {
     settings = {
       bind = [
-        "$mod, L, exec, ${lib.getExe pkgs.hyprlock} --immediate"
-        "CTRL ALT, L, exec, ${lib.getExe pkgs.hyprlock} --immediate"
+        "$mod, L, exec, ${lib.getExe pkgs.hyprlock} --immediate-render"
+        "CTRL ALT, L, exec, ${lib.getExe pkgs.hyprlock} --immediate-render"
       ];
     };
   };
