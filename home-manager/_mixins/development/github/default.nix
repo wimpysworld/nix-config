@@ -6,6 +6,11 @@
   ...
 }:
 let
+  gh-api-safe-gh = pkgs.runCommand "gh-api-safe-gh" { } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-api-safe-gh"
+  '';
+
   # Fence-friendly wrapper around `gh api`. Lives in the GitHub mixin
   # rather than the Fence mixin so the policy enforcement is available
   # to agents whether or not they are running under Fence. The script
@@ -13,8 +18,10 @@ let
   # heuristic; see `gh-api-safe.sh` for the policy details.
   gh-api-safe = pkgs.writeShellApplication {
     name = "gh-api-safe";
-    runtimeInputs = [ pkgs.gh ];
-    text = builtins.readFile ./gh-api-safe.sh;
+    text = ''
+      readonly GH_API_SAFE_GH=${lib.escapeShellArg "${gh-api-safe-gh}/bin/gh-api-safe-gh"}
+    ''
+    + builtins.readFile ./gh-api-safe.sh;
   };
 
   ghUnsetFish = ''

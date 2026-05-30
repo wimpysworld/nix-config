@@ -82,7 +82,14 @@ Filesystem policy is intentionally permissive for autonomous development and is
 kept close to Fence's upstream coding-agent policy. Reads use Fence's normal
 default-readable paths with extra NixOS profile and `/nix` allowances so
 Landlock can execute Nix-store binaries and the sandbox can resolve Home Manager
-profile shims. Secret paths remain read-denied. Writes are allowed to the launch
+profile shims. `allowExecute` lists `/nix` as a single tree so Fence does not
+replace the store with a private tmpfs and then bind only a few leaf paths. That
+keeps staged Fence bootstrap binaries, `gh` wrapper shebangs, and their runtime
+closures visible without weakening the raw `gh api` deny. Fence's staged
+`/tmp/fence/bin/fence` self-exec path is not listed because Fence creates it
+inside the Bubblewrap bootstrap; treating it as a host allowExecute path makes
+Fence try to cross-mount an unstable `/tmp` path before the bootstrap bind
+exists. Secret paths remain read-denied. Writes are allowed to the launch
 directory, common agent state, package caches, XDG config/data/state paths, and
 the private `/tmp` tmpfs. `/tmp` is allowed as a bare directory rather than a
 glob so Landlock covers temp paths created after Fence starts.

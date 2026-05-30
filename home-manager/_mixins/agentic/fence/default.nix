@@ -30,6 +30,12 @@ let
         "${config.xdg.configHome}/sops-nix"
         "${config.xdg.configHome}/sops-nix/**"
       ];
+      allowExecute = [
+        # Keep the Nix store executable as one tree. Binding a single store
+        # leaf, such as the Bash used by `gh` wrappers, makes Fence mask /nix
+        # and leaves staged bootstrap binaries without their runtime closure.
+        "/nix"
+      ];
       allowWrite = [
         "."
         "${homeDirectory}/Chainguard"
