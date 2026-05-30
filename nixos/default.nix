@@ -4,6 +4,7 @@
   inputs,
   lib,
   modulesPath,
+  noughtyLib,
   outputs,
   pkgs,
   stateVersion,
@@ -11,6 +12,10 @@
 }:
 let
   inherit (config.noughty) host;
+  hasBcachefsFilesystem = lib.any (fileSystem: fileSystem.fsType or null == "bcachefs") (
+    lib.attrValues config.fileSystems
+  );
+  isPolicyHost = noughtyLib.hostHasTag "policy";
   username = config.noughty.user.name;
 in
 {
@@ -91,16 +96,19 @@ in
     initrd.includeDefaultModules = true;
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
-    kernelPackages = lib.mkIf (
-      !host.is.iso
-      && lib.elem host.name [
-        "atrius"
-        "crawler"
-        "dagger"
-        "felkor"
-        "tanis"
-      ]
-    ) (lib.mkDefault pkgs.linuxPackages_latest);
+    # Central kernel policy for installed systems. bcachefs hosts stay on the
+    # stable 6.12 line, servers, VMs, and policy hosts use 6.18, and everything
+    # else tracks the latest packaged kernel. Live ISO media keeps its defaults.
+    kernelPackages = lib.mkIf (!host.is.iso) (
+      lib.mkDefault (
+        if hasBcachefsFilesystem then
+          pkgs.linuxPackages_6_12
+        else if host.is.server || host.is.vm || isPolicyHost then
+          pkgs.linuxPackages_6_18
+        else
+          pkgs.linuxPackages_latest
+      )
+    );
     # Only enable the systemd-boot on installs, not live media (.ISO images)
     loader = lib.mkIf (!host.is.iso) {
       efi.canTouchEfiVariables = true;

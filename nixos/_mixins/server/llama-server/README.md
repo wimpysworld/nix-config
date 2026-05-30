@@ -269,15 +269,14 @@ NixOS 25.11 ships `pkgs.linuxPackages_latest` on the 6.19 series, which comforta
 
 ### Hardware mixin snippet
 
-Hardware-specific settings belong in a host-level config or dedicated hardware mixin, not in the Ollama service mixin:
+Kernel selection is centralised in `nixos/default.nix`. Hardware-specific module
+settings belong in a host-level config or dedicated hardware mixin, not in the
+Ollama service mixin:
 
 ```nix
 { config, lib, pkgs, ... }:
 
 {
-  # Kernel ≥ 6.19.11 required for gfx1151 + ROCm 7.2 stability.
-  boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
-
   boot.extraModprobeConfig = ''
     # Expand GTT pool to ~120 GB (4 KiB pages: 120 * 1024^3 / 4096 = 31457280).
     options ttm pages_limit=31457280
