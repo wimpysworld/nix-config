@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-GENERATION_PROMPT="Count from 1 to 512, one number per line."
+GENERATION_PROMPT="Write a concise Python function named summarise_log(lines) that counts INFO, WARNING, and ERROR entries, ignores malformed lines, and returns a dict. Include a short example."
 GENERATION_MAX_TOKENS="512"
 PROMPT_BENCH_TOKENS="512"
 EMBEDDING_BENCH_TEXT="Optical fibre uses pulses of light to carry data through thin strands of glass or plastic. Modern systems rely on wavelength multiplexing, amplification, and low-loss transmission to move large volumes of traffic over long distances."
@@ -20,7 +20,9 @@ MODEL_SPECS=$(
 	qwen3-coder:30b|unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF|Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf|Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf
 	qwen3.5:9b|unsloth/Qwen3.5-9B-GGUF|Qwen3.5-9B-UD-Q4_K_XL.gguf|Qwen3.5-9B-UD-Q4_K_XL.gguf
 	qwen3.6:27b|unsloth/Qwen3.6-27B-GGUF|Qwen3.6-27B-UD-Q4_K_XL.gguf|Qwen3.6-27B-UD-Q4_K_XL.gguf
+	qwen3.6-mtp:27b|unsloth/Qwen3.6-27B-MTP-GGUF|Qwen3.6-27B-UD-Q4_K_XL.gguf|Qwen3.6-27B-UD-Q4_K_XL.gguf
 	qwen3.6:35b|unsloth/Qwen3.6-35B-A3B-GGUF|Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf|Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+	qwen3.6-mtp:35b|unsloth/Qwen3.6-35B-A3B-MTP-GGUF|Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf|Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
 	qwen2.5-coder:14b|unsloth/Qwen2.5-Coder-14B-Instruct-128K-GGUF|Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf|Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf
 	qwen2.5-coder:7b|unsloth/Qwen2.5-Coder-7B-Instruct-128K-GGUF|Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf|Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf
 	qwen3-coder-next|unsloth/Qwen3-Coder-Next-GGUF|Qwen3-Coder-Next-UD-Q4_K_XL.gguf|Qwen3-Coder-Next-UD-Q4_K_XL.gguf
@@ -51,6 +53,8 @@ HF_PRIMARY_PATH=""
 HF_MODEL_PATH=""
 MODEL=""
 MODEL_KIND="generation"
+MTP_MODEL='false'
+MTP_DRAFT_N_MAX="${BENCHMARK_MODELS_MTP_DRAFT_N_MAX:-1}"
 RUNS="5"
 PURGE_REQUESTED='false'
 HOST_COMPUTE_VENDOR="${BENCHMARK_MODELS_HOST_GPU_COMPUTE_VENDOR:-}"
@@ -77,10 +81,10 @@ usage() {
 	cat <<'EOF'
 Usage: benchmark-models [--purge] [model] [runs]
 
-Benchmarks one model across the user-scoped Ollama backend and host-specific llama.cpp backends.
+Benchmarks one model across supported Ollama and host-specific llama.cpp backends.
 
 Arguments:
-  model   Ollama model name to benchmark, default example: qwen3.6:35b
+  model   Benchmark model alias, example: qwen3.6:35b
   runs    Number of measured runs, default: 5
 
 Options:
@@ -95,6 +99,8 @@ Backend matrix:
 Environment:
   BENCHMARK_MODELS_ROOT        Root directory for caches under ~/Volatile
   BENCHMARK_MODELS_OLLAMA_HOST Host:port for the temporary Ollama server
+  BENCHMARK_MODELS_MTP_DRAFT_N_MAX
+                               MTP draft tokens for llama.cpp generation, 1-6, default: 2
 EOF
 }
 
@@ -274,6 +280,27 @@ configure_benchmark_mode() {
 	esac
 }
 
+configure_mtp_mode() {
+	case "${MODEL}" in
+	qwen3.6-mtp:*)
+		MTP_MODEL='true'
+		;;
+	*)
+		MTP_MODEL='false'
+		;;
+	esac
+
+	if [[ "${MTP_MODEL}" != 'true' ]]; then
+		return 0
+	fi
+
+	MTP_DRAFT_N_MAX="$(trim_whitespace "${MTP_DRAFT_N_MAX}")"
+	if ! [[ "${MTP_DRAFT_N_MAX}" =~ ^[1-6]$ ]]; then
+		printf 'Error: BENCHMARK_MODELS_MTP_DRAFT_N_MAX must be an integer from 1 to 6.\n' >&2
+		exit 1
+	fi
+}
+
 validate_repo_relative_path() {
 	local path_value="$1"
 	local path_component
@@ -383,6 +410,7 @@ validate_model() {
 
 validate_model
 configure_benchmark_mode
+configure_mtp_mode
 
 mkdir -p \
 	"${XDG_ROOT}/cache" \
@@ -539,9 +567,11 @@ add_runner() {
 prepare_backend_matrix() {
 	case "${HOST_COMPUTE_VENDOR}" in
 	amd)
-		add_runner 'rocm-ollama' 'ollama' 'rocm-ollama'
-		add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
-		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
+		if [[ "${MTP_MODEL}" != 'true' ]]; then
+			add_runner 'rocm-ollama' 'ollama' 'rocm-ollama'
+			add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
+		fi
+		if [[ "${MODEL_KIND}" == 'embedding' || "${MTP_MODEL}" == 'true' ]]; then
 			add_runner 'rocm-llama-server' 'llama-server' 'rocm-llama-server'
 			add_runner 'vulkan-llama-server' 'llama-server' 'vulkan-llama-server'
 		else
@@ -550,9 +580,11 @@ prepare_backend_matrix() {
 		fi
 		;;
 	nvidia)
-		add_runner 'cuda-ollama' 'ollama' 'cuda-ollama'
-		add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
-		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
+		if [[ "${MTP_MODEL}" != 'true' ]]; then
+			add_runner 'cuda-ollama' 'ollama' 'cuda-ollama'
+			add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
+		fi
+		if [[ "${MODEL_KIND}" == 'embedding' || "${MTP_MODEL}" == 'true' ]]; then
 			add_runner 'cuda-llama-server' 'llama-server' 'cuda-llama-server'
 			add_runner 'vulkan-llama-server' 'llama-server' 'vulkan-llama-server'
 		else
@@ -621,13 +653,14 @@ start_ollama_server() {
 }
 
 run_ollama_once() {
+	local max_tokens="${1:-${GENERATION_MAX_TOKENS}}"
 	local payload
 	local metrics
 
 	payload=$(jq -cn \
 		--arg model "${MODEL}" \
 		--arg prompt "${GENERATION_PROMPT}" \
-		--argjson max_tokens "${GENERATION_MAX_TOKENS}" \
+		--argjson max_tokens "${max_tokens}" \
 		'{
 		  model: $model,
 		  prompt: $prompt,
@@ -646,6 +679,51 @@ run_ollama_once() {
 	printf '%s\n' "${metrics}"
 }
 
+run_llama_bench_warmup() {
+	local command_name="$1"
+	local model_path="$2"
+	local log_path="$3"
+
+	run_llama_backend \
+		"${command_name}" \
+		-m "${model_path}" \
+		-ngl 99 \
+		-fa 1 \
+		--mmap 0 \
+		-p "${PROMPT_BENCH_TOKENS}" \
+		-n 1 \
+		-r 1 \
+		-o jsonl \
+		>"${log_path}" \
+		2>&1
+}
+
+llama_bench_jsonl() {
+	awk '/^[[:space:]]*\{/ { print }'
+}
+
+print_warmup_log() {
+	local log_path="$1"
+	local line_count='12'
+
+	printf '    log: %s\n' "${log_path}"
+	if [[ ! -s "${log_path}" ]]; then
+		return 0
+	fi
+
+	printf '    last log lines:\n'
+	awk -v count="${line_count}" '
+	{
+		lines[NR % count] = $0
+	}
+	END {
+		start = NR > count ? NR - count + 1 : 1
+		for (line = start; line <= NR; line += 1) {
+			printf "      %s\n", lines[line % count]
+		}
+	}' "${log_path}"
+}
+
 run_llama_bench_once() {
 	local command_name="$1"
 	local model_path="$2"
@@ -656,34 +734,34 @@ run_llama_bench_once() {
 
 	decode_output=$(run_llama_backend \
 		"${command_name}" \
-			-m "${model_path}" \
-			-ngl 99 \
-			-fa 1 \
-			--mmap 0 \
-			-p 0 \
-			-n "${GENERATION_MAX_TOKENS}" \
-			-r 1 \
-			-o jsonl \
+		-m "${model_path}" \
+		-ngl 99 \
+		-fa 1 \
+		--mmap 0 \
+		-p 0 \
+		-n "${GENERATION_MAX_TOKENS}" \
+		-r 1 \
+		-o jsonl \
 		2>/dev/null)
 
-	decode_tps=$(printf '%s' "${decode_output}" | jq -ser '[.[] | select(.n_gen > 0)] | .[0].avg_ts // empty')
+	decode_tps=$(printf '%s' "${decode_output}" | llama_bench_jsonl | jq -ser '[.[] | select(.n_gen > 0)] | .[0].avg_ts // empty')
 	if [[ -z "${decode_tps}" ]]; then
 		return 1
 	fi
 
 	prompt_output=$(run_llama_backend \
 		"${command_name}" \
-			-m "${model_path}" \
-			-ngl 99 \
-			-fa 1 \
-			--mmap 0 \
-			-p "${PROMPT_BENCH_TOKENS}" \
-			-n 0 \
-			-r 1 \
-			-o jsonl \
+		-m "${model_path}" \
+		-ngl 99 \
+		-fa 1 \
+		--mmap 0 \
+		-p "${PROMPT_BENCH_TOKENS}" \
+		-n 0 \
+		-r 1 \
+		-o jsonl \
 		2>/dev/null)
 
-	prompt_tps=$(printf '%s' "${prompt_output}" | jq -ser '[.[] | select(.n_prompt > 0 and .n_gen == 0)] | .[0].avg_ts // empty')
+	prompt_tps=$(printf '%s' "${prompt_output}" | llama_bench_jsonl | jq -ser '[.[] | select(.n_prompt > 0 and .n_gen == 0)] | .[0].avg_ts // empty')
 	if [[ -z "${prompt_tps}" ]]; then
 		return 1
 	fi
@@ -691,19 +769,59 @@ run_llama_bench_once() {
 	printf '%s\t%s\n' "${decode_tps}" "${prompt_tps}"
 }
 
+llama_server_mode() {
+	if [[ "${MODEL_KIND}" == 'embedding' ]]; then
+		printf 'embedding\n'
+	elif [[ "${MTP_MODEL}" == 'true' ]]; then
+		printf 'mtp-generation\n'
+	else
+		printf 'generation\n'
+	fi
+}
+
 start_llama_server() {
 	local command_name="$1"
+	local mode="${2:-embedding}"
+	local log_path="${3:-${TMPFILE}.llama-server.log}"
+	local -a server_args=(
+		--model "${HF_MODEL_PATH}"
+		--host 127.0.0.1
+		--port 18080
+		-fa on
+		--no-mmap
+	)
 
-	rm -f "${TMPFILE}.llama-server.log"
+	case "${mode}" in
+	embedding)
+		server_args+=(--embeddings --pooling last)
+		;;
+	mtp-generation)
+		server_args+=(
+			-ngl 99
+			-c 8192
+			-np 1
+			--no-mmproj
+			--spec-type draft-mtp
+			--spec-draft-n-max "${MTP_DRAFT_N_MAX}"
+		)
+		;;
+	generation)
+		server_args+=(
+			-ngl 99
+			-c 8192
+			-np 1
+		)
+		;;
+	*)
+		printf 'Error: unsupported llama-server mode: %s\n' "${mode}" >&2
+		return 1
+		;;
+	esac
+
+	rm -f "${log_path}"
 	run_llama_backend \
 		"${command_name}" \
-		--model "${HF_MODEL_PATH}" \
-		--host 127.0.0.1 \
-		--port 18080 \
-		-fa 1 \
-		--mmap 0 \
-		--embeddings \
-		--pooling last >"${TMPFILE}.llama-server.log" 2>&1 &
+		"${server_args[@]}" >"${log_path}" 2>&1 &
 	LLAMA_SERVER_PID="$!"
 
 	for _ in $(seq 1 60); do
@@ -713,7 +831,7 @@ start_llama_server() {
 
 		if ! kill -0 "${LLAMA_SERVER_PID}" 2>/dev/null; then
 			printf 'Error: temporary llama-server exited early.\n' >&2
-			printf 'Log: %s.llama-server.log\n' "${TMPFILE}" >&2
+			printf 'Log: %s\n' "${log_path}" >&2
 			return 1
 		fi
 
@@ -721,15 +839,17 @@ start_llama_server() {
 	done
 
 	printf 'Error: timed out waiting for temporary llama-server at %s.\n' "${LLAMA_SERVER_URL}" >&2
-	printf 'Log: %s.llama-server.log\n' "${TMPFILE}" >&2
+	printf 'Log: %s\n' "${log_path}" >&2
 	return 1
 }
 
 restart_llama_server_for_runner() {
 	local command_name="$1"
+	local mode="${2:-embedding}"
+	local log_path="${3:-${TMPFILE}.llama-server.log}"
 
 	stop_llama_server
-	start_llama_server "${command_name}"
+	start_llama_server "${command_name}" "${mode}" "${log_path}"
 }
 
 run_ollama_embedding_once() {
@@ -802,6 +922,53 @@ run_llama_server_embedding_once() {
 	printf '%s\t%s\n' "${chars_per_second}" "${docs_per_second}"
 }
 
+run_llama_server_generation_once() {
+	local max_tokens="${1:-${GENERATION_MAX_TOKENS}}"
+	local payload
+	local response
+	local metrics
+
+	payload=$(jq -cn \
+		--arg prompt "${GENERATION_PROMPT}" \
+		--argjson max_tokens "${max_tokens}" \
+		'{
+		  prompt: $prompt,
+		  n_predict: $max_tokens,
+		  stream: false,
+		  timings_per_token: true,
+		  cache_prompt: false,
+		  temperature: 0.0,
+		  seed: 0
+		}')
+
+	if ! response=$(curl --silent --show-error --fail "${LLAMA_SERVER_URL}/completion" \
+		-H 'Content-Type: application/json' \
+		-d "${payload}"); then
+		printf 'Error: llama-server /completion request failed.\n' >&2
+		return 1
+	fi
+
+	if ! metrics=$(jq -er '
+		def rate($direct; $tokens; $ms):
+			if ($direct // 0) > 0 then
+				$direct
+			elif (($tokens // 0) > 0 and ($ms // 0) > 0) then
+				($tokens / ($ms / 1000))
+			else
+				empty
+			end;
+		rate(.timings.predicted_per_second; .timings.predicted_n; .timings.predicted_ms) as $decode |
+		rate(.timings.prompt_per_second; .timings.prompt_n; .timings.prompt_ms) as $prompt |
+		[$decode, $prompt] | @tsv
+	' <<<"${response}"); then
+		printf 'Error: failed to parse llama-server /completion timings.\n' >&2
+		printf 'Response: %s\n' "${response}" >&2
+		return 1
+	fi
+
+	printf '%s\n' "${metrics}"
+}
+
 ollama_model_cached() {
 	local cached_model
 
@@ -861,12 +1028,21 @@ calculate_stats() {
 print_intro() {
 	printf 'Model benchmark: %s runs\n' "${RUNS}"
 	printf -- '- %-10s %s\n' 'Mode:' "${MODEL_KIND}"
-	printf -- '- %-10s %s\n' 'Ollama:' "${MODEL}"
+	if [[ "${MTP_MODEL}" == 'true' ]]; then
+		printf -- '- %-10s skipped, MTP requires llama-server MTP flags\n' 'Ollama:'
+		printf -- '- %-10s --spec-type draft-mtp --spec-draft-n-max %s\n' 'MTP:' "${MTP_DRAFT_N_MAX}"
+	else
+		printf -- '- %-10s %s\n' 'Ollama:' "${MODEL}"
+	fi
 	printf -- '- %-10s %s\n' 'Llama.cpp:' "${HF_PRIMARY_PATH}"
 
 	if [[ "${MODEL_KIND}" == 'generation' ]]; then
 		printf -- '- %-10s %s\n' 'Prompt:' "${GENERATION_PROMPT}"
-		printf -- '- %-10s %s output tokens, %s-token synthetic pp test\n\n' 'Metrics:' "${GENERATION_MAX_TOKENS}" "${PROMPT_BENCH_TOKENS}"
+		if [[ "${MTP_MODEL}" == 'true' ]]; then
+			printf -- '- %-10s %s output tokens, prompt timing from request prompt\n\n' 'Metrics:' "${GENERATION_MAX_TOKENS}"
+		else
+			printf -- '- %-10s %s output tokens, %s-token synthetic pp test\n\n' 'Metrics:' "${GENERATION_MAX_TOKENS}" "${PROMPT_BENCH_TOKENS}"
+		fi
 	else
 		printf -- '- %-10s %s documents x %s characters\n\n' 'Batch:' "${EMBEDDING_BENCH_BATCH}" "${#EMBEDDING_BENCH_TEXT}"
 	fi
@@ -874,16 +1050,20 @@ print_intro() {
 
 prepare_downloads() {
 	local download_path
+	local hf_step='2'
+	local total_steps='2'
 	local missing_download='false'
 
 	printf 'Preparation\n'
 
-	if [[ -z "${OLLAMA_COMMAND}" ]]; then
+	if [[ "${MTP_MODEL}" == 'true' ]]; then
+		hf_step='1'
+		total_steps='1'
+		printf '  [skip] Ollama model: skipped, MTP requires llama-server MTP flags\n'
+	elif [[ -z "${OLLAMA_COMMAND}" ]]; then
 		printf 'Error: no Ollama runner is available for preparation.\n' >&2
 		exit 1
-	fi
-
-	if ollama_model_cached; then
+	elif ollama_model_cached; then
 		printf '  [1/2] Ollama model: ready\n'
 	else
 		printf '  [1/2] Ollama model: pulling\n'
@@ -898,9 +1078,9 @@ prepare_downloads() {
 	done
 
 	if [[ "${missing_download}" == 'false' ]] && HF_MODEL_PATH="$(resolve_cached_hf_path "${HF_PRIMARY_PATH}")"; then
-		printf '  [2/2] Hugging Face GGUF: ready\n'
+		printf '  [%s/%s] Hugging Face GGUF: ready\n' "${hf_step}" "${total_steps}"
 	else
-		printf '  [2/2] Hugging Face GGUF: downloading\n'
+		printf '  [%s/%s] Hugging Face GGUF: downloading\n' "${hf_step}" "${total_steps}"
 		for download_path in "${HF_DOWNLOAD_PATHS[@]}"; do
 			run_hf download --repo-type model "${HF_REPO}" "${download_path}"
 		done
@@ -931,9 +1111,12 @@ run_backend_benchmark() {
 	local runner_number=$((index + 1))
 	local backend_tmpfile
 	local secondary_tmpfile
+	local warmup_log
 	local metrics
 	local primary_metric
 	local secondary_metric
+	local server_log
+	local server_mode
 
 	printf '  Runner %s/%s: %s\n' "${runner_number}" "${total_runners}" "${runner_label}"
 	printf '    measured runs: %s\n' "${RUNS}"
@@ -948,28 +1131,116 @@ run_backend_benchmark() {
 	secondary_tmpfile=$(mktemp "${TMPDIR}/benchmark-backend-secondary.XXXXXX")
 
 	if [[ "${runner_type}" == 'ollama' ]]; then
-		restart_ollama_server_for_runner "${command_name}"
+		if ! restart_ollama_server_for_runner "${command_name}"; then
+			skipped_reason="server failed, see ${OLLAMA_LOG}"
+			RUNNER_SKIPPED[index]="${skipped_reason}"
+			rm -f "${backend_tmpfile}" "${secondary_tmpfile}"
+			printf '    skipped - %s\n\n' "${skipped_reason}"
+			return 0
+		fi
+
 		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
-			run_ollama_embedding_once >/dev/null
+			warmup_log=$(mktemp "${TMPDIR}/benchmark-${runner_label}-warmup.XXXXXX")
+			if ! run_ollama_embedding_once >"${warmup_log}" 2>&1; then
+				skipped_reason="warm-up failed, see ${warmup_log}"
+				RUNNER_SKIPPED[index]="${skipped_reason}"
+				print_warmup_log "${warmup_log}"
+				rm -f "${backend_tmpfile}" "${secondary_tmpfile}"
+				printf '    skipped - %s\n\n' "${skipped_reason}"
+				return 0
+			fi
+			rm -f "${warmup_log}"
+		else
+			printf '    warm-up... '
+			warmup_log=$(mktemp "${TMPDIR}/benchmark-${runner_label}-warmup.XXXXXX")
+			if ! run_ollama_once 1 >"${warmup_log}" 2>&1; then
+				skipped_reason="warm-up failed, see ${warmup_log}"
+				RUNNER_SKIPPED[index]="${skipped_reason}"
+				printf 'failed\n'
+				print_warmup_log "${warmup_log}"
+				rm -f "${backend_tmpfile}" "${secondary_tmpfile}"
+				printf '    skipped - %s\n\n' "${skipped_reason}"
+				return 0
+			fi
+			rm -f "${warmup_log}"
+			printf 'done\n'
 		fi
 	elif [[ "${runner_type}" == 'llama-server' ]]; then
-		restart_llama_server_for_runner "${command_name}"
-		run_llama_server_embedding_once >/dev/null
+		server_mode="$(llama_server_mode)"
+		server_log="${TMPFILE}.${runner_label}.llama-server.log"
+		if ! restart_llama_server_for_runner "${command_name}" "${server_mode}" "${server_log}"; then
+			skipped_reason="server failed, see ${server_log}"
+			RUNNER_SKIPPED[index]="${skipped_reason}"
+			rm -f "${backend_tmpfile}" "${secondary_tmpfile}"
+			printf '    skipped - %s\n\n' "${skipped_reason}"
+			return 0
+		fi
+
+		warmup_log=$(mktemp "${TMPDIR}/benchmark-${runner_label}-warmup.XXXXXX")
+		if [[ "${server_mode}" == 'embedding' ]]; then
+			if ! run_llama_server_embedding_once >"${warmup_log}" 2>&1; then
+				skipped_reason="warm-up failed, see ${warmup_log}"
+				RUNNER_SKIPPED[index]="${skipped_reason}"
+				print_warmup_log "${warmup_log}"
+				rm -f "${backend_tmpfile}" "${secondary_tmpfile}"
+				printf '    skipped - %s\n\n' "${skipped_reason}"
+				return 0
+			fi
+		else
+			printf '    warm-up... '
+			if ! run_llama_server_generation_once 1 >"${warmup_log}" 2>&1; then
+				skipped_reason="warm-up failed, see ${warmup_log}"
+				RUNNER_SKIPPED[index]="${skipped_reason}"
+				printf 'failed\n'
+				print_warmup_log "${warmup_log}"
+				rm -f "${backend_tmpfile}" "${secondary_tmpfile}"
+				printf '    skipped - %s\n\n' "${skipped_reason}"
+				return 0
+			fi
+			printf 'done\n'
+		fi
+		rm -f "${warmup_log}"
+	elif [[ "${runner_type}" == 'llama.cpp' ]]; then
+		printf '    warm-up... '
+		warmup_log=$(mktemp "${TMPDIR}/benchmark-${runner_label}-warmup.XXXXXX")
+		if ! run_llama_bench_warmup "${command_name}" "${HF_MODEL_PATH}" "${warmup_log}"; then
+			skipped_reason="warm-up failed, see ${warmup_log}"
+			RUNNER_SKIPPED[index]="${skipped_reason}"
+			printf 'failed\n'
+			print_warmup_log "${warmup_log}"
+			rm -f "${backend_tmpfile}" "${secondary_tmpfile}"
+			printf '    skipped - %s\n\n' "${skipped_reason}"
+			return 0
+		fi
+		rm -f "${warmup_log}"
+		printf 'done\n'
 	fi
 
 	for run_number in $(seq 1 "${RUNS}"); do
 		printf '    run %s/%s... ' "${run_number}" "${RUNS}"
 		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
 			if [[ "${runner_type}" == 'ollama' ]]; then
-				metrics=$(run_ollama_embedding_once)
+				if ! metrics=$(run_ollama_embedding_once); then
+					metrics=''
+				fi
 			else
-				metrics=$(run_llama_server_embedding_once)
+				if ! metrics=$(run_llama_server_embedding_once); then
+					metrics=''
+				fi
 			fi
 		else
 			if [[ "${runner_type}" == 'ollama' ]]; then
-				metrics=$(run_ollama_once)
+				if ! metrics=$(run_ollama_once); then
+					metrics=''
+				fi
+			elif [[ "${runner_type}" == 'llama-server' ]]; then
+				if ! metrics=$(run_llama_server_generation_once); then
+					metrics=''
+				fi
 			else
-				metrics=$(run_llama_bench_once "${command_name}" "${HF_MODEL_PATH}")
+				if ! metrics=$(run_llama_bench_once "${command_name}" "${HF_MODEL_PATH}"); then
+					metrics=''
+				fi
 			fi
 		fi
 
@@ -1194,12 +1465,18 @@ if [[ ${#RUNNER_COMMANDS[@]} -eq 0 ]]; then
 	exit 0
 fi
 
-OLLAMA_COMMAND="$(first_ollama_command)"
-start_ollama_server
+if OLLAMA_COMMAND="$(first_ollama_command)"; then
+	start_ollama_server
+else
+	OLLAMA_COMMAND=''
+fi
 prepare_downloads
 
 printf 'Benchmark\n'
 if [[ ${#RUNNER_COMMANDS[@]} -gt 0 ]]; then
+	if [[ "${MTP_MODEL}" == 'true' ]]; then
+		printf '  Ollama runners: skipped - MTP requires llama-server MTP flags\n'
+	fi
 	printf '  Runners: %s\n' "$(backend_matrix_label)"
 else
 	printf '  Runners: skipped\n'
