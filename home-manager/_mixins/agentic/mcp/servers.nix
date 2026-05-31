@@ -15,6 +15,13 @@ let
   chromiumEnabled = config.programs.chromium.enable || (host.is.linux && host.is.workstation);
   firefoxEnabled = config.programs.firefox.enable || (host.is.linux && host.is.workstation);
   browserAutomationEnabled = chromiumEnabled && firefoxEnabled;
+  mcpNixosNoUpdateCheck = pkgs.writeShellApplication {
+    name = "mcp-nixos-no-update-check";
+    text = ''
+      export FASTMCP_CHECK_FOR_UPDATES=off
+      exec ${pkgs.mcp-nixos}/bin/mcp-nixos "$@"
+    '';
+  };
   playwrightMcpWithNixBrowser = pkgs.writeShellApplication {
     name = "playwright-mcp-with-nix-browser";
     text = ''
@@ -174,7 +181,7 @@ rec {
 
     nixos = {
       transport = "stdio";
-      command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
+      command = lib.getExe mcpNixosNoUpdateCheck;
       args = [ ];
       consumers = {
         claudeCode.enabled = false;
