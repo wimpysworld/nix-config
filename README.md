@@ -1,9 +1,9 @@
 <div align="center">
-<img src=".github/logo.png" alt="Sith Happens" width="256" />
+<img src="assets/logo.png" alt="Sith Happens" width="256" />
 
 # Wimpy's [NixOS], [nix-darwin] & [Home Manager] Configurations
 
-<b>Made with 💝 for <img src=".github/nixos.png" align="center" width="18" alt="NixOS"/> & <img src=".github/apple.png" align="center" width="16" alt="macOS"/></b>
+<b>Made with 💝 for <img src="assets/nixos.png" align="center" width="18" alt="NixOS"/> & <img src="assets/apple.png" align="center" width="16" alt="macOS"/></b>
 <br />
 
 </div>
@@ -53,7 +53,7 @@ Dual boot systems have the NixOS install named a Sith Lord and the _"other"_ OS 
 **As featured on [Linux Matters](https://linuxmatters.sh) podcast!** 🎙️ I am a presenter on Linux Matters and this configuration was featured in [Episode 7 - Immutable Desktop Linux for Anyone](https://linuxmatters.sh/7/).
 
 <div align="center">
-  <a href="https://linuxmatters.sh" target="_blank"><img src="./.github/screenshots/linuxmatters.png" alt="Linux Matters Podcast"/></a>
+  <a href="https://linuxmatters.sh" target="_blank"><img src="assets/linuxmatters.png" alt="Linux Matters Podcast"/></a>
   <br />
   <em>Linux Matters Podcast</em>
 </div>
@@ -144,12 +144,13 @@ The full noughty option reference, helper functions, and usage patterns are docu
 │  ├── dagger
 │  ├── felkor
 │  ├── malak
-│  ├── maul
 │  ├── nihilus
 │  ├── revan
 │  ├── shaa
 │  ├── sidious
+│  ├── skrye
 │  ├── tanis
+│  ├── zannah
 │  └── default.nix
 ├── overlays
 │  └── default.nix
@@ -183,7 +184,7 @@ A fully _"oxidised"_ 🦀 [Modern Unix] shell experience is provided by [Fish sh
 The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], and a [Fresh] terminal editor configuration.
 Useful shell scripts I used to keep in muddle of git repos are now migrated to [NixOS scripts](./nixos/_mixins/scripts) and [Home Manager scripts](./home-manager/_mixins/scripts) to provide a declarative, reproducible and `shellcheck` validated toolbox 🧰
 
-![fastfetch on Phasma](.github/screenshots/fastfetch.png)
+![fastfetch](assets/fastfetch.png)
 
 ### The Desktop 🖥️
 
@@ -198,7 +199,7 @@ The usual creature comforts you'd expect to find in a Linux Desktop are integrat
 
 ## Eye Candy 👀🍬
 
-![Hyprland on Shaa](.github/screenshots/hyprland.png)
+![Hyprland on Skrye](assets/hyprland.png)
 
 <div align="center"><small>Hyprland on Shaa; <i>a work in progress; soon to be daily driver</i></small></div>
 
@@ -336,36 +337,26 @@ Things I currently need to do manually after installation.
 ### Accounts
 
 - [ ] Atuin
-  - `atuin login -u <username>`
-  - `atuin sync -f`
+  - `atuin login`
+  - `atuin sync`
 - [ ] Brave - enroll sync
 - [ ] Chatterino - authenticate
 - [ ] Discord - authenticate
-- [ ] GitKraken
-  - [ ] Authenticate with GitHub
-  - [ ] Create Personal Profile
-  - [ ] Create Work Profile
 - [ ] Harper - review browser extension settings
-- [ ] Maelstral - `maestral_qt`
+- [ ] Maestral - `maestral_qt`
 - [ ] Matrix - authenticate
 - [ ] Slack - authenticate
 - [ ] Telegram - authenticate
-- [ ] VSCode - authenticate with GitHub enable sync
 - [ ] Wavebox - authenticate Google and restore profile
 
 ### System
 
-`defender` and `fighter` are Ubuntu virtual machines run under [Lima] for my Ubuntu MATE development and testing environments.
+`defender` and `fighter` are Ubuntu virtual machines run under [Lima] for Ubuntu development and testing.
 
-- [ ] Tools
-  - `install-cdebug`
-  - `install-chainctl`
-  - `install-wolfi-package-status`
-  - `install-yam`
-- [ ] On Linux run
+- [ ] On Linux run (optional)
   - `create-defender`
   - `create-fighter`
-- [ ] On macOS run
+- [ ] On macOS run (optional)
   - Run Docker Desktop to complete the setup.
 
 ### Themes
