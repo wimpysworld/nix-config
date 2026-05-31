@@ -7,6 +7,21 @@
 let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
+  initrdGpuKernelModulesByVendor = {
+    amd = [ "amdgpu" ];
+    intel = [ "i915" ];
+    nvidia = [
+      "nvidia"
+      "nvidia_modeset"
+      "nvidia_uvm"
+      "nvidia_drm"
+    ];
+  };
+  initrdGpuKernelModules =
+    if host.gpu.primaryVendor == null then
+      [ ]
+    else
+      initrdGpuKernelModulesByVendor.${host.gpu.primaryVendor} or [ ];
   # Select the lightest nvtop variant that covers the GPUs actually present.
   # nvtopPackages.full pulls in NVIDIA drivers and CUDA build dependencies,
   # which is wasteful and undesirable on systems without NVIDIA hardware.
@@ -25,6 +40,7 @@ in
 lib.mkIf (!host.is.iso) {
 
   boot = {
+    initrd.kernelModules = initrdGpuKernelModules;
     # If an NVIDIA GPU is present, blacklist the nouveau driver.
     blacklistedKernelModules = lib.optionals host.gpu.hasNvidia [ "nouveau" ];
     # Unlock access to adjust AMD GPU clocks and voltages via sysfs.

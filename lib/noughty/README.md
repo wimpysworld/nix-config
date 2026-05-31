@@ -147,7 +147,8 @@ All derived from other `noughty.host.*` options. Settable (not `readOnly`), so h
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `gpu.vendors` | `listOf (enum ["nvidia" "amd" "intel" "apple"])` | `[]` | GPU vendors present in this host. |
+| `gpu.vendors` | `listOf (enum ["nvidia" "amd" "intel" "apple"])` | `[]` | GPU vendors present in this host. The first entry is the primary GPU. |
+| `gpu.primaryVendor` | `nullOr (enum ["nvidia" "amd" "intel" "apple"])` | First `gpu.vendors` entry, or `null` | Primary GPU vendor. Read-only. |
 
 #### `gpu.compute` - Compute GPU submodule
 

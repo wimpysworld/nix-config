@@ -16,7 +16,6 @@
       availableKernelModules = [ "thunderbolt" ];
       kernelModules = [
         "kvm-amd"
-        "nvidia"
       ];
     };
   };

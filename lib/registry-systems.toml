@@ -11,6 +11,7 @@
 #   desktop    - optional: derived from kind + platform if omitted
 #   username   - optional: defaults to "martin"
 #   gpu        - optional: vendors, compute.vendor, compute.vram, compute.unified
+#                The first vendor is the primary GPU.
 #   tags       - optional: list of host tags
 #
 # Omitted optional fields use their defaults (as resolved by resolveEntry):

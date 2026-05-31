@@ -213,6 +213,24 @@ in
           description = "GPU vendors present in this host.";
         };
 
+        primaryVendor = lib.mkOption {
+          type = lib.types.nullOr (
+            lib.types.enum [
+              "nvidia"
+              "amd"
+              "intel"
+              "apple"
+            ]
+          );
+          default =
+            if config.noughty.host.gpu.vendors == [ ] then
+              null
+            else
+              builtins.head config.noughty.host.gpu.vendors;
+          description = "Primary GPU vendor. Derived from the first gpu.vendors entry.";
+          readOnly = true;
+        };
+
         compute = {
           vendor = lib.mkOption {
             type = lib.types.nullOr (
