@@ -17,9 +17,8 @@ lib.mkIf (!host.is.iso && host.network.wifi) {
       env XDG_CONFIG_HOME="$PREV_CONFIG_HOME" ${pkgs.chromium}/bin/chromium \
         --user-data-dir=''${XDG_DATA_HOME:-$HOME/.local/share}/chromium-captive \
         --proxy-server="socks5://$PROXY" \
-        --host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE localhost" \
-        --no-first-run --new-window --incognito \
-        -no-default-browser-check http://neverssl.com
+        --no-first-run --new-window \
+        --no-default-browser-check http://neverssl.com
     '';
     # With iwd as the wifi backend, the first wireless interface is named
     # wlan0 by iwd convention. For hosts with multiple wireless adapters,
@@ -88,7 +87,7 @@ lib.mkIf (!host.is.iso && host.network.wifi) {
                       ${pkgs.systemd}/bin/systemd-run --user --machine="$SESSION_USER@.host" \
                         --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME_DIR/bus" \
                         --setenv=XDG_RUNTIME_DIR="$RUNTIME_DIR" \
-                        captive-browser 2>/dev/null || true
+                        ${config.system.path}/bin/captive-browser 2>/dev/null || true
                     fi
                   fi
                 done
