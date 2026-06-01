@@ -74,6 +74,33 @@ lib.mkIf host.is.workstation {
         XCURSOR_THEME=${cursorThemeName}
         XCURSOR_SIZE=${toString cursorSize}
       '';
+      # Wildcard identifier sidesteps the app_id race (set after first map);
+      # explicit Maximize + SetDecorations are deterministic vs ToggleFullscreen.
+      "labwc-greeter/rc.xml".text = ''
+        <?xml version="1.0"?>
+        <labwc_config>
+          <core>
+            <decoration>server</decoration>
+            <gap>0</gap>
+            <xwaylandPersistence>no</xwaylandPersistence>
+          </core>
+          <theme>
+            <cornerRadius>0</cornerRadius>
+            <dropShadows>no</dropShadows>
+            <keepBorder>no</keepBorder>
+            <maximizedDecoration>none</maximizedDecoration>
+          </theme>
+          <windowRules>
+            <windowRule identifier="*" matchOnce="true">
+              <skipTaskbar>yes</skipTaskbar>
+              <skipWindowSwitcher>yes</skipWindowSwitcher>
+              <serverDecoration>no</serverDecoration>
+              <action name="Maximize"/>
+              <action name="SetDecorations" decorations="none"/>
+            </windowRule>
+          </windowRules>
+        </labwc_config>
+      '';
     };
     systemPackages = [
       cursorPackage
