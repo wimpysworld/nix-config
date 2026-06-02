@@ -9,4 +9,4 @@ Interview me relentlessly about every aspect of this plan until we reach a share
 Ask the questions one at a time.
 
 If a question can be answered by exploring the codebase, explore the codebase instead.
-Answer obvious questions automatically - report what you decided and why but do not ask permission
+Only ask where the answer changes implementation shape, do not ask derivative questions. 
