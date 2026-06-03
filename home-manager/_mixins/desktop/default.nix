@@ -28,19 +28,11 @@ in
         size = "standard";
         variant = config.catppuccin.flavor;
       };
-      iconThemeName = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
-      iconThemePackage =
-        if host.is.linux then
-          pkgs.catppuccin-papirus-folders.override {
-            inherit (config.catppuccin) flavor;
-            inherit (config.catppuccin) accent;
-          }
-        else
-          null;
     in
     {
       catppuccin = {
         cursors.enable = host.is.linux;
+        gtk.icon.enable = host.is.linux;
         kvantum.enable = config.qt.enable;
       };
 
@@ -81,9 +73,7 @@ in
       home = lib.mkIf host.is.linux {
         packages = [
           pkgs.kdePackages.qt6ct
-          pkgs.kdePackages.qtstyleplugin-kvantum
           pkgs.libsForQt5.qt5ct
-          pkgs.libsForQt5.qtstyleplugin-kvantum
           pkgs.notify-desktop
           pkgs.wlr-randr
           pkgs.wl-clipboard
@@ -138,10 +128,6 @@ in
             gtk-decoration-layout = "${buttonLayout}";
           };
         };
-        iconTheme = {
-          name = iconThemeName;
-          package = iconThemePackage;
-        };
         theme = {
           name = gtkCatppuccinThemeName;
           package = gtkCatppuccinThemePackage;
@@ -152,6 +138,16 @@ in
         enable = true;
         platformTheme = {
           inherit (config.qt.style) name;
+        };
+        qt5ctSettings = {
+          Appearance = {
+            icon_theme = config.gtk.iconTheme.name;
+          };
+        };
+        qt6ctSettings = {
+          Appearance = {
+            icon_theme = config.gtk.iconTheme.name;
+          };
         };
         style = {
           name = "kvantum";
@@ -181,24 +177,6 @@ in
       xdg = lib.mkIf host.is.linux {
         autostart = {
           enable = true;
-        };
-        configFile = {
-          qt5ct = {
-            target = "qt5ct/qt5ct.conf";
-            text = lib.generators.toINI { } {
-              Appearance = {
-                icon_theme = config.gtk.iconTheme.name;
-              };
-            };
-          };
-          qt6ct = {
-            target = "qt6ct/qt6ct.conf";
-            text = lib.generators.toINI { } {
-              Appearance = {
-                icon_theme = config.gtk.iconTheme.name;
-              };
-            };
-          };
         };
         desktopEntries = {
           kvantummanager = {

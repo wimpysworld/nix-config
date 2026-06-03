@@ -5,7 +5,7 @@ Console, locale, font, timezone, and KMSCON configuration for all NixOS hosts.
 ## What This Module Does
 
 - Configures KMSCON as the system console on all VTs (replacing `agetty`)
-- Applies Catppuccin Mocha palette to both KMSCON and the Linux VT (kernel params)
+- Applies Catppuccin Mocha to KMSCON locally and uses `catppuccin.tty` for the Linux VT palette
 - Sets locale to `en_GB.UTF-8` with UK keyboard layout
 - Configures per-host font sizes for KMSCON
 - Enables auto-login on ISO images (`autologinUser = "nixos"`)

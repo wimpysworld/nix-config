@@ -10,6 +10,8 @@ let
   };
 in
 {
+  catppuccin.eza.enable = config.programs.eza.enable;
+
   programs = {
     bash.shellAliases = lib.mkIf config.programs.eza.enable shellAliases;
     eza = {
