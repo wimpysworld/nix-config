@@ -43,7 +43,7 @@
     pwmenu.inputs.nixpkgs.follows = "nixpkgs";
     pwmenu.inputs.rust-overlay.follows = "rust-overlay";
     pwmenu.inputs.flake-utils.follows = "flake-utils";
-    catppuccin.url = "github:catppuccin/nix";
+    catppuccin.url = "github:catppuccin/nix/release-26.05";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     direnv-instant.url = "github:Mic92/direnv-instant";
     direnv-instant.inputs.nixpkgs.follows = "nixpkgs";
