@@ -34,17 +34,6 @@ in
         logo = pkgs.runCommand "transparent-plymouth-logo.png" { } ''
           ${pkgs.imagemagick}/bin/magick -size 1x1 xc:transparent PNG32:$out
         '';
-        # nixpkgs generates logo-only Catppuccin theme directories before
-        # themePackages, which shadows the real Catppuccin Plymouth themes.
-        package = pkgs.symlinkJoin {
-          name = "plymouth-catppuccin-themes";
-          paths = [
-            config.catppuccin.sources.plymouth
-            (pkgs.plymouth.override {
-              systemd = config.boot.initrd.systemd.package;
-            })
-          ];
-        };
       };
     };
 
