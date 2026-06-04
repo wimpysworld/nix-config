@@ -8,38 +8,44 @@
 }:
 let
   inherit (config.noughty) host;
-  cursorThemeName = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
-  cursorSize = 32;
   cursorPackage =
-    config.catppuccin.sources.cursors."${catppuccinPalette.flavor}${lib.toSentenceCase catppuccinPalette.accent}";
+    pkgs.catppuccin-cursors."${catppuccinPalette.flavor}${
+      lib.toUpper (builtins.substring 0 1 catppuccinPalette.accent)
+    }${builtins.substring 1 (-1) catppuccinPalette.accent}";
   gtkThemePackage = pkgs.catppuccin-gtk.override {
     accents = [ "${catppuccinPalette.accent}" ];
     variant = catppuccinPalette.flavor;
   };
   iconTheme = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
-  # Compositor choice: labwc, not cage.
+  # Reference for setting display configuration for cage
+  # - https://github.com/cage-kiosk/cage/issues/304
+  # - https://github.com/cage-kiosk/cage/issues/257
   # GTK4 >= 4.16 on Wayland no longer loads Xcursor themes from disk; it only
   # renders cursors via wp_cursor_shape_v1 (offloaded to the compositor) or its
-  # bundled GResource fallback. cage 0.3.0 does not advertise wp_cursor_shape_v1,
+  # bundled GResource fallback. Cage 0.3.0 does not advertise wp_cursor_shape_v1,
   # so regreet's cursor reverts to the GTK4 default on pointer-enter. labwc does
-  # advertise it, letting the compositor render the themed cursor from
-  # XCURSOR_THEME. See https://gitlab.gnome.org/GNOME/gtk/-/blob/4.22.4/gdk/wayland/gdkcursor-wayland.c
-  regreetLabwc = pkgs.writeShellScriptBin "regreet-labwc" ''
+  # advertise it, but the greeter behaviour changed enough that Cage remains the
+  # preferred compositor. See https://gitlab.gnome.org/GNOME/gtk/-/blob/4.22.4/gdk/wayland/gdkcursor-wayland.c
+  regreetCage = pkgs.writeShellScriptBin "regreet-cage" ''
+    # Start regreet in a Wayland kiosk using Cage
     function cleanup() {
       ${pkgs.procps}/bin/pkill kanshi || true
     }
     trap cleanup EXIT
 
     export GTK_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard"
-    export XCURSOR_PATH="${cursorPackage}/share/icons''${XCURSOR_PATH:+:$XCURSOR_PATH}"
+    export XCURSOR_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors"
+    export XCURSOR_SIZE="32"
     export XDG_DATA_DIRS="${gtkThemePackage}/share:${cursorPackage}/share:${pkgs.papirus-icon-theme}/share:$XDG_DATA_DIRS"
 
     # If there is a kanshi profile for regreet, use it.
     KANSHI_REGREET="$(${pkgs.coreutils}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
     if [ -n "$KANSHI_REGREET" ]; then
-      ${pkgs.labwc}/bin/labwc -C /etc/labwc-greeter -S '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
+      ${pkgs.cage}/bin/cage -d -m last -s -- sh -c \
+        '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
+         ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
     else
-      ${pkgs.labwc}/bin/labwc -C /etc/labwc-greeter -S '${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
+      ${pkgs.cage}/bin/cage -d -m last -s -- ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet
     fi
   '';
   wallpaperResolution =
@@ -48,7 +54,8 @@ let
     in
     if res != "" then res else "1920x1080";
   # Kanshi profile for regreet: disable non-primary displays, enable primary.
-  # Single-monitor hosts need no kanshi profile
+  # Order matters: Cage -m last uses the last enabled output.
+  # Single-monitor hosts need no kanshi profile; Cage handles one output fine.
   kanshiProfile =
     if !host.display.isMultiMonitor then
       ""
@@ -67,51 +74,25 @@ let
       '';
 in
 lib.mkIf host.is.workstation {
+  # Use Cage to run regreet
   environment = {
     etc = {
       "kanshi/regreet".text = kanshiProfile;
-      "labwc-greeter/environment".text = ''
-        XCURSOR_THEME=${cursorThemeName}
-        XCURSOR_SIZE=${toString cursorSize}
-      '';
-      # Wildcard identifier sidesteps the app_id race (set after first map);
-      # explicit Maximize + SetDecorations are deterministic vs ToggleFullscreen.
-      "labwc-greeter/rc.xml".text = ''
-        <?xml version="1.0"?>
-        <labwc_config>
-          <core>
-            <decoration>server</decoration>
-            <gap>0</gap>
-            <xwaylandPersistence>no</xwaylandPersistence>
-          </core>
-          <theme>
-            <cornerRadius>0</cornerRadius>
-            <dropShadows>no</dropShadows>
-            <keepBorder>no</keepBorder>
-            <maximizedDecoration>none</maximizedDecoration>
-          </theme>
-          <windowRules>
-            <windowRule identifier="*" matchOnce="true">
-              <skipTaskbar>yes</skipTaskbar>
-              <skipWindowSwitcher>yes</skipWindowSwitcher>
-              <serverDecoration>no</serverDecoration>
-              <action name="Maximize"/>
-              <action name="SetDecorations" decorations="none"/>
-            </windowRule>
-          </windowRules>
-        </labwc_config>
-      '';
     };
     systemPackages = [
       cursorPackage
       gtkThemePackage
       pkgs.papirus-icon-theme
-      regreetLabwc
+      regreetCage
     ];
   };
   programs = {
     regreet = {
       enable = true;
+      cursorTheme = {
+        name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+        package = cursorPackage;
+      };
       settings = {
         appearance = {
           greeting_msg = "May ${noughtyLib.hostNameCapitalised} serve you well";
@@ -133,6 +114,7 @@ lib.mkIf host.is.workstation {
         };
         GTK = lib.mkForce {
           application_prefer_dark_theme = catppuccinPalette.isDark;
+          cursor_theme_name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
           font_name = "Work Sans 16";
           icon_theme_name = iconTheme;
           theme_name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
@@ -145,7 +127,7 @@ lib.mkIf host.is.workstation {
     enable = true;
     settings = {
       default_session = {
-        command = "regreet-labwc";
+        command = "regreet-cage";
         user = "greeter";
       };
     };
