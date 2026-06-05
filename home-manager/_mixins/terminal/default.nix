@@ -43,6 +43,7 @@ in
     ./fresh.nix # Terminal text editor
     ./fzf.nix # Terminal fuzzy finder
     ./gpg.nix # Terminal GPG
+    ./mpv.nix # Terminal media player
     ./pueue.nix # Terminal task manager
     ./rclone.nix # Terminal cloud storage sync
     ./ripgrep.nix # Modern Unix `grep`
