@@ -50,6 +50,7 @@ in
     ./starship.nix # Modern Unix prompt
     ./superfile.nix # Modern terminal file manager
     ./tldr.nix # Modern Unix `man`
+    ./vtm.nix # Text-based desktop environment inside the terminal
     ./yazi.nix # Modern Unix `mc`
     ./yt-dlp.nix # Terminal YouTube downloader
     ./zoxide.nix # Modern Unix `cd`
