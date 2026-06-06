@@ -41,11 +41,13 @@ in
   imports = lib.mapAttrsToList (name: _: importDirectory name) directories;
   config = lib.mkIf (noughtyLib.userHasTag "developer") {
     home = {
-      packages = with pkgs; [
-        dconf2nix # Nix code from Dconf files
-        dockerPurge
-        tokei # Modern Unix `wc` for code
-      ];
+      packages =
+        with pkgs;
+        [
+          dconf2nix # Nix code from Dconf files
+          tokei # Modern Unix `wc` for code
+        ]
+        ++ lib.optional (noughtyLib.hostHasTag "workspace") dockerPurge;
     };
   };
 }

@@ -10,6 +10,7 @@ let
   username = config.noughty.user.name;
   rootlessMode = false;
   virtualisationEnabled = noughtyLib.isUser [ "martin" ] && host.is.workstation;
+  dockerEnabled = noughtyLib.hostHasTag "workspace";
 
   # Introspect the root filesystem type from disko configuration
   # Docker storage driver recommendations:
@@ -70,7 +71,7 @@ lib.mkMerge [
     virtualisation.podman.enable = true;
   })
 
-  (lib.mkIf virtualisationEnabled {
+  (lib.mkIf dockerEnabled {
     environment = {
       # https://wiki.nixos.org/wiki/Docker
       systemPackages =
@@ -109,7 +110,10 @@ lib.mkMerge [
       oci-containers = lib.mkIf config.virtualisation.docker.enable {
         backend = "docker";
       };
-      spiceUSBRedirection.enable = true;
     };
+  })
+
+  (lib.mkIf virtualisationEnabled {
+    virtualisation.spiceUSBRedirection.enable = true;
   })
 ]
