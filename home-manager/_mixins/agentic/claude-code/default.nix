@@ -498,6 +498,12 @@ in
           # MCP servers remain opt-in instead of being silently trusted.
           enableAllProjectMcpServers = false;
 
+          # Keep Claude Code out of Git commit and pull request attribution.
+          attribution = {
+            commit = "";
+            pr = "";
+          };
+
           # Wire ccstatusline into Claude Code's status bar. The module writes
           # this value to ~/.claude/settings.json under the "statusLine" key,
           # which Claude Code reads on startup to invoke the formatter.
