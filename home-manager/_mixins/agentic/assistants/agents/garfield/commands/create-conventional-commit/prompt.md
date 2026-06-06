@@ -20,10 +20,6 @@ Run each command separately (no chaining):
 - `git add` / `git checkout` / `git reset` - no staging or working tree changes
 - Command chaining with `&&`, `;`, or `|`
 
-### Output Constraints
-
-- Never include `Co-Authored-By:` trailers
-
 ### Process
 
 1. Run allowed commands individually to gather context
@@ -54,6 +50,7 @@ Staged: Added null check in auth middleware, updated error message
 </example_input>
 
 <example_output>
+
 ```
 fix(auth): handle missing user email in profile lookup
 
@@ -62,4 +59,5 @@ fix(auth): handle missing user email in profile lookup
 
 Fixes #234
 ```
+
 </example_output>
