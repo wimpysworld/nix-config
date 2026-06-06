@@ -1,6 +1,6 @@
 ---
 name: gh
-description: "Load when executing GitHub tasks via the gh CLI: creating or reviewing pull requests, managing issues, checking CI runs, creating releases, searching GitHub, or making raw GitHub API calls."
+description: "Use when the user mentions `gh`, `gh api`, the GitHub CLI, the GitHub API, or wants to view, query, search, or change GitHub. Covers querying the GitHub API, raw API calls, PRs/pull requests, issues, workflows/Actions/CI, releases, repos, notifications, status, and any task that views or queries GitHub data."
 user-invocable: true
 ---
 
@@ -175,13 +175,13 @@ Default to a dedicated `gh` subcommand. Use `gh-api-safe` only when no
 subcommand fits. Reserve raw `gh api` for mutations or `@file` field
 input, gated on explicit operator consent.
 
-| Situation | Use |
-|---|---|
-| Read-only REST fetch | `gh-api-safe <path>` |
-| GraphQL read (queries only) | `gh-api-safe graphql -f query='…'` |
-| Dedicated subcommand exists | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
-| Mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell |
-| Field input from file (`-F x=@file`) | raw `gh api` in unfenced shell |
+| Situation                            | Use                                                  |
+| ------------------------------------ | ---------------------------------------------------- |
+| Read-only REST fetch                 | `gh-api-safe <path>`                                 |
+| GraphQL read (queries only)          | `gh-api-safe graphql -f query='…'`                   |
+| Dedicated subcommand exists          | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
+| Mutation (POST/PATCH/PUT/DELETE)     | `gh api -X ...` in unfenced shell                    |
+| Field input from file (`-F x=@file`) | raw `gh api` in unfenced shell                       |
 
 `gh-api-safe` wraps `gh api`, enforces a read-shaped allow-list with a
 defence-in-depth deny-list on the REST path, blocks
