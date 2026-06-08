@@ -43,6 +43,24 @@ lib.mkIf (noughtyLib.hostHasTag "postgres") {
       # loses the priority fight and PG only binds 127.0.0.1 / ::1. Access is
       # still tightly restricted at the pg_hba layer below.
       listen_addresses = lib.mkForce "*";
+
+      # Aggressive-but-safe autovacuum + maintenance tuning. revan's root
+      # filled because a high-churn table's GIN trgm index bloated unbounded
+      # under default autovacuum thresholds (20% scale factor, 1min naptime).
+      # These knobs run autovacuum more often and let it do more work per pass
+      # so dead tuples and index bloat get reclaimed before they become a
+      # disk-pressure incident. Per-table storage params (e.g. lower local
+      # scale_factors) and `fastupdate=off` on the GIN trgm index are applied
+      # live in the DB catalog by the AgentsView app at table/index creation
+      # time, not declaratively from nix.
+      autovacuum = "on";
+      autovacuum_naptime = "30s";
+      autovacuum_vacuum_scale_factor = 0.05;
+      autovacuum_vacuum_insert_scale_factor = 0.05;
+      autovacuum_analyze_scale_factor = 0.02;
+      autovacuum_vacuum_cost_limit = 2000;
+      log_autovacuum_min_duration = "1s";
+      maintenance_work_mem = "512MB";
     };
 
     authentication = lib.mkOverride 10 ''
@@ -66,6 +84,51 @@ lib.mkIf (noughtyLib.hostHasTag "postgres") {
     ${config.services.postgresql.package}/bin/psql -h /run/postgresql --no-psqlrc -v ON_ERROR_STOP=1 <<'SQL'
     \set role_password `${pkgs.coreutils}/bin/cat ${config.sops.secrets.AGENTSVIEW_PG_PASSWORD.path}`
     ALTER ROLE agentsview WITH PASSWORD :'role_password';
+    SQL
+
+    # AgentsView creates the GIN trgm index on agentsview.messages.content at
+    # runtime; with the PG default fastupdate=on the pending list grew
+    # unbounded and bloated the index to 283G, filling revan's root fs.
+    # Install a DDL event trigger that fires inside the creating transaction
+    # and flips fastupdate=off on any GIN index on agentsview.messages, so the
+    # guarantee survives the app dropping/recreating the index. Per-table
+    # autovacuum_* overrides applied live in the catalog are intentionally not
+    # folded in here; this change is scoped to the fastupdate fix.
+    ${config.services.postgresql.package}/bin/psql -h /run/postgresql -d agentsview --no-psqlrc -v ON_ERROR_STOP=1 <<'SQL'
+    CREATE OR REPLACE FUNCTION public.gin_fastupdate_off()
+      RETURNS event_trigger LANGUAGE plpgsql AS $$
+    DECLARE cmd record;
+    BEGIN
+      FOR cmd IN SELECT * FROM pg_event_trigger_ddl_commands() WHERE command_tag = 'CREATE INDEX'
+      LOOP
+        IF EXISTS (
+          SELECT 1
+          FROM pg_index i
+          JOIN pg_class c  ON c.oid = i.indexrelid
+          JOIN pg_class t  ON t.oid = i.indrelid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          JOIN pg_am am    ON am.oid = c.relam
+          WHERE c.oid = cmd.objid AND am.amname = 'gin'
+            AND n.nspname = 'agentsview' AND t.relname = 'messages'
+            AND COALESCE(array_to_string(c.reloptions, ','), ''') NOT LIKE '%fastupdate=off%'
+        ) THEN
+          EXECUTE format('ALTER INDEX %s SET (fastupdate=off)', cmd.object_identity);
+        END IF;
+      END LOOP;
+    END$$;
+
+    DROP EVENT TRIGGER IF EXISTS gin_fastupdate_off_trg;
+    CREATE EVENT TRIGGER gin_fastupdate_off_trg ON ddl_command_end
+      WHEN TAG IN ('CREATE INDEX') EXECUTE FUNCTION public.gin_fastupdate_off();
+
+    -- Belt-and-braces: on a fresh host the writer services (and remote
+    -- network clients, which local systemd cannot order) can race
+    -- postgresql-setup and create idx_messages_content_trgm before the event
+    -- trigger above is installed. The trigger only fires at CREATE INDEX
+    -- time, so any index that pre-existed it stays fastupdate=on forever.
+    -- Idempotently flip it here so the next postgresql-setup run repairs a
+    -- pre-existing index regardless of who created it.
+    ALTER INDEX IF EXISTS agentsview.idx_messages_content_trgm SET (fastupdate=off);
     SQL
   '';
 

@@ -201,6 +201,16 @@ in
       enable = true;
       implementation = "broker";
     };
+    # Cap journald disk usage so an unattended host cannot let the journal
+    # grow without bound (revan hit ~4G before this was added). NixOS exposes
+    # these as raw `[Journal]` ini keys via `extraConfig`. mkDefault keeps a
+    # host free to widen the cap (e.g. a log-heavy server) without conflict.
+    journald.extraConfig = lib.mkDefault ''
+      SystemMaxUse=2G
+      SystemKeepFree=1G
+      MaxRetentionSec=1month
+      MaxFileSec=1week
+    '';
   };
 
   # Only enable sudo-rs on installs, not live media (.ISO images)
