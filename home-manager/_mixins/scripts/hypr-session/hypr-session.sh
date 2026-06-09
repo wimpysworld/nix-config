@@ -42,7 +42,7 @@ start) session_start ;;
 lock)
 	pkill -u "$USER" wlogout
 	sleep 0.5
-	hyprlock --immediate
+	veila lock
 	;;
 logout)
 	session_stop

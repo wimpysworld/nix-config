@@ -1125,6 +1125,7 @@
         "sidra": "sidra",
         "sops-nix": "sops-nix",
         "systems": "systems_3",
+        "veila": "veila",
         "xdg-override": "xdg-override"
       }
     },
@@ -1334,6 +1335,27 @@
       "original": {
         "owner": "pyproject-nix",
         "repo": "uv2nix",
+        "type": "github"
+      }
+    },
+    "veila": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780302808,
+        "narHash": "sha256-4aweH5ckOGa7T0SiU+cHd4GA4m1Iw24BiJqbTSoMj08=",
+        "owner": "naurissteins",
+        "repo": "Veila",
+        "rev": "e28b76b7901109a4d524800a80e730684ccdcd9a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "naurissteins",
+        "ref": "0.4.2",
+        "repo": "Veila",
         "type": "github"
       }
     },

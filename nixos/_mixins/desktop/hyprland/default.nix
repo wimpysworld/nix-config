@@ -1,6 +1,7 @@
 {
   catppuccinPalette,
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -58,7 +59,10 @@ let
   };
 in
 {
-  imports = [ ../greeters/greetd.nix ];
+  imports = [
+    ../greeters/greetd.nix
+    inputs.veila.nixosModules.default
+  ];
   config = lib.mkIf (host.desktop == "hyprland") {
     environment = {
       sessionVariables = {
@@ -119,9 +123,8 @@ in
       };
       udevil.enable = true;
     };
-    security = {
-      pam.services.hyprlock = { };
-    };
+    # Veila screen locker: installs binaries and the `veila` PAM service.
+    programs.veila.enable = true;
 
     services = {
       devmon.enable = true;

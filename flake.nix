@@ -31,6 +31,8 @@
     fresh.inputs.fenix.inputs.nixpkgs.follows = "nixpkgs-unstable";
     sidra.url = "github:wimpysworld/sidra";
     sidra.inputs.nixpkgs.follows = "nixpkgs";
+    veila.url = "github:naurissteins/Veila/0.4.2";
+    veila.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.4.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.inputs.rust-overlay.follows = "rust-overlay";

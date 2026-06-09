@@ -1,21 +1,25 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
 }:
 let
   name = builtins.baseNameOf (builtins.toString ./.);
+  veila = inputs.veila.packages.${pkgs.stdenv.hostPlatform.system}.default;
   shellApplication = pkgs.writeShellApplication {
     inherit name;
-    runtimeInputs = with pkgs; [
+    runtimeInputs = [
+      veila
+    ]
+    ++ (with pkgs; [
       bluez
       coreutils
       gnused
-      hyprlock
       playerctl
       procps
-    ];
+    ]);
     text = builtins.readFile ./${name}.sh;
   };
 in
