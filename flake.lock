@@ -1189,11 +1189,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780699188,
-        "narHash": "sha256-29ozqCoxgtAmUoYXZYnEO5L26PZwCXs0g9onMqUA4Uo=",
+        "lastModified": 1781039388,
+        "narHash": "sha256-IACUJ2fRPRg2cnM4g5G8jOe8wBNowTsagNpEICFZw1I=",
         "owner": "wimpysworld",
         "repo": "sidra",
-        "rev": "13ff68b5e7793d9d1584a059402e014b236dfe61",
+        "rev": "8e9889f3a669d7ac816edc8c9e7e1177e4c99d91",
         "type": "github"
       },
       "original": {
