@@ -68,7 +68,7 @@ in
     ../components/avizo # on-screen display for audio and backlight
     ../components/fuzzel # app launcher, emoji picker and clipboard manager
     ../components/veila # screen locker
-    ../components/hyprpaper # wallpaper setter
+    ../components/wpaperd # wallpaper setter
     ../components/hyprshot # screenshot grabber and annotator
     ../components/rofi # application launcher
     ../components/swaync # notification center
