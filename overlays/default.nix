@@ -107,6 +107,16 @@
       }
     );
 
+    # Gleam fails to build from source on Linux because a checked test makes a
+    # network request that is unavailable in the sandbox. Append the upstream
+    # skip flag from nixpkgs#529582. Remove this override once the fix reaches
+    # the pinned nixos-26.05 channel.
+    gleam = prev.gleam.overrideAttrs (oldAttrs: {
+      checkFlags = (oldAttrs.checkFlags or [ ]) ++ [
+        "--skip=tests::escript_success_with_dependency"
+      ];
+    });
+
     # Override rofi-unwrapped to remove desktop entries (this is where they come from!)
     rofi-unwrapped = prev.rofi-unwrapped.overrideAttrs (oldAttrs: {
       postInstall = (oldAttrs.postInstall or "") + ''

@@ -31,7 +31,7 @@ lib.mkIf useCaddy {
       plugins = [
         "github.com/WeidiDeng/caddy-cloudflare-ip@v0.0.0-20231130002422-f53b62aa13cb"
       ];
-      hash = "sha256-2d+2e/KbklMMZapEjJuaOy+cm3u2lc+Kz3bcGRI1rwg=";
+      hash = "sha256-xMq5qWINHdVtE6ujL/HHwKOJ+KijGns6F3yYyRyCxJo=";
     };
     virtualHosts."${host.name}.${config.noughty.network.tailNet}" = lib.mkMerge [
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
