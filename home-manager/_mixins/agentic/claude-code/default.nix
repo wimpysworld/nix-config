@@ -209,7 +209,12 @@ let
   claudeEnvironment = {
     CLAUDE_CODE_HIDE_CWD = "1";
     ENABLE_CLAUDEAI_MCP_SERVERS = "false";
-    IS_DEMO = "1";
+    # Hide the account/email banner for recordings without suppressing the
+    # workspace-trust dialog. `IS_DEMO=1` also silently skipped the trust
+    # prompt without granting trust, leaving newly-opened projects stuck at
+    # `hasTrustDialogAccepted: false`, which disables the statusline, the
+    # `fileSuggestion` finder, and `@` mentions. See upstream #37780.
+    CLAUDE_CODE_HIDE_ACCOUNT_INFO = "1";
   };
   claudeEnvironmentExports = lib.concatLines (
     lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") claudeEnvironment
@@ -217,13 +222,6 @@ let
   claudeEnvironmentArgs = lib.concatStringsSep " " (
     lib.mapAttrsToList (name: value: lib.escapeShellArg "${name}=${value}") claudeEnvironment
   );
-  claudeTrustedDirectories = [
-    "${config.home.homeDirectory}/Chainguard"
-    "${config.home.homeDirectory}/Development"
-    "${config.home.homeDirectory}/Volatile"
-    "${config.home.homeDirectory}/Zero"
-  ];
-
   # Replacement for Claude Code's built-in `@` file picker. Pipes `fd` into
   # `fzf --filter` so queries get real fuzzy scoring and untracked files,
   # gitignored files, and symlinked trees all participate. Wired into
@@ -503,8 +501,6 @@ in
           # MCP servers are selected by the shared MCP mixin. Project
           # MCP servers remain opt-in instead of being silently trusted.
           enableAllProjectMcpServers = false;
-
-          permissions.additionalDirectories = claudeTrustedDirectories;
 
           # Keep Claude Code out of Git commit and pull request attribution.
           attribution = {
