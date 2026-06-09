@@ -1,6 +1,6 @@
 # Fingerprint reader support via fprintd. Gated on the "fprintd" host tag.
-# Hyprlock handles fingerprint auth over D-Bus directly, so fprintAuth is
-# disabled on the hyprlock PAM service to prevent sensor conflicts.
+# Veila handles fingerprint auth over D-Bus directly, so fprintAuth is
+# disabled on the veila PAM service to prevent sensor conflicts.
 {
   lib,
   noughtyLib,
@@ -11,15 +11,15 @@ lib.mkIf (noughtyLib.hostHasTag "fprintd") {
 
   # Disable PAM fprintd module for services where fingerprint is unwanted.
   # When services.fprintd.enable = true, NixOS defaults fprintAuth = true
-  # on every PAM service. We want fingerprint only via hyprlock's native
+  # on every PAM service. We want fingerprint only via Veila's native
   # D-Bus integration, not via PAM.
   security.pam.services = {
     # Display manager: passphrase only (macOS-style behaviour).
     greetd.fprintAuth = false;
     login.fprintAuth = false;
-    # Hyprlock uses D-Bus to talk to fprintd directly; if PAM also tries
-    # to claim the sensor, the two fight and one fails.
-    hyprlock.fprintAuth = false;
+    # Veila verifies fingerprints over fprintd's D-Bus API directly (native
+    # [fingerprint] path), so PAM must not also claim the sensor.
+    veila.fprintAuth = false;
     # sudo and polkit: passphrase only.
     sudo.fprintAuth = false;
     polkit-1.fprintAuth = false;
