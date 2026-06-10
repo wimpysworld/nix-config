@@ -283,18 +283,20 @@ tags = ["wsl"]
 
 # Darwin - platform drives isDarwin; desktop defaults to "aqua"
 
-[momin]
-kind = "computer"
-platform = "aarch64-darwin"
-formFactor = "laptop"
-
-[momin.gpu]
-vendors = ["apple"]
-
-[momin.gpu.compute]
-vendor = "apple"
-vram = 36
-unified = true
+# Disabled while there is no local Mac to validate against; CI cannot build a
+# config that only exists in the registry. Uncomment to restore momin.
+# [momin]
+# kind = "computer"
+# platform = "aarch64-darwin"
+# formFactor = "laptop"
+#
+# [momin.gpu]
+# vendors = ["apple"]
+#
+# [momin.gpu.compute]
+# vendor = "apple"
+# vram = 36
+# unified = true
 
 # ISO - "iso" tag applies isoDefaults: desktop = null, username = "nixos"
 
