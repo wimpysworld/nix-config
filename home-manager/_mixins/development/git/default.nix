@@ -84,6 +84,11 @@ in
           advice = {
             statusHints = false;
           };
+          core = {
+            # Use the fresh terminal editor for Git commits, including the
+            # Lazygit commit and reword paths.
+            editor = "fresh";
+          };
           diff = {
             colorMoved = "default";
           };
@@ -146,6 +151,16 @@ in
           filterMode = "fuzzy";
           # Show all branches log instead of dashboard (hides donate link)
           statusPanelView = "allBranchesLog";
+        };
+        os = {
+          # `e` / file-edit actions inside lazygit open fresh in the foreground.
+          edit = "fresh {{filename}}";
+          # fresh takes line/col glued to the filename as `:line`, not a separate arg.
+          editAtLine = "fresh {{filename}}:{{line}}";
+          # A bare foreground `fresh` already blocks until the buffer closes.
+          editAtLineAndWait = "fresh {{filename}}:{{line}}";
+          # fresh is a TUI: lazygit must suspend to the terminal before launching it.
+          editInTerminal = true;
         };
       };
     };
