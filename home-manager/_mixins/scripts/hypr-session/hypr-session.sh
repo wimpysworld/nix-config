@@ -40,7 +40,7 @@ fi
 case "$OPT" in
 start) session_start ;;
 lock)
-	pkill -u "$USER" wlogout
+	pkill -u "$USER" -f wleave
 	sleep 0.5
 	veila lock
 	;;

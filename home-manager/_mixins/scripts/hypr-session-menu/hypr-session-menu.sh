@@ -44,6 +44,6 @@ case $selected in
 	fuzzel-hyprpicker
 	;;
 "$logout")
-	hypr-session logout
+	wleave-session
 	;;
 esac

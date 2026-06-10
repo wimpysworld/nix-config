@@ -10,13 +10,6 @@ let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
   inherit (host) display;
-  wlogoutMargins =
-    if display.primaryIsPortrait then
-      "--margin-top 960 --margin-bottom 960"
-    else if display.primaryIsUltrawide then
-      "--margin-left 540 --margin-right 540"
-    else
-      "";
   outputDisplay = display.primaryOutput;
   bluetoothToggle = pkgs.writeShellApplication {
     name = "bluetooth-toggle";
@@ -564,7 +557,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           };
           "custom/session" = {
             format = "<big>󰐥</big>";
-            on-click = "${lib.getExe pkgs.wlogout} --buttons-per-row 5 ${wlogoutMargins}";
+            on-click = "wleave-session";
             tooltip-format = "󰐥  Session Menu";
           };
         }

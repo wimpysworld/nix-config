@@ -101,7 +101,7 @@ rec {
       # Hyprland-specific helper that removes # from hex colors
       getHyprlandColor = colorName: builtins.substring 1 (-1) palette.${colorName}.hex;
 
-      # CSS rgba() helper for use in GTK CSS, avizo, wlogout, etc.
+      # CSS rgba() helper for use in GTK CSS, avizo, wleave, etc.
       mkRgba =
         colorName: alpha:
         let
