@@ -2,7 +2,6 @@
   config,
   inputs,
   lib,
-  pkgs,
   ...
 }:
 {
@@ -31,12 +30,6 @@
       "acpi_backlight=native"
     ];
   };
-
-  # TODO: Remove when I migrate off bcachefs.
-  environment.systemPackages = with pkgs; [
-    bcachefs-tools
-    keyutils
-  ];
 
   hardware = {
     trackpoint = {

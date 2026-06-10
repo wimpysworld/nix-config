@@ -2,7 +2,6 @@
 
 {
   inputs,
-  pkgs,
   ...
 }:
 {
@@ -20,12 +19,6 @@
       "nvidia"
     ];
   };
-
-  # TODO: Remove when I migrate off bcachefs.
-  environment.systemPackages = with pkgs; [
-    bcachefs-tools
-    keyutils
-  ];
 
   hardware = {
     nvidia = {

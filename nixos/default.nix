@@ -12,9 +12,6 @@
 }:
 let
   inherit (config.noughty) host;
-  hasBcachefsFilesystem = lib.any (fileSystem: fileSystem.fsType or null == "bcachefs") (
-    lib.attrValues config.fileSystems
-  );
   isPolicyHost = noughtyLib.hostHasTag "policy";
   username = config.noughty.user.name;
 in
@@ -82,7 +79,7 @@ in
     };
     consoleLogLevel = lib.mkDefault 0;
     # Adopt the recommended 26.11 default early. No host boots from a ZFS root
-    # (filesystems are xfs/btrfs/bcachefs/vfat), and ZFS support is only pulled
+    # (filesystems are xfs/btrfs/vfat), and ZFS support is only pulled
     # in by the live ISO installer module, so force-import is never needed.
     # mkDefault keeps it overridable if a future host ever roots on ZFS.
     zfs.forceImportRoot = lib.mkDefault false;
@@ -96,14 +93,12 @@ in
     initrd.includeDefaultModules = true;
     initrd.verbose = false;
     kernelModules = [ "vhost_vsock" ];
-    # Central kernel policy for installed systems. bcachefs hosts stay on the
-    # stable 6.12 line, servers, VMs, and policy hosts use 6.18, and everything
-    # else tracks the latest packaged kernel. Live ISO media keeps its defaults.
+    # Central kernel policy for installed systems. Servers, VMs, and policy
+    # hosts use 6.18, and everything else tracks the latest packaged kernel.
+    # Live ISO media keeps its defaults.
     kernelPackages = lib.mkIf (!host.is.iso) (
       lib.mkDefault (
-        if hasBcachefsFilesystem then
-          pkgs.linuxPackages_6_12
-        else if host.is.server || host.is.vm || isPolicyHost then
+        if host.is.server || host.is.vm || isPolicyHost then
           pkgs.linuxPackages_6_18
         else
           pkgs.linuxPackages_latest
