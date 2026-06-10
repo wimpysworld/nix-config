@@ -11,9 +11,9 @@ let
     runtimeInputs = with pkgs; [
       fuzzel
     ];
-    # Note: fuzzel-wifi, fuzzel-bluetooth, and fuzzel-audio are separate
-    # packages installed by the fuzzel component. They are on PATH at runtime
-    # so no need to add them to runtimeInputs here.
+    # Note: fuzzel-wifi, fuzzel-bluetooth, fuzzel-audio and wleave-session are
+    # provided by other components and are on PATH at runtime, so they are not
+    # added to runtimeInputs here.
     text = builtins.readFile ./${name}.sh;
   };
 in

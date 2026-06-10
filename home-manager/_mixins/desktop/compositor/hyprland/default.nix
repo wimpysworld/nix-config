@@ -73,7 +73,7 @@ in
     ../components/rofi # application launcher
     ../components/swaync # notification center
     ../components/waybar # status bar
-    ../components/wlogout # session menu
+    ../components/wleave # session menu
   ];
 
   config = lib.mkIf (host.desktop == "hyprland") {
@@ -337,7 +337,7 @@ in
         layerrule = [
           "blur on, match:namespace launcher" # fuzzel
           "ignore_alpha 0, match:namespace launcher"
-          "blur on, match:namespace logout_dialog" # wlogout
+          "blur on, match:namespace wleave" # wleave
           "blur on, match:namespace rofi"
           "blur on, match:namespace swaync-control-center"
           "blur on, match:namespace swaync-notification-window"

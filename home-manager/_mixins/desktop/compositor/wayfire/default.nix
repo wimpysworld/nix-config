@@ -16,7 +16,7 @@ in
     ../components/rofi
     ../components/swaync
     ../components/waybar
-    ../components/wlogout
+    ../components/wleave
   ];
 
   config = lib.mkIf (host.desktop == "wayfire") {
