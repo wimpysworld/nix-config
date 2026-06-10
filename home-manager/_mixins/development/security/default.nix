@@ -23,68 +23,8 @@
     pkgs.dockle # requires btrfs-progs and lvm2 (Linux-only)
   ];
 
-  # Claude Code - LSP server plugin
-  claude-code.lspServers.semgrep = {
-    command = "${pkgs.semgrep}/bin/semgrep";
-    args = [ "lsp" ];
-    extensionToLanguage = {
-      ".R" = "r";
-      ".bash" = "shellscript";
-      ".c" = "c";
-      ".cc" = "cpp";
-      ".cjs" = "javascript";
-      ".clj" = "clojure";
-      ".cljc" = "clojure";
-      ".cljs" = "clojurescript";
-      ".cls" = "apex";
-      ".cpp" = "cpp";
-      ".cs" = "csharp";
-      ".cts" = "typescript";
-      ".cxx" = "cpp";
-      ".dart" = "dart";
-      ".ex" = "elixir";
-      ".exs" = "elixir";
-      ".go" = "go";
-      ".h" = "c";
-      ".hcl" = "hcl";
-      ".hh" = "cpp";
-      ".hpp" = "cpp";
-      ".html" = "html";
-      ".hxx" = "cpp";
-      ".java" = "java";
-      ".jl" = "julia";
-      ".js" = "javascript";
-      ".json" = "json";
-      ".jsonnet" = "jsonnet";
-      ".jsx" = "javascriptreact";
-      ".kt" = "kotlin";
-      ".kts" = "kotlin";
-      ".libsonnet" = "jsonnet";
-      ".lua" = "lua";
-      ".mjs" = "javascript";
-      ".ml" = "ocaml";
-      ".mli" = "ocaml";
-      ".mts" = "typescript";
-      ".php" = "php";
-      ".py" = "python";
-      ".r" = "r";
-      ".rb" = "ruby";
-      ".rs" = "rust";
-      ".scala" = "scala";
-      ".scm" = "scheme";
-      ".sh" = "shellscript";
-      ".sol" = "solidity";
-      ".ss" = "scheme";
-      ".swift" = "swift";
-      ".tf" = "terraform";
-      ".trigger" = "apex";
-      ".ts" = "typescript";
-      ".tsx" = "typescriptreact";
-      ".xml" = "xml";
-      ".yaml" = "yaml";
-      ".yml" = "yaml";
-    };
-  };
+  # Claude Code binds one LSP server per extension, so Semgrep is omitted here
+  # to let native language servers win the binding race for code files.
 
   # Fresh Editor - universal static-analysis LSP.
   fresh.settings.universal_lsp.semgrep = {

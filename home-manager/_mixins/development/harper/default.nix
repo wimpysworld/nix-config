@@ -62,6 +62,19 @@ let
   };
 
   extensions = lib.attrNames extensionToLanguage;
+
+  # Claude Code binds one LSP server per extension, so Harper is restricted to
+  # prose and markup files to leave code extensions for native language servers.
+  proseExtensionToLanguage = {
+    ".adoc" = "asciidoc";
+    ".asciidoc" = "asciidoc";
+    ".md" = "markdown";
+    ".mdx" = "markdown";
+    ".org" = "org";
+    ".tex" = "tex";
+    ".txt" = "plaintext";
+    ".typ" = "typst";
+  };
 in
 {
   home.packages = [ pkgs.harper ];
@@ -70,7 +83,7 @@ in
   claude-code.lspServers.harper = {
     command = harperLs;
     args = [ "--stdio" ];
-    inherit extensionToLanguage;
+    extensionToLanguage = proseExtensionToLanguage;
     initializationOptions = {
       "harper-ls" = harperSettings;
     };

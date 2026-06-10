@@ -368,6 +368,37 @@ in
       };
     };
 
+    # Disable Claude Code's LSP plugin install prompt. All required LSP servers
+    # are provided by Nix, so the recommendation to install them is noise. The
+    # kill switch is the undocumented `lspRecommendationDisabled` key (verified
+    # from the decompiled source); it must live in the mutable runtime file
+    # `~/.claude.json`, not in settings.json (which would reject it on schema
+    # validation). Claude Code rewrites `~/.claude.json` at runtime (OAuth,
+    # caches, per-project state), so the key is merged in idempotently rather
+    # than declared as a read-only symlink.
+    home.activation.claudeCodeDisableLspPrompt = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      claude_config=${lib.escapeShellArg "${config.home.homeDirectory}/.claude.json"}
+      jq=${lib.getExe pkgs.jq}
+
+      # Start from an empty object when the file does not exist yet.
+      if [[ ! -f "$claude_config" ]]; then
+        ${pkgs.coreutils}/bin/install -m 600 /dev/null "$claude_config"
+        echo '{}' > "$claude_config"
+      fi
+
+      # Skip silently if the file is unreadable as JSON (corrupt or empty).
+      if ! "$jq" -e . "$claude_config" >/dev/null 2>&1; then
+        exit 0
+      fi
+
+      tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
+      if "$jq" '.lspRecommendationDisabled = true' "$claude_config" > "$tmp"; then
+        ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
+      else
+        ${pkgs.coreutils}/bin/rm -f "$tmp"
+      fi
+    '';
+
     # Declarative configuration for ccstatusline.
     # Settings are written to ~/.config/ccstatusline/settings.json, which is the
     # default path the tool reads on startup. The status line command is injected
