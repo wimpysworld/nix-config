@@ -209,6 +209,14 @@ let
   claudeEnvironment = {
     CLAUDE_CODE_HIDE_CWD = "1";
     ENABLE_CLAUDEAI_MCP_SERVERS = "false";
+    # Disable first-party telemetry, analytics, and error reporting. The
+    # umbrella flag covers most non-essential traffic; the individual flags
+    # are set too so opt-out stays robust across versions.
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
+    DISABLE_TELEMETRY = "1";
+    DISABLE_ERROR_REPORTING = "1";
+    DISABLE_FEEDBACK_COMMAND = "1";
+    CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY = "1";
     # Hide the account/email banner for recordings without suppressing the
     # workspace-trust dialog. `IS_DEMO=1` also silently skipped the trust
     # prompt without granting trust, leaving newly-opened projects stuck at
@@ -532,6 +540,9 @@ in
           # MCP servers are selected by the shared MCP mixin. Project
           # MCP servers remain opt-in instead of being silently trusted.
           enableAllProjectMcpServers = false;
+
+          # Never surface the in-product feedback survey.
+          feedbackSurveyRate = 0;
 
           # Keep Claude Code out of Git commit and pull request attribution.
           attribution = {

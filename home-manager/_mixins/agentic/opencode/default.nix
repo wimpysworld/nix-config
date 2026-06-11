@@ -87,6 +87,16 @@ in
         # disabled. Updates should flow through the flake inputs instead.
         autoupdate = false;
 
+        # Block session sharing entirely. The default "manual" still allows
+        # /share; "disabled" removes it. OpenCode has no usage telemetry per
+        # its maintainers, so this is the main privacy control.
+        share = "disabled";
+
+        # OpenTelemetry is off by default; set it explicitly.
+        experimental = {
+          openTelemetry = false;
+        };
+
         # Default to GPT 5.5 via the OpenAI provider with high reasoning effort.
         # The per-model option goes under provider.openai.models so OpenCode
         # forwards `reasoning.effort` on the Responses API call.

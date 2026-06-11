@@ -161,6 +161,9 @@ let
       pkgs.jq
     ];
     text = ''
+      # Reinforce telemetry-off at runtime; the env var overrides the setting.
+      export PI_TELEMETRY=0
+
       anthropic_api_key_path="${config.sops.secrets.ANTHROPIC_API_KEY.path}"
       if [ ! -r "$anthropic_api_key_path" ]; then
         echo "pi: Anthropic API key secret is missing or unreadable: $anthropic_api_key_path" >&2
@@ -260,6 +263,7 @@ let
     quietStartup = true;
     collapseChangelog = true;
     enableInstallTelemetry = false;
+    enableAnalytics = false;
     doubleEscapeAction = "tree";
     treeFilterMode = "default";
     autocompleteMaxVisible = 8;

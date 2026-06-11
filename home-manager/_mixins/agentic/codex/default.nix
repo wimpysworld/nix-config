@@ -118,6 +118,23 @@ let
     # See openai/codex#18068 for the underlying TUI routing bug.
     mcp_servers = mcpServerDefs.codexServers;
 
+    # Disable first-party telemetry, analytics, and feedback. The [analytics]
+    # channel is on by default, and the sample config ships
+    # otel.metrics_exporter = "statsig", so set all three OTEL exporters to
+    # "none" explicitly.
+    analytics = {
+      enabled = false;
+    };
+    otel = {
+      exporter = "none";
+      metrics_exporter = "none";
+      trace_exporter = "none";
+      log_user_prompt = false;
+    };
+    feedback = {
+      enabled = false;
+    };
+
     # Plain `codex` remains usable without Fence by keeping Codex's native
     # workspace-write sandbox and non-interactive approval defaults. The
     # `codex-fenced` entry point bypasses these at launch so Fence owns that
