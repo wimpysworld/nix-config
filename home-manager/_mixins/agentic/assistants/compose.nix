@@ -278,6 +278,38 @@ let
   # Discover standalone commands
   standaloneCommandDirs = discoverDirs (basePath + "/commands");
 
+  # Report whether a command is secret and, if so, its sops key. A command is
+  # secret when its directory holds a `prompt.sops` marker (and no plaintext
+  # `prompt.md`). The marker's trimmed content is the top-level key in
+  # `secrets/assistant-prompts.yaml` whose value is the prompt body. The body
+  # is substituted at activation time via a sops placeholder, so plaintext
+  # never reaches the Nix store. Having both files is a configuration error and
+  # fails evaluation. Returns `{ secret = bool; key = stringOrNull; }`.
+  commandSecretInfo =
+    agentName: cmdName:
+    let
+      cmdPath =
+        if agentName != null then
+          basePath + "/agents/${agentName}/commands/${cmdName}"
+        else
+          basePath + "/commands/${cmdName}";
+      sopsPath = cmdPath + "/prompt.sops";
+      hasSops = builtins.pathExists sopsPath;
+      hasPlain = builtins.pathExists (cmdPath + "/prompt.md");
+    in
+    if hasSops && hasPlain then
+      throw "Command ${cmdName} (${toString cmdPath}) has both prompt.sops and prompt.md. A secret command must have only prompt.sops; remove prompt.md."
+    else if hasSops then
+      {
+        secret = true;
+        key = readFile sopsPath;
+      }
+    else
+      {
+        secret = false;
+        key = null;
+      };
+
   # Flat command namespaces must be collision-free for every provider that
   # emits slash commands or command-derived skills.
   commandSources =
@@ -317,20 +349,25 @@ let
     in
     composeWithFrontmatter (lib.concatStringsSep "\n" lines) body;
 
-  # Compose a single command for a specific platform
-  # agentName is null for standalone commands
-  composeCommand =
-    platform: agentName: cmdName:
+  # Compose a single command for a specific platform using the provided body.
+  # The body is wrapped verbatim with all per-platform boilerplate (Claude
+  # `@agent` prepend or `use-task` Task wrapper, Pi subagent prelude via
+  # composePiCommandFromPrompt). Passing the body as an argument lets callers
+  # substitute a sops placeholder string where the plaintext prompt would
+  # otherwise be read, so secret commands compose identically without the
+  # body ever entering the Nix store. Mirrors composeAgentFromPrompt and
+  # composePiCommandFromPrompt.
+  composeCommandFromPrompt =
+    platform: agentName: cmdName: body:
     let
       cmdPath =
         if agentName != null then
           basePath + "/agents/${agentName}/commands/${cmdName}"
         else
           basePath + "/commands/${cmdName}";
-      prompt = readFile (cmdPath + "/prompt.md");
     in
     if platform == "pi" then
-      composePiCommandFromPrompt agentName cmdName prompt
+      composePiCommandFromPrompt agentName cmdName body
     else
       let
         description = readFile (cmdPath + "/description.txt");
@@ -346,33 +383,50 @@ let
         composeWithFrontmatter header ''
           Use the Task tool to launch the ${agentName} agent for the following task:
 
-          ${prompt}''
+          ${body}''
       else if platform == "claude" && agentName != null then
         # Claude Code with agent (no use-task): prepend @agent on its own line before body
-        composeWithFrontmatter header "@${agentName}\n\n${prompt}"
+        composeWithFrontmatter header "@${agentName}\n\n${body}"
       else
-        # All other cases: standard frontmatter + prompt
-        composeWithFrontmatter header prompt;
+        # All other cases: standard frontmatter + body
+        composeWithFrontmatter header body;
+
+  # Compose a single command for a specific platform
+  # agentName is null for standalone commands
+  composeCommand =
+    platform: agentName: cmdName:
+    let
+      cmdPath =
+        if agentName != null then
+          basePath + "/agents/${agentName}/commands/${cmdName}"
+        else
+          basePath + "/commands/${cmdName}";
+      prompt = readFile (cmdPath + "/prompt.md");
+    in
+    composeCommandFromPrompt platform agentName cmdName prompt;
 
   # Generate all commands for a platform (both agent-specific and standalone)
   # Returns attrset: { cmdName = "composed content"; ... }
   composeCommands =
     platform:
     let
-      # Agent commands
+      # Agent commands. Secret commands are excluded; default.nix emits them
+      # as sops templates so the body never enters the store-backed attrset.
       agentCommands = lib.foldlAttrs (
         acc: agentName: _:
         let
-          cmdDirs = discoverAgentCommands agentName;
+          cmdDirs = lib.filterAttrs (cmdName: _: !(commandSecretInfo agentName cmdName).secret) (
+            discoverAgentCommands agentName
+          );
           cmds = lib.mapAttrs (cmdName: _: composeCommand platform agentName cmdName) cmdDirs;
         in
         acc // cmds
       ) { } agentDirs;
 
-      # Standalone commands
-      standaloneCmds = lib.mapAttrs (
-        cmdName: _: composeCommand platform null cmdName
-      ) standaloneCommandDirs;
+      # Standalone commands. Secret commands are excluded; see above.
+      standaloneCmds = lib.mapAttrs (cmdName: _: composeCommand platform null cmdName) (
+        lib.filterAttrs (cmdName: _: !(commandSecretInfo null cmdName).secret) standaloneCommandDirs
+      );
       commandCollisionCheck = composeCommandsNoCollisions platform;
     in
     builtins.seq commandCollisionCheck (agentCommands // standaloneCmds);
@@ -564,7 +618,13 @@ in
     ;
 
   # Command composition functions
-  inherit composeCommands composeCommand composePiCommandFromPrompt;
+  inherit
+    composeCommands
+    composeCommand
+    composeCommandFromPrompt
+    composePiCommandFromPrompt
+    commandSecretInfo
+    ;
 
   # Collision guards.
   inherit assertNoCommandCollisions commandSources composeCommandsNoCollisions;

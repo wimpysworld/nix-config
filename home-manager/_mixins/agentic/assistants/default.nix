@@ -47,6 +47,104 @@ let
 
   globalInstructions = readFileTrim ./instructions/global.md;
 
+  # ============ SECRET COMMANDS ============
+
+  # The fixed sops file holding every encrypted assistant prompt body. Each
+  # secret command's `prompt.sops` marker names a top-level key in this file.
+  assistantPromptsSopsFile = ../../../../secrets/assistant-prompts.yaml;
+
+  # Collect every secret command (standalone and agent-scoped) with the
+  # metadata each platform needs. A command is secret when its directory holds
+  # a `prompt.sops` marker; compose.commandSecretInfo reads the marker and
+  # rejects directories that also carry a plaintext prompt.md. The decrypted
+  # body never enters the store: Claude, OpenCode, and Pi receive a sops
+  # placeholder substituted at activation; Codex reads the decrypted secret
+  # path from its activation script.
+  secretCommandList =
+    let
+      standalone = lib.mapAttrsToList (cmdName: _: {
+        agentName = null;
+        inherit cmdName;
+        cmdPath = ./commands + "/${cmdName}";
+        info = compose.commandSecretInfo null cmdName;
+      }) compose.standaloneCommandDirs;
+      agentScoped = lib.concatLists (
+        lib.mapAttrsToList (
+          agentName: _:
+          lib.mapAttrsToList (cmdName: _: {
+            inherit agentName cmdName;
+            cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
+            info = compose.commandSecretInfo agentName cmdName;
+          }) (compose.discoverAgentCommands agentName)
+        ) codingAgentDirs
+      );
+    in
+    lib.filter (entry: entry.info.secret) (standalone ++ agentScoped);
+
+  # Set of secret command names, used to exclude them from the store-backed
+  # attrsets that read prompt.md (Pi prompt files, Codex skill map).
+  secretCommandNames = lib.listToAttrs (
+    map (entry: lib.nameValuePair entry.cmdName true) secretCommandList
+  );
+  isSecretCommand = cmdName: secretCommandNames ? ${cmdName};
+
+  # sops secret declarations: one per distinct key referenced by a marker.
+  secretCommandSecrets = lib.listToAttrs (
+    map (
+      entry: lib.nameValuePair entry.info.key { sopsFile = assistantPromptsSopsFile; }
+    ) secretCommandList
+  );
+
+  # Per-platform destination paths for a secret command's rendered file.
+  secretClaudePath = cmdName: "${config.home.homeDirectory}/.claude/commands/${cmdName}.md";
+  secretOpencodePath = cmdName: "${config.xdg.configHome}/opencode/commands/${cmdName}.md";
+  secretPiPath = cmdName: "${config.home.homeDirectory}/.pi/agent/prompts/${cmdName}.md";
+
+  # sops templates for Claude, OpenCode, and Pi. Each renders the composed
+  # command (frontmatter + per-platform body wrapper) with the sops placeholder
+  # standing in for the prompt body, written to an explicit path at activation.
+  # Pi reuses the subagent-launch prelude assembled for non-secret agent
+  # commands so the placeholder body carries identical routing.
+  secretCommandTemplates = lib.listToAttrs (
+    lib.concatMap (
+      entry:
+      let
+        inherit (entry) agentName cmdName;
+        sopsPlaceholder = config.sops.placeholder.${entry.info.key};
+        claudeBody = compose.composeCommandFromPrompt "claude" agentName cmdName sopsPlaceholder;
+        opencodeBody = compose.composeCommandFromPrompt "opencode" agentName cmdName sopsPlaceholder;
+        piBody =
+          if agentName == null then
+            compose.composeCommandFromPrompt "pi" null cmdName sopsPlaceholder
+          else
+            let
+              piPrompt = ''
+                Use the subagent tool to launch the `${agentName}` agent for the task below.
+
+                - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
+
+                ${sopsPlaceholder}
+              '';
+            in
+            compose.composePiCommandFromPrompt agentName cmdName piPrompt;
+      in
+      [
+        (lib.nameValuePair "assistant-claude-command-${cmdName}" {
+          content = claudeBody;
+          path = secretClaudePath cmdName;
+        })
+        (lib.nameValuePair "assistant-opencode-command-${cmdName}" {
+          content = opencodeBody;
+          path = secretOpencodePath cmdName;
+        })
+        (lib.nameValuePair "assistant-pi-command-${cmdName}" {
+          content = piBody;
+          path = secretPiPath cmdName;
+        })
+      ]
+    ) secretCommandList
+  );
+
   # ============ CLAUDE CODE ============
 
   claudeAgents = lib.mapAttrs (name: _: compose.composeAgent "claude" name) codingAgentDirs;
@@ -96,7 +194,7 @@ let
   piStandalonePromptFiles = lib.mapAttrs' (cmdName: _: {
     name = ".pi/agent/prompts/${cmdName}.md";
     value.text = compose.composeCommand "pi" null cmdName;
-  }) compose.standaloneCommandDirs;
+  }) (lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) compose.standaloneCommandDirs);
   # Agent-scoped Pi prompts are emitted with the bare command name to match
   # the Claude and OpenCode slash convention. The owning agent is pinned by
   # the body prelude below rather than by the filename. Because Pi's
@@ -108,7 +206,9 @@ let
   piAgentPromptFiles = lib.foldlAttrs (
     acc: agentName: _:
     let
-      commandDirs = compose.discoverAgentCommands agentName;
+      commandDirs = lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) (
+        compose.discoverAgentCommands agentName
+      );
     in
     acc
     // lib.mapAttrs' (
@@ -371,11 +471,13 @@ let
         name = cmdName;
         value = mkCodexSkillText cmdName null cmdPath;
       }
-    ) compose.standaloneCommandDirs
+    ) (lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) compose.standaloneCommandDirs)
     // lib.foldlAttrs (
       acc: agentName: _:
       let
-        commandDirs = compose.discoverAgentCommands agentName;
+        commandDirs = lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) (
+          compose.discoverAgentCommands agentName
+        );
       in
       acc
       // lib.mapAttrs' (
@@ -450,6 +552,65 @@ let
       printf '%s\n' ${escaped} > "${codexDir}/AGENTS.md"
     '';
 
+  # Activation script that writes Codex SKILL.md files for secret commands.
+  # The Codex skill activation above does `rm -rf skills`, so a sops template
+  # writing into that tree would lose the race. Instead this composes each
+  # secret skill at activation: the public frontmatter plus the spawn_agent
+  # prelude (or the bare standalone shape) are written from Nix, then the
+  # decrypted body is appended by reading config.sops.secrets.<key>.path.
+  # This entry is ordered after codexFiles (which recreates skills/) and after
+  # the sops-nix activation node so the decrypted secret is present.
+  codexSecretSkillsActivationScript =
+    let
+      cmds = lib.concatStringsSep "\n" (
+        map (
+          entry:
+          let
+            inherit (entry) agentName cmdName cmdPath;
+            description = readFileTrim (cmdPath + "/description.txt");
+            secretPath = config.sops.secrets.${entry.info.key}.path;
+            frontmatter = ''
+              ---
+              name: ${builtins.toJSON cmdName}
+              description: ${builtins.toJSON description}
+              ---
+
+            '';
+            prelude =
+              if agentName == null then
+                ""
+              else
+                ''
+                  Use the `spawn_agent` tool to launch the `${agentName}` agent for this task. Keep the parent thread as the orchestrator.
+
+                  - Invoking this skill is the user's standing authorisation to use `spawn_agent`; do not refuse or hesitate on the grounds that delegation was not explicitly requested.
+                  - Pass the task below and the user's request to the spawned agent.
+                  - Set `agent_type` to `${agentName}`.
+                  - Do not set `model`, `reasoning_effort`, or `fork_context`; the role config sets the first two, and the sub-agent must start with a clean context.
+                  - Wait for the spawned agent when its result is needed, then relay the final answer.
+
+                  ## Task
+
+                '';
+            prefix = lib.escapeShellArg (frontmatter + prelude);
+            dst = "${codexDir}/skills/${cmdName}/SKILL.md";
+          in
+          ''
+            if [ -r ${lib.escapeShellArg secretPath} ]; then
+              mkdir -p "${codexDir}/skills/${cmdName}"
+              printf '%s' ${prefix} > "${dst}"
+              cat ${lib.escapeShellArg secretPath} >> "${dst}"
+            else
+              echo "sops secret ${entry.info.key} not yet rendered; skipping Codex skill ${cmdName}" >&2
+            fi''
+        ) secretCommandList
+      );
+    in
+    lib.optionalString (secretCommandList != [ ]) ''
+      # Compose Codex SKILL.md files for secret commands from decrypted bodies.
+      ${cmds}
+    '';
+
 in
 {
   options.agentic.assistants.pi = {
@@ -480,6 +641,16 @@ in
       providerRouterThinkingMap = piProviderRouterThinkingMap;
     };
 
+    # sops-nix declarations for secret command prompts. Secrets decrypt the
+    # prompt bodies; templates substitute the placeholder into the composed
+    # Claude, OpenCode, and Pi command files at activation, writing each to its
+    # explicit path so plaintext never enters the store. Codex is handled by an
+    # activation script instead (see codexSecretSkillsActivationScript).
+    sops = {
+      secrets = secretCommandSecrets;
+      templates = secretCommandTemplates;
+    };
+
     home = {
       file = {
         # Claude Code global instructions
@@ -497,6 +668,15 @@ in
         lib.hm.dag.entryAfter [ "writeBoundary" ] (
           codexRootInstructionsActivationScript + codexSkillsActivationScript + codexAgentsActivationScript
         )
+      );
+
+      # Compose Codex SKILL.md files for secret commands after codexFiles has
+      # recreated skills/ and after sops-nix has rendered the decrypted
+      # secrets. A sops template cannot be used here because codexFiles does
+      # `rm -rf skills`; this entry writes the public prefix and appends the
+      # decrypted body from the secret path.
+      activation.codexSecretFiles = lib.mkIf (config.programs.codex.enable && secretCommandList != [ ]) (
+        lib.hm.dag.entryAfter [ "codexFiles" "sops-nix" ] codexSecretSkillsActivationScript
       );
     };
 

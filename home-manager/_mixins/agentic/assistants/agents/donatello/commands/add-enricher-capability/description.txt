@@ -1,0 +1,1 @@
+Add manifest-gen enricher capability 🧬
