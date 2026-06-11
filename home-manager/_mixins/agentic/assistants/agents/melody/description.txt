@@ -1,1 +1,0 @@
-Interprets objective audio metrics into perceptually meaningful assessments for voice recordings.

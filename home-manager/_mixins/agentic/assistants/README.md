@@ -1,6 +1,6 @@
 # AI Agents
 
-Twelve specialist agents, 40 commands, thirteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
+Eleven specialist agents, 38 commands, fourteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
@@ -229,22 +229,9 @@ Performance optimisation specialist focused on user-perceivable improvements. Ra
 
 ---
 
-### Melody - Audio Quality Analyst
-
-Interprets objective audio metrics into perceptual descriptions: how a recording actually sounds to a listener. Specialises in spectral analysis, EBU R128 loudness measurement, dynamic range, and before/after processing comparison.
-
-**Model:** `sonnet` (Claude Code) - metric interpretation follows structured lookup tables; sonnet handles this accurately.
-
-| Command                    | Purpose                                                   |
-| -------------------------- | --------------------------------------------------------- |
-| `analyse-audio-levels`     | Diagnose recording issues from level metrics              |
-| `analyse-audio-processing` | Compare before/after metrics, detect processing artefacts |
-
----
-
 ### Penfold - Research Generalist
 
-Research partner for exploring ideas, generating options, and framing problems for downstream specialists. Synthesises findings into dense, actionable overviews. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification.
+Research partner for exploring ideas, generating options, and framing problems for downstream specialists. Synthesises findings into dense, actionable overviews. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification. Loads the `audio-metrics` skill for objective audio analysis from ffmpeg metrics: spectral statistics, loudness (EBU R128, LUFS, true peak), levels, and spectrograms.
 
 **Model:** `opus` (Claude Code) - research synthesis, problem framing, and trade-off analysis produce better direct-use results on the stronger model; specialist agents still handle domain-specific validation.
 
@@ -293,7 +280,7 @@ Three Claude Code tiers map to task complexity:
 | Tier                | Claude Code | Used for                                                                                         |
 | ------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
 | Heavy reasoning     | `opus`      | Deep analysis, research synthesis, complex implementation, prompt engineering, security auditing |
-| General purpose     | `sonnet`    | Writing, code review, audio analysis                                                             |
+| General purpose     | `sonnet`    | Writing, code review                                                                             |
 | Deterministic tasks | `haiku`     | Structured formatting with clear rules (Garfield only)                                           |
 
 OpenCode headers never set `model`. OpenCode honours the user's currently selected model, which keeps manual switching between Anthropic and OpenAI models intact.
@@ -395,6 +382,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `write-command`                 | Rosey or user        | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model      |
 | `nix`                           | Donatello            | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                            |
 | `love`                          | Donatello            | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                         |
+| `audio-metrics`                 | Penfold or user      | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |
 
 **User-invocable support skills:**
 
