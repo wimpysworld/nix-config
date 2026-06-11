@@ -1,3 +1,2 @@
 use-task: true
-model: opus
 argument-hint: "[scope]"
