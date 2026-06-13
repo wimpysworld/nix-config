@@ -3,18 +3,7 @@
 Hunt for code smells. Not faint aromas - real stench that would make a seasoned developer
 in this language ecosystem physically recoil. If it wouldn't make them puke, it doesn't belong here.
 
-Scope argument: $ARGUMENTS. If blank, review the entire codebase.
-
-### Scope
-
-Specify focus (or reviews entire codebase):
-
-| Scope | Example |
-|-------|---------|
-| Recent changes | `git diff main`, specific PR |
-| Directory | `src/services/` |
-| File | Single file deep-dive |
-| Pattern | "coupling", "god objects", "naming rot" |
+Runs a full-project smell hunt. No arguments.
 
 ### Classical Smells (non-exhaustive)
 
@@ -33,19 +22,12 @@ Specify focus (or reviews entire codebase):
 
 ### Process
 
-1. Identify genuine smells only - not style nits, not minor awkwardness
-2. Ignore formatting preferences, naming taste, and idiomatic disagreements unless they indicate a recognised smell
-3. Name the smell precisely using classical terminology where applicable
-4. If a finding cannot be named as a recognised smell or defended as equivalent structural decay, skip it
-5. Prioritise smells that increase change surface, hide intent, or concentrate responsibility
-6. Describe why it stinks - direct, no softening
-7. Output per-improvement format from agent definition
-
-### Example Invocations
-
-<examples>
-- "Smell review of src/auth/"
-- "Find code smells in recent changes"
-- "Smell review of UserService.ts"
-- "Hunt for god objects across the codebase"
-</examples>
+1. Dispatch one sub-agent per subdirectory, recursing into every nested subdirectory, not just top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same smell hunt over its own directory; the parent aggregates the findings
+2. Identify genuine smells only - not style nits, not minor awkwardness
+3. Ignore formatting preferences, naming taste, and idiomatic disagreements unless they indicate a recognised smell
+4. Name the smell precisely using classical terminology where applicable
+5. If a finding cannot be named as a recognised smell or defended as equivalent structural decay, skip it
+6. Prioritise smells that increase change surface, hide intent, or concentrate responsibility
+7. Describe why it stinks - direct, no softening
+8. Output per-improvement format from agent definition
+9. Write the aggregated report to `CODE-SMELLS.md` in the project root

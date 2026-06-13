@@ -1,16 +1,17 @@
 ## Implement Code
 
-Implement tasks from $1. Scope: $2 (phase number, task IDs, or "all").
+Implement $1. Scope: $2 - an optional phase. When $2 is given, implement only that phase; when omitted, implement the whole plan.
 
 ### Workflow
 
-1. Read $1 and identify tasks matching $2
-2. For each task, review its Dependencies, Scope, Reuse candidates, and Flags
-3. Verify dependencies are satisfied before starting a task
-4. Check Reuse candidates exist and are usable before writing new code
-5. Implement changes, honouring Success Criteria from the plan
-6. Run tests after each task
-7. Report per-task results
+1. Read $1 and resolve the task set from $2 (one phase, or the whole plan when $2 is omitted)
+2. Dispatch one fresh sub-agent per task, in dependency order - independent tasks within a phase may run in parallel; a task whose dependencies are unmet waits for them
+3. Each sub-agent reads its plan task's Dependencies, Scope, Reuse candidates, Flags, and Success Criteria, then:
+   - Verifies dependencies are satisfied before starting
+   - Checks Reuse candidates exist and are usable before writing new code
+   - Implements changes, honouring Success Criteria from the plan
+   - Runs tests after the task
+4. Aggregate the per-task results and report them
 
 ### Per-Task Output
 
@@ -57,5 +58,6 @@ Implement tasks from $1. Scope: $2 (phase number, task IDs, or "all").
 ### Constraints
 
 - Process tasks in dependency order; skip blocked tasks and report why
+- Dispatch independent tasks in parallel, but never start a task before its dependencies complete
 - Always check Reuse candidates before writing new code
 - Report deviations from the plan explicitly; never silently diverge

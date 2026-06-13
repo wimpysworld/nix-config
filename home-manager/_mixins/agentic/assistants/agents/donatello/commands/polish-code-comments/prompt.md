@@ -7,10 +7,11 @@ Default $1 to the working tree's changed files; if there are none, the whole tre
 ### Workflow
 
 1. Resolve $1 to a file set; apply $2 as a filter
-2. Read each file and classify every comment: correct, improve, preserve, or remove
-3. Edit comments only; leave code untouched
-4. Run the project's formatter and tests to prove behaviour is unchanged
-5. Report per-file counts plus any behavioural concern you refused to touch
+2. If the set spans multiple directories, dispatch one sub-agent per subdirectory, recursing into every nested subdirectory, not just top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same comment-polish pass over its own directory; the parent aggregates the per-file counts
+3. Read each file and classify every comment: correct, improve, preserve, or remove
+4. Edit comments only; leave code untouched
+5. Run the project's formatter and tests to prove behaviour is unchanged
+6. Report per-file counts plus any behavioural concern you refused to touch
 
 ### Correct - fix inaccuracy first
 
@@ -19,6 +20,7 @@ A comment that no longer matches the code is worse than none. This is the priori
 - Rewrite drifted, misleading, or outdated comments to describe current behaviour
 - Replace hardcoded line-number references (`parser.go:619`) with a semantic anchor - name the function, symbol, or purpose so the comment survives code movement
 - Rewrite past-tense regression-guard or process prose into present-tense design language describing what the code is and why
+- Replace em dashes (—) and en dashes (–) in comment prose with a full stop between independent clauses, a comma otherwise. Leave dashes inside code, string literals, URLs, and structured markers untouched
 
 ### Improve - strengthen and orient
 

@@ -1,17 +1,16 @@
 ## Peer Review
 
-**Usage:** `/peer-review <output-file>`
-
-The first argument (`$1`) is the file path to write the peer review to (e.g. `peer-review.md`). Ask if not provided before proceeding.
-
 Review this project as a seasoned developer of the associated language ecosystem. Give an honest verdict: **impressed**, **ambivalent**, or **disgusted** - and make the case for it.
+
+Runs a full-project peer review. No arguments.
 
 ### Process
 
-1. Detect the primary language(s) and ecosystem from project manifests
-2. Survey the codebase - structure, patterns, idioms, quality signals
-3. Evaluate against what an experienced practitioner of this ecosystem would expect
-4. Deliver a verdict with evidence
+1. Dispatch one sub-agent per subdirectory, recursing into every nested subdirectory, not just top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same peer review over its own directory; the parent aggregates the findings
+2. Detect the primary language(s) and ecosystem from project manifests
+3. Survey the codebase - structure, patterns, idioms, quality signals
+4. Evaluate against what an experienced practitioner of this ecosystem would expect
+5. Deliver a verdict with evidence
 
 ### Verdict Criteria
 
@@ -32,4 +31,4 @@ Review this project as a seasoned developer of the associated language ecosystem
 
 - No diplomatic hedging - give the honest verdict a peer would give in a code review
 - Cite specific code, not vague impressions
-- Write the completed review to `$1`
+- Write the aggregated review to `PEER-REVIEW.md` in the project root

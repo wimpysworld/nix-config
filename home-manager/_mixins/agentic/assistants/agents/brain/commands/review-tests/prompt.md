@@ -2,28 +2,12 @@
 
 Analyse codebase for high-value test additions.
 
-### Scope
-
-Specify focus (or reviews entire codebase):
-
-| Scope | Example |
-|-------|---------|
-| Recent changes | `git diff main`, specific PR |
-| Directory | `src/services/billing/` |
-| Risk area | "payment processing", "auth flows" |
-| Gap type | "error handling", "edge cases" |
+Runs a full-project test-gap analysis. No arguments.
 
 ### Process
 
-1. Analyse existing test patterns and coverage
-2. Apply priority criteria from agent definition
-3. Recommend tests ranked by bug-prevention value
-
-### Example Invocations
-
-<examples>
-- "Review test coverage for src/services/billing/"
-- "What tests should we add for the recent auth changes?"
-- "Identify missing edge case tests in API handlers"
-- "Review error handling coverage across the codebase"
-</examples>
+1. Dispatch one sub-agent per subdirectory, recursing into every nested subdirectory, not just top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same test-gap analysis over its own directory; the parent aggregates the findings
+2. Analyse existing test patterns and coverage
+3. Apply priority criteria from agent definition
+4. Recommend tests ranked by bug-prevention value
+5. Write the aggregated report to `TEST-REVIEW.md` in the project root

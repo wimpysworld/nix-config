@@ -4,40 +4,31 @@ Hunt for code that reimplements what the standard library already provides. Cust
 hand-rolled helpers, vendored snippets - if the stdlib covers it at the project's target version,
 it has no business being here.
 
-Scope argument: $ARGUMENTS. If blank, review the entire codebase.
-
-### Scope
-
-Specify focus (or reviews entire codebase):
-
-| Scope | Example |
-|-------|---------|
-| Recent changes | `git diff main`, specific PR |
-| Directory | `src/utils/` |
-| File | Single file deep-dive |
-| Language | "Go only", "Python only" |
+Runs a full-project standard-library review. No arguments.
 
 ### Process
 
-1. Detect languages and target versions from project manifests and toolchain files,
+1. Dispatch one sub-agent per subdirectory, recursing into every nested subdirectory, not just top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same stdlib review over its own directory; the parent aggregates the findings
+2. Detect languages and target versions from project manifests and toolchain files,
    preferring explicit runtime declarations over inference
    (`go.mod`, `pyproject.toml`, `Cargo.toml`, `.tool-versions`, `.python-version`,
    `package.json`, etc.)
-2. For each language, establish stdlib capabilities at the project's target version
+3. For each language, establish stdlib capabilities at the project's target version
    using language-specific MCP or official docs first, then Context7, then
    `mcp__exa__web_search_exa` and `mcp__exa__web_fetch_exa`
-3. Identify code reimplementing stdlib functionality:
+4. Identify code reimplementing stdlib functionality:
    custom utilities, helper functions, vendored snippets, third-party packages
    with stdlib equivalents
-4. Skip wrappers that enforce policy, preserve public API stability, or support
+5. Skip wrappers that enforce policy, preserve public API stability, or support
    older runtimes the project still targets
-5. Report only replacements you can tie to the project's declared target version
-6. Prioritise findings that are widely reused, costly to maintain, or riskier
+6. Report only replacements you can tie to the project's declared target version
+7. Prioritise findings that are widely reused, costly to maintain, or riskier
    than the stdlib replacement
-7. Flag each finding with:
+8. Flag each finding with:
    - What was reimplemented
    - The stdlib replacement and where to find it
    - Minimum version required, and whether it matches the project target
+9. Write the aggregated report to `STDLIB-REVIEW.md` in the project root
 
 ### Output Per Finding
 
@@ -45,12 +36,3 @@ Specify focus (or reviews entire codebase):
 - **Replace with:** stdlib package, function, or type
 - **Since:** language version where this became available
 - **Location:** file and line reference
-
-### Example Invocations
-
-<examples>
-- "stdlib review of src/utils/"
-- "Find reimplemented stdlib in recent changes"
-- "stdlib review of the entire project"
-- "stdlib review - Go only"
-</examples>
