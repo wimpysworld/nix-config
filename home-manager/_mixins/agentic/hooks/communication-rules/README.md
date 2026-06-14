@@ -45,6 +45,19 @@ That economy has a cash cost too: token-efficient replies cost less, arrive fast
 
 There is early evidence that brevity can improve answer quality, not only cost. The March 2026 paper ["Brevity Constraints Reverse Performance Hierarchies in Language Models"](https://arxiv.org/abs/2604.00025) found that constraining large models to brief responses improved accuracy by 26 points on certain benchmarks.
 
+### Comparison
+
+Each row is one query asked twice on Opus 4.8 via Claude Code: before is the default answer, after is the same answer under the Communication Rules. Tokens are the headline metric.
+
+| Query                        | Before | After | Saved | Saved % |
+| ---------------------------- | -----: | ----: | ----: | ------: |
+| Explain git rebase vs merge  |    879 |   333 |   546 |   62.1% |
+| Explain mutex vs semaphore   |    857 |   452 |   405 |   47.3% |
+| Explain processes vs threads |   1076 |   401 |   675 |   62.7% |
+| Explain TCP vs UDP           |   1184 |   368 |   816 |   68.9% |
+| Explain REST vs GraphQL      |   1474 |   379 |  1095 |   74.3% |
+| Explain SQL vs NoSQL         |   1604 |   519 |  1085 |   67.6% |
+
 ## Design principles
 
 These principles shape the gate.
