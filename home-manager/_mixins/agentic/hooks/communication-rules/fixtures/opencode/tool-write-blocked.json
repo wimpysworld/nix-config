@@ -1,0 +1,10 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "write"
+  },
+  "args": {
+    "path": "notes.md",
+    "content": "This sentence uses a blocked dash \u2014 fix it."
+  }
+}

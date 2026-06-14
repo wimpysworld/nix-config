@@ -1,0 +1,9 @@
+{
+  "type": "tool_call",
+  "toolName": "mcp__linear__create_comment",
+  "toolCallId": "call-mcp-post-blocked",
+  "input": {
+    "issueId": "ISS-1",
+    "body": "This comment will DELVE into the result."
+  }
+}

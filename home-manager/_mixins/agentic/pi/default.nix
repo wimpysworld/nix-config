@@ -33,6 +33,7 @@ let
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
+  communicationRules = config.agentic.communicationRules or { enable = false; };
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
   piThemeName = "catppuccin-${catppuccinPalette.flavor}";
   piCatppuccinTheme =
@@ -491,6 +492,42 @@ let
     }
   '';
 
+  piCommunicationRulesAdapterSource = pkgs.runCommand "pi-communication-rules-adapter-source" { } ''
+    mkdir -p "$out"
+    cp ${../hooks/communication-rules/adapters/contract.sh} "$out/contract.sh"
+    cp ${../hooks/communication-rules/adapters/pi.py} "$out/pi.py"
+    cp ${../hooks/communication-rules/adapters/pi.sh} "$out/pi.sh"
+    chmod +x "$out/pi.py" "$out/pi.sh"
+  '';
+
+  piCommunicationRulesAdapterPackage = pkgs.writeShellApplication {
+    name = "pi-communication-rules-adapter";
+    runtimeInputs = [
+      communicationRules.package
+      pkgs.bash
+      pkgs.coreutils
+      pkgs.python3
+    ];
+    text = ''
+      export TRIPWIRE_SCANNER="''${TRIPWIRE_SCANNER:-${communicationRules.executable}}"
+      export TRIPWIRE_POLICY_JSON="''${TRIPWIRE_POLICY_JSON:-${communicationRules.policyFilePath}}"
+      exec bash "${piCommunicationRulesAdapterSource}/pi.sh" "$@"
+    '';
+  };
+
+  piCommunicationRulesConfig = {
+    adapterPath = lib.getExe piCommunicationRulesAdapterPackage;
+    inherit (communicationRules) rulesPath;
+    policyPath = communicationRules.policyFilePath;
+  };
+
+  piCommunicationRulesFiles = lib.optionalAttrs communicationRules.enable {
+    ".pi/agent/extensions/communication-rules/config.json".text =
+      builtins.toJSON piCommunicationRulesConfig;
+    ".pi/agent/extensions/communication-rules/index.ts".source =
+      ./extensions/communication-rules/index.ts;
+  };
+
   # sub-core does not fetch quota data on session start; it first renders cached
   # state, then waits for its refresh timer. Keep that timer short enough that
   # the footer fills in promptly, and refresh again when work starts.
@@ -567,6 +604,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/quota-status/index.ts".source = ./extensions/quota-status/index.ts;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
     }
+    // piCommunicationRulesFiles
     // piAssistant.homeFiles;
 
   };

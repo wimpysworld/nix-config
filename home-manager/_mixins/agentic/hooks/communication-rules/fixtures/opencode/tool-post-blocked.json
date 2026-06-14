@@ -1,0 +1,9 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "gh-api-safe"
+  },
+  "args": {
+    "command": "gh-api-safe repos/example/issues/12/comments -X POST -f body='We should leverage this.'"
+  }
+}

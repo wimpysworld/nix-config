@@ -1,0 +1,9 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "write"
+  },
+  "args": {
+    "path": "notes.md"
+  }
+}

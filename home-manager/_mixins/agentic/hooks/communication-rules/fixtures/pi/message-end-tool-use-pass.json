@@ -1,0 +1,13 @@
+{
+  "type": "message_end",
+  "message": {
+    "role": "assistant",
+    "content": [
+      {
+        "type": "toolCall",
+        "name": "write"
+      }
+    ],
+    "stopReason": "toolUse"
+  }
+}

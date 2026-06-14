@@ -21,6 +21,7 @@ let
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
+  communicationRules = config.agentic.communicationRules or { enable = false; };
 
   # ACP adapter that lets Zed drive Codex over the Agent Client Protocol.
   # The binary is `codex-acp`, pinned via the llm-agents flake input so the
@@ -41,6 +42,7 @@ let
     codexLegacyDir
     codexXdgDir
   ];
+  codexConfigPaths = map (targetDir: "${targetDir}/config.toml") codexDirs;
   codexStableBins = lib.unique [
     codexStableBin
     codexLegacyStableBin
@@ -77,6 +79,126 @@ let
 
       fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' codexLauncherPackage "codex"} --dangerously-bypass-approvals-and-sandbox "$@"
     '';
+  };
+  codexTripwireAdapterFile = pkgs.writeTextFile {
+    name = "codex-communication-rules-adapter-source";
+    destination = "/share/agent-communication-rules/adapters/codex.sh";
+    text = builtins.readFile ../hooks/communication-rules/adapters/codex.sh;
+  };
+  codexTripwireAdapterPath = "${codexTripwireAdapterFile}/share/agent-communication-rules/adapters/codex.sh";
+  codexTripwireCorrectionPromptFile = pkgs.writeTextFile {
+    name = "codex-communication-rules-correction-prompt";
+    destination = "/share/agent-communication-rules/correction-prompt.md";
+    text = communicationRules.correctionPrompt;
+  };
+  codexTripwireCorrectionPromptPath = "${codexTripwireCorrectionPromptFile}/share/agent-communication-rules/correction-prompt.md";
+  codexTripwireAdapterPackage = pkgs.writeShellApplication {
+    name = "codex-communication-rules-adapter";
+    runtimeInputs = [
+      communicationRules.package
+      pkgs.coreutils
+      pkgs.python3
+    ];
+    text = ''
+      export TRIPWIRE_ADAPTER_CONTRACT=${lib.escapeShellArg communicationRules.adapterPaths.contract}
+      export TRIPWIRE_CORRECTION_PROMPT=${lib.escapeShellArg codexTripwireCorrectionPromptPath}
+      export TRIPWIRE_SCANNER=${lib.escapeShellArg communicationRules.executable}
+      export TRIPWIRE_POLICY_JSON=${lib.escapeShellArg communicationRules.policyFilePath}
+      exec ${lib.getExe pkgs.bash} ${lib.escapeShellArg codexTripwireAdapterPath} "$@"
+    '';
+  };
+  codexTripwireHook = {
+    type = "command";
+    command = lib.getExe codexTripwireAdapterPackage;
+    timeout = 30;
+  };
+  codexTripwireHookWithStatus = statusMessage: codexTripwireHook // { inherit statusMessage; };
+  codexTripwireHookEvents = {
+    SessionStart = [
+      {
+        matcher = "startup|clear|compact";
+        hooks = [ (codexTripwireHookWithStatus "Loading Communication Rules") ];
+      }
+    ];
+    # SubagentStart and SubagentStop require Codex >= 0.130; earlier releases
+    # do not emit these hook events, so on an older codex they are inert (no
+    # hook fires) rather than an error. The codex version is pinned by the
+    # llm-agents flake input, which currently tracks >= 0.130. SubagentStart is
+    # reminder-only: like SessionStart it cannot block, so it injects the rules
+    # reminder and never gates. SubagentStop is the blocking surface for a
+    # subagent's final output.
+    SubagentStart = [
+      {
+        hooks = [ (codexTripwireHookWithStatus "Loading Communication Rules") ];
+      }
+    ];
+    PreToolUse = [
+      {
+        matcher = "^(apply_patch|Edit|Write|Bash|mcp__.*(comment|create|edit|issue|post|pr|publish|release|review|send).*)$";
+        hooks = [ (codexTripwireHookWithStatus "Checking Communication Rules") ];
+      }
+    ];
+    Stop = [
+      {
+        hooks = [ (codexTripwireHookWithStatus "Checking Communication Rules") ];
+      }
+    ];
+    SubagentStop = [
+      {
+        hooks = [ (codexTripwireHookWithStatus "Checking Communication Rules") ];
+      }
+    ];
+  };
+  codexHookEventLabels = {
+    PreToolUse = "pre_tool_use";
+    SessionStart = "session_start";
+    Stop = "stop";
+    SubagentStart = "subagent_start";
+    SubagentStop = "subagent_stop";
+  };
+  codexHookTrustedHash =
+    eventName: group: hook:
+    let
+      identity = (lib.optionalAttrs (group ? matcher) { inherit (group) matcher; }) // {
+        event_name = codexHookEventLabels.${eventName};
+        hooks = [
+          (
+            hook
+            // {
+              async = hook.async or false;
+              timeout = hook.timeout or 600;
+            }
+          )
+        ];
+      };
+    in
+    "sha256:${builtins.hashString "sha256" (builtins.toJSON identity)}";
+  codexHookStateEntriesForConfigPath =
+    configPath:
+    lib.flatten (
+      lib.mapAttrsToList (
+        eventName: groups:
+        lib.imap0 (
+          groupIndex: group:
+          lib.imap0 (handlerIndex: hook: {
+            name = "${configPath}:${
+              codexHookEventLabels.${eventName}
+            }:${toString groupIndex}:${toString handlerIndex}";
+            value = {
+              enabled = true;
+              trusted_hash = codexHookTrustedHash eventName group hook;
+            };
+          }) group.hooks
+        ) groups
+      ) codexTripwireHookEvents
+    );
+  codexTripwireHookState = lib.listToAttrs (
+    lib.concatMap codexHookStateEntriesForConfigPath codexConfigPaths
+  );
+  codexTripwireHooks = lib.optionalAttrs communicationRules.enable {
+    hooks = codexTripwireHookEvents // {
+      state = codexTripwireHookState;
+    };
   };
   tomlMergePython = pkgs.python3.withPackages (ps: [ ps.tomli-w ]);
 
@@ -220,7 +342,8 @@ let
         trust_level = "trusted";
       };
     };
-  };
+  }
+  // codexTripwireHooks;
 
   # Generate the config.toml content in the nix store, then deploy it as a real
   # mutable file during activation.
@@ -327,6 +450,7 @@ in
     packages = [
       codexAcpPackage
     ]
+    ++ lib.optional communicationRules.enable codexTripwireAdapterPackage
     ++ lib.optional pkgs.stdenv.hostPlatform.isLinux codexFencedPackage;
     # config.toml is written as a real mutable file (not a symlink) so that
     # codex can edit it in-place at runtime. See codexConfigActivationScript.

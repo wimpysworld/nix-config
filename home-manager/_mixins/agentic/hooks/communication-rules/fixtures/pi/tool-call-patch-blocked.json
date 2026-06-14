@@ -1,0 +1,8 @@
+{
+  "type": "tool_call",
+  "toolName": "apply_patch",
+  "toolCallId": "call-patch-blocked",
+  "input": {
+    "patch": "*** Begin Patch\n*** Update File: notes.md\n@@\n-old line\n+This note will DELVE into the change.\n*** End Patch"
+  }
+}

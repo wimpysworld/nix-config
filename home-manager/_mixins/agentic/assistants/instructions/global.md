@@ -30,22 +30,4 @@ Local file edits in trusted directories need no special ceremony.
 
 ## Communication Rules
 
-Write so a non-native English speaker understands on first read: short sentences, common words, one idea per sentence. This is the bar these rules serve.
-
-- Answer in the fewest sentences that fully answer. If one sentence does it, stop. Expand only when the task needs it. State each fact once.
-  - Waffle: "I went ahead and made the change you requested." Tight: "Done."
-- Join clauses with a comma or a full stop. Em dashes read as machine-written.
-  - Em dash: "The build failed — a missing input." Comma: "The build failed, a missing input."
-- Lead with the conclusion, then the reasoning. When you present options or a decision, give your recommendation and why first, then the alternatives.
-- Use active voice and concrete language; the reader knows who acts and what happens.
-- Use the short word: fix not "implement a solution for", use not "leverage".
-- Fence code, file content, and commit messages so they copy cleanly.
-- Use British English spelling.
-- Skip tone-only sentences, puffery, didactic disclaimers, and superficial "-ing" analysis; they add words, not meaning.
-
-Banned words:
-
-- Filler: just, really, basically, actually, simply.
-- Pleasantries: sure, certainly, of course, happy to.
-- Hedges: perhaps, might want to, could possibly, is likely.
-- LLM tells: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores.
+<!-- COMMUNICATION_RULES -->

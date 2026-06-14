@@ -144,6 +144,26 @@ Pi `subagent` tool calls to provider-specific models declared in assistant
 `sub-core` quota updates and publishes the compact quota segment consumed by
 `pi-footer`.
 
+`communication-rules` lives at `~/.pi/agent/extensions/communication-rules/`.
+It receives the same generated Communication Rules fragment as the Pi
+`AGENTS.md` file and generated agents. The extension uses Pi's native
+`context` event for model-call injection, `input` for non-blocking reminders,
+`tool_call` for outgoing writes, edits, Bash prose side effects, and post
+bodies, `message_end` for final-message correction, and `tool_result` for
+displayed `subagent` tool results.
+
+Pi can stream text before `message_end`. Agent Tripwire treats that as an
+accepted v1 platform limit: final-message correction still runs at
+`message_end`, but earlier streamed text may already be visible.
+
+After Home Manager changes local Pi extensions, run `/reload` in an existing Pi
+session or restart Pi so it discovers the deployed files.
+
+There is no Pi command, flag, environment variable, allow rule, or prompt escape
+that bypasses Tripwire. Operator recovery is still available through normal
+config disablement, such as `disableAllHooks`, or by rebuilding without the
+Agent Tripwire mixin.
+
 Managed files:
 
 - `~/.pi/agent/extensions/provider-router/index.ts`
@@ -152,6 +172,8 @@ Managed files:
 - `~/.pi/agent/extensions/provider-router/LICENSE`
 - `~/.pi/agent/extensions/pi-logo-filter/index.ts`
 - `~/.pi/agent/extensions/quota-status/index.ts`
+- `~/.pi/agent/extensions/communication-rules/index.ts`
+- `~/.pi/agent/extensions/communication-rules/config.json`
 
 See
 [`extensions/provider-router/README.md`](extensions/provider-router/README.md)

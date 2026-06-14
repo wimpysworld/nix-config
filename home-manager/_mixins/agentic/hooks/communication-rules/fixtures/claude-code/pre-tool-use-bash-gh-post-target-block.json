@@ -1,0 +1,13 @@
+{
+  "session_id": "session-fixture",
+  "transcript_path": "/tmp/claude-transcript.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_use_id": "toolu-bash-gh-post-block",
+  "tool_input": {
+    "command": "gh pr comment 42 --body 'This is a robust update.'",
+    "description": "Comment on a pull request"
+  }
+}

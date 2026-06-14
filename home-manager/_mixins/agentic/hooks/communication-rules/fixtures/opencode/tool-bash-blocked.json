@@ -1,0 +1,9 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "bash"
+  },
+  "args": {
+    "command": "printf '%s\\n' 'We should leverage this.' > comment.md"
+  }
+}

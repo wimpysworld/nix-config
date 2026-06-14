@@ -1,0 +1,2 @@
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Write a status update."}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Done.\n\nTests passed."}]}}

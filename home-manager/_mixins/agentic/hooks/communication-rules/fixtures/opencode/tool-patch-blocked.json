@@ -1,0 +1,9 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "apply_patch"
+  },
+  "args": {
+    "patch": "*** Begin Patch\n*** Update File: notes.md\n@@\n-Old.\n+This sentence uses a blocked dash \u2013 fix it.\n*** End Patch\n"
+  }
+}

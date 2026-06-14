@@ -1,0 +1,9 @@
+{
+  "type": "tool_call",
+  "toolName": "write",
+  "toolCallId": "call-write-clean",
+  "input": {
+    "path": "notes.md",
+    "content": "Done."
+  }
+}

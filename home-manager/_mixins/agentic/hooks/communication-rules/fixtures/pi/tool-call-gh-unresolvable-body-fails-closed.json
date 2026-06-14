@@ -1,0 +1,14 @@
+{
+  "type": "tool_call",
+  "toolName": "gh",
+  "toolCallId": "call-gh-unresolvable-body",
+  "input": {
+    "args": [
+      "issue",
+      "comment",
+      "1",
+      "--body",
+      "$BODY"
+    ]
+  }
+}

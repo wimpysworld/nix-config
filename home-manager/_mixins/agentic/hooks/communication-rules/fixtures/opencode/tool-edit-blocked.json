@@ -1,0 +1,10 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "edit"
+  },
+  "args": {
+    "filePath": "notes.md",
+    "newString": "We should delve into this later."
+  }
+}

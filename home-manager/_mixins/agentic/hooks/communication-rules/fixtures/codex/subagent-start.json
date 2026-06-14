@@ -1,0 +1,11 @@
+{
+  "session_id": "session-1",
+  "turn_id": "turn-1",
+  "transcript_path": null,
+  "cwd": "/tmp",
+  "hook_event_name": "SubagentStart",
+  "model": "gpt-5.5",
+  "permission_mode": "never",
+  "agent_id": "agent-1",
+  "agent_type": "donatello"
+}

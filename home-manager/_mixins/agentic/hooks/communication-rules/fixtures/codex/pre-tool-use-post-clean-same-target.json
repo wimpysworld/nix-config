@@ -1,0 +1,15 @@
+{
+  "session_id": "session-b2",
+  "turn_id": "turn-b2",
+  "transcript_path": null,
+  "cwd": "/tmp",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5.5",
+  "permission_mode": "never",
+  "tool_name": "mcp__github__add_issue_comment",
+  "tool_use_id": "tool-b2-clean",
+  "tool_input": {
+    "issue_number": 42,
+    "body": "Done."
+  }
+}

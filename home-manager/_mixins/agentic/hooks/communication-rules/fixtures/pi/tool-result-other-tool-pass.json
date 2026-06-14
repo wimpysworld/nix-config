@@ -1,0 +1,12 @@
+{
+  "type": "tool_result",
+  "toolName": "read",
+  "toolCallId": "call-read",
+  "content": [
+    {
+      "type": "text",
+      "text": "External text may DELVE without this gate scanning it."
+    }
+  ],
+  "isError": false
+}

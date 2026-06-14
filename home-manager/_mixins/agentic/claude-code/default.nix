@@ -235,6 +235,61 @@ let
   # gitignored files, and symlinked trees all participate. Wired into
   # `settings.fileSuggestion` below.
   fileSuggestionCommand = pkgs.callPackage ./file-suggestion { };
+  communicationRules = config.agentic.communicationRules or { enable = false; };
+  communicationRulesAdapterPaths = communicationRules.adapterPaths or { };
+  claudeCodeTripwireContractPath =
+    communicationRulesAdapterPaths.contract or communicationRules.adapterContractPath;
+  claudeCodeTripwireCorrectionPrompt = pkgs.writeTextFile {
+    name = "claude-code-tripwire-correction-prompt.md";
+    text = communicationRules.correctionPrompt or "";
+  };
+  claudeCodeTripwireAdapter = pkgs.writeShellApplication {
+    name = "claude-code-tripwire-hook";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.python3
+      communicationRules.package
+    ];
+    text = ''
+      export TRIPWIRE_SCANNER='${communicationRules.executable}'
+      export TRIPWIRE_ADAPTER_CONTRACT='${claudeCodeTripwireContractPath}'
+      export TRIPWIRE_CLAUDE_CODE_EXTRACTOR='${../hooks/communication-rules/adapters/claude-code.py}'
+      export TRIPWIRE_POLICY_JSON='${communicationRules.policyFilePath}'
+      export TRIPWIRE_CORRECTION_PROMPT='${claudeCodeTripwireCorrectionPrompt}'
+      exec ${lib.getExe pkgs.bash} '${../hooks/communication-rules/adapters/claude-code.sh}' "$@"
+    '';
+  };
+  claudeCodeTripwireHook = event: {
+    type = "command";
+    command = lib.getExe claudeCodeTripwireAdapter;
+    args = [ event ];
+  };
+  claudeCodeTripwireHooks = {
+    SessionStart = lib.mkAfter [
+      {
+        hooks = [ (claudeCodeTripwireHook "SessionStart") ];
+      }
+    ];
+    PreToolUse = lib.mkAfter [
+      {
+        matcher = "Edit|MultiEdit|Write|Bash|mcp__.*__(comment|create|edit|post|publish|reply|review|send|submit|update|write).*";
+        hooks = [ (claudeCodeTripwireHook "PreToolUse") ];
+      }
+    ];
+    Stop = lib.mkAfter [
+      {
+        hooks = [ (claudeCodeTripwireHook "Stop") ];
+      }
+    ];
+    # SubagentStop scans a subagent's final output and mirrors the Stop path:
+    # same block/correction, 3-strike yield cap, and systemMessage notice. No
+    # matcher, so it applies to every subagent type.
+    SubagentStop = lib.mkAfter [
+      {
+        hooks = [ (claudeCodeTripwireHook "SubagentStop") ];
+      }
+    ];
+  };
 
   inherit (config.claude-code) lspServers;
 
@@ -419,7 +474,7 @@ in
       compactThreshold = 60;
       colorLevel = 2;
       defaultPadding = "";
-      defaultSeparator = " · ";
+      defaultSeparator = " ${builtins.fromJSON "\"\\u00B7\""} ";
       inheritSeparatorColors = false;
       globalBold = false;
       powerline = {
@@ -536,43 +591,48 @@ in
       claude-code = {
         enable = true;
         package = claudePackageWithMcp;
-        settings = {
-          # MCP servers are selected by the shared MCP mixin. Project
-          # MCP servers remain opt-in instead of being silently trusted.
-          enableAllProjectMcpServers = false;
+        settings = lib.mkMerge [
+          {
+            # MCP servers are selected by the shared MCP mixin. Project
+            # MCP servers remain opt-in instead of being silently trusted.
+            enableAllProjectMcpServers = false;
 
-          # Never surface the in-product feedback survey.
-          feedbackSurveyRate = 0;
+            # Never surface the in-product feedback survey.
+            feedbackSurveyRate = 0;
 
-          # Keep Claude Code out of Git commit and pull request attribution.
-          attribution = {
-            commit = "";
-            pr = "";
-          };
+            # Keep Claude Code out of Git commit and pull request attribution.
+            attribution = {
+              commit = "";
+              pr = "";
+            };
 
-          # Wire ccstatusline into Claude Code's status bar. The module writes
-          # this value to ~/.claude/settings.json under the "statusLine" key,
-          # which Claude Code reads on startup to invoke the formatter.
-          statusLine = {
-            type = "command";
-            command = lib.getExe ccstatuslinePackage;
-            padding = 0;
-          };
+            # Wire ccstatusline into Claude Code's status bar. The module writes
+            # this value to ~/.claude/settings.json under the "statusLine" key,
+            # which Claude Code reads on startup to invoke the formatter.
+            statusLine = {
+              type = "command";
+              command = lib.getExe ccstatuslinePackage;
+              padding = 0;
+            };
 
-          # Replace the built-in `@` file picker with `fd | fzf --filter`.
-          # The built-in matcher is a bespoke subsequence scorer capped at 15
-          # results and gated on `git ls-files`, so untracked or word-fragment
-          # queries fail. Claude Code invokes this command per keystroke with
-          # JSON `{"query": "..."}` on stdin. See ./file-suggestion for the
-          # script body and CLAUDE-FUZZY-FINDER-IS-DOGSHIT.md for context.
-          fileSuggestion = {
-            type = "command";
-            command = lib.getExe fileSuggestionCommand;
-          };
-        }
-        // lib.optionalAttrs host.is.linux {
-          skipDangerousModePermissionPrompt = true;
-        };
+            # Replace the built-in `@` file picker with `fd | fzf --filter`.
+            # The built-in matcher is a bespoke subsequence scorer capped at 15
+            # results and gated on `git ls-files`, so untracked or word-fragment
+            # queries fail. Claude Code invokes this command per keystroke with
+            # JSON `{"query": "..."}` on stdin. See ./file-suggestion for the
+            # script body and CLAUDE-FUZZY-FINDER-IS-DOGSHIT.md for context.
+            fileSuggestion = {
+              type = "command";
+              command = lib.getExe fileSuggestionCommand;
+            };
+          }
+          (lib.mkIf communicationRules.enable {
+            hooks = claudeCodeTripwireHooks;
+          })
+          (lib.optionalAttrs host.is.linux {
+            skipDangerousModePermissionPrompt = true;
+          })
+        ];
       };
       fish.shellAliases = lib.mkIf host.is.linux {
         claude-fenced = lib.getExe claudeFencedPackage;

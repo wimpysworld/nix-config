@@ -1,0 +1,15 @@
+{
+  "session_id": "session-multiedit",
+  "turn_id": "turn-multiedit",
+  "transcript_path": null,
+  "cwd": "/tmp",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5.5",
+  "permission_mode": "never",
+  "tool_name": "multiedit",
+  "tool_use_id": "tool-multiedit",
+  "tool_input": {
+    "issue_number": 7,
+    "body": "This is a robust update."
+  }
+}

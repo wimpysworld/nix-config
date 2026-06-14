@@ -1,0 +1,12 @@
+{
+  "type": "tool_result",
+  "toolName": "subagent",
+  "toolCallId": "call-subagent-blocked",
+  "content": [
+    {
+      "type": "text",
+      "text": "The subagent will DELVE into the result."
+    }
+  ],
+  "isError": false
+}
