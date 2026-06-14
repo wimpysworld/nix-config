@@ -65,7 +65,9 @@ const FACING_NOTICE = "Communication Rules breach seen, correcting next reply.";
 // process only, so it resets on restart.
 //
 // Sub-tier B1 (local: write, edit, patch, bash). Cheap to retract on disk.
-// Three-strike-then-yield, keyed per call content (sessionID:tool:textHash).
+// Three-strike-then-yield, keyed on a stable target (sessionID:tool:path) so a
+// model that revises the body between retries still walks the cap. Bash and a
+// pathless call fall back to sessionID:tool.
 const LOCAL_STRIKE_LIMIT = 3;
 // Sub-tier B2 (external: gh, gh-api-safe, post-capable MCP tools). Irretractable
 // the instant it yields. Five-strike-then-yield, keyed on a stable identity
@@ -283,14 +285,6 @@ function stableKey(parts: Array<string | undefined>): string {
   return parts.filter((part): part is string => typeof part === "string" && part.length > 0).join(":");
 }
 
-function textHash(text: string): string {
-  let hash = 5381;
-  for (let index = 0; index < text.length; index += 1) {
-    hash = ((hash << 5) + hash) ^ text.charCodeAt(index);
-  }
-  return (hash >>> 0).toString(16);
-}
-
 function eventProperties(input: unknown): Record<string, unknown> | undefined {
   if (!isRecord(input)) {
     return undefined;
@@ -421,17 +415,46 @@ async function toastNotice(client: PluginClient | undefined, message: string): P
   }
 }
 
-// B1 (local) keys on the call content (sessionID:tool:textHash) so a fresh body
-// is a fresh action. B2 (external) keys on a stable identity (sessionID:tool),
-// with no body hash, so reworded retries of the same logical post share one
-// budget.
+// The STABLE B1 target the local strike counter keys on: the file path for
+// write/edit/patch tools. Returns undefined for bash or a pathless call, so the
+// key falls back to sessionID:tool. Keying on the path rather than the body
+// means a model that revises the content between retries still walks the cap.
+function localTarget(tool: string, args: unknown): string | undefined {
+  const normalised = tool.toLowerCase().replace(/[-.]/g, "_");
+  const isFileTool =
+    ["write", "edit", "multiedit", "multi_edit", "patch", "apply_patch", "str_replace"].includes(
+      normalised,
+    ) ||
+    normalised.endsWith("_write") ||
+    normalised.endsWith("_edit") ||
+    normalised.endsWith("_patch");
+  if (!isFileTool || !isRecord(args)) {
+    return undefined;
+  }
+  for (const key of ["path", "file_path", "filePath", "filename", "file"]) {
+    const value = args[key];
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+// B1 (local) keys on a stable target (sessionID:tool:path), so a model that
+// revises the body between retries still accumulates strikes against the same
+// path and yields on the 3rd, instead of minting a fresh strike-1 key per
+// revision. Bash and a pathless call fall back to sessionID:tool, a
+// consecutive-block counter that resets on a clean pass; the trade-off is that
+// two unrelated bash commands with no pass between them share one budget, which
+// is rare and acceptable. B2 (external) keys on a stable identity
+// (external:sessionID:tool) so reworded posts share one budget.
 function pretooluseStrikeKey(input: ToolInput, output: ToolOutput): string {
   const base = stableKey([input.sessionID, input.tool]);
   if (isExternalSurface(input.tool, output.args)) {
     return "external:" + base;
   }
-  const body = JSON.stringify(output.args ?? {});
-  return base + ":" + textHash(body);
+  const target = localTarget(input.tool, output.args);
+  return target ? base + ":" + target : base;
 }
 
 // Tier A: scan a displayed final or subagent message. On a breach, flag a

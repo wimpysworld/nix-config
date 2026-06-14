@@ -12,7 +12,9 @@ source "${contract_path}"
 # and allows the call with a user notice.
 #
 # Sub-tier B1 (local: bash, apply_patch, edit, write). Cheap to retract on disk.
-# Three-strike-then-yield, keyed on the content hash.
+# Three-strike-then-yield, keyed on a STABLE target (session + turn + tool + file
+# path) so a model that revises the body between retries still walks the cap.
+# Bash and a pathless patch fall back to session+turn+tool.
 CODEX_LOCAL_STRIKE_LIMIT=3
 
 # Sub-tier B2 (external: gh, gh-api-safe, post-capable MCP tools). Irretractable
@@ -149,8 +151,8 @@ codex_pretooluse_surface() {
   codex_extract pretooluse-surface
 }
 
-# Resolve the strike key for the current surface: the content-hash key for B1
-# locals, the stable session+turn+tool key for B2 externals.
+# Resolve the strike key for the current surface: the stable session+turn+tool+
+# target key for B1 locals, the stable session+turn+tool key for B2 externals.
 codex_pretooluse_active_strike_key() {
   if [[ "$(codex_pretooluse_surface)" == "external" ]]; then
     codex_extract pretooluse-external-strike-key
@@ -583,27 +585,25 @@ def is_post_tool(name):
     return is_post_capable_mcp_tool(name)
 
 
-def pre_tool_use_body(name, tool_input):
-    # The per-tool-call content the strike counter keys on: the command for
-    # Bash, the edited/written/patched text for file tools, or the joined post
-    # body. Mirrors codex_handle_pre_tool_use's extraction order.
+def pre_tool_use_target(name, tool_input):
+    # The STABLE B1 target the local strike counter keys on. For file tools this
+    # is the file path, so a model that revises the body between retries still
+    # accumulates strikes against the same path and yields on the 3rd. Bash and a
+    # pathless patch return None: the key falls back to session+tool (see the
+    # pretooluse-strike-key mode), a consecutive-block counter that resets on a
+    # clean pass. Keying on the body instead would let a revising model dodge the
+    # cap forever, the bug this fix removes. Trade-off for the fallback: two
+    # unrelated bash commands with no pass between them share one budget. Rare and
+    # acceptable.
     lowered = name.lower()
-    if lowered == "bash":
+    if lowered in {"edit", "write", "apply_patch"}:
         if isinstance(tool_input, dict):
-            return as_text(tool_input.get("command")) or ""
-        return ""
-    if lowered in {"apply_patch", "edit", "write"}:
-        if isinstance(tool_input, dict):
-            for key in ("content", "new_string", "text", "patch", "command", "input"):
-                text = as_text(tool_input.get(key))
-                if text:
-                    return text
-        elif isinstance(tool_input, str):
-            return tool_input
-        return ""
-    if is_post_tool(name):
-        return "\n".join(collect_body_texts(tool_input))
-    return ""
+            for key in ("file_path", "path", "filename", "file"):
+                path = as_text(tool_input.get(key))
+                if path:
+                    return path
+        return None
+    return None
 
 
 def external_target(name, tool_input):
@@ -633,14 +633,20 @@ mode = sys.argv[2]
 if mode == "event":
     print(read_path(payload, "hook_event_name") or "")
 elif mode == "pretooluse-strike-key":
+    # STABLE B1 key: session + turn + tool + target, where target is the file
+    # path for file tools and "" for Bash or a pathless patch. Keying on the
+    # target rather than the body means a model that revises the content between
+    # retries still accumulates strikes against the same path and yields on the
+    # 3rd, instead of minting a fresh strike-1 key on every revision. Resets on a
+    # clean pass.
     name = read_path(payload, "tool_name") or ""
     tool_input = read_path(payload, "tool_input")
-    body = pre_tool_use_body(name, tool_input)
+    target = pre_tool_use_target(name, tool_input) or ""
     parts = [
         str(read_path(payload, "session_id") or ""),
         str(read_path(payload, "turn_id") or ""),
         str(name),
-        body,
+        target,
     ]
     raw = "\0".join(parts)
     print(hashlib.sha256(raw.encode("utf-8", "replace")).hexdigest())

@@ -1,0 +1,15 @@
+{
+  "session_id": "session-vary",
+  "turn_id": "turn-vary",
+  "transcript_path": null,
+  "cwd": "/tmp",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5.5",
+  "permission_mode": "never",
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "note.txt",
+    "content": "We should leverage this approach."
+  },
+  "tool_use_id": "tool-write-vary-2"
+}

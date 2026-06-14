@@ -318,6 +318,44 @@ def main() -> int:
             run_adapter("pre-tool-use-write-blocked.json", scanner, strike_env),
         )
 
+        # B1 stable-key regression: a model that REVISES the body between retries
+        # must still walk the three-strike cap. Three different breaching bodies
+        # write to the SAME file_path and session. The stable session+turn+tool+
+        # path key means they count as strikes 1, 2 and 3, so the third yields. A
+        # per-body hash key would mint a fresh strike-1 key on each revision and
+        # never yield (the bug this regression guards).
+        vary_dir = temp_dir / "vary-state"
+        vary_env = {"TRIPWIRE_RETRY_DIR": str(vary_dir)}
+        assert_block(
+            "pretooluse vary strike 1",
+            run_adapter("pre-tool-use-write-vary-1-blocked.json", scanner, vary_env),
+        )
+        assert_block(
+            "pretooluse vary strike 2",
+            run_adapter("pre-tool-use-write-vary-2-blocked.json", scanner, vary_env),
+        )
+        assert_pretooluse_yield(
+            "pretooluse vary strike 3",
+            run_adapter("pre-tool-use-write-vary-3-blocked.json", scanner, vary_env),
+        )
+
+        # A clean pass on the same key resets the counter, so the next breach
+        # starts again at deny rather than at the yield.
+        vary_reset_dir = temp_dir / "vary-reset"
+        vary_reset_env = {"TRIPWIRE_RETRY_DIR": str(vary_reset_dir)}
+        assert_block(
+            "pretooluse vary reset breach",
+            run_adapter("pre-tool-use-write-vary-1-blocked.json", scanner, vary_reset_env),
+        )
+        assert_pass(
+            "pretooluse vary reset clean pass",
+            run_adapter("pre-tool-use-write-vary-clean.json", scanner, vary_reset_env),
+        )
+        assert_block(
+            "pretooluse vary reset breach after pass",
+            run_adapter("pre-tool-use-write-vary-2-blocked.json", scanner, vary_reset_env),
+        )
+
         # Sub-tier B2 external posts: irretractable once they yield, so five
         # strikes. Deny on strikes 1-4, yield on strike 5 with the notice naming
         # the tool and target. The strike key is the stable session+turn+tool
@@ -443,7 +481,7 @@ def main() -> int:
         )
 
     assert_ascii([ADAPTER, *sorted(FIXTURES.glob("*"))])
-    print("codex fixtures passed: 39")
+    print("codex fixtures passed: 45")
     return 0
 
 

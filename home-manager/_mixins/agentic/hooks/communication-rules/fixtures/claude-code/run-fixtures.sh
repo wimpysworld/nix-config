@@ -307,6 +307,20 @@ reset_strikes
 run_case pre-tool-use-write-block.json PreToolUse 0 pretooluse-deny empty
 run_case pre-tool-use-write-block.json PreToolUse 0 pretooluse-deny empty
 run_case pre-tool-use-write-block.json PreToolUse 0 pretooluse-yield empty
+# B1 stable-key regression: a model that REVISES the body between retries must
+# still walk the cap. Three different breaching bodies write to the SAME
+# file_path and session, so the stable session+tool+path key counts them as
+# strikes 1, 2 and 3 and the third yields. A per-body key would never yield.
+reset_strikes
+run_case pre-tool-use-write-vary-1-block.json PreToolUse 0 pretooluse-deny empty
+run_case pre-tool-use-write-vary-2-block.json PreToolUse 0 pretooluse-deny empty
+run_case pre-tool-use-write-vary-3-block.json PreToolUse 0 pretooluse-yield empty
+# A clean pass on the same key resets the counter, so the next varying breach
+# starts again at deny.
+reset_strikes
+run_case pre-tool-use-write-vary-1-block.json PreToolUse 0 pretooluse-deny empty
+run_case pre-tool-use-write-pass.json PreToolUse 0 empty empty
+run_case pre-tool-use-write-vary-2-block.json PreToolUse 0 pretooluse-deny empty
 reset_strikes
 run_case pre-tool-use-write-extraction-failure.json PreToolUse 0 pretooluse-deny empty
 reset_strikes
@@ -369,4 +383,4 @@ run_existing_stop_block_case
 run_case subagent-stop-pass.json SubagentStop 0 empty empty
 run_case subagent-stop-block.json SubagentStop 0 facing-notice empty
 
-printf 'claude-code fixtures passed: 40\n'
+printf 'claude-code fixtures passed: 46\n'

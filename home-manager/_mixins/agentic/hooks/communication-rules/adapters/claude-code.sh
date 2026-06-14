@@ -15,8 +15,9 @@ source "$contract_path"
 # users will not accept, so each sub-tier denies then yields.
 #
 # Sub-tier B1 (local: write, edit, bash). Cheap to retract because the output
-# lands on disk, not committed. Three-strike-then-yield, keyed on the content
-# hash (a fresh path or body is a genuinely fresh action).
+# lands on disk, not committed. Three-strike-then-yield, keyed on a STABLE
+# target (session + tool + file path) so a model that revises the body between
+# retries still walks the cap. Bash has no path and falls back to session+tool.
 LOCAL_STRIKE_LIMIT=3
 
 # Sub-tier B2 (external: post-capable MCP tools). Irretractable the instant it
@@ -85,8 +86,8 @@ pretooluse_external_target() {
   printf '%s' "$payload" | python3 "$extractor_path" pretooluse-external-target 2>/dev/null || true
 }
 
-# Resolve the strike key for the current surface: the content-hash key for B1
-# locals, the stable session+tool key for B2 externals.
+# Resolve the strike key for the current surface: the stable session+tool+target
+# key for B1 locals, the stable session+tool key for B2 externals.
 pretooluse_active_strike_key() {
   if [[ "$(pretooluse_surface)" == "external" ]]; then
     pretooluse_external_strike_key
@@ -188,9 +189,9 @@ json.dump({
 }
 
 # Block (deny) or yield (allow) a flagged PreToolUse call by strike count. B1
-# locals use the content-hash key and a three-strike limit with a short notice;
-# B2 externals use the stable session+tool key and a five-strike limit with an
-# operator-visible notice naming the tool and target.
+# locals use the stable session+tool+target key and a three-strike limit with a
+# short notice; B2 externals use the stable session+tool key and a five-strike
+# limit with an operator-visible notice naming the tool and target.
 pretooluse_block_or_yield() {
   local surface
   local key

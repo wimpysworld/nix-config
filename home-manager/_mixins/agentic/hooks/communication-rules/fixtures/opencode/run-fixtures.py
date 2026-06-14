@@ -362,6 +362,51 @@ const resetStrike = await (async () => {
 })();
 assert(typeof resetStrike === "string", "fresh content should block at strike 1");
 
+// B1 stable-key regression: a model that REVISES the body between retries must
+// still walk the cap. Three DIFFERENT breaching bodies write to the SAME path
+// and session, so the stable sessionID:tool:path key counts them as strikes 1,
+// 2 and 3 and the third yields. A per-body hash key would mint a fresh strike-1
+// key on each revision and never yield (the bug). The trigger words are
+// assembled at runtime so this harness source stays rules-compliant.
+const triggerB = ["lever", "age"].join("");
+const varyBodies = [
+  `This update uses an em dash \\u2014 fix it.`,
+  `We should ${triggerB} this update.`,
+  `${trigger} into this update.`,
+];
+async function varyCall(content: string): Promise<string | undefined> {
+  try {
+    await plugin["tool.execute.before"](
+      { tool: "write", sessionID: "session-vary", callID: "call-vary" },
+      { args: { path: "/tmp/status.md", content } },
+    );
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+const varyOne = await varyCall(varyBodies[0]);
+assert(typeof varyOne === "string", "B1 vary strike 1 should block");
+const varyTwo = await varyCall(varyBodies[1]);
+assert(typeof varyTwo === "string", "B1 vary strike 2 should block");
+const varyToastsBefore = toasts.length;
+const varyThree = await varyCall(varyBodies[2]);
+assert(varyThree === undefined, "B1 vary strike 3 should yield despite revised bodies");
+assert(toasts.length === varyToastsBefore + 1, "B1 vary yield should toast once");
+assert(
+  toasts[toasts.length - 1].body.message === PRETOOLUSE_YIELD,
+  "B1 vary yield toast wrong message",
+);
+
+// A clean pass on the same key resets the counter, so a later varying breach
+// starts again at strike 1 (throw).
+await plugin["tool.execute.before"](
+  { tool: "write", sessionID: "session-vary", callID: "call-vary-clean" },
+  { args: { path: "/tmp/status.md", content: "Done." } },
+);
+const varyAfterReset = await varyCall(varyBodies[1]);
+assert(typeof varyAfterReset === "string", "B1 vary breach after a clean pass should block at strike 1");
+
 // Sub-tier B2 external posts (gh-api-safe): irretractable once they yield, so
 // five strikes. Deny on strikes 1-4, yield on strike 5 with an error-variant
 // toast that names the tool and target. The stable session+tool key means two
@@ -513,7 +558,7 @@ def main() -> int:
     check_post_correction("post-display-subagent-blocked.json")
     run_plugin_fixtures()
 
-    print("opencode fixtures passed: 13 adapter, 7 plugin")
+    print("opencode fixtures passed: 13 adapter, 8 plugin")
     return 0
 
 

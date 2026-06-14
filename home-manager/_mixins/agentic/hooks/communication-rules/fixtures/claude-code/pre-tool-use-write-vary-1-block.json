@@ -1,0 +1,13 @@
+{
+  "session_id": "session-vary",
+  "transcript_path": "/tmp/claude-transcript.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Write",
+  "tool_use_id": "toolu-write-vary-1",
+  "tool_input": {
+    "file_path": "/tmp/status.md",
+    "content": "This update uses an em dash — fix it."
+  }
+}
