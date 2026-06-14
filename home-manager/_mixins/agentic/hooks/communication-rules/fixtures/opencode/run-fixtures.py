@@ -28,7 +28,7 @@ CORRECTION_TEXT = (
 def scanner_wrapper(temp_dir: Path) -> Path:
     path = temp_dir / "agent-communication-check"
     path.write_text(
-        f"#!/usr/bin/env bash\nexec {sys.executable!r} {str(SCANNER)!r} --rules {str(RULES)!r} \"$@\"\n",
+        f'#!/usr/bin/env bash\nexec {sys.executable!r} {str(SCANNER)!r} --rules {str(RULES)!r} "$@"\n',
         encoding="utf-8",
     )
     path.chmod(0o755)
@@ -98,7 +98,9 @@ def write_policy(temp_dir: Path) -> Path:
     return path
 
 
-def run_adapter(command: str, fixture: str, *extra: str) -> subprocess.CompletedProcess[str]:
+def run_adapter(
+    command: str, fixture: str, *extra: str
+) -> subprocess.CompletedProcess[str]:
     with tempfile.TemporaryDirectory(prefix="opencode-scanner-") as temp:
         env = os.environ.copy()
         env["TRIPWIRE_ADAPTER_CONTRACT"] = str(CONTRACT)
@@ -137,7 +139,9 @@ def run_adapter_payload(command: str, payload: str) -> subprocess.CompletedProce
         )
 
 
-def assert_exit(name: str, completed: subprocess.CompletedProcess[str], expected: int) -> None:
+def assert_exit(
+    name: str, completed: subprocess.CompletedProcess[str], expected: int
+) -> None:
     if completed.returncode != expected:
         raise AssertionError(
             f"{name}: expected exit {expected}, got {completed.returncode}\n"
@@ -145,20 +149,30 @@ def assert_exit(name: str, completed: subprocess.CompletedProcess[str], expected
         )
 
 
-def assert_contains(name: str, completed: subprocess.CompletedProcess[str], text: str) -> None:
+def assert_contains(
+    name: str, completed: subprocess.CompletedProcess[str], text: str
+) -> None:
     if text not in completed.stdout:
         raise AssertionError(f"{name}: missing {text!r} in stdout:\n{completed.stdout}")
 
 
-def assert_not_contains(name: str, completed: subprocess.CompletedProcess[str], text: str) -> None:
+def assert_not_contains(
+    name: str, completed: subprocess.CompletedProcess[str], text: str
+) -> None:
     if text in completed.stdout:
-        raise AssertionError(f"{name}: unexpected {text!r} in stdout:\n{completed.stdout}")
+        raise AssertionError(
+            f"{name}: unexpected {text!r} in stdout:\n{completed.stdout}"
+        )
 
 
-def assert_last_line(name: str, completed: subprocess.CompletedProcess[str], expected: str) -> None:
+def assert_last_line(
+    name: str, completed: subprocess.CompletedProcess[str], expected: str
+) -> None:
     lines = [line for line in completed.stdout.splitlines() if line]
     if not lines or lines[-1] != expected:
-        raise AssertionError(f"{name}: expected last line {expected!r}, got:\n{completed.stdout}")
+        raise AssertionError(
+            f"{name}: expected last line {expected!r}, got:\n{completed.stdout}"
+        )
 
 
 def check_tool_pass(fixture: str) -> None:
@@ -171,14 +185,22 @@ def check_tool_pass(fixture: str) -> None:
 def check_tool_block(fixture: str) -> None:
     completed = run_adapter("tool-execute-before", fixture)
     assert_exit(fixture, completed, 1)
-    assert_contains(fixture, completed, "Blocked. Revise this prose to follow the Communication Rules.")
+    assert_contains(
+        fixture,
+        completed,
+        "Blocked. Revise this prose to follow the Communication Rules.",
+    )
     assert_last_line(fixture, completed, "block")
 
 
 def check_post_correction(fixture: str) -> None:
     completed = run_adapter("post-display", fixture)
     assert_exit(fixture, completed, 1)
-    assert_contains(fixture, completed, "Revise the previous response to follow the Communication Rules.")
+    assert_contains(
+        fixture,
+        completed,
+        "Revise the previous response to follow the Communication Rules.",
+    )
     assert_contains(fixture, completed, "correction-request")
     assert_not_contains(fixture, completed, "Blocked. Revise this prose")
     assert_not_contains(fixture, completed, "leverage")
@@ -196,14 +218,22 @@ def run_plugin_fixtures() -> None:
         scanner = scanner_wrapper(temp_path)
         plugin_source = PLUGIN.read_text(encoding="utf-8")
         plugin_source = plugin_source.replace("@tripwireAdapter@", str(ADAPTER))
-        plugin_source = plugin_source.replace("@tripwireAdapterContract@", str(CONTRACT))
+        plugin_source = plugin_source.replace(
+            "@tripwireAdapterContract@", str(CONTRACT)
+        )
         plugin_source = plugin_source.replace("@tripwireScanner@", str(scanner))
-        plugin_source = plugin_source.replace("@tripwireRules@", str(ROOT / "communication-rules.md"))
-        plugin_source = plugin_source.replace("@tripwirePolicy@", str(write_policy(temp_path)))
+        plugin_source = plugin_source.replace(
+            "@tripwireRules@", str(ROOT / "communication-rules.md")
+        )
+        plugin_source = plugin_source.replace(
+            "@tripwirePolicy@", str(write_policy(temp_path))
+        )
         prompt = temp_path / "correction-prompt.md"
         prompt.write_text(CORRECTION_TEXT, encoding="utf-8")
         plugin_source = plugin_source.replace("@tripwireCorrectionPrompt@", str(prompt))
-        (temp_path / "communication-rules.ts").write_text(plugin_source, encoding="utf-8")
+        (temp_path / "communication-rules.ts").write_text(
+            plugin_source, encoding="utf-8"
+        )
 
         harness = temp_path / "run-plugin-fixtures.ts"
         harness.write_text(
@@ -282,19 +312,22 @@ assert(toasts.length === 0, "policy disclosure raised a notice");
 
 // A blocked final flags a pending re-issue and toasts once, never re-rolling.
 const finalBlocked = await readFixture("post-display-final-blocked.json");
+const finalOutput = { text: finalBlocked.message.content };
 await plugin["experimental.text.complete"](
   { sessionID: "session-1", messageID: "message-final", partID: "part-final" },
-  { text: finalBlocked.message.content },
+  finalOutput,
 );
 assert(toasts.length === 1, "blocked final did not toast a notice");
 assert(toasts[0].body.message === FACING_NOTICE, "blocked final toast wrong message");
 assert(toasts[0].body.variant === "error", "blocked final toast wrong variant");
+assert(finalOutput.text?.endsWith(FACING_NOTICE), "blocked final did not append a notice");
 
 // The first system.transform for session-1 injects the base rules and appends
 // the silent re-issue, then clears the flag. session-1 only saw a text-complete
 // above, so this is its first transform: base rules plus the re-issue, length 2.
 const reissue = await transform("session-1");
 assert(reissue.length === 2, "system transform did not inject base rules plus the re-issue");
+assert(logs.length >= 2, "system transform did not log the correction prompt");
 const reissueSection = reissue.find((entry) =>
   entry.startsWith("Revise the previous response to follow the Communication Rules."),
 );
@@ -505,6 +538,8 @@ def main() -> int:
         "tool-write-blocked.json",
         "tool-edit-blocked.json",
         "tool-patch-blocked.json",
+        "tool-apply-patch-added-blocked.json",
+        "tool-apply-patch-context-clean.json",
         "tool-bash-blocked.json",
         "tool-post-clean.json",
         "tool-post-blocked.json",
@@ -521,12 +556,14 @@ def main() -> int:
         return 2
 
     check_tool_pass("tool-write-clean.json")
+    check_tool_pass("tool-apply-patch-context-clean.json")
     check_tool_pass("tool-post-clean.json")
 
     for fixture in [
         "tool-write-blocked.json",
         "tool-edit-blocked.json",
         "tool-patch-blocked.json",
+        "tool-apply-patch-added-blocked.json",
         "tool-bash-blocked.json",
         "tool-post-blocked.json",
         "tool-extraction-failure.json",
@@ -548,7 +585,9 @@ def main() -> int:
     post_clean = run_adapter("post-display", "post-display-clean.json")
     assert_exit("post-display-clean.json", post_clean, 0)
     if post_clean.stdout != "pass\n":
-        raise AssertionError(f"post-display-clean.json: expected pass only, got:\n{post_clean.stdout}")
+        raise AssertionError(
+            f"post-display-clean.json: expected pass only, got:\n{post_clean.stdout}"
+        )
 
     post_disclosure = run_adapter_payload(
         "post-display",
@@ -574,7 +613,7 @@ def main() -> int:
     check_post_correction("post-display-subagent-blocked.json")
     run_plugin_fixtures()
 
-    print("opencode fixtures passed: 13 adapter, 8 plugin")
+    print("opencode fixtures passed: 15 adapter, 8 plugin")
     return 0
 
 

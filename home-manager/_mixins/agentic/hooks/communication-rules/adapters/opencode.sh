@@ -8,7 +8,7 @@ contract_path="${TRIPWIRE_ADAPTER_CONTRACT:-${adapter_dir}/contract.sh}"
 source "${contract_path}"
 
 opencode_usage() {
-  cat <<'EOF'
+	cat <<'EOF'
 Usage: opencode.sh <command> [--existing-blocked] [payload.json]
 
 Commands:
@@ -18,23 +18,23 @@ EOF
 }
 
 opencode_read_payload() {
-  local payload_path="${1:-}"
+	local payload_path="${1:-}"
 
-  if [[ -n "${payload_path}" ]]; then
-    cat -- "${payload_path}"
-    return 0
-  fi
+	if [[ -n "${payload_path}" ]]; then
+		cat -- "${payload_path}"
+		return 0
+	fi
 
-  cat
+	cat
 }
 
 opencode_extract_payload() {
-  local mode="$1"
-  local payload="$2"
-  local action_path="$3"
-  local value_path="$4"
+	local mode="$1"
+	local payload="$2"
+	local action_path="$3"
+	local value_path="$4"
 
-  OPENCODE_PAYLOAD="${payload}" python3 - "${mode}" "${action_path}" "${value_path}" <<'PY'
+	OPENCODE_PAYLOAD="${payload}" python3 - "${mode}" "${action_path}" "${value_path}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -45,7 +45,7 @@ from typing import Any
 
 WRITE_FIELDS = ("content", "text", "body", "value", "newContent", "fileContent")
 EDIT_FIELDS = ("newString", "new_string", "replacement", "content", "text")
-PATCH_FIELDS = ("patch", "diff", "content", "text")
+PATCH_FIELDS = ("patch", "patchText", "diff", "content", "text")
 BASH_FIELDS = ("command", "cmd", "script", "bash")
 POST_FIELDS = ("body", "comment", "message", "note", "notes", "text", "title")
 DISPLAY_FIELDS = ("content", "message", "text", "output", "final", "response")
@@ -217,6 +217,17 @@ def is_post_tool(name: str, args: Any) -> bool:
     return False
 
 
+def patch_added_text(patch: str) -> str:
+    lines: list[str] = []
+    for line in patch.splitlines():
+        if not line.startswith("+"):
+            continue
+        if line == "+++" or line.startswith("+++ ") or line.startswith("+++\t"):
+            continue
+        lines.append(line[1:])
+    return "\n".join(lines)
+
+
 def extract_tool(data: Any) -> tuple[str, str]:
     if event_name(data) not in {"", "tool.execute.before"}:
         return "pass", ""
@@ -234,7 +245,10 @@ def extract_tool(data: Any) -> tuple[str, str]:
 
     if is_patch_tool(name):
         text = first_string(args, PATCH_FIELDS)
-        return ("gate-text", text) if text else ("fail-closed", "")
+        if not text:
+            return "fail-closed", ""
+        additions = patch_added_text(text)
+        return ("gate-text", additions) if additions else ("pass", "")
 
     if is_bash_tool(name):
         command = command_from_args(args)
@@ -291,114 +305,114 @@ PY
 }
 
 opencode_handle_tool_execute_before() {
-  local value
-  local action="$1"
-  local value_path="$2"
-  shift 2
-  local existing_blocked_args=("$@")
+	local value
+	local action="$1"
+	local value_path="$2"
+	shift 2
+	local existing_blocked_args=("$@")
 
-  value="$(cat -- "${value_path}")"
-  case "${action}" in
-    pass)
-      tripwire_state pass
-      ;;
-    gate-text)
-      tripwire_gate scan-text "${existing_blocked_args[@]}" "${value}"
-      ;;
-    gate-bash)
-      tripwire_gate scan-bash "${existing_blocked_args[@]}" "${value}"
-      ;;
-    fail-closed)
-      tripwire_fail_closed "${existing_blocked_args[@]}"
-      ;;
-    *)
-      opencode_usage >&2
-      return 2
-      ;;
-  esac
+	value="$(cat -- "${value_path}")"
+	case "${action}" in
+	pass)
+		tripwire_state pass
+		;;
+	gate-text)
+		tripwire_gate scan-text "${existing_blocked_args[@]}" "${value}"
+		;;
+	gate-bash)
+		tripwire_gate scan-bash "${existing_blocked_args[@]}" "${value}"
+		;;
+	fail-closed)
+		tripwire_fail_closed "${existing_blocked_args[@]}"
+		;;
+	*)
+		opencode_usage >&2
+		return 2
+		;;
+	esac
 }
 
 opencode_handle_post_display() {
-  local value
-  local action="$1"
-  local value_path="$2"
+	local value
+	local action="$1"
+	local value_path="$2"
 
-  value="$(cat -- "${value_path}")"
-  case "${action}" in
-    pass)
-      tripwire_state pass
-      ;;
-    correction)
-      if tripwire_scan_command scan-text "${value}" >/dev/null; then
-        tripwire_state pass
-        return 0
-      fi
-      tripwire_emit_correction
-      printf 'correction-request\n'
-      return 1
-      ;;
-    fail-closed)
-      tripwire_state pass
-      ;;
-    *)
-      opencode_usage >&2
-      return 2
-      ;;
-  esac
+	value="$(cat -- "${value_path}")"
+	case "${action}" in
+	pass)
+		tripwire_state pass
+		;;
+	correction)
+		if tripwire_scan_command scan-text "${value}" >/dev/null; then
+			tripwire_state pass
+			return 0
+		fi
+		tripwire_emit_correction
+		printf 'correction-request\n'
+		return 1
+		;;
+	fail-closed)
+		tripwire_state pass
+		;;
+	*)
+		opencode_usage >&2
+		return 2
+		;;
+	esac
 }
 
 opencode_main() {
-  local command="${1:-}"
-  shift || true
+	local command="${1:-}"
+	shift || true
 
-  local existing_blocked_args=()
-  local payload_path=""
-  local arg
-  for arg in "$@"; do
-    case "${arg}" in
-      --existing-blocked)
-        existing_blocked_args+=("${arg}")
-        ;;
-      *)
-        payload_path="${arg}"
-        ;;
-    esac
-  done
+	local existing_blocked_args=()
+	local payload_path=""
+	local arg
+	for arg in "$@"; do
+		case "${arg}" in
+		--existing-blocked)
+			existing_blocked_args+=("${arg}")
+			;;
+		*)
+			payload_path="${arg}"
+			;;
+		esac
+	done
 
-  case "${command}" in
-    tool-execute-before | post-display)
-      ;;
-    -h | --help | help)
-      opencode_usage
-      return 0
-      ;;
-    *)
-      opencode_usage >&2
-      return 2
-      ;;
-  esac
+	case "${command}" in
+	tool-execute-before | post-display)
+		;;
+	-h | --help | help)
+		opencode_usage
+		return 0
+		;;
+	*)
+		opencode_usage >&2
+		return 2
+		;;
+	esac
 
-  local payload
-  payload="$(opencode_read_payload "${payload_path}")"
+	local payload
+	payload="$(opencode_read_payload "${payload_path}")"
 
-  local action_path
-  local value_path
-  action_path="$(mktemp)"
-  value_path="$(mktemp)"
-  trap 'rm -f -- "${action_path}" "${value_path}"' RETURN
+	local action_path
+	local value_path
+	action_path="$(mktemp)"
+	value_path="$(mktemp)"
+	trap 'rm -f -- "${action_path}" "${value_path}"' RETURN
 
-  opencode_extract_payload "${command}" "${payload}" "${action_path}" "${value_path}"
-  local action
-  action="$(cat -- "${action_path}")"
+	opencode_extract_payload "${command}" "${payload}" "${action_path}" "${value_path}"
+	local action
+	action="$(cat -- "${action_path}")"
 
-  case "${command}" in
-    tool-execute-before)
-      opencode_handle_tool_execute_before "${action}" "${value_path}" "${existing_blocked_args[@]}"
-      ;;
-    post-display)
-      opencode_handle_post_display "${action}" "${value_path}"
-      ;;
-  esac
+	case "${command}" in
+	tool-execute-before)
+		opencode_handle_tool_execute_before "${action}" "${value_path}" "${existing_blocked_args[@]}"
+		;;
+	post-display)
+		opencode_handle_post_display "${action}" "${value_path}"
+		;;
+	esac
 }
 
 opencode_main "$@"
