@@ -1,0 +1,9 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "functions.apply_patch"
+  },
+  "args": {
+    "patchText": "*** Begin Patch\n*** Update File: notes.md\n@@\n-Old.\n+This line uses a blocked dash \u2014 fix it.\n*** End Patch\n"
+  }
+}

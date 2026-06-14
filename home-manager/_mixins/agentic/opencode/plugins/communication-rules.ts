@@ -24,7 +24,10 @@ type SystemTransformOutput = {
 type PluginClient = {
   tui?: {
     showToast?: (input: {
-      body: { message: string; variant?: "default" | "success" | "error" | "loading" };
+      body: {
+        message: string;
+        variant?: "default" | "success" | "error" | "loading";
+      };
     }) => Promise<unknown>;
   };
   app?: {
@@ -48,7 +51,8 @@ const terminalStates = new Set([
   "correction-request",
 ]);
 
-const fallbackBlockMessage = "Blocked. Revise this prose to follow the Communication Rules.";
+const fallbackBlockMessage =
+  "Blocked. Revise this prose to follow the Communication Rules.";
 
 const injectedSystemKeys = new Set<string>();
 
@@ -59,6 +63,7 @@ const injectedSystemKeys = new Set<string>();
 // per offending turn, with no strike loop.
 const pendingReissue = new Set<string>();
 const FACING_NOTICE = "Communication Rules breach seen, correcting next reply.";
+const REISSUE_LOG_NOTICE = "Communication Rules correction prompt added.";
 
 // Tier B world-output cap on tool.execute.before, split by blast radius. Strikes
 // throw, which blocks the call and re-issues the rules to the model; on the
@@ -77,7 +82,8 @@ const LOCAL_STRIKE_LIMIT = 3;
 // external surface keeps failing and resets the moment any call on that key is
 // allowed or passes.
 const EXTERNAL_STRIKE_LIMIT = 5;
-const PRETOOLUSE_YIELD_NOTICE = "Communication Rules unmet after retries, output allowed.";
+const PRETOOLUSE_YIELD_NOTICE =
+  "Communication Rules unmet after retries, output allowed.";
 const pretooluseStrikes = new Map<string, number>();
 
 // Baked fallbacks for the post-detection data. fragment.nix is the single
@@ -112,10 +118,17 @@ const FALLBACK_EXTERNAL_TARGET_KEYS = [
   "owner",
 ];
 
-function loadStringList(node: unknown, key: string, fallback: string[]): string[] {
+function loadStringList(
+  node: unknown,
+  key: string,
+  fallback: string[],
+): string[] {
   if (isRecord(node)) {
     const value = node[key];
-    if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+    if (
+      Array.isArray(value) &&
+      value.every((item) => typeof item === "string")
+    ) {
       return value as string[];
     }
   }
@@ -135,12 +148,24 @@ function loadPostDetection(): {
       externalTargetKeys: FALLBACK_EXTERNAL_TARGET_KEYS,
     };
   }
-  for (const key of ["communicationRules", "detectionPolicy", "postDetection"]) {
+  for (const key of [
+    "communicationRules",
+    "detectionPolicy",
+    "postDetection",
+  ]) {
     node = isRecord(node) ? node[key] : undefined;
   }
   return {
-    postToolTerms: loadStringList(node, "postToolTerms", FALLBACK_POST_TOOL_TERMS),
-    externalTargetKeys: loadStringList(node, "externalTargetKeys", FALLBACK_EXTERNAL_TARGET_KEYS),
+    postToolTerms: loadStringList(
+      node,
+      "postToolTerms",
+      FALLBACK_POST_TOOL_TERMS,
+    ),
+    externalTargetKeys: loadStringList(
+      node,
+      "externalTargetKeys",
+      FALLBACK_EXTERNAL_TARGET_KEYS,
+    ),
   };
 }
 
@@ -161,14 +186,22 @@ function commandText(args: unknown): string | undefined {
   if (!isRecord(args)) {
     return undefined;
   }
-  return stringValue(args.command) ?? stringValue(args.cmd) ?? stringValue(args.script);
+  return (
+    stringValue(args.command) ??
+    stringValue(args.cmd) ??
+    stringValue(args.script)
+  );
 }
 
 // External (B2) surface: the gh CLI tools, or a post-capable MCP tool. A bare
 // "gh "/"gh-api-safe " command also counts. Everything else is local (B1).
 function isExternalSurface(tool: string, args: unknown): boolean {
   const normalised = tool.toLowerCase();
-  if (normalised === "gh" || normalised === "gh-api-safe" || normalised === "github") {
+  if (
+    normalised === "gh" ||
+    normalised === "gh-api-safe" ||
+    normalised === "github"
+  ) {
     return true;
   }
   if (isPostCapableMcpTool(tool)) {
@@ -208,7 +241,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function adapterPayload(input: ToolInput, output: ToolOutput): Record<string, unknown> {
+function adapterPayload(
+  input: ToolInput,
+  output: ToolOutput,
+): Record<string, unknown> {
   return {
     event: "tool.execute.before",
     tool: {
@@ -254,7 +290,10 @@ function subagentDisplayPayload(input: {
   };
 }
 
-function runAdapter(mode: string, payload: Record<string, unknown>): AdapterResult {
+function runAdapter(
+  mode: string,
+  payload: Record<string, unknown>,
+): AdapterResult {
   const process = Bun.spawnSync(["bash", adapterPath, mode], {
     stdin: new Response(JSON.stringify(payload)),
     stdout: "pipe",
@@ -284,7 +323,11 @@ function blockMessage(stdout: string): string {
 }
 
 function stableKey(parts: Array<string | undefined>): string {
-  return parts.filter((part): part is string => typeof part === "string" && part.length > 0).join(":");
+  return parts
+    .filter(
+      (part): part is string => typeof part === "string" && part.length > 0,
+    )
+    .join(":");
 }
 
 function eventProperties(input: unknown): Record<string, unknown> | undefined {
@@ -321,7 +364,11 @@ function outputText(output: unknown): string | undefined {
     return output;
   }
   if (isRecord(output)) {
-    return stringValue(output.text) ?? stringValue(output.output) ?? stringValue(output.content);
+    return (
+      stringValue(output.text) ??
+      stringValue(output.output) ??
+      stringValue(output.content)
+    );
   }
   return undefined;
 }
@@ -367,7 +414,10 @@ function completedSubagentOutput(input: unknown):
 
   const partType = stringValue(part.type);
   const toolName = stringValue(part.tool) ?? stringValue(part.name);
-  if (partType !== "tool" || !["task", "agent", "subagent"].includes(toolName ?? "")) {
+  if (
+    partType !== "tool" ||
+    !["task", "agent", "subagent"].includes(toolName ?? "")
+  ) {
     return undefined;
   }
 
@@ -382,14 +432,36 @@ function completedSubagentOutput(input: unknown):
   }
 
   return {
-    sessionID: stringValue(part.sessionID) ?? stringValue(properties?.sessionID),
-    messageID: stringValue(part.messageID) ?? stringValue(properties?.messageID),
+    sessionID:
+      stringValue(part.sessionID) ?? stringValue(properties?.sessionID),
+    messageID:
+      stringValue(part.messageID) ?? stringValue(properties?.messageID),
     partID: stringValue(part.id) ?? stringValue(properties?.partID),
     text,
   };
 }
 
-async function toastNotice(client: PluginClient | undefined, message: string): Promise<void> {
+async function logNotice(
+  client: PluginClient | undefined,
+  message: string,
+): Promise<void> {
+  try {
+    await client?.app?.log?.({
+      body: {
+        service: "communication-rules",
+        level: "warn",
+        message,
+      },
+    });
+  } catch {
+    return;
+  }
+}
+
+async function toastNotice(
+  client: PluginClient | undefined,
+  message: string,
+): Promise<void> {
   // Surface a short notice to the user via a toast, with the structured log as a
   // fallback. The TUI is absent in web, headless, serve, and attach modes, so
   // guard the call and swallow errors.
@@ -404,17 +476,22 @@ async function toastNotice(client: PluginClient | undefined, message: string): P
     // Fall through to the debug log even if the toast cannot be shown.
   }
 
-  try {
-    await client?.app?.log?.({
-      body: {
-        service: "communication-rules",
-        level: "warn",
-        message,
-      },
-    });
-  } catch {
+  await logNotice(client, message);
+}
+
+function appendFacingNotice(
+  output: { text?: string } | undefined,
+  message: string,
+): void {
+  if (
+    !output ||
+    typeof output.text !== "string" ||
+    output.text.includes(message)
+  ) {
     return;
   }
+
+  output.text = `${output.text.trimEnd()}\n\n${message}`;
 }
 
 // The STABLE B1 target the local strike counter keys on: the file path for
@@ -424,9 +501,15 @@ async function toastNotice(client: PluginClient | undefined, message: string): P
 function localTarget(tool: string, args: unknown): string | undefined {
   const normalised = tool.toLowerCase().replace(/[-.]/g, "_");
   const isFileTool =
-    ["write", "edit", "multiedit", "multi_edit", "patch", "apply_patch", "str_replace"].includes(
-      normalised,
-    ) ||
+    [
+      "write",
+      "edit",
+      "multiedit",
+      "multi_edit",
+      "patch",
+      "apply_patch",
+      "str_replace",
+    ].includes(normalised) ||
     normalised.endsWith("_write") ||
     normalised.endsWith("_edit") ||
     normalised.endsWith("_patch");
@@ -465,6 +548,7 @@ function maybeFlagReissue(
   client: PluginClient | undefined,
   payload: Record<string, unknown>,
   sessionID: string | undefined,
+  displayOutput?: { text?: string },
 ): void {
   let result: AdapterResult;
   try {
@@ -479,10 +563,15 @@ function maybeFlagReissue(
 
   const key = sessionID ?? "global";
   pendingReissue.add(key);
+  appendFacingNotice(displayOutput, FACING_NOTICE);
   void toastNotice(client, FACING_NOTICE);
 }
 
-async function injectRules(input: unknown, output: SystemTransformOutput): Promise<void> {
+async function injectRules(
+  client: PluginClient | undefined,
+  input: unknown,
+  output: SystemTransformOutput,
+): Promise<void> {
   const key = systemTransformKey(input);
   let rules: string;
   let correctionPrompt: string;
@@ -515,6 +604,7 @@ async function injectRules(input: unknown, output: SystemTransformOutput): Promi
     if (!output.system.includes(correctionPrompt)) {
       output.system.push(correctionPrompt);
     }
+    await logNotice(client, REISSUE_LOG_NOTICE);
   }
 }
 
@@ -522,15 +612,21 @@ export const CommunicationRules = async (context: PluginContext = {}) => {
   const client = context.client;
 
   return {
-    "experimental.chat.system.transform": async (input: unknown, output: SystemTransformOutput) => {
-      await injectRules(input, output);
+    "experimental.chat.system.transform": async (
+      input: unknown,
+      output: SystemTransformOutput,
+    ) => {
+      await injectRules(client, input, output);
     },
     "tool.execute.before": async (input: ToolInput, output: ToolOutput) => {
       const key = pretooluseStrikeKey(input, output);
 
       let result: AdapterResult;
       try {
-        result = runAdapter("tool-execute-before", adapterPayload(input, output));
+        result = runAdapter(
+          "tool-execute-before",
+          adapterPayload(input, output),
+        );
       } catch {
         // Fail closed under the strike cap rather than blocking forever.
         result = { exitCode: 1, stdout: "" };
@@ -568,7 +664,12 @@ export const CommunicationRules = async (context: PluginContext = {}) => {
       input: { sessionID?: string; messageID?: string; partID?: string },
       output: { text?: string },
     ) => {
-      maybeFlagReissue(client, finalDisplayPayload(input, output), input.sessionID);
+      maybeFlagReissue(
+        client,
+        finalDisplayPayload(input, output),
+        input.sessionID,
+        output,
+      );
     },
     event: async (input: unknown) => {
       const subagentOutput = completedSubagentOutput(input);
