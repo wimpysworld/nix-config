@@ -1,6 +1,6 @@
 # Communication Rules tripwire
 
-Shared scanner, adapters, and fixtures that enforce the Communication Rules across Claude Code, Codex, Pi, and OpenCode. Nix generates the rules fragment, scanner, and policy once; each agent wires its own adapter.
+Shared scanner, adapters, and fixtures enforce the Communication Rules across Claude Code, Codex, Pi, and OpenCode. Nix generates the rules fragment, scanner, and policy once; each agent wires its own adapter.
 
 ## Layout
 
@@ -11,23 +11,27 @@ Shared scanner, adapters, and fixtures that enforce the Communication Rules acro
 
 ## Why this exists
 
-The Communication Rules keep agent output short, plain, and easy to read. That serves two goals.
+The Communication Rules keep agent output short, plain, and easy to read. They serve two goals.
 
 First, clarity and productivity. A reader gets the answer in fewer words. A non-native English speaker understands it on the first read.
 
-Second, the rules are a policy in the token-optimised agent loop. The loop is described in the assistants instructions README at `../../assistants/instructions/README.md`. Parent context is permanent and finite, so every wasted word costs the loop. Terse, on-rule output is part of that economy, not a style preference.
+Second, the rules are policy for the token-optimised agent loop. The loop is described in the [assistants instructions README](../../assistants/instructions/README.md). Parent context is permanent and finite, so every extra word costs the loop. Terse, on-rule output is part of that economy, not a style preference.
 
 That economy has a cash cost too: token-efficient replies cost less, arrive faster, and stretch API spend and subscription allowances further. Caveman prompt users can paint ten-screen answers on a cave wall; here the rule is: get to the fucking point.
 
+There is early evidence that brevity can improve answer quality, not only cost. The March 2026 paper ["Brevity Constraints Reverse Performance Hierarchies in Language Models"](https://arxiv.org/abs/2604.00025) found that constraining large models to brief responses improved accuracy by 26 points on certain benchmarks.
+
 ## Design principles
 
-Two principles shape every part of this gate.
+These principles shape the gate.
 
-**The sensor is deterministic and independent of the model.** Detection cannot ask another LLM to judge, because LLM output is probabilistic. The gate is a stdlib-only Python scanner doing exact, mechanically testable checks: the em and en dash characters, and an exact-match subset of the banned words. The thing that controls the model must not be the model. That keeps the gate testable with fixtures and stops a bad model from talking its way past its own checker.
+**The sensor is deterministic and independent of the model.** Detection cannot ask another LLM to judge, because LLM output is probabilistic. The gate is a stdlib-only Python scanner with exact, mechanically testable checks: the em and en dash characters, and an exact-match subset of the banned words. The thing that controls the model must not be the model. That keeps the gate testable with fixtures and stops a bad model from talking its way past its own checker.
+
+**Agent tells are alignment signals.** The em dash and other banned tells are the habits agents drift back to when attention drops or context is stretched. Their emergence means the agent is no longer aligned with the Communication Rules. On blockable output, the hook punches the agent in the face, blocks the transgressed output, re-issues the Communication Rules, and asks it to try again.
 
 **One source of truth feeds the model and the gate.** Nix generates a single Communication Rules fragment. The same fragment feeds global instructions, every generated subagent prompt, session reminders, and the hook re-issue text. So what the model is told and what the gate enforces cannot drift apart.
 
-**Each agent uses its own best native mechanism.** The design does not force one shared hook model across the four agents. Each adapter wires the gate through the hook or extension that fits its platform, which is why the output contracts differ per agent (see the table below).
+**Each agent uses its own best native mechanism.** The design does not force one shared hook model across the four agents. Each adapter uses the hook or extension that fits its platform, so output contracts differ per agent (see the table below).
 
 ## The core constraint
 
@@ -65,7 +69,7 @@ There is no strike loop here. We never block, so each offending turn gets one re
 
 ## What is inspected
 
-The gate scans only prose the agent emits as its own outgoing words:
+The gate scans only prose the agent emits as its own words:
 
 - File writes.
 - Edits and patch additions.
@@ -130,15 +134,15 @@ Notes:
 
 - The Claude Code Tier A user notice fails. The Stop hook emits the `systemMessage`, but Claude Code does not show it to the user. This is a known lower-priority follow-up.
 - B2 external block is live-verified on Claude Code: a real gh issue create was denied on strike 1 and never posted. The strike-5 yield stays fixture-only on every agent, since a live yield would post to GitHub irreversibly.
-- B2 external block is live-verified on Codex: `gh repo view wimpysworld/wagall --json nameWithOwner,isPrivate` passed, then `gh issue create` with a rule-breaking body was blocked and no issue was created.
+- B2 external block is live-verified on Codex: `gh repo view owner/private-test-repo --json nameWithOwner,isPrivate` passed, then `gh issue create` with a rule-breaking body was blocked and no issue was created.
 - Codex live validation covered Tier B clean and block paths, the B1 strike-then-yield cycle, and a B2 external block. B2 external yield stays fixture-only for the same irreversible-post reason.
-- OpenCode live validation covered 50 scanner fixtures, 15 adapter fixtures, 8 plugin fixtures, clean `apply_patch` with a rule-breaking removed line, blocked `apply_patch` with a rule-breaking added line, clean Bash redirect write, blocked Bash rule-breaking redirect, headless Tier A final-text notice append with log fallback, and a blocked private `gh issue create` against `wimpysworld/wagall`; the open issue list stayed at `13`.
-- Pi live validation covered Tier A chat detection, visible notice, next-turn correction re-issue, and pending flag clear. It also covered clean local writes, clean Bash prose output, local write blocks, Bash prose blocks, B1 local strike-then-yield on the third attempt, canonical rules write allowance, and a real `gh issue create` attempt against `wimpysworld/waggal`; the post body was blocked and no issue was created.
+- OpenCode live validation covered 50 scanner fixtures, 15 adapter fixtures, 8 plugin fixtures, clean `apply_patch` with a rule-breaking removed line, blocked `apply_patch` with a rule-breaking added line, clean Bash redirect write, blocked Bash rule-breaking redirect, headless Tier A final-text notice append with log fallback, and a blocked private `gh issue create`; the issue list was unchanged.
+- Pi live validation covered Tier A chat detection, visible notice, next-turn correction re-issue, and pending flag clear. It also covered clean local writes, clean Bash prose output, local write blocks, Bash prose blocks, B1 local strike-then-yield on the third attempt, canonical rules write allowance, and a real private `gh issue create` attempt; the post body was blocked and no issue was created.
 - Pi subagent validation covered `tool_result` block behaviour for direct rule-breaking subagent output, including long-dash output. One encoded filler-word prompt escaped through a subagent result, so subagent prose coverage is marked partial until that bypass is fixed or explained.
 - OpenCode TUI toast rendering remains unobserved; fixtures verify toast and log calls only. Bash rule-breaking redirect blocked the side effect, but this UI did not show the block reason for that probe.
 - OpenCode B2 yield stays fixture-only because a live yield would post to GitHub irreversibly.
 - The Claude Code B1 strike-then-yield was driven with three different bodies to one path: block, block, then yield on the third. This also confirms the stable strike key, since the changed content still drew down one budget.
-- Codex `CODEX_HOME` is `/home/martin/.codex`; hooks wired once, including one `UserPromptSubmit`; trust entries enabled
+- Codex `CODEX_HOME` is set; hooks wired once, including one `UserPromptSubmit`; trust entries enabled
 
 ## Fail-closed and disclosure
 

@@ -362,14 +362,17 @@ def parse_command_line(line: str) -> list[str] | None:
 
 
 def split_command_segments(argv: list[str]) -> list[list[str]]:
-    # Split a parsed argv on shell control operators so each chained command is
-    # scanned in isolation. shlex.split keeps these operators as standalone
-    # tokens, so a single line such as "gh ... && echo ... > notes.md" yields a
-    # segment per command and the second command's redirect is no longer hidden.
+    # Split a parsed argv on sequential shell control operators so each chained
+    # command is scanned in isolation. shlex.split keeps these operators as
+    # standalone tokens, so a single line such as "gh ... && echo ... > notes.md"
+    # yields a segment per command and the second command's redirect is no longer
+    # hidden. A pipe "|" is deliberately not a split operator: it is a data
+    # conduit, not a command boundary, so prose piped into "tee" or a redirect
+    # must stay in one segment for the redirect collector to see the sink.
     segments: list[list[str]] = []
     current: list[str] = []
     for token in argv:
-        if token in {"&&", "||", ";", "|", "&"}:
+        if token in {"&&", "||", ";", "&"}:
             if current:
                 segments.append(current)
             current = []
