@@ -17,6 +17,16 @@ First, clarity and productivity. A reader gets the answer in fewer words. A non-
 
 Second, the rules are a policy in the token-optimised agent loop. The loop is described in the assistants instructions README at `../../assistants/instructions/README.md`. Parent context is permanent and finite, so every wasted word costs the loop. Terse, on-rule output is part of that economy, not a style preference.
 
+## Design principles
+
+Two principles shape every part of this gate.
+
+**The sensor is deterministic and independent of the model.** Detection cannot ask another LLM to judge, because LLM output is probabilistic. The gate is a stdlib-only Python scanner doing exact, mechanically testable checks: the em and en dash characters, and an exact-match subset of the banned words. The thing that controls the model must not be the model. That keeps the gate testable with fixtures and stops a bad model from talking its way past its own checker.
+
+**One source of truth feeds the model and the gate.** Nix generates a single Communication Rules fragment. The same fragment feeds global instructions, every generated subagent prompt, session reminders, and the hook re-issue text. So what the model is told and what the gate enforces cannot drift apart.
+
+**Each agent uses its own best native mechanism.** The design does not force one shared hook model across the four agents. Each adapter wires the gate through the hook or extension that fits its platform, which is why the output contracts differ per agent (see the table below).
+
 ## The core constraint
 
 No agent can block streamed prose before the user sees it. By the time a hook fires on a final message, the words are already on screen.
@@ -51,6 +61,28 @@ On a flagged final message:
 
 There is no strike loop here. We never block, so each offending turn gets one re-issue plus one notice. We tolerate the odd miss.
 
+## What is inspected
+
+The gate scans only prose the agent emits as its own outgoing words:
+
+- File writes.
+- Edits and patch additions.
+- External post bodies (gh, gh-api-safe, post-capable MCP).
+- Agent-to-agent and subagent prose.
+- Final replies.
+
+Fenced code blocks are stripped before scanning, so code is never flagged. Quoted dashes or banned words that remain in prose are blocked by design; if the agent writes them as its own text, it owns them.
+
+The gate does not scan:
+
+- Incoming tool output. It may quote external text the agent does not own, so blocking on it would punish the agent for words it did not write.
+- Arbitrary Bash arguments.
+- Binary content.
+- Build logs.
+- External text the agent is reading, not posting as its own.
+
+Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh or gh-api-safe post bodies, not a full shell parse. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
+
 ## Per-agent mechanism
 
 Each platform has its own hook contract. The table shows how each tier is delivered, so the parity and the platform limits are visible. Every Tier B adapter uses the same split: three strikes for B1 local (write, edit, patch, Bash), five strikes for B2 external (gh, gh-api-safe, MCP posts, gh posts run through Bash). The local path keys per tool-call content; the external path keys on a stable session-and-tool identity and yields with an operator notice naming the target.
@@ -66,6 +98,10 @@ Claude Code and Codex have no silent per-turn channel on Stop, so the re-issue l
 
 ## Fail-closed and disclosure
 
-Tier B stays fail-closed: if extraction fails on a world-output surface, the call is denied under the same strike cap rather than letting unscanned prose through.
+Tier B stays fail-closed: if extraction fails on a world-output surface, the call is denied under the same strike cap rather than letting unscanned prose through. A write, edit, or post whose outgoing prose cannot be read is treated as a breach, not waved through.
+
+There is no agent bypass. No flag, env var, allow rule, or prompt escape lets an agent skip the gate. The operator can still recover from a false positive: disable hooks through the operator-owned mechanism, or rebuild without this mixin. That recovery sits outside the inspected agent action, so it is operator control, not an agent bypass.
+
+The re-issue hides the trigger. It asks for full Communication Rules compliance and never names the specific dash or word that fired. If the model learned which single trigger it tripped, it could treat that as a cheat code, avoid that one thing, and ignore the rest of the rules.
 
 The scanner allows the rules themselves through, so a request to view or quote the Communication Rules is not flagged as a breach.

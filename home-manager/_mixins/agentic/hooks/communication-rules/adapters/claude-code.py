@@ -288,16 +288,22 @@ def collect_post_texts(value: Any, key: str = "") -> list[str]:
 
 
 def pre_tool_use_target(tool_name: str, tool_input: dict[str, Any]) -> str | None:
-    # Identify the per-tool-call content the strike counter keys on. For file
-    # tools this is the file path; for posts it is the extracted body; for Bash
-    # it is the command. The key stays stable across re-issues of the same call.
+    # Identify the STABLE target the B1 strike counter keys on. For file tools
+    # this is the file path, so a model that revises the body between retries
+    # still accumulates strikes against the same path and yields on the 3rd.
+    # Bash has no stable path, so it returns None and the key falls back to
+    # session+tool (see pre_tool_use_strike_key). Posts are B2 and key elsewhere.
     if tool_name in {"Write", "Edit", "MultiEdit"}:
         path = tool_input.get("file_path")
         return path if isinstance(path, str) and path else None
 
+    # Bash: no stable path. Returning None yields a session+tool key, a
+    # consecutive-block counter that resets on a clean pass. Keying on the
+    # command body instead would let a revising model dodge the cap forever, the
+    # same bug this fix removes for file tools. Trade-off: two unrelated bash
+    # commands with no pass between them share one budget. Rare and acceptable.
     if tool_name == "Bash":
-        command = tool_input.get("command")
-        return command if isinstance(command, str) else None
+        return None
 
     if is_post_capable_mcp_tool(tool_name):
         texts = collect_post_texts(tool_input)
@@ -312,9 +318,11 @@ def pre_tool_use_strike_key(payload: dict[str, Any]) -> str | None:
     if not isinstance(tool_name, str) or not isinstance(tool_input, dict):
         return None
 
+    # A None target (Bash, or a file tool with no path) falls back to a bare
+    # session+tool key so the strike counter is stable rather than per-body.
     target = pre_tool_use_target(tool_name, tool_input)
     if target is None:
-        return None
+        target = ""
 
     session_id = payload.get("session_id")
     session = session_id if isinstance(session_id, str) else ""

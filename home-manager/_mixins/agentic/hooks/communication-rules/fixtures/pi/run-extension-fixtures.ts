@@ -328,6 +328,56 @@ async function main(): Promise<void> {
     fail("tool_call yield should show a short notice");
   }
 
+  // B1 stable-key regression: a model that REVISES the body between retries must
+  // still walk the cap. Three DIFFERENT breaching bodies write to the SAME path
+  // and session, so the stable session:tool:path key counts them as strikes 1,
+  // 2 and 3 and the third yields. A per-body hash key would mint a fresh
+  // strike-1 key on each revision and never yield (the bug). The trigger words
+  // are assembled at runtime so this harness source stays rules-compliant.
+  const varyCtx = context("tool-call-vary");
+  const varyLeakA = ["LEVER", "AGE"].join("");
+  const emDash = String.fromCharCode(0x2014);
+  function varyEvent(content: string): unknown {
+    return {
+      type: "tool_call",
+      toolName: "write",
+      toolCallId: "call-write-vary",
+      input: { path: "notes.md", content },
+    };
+  }
+  const varyTool = handler("tool_call");
+  const varyOne = varyTool(varyEvent(`This uses an em dash ${emDash} fix it.`), varyCtx) as
+    | Record<string, unknown>
+    | undefined;
+  if (varyOne?.block !== true) fail("B1 vary strike 1 should block");
+  const varyTwo = varyTool(varyEvent(`We should ${varyLeakA} this.`), varyCtx) as
+    | Record<string, unknown>
+    | undefined;
+  if (varyTwo?.block !== true) fail("B1 vary strike 2 should block");
+  const notifiesBeforeVaryYield = notifications.length;
+  const varyThree = varyTool(varyEvent(`This will ${leak} into it.`), varyCtx);
+  if (varyThree !== undefined) fail("B1 vary strike 3 should yield despite revised bodies");
+  if (
+    !notifications
+      .slice(notifiesBeforeVaryYield)
+      .some((message) =>
+        message.includes("Communication Rules unmet after retries, output allowed."),
+      )
+  ) {
+    fail("B1 vary yield should show a short notice");
+  }
+
+  // A clean pass on the same key resets the counter, so a later varying breach
+  // starts again at strike 1 (block).
+  varyTool(
+    { type: "tool_call", toolName: "write", input: { path: "notes.md", content: "Done." } },
+    varyCtx,
+  );
+  const varyAfterReset = varyTool(varyEvent(`We should ${varyLeakA} this.`), varyCtx) as
+    | Record<string, unknown>
+    | undefined;
+  if (varyAfterReset?.block !== true) fail("B1 vary breach after a clean pass should block at strike 1");
+
   // Sub-tier B2 external posts: irretractable once they yield, so five strikes.
   // Deny on strikes 1-4, yield on strike 5 with an error-level notice naming the
   // tool and target. The stable session+tool key means two distinct breaching

@@ -26,6 +26,9 @@ const FACING_NOTICE =
 const PRETOOLUSE_YIELD_NOTICE =
   "Communication Rules unmet after retries, output allowed.";
 // Sub-tier B1 (local: write, edit, patch, bash). Cheap to retract on disk.
+// Three-strike-then-yield, keyed on a stable target (session:tool:path) so a
+// model that revises the body between retries still walks the cap. Bash and a
+// pathless call fall back to session:tool.
 const LOCAL_STRIKE_LIMIT = 3;
 // Sub-tier B2 (external: gh, gh-api-safe, post-capable MCP tools). Irretractable
 // the instant it yields, so a wider budget before the irreversible yield.
@@ -103,14 +106,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function textHash(text: string): string {
-  let hash = 5381;
-  for (let index = 0; index < text.length; index += 1) {
-    hash = ((hash << 5) + hash) ^ text.charCodeAt(index);
-  }
-  return (hash >>> 0).toString(16);
-}
-
 function eventToolName(event: unknown): string {
   const record = isRecord(event) ? event : {};
   return typeof record.toolName === "string"
@@ -177,19 +172,52 @@ function externalTarget(event: unknown): string {
   return label;
 }
 
-// The Tier B strike key. B1 (local) keys on the tool name plus a hash of its
-// input body, so a fresh body is a fresh action. B2 (external) keys on a stable
-// identity (session + tool), with no body hash, so reworded retries of the same
-// logical post draw down one budget. Consecutive-with-reset-on-allow: the count
-// accumulates while the same external surface keeps failing and resets the
+// The STABLE B1 target the local strike counter keys on: the file path for
+// write/edit/patch tools. Returns undefined for bash or a pathless call, so the
+// key falls back to session:tool. Keying on the path rather than the body means
+// a model that revises the content between retries still walks the cap.
+function localTarget(event: unknown): string | undefined {
+  const normalised = eventToolName(event).toLowerCase().replace(/[-.]/g, "_");
+  const isFileTool =
+    ["write", "edit", "multiedit", "multi_edit", "patch", "apply_patch", "applypatch", "str_replace"].includes(
+      normalised,
+    ) ||
+    normalised.endsWith("_write") ||
+    normalised.endsWith("_edit") ||
+    normalised.endsWith("_patch");
+  if (!isFileTool) {
+    return undefined;
+  }
+  const input = eventToolInput(event);
+  if (!isRecord(input)) {
+    return undefined;
+  }
+  for (const key of ["path", "file_path", "filePath", "filename", "file"]) {
+    const value = input[key];
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+// The Tier B strike key. B1 (local) keys on a stable target (session:tool:path),
+// so a model that revises the body between retries still accumulates strikes
+// against the same path and yields on the 3rd, instead of minting a fresh
+// strike-1 key per revision. Bash and a pathless call fall back to session:tool,
+// a consecutive-block counter that resets on a clean pass; the trade-off is that
+// two unrelated bash commands with no pass between them share one budget, which
+// is rare and acceptable. B2 (external) keys on a stable identity (session +
+// tool), so reworded posts draw down one budget. Consecutive-with-reset-on-allow:
+// the count accumulates while the same surface keeps failing and resets the
 // moment any call on that key is allowed or passes.
 function toolCallKey(sessionKeyValue: string, event: unknown): string {
   const name = eventToolName(event);
   if (isExternalSurface(event)) {
     return `external:${sessionKeyValue}:${name}`;
   }
-  const body = JSON.stringify(eventToolInput(event));
-  return `${sessionKeyValue}:${name}:${textHash(body)}`;
+  const target = localTarget(event);
+  return target ? `${sessionKeyValue}:${name}:${target}` : `${sessionKeyValue}:${name}`;
 }
 
 function loadConfig():
