@@ -1,6 +1,30 @@
 # Communication Rules tripwire
 
-Shared scanner, adapters, and fixtures enforce the Communication Rules across Claude Code, Codex, Pi, and OpenCode. Nix generates the rules fragment, scanner, and policy once; each agent wires its own adapter.
+Shared scanner, adapters, and fixtures enforce the [Communication Rules](communication-rules.md) across Claude Code, Codex, Pi, and OpenCode. Nix generates the rules fragment, scanner, and policy once; each agent wires its own adapter.
+
+## Status: initial PoC
+
+This is an initial PoC. It is tightly integrated with this repository's Nix configuration, module layout, generated fragments, and per-agent hook wiring. It is not a drop-in tool yet.
+
+A later version may become a stand-alone project with a smaller install path and clearer consumer API.
+
+Example prompt for adapting it:
+
+```text
+Adapt the Communication Rules tripwire from this repository to my configuration.
+
+Reference implementation: https://github.com/wimpysworld/nix-config/tree/main/home-manager/_mixins/agentic/hooks/communication-rules
+
+Goals:
+- Keep one source of truth for the rules text.
+- Generate or install the scanner and agent-specific hooks from my config system.
+- Preserve the two-tier policy: block world-visible writes and posts before they run; treat final assistant prose as best-effort correction for the next turn.
+- Strip fenced code before scanning.
+- Add fixtures for each agent hook I use.
+- Keep the implementation self-contained and document every file I need to copy or replace.
+
+First inspect my repository layout, then propose the smallest patch. Do not edit files until I approve the plan.
+```
 
 ## Layout
 
