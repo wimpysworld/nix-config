@@ -537,6 +537,8 @@ def main() -> int:
         "tool-write-clean.json",
         "tool-write-blocked.json",
         "tool-edit-blocked.json",
+        "tool-multiedit-clean.json",
+        "tool-multiedit-blocked.json",
         "tool-patch-blocked.json",
         "tool-apply-patch-added-blocked.json",
         "tool-apply-patch-context-clean.json",
@@ -556,12 +558,14 @@ def main() -> int:
         return 2
 
     check_tool_pass("tool-write-clean.json")
+    check_tool_pass("tool-multiedit-clean.json")
     check_tool_pass("tool-apply-patch-context-clean.json")
     check_tool_pass("tool-post-clean.json")
 
     for fixture in [
         "tool-write-blocked.json",
         "tool-edit-blocked.json",
+        "tool-multiedit-blocked.json",
         "tool-patch-blocked.json",
         "tool-apply-patch-added-blocked.json",
         "tool-bash-blocked.json",
@@ -613,7 +617,7 @@ def main() -> int:
     check_post_correction("post-display-subagent-blocked.json")
     run_plugin_fixtures()
 
-    print("opencode fixtures passed: 15 adapter, 8 plugin")
+    print("opencode fixtures passed: 17 adapter, 8 plugin")
     return 0
 
 

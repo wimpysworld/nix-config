@@ -1,0 +1,19 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "multiedit"
+  },
+  "args": {
+    "filePath": "notes.md",
+    "edits": [
+      {
+        "oldString": "foo",
+        "newString": "Done."
+      },
+      {
+        "oldString": "bar",
+        "newString": "We should delve into this later."
+      }
+    ]
+  }
+}

@@ -361,6 +361,25 @@ def parse_command_line(line: str) -> list[str] | None:
         return None
 
 
+def split_command_segments(argv: list[str]) -> list[list[str]]:
+    # Split a parsed argv on shell control operators so each chained command is
+    # scanned in isolation. shlex.split keeps these operators as standalone
+    # tokens, so a single line such as "gh ... && echo ... > notes.md" yields a
+    # segment per command and the second command's redirect is no longer hidden.
+    segments: list[list[str]] = []
+    current: list[str] = []
+    for token in argv:
+        if token in {"&&", "||", ";", "|", "&"}:
+            if current:
+                segments.append(current)
+            current = []
+            continue
+        current.append(token)
+    if current:
+        segments.append(current)
+    return segments
+
+
 def command_name(argv: list[str]) -> str:
     if not argv:
         return ""
@@ -650,18 +669,20 @@ def scan_bash(command_text: str, config: Config) -> bool:
         if argv is None:
             continue
 
-        if is_known_post_command(argv):
-            texts, unresolved = extract_post_texts(argv, body_files)
-            if unresolved or not texts:
+        heredocs = heredocs_by_line.get(stripped, [])
+        for segment in split_command_segments(argv):
+            if is_known_post_command(segment):
+                texts, unresolved = extract_post_texts(segment, body_files)
+                if unresolved or not texts:
+                    return True
+                for text in texts:
+                    blocked = blocked or scan_prose(text, config, strip_fences=True)
+
+            texts, unresolved = extract_redirect_texts(segment, heredocs)
+            if unresolved:
                 return True
             for text in texts:
                 blocked = blocked or scan_prose(text, config, strip_fences=True)
-
-        texts, unresolved = extract_redirect_texts(argv, heredocs_by_line.get(stripped, []))
-        if unresolved:
-            return True
-        for text in texts:
-            blocked = blocked or scan_prose(text, config, strip_fences=True)
 
     return blocked
 
