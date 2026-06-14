@@ -66,6 +66,9 @@ in
       "underscores"
     ];
 
+    # These terms are told to the model but deliberately not hard-gated. Each
+    # has common legitimate uses, such as vital signs, foster care, and landscape
+    # orientation, so gating them would cause false-positive blocks.
     promptOnlyBannedTerms = [
       "landscape"
       "foster"

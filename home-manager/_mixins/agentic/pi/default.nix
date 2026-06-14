@@ -33,7 +33,7 @@ let
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
-  communicationRules = config.agentic.communicationRules or { enable = false; };
+  communicationRules = config.agentic.communicationRules;
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
   piThemeName = "catppuccin-${catppuccinPalette.flavor}";
   piCatppuccinTheme =

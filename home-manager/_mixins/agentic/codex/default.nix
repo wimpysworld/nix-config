@@ -21,7 +21,7 @@ let
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  communicationRules = config.agentic.communicationRules or { enable = false; };
+  communicationRules = config.agentic.communicationRules;
 
   # ACP adapter that lets Zed drive Codex over the Agent Client Protocol.
   # The binary is `codex-acp`, pinned via the llm-agents flake input so the

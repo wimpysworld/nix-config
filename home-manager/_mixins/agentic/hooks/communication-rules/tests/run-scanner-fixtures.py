@@ -51,6 +51,7 @@ DASH_CASES = {
 BASH_CASES = {
     "gh-post-unresolvable-body-fails-closed.sh": BLOCK,
     "gh-api-safe-post-unresolvable-body-fails-closed.sh": BLOCK,
+    "bash-chained-command-blocks.sh": BLOCK,
 }
 
 

@@ -240,8 +240,8 @@ def extract_tool(data: Any) -> tuple[str, str]:
         return ("gate-text", text) if text else ("fail-closed", "")
 
     if is_edit_tool(name):
-        text = first_string(args, EDIT_FIELDS)
-        return ("gate-text", text) if text else ("fail-closed", "")
+        texts = collect_strings(args, EDIT_FIELDS)
+        return ("gate-text", "\n".join(texts)) if texts else ("fail-closed", "")
 
     if is_patch_tool(name):
         text = first_string(args, PATCH_FIELDS)

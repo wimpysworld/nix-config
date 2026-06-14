@@ -107,14 +107,9 @@ tripwire_parse_failure_mode() {
 tripwire_scan() {
   local mode="$1"
   local scanner_output
-  local scanner_status
   shift
 
-  if scanner_output="$("$tripwire_scanner" "$mode" --format plain "$@" 2>/dev/null)"; then
-    scanner_status=0
-  else
-    scanner_status=$?
-  fi
+  scanner_output="$("$tripwire_scanner" "$mode" --format plain "$@" 2>/dev/null)" || true
 
   case "$scanner_output" in
     pass)
@@ -126,11 +121,6 @@ tripwire_scan() {
       return 1
       ;;
   esac
-
-  if [[ "$scanner_status" -eq 0 ]]; then
-    tripwire_state pass
-    return 0
-  fi
 
   if [[ "$tripwire_failure_mode" == "open" ]]; then
     tripwire_state pass

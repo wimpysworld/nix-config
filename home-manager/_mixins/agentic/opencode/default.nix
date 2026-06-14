@@ -14,15 +14,7 @@ let
   # This avoids upstream source build issues entirely.
   opencodeUpstreamPackage = inputs.llm-agents.packages.${system}.opencode;
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
-  communicationRules =
-    config.agentic.communicationRules or {
-      enable = false;
-      adapterContractPath = "";
-      executable = "";
-      rulesPath = "";
-      correctionPrompt = "";
-      policyFilePath = "";
-    };
+  communicationRules = config.agentic.communicationRules;
   opencodeTripwireAdapterFile = pkgs.writeTextFile {
     name = "opencode-communication-rules-adapter-source";
     destination = "/share/agent-communication-rules/adapters/opencode.sh";
