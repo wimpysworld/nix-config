@@ -20,6 +20,7 @@ let
       adapterContractPath = "";
       executable = "";
       rulesPath = "";
+      correctionPrompt = "";
       policyFilePath = "";
     };
   opencodeTripwireAdapterFile = pkgs.writeTextFile {
@@ -29,6 +30,10 @@ let
     text = builtins.readFile ../hooks/communication-rules/adapters/opencode.sh;
   };
   opencodeTripwireAdapterPath = "${opencodeTripwireAdapterFile}/share/agent-communication-rules/adapters/opencode.sh";
+  opencodeTripwireCorrectionPromptFile = pkgs.writeTextFile {
+    name = "opencode-communication-rules-correction-prompt.md";
+    text = communicationRules.correctionPrompt;
+  };
   opencodeTripwirePlugin =
     builtins.replaceStrings
       [
@@ -37,6 +42,7 @@ let
         "@tripwireScanner@"
         "@tripwireRules@"
         "@tripwirePolicy@"
+        "@tripwireCorrectionPrompt@"
       ]
       [
         opencodeTripwireAdapterPath
@@ -44,6 +50,7 @@ let
         communicationRules.executable
         communicationRules.rulesPath
         communicationRules.policyFilePath
+        "${opencodeTripwireCorrectionPromptFile}"
       ]
       (builtins.readFile ./plugins/communication-rules.ts);
   # Wrap opencode so its process inherits Gemini env vars sourced from sops at

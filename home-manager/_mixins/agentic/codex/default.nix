@@ -120,6 +120,14 @@ let
         hooks = [ (codexTripwireHookWithStatus "Loading Communication Rules") ];
       }
     ];
+    # UserPromptSubmit consumes a pending Tier A re-issue flag set by a Stop or
+    # SubagentStop breach, injecting the rules as model-only additionalContext on
+    # the next turn. Without it the flag is set but never read.
+    UserPromptSubmit = [
+      {
+        hooks = [ (codexTripwireHookWithStatus "Loading Communication Rules") ];
+      }
+    ];
     # SubagentStart and SubagentStop require Codex >= 0.130; earlier releases
     # do not emit these hook events, so on an older codex they are inert (no
     # hook fires) rather than an error. The codex version is pinned by the
@@ -155,6 +163,7 @@ let
     Stop = "stop";
     SubagentStart = "subagent_start";
     SubagentStop = "subagent_stop";
+    UserPromptSubmit = "user_prompt_submit";
   };
   codexHookTrustedHash =
     eventName: group: hook:

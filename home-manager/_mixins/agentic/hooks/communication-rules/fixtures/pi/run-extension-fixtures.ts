@@ -18,6 +18,7 @@ const configDir = path.join(tempHome, ".pi/agent/extensions/communication-rules"
 const wrapper = path.join(tempHome, "pi-adapter");
 const scannerWrapper = path.join(tempHome, "agent-communication-check");
 const rulesPath = path.join(tempHome, "rules.md");
+const correctionPromptPath = path.join(tempHome, "correction-prompt.md");
 
 function fail(message: string): never {
   throw new Error(`pi extension fixture failed: ${message}`);
@@ -76,6 +77,17 @@ fs.mkdirSync(configDir, { recursive: true });
 const canonicalRules = fs.readFileSync(path.join(rootDir, "communication-rules.md"), "utf-8").trim();
 fs.writeFileSync(rulesPath, `${canonicalRules}\n`, "utf-8");
 fs.writeFileSync(
+  correctionPromptPath,
+  [
+    "Revise the previous response to follow the Communication Rules. Return only the corrected response.",
+    "",
+    "Communication Rules:",
+    canonicalRules,
+    "",
+  ].join("\n"),
+  "utf-8",
+);
+fs.writeFileSync(
   scannerWrapper,
   [
     "#!/usr/bin/env bash",
@@ -92,6 +104,7 @@ fs.writeFileSync(
     "#!/usr/bin/env bash",
     "set -euo pipefail",
     `export TRIPWIRE_SCANNER=${shellQuote(scannerWrapper)}`,
+    `export TRIPWIRE_CORRECTION_PROMPT=${shellQuote(correctionPromptPath)}`,
     `exec bash ${shellQuote(adapter)} "$@"`,
     "",
   ].join("\n"),
@@ -142,7 +155,7 @@ fs.writeFileSync(
 );
 fs.writeFileSync(
   path.join(configDir, "config.json"),
-  JSON.stringify({ adapterPath: wrapper, rulesPath, policyPath }),
+  JSON.stringify({ adapterPath: wrapper, rulesPath, correctionPromptPath, policyPath }),
   "utf-8",
 );
 
@@ -257,7 +270,13 @@ async function main(): Promise<void> {
   );
   if (!reissue) fail("context build should append the silent re-issue while flagged");
   if (reissue.display !== false) fail("re-issue message should be model-only (display:false)");
-  if (typeof reissue.content !== "string" || !reissue.content.includes("breach detected")) {
+  if (
+    typeof reissue.content !== "string" ||
+    !reissue.content.startsWith(
+      "Revise the previous response to follow the Communication Rules.",
+    ) ||
+    !reissue.content.includes("Communication Rules:")
+  ) {
     fail("re-issue message should carry the corrective framing");
   }
 

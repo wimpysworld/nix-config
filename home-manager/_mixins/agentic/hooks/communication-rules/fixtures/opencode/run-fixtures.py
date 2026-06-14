@@ -19,6 +19,10 @@ CONTRACT = ROOT / "adapters" / "contract.sh"
 SCANNER = ROOT / "scanner.py"
 RULES = ROOT / "communication-rules.md"
 PLUGIN = ROOT.parents[1] / "opencode" / "plugins" / "communication-rules.ts"
+CORRECTION_TEXT = (
+    "Revise the previous response to follow the Communication Rules. Return only the corrected response.\n\n"
+    "Communication Rules:\nUse short sentences.\n"
+)
 
 
 def scanner_wrapper(temp_dir: Path) -> Path:
@@ -98,6 +102,9 @@ def run_adapter(command: str, fixture: str, *extra: str) -> subprocess.Completed
     with tempfile.TemporaryDirectory(prefix="opencode-scanner-") as temp:
         env = os.environ.copy()
         env["TRIPWIRE_ADAPTER_CONTRACT"] = str(CONTRACT)
+        prompt = Path(temp) / "correction-prompt.md"
+        prompt.write_text(CORRECTION_TEXT, encoding="utf-8")
+        env["TRIPWIRE_CORRECTION_PROMPT"] = str(prompt)
         env["TRIPWIRE_SCANNER"] = str(scanner_wrapper(Path(temp)))
         return subprocess.run(
             ["bash", str(ADAPTER), command, *extra, str(FIXTURES / fixture)],
@@ -116,6 +123,9 @@ def run_adapter_payload(command: str, payload: str) -> subprocess.CompletedProce
         payload_path.write_text(payload, encoding="utf-8")
         env = os.environ.copy()
         env["TRIPWIRE_ADAPTER_CONTRACT"] = str(CONTRACT)
+        prompt = temp_path / "correction-prompt.md"
+        prompt.write_text(CORRECTION_TEXT, encoding="utf-8")
+        env["TRIPWIRE_CORRECTION_PROMPT"] = str(prompt)
         env["TRIPWIRE_SCANNER"] = str(scanner_wrapper(temp_path))
         return subprocess.run(
             ["bash", str(ADAPTER), command, str(payload_path)],
@@ -190,6 +200,9 @@ def run_plugin_fixtures() -> None:
         plugin_source = plugin_source.replace("@tripwireScanner@", str(scanner))
         plugin_source = plugin_source.replace("@tripwireRules@", str(ROOT / "communication-rules.md"))
         plugin_source = plugin_source.replace("@tripwirePolicy@", str(write_policy(temp_path)))
+        prompt = temp_path / "correction-prompt.md"
+        prompt.write_text(CORRECTION_TEXT, encoding="utf-8")
+        plugin_source = plugin_source.replace("@tripwireCorrectionPrompt@", str(prompt))
         (temp_path / "communication-rules.ts").write_text(plugin_source, encoding="utf-8")
 
         harness = temp_path / "run-plugin-fixtures.ts"
@@ -282,8 +295,11 @@ assert(toasts[0].body.variant === "error", "blocked final toast wrong variant");
 // above, so this is its first transform: base rules plus the re-issue, length 2.
 const reissue = await transform("session-1");
 assert(reissue.length === 2, "system transform did not inject base rules plus the re-issue");
-const reissueSection = reissue.find((entry) => entry.includes("breach detected"));
+const reissueSection = reissue.find((entry) =>
+  entry.startsWith("Revise the previous response to follow the Communication Rules."),
+);
 assert(reissueSection !== undefined, "re-issue missing corrective framing");
+assert(reissueSection.includes("Communication Rules:"), "re-issue missing full rules prompt");
 assert(!reissueSection.includes("\\u2014"), "re-issue leaked em dash");
 
 // The flag is one-shot: a later transform for the same session adds nothing.

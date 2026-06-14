@@ -189,7 +189,12 @@ def assert_reissue(name: str, completed: subprocess.CompletedProcess[str]) -> No
     if specific.get("hookEventName") != "UserPromptSubmit":
         raise AssertionError(f"{name}: wrong hook event name {specific!r}")
     context = specific.get("additionalContext")
-    if not isinstance(context, str) or not context.startswith(CORRECTION_START):
+    if (
+        not isinstance(context, str)
+        or not context.startswith(CORRECTION_START)
+        or "Communication Rules:" not in context
+        or "Use short sentences." not in context
+    ):
         raise AssertionError(f"{name}: unexpected re-issue additionalContext {context!r}")
 
 

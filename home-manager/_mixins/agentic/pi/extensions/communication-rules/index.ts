@@ -9,6 +9,7 @@ import type { TextContent } from "@mariozechner/pi-ai";
 interface ExtensionConfig {
   adapterPath?: unknown;
   rulesPath?: unknown;
+  correctionPromptPath?: unknown;
   policyPath?: unknown;
 }
 
@@ -221,7 +222,12 @@ function toolCallKey(sessionKeyValue: string, event: unknown): string {
 }
 
 function loadConfig():
-  | { adapterPath: string; rulesPath: string; policyPath?: string }
+  | {
+      adapterPath: string;
+      rulesPath: string;
+      correctionPromptPath: string;
+      policyPath?: string;
+    }
   | undefined {
   try {
     const parsed = JSON.parse(fs.readFileSync(configPath, "utf-8")) as ExtensionConfig;
@@ -229,11 +235,14 @@ function loadConfig():
       typeof parsed.adapterPath === "string" &&
       parsed.adapterPath.length > 0 &&
       typeof parsed.rulesPath === "string" &&
-      parsed.rulesPath.length > 0
+      parsed.rulesPath.length > 0 &&
+      typeof parsed.correctionPromptPath === "string" &&
+      parsed.correctionPromptPath.length > 0
     ) {
       return {
         adapterPath: parsed.adapterPath,
         rulesPath: parsed.rulesPath,
+        correctionPromptPath: parsed.correctionPromptPath,
         policyPath:
           typeof parsed.policyPath === "string" && parsed.policyPath.length > 0
             ? parsed.policyPath
@@ -251,6 +260,15 @@ function loadRules(config: { rulesPath: string }): string | undefined {
   try {
     const rules = fs.readFileSync(config.rulesPath, "utf-8").trim();
     return rules.length > 0 ? rules : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function loadCorrectionPrompt(config: { correctionPromptPath: string }): string | undefined {
+  try {
+    const prompt = fs.readFileSync(config.correctionPromptPath, "utf-8").trim();
+    return prompt.length > 0 ? prompt : undefined;
   } catch {
     return undefined;
   }
@@ -355,11 +373,11 @@ function rulesMessage(rules: string): AgentMessage {
   } as unknown as AgentMessage;
 }
 
-function reissueMessage(rules: string): AgentMessage {
+function reissueMessage(correctionPrompt: string): AgentMessage {
   return {
     role: "custom",
     customType: REISSUE_TYPE,
-    content: `Communication Rules breach detected in your last reply. Follow these rules in your next reply:\n${rules}`,
+    content: correctionPrompt,
     display: false,
     timestamp: Date.now(),
   } as unknown as AgentMessage;
@@ -386,7 +404,8 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
 
   pi.on("context", (event, ctx) => {
     const rules = loadRules(config);
-    if (!rules) return undefined;
+    const correctionPrompt = loadCorrectionPrompt(config);
+    if (!rules || !correctionPrompt) return undefined;
 
     const messages = Array.isArray(event.messages) ? event.messages : [];
     const additions: AgentMessage[] = [];
@@ -401,7 +420,7 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
     const key = sessionKey(ctx);
     if (pendingReissue.has(key)) {
       pendingReissue.delete(key);
-      additions.push(reissueMessage(rules));
+      additions.push(reissueMessage(correctionPrompt));
     }
 
     if (additions.length === 0) return undefined;

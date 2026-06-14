@@ -83,18 +83,55 @@ The gate does not scan:
 
 Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh or gh-api-safe post bodies, not a full shell parse. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
 
-## Per-agent mechanism
+## Per-agent validation matrix
 
-Each platform has its own hook contract. The table shows how each tier is delivered, so the parity and the platform limits are visible. Every Tier B adapter uses the same split: three strikes for B1 local (write, edit, patch, Bash), five strikes for B2 external (gh, gh-api-safe, MCP posts, gh posts run through Bash). The local path keys per tool-call content; the external path keys on a stable session-and-tool identity and yields with an operator notice naming the target.
+Each platform uses its native hook surface. Validate the same behaviours per agent: side-effect checks run before the action, final-prose checks never block, and pending re-issue happens once.
 
-| Agent       | Tier B world output (PreToolUse)                                              | Tier A facing prose                                                                                  |
-| ----------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Claude Code | B1: `permissionDecision` deny (re-issue) x2, then allow (notice), keyed per session, tool, and content. B2: deny x4, then allow with a target-naming notice, keyed per session and tool. Strike state in a runtime dir. | Stop emits a lone `systemMessage` notice and sets a pending flag; the next `UserPromptSubmit` injects the re-issue as `additionalContext`. |
-| Codex       | B1: `permissionDecision` deny x2, then allow, keyed per session, turn, tool, and body. B2: deny x4, then allow with a target-naming notice, keyed per session, turn, and tool. Strike state reuses the strike dir. | Stop emits a `systemMessage` notice and sets a pending flag; the next `UserPromptSubmit` injects the re-issue as `additionalContext`. |
-| OpenCode    | B1: `tool.execute.before` throws to block x2, then yields and toasts, keyed per session, tool, and body hash. B2: throws x4, then yields with a target-naming toast, keyed per session and tool. Strike state is an in-process map. | A flagged final sets a pending flag and toasts; `experimental.chat.system.transform` appends the re-issue while the flag is set, then clears it. |
-| Pi          | B1: `tool_call` returns a block x2, then yields and notifies, keyed per session, tool, and input hash. B2: blocks x4, then yields with a target-naming notice, keyed per session and tool. Strike state is a closure map. | A flagged final sets a pending flag and notifies; the `context` hook appends a `display:false` re-issue message while the flag is set, then clears it. |
+Every Tier B adapter uses the same retry split:
 
-Claude Code and Codex have no silent per-turn channel on Stop, so the re-issue lands on the next `UserPromptSubmit`. OpenCode and Pi have a true silent channel, so the re-issue lands on the next context build of the same turn loop.
+- B1 local output (`write`, `edit`, `patch`, Bash) blocks twice, then yields on the third strike with `Communication Rules unmet after retries, output allowed.`
+- B2 external output (`gh`, `gh-api-safe`, post-capable MCP tools, gh posts through Bash) blocks four times, then yields on the fifth strike with `Rules breach posted: <target>`.
+- B1 keys use a stable local target when available (`session + tool + path`, plus `turn` on Codex). Bash and pathless calls fall back to `session + tool`. B2 keys use stable `session + tool` identity, plus `turn` on Codex.
+
+| Agent | Hooks used | Detection | User notification | Rules re-issued |
+| ----- | ---------- | --------- | ----------------- | --------------- |
+| Claude Code | `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `Stop`, `SubagentStop`. | `PreToolUse` scans writes, edits, patches, Bash prose side effects, MCP post bodies, and gh post bodies. `Stop` and `SubagentStop` scan the last assistant or subagent prose. Extraction failure on Tier B fails closed. | Tier B deny returns `permissionDecisionReason` to the model. Tier B yield returns an allow reason visible to the user. Tier A breach emits one `systemMessage`: `Communication Rules breach seen, correcting next reply.` | `SessionStart` injects the full rules reminder for fresh sessions. Tier B deny re-issues the full block message. Tier A sets a pending flag; the next `UserPromptSubmit` injects the correction prompt as `additionalContext`, then clears the flag. |
+| Codex | `SessionStart`, `SubagentStart`, `UserPromptSubmit`, `PreToolUse`, `Stop`, `SubagentStop`. | `PreToolUse` scans `apply_patch`, `Edit`, `Write`, `Bash`, post-capable MCP tools, gh tools, and gh posts through Bash. `Stop` and `SubagentStop` scan assistant and subagent prose. Extraction failure on Tier B fails closed. | Tier B deny uses `permissionDecisionReason`; Codex `additionalContext` is not used on `PreToolUse`. Tier B yield uses allow reason. Tier A breach emits `systemMessage`: `Communication Rules breach seen, correcting next reply.` | `SessionStart` and `SubagentStart` inject the full rules reminder for fresh contexts. Tier B deny re-issues the full block message. Tier A sets a pending flag; the next `UserPromptSubmit` injects the correction prompt as `additionalContext`, then clears the flag. Nix pre-seeds hook `trusted_hash` state in `config.toml`, so generated hooks are trusted without a runtime prompt. |
+| OpenCode | `experimental.chat.system.transform`, `tool.execute.before`, `experimental.text.complete`, `event` for completed subagent tool parts. | `tool.execute.before` scans writes, edits, patches, Bash prose side effects, post bodies, and gh post bodies. `experimental.text.complete` scans final prose. `event` scans completed `task`, `agent`, or `subagent` output. Adapter errors fail closed under the strike cap. | Tier B blocks by throwing the block message. Tier B yield shows a toast and logs a warning fallback. Tier A breach shows a toast: `Communication Rules breach seen, correcting next reply.` | `experimental.chat.system.transform` injects the full rules once per session key. It does not repeat the full prompt after that. Tier B throw re-issues the full block message. Tier A sets a pending flag; the next system transform appends the correction prompt, then clears the flag. |
+| Pi | `context`, `tool_call`, `message_end`, `tool_result`. | `tool_call` scans writes, edits, patches, Bash prose side effects, post bodies, and gh post bodies. `message_end` scans final prose after skipping intermediate `toolUse` turns. `tool_result` scans subagent output. Extraction failure on Tier B fails closed. | Tier B blocks by returning `{ block = true, reason = ... }`. Tier B yield uses `ctx.ui.notify` when UI exists. Tier A breach notifies: `Communication Rules breach seen, correcting next reply.` `tool_result` breaches return an error content block to the model. | `context` appends the full rules as a hidden custom message when absent. It does not repeat the full prompt once present. Tier B block re-issues the full block message. Tier A sets a pending flag; the next `context` hook appends a hidden `display:false` correction message, then clears the flag. |
+
+Full Communication Rules injection is limited to fresh session, subagent, or context creation. Retry and final-prose paths use the correction prompt instead, so the model is corrected without repeated prompt injection.
+
+The explicit verbatim disclosure override is part of the scanner policy. A user request to view, repeat, disclose, print, or test the Communication Rules passes when the output is the canonical rules text.
+
+### Validation status
+
+Tested on 2026-06-14. The Claude Code and Codex rows were tested live in real sessions. OpenCode and Pi were tested through their adapter fixture suites, which run the same behaviours deterministically. Live platform rendering of the user notice on OpenCode and Pi is not yet confirmed.
+
+| Behaviour | Claude Code | Codex | OpenCode | Pi |
+| --------- | ----------- | ----- | -------- | -- |
+| Hook install and trust | Pass (live) | Pass (live) | Pass (fixtures) | Pass (fixtures) |
+| Fresh-context rules reminder | Pass (live: `SessionStart`) | Pass (live: `SessionStart` and `SubagentStart`) | Pass (fixtures) | Pass (fixtures) |
+| Quiet prompt hook without pending re-issue | Pass (live) | Pass (live) | Pass (fixtures) | Pass (fixtures) |
+| Tier B clean output | Pass (live) | Pass (live) | Pass (fixtures) | Pass (fixtures) |
+| Tier B detection and block | Pass (live) | Pass (live) | Pass (fixtures) | Pass (fixtures) |
+| Tier B strike-then-yield | Pass (live: B1 cycle, B2 block) | Pass (live: B1 cycle, B2 block) | Pass (fixtures) | Pass (fixtures) |
+| Tier B block notice to user | Pass (live) | Pass (live) | Fixtures only | Fixtures only |
+| Tier A detection and pending flag | Pass (live) | Pass (live) | Pass (fixtures) | Pass (fixtures) |
+| Tier A next-turn re-issue | Pass (live) | Pass (live) | Pass (fixtures) | Pass (fixtures) |
+| Tier A pending flag clear | Pass (live) | Pass (live) | Pass (fixtures) | Pass (fixtures) |
+| Tier A user notice | Fail (live) | Pass (live) | Not verified | Not verified |
+| Canonical rules disclosure | Pass (live) | Pass (live) | Pass (fixtures) | Pass (fixtures) |
+| Subagent prose follows final-prose behaviour | Pass (live: `SubagentStop`) | Pass (live: `SubagentStop`) | Pass (fixtures) | Pass (fixtures) |
+
+Notes:
+
+- The Claude Code Tier A user notice fails. The Stop hook emits the `systemMessage`, but Claude Code does not show it to the user. This is a known lower-priority follow-up.
+- B2 external block is live-verified on Claude Code: a real gh issue create was denied on strike 1 and never posted. The strike-5 yield stays fixture-only on every agent, since a live yield would post to GitHub irreversibly.
+- B2 external block is live-verified on Codex: `gh repo view wimpysworld/wagall --json nameWithOwner,isPrivate` passed, then `gh issue create` with a rule-breaking body was blocked and no issue was created.
+- Codex live validation covered Tier B clean and block paths, the B1 strike-then-yield cycle, and a B2 external block. B2 external yield stays fixture-only for the same irreversible-post reason.
+- The Claude Code B1 strike-then-yield was driven with three different bodies to one path: block, block, then yield on the third. This also confirms the stable strike key, since the changed content still drew down one budget.
+- Codex `CODEX_HOME` is `/home/martin/.codex`; hooks wired once, including one `UserPromptSubmit`; trust entries enabled
 
 ## Fail-closed and disclosure
 
