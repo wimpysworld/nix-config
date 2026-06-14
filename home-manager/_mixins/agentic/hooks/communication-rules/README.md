@@ -17,6 +17,8 @@ First, clarity and productivity. A reader gets the answer in fewer words. A non-
 
 Second, the rules are a policy in the token-optimised agent loop. The loop is described in the assistants instructions README at `../../assistants/instructions/README.md`. Parent context is permanent and finite, so every wasted word costs the loop. Terse, on-rule output is part of that economy, not a style preference.
 
+That economy has a cash cost too: token-efficient replies cost less, arrive faster, and stretch API spend and subscription allowances further. Caveman prompt users can paint ten-screen answers on a cave wall; here the rule is: get to the fucking point.
+
 ## Design principles
 
 Two principles shape every part of this gate.
