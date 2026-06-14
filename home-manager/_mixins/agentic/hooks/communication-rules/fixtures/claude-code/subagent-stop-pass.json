@@ -1,0 +1,8 @@
+{
+  "session_id": "session-subagent",
+  "transcript_path": "__TRANSCRIPT_DIR__/stop-transcript-pass.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false
+}

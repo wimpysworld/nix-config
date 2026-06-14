@@ -16,6 +16,16 @@ Agents, commands, skills, and global instructions are managed separately in the 
 - **IDE integration** - VSCode extension, Zed editor as external agent
 - **TUI configuration** - Catppuccin theme, CUA-standard keybindings
 
+## Agent Tripwire
+
+OpenCode receives the shared Communication Rules fragment from the assistants module. The fragment is generated once by Nix and reused by OpenCode global context, generated agents, reminders, block messages, and correction requests.
+
+Tripwire uses a global OpenCode plugin. The native `tool.execute.before` surface gates outgoing writes, edits, patches, Bash prose side effects, and external post bodies. If an outgoing side effect cannot be inspected, the plugin fails closed.
+
+OpenCode v1 cannot hard-block final or subagent prose before display. The accepted Tripwire surface is post-display detection with a correction request, so the docs and plugin must not claim a pre-display hard block for those messages.
+
+There is no OpenCode command, flag, environment variable, allow rule, or prompt escape that bypasses Tripwire. Operator recovery is still available through normal config disablement, such as `disableAllHooks`, or by rebuilding without the Agent Tripwire mixin.
+
 ## LSP
 
 OpenCode includes built-in LSP support - no per-language server configuration required. The only explicit LSP entry is Semgrep, added for security diagnostics across all supported file types (50+ extensions covering R, Bash, C/C++, Clojure, Dart, Elixir, Go, Java, JavaScript/TypeScript, Julia, Kotlin, Lua, Nix, PHP, Python, Ruby, Rust, Scala, Swift, Terraform, and more).

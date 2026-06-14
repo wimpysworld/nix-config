@@ -9,10 +9,43 @@ let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   aiSopsFile = ../../../../secrets/ai.yaml;
+  robotEmoji = builtins.fromJSON "\"\\ud83e\\udd16\"";
   # Use the pre-built binary from numtide's llm-agents.nix flake.
   # This avoids upstream source build issues entirely.
   opencodeUpstreamPackage = inputs.llm-agents.packages.${system}.opencode;
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
+  communicationRules =
+    config.agentic.communicationRules or {
+      enable = false;
+      adapterContractPath = "";
+      executable = "";
+      rulesPath = "";
+      policyFilePath = "";
+    };
+  opencodeTripwireAdapterFile = pkgs.writeTextFile {
+    name = "opencode-communication-rules-adapter-source";
+    destination = "/share/agent-communication-rules/adapters/opencode.sh";
+    executable = true;
+    text = builtins.readFile ../hooks/communication-rules/adapters/opencode.sh;
+  };
+  opencodeTripwireAdapterPath = "${opencodeTripwireAdapterFile}/share/agent-communication-rules/adapters/opencode.sh";
+  opencodeTripwirePlugin =
+    builtins.replaceStrings
+      [
+        "@tripwireAdapter@"
+        "@tripwireAdapterContract@"
+        "@tripwireScanner@"
+        "@tripwireRules@"
+        "@tripwirePolicy@"
+      ]
+      [
+        opencodeTripwireAdapterPath
+        communicationRules.adapterContractPath
+        communicationRules.executable
+        communicationRules.rulesPath
+        communicationRules.policyFilePath
+      ]
+      (builtins.readFile ./plugins/communication-rules.ts);
   # Wrap opencode so its process inherits Gemini env vars sourced from sops at
   # invocation time. opencode's loader recognises GEMINI_API_KEY; the
   # underlying @ai-sdk/google SDK reads GOOGLE_GENERATIVE_AI_API_KEY. Export
@@ -72,6 +105,10 @@ in
 
   home.packages = lib.optional host.is.linux opencodeFencedPackage;
 
+  xdg.configFile = lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
+    "opencode/plugins/communication-rules.ts".text = opencodeTripwirePlugin;
+  };
+
   programs = {
     bash.shellAliases = lib.mkIf host.is.linux {
       opencode-fenced = lib.getExe opencodeFencedPackage;
@@ -124,7 +161,7 @@ in
         # Override built-in /init with custom create-agents-md command
         command = {
           init = {
-            description = "Create AGENTS.md 🤖";
+            description = "Create AGENTS.md ${robotEmoji}";
             agent = "rosey";
             template = builtins.readFile ../assistants/agents/rosey/commands/create-agents-md/prompt.md;
           };
@@ -138,9 +175,9 @@ in
           };
         };
 
-        # ══════════════════════════════════════════════════════════════
+        # ------------------------------------------------------------
         # Keybindings - Standard CUA text editor navigation
-        # ══════════════════════════════════════════════════════════════
+        # ------------------------------------------------------------
         keybinds = {
           # Core principle: Arrow keys, Home, End, and standard navigation
           # work like a normal text editor. PgUp/PgDn scroll chat history.
@@ -221,7 +258,7 @@ in
           # - Avoid conflicts with terminal native shortcuts (Ctrl+Shift+C/V)
           #
           # Alternative - Mouse-based copying:
-          # - SELECT TEXT WITH MOUSE → automatically copied via OSC52
+          # - SELECT TEXT WITH MOUSE: automatically copied via OSC52
           # - Ctrl+Shift+V pastes (terminal native)
           # - Ctrl+V pastes (CUA standard, configured above)
           # - Shift+Insert pastes (CUA alternative, configured above)

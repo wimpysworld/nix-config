@@ -41,11 +41,20 @@ let
       "${config.xdg.configHome}/codex"
     else
       "${config.home.homeDirectory}/.codex";
+  communicationRules = config.agentic.communicationRules or { enable = false; };
+
   # Import compose module
-  compose = import ./compose.nix { inherit lib pkgs; };
+  compose = import ./compose.nix {
+    inherit lib pkgs communicationRules;
+    agentCommunicationRulesMode = if communicationRules.enable then "append" else "none";
+  };
   codingAgentDirs = lib.removeAttrs compose.agentDirs [ "traya" ];
 
-  globalInstructions = readFileTrim ./instructions/global.md;
+  globalInstructions = compose.expandCommunicationRules {
+    context = toString ./instructions/global.md;
+    body = readFileTrim ./instructions/global.md;
+    requireMarker = true;
+  };
 
   # ============ SECRET COMMANDS ============
 
@@ -320,7 +329,11 @@ let
     let
       agentPath = ./agents + "/${name}";
       description = readFileTrim (agentPath + "/description.txt");
-      prompt = codexAgentPrompt (readFileTrim (agentPath + "/prompt.md"));
+      prompt = compose.expandCommunicationRules {
+        context = "Codex agent ${name} developer_instructions";
+        body = codexAgentPrompt (readFileTrim (agentPath + "/prompt.md"));
+        appendIfMissing = communicationRules.enable;
+      };
       header = readFileTrimIfExists (agentPath + "/header.codex.toml");
     in
     renderCodexAgentToml {

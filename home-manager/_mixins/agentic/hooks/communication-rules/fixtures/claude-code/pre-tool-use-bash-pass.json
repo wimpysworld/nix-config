@@ -1,0 +1,13 @@
+{
+  "session_id": "session-fixture",
+  "transcript_path": "/tmp/claude-transcript.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_use_id": "toolu-bash-pass",
+  "tool_input": {
+    "command": "printf '%s\\n' 'Done.' > status.md",
+    "description": "Write a short status file"
+  }
+}

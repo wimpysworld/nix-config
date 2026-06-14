@@ -1,6 +1,7 @@
 .direnv/*
 !home-manager/_mixins/development/direnv/
 result/
+__pycache__/
 
 # Codex sandbox deny-read stubs (created at config load, must stay empty)
 .codex

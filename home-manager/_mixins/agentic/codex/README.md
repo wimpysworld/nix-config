@@ -48,6 +48,14 @@ Activation merges the generated baseline into existing runtime config:
 
 Both legacy `~/.codex` and XDG Codex homes are seeded because Codex, Home Manager, and older runtime state can disagree about which home exists first.
 
+## Agent Tripwire
+
+Codex receives the shared Communication Rules fragment from the assistants module. The fragment is generated once by Nix and reused by the root `AGENTS.md`, generated agent TOML, reminders, block messages, and correction prompts.
+
+Tripwire hook config is merged into the generated mutable `config.toml`. `SessionStart`, `SubagentStart`, and `UserPromptSubmit` remind without blocking. `PreToolUse` gates outgoing `apply_patch`, writes, edits, Bash prose side effects, and post tools. Where the installed Codex hook surface supports it, `Stop` and `SubagentStop` gate final and surfaced subagent prose through correction instead of showing trigger details.
+
+The merge preserves `CODEX_HOME`, the stable binary activation path, wrappers, sandbox settings, MCP servers, skills, and trust settings. There is no Codex command, flag, environment variable, allow rule, or prompt escape that bypasses Tripwire. Operator recovery is still available through normal config disablement, such as `disableAllHooks`, or by rebuilding without the Agent Tripwire mixin.
+
 ## MCP Servers
 
 MCP servers are imported from `../mcp/servers.nix` and translated into Codex's native `config.toml` schema.

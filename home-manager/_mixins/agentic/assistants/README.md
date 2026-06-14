@@ -73,6 +73,14 @@ Agent prompts inherit the global constraints and add specialisation. Command pro
 
 `instructions/global.md` has no persona. It tells the coordinator to use `delegate-task` before parent-thread exploration for non-trivial tool, file, research, implementation, review, validation, or documentation work.
 
+### Agent Tripwire
+
+Nix owns one generated Communication Rules fragment through the `hooks/communication-rules` mixin. The visible `<!-- COMMUNICATION_RULES -->` marker in `instructions/global.md` is expanded by the shared composer, so Claude Code, OpenCode, Codex, Pi Agent, generated subagents, reminders, block messages, and correction prompts use the same text.
+
+The human-maintained prompt source is `hooks/communication-rules/communication-rules.md`. The generated fragment is also written to `~/.config/agent-communication-rules/communication-rules.md` with the shared scanner assets. Do not copy the rules into platform modules. Change the Markdown source instead, then let each platform consume the generated output.
+
+Agent Tripwire is not an agent bypass system. Blocked write, edit, post, and surfaced prose paths must be revised by the agent or stopped. Operator recovery stays outside the agent path: use the normal config disablement mechanism, such as `disableAllHooks`, or rebuild without the Agent Tripwire mixin when a false positive or broken hook needs human recovery.
+
 ### Session Priming
 
 Every session begins with `/ready We are going to <broad activity description>`. This is a step-back prompt ([Zheng et al., 2023](https://arxiv.org/abs/2310.06117)) - an abstraction-first technique that weights the model's attention toward the relevant domain before specifics arrive. The description stays deliberately vague ("document my MCP configuration", not "write a README for the assistants directory") so the model activates broad domain knowledge rather than narrowing prematurely. Detailed instructions follow in subsequent messages once the model's attention is oriented.

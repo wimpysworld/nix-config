@@ -1,0 +1,9 @@
+{
+  "type": "tool_call",
+  "toolName": "write",
+  "toolCallId": "call-write-blocked",
+  "input": {
+    "path": "notes.md",
+    "content": "This note will DELVE into the change."
+  }
+}

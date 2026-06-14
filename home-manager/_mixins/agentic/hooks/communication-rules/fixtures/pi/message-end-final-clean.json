@@ -1,0 +1,13 @@
+{
+  "type": "message_end",
+  "message": {
+    "role": "assistant",
+    "content": [
+      {
+        "type": "text",
+        "text": "Done."
+      }
+    ],
+    "stopReason": "stop"
+  }
+}

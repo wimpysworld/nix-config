@@ -1,5 +1,9 @@
 {
   lib,
+  communicationRules ? null,
+  communicationRulesText ? null,
+  communicationRulesSection ? null,
+  agentCommunicationRulesMode ? "none",
   pkgs ? null,
 }:
 let
@@ -14,6 +18,68 @@ let
   # Compose with YAML frontmatter: ---\n{header}\n---\n\n{body}\n
   # Adds blank line after frontmatter and trailing newline
   composeWithFrontmatter = header: body: "---\n${header}\n---\n\n${body}\n";
+
+  communicationRulesMarker = "<!-- COMMUNICATION_RULES -->";
+  resolvedCommunicationRulesText =
+    if communicationRulesText != null then
+      communicationRulesText
+    else if communicationRules != null then
+      communicationRules.text or null
+    else
+      null;
+  resolvedCommunicationRulesSection =
+    if communicationRulesSection != null then
+      communicationRulesSection
+    else if communicationRules != null then
+      communicationRules.section or null
+    else
+      null;
+  hasCommunicationRulesText =
+    resolvedCommunicationRulesText != null && resolvedCommunicationRulesText != "";
+  hasCommunicationRulesSection =
+    resolvedCommunicationRulesSection != null && resolvedCommunicationRulesSection != "";
+
+  communicationRulesMarkerCount =
+    body:
+    let
+      parts = lib.splitString communicationRulesMarker body;
+    in
+    (lib.length parts) - 1;
+
+  expandCommunicationRules =
+    {
+      context,
+      body,
+      requireMarker ? false,
+      appendIfMissing ? false,
+    }:
+    let
+      markerCount = communicationRulesMarkerCount body;
+      appendSection =
+        appendIfMissing
+        && hasCommunicationRulesSection
+        && !(lib.hasInfix resolvedCommunicationRulesSection body);
+    in
+    if markerCount > 1 then
+      throw "${context} contains ${toString markerCount} ${communicationRulesMarker} markers. Expected at most one."
+    else if requireMarker && markerCount == 0 then
+      throw "${context} is missing the ${communicationRulesMarker} marker."
+    else if markerCount == 1 then
+      if hasCommunicationRulesText then
+        lib.replaceStrings [ communicationRulesMarker ] [ resolvedCommunicationRulesText ] body
+      else
+        body
+    else if appendSection then
+      "${body}\n\n${resolvedCommunicationRulesSection}"
+    else
+      body;
+
+  applyPromptCommunicationRules =
+    context: body:
+    builtins.seq agentCommunicationRulesConfigValid (expandCommunicationRules {
+      inherit context body;
+      appendIfMissing = agentCommunicationRulesMode == "append";
+    });
 
   isQuotedString =
     value:
@@ -128,6 +194,18 @@ let
   # Base path for all assistant files
   basePath = ./.;
 
+  validAgentCommunicationRulesModes = [
+    "none"
+    "append"
+  ];
+  agentCommunicationRulesConfigValid =
+    if !(lib.elem agentCommunicationRulesMode validAgentCommunicationRulesModes) then
+      throw "Invalid agentCommunicationRulesMode ${builtins.toJSON agentCommunicationRulesMode}. Expected one of: ${lib.concatStringsSep ", " validAgentCommunicationRulesModes}."
+    else if agentCommunicationRulesMode == "append" && !hasCommunicationRulesSection then
+      throw "agentCommunicationRulesMode is append, but no Communication Rules section was provided."
+    else
+      true;
+
   # ============ AGENTS ============
 
   # Discover all agent directories
@@ -140,6 +218,7 @@ let
       agentPath = basePath + "/agents/${agentName}";
       description = readFile (agentPath + "/description.txt");
       headerPath = agentPath + "/header.${platform}.yaml";
+      body = applyPromptCommunicationRules "agent ${agentName} ${platform} prompt" prompt;
     in
     if platform == "pi" then
       # Pi: header.pi.yaml is optional. Inject `name` and `description`,
@@ -154,14 +233,14 @@ let
         ++ piAgentDefaultLines;
         lines = baseLines ++ lib.optional (rawHeader != "") rawHeader;
       in
-      composeWithFrontmatter (lib.concatStringsSep "\n" lines) prompt
+      composeWithFrontmatter (lib.concatStringsSep "\n" lines) body
     else
       let
         header = builtins.seq (validateYamlHeader headerPath) (readFile headerPath);
         # Inject description from description.txt into header
         headerWithDescription = "description: \"${description}\"\n${header}";
       in
-      composeWithFrontmatter headerWithDescription prompt;
+      composeWithFrontmatter headerWithDescription body;
 
   parseAgentProviderModelLine =
     line:
@@ -346,8 +425,12 @@ let
         "description: ${builtins.toJSON description}"
       ]
       ++ lib.optional (rawHeader != "") rawHeader;
+      expandedBody = expandCommunicationRules {
+        context = "Pi command ${cmdName} prompt";
+        inherit body;
+      };
     in
-    composeWithFrontmatter (lib.concatStringsSep "\n" lines) body;
+    composeWithFrontmatter (lib.concatStringsSep "\n" lines) expandedBody;
 
   # Compose a single command for a specific platform using the provided body.
   # The body is wrapped verbatim with all per-platform boilerplate (Claude
@@ -377,19 +460,23 @@ let
         header = "description: \"${description}\"\n${rawHeader}";
         # Check if this command should use Task tool for subagent execution
         useTask = lib.hasInfix "use-task: true" rawHeader;
+        expandedBody = expandCommunicationRules {
+          context = "${platform} command ${cmdName} prompt";
+          inherit body;
+        };
       in
       if platform == "claude" && agentName != null && useTask then
         # Claude Code with agent + use-task: instruct to use Task tool for subagent
         composeWithFrontmatter header ''
           Use the Task tool to launch the ${agentName} agent for the following task:
 
-          ${body}''
+          ${expandedBody}''
       else if platform == "claude" && agentName != null then
         # Claude Code with agent (no use-task): prepend @agent on its own line before body
-        composeWithFrontmatter header "@${agentName}\n\n${body}"
+        composeWithFrontmatter header "@${agentName}\n\n${expandedBody}"
       else
         # All other cases: standard frontmatter + body
-        composeWithFrontmatter header body;
+        composeWithFrontmatter header expandedBody;
 
   # Compose a single command for a specific platform
   # agentName is null for standalone commands
@@ -509,7 +596,7 @@ let
 
       Priority rules:
       - Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, overlays, options, registries, or `.nix` files: donatello with the `nix` skill.
-      - LÖVE 2D, the LÖVE engine, `love2d`, `.love` archives, or Lua 5.1/LuaJIT 2.1 game development: donatello with the `love` skill.
+      - LOVE 2D, the LOVE engine, `love2d`, `.love` archives, or Lua 5.1/LuaJIT 2.1 game development: donatello with the `love` skill.
       - Source-code security: dibble. Infrastructure, cloud, container, or network security: batfink.
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
@@ -602,7 +689,11 @@ let
       instructionsPath = basePath + "/instructions";
       headerPath = instructionsPath + "/header.${platform}.yaml";
       header = builtins.seq (validateYamlHeader headerPath) (readFile headerPath);
-      body = readFile (instructionsPath + "/global.md");
+      body = expandCommunicationRules {
+        context = toString (instructionsPath + "/global.md");
+        body = readFile (instructionsPath + "/global.md");
+        requireMarker = true;
+      };
     in
     composeWithFrontmatter header body;
 
@@ -630,7 +721,11 @@ in
   inherit assertNoCommandCollisions commandSources composeCommandsNoCollisions;
 
   # Instructions composition
-  inherit composeInstructions;
+  inherit
+    communicationRulesMarker
+    expandCommunicationRules
+    composeInstructions
+    ;
 
   # Skills composition
   inherit composeSkills;

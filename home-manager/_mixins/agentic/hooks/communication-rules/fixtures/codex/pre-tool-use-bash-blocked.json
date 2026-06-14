@@ -1,0 +1,14 @@
+{
+  "session_id": "session-1",
+  "turn_id": "turn-1",
+  "transcript_path": null,
+  "cwd": "/tmp",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5.5",
+  "permission_mode": "never",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "printf 'Bash\u2014payload text.' > note.md"
+  },
+  "tool_use_id": "tool-bash-block"
+}

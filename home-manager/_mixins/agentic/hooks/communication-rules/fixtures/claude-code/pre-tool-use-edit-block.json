@@ -1,0 +1,14 @@
+{
+  "session_id": "session-fixture",
+  "transcript_path": "/tmp/claude-transcript.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_use_id": "toolu-edit-block",
+  "tool_input": {
+    "file_path": "/tmp/status.md",
+    "old_string": "Old text.",
+    "new_string": "This is a robust update."
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "session_id": "session-1",
+  "turn_id": "turn-1",
+  "transcript_path": null,
+  "cwd": "/tmp",
+  "hook_event_name": "UserPromptSubmit",
+  "model": "gpt-5.5",
+  "permission_mode": "never",
+  "prompt": "Write a short note."
+}

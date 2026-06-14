@@ -1,0 +1,9 @@
+{
+  "event": "tool.execute.before",
+  "tool": {
+    "name": "gh"
+  },
+  "args": {
+    "command": "gh issue comment 12 --body 'Done.'"
+  }
+}

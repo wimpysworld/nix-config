@@ -1,0 +1,13 @@
+{
+  "session_id": "session-fixture",
+  "transcript_path": "/tmp/claude-transcript.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "mcp__github__add_issue_comment",
+  "tool_use_id": "toolu-mcp-target-block",
+  "tool_input": {
+    "issue_number": 42,
+    "body": "This is a robust update."
+  }
+}

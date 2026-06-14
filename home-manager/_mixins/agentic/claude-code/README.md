@@ -19,6 +19,14 @@ The package source varies by platform:
 - **Fence** - `claude-fenced` runs Claude Code under the shared Fence permission and isolation policy.
 - **ccstatusline** - Status bar integration reporting active session state
 
+## Agent Tripwire
+
+Claude Code receives the shared Communication Rules fragment from the assistants module. The fragment is generated once by Nix and reused by the Claude Code instructions and hook adapters.
+
+Tripwire uses Claude Code settings hooks. `SessionStart` and `UserPromptSubmit` remind without blocking. `PreToolUse` gates outgoing writes, edits, Bash prose side effects, and configured post-capable MCP tools. Where final-response correction is enabled, the native `Stop` surface scans final assistant prose and asks Claude Code to revise without showing trigger details.
+
+The module appends Tripwire hooks and keeps existing MCP config, status line, LSP, wrappers, Fence entry point, and local policy intact. There is no Claude Code command, flag, environment variable, allow rule, or prompt escape that bypasses Tripwire. Operator recovery is still available through normal config disablement, such as `disableAllHooks`, or by rebuilding without the Agent Tripwire mixin.
+
 ## Fenced mode
 
 This module provides `claude-fenced`, which runs Claude Code through Fence with

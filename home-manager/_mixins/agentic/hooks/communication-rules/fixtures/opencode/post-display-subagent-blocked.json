@@ -1,0 +1,7 @@
+{
+  "event": "subagent.final",
+  "surface": "subagent",
+  "message": {
+    "content": "This sentence uses a blocked dash \u2014 fix it."
+  }
+}

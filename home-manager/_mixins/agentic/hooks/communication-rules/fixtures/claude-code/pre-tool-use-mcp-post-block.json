@@ -1,0 +1,13 @@
+{
+  "session_id": "session-fixture",
+  "transcript_path": "/tmp/claude-transcript.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "mcp__github__create_issue",
+  "tool_use_id": "toolu-mcp-block",
+  "tool_input": {
+    "title": "Build status",
+    "body": "This is a robust update."
+  }
+}

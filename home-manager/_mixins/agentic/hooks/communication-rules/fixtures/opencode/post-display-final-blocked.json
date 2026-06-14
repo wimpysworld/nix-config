@@ -1,0 +1,7 @@
+{
+  "event": "message.final",
+  "surface": "final",
+  "message": {
+    "content": "We should leverage this."
+  }
+}
