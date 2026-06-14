@@ -270,6 +270,15 @@ let
         hooks = [ (claudeCodeTripwireHook "SessionStart") ];
       }
     ];
+    # UserPromptSubmit consumes a pending Tier A re-issue flag set by a Stop or
+    # SubagentStop breach. It injects the rules back to the model on the next
+    # turn without re-rolling the reply the user already saw. Without this, the
+    # flag is set but never read, so the silent re-issue never fires.
+    UserPromptSubmit = lib.mkAfter [
+      {
+        hooks = [ (claudeCodeTripwireHook "UserPromptSubmit") ];
+      }
+    ];
     PreToolUse = lib.mkAfter [
       {
         matcher = "Edit|MultiEdit|Write|Bash|mcp__.*__(comment|create|edit|post|publish|reply|review|send|submit|update|write).*";

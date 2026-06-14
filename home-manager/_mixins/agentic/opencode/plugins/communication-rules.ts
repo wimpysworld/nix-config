@@ -5,6 +5,7 @@ const adapterContractPath = "@tripwireAdapterContract@";
 const scannerPath = "@tripwireScanner@";
 const rulesPath = "@tripwireRules@";
 const policyPath = "@tripwirePolicy@";
+const correctionPromptPath = "@tripwireCorrectionPrompt@";
 
 type ToolInput = {
   tool: string;
@@ -261,6 +262,7 @@ function runAdapter(mode: string, payload: Record<string, unknown>): AdapterResu
     env: {
       ...Bun.env,
       TRIPWIRE_ADAPTER_CONTRACT: adapterContractPath,
+      TRIPWIRE_CORRECTION_PROMPT: correctionPromptPath,
       TRIPWIRE_SCANNER: scannerPath,
     },
   });
@@ -483,12 +485,14 @@ function maybeFlagReissue(
 async function injectRules(input: unknown, output: SystemTransformOutput): Promise<void> {
   const key = systemTransformKey(input);
   let rules: string;
+  let correctionPrompt: string;
   try {
     rules = (await Bun.file(rulesPath).text()).trimEnd();
+    correctionPrompt = (await Bun.file(correctionPromptPath).text()).trimEnd();
   } catch {
     return;
   }
-  if (!rules) {
+  if (!rules || !correctionPrompt) {
     return;
   }
 
@@ -508,9 +512,8 @@ async function injectRules(input: unknown, output: SystemTransformOutput): Promi
   // turn without re-rolling the message the user already saw.
   if (pendingReissue.has(key)) {
     pendingReissue.delete(key);
-    const reissue = `Communication Rules breach detected in your last reply. Follow these rules in your next reply:\n${rules}`;
-    if (!output.system.includes(reissue)) {
-      output.system.push(reissue);
+    if (!output.system.includes(correctionPrompt)) {
+      output.system.push(correctionPrompt);
     }
   }
 }

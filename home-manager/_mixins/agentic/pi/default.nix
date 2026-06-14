@@ -511,13 +511,20 @@ let
     text = ''
       export TRIPWIRE_SCANNER="''${TRIPWIRE_SCANNER:-${communicationRules.executable}}"
       export TRIPWIRE_POLICY_JSON="''${TRIPWIRE_POLICY_JSON:-${communicationRules.policyFilePath}}"
+      export TRIPWIRE_CORRECTION_PROMPT="''${TRIPWIRE_CORRECTION_PROMPT:-${piCommunicationRulesCorrectionPrompt}}"
       exec bash "${piCommunicationRulesAdapterSource}/pi.sh" "$@"
     '';
+  };
+
+  piCommunicationRulesCorrectionPrompt = pkgs.writeTextFile {
+    name = "pi-communication-rules-correction-prompt.md";
+    text = communicationRules.correctionPrompt;
   };
 
   piCommunicationRulesConfig = {
     adapterPath = lib.getExe piCommunicationRulesAdapterPackage;
     inherit (communicationRules) rulesPath;
+    correctionPromptPath = piCommunicationRulesCorrectionPrompt;
     policyPath = communicationRules.policyFilePath;
   };
 

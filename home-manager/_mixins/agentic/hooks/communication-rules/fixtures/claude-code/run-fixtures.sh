@@ -20,6 +20,15 @@ export TRIPWIRE_SCANNER="$scanner_wrapper"
 export TRIPWIRE_CLAUDE_CODE_STRIKE_DIR="$tmp_dir/pretooluse-strikes"
 export TRIPWIRE_CLAUDE_CODE_REISSUE_DIR="$tmp_dir/pending-reissue"
 
+correction_prompt="$tmp_dir/correction-prompt.md"
+cat > "$correction_prompt" <<'EOF'
+Revise the previous response to follow the Communication Rules. Return only the corrected response.
+
+Communication Rules:
+Use short sentences.
+EOF
+export TRIPWIRE_CORRECTION_PROMPT="$correction_prompt"
+
 materialise_payload() {
   local fixture="$1"
   local payload
@@ -97,7 +106,7 @@ run_case() {
       fi
       ;;
     reissue)
-      if ! assert_reissue "$stdout_file" '^Revise the previous response'; then
+      if ! assert_reissue "$stdout_file" '^Revise the previous response.*Communication Rules:.*Use short sentences\.'; then
         printf '%s: expected UserPromptSubmit re-issue JSON\n' "$name" >&2
         return 1
       fi
@@ -181,7 +190,7 @@ if specific.get("hookEventName") != "UserPromptSubmit":
     sys.exit(1)
 
 context = specific.get("additionalContext", "")
-sys.exit(0 if re.search(sys.argv[2], context, re.MULTILINE) else 1)
+sys.exit(0 if re.search(sys.argv[2], context, re.MULTILINE | re.DOTALL) else 1)
 PY
 }
 
