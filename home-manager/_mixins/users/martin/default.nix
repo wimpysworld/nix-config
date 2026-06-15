@@ -60,7 +60,12 @@ in
         unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
       fish.loginShellInit = ''
-        ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
+        # Only show the banner interactively. A non-interactive `fish -lc`
+        # (e.g. Codex command hooks) must not print to stdout, or it
+        # corrupts the hook's JSON output.
+        if status is-interactive
+            ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
+        end
       '';
       fish.shellAliases = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
         lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
