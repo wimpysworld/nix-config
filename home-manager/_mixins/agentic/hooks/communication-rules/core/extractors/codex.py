@@ -31,7 +31,7 @@ import os
 from typing import Any
 
 from core.config import Config
-from core.detection import bash_prose_sink, read_text_file
+from core.detection import apply_patch_target, bash_prose_sink, read_text_file
 from core.dispatch import (
     EVENT_FACING,
     EVENT_GATE,
@@ -235,19 +235,28 @@ def is_post_tool(name: str, post_tool_terms: tuple[str, ...]) -> bool:
 
 
 def pre_tool_use_target(name: str, tool_input: Any) -> str | None:
-    # The STABLE B1 target the local strike counter keys on. For file tools this
+    # The STABLE B1 target the local strike counter keys on. For Edit/Write this
     # is the file path, so a model that revises the body between retries still
-    # accumulates strikes against the same path and yields on the 3rd. Bash and a
-    # pathless patch return None: the key falls back to session+turn+tool, a
-    # consecutive-block counter that resets on a clean pass.
+    # accumulates strikes against the same path. apply_patch carries no file_path
+    # key, so the path is read from the patch body ("*** Add File:" / "*** Update
+    # File:"): this keys a breaching patch per-file like Edit/Write, instead of
+    # collapsing to one coarse session+turn+tool key under which the first patch
+    # blocks and every later patch lands. A pathless patch or Bash returns None:
+    # the key falls back to session+turn+tool, a consecutive-block counter that
+    # resets on a clean pass.
     lowered = name.lower()
-    if lowered in {"edit", "write", "apply_patch"}:
-        if isinstance(tool_input, dict):
-            for key in ("file_path", "path", "filename", "file"):
-                path = as_text(tool_input.get(key))
-                if path:
-                    return path
+    if lowered not in {"edit", "write", "apply_patch"}:
         return None
+    if not isinstance(tool_input, dict):
+        return None
+    for key in ("file_path", "path", "filename", "file"):
+        path = as_text(tool_input.get(key))
+        if path:
+            return path
+    if lowered == "apply_patch":
+        patch = _tool_text(tool_input)
+        if patch:
+            return apply_patch_target(patch)
     return None
 
 

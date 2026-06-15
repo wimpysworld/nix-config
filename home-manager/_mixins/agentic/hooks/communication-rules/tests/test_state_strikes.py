@@ -449,6 +449,44 @@ def test_bash_prose_sink_unit():
     return 1
 
 
+def test_apply_patch_target_unit():
+    """``apply_patch_target`` returns the first Add/Update path, else None.
+
+    Covers an Add File patch, an Update File patch (nested path), a delete-only
+    patch (no write target -> None), and a pathless body (-> None). This is the
+    Codex per-file keying resolver: a breaching apply_patch keys its B1 strike on
+    this path, so two patches to two files each earn their own one-block budget
+    instead of sharing one coarse session+turn+tool key. Run in a fresh process
+    so the import path matches the other checks.
+    """
+    snippet = (
+        "from core.detection import apply_patch_target as t\n"
+        "cases = [\n"
+        "  (t('*** Begin Patch\\n*** Add File: note.txt\\n+hi\\n*** End Patch\\n'), 'note.txt'),\n"
+        "  (t('*** Begin Patch\\n*** Update File: src/app.md\\n+hi\\n*** End Patch\\n'), 'src/app.md'),\n"
+        "  (t('*** Begin Patch\\n*** Delete File: gone.txt\\n*** End Patch\\n'), None),\n"
+        "  (t('no markers here'), None),\n"
+        "]\n"
+        "import json\n"
+        "print(json.dumps(cases))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", snippet],
+        cwd=str(ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError("apply_patch_target check exited %s: %s" % (completed.returncode, completed.stderr.strip()))
+    results = json.loads(completed.stdout.strip())
+    for got, want in results:
+        if got != want:
+            raise AssertionError("apply_patch_target: expected %r, got %r (all=%r)" % (want, got, results))
+    return 1
+
+
 def test_b1_limit_override():
     """``TRIPWIRE_LOCAL_STRIKE_LIMIT=2`` blocks strikes 1-2 and allow-revises 3.
 
@@ -567,8 +605,9 @@ def main():
 
     # Per-file Bash keying: two distinct Bash sinks each get a one-block budget.
     total += test_b1_bash_per_file_keying()
-    # The sink resolver unit check.
+    # The sink resolver unit check, and the apply_patch path resolver check.
     total += test_bash_prose_sink_unit()
+    total += test_apply_patch_target_unit()
 
     # The resolved user-facing notice via the command-agent CLI: a file tool and
     # a Bash write both name their concrete target; a genuinely empty target

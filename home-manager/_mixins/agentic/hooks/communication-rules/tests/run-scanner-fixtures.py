@@ -718,6 +718,31 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
     run_case("pre-tool-use-write-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
     run_case("pre-tool-use-write-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
 
+    # B1 apply_patch keys per-file from the patch body. Codex's apply_patch
+    # carries no file_path key; pre_tool_use_target reads the target from the
+    # "*** Add File:" marker. Strike 1 blocks; strike 2 allow-revises naming that
+    # file. A SECOND patch to a DIFFERENT file is its own strike 1 (deny), proving
+    # the patch path is in the key. Before the per-file fix, apply_patch collapsed
+    # to one coarse session+turn+tool key: the first patch blocked and every later
+    # patch (any file) landed. The U+2014 payload keeps each patch a breach.
+    reset_strikes()
+    base_patch = json.loads((CODEX_FX / "pre-tool-use-apply-patch-blocked.json").read_text(encoding="utf-8"))
+
+    def _patch_to(path: str) -> dict:
+        payload = json.loads(json.dumps(base_patch))
+        payload["tool_input"]["command"] = (
+            "*** Begin Patch\n*** Add File: %s\n+Blocked\u2014payload text.\n*** End Patch\n" % path
+        )
+        return payload
+
+    patch_a = _patch_to("note-a.txt")
+    patch_b = _patch_to("note-b.txt")
+    run_case("apply_patch a strike 1", "PreToolUse", _B1_BLOCK, payload=patch_a)
+    run_case("apply_patch a strike 2", "PreToolUse", _b1_allow_revise("note-a.txt"), payload=patch_a)
+    # A DIFFERENT patched file is its own strike 1 (deny), not a shared
+    # allow-revise. A coarse key would allow-revise this second file instead.
+    run_case("apply_patch b strike 1", "PreToolUse", _B1_BLOCK, payload=patch_b)
+
     # Codex per-turn reset: the same write breach on a NEW turn id starts a fresh
     # B1 count (strike 1, deny), proving the turn is in the key. Within turn-A the
     # hybrid walks block then allow-revise; turn-B resets to a fresh block. The

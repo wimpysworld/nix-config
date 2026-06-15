@@ -547,6 +547,30 @@ def bash_prose_sink(command_text: str) -> str | None:
     return None
 
 
+APPLY_PATCH_FILE_MARKERS = ("*** Add File:", "*** Update File:")
+
+
+def apply_patch_target(patch_text: str) -> str | None:
+    """Return the first file path an apply_patch body writes, else None.
+
+    Codex's ``apply_patch`` tool carries no ``file_path`` key; the target path
+    lives in the patch body behind an ``*** Add File:`` or ``*** Update File:``
+    marker. This reads the FIRST such path so a breaching patch keys its B1
+    strike on the target file, mirroring the Write/Edit tools, instead of
+    collapsing to one coarse session+turn+tool key (under which the first patch
+    blocks and every later patch lands). A delete-only or pathless patch returns
+    None: the key then falls back to the coarse session+turn+tool form.
+    """
+    for line in patch_text.splitlines():
+        stripped = line.strip()
+        for marker in APPLY_PATCH_FILE_MARKERS:
+            if stripped.startswith(marker):
+                path = stripped[len(marker) :].strip()
+                if path:
+                    return path
+    return None
+
+
 def extract_redirect_texts(argv: list[str], heredocs: list[str]) -> tuple[list[str], bool]:
     targets = [target for target in redirect_targets(argv) if prose_target(target)]
     if not targets:
