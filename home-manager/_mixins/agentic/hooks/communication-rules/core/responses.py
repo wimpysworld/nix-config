@@ -137,6 +137,11 @@ def claude_code_response(
             # Tier A never yields a tool call; a facing breach is a systemMessage.
             return claude_code_facing(decision)
         return claude_code_allow(decision)
+    if decision.decision == "allow-revise":
+        # B1 allow-and-correct: the write lands and the notice carries the
+        # resolved B1 revision prompt. Same allow shape as yield, distinct verb
+        # so notices and tests can tell the two apart.
+        return claude_code_allow(decision)
     if decision.decision == "re-issue":
         return claude_code_reissue(correction)
     # A pass emits nothing.
@@ -226,6 +231,11 @@ def codex_response(
         if decision.surface == "tierA":
             return codex_facing(decision)
         return codex_allow(decision)
+    if decision.decision == "allow-revise":
+        # B1 allow-and-correct: the write lands and the notice carries the
+        # resolved B1 revision prompt. Same allow shape as yield, distinct verb
+        # so notices and tests can tell the two apart.
+        return codex_allow(decision)
     if decision.decision == "re-issue":
         return codex_context(event_name, correction)
     return None
@@ -262,7 +272,8 @@ def plugin_response(
     Returns a flat data dict; the shim turns it into the runtime's return/throw
     and applies the Tier A injection to the live objects. The dict carries:
 
-    - ``decision``: the verb (``pass`` | ``block`` | ``yield`` | ``re-issue``).
+    - ``decision``: the verb (``pass`` | ``block`` | ``yield`` | ``allow-revise``
+      | ``re-issue``).
     - ``surface``: ``tierA`` | ``B1`` | ``B2``, so the shim knows the gating tier.
     - ``level``: ``warning`` | ``error``, the toast/notify level.
     - ``notice``: the user-facing notice (full text, incl. tool plus target on a

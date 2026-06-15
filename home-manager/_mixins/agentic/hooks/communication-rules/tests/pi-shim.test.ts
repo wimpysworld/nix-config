@@ -60,7 +60,7 @@ before(() => {
   fs.writeFileSync(rulesPath, `${rules}\n`, "utf-8");
   fs.writeFileSync(
     correctionPromptPath,
-    `Revise the previous response to follow the Communication Rules.\n\nCommunication Rules:\n${rules}\n`,
+    `Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.\n\nCommunication Rules:\n${rules}\n`,
     "utf-8",
   );
 
@@ -148,6 +148,19 @@ function b2Payload(): unknown {
   };
 }
 
+// A B1 local write to a fixed path. Two breaches to the same path share the
+// strike key, so strike 1 blocks and strike 2 onward yields allow-revise.
+const B1_TARGET = "/tmp/donatello-b1.md";
+function b1Payload(): unknown {
+  return {
+    session_id: "shim-b1",
+    type: "tool_call",
+    toolName: "write",
+    toolCallId: "call-b1",
+    input: { path: B1_TARGET, content: `This body uses ${BANNED} here.` },
+  };
+}
+
 test("B2 yield: tool_call walks the cap then yields with level=error and surface=B2", async () => {
   const loaded = await loadShim();
   const toolCall = loaded.handlers.get("tool_call");
@@ -170,6 +183,30 @@ test("B2 yield: tool_call walks the cap then yields with level=error and surface
   const notice = loaded.notifications.slice(before).find((n) => n.level === "error");
   assert.ok(notice, "B2 yield should notify at error level");
   assert.match(notice!.text, /bash/, "B2 yield notice should name the tool");
+});
+
+test("B1 allow-revise: a second breach to the same target allows the write and notifies", async () => {
+  const loaded = await loadShim();
+  const toolCall = loaded.handlers.get("tool_call");
+  assert.ok(toolCall, "tool_call handler registered");
+
+  // Strike 1 is a cheap block: the shim returns { block: true }.
+  const first = toolCall!(b1Payload(), loaded.ctx) as { block?: boolean } | undefined;
+  assert.equal(first?.block, true, "B1 strike 1 should block");
+
+  // Strike 2 to the same target allows the write: the shim returns undefined
+  // (does NOT block) and notifies with the resolved B1 revision notice.
+  const before = loaded.notifications.length;
+  const second = toolCall!(b1Payload(), loaded.ctx);
+  assert.equal(second, undefined, "B1 strike 2 should allow-revise (undefined), not block");
+  const notice = loaded.notifications.slice(before).find((n) => n.text.includes(B1_TARGET));
+  assert.ok(notice, "B1 allow-revise should notify with the resolved revision notice");
+  assert.match(notice!.text, new RegExp(B1_TARGET.replace(/[.]/g, "\\$&")), "notice names the target file");
+
+  // The raw core decision confirms the surface and verb the Pi return omits.
+  const decision = coreDecision("tool_call", b1Payload());
+  assert.equal(decision.surface, "B1", "B1 allow-revise surface is B1");
+  assert.equal(decision.decision, "allow-revise", "B1 strike 2+ decision is allow-revise");
 });
 
 test("Tier A facing: context handler appends to live event.messages", async () => {
