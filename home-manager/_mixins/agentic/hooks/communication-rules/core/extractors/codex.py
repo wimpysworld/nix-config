@@ -37,6 +37,7 @@ from core.dispatch import (
     EVENT_GATE,
     EVENT_PASS,
     EVENT_REISSUE,
+    EVENT_REMINDER,
     SCAN_BASH,
     SCAN_NONE,
     SCAN_TEXT,
@@ -394,9 +395,9 @@ def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
     """Return the normalised Extraction for one Codex event.
 
     Routes the registered events: PreToolUse (gate), Stop and SubagentStop
-    (Tier A facing), UserPromptSubmit (Tier A re-issue). SessionStart,
-    SubagentStart, and every other event are a pass the core ignores (their
-    reminder context is unchanged and handled outside the gating path).
+    (Tier A facing), UserPromptSubmit (Tier A re-issue), SessionStart and
+    SubagentStart (the rules reminder). Every other event is a pass the core
+    ignores.
     """
     if event == "PreToolUse":
         return _extract_pre_tool_use(payload, config)
@@ -408,6 +409,12 @@ def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
         return Extraction(
             record=_record(payload, "", None),
             event_class=EVENT_REISSUE,
+            scan_mode=SCAN_NONE,
+        )
+    if event in {"SessionStart", "SubagentStart"}:
+        return Extraction(
+            record=_record(payload, "", None),
+            event_class=EVENT_REMINDER,
             scan_mode=SCAN_NONE,
         )
 

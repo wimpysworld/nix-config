@@ -402,6 +402,26 @@ def reissue(agent: str, record: ExtractorRecord) -> Decision:
     )
 
 
+def reminder(agent: str, record: ExtractorRecord) -> Decision:
+    """Decide a SessionStart / SubagentStart reminder: inject the rules once.
+
+    The old Bash adapters emitted the rules reminder as ``additionalContext`` on
+    every SessionStart and (Codex) SubagentStart, with no per-session dedupe: the
+    command hook fires once per session start, so the runtime, not the core,
+    bounds it. This keeps that contract. The decision verb is ``remind``; the
+    responder formats the reminder text into the agent's context shape. ``record``
+    is unused but kept for a uniform state-machine signature.
+    """
+    return Decision(
+        decision="remind",
+        surface="tierA",
+        notice="",
+        level="warning",
+        inject_base_rules=True,
+        append_correction=False,
+    )
+
+
 def context(agent: str, record: ExtractorRecord) -> Decision:
     """Decide a Pi context build: inject base rules once, re-issue when pending.
 

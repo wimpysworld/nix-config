@@ -90,10 +90,28 @@ def claude_code_reissue(correction: str) -> dict:
     }
 
 
+def claude_code_reminder(reminder: str) -> dict:
+    """The SessionStart reminder: the rules reminder as additionalContext.
+
+    The old ``claude-code.sh`` emitted the reminder as raw stdout text on
+    SessionStart. That predates the strict hook-output schema and now fails
+    validation alongside the other events. Emitting the reminder as
+    ``hookSpecificOutput.additionalContext`` carries the same model-facing
+    reminder text in a shape the runtime validates and injects as context.
+    """
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": reminder,
+        }
+    }
+
+
 def claude_code_response(
     decision: Decision,
     block_message: str,
     correction: str,
+    reminder: str = "",
 ) -> dict | None:
     """Shape a Claude Code decision into its emitted payload.
 
@@ -101,11 +119,17 @@ def claude_code_response(
     same turn): the old Bash emitters wrote nothing in those cases. The caller
     emits nothing when this returns ``None``.
     """
+    if decision.decision == "remind":
+        return claude_code_reminder(reminder)
     if decision.decision == "block":
-        # A Tier A facing block (the duplicate-breach early-exit) emits nothing,
-        # matching the Bash silent path. A gating block re-issues the rules via
-        # the deny reason.
+        # A Tier A facing breach carries the facing notice and emits a
+        # systemMessage so the turn ends with the user notice (the old
+        # emit_facing_notice_and_exit). The duplicate-breach early-exit carries
+        # an empty notice and emits nothing (the Bash silent path). A Tier B
+        # gating block re-issues the rules via the deny reason.
         if decision.surface == "tierA":
+            if decision.notice:
+                return claude_code_facing(decision)
             return None
         return claude_code_deny(block_message)
     if decision.decision == "yield":
@@ -176,15 +200,26 @@ def codex_response(
     decision: Decision,
     block_message: str,
     correction: str,
+    reminder: str = "",
     event_name: str = "UserPromptSubmit",
 ) -> dict | None:
     """Shape a Codex decision into its emitted payload.
 
     Returns ``None`` for a silent outcome (pass, or a duplicate breach in the
-    same turn). ``event_name`` names the event a re-issue rides on.
+    same turn). ``event_name`` names the event a re-issue or reminder rides on:
+    UserPromptSubmit for the re-issue, SessionStart / SubagentStart for the
+    reminder. Codex carries both on ``additionalContext`` under that event name,
+    matching the old ``codex_emit_context``.
     """
+    if decision.decision == "remind":
+        return codex_context(event_name, reminder)
     if decision.decision == "block":
+        # A Tier A facing breach (non-empty notice) emits a systemMessage; the
+        # duplicate-breach early-exit (empty notice) emits nothing. A Tier B
+        # gating block re-issues the rules via the deny reason.
         if decision.surface == "tierA":
+            if decision.notice:
+                return codex_facing(decision)
             return None
         return codex_deny(block_message)
     if decision.decision == "yield":

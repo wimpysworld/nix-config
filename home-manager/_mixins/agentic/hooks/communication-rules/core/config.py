@@ -14,11 +14,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 
 from core.detection import read_text_file
 
 
 FALLBACK_RULES_TEXT = "Communication Rules were not loaded."
+
+# Baked correction-prompt fallback, byte-identical to the old Bash
+# ``tripwire_emit_correction`` heredoc, used when no correction-prompt file and
+# no policy ``correctionPrompt`` are available.
+FALLBACK_CORRECTION_PROMPT = "Revise the previous response to follow the Communication Rules. Return only the corrected response."
 
 DEFAULT_POLICY = {
     "blockedCodepoints": [
@@ -109,6 +115,7 @@ class Config:
         post_text_keys: tuple[str, ...] = FALLBACK_POST_TEXT_KEYS,
         post_tool_terms: tuple[str, ...] = FALLBACK_POST_TOOL_TERMS,
         external_target_keys: tuple[str, ...] = FALLBACK_EXTERNAL_TARGET_KEYS,
+        correction_prompt: str | None = None,
     ) -> None:
         self.rules_text = rules_text
         self.reminder_prompt = reminder_prompt or format_reminder(rules_text)
@@ -117,6 +124,29 @@ class Config:
         self.post_text_keys = post_text_keys
         self.post_tool_terms = post_tool_terms
         self.external_target_keys = external_target_keys
+        # The correction prompt is the UserPromptSubmit re-issue text, distinct
+        # from the reminder. Resolve it the way the old Bash
+        # ``tripwire_emit_correction`` did: the TRIPWIRE_CORRECTION_PROMPT file
+        # first, then the policy ``correctionPrompt``, then the baked fallback.
+        self.correction_prompt = resolve_correction_prompt(correction_prompt)
+
+
+def resolve_correction_prompt(policy_correction: str | None) -> str:
+    """Resolve the UserPromptSubmit re-issue text, mirroring the old adapter.
+
+    Order, matching the Bash ``tripwire_emit_correction``: the
+    ``TRIPWIRE_CORRECTION_PROMPT`` file if readable, then the policy
+    ``correctionPrompt`` text, then the baked fallback. The env file wins so a
+    fixture or operator override applies without rebuilding the policy.
+    """
+    env_path = os.environ.get("TRIPWIRE_CORRECTION_PROMPT")
+    if env_path:
+        text = read_text_file(env_path)
+        if text is not None:
+            return text
+    if policy_correction:
+        return policy_correction
+    return FALLBACK_CORRECTION_PROMPT
 
 
 def format_reminder(rules_text: str) -> str:
@@ -168,6 +198,7 @@ def load_config(args: argparse.Namespace) -> Config | None:
     rules_text = FALLBACK_RULES_TEXT
     reminder_prompt = None
     block_message = None
+    correction_prompt = None
     policy = dict(DEFAULT_POLICY)
     post_detection = {
         "postTextKeys": FALLBACK_POST_TEXT_KEYS,
@@ -192,6 +223,8 @@ def load_config(args: argparse.Namespace) -> Config | None:
             reminder_prompt = loaded["reminderPrompt"]
         if isinstance(loaded.get("blockMessage"), str):
             block_message = loaded["blockMessage"]
+        if isinstance(loaded.get("correctionPrompt"), str):
+            correction_prompt = loaded["correctionPrompt"]
         if isinstance(loaded.get("detectionPolicy"), dict):
             policy = merge_policy(policy, loaded["detectionPolicy"])
             post_detection = load_post_detection(loaded["detectionPolicy"])
@@ -214,6 +247,7 @@ def load_config(args: argparse.Namespace) -> Config | None:
         post_text_keys=post_detection["postTextKeys"],
         post_tool_terms=post_detection["postToolTerms"],
         external_target_keys=post_detection["externalTargetKeys"],
+        correction_prompt=correction_prompt,
     )
 
 

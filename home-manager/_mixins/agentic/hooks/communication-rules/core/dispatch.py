@@ -42,6 +42,7 @@ EVENT_GATE = "gate"
 EVENT_FACING = "facing"
 EVENT_REISSUE = "reissue"
 EVENT_CONTEXT = "context"
+EVENT_REMINDER = "reminder"
 EVENT_PASS = "pass"
 
 # How the shared middle scans the record body. ``bash`` routes through
@@ -60,7 +61,8 @@ class Extraction:
     state machine touch only this, never raw agent JSON.
 
     - ``record``: the normalised :class:`ExtractorRecord`.
-    - ``event_class``: ``gate`` | ``facing`` | ``reissue`` | ``pass``.
+    - ``event_class``: ``gate`` | ``facing`` | ``reissue`` | ``context`` |
+      ``reminder`` | ``pass``.
     - ``surface``: ``local`` | ``external`` for a gate event; ignored otherwise.
       The state machine picks the limit and key namespace from it.
     - ``scan_mode``: ``bash`` | ``text`` | ``none``. ``bash`` forces the
@@ -283,6 +285,11 @@ def _decide(agent: str, extraction: Extraction, config: Config) -> Decision:
         # correction (a pending facing breach). The shim applies the flags.
         return state.context(agent, extraction.record)
 
+    if extraction.event_class == EVENT_REMINDER:
+        # SessionStart / SubagentStart for the command-hook agents: inject the
+        # rules reminder as additionalContext, matching the old Bash adapters.
+        return state.reminder(agent, extraction.record)
+
     scan = _run_scan(extraction, config)
 
     if extraction.event_class == EVENT_FACING:
@@ -328,20 +335,31 @@ def _empty_config() -> Config:
     return Config(rules_text="", reminder_prompt=None, block_message=None, policy={})
 
 
-def shape_response(agent: str, decision: Decision, config: Config | None) -> dict | None:
+def shape_response(agent: str, event: str, decision: Decision, config: Config | None) -> dict | None:
     """Turn a decision into the agent's wire shape via ``core.responses``.
 
-    Resolves the block message and correction text from config (content, not
-    policy) and hands them to the responder. Command agents (Claude Code,
-    Codex) get a dict to serialise; plugin agents (Pi, OpenCode) get the flat
-    data dict their shim relays. Returns ``None`` for a silent command-agent
-    outcome.
+    Resolves the block message, the correction prompt, and the reminder text
+    from config (content, not policy) and hands them to the responder. Command
+    agents (Claude Code, Codex) get a dict to serialise; plugin agents (Pi,
+    OpenCode) get the flat data dict their shim relays. Returns ``None`` for a
+    silent command-agent outcome (a pass, or a duplicate breach in the turn).
+
+    ``event`` is the agent event name. Codex carries the reminder on the
+    SessionStart / SubagentStart event name, so the responder needs it. Claude
+    Code fixes each event name in its own responder, so it ignores ``event``.
+
+    The correction (the UserPromptSubmit re-issue) and the reminder (the
+    SessionStart / SubagentStart injection) are DISTINCT texts: the old Bash
+    adapters used ``tripwire_emit_correction`` for the re-issue and
+    ``tripwire_emit_reminder`` for the reminder. They were conflated here, which
+    sent the reminder where the correction belonged.
     """
     block_message = config.block_message if config is not None else ""
-    correction = config.reminder_prompt if config is not None else ""
+    correction = config.correction_prompt if config is not None else ""
+    reminder = config.reminder_prompt if config is not None else ""
     if agent == "claude-code":
-        return responses.claude_code_response(decision, block_message, correction)
+        return responses.claude_code_response(decision, block_message, correction, reminder)
     if agent == "codex":
-        return responses.codex_response(decision, block_message, correction)
+        return responses.codex_response(decision, block_message, correction, reminder, event)
     # Pi and OpenCode share the plugin response shape.
     return responses.plugin_response(decision, block_message, correction)

@@ -195,10 +195,173 @@ _B2_BLOCK = _expect("block", "B2", level="error")
 _FACING = _expect("block", "tierA", notice=FACING_NOTICE, level="warning")
 _PASS_TIERA = _expect("pass", "tierA", level="warning")
 _REISSUE = _expect("re-issue", "tierA", append_correction=True)
+# SessionStart / SubagentStart inject the rules reminder.
+_REMIND = _expect("remind", "tierA")
 
 
 def _b2_yield(notice: str) -> dict:
     return _expect("yield", "B2", notice=notice, level="error")
+
+
+# --- Command-hook wire-shape assertions ------------------------------------
+#
+# Claude Code and Codex command hooks pipe scanner stdout straight into the
+# agent, which validates the agent's NATIVE wire JSON, NOT the raw core
+# Decision. These helpers assert that wire JSON, reconstructed from the old
+# expected outputs in fixtures/claude-code/run-fixtures.sh and
+# fixtures/codex/run-codex-fixtures.py. They guard that a command-hook fixture
+# can NEVER pass while emitting the raw Decision shape: a non-empty output must
+# validate against the wire schema and must never carry the Decision-only keys.
+
+# The raw core Decision keys. A command-hook wire output must contain NONE of
+# these; if it does, the scanner leaked the Decision instead of shaping it.
+_DECISION_ONLY_KEYS = {"surface", "inject_base_rules", "append_correction", "level"}
+
+# The top-level keys the Claude Code / Codex hook schema allows. Any other
+# top-level key is an invalid-shape object the runtime rejects.
+_WIRE_TOPLEVEL_KEYS = {
+    "continue",
+    "suppressOutput",
+    "stopReason",
+    "decision",
+    "reason",
+    "systemMessage",
+    "terminalSequence",
+    "permissionDecision",
+    "hookSpecificOutput",
+}
+
+_WIRE_HOOKSPECIFIC_KEYS = {
+    "hookEventName",
+    "additionalContext",
+    "permissionDecision",
+    "permissionDecisionReason",
+}
+
+# Old fixture stdout content prefixes (the regexes the deleted harnesses used).
+_DENY_REASON_PREFIX = "Blocked. Revise this prose to follow the Communication Rules."
+_REISSUE_CONTEXT_PREFIX = "Revise the previous response to follow the Communication Rules."
+_REMINDER_CONTEXT_PREFIX = "Reminder: Follow the Communication Rules"
+
+
+def _assert_wire_schema(name: str, parsed: dict) -> None:
+    """Guard: a non-empty command-hook output is valid wire JSON, not a Decision.
+
+    Fails if any raw Decision-only key appears at the top level, or if a
+    top-level / hookSpecificOutput key falls outside the allowed wire set. This
+    is the explicit guard that a command-hook fixture can never pass while
+    emitting the raw Decision shape.
+    """
+    leaked = _DECISION_ONLY_KEYS & set(parsed)
+    if leaked:
+        raise AssertionError(f"{name}: wire output leaked raw Decision keys {sorted(leaked)}: {parsed}")
+    unknown = set(parsed) - _WIRE_TOPLEVEL_KEYS
+    if unknown:
+        raise AssertionError(f"{name}: wire output has non-schema top-level keys {sorted(unknown)}: {parsed}")
+    specific = parsed.get("hookSpecificOutput")
+    if specific is not None:
+        if not isinstance(specific, dict):
+            raise AssertionError(f"{name}: hookSpecificOutput must be an object: {parsed}")
+        unknown_specific = set(specific) - _WIRE_HOOKSPECIFIC_KEYS
+        if unknown_specific:
+            raise AssertionError(
+                f"{name}: hookSpecificOutput has non-schema keys {sorted(unknown_specific)}: {parsed}"
+            )
+
+
+def expected_wire(event: str, decision: dict) -> dict | None:
+    """Map a core decision expectation to the wire output the agent consumes.
+
+    Returns the expected wire dict, or ``None`` when the hook must emit nothing
+    (a pass, or a duplicate breach with an empty notice). The dict uses sentinel
+    prefix markers for the long reminder / correction / block texts: the caller
+    matches those by prefix, mirroring the regex the deleted harnesses used.
+    """
+    verb = decision["decision"]
+    surface = decision.get("surface")
+    notice = decision.get("notice", "")
+
+    if verb == "pass":
+        return None
+    if verb == "remind":
+        # SessionStart / SubagentStart reminder as additionalContext under the
+        # event name the hook fired on.
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": event,
+                "additionalContext": ("PREFIX", _REMINDER_CONTEXT_PREFIX),
+            }
+        }
+    if verb == "re-issue":
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": event,
+                "additionalContext": ("PREFIX", _REISSUE_CONTEXT_PREFIX),
+            }
+        }
+    if verb == "yield":
+        # Tier B yield: allow with the user-facing notice (verbatim).
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": event,
+                "permissionDecision": "allow",
+                "permissionDecisionReason": notice,
+            }
+        }
+    if verb == "block":
+        if surface == "tierA":
+            # A facing breach emits a systemMessage; a duplicate (empty notice)
+            # emits nothing.
+            if notice:
+                return {"systemMessage": notice}
+            return None
+        # Tier B gating block: deny with the block message reason.
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": event,
+                "permissionDecision": "deny",
+                "permissionDecisionReason": ("PREFIX", _DENY_REASON_PREFIX),
+            }
+        }
+    raise AssertionError(f"unmapped decision verb {verb!r}")
+
+
+def _wire_value_matches(want: object, got: object) -> bool:
+    # A ("PREFIX", text) sentinel matches any string that starts with text;
+    # everything else compares for equality (recursing into dicts).
+    if isinstance(want, tuple) and len(want) == 2 and want[0] == "PREFIX":
+        return isinstance(got, str) and got.startswith(want[1])
+    if isinstance(want, dict):
+        if not isinstance(got, dict) or set(want) != set(got):
+            return False
+        return all(_wire_value_matches(want[key], got[key]) for key in want)
+    return want == got
+
+
+def assert_wire(name: str, event: str, stdout: str, decision: dict) -> None:
+    """Assert the command-hook stdout matches the expected wire output.
+
+    Reconstructs the expected wire dict from the core decision expectation,
+    runs the schema guard on any non-empty output, then compares (prefix-aware)
+    against the expectation.
+    """
+    expected = expected_wire(event, decision)
+    output = stdout.strip()
+    if expected is None:
+        if output:
+            raise AssertionError(f"{name} {event}: expected empty wire output, got {output!r}")
+        return
+    if not output:
+        raise AssertionError(f"{name} {event}: expected wire output {expected}, got empty")
+    try:
+        parsed = json.loads(output)
+    except json.JSONDecodeError as error:
+        raise AssertionError(f"{name} {event}: non-JSON wire output {output!r}") from error
+    if not isinstance(parsed, dict):
+        raise AssertionError(f"{name} {event}: wire output not an object: {parsed!r}")
+    _assert_wire_schema(f"{name} {event}", parsed)
+    if not _wire_value_matches(expected, parsed):
+        raise AssertionError(f"{name} {event}: wire mismatch\n  expected {expected}\n  got      {parsed}")
 
 
 def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) -> int:
@@ -242,20 +405,15 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
                 f"claude-code {name} {event}: exit {completed.returncode}, "
                 f"stderr={completed.stderr.strip()!r}"
             )
-        try:
-            record = json.loads(completed.stdout.strip())
-        except json.JSONDecodeError as error:
-            raise AssertionError(f"claude-code {name} {event}: non-JSON {completed.stdout!r}") from error
-        for field, want in expected.items():
-            got = record.get(field)
-            if got != want:
-                raise AssertionError(
-                    f"claude-code {name} {event}: field {field!r} expected {want!r}, got {got!r} ({record})"
-                )
+        # Claude Code is a command-hook agent: assert the WIRE JSON the runtime
+        # consumes, not the raw core Decision. The guard inside assert_wire
+        # rejects any leaked Decision shape.
+        assert_wire(f"claude-code {name}", event, completed.stdout, expected)
         count += 1
 
-    # SessionStart and a clean UserPromptSubmit: both pass (no pending flag).
-    run_case("session-start.json", "SessionStart", _PASS_TIERA)
+    # SessionStart injects the rules reminder as additionalContext; a clean
+    # UserPromptSubmit (no pending flag) emits nothing.
+    run_case("session-start.json", "SessionStart", _REMIND)
     run_case("user-prompt-submit.json", "UserPromptSubmit", _PASS_TIERA)
 
     # B1 write: pass, then three strikes (deny, deny, yield) on a shared key.
@@ -443,21 +601,17 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
                 f"codex {name} {event}: exit {completed.returncode}, "
                 f"stderr={completed.stderr.strip()!r}"
             )
-        try:
-            record = json.loads(completed.stdout.strip())
-        except json.JSONDecodeError as error:
-            raise AssertionError(f"codex {name} {event}: non-JSON {completed.stdout!r}") from error
-        for field, want in expected.items():
-            got = record.get(field)
-            if got != want:
-                raise AssertionError(
-                    f"codex {name} {event}: field {field!r} expected {want!r}, got {got!r} ({record})"
-                )
+        # Codex is a command-hook agent: assert the WIRE JSON the runtime
+        # consumes, not the raw core Decision. The guard inside assert_wire
+        # rejects any leaked Decision shape.
+        assert_wire(f"codex {name}", event, completed.stdout, expected)
         count += 1
 
-    # SessionStart, SubagentStart, and a clean UserPromptSubmit all pass.
-    run_case("session-start.json", "SessionStart", _PASS_TIERA)
-    run_case("subagent-start.json", "SubagentStart", _PASS_TIERA)
+    # SessionStart and SubagentStart inject the rules reminder as
+    # additionalContext under their own event name; a clean UserPromptSubmit
+    # (no pending flag) emits nothing.
+    run_case("session-start.json", "SessionStart", _REMIND)
+    run_case("subagent-start.json", "SubagentStart", _REMIND)
     run_case("user-prompt-submit.json", "UserPromptSubmit", _PASS_TIERA)
 
     # Pass cases: clean apply_patch, bash, post, multiedit (not a post tool),

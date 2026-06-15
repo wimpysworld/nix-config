@@ -19,7 +19,14 @@ from core.detection import (
     scan_bash,
     scan_prose,
 )
-from core.dispatch import AGENTS, decision_to_json, dispatch
+from core.dispatch import AGENTS, decision_to_json, dispatch, shape_response
+
+# Command-hook agents whose runtime consumes the agent's NATIVE wire JSON on
+# stdout, not the raw core Decision. For these the scanner shapes the decision
+# through core.responses and emits the wire dict (or nothing). Pi and OpenCode
+# load an in-process shim that reads the raw Decision and translates it, so they
+# keep the decision_to_json output unchanged.
+COMMAND_HOOK_AGENTS = ("claude-code", "codex")
 
 
 def write_message(message: str) -> int:
@@ -118,6 +125,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.mode in AGENTS:
         decision = dispatch(args.mode, args.event, config)
+        if args.mode in COMMAND_HOOK_AGENTS:
+            # The command hook pipes stdout straight into the agent, which
+            # validates the agent's native wire JSON. Shape the decision and
+            # emit the wire dict; a pass / no-action shapes to None and emits
+            # nothing (empty stdout, exit 0), never the raw Decision.
+            shaped = shape_response(args.mode, args.event, decision, config)
+            if shaped is not None:
+                sys.stdout.write(json.dumps(shaped))
+                sys.stdout.write("\n")
+            return 0
+        # Pi and OpenCode load an in-process shim that reads the raw Decision.
         sys.stdout.write(decision_to_json(decision))
         sys.stdout.write("\n")
         return 0
