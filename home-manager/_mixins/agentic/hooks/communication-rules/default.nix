@@ -120,11 +120,21 @@ let
       inherit (tripwireBase) package executable;
       inherit hookPackage;
       # Build a single command-hook entry for one event. The shape matches the
-      # `type = "command"` hooks both Claude Code and Codex register.
+      # `type = "command"` hooks both Claude Code and Codex register. The event
+      # is folded into the command string rather than carried in a separate
+      # `args` list. Codex's command-hook config struct has no `args` field and
+      # never passes args to the hook process, and its trust hash is computed
+      # over an identity that excludes `args`; an inline `args` therefore made
+      # our pre-seeded `trusted_hash` diverge from Codex's, leaving every hook
+      # untrusted and triggering the startup "review hooks" prompt on each
+      # launch. Both agents run a command-string hook through a shell when no
+      # `args` is present, so the trailing event token reaches the wrapper as a
+      # positional argument and the wrapper forwards it to `scanner.py <agent>
+      # <event>`. Dropping `args` keeps the hashed identity and the written
+      # entry byte-identical for Codex while preserving event delivery for both.
       mkHook = event: {
         type = "command";
-        command = lib.getExe hookPackage;
-        args = [ event ];
+        command = "${lib.getExe hookPackage} ${lib.escapeShellArg event}";
       };
     }
     // lib.optionalAttrs (hookEventLabels != { }) {
