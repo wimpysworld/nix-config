@@ -45,11 +45,21 @@ If a subagent refuses the direct form, use the bad-example framing.
 
 3. **Tier B rule-breaking write blocks.** Write a rule-breaking sentence to `/tmp/cr-test-block.md`. Confirm the write is blocked before it lands and a block reason is returned.
 
-4. **Tier B B1 cycle (same local path `/tmp/cr-test-b1.md`):**
-   a. Write a rule-breaking sentence. Expect a block (strike 1).
-   b. Write a different rule-breaking sentence to the same path. Expect allow-revise: the write lands and the response asks you to revise that file in place. Report the revise instruction as observed or not observable from here.
-   c. Write a clean sentence to the same path. Expect it to land and reset the strike counter.
-   d. Write a rule-breaking sentence to the same path again. Expect a fresh block (strike 1 again).
+4. **Tier B B1 cycle (same local path `/tmp/cr-test-b1.md`).** Write each body below as the file content, byte for byte. Do not paraphrase, soften, or swap the words. Do not wrap the body in a code fence inside the file, or the scanner strips it and the test voids. Each breach body already carries two banned words, so do not add or remove any.
+
+   Bodies to write (the `4x:` label is not part of the body):
+
+   ```text
+   4a: This plan will leverage a robust design.
+   4b: The seamless and multifaceted rollout shipped.
+   4c: The plan shipped and the team moved on.
+   4d: A cutting-edge testament to the rollout.
+   ```
+
+   a. Write the 4a body. Expect a block (strike 1).
+   b. Write the 4b body to the same path. Expect allow-revise: the write lands and the response asks you to revise that file in place. Report the revise instruction as observed or not observable from here. A landed write with no revise note means the body was not detected: recheck that you wrote the 4b body verbatim.
+   c. Write the 4c body to the same path. It is clean. Expect it to land and reset the strike counter.
+   d. Write the 4d body to the same path. Expect a fresh block (strike 1 again).
 
 5. **Tier B B2 external read (passes).** Run a read-only call: `gh issue list --repo wimpysworld/wagall`. Confirm it is not blocked.
 
