@@ -112,30 +112,24 @@ let
       inherit statusMessage;
     };
   codexTripwireHookEvents = {
-    SessionStart = [
-      {
-        matcher = "startup|clear|compact";
-        hooks = [ (codexTripwireHook "SessionStart" "Loading Communication Rules") ];
-      }
-    ];
+    # No SessionStart or SubagentStart reminder hook is registered here on
+    # purpose. Codex already loads the full Communication Rules silently
+    # through its instructions: the assistants mixin expands the single-source
+    # rules at the `<!-- COMMUNICATION_RULES -->` marker into Codex
+    # developer_instructions and AGENTS.md via compose.expandCommunicationRules,
+    # so the standing rules reach the model at session start. Codex also has no
+    # silent SessionStart hook channel: a hook emitting
+    # hookSpecificOutput.additionalContext is recorded as a visible developer
+    # message in the transcript (see openai/codex#16933), and SubagentStart is
+    # likewise reminder-only and cannot gate. Registering either here would only
+    # add user-visible noise that duplicates the instructions, so both are
+    # omitted. The core shaper keeps its codex_context/remind capability latent.
     # UserPromptSubmit consumes a pending Tier A re-issue flag set by a Stop or
     # SubagentStop breach, injecting the rules as model-only additionalContext on
     # the next turn. Without it the flag is set but never read.
     UserPromptSubmit = [
       {
         hooks = [ (codexTripwireHook "UserPromptSubmit" "Loading Communication Rules") ];
-      }
-    ];
-    # SubagentStart and SubagentStop require Codex >= 0.130; earlier releases
-    # do not emit these hook events, so on an older codex they are inert (no
-    # hook fires) rather than an error. The codex version is pinned by the
-    # llm-agents flake input, which currently tracks >= 0.130. SubagentStart is
-    # reminder-only: like SessionStart it cannot block, so it injects the rules
-    # reminder and never gates. SubagentStop is the blocking surface for a
-    # subagent's final output.
-    SubagentStart = [
-      {
-        hooks = [ (codexTripwireHook "SubagentStart" "Loading Communication Rules") ];
       }
     ];
     PreToolUse = [
