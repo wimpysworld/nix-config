@@ -1,6 +1,6 @@
 # Communication Rules tripwire
 
-Shared scanner, adapters, and fixtures enforce the [Communication Rules](communication-rules.md) across Claude Code, Codex, Pi, and OpenCode. Nix generates the rules fragment, scanner, and policy once; each agent wires its own adapter.
+One shared Python core, thin per-agent shims, and fixtures enforce the [Communication Rules](communication-rules.md) across Claude Code, Codex, Pi, and OpenCode. Nix generates the rules fragment, the core, and the policy once. Every agent runs the same core; only the wiring differs.
 
 ## Status: initial PoC
 
@@ -28,9 +28,18 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
 
 ## Layout
 
-- `scanner.py` deterministic checker for banned words, dashes, and policy disclosure.
-- `adapters/` per-agent extraction and gating shims over the shared `contract.sh`.
-- `fragment.nix` generates the rules text, reminder, block, and correction prompts.
+- `scanner.py` thin CLI entry. It reads `<agent> <event>` and hands off to the core.
+- `core/` the Python package that owns all logic:
+  - `types.py` shared types.
+  - `detection.py` the deterministic checker for banned words, dashes, and policy disclosure, plus the bash scan.
+  - `config.py` config plus the post-detection lists from `policy.json`.
+  - `state.py` the file-backed strike, tier, and fail-closed machine. The only place the B1=3 and B2=5 limits live.
+  - `responses.py` per-agent output shaping.
+  - `dispatch.py` the `<agent> <event>` CLI dispatcher.
+  - `extractors/` the four payload extractors (`claude_code`, `codex`, `opencode`, `pi`).
+- `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` the two thin TypeScript shims. Each spawns the core and applies the returned decision. They hold no policy.
+- `default.nix` two wiring helpers on a shared agent-free base: `mkCommandHookAdapter` (Claude Code, Codex) and `mkPluginAdapter` (Pi, OpenCode).
+- `fragment.nix` generates the rules text, reminder, block, and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
 - `fixtures/` and `tests/` per-agent expected-behaviour cases.
 
 ## Why this exists
@@ -68,7 +77,7 @@ These principles shape the gate.
 
 **One source of truth feeds the model and the gate.** Nix generates a single Communication Rules fragment. The same fragment feeds global instructions, every generated subagent prompt, session reminders, and the hook re-issue text. So what the model is told and what the gate enforces cannot drift apart.
 
-**Each agent uses its own best native mechanism.** The design does not force one shared hook model across the four agents. Each adapter uses the hook or extension that fits its platform, so output contracts differ per agent (see the table below).
+**Each agent uses its own best native mechanism.** The design does not force one shared hook model across the four agents. Each agent uses the hook or extension that fits its platform, so output contracts differ per agent (see the table below). Claude Code and Codex run the core directly from a command hook. Pi and OpenCode force an in-process plugin, so each keeps one thin shim that spawns the core and applies its decision.
 
 ## The core constraint
 
@@ -130,7 +139,7 @@ Bash scanning stays narrow on purpose. It covers obvious prose side effects and 
 
 Each platform uses its native hook surface. Validate the same behaviours per agent: side-effect checks run before the action, final-prose checks never block, and pending re-issue happens once.
 
-Every Tier B adapter uses the same retry split:
+Tier B uses the same retry split for every agent:
 
 - B1 local output (`write`, `edit`, `patch`, Bash) blocks twice, then yields on the third strike with `Communication Rules unmet after retries, output allowed.`
 - B2 external output (`gh`, `gh-api-safe`, post-capable MCP tools, gh posts through Bash) blocks four times, then yields on the fifth strike with `Rules breach posted: <target>`.
@@ -140,7 +149,7 @@ Every Tier B adapter uses the same retry split:
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Claude Code | `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `Stop`, `SubagentStop`.                                                             | `PreToolUse` scans writes, edits, patches, Bash prose side effects, MCP post bodies, and gh post bodies. `Stop` and `SubagentStop` scan the last assistant or subagent prose. Extraction failure on Tier B fails closed.                                                      | Tier B deny returns `permissionDecisionReason` to the model. Tier B yield returns an allow reason visible to the user. Tier A breach emits one `systemMessage`: `Communication Rules breach seen, correcting next reply.`                                           | `SessionStart` injects the full rules reminder for fresh sessions. Tier B deny re-issues the full block message. Tier A sets a pending flag; the next `UserPromptSubmit` injects the correction prompt as `additionalContext`, then clears the flag.                                                                                                                                       |
 | Codex       | `SessionStart`, `SubagentStart`, `UserPromptSubmit`, `PreToolUse`, `Stop`, `SubagentStop`.                                            | `PreToolUse` scans `apply_patch`, `Edit`, `Write`, `Bash`, post-capable MCP tools, gh tools, and gh posts through Bash. `Stop` and `SubagentStop` scan assistant and subagent prose. Extraction failure on Tier B fails closed.                                               | Tier B deny uses `permissionDecisionReason`; Codex `additionalContext` is not used on `PreToolUse`. Tier B yield uses allow reason. Tier A breach emits `systemMessage`: `Communication Rules breach seen, correcting next reply.`                                  | `SessionStart` and `SubagentStart` inject the full rules reminder for fresh contexts. Tier B deny re-issues the full block message. Tier A sets a pending flag; the next `UserPromptSubmit` injects the correction prompt as `additionalContext`, then clears the flag. Nix pre-seeds hook `trusted_hash` state in `config.toml`, so generated hooks are trusted without a runtime prompt. |
-| OpenCode    | `experimental.chat.system.transform`, `tool.execute.before`, `experimental.text.complete`, `event` for completed subagent tool parts. | `tool.execute.before` scans writes, edits, patches, Bash prose side effects, post bodies, and gh post bodies. `experimental.text.complete` scans final prose. `event` scans completed `task`, `agent`, or `subagent` output. Adapter errors fail closed under the strike cap. | Tier B blocks by throwing the block message. Tier B yield shows a toast and logs a warning fallback. Tier A breach shows a toast: `Communication Rules breach seen, correcting next reply.`                                                                         | `experimental.chat.system.transform` injects the full rules once per session key. It does not repeat the full prompt after that. Tier B throw re-issues the full block message. Tier A sets a pending flag; the next system transform appends the correction prompt, then clears the flag.                                                                                                 |
+| OpenCode    | `experimental.chat.system.transform`, `tool.execute.before`, `experimental.text.complete`, `event` for completed subagent tool parts. | `tool.execute.before` scans writes, edits, patches, Bash prose side effects, post bodies, and gh post bodies. `experimental.text.complete` scans final prose. `event` scans completed `task`, `agent`, or `subagent` output. Shim or core errors fail closed under the strike cap. | Tier B blocks by throwing the block message. Tier B yield shows a toast and logs a warning fallback. Tier A breach shows a toast: `Communication Rules breach seen, correcting next reply.`                                                                         | `experimental.chat.system.transform` injects the full rules once per session key. It does not repeat the full prompt after that. Tier B throw re-issues the full block message. Tier A sets a pending flag; the next system transform appends the correction prompt, then clears the flag.                                                                                                 |
 | Pi          | `context`, `tool_call`, `message_end`, `tool_result`.                                                                                 | `tool_call` scans writes, edits, patches, Bash prose side effects, post bodies, and gh post bodies. `message_end` scans final prose after skipping intermediate `toolUse` turns. `tool_result` scans subagent output. Extraction failure on Tier B fails closed.              | Tier B blocks by returning `{ block = true, reason = ... }`. Tier B yield uses `ctx.ui.notify` when UI exists. Tier A breach notifies: `Communication Rules breach seen, correcting next reply.` `tool_result` breaches return an error content block to the model. | `context` appends the full rules as a hidden custom message when absent. It does not repeat the full prompt once present. Tier B block re-issues the full block message. Tier A sets a pending flag; the next `context` hook appends a hidden `display:false` correction message, then clears the flag.                                                                                    |
 
 Full Communication Rules injection is limited to fresh session, subagent, or context creation. Retry and final-prose paths use the correction prompt instead, so the model is corrected without repeated prompt injection.

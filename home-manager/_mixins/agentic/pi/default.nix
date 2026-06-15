@@ -492,47 +492,39 @@ let
     }
   '';
 
-  piCommunicationRulesAdapterSource = pkgs.runCommand "pi-communication-rules-adapter-source" { } ''
-    mkdir -p "$out"
-    cp ${../hooks/communication-rules/adapters/contract.sh} "$out/contract.sh"
-    cp ${../hooks/communication-rules/adapters/pi.py} "$out/pi.py"
-    cp ${../hooks/communication-rules/adapters/pi.sh} "$out/pi.sh"
-    chmod +x "$out/pi.py" "$out/pi.sh"
-  '';
-
-  piCommunicationRulesAdapterPackage = pkgs.writeShellApplication {
-    name = "pi-communication-rules-adapter";
-    runtimeInputs = [
-      communicationRules.package
-      pkgs.bash
-      pkgs.coreutils
-      pkgs.python3
-    ];
-    text = ''
-      export TRIPWIRE_SCANNER="''${TRIPWIRE_SCANNER:-${communicationRules.executable}}"
-      export TRIPWIRE_POLICY_JSON="''${TRIPWIRE_POLICY_JSON:-${communicationRules.policyFilePath}}"
-      export TRIPWIRE_CORRECTION_PROMPT="''${TRIPWIRE_CORRECTION_PROMPT:-${piCommunicationRulesCorrectionPrompt}}"
-      exec bash "${piCommunicationRulesAdapterSource}/pi.sh" "$@"
-    '';
-  };
-
   piCommunicationRulesCorrectionPrompt = pkgs.writeTextFile {
     name = "pi-communication-rules-correction-prompt.md";
     text = communicationRules.correctionPrompt;
   };
 
+  # The Pi extension is an in-process TS plugin, so it shells out to the Python
+  # core directly: mkPluginAdapter renders the shim and the shim spawns
+  # `core pi <event>`. The shim reads its paths from config.json at runtime, so
+  # the helper copies the shim verbatim (no token substitution).
+  piCommunicationRulesPlugin =
+    if communicationRules.mkPluginAdapter == null then
+      null
+    else
+      communicationRules.mkPluginAdapter {
+        agent = "pi";
+        shim = ./extensions/communication-rules/index.ts;
+        correctionPrompt = piCommunicationRulesCorrectionPrompt;
+      };
+
+  # The shim spawns this executable as `<adapterPath> pi <event>`; the scanner
+  # wrapper bakes --policy-json and --rules, so the shim passes only the agent
+  # and event. rulesPath and correctionPromptPath feed the Tier A live-object
+  # writes (base-rules injection and the correction re-issue).
   piCommunicationRulesConfig = {
-    adapterPath = lib.getExe piCommunicationRulesAdapterPackage;
+    adapterPath = communicationRules.executable;
     inherit (communicationRules) rulesPath;
     correctionPromptPath = piCommunicationRulesCorrectionPrompt;
-    policyPath = communicationRules.policyFilePath;
   };
 
   piCommunicationRulesFiles = lib.optionalAttrs communicationRules.enable {
     ".pi/agent/extensions/communication-rules/config.json".text =
       builtins.toJSON piCommunicationRulesConfig;
-    ".pi/agent/extensions/communication-rules/index.ts".source =
-      ./extensions/communication-rules/index.ts;
+    ".pi/agent/extensions/communication-rules/index.ts".text = piCommunicationRulesPlugin.pluginText;
   };
 
   # sub-core does not fetch quota data on session start; it first renders cached
