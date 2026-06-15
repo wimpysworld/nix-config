@@ -947,6 +947,148 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
         existing_blocked=True,
     )
 
+    # Env-prefix evasion: a leading "GH_TOKEN=x gh ..." or "FOO=bar printf ..."
+    # must NOT hide the command. The env assignment is stripped before the
+    # command-name checks, so the gh post still classifies B2 (walks the cap) and
+    # the printf write still classifies B1. The banned word is assembled from
+    # fragments, never a plain literal.
+    _banned_env = "rob" + "ust"
+
+    reset_strikes()
+    _env_gh_command = (
+        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'" % _banned_env
+    )
+
+    def _env_gh_post() -> dict:
+        return {
+            "session_id": "env-gh",
+            "turn_id": "env-gh-turn",
+            "tool_name": "Bash",
+            "tool_input": {"command": _env_gh_command},
+        }
+
+    # The env-prefixed gh post is B2 external: it walks the five-strike cap, not
+    # the B1 allow-revise path. Strikes 1 and 4 carry full rules, 2 and 3 the
+    # nudge. Strike 5 yields. The wrapped command exposes a bare gh subcommand
+    # after the env strip, so the target names the subcommand.
+    for nudge in (False, True, True, False):
+        run_case("env-prefix gh post", "PreToolUse", _b2_block(nudge), payload=_env_gh_post())
+    # The B2 yield names the operator target. external_target reads the bare gh
+    # subcommand from the raw command string, where the leading token is the env
+    # assignment, so it falls back to the tool label "Bash". The point of this
+    # case is the SURFACE (B2 hard block, not B1 allow-revise), not the label.
+    run_case(
+        "env-prefix gh post yield",
+        "PreToolUse",
+        _b2_yield("Rules breach posted: Bash"),
+        payload=_env_gh_post(),
+    )
+
+    # The env-prefixed printf write is B1 local: the redirect sink survives the
+    # env strip, so the breach is caught and keyed per-file on the sink.
+    reset_strikes()
+    _env_write_command = "FOO=bar printf 'a %s line' > /tmp/env-x.md" % _banned_env
+
+    def _env_write() -> dict:
+        return {
+            "session_id": "env-write",
+            "turn_id": "env-write-turn",
+            "tool_name": "Bash",
+            "tool_input": {"command": _env_write_command},
+        }
+
+    run_case("env-prefix write strike 1", "PreToolUse", _B1_BLOCK, payload=_env_write())
+    run_case(
+        "env-prefix write strike 2",
+        "PreToolUse",
+        _b1_allow_revise("/tmp/env-x.md"),
+        payload=_env_write(),
+    )
+
+    # A clean env-prefixed command passes the gate: no banned word, no breach.
+    reset_strikes()
+    run_case(
+        "env-prefix clean",
+        "PreToolUse",
+        _PASS_TIERB,
+        payload={
+            "session_id": "env-clean",
+            "turn_id": "env-clean-turn",
+            "tool_name": "Bash",
+            "tool_input": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/env-clean.md"},
+        },
+    )
+
+    # apply_patch added-text scanning. Codex scans the ADDED ("+") lines only.
+    rules_body = RULES.read_text(encoding="utf-8").strip()
+
+    # Writing the FULL canonical rules text via apply_patch is a disclosure, not a
+    # breach: the added text equals the canonical rules, so the exemption fires
+    # and the gate passes. Before the added-text fix, Codex scanned the raw patch
+    # (markers and "+" prefixes), never byte-matched the exemption, and the banned
+    # words listed in the rules triggered a false block.
+    reset_strikes()
+    rules_patch = (
+        "*** Begin Patch\n*** Add File: /tmp/rules.md\n"
+        + "".join("+%s\n" % line for line in rules_body.split("\n"))
+        + "*** End Patch\n"
+    )
+    run_case(
+        "apply_patch full rules disclosure",
+        "PreToolUse",
+        _PASS_TIERB,
+        payload={
+            "session_id": "patch-rules",
+            "turn_id": "patch-rules-turn",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": rules_patch},
+        },
+    )
+
+    # A banned word on an ADDED line blocks (B1 local, keyed on the patch target).
+    # The banned word is assembled from fragments, never a plain literal.
+    _banned_patch = "del" + "ve"
+    reset_strikes()
+    added_breach_patch = (
+        "*** Begin Patch\n*** Add File: /tmp/breach.md\n"
+        "+We %s into this topic.\n"
+        "*** End Patch\n" % _banned_patch
+    )
+    run_case(
+        "apply_patch added breach",
+        "PreToolUse",
+        _B1_BLOCK,
+        payload={
+            "session_id": "patch-breach",
+            "turn_id": "patch-breach-turn",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": added_breach_patch},
+        },
+    )
+
+    # A banned word that sits ONLY on a context line or a removed ("-") line, not
+    # an added ("+") line, passes: added-text-only scanning never sees it. This
+    # proves the scan reads the "+" lines, not the raw patch body.
+    reset_strikes()
+    context_only_patch = (
+        "*** Begin Patch\n*** Update File: /tmp/ctx.md\n"
+        " We %s into this old context line.\n"
+        "-We %s on the removed line.\n"
+        "+A clean added line.\n"
+        "*** End Patch\n" % (_banned_patch, _banned_patch)
+    )
+    run_case(
+        "apply_patch banned only in context or removed",
+        "PreToolUse",
+        _PASS_TIERB,
+        payload={
+            "session_id": "patch-ctx",
+            "turn_id": "patch-ctx-turn",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": context_only_patch},
+        },
+    )
+
     return count
 
 
@@ -1383,6 +1525,70 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
         "subagent.final",
         _FACING,
         payload={"event": "subagent.final", "surface": "subagent", "session_id": "oc-empty-subagent"},
+    )
+
+    # Env-prefix evasion: a leading "GH_TOKEN=x gh ..." or "FOO=bar printf ..."
+    # must NOT hide the command. The env assignment is stripped before the
+    # command-name checks, so the gh post stays B2 (walks the cap) and the printf
+    # write stays B1. The banned word is assembled from fragments.
+    _banned_env = "rob" + "ust"
+
+    reset_strikes()
+    _env_gh = "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'" % _banned_env
+
+    def _env_gh_post() -> dict:
+        return {
+            "session_id": "oc-env-gh",
+            "event": "tool.execute.before",
+            "tool": {"name": "bash"},
+            "args": {"command": _env_gh},
+        }
+
+    # The env-prefixed gh post is B2 external: it walks the five-strike cap, not
+    # the B1 allow-revise path. The bash tool with a command has no structured
+    # identifier, so the yield target falls back to the tool name "bash".
+    for nudge in (False, True, True, False):
+        run_case("env-prefix gh post", "tool.execute.before", _b2_block(nudge), payload=_env_gh_post())
+    run_case(
+        "env-prefix gh post yield",
+        "tool.execute.before",
+        _b2_yield("Rules breach posted: bash"),
+        payload=_env_gh_post(),
+    )
+
+    # The env-prefixed printf write is B1 local: the redirect sink survives the
+    # env strip, so the breach is caught and keyed per-file on the sink.
+    reset_strikes()
+    _env_write = "FOO=bar printf 'a %s line' > /tmp/oc-env-x.md" % _banned_env
+
+    def _env_write_payload() -> dict:
+        return {
+            "session_id": "oc-env-write",
+            "event": "tool.execute.before",
+            "tool": {"name": "bash"},
+            "args": {"command": _env_write},
+        }
+
+    run_case("env-prefix write strike 1", "tool.execute.before", _B1_BLOCK, payload=_env_write_payload())
+    run_case(
+        "env-prefix write strike 2",
+        "tool.execute.before",
+        _b1_allow_revise("/tmp/oc-env-x.md"),
+        payload=_env_write_payload(),
+    )
+
+    # A clean env-prefixed command passes the gate.
+    reset_strikes()
+    run_case(
+        "env-prefix clean",
+        "tool.execute.before",
+        _PASS_TIERB,
+        payload={
+            "session_id": "oc-env-clean",
+            "event": "tool.execute.before",
+            "tool": {"name": "bash"},
+            "args": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/oc-env-clean.md"},
+        },
     )
 
     # Existing-blocked per-turn dedupe: a duplicate breach takes no second notice

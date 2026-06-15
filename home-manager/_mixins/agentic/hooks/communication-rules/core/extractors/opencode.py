@@ -42,7 +42,13 @@ from __future__ import annotations
 from typing import Any
 
 from core.config import Config
-from core.detection import bash_prose_sink, parse_command_line, shell_c_inner_script
+from core.detection import (
+    bash_prose_sink,
+    parse_command_line,
+    patch_added_text,
+    shell_c_inner_script,
+    strip_env_assignments,
+)
 from core.dispatch import (
     EVENT_CONTEXT,
     EVENT_FACING,
@@ -239,17 +245,6 @@ def is_post_tool(name: str, args: Any) -> bool:
     return False
 
 
-def patch_added_text(patch: str) -> str:
-    lines: list[str] = []
-    for line in patch.splitlines():
-        if not line.startswith("+"):
-            continue
-        if line == "+++" or line.startswith("+++ ") or line.startswith("+++\t"):
-            continue
-        lines.append(line[1:])
-    return "\n".join(lines)
-
-
 def display_surface(data: Any) -> bool:
     if not isinstance(data, dict):
         return False
@@ -311,17 +306,22 @@ def is_external_surface(name: str, args: Any, config: Config) -> bool:
         return True
     command = command_from_args(args)
     if command:
-        stripped = command.lstrip()
-        if stripped.startswith("gh ") or stripped.startswith("gh-api-safe "):
-            return True
-        # A shell ``-c`` wrapper hides the gh post inside one token, so parse the
-        # command, unwrap it, and test the inner script's leading token too.
-        argv = parse_command_line(stripped)
+        # Parse the command and strip a leading env assignment (``GH_TOKEN=x gh
+        # ...``) so the gh leading-token test sees the real command. A raw-string
+        # ``startswith("gh ")`` would miss the env prefix.
+        argv = parse_command_line(command)
         if argv is not None:
-            inner = shell_c_inner_script(argv)
+            stripped_argv = strip_env_assignments(argv)
+            if stripped_argv and stripped_argv[0] in {"gh", "gh-api-safe"}:
+                return True
+            # A shell ``-c`` wrapper hides the gh post inside one token, so
+            # unwrap it and test the inner script's leading token too.
+            inner = shell_c_inner_script(stripped_argv)
             if inner is not None:
-                inner_stripped = inner.lstrip()
-                return inner_stripped.startswith("gh ") or inner_stripped.startswith("gh-api-safe ")
+                inner_argv = parse_command_line(inner)
+                if inner_argv is not None:
+                    inner_stripped = strip_env_assignments(inner_argv)
+                    return bool(inner_stripped) and inner_stripped[0] in {"gh", "gh-api-safe"}
     return False
 
 

@@ -533,6 +533,80 @@ def test_apply_patch_target_unit():
     return 1
 
 
+def test_strip_env_assignments_unit():
+    """``strip_env_assignments`` drops leading env assignments only.
+
+    Covers a single leading assignment, multiple leading assignments, an
+    assignment AFTER the command (which stays, as a real argument), and an
+    all-assignments argv (which returns empty). Run in a fresh process so the
+    import path matches the other checks.
+    """
+    snippet = (
+        "from core.detection import strip_env_assignments as s\n"
+        "cases = [\n"
+        "  (s(['GH_TOKEN=x', 'gh', 'issue']), ['gh', 'issue']),\n"
+        "  (s(['A=1', 'B=2', 'printf', 'hi']), ['printf', 'hi']),\n"
+        "  (s(['gh', 'api', '-f', 'k=v']), ['gh', 'api', '-f', 'k=v']),\n"
+        "  (s(['FOO=bar']), []),\n"
+        "  (s([]), []),\n"
+        "]\n"
+        "import json\n"
+        "print(json.dumps(cases))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", snippet],
+        cwd=str(ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError("strip_env_assignments check exited %s: %s" % (completed.returncode, completed.stderr.strip()))
+    results = json.loads(completed.stdout.strip())
+    for got, want in results:
+        if got != want:
+            raise AssertionError("strip_env_assignments: expected %r, got %r (all=%r)" % (want, got, results))
+    return 1
+
+
+def test_patch_added_text_unit():
+    """``patch_added_text`` returns the ``+`` lines only, markers skipped.
+
+    Covers added lines (the ``+`` stripped), the ``*** ...`` markers and the
+    ``+++`` headers skipped, and a delete-only patch (no added lines -> empty).
+    Run in a fresh process so the import path matches the other checks.
+    """
+    snippet = (
+        "from core.detection import patch_added_text as p\n"
+        "add = '*** Begin Patch\\n*** Add File: a.md\\n+hello\\n+world\\n*** End Patch\\n'\n"
+        "hdr = '+++ b/a.md\\n+kept line\\n'\n"
+        "dele = '*** Begin Patch\\n*** Delete File: gone.md\\n-bye\\n*** End Patch\\n'\n"
+        "cases = [\n"
+        "  (p(add), 'hello\\nworld'),\n"
+        "  (p(hdr), 'kept line'),\n"
+        "  (p(dele), ''),\n"
+        "]\n"
+        "import json\n"
+        "print(json.dumps(cases))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", snippet],
+        cwd=str(ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError("patch_added_text check exited %s: %s" % (completed.returncode, completed.stderr.strip()))
+    results = json.loads(completed.stdout.strip())
+    for got, want in results:
+        if got != want:
+            raise AssertionError("patch_added_text: expected %r, got %r (all=%r)" % (want, got, results))
+    return 1
+
+
 def test_b1_limit_override():
     """``TRIPWIRE_LOCAL_STRIKE_LIMIT=2`` blocks strikes 1-2 and allow-revises 3.
 
@@ -656,6 +730,9 @@ def main():
     total += test_bash_prose_sink_unit()
     total += test_scan_bash_wrapped_unit()
     total += test_apply_patch_target_unit()
+    # The env-assignment strip and the patch added-text helpers.
+    total += test_strip_env_assignments_unit()
+    total += test_patch_added_text_unit()
 
     # The resolved user-facing notice via the command-agent CLI: a file tool and
     # a Bash write both name their concrete target; a genuinely empty target

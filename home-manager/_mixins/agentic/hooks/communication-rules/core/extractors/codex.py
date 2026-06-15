@@ -35,8 +35,10 @@ from core.detection import (
     apply_patch_target,
     bash_prose_sink,
     parse_command_line,
+    patch_added_text,
     read_text_file,
     shell_c_inner_script,
+    strip_env_assignments,
 )
 from core.dispatch import (
     EVENT_FACING,
@@ -223,16 +225,18 @@ def is_bash_gh_post(command: Any) -> bool:
     # wrapped ``gh issue create --body ...`` must classify as external too.
     if not isinstance(command, str):
         return False
-    if _argv_is_gh_post(command.split()):
+    # Strip a leading env assignment (``GH_TOKEN=x gh ...``) so the gh leading
+    # token test sees the real command, not the assignment.
+    if _argv_is_gh_post(strip_env_assignments(command.split())):
         return True
     # The wrapper unwrap needs a shell-aware parse so the quoted inner script is
     # one token; the naive split above keeps the cheap direct path unchanged.
     argv = parse_command_line(command)
     if argv is not None:
-        inner = shell_c_inner_script(argv)
+        inner = shell_c_inner_script(strip_env_assignments(argv))
         if inner is not None:
             inner_argv = parse_command_line(inner)
-            if inner_argv is not None and _argv_is_gh_post(inner_argv):
+            if inner_argv is not None and _argv_is_gh_post(strip_env_assignments(inner_argv)):
                 return True
     return False
 
@@ -384,6 +388,20 @@ def _extract_pre_tool_use(payload: dict[str, Any], config: Config) -> Extraction
         text = _tool_text(tool_input)
         if not text:
             return Extraction(scan_mode=SCAN_NONE, unresolved=True, **gate_args)
+        if name == "apply_patch":
+            # Scan the ADDED text only, the ``+`` lines a patch writes to disk.
+            # Scanning the raw patch body would see the ``*** ...`` markers and
+            # the ``+`` prefixes, so a patch writing the full canonical rules
+            # never byte-matches the disclosure exemption and its listed banned
+            # words trigger a false block. The strike TARGET still reads the path
+            # from the raw patch via apply_patch_target above. A delete-only
+            # patch has no added text, so there is nothing to scan: pass, do not
+            # fail closed, mirroring OpenCode.
+            added = patch_added_text(text)
+            if not added:
+                return _pass(payload)
+            record.texts = [added]
+            return Extraction(scan_mode=SCAN_TEXT, **gate_args)
         record.texts = [text]
         return Extraction(scan_mode=SCAN_TEXT, **gate_args)
 

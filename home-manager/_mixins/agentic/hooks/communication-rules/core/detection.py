@@ -261,6 +261,47 @@ def command_name(argv: list[str]) -> str:
     return Path(argv[0]).name
 
 
+# A leading shell env assignment such as ``GH_TOKEN=x`` or ``FOO=bar`` precedes
+# the real command. ``shlex.split`` keeps it as its own token, so every
+# command-name check would otherwise see the assignment rather than the command
+# and miss a wrapped post or write. We strip these leading assignments only;
+# a ``key=value`` token AFTER the command is a genuine argument and stays.
+_ENV_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def strip_env_assignments(argv: list[str]) -> list[str]:
+    """Return argv with any leading shell env assignments removed.
+
+    Drops leading tokens that match a shell env assignment (``NAME=value``)
+    until the first token that is not an assignment, which is the real command.
+    Tokens after that command are returned untouched, even if they look like
+    assignments. An argv that is all assignments returns an empty list.
+    """
+    index = 0
+    while index < len(argv) and _ENV_ASSIGNMENT.match(argv[index]):
+        index += 1
+    return argv[index:]
+
+
+def patch_added_text(patch: str) -> str:
+    """Return the added text of an apply_patch body, the ``+`` lines only.
+
+    Strips the leading ``+`` from each added line and skips the ``+++`` file
+    headers and the ``*** ...`` patch markers, which do not start with a single
+    ``+``. A patch with no added lines (a delete-only patch) returns an empty
+    string. This is the text a patch would write to disk, the only part a prose
+    scan should see.
+    """
+    lines: list[str] = []
+    for line in patch.splitlines():
+        if not line.startswith("+"):
+            continue
+        if line == "+++" or line.startswith("+++ ") or line.startswith("+++\t"):
+            continue
+        lines.append(line[1:])
+    return "\n".join(lines)
+
+
 # Shell wrappers whose ``-c`` flag carries an inner script as a single token. A
 # command such as ``bash -lc "printf 'x' > out.md"`` hides its redirect, prose,
 # and any gh post inside one argv token, so detection must unwrap it and scan
@@ -589,7 +630,14 @@ def bash_prose_sink(command_text: str, depth: int = 0) -> str | None:
         argv = parse_command_line(stripped)
         if argv is None:
             continue
-        for segment in split_command_segments(argv):
+        for raw_segment in split_command_segments(argv):
+            # Drop a leading env assignment so the wrapper check and the redirect
+            # sinks resolve against the real command. The sinks sit after the
+            # assignments, so the front strip keeps them; an all-assignments
+            # segment has no command and is skipped.
+            segment = strip_env_assignments(raw_segment)
+            if not segment:
+                continue
             if depth < SHELL_WRAPPER_DEPTH_CAP:
                 inner = shell_c_inner_script(segment)
                 if inner is not None:
@@ -670,7 +718,14 @@ def scan_bash(command_text: str, config: Config, _depth: int = 0) -> bool:
             continue
 
         heredocs = heredocs_by_line.get(stripped, [])
-        for segment in split_command_segments(argv):
+        for raw_segment in split_command_segments(argv):
+            # Drop a leading env assignment (``GH_TOKEN=x gh ...``) so the
+            # command-name checks see the real command. The ``>``/heredoc sinks
+            # sit after the assignments, so stripping the front keeps them. A
+            # segment that is all assignments has no command, so skip it.
+            segment = strip_env_assignments(raw_segment)
+            if not segment:
+                continue
             if _depth < SHELL_WRAPPER_DEPTH_CAP:
                 inner = shell_c_inner_script(segment)
                 if inner is not None:
