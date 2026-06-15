@@ -39,7 +39,7 @@ from core.dispatch import (
     SCAN_TEXT,
     Extraction,
 )
-from core.detection import read_text_file
+from core.detection import bash_prose_sink, read_text_file
 from core.types import ExtractorRecord
 
 
@@ -332,7 +332,13 @@ def _extract_pre_tool_use(payload: dict[str, Any], session: str, config: Config)
         if not isinstance(command, str):
             return Extraction(scan_mode=SCAN_NONE, unresolved=True, **gate_args)
         # The command body routes through scan_bash, never through is_bash_gh_post.
+        # For a LOCAL Bash write the strike TARGET is the first prose sink the
+        # command writes, so it keys per-file like Write/Edit. An external gh post
+        # keeps its B2 target. No resolvable sink leaves the coarse session+tool
+        # key.
         record.texts = [command]
+        if not is_external:
+            record.target = bash_prose_sink(command)
         return Extraction(scan_mode=SCAN_BASH, **gate_args)
 
     if is_post_capable_mcp_tool(tool_name, config.post_tool_terms):

@@ -508,6 +508,45 @@ def redirect_targets(argv: list[str]) -> list[str]:
     return targets
 
 
+def bash_prose_sink(command_text: str) -> str | None:
+    """Return the first prose-target sink path a Bash command writes, else None.
+
+    This is the STABLE B1 target for a Bash write, mirroring the file path a
+    Write/Edit tool keys on, so two breaching Bash writes to two different prose
+    files each get their own one-block budget instead of sharing one coarse
+    session+tool key.
+
+    A sink is a ``>``/``>>`` redirect target or a ``cat``/``tee`` heredoc sink
+    that passes ``prose_target`` (a prose suffix or a prose-name part) and
+    resolves to a literal path. The FIRST such sink wins, scanning lines top to
+    bottom and, within a line, its chained command segments in order; the
+    heredoc sinks on a line are considered after that line's redirect sinks.
+    Returns None when no prose sink resolves: a bare command, a dynamic or
+    ``$(...)`` sink, a post-command, or a non-prose target. This reads the SINK
+    only; it never changes ``scan_bash``'s detection behaviour.
+    """
+    heredoc_files = heredoc_body_files(extract_heredoc_blocks(command_text))
+
+    for line in command_lines_without_heredoc_bodies(command_text):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        argv = parse_command_line(stripped)
+        if argv is None:
+            continue
+        for segment in split_command_segments(argv):
+            for target in redirect_targets(segment):
+                cleaned = clean_literal_path(target)
+                if cleaned is not None and prose_target(cleaned):
+                    return cleaned
+
+    for cleaned in heredoc_files:
+        if prose_target(cleaned):
+            return cleaned
+
+    return None
+
+
 def extract_redirect_texts(argv: list[str], heredocs: list[str]) -> tuple[list[str], bool]:
     targets = [target for target in redirect_targets(argv) if prose_target(target)]
     if not targets:

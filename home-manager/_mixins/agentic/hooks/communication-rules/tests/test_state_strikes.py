@@ -14,8 +14,11 @@ breaches again earns a fresh block. B1 never reaches the old terminal ``yield``
    for Pi and OpenCode over one shared on-disk strike dir, the raw decision
    record asserted. The resolved user-facing notice is asserted through the
    command-agent CLI, which runs the dispatcher's ``shape_response``: a file
-   tool (Write) names its concrete path; a Bash breach (no path) degrades to the
-   generic form and never emits a literal ``{target}``.
+   tool (Write) names its concrete path; a Bash write now keys on its prose sink
+   so it also names that file; a genuinely empty target (driven directly through
+   the dispatcher) degrades to the generic form and never emits a ``{target}``.
+   A separate per-file keying check proves two distinct Bash sinks each earn
+   their own one-block budget instead of sharing one coarse session+tool key.
 2. Reset on clean pass: breach -> ``block``, clean pass -> ``pass`` (resets the
    count), breach -> ``block`` again (strike 1, a fresh block, not allow-revise).
 3. ``TRIPWIRE_LOCAL_STRIKE_LIMIT`` override: set to ``2``, strikes 1-2 block and
@@ -71,9 +74,20 @@ _BANNED = "del" + "ve"
 _BANNED2 = "tap" + "estry"
 BREACH_COMMAND = 'echo "%s into the %s" | tee notes.md' % (_BANNED, _BANNED2)
 
+# Two breaching Bash writes to two DIFFERENT prose sinks. Each sink is now the
+# B1 strike target (bash_prose_sink), so in one session each earns its own
+# one-block budget instead of sharing one coarse session+tool key. The banned
+# term is the breach payload, assembled from fragments, never a plain literal.
+BREACH_COMMAND_A = 'printf "%s here" > /tmp/tripwire-a.md' % _BANNED
+BREACH_COMMAND_B = 'printf "%s here" > /tmp/tripwire-b.md' % _BANNED
+
 # A clean local command on the same shape: a tee redirect with no banned term.
 # It clears the B1 strike for the same key.
 CLEAN_COMMAND = "echo hello | tee notes.md"
+
+# The Bash sink the BREACH_COMMAND writes (tee notes.md). It is a prose suffix,
+# so the resolved allow-revise notice now NAMES this file.
+BREACH_COMMAND_SINK = "notes.md"
 
 # A file-tool breach for the resolved-notice case: a Write whose content carries
 # a banned term, against a concrete path. The path is the strike target, so the
@@ -290,13 +304,14 @@ def test_b1_resolved_notice_file_tool():
     return 1
 
 
-def test_b1_resolved_notice_bash_generic():
-    """A Bash allow-revise uses the generic form, no path, no literal {target}.
+def test_b1_resolved_notice_bash_named():
+    """A Bash write to a prose file NAMES that file in the resolved notice.
 
-    A Bash breach has no stable path, so ``record.target`` is empty and the
-    dispatcher degrades the B1 revision prompt to its generic sentence. Driven
-    through the Claude Code CLI: strike 1 denies, strike 2 allows with the
-    generic, non-empty notice and no literal ``{target}`` (criterion 11).
+    A Bash write now keys on its prose sink (``bash_prose_sink``), so the strike
+    target is the sink path and the dispatcher substitutes it into the B1
+    revision prompt, exactly like a Write/Edit tool. Driven through the Claude
+    Code CLI: strike 1 denies, strike 2 allows with a ``permissionDecisionReason``
+    that names the sink (here ``notes.md``) and carries no literal ``{target}``.
     """
     with tempfile.TemporaryDirectory(prefix="tripwire-cc-bash-") as strike_dir:
         payload = bash_event_json("claude-code", "cc-b1-bash", BREACH_COMMAND)
@@ -314,13 +329,123 @@ def test_b1_resolved_notice_bash_generic():
         if out["permissionDecision"] != "allow":
             raise AssertionError("Bash strike 2: expected allow, got %r (%s)" % (out["permissionDecision"], second))
         reason = out["permissionDecisionReason"]
-        if not reason:
-            raise AssertionError("Bash strike 2: expected a non-empty generic notice, got empty")
-        # The generic form names no file. The path used by the file-tool case
-        # must not appear, proving the degrade path ran, not a substitution.
-        if BREACH_FILE_PATH in reason:
-            raise AssertionError("Bash strike 2: generic notice unexpectedly named a path, got %r" % reason)
+        if BREACH_COMMAND_SINK not in reason:
+            raise AssertionError("Bash strike 2: resolved notice missing sink %r, got %r" % (BREACH_COMMAND_SINK, reason))
         assert_no_target_placeholder("Bash strike 2", reason)
+    return 1
+
+
+def test_b1_resolved_notice_empty_target_generic():
+    """A genuinely empty B1 target degrades to the generic notice, no {target}.
+
+    A Bash write usually now resolves a sink, so the empty-target path can no
+    longer be reached through a real breaching command. Drive the empty-target
+    case directly through ``gate`` plus the dispatcher's ``shape_response``: a B1
+    allow-revise whose ``record.target`` is empty must produce the baked generic
+    sentence, name no file, and never emit a literal ``{target}`` (criterion 11).
+    """
+    snippet = (
+        "from core import state, dispatch\n"
+        "from core.config import Config, DEFAULT_POLICY\n"
+        "from core.types import ExtractorRecord\n"
+        "config = Config(rules_text='rules', reminder_prompt=None, block_message=None, policy=dict(DEFAULT_POLICY))\n"
+        "rec = ExtractorRecord(session='empty-target', turn=None, tool='Bash', target=None, texts=[])\n"
+        "state.gate('claude-code', rec, 'local', state.SCAN_BLOCK)\n"
+        "decision = state.gate('claude-code', rec, 'local', state.SCAN_BLOCK)\n"
+        "wire = dispatch.shape_response('claude-code', 'PreToolUse', decision, config)\n"
+        "reason = wire['hookSpecificOutput']['permissionDecisionReason']\n"
+        "print(repr(reason))\n"
+        "print(repr(dispatch._GENERIC_REVISION_NOTICE))\n"
+    )
+    with tempfile.TemporaryDirectory(prefix="tripwire-empty-target-") as strike_dir:
+        env = dict(os.environ)
+        env["TRIPWIRE_STRIKE_DIR"] = strike_dir
+        env.pop("TRIPWIRE_B1_REVISION_PROMPT", None)
+        completed = subprocess.run(
+            [sys.executable, "-c", snippet],
+            cwd=str(ROOT),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            env=env,
+        )
+    if completed.returncode != 0:
+        raise AssertionError("empty-target check exited %s: %s" % (completed.returncode, completed.stderr.strip()))
+    reason_line, generic_line = completed.stdout.strip().splitlines()
+    reason = eval(reason_line)  # noqa: S307 - test-only, value is our own repr
+    generic = eval(generic_line)  # noqa: S307 - test-only, value is our own repr
+    if reason != generic:
+        raise AssertionError("empty target: expected the generic notice %r, got %r" % (generic, reason))
+    assert_no_target_placeholder("empty target", reason)
+    return 1
+
+
+def test_b1_bash_per_file_keying():
+    """Two breaching Bash writes to two different prose sinks each block once.
+
+    Before this change a single coarse session+tool key meant the first
+    breaching Bash write blocked and every later breaching Bash write (any file)
+    landed. Now each Bash write keys on its prose sink, so two distinct sinks in
+    one session each get their OWN one-block budget: both are strike 1 and both
+    deny. Driven through the plugin agents over one shared strike dir.
+    """
+    for agent in ("pi", "opencode"):
+        with tempfile.TemporaryDirectory(prefix="tripwire-%s-perfile-" % agent) as strike_dir:
+            session = "%s-b1-perfile" % agent
+            first_a = run_record(agent, strike_dir, session, BREACH_COMMAND_A)
+            assert_decision("%s per-file sink A strike 1" % agent, first_a, "block", "B1")
+            # A DIFFERENT sink in the same session is its own strike 1, not a free
+            # pass. A coarse shared key would allow-revise here instead.
+            first_b = run_record(agent, strike_dir, session, BREACH_COMMAND_B)
+            assert_decision("%s per-file sink B strike 1" % agent, first_b, "block", "B1")
+            # A SECOND breach to sink A names that file on allow-revise.
+            second_a = run_record(agent, strike_dir, session, BREACH_COMMAND_A)
+            assert_decision("%s per-file sink A strike 2" % agent, second_a, "allow-revise", "B1")
+            if second_a.get("notice") != "/tmp/tripwire-a.md":
+                raise AssertionError(
+                    "%s per-file sink A strike 2: expected notice '/tmp/tripwire-a.md', got %r"
+                    % (agent, second_a.get("notice"))
+                )
+    return 1
+
+
+def test_bash_prose_sink_unit():
+    """``bash_prose_sink`` returns the first prose sink, else None.
+
+    Covers a cat heredoc, tee, echo/printf redirect, append ``>>``, a dynamic
+    sink (``$(...)`` -> None), and a non-prose target (-> None). The banned term
+    is irrelevant here; this checks the SINK resolver, not detection. Run in a
+    fresh process so the import path matches the other checks.
+    """
+    snippet = (
+        "from core.detection import bash_prose_sink as s\n"
+        "cases = [\n"
+        "  (s('cat > out.md <<EOF\\nhi\\nEOF'), 'out.md'),\n"
+        "  (s('echo hi | tee notes.md'), 'notes.md'),\n"
+        "  (s('echo hi > comment.txt'), 'comment.txt'),\n"
+        "  (s('printf x >> log.md'), 'log.md'),\n"
+        "  (s('echo hi > $(mktemp).md'), None),\n"
+        "  (s('echo hi > out.bin'), None),\n"
+        "  (s('ls -la'), None),\n"
+        "]\n"
+        "import json\n"
+        "print(json.dumps(cases))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", snippet],
+        cwd=str(ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError("bash_prose_sink check exited %s: %s" % (completed.returncode, completed.stderr.strip()))
+    results = json.loads(completed.stdout.strip())
+    for got, want in results:
+        if got != want:
+            raise AssertionError("bash_prose_sink: expected %r, got %r (all=%r)" % (want, got, results))
     return 1
 
 
@@ -440,10 +565,17 @@ def main():
         total += test_b1_strike_sequence(agent)
         total += test_b1_reset_on_clean_pass(agent)
 
-    # The resolved user-facing notice via the command-agent CLI: a file tool
-    # names its path, a Bash breach degrades to the generic form.
+    # Per-file Bash keying: two distinct Bash sinks each get a one-block budget.
+    total += test_b1_bash_per_file_keying()
+    # The sink resolver unit check.
+    total += test_bash_prose_sink_unit()
+
+    # The resolved user-facing notice via the command-agent CLI: a file tool and
+    # a Bash write both name their concrete target; a genuinely empty target
+    # degrades to the generic form, driven directly through the dispatcher.
     total += test_b1_resolved_notice_file_tool()
-    total += test_b1_resolved_notice_bash_generic()
+    total += test_b1_resolved_notice_bash_named()
+    total += test_b1_resolved_notice_empty_target_generic()
 
     # The limit override and its default, and the per-turn dedupe.
     total += test_b1_limit_override()
