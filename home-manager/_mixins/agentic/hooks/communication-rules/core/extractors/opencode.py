@@ -42,7 +42,7 @@ from __future__ import annotations
 from typing import Any
 
 from core.config import Config
-from core.detection import bash_prose_sink
+from core.detection import bash_prose_sink, parse_command_line, shell_c_inner_script
 from core.dispatch import (
     EVENT_CONTEXT,
     EVENT_FACING,
@@ -312,7 +312,16 @@ def is_external_surface(name: str, args: Any, config: Config) -> bool:
     command = command_from_args(args)
     if command:
         stripped = command.lstrip()
-        return stripped.startswith("gh ") or stripped.startswith("gh-api-safe ")
+        if stripped.startswith("gh ") or stripped.startswith("gh-api-safe "):
+            return True
+        # A shell ``-c`` wrapper hides the gh post inside one token, so parse the
+        # command, unwrap it, and test the inner script's leading token too.
+        argv = parse_command_line(stripped)
+        if argv is not None:
+            inner = shell_c_inner_script(argv)
+            if inner is not None:
+                inner_stripped = inner.lstrip()
+                return inner_stripped.startswith("gh ") or inner_stripped.startswith("gh-api-safe ")
     return False
 
 

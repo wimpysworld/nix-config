@@ -800,6 +800,56 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
         _b2_yield("Rules breach posted: gh pr comment"),
     )
 
+    # Wrapped LOCAL write: a banned word hidden inside a "bash -lc \"...\"" wrapper
+    # must still block, and the strike must key per-file on the inner prose sink.
+    # Two different wrapped sinks each get their OWN one-block budget, so both are
+    # strike 1 (deny). Before the unwrap fix the wrapper hid the redirect and the
+    # write slipped past unscanned. The banned word is assembled from fragments,
+    # never a plain literal.
+    reset_strikes()
+    _banned_local = "del" + "ve"
+
+    def _wrapped_local_bash(sink: str) -> dict:
+        command = 'bash -lc "printf \'%s here\' > %s"' % (_banned_local, sink)
+        return {
+            "session_id": "wrapped-local",
+            "turn_id": "wrap-turn",
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+        }
+
+    run_case("wrapped local sink A", "PreToolUse", _B1_BLOCK, payload=_wrapped_local_bash("wrap-a.md"))
+    # A DIFFERENT wrapped sink in the same session+turn is its own strike 1, not a
+    # shared allow-revise. The inner sink is the per-file key.
+    run_case("wrapped local sink B", "PreToolUse", _B1_BLOCK, payload=_wrapped_local_bash("wrap-b.md"))
+
+    # Wrapped gh post: a "bash -lc \"gh issue create --body ...\"" wrapper must
+    # classify as B2 external (hard five-strike block), never B1 allow-revise. The
+    # body routes through scan_bash and detects the banned word; the surface stays
+    # external so it walks the five-strike cap and yields on strike 5.
+    reset_strikes()
+    _wrapped_gh_command = 'bash -lc "gh issue create --title hi --body \'we %s here\'"' % _banned_local
+
+    def _wrapped_gh_post() -> dict:
+        return {
+            "session_id": "wrapped-gh",
+            "turn_id": "wrap-gh-turn",
+            "tool_name": "Bash",
+            "tool_input": {"command": _wrapped_gh_command},
+        }
+
+    for _ in range(4):
+        run_case("wrapped gh post", "PreToolUse", _B2_BLOCK, payload=_wrapped_gh_post())
+    # The B2 yield names the operator target. A wrapped command exposes no bare gh
+    # subcommand, so the target falls back to the tool label "Bash". The point of
+    # this case is the SURFACE (B2 hard block, not B1 allow-revise), not the label.
+    run_case(
+        "wrapped gh post yield",
+        "PreToolUse",
+        _b2_yield("Rules breach posted: Bash"),
+        payload=_wrapped_gh_post(),
+    )
+
     # Tier A facing prose: Stop and SubagentStop never block; a breach (or an
     # extraction failure) sets the pending flag and emits the facing notice.
     reset_strikes()
@@ -1185,6 +1235,55 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
         "tool-post-blocked.json",
         "tool.execute.before",
         _b2_yield("Rules breach posted: gh-api-safe"),
+    )
+
+    # Wrapped LOCAL write: a banned word hidden inside a "bash -lc \"...\"" wrapper
+    # must still block, and the strike must key per-file on the inner prose sink.
+    # Two different wrapped sinks each get their OWN one-block budget, so both are
+    # strike 1 (deny). Before the unwrap fix the wrapper hid the redirect and the
+    # write slipped past unscanned. The banned word is assembled from fragments.
+    reset_strikes()
+    _banned_oc = "del" + "ve"
+
+    def _wrapped_local_bash(sink: str) -> dict:
+        command = 'bash -lc "printf \'%s here\' > %s"' % (_banned_oc, sink)
+        return {
+            "session_id": "oc-wrapped-local",
+            "event": "tool.execute.before",
+            "tool": {"name": "bash"},
+            "args": {"command": command},
+        }
+
+    run_case("wrapped local sink A", "tool.execute.before", _B1_BLOCK, payload=_wrapped_local_bash("wrap-a.md"))
+    # A DIFFERENT wrapped sink in the same session is its own strike 1, not a
+    # shared allow-revise. The inner sink is the per-file key.
+    run_case("wrapped local sink B", "tool.execute.before", _B1_BLOCK, payload=_wrapped_local_bash("wrap-b.md"))
+
+    # Wrapped gh post: a "bash -lc \"gh issue create --body ...\"" wrapper must
+    # classify as B2 external (hard five-strike block), never B1 allow-revise. The
+    # body routes through scan_bash and detects the banned word; the surface stays
+    # external so it walks the five-strike cap and yields on strike 5.
+    reset_strikes()
+    _wrapped_gh = 'bash -lc "gh issue create --title hi --body \'we %s here\'"' % _banned_oc
+
+    def _wrapped_gh_post() -> dict:
+        return {
+            "session_id": "oc-wrapped-gh",
+            "event": "tool.execute.before",
+            "tool": {"name": "bash"},
+            "args": {"command": _wrapped_gh},
+        }
+
+    for _ in range(4):
+        run_case("wrapped gh post", "tool.execute.before", _B2_BLOCK, payload=_wrapped_gh_post())
+    # The B2 yield names the operator target. The bash tool with a wrapped command
+    # has no structured identifier, so the target falls back to the tool name
+    # "bash". The point is the SURFACE (B2 hard block, not B1 allow-revise).
+    run_case(
+        "wrapped gh post yield",
+        "tool.execute.before",
+        _b2_yield("Rules breach posted: bash"),
+        payload=_wrapped_gh_post(),
     )
 
     # Tier A facing prose: a clean final passes; a blocked final or subagent sets

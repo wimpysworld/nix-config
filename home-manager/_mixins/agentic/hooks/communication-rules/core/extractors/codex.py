@@ -31,7 +31,13 @@ import os
 from typing import Any
 
 from core.config import Config
-from core.detection import apply_patch_target, bash_prose_sink, read_text_file
+from core.detection import (
+    apply_patch_target,
+    bash_prose_sink,
+    parse_command_line,
+    read_text_file,
+    shell_c_inner_script,
+)
 from core.dispatch import (
     EVENT_FACING,
     EVENT_GATE,
@@ -184,12 +190,9 @@ def is_post_capable_mcp_tool(name: str, post_tool_terms: tuple[str, ...]) -> boo
     return any(term in leaf for term in post_tool_terms)
 
 
-def is_bash_gh_post(command: Any) -> bool:
-    # A Bash command is external (B2) when its first token is gh/gh-api-safe and
-    # it carries a post signal: a body-bearing flag or a POST/PATCH/PUT method.
-    if not isinstance(command, str):
-        return False
-    argv = command.split()
+def _argv_is_gh_post(argv: list[str]) -> bool:
+    # Test a parsed argv for a gh/gh-api-safe leading token carrying a post
+    # signal: a body-bearing flag or a POST/PATCH/PUT method.
     if not argv or argv[0] not in {"gh", "gh-api-safe"}:
         return False
     for index, token in enumerate(argv):
@@ -210,6 +213,27 @@ def is_bash_gh_post(command: Any) -> bool:
             return True
         if token == "--input" or token.startswith("--input="):
             return True
+    return False
+
+
+def is_bash_gh_post(command: Any) -> bool:
+    # A Bash command is external (B2) when its first token is gh/gh-api-safe and
+    # it carries a post signal. A shell ``-c`` wrapper hides the gh post inside
+    # one token, so also unwrap the wrapper and test the inner script's argv: a
+    # wrapped ``gh issue create --body ...`` must classify as external too.
+    if not isinstance(command, str):
+        return False
+    if _argv_is_gh_post(command.split()):
+        return True
+    # The wrapper unwrap needs a shell-aware parse so the quoted inner script is
+    # one token; the naive split above keeps the cheap direct path unchanged.
+    argv = parse_command_line(command)
+    if argv is not None:
+        inner = shell_c_inner_script(argv)
+        if inner is not None:
+            inner_argv = parse_command_line(inner)
+            if inner_argv is not None and _argv_is_gh_post(inner_argv):
+                return True
     return False
 
 
