@@ -42,6 +42,7 @@ from __future__ import annotations
 from typing import Any
 
 from core.config import Config
+from core.detection import bash_prose_sink
 from core.dispatch import (
     EVENT_CONTEXT,
     EVENT_FACING,
@@ -443,8 +444,13 @@ def _extract_tool_execute_before(payload: dict[str, Any], session: str, config: 
 
     if action == "gate-bash":
         # The command body routes through scan_bash, never through a baked bash
-        # detection path.
+        # detection path. For a LOCAL Bash write the strike TARGET is the first
+        # prose sink the command writes, so it keys per-file like write/edit. An
+        # external gh post keeps its B2 target. No resolvable sink leaves the
+        # coarse session+tool key.
         record.texts = [value]
+        if not is_external:
+            record.target = bash_prose_sink(value)
         return Extraction(scan_mode=SCAN_BASH, **gate_args)
 
     # action == "gate-text": prose tools and post bodies.
