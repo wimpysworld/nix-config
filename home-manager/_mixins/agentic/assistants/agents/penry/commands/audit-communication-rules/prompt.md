@@ -19,7 +19,8 @@ testament
 multifaceted
 ```
 
-- A "rule-breaking" body is one prose sentence containing two or more of those words. A "clean" body uses none of them and no em/en dash.
+- A "rule-breaking" body is one prose sentence containing two or more words from the set above. A "clean" body uses none of them and no em or en dash.
+- Scope, read this first: the tripwire gates two things only, the banned words above and the em and en dash codepoints. It does NOT gate writing style. A long sentence, passive voice, or waffle is not a breach the hook can see. A body that breaks style but carries no banned word and no em or en dash will pass, and that pass is correct, not a failure. So every Tier B breach body (steps 3, 4a, 4b, 4d, 6, and 11) must carry two or more words from the set above. A style-only body voids the test and reads as a false failure.
 - Do real side effects only in `/tmp` and on the private test repo `wimpysworld/wagall`.
 - Never post to GitHub. Rely on the hook to block rule-breaking bodies. Do not run any `gh` command whose body is clean and would actually post.
 - Never trigger the B2 strike-5 yield live; it would post irreversibly. Stop B2 at the block.
