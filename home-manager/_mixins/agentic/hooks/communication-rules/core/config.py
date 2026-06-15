@@ -21,10 +21,19 @@ from core.detection import read_text_file
 
 FALLBACK_RULES_TEXT = "Communication Rules were not loaded."
 
-# Baked correction-prompt fallback, byte-identical to the old Bash
-# ``tripwire_emit_correction`` heredoc, used when no correction-prompt file and
-# no policy ``correctionPrompt`` are available.
-FALLBACK_CORRECTION_PROMPT = "Revise the previous response to follow the Communication Rules. Return only the corrected response."
+# Baked correction-prompt fallback, used when no correction-prompt file and no
+# policy ``correctionPrompt`` are available. Tier A never blocks, so this is
+# forward-only: it keeps the model aligned on the next reply rather than asking
+# it to resend or rewrite the previous one.
+FALLBACK_CORRECTION_PROMPT = "Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply."
+
+# Baked B1 revision-prompt fallback, used when no revision-prompt file and no
+# policy ``b1RevisionPrompt`` are available. A B1 artifact is durable and
+# editable on disk, so this reads the opposite way to the forward-only Tier A
+# correction prompt: it asks the model to revise the named file in place.
+# ``{target}`` is the literal placeholder the dispatcher fills with the
+# concrete path before the responder sees it.
+FALLBACK_B1_REVISION_PROMPT = "The file you wrote breaks the Communication Rules. Revise it in place to comply: {target}. Do not rewrite unrelated content."
 
 DEFAULT_POLICY = {
     "blockedCodepoints": [
@@ -116,6 +125,7 @@ class Config:
         post_tool_terms: tuple[str, ...] = FALLBACK_POST_TOOL_TERMS,
         external_target_keys: tuple[str, ...] = FALLBACK_EXTERNAL_TARGET_KEYS,
         correction_prompt: str | None = None,
+        b1_revision_prompt: str | None = None,
     ) -> None:
         self.rules_text = rules_text
         self.reminder_prompt = reminder_prompt or format_reminder(rules_text)
@@ -129,6 +139,11 @@ class Config:
         # ``tripwire_emit_correction`` did: the TRIPWIRE_CORRECTION_PROMPT file
         # first, then the policy ``correctionPrompt``, then the baked fallback.
         self.correction_prompt = resolve_correction_prompt(correction_prompt)
+        # The B1 revision prompt is the allow-revise notice for durable on-disk
+        # artifacts, distinct from the forward-only correction prompt. Resolve
+        # it the same way: the TRIPWIRE_B1_REVISION_PROMPT file first, then the
+        # policy ``b1RevisionPrompt``, then the baked fallback.
+        self.b1_revision_prompt = resolve_b1_revision_prompt(b1_revision_prompt)
 
 
 def resolve_correction_prompt(policy_correction: str | None) -> str:
@@ -147,6 +162,26 @@ def resolve_correction_prompt(policy_correction: str | None) -> str:
     if policy_correction:
         return policy_correction
     return FALLBACK_CORRECTION_PROMPT
+
+
+def resolve_b1_revision_prompt(policy_revision: str | None) -> str:
+    """Resolve the B1 allow-revise notice, mirroring the correction prompt.
+
+    Order: the ``TRIPWIRE_B1_REVISION_PROMPT`` file if readable, then the
+    policy ``b1RevisionPrompt`` text, then the baked fallback. The env var is a
+    file PATH, not an inline string (matching the correction-prompt contract);
+    the env file wins so a fixture or operator override applies without
+    rebuilding the policy. The returned text still carries the literal
+    ``{target}`` placeholder; the dispatcher substitutes the concrete target.
+    """
+    env_path = os.environ.get("TRIPWIRE_B1_REVISION_PROMPT")
+    if env_path:
+        text = read_text_file(env_path)
+        if text is not None:
+            return text
+    if policy_revision:
+        return policy_revision
+    return FALLBACK_B1_REVISION_PROMPT
 
 
 def format_reminder(rules_text: str) -> str:
@@ -199,6 +234,7 @@ def load_config(args: argparse.Namespace) -> Config | None:
     reminder_prompt = None
     block_message = None
     correction_prompt = None
+    b1_revision_prompt = None
     policy = dict(DEFAULT_POLICY)
     post_detection = {
         "postTextKeys": FALLBACK_POST_TEXT_KEYS,
@@ -225,6 +261,8 @@ def load_config(args: argparse.Namespace) -> Config | None:
             block_message = loaded["blockMessage"]
         if isinstance(loaded.get("correctionPrompt"), str):
             correction_prompt = loaded["correctionPrompt"]
+        if isinstance(loaded.get("b1RevisionPrompt"), str):
+            b1_revision_prompt = loaded["b1RevisionPrompt"]
         if isinstance(loaded.get("detectionPolicy"), dict):
             policy = merge_policy(policy, loaded["detectionPolicy"])
             post_detection = load_post_detection(loaded["detectionPolicy"])
@@ -248,6 +286,7 @@ def load_config(args: argparse.Namespace) -> Config | None:
         post_tool_terms=post_detection["postToolTerms"],
         external_target_keys=post_detection["externalTargetKeys"],
         correction_prompt=correction_prompt,
+        b1_revision_prompt=b1_revision_prompt,
     )
 
 

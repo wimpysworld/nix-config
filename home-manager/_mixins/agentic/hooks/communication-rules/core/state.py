@@ -3,7 +3,8 @@
 This module collapses the four hand-written copies of one policy (two Bash
 wrappers, two TypeScript plugins) into one place. It owns:
 
-- Sub-tier B1 (local: write, edit, bash). Three-strike-then-yield.
+- Sub-tier B1 (local: write, edit, bash). Block-then-allow-revise: one cheap
+  block, then allow the write and ask for an in-place revision of the target.
 - Sub-tier B2 (external: post-capable tools, gh/gh-api-safe posts). Five-
   strike-then-yield, with the ``external:`` key namespace so a B2 key never
   aliases a B1 key for the same session and tool.
@@ -35,9 +36,11 @@ from core.types import Decision, ExtractorRecord
 
 
 # Sub-tier B1 (local: write, edit, bash). Cheap to retract because the output
-# lands on disk, not committed. Three-strike-then-yield, keyed on a stable
-# target so a model that revises the body between retries still walks the cap.
-LOCAL_STRIKE_LIMIT = 3
+# lands on disk, not committed. Block-then-allow-revise, keyed on a stable
+# target: strike 1 blocks (one cheap attempt before the write lands), every
+# later strike allows the write and asks for an in-place revision of the named
+# target. Only a clean scan resets the count, so each later breach re-emits.
+LOCAL_STRIKE_LIMIT = 1
 
 # Sub-tier B2 (external: post-capable tools, gh/gh-api-safe posts). Irretractable
 # the instant it yields. Five-strike-then-yield, keyed on a stable identity so
@@ -74,6 +77,21 @@ def _session_component(session: str) -> str:
     # Guarantee a non-empty session component before file-backing strikes. An
     # empty session id otherwise shares one key across unrelated sessions.
     return session if session else EMPTY_SESSION_FALLBACK
+
+
+def _local_strike_limit() -> int:
+    # Read the effective B1 limit. The test-only ``TRIPWIRE_LOCAL_STRIKE_LIMIT``
+    # env override lets a live A/B flip modes without editing source; it wins
+    # only when it parses as a positive integer. The ``LOCAL_STRIKE_LIMIT``
+    # constant stays the single source of the default.
+    raw = os.environ.get("TRIPWIRE_LOCAL_STRIKE_LIMIT")
+    if raw is not None:
+        text = raw.strip()
+        if text.isdigit():
+            value = int(text)
+            if value > 0:
+                return value
+    return LOCAL_STRIKE_LIMIT
 
 
 def strike_key(record: ExtractorRecord, surface: str) -> str:
@@ -300,21 +318,43 @@ def gate(
             append_correction=False,
         )
 
-    if is_external:
-        limit = EXTERNAL_STRIKE_LIMIT
-        notice = EXTERNAL_YIELD_PREFIX + (record.target or record.tool)
-        level = "error"
-    else:
-        limit = LOCAL_STRIKE_LIMIT
-        notice = LOCAL_YIELD_NOTICE
-        level = "warning"
+    if not is_external:
+        # B1: block once, then allow-and-revise. Strike 1 (up to the effective
+        # limit) blocks; every later strike allows the write to land and asks
+        # for an in-place revision of the named target. No reset here: the count
+        # must keep climbing so each later breach re-emits. Only a clean scan
+        # (the SCAN_PASS branch above) resets it.
+        strike = _record_strike(agent, key)
+        if strike <= _local_strike_limit():
+            return Decision(
+                decision="block",
+                surface="B1",
+                notice="",
+                level="warning",
+                inject_base_rules=False,
+                append_correction=False,
+            )
+        # ``notice`` here carries the raw target for the dispatcher to resolve
+        # into the B1 revision prompt; it is not final user text.
+        return Decision(
+            decision="allow-revise",
+            surface="B1",
+            notice=record.target or "",
+            level="warning",
+            inject_base_rules=False,
+            append_correction=False,
+        )
+
+    limit = EXTERNAL_STRIKE_LIMIT
+    notice = EXTERNAL_YIELD_PREFIX + (record.target or record.tool)
+    level = "error"
 
     strike = _record_strike(agent, key)
     if strike >= limit:
         _reset_strike(agent, key)
         return Decision(
             decision="yield",
-            surface="B2" if is_external else "B1",
+            surface="B2",
             notice=notice,
             level=level,
             inject_base_rules=False,
@@ -323,7 +363,7 @@ def gate(
 
     return Decision(
         decision="block",
-        surface="B2" if is_external else "B1",
+        surface="B2",
         notice="",
         level=level,
         inject_base_rules=False,

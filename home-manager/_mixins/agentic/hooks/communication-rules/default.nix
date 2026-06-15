@@ -17,6 +17,7 @@ let
   communicationRulesPolicy = {
     communicationRules = {
       inherit (fragment)
+        b1RevisionPrompt
         blockMessage
         correctionPrompt
         detectionPolicy

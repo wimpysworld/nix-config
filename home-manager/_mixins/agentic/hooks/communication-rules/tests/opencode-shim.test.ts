@@ -101,6 +101,17 @@ function b2Payload(): unknown {
   };
 }
 
+// A B1 write to a stable file path with breaching content. The path is the
+// strike target, so two writes to the SAME path share the strike key: the
+// first blocks, the second (and later) allow-revise.
+const B1_TARGET = "/tmp/comm-rules-b1-revise.md";
+function b1WritePayload(): { input: unknown; output: { args: unknown } } {
+  return {
+    input: { tool: { name: "write" } },
+    output: { args: { file_path: B1_TARGET, content: `We should ${BANNED} this.` } },
+  };
+}
+
 beforeAll(() => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-shim-test-"));
   strikeDir = path.join(tempDir, "strikes");
@@ -111,7 +122,7 @@ beforeAll(() => {
   fs.writeFileSync(rulesPath, `${rules}\n`, "utf-8");
   fs.writeFileSync(
     correctionPromptPath,
-    `Revise the previous response to follow the Communication Rules.\n\nCommunication Rules:\n${rules}\n`,
+    `Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.\n\nCommunication Rules:\n${rules}\n`,
     "utf-8",
   );
 
@@ -169,6 +180,35 @@ test("B2 yield: tool.execute.before walks the cap then yields with level=error, 
   const yielded = toasts.slice(toastsBefore);
   expect(yielded.length).toBe(1);
   expect(yielded[0]).toMatch(/gh-api-safe/);
+});
+
+test("B1 allow-revise: a repeat write to the same path lands (no throw) and toasts the revision notice, surface=B1", async () => {
+  const hooks = await loadShim();
+  const before = hooks["tool.execute.before"];
+
+  // Strike 1 on this path blocks: the shim throws (one cheap attempt before the
+  // write lands).
+  const first = b1WritePayload();
+  await expect(before(first.input, first.output)).rejects.toThrow();
+
+  // The raw core decision confirms the allow shape and surface the plugin
+  // outcome omits: strike >= 2 on the same target is allow-revise on B1.
+  const decision = coreDecision("tool.execute.before", {
+    event: "tool.execute.before",
+    tool: { name: "write" },
+    args: { file_path: B1_TARGET, content: `We should ${BANNED} this.` },
+  });
+  expect(decision.surface).toBe("B1");
+  expect(decision.decision).toBe("allow-revise");
+
+  // A later breach to the same path lands: the shim returns (no throw) and
+  // toasts the resolved revision notice, which names the file.
+  const repeat = b1WritePayload();
+  const toastsBefore = toasts.length;
+  await before(repeat.input, repeat.output);
+  const revised = toasts.slice(toastsBefore);
+  expect(revised.length).toBe(1);
+  expect(revised[0]).toContain(B1_TARGET);
 });
 
 test("Tier A facing: text.complete writes live output.text and toasts", async () => {

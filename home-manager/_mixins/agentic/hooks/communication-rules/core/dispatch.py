@@ -353,13 +353,59 @@ def shape_response(agent: str, event: str, decision: Decision, config: Config | 
     adapters used ``tripwire_emit_correction`` for the re-issue and
     ``tripwire_emit_reminder`` for the reminder. They were conflated here, which
     sent the reminder where the correction belonged.
+
+    An ``allow-revise`` decision (B1 strike >= 2) carries the RAW target in
+    ``decision.notice`` (the gate placed ``record.target or ""`` there). This
+    resolves the B1 revision prompt and substitutes the concrete target before
+    the responder sees it, so the final user-facing notice never contains a
+    literal ``{target}``. The ``allow-revise`` verb flows through unchanged to
+    every responder: the command responders shape it as an allow + reason, and
+    the plugin agents relay the verb with the resolved notice.
     """
     block_message = config.block_message if config is not None else ""
     correction = config.correction_prompt if config is not None else ""
     reminder = config.reminder_prompt if config is not None else ""
+    if decision.decision == "allow-revise":
+        revision_prompt = config.b1_revision_prompt if config is not None else ""
+        decision.notice = _resolve_revision_notice(revision_prompt, decision.notice)
     if agent == "claude-code":
         return responses.claude_code_response(decision, block_message, correction, reminder)
     if agent == "codex":
         return responses.codex_response(decision, block_message, correction, reminder, event)
     # Pi and OpenCode share the plugin response shape.
     return responses.plugin_response(decision, block_message, correction)
+
+
+# Marker the B1 revision prompt may use for the concrete target. Substituted
+# with the resolved path; stripped entirely when no target is known, so the
+# final notice never carries a literal ``{target}``.
+_TARGET_PLACEHOLDER = "{target}"
+
+# Generic B1 revision notice used when no concrete target is known (a Bash B1
+# breach has an empty target). It names no file and carries no placeholder.
+_GENERIC_REVISION_NOTICE = "Revise the prose you just wrote to comply with the Communication Rules."
+
+
+def _resolve_revision_notice(prompt: str, raw_target: str) -> str:
+    """Resolve a B1 revision prompt into the final ``allow-revise`` notice.
+
+    ``raw_target`` is the gate-supplied ``record.target or ""``. When it is
+    non-empty, every ``{target}`` occurrence in ``prompt`` is replaced with it.
+    When it is empty, the prompt degrades to the baked generic sentence, which
+    names no file and carries no placeholder, so no dangling ``comply: .``
+    fragment can leak from a half-stripped template.
+
+    CRITICAL: the result must never contain the literal ``{target}``. The
+    non-empty path substitutes every occurrence; the empty path returns a fixed
+    sentence; and a final guard strips any placeholder that still survives, so a
+    malformed prompt can never leak one.
+    """
+    target = raw_target.strip()
+    if target:
+        resolved = prompt.replace(_TARGET_PLACEHOLDER, target)
+    else:
+        # No concrete target (a Bash B1 breach): use the baked generic sentence
+        # rather than a half-stripped template that leaves dangling punctuation.
+        resolved = _GENERIC_REVISION_NOTICE
+    # Final guard: never let a literal placeholder escape, whatever the prompt.
+    return resolved.replace(_TARGET_PLACEHOLDER, "").strip() if _TARGET_PLACEHOLDER in resolved else resolved

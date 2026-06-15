@@ -26,7 +26,14 @@ in
   '';
 
   correctionPrompt = ''
-    Revise the previous response to follow the Communication Rules. Return only the corrected response.
+    Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.
+
+    Communication Rules:
+    ${text}
+  '';
+
+  b1RevisionPrompt = ''
+    The file you wrote breaks the Communication Rules. Revise it in place to comply: {target}. Do not rewrite unrelated content.
 
     Communication Rules:
     ${text}

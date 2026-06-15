@@ -33,7 +33,7 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
   - `types.py` shared types.
   - `detection.py` the deterministic checker for banned words, dashes, and policy disclosure, plus the bash scan.
   - `config.py` config plus the post-detection lists from `policy.json`.
-  - `state.py` the file-backed strike, tier, and fail-closed machine. The only place the B1=3 and B2=5 limits live.
+  - `state.py` the file-backed strike, tier, and fail-closed machine. The only place the B1 (block-then-allow-revise) and B2 (five-strike) limits live.
   - `responses.py` per-agent output shaping.
   - `dispatch.py` the `<agent> <event>` CLI dispatcher.
   - `extractors/` the four payload extractors (`claude_code`, `codex`, `opencode`, `pi`).
@@ -93,12 +93,12 @@ Enforcement scales to blast radius. The hook surface decides the tier.
 
 This covers writes, edits, patches, Bash command bodies, and post bodies (gh and MCP). These are intercepted before they run, so a breach can still be stopped.
 
-The policy is strike-then-yield, split by blast radius into two sub-tiers:
+The policy splits by blast radius into two sub-tiers. B1 blocks once then allows-and-corrects; B2 blocks then yields:
 
-- **B1 (local): writes, edits, patches, and Bash command bodies.** Cheap to retract because they land on disk, not committed. Three strikes, keyed per tool-call content. Strikes 1 and 2 block and re-issue the rules; strike 3 yields with a short notice.
+- **B1 (local): writes, edits, patches, and Bash command bodies.** Cheap to retract because they land on disk, not committed. Keyed per tool-call content. One block on strike 1 re-issues the rules; from strike 2 onward the verb is `allow-revise`: the write lands and the response asks the model to revise the named file in place. The strike counter re-emits that request on every later breach to the same target, and a clean scan resets the counter so a fresh breach gets a fresh block.
 - **B2 (external): gh, gh-api-safe, MCP posts, and gh posts run through Bash.** Irretractable the instant they yield. Five strikes, keyed on a stable identity (session and tool, no body) so reworded retries of the same post draw down one budget. Strikes 1 to 4 block and re-issue; strike 5 yields with an operator-visible notice that names the tool and target (`Rules breach posted: <target>`).
 
-We retry, then yield. Blocking automation forever is friction users will not accept. The local path tries twice; the external path tries four times before the irreversible yield. The cost is that imperfect output is sometimes surfaced after the retries.
+We block once, then either correct or yield. Blocking automation forever is friction users will not accept. The local path blocks once, then allows each later breach to land and asks for an in-place revision of the named file. The external path tries four times before the irreversible yield. The cost is that imperfect local files are sometimes surfaced and corrected after they land.
 
 A Bash call is external when its first token is `gh` or `gh-api-safe` and it carries a post signal (a body-bearing flag or a POST/PATCH/PUT method); read-only gh calls stay local.
 
@@ -141,7 +141,7 @@ Each platform uses its native hook surface. Validate the same behaviours per age
 
 Tier B uses the same retry split for every agent:
 
-- B1 local output (`write`, `edit`, `patch`, Bash) blocks twice, then yields on the third strike with `Communication Rules unmet after retries, output allowed.`
+- B1 local output (`write`, `edit`, `patch`, Bash) blocks once on strike 1, then from strike 2 onward returns `allow-revise`: the write lands and the response carries an in-place revision notice naming the file (a generic form when no path is known, as with Bash).
 - B2 external output (`gh`, `gh-api-safe`, post-capable MCP tools, gh posts through Bash) blocks four times, then yields on the fifth strike with `Rules breach posted: <target>`.
 - B1 keys use a stable local target when available (`session + tool + path`, plus `turn` on Codex). Bash and pathless calls fall back to `session + tool`. B2 keys use stable `session + tool` identity, plus `turn` on Codex.
 
@@ -158,7 +158,7 @@ The explicit verbatim disclosure override is part of the scanner policy. A user 
 
 ### Validation status
 
-Tested on 2026-06-14. Claude Code and Codex were tested live. OpenCode now has fixture, installed-plugin, live local tool-call, headless final-text, and GitHub post-block coverage. Pi now has live chat, local tool-call, GitHub post-block, and subagent-output coverage. OpenCode TUI toast rendering was not directly observed. Pi live testing confirmed the Tier A notice and next-turn re-issue in chat.
+Tested on 2026-06-14. Claude Code and Codex were tested live. The Claude Code Tier A user notice was re-confirmed live on 2026-06-15 after the wire-shaping fix. OpenCode now has fixture, installed-plugin, live local tool-call, headless final-text, and GitHub post-block coverage. Pi now has live chat, local tool-call, GitHub post-block, and subagent-output coverage. OpenCode TUI toast rendering was not directly observed. Pi live testing confirmed the Tier A notice and next-turn re-issue in chat.
 
 | Behaviour                                    | Claude Code                     | Codex                                           | OpenCode                                        | Pi                                                     |
 | -------------------------------------------- | ------------------------------- | ----------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
@@ -167,27 +167,27 @@ Tested on 2026-06-14. Claude Code and Codex were tested live. OpenCode now has f
 | Quiet prompt hook without pending re-issue   | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (fixtures)                                        |
 | Tier B clean output                          | Pass (live)                     | Pass (live)                                     | Pass (live: patch and Bash redirect)            | Pass (live: write and Bash)                            |
 | Tier B detection and block                   | Pass (live)                     | Pass (live)                                     | Pass (live: patch, Bash redirect, gh post)      | Pass (live: write, Bash, gh post)                      |
-| Tier B strike-then-yield                     | Pass (live: B1 cycle, B2 block) | Pass (live: B1 cycle, B2 block)                 | Pass (live: B2 block; installed plugin: B1)     | Pass (live: B1 cycle, B2 block; fixtures: B2 yield)    |
+| Tier B B1 block-then-allow-revise, B2 strike-then-yield | Pass (live: B1 cycle, B2 block) | Pass (live: B1 cycle, B2 block)                 | Pass (live: B2 block; installed plugin: B1)     | Pass (live: B1 cycle, B2 block; fixtures: B2 yield)    |
 | Tier B block notice to user                  | Pass (live)                     | Pass (live)                                     | Partial (live: Bash reason absent; fixtures)    | Pass (live: block reason returned)                     |
 | Tier A detection and pending flag            | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (live)                                            |
 | Tier A next-turn re-issue                    | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (live)                                            |
 | Tier A pending flag clear                    | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (live)                                            |
-| Tier A user notice                           | Fail (live)                     | Pass (live)                                     | Pass (live: final-text append and log fallback) | Pass (live)                                            |
+| Tier A user notice                           | Pass (live)                     | Pass (live)                                     | Pass (live: final-text append and log fallback) | Pass (live)                                            |
 | Canonical rules disclosure                   | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (live: canonical write allowed)                   |
 | Subagent prose follows final-prose behaviour | Pass (live: `SubagentStop`)     | Pass (live: `SubagentStop`)                     | Pass (installed plugin)                         | Partial (live: block path; one encoded prompt escaped) |
 
 Notes:
 
-- The Claude Code Tier A user notice fails. The Stop hook emits the `systemMessage`, but Claude Code does not show it to the user. This is a known lower-priority follow-up.
+- The Claude Code Tier A user notice now shows. The `Stop` hook emits a top-level `systemMessage`, and Claude Code displays it. The earlier failure was the command hook emitting the raw core decision instead of the agent wire shape; the wire-shaping fix resolved it, confirmed live on 2026-06-15.
 - B2 external block is live-verified on Claude Code: a real gh issue create was denied on strike 1 and never posted. The strike-5 yield stays fixture-only on every agent, since a live yield would post to GitHub irreversibly.
 - B2 external block is live-verified on Codex: `gh repo view owner/private-test-repo --json nameWithOwner,isPrivate` passed, then `gh issue create` with a rule-breaking body was blocked and no issue was created.
-- Codex live validation covered Tier B clean and block paths, the B1 strike-then-yield cycle, and a B2 external block. B2 external yield stays fixture-only for the same irreversible-post reason.
+- Codex live validation covered Tier B clean and block paths, the B1 block-then-allow-revise cycle, and a B2 external block. B2 external yield stays fixture-only for the same irreversible-post reason.
 - OpenCode live validation covered 50 scanner fixtures, 15 adapter fixtures, 8 plugin fixtures, clean `apply_patch` with a rule-breaking removed line, blocked `apply_patch` with a rule-breaking added line, clean Bash redirect write, blocked Bash rule-breaking redirect, headless Tier A final-text notice append with log fallback, and a blocked private `gh issue create`; the issue list was unchanged.
-- Pi live validation covered Tier A chat detection, visible notice, next-turn correction re-issue, and pending flag clear. It also covered clean local writes, clean Bash prose output, local write blocks, Bash prose blocks, B1 local strike-then-yield on the third attempt, canonical rules write allowance, and a real private `gh issue create` attempt; the post body was blocked and no issue was created.
+- Pi live validation covered Tier A chat detection, visible notice, next-turn correction re-issue, and pending flag clear. It also covered clean local writes, clean Bash prose output, local write blocks, Bash prose blocks, the B1 local block-then-allow-revise cycle, canonical rules write allowance, and a real private `gh issue create` attempt; the post body was blocked and no issue was created.
 - Pi subagent validation covered `tool_result` block behaviour for direct rule-breaking subagent output, including long-dash output. One encoded filler-word prompt escaped through a subagent result, so subagent prose coverage is marked partial until that bypass is fixed or explained.
 - OpenCode TUI toast rendering remains unobserved; fixtures verify toast and log calls only. Bash rule-breaking redirect blocked the side effect, but this UI did not show the block reason for that probe.
 - OpenCode B2 yield stays fixture-only because a live yield would post to GitHub irreversibly.
-- The Claude Code B1 strike-then-yield was driven with three different bodies to one path: block, block, then yield on the third. This also confirms the stable strike key, since the changed content still drew down one budget.
+- The Claude Code B1 cycle was driven with several different bodies to one path: a block on strike 1, then allow-revise on each later breach. This also confirms the stable strike key, since the changed content still drew down one budget.
 - Codex `CODEX_HOME` is set; hooks wired once, including one `UserPromptSubmit`; trust entries enabled
 
 ## Fail-closed and disclosure

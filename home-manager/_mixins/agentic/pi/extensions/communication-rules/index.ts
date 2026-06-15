@@ -62,7 +62,8 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
   });
   pi.on("tool_call", (event, ctx) => {
     const d = decide(config, "tool_call", event);
-    if (d.decision === "yield") notify(ctx, d.notice, d.level);
+    // `yield` (B2 cap) and `allow-revise` (B1 strike 2+) are non-blocking allows: notify, let the tool run. Only `block` returns a block object.
+    if (d.decision === "yield" || d.decision === "allow-revise") notify(ctx, d.notice, d.level);
     return d.decision === "block" ? { block: true, reason: blockMessage(config) } : undefined;
   });
   pi.on("message_end", (event, ctx) => {

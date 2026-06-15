@@ -159,7 +159,7 @@ def scan_policy_disclosure_cases() -> int:
 #   empty (pass)                    decision=pass
 #   pretooluse-deny (B1)            decision=block, surface=B1, level=warning
 #   pretooluse-deny (B2)            decision=block, surface=B2, level=error
-#   pretooluse-yield                decision=yield, surface=B1, LOCAL_YIELD_NOTICE
+#   pretooluse-allow (B1 revise)    decision=allow-revise, surface=B1, revision notice
 #   pretooluse-external-yield       decision=yield, surface=B2, B2 notice, error
 #   pretooluse-external-yield-bash  decision=yield, surface=B2, gh notice, error
 #   facing-notice                   decision=block, surface=tierA, FACING_NOTICE
@@ -171,7 +171,6 @@ def scan_policy_disclosure_cases() -> int:
 # old harness called reset_strikes.
 CLAUDE_CODE_FX = FIXTURES / "claude-code"
 
-LOCAL_YIELD_NOTICE = "Communication Rules unmet after retries, output allowed."
 FACING_NOTICE = "Communication Rules breach seen, correcting next reply."
 
 
@@ -185,10 +184,47 @@ def _expect(decision: str, surface: str, notice: str = "", level: str = "warning
     }
 
 
-# B1 gating blocks and yields.
+# B1 gating blocks and the hybrid allow-revise.
 _B1_BLOCK = _expect("block", "B1", level="warning")
-_B1_YIELD = _expect("yield", "B1", notice=LOCAL_YIELD_NOTICE, level="warning")
 _PASS_TIERB = _expect("pass", "B1", level="warning")
+
+
+# Stable substrings of the resolved B1 revision notice. The runner loads only
+# --rules (no --policy-json, no TRIPWIRE_B1_REVISION_PROMPT), so the scanner
+# resolves the baked FALLBACK_B1_REVISION_PROMPT in core/config.py. We match a
+# fixed clause plus the concrete target, not the whole prompt, to stay safe
+# against wording tweaks. No literal "{target}" must ever appear.
+_B1_REVISION_CLAUSE = "Revise it in place to comply:"
+_B1_REVISION_TRAILER = "Do not rewrite unrelated content."
+# The generic form used when the target is empty (a Bash B1 breach). It names no
+# file and carries no placeholder.
+_B1_REVISION_GENERIC = "Revise the prose you just wrote to comply with the Communication Rules."
+_TARGET_PLACEHOLDER = "{target}"
+
+
+def _b1_allow_revise(target: str = "") -> dict:
+    """Expectation for a B1 strike-2+ allow-revise on a given target.
+
+    ``target`` is the RAW stable target the gate places in ``decision.notice``
+    (the file path for a file tool, empty for a Bash B1 breach). The plugin
+    agents (Pi, OpenCode) assert this record as is: the scanner emits the raw
+    decision and the TS shim resolves the prompt. The command agents (Claude
+    Code, Codex) reshape it in ``expected_wire`` into an allow whose reason is
+    the RESOLVED revision prompt naming that target.
+    """
+    return _expect("allow-revise", "B1", notice=target, level="warning")
+
+
+def _assert_no_target_placeholder(name: str, notice: object) -> None:
+    """Guard: no plugin notice may carry a literal ``{target}`` placeholder.
+
+    The scanner emits the raw decision for plugin agents, so the notice is the
+    bare target the gate set (a path, or empty for a Bash B1 breach), never a
+    half-substituted template. A literal ``{target}`` would mean the gate leaked
+    the placeholder into the record.
+    """
+    if isinstance(notice, str) and _TARGET_PLACEHOLDER in notice:
+        raise AssertionError(f"{name}: notice carries a literal {_TARGET_PLACEHOLDER}: {notice!r}")
 # B2 gating blocks and yields.
 _B2_BLOCK = _expect("block", "B2", level="error")
 # Tier A facing.
@@ -240,7 +276,7 @@ _WIRE_HOOKSPECIFIC_KEYS = {
 
 # Old fixture stdout content prefixes (the regexes the deleted harnesses used).
 _DENY_REASON_PREFIX = "Blocked. Revise this prose to follow the Communication Rules."
-_REISSUE_CONTEXT_PREFIX = "Revise the previous response to follow the Communication Rules."
+_REISSUE_CONTEXT_PREFIX = "Your previous reply broke the Communication Rules."
 _REMINDER_CONTEXT_PREFIX = "Reminder: Follow the Communication Rules"
 
 
@@ -308,6 +344,26 @@ def expected_wire(event: str, decision: dict) -> dict | None:
                 "permissionDecisionReason": notice,
             }
         }
+    if verb == "allow-revise":
+        # B1 strike 2+: allow the write to land, the reason carries the RESOLVED
+        # B1 revision prompt. ``notice`` here is the raw target the gate placed
+        # on the decision (the plugin path asserts it raw); the command agent
+        # reason is the resolved prompt the dispatcher built from it, so we match
+        # it by the fixed clauses plus the concrete target. A file-tool target
+        # yields the path-naming clauses; an empty target (a Bash B1 breach)
+        # yields the generic sentence. Either way no literal "{target}" appears.
+        target = notice.strip()
+        if target:
+            reason_match = ("CONTAINS", (_B1_REVISION_CLAUSE, target, _B1_REVISION_TRAILER))
+        else:
+            reason_match = ("CONTAINS", (_B1_REVISION_GENERIC,))
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": event,
+                "permissionDecision": "allow",
+                "permissionDecisionReason": reason_match,
+            }
+        }
     if verb == "block":
         if surface == "tierA":
             # A facing breach emits a systemMessage; a duplicate (empty notice)
@@ -327,10 +383,16 @@ def expected_wire(event: str, decision: dict) -> dict | None:
 
 
 def _wire_value_matches(want: object, got: object) -> bool:
-    # A ("PREFIX", text) sentinel matches any string that starts with text;
-    # everything else compares for equality (recursing into dicts).
+    # A ("PREFIX", text) sentinel matches any string that starts with text; a
+    # ("CONTAINS", (sub, ...)) sentinel matches any string containing every
+    # substring AND carrying no literal "{target}"; everything else compares for
+    # equality (recursing into dicts).
     if isinstance(want, tuple) and len(want) == 2 and want[0] == "PREFIX":
         return isinstance(got, str) and got.startswith(want[1])
+    if isinstance(want, tuple) and len(want) == 2 and want[0] == "CONTAINS":
+        if not isinstance(got, str) or _TARGET_PLACEHOLDER in got:
+            return False
+        return all(sub in got for sub in want[1])
     if isinstance(want, dict):
         if not isinstance(got, dict) or set(want) != set(got):
             return False
@@ -416,25 +478,32 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
     run_case("session-start.json", "SessionStart", _REMIND)
     run_case("user-prompt-submit.json", "UserPromptSubmit", _PASS_TIERA)
 
-    # B1 write: pass, then three strikes (deny, deny, yield) on a shared key.
+    # B1 write: pass, then the hybrid on a shared key. Strike 1 blocks (one
+    # cheap attempt before the write lands), strike 2 and every later strike
+    # allow the write and ask for an in-place revision naming the file path.
     reset_strikes()
     run_case("pre-tool-use-write-pass.json", "PreToolUse", _PASS_TIERB)
     reset_strikes()
     run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_YIELD)
+    run_case("pre-tool-use-write-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
+    run_case("pre-tool-use-write-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
 
     # B1 stable-key regression: three different bodies, one file_path+session.
+    # The shared key still walks block then allow-revise, never the old yield.
     reset_strikes()
     run_case("pre-tool-use-write-vary-1-block.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-vary-2-block.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-vary-3-block.json", "PreToolUse", _B1_YIELD)
+    run_case("pre-tool-use-write-vary-2-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
+    run_case("pre-tool-use-write-vary-3-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
 
-    # A clean pass on the same key resets the counter.
+    # A clean pass on a DIFFERENT session (the pass fixture is session-fixture,
+    # the vary fixtures are session-vary) does NOT reset the vary key, so the
+    # vary count keeps climbing: vary-1 blocks (strike 1), vary-2 allow-revises
+    # (strike 2). The clean-scan reset on the SAME key is covered below by the
+    # write-block + write-pass group, which shares one session.
     reset_strikes()
     run_case("pre-tool-use-write-vary-1-block.json", "PreToolUse", _B1_BLOCK)
     run_case("pre-tool-use-write-pass.json", "PreToolUse", _PASS_TIERB)
-    run_case("pre-tool-use-write-vary-2-block.json", "PreToolUse", _B1_BLOCK)
+    run_case("pre-tool-use-write-vary-2-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
 
     # Extraction failure fails closed on a gating surface: deny, not pass.
     reset_strikes()
@@ -453,11 +522,13 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
     run_case("pre-tool-use-mcp-post-pass.json", "PreToolUse", _expect("pass", "B2", level="warning"))
     run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _B2_BLOCK)
 
-    # A clean pass on the same target resets the counter, so the next breach is
-    # strike 1 (deny), never the yield.
+    # A clean pass on the SAME key resets the counter, so the next breach is
+    # strike 1 (deny) again, never a lingering allow-revise. The block then
+    # allow-revise before the pass proves the count had climbed; the block after
+    # proves the pass reset it.
     reset_strikes()
     run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
+    run_case("pre-tool-use-write-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
     run_case("pre-tool-use-write-pass.json", "PreToolUse", _PASS_TIERB)
     run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
 
@@ -527,7 +598,7 @@ def claude_code_agent_cases() -> int:
         Path(reissue_dir).mkdir(parents=True, exist_ok=True)
         correction = Path(temp_dir) / "correction-prompt.md"
         correction.write_text(
-            "Revise the previous response to follow the Communication Rules.\n",
+            "Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.\n",
             encoding="utf-8",
         )
         env = dict(os.environ)
@@ -548,7 +619,7 @@ def claude_code_agent_cases() -> int:
 #   -----------------------------------   ----------------------------------
 #   assert_pass                           decision=pass
 #   assert_block                          decision=block (B1 or B2 by surface)
-#   assert_pretooluse_yield               decision=yield, surface=B1, notice
+#   assert_pretooluse_allow_revise        decision=allow-revise, surface=B1, notice
 #   assert_pretooluse_external_yield      decision=yield, surface=B2, error
 #   assert_facing_notice                  decision=block, surface=tierA, notice
 #   assert_reissue                        decision=re-issue, append_correction
@@ -640,29 +711,33 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
         reset_strikes()
         run_case(name, "PreToolUse", expected)
 
-    # B1 three-strike-then-yield on a shared session+turn+tool+path key.
+    # B1 hybrid on a shared session+turn+tool+path key: block on strike 1, then
+    # allow-revise on strike 2+ naming the file path (here "note.txt").
     reset_strikes()
     run_case("pre-tool-use-write-blocked.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-blocked.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-blocked.json", "PreToolUse", _B1_YIELD)
+    run_case("pre-tool-use-write-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
+    run_case("pre-tool-use-write-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
 
     # Codex per-turn reset: the same write breach on a NEW turn id starts a fresh
-    # B1 count (strike 1, deny), proving the turn is in the key. The write-blocked
-    # fixture is turn-1; vary the turn_id to a second turn.
+    # B1 count (strike 1, deny), proving the turn is in the key. Within turn-A the
+    # hybrid walks block then allow-revise; turn-B resets to a fresh block. The
+    # write-blocked fixture path is note.txt; vary the turn_id to a second turn.
     reset_strikes()
     base_write = json.loads((CODEX_FX / "pre-tool-use-write-blocked.json").read_text(encoding="utf-8"))
     turn_one = dict(base_write, turn_id="turn-A")
     turn_two = dict(base_write, turn_id="turn-B")
     run_case("write turn-A strike 1", "PreToolUse", _B1_BLOCK, payload=turn_one)
-    run_case("write turn-A strike 2", "PreToolUse", _B1_BLOCK, payload=turn_one)
-    # A different turn id resets to strike 1 rather than yielding on the third.
+    run_case("write turn-A strike 2", "PreToolUse", _b1_allow_revise("note.txt"), payload=turn_one)
+    # A different turn id resets to strike 1 (deny) rather than continuing to
+    # allow-revise, proving the turn id is part of the key.
     run_case("write turn-B strike 1", "PreToolUse", _B1_BLOCK, payload=turn_two)
 
     # B1 stable-key regression: three different bodies, one file_path+session+turn.
+    # The shared key walks block then allow-revise, never the old yield.
     reset_strikes()
     run_case("pre-tool-use-write-vary-1-blocked.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-vary-2-blocked.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-vary-3-blocked.json", "PreToolUse", _B1_YIELD)
+    run_case("pre-tool-use-write-vary-2-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
+    run_case("pre-tool-use-write-vary-3-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
 
     # A clean pass on the same key resets the counter.
     reset_strikes()
@@ -742,7 +817,7 @@ def codex_agent_cases() -> int:
         Path(strike_dir).mkdir(parents=True, exist_ok=True)
         correction = Path(temp_dir) / "correction-prompt.md"
         correction.write_text(
-            "Revise the previous response to follow the Communication Rules.\n",
+            "Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.\n",
             encoding="utf-8",
         )
         env = dict(os.environ)
@@ -770,7 +845,7 @@ def codex_agent_cases() -> int:
 #   expect_block (B2 external)           decision=block, surface=B2, error
 #   expect_reissue (message_end facing)  decision=block, surface=tierA, FACING
 #   expect_duplicate_block               decision=block, empty notice
-#   tool_call strike 3 yield (B1)        decision=yield, surface=B1, notice
+#   tool_call strike 2+ allow-revise (B1) decision=allow-revise, surface=B1, target notice
 #   tool_call strike 5 yield (B2)        decision=yield, surface=B2, error notice
 #
 # Pi has no turn id and a consecutive-block strike counter keyed on
@@ -828,6 +903,7 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
             record = json.loads(completed.stdout.strip())
         except json.JSONDecodeError as error:
             raise AssertionError(f"pi {name} {event}: non-JSON {completed.stdout!r}") from error
+        _assert_no_target_placeholder(f"pi {name} {event}", record.get("notice"))
         for field, want in expected.items():
             got = record.get(field)
             if got != want:
@@ -881,11 +957,13 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
     reset_strikes()
     run_case("tool-call-gh-unresolvable-body-fails-closed.json", "tool_call", _B2_BLOCK)
 
-    # B1 three-strike-then-yield on a shared session+tool+path key (write).
+    # B1 hybrid on a shared session+tool+path key (write): block on strike 1,
+    # then allow-revise on strike 2+ carrying the raw target (here "notes.md")
+    # for the shim to resolve into the revision prompt.
     reset_strikes()
     run_case("tool-call-write-blocked.json", "tool_call", _B1_BLOCK)
-    run_case("tool-call-write-blocked.json", "tool_call", _B1_BLOCK)
-    run_case("tool-call-write-blocked.json", "tool_call", _B1_YIELD)
+    run_case("tool-call-write-blocked.json", "tool_call", _b1_allow_revise("notes.md"))
+    run_case("tool-call-write-blocked.json", "tool_call", _b1_allow_revise("notes.md"))
 
     # A clean pass on the same key resets the counter, so the next breach is
     # strike 1 (deny), never the yield.
@@ -938,7 +1016,7 @@ def pi_agent_cases() -> int:
         Path(reissue_dir).mkdir(parents=True, exist_ok=True)
         correction = Path(temp_dir) / "correction-prompt.md"
         correction.write_text(
-            "Revise the previous response to follow the Communication Rules.\n",
+            "Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.\n",
             encoding="utf-8",
         )
         env = dict(os.environ)
@@ -962,7 +1040,7 @@ def pi_agent_cases() -> int:
 #   check_tool_pass (pass\n, exit 0)       decision=pass
 #   check_tool_block local (block\n)       decision=block, surface=B1, warning
 #   check_tool_block external post         decision=block, surface=B2, error
-#   tool strike 3 yield (plugin B1)        decision=yield, surface=B1, notice
+#   tool strike 2+ allow-revise (plugin B1) decision=allow-revise, surface=B1, target notice
 #   external strike 5 yield (plugin B2)    decision=yield, surface=B2, error
 #   duplicate (--existing-blocked)         decision=block, empty notice
 #   check_post_correction (correction)     decision=block, surface=tierA, FACING
@@ -1019,6 +1097,7 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
             record = json.loads(completed.stdout.strip())
         except json.JSONDecodeError as error:
             raise AssertionError(f"opencode {name} {event}: non-JSON {completed.stdout!r}") from error
+        _assert_no_target_placeholder(f"opencode {name} {event}", record.get("notice"))
         for field, want in expected.items():
             got = record.get(field)
             if got != want:
@@ -1056,11 +1135,13 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
     reset_strikes()
     run_case("tool-post-blocked.json", "tool.execute.before", _B2_BLOCK)
 
-    # B1 three-strike-then-yield on a shared session+tool+path key (write).
+    # B1 hybrid on a shared session+tool+path key (write): block on strike 1,
+    # then allow-revise on strike 2+ carrying the raw target (here "notes.md")
+    # for the shim to resolve into the revision prompt.
     reset_strikes()
     run_case("tool-write-blocked.json", "tool.execute.before", _B1_BLOCK)
-    run_case("tool-write-blocked.json", "tool.execute.before", _B1_BLOCK)
-    run_case("tool-write-blocked.json", "tool.execute.before", _B1_YIELD)
+    run_case("tool-write-blocked.json", "tool.execute.before", _b1_allow_revise("notes.md"))
+    run_case("tool-write-blocked.json", "tool.execute.before", _b1_allow_revise("notes.md"))
 
     # A clean pass on the same key resets the counter, so the next breach is
     # strike 1 (deny), never the yield.
@@ -1143,7 +1224,7 @@ def opencode_agent_cases() -> int:
         Path(reissue_dir).mkdir(parents=True, exist_ok=True)
         correction = Path(temp_dir) / "correction-prompt.md"
         correction.write_text(
-            "Revise the previous response to follow the Communication Rules.\n",
+            "Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.\n",
             encoding="utf-8",
         )
         env = dict(os.environ)

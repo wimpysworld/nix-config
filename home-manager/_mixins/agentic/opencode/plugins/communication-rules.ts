@@ -3,8 +3,7 @@ import { readFileSync } from "node:fs";
 // Thin shim. All policy lives in the Python core; each hook spawns
 // `core opencode <event>` and maps the decision to OpenCode's return/throw. The
 // system, text, toast, and log writes are the one named exception to "zero logic
-// in TS": runtime glue applying the core's Tier A flags, notice, and level, not
-// policy. The Nix wiring substitutes these tokens at build time.
+// in TS": runtime glue applying the core's flags, notice, and level. The Nix wiring substitutes these tokens at build time.
 const scannerPath = "@tripwireScanner@";
 const rulesPath = "@tripwireRules@";
 const correctionPromptPath = "@tripwireCorrectionPrompt@";
@@ -61,7 +60,8 @@ export const CommunicationRules = async (context: { client?: PluginClient } = {}
     },
     "tool.execute.before": async (input: unknown, output: unknown) => {
       const d = decide("tool.execute.before", { event: "tool.execute.before", ...(input as object), args: (output as { args?: unknown })?.args ?? {} });
-      if (d.decision === "yield") { void toast(client, d.notice); return; }
+      // B2 yield and B1 allow-revise both allow the write: toast and return.
+      if (d.decision === "yield" || d.decision === "allow-revise") { void toast(client, d.notice); return; }
       if (d.decision === "block") throw new Error(d.block_message || FALLBACK_BLOCK);
     },
     "experimental.text.complete": async (input: unknown, output: { text?: string }) => {
