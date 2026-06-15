@@ -261,6 +261,56 @@ def command_name(argv: list[str]) -> str:
     return Path(argv[0]).name
 
 
+# Shell wrappers whose ``-c`` flag carries an inner script as a single token. A
+# command such as ``bash -lc "printf 'x' > out.md"`` hides its redirect, prose,
+# and any gh post inside one argv token, so detection must unwrap it and scan
+# the inner script in its own right.
+SHELL_WRAPPER_NAMES = {"sh", "bash", "zsh", "dash", "ash", "ksh"}
+
+# A bound on wrapper recursion, so a pathological chain of nested wrappers cannot
+# drive unbounded recursion. Three levels is far beyond any genuine use.
+SHELL_WRAPPER_DEPTH_CAP = 3
+
+
+def shell_c_inner_script(argv: list[str]) -> str | None:
+    """Return the inner script of a shell ``-c`` invocation, else None.
+
+    Recognises the shell names in ``SHELL_WRAPPER_NAMES`` via ``command_name``.
+    The ``-c`` flag is recognised both bare (``-c``) and bundled into a short
+    option group whose letters include ``c`` (``-lc``, ``-ic``, ``-lic``). Long
+    options such as ``--norc`` are skipped. The inner script is the first
+    non-option token that follows the ``-c`` flag. A bare non-option token
+    before any ``-c`` (for example ``bash script.sh``) means this is not a
+    ``-c`` invocation, so the function returns None.
+    """
+    if command_name(argv) not in SHELL_WRAPPER_NAMES:
+        return None
+    saw_c_flag = False
+    index = 1
+    while index < len(argv):
+        token = argv[index]
+        if saw_c_flag:
+            # The first non-option token after ``-c`` is the inner script.
+            if token.startswith("-"):
+                index += 1
+                continue
+            return token
+        if token.startswith("--"):
+            # A long option such as ``--norc``; skip it and keep scanning.
+            index += 1
+            continue
+        if token.startswith("-") and len(token) > 1:
+            # A short-option group; ``-c`` may be bundled (``-lc``, ``-lic``).
+            if "c" in token[1:]:
+                saw_c_flag = True
+            index += 1
+            continue
+        # A bare non-option token before any ``-c``: this is not a ``-c``
+        # invocation (for example ``bash script.sh``).
+        return None
+    return None
+
+
 def has_dynamic_value(value: str) -> bool:
     stripped = value.strip()
     if stripped.startswith("$"):
@@ -508,7 +558,7 @@ def redirect_targets(argv: list[str]) -> list[str]:
     return targets
 
 
-def bash_prose_sink(command_text: str) -> str | None:
+def bash_prose_sink(command_text: str, depth: int = 0) -> str | None:
     """Return the first prose-target sink path a Bash command writes, else None.
 
     This is the STABLE B1 target for a Bash write, mirroring the file path a
@@ -524,6 +574,11 @@ def bash_prose_sink(command_text: str) -> str | None:
     Returns None when no prose sink resolves: a bare command, a dynamic or
     ``$(...)`` sink, a post-command, or a non-prose target. This reads the SINK
     only; it never changes ``scan_bash``'s detection behaviour.
+
+    A shell ``-c`` wrapper (``bash -lc "..."``) hides its sink inside one token,
+    so this unwraps such a segment and recurses on the inner script, bounded by
+    ``SHELL_WRAPPER_DEPTH_CAP``. The inner script keeps its own newlines, so
+    heredocs inside it still resolve through the existing line machinery.
     """
     heredoc_files = heredoc_body_files(extract_heredoc_blocks(command_text))
 
@@ -535,6 +590,13 @@ def bash_prose_sink(command_text: str) -> str | None:
         if argv is None:
             continue
         for segment in split_command_segments(argv):
+            if depth < SHELL_WRAPPER_DEPTH_CAP:
+                inner = shell_c_inner_script(segment)
+                if inner is not None:
+                    nested = bash_prose_sink(inner, depth + 1)
+                    if nested is not None:
+                        return nested
+                    continue
             for target in redirect_targets(segment):
                 cleaned = clean_literal_path(target)
                 if cleaned is not None and prose_target(cleaned):
@@ -593,7 +655,7 @@ def extract_redirect_texts(argv: list[str], heredocs: list[str]) -> tuple[list[s
     return [], False
 
 
-def scan_bash(command_text: str, config: Config) -> bool:
+def scan_bash(command_text: str, config: Config, _depth: int = 0) -> bool:
     heredoc_blocks = extract_heredoc_blocks(command_text)
     heredocs_by_line = heredoc_bodies_by_line(heredoc_blocks)
     body_files = heredoc_body_files(heredoc_blocks)
@@ -609,6 +671,15 @@ def scan_bash(command_text: str, config: Config) -> bool:
 
         heredocs = heredocs_by_line.get(stripped, [])
         for segment in split_command_segments(argv):
+            if _depth < SHELL_WRAPPER_DEPTH_CAP:
+                inner = shell_c_inner_script(segment)
+                if inner is not None:
+                    # A shell ``-c`` wrapper hides its script in one token. Scan
+                    # the inner script in its own right; the wrapper level has no
+                    # direct redirect or post to process.
+                    blocked = blocked or scan_bash(inner, config, _depth + 1)
+                    continue
+
             if is_known_post_command(segment):
                 texts, unresolved = extract_post_texts(segment, body_files)
                 if unresolved or not texts:

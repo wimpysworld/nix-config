@@ -428,6 +428,13 @@ def test_bash_prose_sink_unit():
         "  (s('echo hi > $(mktemp).md'), None),\n"
         "  (s('echo hi > out.bin'), None),\n"
         "  (s('ls -la'), None),\n"
+        # A shell -c wrapper hides its sink in one token; unwrapping resolves it.
+        "  (s('bash -lc \"printf \\'x\\' > out.md\"'), 'out.md'),\n"
+        "  (s('sh -c \"echo hi > notes.txt\"'), 'notes.txt'),\n"
+        # A clean wrapped command with no prose sink resolves to None.
+        "  (s('bash -lc \"ls -la\"'), None),\n"
+        # A doubly nested wrapper within the depth cap still resolves the sink.
+        "  (s('bash -lc \"sh -c \\'echo hi > deep.md\\'\"'), 'deep.md'),\n"
         "]\n"
         "import json\n"
         "print(json.dumps(cases))\n"
@@ -446,6 +453,45 @@ def test_bash_prose_sink_unit():
     for got, want in results:
         if got != want:
             raise AssertionError("bash_prose_sink: expected %r, got %r (all=%r)" % (want, got, results))
+    return 1
+
+
+def test_scan_bash_wrapped_unit():
+    """``scan_bash`` sees a banned word hidden inside a shell ``-c`` wrapper.
+
+    A direct write blocks today; a ``bash -lc "..."`` wrapper used to hide its
+    payload in one token and slip past. This proves the unwrap: the direct and
+    the wrapped form both block, and a clean wrapped command passes. The banned
+    word is assembled from fragments, never a plain literal. Run in a fresh
+    process so the import path matches the other checks.
+    """
+    snippet = (
+        "from core.detection import scan_bash\n"
+        "from core.config import Config, DEFAULT_POLICY\n"
+        "c = Config(rules_text='x', reminder_prompt=None, block_message=None, policy=dict(DEFAULT_POLICY))\n"
+        "B = 'del' + 've'\n"
+        "cases = [\n"
+        "  (scan_bash(\"printf '%s' > x.md\" % B, c), True),\n"
+        "  (scan_bash('bash -lc \"printf \\'%s\\' > x.md\"' % B, c), True),\n"
+        "  (scan_bash('bash -lc \"ls -la\"', c), False),\n"
+        "]\n"
+        "import json\n"
+        "print(json.dumps(cases))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", snippet],
+        cwd=str(ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError("scan_bash wrapped check exited %s: %s" % (completed.returncode, completed.stderr.strip()))
+    results = json.loads(completed.stdout.strip())
+    for got, want in results:
+        if got != want:
+            raise AssertionError("scan_bash wrapped: expected %r, got %r (all=%r)" % (want, got, results))
     return 1
 
 
@@ -605,8 +651,10 @@ def main():
 
     # Per-file Bash keying: two distinct Bash sinks each get a one-block budget.
     total += test_b1_bash_per_file_keying()
-    # The sink resolver unit check, and the apply_patch path resolver check.
+    # The sink resolver unit check, the wrapped scan_bash detection check, and
+    # the apply_patch path resolver check.
     total += test_bash_prose_sink_unit()
+    total += test_scan_bash_wrapped_unit()
     total += test_apply_patch_target_unit()
 
     # The resolved user-facing notice via the command-agent CLI: a file tool and
