@@ -272,12 +272,37 @@ def test_opencode_extraction_failure_reissues() -> int:
     return checks
 
 
+# Command-hook agents emit the agent's wire JSON, not the raw core Decision. Pi
+# and OpenCode emit the raw Decision their in-process shim reads.
+_COMMAND_HOOK_AGENTS = {"claude-code", "codex"}
+
+
+def _is_gating_block_or_yield(agent: str, output: dict) -> bool:
+    """True when the dispatch output means a gating block or yield, not a pass.
+
+    For Pi and OpenCode the output is the raw Decision, so the verb is read
+    directly. For the command-hook agents the output is the wire JSON, where a
+    gating block or yield is a PreToolUse ``permissionDecision`` of ``deny`` or
+    ``allow``; an empty output (a pass) is not.
+    """
+    if agent not in _COMMAND_HOOK_AGENTS:
+        return output.get("decision") in {"block", "yield"}
+    specific = output.get("hookSpecificOutput")
+    if not isinstance(specific, dict):
+        return False
+    return specific.get("permissionDecision") in {"deny", "allow"}
+
+
 def test_per_agent_fail_closed_on_gating_surface() -> int:
     """Proposal test 9: a broken scanner on a gating surface fails closed.
 
     One case per agent. A broken scanner (unreadable rules -> config None) on a
     local Bash gate must return block or yield, NEVER pass. This is the 0b080fb8
     fix, reimplemented in core/state.py.
+
+    The command-hook agents (Claude Code, Codex) emit the agent's wire JSON, so
+    the assertion reads the PreToolUse permissionDecision rather than the raw
+    Decision verb; Pi and OpenCode still emit the raw Decision.
     """
     checks = 0
     # Each agent's gating surface and event shape. The real Pi and OpenCode
@@ -298,11 +323,10 @@ def test_per_agent_fail_closed_on_gating_surface() -> int:
                 strike_dir,
                 rules="/nonexistent/broken-rules.md",
             )
-            verb = decision.get("decision")
-            if verb not in {"block", "yield"}:
+            if not _is_gating_block_or_yield(agent, decision):
                 raise AssertionError(
                     f"{agent} fail-closed: a broken scanner on a gating surface "
-                    f"must block or yield, got {verb!r} (full: {decision})"
+                    f"must block or yield, got {decision!r}"
                 )
         checks += 1
     return checks

@@ -32,7 +32,7 @@ class Decision:
 
     Allowed values:
 
-    - ``decision``: ``pass`` | ``block`` | ``yield`` | ``re-issue``.
+    - ``decision``: ``pass`` | ``block`` | ``yield`` | ``re-issue`` | ``remind``.
     - ``surface``: ``tierA`` | ``B1`` | ``B2``.
     - ``level``: ``warning`` | ``error``.
 
