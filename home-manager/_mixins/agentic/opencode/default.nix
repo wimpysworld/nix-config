@@ -15,36 +15,29 @@ let
   opencodeUpstreamPackage = inputs.llm-agents.packages.${system}.opencode;
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
   communicationRules = config.agentic.communicationRules;
-  opencodeTripwireAdapterFile = pkgs.writeTextFile {
-    name = "opencode-communication-rules-adapter-source";
-    destination = "/share/agent-communication-rules/adapters/opencode.sh";
-    executable = true;
-    text = builtins.readFile ../hooks/communication-rules/adapters/opencode.sh;
-  };
-  opencodeTripwireAdapterPath = "${opencodeTripwireAdapterFile}/share/agent-communication-rules/adapters/opencode.sh";
   opencodeTripwireCorrectionPromptFile = pkgs.writeTextFile {
     name = "opencode-communication-rules-correction-prompt.md";
     text = communicationRules.correctionPrompt;
   };
+  # The OpenCode plugin is an in-process TS shim, so it spawns the Python core
+  # directly: mkPluginAdapter substitutes the core path and the config paths into
+  # the shim text. The scanner wrapper bakes --policy-json and --rules, so the
+  # shim passes only the agent and event; the rules and correction-prompt paths
+  # feed the Tier A live-object writes (base-rules injection and re-issue).
   opencodeTripwirePlugin =
-    builtins.replaceStrings
-      [
-        "@tripwireAdapter@"
-        "@tripwireAdapterContract@"
-        "@tripwireScanner@"
-        "@tripwireRules@"
-        "@tripwirePolicy@"
-        "@tripwireCorrectionPrompt@"
-      ]
-      [
-        opencodeTripwireAdapterPath
-        communicationRules.adapterContractPath
-        communicationRules.executable
-        communicationRules.rulesPath
-        communicationRules.policyFilePath
-        "${opencodeTripwireCorrectionPromptFile}"
-      ]
-      (builtins.readFile ./plugins/communication-rules.ts);
+    if communicationRules.mkPluginAdapter == null then
+      null
+    else
+      communicationRules.mkPluginAdapter {
+        agent = "opencode";
+        shim = ./plugins/communication-rules.ts;
+        correctionPrompt = opencodeTripwireCorrectionPromptFile;
+        substitutions = {
+          "@tripwireScanner@" = communicationRules.executable;
+          "@tripwireRules@" = communicationRules.rulesPath;
+          "@tripwireCorrectionPrompt@" = "${opencodeTripwireCorrectionPromptFile}";
+        };
+      };
   # Wrap opencode so its process inherits Gemini env vars sourced from sops at
   # invocation time. opencode's loader recognises GEMINI_API_KEY; the
   # underlying @ai-sdk/google SDK reads GOOGLE_GENERATIVE_AI_API_KEY. Export
@@ -105,7 +98,7 @@ in
   home.packages = lib.optional host.is.linux opencodeFencedPackage;
 
   xdg.configFile = lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
-    "opencode/plugins/communication-rules.ts".text = opencodeTripwirePlugin;
+    "opencode/plugins/communication-rules.ts".text = opencodeTripwirePlugin.pluginText;
   };
 
   programs = {

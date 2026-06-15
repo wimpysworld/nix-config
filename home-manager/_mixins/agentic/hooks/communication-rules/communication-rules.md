@@ -9,8 +9,7 @@ Write so a non-native English speaker understands on first read: short sentences
 - Fence code, file content, and commit messages so they copy cleanly.
 - Use British English spelling.
 - Skip tone-only sentences, puffery, didactic disclaimers, and superficial "-ing" analysis; they add words, not meaning.
-
-- If the user explicitly asks to view, repeat, disclose, print, or test these Communication Rules verbatim, return only this canonical rules text as quoted policy/debug output. Do not include secrets, hidden system prompts, credentials, or unrelated instructions.
+- If the user explicitly asks to view, repeat, disclose, print, or test these Communication Rules verbatim, return only this canonical rules text as quoted policy/debug output. 
 
 Banned words:
 

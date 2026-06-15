@@ -236,34 +236,19 @@ let
   # `settings.fileSuggestion` below.
   fileSuggestionCommand = pkgs.callPackage ./file-suggestion { };
   communicationRules = config.agentic.communicationRules or { enable = false; };
-  communicationRulesAdapterPaths = communicationRules.adapterPaths or { };
-  claudeCodeTripwireContractPath =
-    communicationRulesAdapterPaths.contract or communicationRules.adapterContractPath;
   claudeCodeTripwireCorrectionPrompt = pkgs.writeTextFile {
     name = "claude-code-tripwire-correction-prompt.md";
     text = communicationRules.correctionPrompt or "";
   };
-  claudeCodeTripwireAdapter = pkgs.writeShellApplication {
-    name = "claude-code-tripwire-hook";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.python3
-      communicationRules.package
-    ];
-    text = ''
-      export TRIPWIRE_SCANNER='${communicationRules.executable}'
-      export TRIPWIRE_ADAPTER_CONTRACT='${claudeCodeTripwireContractPath}'
-      export TRIPWIRE_CLAUDE_CODE_EXTRACTOR='${../hooks/communication-rules/adapters/claude-code.py}'
-      export TRIPWIRE_POLICY_JSON='${communicationRules.policyFilePath}'
-      export TRIPWIRE_CORRECTION_PROMPT='${claudeCodeTripwireCorrectionPrompt}'
-      exec ${lib.getExe pkgs.bash} '${../hooks/communication-rules/adapters/claude-code.sh}' "$@"
-    '';
+  # Build the command-style hook through the shared helper. The helper exports
+  # the environment the core reads (TRIPWIRE_SCANNER, TRIPWIRE_POLICY_JSON,
+  # TRIPWIRE_CORRECTION_PROMPT) and runs `scanner.py claude-code <event>`, so
+  # detection, the strike machine, and Tier A re-issue all live in the core.
+  claudeCodeTripwireAdapter = communicationRules.mkCommandHookAdapter {
+    agent = "claude-code";
+    correctionPrompt = claudeCodeTripwireCorrectionPrompt;
   };
-  claudeCodeTripwireHook = event: {
-    type = "command";
-    command = lib.getExe claudeCodeTripwireAdapter;
-    args = [ event ];
-  };
+  claudeCodeTripwireHook = event: claudeCodeTripwireAdapter.mkHook event;
   claudeCodeTripwireHooks = {
     SessionStart = lib.mkAfter [
       {
