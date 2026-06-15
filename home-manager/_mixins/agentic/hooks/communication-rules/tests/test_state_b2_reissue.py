@@ -53,6 +53,18 @@ ALL_AGENTS = ("claude-code", "codex", "pi", "opencode")
 
 EXTERNAL_LIMIT = 5
 
+# The short B2 nudge the core emits on the middle blocks of the external cap
+# (strikes 2 .. limit - 2). Byte-identical to ``core.state.EXTERNAL_REPEAT_NOTICE``.
+# Any banned term is assembled from fragments elsewhere; this wording carries
+# none, so it sits as a plain literal.
+EXTERNAL_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply before posting."
+
+# The per-strike block notice the core carries on a B2 block under the cap. The
+# first and penultimate blocks re-issue the full rules (an empty notice here, so
+# the responder falls through to the full block message); the middle blocks carry
+# the short nudge. For the cap of 5: empty on strikes 1 and 4, nudge on 2 and 3.
+B2_BLOCK_NOTICE = {1: "", 2: EXTERNAL_REPEAT_NOTICE, 3: EXTERNAL_REPEAT_NOTICE, 4: ""}
+
 # A banned term, assembled from character codes so the literal never appears in
 # this file. The scanner blocks any source that contains a banned word, so the
 # trigger term cannot sit in the file as plain text. The codes spell the term.
@@ -200,7 +212,10 @@ def test_b2_cap_yields_on_fifth() -> None:
         expected_notice = EXPECTED_B2_NOTICE[agent]
         with tempfile.TemporaryDirectory(prefix=f"b2-{agent}-") as temp_dir:
             env = temp_env(temp_dir)
-            # Strikes one to four block under the cap, no notice.
+            # Strikes one to four block under the cap. The first and penultimate
+            # blocks (strikes 1 and 4) carry an empty notice (the responder then
+            # re-issues the full rules); the middle blocks (strikes 2 and 3) carry
+            # the short nudge.
             for strike in range(1, EXTERNAL_LIMIT):
                 got = run_dispatch(agent, event, payload, env)
                 assert_record(
@@ -209,7 +224,7 @@ def test_b2_cap_yields_on_fifth() -> None:
                     decision="block",
                     surface="B2",
                     level="error",
-                    notice="",
+                    notice=B2_BLOCK_NOTICE[strike],
                 )
             # The fifth yields and carries the operator notice.
             got = run_dispatch(agent, event, payload, env)
@@ -226,6 +241,86 @@ def test_b2_cap_yields_on_fifth() -> None:
             tool_label = "bash"
             if tool_label not in got["notice"]:
                 raise AssertionError(f"{agent} B2 yield: notice missing tool, got {got['notice']!r}")
+
+
+# --- B2 reissue trim: per-strike notice at the gate level ---------------------
+
+# A snippet that walks the B2 cap with repeated ``state.gate`` calls in one
+# process (the file-backed strike dir is shared) and prints each strike's notice
+# as JSON. ``{limit}`` overrides the cap via the env the snippet sets, so the
+# degradation for a smaller cap is exercised without editing source. The record
+# is a fixed external post; only the gate's per-strike notice is asserted.
+GATE_SNIPPET = (
+    "import json\n"
+    "from core import state\n"
+    "from core.types import ExtractorRecord\n"
+    "rec = ExtractorRecord(session='gate-b2', turn=None, tool='post', target='id-1', texts=[])\n"
+    "out = []\n"
+    "for _ in range({limit}):\n"
+    "    d = state.gate('claude-code', rec, 'external', state.SCAN_BLOCK)\n"
+    "    out.append({{'decision': d.decision, 'notice': d.notice}})\n"
+    "print(json.dumps(out))\n"
+)
+
+
+def run_gate_sequence(limit: int, env: dict[str, str]) -> list[dict]:
+    """Walk the B2 cap once via ``state.gate`` and return each strike's record."""
+    case_env = dict(env)
+    case_env["TRIPWIRE_EXTERNAL_STRIKE_LIMIT"] = str(limit)
+    completed = subprocess.run(
+        [sys.executable, "-c", GATE_SNIPPET.format(limit=limit)],
+        cwd=str(ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        env=case_env,
+    )
+    if completed.returncode != 0:
+        raise AssertionError(f"gate sequence (limit {limit}): {completed.stderr.strip()}")
+    return json.loads(completed.stdout.strip())
+
+
+def test_b2_reissue_trim_per_strike_notice() -> None:
+    """The B2 cap re-issues the full rules on the first and penultimate blocks only.
+
+    At the ``gate`` level: strikes 1 and ``limit - 1`` carry an empty notice (the
+    responder then re-issues the full rules), strikes ``2 .. limit - 2`` carry the
+    short nudge, and strike ``limit`` yields with the operator notice. For the cap
+    of 5: empty on strikes 1 and 4, nudge on 2 and 3, yield on 5. The test also
+    checks clean degradation for smaller caps: a cap of 2 or 3 gives only
+    full-rules blocks (no nudge) before the yield.
+    """
+    with tempfile.TemporaryDirectory(prefix="b2-trim-") as temp_dir:
+        # Cap of 5: empty, nudge, nudge, empty, then yield.
+        env = temp_env(str(Path(temp_dir) / "cap5"))
+        records = run_gate_sequence(5, env)
+        expected = [
+            {"decision": "block", "notice": ""},
+            {"decision": "block", "notice": EXTERNAL_REPEAT_NOTICE},
+            {"decision": "block", "notice": EXTERNAL_REPEAT_NOTICE},
+            {"decision": "block", "notice": ""},
+            {"decision": "yield", "notice": "Rules breach posted: id-1"},
+        ]
+        if records != expected:
+            raise AssertionError(f"cap 5 gate notices: expected {expected}, got {records}")
+
+        # Cap of 3: both blocks are full rules (no nudge), then a yield. The
+        # middle range 1 < strike < limit - 1 is empty, so no nudge appears.
+        env = temp_env(str(Path(temp_dir) / "cap3"))
+        records = run_gate_sequence(3, env)
+        if any(r["notice"] == EXTERNAL_REPEAT_NOTICE for r in records[:-1]):
+            raise AssertionError(f"cap 3 should emit no nudge, got {records}")
+        if [r["decision"] for r in records] != ["block", "block", "yield"]:
+            raise AssertionError(f"cap 3 decisions: got {records}")
+
+        # Cap of 2: a single full-rules block, then a yield. No nudge.
+        env = temp_env(str(Path(temp_dir) / "cap2"))
+        records = run_gate_sequence(2, env)
+        if any(r["notice"] == EXTERNAL_REPEAT_NOTICE for r in records):
+            raise AssertionError(f"cap 2 should emit no nudge, got {records}")
+        if [r["decision"] for r in records] != ["block", "yield"]:
+            raise AssertionError(f"cap 2 decisions: got {records}")
 
 
 # --- Test 5: pending-reissue flag persistence across processes ----------------
@@ -311,6 +406,7 @@ def test_tier_a_facing_record_all_agents() -> None:
 def main() -> int:
     tests = [
         test_b2_cap_yields_on_fifth,
+        test_b2_reissue_trim_per_strike_notice,
         test_pending_reissue_persists_and_clears,
         test_tier_a_facing_record_all_agents,
     ]

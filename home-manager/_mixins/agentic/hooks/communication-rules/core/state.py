@@ -61,6 +61,12 @@ LOCAL_YIELD_NOTICE = "Communication Rules unmet after retries, output allowed."
 EXTERNAL_YIELD_PREFIX = "Rules breach posted: "
 FACING_NOTICE = "Communication Rules breach seen, correcting next reply."
 
+# Short B2 nudge for the middle blocks of the external cap. The first and the
+# penultimate block re-issue the full rules; the blocks in between emit this
+# instead, since the rules are already in context. The dispatcher promotes this
+# notice to the block message, so every responder emits it as the block reason.
+EXTERNAL_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply before posting."
+
 # Scan outcomes the gate accepts. ``pass`` clears the strike, ``block`` walks
 # the cap, ``unresolved`` is the fail-closed case (scanner could not decide).
 SCAN_PASS = "pass"
@@ -92,6 +98,22 @@ def _local_strike_limit() -> int:
             if value > 0:
                 return value
     return LOCAL_STRIKE_LIMIT
+
+
+def _external_strike_limit() -> int:
+    # Read the effective B2 cap. The test-only ``TRIPWIRE_EXTERNAL_STRIKE_LIMIT``
+    # env override lets a test exercise the re-issue trim at a smaller cap without
+    # editing source; it wins only when it parses as an integer of at least two
+    # (a cap below two cannot block before it yields). The ``EXTERNAL_STRIKE_LIMIT``
+    # constant stays the single source of the default, mirroring the B1 reader.
+    raw = os.environ.get("TRIPWIRE_EXTERNAL_STRIKE_LIMIT")
+    if raw is not None:
+        text = raw.strip()
+        if text.isdigit():
+            value = int(text)
+            if value >= 2:
+                return value
+    return EXTERNAL_STRIKE_LIMIT
 
 
 def strike_key(record: ExtractorRecord, surface: str) -> str:
@@ -345,7 +367,7 @@ def gate(
             append_correction=False,
         )
 
-    limit = EXTERNAL_STRIKE_LIMIT
+    limit = _external_strike_limit()
     notice = EXTERNAL_YIELD_PREFIX + (record.target or record.tool)
     level = "error"
 
@@ -361,10 +383,18 @@ def gate(
             append_correction=False,
         )
 
+    # Re-issue the full rules on the first and the penultimate block only; emit
+    # the short nudge on the blocks in between. The rules are already in context
+    # from the first block, so the middle repeats add tokens without new
+    # information. An empty notice falls through to the full block message in the
+    # dispatcher; the nudge notice is promoted to the block message there. This
+    # degrades cleanly: for a limit of 2 or 3 the range ``1 < strike < limit - 1``
+    # is empty, so every block keeps the full message.
+    block_notice = EXTERNAL_REPEAT_NOTICE if 1 < strike < limit - 1 else ""
     return Decision(
         decision="block",
         surface="B2",
-        notice="",
+        notice=block_notice,
         level=level,
         inject_base_rules=False,
         append_correction=False,

@@ -34,6 +34,10 @@ const pluginSource = path.resolve(
 // source (the core blocks any file that contains a banned word).
 const BANNED = String.fromCharCode(108, 101, 118, 101, 114, 97, 103, 101);
 
+// The short B2 nudge the core emits on the middle blocks of the external cap
+// (strikes 2 .. limit - 2). Byte-identical to `core.state.EXTERNAL_REPEAT_NOTICE`.
+const B2_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply before posting.";
+
 interface Decision {
   decision: string;
   surface: string;
@@ -169,10 +173,18 @@ test("B2 yield: tool.execute.before walks the cap then yields with level=error, 
   expect(firstDecision.surface).toBe("B2");
   expect(firstDecision.level).toBe("error");
 
-  // Strikes one to four block: the shim throws.
+  // Strikes two to four block: the shim throws. The probe above consumed strike
+  // 1, so the handler sees strikes 2, 3, 4. The re-issue trim throws the short
+  // nudge on the middle blocks (strikes 2 and 3) and the full rules on the
+  // penultimate block (strike 4); the shim maps the thrown message from the wire
+  // notice, falling back to the full block message when the notice is empty.
   for (let strike = 2; strike <= 4; strike += 1) {
     const call = before(b2Payload(), { args: (b2Payload() as { args: unknown }).args });
-    await expect(call).rejects.toThrow();
+    if (strike < 4) {
+      await expect(call).rejects.toThrow(B2_REPEAT_NOTICE);
+    } else {
+      await expect(call).rejects.toThrow(/Communication Rules/);
+    }
   }
   // The fifth yields: the shim returns (no throw) and toasts at error level.
   const toastsBefore = toasts.length;

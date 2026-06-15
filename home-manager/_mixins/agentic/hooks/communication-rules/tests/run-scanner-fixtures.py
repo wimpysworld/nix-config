@@ -184,6 +184,30 @@ def _expect(decision: str, surface: str, notice: str = "", level: str = "warning
     }
 
 
+def _b2_block(nudge: bool = False) -> dict:
+    """A B2 block expectation for a middle block (nudge) or a full-rules block.
+
+    ``nudge=True`` is a middle block of the external cap (strikes 2 .. limit - 2):
+    the core carries the short ``EXTERNAL_REPEAT_NOTICE`` in ``decision.notice``,
+    which the plugin shims emit as the block reason and the dispatcher promotes to
+    the command-agent deny reason. ``nudge=False`` is the first or penultimate
+    block, which re-issues the full rules (an empty ``notice``; the command deny
+    reason is the full block message, matched by prefix).
+
+    The same expectation feeds both layers. The plugin runner reads the raw
+    ``Decision`` and asserts ``notice`` directly. The command-agent wire runner
+    reads ``block_message`` to decide whether the deny reason is the exact nudge
+    (``EXTERNAL_REPEAT_NOTICE``) or the full-rules prefix.
+    """
+    if nudge:
+        expected = _expect("block", "B2", notice=_B2_REPEAT_NOTICE, level="error")
+        expected["block_message"] = _B2_REPEAT_NOTICE
+    else:
+        expected = _expect("block", "B2", notice="", level="error")
+        expected["block_message"] = None
+    return expected
+
+
 # B1 gating blocks and the hybrid allow-revise.
 _B1_BLOCK = _expect("block", "B1", level="warning")
 _PASS_TIERB = _expect("pass", "B1", level="warning")
@@ -227,6 +251,12 @@ def _assert_no_target_placeholder(name: str, notice: object) -> None:
         raise AssertionError(f"{name}: notice carries a literal {_TARGET_PLACEHOLDER}: {notice!r}")
 # B2 gating blocks and yields.
 _B2_BLOCK = _expect("block", "B2", level="error")
+
+# The short B2 nudge the core emits on the middle blocks of the external cap
+# (strikes 2 .. limit - 2). The first and the penultimate block re-issue the
+# full rules; the blocks in between carry this instead. Byte-identical to
+# ``core.state.EXTERNAL_REPEAT_NOTICE``.
+_B2_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply before posting."
 # Tier A facing.
 _FACING = _expect("block", "tierA", notice=FACING_NOTICE, level="warning")
 _PASS_TIERA = _expect("pass", "tierA", level="warning")
@@ -237,6 +267,26 @@ _REMIND = _expect("remind", "tierA")
 
 def _b2_yield(notice: str) -> dict:
     return _expect("yield", "B2", notice=notice, level="error")
+
+
+def _assert_record_fields(label: str, record: dict, expected: dict) -> None:
+    """Assert a plugin agent's raw decision record matches the expectation.
+
+    The plugin shims read the raw ``Decision`` JSON, which has no
+    ``block_message`` field, so that key is a command-agent wire hint only and is
+    skipped here. The B2 nudge versus full-rules distinction is asserted on
+    ``notice``: a middle block carries ``EXTERNAL_REPEAT_NOTICE``, a first or
+    penultimate block carries an empty notice (the shim then emits the full cached
+    rules as the block reason). Every other field compares for equality.
+    """
+    for field, want in expected.items():
+        if field == "block_message":
+            continue
+        got = record.get(field)
+        if got != want:
+            raise AssertionError(
+                f"{label}: field {field!r} expected {want!r}, got {got!r} ({record})"
+            )
 
 
 # --- Command-hook wire-shape assertions ------------------------------------
@@ -371,12 +421,20 @@ def expected_wire(event: str, decision: dict) -> dict | None:
             if notice:
                 return {"systemMessage": notice}
             return None
-        # Tier B gating block: deny with the block message reason.
+        # Tier B gating block: deny with the block message reason. A B2 middle
+        # block carries the short nudge as the exact deny reason; the first and
+        # penultimate B2 blocks (and every B1 block) re-issue the full rules,
+        # matched by the deny-reason prefix.
+        nudge = decision.get("block_message")
+        if surface == "B2" and nudge:
+            reason_match: object = nudge
+        else:
+            reason_match = ("PREFIX", _DENY_REASON_PREFIX)
         return {
             "hookSpecificOutput": {
                 "hookEventName": event,
                 "permissionDecision": "deny",
-                "permissionDecisionReason": ("PREFIX", _DENY_REASON_PREFIX),
+                "permissionDecisionReason": reason_match,
             }
         }
     raise AssertionError(f"unmapped decision verb {verb!r}")
@@ -533,10 +591,12 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
     run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
 
     # B2 external MCP post: five-strike cap. Deny 1-4, yield on 5 with the
-    # operator notice naming the tool and target.
+    # operator notice naming the tool and target. The first and penultimate
+    # blocks (strikes 1 and 4) re-issue the full rules; the middle blocks
+    # (strikes 2 and 3) carry the short nudge as the deny reason.
     reset_strikes()
-    for _ in range(4):
-        run_case("pre-tool-use-mcp-post-target-block.json", "PreToolUse", _B2_BLOCK)
+    for nudge in (False, True, True, False):
+        run_case("pre-tool-use-mcp-post-target-block.json", "PreToolUse", _b2_block(nudge))
     run_case(
         "pre-tool-use-mcp-post-target-block.json",
         "PreToolUse",
@@ -544,18 +604,21 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
     )
 
     # The stable B2 key means reworded bodies share one budget; a clean post
-    # resets the counter.
+    # resets the counter. Strike 1 re-issues the full rules; strike 2 (the
+    # reworded body, same budget) is a middle block, so it carries the short
+    # nudge. The clean pass resets, so the final breach is strike 1 (full rules).
     reset_strikes()
-    run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _B2_BLOCK)
-    run_case("pre-tool-use-mcp-post-block-reworded.json", "PreToolUse", _B2_BLOCK)
+    run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _b2_block())
+    run_case("pre-tool-use-mcp-post-block-reworded.json", "PreToolUse", _b2_block(nudge=True))
     run_case("pre-tool-use-mcp-post-pass.json", "PreToolUse", _expect("pass", "B2", level="warning"))
-    run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _B2_BLOCK)
+    run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _b2_block())
 
     # B2 gh-via-Bash: a gh post run through Bash walks the five-strike cap with a
-    # notice naming the gh subcommand. The body routes through scan_bash.
+    # notice naming the gh subcommand. The body routes through scan_bash. Full
+    # rules on strikes 1 and 4, the short nudge on strikes 2 and 3.
     reset_strikes()
-    for _ in range(4):
-        run_case("pre-tool-use-bash-gh-post-target-block.json", "PreToolUse", _B2_BLOCK)
+    for nudge in (False, True, True, False):
+        run_case("pre-tool-use-bash-gh-post-target-block.json", "PreToolUse", _b2_block(nudge))
     run_case(
         "pre-tool-use-bash-gh-post-target-block.json",
         "PreToolUse",
@@ -772,11 +835,12 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
 
     # B2 external MCP post: five-strike cap. Deny 1-4, yield on 5 with the
     # operator notice naming the tool and target. Reworded body shares one budget.
+    # Full rules on strikes 1 and 4, the short nudge on strikes 2 and 3.
     reset_strikes()
-    run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _B2_BLOCK)
-    run_case("pre-tool-use-post-reworded-blocked.json", "PreToolUse", _B2_BLOCK)
-    run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _B2_BLOCK)
-    run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _B2_BLOCK)
+    run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _b2_block())
+    run_case("pre-tool-use-post-reworded-blocked.json", "PreToolUse", _b2_block(nudge=True))
+    run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _b2_block(nudge=True))
+    run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _b2_block())
     run_case(
         "pre-tool-use-post-target-blocked.json",
         "PreToolUse",
@@ -790,10 +854,11 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
     run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _B2_BLOCK)
 
     # B2 gh-via-Bash: a gh post run through Bash walks the five-strike cap with a
-    # notice naming the gh subcommand. The body routes through scan_bash.
+    # notice naming the gh subcommand. The body routes through scan_bash. Full
+    # rules on strikes 1 and 4, the short nudge on strikes 2 and 3.
     reset_strikes()
-    for _ in range(4):
-        run_case("pre-tool-use-bash-gh-post-blocked.json", "PreToolUse", _B2_BLOCK)
+    for nudge in (False, True, True, False):
+        run_case("pre-tool-use-bash-gh-post-blocked.json", "PreToolUse", _b2_block(nudge))
     run_case(
         "pre-tool-use-bash-gh-post-blocked.json",
         "PreToolUse",
@@ -838,8 +903,8 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
             "tool_input": {"command": _wrapped_gh_command},
         }
 
-    for _ in range(4):
-        run_case("wrapped gh post", "PreToolUse", _B2_BLOCK, payload=_wrapped_gh_post())
+    for nudge in (False, True, True, False):
+        run_case("wrapped gh post", "PreToolUse", _b2_block(nudge), payload=_wrapped_gh_post())
     # The B2 yield names the operator target. A wrapped command exposes no bare gh
     # subcommand, so the target falls back to the tool label "Bash". The point of
     # this case is the SURFACE (B2 hard block, not B1 allow-revise), not the label.
@@ -979,12 +1044,7 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
         except json.JSONDecodeError as error:
             raise AssertionError(f"pi {name} {event}: non-JSON {completed.stdout!r}") from error
         _assert_no_target_placeholder(f"pi {name} {event}", record.get("notice"))
-        for field, want in expected.items():
-            got = record.get(field)
-            if got != want:
-                raise AssertionError(
-                    f"pi {name} {event}: field {field!r} expected {want!r}, got {got!r} ({record})"
-                )
+        _assert_record_fields(f"pi {name} {event}", record, expected)
         count += 1
 
     # context emits the reminder (a non-gating pass in the core; the shim turns
@@ -1048,10 +1108,13 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
     run_case("tool-call-write-blocked.json", "tool_call", _B1_BLOCK)
 
     # B2 external mcp post: five-strike cap. Deny 1-4, yield on 5 with the
-    # operator notice naming the tool and target.
+    # operator notice naming the tool and target. The first and penultimate
+    # blocks (strikes 1 and 4) re-issue the full rules in ``block_message``; the
+    # middle blocks (strikes 2 and 3) carry the short nudge there, with an empty
+    # ``notice`` (the dispatcher promoted the nudge to the block message).
     reset_strikes()
-    for _ in range(4):
-        run_case("tool-call-mcp-post-blocked.json", "tool_call", _B2_BLOCK)
+    for nudge in (False, True, True, False):
+        run_case("tool-call-mcp-post-blocked.json", "tool_call", _b2_block(nudge))
     run_case(
         "tool-call-mcp-post-blocked.json",
         "tool_call",
@@ -1173,12 +1236,7 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
         except json.JSONDecodeError as error:
             raise AssertionError(f"opencode {name} {event}: non-JSON {completed.stdout!r}") from error
         _assert_no_target_placeholder(f"opencode {name} {event}", record.get("notice"))
-        for field, want in expected.items():
-            got = record.get(field)
-            if got != want:
-                raise AssertionError(
-                    f"opencode {name} {event}: field {field!r} expected {want!r}, got {got!r} ({record})"
-                )
+        _assert_record_fields(f"opencode {name} {event}", record, expected)
         count += 1
 
     # Pass cases: clean write, multiedit, apply_patch context, and a clean gh
@@ -1228,9 +1286,10 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
     # B2 external post: five-strike cap. Deny 1-4, yield on 5 with the operator
     # notice naming the tool and target. The gh-api-safe post fixture has a
     # command (no structured identifier), so the target falls back to the tool.
+    # Full rules on strikes 1 and 4, the short nudge on strikes 2 and 3.
     reset_strikes()
-    for _ in range(4):
-        run_case("tool-post-blocked.json", "tool.execute.before", _B2_BLOCK)
+    for nudge in (False, True, True, False):
+        run_case("tool-post-blocked.json", "tool.execute.before", _b2_block(nudge))
     run_case(
         "tool-post-blocked.json",
         "tool.execute.before",
@@ -1274,8 +1333,8 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
             "args": {"command": _wrapped_gh},
         }
 
-    for _ in range(4):
-        run_case("wrapped gh post", "tool.execute.before", _B2_BLOCK, payload=_wrapped_gh_post())
+    for nudge in (False, True, True, False):
+        run_case("wrapped gh post", "tool.execute.before", _b2_block(nudge), payload=_wrapped_gh_post())
     # The B2 yield names the operator target. The bash tool with a wrapped command
     # has no structured identifier, so the target falls back to the tool name
     # "bash". The point is the SURFACE (B2 hard block, not B1 allow-revise).

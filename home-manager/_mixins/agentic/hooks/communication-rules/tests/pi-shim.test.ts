@@ -32,6 +32,10 @@ const extension = path.resolve(
 // source (the core blocks any file that contains a banned word).
 const BANNED = String.fromCharCode(108, 101, 118, 101, 114, 97, 103, 101);
 
+// The short B2 nudge the core emits on the middle blocks of the external cap
+// (strikes 2 .. limit - 2). Byte-identical to `core.state.EXTERNAL_REPEAT_NOTICE`.
+const B2_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply before posting.";
+
 interface Decision {
   decision: string;
   surface: string;
@@ -171,10 +175,20 @@ test("B2 yield: tool_call walks the cap then yields with level=error and surface
   assert.equal(firstDecision.surface, "B2");
   assert.equal(firstDecision.level, "error");
 
-  // Strikes one to four block: the shim returns { block: true }.
+  // Strikes two to four block. The probe above consumed strike 1, so the
+  // handler sees strikes 2, 3, 4. The re-issue trim emits the short nudge on the
+  // middle blocks (strikes 2 and 3) and re-issues the full rules on the
+  // penultimate block (strike 4). The shim maps the block reason from the wire
+  // notice, falling back to the full cached rules when the notice is empty.
   for (let strike = 2; strike <= 4; strike += 1) {
-    const result = toolCall!(b2Payload(), loaded.ctx) as { block?: boolean } | undefined;
+    const result = toolCall!(b2Payload(), loaded.ctx) as { block?: boolean; reason?: string } | undefined;
     assert.equal(result?.block, true, `B2 strike ${strike} should block`);
+    if (strike < 4) {
+      assert.equal(result?.reason, B2_REPEAT_NOTICE, `B2 strike ${strike} should carry the short nudge`);
+    } else {
+      assert.notEqual(result?.reason, B2_REPEAT_NOTICE, "B2 penultimate block should re-issue the full rules");
+      assert.match(result?.reason ?? "", /Communication Rules/, "B2 penultimate block reason is the full rules");
+    }
   }
   // The fifth yields: the shim returns undefined and notifies at error level.
   const before = loaded.notifications.length;

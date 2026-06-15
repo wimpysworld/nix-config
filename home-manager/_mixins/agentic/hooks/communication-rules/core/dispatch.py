@@ -365,6 +365,16 @@ def shape_response(agent: str, event: str, decision: Decision, config: Config | 
     block_message = config.block_message if config is not None else ""
     correction = config.correction_prompt if config is not None else ""
     reminder = config.reminder_prompt if config is not None else ""
+    if decision.decision == "block" and decision.surface == "B2" and decision.notice:
+        # A middle B2 block carries the short nudge in ``decision.notice`` (the
+        # state machine set it for ``1 < strike < limit - 1``). Promote it to the
+        # block message so every responder emits it as the block reason: the
+        # command agents use it as the deny reason, OpenCode throws it, Pi reads
+        # it from the wire. The first and penultimate blocks carry an empty
+        # notice, so they keep the full block message. Clear the notice after
+        # promoting it so the plugin path never also toasts it.
+        block_message = decision.notice
+        decision.notice = ""
     if decision.decision == "allow-revise":
         revision_prompt = config.b1_revision_prompt if config is not None else ""
         decision.notice = _resolve_revision_notice(revision_prompt, decision.notice)
