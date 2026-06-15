@@ -64,7 +64,10 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
     const d = decide(config, "tool_call", event);
     // `yield` (B2 cap) and `allow-revise` (B1 strike 2+) are non-blocking allows: notify, let the tool run. Only `block` returns a block object.
     if (d.decision === "yield" || d.decision === "allow-revise") notify(ctx, d.notice, d.level);
-    return d.decision === "block" ? { block: true, reason: blockMessage(config) } : undefined;
+    // A middle B2 block carries the short nudge in `d.notice`; the first and
+    // penultimate blocks carry an empty notice and re-issue the full cached
+    // rules. So prefer the notice when set, fall back to the full message.
+    return d.decision === "block" ? { block: true, reason: d.notice || blockMessage(config) } : undefined;
   });
   pi.on("message_end", (event, ctx) => {
     const d = decide(config, "message_end", event);
