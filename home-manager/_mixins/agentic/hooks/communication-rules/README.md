@@ -31,16 +31,16 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
 - `scanner.py` thin CLI entry. It reads `<agent> <event>` and hands off to the core.
 - `core/` the Python package that owns all logic:
   - `types.py` shared types.
-  - `detection.py` the deterministic checker for banned words, dashes, and policy disclosure, plus the bash scan.
+  - `detection.py` the deterministic checker for banned words, dashes, and policy disclosure, plus the bash scan. It unwraps `bash -c`/`-lc` wrappers, scans `apply_patch` added lines, and strips leading environment assignments, so prose cannot hide behind any of them.
   - `config.py` config plus the post-detection lists from `policy.json`.
-  - `state.py` the file-backed strike, tier, and fail-closed machine. The only place the B1 (block-then-allow-revise) and B2 (five-strike) limits live.
+  - `state.py` the file-backed strike, tier, and fail-closed machine. The only place the B1 (block-then-allow-revise) and B2 (five-strike) limits live. B2 re-issues the full rules on strikes 1 and 4 and sends a short nudge on the strikes between, since the rules are already in context.
   - `responses.py` per-agent output shaping.
   - `dispatch.py` the `<agent> <event>` CLI dispatcher.
-  - `extractors/` the four payload extractors (`claude_code`, `codex`, `opencode`, `pi`).
+  - `extractors/` the four payload extractors (`claude_code`, `codex`, `opencode`, `pi`). The Pi extractor threads the Pi session id into the strike key, so each session resets fresh rather than sharing one global namespace.
 - `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` the two thin TypeScript shims. Each spawns the core and applies the returned decision. They hold no policy.
 - `default.nix` two wiring helpers on a shared agent-free base: `mkCommandHookAdapter` (Claude Code, Codex) and `mkPluginAdapter` (Pi, OpenCode).
 - `fragment.nix` generates the rules text, reminder, block, and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
-- `fixtures/` and `tests/` per-agent expected-behaviour cases.
+- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 260 scanner fixtures (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix). `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript seams.
 
 ## Why this exists
 
@@ -100,6 +100,8 @@ The policy splits by blast radius into two sub-tiers. B1 blocks once then allows
 
 We block once, then either correct or yield. Blocking automation forever is friction users will not accept. The local path blocks once, then allows each later breach to land and asks for an in-place revision of the named file. The external path tries four times before the irreversible yield. The cost is that imperfect local files are sometimes surfaced and corrected after they land.
 
+The canonical [Communication Rules](communication-rules.md) carry a short Enforcement note that states this block-then-revise and block-then-yield behaviour, so the model sees it in every reminder and block message.
+
 A Bash call is external when its first token is `gh` or `gh-api-safe` and it carries a post signal (a body-bearing flag or a POST/PATCH/PUT method); read-only gh calls stay local.
 
 ### Tier A: user-facing and agent-facing prose
@@ -133,7 +135,7 @@ The gate does not scan:
 - Build logs.
 - External text the agent is reading, not posting as its own.
 
-Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh or gh-api-safe post bodies, not a full shell parse. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
+Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh or gh-api-safe post bodies, not a full shell parse. It unwraps `bash -c`/`-lc` wrappers and skips leading environment assignments (`FOO=bar gh ...`), so a wrapped or env-prefixed command cannot slip prose past the scan. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
 
 ## Per-agent validation matrix
 
@@ -158,7 +160,7 @@ The explicit verbatim disclosure override is part of the scanner policy. A user 
 
 ### Validation status
 
-Tested on 2026-06-14. Claude Code and Codex were tested live. The Claude Code Tier A user notice was re-confirmed live on 2026-06-15 after the wire-shaping fix. OpenCode now has fixture, installed-plugin, live local tool-call, headless final-text, and GitHub post-block coverage. Pi now has live chat, local tool-call, GitHub post-block, and subagent-output coverage. OpenCode TUI toast rendering was not directly observed. Pi live testing confirmed the Tier A notice and next-turn re-issue in chat.
+Tested through 2026-06-16. Claude Code and Codex were tested live. The Claude Code Tier A user notice was re-confirmed live on 2026-06-15 after the wire-shaping fix. OpenCode now has fixture, installed-plugin, live local tool-call, headless final-text, and GitHub post-block coverage. Pi now has live chat, local tool-call, GitHub post-block, and subagent-output coverage. OpenCode TUI toast rendering was not directly observed. Pi live testing confirmed the Tier A notice and next-turn re-issue in chat.
 
 | Behaviour                                    | Claude Code                     | Codex                                           | OpenCode                                        | Pi                                                     |
 | -------------------------------------------- | ------------------------------- | ----------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
@@ -189,6 +191,8 @@ Notes:
 - OpenCode B2 yield stays fixture-only because a live yield would post to GitHub irreversibly.
 - The Claude Code B1 cycle was driven with several different bodies to one path: a block on strike 1, then allow-revise on each later breach. This also confirms the stable strike key, since the changed content still drew down one budget.
 - Codex `CODEX_HOME` is set; hooks wired once, including one `UserPromptSubmit`; trust entries enabled
+- Pi per-session strike isolation was added and live-validated on 2026-06-16. A fresh Pi session resets the strike counter, so strike 1 blocks again. Earlier Pi sessions shared one global strike namespace, which let a repeated breach skip the strike-1 block.
+- The bash-wrapper, `apply_patch` body, and env-prefix evasion gaps were closed and live-validated on Codex on 2026-06-16. A wrapped or env-prefixed gh post and a banned word inside an `apply_patch` body are now caught; the full canonical rules still write cleanly through `apply_patch` under the disclosure override.
 
 ## Fail-closed and disclosure
 
