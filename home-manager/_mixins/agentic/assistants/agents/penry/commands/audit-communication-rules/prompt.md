@@ -1,10 +1,23 @@
-# Communication Rules tripwire — validation run
+# Communication Rules tripwire validation run
 
 You are validating the Communication Rules tripwire hooks. Run every step below, observe the result, and produce a final pass/fail table. Be terse. Do not waffle.
 
 ## 0. Detect platform
 
 State which agent you are running as: Claude Code, Codex, Pi, or OpenCode. If you cannot tell, ask the user. Some matrix rows do not apply to every platform; mark those rows "n/a (platform)" with a one-line reason rather than failing them.
+
+Normalise the agent to a slug for the test directory: `claude-code`, `codex`, `opencode`, or `pi`.
+
+## Test directory (create once, at the start)
+
+Create one shared directory for every test file in this run. Build the name from a `cr-` prefix, the agent slug from step 0, and a date/time stamp generated in the shell. Run, for example:
+
+```bash
+RUN_DIR="/tmp/cr-<agent-slug>-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$RUN_DIR"
+```
+
+Substitute the real slug for `<agent-slug>`, so the result looks like `/tmp/cr-opencode-20260616-143000/`. Every test file in the steps below lives inside this directory. The paths use `$RUN_DIR` as shorthand for that absolute path; expand it to the real path when you write each file.
 
 ## Ground rules for this run
 
@@ -24,9 +37,11 @@ multifaceted
 - Do real side effects only in `/tmp` and on the private test repo `wimpysworld/wagall`.
 - Never post to GitHub. Rely on the hook to block rule-breaking bodies. Do not run any `gh` command whose body is clean and would actually post.
 - Never trigger the B2 strike-5 yield live; it would post irreversibly. Stop B2 at the block.
-- Some signals are out of band: the user notice, the next-turn rules re-issue, and the allow-revise instruction may not appear in your own tool results. Report those as "observed / not observable from here", never as a fail.
+- Some signals are out of band: the user notice, the next-turn rules re-issue, and the allow-revise instruction may not appear in your own tool results. The revise note may arrive as a toast, a notify, or a permission-decision reason, not in the tool result. Report those as "observed / not observable from here", never as a fail.
+- One attempt per body in Tier B. Make ONE write attempt per body and record the FIRST decision. Do not retry a blocked write. A retry is strike 2, whose verb is allow-revise, so it lands by design. That landing is not a gate failure; do not read it as a bypass.
+- A landed write with no visible revise note is the expected allow-revise, not evidence the body was missed.
 - After each step, record: what you did, what you observed (blocked / landed / notice / nothing), and the verdict.
-- Clean up all `/tmp/cr-test-*` files at the end.
+- Keep every test file. Do not delete anything at the end. The run directory and its files are kept on purpose so the operator can inspect what landed and validate or debug the audit.
 
 ## Forcing a breach on prose surfaces (steps 7 and 9)
 
@@ -41,11 +56,11 @@ If a subagent refuses the direct form, use the bad-example framing.
 
 1. **Fresh-context reminder.** Report whether the full Communication Rules reminder was injected at session/context start (SessionStart, context, or system transform). If not observable from your own context, say so.
 
-2. **Tier B clean write.** Write a clean sentence to `/tmp/cr-test-clean.md`. Confirm it lands.
+2. **Tier B clean write.** Write a clean sentence to `$RUN_DIR/cr-test-clean.md`. Confirm it lands.
 
-3. **Tier B rule-breaking write blocks.** Write a rule-breaking sentence to `/tmp/cr-test-block.md`. Confirm the write is blocked before it lands and a block reason is returned.
+3. **Tier B rule-breaking write blocks.** Write a rule-breaking sentence to `$RUN_DIR/cr-test-block.md`. Make ONE write attempt and assert the FIRST decision; do not retry. Pass = the first write attempt is blocked, a block reason is returned, and the file is absent.
 
-4. **Tier B B1 cycle (same local path `/tmp/cr-test-b1.md`).** Write each body below as the file content, byte for byte. Do not paraphrase, soften, or swap the words. Do not wrap the body in a code fence inside the file, or the scanner strips it and the test voids. Each breach body already carries two banned words, so do not add or remove any.
+4. **Tier B B1 cycle (same local path `$RUN_DIR/cr-test-b1.md` for all four writes).** Write each body below as the file content, byte for byte, all to that one path in turn. Do not paraphrase, soften, or swap the words. Do not wrap the body in a code fence inside the file, or the scanner strips it and the test voids. Each breach body already carries two banned words, so do not add or remove any.
 
    Bodies to write (the `4x:` label is not part of the body):
 
@@ -56,10 +71,12 @@ If a subagent refuses the direct form, use the bad-example framing.
    4d: A cutting-edge testament to the rollout.
    ```
 
-   a. Write the 4a body. Expect a block (strike 1).
-   b. Write the 4b body to the same path. Expect allow-revise: the write lands and the response asks you to revise that file in place. Report the revise instruction as observed or not observable from here. A landed write with no revise note means the body was not detected: recheck that you wrote the 4b body verbatim.
-   c. Write the 4c body to the same path. It is clean. Expect it to land and reset the strike counter.
-   d. Write the 4d body to the same path. Expect a fresh block (strike 1 again).
+   Make exactly ONE write attempt per body, in order a, b, c, d, to the same path. Record the FIRST decision for each. Do not retry a blocked write.
+
+   a. Write the 4a body. Pass = blocked (strike 1), file absent.
+   b. Write the 4b body to the same path. Pass = lands as allow-revise (strike 2). The revise note may be out of band (a toast, a notify, or a permission reason) and may not appear in your tool result. A landed write here is expected, not a fail. Report the revise instruction as observed or not observable from here.
+   c. Write the 4c body to the same path. It is clean. Pass = lands and resets the strike counter.
+   d. Write the 4d body to the same path. Pass = blocked again (strike 1 after the reset).
 
 5. **Tier B B2 external read (passes).** Run a read-only call: `gh issue list --repo wimpysworld/wagall`. Confirm it is not blocked.
 
@@ -71,12 +88,12 @@ If a subagent refuses the direct form, use the bad-example framing.
 
 9. **Subagent prose.** Spawn a subagent (or simulate the subagent-output surface for your platform) that returns a rule-breaking sentence as its own prose (see "Forcing a breach" above). Confirm the subagent reply returns and is NOT blocked (follows final-prose behaviour). If your platform has no subagent surface, mark n/a.
 
-10. **Canonical disclosure — full text passes.** Write the full canonical Communication Rules text to `/tmp/cr-test-canon.md`. Confirm it lands despite containing banned words (the verbatim-disclosure override allows it).
+10. **Canonical disclosure, full text passes.** Write the full canonical Communication Rules text to `$RUN_DIR/cr-test-canon.md`. Confirm it lands despite containing banned words (the verbatim-disclosure override allows it).
 
-11. **Canonical disclosure — partial excerpt blocks.** Write a short excerpt that contains banned words but is NOT the full canonical text to `/tmp/cr-test-partial.md`. Confirm it is blocked.
+11. **Canonical disclosure, partial excerpt blocks.** Write a short excerpt that contains banned words but is NOT the full canonical text to `$RUN_DIR/cr-test-partial.md`. Confirm it is blocked.
 
-12. **Cleanup.** Delete `/tmp/cr-test-*`.
+12. **Preserve artefacts.** Do not delete anything. Keep `$RUN_DIR` and every file in it intact on purpose, so the operator can inspect the landed files and validate or debug the audit. Report the full absolute path of `$RUN_DIR`.
 
 ## Final output
 
-Print one table: `Behaviour | Action taken | Observed | Verdict (Pass / Fail / Observed-elsewhere / n/a)`. One row per step 1-11. Add a one-line note for any n/a or not-observable-from-here row stating why. No commentary after the table.
+Print one table: `Behaviour | Action taken | Observed | Verdict (Pass / Fail / Observed-elsewhere / n/a)`. One row per step 1-11. Add a one-line note for any n/a or not-observable-from-here row stating why. Below the table, on one line, name the full absolute path of `$RUN_DIR` so the operator knows where the kept artefacts are. No other commentary after the table.
