@@ -137,6 +137,60 @@ async function loadShim(id?: string): Promise<Loaded> {
   return { handlers, notifications, ctx };
 }
 
+// Load a shim instance whose adapterPath points at a STUB core that always
+// prints the given decision JSON (and answers the `block-message` probe with the
+// rules text). This exercises the tool_call mapping for a value the real core
+// never emits (an unknown decision), so the test can prove the gating surface
+// fails closed. Each call uses its own temp HOME so the module re-reads config.
+async function loadShimWithStubDecision(decisionJson: string): Promise<Loaded> {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-shim-stub-"));
+  const configDir = path.join(home, ".pi/agent/extensions/communication-rules");
+  fs.mkdirSync(configDir, { recursive: true });
+  const rulesPath = path.join(home, "rules.md");
+  const correctionPromptPath = path.join(home, "correction-prompt.md");
+  fs.writeFileSync(rulesPath, "Communication Rules body.\n", "utf-8");
+  fs.writeFileSync(correctionPromptPath, "Correction.\n", "utf-8");
+  const stub = path.join(home, "stub-core");
+  const q = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
+  fs.writeFileSync(
+    stub,
+    [
+      "#!/usr/bin/env bash",
+      'if [ "$1" = "block-message" ]; then printf %s "Communication Rules block message."; exit 0; fi',
+      `printf %s ${q(decisionJson)}`,
+      "",
+    ].join("\n"),
+    "utf-8",
+  );
+  fs.chmodSync(stub, 0o755);
+  fs.writeFileSync(
+    path.join(configDir, "config.json"),
+    JSON.stringify({ adapterPath: stub, rulesPath, correctionPromptPath }),
+    "utf-8",
+  );
+  process.env.HOME = home;
+  const handlers = new Map<string, Handler>();
+  const notifications: Array<{ text: string; level: string }> = [];
+  const mod = (await import(`${pathToFileURL(extension).href}?${Date.now()}`)) as {
+    default: (pi: { on(event: string, handler: Handler): void }) => void;
+  };
+  mod.default({
+    on(event, handler) {
+      handlers.set(event, handler);
+    },
+  });
+  const ctx = {
+    hasUI: true,
+    ui: {
+      notify(text: string, level: string): void {
+        notifications.push({ text, level });
+      },
+    },
+  };
+  process.env.HOME = tempHome;
+  return { handlers, notifications, ctx };
+}
+
 // Probe the raw core decision the same way the shim spawns it, so the test can
 // assert `surface`, which the Pi return shape does not carry.
 function coreDecision(event: string, payload: unknown): Decision {
@@ -260,6 +314,29 @@ test("Per-session reset: real-shaped events with no payload session_id strike in
   // counter still walks within one session.
   const secondA = toolCallA!(resetPayload(), a.ctx);
   assert.equal(secondA, undefined, "session A strike 2 should allow-revise (undefined), not block");
+});
+
+test("Default-deny: an unknown tool_call decision blocks, a clean pass allows", async () => {
+  // An unrecognised decision on this gating surface must fail closed: the shim
+  // returns a block object (default-deny), matching Tier B fail-closed.
+  const unknown = await loadShimWithStubDecision(
+    JSON.stringify({ decision: "surprise", notice: "", level: "error", inject_base_rules: false, append_correction: false }),
+  );
+  const unknownCall = unknown.handlers.get("tool_call");
+  assert.ok(unknownCall, "tool_call handler registered");
+  const blocked = unknownCall!(b1Payload(), unknown.ctx) as { block?: boolean } | undefined;
+  assert.equal(blocked?.block, true, "an unknown decision should block (fail closed)");
+
+  // A clean pass still allows the tool to run: the shim returns undefined and
+  // does not notify.
+  const clean = await loadShimWithStubDecision(
+    JSON.stringify({ decision: "pass", notice: "", level: "warning", inject_base_rules: false, append_correction: false }),
+  );
+  const cleanCall = clean.handlers.get("tool_call");
+  assert.ok(cleanCall, "tool_call handler registered");
+  const allowed = cleanCall!(b1Payload(), clean.ctx);
+  assert.equal(allowed, undefined, "a clean pass should allow (undefined), not block");
+  assert.equal(clean.notifications.length, 0, "a clean pass should not notify");
 });
 
 test("Tier A facing: context handler appends to live event.messages", async () => {

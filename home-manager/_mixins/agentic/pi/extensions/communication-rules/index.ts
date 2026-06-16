@@ -72,12 +72,16 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
   });
   pi.on("tool_call", (event, ctx) => {
     const d = decide(config, "tool_call", event, ctx);
-    // `yield` (B2 cap) and `allow-revise` (B1 strike 2+) are non-blocking allows: notify, let the tool run. Only `block` returns a block object.
-    if (d.decision === "yield" || d.decision === "allow-revise") notify(ctx, d.notice, d.level);
+    // `yield` (B2 cap) and `allow-revise` (B1 strike 2+) are non-blocking allows: notify, let the tool run.
+    if (d.decision === "yield" || d.decision === "allow-revise") { notify(ctx, d.notice, d.level); return undefined; }
+    // A clean pass lets the tool run.
+    if (d.decision === "pass") return undefined;
     // A middle B2 block carries the short nudge in `d.notice`; the first and
     // penultimate blocks carry an empty notice and re-issue the full cached
-    // rules. So prefer the notice when set, fall back to the full message.
-    return d.decision === "block" ? { block: true, reason: d.notice || blockMessage(config) } : undefined;
+    // rules. So prefer the notice when set, fall back to the full message. Any
+    // unrecognised decision fails closed on this gating surface: block with the
+    // full cached rules (default-deny), matching Tier B fail-closed.
+    return { block: true, reason: d.notice || blockMessage(config) };
   });
   pi.on("message_end", (event, ctx) => {
     const d = decide(config, "message_end", event, ctx);

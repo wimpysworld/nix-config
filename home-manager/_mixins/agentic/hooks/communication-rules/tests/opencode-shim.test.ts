@@ -84,6 +84,39 @@ async function loadShim(): Promise<Hooks> {
   return mod.CommunicationRules({ client });
 }
 
+// Load a plugin copy whose scanner token points at a STUB core that always
+// prints the given decision JSON. This exercises the shim's decision mapping for
+// a value the real core never emits (an unknown decision), so the test can prove
+// the gating surface fails closed. Returns the loaded hooks.
+async function loadShimWithStubDecision(decisionJson: string): Promise<Hooks> {
+  toasts = [];
+  const stub = path.join(tempDir, `stub-core-${Date.now()}`);
+  fs.writeFileSync(
+    stub,
+    ["#!/usr/bin/env bash", `printf '%s' ${`'${decisionJson.replaceAll("'", "'\\''")}'`}`, ""].join("\n"),
+    "utf-8",
+  );
+  fs.chmodSync(stub, 0o755);
+  const pluginText = fs
+    .readFileSync(pluginSource, "utf-8")
+    .replaceAll("@tripwireScanner@", stub)
+    .replaceAll("@tripwireRules@", path.join(tempDir, "rules.md"))
+    .replaceAll("@tripwireCorrectionPrompt@", path.join(tempDir, "correction-prompt.md"));
+  const pluginFile = path.join(tempDir, `plugin-stub-${Date.now()}.ts`);
+  fs.writeFileSync(pluginFile, pluginText, "utf-8");
+  const client = {
+    tui: {
+      async showToast(input: ToastInput): Promise<void> {
+        toasts.push(input.body.message);
+      },
+    },
+  };
+  const mod = (await import(`${pluginFile}?${Date.now()}`)) as {
+    CommunicationRules: (ctx: { client?: unknown }) => Promise<Hooks>;
+  };
+  return mod.CommunicationRules({ client });
+}
+
 // Probe the raw core decision the same way the shim spawns it, so the test can
 // assert `surface`, which the plugin outcome does not carry.
 function coreDecision(event: string, payload: unknown): Decision {
@@ -242,6 +275,42 @@ test("Tier A facing: text.complete writes live output.text and toasts", async ()
   await complete({ event: "message.final" }, output);
   expect(output.text).toContain(decision.notice);
   expect(toasts.length).toBe(toastsBefore + 1);
+});
+
+test("Default-deny: an unknown decision on tool.execute.before throws, a clean pass allows", async () => {
+  // An unrecognised decision on this gating surface must fail closed: the shim
+  // throws (default-deny), matching Tier B fail-closed.
+  const unknown = await loadShimWithStubDecision(
+    JSON.stringify({
+      decision: "surprise",
+      surface: "B1",
+      level: "warning",
+      notice: "",
+      inject_base_rules: false,
+      append_correction: false,
+      block_message: "",
+    }),
+  );
+  await expect(
+    unknown["tool.execute.before"]({ tool: { name: "write" } }, { args: {} }),
+  ).rejects.toThrow();
+
+  // A clean pass still allows the tool to run: the shim returns without throwing
+  // and emits no toast.
+  const clean = await loadShimWithStubDecision(
+    JSON.stringify({
+      decision: "pass",
+      surface: "B1",
+      level: "warning",
+      notice: "",
+      inject_base_rules: false,
+      append_correction: false,
+      block_message: "",
+    }),
+  );
+  const toastsBefore = toasts.length;
+  await clean["tool.execute.before"]({ tool: { name: "write" } }, { args: {} });
+  expect(toasts.length).toBe(toastsBefore);
 });
 
 test("Tier A inject: chat.system.transform pushes the rules into live output.system", async () => {
