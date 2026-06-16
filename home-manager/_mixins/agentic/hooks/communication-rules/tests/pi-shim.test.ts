@@ -111,8 +111,10 @@ interface Loaded {
 
 // Load the real shim and capture the handlers it registers on `pi.on`. The ctx
 // is a minimal Pi ExtensionContext whose `ui.notify` records calls, so the test
-// asserts the shim's notify side effect.
-async function loadShim(): Promise<Loaded> {
+// asserts the shim's notify side effect. When `id` is given, the ctx also
+// carries a `sessionManager.getSessionId` returning it, matching Pi's real
+// ExtensionContext, so the shim threads a per-session id to the core.
+async function loadShim(id?: string): Promise<Loaded> {
   const handlers = new Map<string, Handler>();
   const notifications: Array<{ text: string; level: string }> = [];
   const mod = (await import(pathToFileURL(extension).href)) as {
@@ -130,6 +132,7 @@ async function loadShim(): Promise<Loaded> {
         notifications.push({ text, level });
       },
     },
+    ...(id !== undefined ? { sessionManager: { getSessionId: (): string => id } } : {}),
   };
   return { handlers, notifications, ctx };
 }
@@ -221,6 +224,42 @@ test("B1 allow-revise: a second breach to the same target allows the write and n
   const decision = coreDecision("tool_call", b1Payload());
   assert.equal(decision.surface, "B1", "B1 allow-revise surface is B1");
   assert.equal(decision.decision, "allow-revise", "B1 strike 2+ decision is allow-revise");
+});
+
+// The path the live audit breached. A real Pi `tool_call` event carries no
+// `session_id`, so without the shim threading Pi's ctx session id the core
+// would share one strike namespace across every session and never reset.
+const RESET_TARGET = "/tmp/donatello-reset.md";
+function resetPayload(): unknown {
+  return {
+    type: "tool_call",
+    toolName: "write",
+    toolCallId: "call-reset",
+    input: { path: RESET_TARGET, content: `This body uses ${BANNED} here.` },
+  };
+}
+
+test("Per-session reset: real-shaped events with no payload session_id strike independently per ctx session", async () => {
+  // Session A, first breach to the target: strike 1 blocks.
+  const a = await loadShim("session-A");
+  const toolCallA = a.handlers.get("tool_call");
+  assert.ok(toolCallA, "tool_call handler registered");
+  const firstA = toolCallA!(resetPayload(), a.ctx) as { block?: boolean } | undefined;
+  assert.equal(firstA?.block, true, "session A strike 1 should block");
+
+  // Session B, SAME breach to the SAME path: strike 1 blocks again because the
+  // ctx session id gives B its own namespace. Before the fix B would share A's
+  // counter and see strike 2 (allow-revise). This guard catches the live bug.
+  const b = await loadShim("session-B");
+  const toolCallB = b.handlers.get("tool_call");
+  assert.ok(toolCallB, "tool_call handler registered");
+  const firstB = toolCallB!(resetPayload(), b.ctx) as { block?: boolean } | undefined;
+  assert.equal(firstB?.block, true, "session B strike 1 should block independently of session A");
+
+  // Session A again, SAME path: strike 2 allows the write (allow-revise), so the
+  // counter still walks within one session.
+  const secondA = toolCallA!(resetPayload(), a.ctx);
+  assert.equal(secondA, undefined, "session A strike 2 should allow-revise (undefined), not block");
 });
 
 test("Tier A facing: context handler appends to live event.messages", async () => {
