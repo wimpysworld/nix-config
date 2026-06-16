@@ -27,9 +27,19 @@ function loadConfig(): Config | undefined {
   } catch { /* fall through */ }
   return undefined;
 }
+// Read Pi's per-session id defensively. Pi's real `tool_call` event carries no
+// session, so the core would otherwise share one strike namespace across all
+// sessions. Threading this id gives each session its own counter.
+function sessionId(ctx: ExtensionContext | undefined): string {
+  try { return ctx?.sessionManager?.getSessionId?.() ?? ""; } catch { return ""; }
+}
 // Spawn the core and parse its one-line decision; a failed spawn fails closed.
-function decide(config: Config, event: string, payload: unknown): Decision {
-  const r = spawnSync(config.adapterPath, ["pi", event], { encoding: "utf-8", input: JSON.stringify(payload ?? {}) });
+// The session id is merged at the top level of the payload, where the core
+// reads it, preferring Pi's live id and falling back to any id already present.
+function decide(config: Config, event: string, payload: unknown, ctx?: ExtensionContext): Decision {
+  const base = (payload && typeof payload === "object") ? payload as Record<string, unknown> : {};
+  const merged = { ...base, session_id: sessionId(ctx) || base.session_id };
+  const r = spawnSync(config.adapterPath, ["pi", event], { encoding: "utf-8", input: JSON.stringify(merged) });
   try { if (!r.error && r.status === 0) return JSON.parse((r.stdout ?? "").trim()) as Decision; } catch { /* fall through */ }
   return { decision: "block", notice: "", level: "error", inject_base_rules: false, append_correction: false };
 }
@@ -52,8 +62,8 @@ function notify(ctx: ExtensionContext, text: string, level: Level): void {
 export default function registerCommunicationRules(pi: ExtensionAPI): void {
   const config = loadConfig();
   if (!config) return;
-  pi.on("context", (event) => {
-    const d = decide(config, "context", event);
+  pi.on("context", (event, ctx) => {
+    const d = decide(config, "context", event, ctx);
     const additions: AgentMessage[] = [];
     if (d.inject_base_rules) additions.push(message(`Communication Rules:\n${readText(config.rulesPath)}`));
     if (d.append_correction) additions.push(message(readText(config.correctionPromptPath)));
@@ -61,7 +71,7 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
     return additions.length > 0 ? { messages: [...messages, ...additions] } : undefined;
   });
   pi.on("tool_call", (event, ctx) => {
-    const d = decide(config, "tool_call", event);
+    const d = decide(config, "tool_call", event, ctx);
     // `yield` (B2 cap) and `allow-revise` (B1 strike 2+) are non-blocking allows: notify, let the tool run. Only `block` returns a block object.
     if (d.decision === "yield" || d.decision === "allow-revise") notify(ctx, d.notice, d.level);
     // A middle B2 block carries the short nudge in `d.notice`; the first and
@@ -70,12 +80,12 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
     return d.decision === "block" ? { block: true, reason: d.notice || blockMessage(config) } : undefined;
   });
   pi.on("message_end", (event, ctx) => {
-    const d = decide(config, "message_end", event);
+    const d = decide(config, "message_end", event, ctx);
     notify(ctx, d.notice, d.level);
     return undefined;
   });
-  pi.on("tool_result", (event) => {
-    if (decide(config, "tool_result", event).decision !== "block") return undefined;
+  pi.on("tool_result", (event, ctx) => {
+    if (decide(config, "tool_result", event, ctx).decision !== "block") return undefined;
     const details = event && typeof event === "object" ? (event as { details?: unknown }).details : undefined;
     return { content: [{ type: "text", text: blockMessage(config) } as TextContent], details, isError: true };
   });
