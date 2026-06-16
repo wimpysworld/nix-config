@@ -679,6 +679,54 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
         },
     )
 
+    # Surface-classifier flag coverage: gh post flags the OLD hand-rolled list
+    # missed (``--notes-file`` bare and ``=`` forms, short ``-n``) must classify
+    # B2 external and walk the five-strike cap, never fall to B1 allow-revise (the
+    # path on which the post executes). No body flag the old list knew is present,
+    # so the missing flag alone decides the surface. The cap-walk IS the proof: a
+    # misclassified B1 gate would allow-revise on strike 2, not deny across all
+    # strikes. The two ``--notes-file`` cases read a missing file, which fails the
+    # body scan closed; the close still routes through the chosen surface, so the
+    # B2 cap-walk shows the surface caught the flag. The ``-n`` body is scanned
+    # inline and carries an assembled banned word, never a plain literal.
+    _gh_flag_commands = {
+        "gh-notes-file-bare": (
+            "gh issue create --repo o/r --notes-file /tmp/cc-nf.md",
+            "gh issue create",
+        ),
+        "gh-notes-file-eq": (
+            "gh issue create --repo o/r --notes-file=/tmp/cc-nf.md",
+            "gh issue create",
+        ),
+        "gh-release-short-n": (
+            'gh release create v1 -n "a %s body"' % _banned_env,
+            "gh release create",
+        ),
+    }
+
+    def _gh_flag_post(session: str, command: str) -> dict:
+        return {
+            "session_id": session,
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+        }
+
+    for label, (command, subcommand) in _gh_flag_commands.items():
+        reset_strikes()
+        for nudge in (False, True, True, False):
+            run_case(
+                label,
+                "PreToolUse",
+                _b2_block(nudge),
+                payload=_gh_flag_post("cc-%s" % label, command),
+            )
+        run_case(
+            "%s yield" % label,
+            "PreToolUse",
+            _b2_yield("Rules breach posted: %s" % subcommand),
+            payload=_gh_flag_post("cc-%s" % label, command),
+        )
+
     # Tier A facing prose: clean pass, breach notice, never block-then-reroll.
     run_case("stop-transcript-pass.json", "Stop", _PASS_TIERA)
     run_case("stop-transcript-block.json", "Stop", _FACING)
@@ -1365,6 +1413,46 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
             "input": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/pi-env-clean.md"},
         },
     )
+
+    # Surface-classifier flag coverage: the same gh post flags the OLD claude-code
+    # and codex list missed (``--notes-file`` bare and ``=`` forms, short ``-n``)
+    # must classify B2 external and walk the five-strike cap, never fall to B1
+    # allow-revise. Pi already classifies any gh command external by its leading
+    # token, so these guard that the body path holds at B2 here. The two
+    # ``--notes-file`` cases read a missing file, which fails the body scan closed
+    # to B2; the ``-n`` body is scanned inline and carries an assembled banned
+    # word, never a plain literal. The bash tool exposes no structured identifier,
+    # so the yield target is the tool name.
+    _gh_flag_commands = {
+        "gh-notes-file-bare": ("gh issue create --repo o/r --notes-file /tmp/pi-nf.md"),
+        "gh-notes-file-eq": ("gh issue create --repo o/r --notes-file=/tmp/pi-nf.md"),
+        "gh-release-short-n": ('gh release create v1 -n "a %s body"' % _banned_env),
+    }
+
+    def _gh_flag_post(session: str, command: str) -> dict:
+        return {
+            "session_id": session,
+            "type": "tool_call",
+            "toolName": "bash",
+            "toolCallId": "%s-call" % session,
+            "input": {"command": command},
+        }
+
+    for label, command in _gh_flag_commands.items():
+        reset_strikes()
+        for nudge in (False, True, True, False):
+            run_case(
+                label,
+                "tool_call",
+                _b2_block(nudge),
+                payload=_gh_flag_post("pi-%s" % label, command),
+            )
+        run_case(
+            "%s yield" % label,
+            "tool_call",
+            _b2_yield("Rules breach posted: bash"),
+            payload=_gh_flag_post("pi-%s" % label, command),
+        )
 
     # Tier A facing prose: a message_end breach (or extraction failure) never
     # blocks the reply; it sets the pending flag and emits the facing notice.
