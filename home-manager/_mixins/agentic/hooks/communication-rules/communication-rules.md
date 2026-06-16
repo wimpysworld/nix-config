@@ -17,3 +17,10 @@ Banned words:
 - Pleasantries: sure, certainly, of course, happy to.
 - Hedges: perhaps, might want to, could possibly, is likely.
 - LLM tells: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores.
+
+Enforcement:
+
+- A breach in a file write, edit, patch, or post is caught before it runs.
+- The first breach is blocked. Revise it to comply.
+- A later write may land with a request to revise the file in place. Treat that as a requirement to fix the file, not as approval.
+- Fix an external post body to comply before it goes out.
