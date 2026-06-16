@@ -29,6 +29,43 @@ from __future__ import annotations
 from core.types import Decision
 
 
+# --- Command agents: shared primitives -------------------------------------
+#
+# Claude Code and Codex share three byte-identical PreToolUse wire shapes: the
+# deny payload, the allow (yield) payload, and the Tier A facing systemMessage.
+# These primitives hold the one implementation; the per-agent functions below
+# delegate to them so the wire shapes stay byte-identical across both agents.
+
+
+def _command_deny(block_message: str) -> dict:
+    # The PreToolUse deny payload: permissionDecision "deny" with the block
+    # message as the reason, which re-issues the rules to the model.
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": block_message,
+        }
+    }
+
+
+def _command_allow(decision: Decision) -> dict:
+    # The PreToolUse allow (yield) payload: permissionDecision "allow" carrying
+    # the user-facing notice the state machine baked.
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "permissionDecisionReason": decision.notice,
+        }
+    }
+
+
+def _command_facing(decision: Decision) -> dict:
+    # The Tier A facing notice: a top-level systemMessage.
+    return {"systemMessage": decision.notice}
+
+
 # --- Command agents: Claude Code -------------------------------------------
 #
 # Mirror the emitters in ``adapters/claude-code.sh``:
@@ -45,13 +82,7 @@ def claude_code_deny(block_message: str) -> dict:
     not ``decision.notice``: a block carries no notice. The dispatcher resolves
     the block message text and passes it in.
     """
-    return {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": block_message,
-        }
-    }
+    return _command_deny(block_message)
 
 
 def claude_code_allow(decision: Decision) -> dict:
@@ -61,18 +92,12 @@ def claude_code_allow(decision: Decision) -> dict:
     operator notice naming the tool and target. The state machine baked the full
     text, so the responder copies it verbatim.
     """
-    return {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
-            "permissionDecisionReason": decision.notice,
-        }
-    }
+    return _command_allow(decision)
 
 
 def claude_code_facing(decision: Decision) -> dict:
     """The Tier A facing notice on Stop / SubagentStop: a top-level systemMessage."""
-    return {"systemMessage": decision.notice}
+    return _command_facing(decision)
 
 
 def claude_code_reissue(correction: str) -> dict:
@@ -162,29 +187,17 @@ def claude_code_response(
 
 def codex_deny(block_message: str) -> dict:
     """The Codex PreToolUse deny payload (codex.sh:62-69)."""
-    return {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": block_message,
-        }
-    }
+    return _command_deny(block_message)
 
 
 def codex_allow(decision: Decision) -> dict:
     """The Codex PreToolUse allow (yield) payload (codex.sh:71-78)."""
-    return {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
-            "permissionDecisionReason": decision.notice,
-        }
-    }
+    return _command_allow(decision)
 
 
 def codex_facing(decision: Decision) -> dict:
     """The Codex Tier A facing notice: a top-level systemMessage (codex.sh:136-142)."""
-    return {"systemMessage": decision.notice}
+    return _command_facing(decision)
 
 
 def codex_context(event_name: str, context_text: str) -> dict:

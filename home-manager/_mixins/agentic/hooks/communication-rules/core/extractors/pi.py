@@ -37,7 +37,12 @@ import shlex
 from typing import Any, TypeGuard
 
 from core.config import Config
-from core.detection import bash_prose_sink
+from core.detection import (
+    bash_prose_sink,
+    parse_command_line,
+    shell_c_inner_script,
+    strip_env_assignments,
+)
 from core.dispatch import (
     EVENT_CONTEXT,
     EVENT_FACING,
@@ -221,8 +226,32 @@ def is_external_surface(event: dict[str, Any], config: Config) -> bool:
     if is_record(input_value):
         command = input_value.get("command", input_value.get("cmd", input_value.get("script")))
         if isinstance(command, str):
-            stripped = command.lstrip()
-            return stripped.startswith("gh ") or stripped.startswith("gh-api-safe ")
+            return _command_leads_with_gh(command)
+    return False
+
+
+def _argv_leads_with_gh(argv: list[str]) -> bool:
+    # An argv whose first token (after stripping leading env assignments) is the
+    # gh CLI. Mirrors the old bare ``gh ``/``gh-api-safe `` prefix test on this
+    # surface: any gh command is external (B2) here, read or post.
+    stripped = strip_env_assignments(argv)
+    return bool(stripped) and stripped[0] in {"gh", "gh-api-safe"}
+
+
+def _command_leads_with_gh(command: str) -> bool:
+    # The Bash command is external (B2) when its leading token is the gh CLI. A
+    # leading env assignment (``GH_TOKEN=x gh ...``) is stripped first so it does
+    # not hide the gh command. A shell ``-c`` wrapper hides the command inside one
+    # token, so also unwrap the wrapper and test the inner script's leading token.
+    if _argv_leads_with_gh(command.split()):
+        return True
+    argv = parse_command_line(command)
+    if argv is not None:
+        inner = shell_c_inner_script(strip_env_assignments(argv))
+        if inner is not None:
+            inner_argv = parse_command_line(inner)
+            if inner_argv is not None and _argv_leads_with_gh(inner_argv):
+                return True
     return False
 
 

@@ -506,14 +506,21 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
         text = (CLAUDE_CODE_FX / name).read_text(encoding="utf-8")
         return text.replace("__TRANSCRIPT_DIR__", fixture_dir)
 
-    def run_case(name: str, event: str, expected: dict, existing_blocked: bool = False) -> None:
+    def run_case(
+        name: str,
+        event: str,
+        expected: dict,
+        existing_blocked: bool = False,
+        payload: dict | None = None,
+    ) -> None:
         nonlocal count
         case_env = dict(env)
         if existing_blocked:
             case_env["TRIPWIRE_EXISTING_BLOCKED"] = "1"
+        input_text = json.dumps(payload) if payload is not None else materialise(name)
         completed = subprocess.run(
             [sys.executable, str(SCANNER), "--rules", str(RULES), "claude-code", event],
-            input=materialise(name),
+            input=input_text,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -623,6 +630,53 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
         "pre-tool-use-bash-gh-post-target-block.json",
         "PreToolUse",
         _b2_yield("Rules breach posted: gh pr comment"),
+    )
+
+    # Env-prefix evasion: a leading "GH_TOKEN=x gh ..." or "FOO=bar printf ..."
+    # must NOT hide the command. The env assignment is stripped before the
+    # command-name checks, so the gh post still classifies B2 (walks the cap) and
+    # the printf write still classifies B1. The banned word is assembled from
+    # fragments, never a plain literal.
+    _banned_env = "rob" + "ust"
+
+    reset_strikes()
+    _env_gh_command = (
+        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'" % _banned_env
+    )
+
+    def _env_gh_post() -> dict:
+        return {
+            "session_id": "cc-env-gh",
+            "tool_name": "Bash",
+            "tool_input": {"command": _env_gh_command},
+        }
+
+    # The env-prefixed gh post is B2 external: it walks the five-strike cap, not
+    # the B1 allow-revise path. Strikes 1 and 4 carry full rules, 2 and 3 the
+    # nudge. Strike 5 yields. external_target reads the bare gh subcommand from
+    # the raw command string, where the leading token is the env assignment, so
+    # the yield target falls back to the tool label "Bash".
+    for nudge in (False, True, True, False):
+        run_case("env-prefix gh post", "PreToolUse", _b2_block(nudge), payload=_env_gh_post())
+    run_case(
+        "env-prefix gh post yield",
+        "PreToolUse",
+        _b2_yield("Rules breach posted: Bash"),
+        payload=_env_gh_post(),
+    )
+
+    # A clean env-prefixed command passes the gate: no banned word, no breach.
+    # The redirect sink survives the env strip, so the command is still read.
+    reset_strikes()
+    run_case(
+        "env-prefix clean",
+        "PreToolUse",
+        _PASS_TIERB,
+        payload={
+            "session_id": "cc-env-clean",
+            "tool_name": "Bash",
+            "tool_input": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/cc-env-clean.md"},
+        },
     )
 
     # Tier A facing prose: clean pass, breach notice, never block-then-reroll.
@@ -1261,6 +1315,55 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
         "tool-call-mcp-post-blocked.json",
         "tool_call",
         _b2_yield("Rules breach posted: mcp__linear__create_comment ISS-1"),
+    )
+
+    # Env-prefix evasion: a leading "GH_TOKEN=x gh ..." or "FOO=bar printf ..."
+    # must NOT hide the command. The env assignment is stripped before the
+    # leading-token check, so the gh post still classifies B2 (walks the cap) and
+    # the printf write still classifies B1. The banned word is assembled from
+    # fragments, never a plain literal.
+    _banned_env = "rob" + "ust"
+
+    reset_strikes()
+    _env_gh_command = (
+        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'" % _banned_env
+    )
+
+    def _env_gh_post() -> dict:
+        return {
+            "session_id": "pi-env-gh",
+            "type": "tool_call",
+            "toolName": "bash",
+            "toolCallId": "env-gh-call",
+            "input": {"command": _env_gh_command},
+        }
+
+    # The env-prefixed gh post is B2 external: it walks the five-strike cap, not
+    # the B1 allow-revise path. The bash tool with a command has no structured
+    # identifier, so the yield target falls back to the tool name "bash".
+    for nudge in (False, True, True, False):
+        run_case("env-prefix gh post", "tool_call", _b2_block(nudge), payload=_env_gh_post())
+    run_case(
+        "env-prefix gh post yield",
+        "tool_call",
+        _b2_yield("Rules breach posted: bash"),
+        payload=_env_gh_post(),
+    )
+
+    # A clean env-prefixed command passes the gate: no banned word, no breach.
+    # The redirect sink survives the env strip, so the command is still read.
+    reset_strikes()
+    run_case(
+        "env-prefix clean",
+        "tool_call",
+        _PASS_TIERB,
+        payload={
+            "session_id": "pi-env-clean",
+            "type": "tool_call",
+            "toolName": "bash",
+            "toolCallId": "env-clean-call",
+            "input": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/pi-env-clean.md"},
+        },
     )
 
     # Tier A facing prose: a message_end breach (or extraction failure) never

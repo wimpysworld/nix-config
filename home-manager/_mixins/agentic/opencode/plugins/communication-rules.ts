@@ -62,10 +62,15 @@ export const CommunicationRules = async (context: { client?: PluginClient } = {}
       const d = decide("tool.execute.before", { event: "tool.execute.before", ...(input as object), args: (output as { args?: unknown })?.args ?? {} });
       // B2 yield and B1 allow-revise both allow the write: toast and return.
       if (d.decision === "yield" || d.decision === "allow-revise") { void toast(client, d.notice); return; }
+      // A clean pass allows the tool to run.
+      if (d.decision === "pass") return;
       // A middle B2 block carries the short nudge in `d.notice`; the first and
       // penultimate blocks carry an empty notice and fall back to the full
       // block message (or the baked fallback).
       if (d.decision === "block") throw new Error(d.notice || d.block_message || FALLBACK_BLOCK);
+      // Any unrecognised decision fails closed on this gating surface: throw the
+      // full block message (or the baked fallback), matching Tier B fail-closed.
+      throw new Error(d.block_message || FALLBACK_BLOCK);
     },
     "experimental.text.complete": async (input: unknown, output: { text?: string }) => {
       const d = decide("message.final", { event: "message.final", surface: "final", ...(input as object), message: { content: output.text ?? "" } });

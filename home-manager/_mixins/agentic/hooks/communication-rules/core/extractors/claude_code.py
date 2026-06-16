@@ -39,28 +39,15 @@ from core.dispatch import (
     SCAN_TEXT,
     Extraction,
 )
-from core.detection import bash_prose_sink, read_text_file
+from core.detection import (
+    bash_prose_sink,
+    parse_command_line,
+    read_text_file,
+    shell_c_inner_script,
+    strip_env_assignments,
+)
+from core.extractors.codex import _argv_is_gh_post
 from core.types import ExtractorRecord
-
-
-# Body-bearing gh/gh-api-safe flags that mark a command as a post. Mirrors the
-# scanner's is_known_post_command signal so a gh post run through the Bash tool
-# is classified external (B2), the same as a post-capable MCP tool. This list is
-# the SURFACE-CHOICE signal only; the command body is scanned by scan_bash.
-_GH_POST_FLAGS = {
-    "-b",
-    "--body",
-    "-F",
-    "--body-file",
-    "-f",
-    "--field",
-    "--raw-field",
-    "--notes",
-    "-m",
-    "--message",
-    "-t",
-    "--title",
-}
 
 
 def is_post_capable_mcp_tool(tool_name: str, post_tool_terms: tuple[str, ...]) -> bool:
@@ -167,38 +154,27 @@ def collect_post_texts(value: Any, post_text_keys: frozenset[str], key: str = ""
     return []
 
 
-def is_bash_gh_post(command: str) -> bool:
-    # The Bash command is an external (B2) surface when its first token is gh or
-    # gh-api-safe and it carries a post signal: a body-bearing flag or a
-    # POST/PATCH/PUT method. Read-only gh calls stay local (B1). This is the
-    # SURFACE CHOICE only; the body is scanned by scan_bash.
-    try:
-        argv = command.split()
-    except AttributeError:
+def is_bash_gh_post(command: Any) -> bool:
+    # A Bash command is external (B2) when its first token is gh/gh-api-safe and
+    # it carries a post signal. A shell ``-c`` wrapper hides the gh post inside
+    # one token, so also unwrap the wrapper and test the inner script's argv: a
+    # wrapped ``gh issue create --body ...`` must classify as external too. The
+    # surface signal test is the shared ``_argv_is_gh_post`` in codex.py.
+    if not isinstance(command, str):
         return False
-    if not argv:
-        return False
-    first = argv[0]
-    if first not in {"gh", "gh-api-safe"}:
-        return False
-    for index, token in enumerate(argv):
-        if token in _GH_POST_FLAGS:
-            return True
-        if token.startswith(("--body=", "--body-file=", "--field=", "--raw-field=")):
-            return True
-        if token.startswith(("--notes=", "--message=", "--title=")):
-            return True
-        if token in {"-X", "--method"} and index + 1 < len(argv):
-            if argv[index + 1].upper() in {"POST", "PATCH", "PUT"}:
+    # Strip a leading env assignment (``GH_TOKEN=x gh ...``) so the gh leading
+    # token test sees the real command, not the assignment.
+    if _argv_is_gh_post(strip_env_assignments(command.split())):
+        return True
+    # The wrapper unwrap needs a shell-aware parse so the quoted inner script is
+    # one token; the naive split above keeps the cheap direct path unchanged.
+    argv = parse_command_line(command)
+    if argv is not None:
+        inner = shell_c_inner_script(strip_env_assignments(argv))
+        if inner is not None:
+            inner_argv = parse_command_line(inner)
+            if inner_argv is not None and _argv_is_gh_post(strip_env_assignments(inner_argv)):
                 return True
-        if token.startswith("--method=") and token.split("=", 1)[1].upper() in {
-            "POST",
-            "PATCH",
-            "PUT",
-        }:
-            return True
-        if token in {"--input"} or token.startswith("--input="):
-            return True
     return False
 
 
