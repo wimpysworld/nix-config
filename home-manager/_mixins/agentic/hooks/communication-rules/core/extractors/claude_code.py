@@ -41,12 +41,9 @@ from core.dispatch import (
 )
 from core.detection import (
     bash_prose_sink,
-    parse_command_line,
+    is_bash_gh_post,
     read_text_file,
-    shell_c_inner_script,
-    strip_env_assignments,
 )
-from core.extractors.codex import _argv_is_gh_post
 from core.types import ExtractorRecord
 
 
@@ -152,30 +149,6 @@ def collect_post_texts(value: Any, post_text_keys: frozenset[str], key: str = ""
         return output
 
     return []
-
-
-def is_bash_gh_post(command: Any) -> bool:
-    # A Bash command is external (B2) when its first token is gh/gh-api-safe and
-    # it carries a post signal. A shell ``-c`` wrapper hides the gh post inside
-    # one token, so also unwrap the wrapper and test the inner script's argv: a
-    # wrapped ``gh issue create --body ...`` must classify as external too. The
-    # surface signal test is the shared ``_argv_is_gh_post`` in codex.py.
-    if not isinstance(command, str):
-        return False
-    # Strip a leading env assignment (``GH_TOKEN=x gh ...``) so the gh leading
-    # token test sees the real command, not the assignment.
-    if _argv_is_gh_post(strip_env_assignments(command.split())):
-        return True
-    # The wrapper unwrap needs a shell-aware parse so the quoted inner script is
-    # one token; the naive split above keeps the cheap direct path unchanged.
-    argv = parse_command_line(command)
-    if argv is not None:
-        inner = shell_c_inner_script(strip_env_assignments(argv))
-        if inner is not None:
-            inner_argv = parse_command_line(inner)
-            if inner_argv is not None and _argv_is_gh_post(strip_env_assignments(inner_argv)):
-                return True
-    return False
 
 
 def is_external_surface(tool_name: str, tool_input: dict[str, Any], config: Config) -> bool:
