@@ -25,7 +25,7 @@ from dataclasses import asdict, dataclass
 
 from core import responses, state
 from core.config import Config
-from core.detection import scan_bash, scan_prose
+from core.detection import is_bash_gh_post, scan_bash, scan_prose
 from core.types import Decision, ExtractorRecord
 
 # The fixed set of agents the dispatch form accepts. Validated against the
@@ -146,7 +146,9 @@ def _stub_extract(agent: str, event: str, payload: dict) -> Extraction:
             # The stub classifies surface from the same command string the
             # adapters classify on; the BODY still routes through scan_bash. A
             # gh/gh-api-safe post is external (B2), everything else local (B1).
-            surface = "external" if _looks_like_external_bash(command) else "local"
+            # ``is_bash_gh_post`` is the canonical surface helper shared with the
+            # migrated extractors, so the stub cannot drift on which flags count.
+            surface = "external" if is_bash_gh_post(command) else "local"
             return Extraction(
                 record=record,
                 event_class=EVENT_GATE,
@@ -194,49 +196,6 @@ def _extract(agent: str, event: str, payload: dict, config: Config | None) -> Ex
         return opencode.extract(event, payload, extractor_config)
 
     return _stub_extract(agent, event, payload)
-
-
-def _looks_like_external_bash(command: str) -> bool:
-    """Surface-only classification of a Bash command: external versus local.
-
-    This is the SURFACE CHOICE, not body detection. It mirrors the adapters'
-    external-surface check (``adapters/claude-code.py`` lines 220-268): a
-    ``gh`` / ``gh-api-safe`` first token plus a post signal is external (B2).
-    The command body is NEVER scanned here; that goes through ``scan_bash`` in
-    ``_run_scan``. Keeping the two apart is the proposal's bash-routing rule.
-    """
-    argv = command.split()
-    if not argv or argv[0] not in {"gh", "gh-api-safe"}:
-        return False
-    post_flags = {
-        "-b",
-        "--body",
-        "-F",
-        "--body-file",
-        "-f",
-        "--field",
-        "--raw-field",
-        "--notes",
-        "-m",
-        "--message",
-        "-t",
-        "--title",
-    }
-    for index, token in enumerate(argv):
-        if token in post_flags:
-            return True
-        if token.startswith(("--body=", "--body-file=", "--field=", "--raw-field=")):
-            return True
-        if token.startswith(("--notes=", "--message=", "--title=")):
-            return True
-        if token in {"-X", "--method"} and index + 1 < len(argv):
-            if argv[index + 1].upper() in {"POST", "PATCH", "PUT"}:
-                return True
-        if token.startswith("--method=") and token.split("=", 1)[1].upper() in {"POST", "PATCH", "PUT"}:
-            return True
-        if token == "--input" or token.startswith("--input="):
-            return True
-    return False
 
 
 def _run_scan(extraction: Extraction, config: Config) -> str:

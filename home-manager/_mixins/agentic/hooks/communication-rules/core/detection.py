@@ -476,6 +476,11 @@ def has_body_flag(argv: list[str], index: int) -> bool:
         return True
     if token.startswith("--field=") or token.startswith("--raw-field="):
         return True
+    # The ``=`` forms of the body-file flags (``--body-file=`` and
+    # ``--notes-file=``) must count too, so both the surface classifier and the
+    # body scanner recognise a single source of truth for these flags.
+    if token.startswith("--body-file=") or token.startswith("--notes-file="):
+        return True
     return False
 
 
@@ -499,48 +504,16 @@ def has_api_post_signal(argv: list[str]) -> bool:
     return False
 
 
-# Body-bearing gh/gh-api-safe flags that mark a command as a post. This list is
-# the SURFACE-CHOICE signal only; the command body is scanned by scan_bash.
-_GH_POST_FLAGS = {
-    "-b",
-    "--body",
-    "-F",
-    "--body-file",
-    "-f",
-    "--field",
-    "--raw-field",
-    "--notes",
-    "-m",
-    "--message",
-    "-t",
-    "--title",
-}
-
-
 def _argv_is_gh_post(argv: list[str]) -> bool:
     # Test a parsed argv for a gh/gh-api-safe leading token carrying a post
-    # signal: a body-bearing flag or a POST/PATCH/PUT method.
+    # signal. The signal is judged by the SAME canonical helpers the body
+    # scanner uses (``has_body_flag`` and ``has_api_post_signal``), so the
+    # surface choice and the body scan can never drift on which flags count.
     if not argv or argv[0] not in {"gh", "gh-api-safe"}:
         return False
-    for index, token in enumerate(argv):
-        if token in _GH_POST_FLAGS:
-            return True
-        if token.startswith(("--body=", "--body-file=", "--field=", "--raw-field=")):
-            return True
-        if token.startswith(("--notes=", "--message=", "--title=")):
-            return True
-        if token in {"-X", "--method"} and index + 1 < len(argv):
-            if argv[index + 1].upper() in {"POST", "PATCH", "PUT"}:
-                return True
-        if token.startswith("--method=") and token.split("=", 1)[1].upper() in {
-            "POST",
-            "PATCH",
-            "PUT",
-        }:
-            return True
-        if token == "--input" or token.startswith("--input="):
-            return True
-    return False
+    if any(has_body_flag(argv, index) for index in range(len(argv))):
+        return True
+    return has_api_post_signal(argv)
 
 
 def is_bash_gh_post(command: Any) -> bool:
