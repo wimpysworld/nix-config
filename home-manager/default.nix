@@ -119,7 +119,6 @@ in
     sessionVariables = {
       COLORTERM = "truecolor";
       EDITOR = "fresh";
-      GIT_EDITOR = "fresh";
       SUDO_EDITOR = "fresh";
       SYSTEMD_EDITOR = "fresh";
       VISUAL = "fresh";

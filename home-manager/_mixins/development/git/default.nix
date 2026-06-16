@@ -21,6 +21,20 @@ let
     ];
     text = builtins.readFile ./pre-commit-setup.sh;
   };
+  freshGitEditor = pkgs.writeShellApplication {
+    name = "fresh-git-editor";
+    runtimeInputs = with pkgs; [
+      fresh
+    ];
+    text = ''
+      # Git appends the message file as the final argument with no position.
+      # Append :1 so Fresh puts the cursor at line 1, the top of the commit.
+      # Use the documented session and wait form so the commit blocks until
+      # the buffer is closed.
+      file="''${*: -1}"
+      exec fresh --cmd session open-file . --wait "''${file}:1"
+    '';
+  };
   shellAliases = {
     gitso = "${pkgs.git}/bin/git --signoff";
   };
@@ -48,6 +62,7 @@ in
         precommitSetup
       ];
     sessionVariables = {
+      GIT_EDITOR = "${freshGitEditor}/bin/fresh-git-editor";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
     };
   };
@@ -86,8 +101,10 @@ in
           };
           core = {
             # Use the fresh terminal editor for Git commits, including the
-            # Lazygit commit and reword paths.
-            editor = "fresh";
+            # Lazygit commit and reword paths. The wrapper opens the commit
+            # message at line 1, column 1 so the cursor starts at the top
+            # instead of a restored per-file position.
+            editor = "${freshGitEditor}/bin/fresh-git-editor";
           };
           diff = {
             colorMoved = "default";
