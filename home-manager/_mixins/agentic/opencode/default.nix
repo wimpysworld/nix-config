@@ -64,6 +64,40 @@ let
       unwrapped = opencodeUpstreamPackage;
     };
   };
+  # Resume the most recent session by default. The gemini-key env wrapper stays
+  # in opencodePackage; this launcher only injects `--continue` for interactive
+  # launches and execs the wrapped binary. Resume is skipped for subcommands
+  # (run, mcp, serve, ...), help/version, and when the caller already selects a
+  # session, so non-interactive and management commands are untouched.
+  opencodeLauncherPackage =
+    (pkgs.writeShellApplication {
+      name = "opencode";
+      text = ''
+        opencode_resume=(--continue)
+        case "''${1:-}" in
+          completion | acp | mcp | attach | run | debug | providers | auth | agent | upgrade | uninstall | serve | web | models | stats | export | import | github | pr | session | plugin | plug | db | -h | --help | -v | --version)
+            opencode_resume=()
+            ;;
+          *)
+            for arg in "$@"; do
+              case "$arg" in
+                -c | --continue | -s | --session | --fork)
+                  opencode_resume=()
+                  break
+                  ;;
+              esac
+            done
+            ;;
+        esac
+
+        exec ${lib.getExe' opencodePackage "opencode"} "''${opencode_resume[@]}" "$@"
+      '';
+    }).overrideAttrs
+      (old: {
+        passthru = (old.passthru or { }) // {
+          unwrapped = opencodeUpstreamPackage;
+        };
+      });
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
@@ -81,7 +115,7 @@ let
       ${fenceLogging.setupShell}
 
       export OPENCODE_PERMISSION='{"*":"allow"}'
-      fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' opencodePackage "opencode"} "$@"
+      fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
     '';
   };
 
@@ -110,7 +144,7 @@ in
     };
     opencode = {
       enable = true;
-      package = opencodePackage;
+      package = opencodeLauncherPackage;
       settings = {
         # Nix owns the installed OpenCode version, so upstream self-updates are
         # disabled. Updates should flow through the flake inputs instead.

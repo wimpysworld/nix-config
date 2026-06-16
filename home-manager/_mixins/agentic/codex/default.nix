@@ -55,13 +55,37 @@ let
     text = ''
       export CODEX_HOME=${lib.escapeShellArg codexDir}
 
-      if [ -x "${codexStableBin}" ]; then
-        exec "${codexStableBin}" "$@"
+      # Resolve the stable user-owned binary copy (see the note above), falling
+      # back to the XDG path when none is executable yet.
+      codex_bin="${codexXdgStableBin}"
+      for candidate in "${codexStableBin}" "${codexLegacyStableBin}" "${codexXdgStableBin}"; do
+        if [ -x "$candidate" ]; then
+          codex_bin="$candidate"
+          break
+        fi
+      done
+
+      # codex-fenced sets NOUGHTY_CODEX_BYPASS so the sandbox bypass is added
+      # here as a top-level flag (before the resume subcommand). Plain `codex`
+      # keeps Codex's native workspace-write sandbox.
+      bypass=()
+      if [ "''${NOUGHTY_CODEX_BYPASS:-0}" = "1" ]; then
+        bypass=(--dangerously-bypass-approvals-and-sandbox)
       fi
-      if [ -x "${codexLegacyStableBin}" ]; then
-        exec "${codexLegacyStableBin}" "$@"
-      fi
-      exec "${codexXdgStableBin}" "$@"
+
+      # Resume the most recent session by default. The `resume --last`
+      # subcommand also accepts a prompt and the interactive flags, so it is
+      # injected for bare, prompt, and flag launches. It is skipped for Codex
+      # subcommands (mcp, exec, login, ...) and help/version, which must not be
+      # wrapped in `resume`.
+      codex_resume=(resume --last)
+      case "''${1:-}" in
+        exec | e | review | login | logout | mcp | plugin | mcp-server | app-server | remote-control | completion | update | doctor | sandbox | debug | apply | a | resume | archive | unarchive | fork | cloud | exec-server | features | help | -h | --help | -V | --version)
+          codex_resume=()
+          ;;
+      esac
+
+      exec "$codex_bin" "''${bypass[@]}" "''${codex_resume[@]}" "$@"
     '';
   };
   codexFencedPackage = pkgs.writeShellApplication {
@@ -77,7 +101,9 @@ let
       fence_log_agent="codex"
       ${fenceLogging.setupShell}
 
-      fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' codexLauncherPackage "codex"} --dangerously-bypass-approvals-and-sandbox "$@"
+      # Pass the bypass through as an env token so the launcher sees the real
+      # first user argument and resumes the most recent session by default.
+      fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"
     '';
   };
   codexTripwireCorrectionPromptFile = pkgs.writeTextFile {

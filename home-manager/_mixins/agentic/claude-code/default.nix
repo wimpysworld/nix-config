@@ -209,6 +209,9 @@ let
   claudeEnvironment = {
     CLAUDE_CODE_HIDE_CWD = "1";
     ENABLE_CLAUDEAI_MCP_SERVERS = "false";
+    # Enable the experimental agent-teams feature, which exposes the
+    # SendMessage tool for resuming subagents and messaging teammates.
+    CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
     # Disable first-party telemetry, analytics, and error reporting. The
     # umbrella flag covers most non-essential traffic; the individual flags
     # are set too so opt-out stays robust across versions.
@@ -306,6 +309,33 @@ let
     else
       claudePackage;
 
+  # Launch defaults shared by the plain and fenced `claude` wrappers. Builds a
+  # `claude_defaults` bash array holding the Opus model, high effort, and a
+  # resume of the most recent session. The defaults are dropped for subcommands
+  # (e.g. `claude mcp list`) and headless `-p` runs, where `--continue` would
+  # break the command or resume an unrelated conversation. `--continue` is also
+  # dropped when the caller already names a session to resume, so the flags
+  # never clash. The array sits before the user's own arguments, so a passed
+  # `--model`/`--effort` wins on last-flag precedence.
+  claudeLaunchDefaults = ''
+    claude_defaults=(--model opus --effort high --continue)
+    case "''${1:-}" in
+      -p | --print | agents | auth | config | doctor | install | mcp | migrate-installer | plugin | setup-token | update)
+        claude_defaults=()
+        ;;
+      *)
+        for arg in "$@"; do
+          case "$arg" in
+            -c | --continue | -r | --resume)
+              claude_defaults=(--model opus --effort high)
+              break
+              ;;
+          esac
+        done
+        ;;
+    esac
+  '';
+
   # Home Manager's native `mcpServers` wrapper emits `--mcp-config <path>`
   # before user arguments. Claude Code treats that option as variadic
   # (`<configs...>`), so commands like `claude mcp list` are swallowed as
@@ -328,13 +358,15 @@ let
 
         ${claudeEnvironmentExports}
 
+        ${claudeLaunchDefaults}
+
         for mcp_config in "''${mcp_configs[@]}"; do
           if [[ -f "$mcp_config" ]]; then
-            exec "$claude" "--mcp-config=$mcp_config" "$@"
+            exec "$claude" "--mcp-config=$mcp_config" "''${claude_defaults[@]}" "$@"
           fi
         done
 
-        exec "$claude" "$@"
+        exec "$claude" "''${claude_defaults[@]}" "$@"
         EOF
         chmod +x "$out/bin/claude"
       '';
@@ -376,20 +408,22 @@ let
         trap 'rm -f "$tmp_mcp_config"; cleanup_fence_wayland_bridge' EXIT
       fi
 
+      ${claudeLaunchDefaults}
+
       width="$(tput cols 2>/dev/null || true)"
       case "$width" in
         "" | *[!0-9]*)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
         *)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
       esac
@@ -593,6 +627,9 @@ in
 
             # Never surface the in-product feedback survey.
             feedbackSurveyRate = 0;
+
+            # Disable the rotating tips shown on the spinner line.
+            spinnerTipsEnabled = false;
 
             # Keep Claude Code out of Git commit and pull request attribution.
             attribution = {

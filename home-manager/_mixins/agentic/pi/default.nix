@@ -210,6 +210,26 @@ let
         export NOUGHTY_AGENT_ISOLATION="Unfenced"
       fi
 
+      # Resume the most recent session by default. Skipped for management
+      # subcommands (install, update, ...), headless `-p` runs, and when the
+      # caller already selects a session, so those paths are untouched.
+      pi_resume=(--continue)
+      case "''${1:-}" in
+        install | remove | uninstall | update | list | config | -h | --help | -v | --version)
+          pi_resume=()
+          ;;
+        *)
+          for arg in "$@"; do
+            case "$arg" in
+              -c | --continue | -r | --resume | --session | --session-id | --fork | --no-session | -p | --print)
+                pi_resume=()
+                break
+                ;;
+            esac
+          done
+          ;;
+      esac
+
       # Pi enables built-in tools (read, bash, edit, write, grep, find, ls)
       # and discovered extension tools by default. Do not inject `--tools`
       # here: that flag is a strict allowlist that applies to built-in,
@@ -217,7 +237,7 @@ let
       # would hide every extension tool (subtask, lens, footer widgets,
       # MCP/adapter tools, etc.). Per-agent allowlists are expressed in the
       # agent's Pi-native frontmatter (`tools:` in `header.pi.yaml`).
-      exec "${lib.getExe piPackage}" "$@"
+      exec "${lib.getExe piPackage}" "''${pi_resume[@]}" "$@"
     '';
   };
 
