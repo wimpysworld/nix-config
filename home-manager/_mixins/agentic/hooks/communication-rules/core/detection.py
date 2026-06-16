@@ -11,7 +11,7 @@ import re
 import shlex
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from core.config import Config
@@ -496,6 +496,73 @@ def has_api_post_signal(argv: list[str]) -> bool:
         elif token == "--input" or token.startswith("--input="):
             return True
         index += 1
+    return False
+
+
+# Body-bearing gh/gh-api-safe flags that mark a command as a post. This list is
+# the SURFACE-CHOICE signal only; the command body is scanned by scan_bash.
+_GH_POST_FLAGS = {
+    "-b",
+    "--body",
+    "-F",
+    "--body-file",
+    "-f",
+    "--field",
+    "--raw-field",
+    "--notes",
+    "-m",
+    "--message",
+    "-t",
+    "--title",
+}
+
+
+def _argv_is_gh_post(argv: list[str]) -> bool:
+    # Test a parsed argv for a gh/gh-api-safe leading token carrying a post
+    # signal: a body-bearing flag or a POST/PATCH/PUT method.
+    if not argv or argv[0] not in {"gh", "gh-api-safe"}:
+        return False
+    for index, token in enumerate(argv):
+        if token in _GH_POST_FLAGS:
+            return True
+        if token.startswith(("--body=", "--body-file=", "--field=", "--raw-field=")):
+            return True
+        if token.startswith(("--notes=", "--message=", "--title=")):
+            return True
+        if token in {"-X", "--method"} and index + 1 < len(argv):
+            if argv[index + 1].upper() in {"POST", "PATCH", "PUT"}:
+                return True
+        if token.startswith("--method=") and token.split("=", 1)[1].upper() in {
+            "POST",
+            "PATCH",
+            "PUT",
+        }:
+            return True
+        if token == "--input" or token.startswith("--input="):
+            return True
+    return False
+
+
+def is_bash_gh_post(command: Any) -> bool:
+    # A Bash command is external (B2) when its first token is gh/gh-api-safe and
+    # it carries a post signal. A shell ``-c`` wrapper hides the gh post inside
+    # one token, so also unwrap the wrapper and test the inner script's argv: a
+    # wrapped ``gh issue create --body ...`` must classify as external too.
+    if not isinstance(command, str):
+        return False
+    # Strip a leading env assignment (``GH_TOKEN=x gh ...``) so the gh leading
+    # token test sees the real command, not the assignment.
+    if _argv_is_gh_post(strip_env_assignments(command.split())):
+        return True
+    # The wrapper unwrap needs a shell-aware parse so the quoted inner script is
+    # one token; the naive split above keeps the cheap direct path unchanged.
+    argv = parse_command_line(command)
+    if argv is not None:
+        inner = shell_c_inner_script(strip_env_assignments(argv))
+        if inner is not None:
+            inner_argv = parse_command_line(inner)
+            if inner_argv is not None and _argv_is_gh_post(strip_env_assignments(inner_argv)):
+                return True
     return False
 
 
