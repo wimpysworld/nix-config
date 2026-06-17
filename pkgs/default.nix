@@ -7,7 +7,6 @@ pkgs: {
   heynote = pkgs.callPackage ./heynote { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
   tcount = pkgs.callPackage ./tcount { };
-  vtm = pkgs.callPackage ./vtm/package.nix { };
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };

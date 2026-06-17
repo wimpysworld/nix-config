@@ -43,6 +43,7 @@ in
     ./fresh.nix # Terminal text editor
     ./fzf.nix # Terminal fuzzy finder
     ./gpg.nix # Terminal GPG
+    ./herdr.nix # Terminal workspace manager for AI coding agents
     ./mpv.nix # Terminal media player
     ./pueue.nix # Terminal task manager
     ./rclone.nix # Terminal cloud storage sync
@@ -50,7 +51,6 @@ in
     ./starship.nix # Modern Unix prompt
     ./superfile.nix # Modern terminal file manager
     ./tldr.nix # Modern Unix `man`
-    ./vtm.nix # Text-based desktop environment inside the terminal
     ./yazi.nix # Modern Unix `mc`
     ./yt-dlp.nix # Terminal YouTube downloader
     ./zoxide.nix # Modern Unix `cd`
