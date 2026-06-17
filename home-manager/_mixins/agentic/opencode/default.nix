@@ -73,6 +73,12 @@ let
     (pkgs.writeShellApplication {
       name = "opencode";
       text = ''
+        # Stop the background model-catalogue fetch to models.dev. Each release
+        # bundles a catalogue snapshot, and Nix pins the OpenCode version.
+        export OPENCODE_DISABLE_MODELS_FETCH=1
+        # Ignore project-level OpenCode config so an untrusted repository cannot
+        # inject config, plugins, or agents into a session.
+        export OPENCODE_DISABLE_PROJECT_CONFIG=1
         opencode_resume=(--continue)
         case "''${1:-}" in
           completion | acp | mcp | attach | run | debug | providers | auth | agent | upgrade | uninstall | serve | web | models | stats | export | import | github | pr | session | plugin | plug | db | -h | --help | -v | --version)

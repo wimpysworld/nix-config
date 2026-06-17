@@ -259,6 +259,15 @@ let
       enabled = false;
     };
 
+    # Disable the startup update check. Nix owns the installed version
+    # through the llm-agents flake input, so the check serves no purpose.
+    check_for_update_on_startup = false;
+
+    # Do not prompt to install missing MCP dependencies for skills.
+    features = {
+      skill_mcp_dependency_install = false;
+    };
+
     # Plain `codex` remains usable without Fence by keeping Codex's native
     # workspace-write sandbox and non-interactive approval defaults. The
     # `codex-fenced` entry point bypasses these at launch so Fence owns that
@@ -306,6 +315,8 @@ let
         "permissions"
       ];
       status_line_use_colors = true;
+      # Disable the built-in TUI notifications.
+      notifications = false;
     };
 
     # Explicitly enable every generated skill so command/agent skills are
