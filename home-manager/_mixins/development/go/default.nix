@@ -60,13 +60,6 @@
     }
   ];
 
-  claude-code.lspServers.golangci-lint-langserver = {
-    command = lib.getExe pkgs.golangci-lint-langserver;
-    extensionToLanguage = {
-      ".go" = "go";
-    };
-  };
-
   programs = {
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [

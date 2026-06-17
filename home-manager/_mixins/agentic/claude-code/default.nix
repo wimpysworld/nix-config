@@ -220,6 +220,22 @@ let
     DISABLE_ERROR_REPORTING = "1";
     DISABLE_FEEDBACK_COMMAND = "1";
     CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY = "1";
+    # Stop auto-installing the official plugin marketplace on first run.
+    # The CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC umbrella does not cover
+    # this, so it is set on its own.
+    CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL = "1";
+    # Never run the self-updater. Claude Code is installed through Nix, so
+    # the in-app updater must stay off.
+    DISABLE_AUTOUPDATER = "1";
+    # Disable the advisor tool, which emits real-time code suggestions
+    # during edits. The suggestions are noise for this workflow.
+    CLAUDE_CODE_DISABLE_ADVISOR_TOOL = "1";
+    # Disable Claude Code's built-in auto memory, where Claude writes its
+    # own cross-session notes to ~/.claude/projects/<project>/memory/. A
+    # centralised memory system replaces it. The settings key
+    # `autoMemoryEnabled = false` is set too so the opt-out holds across
+    # versions.
+    CLAUDE_CODE_DISABLE_AUTO_MEMORY = "1";
     # Hide the account/email banner for recordings without suppressing the
     # workspace-trust dialog. `IS_DEMO=1` also silently skipped the trust
     # prompt without granting trust, leaving newly-opened projects stuck at
@@ -310,28 +326,41 @@ let
       claudePackage;
 
   # Launch defaults shared by the plain and fenced `claude` wrappers. Builds a
-  # `claude_defaults` bash array holding the Opus model, high effort, and a
-  # resume of the most recent session. The defaults are dropped for subcommands
-  # (e.g. `claude mcp list`) and headless `-p` runs, where `--continue` would
-  # break the command or resume an unrelated conversation. `--continue` is also
-  # dropped when the caller already names a session to resume, so the flags
-  # never clash. The array sits before the user's own arguments, so a passed
+  # `claude_defaults` bash array holding the Opus model, high effort, and, when
+  # a prior session exists for the current directory, a resume of it. The
+  # defaults are dropped for subcommands (e.g. `claude mcp list`) and headless
+  # `-p` runs, where `--continue` would break the command or resume an
+  # unrelated conversation. `--continue` is also withheld when the caller
+  # already names a session to resume, so the flags never clash, and when no
+  # session transcript exists yet, so a fresh project starts cleanly instead of
+  # erroring. Session presence is detected by looking for a `*.jsonl` transcript
+  # under `$CLAUDE_CONFIG_DIR/projects/<encoded-cwd>` (default `$HOME/.claude`),
+  # where the cwd is encoded by replacing each non-alphanumeric character with a
+  # hyphen. The array sits before the user's own arguments, so a passed
   # `--model`/`--effort` wins on last-flag precedence.
   claudeLaunchDefaults = ''
-    claude_defaults=(--model opus --effort high --continue)
+    claude_defaults=(--model opus --effort high)
     case "''${1:-}" in
       -p | --print | agents | auth | config | doctor | install | mcp | migrate-installer | plugin | setup-token | update)
         claude_defaults=()
         ;;
       *)
+        resume_session=1
         for arg in "$@"; do
           case "$arg" in
             -c | --continue | -r | --resume)
-              claude_defaults=(--model opus --effort high)
+              resume_session=0
               break
               ;;
           esac
         done
+        if [[ "$resume_session" == 1 ]]; then
+          claude_config_dir="''${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+          claude_project_dir="$claude_config_dir/projects/$(printf '%s' "$PWD" | ${lib.getExe pkgs.gnused} 's/[^a-zA-Z0-9]/-/g')"
+          if compgen -G "$claude_project_dir/*.jsonl" > /dev/null 2>&1; then
+            claude_defaults+=(--continue)
+          fi
+        fi
         ;;
     esac
   '';
@@ -630,6 +659,28 @@ in
 
             # Disable the rotating tips shown on the spinner line.
             spinnerTipsEnabled = false;
+
+            # Disable the "while you were away" recap shown after returning to a
+            # session. It restates context already on screen.
+            awaySummaryEnabled = false;
+
+            # Disable Claude Code's bundled skills and workflows. This repository
+            # provides its own skills and commands, so the bundled set is removed
+            # to cut noise. Note this also removes bundled slash commands such as
+            # /review and /simplify.
+            disableBundledSkills = true;
+
+            # Disable Claude Code's built-in auto memory. The user runs a
+            # centralised memory system instead. The `CLAUDE_CODE_DISABLE_AUTO_MEMORY`
+            # environment variable is set too so the opt-out holds across
+            # versions.
+            autoMemoryEnabled = false;
+
+            # Fully disable desktop and terminal notifications. The
+            # `notifications_disabled` channel silences every notification path;
+            # the default `auto` would emit desktop notifications in iTerm2,
+            # Ghostty, and Kitty.
+            preferredNotifChannel = "notifications_disabled";
 
             # Keep Claude Code out of Git commit and pull request attribution.
             attribution = {
