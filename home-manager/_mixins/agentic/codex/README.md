@@ -95,10 +95,10 @@ SKILL.md frontmatter requires `name:` and `description:` fields. Quote any `desc
 
 Codex no longer supports user-defined slash commands. The `/` commands are built into the binary. Custom commands are deployed as skills instead.
 
-Each agent command becomes a skill named after the bare command (matching the Pi prompt convention; e.g. `$create-conventional-commit` rather than `$garfield-create-conventional-commit`). When the command has `header.codex.toml` with `spawn-agent = true`, the generated skill tells Codex to launch that specialist with `spawn_agent` and keep the parent thread as the orchestrator. Commands without that flag still embed the agent persona plus the command task prompt.
+Each agent command becomes a skill named after the bare command (matching the Pi prompt convention; e.g. `$draft-commit-message` rather than `$garfield-draft-commit-message`). When the command has `header.codex.toml` with `spawn-agent = true`, the generated skill tells Codex to launch that specialist with `spawn_agent` and keep the parent thread as the orchestrator. Commands without that flag still embed the agent persona plus the command task prompt.
 
 ```text
-$create-conventional-commit
+$draft-commit-message
 $implement-code
 $deep-research
 ```

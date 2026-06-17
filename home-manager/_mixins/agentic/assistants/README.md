@@ -218,10 +218,10 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 
 **Model:** `haiku` (Claude Code) - commit message generation is a structured, deterministic task with clear rules. The smallest Claude Code model handles it correctly at minimum cost.
 
-| Command                      | Purpose                                                 |
-| ---------------------------- | ------------------------------------------------------- |
-| `create-conventional-commit` | Generate a commit message (does not execute the commit) |
-| `create-pull-request`        | Push branch and create GitHub PR via `gh`               |
+| Command                | Purpose                                                                  |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `draft-commit-message` | Draft a conventional commit message for the staged or current changes    |
+| `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body |
 
 ---
 

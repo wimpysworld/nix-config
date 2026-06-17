@@ -1,6 +1,6 @@
-## Create Conventional Commit
+## Draft Commit Message
 
-Write a commit message for staged changes. Output only - never execute commits.
+Draft the appropriate conventional commit message for the staged or current changes. Output only - never commit.
 
 ### Allowed Commands
 

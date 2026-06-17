@@ -24,6 +24,7 @@ Use LSP diagnostics and navigation when available, including grammar and formatt
 
 - Never destroy what cannot be recovered. Do not delete or overwrite data or backups, and do not disrupt or take down production services, without explicit consent. Confirm before irreversible or destructive commands.
 - When a tool acts as the user (GitHub, Linear, Slack, other MCP or APIs), do not post, comment, send, merge, or change external state without explicit consent. These speak as the user.
+- Never create git commits. The repo requires SSH-signed commits and you lack the signing key, so the commit fails. Stage changes and prepare the commit message; the user runs the commit.
 - Never expose or leak secrets, tokens, or credentials.
 
 Local file edits in trusted directories need no special ceremony.
