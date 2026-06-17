@@ -274,6 +274,13 @@ let
     # mode's filesystem, network, and command policy.
     approval_policy = "never";
 
+    # Disable Codex's built-in web search so web access routes through the
+    # Exa MCP server. The built-in tool runs through OpenAI's hosted search,
+    # not the sandbox network, so disabling is the only way to stop it and
+    # avoid a second, separately-billed web path. There is no separate
+    # built-in fetch tool. MCP servers are independent, so Exa is unaffected.
+    web_search = "disabled";
+
     model = "gpt-5.5";
     model_reasoning_effort = "high";
 

@@ -120,7 +120,11 @@ let
       fence_log_agent="opencode"
       ${fenceLogging.setupShell}
 
-      export OPENCODE_PERMISSION='{"*":"allow"}'
+      # Allow everything inside the fence, but keep the built-in web tools
+      # denied so both the plain and fenced paths route web access through the
+      # Exa MCP server. The env var wins on conflicting keys, so the denies are
+      # named here explicitly.
+      export OPENCODE_PERMISSION='{"*":"allow","webfetch":"deny","websearch":"deny"}'
       fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
     '';
   };
@@ -164,6 +168,15 @@ in
         # OpenTelemetry is off by default; set it explicitly.
         experimental = {
           openTelemetry = false;
+        };
+
+        # Deny the built-in web tools so web access routes through the Exa MCP
+        # server. OpenCode keeps a denied tool in the model's toolset (a small
+        # token cost) but blocks the call; this is the supported path. MCP tools
+        # are namespaced separately, so the Exa tools stay available.
+        permission = {
+          webfetch = "deny";
+          websearch = "deny";
         };
 
         # Default to GPT 5.5 via the OpenAI provider with high reasoning effort.

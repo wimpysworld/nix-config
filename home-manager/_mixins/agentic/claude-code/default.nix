@@ -654,6 +654,19 @@ in
             # MCP servers remain opt-in instead of being silently trusted.
             enableAllProjectMcpServers = false;
 
+            # Route all web search and fetch through the Exa MCP server. Deny the
+            # built-in WebSearch and WebFetch tools by bare name, which removes them
+            # from the model's tool list entirely (no wasted turn). MCP tools match
+            # by their `mcp__*` prefix, so the Exa tools stay available. Note this
+            # also stops Claude reading a pasted URL with WebFetch; it uses Exa fetch
+            # instead.
+            permissions = {
+              deny = [
+                "WebSearch"
+                "WebFetch"
+              ];
+            };
+
             # Never surface the in-product feedback survey.
             feedbackSurveyRate = 0;
 
