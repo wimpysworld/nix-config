@@ -569,11 +569,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781796432,
-        "narHash": "sha256-l3Mv0XNz+mG8VkiW0/ItHU6cNi/7Er2f2KpznbZZg1s=",
+        "lastModified": 1781801534,
+        "narHash": "sha256-pVmZ4qTcYssGz8DtIp+pNf83XWCcY30GaJwV8PRD+ag=",
         "owner": "flexiondotorg",
         "repo": "herdr",
-        "rev": "cbe7f14e57b237f5c4fd4bfadddce7b7ade1ee59",
+        "rev": "261f9fbcf2bf0fa7550c7061269275498b823c02",
         "type": "github"
       },
       "original": {
