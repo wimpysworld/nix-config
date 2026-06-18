@@ -1,6 +1,6 @@
 # MCP Servers
 
-Five globally active MCP servers provide AI agents with current reference material. Playwright is emitted only on browser-automation systems. Linear and the Chainguard RAG server are emitted only on `bane`. Definitions live once in `servers.nix` and are distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients via per-consumer renderers.
+Five globally active MCP servers provide AI agents with current reference material. Playwright is emitted only on browser-automation systems. Linear, Slack, and the Chainguard RAG server are emitted only on `bane`. Definitions live once in `servers.nix` and are distributed to Claude Code, OpenCode, Zed, Codex, and generic MCP clients via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. Playwright is local browser automation for agent-driven page inspection and only appears when both Chromium and Firefox are enabled under the shared browser automation policy. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -47,6 +47,7 @@ Each entry in `servers` carries the following fields. Only `transport` is mandat
 | `command`   | string                | stdio    | Executable path; usually a Nix store reference such as `${pkgs.mcp-nixos}/bin/mcp-nixos`.                 |
 | `args`      | list of strings       | no       | Stdio only. Defaults to `[]`.                                                                             |
 | `auth`      | attrset               | no       | Currently only `{ kind = "bearer"; envVar = "..."; }`. The `envVar` value is a sops secret name.          |
+| `oauth`     | attrset               | http     | Pre-registered OAuth client `{ clientId = "..."; callbackPort = <int>; }` for servers without dynamic client registration. Emitted only into Claude Code's config. |
 | `env`       | attrset               | no       | Stdio env passthrough. Schema is `{ ENV_VAR_IN_PROCESS = "SOPS_SECRET_NAME"; }`.                          |
 | `consumers` | attrset               | no       | Per-consumer overrides; see below.                                                                        |
 
@@ -79,7 +80,7 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Five globally active servers, three conditional servers, and three disabled placeholders.
+Five globally active servers, four conditional servers, and three disabled placeholders.
 
 | Server         | Transport | Auth   | Purpose                                                                                                |
 | -------------- | --------- | ------ | ------------------------------------------------------------------------------------------------------ |
@@ -90,12 +91,13 @@ Five globally active servers, three conditional servers, and three disabled plac
 | `nixos`        | stdio     | -      | NixOS, Home Manager, nix-darwin package and option search                                              |
 | `playwright`   | stdio     | -      | Conditional; browser automation via Playwright MCP; disabled by default where per-server toggles exist |
 | `rag`          | HTTP      | -      | Conditional on `bane`; Chainguard RAG search                                                           |
+| `slack`        | HTTP      | OAuth  | Conditional on `bane`; official Slack hosted server; active only for Claude Code                       |
 | `svelte`       | HTTP      | -      | Svelte documentation and playground                                                                    |
 | `firecrawl`    | HTTP      | -      | Disabled (`enabled = false`); web scraping and crawling                                                |
 | `jina`         | HTTP      | bearer | Disabled; web reading and screenshots                                                                  |
 | `mcpGoogleCse` | stdio     | env    | Disabled; Google Custom Search Engine                                                                  |
 
-Four of the globally active servers are remote HTTP. `nixos` runs as a local binary. When enabled, `linear`, `rag`, and `playwright` are conditional additions; `linear` and `rag` are remote HTTP, while `playwright` runs as a local binary.
+Four of the globally active servers are remote HTTP. `nixos` runs as a local binary. When enabled, `linear`, `rag`, `slack`, and `playwright` are conditional additions; `linear`, `rag`, and `slack` are remote HTTP, while `playwright` runs as a local binary.
 
 ### Active servers
 
@@ -150,6 +152,14 @@ The shared browser automation policy requires both Chromium and Firefox. Servers
 #### rag
 
 Chainguard RAG is a hosted HTTP MCP server for Chainguard-specific retrieval. It is gated to `bane` via `config.noughty.host.name`, and uses the default enabled state for every renderer: Claude Code and generic clients receive it in `mcpServers`, Codex receives an enabled `[mcp_servers.rag]` table, OpenCode receives an enabled `mcp.rag` entry, Pi promotes it to direct tools, and Zed receives it as an enabled context server.
+
+#### slack
+
+Slack's official hosted MCP server. It uses Streamable HTTP at `https://mcp.slack.com/mcp` with OAuth. Slack has no OAuth dynamic client registration, so the pre-registered public client id `1601185624273.8899143856786` and `callbackPort = 3118` from Anthropic's published Slack app are supplied inline. Claude Code authenticates through a one-time `/mcp` browser sign-in per machine, which routes through Okta SSO; the token lands in the OS keychain, not in this repository.
+
+The server is emitted only on `bane`. On `bane`, it is active only for Claude Code, because only Claude Code's JSON MCP schema accepts the `oauth` block. Codex, OpenCode, Pi, and Zed have no config field for a pre-registered client id, so each receives a disabled entry (Pi omits the server) to avoid emitting a broken OAuth server.
+
+No Slack secret is declared in this repository; OAuth handles authentication.
 
 #### svelte
 

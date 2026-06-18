@@ -75,6 +75,11 @@ rec {
   #   command    - stdio transport only, string form
   #   args       - optional, stdio only, defaults to []
   #   auth       - optional, currently only { kind = "bearer"; envVar = "..."; }
+  #   oauth      - optional, http transport only; pre-registered OAuth client
+  #                for servers without dynamic client registration:
+  #                { clientId = "..."; callbackPort = <int>; }. Emitted only
+  #                into Claude Code's config; other consumers have no config
+  #                field for a pre-set client id.
   #   env        - optional, stdio env passthrough; values are env var names
   #   startupTimeoutSec
   #              - optional, integer seconds; rendered into Codex's
@@ -238,25 +243,28 @@ rec {
     };
 
     slack = {
-      # korotovsky/slack-mcp-server over stdio, fetched at launch via npx.
-      # Read-only by design: posting, reactions, and mark-as-read stay off
-      # because SLACK_MCP_ADD_MESSAGE_TOOL is unset. Auth uses a Slack user
-      # token (xoxp), so the server sees every channel and DM the user can,
-      # including message search. The token is provisioned as the
-      # SLACK_MCP_XOXP_TOKEN sops secret via the `env` passthrough below.
-      transport = "stdio";
-      command = "${pkgs.nodejs}/bin/npx";
-      args = [
-        "-y"
-        "slack-mcp-server@latest"
-        "--transport"
-        "stdio"
-      ];
-      env = {
-        SLACK_MCP_XOXP_TOKEN = "SLACK_MCP_XOXP_TOKEN";
+      # Official Slack-hosted MCP server over Streamable HTTP with OAuth.
+      # Slack has no OAuth dynamic client registration, so the pre-registered
+      # public client id and callback port from Anthropic's published Slack app
+      # are supplied inline. Sign-in is a one-time interactive `/mcp` browser
+      # flow per machine, which routes through Okta SSO; the token lands in the
+      # OS keychain, not here. Only Claude Code consumes this, because its JSON
+      # MCP schema accepts the `oauth` block. Codex, OpenCode, Pi, and Zed have
+      # no config field for a pre-registered client id, so they stay disabled
+      # to avoid emitting a broken OAuth server.
+      transport = "http";
+      url = "https://mcp.slack.com/mcp";
+      oauth = {
+        clientId = "1601185624273.8899143856786";
+        callbackPort = 3118;
       };
       consumers = {
-        # Only the four coding agents were requested; keep Slack out of Zed.
+        codex.enabled = false;
+        opencode.enabled = false;
+        pi = {
+          enabled = false;
+          omit = true;
+        };
         zed.enabled = false;
       };
     };
@@ -364,6 +372,9 @@ rec {
             headers = {
               Authorization = "Bearer ${config.sops.placeholder.${s.auth.envVar}}";
             };
+          }
+          // lib.optionalAttrs (s.oauth or null != null) {
+            inherit (s) oauth;
           }
         else
           {
