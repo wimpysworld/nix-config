@@ -683,6 +683,13 @@ in
             # /review and /simplify.
             disableBundledSkills = true;
 
+            # Pin the neutral built-in output style. The Communication Rules are
+            # the persona for this setup, injected through instructions, session
+            # reminders, and the tripwire gate, so the vendor persona stays
+            # Default. Pinning it also stops a stray project or plugin style
+            # being picked up and silently dropping the built-in coding prompt.
+            outputStyle = "Default";
+
             # Disable Claude Code's built-in auto memory. The user runs a
             # centralised memory system instead. The `CLAUDE_CODE_DISABLE_AUTO_MEMORY`
             # environment variable is set too so the opt-out holds across

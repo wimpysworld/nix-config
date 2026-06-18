@@ -56,6 +56,8 @@ let
     requireMarker = true;
   };
 
+  sweInstructions = readFileTrim ./instructions/swe.md;
+
   # ============ SECRET COMMANDS ============
 
   # The fixed sops file holding every encrypted assistant prompt body. Each
@@ -276,7 +278,7 @@ let
   # paths.
   piHomeFiles = builtins.seq piCommandCollisionCheck (
     {
-      ".pi/agent/AGENTS.md".text = globalInstructions;
+      ".pi/agent/AGENTS.md".text = sweInstructions + "\n\n" + globalInstructions;
     }
     // piAgentFiles
     // piSkillFiles

@@ -284,6 +284,13 @@ let
     model = "gpt-5.5";
     model_reasoning_effort = "high";
 
+    # Apply no vendor personality. The Communication Rules are the persona for
+    # this setup, expanded into Codex base instructions via the
+    # `<!-- COMMUNICATION_RULES -->` marker and enforced by the tripwire gate.
+    # `personality` is an enum (none/friendly/pragmatic) and cannot carry the
+    # rules text, so "none" keeps the vendor tone block from competing.
+    personality = "none";
+
     # Sandbox: workspace-write confines writes to the current project, /tmp,
     # and the explicit writable roots below. Do not use default_permissions
     # here on Linux: Codex split permission profiles cannot currently combine
@@ -327,8 +334,16 @@ let
     };
 
     # Explicitly enable every generated skill so command/agent skills are
-    # always available from the generated ~/.codex/skills tree.
+    # always available from the generated ~/.codex/skills tree. Disable the
+    # bundled SYSTEM skills OpenAI ships (imagegen, openai-docs, plugin-creator,
+    # skill-creator, skill-installer): this repository provides its own skills
+    # and commands, so the bundled set is noise, mirroring Claude Code's
+    # `disableBundledSkills`. The `bundled` and `config` sub-fields are
+    # independent, so the generated user skills keep loading.
     skills = {
+      bundled = {
+        enabled = false;
+      };
       config = map (skillName: {
         path = "${codexDir}/skills/${skillName}/SKILL.md";
         enabled = true;
