@@ -141,9 +141,20 @@ in
 
   home.packages = lib.optional host.is.linux opencodeFencedPackage;
 
-  xdg.configFile = lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
-    "opencode/plugins/communication-rules.ts".text = opencodeTripwirePlugin.pluginText;
-  };
+  xdg.configFile = lib.mkMerge [
+    (lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
+      "opencode/plugins/communication-rules.ts".text = opencodeTripwirePlugin.pluginText;
+    })
+    # Herdr's OpenCode plugin reports session identity and state to the
+    # multiplexer over its control socket. OpenCode auto-loads any file under
+    # `plugins/`. The plugin is a no-op unless herdr injects HERDR_ENV and
+    # HERDR_SOCKET_PATH, so it is harmless outside a herdr pane. Kept verbatim
+    # from the upstream herdr integration asset (version marker preserved) so
+    # `herdr integration status` recognises it.
+    (lib.mkIf (config.programs.opencode.enable && host.is.linux) {
+      "opencode/plugins/herdr-agent-state.js".source = ./plugins/herdr-agent-state.js;
+    })
+  ];
 
   programs = {
     bash.shellAliases = lib.mkIf host.is.linux {

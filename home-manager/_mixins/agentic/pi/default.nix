@@ -547,6 +547,17 @@ let
     ".pi/agent/extensions/communication-rules/index.ts".text = piCommunicationRulesPlugin.pluginText;
   };
 
+  # Herdr's Pi extension reports session identity and state to the multiplexer
+  # over its control socket. Pi auto-discovers bare `.ts` files under
+  # `extensions/`. The extension is a no-op unless herdr injects HERDR_ENV and
+  # HERDR_SOCKET_PATH, so it is harmless outside a herdr pane. Kept verbatim
+  # from the upstream herdr integration asset (version marker preserved) so
+  # `herdr integration status` recognises it. Linux-only, matching where the
+  # fenced Pi wrapper and the herdr socket policy hole exist.
+  piHerdrFiles = lib.optionalAttrs host.is.linux {
+    ".pi/agent/extensions/herdr-agent-state.ts".source = ./extensions/herdr-agent-state.ts;
+  };
+
   # sub-core does not fetch quota data on session start; it first renders cached
   # state, then waits for its refresh timer. Keep that timer short enough that
   # the footer fills in promptly, and refresh again when work starts.
@@ -624,6 +635,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
     }
     // piCommunicationRulesFiles
+    // piHerdrFiles
     // piAssistant.homeFiles;
 
   };

@@ -523,11 +523,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781767839,
-        "narHash": "sha256-91xJSYYnX0u6kzDIsqp8eVpidoh94PUqh+KEnmvG8OQ=",
+        "lastModified": 1781788030,
+        "narHash": "sha256-npblvNgrGcy4hScMXydDWoy6NnNVF/YIDwqKyZ6NFuc=",
         "owner": "sinelaw",
         "repo": "fresh",
-        "rev": "b0594339407b929d0225e46e23ba3e3ddbdeff52",
+        "rev": "07826202353cf37e4c0983791c6b6ccd4f3099f9",
         "type": "github"
       },
       "original": {
@@ -569,16 +569,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1781540022,
-        "narHash": "sha256-DjCSwhRMBRE9lSvjpX6m8IpoEgUbOP1jcmeXMlQlSQY=",
-        "owner": "ogulcancelik",
+        "lastModified": 1781796432,
+        "narHash": "sha256-l3Mv0XNz+mG8VkiW0/ItHU6cNi/7Er2f2KpznbZZg1s=",
+        "owner": "flexiondotorg",
         "repo": "herdr",
-        "rev": "0bf9bb58eb9c9495f660aed1bd9336121b953fdc",
+        "rev": "cbe7f14e57b237f5c4fd4bfadddce7b7ade1ee59",
         "type": "github"
       },
       "original": {
-        "owner": "ogulcancelik",
-        "ref": "v0.7.0",
+        "owner": "flexiondotorg",
+        "ref": "herdr-agent-hint",
         "repo": "herdr",
         "type": "github"
       }
@@ -760,11 +760,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781190061,
-        "narHash": "sha256-QRMpLbsmlciMGv4yx75FUoIl54K02JbIX1tgdPHPw1s=",
+        "lastModified": 1781772065,
+        "narHash": "sha256-xIbRSwDB1GBAUsWsQZUjudGfAGQt3BOpsWaO/ugVa4w=",
         "owner": "LnL7",
         "repo": "nix-darwin",
-        "rev": "f2b3fdb347f91dfd344ad196666a0b0fe8aad05c",
+        "rev": "adda04f0bf4819575b1978c2f8d78401b3c2be12",
         "type": "github"
       },
       "original": {

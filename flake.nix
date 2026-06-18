@@ -33,7 +33,7 @@
     sidra.inputs.nixpkgs.follows = "nixpkgs";
     veila.url = "github:naurissteins/Veila/0.4.2";
     veila.inputs.nixpkgs.follows = "nixpkgs";
-    herdr.url = "github:ogulcancelik/herdr/v0.7.0";
+    herdr.url = "github:flexiondotorg/herdr/herdr-agent-hint";
     herdr.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.4.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";

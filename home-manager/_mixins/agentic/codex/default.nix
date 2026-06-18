@@ -101,6 +101,12 @@ let
       fence_log_agent="codex"
       ${fenceLogging.setupShell}
 
+      # herdr identifies a pane's agent from the foreground process group
+      # environ. Export the hint host-side so fence and the whole wrapper chain
+      # inherit it; an inline post-`--` token would land only inside the sandbox
+      # PID namespace, which herdr does not read.
+      export HERDR_AGENT=codex
+
       # Pass the bypass through as an env token so the launcher sees the real
       # first user argument and resumes the most recent session by default.
       fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"

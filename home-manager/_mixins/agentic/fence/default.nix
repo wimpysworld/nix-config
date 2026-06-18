@@ -74,6 +74,11 @@ let
         "${homeDirectory}/.pi-lens"
         "${homeDirectory}/.pi-lens/**"
 
+        # Herdr control socket, so fenced agents can report identity and state
+        # to the multiplexer over ~/.config/herdr/herdr.sock.
+        "${config.xdg.configHome}/herdr"
+        "${config.xdg.configHome}/herdr/**"
+
         # Package manager caches
         "~/.npm/_cacache"
         "~/.npm/_npx"

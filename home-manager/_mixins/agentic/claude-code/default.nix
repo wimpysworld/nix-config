@@ -414,6 +414,12 @@ let
       fence_log_agent="claude"
       ${fenceLogging.setupShell}
 
+      # herdr identifies a pane's agent from the foreground process group
+      # environ. Export the hint host-side so fence and the whole wrapper chain
+      # inherit it; an inline post-`--` token would land only inside the sandbox
+      # PID namespace, which herdr does not read.
+      export HERDR_AGENT=claude
+
       mcp_configs=(
         ${lib.escapeShellArg sharedMcpConfigPath}
         ${lib.escapeShellArg renderedMcpConfigPath}
