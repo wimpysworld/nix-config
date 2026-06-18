@@ -236,6 +236,30 @@ rec {
       transport = "http";
       url = "https://rag-mcp.enforce.dev/mcp";
     };
+
+    slack = {
+      # korotovsky/slack-mcp-server over stdio, fetched at launch via npx.
+      # Read-only by design: posting, reactions, and mark-as-read stay off
+      # because SLACK_MCP_ADD_MESSAGE_TOOL is unset. Auth uses a Slack user
+      # token (xoxp), so the server sees every channel and DM the user can,
+      # including message search. The token is provisioned as the
+      # SLACK_MCP_XOXP_TOKEN sops secret via the `env` passthrough below.
+      transport = "stdio";
+      command = "${pkgs.nodejs}/bin/npx";
+      args = [
+        "-y"
+        "slack-mcp-server@latest"
+        "--transport"
+        "stdio"
+      ];
+      env = {
+        SLACK_MCP_XOXP_TOKEN = "SLACK_MCP_XOXP_TOKEN";
+      };
+      consumers = {
+        # Only the four coding agents were requested; keep Slack out of Zed.
+        zed.enabled = false;
+      };
+    };
   }
   // {
     svelte = {
@@ -394,19 +418,17 @@ rec {
             startup_timeout_sec = s.startupTimeoutSec;
           }
         else
+          # Codex's config.toml env table holds static literals with no secret
+          # resolution, so the canonical `env` (values are sops secret names) is
+          # NOT emitted here. Codex's MCP child inherits the real token from the
+          # sops-exported shell environment (see mcp/default.nix shellInit), the
+          # same path the user's interactive shell uses.
           {
             inherit enabled;
             inherit (s) command;
             args = s.args or [ ];
           }
           // common s
-          // lib.optionalAttrs ((s.env or { }) != { }) {
-            # Codex consumes the env table as static literals; the canonical
-            # value is the sops secret name, which Codex resolves itself at
-            # process-launch time via `bearer_token_env_var`-style hooks.
-            # No active server uses this today; shape preserved for parity.
-            inherit (s) env;
-          }
           // lib.optionalAttrs (s ? startupTimeoutSec) {
             startup_timeout_sec = s.startupTimeoutSec;
           };
