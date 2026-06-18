@@ -207,7 +207,7 @@ Precise implementation engineer executing code changes from specifications. Read
 | ------------------ | -------------------------------------------------------------------- |
 | `create-code-plan` | Break implementation into atomic, sequenced tasks                    |
 | `implement-code`   | Execute tasks from a plan                                            |
-| `review-feedback`  | Classify PR review comments: critical / robustness / quality / style |
+| `address-pr`  | Classify PR review comments: critical / robustness / quality / style |
 | `peer-review`      | Give an ecosystem-specific codebase verdict                          |
 
 ---
