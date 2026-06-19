@@ -36,6 +36,7 @@ in
     ./bottom.nix # Modern Unix `top`
     ./btop.nix # Modern Unix `htop`
     ./cava.nix # Terminal audio visualizer
+    ./concord.nix # Terminal Discord client
     ./dircolors.nix # Terminal colors
     ./eza.nix # Modern Unix `ls`
     ./fastfetch.nix # Modern Unix `neofetch`

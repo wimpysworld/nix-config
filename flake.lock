@@ -148,7 +148,50 @@
         "type": "github"
       }
     },
+    "concord": {
+      "inputs": {
+        "crane": "crane",
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs-unstable"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1781761589,
+        "narHash": "sha256-Z0LlcvOaTOgIplmbp1ccCEiFs+9s9xCogD17qXa8fsw=",
+        "owner": "chojs23",
+        "repo": "concord",
+        "rev": "7cf4a6288a7970b26d8a001fc547ed51cb05b710",
+        "type": "github"
+      },
+      "original": {
+        "owner": "chojs23",
+        "ref": "v2.2.3",
+        "repo": "concord",
+        "type": "github"
+      }
+    },
     "crane": {
+      "locked": {
+        "lastModified": 1778106249,
+        "narHash": "sha256-cM/AuKy5tMhwOOQIbha8ZRRMHVfNf7cv2aljIw+qoCg=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "6d015ea29630b7ad2402841386da2cb617a470a7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
+        "type": "github"
+      }
+    },
+    "crane_2": {
       "locked": {
         "lastModified": 1758758545,
         "narHash": "sha256-NU5WaEdfwF6i8faJ2Yh+jcK9vVFrofLcwlD/mP65JrI=",
@@ -162,7 +205,7 @@
         "url": "https://flakehub.com/f/ipetkov/crane/0"
       }
     },
-    "crane_2": {
+    "crane_3": {
       "locked": {
         "lastModified": 1765145449,
         "narHash": "sha256-aBVHGWWRzSpfL++LubA0CwOOQ64WNLegrYHwsVuVN7A=",
@@ -321,7 +364,7 @@
     },
     "fh": {
       "inputs": {
-        "crane": "crane",
+        "crane": "crane_2",
         "fenix": "fenix",
         "nixpkgs": "nixpkgs_3"
       },
@@ -512,7 +555,7 @@
     },
     "fresh": {
       "inputs": {
-        "crane": "crane_2",
+        "crane": "crane_3",
         "fenix": "fenix_2",
         "flake-compat": "flake-compat_2",
         "flake-parts": [
@@ -1120,6 +1163,7 @@
       "inputs": {
         "bzmenu": "bzmenu",
         "catppuccin": "catppuccin",
+        "concord": "concord",
         "determinate": "determinate",
         "direnv-instant": "direnv-instant",
         "disko": "disko",
