@@ -53,6 +53,7 @@ in
     packages =
       with pkgs;
       [
+        diffnav # Navigate Git diffs
         git-igitt # git log/graph
         gitsign # Sign Git commits and tags with Sigstore
       ]

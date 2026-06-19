@@ -124,6 +124,7 @@ in
       enable = true;
       extensions = with pkgs; [
         gh-dash
+        gh-enhance
         gh-markdown-preview
         gh-notify
       ];
