@@ -10,6 +10,22 @@ let
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-api-safe-gh"
   '';
+  ghDashGh = pkgs.runCommand "gh-dash-gh" { } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh"
+  '';
+  ghDashPackage = pkgs.symlinkJoin rec {
+    pname = "gh-dash";
+    version = pkgs.gh-dash.version;
+    name = "${pname}-${version}-wrapped";
+    paths = [ pkgs.gh-dash ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram "$out/bin/gh-dash" \
+        --prefix PATH : "${ghDashGh}/bin" \
+        --set GH_TELEMETRY false
+    '';
+  };
 
   # Fence-friendly wrapper around `gh api`. Lives in the GitHub mixin
   # rather than the Fence mixin so the policy enforcement is available
@@ -39,7 +55,10 @@ let
   };
 in
 {
-  catppuccin.gh-dash.enable = config.programs.gh.extensions.gh-dash;
+  catppuccin.gh-dash = {
+    enable = config.programs.gh-dash.enable;
+    accent = "blue";
+  };
 
   home = {
     packages =
@@ -123,7 +142,6 @@ in
     gh = {
       enable = true;
       extensions = with pkgs; [
-        gh-dash
         gh-enhance
         gh-markdown-preview
         gh-notify
@@ -132,6 +150,68 @@ in
         #editor = "fresh";
         git_protocol = "https";
         prompt = "enabled";
+      };
+    };
+    gh-dash = {
+      enable = true;
+      package = ghDashPackage;
+      settings = {
+        pager.diff = "${lib.getExe pkgs.diffnav}";
+        prSections = [
+          {
+            title = "My Pull Requests";
+            filters = "is:open author:@me";
+          }
+          {
+            title = "Needs My Review";
+            filters = "is:open review-requested:@me";
+          }
+          {
+            title = "Involved";
+            filters = "is:open involves:@me -author:@me";
+          }
+          {
+            title = "All PRs";
+            filters = "is:open";
+          }
+        ];
+        issuesSections = [
+          {
+            title = "My Issues";
+            filters = "is:open author:@me";
+          }
+          {
+            title = "Assigned";
+            filters = "is:open assignee:@me";
+          }
+          {
+            title = "Involved";
+            filters = "is:open involves:@me -author:@me";
+          }
+          {
+            title = "All Issues";
+            filters = "is:open";
+          }
+        ];
+        keybindings.prs = [
+          {
+            # gh-dash runs built-in keys before custom commands.
+            # Move built-in merge away from "m" so "m" can request auto-merge.
+            key = "ctrl+x";
+            name = "built-in merge";
+            builtin = "merge";
+          }
+          {
+            key = "m";
+            name = "auto-merge";
+            command = "gh pr merge --rebase --admin --delete-branch --repo '{{.RepoName}}' '{{.PrNumber}}'";
+          }
+          {
+            key = "T";
+            name = "enhance";
+            command = "${lib.getExe pkgs.gh} enhance -R {{.RepoName}} {{.PrNumber}}";
+          }
+        ];
       };
     };
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
