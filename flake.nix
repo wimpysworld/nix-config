@@ -35,6 +35,10 @@
     veila.inputs.nixpkgs.follows = "nixpkgs";
     herdr.url = "github:flexiondotorg/herdr/herdr-agent-hint";
     herdr.inputs.nixpkgs.follows = "nixpkgs";
+    concord.url = "github:chojs23/concord/v2.2.3";
+    concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
+    concord.inputs.rust-overlay.follows = "rust-overlay";
+    concord.inputs.flake-utils.follows = "flake-utils";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.4.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.inputs.rust-overlay.follows = "rust-overlay";
