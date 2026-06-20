@@ -638,14 +638,14 @@
         "uv2nix": "uv2nix_2"
       },
       "locked": {
-        "lastModified": 1780707343,
-        "narHash": "sha256-ngpkopVczNrT0bfCXHm38QjgrZT96Bm/rO89NA/ls3Y=",
+        "lastModified": 1781897911,
+        "narHash": "sha256-Oyl6Cpg2bTiX9MyBxFT5q4yVdYf3lCIptzFdiVULmjo=",
         "type": "tarball",
-        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.6.5.tar.gz"
+        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.6.19.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.6.5.tar.gz"
+        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.6.19.tar.gz"
       }
     },
     "home-manager": {
