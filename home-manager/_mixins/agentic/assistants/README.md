@@ -205,8 +205,8 @@ Precise implementation engineer executing code changes from specifications. Read
 
 | Command            | Purpose                                                              |
 | ------------------ | -------------------------------------------------------------------- |
-| `create-code-plan` | Break implementation into atomic, sequenced tasks                    |
-| `implement-code`   | Execute tasks from a plan                                            |
+| `create-plan`      | Break implementation into atomic, sequenced tasks                    |
+| `implement-plan`   | Execute tasks from a plan                                            |
 | `address-pr`  | Classify PR review comments: critical / robustness / quality / style |
 | `peer-review`      | Give an ecosystem-specific codebase verdict                          |
 
@@ -248,7 +248,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `create-overview`                | Research synthesis document                        |
 | `review-plan`                    | Meticulous plan review with cited sources          |
 | `review-alignment`               | Audit two documents for alignment gaps             |
-| `create-implementation-proposal` | Bridge research findings into a specification      |
+| `create-proposal`                | Bridge research findings into a specification      |
 | `deep-research`                  | Multi-round research tracked in `RESEARCH-PLAN.md` |
 
 ---

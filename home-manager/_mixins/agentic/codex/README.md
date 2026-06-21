@@ -99,7 +99,7 @@ Each agent command becomes a skill named after the bare command (matching the Pi
 
 ```text
 $draft-commit-message
-$implement-code
+$implement-plan
 $deep-research
 ```
 
