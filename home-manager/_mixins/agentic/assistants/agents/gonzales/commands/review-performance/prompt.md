@@ -6,7 +6,7 @@ Runs a full-project performance analysis. No arguments.
 
 ### Process
 
-1. Dispatch one sub-agent per subdirectory, recursing into every nested subdirectory, not just top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same performance analysis over its own directory; the parent aggregates the findings
+1. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same performance analysis over its own directory; the parent aggregates the findings
 2. Identify performance-critical paths
 3. Analyse for bottlenecks (algorithmic, memory, I/O, CPU)
 4. Reject any suggestion that requires restructuring or contradicts the project's existing architecture, design patterns, or intent - regardless of the performance gain

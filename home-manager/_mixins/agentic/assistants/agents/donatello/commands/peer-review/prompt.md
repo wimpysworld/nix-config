@@ -6,7 +6,7 @@ Runs a full-project peer review. No arguments.
 
 ### Process
 
-1. Dispatch one sub-agent per subdirectory, recursing into every nested subdirectory, not just top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same peer review over its own directory; the parent aggregates the findings
+1. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same peer review over its own directory; the parent aggregates the findings
 2. Detect the primary language(s) and ecosystem from project manifests
 3. Survey the codebase - structure, patterns, idioms, quality signals
 4. Evaluate against what an experienced practitioner of this ecosystem would expect

@@ -5,7 +5,7 @@ Implement $1. Scope: $2 - an optional phase. When $2 is given, implement only th
 ### Workflow
 
 1. Read $1 and resolve the task set from $2 (one phase, or the whole plan when $2 is omitted)
-2. Dispatch one fresh sub-agent per task, in dependency order - independent tasks within a phase may run in parallel; a task whose dependencies are unmet waits for them
+2. Delegate to a wide fan-out of sub-agents, in parallel where possible, while respecting dependencies. Dispatch one fresh sub-agent per task, in dependency order; a task whose dependencies are unmet waits for them
 3. Each sub-agent reads its plan task's Dependencies, Scope, Reuse candidates, Flags, and Success Criteria, then:
    - Verifies dependencies are satisfied before starting
    - Checks Reuse candidates exist and are usable before writing new code

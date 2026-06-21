@@ -70,6 +70,8 @@ If LLM libraries were flagged in Phase 1, invoke the llm-security skill and audi
 
 Manual review targets business logic, design flaws, and context-dependent vulnerabilities that automated tools miss.
 
+Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by entry point, vulnerability category, sensitive sink, or changed-file cluster so each task stays small and well bounded. Each sub-agent traces only its assigned flow or category and reports exploitable findings with evidence; the parent aggregates findings, deduplicates them, and applies severity.
+
 **3a. Data Flow Tracing**
 
 For each entry point from Phase 1, trace data to sensitive sinks:

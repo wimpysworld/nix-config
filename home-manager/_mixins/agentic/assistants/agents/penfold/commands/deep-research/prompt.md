@@ -29,6 +29,8 @@ Before any search, create a research plan as a numbered checklist. Each item: on
 
 **2. Search**
 
+For Standard and Thorough depth: Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by plan item, source family, or research angle so each task stays small and well bounded. For Quick depth, use one worker unless fan-out clearly saves time.
+
 For each plan item:
 1. Mark it `[~]` in RESEARCH-PLAN.md before starting
 2. Search using `mcp__exa__web_search_exa` - prefer specific queries over broad ones

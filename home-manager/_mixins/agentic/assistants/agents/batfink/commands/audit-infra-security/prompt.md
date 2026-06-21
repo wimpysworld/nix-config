@@ -39,6 +39,8 @@ Triage all results before proceeding. Document true positives as findings. Dismi
 
 Manual review targets architectural weaknesses, logic errors, and business-context risks that automated tools miss. Assess each domain in order:
 
+Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by infrastructure domain, component cluster, or blast-radius path so each task stays small and well bounded. Each sub-agent assesses only its assigned domain or path; the parent aggregates findings, deduplicates them, and applies final blast-radius judgement.
+
 **3a. Identity and Access Management**
 
 | Check | Reference |

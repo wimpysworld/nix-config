@@ -22,7 +22,7 @@ Runs a full-project smell hunt. No arguments.
 
 ### Process
 
-1. Dispatch one sub-agent per subdirectory, recursing into every nested subdirectory, not just top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same smell hunt over its own directory; the parent aggregates the findings
+1. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same smell hunt over its own directory; the parent aggregates the findings
 2. Identify genuine smells only - not style nits, not minor awkwardness
 3. Ignore formatting preferences, naming taste, and idiomatic disagreements unless they indicate a recognised smell
 4. Name the smell precisely using classical terminology where applicable

@@ -6,7 +6,7 @@ Run a substantive peer review of GitHub PR `$ARGUMENTS`. Ask for the PR URL or n
 
 Fetch the PR details, description, and full diff first with dedicated `gh` subcommands (`gh pr view`, `gh pr diff`). Raw `gh api` is denied; use `gh-api-safe` for raw API reads. Record the head commit SHA reviewed. Never mutate GitHub: no comments, approvals, or merges.
 
-Split the review across fresh sub-agents launched in parallel. Divide the work by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions. Each sub-agent's delegation packet must instruct it to:
+Delegate to a wide fan-out of sub-agents, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions. Each sub-agent's delegation packet must instruct it to:
 
 - Read the surrounding code in the working tree to understand the change in context, within its assigned concern or area.
 - Where practical, verify conclusions by building and running the relevant tests on the PR head (e.g. in a temporary worktree), restoring repo state afterwards. Distinguish environmental test failures (also failing on main) from PR-caused failures.
