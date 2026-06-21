@@ -248,6 +248,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 | Command                          | Purpose                                            |
 | -------------------------------- | -------------------------------------------------- |
 | `create-overview`                | Research synthesis document                        |
+| `decide-it`                      | Resolve open questions in working documents        |
 | `review-proposal`                | Review proposal quality and readiness to plan      |
 | `review-alignment`               | Audit two documents for alignment gaps             |
 | `create-proposal`                | Bridge research findings into a specification      |
