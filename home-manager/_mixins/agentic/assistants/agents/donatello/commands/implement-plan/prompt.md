@@ -1,4 +1,4 @@
-## Implement Code
+## Implement Plan
 
 Implement $1. Scope: $2 - an optional phase. When $2 is given, implement only that phase; when omitted, implement the whole plan.
 

@@ -1,6 +1,6 @@
 ## Create Code Implementation Plan
 
-**Usage:** `/create-code-plan <output-file>`
+**Usage:** `/create-plan <output-file>`
 
 The first argument (`$1`) is the file path to write the completed plan to (e.g. `plan.md`). Ask if not provided before proceeding.
 

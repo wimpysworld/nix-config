@@ -1,6 +1,6 @@
 ## Create Implementation Proposal
 
-**Usage:** `/create-implementation-proposal <output-file>`
+**Usage:** `/create-proposal <output-file>`
 
 The first argument (`$1`) is the file path to write the completed proposal to (e.g. `proposal.md`). Ask if not provided before proceeding.
 
