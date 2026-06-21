@@ -17,8 +17,6 @@ pkgs: {
 
   # Local package overrides
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
-  kmscon = pkgs.callPackage ./kmscon { };
-  libtsm = pkgs.callPackage ./libtsm { };
   wolfictl = pkgs.callPackage ./wolfictl { };
 
   # Local fonts

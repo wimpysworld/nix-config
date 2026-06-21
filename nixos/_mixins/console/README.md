@@ -11,16 +11,6 @@ Console, locale, font, timezone, and KMSCON configuration for all NixOS hosts.
 - Enables auto-login on ISO images (`autologinUser = "nixos"`)
 - Provides geolocation-based timezone on workstations (via geoclue2)
 
-## Custom Packages
-
-This module uses custom builds of kmscon and libtsm, not the nixpkgs versions:
-
-| Package | Version | Source | Path |
-|---------|---------|--------|------|
-| kmscon | 9.3.2 | [kmscon/kmscon](https://github.com/kmscon/kmscon) | `pkgs/kmscon/default.nix` |
-| libtsm | 4.4.2 | [kmscon/libtsm](https://github.com/kmscon/libtsm) | `pkgs/libtsm/default.nix` |
-
-The custom kmscon package includes a `postPatch` that redirects the systemd unit install directory from the read-only `systemd-libs` store path to the package's own output. This ensures the shipped `kmsconvt@.service` unit file is accessible.
 
 ## KMSCON Configuration
 
