@@ -247,7 +247,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 | Command                          | Purpose                                            |
 | -------------------------------- | -------------------------------------------------- |
 | `create-overview`                | Research synthesis document                        |
-| `review-plan`                    | Meticulous plan review with cited sources          |
+| `review-proposal`                | Review proposal quality and readiness to plan      |
 | `review-alignment`               | Audit two documents for alignment gaps             |
 | `create-proposal`                | Bridge research findings into a specification      |
 | `deep-research`                  | Multi-round research tracked in `RESEARCH-PLAN.md` |
