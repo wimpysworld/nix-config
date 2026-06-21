@@ -261,9 +261,8 @@ Maintainability specialist reviewing for simplification, duplication, dead code,
 
 | Command             | Purpose                                                        |
 | ------------------- | -------------------------------------------------------------- |
-| `review-code`       | Maintainability review: dead code, simplification, duplication |
+| `review-code`       | Maintainability review: deletion, replacement, simplification  |
 | `review-code-smell` | Hunt for genuine code smells: god objects, feature envy, etc.  |
-| `review-stdlib`     | Identify reimplemented standard library functionality          |
 
 ---
 
