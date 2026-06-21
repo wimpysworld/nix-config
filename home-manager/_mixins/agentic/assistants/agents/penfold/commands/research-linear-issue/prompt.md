@@ -12,7 +12,7 @@ Read the target issue with the Linear MCP. Extract the problem statement, accept
 
 **2. Fan out**
 
-Launch a team of sub-agents in parallel, one per source or cluster. Match the tool to the source type:
+Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by source or source cluster. Match the tool to the source type:
 
 | Source | Tool |
 |--------|------|
