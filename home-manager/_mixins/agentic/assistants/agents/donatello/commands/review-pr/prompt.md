@@ -1,12 +1,12 @@
 ## Peer Review Pull Request
 
-Run a substantive peer review of GitHub PR `$ARGUMENTS` by delegating to a team of `donatello` agents working in parallel. Ask for the PR URL or number if not provided.
+Run a substantive peer review of GitHub PR `$ARGUMENTS`. Ask for the PR URL or number if not provided.
 
 ### 1. Delegate research
 
 Fetch the PR details, description, and full diff first with dedicated `gh` subcommands (`gh pr view`, `gh pr diff`). Raw `gh api` is denied; use `gh-api-safe` for raw API reads. Record the head commit SHA reviewed. Never mutate GitHub: no comments, approvals, or merges.
 
-Split the review across a team of `donatello` agents, each with fresh context, launched in parallel. Divide the work by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions. Each agent's delegation packet must instruct it to:
+Split the review across fresh sub-agents launched in parallel. Divide the work by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions. Each sub-agent's delegation packet must instruct it to:
 
 - Read the surrounding code in the working tree to understand the change in context, within its assigned concern or area.
 - Where practical, verify conclusions by building and running the relevant tests on the PR head (e.g. in a temporary worktree), restoring repo state afterwards. Distinguish environmental test failures (also failing on main) from PR-caused failures.
@@ -18,7 +18,7 @@ Synthesise the team's findings into one report at `./<PR-number>.md` in the repo
 
 ### 2. Pressure-test before blocking
 
-For each finding rated medium or higher that would justify "request changes", send a follow-up to the donatello agent that raised it (continue its context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold.
+For each finding rated medium or higher that would justify "request changes", send a follow-up to the sub-agent that raised it (continue its context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold.
 
 ### 3. Relay
 
