@@ -37,6 +37,13 @@
     inherit (final.unstable) zed-editor;
     inherit (final.unstable) lima;
 
+    nh-unwrapped = prev.nh-unwrapped.overrideAttrs (oldAttrs: {
+      postPatch = (oldAttrs.postPatch or "") + ''
+        substituteInPlace crates/nh-search/src/search.rs \
+          --replace-fail "latest-46-" "latest-48-"
+      '';
+    });
+
     # Claude Code tracks the llm-agents flake on Linux (pinned alongside the
     # other agent tooling there) and unstable nixpkgs elsewhere.
     # https://github.com/numtide/llm-agents.nix
