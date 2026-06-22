@@ -6,8 +6,6 @@ Input: `$ARGUMENTS`.
 
 If `$ARGUMENTS` is blank, ask for an overview path or overview text and wait for it. Once the overview is present, proceed to completion without deferring to the user.
 
-Side effects: this workflow writes proposal and plan files, edits implementation files, updates documentation where required, runs local validation commands, stages intended code and documentation changes for commit-message drafting, and may use web research. It never creates commits.
-
 Command invocation: use the current provider's command prefix when invoking each command. Codex uses `$command`; slash-command runtimes use `/command`. The workflow below lists command names without a fixed prefix.
 
 ### Process
@@ -25,7 +23,7 @@ Command invocation: use the current provider's command prefix when invoking each
 11. After validation passes, run `update-docs <changed files or implementation diff>` using the provider-prefix rule above. This delegates documentation checks and required updates to Velma. Update documentation only where the implemented change requires it.
 12. If prompt, command, skill, assistant, or project instruction artefacts changed, delegate their documentation checks and required updates to Rosey. Run the relevant Rosey workflow, such as `update-command`, `update-skill`, `update-assistant`, or `update-agents-md`, using the provider-prefix rule above.
 13. Review the working tree. Stage only code and documentation intended for commit. Do not stage working documents or planning artefacts, including overview, proposal, plan, alignment, validation, research, decision documents, or other build artefacts. Use explicit path-limited staging.
-14. Run `draft-commit-message` using the provider-prefix rule above. Preserve its fenced commit message unchanged for the final output.
+14. Run `draft-commit-message` using the provider-prefix rule above. Preserve its fenced commit message unchanged for the final output. Never create a commit.
 
 If the platform cannot expand a command from inside this command, perform the same workflow directly. Use the current command catalogue and project instructions as the source of truth.
 

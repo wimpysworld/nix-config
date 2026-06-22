@@ -6,8 +6,6 @@ Input: `$ARGUMENTS`.
 
 If `$ARGUMENTS` is blank, ask for a working document path or document text and wait for it. If it is a readable path, read that file and edit it. If it is document text, ask for the target file path before researching, because this command must write the resolved document in place.
 
-Side effects: this workflow edits the target document, reads project source, may inspect upstream app source code, may use web research, and delegates research through `delegate-task`.
-
 ### Process
 
 1. Read the full document before judging.

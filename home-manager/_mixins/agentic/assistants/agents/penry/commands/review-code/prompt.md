@@ -4,8 +4,6 @@ Review code for maintainability defects that can be fixed by removing, simplifyi
 
 Runs a full-project review. No arguments.
 
-Side effects: writes the aggregated report to `CODE-REVIEW.md`. The review may consult official language docs, Context7, Exa, or language-specific MCP tools to confirm standard library and native platform features.
-
 ### Process
 
 1. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area; the parent aggregates findings.
