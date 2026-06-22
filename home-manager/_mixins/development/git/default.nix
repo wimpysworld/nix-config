@@ -38,6 +38,16 @@ let
   shellAliases = {
     gitso = "${pkgs.git}/bin/git --signoff";
   };
+  tomlFormat = pkgs.formats.toml { };
+  hunkTheme = "catppuccin-mocha";
+  hunkConfig = tomlFormat.generate "hunk-config.toml" {
+    mode = "stack";
+    theme = hunkTheme;
+    pager = {
+      mode = "stack";
+      theme = hunkTheme;
+    };
+  };
 in
 {
   catppuccin = {
@@ -56,6 +66,7 @@ in
         diffnav # Navigate Git diffs
         git-igitt # git log/graph
         gitsign # Sign Git commits and tags with Sigstore
+        hunk # Review local diffs with Hunk
       ]
       # pre-commit and related tools require dotnet which is currently broken on Darwin
       ++ lib.optionals (!host.is.darwin) [
@@ -65,8 +76,12 @@ in
     sessionVariables = {
       GIT_EDITOR = "${freshGitEditor}/bin/fresh-git-editor";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
+      HUNK_DISABLE_UPDATE_NOTICE = "1";
+      HUNK_MCP_DISABLE = "1";
     };
   };
+
+  xdg.configFile."hunk/config.toml".source = lib.mkDefault hunkConfig;
 
   programs = {
     bash = {
@@ -74,7 +89,7 @@ in
     };
     delta = {
       enable = true;
-      enableGitIntegration = config.programs.git.enable;
+      enableGitIntegration = false;
       options = {
         hyperlinks = true;
         line-numbers = true;
@@ -106,6 +121,7 @@ in
             # message at line 1, column 1 so the cursor starts at the top
             # instead of a restored per-file position.
             editor = "${freshGitEditor}/bin/fresh-git-editor";
+            pager = "${pkgs.hunk}/bin/hunk pager --theme ${hunkTheme}";
           };
           diff = {
             colorMoved = "default";
@@ -149,8 +165,12 @@ in
         git = {
           # Auto-fetch from remote periodically
           autoFetch = true;
-          # Use delta for diffs with side-by-side view (pagers is an array)
+          # Use Hunk for diffs, while keeping Delta available as a fallback pager.
           pagers = [
+            {
+              colorArg = "always";
+              pager = "env HUNK_TEXT_PAGER=cat ${pkgs.hunk}/bin/hunk pager --theme ${hunkTheme}";
+            }
             { pager = "${pkgs.delta}/bin/delta --dark --paging=never"; }
           ];
         };

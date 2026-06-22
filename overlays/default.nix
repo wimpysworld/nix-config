@@ -5,7 +5,7 @@
   localPackages = final: _prev: import ../pkgs final;
 
   # This one contains whatever you want to overlay
-  # You can change versions, add patches, set compilation flags, anything really.
+  # You can change versions, add patches, set compilation flags, and more.
   # https://nixos.wiki/wiki/Overlays
   modifiedPackages = final: prev: rec {
     hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
@@ -17,6 +17,8 @@
     # Herdr terminal workspace manager for AI coding agents, built from the
     # pinned upstream flake input.
     inherit (inputs.herdr.packages.${final.stdenv.hostPlatform.system}) herdr;
+
+    inherit (inputs.hunk.packages.${final.stdenv.hostPlatform.system}) hunk;
 
     inherit (final.unstable) ollama;
     inherit (final.unstable) ollama-cuda;

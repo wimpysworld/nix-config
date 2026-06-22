@@ -35,6 +35,11 @@
     veila.inputs.nixpkgs.follows = "nixpkgs";
     herdr.url = "github:flexiondotorg/herdr/herdr-agent-hint";
     herdr.inputs.nixpkgs.follows = "nixpkgs";
+    hunk.url = "github:modem-dev/hunk/v0.16.0";
+    hunk.inputs.nixpkgs.follows = "nixpkgs";
+    hunk.inputs.bun2nix.inputs.flake-parts.follows = "flake-parts";
+    hunk.inputs.bun2nix.inputs.systems.follows = "systems";
+    hunk.inputs.bun2nix.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     concord.url = "github:chojs23/concord/v2.2.3";
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
     concord.inputs.rust-overlay.follows = "rust-overlay";
