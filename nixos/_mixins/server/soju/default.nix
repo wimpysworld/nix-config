@@ -8,6 +8,7 @@
 let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
+  sojuAdminSocket = "/run/soju/admin";
   tailnetHost = "${host.name}.${config.noughty.network.tailNet}";
   sojuPort = 7667;
   sojuSopsFile = ../../../../secrets + "/halloy.yaml";
@@ -50,7 +51,7 @@ let
         local attempt=1
 
         while [ "$attempt" -le 30 ]; do
-          if sojuctl -config "${config.services.soju.configFile}" server status >/dev/null 2>&1; then
+          if [ -S "${sojuAdminSocket}" ]; then
             return 0
           fi
 
@@ -64,46 +65,76 @@ let
 
       waitForSojuAdmin
 
-      if sojuctl -config "${config.services.soju.configFile}" user status "${username}" >/dev/null 2>&1; then
-        sojuctl -config "${config.services.soju.configFile}" user update "${username}" \
-          -password "$sojuPassword" \
-          -admin=true \
-          -enabled=true \
-      else
-        sojuctl -config "${config.services.soju.configFile}" user create \
+      commandFailedBecauseExisting() {
+        local errorFile="$1"
+
+        grep -Eiq 'already|duplicate|exist|taken' "$errorFile"
+      }
+
+      ensureUser() {
+        local createError
+        createError="$(mktemp)"
+
+        if sojuctl -config "${config.services.soju.configFile}" user create \
           -username "${username}" \
           -password "$sojuPassword" \
           -admin=true \
-          -nick "Wimpy"
-      fi
+          -nick "Wimpy" 2>"$createError"; then
+          rm -f "$createError"
+          return 0
+        fi
 
-      networkExists() {
-        local networkName="$1"
+        local createStatus=$?
 
-        sojuctl -config "${config.services.soju.configFile}" user run "${username}" network status \
-          | grep -Eq "^[[:space:]]*$networkName([[:space:]]|$)"
+        if commandFailedBecauseExisting "$createError"; then
+          rm -f "$createError"
+          sojuctl -config "${config.services.soju.configFile}" user update "${username}" \
+            -password "$sojuPassword" \
+            -admin=true \
+            -enabled=true
+          return 0
+        fi
+
+        cat "$createError" >&2
+        rm -f "$createError"
+        return "$createStatus"
       }
+
+      ensureUser
 
       ensureNetwork() {
         local networkName="$1"
         local address="$2"
         local nick="$3"
         local upstreamUsername="$4"
+        local createError
+        createError="$(mktemp)"
 
-        if networkExists "$networkName"; then
+        if sojuctl -config "${config.services.soju.configFile}" user run "${username}" network create \
+          -addr "$address" \
+          -name "$networkName" \
+          -username "$upstreamUsername" \
+          -nick "$nick" \
+          -enabled=true 2>"$createError"; then
+          rm -f "$createError"
+          return 0
+        fi
+
+        local createStatus=$?
+
+        if commandFailedBecauseExisting "$createError"; then
+          rm -f "$createError"
           sojuctl -config "${config.services.soju.configFile}" user run "${username}" network update "$networkName" \
             -addr "$address" \
             -username "$upstreamUsername" \
             -nick "$nick" \
             -enabled=true
-        else
-          sojuctl -config "${config.services.soju.configFile}" user run "${username}" network create \
-            -addr "$address" \
-            -name "$networkName" \
-            -username "$upstreamUsername" \
-            -nick "$nick" \
-            -enabled=true
+          return 0
         fi
+
+        cat "$createError" >&2
+        rm -f "$createError"
+        return "$createStatus"
       }
 
       ensureNetwork "libera" "irc.libera.chat" "Wimpy" "flexiondotorg/irc.libera.chat@nixos"
