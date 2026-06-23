@@ -67,13 +67,13 @@ let
       if sojuctl -config "${config.services.soju.configFile}" user status "${username}" >/dev/null 2>&1; then
         sojuctl -config "${config.services.soju.configFile}" user update "${username}" \
           -password "$sojuPassword" \
-          -admin true \
-          -enabled true \
+          -admin=true \
+          -enabled=true \
       else
         sojuctl -config "${config.services.soju.configFile}" user create \
           -username "${username}" \
           -password "$sojuPassword" \
-          -admin true \
+          -admin=true \
           -nick "Wimpy"
       fi
 
@@ -95,14 +95,14 @@ let
             -addr "$address" \
             -username "$upstreamUsername" \
             -nick "$nick" \
-            -enabled true
+            -enabled=true
         else
           sojuctl -config "${config.services.soju.configFile}" user run "${username}" network create \
             -addr "$address" \
             -name "$networkName" \
             -username "$upstreamUsername" \
             -nick "$nick" \
-            -enabled true
+            -enabled=true
         fi
       }
 
