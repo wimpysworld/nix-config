@@ -16,24 +16,19 @@ let
   halloyConfig = ''
     theme = "catppuccin-mocha"
 
-    [servers.Libera-Soju]
+    [servers.Soju]
     nickname = "Wimpy"
     alt_nicks = ["flexiondotorg", "Wimpress"]
-    username = "flexiondotorg/irc.libera.chat@nixos"
-    server = "irc.squidowl.org"
-    port = 6697
-    password = "${config.sops.placeholder.SOJU_PASSWORD}"
+    username = "${config.noughty.user.name}"
+    server = "revan.${config.noughty.network.tailNet}"
+    port = 443
     use_tls = true
-    on_connect = ["/msg NickServ IDENTIFY Wimpy ${config.sops.placeholder.LIBERA_PASSWORD}", "/nick Wimpy"]
+    use_websocket = true
+    websocket_path = "/socket"
 
-    [servers.OFTC-Soju]
-    nickname = "Wimpress"
-    username = "flexiondotorg/irc.oftc.net@nixos"
-    server = "irc.squidowl.org"
-    port = 6697
+    [servers.Soju.sasl.plain]
+    username = "${config.noughty.user.name}"
     password = "${config.sops.placeholder.SOJU_PASSWORD}"
-    use_tls = true
-    on_connect = ["/msg NickServ IDENTIFY ${config.sops.placeholder.OFTC_PASSWORD} Wimpress"]
 
     [font]
     family = "FiraCode Nerd Font Mono"
