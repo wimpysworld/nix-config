@@ -40,7 +40,7 @@
     hunk.inputs.bun2nix.inputs.flake-parts.follows = "flake-parts";
     hunk.inputs.bun2nix.inputs.systems.follows = "systems";
     hunk.inputs.bun2nix.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
-    concord.url = "github:chojs23/concord/v2.2.3";
+    concord.url = "github:chojs23/concord/v2.2.6";
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
     concord.inputs.rust-overlay.follows = "rust-overlay";
     concord.inputs.flake-utils.follows = "flake-utils";
