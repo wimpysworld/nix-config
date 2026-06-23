@@ -75,6 +75,8 @@ let
         local createError
         createError="$(mktemp)"
 
+        local createStatus
+
         if sojuctl -config "${config.services.soju.configFile}" user create \
           -username "${username}" \
           -password "$sojuPassword" \
@@ -82,9 +84,9 @@ let
           -nick "Wimpy" 2>"$createError"; then
           rm -f "$createError"
           return 0
+        else
+          createStatus=$?
         fi
-
-        local createStatus=$?
 
         if commandFailedBecauseExisting "$createError"; then
           rm -f "$createError"
@@ -110,6 +112,8 @@ let
         local createError
         createError="$(mktemp)"
 
+        local createStatus
+
         if sojuctl -config "${config.services.soju.configFile}" user run "${username}" network create \
           -addr "$address" \
           -name "$networkName" \
@@ -118,9 +122,9 @@ let
           -enabled=true 2>"$createError"; then
           rm -f "$createError"
           return 0
+        else
+          createStatus=$?
         fi
-
-        local createStatus=$?
 
         if commandFailedBecauseExisting "$createError"; then
           rm -f "$createError"
