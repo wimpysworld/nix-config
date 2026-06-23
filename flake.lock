@@ -644,17 +644,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1781801534,
-        "narHash": "sha256-pVmZ4qTcYssGz8DtIp+pNf83XWCcY30GaJwV8PRD+ag=",
-        "owner": "flexiondotorg",
+        "lastModified": 1782160603,
+        "narHash": "sha256-ep5TRwEwEo31p2VpFkcmxrp9o9MeHz2hgJ2M5Mu2yC0=",
+        "owner": "ogulcancelik",
         "repo": "herdr",
-        "rev": "261f9fbcf2bf0fa7550c7061269275498b823c02",
+        "rev": "088922dfabca152047c8f39f660893b3b19dbe2d",
         "type": "github"
       },
       "original": {
-        "owner": "flexiondotorg",
-        "ref": "herdr-agent-hint",
+        "owner": "ogulcancelik",
         "repo": "herdr",
+        "rev": "088922dfabca152047c8f39f660893b3b19dbe2d",
         "type": "github"
       }
     },
