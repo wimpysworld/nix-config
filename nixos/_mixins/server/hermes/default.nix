@@ -1004,7 +1004,7 @@ in
 
     services.caddy.virtualHosts."${config.noughty.host.name}.${config.noughty.network.tailNet}".extraConfig =
       lib.mkIf (config.services.caddy.enable && config.services.tailscale.enable) ''
-        @hermesDashboard not path /agentsview* /syncthing* /netdata* /scrutiny* /novnc*
+        @hermesDashboard not path /agentsview* /syncthing* /netdata* /scrutiny* /novnc* /socket /uploads*
         reverse_proxy @hermesDashboard ${hermesDashboardHost}:${toString hermesDashboardPort} {
           header_up Host ${hermesDashboardHost}:${toString hermesDashboardPort}
         }
