@@ -162,7 +162,10 @@ lib.mkIf (noughtyLib.hostHasTag "irc-bouncer") {
     soju = {
       enable = true;
       hostName = lib.mkDefault tailnetHost;
-      listen = lib.mkDefault [ "http://localhost:${toString sojuPort}" ];
+      listen = lib.mkDefault [
+        "http://localhost:${toString sojuPort}"
+        "irc+insecure://${tailnetHost}:6667"
+      ];
       adminSocket.enable = lib.mkDefault true;
       enableMessageLogging = lib.mkDefault false;
       httpOrigins = lib.mkDefault [ "https://${tailnetHost}" ];

@@ -49,6 +49,7 @@ in
     ./pueue.nix # Terminal task manager
     ./rclone.nix # Terminal cloud storage sync
     ./ripgrep.nix # Modern Unix `grep`
+    ./senpai.nix # Terminal IRC client
     ./starship.nix # Modern Unix prompt
     ./superfile.nix # Modern terminal file manager
     ./tldr.nix # Modern Unix `man`
