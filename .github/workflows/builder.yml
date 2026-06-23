@@ -32,7 +32,7 @@ jobs:
       has_darwin: ${{ steps.inventory.outputs.has_darwin }}
       has_homes: ${{ steps.inventory.outputs.has_homes }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
@@ -63,7 +63,7 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.devshells) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
@@ -143,7 +143,7 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.packages) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
@@ -243,7 +243,7 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.nixos) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
@@ -281,7 +281,7 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.darwin) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: DeterminateSystems/determinate-nix-action@v3
@@ -309,7 +309,7 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.homes) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
@@ -356,7 +356,7 @@ jobs:
             exit 1
           fi
           echo "✅ All build jobs passed (or were skipped)"
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - uses: DeterminateSystems/determinate-nix-action@v3
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -395,7 +395,7 @@ jobs:
       - uses: actionhippie/swap-space@v1
         with:
           size: 16G
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
@@ -420,7 +420,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Check existing release 🔍
         id: check-release
         env:
