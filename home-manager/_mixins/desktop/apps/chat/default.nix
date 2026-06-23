@@ -110,8 +110,6 @@ lib.mkIf host.is.workstation {
   sops = lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux) {
     secrets = {
       SOJU_PASSWORD.sopsFile = ../../../../../secrets/halloy.yaml;
-      LIBERA_PASSWORD.sopsFile = ../../../../../secrets/halloy.yaml;
-      OFTC_PASSWORD.sopsFile = ../../../../../secrets/halloy.yaml;
     };
     templates."halloy-config.toml" = {
       content = halloyConfig;
