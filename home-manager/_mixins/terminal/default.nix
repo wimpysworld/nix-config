@@ -45,6 +45,7 @@ in
     ./fzf.nix # Terminal fuzzy finder
     ./gpg.nix # Terminal GPG
     ./herdr.nix # Terminal workspace manager for AI coding agents
+    ./iamb.nix # Terminal Matrix client
     ./mpv.nix # Terminal media player
     ./pueue.nix # Terminal task manager
     ./rclone.nix # Terminal cloud storage sync
