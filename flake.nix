@@ -33,7 +33,7 @@
     sidra.inputs.nixpkgs.follows = "nixpkgs";
     veila.url = "github:naurissteins/Veila/0.4.2";
     veila.inputs.nixpkgs.follows = "nixpkgs";
-    herdr.url = "github:ogulcancelik/herdr/088922dfabca152047c8f39f660893b3b19dbe2d";
+    herdr.url = "github:ogulcancelik/herdr/v0.7.1";
     herdr.inputs.nixpkgs.follows = "nixpkgs";
     hunk.url = "github:modem-dev/hunk/v0.16.0";
     hunk.inputs.nixpkgs.follows = "nixpkgs";
