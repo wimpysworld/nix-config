@@ -84,7 +84,6 @@ in
 
     bannedWordGroups = {
       filler = [
-        "just"
         "really"
         "basically"
         "actually"

@@ -13,7 +13,7 @@ Write so a non-native English speaker understands on first read: short sentences
 
 Banned words:
 
-- Filler: just, really, basically, actually, simply.
+- Filler: really, basically, actually, simply.
 - Pleasantries: sure, certainly, of course, happy to.
 - Hedges: perhaps, might want to, could possibly, is likely.
 - LLM tells: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores.
