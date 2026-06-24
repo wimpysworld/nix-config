@@ -112,7 +112,7 @@ Provides an interface to the user's keyboard. Use this skill when working with k
   - `kp.`: The numpad decimal point key
   - `kp/`: The numpad division key
   - `kp*`: The numpad multiplication key
-  - `kp-`: The numpad substraction key
+  - `kp-`: The numpad subtraction key
   - `kp+`: The numpad addition key
   - `kpenter`: The numpad enter key
   - `kp=`: The numpad equals key

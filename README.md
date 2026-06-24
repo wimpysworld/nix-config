@@ -179,7 +179,7 @@ CI/CD workflows in [.github] are Nix ❄️ supercharged ⚡️ by [**Determinat
 
 ### The Shell 🐚
 
-A fully _"oxidised"_ 🦀 [Modern Unix] shell experience is provided by [Fish shell](https://fishshell.com/) 🐟️ with [Starship](https://starship.rs/) 🚀 and a collection of tools that deliver a contempory UX to my terminal ‍🧑‍💻
+A fully _"oxidised"_ 🦀 [Modern Unix] shell experience is provided by [Fish shell](https://fishshell.com/) 🐟️ with [Starship](https://starship.rs/) 🚀 and a collection of tools that deliver a contemporary UX to my terminal ‍🧑‍💻
 
 The base system has a firewall enabled and also includes [OpenSSH], [sops-nix] for secret management, [Tailscale], and a [Fresh] terminal editor configuration.
 Useful shell scripts I used to keep in muddle of git repos are now migrated to [NixOS scripts](./nixos/_mixins/scripts) and [Home Manager scripts](./home-manager/_mixins/scripts) to provide a declarative, reproducible and `shellcheck` validated toolbox 🧰
