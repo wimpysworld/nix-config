@@ -8,7 +8,21 @@
   setupShell = ''
     fence_args=()
     fence_env=()
+    fence_exit_cleanup_hooks=()
     fence_wayland_runtime_dir=""
+
+    run_fence_exit_cleanup_hooks() {
+      local cleanup_hook
+
+      for cleanup_hook in "''${fence_exit_cleanup_hooks[@]}"; do
+        "$cleanup_hook"
+      done
+    }
+
+    add_fence_exit_cleanup_hook() {
+      fence_exit_cleanup_hooks+=("$1")
+      trap run_fence_exit_cleanup_hooks EXIT
+    }
 
     cleanup_fence_wayland_bridge() {
       if [[ -n "$fence_wayland_runtime_dir" ]]; then
@@ -69,7 +83,7 @@
         "XDG_RUNTIME_DIR=$fence_wayland_runtime_dir"
         "WAYLAND_DISPLAY=$wayland_display_name"
       )
-      trap cleanup_fence_wayland_bridge EXIT
+      add_fence_exit_cleanup_hook cleanup_fence_wayland_bridge
     }
 
     setup_fence_wayland_bridge
