@@ -14,6 +14,14 @@ let
   claudePackage = pkgs.claude-code;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceChromium =
+    if host.is.server then
+      {
+        runtimeInputs = [ ];
+        setupShell = "";
+      }
+    else
+      import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
   ccColor = colorName: "hex:${builtins.substring 1 (-1) (catppuccinPalette.getColor colorName)}";
 
@@ -407,9 +415,11 @@ let
       pkgs.ncurses
     ]
     ++ fenceWaylandBridge.runtimeInputs
+    ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
       ${fenceWaylandBridge.setupShell}
+      ${fenceChromium.setupShell}
 
       fence_log_agent="claude"
       ${fenceLogging.setupShell}

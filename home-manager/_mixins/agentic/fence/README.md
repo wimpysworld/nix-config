@@ -36,6 +36,29 @@ as a directory. This is deliberately narrower than binding the host runtime
 wholesale: image paste needs the compositor socket, and the session bus is not
 exposed.
 
+Fenced agents on non-server hosts also get a Chromium wrapper first on `PATH`.
+The wrapper creates private writable browser state under
+`/tmp/fence-chromium.*`, sets `HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`,
+`XDG_DATA_HOME`, `XDG_STATE_HOME`, and `XDG_RUNTIME_DIR` for Chromium only, and
+passes a private `--user-data-dir` when the caller has not set one. This keeps
+Crashpad and profile writes out of the real home directory. The fenced
+environment also sets `NYALA_BROWSER` and `CHROME_PATH` to that wrapper, so
+Nyala and chromedp callers do not bypass it through host browser environment
+variables. Server hosts do not install this bridge.
+
+Chromium should use its user namespace sandbox inside Fence. The wrapper passes
+`--disable-setuid-sandbox` because the Nix store cannot provide a working SUID
+helper inside the sandbox. Do not use `--no-sandbox` as a normal setting. Keep
+Fence's `ptrace` deny in place; Crashpad is disabled with
+`--disable-crash-reporter` and `--disable-breakpad` so browser launch does not
+need a ptrace grant.
+
+For local Nyala debugging on hosts where Chromium user namespaces are blocked,
+set `NYALA_DEBUG_CHROMIUM_NO_SANDBOX=1` before launching the fenced agent. That
+adds `--no-sandbox` for Chromium only. This is a debug workaround, not a
+deployment setting. Unset it after use. It does not grant ptrace, bind host
+`/proc`, expose host `/dev/shm`, or change server policy.
+
 Claude Code's user settings include
 `skipDangerousModePermissionPrompt = true` so `claude-fenced` starts
 directly instead of stopping at the bypass-mode responsibility prompt. Fence

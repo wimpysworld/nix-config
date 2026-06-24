@@ -14,6 +14,14 @@ let
   piPackage = inputs.llm-agents.packages.${system}.pi;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceChromium =
+    if host.is.server then
+      {
+        runtimeInputs = [ ];
+        setupShell = "";
+      }
+    else
+      import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
   piMcpAdapterVersion = "2.6.1";
   # When bumping pi-subagents, verify the surface still matches the provider-router and prelude assumptions: the MCP tool name remains `subagent`; the parameter set still includes `agent`, `task`, `context`, `model`, and `thinking`; and `context` still accepts `"fresh"` and `"fork"` with `"fresh"` as the safer non-forking default. If any of these change, update `extensions/provider-router/index.ts` and the agent-launch prelude in `assistants/default.nix` before merging.
@@ -247,9 +255,11 @@ let
       fencePackage
     ]
     ++ fenceWaylandBridge.runtimeInputs
+    ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
       ${fenceWaylandBridge.setupShell}
+      ${fenceChromium.setupShell}
 
       fence_log_agent="pi"
       ${fenceLogging.setupShell}

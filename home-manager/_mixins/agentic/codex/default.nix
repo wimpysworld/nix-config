@@ -6,6 +6,7 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
 
   # Codex re-execs std::env::current_exe() when launching the Linux sandbox.
@@ -20,6 +21,14 @@ let
   codexPackage = inputs.llm-agents.packages.${system}.codex;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceChromium =
+    if host.is.server then
+      {
+        runtimeInputs = [ ];
+        setupShell = "";
+      }
+    else
+      import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
   communicationRules = config.agentic.communicationRules;
 
@@ -94,9 +103,11 @@ let
       fencePackage
     ]
     ++ fenceWaylandBridge.runtimeInputs
+    ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
       ${fenceWaylandBridge.setupShell}
+      ${fenceChromium.setupShell}
 
       fence_log_agent="codex"
       ${fenceLogging.setupShell}
