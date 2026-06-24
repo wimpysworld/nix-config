@@ -50,7 +50,7 @@ lib.mkIf (!host.is.iso) {
     pipewire = {
       enable = true;
       alsa.enable = true;
-      alsa.support32Bit = lib.mkForce config.hardware.graphics.enable32Bit;
+      alsa.support32Bit = lib.mkForce false;
       jack.enable = false;
       pulse.enable = true;
       wireplumber = {
