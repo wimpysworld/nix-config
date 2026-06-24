@@ -98,8 +98,62 @@ lib.mkIf host.is.workstation {
       enableZshIntegration = false;
       settings = {
         color_scheme = "Catppuccin Mocha";
+        colors = {
+          tab_bar = {
+            background = getColor "mantle";
+            inactive_tab_edge = getColor "surface0";
+            active_tab = {
+              bg_color = getColor "mauve";
+              fg_color = getColor "crust";
+            };
+            inactive_tab = {
+              bg_color = getColor "mantle";
+              fg_color = getColor "text";
+            };
+            inactive_tab_hover = {
+              bg_color = getColor "base";
+              fg_color = getColor "text";
+            };
+            new_tab = {
+              bg_color = getColor "surface0";
+              fg_color = getColor "text";
+            };
+            new_tab_hover = {
+              bg_color = getColor "surface1";
+              fg_color = getColor "text";
+            };
+          };
+        };
         font = lib.generators.mkLuaInline ''wezterm.font("FiraCode Nerd Font Mono")'';
         font_size = 16;
+        keys = [
+          {
+            key = "Enter";
+            mods = "SHIFT";
+            action = lib.generators.mkLuaInline ''wezterm.action.SendString("\n")'';
+          }
+          {
+            key = "Enter";
+            mods = "CTRL";
+            action = lib.generators.mkLuaInline ''wezterm.action.SendString("\x1b[13;5u")'';
+          }
+          {
+            key = "Insert";
+            mods = "SHIFT";
+            action = lib.generators.mkLuaInline ''wezterm.action.SendString("\x1b[2;2~")'';
+          }
+          {
+            key = "Delete";
+            mods = "SHIFT";
+            action = lib.generators.mkLuaInline ''wezterm.action.SendString("\x1b[3;2~")'';
+          }
+          {
+            key = "p";
+            mods = "CTRL|SHIFT";
+            action = lib.generators.mkLuaInline ''wezterm.action.SendString("\x1b[80;6u")'';
+          }
+        ];
+        use_fancy_tab_bar = false;
       };
     };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {
