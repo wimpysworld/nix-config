@@ -100,18 +100,17 @@ lib.mkIf host.is.workstation {
         color_scheme = "Catppuccin Mocha";
         colors = {
           tab_bar = {
-            background = getColor "mantle";
             inactive_tab_edge = getColor "surface0";
             active_tab = {
-              bg_color = getColor "mauve";
+              bg_color = getColor "blue";
               fg_color = getColor "crust";
             };
             inactive_tab = {
               bg_color = getColor "mantle";
-              fg_color = getColor "text";
+              fg_color = getColor "subtext1";
             };
             inactive_tab_hover = {
-              bg_color = getColor "base";
+              bg_color = getColor "surface0";
               fg_color = getColor "text";
             };
             new_tab = {
@@ -119,13 +118,27 @@ lib.mkIf host.is.workstation {
               fg_color = getColor "text";
             };
             new_tab_hover = {
-              bg_color = getColor "surface1";
-              fg_color = getColor "text";
+              bg_color = getColor "blue";
+              fg_color = getColor "crust";
             };
           };
         };
         font = lib.generators.mkLuaInline ''wezterm.font("FiraCode Nerd Font Mono")'';
         font_size = 16;
+        window_frame = {
+          font = lib.generators.mkLuaInline ''wezterm.font({ family = "FiraCode Nerd Font Mono", weight = "Bold" })'';
+          font_size = 12;
+          active_titlebar_bg = getColor "mantle";
+          inactive_titlebar_bg = getColor "crust";
+          active_titlebar_fg = getColor "text";
+          inactive_titlebar_fg = getColor "subtext0";
+          active_titlebar_border_bottom = getColor "blue";
+          inactive_titlebar_border_bottom = getColor "surface0";
+          button_fg = getColor "text";
+          button_bg = getColor "mantle";
+          button_hover_fg = getColor "crust";
+          button_hover_bg = getColor "blue";
+        };
         keys = [
           {
             key = "Enter";
@@ -153,7 +166,7 @@ lib.mkIf host.is.workstation {
             action = lib.generators.mkLuaInline ''wezterm.action.SendString("\x1b[80;6u")'';
           }
         ];
-        use_fancy_tab_bar = false;
+        use_fancy_tab_bar = true;
       };
     };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {
