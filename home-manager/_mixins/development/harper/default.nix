@@ -9,9 +9,19 @@
 let
   harperLs = "${pkgs.harper}/bin/harper-ls";
 
+  # Shared user dictionary seeded across every host from a plaintext word list,
+  # one term per line. The list is read-only in the Nix store, so add new terms
+  # to dictionary.txt rather than via the editor code action.
+  harperDictionary = ./dictionary.txt;
+
   harperSettings = {
     dialect = "British";
     diagnosticSeverity = "hint";
+    userDictPath = "${harperDictionary}";
+    # Disable em dash and en dash suggestions across every integration.
+    linters = {
+      Dashes = false;
+    };
   };
 
   extensionToLanguage = {

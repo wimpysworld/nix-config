@@ -27,10 +27,10 @@ Enforcement:
 
 Harper dictionary:
 
-- Harper checks spelling in British English and flags unknown words as noise.
-- When Harper flags a legitimate term (a name, acronym, tool, command, code identifier, or domain word), add it to the project dictionary. Do not reword the text to dodge the flag.
-- The project dictionary is `.harper-dictionary.txt` in the repository root. Write one term per line.
-- Add the word as Harper shows it. Keep the original case.
-- For a possessive like `Rosey's`, add the base word `Rosey`. Add the possessive form too if it still flags.
-- Fix a genuine typo in the text. Never add a misspelling to the dictionary.
-- Do not add American spellings such as `color` or `center`. British English flags these on purpose.
+- Harper spell-checks in British English and flags unknown words.
+- When it flags a legitimate term (name, acronym, tool, command, code identifier, or domain word), add the term to the dictionary. Do not reword to dodge the flag.
+- Dictionary: `.harper-dictionary.txt` at repo root. One term per line.
+- Add the word as Harper shows it, keeping its case.
+- For a possessive like `Rosey's`, add the base word `Rosey`. Add the possessive too if it still flags.
+- Fix a genuine typo in the text. Never add a misspelling.
+- Never add American spellings such as `color` or `center`. Harper flags these on purpose.
