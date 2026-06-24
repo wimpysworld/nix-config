@@ -90,6 +90,18 @@ lib.mkIf host.is.workstation {
         map ctrl+shift+p send_text all \x1b[80;6u
       '';
     };
+    # Secondary terminal for testing projects that use Sixel graphics. Kitty
+    # remains the default; wezterm mirrors its Catppuccin Mocha theme and font.
+    wezterm = {
+      enable = true;
+      enableBashIntegration = false;
+      enableZshIntegration = false;
+      settings = {
+        color_scheme = "Catppuccin Mocha";
+        font = lib.generators.mkLuaInline ''wezterm.font("FiraCode Nerd Font Mono")'';
+        font_size = 16;
+      };
+    };
     fuzzel = lib.mkIf config.programs.fuzzel.enable {
       settings.main.terminal = "${lib.getExe config.programs.kitty.package}";
     };
