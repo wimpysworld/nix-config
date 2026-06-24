@@ -437,6 +437,12 @@ let
       mcp_config=""
       tmp_mcp_config=""
 
+      cleanup_claude_mcp_config() {
+        if [[ -n "$tmp_mcp_config" ]]; then
+          rm -f -- "$tmp_mcp_config"
+        fi
+      }
+
       for candidate in "''${mcp_configs[@]}"; do
         if [[ -f "$candidate" ]]; then
           mcp_config="$candidate"
@@ -450,7 +456,7 @@ let
         chmod 600 "$tmp_mcp_config"
         cp "$mcp_config" "$tmp_mcp_config"
         fence_args+=(--expose-host-path "$tmp_mcp_config")
-        trap 'rm -f "$tmp_mcp_config"; cleanup_fence_wayland_bridge' EXIT
+        add_fence_exit_cleanup_hook cleanup_claude_mcp_config
       fi
 
       ${claudeLaunchDefaults}

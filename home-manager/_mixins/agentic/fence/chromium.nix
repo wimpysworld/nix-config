@@ -75,8 +75,17 @@ in
   ];
 
   setupShell = ''
+    fence_chromium_runtime_dir=""
+
+    cleanup_fence_chromium() {
+      if [[ -n "$fence_chromium_runtime_dir" ]]; then
+        rm -rf -- "$fence_chromium_runtime_dir"
+      fi
+    }
+
     fence_chromium_runtime_dir="$(mktemp -d "''${TMPDIR:-/tmp}/fence-chromium.XXXXXX")"
     chmod 700 "$fence_chromium_runtime_dir"
+    add_fence_exit_cleanup_hook cleanup_fence_chromium
 
     fence_args+=(--expose-host-path-rw "$fence_chromium_runtime_dir")
     fence_env+=(
