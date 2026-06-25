@@ -170,7 +170,6 @@
             deadnix
             direnv
             file
-            fresh
             git
             home-manager
             jq
