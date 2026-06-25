@@ -14,11 +14,10 @@
     # theme-key-resolution fix has landed there.
     inherit (inputs.fresh.packages.${final.stdenv.hostPlatform.system}) fresh;
 
-    # Herdr terminal workspace manager for AI coding agents, built from the
-    # pinned upstream flake input.
-    inherit (inputs.herdr.packages.${final.stdenv.hostPlatform.system}) herdr;
-
-    inherit (inputs.hunk.packages.${final.stdenv.hostPlatform.system}) hunk;
+    # Agent-adjacent tools sourced from the same pinned llm-agents flake as the
+    # rest of the agent tooling.
+    inherit (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}) herdr;
+    inherit (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}) hunk;
 
     inherit (final.unstable) ollama;
     inherit (final.unstable) ollama-cuda;

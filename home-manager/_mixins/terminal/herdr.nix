@@ -200,7 +200,7 @@ in
 {
   config = lib.mkIf (!host.is.iso) {
     # `pkgs.herdr` comes from the `modifiedPackages` overlay, which exposes the
-    # upstream flake-input build directly.
+    # llm-agents flake build directly.
     home.packages = [
       herdrWorktree
       pkgs.herdr
