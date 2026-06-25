@@ -12,7 +12,7 @@ call to `pi-subagents`.
 
 Home Manager deploys the extension under
 `~/.pi/agent/extensions/provider-router/`. The directory contains
-`agents.json`, `thinking.json`, `index.ts`, `LICENSE`, and `README.md`.
+`agents.json`, `thinking.json`, `index.ts`, `types.d.ts`, `LICENSE`, and `README.md`.
 
 `index.ts` is the runtime extension. `agents.json` and `thinking.json` are both
 generated from assistant `header.pi.yaml` files. The runtime reads them from
@@ -90,9 +90,12 @@ still produce `provider/modelId` without a thinking suffix. Explicit
 ## Runtime Constraints
 
 Provider Router covers the LLM tool-call path only. It rewrites `subagent`
-calls produced by the model during a Pi session. It does not cover slash
-commands such as `/run`, `/chain`, `/parallel`, or `/run-chain`. It does not
-cover prompt-template-bridge invocations. v1 has no per-project override.
+calls produced by the model during a Pi session, including single calls,
+top-level `tasks[]`, sequential chain steps, static chain `parallel: []`
+steps, dynamic chain `parallel: { ... }` fanout templates, and appended chain
+steps from `action: "append-step"`. It does not cover other management actions,
+slash commands such as `/run`, `/chain`, `/parallel`, or `/run-chain`, or
+prompt-template-bridge invocations. v1 has no per-project override.
 
 For known agents - those with a `model-<provider>` and/or
 `thinking-<provider>` entry for the active provider - the runtime is
@@ -106,7 +109,7 @@ are used. The suffixed string is never passed to the registry.
 When the extension overrides a value the orchestrator passed (i.e. `task.model`
 was set and differs from the routed value), it emits a single line to stderr:
 
-```
+```text
 provider-router: override model for agent=<name> orchestrator=<orig> -> routed=<new>
 ```
 
@@ -142,9 +145,12 @@ session after changing `agents.json`.
 Check that Home Manager's evaluated bytes match the deployed maps:
 
 ```sh
-nix eval --raw .#homeConfigurations.\"martin@skrye\".config.home.file.\".pi/agent/extensions/provider-router/agents.json\".text > /tmp/router-eval.json
+home='.#homeConfigurations."martin@skrye".config.home.file'
+agents="$home.\".pi/agent/extensions/provider-router/agents.json\".text"
+thinking="$home.\".pi/agent/extensions/provider-router/thinking.json\".text"
+nix eval --raw "$agents" > /tmp/router-eval.json
 diff /tmp/router-eval.json ~/.pi/agent/extensions/provider-router/agents.json
-nix eval --raw .#homeConfigurations.\"martin@skrye\".config.home.file.\".pi/agent/extensions/provider-router/thinking.json\".text > /tmp/router-thinking-eval.json
+nix eval --raw "$thinking" > /tmp/router-thinking-eval.json
 diff /tmp/router-thinking-eval.json ~/.pi/agent/extensions/provider-router/thinking.json
 ```
 
@@ -154,6 +160,7 @@ Check deployed files and smoke-test Pi extension loading:
 test -f ~/.pi/agent/extensions/provider-router/agents.json
 test -f ~/.pi/agent/extensions/provider-router/thinking.json
 test -f ~/.pi/agent/extensions/provider-router/index.ts
+test -f ~/.pi/agent/extensions/provider-router/types.d.ts
 test -f ~/.pi/agent/extensions/provider-router/LICENSE
 test -f ~/.pi/agent/extensions/provider-router/README.md
 pi -p "echo hi" 2>&1 | tee /tmp/pi-provider-router-smoke.log
@@ -171,4 +178,5 @@ Do not treat this README as evidence that an interactive Pi session has passed
 provider-routing checks.
 
 ## Licence
+
 BlueOak Model License 1.0.0; see `LICENSE`.

@@ -23,15 +23,21 @@ let
     else
       import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  piMcpAdapterVersion = "2.6.1";
-  # When bumping pi-subagents, verify the surface still matches the provider-router and prelude assumptions: the MCP tool name remains `subagent`; the parameter set still includes `agent`, `task`, `context`, `model`, and `thinking`; and `context` still accepts `"fresh"` and `"fork"` with `"fresh"` as the safer non-forking default. If any of these change, update `extensions/provider-router/index.ts` and the agent-launch prelude in `assistants/default.nix` before merging.
-  piSubagentsVersion = "0.25.0";
-  piLensVersion = "3.8.44";
-  piFooterVersion = "0.3.0";
+  piMcpAdapterVersion = "2.10.0";
+  # When bumping pi-subagents, verify the tool still uses the `subagent`
+  # name; execution parameters still include `agent`, `task`, `context`, and
+  # `model`; model thinking still travels as a `provider/id:level` suffix; and
+  # `context` still accepts `"fresh"` and `"fork"` with `"fresh"` as the safer
+  # non-forking default. If any of these change, update
+  # `extensions/provider-router/index.ts` and the agent-launch prelude in
+  # `assistants/default.nix` before merging.
+  piSubagentsVersion = "0.31.0";
+  piLensVersion = "3.8.53";
+  piFooterVersion = "0.4.1";
   piSubCoreVersion = "1.5.0";
   piLogoVersion = "1.0.0";
-  rpivBtwVersion = "1.10.2";
-  rpivTodoVersion = "1.10.2";
+  rpivBtwVersion = "1.20.0";
+  rpivTodoVersion = "1.20.0";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:pi-subagents@${piSubagentsVersion}";
   piLensSource = "npm:pi-lens@${piLensVersion}";
@@ -637,6 +643,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/provider-router/thinking.json".text =
         builtins.toJSON piAssistant.providerRouterThinkingMap;
       ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
+      ".pi/agent/extensions/provider-router/types.d.ts".source = ./extensions/provider-router/types.d.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
       ".pi/agent/extensions/isolation-status/index.ts".text = piIsolationStatusExtension;
