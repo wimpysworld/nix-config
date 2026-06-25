@@ -335,38 +335,76 @@ let
 
   # Launch defaults shared by the plain and fenced `claude` wrappers. Builds a
   # `claude_defaults` bash array holding the Opus model, high effort, and, when
-  # a prior session exists for the current directory, a resume of it. The
-  # defaults are dropped for subcommands (e.g. `claude mcp list`) and headless
-  # `-p` runs, where `--continue` would break the command or resume an
-  # unrelated conversation. `--continue` is also withheld when the caller
-  # already names a session to resume, so the flags never clash, and when no
-  # session transcript exists yet, so a fresh project starts cleanly instead of
-  # erroring. Session presence is detected by looking for a `*.jsonl` transcript
-  # under `$CLAUDE_CONFIG_DIR/projects/<encoded-cwd>` (default `$HOME/.claude`),
-  # where the cwd is encoded by replacing each non-alphanumeric character with a
-  # hyphen. The array sits before the user's own arguments, so a passed
-  # `--model`/`--effort` wins on last-flag precedence.
+  # a prior session exists for the current directory, a resume of the newest
+  # transcript. The defaults are dropped for subcommands (e.g. `claude mcp
+  # list`) and headless `-p` runs, where resume flags would break the command or
+  # resume an unrelated conversation. Resume is also withheld when the caller
+  # already names a session, so the flags never clash. Session presence is
+  # detected by looking for `*.jsonl` transcripts under
+  # `$CLAUDE_CONFIG_DIR/projects/<encoded-cwd>` (default `$HOME/.claude`), where
+  # the cwd is encoded by replacing each non-alphanumeric character with a
+  # hyphen. The wrapper never writes Claude Code's project trust state; trust is
+  # a user decision and must stay interactive. The array sits before the user's
+  # own arguments, so a passed `--model`/`--effort` wins on last-flag precedence.
   claudeLaunchDefaults = ''
+    encode_claude_project_path() {
+      printf '%s' "$1" | ${lib.getExe pkgs.gnused} 's/[^a-zA-Z0-9]/-/g'
+    }
+
+    newest_claude_session_id() {
+      local project_path project_dir newest_file newest_time file file_time basename session_id
+
+      project_path="$1"
+      project_dir="$claude_config_dir/projects/$(encode_claude_project_path "$project_path")"
+      [[ -d "$project_dir" ]] || return 1
+
+      newest_file=""
+      newest_time=""
+      while IFS= read -r -d "" file; do
+        file_time="$(${lib.getExe' pkgs.coreutils "stat"} -c %Y "$file" 2> /dev/null || true)"
+        if [[ -n "$file_time" && ( -z "$newest_time" || "$file_time" -gt "$newest_time" ) ]]; then
+          newest_time="$file_time"
+          newest_file="$file"
+        fi
+      done < <(${lib.getExe' pkgs.findutils "find"} "$project_dir" -maxdepth 1 -type f -name '*.jsonl' -print0)
+
+      [[ -n "$newest_file" ]] || return 1
+      basename="''${newest_file##*/}"
+      session_id="''${basename%.jsonl}"
+      [[ "$session_id" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]] || return 1
+      printf '%s\n' "$session_id"
+    }
+
     claude_defaults=(--model opus --effort high)
     case "''${1:-}" in
-      -p | --print | agents | auth | config | doctor | install | mcp | migrate-installer | plugin | setup-token | update)
+      -h | --help | -v | --version | -p | --print | agents | auth | auto-mode | config | doctor | install | mcp | migrate-installer | plugin | plugins | project | setup-token | ultrareview | update | upgrade)
         claude_defaults=()
         ;;
       *)
         resume_session=1
+        print_mode=0
         for arg in "$@"; do
           case "$arg" in
-            -c | --continue | -r | --resume)
+            -p | --print)
+              print_mode=1
               resume_session=0
               break
               ;;
+            -c | --continue | -r | --resume | --resume=* | --session-id | --session-id=* | --from-pr | --from-pr=*)
+              resume_session=0
+              ;;
           esac
         done
-        if [[ "$resume_session" == 1 ]]; then
+        if [[ "$print_mode" == 1 ]]; then
+          claude_defaults=()
+        elif [[ "$resume_session" == 1 ]]; then
           claude_config_dir="''${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-          claude_project_dir="$claude_config_dir/projects/$(printf '%s' "$PWD" | ${lib.getExe pkgs.gnused} 's/[^a-zA-Z0-9]/-/g')"
-          if compgen -G "$claude_project_dir/*.jsonl" > /dev/null 2>&1; then
-            claude_defaults+=(--continue)
+          claude_resume_session=""
+          if ! claude_resume_session="$(newest_claude_session_id "$PWD")"; then
+            claude_resume_session=""
+          fi
+          if [[ -n "$claude_resume_session" ]]; then
+            claude_defaults+=(--resume "$claude_resume_session")
           fi
         fi
         ;;
