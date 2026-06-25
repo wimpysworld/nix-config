@@ -350,14 +350,7 @@ let
     enableSkillCommands = true;
     npmCommand = [ "${piNpmPackage}/bin/pi-npm" ];
 
-    subagents = {
-      disableBuiltins = false;
-      agentOverrides = {
-        # This builtin requires pi-web-access, which is not installed in this
-        # pass. Keep it visible in /agents but disabled by default.
-        researcher.disabled = true;
-      };
-    };
+    subagents.disableBuiltins = true;
   };
 
   piMcpConfig = {
