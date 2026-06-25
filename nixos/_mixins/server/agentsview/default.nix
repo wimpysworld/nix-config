@@ -27,7 +27,7 @@ in
       lib.mkIf (config.services.caddy.enable && config.services.tailscale.enable)
         ''
           redir ${basePath} ${basePath}/
-          reverse_proxy ${basePath}/* localhost:${toString agentsviewPort}
+          reverse_proxy ${basePath}/* 127.0.0.1:${toString agentsviewPort}
         '';
 
     # The sops secret stores AGENTSVIEW_PG_URL as a raw URL value, not a
