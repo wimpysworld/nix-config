@@ -57,7 +57,7 @@ lib.mkIf (noughtyLib.hostHasTag "agentsview") {
         "--base-path"
         "/agentsview"
         "--public-url"
-        "https://${config.noughty.host.name}.${config.noughty.network.tailNet}/agentsview"
+        "https://${config.noughty.host.name}.${config.noughty.network.tailNet}"
         "--no-browser"
         "--no-update-check"
       ];
