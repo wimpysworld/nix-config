@@ -61,7 +61,7 @@ dashboard.
 Configured producers:
 
 | Producer | Scope | Machine name |
-|---|---|---|
+| --- | --- | --- |
 | Home Manager developer profile | Local user sessions | host name |
 | Hermes NixOS service | Managed Hermes sessions | `<host>-hermes` |
 
@@ -72,23 +72,17 @@ AGENTSVIEW_PG_SCHEMA=agentsview
 AGENTSVIEW_DISABLE_UPDATE_CHECK=1
 ```
 
-The generated TOML config sets `pg.schema`, `pg.machine_name`, and
-`pg.allow_insecure`. The PostgreSQL URL stays in the SOPS-rendered environment
-file.
+The server and Hermes generated TOML configs set `pg.schema`,
+`pg.machine_name`, and `pg.allow_insecure`. The PostgreSQL URL stays in the
+SOPS-rendered environment file.
 
 ## Local Home Manager Push
 
 Developer users get a wrapped `agentsview` CLI. The wrapper sources
 `agentsview-pg.env` when it exists, so manual CLI use and the timer share the
-same database settings.
+same database settings through upstream `AGENTSVIEW_PG_*` environment variables.
 
-Home activation writes:
-
-```text
-~/.agentsview/config.toml
-```
-
-The user service then runs:
+The user service runs:
 
 ```bash
 agentsview pg push
