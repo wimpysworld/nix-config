@@ -41,7 +41,7 @@ Add a sliding-window rate limiter to the public API gateway, matching the latenc
 
 **Suggested Skills**
 
-- `code-security` - review the limiter before it ships to production.
+- `semgrep` - scan the limiter before it ships to production.
 - `nix` - the gateway service is packaged via the flake; changes touch `services/gateway/default.nix`.
   </example_section>
 

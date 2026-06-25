@@ -1,154 +1,94 @@
 ## Code Security Audit
 
-**Usage:** `/audit-code-security <output-file>`
+Run a full-project code security audit. No arguments.
 
-The first argument (`$1`) is the file path to write the completed audit report to (e.g. `audit-2026-03-18.md`). Ask if not provided before proceeding.
+### Process
 
-Conduct a structured code security audit following a five-phase methodology. This command overrides Dibble's default directory sweep with a prioritised, threat-driven approach.
+1. Delegate to a wide fan-out of sub-agents, in parallel where possible.
+   Split by directory, concern, language, or attack surface so each sub-agent
+   has a small audit surface. Recurse into nested directories when useful.
+   First-party code only; exclude git submodules. Each sub-agent runs this audit
+   over its own area; the parent aggregates findings.
+2. Do not ask for a report path. If the audit scope is unclear, ask before you
+   start.
+3. This command may read source files, run the Bash checks below, and write only
+   `CODE-SEC-AUDIT.md` in the project root. Do not edit source files or stage
+   changes.
+4. Conduct a threat-driven audit with the default model of an external
+   unauthenticated attacker, unless the user states another one.
 
-### Phase 1: Scope and Context
+### 1. Scope and flow map
 
-Before patrolling any code:
+- Identify stack, deployment surface, trust boundaries, auth model, secrets stores, data classes, and prior security notes.
+- Map sources: HTTP, webhooks, CLI args, queues, jobs, uploads, files, env/config, third-party callbacks, LLM prompts/RAG documents/tool results when present.
+- Map sinks: database queries, OS commands, file paths, templates/HTML, redirects, outbound URLs, deserialisation, auth/authz decisions, logs, crypto, secrets, model/tool APIs when present.
+- Trace source to sink. A finding needs a controllable source, reachable sink, missing control, and impact.
 
-1. **Clarify scope** - Full codebase, specific module, or changed files (PR review); ask if not specified
-2. **Identify technology stack** - Languages, frameworks, dependencies, infrastructure; flag if LLM libraries are present (`anthropic`, `openai`, `langchain`, `llamaindex`, `transformers`, `litellm`, `mistralai`, `google-generativeai`)
-3. **Map entry points** - HTTP handlers, message consumers, file upload handlers, CLI parsers, environment variable readers, cron jobs processing external data
-4. **Establish threat model** - Default: external attacker with no prior access; ask if a different model applies
-5. **Review prior findings** - Check for existing audit reports, security notes, or TODO/FIXME security comments in source; treat each as an unconfirmed finding and confirm or dismiss during Phase 3
+### 2. Automated checks
 
-### Phase 2: Automated Scanning
+Run SAST first, then secrets and dependency checks. Run what is available. If a tool is missing or out of scope, record that limitation.
 
-**2a. Static Analysis (SAST)**
-
-Use the Semgrep skill to run:
-
-```
+```bash
 semgrep --config p/security-audit --config p/owasp-top-ten --config p/cwe-top-25 .
-```
-
-Triage results before proceeding. Confirm true positives as findings. Dismiss false positives with a documented rationale. Do not surface Semgrep false positives as patrol findings.
-
-**2b. Secret Detection**
-
-Run Gitleaks across the repository:
-
-```
 gitleaks detect --source . --report-format json
 gitleaks git --source . --report-format json
-```
-
-Check `.env` files, configuration templates, CI/CD workflow files, and Dockerfiles. Flag any finding from git history as "confirmed - secret exposed in git history" even if removed from current code - history is permanent.
-
-**2c. Dependency Scanning (SCA)**
-
-Run OSV-Scanner against all lock files in the repository:
-
-```
 osv-scanner scan --recursive .
 ```
 
-For each finding, record: package name, installed version, CVE/GHSA ID, and severity. Also flag manually:
+Triage every result. Report confirmed true positives. Dismiss false positives with a short reason. Treat secrets found in git history as exposed. For dependency findings, record package, version, advisory ID, severity, and fix version.
 
-- Version ranges instead of pinned exact versions (supply chain risk)
-- Packages with no upstream activity in 24+ months
-- npm packages with `postinstall` scripts (potential supply chain vector)
+### 3. Manual checklist
 
-**2d. LLM Security (conditional)**
+| Area                    | Checks                                                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Auth and access control | Missing authn/authz, IDOR, tenant isolation, role confusion, session flaws, JWT signature and expiry checks, CSRF.      |
+| Injection               | SQL/NoSQL, OS command, code/eval, template, LDAP, XML/XXE, unsafe deserialisation, prototype pollution.                 |
+| Web output              | XSS, open redirect, CORS, CSP, security headers, cookie flags, context-aware encoding.                                  |
+| Files and parsers       | Path traversal, unsafe uploads, archive slip, temp files, MIME/type checks, parser features.                            |
+| Network                 | SSRF, webhook trust, outbound allowlists, TLS verification, timeouts, cleartext transport.                              |
+| Secrets and crypto      | Hardcoded secrets, weak random/hash/cipher, key storage, key rotation, cleartext storage, sensitive logs, stack traces. |
+| Supply chain and CI     | Unpinned deps, actions, images, postinstall scripts, abandoned packages, typosquatting, unsafe PR workflows.            |
+| Infrastructure          | Terraform/cloud public access, IAM least privilege, Kubernetes privileged pods/RBAC, Docker root/socket/secrets.        |
+| Resource limits         | Rate limits, request size, pagination, regex DoS, memory/CPU bounds, queue back-pressure.                               |
+| Native code             | Buffer overflow, use-after-free, integer overflow, unsafe functions, FFI boundary checks.                               |
+| Race and logic          | TOCTOU, replay, double spend, client-side price/role trust, workflow order bypass, batch amplification.                 |
 
-If LLM libraries were flagged in Phase 1, invoke the llm-security skill and audit against OWASP Top 10 for LLM Applications 2025. Priority categories:
+### 4. LLM app checks, conditional
 
-| Category | ID | What to Check |
-|----------|----|--------------|
-| Prompt injection | LLM01 | Untrusted input reaching system prompts; indirect injection via retrieved content |
-| Sensitive information disclosure | LLM02 | PII or credentials in prompts, context, or responses; training data leakage |
-| Supply chain | LLM03 | Unverified model sources, unpinned model versions, third-party plugin trust |
-| Improper output handling | LLM06 | LLM output rendered as HTML, executed as code, or passed to shell without sanitisation |
-| Excessive agency | LLM07 | Agent granted permissions beyond task scope; irreversible actions without confirmation |
-| Unbounded consumption | LLM10 | No token limits, no rate limiting, no cost controls on API calls |
+Run this section only when the target uses LLMs, RAG, agents, tools, embeddings, model APIs, or libraries such as `openai`, `anthropic`, `langchain`, `llamaindex`, `transformers`, `litellm`, `mistralai`, or `google-generativeai`. Otherwise state `No LLM surface found` and skip it.
 
-### Phase 3: Manual Code Review
+| OWASP LLM 2025                         | Checks                                                                                                    |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| LLM01 Prompt Injection                 | Direct and indirect injection from users, retrieved content, files, websites, emails, or tool results.    |
+| LLM02 Sensitive Information Disclosure | PII, credentials, secrets, proprietary data in prompts, context, logs, responses, or training data.       |
+| LLM03 Supply Chain                     | Model provenance, pinned model versions, safe model loading, trusted plugins/tools, dependency integrity. |
+| LLM04 Data and Model Poisoning         | Training or fine-tune data tampering, backdoors, poisoned RAG content, weak data review.                  |
+| LLM05 Improper Output Handling         | LLM output passed to HTML, SQL, shell, code, files, URLs, or APIs without validation and encoding.        |
+| LLM06 Excessive Agency                 | Over-broad tools, permissions, autonomy, irreversible actions without approval, weak audit logs.          |
+| LLM07 System Prompt Leakage            | Secrets or policy in prompts, prompt extraction, guardrails enforced only by prompt text.                 |
+| LLM08 Vector and Embedding Weaknesses  | Tenant isolation, permission-aware retrieval, document validation, embedding inversion or leakage.        |
+| LLM09 Misinformation                   | Missing grounding, citation checks, confidence handling, human review for high-impact output.             |
+| LLM10 Unbounded Consumption            | Token, rate, cost, concurrency, recursion, and model theft controls.                                      |
 
-Manual review targets business logic, design flaws, and context-dependent vulnerabilities that automated tools miss.
+### 5. Severity and finding format
 
-Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by entry point, vulnerability category, sensitive sink, or changed-file cluster so each task stays small and well bounded. Each sub-agent traces only its assigned flow or category and reports exploitable findings with evidence; the parent aggregates findings, deduplicates them, and applies severity.
+Severity: Critical means remote or unauthenticated high-impact exploit such as RCE, auth bypass, mass data exposure, or full privilege escalation. Warning means exploitable with preconditions or authentication and bounded impact. Observation means defence-in-depth, weak evidence, or no viable exploit path. Do not mark Critical or Warning without a viable exploit path.
 
-**3a. Data Flow Tracing**
+Use this format for each finding:
 
-For each entry point from Phase 1, trace data to sensitive sinks:
+```markdown
+### <Severity>: <Title>
 
-| Sink Category | Check |
-|--------------|-------|
-| Database queries | Parameterised? ORM safe? Raw string concatenation? |
-| OS commands | Shell disabled? Input escaped? Allowlist enforced? |
-| File system | Path traversal prevention? Outside webroot? Filename sanitised? |
-| HTML rendering | Context-appropriate encoding? Template auto-escape enabled? |
-| External requests | URL validated? SSRF prevention? Allowlist for destinations? |
-| Deserialisation | Trusted source only? Type restrictions enforced? |
-| Auth/authz decisions | Check present? Bypassable? IDOR via user-controlled ID? |
+- CWE/OWASP: <required>
+- Location: <file:line>
+- Confidence: Confirmed / Probable / Unverified
+- Source to sink: <source -> controls -> sink>
+- Exploit path: <steps an attacker can take>
+- Impact: <data theft / RCE / privilege escalation / DoS / information leak>
+- Evidence: <code, command output, or trace>
+- Fix: <specific code or config change>
+```
 
-**3b. Vulnerability Hunting by Priority**
-
-Walk each category in order. Document findings before moving to the next.
-
-| Priority | Category | CWE | Key Patterns |
-|----------|----------|-----|-------------|
-| 1 | Access control | CWE-862, CWE-863, CWE-639 | Missing authz checks, IDOR via user-controlled IDs, privilege escalation paths, role confusion |
-| 2 | Authentication | CWE-306, CWE-287, CWE-384 | Unauthenticated critical functions, session fixation, token leakage |
-| 3 | Injection | CWE-89, CWE-78, CWE-79, CWE-94 | SQL, OS command, XSS, code injection via unsanitised input |
-| 4 | Cryptography | CWE-327, CWE-798, CWE-311, CWE-295 | Weak algorithms, hardcoded keys, cleartext storage, disabled TLS verification |
-| 5 | Input validation | CWE-20, CWE-434 | Missing validation, unrestricted file upload, type confusion |
-| 6 | Configuration | OWASP A02:2025 | Debug mode in production, default credentials, permissive CORS, missing security headers |
-| 7 | Error handling | CWE-209, CWE-390 | Stack traces in responses, sensitive data in logs, inconsistent exception handling |
-| 8 | Supply chain | OWASP A03:2025 | Unpinned deps, unverified downloads, abandoned packages, typosquatting signals |
-| 9 | Resource limits | CWE-400, CWE-770 | Missing rate limits, unbounded allocations, absent timeouts, no request size caps |
-
-**3c. Business Logic Review**
-
-Automated tools cannot find these - requires understanding the application's purpose:
-
-- Can workflows complete out of order or skip required steps?
-- Can numeric values (price, quantity, discount) be manipulated client-side?
-- Can one user access another user's data by substituting a resource ID?
-- Are time-of-check/time-of-use (TOCTOU) races possible in critical operations?
-- Can batch operations amplify impact beyond single-request limits?
-- Are rate limits enforced server-side, not client-side only?
-
-### Phase 4: Finding Triage
-
-Each finding must include:
-
-| Field | Requirement |
-|-------|------------|
-| CWE/OWASP | Required for every finding |
-| Location | `file:line` |
-| Severity | Critical / Warning / Observation |
-| Confidence | Confirmed / Probable / Unverified |
-| Exploitation path | Step-by-step; use Observation severity if no viable path exists |
-| Impact | Data theft / RCE / privilege escalation / DoS / information leakage |
-| Fix | Specific to the actual code - never generic advice |
-
-Severity criteria:
-
-- **Critical** - Remotely exploitable without authentication; direct high-impact outcome (RCE, auth bypass, mass data exposure, full privilege escalation)
-- **Warning** - Exploitable under specific conditions or with authentication; significant but bounded impact
-- **Observation** - Defence-in-depth gap, low exploitability, or theoretical without a clear exploitation path
-
-### Phase 5: Report
-
-Use Dibble's standard Patrol Report format (defined in Dibble's system prompt) with these additions:
-
-**Methodology** - Phases completed, Semgrep rulesets run, scope covered, and explicit limitations (e.g., "git history not audited", "runtime behaviour not tested", "deployment configuration not reviewed").
-
-**Repeat-Offender Patterns** - Systemic issues appearing across multiple files (e.g., "no parameterised queries in any repository layer", "CORS set to wildcard in all service configurations"). These indicate missing controls, not individual bugs, and require systemic fixes.
-
-**Remediation Roadmap** - Prioritised fix list grouping related findings. Critical findings first, then ordered by effort-to-impact ratio.
-
-Write the completed report to `$1`.
-
-### Constraints
-
-- Run Semgrep before any manual review
-- Document every Semgrep true positive as a finding; never discard without rationale
-- Triage all nine vulnerability categories from Phase 3b before closing the audit
-- Flag items requiring git history, runtime, or deployment context review explicitly
-- Never report a finding as Critical or Warning without a viable exploitation path; use Observation severity if no clear path exists
+Write the aggregated report to `CODE-SEC-AUDIT.md` in the project root with
+sections for scope and assumptions, checks run and limitations, findings by
+severity, repeat-offender patterns, and a prioritised remediation roadmap.
