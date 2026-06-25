@@ -85,6 +85,14 @@ lib.mkIf (noughtyLib.hostHasTag "postgres") {
     \set role_password `${pkgs.coreutils}/bin/cat ${config.sops.secrets.AGENTSVIEW_PG_PASSWORD.path}`
     ALTER ROLE agentsview WITH PASSWORD :'role_password';
     SQL
+
+    # Remove the old local GIN fastupdate workaround now that AgentsView owns
+    # its PostgreSQL index maintenance upstream. The event trigger persists in
+    # the database until dropped, even after the Nix config stops creating it.
+    ${config.services.postgresql.package}/bin/psql -h /run/postgresql -d agentsview --no-psqlrc -v ON_ERROR_STOP=1 <<'SQL'
+    DROP EVENT TRIGGER IF EXISTS gin_fastupdate_off_trg;
+    DROP FUNCTION IF EXISTS public.gin_fastupdate_off();
+    SQL
   '';
 
   # Native pg_dump backups to /mnt/snapshot/backup-postgres. Retention policy

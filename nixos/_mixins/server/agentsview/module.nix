@@ -30,10 +30,12 @@ lib.mkIf (noughtyLib.hostHasTag "agentsview") {
     description = "AgentsView read-only dashboard (PostgreSQL-backed)";
     after = [
       "postgresql.service"
+      "postgresql-setup.service"
       "network-online.target"
     ];
     wants = [
       "postgresql.service"
+      "postgresql-setup.service"
       "network-online.target"
     ];
     wantedBy = [ "multi-user.target" ];
