@@ -396,9 +396,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 **User-invocable support skills:**
 
-| Skill           | Purpose                                                                      |
-| --------------- | ---------------------------------------------------------------------------- |
-| `gh`            | GitHub CLI reference - PR creation, issue management, releases               |
-| `code-security` | OWASP Top 10 and infrastructure security rules sourced from `semgrep/skills` |
-| `llm-security`  | OWASP Top 10 for LLM 2025 sourced from `semgrep/skills`                      |
-| `semgrep`       | Semgrep CLI usage and custom rule creation reference                         |
+| Skill     | Purpose                                                        |
+| --------- | -------------------------------------------------------------- |
+| `gh`      | GitHub CLI reference - PR creation, issue management, releases |
+| `semgrep` | Semgrep CLI usage and custom rule creation reference           |
