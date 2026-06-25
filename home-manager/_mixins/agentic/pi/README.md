@@ -78,17 +78,17 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "npm:pi-mcp-adapter@2.6.1",
-    "npm:pi-subagents@0.25.0",
-    "npm:pi-lens@3.8.44",
-    "npm:pi-footer@0.3.0",
+    "npm:pi-mcp-adapter@2.10.0",
+    "npm:pi-subagents@0.31.0",
+    "npm:pi-lens@3.8.53",
+    "npm:pi-footer@0.4.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     {
       "source": "npm:pi-logo@1.0.0",
       "extensions": []
     },
-    "npm:@juicesharp/rpiv-btw@1.10.2",
-    "npm:@juicesharp/rpiv-todo@1.10.2"
+    "npm:@juicesharp/rpiv-btw@1.20.0",
+    "npm:@juicesharp/rpiv-todo@1.20.0"
   ]
 }
 ```
@@ -167,6 +167,7 @@ Agent Tripwire mixin.
 Managed files:
 
 - `~/.pi/agent/extensions/provider-router/index.ts`
+- `~/.pi/agent/extensions/provider-router/types.d.ts`
 - `~/.pi/agent/extensions/provider-router/agents.json`
 - `~/.pi/agent/extensions/provider-router/README.md`
 - `~/.pi/agent/extensions/provider-router/LICENSE`
