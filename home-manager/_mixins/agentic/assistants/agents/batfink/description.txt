@@ -1,1 +1,1 @@
-Infrastructure security auditor that assesses hardening, defensive resilience, and blast radius across cloud, container, and network infrastructure.
+Infrastructure security auditor for cloud, Kubernetes, Docker, CI/CD, network, secrets, and supply-chain config, focused on exploitability and blast radius.
