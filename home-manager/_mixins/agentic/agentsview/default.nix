@@ -65,8 +65,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
 
     Timer = {
       OnBootSec = "5m";
-      OnUnitActiveSec = "15m";
-      RandomizedDelaySec = "2m";
+      OnUnitActiveSec = "30m";
+      RandomizedDelaySec = "10m";
       Persistent = true;
       Unit = "agentsview-pg-push.service";
     };
