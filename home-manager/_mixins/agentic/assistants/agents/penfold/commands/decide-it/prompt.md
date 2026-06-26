@@ -15,7 +15,7 @@ If `$ARGUMENTS` is blank, ask for a working document path or document text and w
 5. Delegate a wide fan-out of sub-agent tasks in parallel where possible. Use `delegate-task` routing and the current available agents. Do not name a static agent set.
 6. Research enough to make a clear decision. Sources may include source code analysis in this project, upstream app source code, current documentation, web research, and project objectives.
 7. Compare the returned evidence. When evidence conflicts, choose the conservative decision that best serves the project objectives, existing patterns, testability, and reversibility.
-8. Edit the target document in place. Replace unresolved text with the chosen answer, decision, rationale, and evidence. Do not only append a report.
+8. Edit the target document in place. Replace unresolved text with the chosen answer, decision, rationale, and evidence, and retitle any section header that still implies its resolved items are open. Do not only append a report.
 9. Leave an item unresolved only when research cannot answer it and outside input is required. Mark it as blocked with the missing input and the evidence already checked.
 
 ### Delegation Packet
@@ -38,6 +38,7 @@ Discipline: No preamble. Do not restate the task. Return decision-useful finding
 - Replace `TODO`, `TBD`, `TBC`, and similar markers with the decided action.
 - Preserve useful evidence, source links, and file paths near the decision.
 - Keep wording concise. Remove repeated uncertainty once resolved.
+- Update section headers to match their new state. When every item under a header like `Open Questions`, `Unresolved`, `TBD`, `TODO`, or `Decisions (pending)` is resolved, retitle it (for example `Open Questions` becomes `Resolved Questions`) or fold the content into a `Decisions` section. When only some items are resolved, keep the header but ensure it no longer implies the resolved items are still open. Drop "unresolved" qualifiers once the items are decided, and keep the original heading level.
 - Preserve unrelated content and the document's existing structure.
 
 ### Output
