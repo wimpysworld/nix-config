@@ -1170,6 +1170,7 @@
         "sops-nix": "sops-nix",
         "systems": "systems_3",
         "veila": "veila",
+        "voxtype": "voxtype",
         "xdg-override": "xdg-override"
       }
     },
@@ -1400,6 +1401,30 @@
         "owner": "naurissteins",
         "ref": "0.4.2",
         "repo": "Veila",
+        "type": "github"
+      }
+    },
+    "voxtype": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs-unstable"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780004034,
+        "narHash": "sha256-zsOG1mBTXN4gdsTb1pUPKXATfhV5ZjgEsIUk07asaGo=",
+        "owner": "peteonrails",
+        "repo": "voxtype",
+        "rev": "8d49248baa53f29cb33007c9625a37281c72e799",
+        "type": "github"
+      },
+      "original": {
+        "owner": "peteonrails",
+        "ref": "v0.7.5",
+        "repo": "voxtype",
         "type": "github"
       }
     },

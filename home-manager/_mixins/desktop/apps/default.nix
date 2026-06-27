@@ -46,6 +46,7 @@ in
     ./streaming
     ./terminal
     ./utilities
+    ./voice
   ];
 
   dbus = lib.mkIf (host.is.linux && host.is.workstation) {
