@@ -5,3 +5,17 @@ sub-agent
 sub-agents
 retitle
 retitled
+voxtype
+Voxtype
+Omarchy
+Catppuccin
+Quickshell
+quickshell
+swaync
+SwayNC
+avizo
+wgpu
+Hyprland
+dBFS
+Veila
+Waybar
