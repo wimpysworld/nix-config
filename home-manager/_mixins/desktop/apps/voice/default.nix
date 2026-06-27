@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   lib,
   noughtyLib,
@@ -7,6 +8,7 @@
 }:
 let
   inherit (config.noughty) host;
+  palette = catppuccinPalette;
   isVoxtypeHost = host.is.linux && host.is.workstation && noughtyLib.hostHasTag "voxtype";
   modelName =
     if host.gpu.compute.vram >= 64 then
@@ -37,15 +39,12 @@ lib.mkIf isVoxtypeHost {
       osd = {
         enabled = true;
         frontend = "gtk4";
-        width_px = 400;
-        height_px = 48;
         position = "bottom-center";
-        margin_px = 24;
-        top_margin = 0.85;
-        opacity = 0.95;
-        waveform_window_secs = 3.0;
-        peak_decay_db_per_sec = 6.0;
-        waveform_gain = 10.0;
+        top_margin = 0.72;
+        width_px = 720;
+        height_px = 120;
+        margin_px = 64;
+        waveform_gain = 2.0;
       };
       whisper = {
         language = "en";
@@ -57,22 +56,29 @@ lib.mkIf isVoxtypeHost {
 
   home.packages = [ pkgs.voxtype-osd-gtk4 ];
 
-  systemd.user.services.voxtype.Service.Environment = "PATH=${
-    lib.makeBinPath [
-      config.programs.voxtype.package
-      pkgs.voxtype-osd-gtk4
-      pkgs.dotool
-      pkgs.wl-clipboard
-      pkgs.wtype
-      pkgs.xclip
-      pkgs.xdotool
-      pkgs.ydotool
-    ]
-  }";
+  # The voxtype GTK4 OSD paints with Cairo and is not GTK-CSS themeable.
+  # It reads colours only from this Omarchy theme file, so map the six keys
+  # it parses to the Catppuccin Mocha palette to match the desktop shell.
+  xdg.configFile."omarchy/current/theme/colors.toml".text = ''
+    background = "${palette.getColor "base"}"
+    foreground = "${palette.getColor "text"}"
+    accent     = "${palette.getColor "blue"}"
+    color1     = "${palette.getColor "red"}"
+    color2     = "${palette.getColor "green"}"
+    color3     = "${palette.getColor "yellow"}"
+  '';
 
   wayland.windowManager.hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
+    # Laptops toggle voice with Super+V; desktops use the Pause/Break key.
+    # Bind the Pause key by keycode (xkb 127 = evdev KEY_PAUSE 119 + 8) because
+    # Hyprland does not reliably match the Pause keysym by name.
     settings.bind = [
-      "$mod, V, exec, ${lib.getExe config.programs.voxtype.package} record toggle"
+      (
+        if host.is.laptop then
+          "$mod, V, exec, ${lib.getExe config.programs.voxtype.package} record toggle"
+        else
+          ", code:127, exec, ${lib.getExe config.programs.voxtype.package} record toggle"
+      )
     ];
   };
 }
