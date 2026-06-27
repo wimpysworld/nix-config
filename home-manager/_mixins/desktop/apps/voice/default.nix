@@ -61,6 +61,12 @@ lib.mkIf isVoxtypeHost {
     lib.makeBinPath [
       config.programs.voxtype.package
       pkgs.voxtype-osd-gtk4
+      pkgs.dotool
+      pkgs.wl-clipboard
+      pkgs.wtype
+      pkgs.xclip
+      pkgs.xdotool
+      pkgs.ydotool
     ]
   }";
 
