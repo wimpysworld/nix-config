@@ -1,7 +1,7 @@
 # System registry - central definition of all systems and their properties
 #
 # Canonical tag vocabulary:
-#   Host tags: studio, davinci, gamedev, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, voxtype
+#   Host tags: studio, davinci, gamedev, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, paseo, voxtype
 #   User tags: developer, admin, family
 #
 # Registry fields:
@@ -160,6 +160,7 @@ tags = [
   "borgbackup",
   "strix-halo",
   "voxtype",
+  "paseo",
 ]
 
 [skrye.gpu]
@@ -207,6 +208,7 @@ tags = [
   "borgbackup",
   "strix-halo",
   "voxtype",
+  "paseo",
 ]
 
 [zannah.gpu]
