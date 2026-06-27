@@ -321,7 +321,11 @@ in
 
 Tags are freeform `listOf str`. The canonical vocabulary is documented in a comment block in `lib/registry-systems.toml`:
 
-- **Host tags:** `studio`, `trackball`, `streamdeck`, `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`, `inference`
+- **Host tags:**
+  - `studio`, `davinci`, `gamedev`, `trackball`, `streamdeck`
+  - `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`
+  - `iso`, `wayvnc`, `inference`, `workspace`, `scrutiny`, `dropbox`
+  - `borgbackup`, `fprintd`, `strix-halo`, `gatus`, `irc-bouncer`, `voxtype`
 - **User tags:** `developer`, `admin`, `family`
 
 Tags centralise classification that was previously scattered as hostname comparisons across the tree (e.g. `hostname == "phasma" || hostname == "vader"` becomes the `"studio"` tag, set once in the registry).

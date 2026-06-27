@@ -37,6 +37,9 @@
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
     concord.inputs.rust-overlay.follows = "rust-overlay";
     concord.inputs.flake-utils.follows = "flake-utils";
+    voxtype.url = "github:peteonrails/voxtype/v0.7.5";
+    voxtype.inputs.nixpkgs.follows = "nixpkgs-unstable";
+    voxtype.inputs.flake-utils.follows = "flake-utils";
     bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.4.0.tar.gz";
     bzmenu.inputs.nixpkgs.follows = "nixpkgs";
     bzmenu.inputs.rust-overlay.follows = "rust-overlay";

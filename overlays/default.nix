@@ -14,6 +14,15 @@
     # theme-key-resolution fix has landed there.
     inherit (inputs.fresh.packages.${final.stdenv.hostPlatform.system}) fresh;
 
+    voxtype = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.default;
+    voxtype-vulkan = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.vulkan;
+    voxtype-rocm = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.rocm;
+    voxtype-onnx = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.onnx;
+    voxtype-onnx-cuda = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.onnx-cuda;
+    voxtype-onnx-migraphx = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.onnx-migraphx;
+    voxtype-osd-native = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.osd-native;
+    voxtype-osd-gtk4 = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.osd-gtk4;
+
     # Agent-adjacent tools sourced from the same pinned llm-agents flake as the
     # rest of the agent tooling.
     inherit (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}) herdr;

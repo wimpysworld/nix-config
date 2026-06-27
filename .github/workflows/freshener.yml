@@ -393,3 +393,101 @@ jobs:
 
           PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
           gh pr merge --auto --squash "$PR_NUMBER"
+
+  voxtype:
+    name: Voxtype 📦
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Check for Voxtype update 🔍
+        id: check
+        run: |
+          set -euo pipefail
+
+          current=$(awk -F/ '/voxtype.url = "github:peteonrails\/voxtype\// { sub(/";$/, "", $NF); print $NF }' flake.nix)
+          latest=$(curl -fsSL "https://api.github.com/repos/peteonrails/voxtype/tags?per_page=100" \
+            | jq -r '.[].name' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -n 1)
+
+          if [[ -z "$current" ]]; then
+            echo "❌ Could not determine current Voxtype release"
+            exit 1
+          fi
+
+          if [[ -z "$latest" ]]; then
+            echo "❌ Could not determine latest Voxtype release"
+            exit 1
+          fi
+
+          echo "Current Voxtype: ${current}"
+          echo "Latest Voxtype:  ${latest}"
+
+          if [[ "$current" == "$latest" ]]; then
+            echo "✅ Voxtype is up to date"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "version=${latest}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Voxtype input 📝
+        if: steps.check.outputs.updated == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          perl -0pi -e 's#voxtype\.url = "github:peteonrails/voxtype/[^"]+";#voxtype.url = "github:peteonrails/voxtype/'"$VERSION"'";#' flake.nix
+          nix flake update voxtype
+          nix fmt flake.nix
+
+          git diff flake.nix flake.lock
+
+      - name: Create pull request 🚀
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          BRANCH="voxtype-${VERSION}"
+
+          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
+            echo "⏭️  PR already exists for ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add flake.nix flake.lock
+          git commit -m "chore(voxtype): update to ${VERSION}"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(voxtype): update to ${VERSION}" \
+            --body "$(cat <<EOF
+          Automated Voxtype update to version ${VERSION}.
+
+          Release: https://github.com/peteonrails/voxtype/releases/tag/${VERSION}
+          EOF
+          )" \
+            --label "dependencies,automated")
+
+          echo "📋 Created PR: ${PR_URL}"
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge --auto --squash "$PR_NUMBER"

@@ -1,7 +1,7 @@
 # System registry - central definition of all systems and their properties
 #
 # Canonical tag vocabulary:
-#   Host tags: studio, davinci, gamedev, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer
+#   Host tags: studio, davinci, gamedev, trackball, streamdeck, pci-hdmi-capture, thinkpad, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, voxtype
 #   User tags: developer, admin, family
 #
 # Registry fields:
@@ -27,10 +27,16 @@
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["policy", "workspace", "dropbox", "fprintd", "wayvnc"]
+tags = ["policy", "workspace", "dropbox", "fprintd", "wayvnc", "voxtype"]
 
 [bane.gpu]
 vendors = ["amd"]
+
+[bane.gpu.compute]
+vendor = "amd"
+vram = 32
+unified = true
+acceleration = "vulkan"
 
 [[bane.displays]]
 output = "eDP-1"
@@ -44,10 +50,16 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["thinkpad", "dropbox", "fprintd"]
+tags = ["thinkpad", "dropbox", "fprintd", "voxtype"]
 
 [tanis.gpu]
 vendors = ["amd"]
+
+[tanis.gpu.compute]
+vendor = "amd"
+vram = 8
+unified = true
+acceleration = "vulkan"
 
 [[tanis.displays]]
 output = "eDP-1"
@@ -134,7 +146,21 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "desktop"
-tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "scrutiny", "dropbox", "borgbackup", "strix-halo"]
+tags = [
+  "studio",
+  "davinci",
+  "gamedev",
+  "trackball",
+  "streamdeck",
+  "pci-hdmi-capture",
+  "inference",
+  "wayvnc",
+  "scrutiny",
+  "dropbox",
+  "borgbackup",
+  "strix-halo",
+  "voxtype",
+]
 
 [skrye.gpu]
 vendors = ["amd"]
@@ -167,7 +193,21 @@ position = { x = 2560, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "desktop"
-tags = ["studio", "davinci", "gamedev", "trackball", "streamdeck", "pci-hdmi-capture", "inference", "wayvnc", "scrutiny", "dropbox", "borgbackup", "strix-halo"]
+tags = [
+  "studio",
+  "davinci",
+  "gamedev",
+  "trackball",
+  "streamdeck",
+  "pci-hdmi-capture",
+  "inference",
+  "wayvnc",
+  "scrutiny",
+  "dropbox",
+  "borgbackup",
+  "strix-halo",
+  "voxtype",
+]
 
 [zannah.gpu]
 vendors = ["amd"]
@@ -237,7 +277,18 @@ vram = 24
 [revan]
 kind = "server"
 platform = "x86_64-linux"
-tags = ["scrutiny", "dropbox", "librechat", "mongodb", "inference", "hermes", "gatus", "postgres", "agentsview", "irc-bouncer"]
+tags = [
+  "scrutiny",
+  "dropbox",
+  "librechat",
+  "mongodb",
+  "inference",
+  "hermes",
+  "gatus",
+  "postgres",
+  "agentsview",
+  "irc-bouncer",
+]
 
 [revan.gpu]
 vendors = ["intel", "nvidia"]
