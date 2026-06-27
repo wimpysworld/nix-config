@@ -34,6 +34,19 @@ lib.mkIf isVoxtypeHost {
       state_file = "auto";
       audio.device = "default";
       hotkey.enabled = false;
+      osd = {
+        enabled = true;
+        frontend = "gtk4";
+        width_px = 400;
+        height_px = 48;
+        position = "bottom-center";
+        margin_px = 24;
+        top_margin = 0.85;
+        opacity = 0.95;
+        waveform_window_secs = 3.0;
+        peak_decay_db_per_sec = 6.0;
+        waveform_gain = 10.0;
+      };
       whisper = {
         language = "en";
         translate = false;
@@ -41,6 +54,15 @@ lib.mkIf isVoxtypeHost {
       };
     };
   };
+
+  home.packages = [ pkgs.voxtype-osd-gtk4 ];
+
+  systemd.user.services.voxtype.Service.Environment = "PATH=${
+    lib.makeBinPath [
+      config.programs.voxtype.package
+      pkgs.voxtype-osd-gtk4
+    ]
+  }";
 
   wayland.windowManager.hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
     settings.bind = [

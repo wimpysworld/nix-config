@@ -70,15 +70,18 @@
   [keys.action]
     exec = "playerctl -p sidra next"
 
-#[[keys]]
-#  index = 7
-#  [keys.widget]
-#    id = "button"
-#    [keys.widget.config]
-#      icon = "~/Studio/StreamDeck/Icons/Nebula/General/multimedia-next-track.jpg"
-#  [keys.action]
-#    exec = ""
-
+[[keys]]
+  index = 7
+  [keys.widget]
+    id = "button"
+    [keys.widget.config]
+      icon = "~/Studio/StreamDeck/Icons/Clarity-Standard/Normal/Mic-On.png"            
+      #label = "Voxtype"
+      #fontsize = 6.0
+      #color = "#fefefe"
+      #flatten = false
+    [keys.action]
+      exec = "voxtype record toggle"
 
 [[keys]]
   index = 8
