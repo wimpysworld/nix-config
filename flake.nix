@@ -7,6 +7,8 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    paseo.url = "github:getpaseo/paseo";
+    paseo.inputs.nixpkgs.follows = "nixpkgs-unstable";
     nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -127,6 +129,7 @@
           inherit (inputs)
             bzmenu
             iwmenu
+            paseo
             pwmenu
             sidra
             ;

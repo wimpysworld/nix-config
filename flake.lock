@@ -1027,6 +1027,26 @@
         "type": "github"
       }
     },
+    "paseo": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs-unstable"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782553760,
+        "narHash": "sha256-yFzaSemlpZTZ2Vl3wHcmsCei8k2FPcvoZaJzUNYTpCY=",
+        "owner": "getpaseo",
+        "repo": "paseo",
+        "rev": "276c1f48f1ef70d237e7ad50dc872173f8540750",
+        "type": "github"
+      },
+      "original": {
+        "owner": "getpaseo",
+        "repo": "paseo",
+        "type": "github"
+      }
+    },
     "pwmenu": {
       "inputs": {
         "flake-utils": [
@@ -1164,6 +1184,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-unstable": "nixpkgs-unstable",
+        "paseo": "paseo",
         "pwmenu": "pwmenu",
         "rust-overlay": "rust-overlay",
         "sidra": "sidra",

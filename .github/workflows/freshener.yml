@@ -491,3 +491,103 @@ jobs:
 
           PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
           gh pr merge --auto --squash "$PR_NUMBER"
+
+  paseo:
+    name: Paseo 📦
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            eval-cores = 0
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - name: Check for Paseo update 🔍
+        id: check
+        run: |
+          set -euo pipefail
+
+          current=$(jq -r '.nodes.paseo.locked.rev // empty' flake.lock)
+          latest=$(curl -fsSL "https://api.github.com/repos/getpaseo/paseo/commits?per_page=1" \
+            | jq -r '.[0].sha // empty')
+
+          if [[ -z "$current" ]]; then
+            echo "❌ Could not determine current Paseo revision"
+            exit 1
+          fi
+
+          if [[ -z "$latest" ]]; then
+            echo "❌ Could not determine latest Paseo revision"
+            exit 1
+          fi
+
+          echo "Current Paseo: ${current}"
+          echo "Latest Paseo:  ${latest}"
+
+          if [[ "$current" == "$latest" ]]; then
+            echo "✅ Paseo is up to date"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "rev=${latest}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Paseo input 📝
+        id: update
+        if: steps.check.outputs.updated == 'true'
+        run: |
+          set -euo pipefail
+
+          nix flake update paseo
+          rev=$(jq -r '.nodes.paseo.locked.rev // empty' flake.lock)
+
+          if [[ -z "$rev" ]]; then
+            echo "❌ Could not determine updated Paseo revision"
+            exit 1
+          fi
+
+          echo "rev=${rev}" >> "$GITHUB_OUTPUT"
+          git diff flake.lock
+
+      - name: Create pull request 🚀
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
+          REV: ${{ steps.update.outputs.rev }}
+        run: |
+          set -euo pipefail
+
+          SHORT_REV="${REV:0:12}"
+          BRANCH="paseo-${SHORT_REV}"
+
+          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
+            echo "⏭️  PR already exists for ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add flake.lock
+          git commit -m "chore(paseo): update to ${SHORT_REV}"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(paseo): update to ${SHORT_REV}" \
+            --body "$(cat <<EOF
+          Automated Paseo input update to revision ${REV}.
+
+          Commit: https://github.com/getpaseo/paseo/commit/${REV}
+          EOF
+          )" \
+            --label "dependencies,automated")
+
+          echo "📋 Created PR: ${PR_URL}"
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          gh pr merge --auto --squash "$PR_NUMBER"
