@@ -11,11 +11,15 @@
     final: prev:
     let
       paseoPackages = inputs.paseo.packages.${prev.stdenv.hostPlatform.system} or { };
-      # The Paseo daemon comes from the upstream Paseo flake; the desktop client
-      # comes from llm-agents (see the `paseo-desktop` inherit below).
-      paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
-        paseo = paseoPackages.paseo or paseoPackages.default;
-      };
+      # Both the Paseo daemon and the desktop client come from the upstream Paseo
+      # flake, so they track the same release.
+      paseoAttrs =
+        prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
+          paseo = paseoPackages.paseo or paseoPackages.default;
+        }
+        // prev.lib.optionalAttrs (paseoPackages ? desktop) {
+          paseo-desktop = paseoPackages.desktop;
+        };
     in
     rec {
       hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
@@ -37,10 +41,6 @@
       # rest of the agent tooling.
       inherit (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}) herdr;
       inherit (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}) hunk;
-
-      # Paseo desktop client tracks the llm-agents flake alongside the other
-      # agent tooling. The Paseo daemon still comes from the upstream Paseo flake.
-      inherit (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}) paseo-desktop;
 
       inherit (final.unstable) ollama;
       inherit (final.unstable) ollama-cuda;
