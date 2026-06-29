@@ -161,6 +161,7 @@ tags = [
   "strix-halo",
   "voxtype",
   "paseo",
+  "xfkey",
 ]
 
 [skrye.gpu]
@@ -209,6 +210,7 @@ tags = [
   "strix-halo",
   "voxtype",
   "paseo",
+  "xfkey",
 ]
 
 [zannah.gpu]
