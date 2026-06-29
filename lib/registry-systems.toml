@@ -301,6 +301,10 @@ vendors = ["intel", "nvidia"]
 vendor = "nvidia"
 vram = 16
 
+[cognus]
+kind = "server"
+platform = "x86_64-linux"
+
 # Linux VMs
 
 [crawler]
