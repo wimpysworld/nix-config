@@ -22,7 +22,7 @@ in
     # Reverse proxy AgentsView at /agentsview when Caddy and Tailscale are
     # enabled. AgentsView is launched with `--base-path /agentsview`, so it
     # already serves on the prefixed path; forward the path through verbatim
-    # rather than stripping it. Mirrors the scrutiny / netdata pattern.
+    # rather than stripping it.
     services.caddy.virtualHosts."${host.name}.${config.noughty.network.tailNet}".extraConfig =
       lib.mkIf (config.services.caddy.enable && config.services.tailscale.enable)
         ''
