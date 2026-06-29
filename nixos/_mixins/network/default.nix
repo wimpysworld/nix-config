@@ -134,7 +134,7 @@ in
     };
   };
   services = {
-    avahi = {
+    avahi = lib.mkIf host.is.workstation {
       enable = true;
       nssmdns4 = true;
       publish = {

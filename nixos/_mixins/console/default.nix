@@ -84,18 +84,16 @@ in
   };
 
   fonts = {
-    fontDir.enable = true;
+    fontDir.enable = host.is.workstation;
     packages =
       with pkgs;
-      [
+      lib.optionals host.is.workstation [
         nerd-fonts.fira-code
-      ]
-      ++ lib.optionals (!host.is.iso) [
         noto-fonts-monochrome-emoji
         symbola
         work-sans
       ];
-    fontconfig = {
+    fontconfig = lib.mkIf host.is.workstation {
       antialias = true;
       enable = true;
       hinting = {

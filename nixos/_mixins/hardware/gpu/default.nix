@@ -87,7 +87,7 @@ lib.mkIf (!host.is.iso) {
     amdgpu = lib.mkIf host.gpu.hasAmd { opencl.enable = true; };
     graphics = {
       enable = true;
-      enable32Bit = lib.mkForce true;
+      enable32Bit = lib.mkForce host.is.workstation;
       extraPackages = with pkgs; lib.optionals host.gpu.hasIntel [ intel-compute-runtime ];
     };
     nvidia = lib.mkIf host.gpu.hasNvidia {

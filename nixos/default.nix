@@ -66,7 +66,7 @@ in
       install rxrpc ${pkgs.coreutils}/bin/false
       install rxkad ${pkgs.coreutils}/bin/false
     '';
-    binfmt = lib.mkIf (!host.is.iso) {
+    binfmt = lib.mkIf host.is.workstation {
       emulatedSystems = [
         "riscv64-linux"
       ]
@@ -92,7 +92,7 @@ in
     # declared here to make the dependency visible rather than implicit.
     initrd.includeDefaultModules = true;
     initrd.verbose = false;
-    kernelModules = [ "vhost_vsock" ];
+    kernelModules = lib.optionals host.is.workstation [ "vhost_vsock" ];
     # Central kernel policy for installed systems. Servers, VMs, and policy
     # hosts use 6.18, and everything else tracks the latest packaged kernel.
     # Live ISO media keeps its defaults.

@@ -30,14 +30,14 @@ let
 in
 {
   environment = {
-    systemPackages = lib.optionals (!host.is.iso) [
+    systemPackages = lib.optionals host.is.workstation [
       bluetui
     ];
   };
   hardware = {
     # https://nixos.wiki/wiki/Bluetooth
     bluetooth = {
-      enable = !host.is.iso;
+      enable = host.is.workstation;
       package = pkgs.bluez;
       settings = {
         General = {
