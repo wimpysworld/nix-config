@@ -16,7 +16,7 @@ let
     cp ${./xl}/*.deck $out/
   '';
 in
-lib.mkIf (!host.is.iso) {
+lib.mkIf (!host.is.iso && !host.is.server) {
   environment.systemPackages = with pkgs; [ deckmaster ];
 
   services = {

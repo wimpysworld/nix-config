@@ -6,7 +6,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf (!host.is.iso) {
+lib.mkIf (!host.is.iso && !host.is.server) {
   boot = {
     extraModulePackages = with config.boot.kernelPackages; [ v4l2loopback ];
     extraModprobeConfig = ''
