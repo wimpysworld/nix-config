@@ -37,7 +37,7 @@ let
     else
       pkgs.nvtopPackages.amd;
 in
-lib.mkIf (!host.is.iso) {
+lib.mkIf (!host.is.iso && (host.is.workstation || host.gpu.hasAny)) {
 
   boot = {
     initrd.kernelModules = initrdGpuKernelModules;
