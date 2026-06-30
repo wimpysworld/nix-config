@@ -6,6 +6,7 @@
 }:
 let
   inherit (config.noughty) host;
+  gitWorkflowToolsEnabled = host.is.server || host.is.workstation;
   gitExtrasEnabled = host.is.workstation;
   gitsignCredentialCache =
     if host.is.linux then
@@ -66,10 +67,12 @@ in
       [
         gitsign # Sign Git commits and tags with Sigstore
       ]
+      ++ lib.optionals gitWorkflowToolsEnabled [
+        hunk # Review local diffs with Hunk
+      ]
       ++ lib.optionals gitExtrasEnabled [
         diffnav # Navigate Git diffs
         git-igitt # git log/graph
-        hunk # Review local diffs with Hunk
       ]
       # pre-commit and related tools require dotnet which is currently broken on Darwin
       ++ lib.optionals (gitExtrasEnabled && !host.is.darwin) [
@@ -80,13 +83,13 @@ in
       GIT_EDITOR = "${freshGitEditor}/bin/fresh-git-editor";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
     }
-    // lib.optionalAttrs gitExtrasEnabled {
+    // lib.optionalAttrs gitWorkflowToolsEnabled {
       HUNK_DISABLE_UPDATE_NOTICE = "1";
       HUNK_MCP_DISABLE = "1";
     };
   };
 
-  xdg.configFile = lib.mkIf gitExtrasEnabled {
+  xdg.configFile = lib.mkIf gitWorkflowToolsEnabled {
     "hunk/config.toml".source = lib.mkDefault hunkConfig;
   };
 
@@ -129,7 +132,7 @@ in
             # instead of a restored per-file position.
             editor = "${freshGitEditor}/bin/fresh-git-editor";
           }
-          // lib.optionalAttrs gitExtrasEnabled {
+          // lib.optionalAttrs gitWorkflowToolsEnabled {
             pager = "${pkgs.hunk}/bin/hunk pager --theme ${hunkTheme}";
           };
           diff = {
@@ -156,7 +159,7 @@ in
         "result*"
       ];
     };
-    lazygit = lib.mkIf gitExtrasEnabled {
+    lazygit = lib.mkIf gitWorkflowToolsEnabled {
       enable = true;
       settings = {
         # Skip "Press enter to return to lazygit" after subprocesses
