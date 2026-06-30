@@ -4,7 +4,10 @@
   noughtyLib,
   ...
 }:
-lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+let
+  inherit (config.noughty) host;
+in
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
   # Creates an infinite recursion if you do `catppuccin.atuin.enable = config.programs.atuin;`
   catppuccin.atuin.enable = true;
 
