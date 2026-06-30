@@ -322,7 +322,7 @@ in
 Tags are freeform `listOf str`. The canonical vocabulary is documented in a comment block in `lib/registry-systems.toml`:
 
 - **Host tags:**
-  - `studio`, `davinci`, `gamedev`, `trackball`, `streamdeck`
+  - `studio`, `davinci`, `gamedev`, `keyd`, `streamdeck`
   - `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`
   - `iso`, `wayvnc`, `inference`, `workspace`, `scrutiny`, `dropbox`
   - `borgbackup`, `fprintd`, `strix-halo`, `gatus`, `irc-bouncer`, `voxtype`
@@ -545,7 +545,7 @@ The `noughty` command is a shell script wrapped via `writeShellApplication` that
   Desktop      hyprland
   GPU          amd, nvidia
   Compute      nvidia (16GB) [cuda]
-  Tags         studio, trackball, streamdeck, pci-hdmi-capture, inference
+  Tags         studio, keyd, streamdeck, pci-hdmi-capture, inference
 
   User         martin
   Tailnet      drongo-gamma.ts.net

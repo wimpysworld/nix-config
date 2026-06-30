@@ -134,10 +134,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               command = "${lib.getExe swayncRun} ${lib.getExe pkgs.wdisplays}";
             }
             {
-              label = "󰧹";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.input-remapper}";
-            }
-            {
               label = "";
               command = "${lib.getExe swayncRun} ${lib.getExe pkgs.piper}";
             }
