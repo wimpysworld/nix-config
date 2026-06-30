@@ -67,10 +67,6 @@ let
       "overlay2"; # Default for xfs, ext4, and others
 in
 lib.mkMerge [
-  (lib.mkIf (noughtyLib.hostHasTag "hermes") {
-    virtualisation.podman.enable = true;
-  })
-
   (lib.mkIf dockerEnabled {
     environment = {
       # https://wiki.nixos.org/wiki/Docker

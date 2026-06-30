@@ -13,7 +13,6 @@ in
 lib.mkIf (noughtyLib.isHost (prodOn ++ testOn)) {
   environment = {
     shellAliases = {
-      goaccess-owncast = "sudo ${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/owncast.log --log-format=CADDY --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb";
       owncast-log = "journalctl _SYSTEMD_UNIT=owncast.service";
     };
     systemPackages = with pkgs; [
@@ -50,24 +49,6 @@ lib.mkIf (noughtyLib.isHost (prodOn ++ testOn)) {
       inherit listen;
       openFirewall = true;
       port = 8383;
-    };
-  };
-
-  systemd.services.goaccess-owncast = {
-    description = "Generate goaccess owncast report";
-    serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.goaccess}/bin/goaccess -f /var/log/caddy/owncast.log --log-format=CADDY -o /mnt/data/www/goaccess/owncast.html --persist --geoip-database=/var/lib/GeoIP/GeoLite2-City.mmdb'";
-      User = "${config.services.caddy.user}";
-    };
-  };
-
-  systemd.timers.goaccess-owncast = {
-    description = "Run goaccess owncast report every hour";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnBootSec = "5min";
-      OnUnitActiveSec = "1h";
-      RandomizedDelaySec = 300;
     };
   };
 

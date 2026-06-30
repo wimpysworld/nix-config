@@ -182,7 +182,7 @@ in
       enable = true;
       flake = "/home/${username}/Zero/nix-config";
     };
-    nix-ld = lib.mkIf (!host.is.iso) {
+    nix-ld = lib.mkIf host.is.workstation {
       enable = true;
       libraries = with pkgs; [
         # Add any missing dynamic libraries for unpackaged
