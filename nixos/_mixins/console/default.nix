@@ -93,19 +93,21 @@ in
         symbola
         work-sans
       ];
-    fontconfig = lib.mkIf host.is.workstation {
-      antialias = true;
-      enable = true;
-      hinting = {
-        autohint = false;
-        enable = true;
-        style = "slight";
-      };
-      subpixel = {
-        rgba = "rgb";
-        lcdfilter = "light";
-      };
-    };
+    fontconfig = lib.mkMerge [
+      { enable = lib.mkDefault (host.is.workstation || useKmscon); }
+      (lib.mkIf host.is.workstation {
+        antialias = true;
+        hinting = {
+          autohint = false;
+          enable = true;
+          style = "slight";
+        };
+        subpixel = {
+          rgba = "rgb";
+          lcdfilter = "light";
+        };
+      })
+    ];
   };
 
   i18n = {
