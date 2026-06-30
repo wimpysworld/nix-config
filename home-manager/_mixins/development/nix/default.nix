@@ -17,10 +17,12 @@
     ];
   };
 
-  claude-code.lspServers.nix = {
-    command = lib.getExe pkgs.nixd;
-    extensionToLanguage = {
-      ".nix" = "nix";
+  claude-code.lspServers = lib.mkIf config.programs.claude-code.enable {
+    nix = {
+      command = lib.getExe pkgs.nixd;
+      extensionToLanguage = {
+        ".nix" = "nix";
+      };
     };
   };
 

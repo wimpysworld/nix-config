@@ -3,10 +3,16 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
-{
+let
+  inherit (config.noughty) host;
+  isDeveloper = noughtyLib.userHasTag "developer";
+  isWorkstationDeveloper = isDeveloper && host.is.workstation;
+in
+lib.mkIf isWorkstationDeveloper {
   home.packages = [
     pkgs.gitleaks
     pkgs.grype

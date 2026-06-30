@@ -6,6 +6,7 @@
 }:
 let
   inherit (config.noughty) host;
+  gitExtrasEnabled = host.is.workstation;
   gitsignCredentialCache =
     if host.is.linux then
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
@@ -63,25 +64,31 @@ in
     packages =
       with pkgs;
       [
+        gitsign # Sign Git commits and tags with Sigstore
+      ]
+      ++ lib.optionals gitExtrasEnabled [
         diffnav # Navigate Git diffs
         git-igitt # git log/graph
-        gitsign # Sign Git commits and tags with Sigstore
         hunk # Review local diffs with Hunk
       ]
       # pre-commit and related tools require dotnet which is currently broken on Darwin
-      ++ lib.optionals (!host.is.darwin) [
+      ++ lib.optionals (gitExtrasEnabled && !host.is.darwin) [
         pre-commit # Git pre-commit hooks
         precommitSetup
       ];
     sessionVariables = {
       GIT_EDITOR = "${freshGitEditor}/bin/fresh-git-editor";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
+    }
+    // lib.optionalAttrs gitExtrasEnabled {
       HUNK_DISABLE_UPDATE_NOTICE = "1";
       HUNK_MCP_DISABLE = "1";
     };
   };
 
-  xdg.configFile."hunk/config.toml".source = lib.mkDefault hunkConfig;
+  xdg.configFile = lib.mkIf gitExtrasEnabled {
+    "hunk/config.toml".source = lib.mkDefault hunkConfig;
+  };
 
   programs = {
     bash = {
@@ -121,6 +128,8 @@ in
             # message at line 1, column 1 so the cursor starts at the top
             # instead of a restored per-file position.
             editor = "${freshGitEditor}/bin/fresh-git-editor";
+          }
+          // lib.optionalAttrs gitExtrasEnabled {
             pager = "${pkgs.hunk}/bin/hunk pager --theme ${hunkTheme}";
           };
           diff = {
@@ -147,7 +156,7 @@ in
         "result*"
       ];
     };
-    lazygit = {
+    lazygit = lib.mkIf gitExtrasEnabled {
       enable = true;
       settings = {
         # Skip "Press enter to return to lazygit" after subprocesses
@@ -202,7 +211,7 @@ in
         };
       };
     };
-    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+    zed-editor = lib.mkIf (gitExtrasEnabled && config.programs.zed-editor.enable) {
       userSettings = {
         languages = {
           "Git Commit" = {

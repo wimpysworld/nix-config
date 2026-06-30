@@ -42,12 +42,14 @@
     };
   };
 
-  claude-code.lspServers.yaml = {
-    command = lib.getExe pkgs.yaml-language-server;
-    args = [ "--stdio" ];
-    extensionToLanguage = {
-      ".yaml" = "yaml";
-      ".yml" = "yaml";
+  claude-code.lspServers = lib.mkIf config.programs.claude-code.enable {
+    yaml = {
+      command = lib.getExe pkgs.yaml-language-server;
+      args = [ "--stdio" ];
+      extensionToLanguage = {
+        ".yaml" = "yaml";
+        ".yml" = "yaml";
+      };
     };
   };
 

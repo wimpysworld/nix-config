@@ -137,15 +137,19 @@ let
             in
             compose.composePiCommandFromPrompt agentName cmdName piPrompt;
       in
-      [
+      lib.optionals config.programs.claude-code.enable [
         (lib.nameValuePair "assistant-claude-command-${cmdName}" {
           content = claudeBody;
           path = secretClaudePath cmdName;
         })
+      ]
+      ++ lib.optionals config.programs.opencode.enable [
         (lib.nameValuePair "assistant-opencode-command-${cmdName}" {
           content = opencodeBody;
           path = secretOpencodePath cmdName;
         })
+      ]
+      ++ [
         (lib.nameValuePair "assistant-pi-command-${cmdName}" {
           content = piBody;
           path = secretPiPath cmdName;
@@ -665,14 +669,18 @@ in
     };
 
     home = {
-      file = {
-        # Claude Code global instructions
-        "${config.home.homeDirectory}/.claude/rules/instructions.md".text = claudeInstructions;
-      }
-      # Claude Code skill files
-      // mkClaudeSkillFiles
-      # OpenCode skill files
-      // mkOpencodeSkillFiles;
+      file = lib.mkMerge [
+        (lib.mkIf config.programs.claude-code.enable (
+          {
+            # Claude Code global instructions
+            "${config.home.homeDirectory}/.claude/rules/instructions.md".text = claudeInstructions;
+          }
+          # Claude Code skill files
+          // mkClaudeSkillFiles
+        ))
+        # OpenCode skill files
+        (lib.mkIf config.programs.opencode.enable mkOpencodeSkillFiles)
+      ];
 
       # Codex skills and agents: written as real files via activation script (not symlinks).
       # codex-rs uses file_type().is_file() for discovery, which returns false for symlinks

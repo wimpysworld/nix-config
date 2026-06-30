@@ -5,9 +5,10 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   castlabsSopsFile = ../../../../secrets/castlabs.yaml;
 in
-{
+lib.mkIf host.is.workstation {
   home = {
     packages = with pkgs; [
       electron

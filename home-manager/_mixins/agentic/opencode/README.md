@@ -2,7 +2,9 @@
 
 OpenCode with built-in LSP, IDE integration, and CUA-standard keybindings.
 
-Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for OpenCode, Claude Code, and Codex by `assistants/compose.nix`.
+Home Manager enables OpenCode by default on non-server hosts. Default servers do not install OpenCode or `opencode-fenced` unless another module enables `programs.opencode`.
+
+Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for OpenCode, Claude Code, Codex, and Pi Agent by the assistants mixin.
 
 ## Package selection
 

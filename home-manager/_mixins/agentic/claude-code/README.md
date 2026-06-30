@@ -2,7 +2,9 @@
 
 Claude Code with LSP integration, MCP servers, a [Fence](../fence)-isolated entry point, and a ccstatusline status bar.
 
-Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for Claude Code, OpenCode, and Codex by `assistants/compose.nix`.
+Home Manager enables this module on workstations. Default servers keep Codex, Pi Agent, generated agent resources, and shared MCP data, but do not install Claude Code or `claude-fenced`.
+
+Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for Claude Code, OpenCode, Codex, and Pi Agent by the assistants mixin.
 
 ## Package selection
 

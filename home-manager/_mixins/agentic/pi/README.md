@@ -205,9 +205,9 @@ filesystem, network, and command policy.
 
 Pi MCP support is provided by [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter), installed through the pinned package setting.
 
-The adapter reads the shared MCP config at `~/.config/mcp/mcp.json` automatically. That file is rendered by `../mcp` from `mcp/servers.nix`, so Pi uses the same canonical server definitions as Claude Code and other generic MCP clients.
+Pi imports the canonical server definitions from `../mcp/servers.nix`, then renders a self-contained `~/.pi/agent/mcp.json`. Default servers do not need the Claude Code `~/.config/mcp/mcp.json` template for Pi.
 
-`~/.pi/agent/mcp.json` is Pi-specific and is rendered through sops-nix because the full Context7 server entry includes an auth header. It carries conservative global adapter settings:
+`~/.pi/agent/mcp.json` is Pi-specific and is rendered through sops-nix because some server entries include auth headers. It carries conservative global adapter settings:
 
 - `directTools = false`
 - `disableProxyTool = false`

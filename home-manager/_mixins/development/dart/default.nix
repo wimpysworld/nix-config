@@ -4,7 +4,10 @@
   pkgs,
   ...
 }:
-{
+let
+  inherit (config.noughty) host;
+in
+lib.mkIf host.is.workstation {
   claude-code.lspServers.dart = {
     command = "${pkgs.dart}/bin/dart";
     args = [ "language-server" ];

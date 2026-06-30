@@ -620,24 +620,45 @@ rec {
       }) disabled
     );
 
-  # requiredSecrets: sorted list of distinct env var names referenced by any
-  # enabled server's `auth.envVar` or `env` values. Task 3.1 will feed this
-  # into `sops.secrets` so a server's secret declarations follow the canonical
-  # entry rather than living in a separate hand-maintained list.
-  #
-  # Per-consumer `consumers.<tool>.enabled = false` does NOT gate inclusion;
-  # only the global `enabled` flag does. A server consumed only by tools that
-  # opt out still needs its secret available at activation, otherwise the
-  # `config.sops.placeholder` interpolation in the renderer outputs would
-  # fail to resolve. With current data this list resolves to
-  # `["CONTEXT7_API_KEY"]`.
-  requiredSecrets =
+  # requiredSecretsForConsumers: sorted list of distinct env var names needed
+  # by enabled consumers. Per-consumer disabled entries still count for clients
+  # that render them as visible but disabled. Hard-omitted consumers do not.
+  requiredSecretsForConsumers =
+    consumers:
     let
-      enabledServers = lib.filterAttrs (_: s: s.enabled or true) servers;
+      keptByConsumer =
+        consumer: s:
+        (s.enabled or true)
+        && (
+          if consumer == "claudeCode" then
+            s.consumers.claudeCode.enabled or true
+          else if consumer == "codex" then
+            true
+          else if consumer == "opencode" then
+            true
+          else if consumer == "pi" then
+            !(s.consumers.pi.omit or false)
+          else if consumer == "zed" then
+            (s.consumers.zed.mode or "context_server") != "skip"
+          else
+            false
+        );
+      keptServers = lib.filterAttrs (
+        _: s: lib.any (consumer: keptByConsumer consumer s) (lib.unique consumers)
+      ) servers;
       authSecrets = lib.mapAttrsToList (
         _: s: if (s.auth or null) != null && s.auth.kind or null == "bearer" then [ s.auth.envVar ] else [ ]
-      ) enabledServers;
-      envSecrets = lib.mapAttrsToList (_: s: lib.attrValues (s.env or { })) enabledServers;
+      ) keptServers;
+      envSecrets = lib.mapAttrsToList (_: s: lib.attrValues (s.env or { })) keptServers;
     in
     lib.sort lib.lessThan (lib.unique (lib.flatten (authSecrets ++ envSecrets)));
+
+  # Full legacy set for callers that do not have an enabled-client context.
+  requiredSecrets = requiredSecretsForConsumers [
+    "claudeCode"
+    "codex"
+    "opencode"
+    "pi"
+    "zed"
+  ];
 }

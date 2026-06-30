@@ -7,12 +7,13 @@
 }:
 let
   inherit (config.noughty) host;
+  virtualisationEnabled = host.is.linux && host.is.workstation;
 in
-lib.mkIf host.is.linux {
-  # Authrorize X11 access in Distrobox
+lib.mkIf virtualisationEnabled {
+  # Authorise X11 access in Distrobox.
   home = {
     file = {
-      ".distroboxrc" = lib.mkIf (config.programs.distrobox.enable && host.is.workstation) {
+      ".distroboxrc" = lib.mkIf config.programs.distrobox.enable {
         text = "${pkgs.xhost}/bin/xhost +si:localuser:$USER";
       };
       "Quickemu/nihilus/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
@@ -42,7 +43,7 @@ lib.mkIf host.is.linux {
   };
   services = {
     podman = {
-      enable = host.is.linux;
+      enable = true;
     };
   };
 }
