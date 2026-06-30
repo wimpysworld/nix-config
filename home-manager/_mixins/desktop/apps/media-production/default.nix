@@ -428,14 +428,14 @@ in
       gimp3
       inkscape
     ]
-    ++ lib.optionals (noughtyLib.hostHasTag "gamedev") [
+    ++ lib.optionals (host.is.workstation && noughtyLib.hostHasTag "gamedev") [
       blenderPackage
     ]
-    ++ lib.optionals (noughtyLib.hostHasTag "davinci") [
+    ++ lib.optionals (host.is.workstation && noughtyLib.hostHasTag "davinci") [
       davinciResolve
     ];
 
-  services.easyeffects = lib.mkIf (noughtyLib.hostHasTag "studio") {
+  services.easyeffects = lib.mkIf (host.is.workstation && noughtyLib.hostHasTag "studio") {
     enable = true;
     preset = "mic-${host.name}-oktava";
   };

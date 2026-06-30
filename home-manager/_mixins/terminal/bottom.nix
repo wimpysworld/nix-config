@@ -40,7 +40,7 @@ in
     zsh.shellAliases = lib.mkIf config.programs.bottom.enable shellAliases;
   };
 
-  xdg = lib.mkIf host.is.linux {
+  xdg = lib.mkIf (host.is.linux && host.is.workstation) {
     desktopEntries = {
       bottom = {
         name = "bottom";

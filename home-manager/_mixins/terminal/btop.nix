@@ -20,7 +20,7 @@ in
     };
   };
 
-  xdg = lib.mkIf host.is.linux {
+  xdg = lib.mkIf (host.is.linux && host.is.workstation) {
     desktopEntries = {
       btop = {
         name = "btop++";
