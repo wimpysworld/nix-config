@@ -9,8 +9,6 @@ in
   catppuccin.cava.enable = config.programs.cava.enable;
 
   programs = {
-    cava = {
-      enable = host.is.linux;
-    };
+    cava.enable = host.is.linux && host.is.workstation;
   };
 }

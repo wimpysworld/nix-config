@@ -14,8 +14,8 @@ in
     btop = {
       enable = true;
       package = pkgs.btop.override {
-        cudaSupport = host.is.linux;
-        rocmSupport = host.is.linux;
+        cudaSupport = host.is.linux && host.is.workstation;
+        rocmSupport = host.is.linux && host.is.workstation;
       };
     };
   };

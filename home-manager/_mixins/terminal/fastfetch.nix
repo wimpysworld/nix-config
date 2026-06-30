@@ -194,13 +194,15 @@ in
     packages =
       with pkgs;
       [
-        cpufetch
         fastfetch
+      ]
+      ++ lib.optionals host.is.workstation [
+        cpufetch
         foodfetch
         ipfetch
         onefetch
       ]
-      ++ lib.optionals host.is.linux [
+      ++ lib.optionals (host.is.linux && host.is.workstation) [
         microfetch
         ramfetch
       ];

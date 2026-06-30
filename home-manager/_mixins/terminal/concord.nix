@@ -10,7 +10,7 @@ let
   system = pkgs.stdenv.hostPlatform.system;
 in
 {
-  config = lib.mkIf (host.is.linux && system == "x86_64-linux") {
+  config = lib.mkIf (host.is.linux && host.is.workstation && system == "x86_64-linux") {
     home.packages = [
       inputs.concord.packages.${system}.default
     ];

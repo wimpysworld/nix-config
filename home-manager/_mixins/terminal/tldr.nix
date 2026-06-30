@@ -2,15 +2,20 @@
 # Use the Rust client for tldr
 # https://github.com/tldr-pages/tlrc
 {
+  config,
+  lib,
   pkgs,
   ...
 }:
+let
+  inherit (config.noughty) host;
+in
 {
   home.packages = [
     pkgs.tlrc
   ];
   services = {
-    tldr-update = {
+    tldr-update = lib.mkIf host.is.workstation {
       enable = true;
       package = pkgs.tlrc;
     };
