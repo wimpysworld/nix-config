@@ -7,8 +7,6 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-    paseo.url = "github:getpaseo/paseo";
-    paseo.inputs.nixpkgs.follows = "nixpkgs-unstable";
     nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -39,6 +37,8 @@
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
     concord.inputs.rust-overlay.follows = "rust-overlay";
     concord.inputs.flake-utils.follows = "flake-utils";
+    paseo.url = "github:getpaseo/paseo/7dad7a377c5aef4f0184ac4dc2d38e2a4a7c8767";
+    paseo.inputs.nixpkgs.follows = "nixpkgs-unstable";
     voxtype.url = "github:peteonrails/voxtype/v0.7.5";
     voxtype.inputs.nixpkgs.follows = "nixpkgs-unstable";
     voxtype.inputs.flake-utils.follows = "flake-utils";
