@@ -15,7 +15,7 @@ in
 
   services = {
     fwupd.enable = lib.mkDefault host.is.workstation;
-    hardware.bolt.enable = !host.is.iso;
+    hardware.bolt.enable = lib.mkDefault host.hardware.thunderbolt;
     irqbalance = lib.mkIf (!config.services.qemuGuest.enable) {
       enable = true;
     };

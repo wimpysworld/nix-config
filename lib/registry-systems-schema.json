@@ -52,6 +52,13 @@
           "properties": {
             "wifi": { "type": "boolean" }
           }
+        },
+        "hardware": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "thunderbolt": { "type": "boolean" }
+          }
         }
       }
     },

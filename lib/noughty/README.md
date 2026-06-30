@@ -178,6 +178,18 @@ Note: `hasCuda` derives from `compute.acceleration`, not vendor presence. A host
 
 A bare `hostHasTag "gpu"` cannot distinguish vendors. Hosts like vader have both AMD and NVIDIA GPUs. An enum list with derived booleans provides type validation: misspelling `"nvida"` in an enum produces an immediate evaluation error; misspelling it in a tag fails silently.
 
+### `noughty.host.network` - Network hardware
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `network.wifi` | `bool` | `true` for laptops and handhelds, else `false` | Whether this host has WiFi hardware. |
+
+### `noughty.host.hardware` - Host hardware
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `hardware.thunderbolt` | `bool` | `true` for Linux laptop and desktop computers, else `false` | Whether this host has Thunderbolt hardware. Override from `lib/registry-systems.toml` for exceptions. |
+
 ### `noughty.host.displays` - Display output configuration
 
 A list of display submodules. Set in the system registry (`lib/registry-systems.toml`) alongside other host properties. This ensures display data flows to both NixOS and standalone Home Manager contexts.
@@ -587,6 +599,9 @@ tags       = ["thinkpad"]  # if applicable
 
 [mynewhost.gpu]
 vendors = ["amd"]          # if applicable
+
+[mynewhost.hardware]
+thunderbolt = false        # if the default does not match this host
 
 [[mynewhost.displays]]
 output     = "DP-1"

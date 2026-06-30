@@ -1,6 +1,6 @@
 # Noughty: Centralised system attributes module.
-# Declares typed options for host identity, classification, display
-# configuration, user identity, and network attributes. Safe to import
+# Declares typed options for host identity, classification, hardware,
+# display configuration, user identity, and network attributes. Safe to import
 # verbatim into NixOS, nix-darwin, and Home Manager.
 {
   config,
@@ -350,7 +350,7 @@ in
         };
       };
 
-      # ── Display output configuration ──────────────────────────────
+      # ── Network attributes ────────────────────────────────────────
 
       network = {
         wifi = lib.mkOption {
@@ -364,6 +364,23 @@ in
                 "handheld"
               ];
           description = "Whether this host has WiFi hardware. Defaults to true for laptops and handhelds, false for servers and all other form factors.";
+        };
+      };
+
+      # ── Hardware attributes ───────────────────────────────────────
+
+      hardware = {
+        thunderbolt = lib.mkOption {
+          type = lib.types.bool;
+          default =
+            config.noughty.host.is.linux
+            && config.noughty.host.kind == "computer"
+            && !config.noughty.host.is.iso
+            && lib.elem config.noughty.host.formFactor [
+              "laptop"
+              "desktop"
+            ];
+          description = "Whether this host has Thunderbolt hardware. Defaults to true for Linux laptop and desktop computers, false for servers, virtual hosts, containers, ISO builds, Darwin hosts, and hosts without a form factor.";
         };
       };
 

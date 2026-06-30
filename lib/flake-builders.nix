@@ -169,6 +169,7 @@ rec {
       hostTags ? [ ],
       hostDisplays ? [ ],
       hostNetworkWifi ? null,
+      hostHardwareThunderbolt ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -204,6 +205,9 @@ rec {
             network = lib.optionalAttrs (hostNetworkWifi != null) {
               wifi = hostNetworkWifi;
             };
+            hardware = lib.optionalAttrs (hostHardwareThunderbolt != null) {
+              thunderbolt = hostHardwareThunderbolt;
+            };
             keyboard = {
               layout = hostKeyboardLayout;
               variant = hostKeyboardVariant;
@@ -230,6 +234,7 @@ rec {
       hostTags ? [ ],
       hostDisplays ? [ ],
       hostNetworkWifi ? null,
+      hostHardwareThunderbolt ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -271,6 +276,9 @@ rec {
               network = lib.optionalAttrs (hostNetworkWifi != null) {
                 wifi = hostNetworkWifi;
               };
+              hardware = lib.optionalAttrs (hostHardwareThunderbolt != null) {
+                thunderbolt = hostHardwareThunderbolt;
+              };
               keyboard = {
                 layout = hostKeyboardLayout;
                 variant = hostKeyboardVariant;
@@ -297,6 +305,7 @@ rec {
       hostTags ? [ ],
       hostDisplays ? [ ],
       hostNetworkWifi ? null,
+      hostHardwareThunderbolt ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -335,6 +344,9 @@ rec {
             network = lib.optionalAttrs (hostNetworkWifi != null) {
               wifi = hostNetworkWifi;
             };
+            hardware = lib.optionalAttrs (hostHardwareThunderbolt != null) {
+              thunderbolt = hostHardwareThunderbolt;
+            };
             keyboard = {
               layout = hostKeyboardLayout;
               variant = hostKeyboardVariant;
@@ -372,6 +384,7 @@ rec {
       hostTags = resolved.tags or [ ];
       hostDisplays = resolved.displays or [ ];
       hostNetworkWifi = (resolved.network or { }).wifi or null;
+      hostHardwareThunderbolt = (resolved.hardware or { }).thunderbolt or null;
       hostKeyboardLayout = (resolved.keyboard or { }).layout or "gb";
       hostKeyboardVariant = (resolved.keyboard or { }).variant or "";
       userTags = (resolved.userEntry or { }).tags or [ ];
