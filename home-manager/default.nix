@@ -29,7 +29,6 @@ in
     ./_mixins/agentic
     ./_mixins/development
     ./_mixins/filesync
-    ./_mixins/programs
     ./_mixins/scripts
     ./_mixins/desktop
     ./_mixins/services
