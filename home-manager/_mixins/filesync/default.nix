@@ -28,25 +28,23 @@ let
     }
   ) syncDefs.folders;
 
-  keybasePackages =
-    if host.is.workstation then
-      [
-        pkgs.keybase
-        pkgs.keybase-gui
-      ]
-    else
-      [ pkgs.keybase ];
+  isKeybaseHost = host.is.linux && host.is.workstation && !(noughtyLib.hostHasTag "policy");
+
+  keybasePackages = [
+    pkgs.keybase
+    pkgs.keybase-gui
+  ];
 in
 lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
   home = lib.mkIf host.is.linux {
-    file."${config.xdg.configHome}/keybase/autostart_created".text = ''
-      This file is created the first time Keybase starts, along with
-      ~/.config/autostart/keybase_autostart.desktop. As long as this
-      file exists, the autostart file won't be automatically recreated.
-    '';
-    packages =
-      with pkgs;
-      [ stc-cli ] ++ lib.optionals (!(noughtyLib.hostHasTag "policy")) keybasePackages;
+    file = lib.mkIf isKeybaseHost {
+      "${config.xdg.configHome}/keybase/autostart_created".text = ''
+        This file is created the first time Keybase starts, along with
+        ~/.config/autostart/keybase_autostart.desktop. As long as this
+        file exists, the autostart file won't be automatically recreated.
+      '';
+    };
+    packages = with pkgs; [ stc-cli ] ++ lib.optionals isKeybaseHost keybasePackages;
   };
 
   programs.fish.shellAliases = lib.mkIf host.is.linux {
@@ -65,11 +63,11 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
 
   services = {
     # Keybase is Linux-only (macOS uses Homebrew cask)
-    kbfs = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "policy")) {
+    kbfs = lib.mkIf isKeybaseHost {
       enable = true;
       mountPoint = "Keybase";
     };
-    keybase = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "policy")) {
+    keybase = lib.mkIf isKeybaseHost {
       enable = true;
     };
     # Syncthing works on both Linux (systemd) and macOS (launchd)
