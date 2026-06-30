@@ -12,6 +12,7 @@ let
     egrep = "${pkgs.gnugrep}/bin/egrep --color=auto";
     fgrep = "${pkgs.gnugrep}/bin/fgrep --color=auto";
     grep = "${pkgs.gnugrep}/bin/grep --color=auto";
+    lsusb = "${pkgs.cyme}/bin/cyme --headings";
     micro = "fresh";
     nano = "fresh";
     rsync-copy = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --human-readable --info=progress2 --inplace --no-compress --partial --stats";
@@ -28,7 +29,6 @@ let
     dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
     hr = ''${pkgs.hr}/bin/hr "─━"'';
     lolcat = "${pkgs.dotacat}/bin/dotacat";
-    lsusb = "${pkgs.cyme}/bin/cyme --headings";
     moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
     ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
     weather = "${lib.getExe pkgs.girouette} --quiet";
@@ -68,10 +68,13 @@ in
       [
         bc # Terminal calculator
         bmon # Modern Unix `iftop`
+        cyme # Modern Unix `lsusb`
         doggo # Modern Unix `dig`
+        dua # Modern Unix `du`
         duf # Modern Unix `df`
         dust # Modern Unix `du`
         file # Terminal file info
+        frogmouth # Terminal Markdown viewer
         hexyl # Modern Unix `hexedit`
         iperf3 # Terminal network benchmarking
         mtr # Modern Unix `traceroute`
@@ -93,14 +96,10 @@ in
       ++ lib.optionals host.is.workstation [
         bandwhich # Modern Unix `iftop`
         croc # Terminal file transfer
-        cyme # Modern Unix `lsusb`
-        dotacat # Modern Unix lolcat
-        dua # Modern Unix `du`
+        dotacat # Modern Unix lolcat        
         entr # Modern Unix `watch`
-        frogmouth # Terminal Markdown viewer
         fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
-        glow # Terminal markdown viewer
         gping # Modern Unix `ping`
         hr # Terminal horizontal rule
         hueadm # Terminal Philips Hue control
@@ -115,7 +114,6 @@ in
         timer # Terminal timer
         upterm # Terminal sharing
         vhs # Terminal GIF recorder; depends on Chromium
-        wget2 # Terminal HTTP client
       ]
       ++ lib.optionals (host.is.linux && host.is.workstation) [
         batmon # Terminal battery monitor
