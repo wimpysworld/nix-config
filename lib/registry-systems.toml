@@ -161,6 +161,7 @@ tags = [
   "strix-halo",
   "voxtype",
   "paseo",
+  "xfkey",
 ]
 
 [skrye.gpu]
@@ -209,6 +210,7 @@ tags = [
   "strix-halo",
   "voxtype",
   "paseo",
+  "xfkey",
 ]
 
 [zannah.gpu]
@@ -299,6 +301,10 @@ vendors = ["intel", "nvidia"]
 [revan.gpu.compute]
 vendor = "nvidia"
 vram = 16
+
+[cognus]
+kind = "server"
+platform = "x86_64-linux"
 
 # Linux VMs
 
