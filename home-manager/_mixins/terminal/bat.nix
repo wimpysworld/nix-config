@@ -5,6 +5,7 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   shellAliases = {
     brg = "${pkgs.bat-extras.batgrep}/bin/batgrep";
     cat = "${pkgs.bat}/bin/bat --paging=never";
@@ -26,11 +27,15 @@ in
   programs = {
     bat = {
       enable = true;
-      extraPackages = with pkgs.bat-extras; [
-        batgrep
-        batwatch
-        prettybat
-      ];
+      extraPackages =
+        with pkgs.bat-extras;
+        [
+          batgrep
+        ]
+        ++ lib.optionals host.is.workstation [
+          batwatch
+          prettybat
+        ];
       config = {
         style = "plain";
       };

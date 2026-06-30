@@ -7,27 +7,32 @@
 let
   inherit (config.noughty) host;
   shellAliases = {
-    banner = "${pkgs.figlet}/bin/figlet";
-    banner-color = "${pkgs.figlet}/bin/figlet $argv | ${pkgs.dotacat}/bin/dotacat";
-    clock = "${pkgs.clock-rs}/bin/clock-rs --blink --color blue --hide-seconds";
-    dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
     dmesg = "${pkgs.util-linux}/bin/dmesg --human --color=always";
     duf = "${pkgs.duf}/bin/duf --theme ansi";
     egrep = "${pkgs.gnugrep}/bin/egrep --color=auto";
     fgrep = "${pkgs.gnugrep}/bin/fgrep --color=auto";
     grep = "${pkgs.gnugrep}/bin/grep --color=auto";
-    hr = ''${pkgs.hr}/bin/hr "─━"'';
-    lolcat = "${pkgs.dotacat}/bin/dotacat";
     lsusb = "${pkgs.cyme}/bin/cyme --headings";
-    moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
     micro = "fresh";
     nano = "fresh";
     rsync-copy = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --human-readable --info=progress2 --inplace --no-compress --partial --stats";
     rsync-mirror = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --delete --human-readable --info=progress2 --no-compress --inplace --partial --stats";
-    ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
     speedtest = "${pkgs.speedtest-go}/bin/speedtest-go";
-    wormhole = "${pkgs.wormhole-rs}/bin/wormhole-rs";
+  }
+  // lib.optionalAttrs host.is.linux {
+    lsusb = "${pkgs.usbutils}/bin/lsusb";
+  }
+  // lib.optionalAttrs host.is.workstation {
+    banner = "${pkgs.figlet}/bin/figlet";
+    banner-color = "${pkgs.figlet}/bin/figlet $argv | ${pkgs.dotacat}/bin/dotacat";
+    clock = "${pkgs.clock-rs}/bin/clock-rs --blink --color blue --hide-seconds";
+    dadjoke = ''${pkgs.curlMinimal}/bin/curl --header "Accept: text/plain" https://icanhazdadjoke.com/'';
+    hr = ''${pkgs.hr}/bin/hr "─━"'';
+    lolcat = "${pkgs.dotacat}/bin/dotacat";
+    moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
+    ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
     weather = "${lib.getExe pkgs.girouette} --quiet";
+    wormhole = "${pkgs.wormhole-rs}/bin/wormhole-rs";
   };
 in
 {
@@ -52,7 +57,6 @@ in
     ./ripgrep.nix # Modern Unix `grep`
     ./senpai.nix # Terminal IRC client
     ./starship.nix # Modern Unix prompt
-    ./superfile.nix # Modern terminal file manager
     ./tldr.nix # Modern Unix `man`
     ./yazi.nix # Modern Unix `mc`
     ./yt-dlp.nix # Terminal YouTube downloader
@@ -63,63 +67,63 @@ in
       with pkgs;
       [
         bc # Terminal calculator
-        bandwhich # Modern Unix `iftop`
         bmon # Modern Unix `iftop`
-        croc # Terminal file transfer
         cyme # Modern Unix `lsusb`
         doggo # Modern Unix `dig`
-        dotacat # Modern Unix lolcat
         dua # Modern Unix `du`
         duf # Modern Unix `df`
         dust # Modern Unix `du`
-        entr # Modern Unix `watch`
-        frogmouth # Terminal Markdown viewer
         file # Terminal file info
+        frogmouth # Terminal Markdown viewer
+        hexyl # Modern Unix `hexedit`
+        iperf3 # Terminal network benchmarking
+        mtr # Modern Unix `traceroute`
+        pciutils # Terminal PCI info
+        procs # Modern Unix `ps`
+        rsync # Traditional `rsync`
+        sd # Modern Unix `sed`
+        speedtest-go # Terminal speedtest.net
+        unixtools.xxd # Terminal Hexdump
+        unzip # Terminal ZIP extractor
+        wget # Terminal HTTP client
+        xh # Terminal HTTP client
+      ]
+      ++ lib.optionals host.is.linux [
+        lurk # Modern Unix strace
+        psmisc # Traditional `ps`
+        usbutils # Terminal USB info
+      ]
+      ++ lib.optionals host.is.workstation [
+        bandwhich # Modern Unix `iftop`
+        croc # Terminal file transfer
+        dotacat # Modern Unix lolcat        
+        entr # Modern Unix `watch`
         fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
-        glow # Terminal markdown viewer
         gping # Modern Unix `ping`
-        hexyl # Modern Unix `hexedit`
         hr # Terminal horizontal rule
         hueadm # Terminal Philips Hue control
         hyperfine # Terminal benchmarking
-        iperf3 # Terminal network benchmarking
         jpegoptim # Terminal JPEG optimizer
         lima # Terminal VM manager
         magic-wormhole-rs # Terminal file transfer
         mprocs # Terminal parallel process runner
-        mtr # Modern Unix `traceroute`
         netdiscover # Modern Unix `arp`
         optipng # Terminal PNG optimizer
-        pciutils # Terminal PCI info
-        procs # Modern Unix `ps`
-        rsync # Traditional `rsync`
         rustmission # Terminal Transmission Torrent client
-        sd # Modern Unix `sed`
-        speedtest-go # Terminal speedtest.net
         timer # Terminal timer
-        unixtools.xxd # Terminal Hexdump
-        unzip # Terminal ZIP extractor
         upterm # Terminal sharing
-        wget # Terminal HTTP client
-        wget2 # Terminal HTTP client
-        xh # Terminal HTTP client
+        vhs # Terminal GIF recorder; depends on Chromium
       ]
-      ++ lib.optionals host.is.linux [
+      ++ lib.optionals (host.is.linux && host.is.workstation) [
         batmon # Terminal battery monitor
         figlet # Terminal ASCII banners
         iw # Terminal WiFi info
-        lurk # Modern Unix strace
-        psmisc # Traditional `ps`
         s-tui # Terminal CPU stress test
         stress-ng # Terminal CPU stress test
         tty-clock # Terminal clock
-        usbutils # Terminal USB info
         wavemon # Terminal WiFi monitor
         writedisk # Modern Unix `dd`
-      ]
-      ++ lib.optionals host.is.workstation [
-        vhs # Terminal GIF recorder; depends on Chromium
       ]
       ++ lib.optionals host.is.darwin [
         m-cli # Terminal Swiss Army Knife for macOS
@@ -127,7 +131,7 @@ in
       ];
 
     # Environment variables for terminal applications
-    sessionVariables = {
+    sessionVariables = lib.mkIf host.is.workstation {
       # Set Catppuccin Mocha theme for Textual-based applications (e.g., frogmouth)
       TEXTUAL_THEME = "catppuccin-mocha";
     };

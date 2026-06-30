@@ -29,7 +29,7 @@ in
   # Install browser extensions for macOS; nix-darwin doesn't support it yet.
   programs = {
     brave = {
-      enable = host.is.darwin && !isWorkspace;
+      enable = host.is.darwin && host.is.workstation && !isWorkspace;
       extensions =
         if (noughtyLib.isUser [ "martin" ]) then basicExtensions ++ advancedExtensions else basicExtensions;
     };

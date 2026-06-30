@@ -6,6 +6,8 @@
 }:
 let
   inherit (config.noughty) host;
+  gitWorkflowToolsEnabled = host.is.server || host.is.workstation;
+  gitExtrasEnabled = host.is.workstation;
   gitsignCredentialCache =
     if host.is.linux then
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
@@ -63,25 +65,33 @@ in
     packages =
       with pkgs;
       [
-        diffnav # Navigate Git diffs
-        git-igitt # git log/graph
         gitsign # Sign Git commits and tags with Sigstore
+      ]
+      ++ lib.optionals gitWorkflowToolsEnabled [
         hunk # Review local diffs with Hunk
       ]
+      ++ lib.optionals gitExtrasEnabled [
+        diffnav # Navigate Git diffs
+        git-igitt # git log/graph
+      ]
       # pre-commit and related tools require dotnet which is currently broken on Darwin
-      ++ lib.optionals (!host.is.darwin) [
+      ++ lib.optionals (gitExtrasEnabled && !host.is.darwin) [
         pre-commit # Git pre-commit hooks
         precommitSetup
       ];
     sessionVariables = {
       GIT_EDITOR = "${freshGitEditor}/bin/fresh-git-editor";
       GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
+    }
+    // lib.optionalAttrs gitWorkflowToolsEnabled {
       HUNK_DISABLE_UPDATE_NOTICE = "1";
       HUNK_MCP_DISABLE = "1";
     };
   };
 
-  xdg.configFile."hunk/config.toml".source = lib.mkDefault hunkConfig;
+  xdg.configFile = lib.mkIf gitWorkflowToolsEnabled {
+    "hunk/config.toml".source = lib.mkDefault hunkConfig;
+  };
 
   programs = {
     bash = {
@@ -121,6 +131,8 @@ in
             # message at line 1, column 1 so the cursor starts at the top
             # instead of a restored per-file position.
             editor = "${freshGitEditor}/bin/fresh-git-editor";
+          }
+          // lib.optionalAttrs gitWorkflowToolsEnabled {
             pager = "${pkgs.hunk}/bin/hunk pager --theme ${hunkTheme}";
           };
           diff = {
@@ -147,7 +159,7 @@ in
         "result*"
       ];
     };
-    lazygit = {
+    lazygit = lib.mkIf gitWorkflowToolsEnabled {
       enable = true;
       settings = {
         # Skip "Press enter to return to lazygit" after subprocesses
@@ -202,7 +214,7 @@ in
         };
       };
     };
-    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+    zed-editor = lib.mkIf (gitExtrasEnabled && config.programs.zed-editor.enable) {
       userSettings = {
         languages = {
           "Git Commit" = {

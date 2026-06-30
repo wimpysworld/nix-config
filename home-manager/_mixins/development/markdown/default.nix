@@ -1,14 +1,22 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
-{
+let
+  inherit (config.noughty) host;
+  isDeveloper = noughtyLib.userHasTag "developer";
+  isWorkstationDeveloper = isDeveloper && host.is.workstation;
+in
+lib.mkIf isDeveloper {
   home = {
-    packages = with pkgs; [
-      marp-cli # Terminal Markdown presenter
-      rumdl # Markdown linter
+    packages = [
+      pkgs.rumdl # Markdown linter
+    ]
+    ++ lib.optionals isWorkstationDeveloper [
+      pkgs.marp-cli # Terminal Markdown presenter
     ];
   };
 

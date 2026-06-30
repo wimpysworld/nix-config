@@ -90,12 +90,14 @@ in
   home.packages = [ pkgs.harper ];
 
   # Claude Code - LSP server plugin.
-  claude-code.lspServers.harper = {
-    command = harperLs;
-    args = [ "--stdio" ];
-    extensionToLanguage = proseExtensionToLanguage;
-    initializationOptions = {
-      "harper-ls" = harperSettings;
+  claude-code.lspServers = lib.mkIf config.programs.claude-code.enable {
+    harper = {
+      command = harperLs;
+      args = [ "--stdio" ];
+      extensionToLanguage = proseExtensionToLanguage;
+      initializationOptions = {
+        "harper-ls" = harperSettings;
+      };
     };
   };
 
@@ -112,14 +114,16 @@ in
   };
 
   # OpenCode - LSP server.
-  programs.opencode.settings.lsp.harper = {
-    command = [
-      harperLs
-      "--stdio"
-    ];
-    inherit extensions;
-    initialization = {
-      "harper-ls" = harperSettings;
+  programs.opencode = lib.mkIf config.programs.opencode.enable {
+    settings.lsp.harper = {
+      command = [
+        harperLs
+        "--stdio"
+      ];
+      inherit extensions;
+      initialization = {
+        "harper-ls" = harperSettings;
+      };
     };
   };
 

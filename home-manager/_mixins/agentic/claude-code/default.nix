@@ -526,7 +526,7 @@ in
     description = "LSP server configurations contributed by language modules, merged into .lsp.json";
   };
 
-  config = {
+  config = lib.mkIf host.is.workstation {
     home = {
       file = lib.mkIf (lspServers != { }) {
         ".claude/plugins/nix-lsp/.lsp.json".text = builtins.toJSON lspServers;

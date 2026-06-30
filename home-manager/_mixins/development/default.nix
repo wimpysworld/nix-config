@@ -1,4 +1,5 @@
 {
+  config,
   noughtyLib,
   lib,
   pkgs,
@@ -9,6 +10,14 @@ let
   isDirectoryAndNotTemplate = name: type: type == "directory" && name != "_template";
   directories = lib.filterAttrs isDirectoryAndNotTemplate (builtins.readDir currentDir);
   importDirectory = name: import (currentDir + "/${name}");
+  inherit (config.noughty) host;
+  isDeveloper = noughtyLib.userHasTag "developer";
+  isServerDeveloper = isDeveloper && host.is.server;
+  isWorkstationDeveloper = isDeveloper && host.is.workstation;
+  hubPackages = with pkgs; [
+    dconf2nix # Nix code from Dconf files
+    tokei # Modern Unix `wc` for code
+  ];
   dockerPurge = pkgs.writeShellApplication {
     name = "docker-purge";
     runtimeInputs = with pkgs; [
@@ -39,15 +48,11 @@ let
 in
 {
   imports = lib.mapAttrsToList (name: _: importDirectory name) directories;
-  config = lib.mkIf (noughtyLib.userHasTag "developer") {
+  config = lib.mkIf isDeveloper {
     home = {
       packages =
-        with pkgs;
-        [
-          dconf2nix # Nix code from Dconf files
-          tokei # Modern Unix `wc` for code
-        ]
-        ++ lib.optional (noughtyLib.hostHasTag "workspace") dockerPurge;
+        lib.optionals (!isServerDeveloper) hubPackages
+        ++ lib.optional (isWorkstationDeveloper && noughtyLib.hostHasTag "workspace") dockerPurge;
     };
   };
 }

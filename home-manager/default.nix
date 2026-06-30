@@ -29,7 +29,6 @@ in
     ./_mixins/agentic
     ./_mixins/development
     ./_mixins/filesync
-    ./_mixins/programs
     ./_mixins/scripts
     ./_mixins/desktop
     ./_mixins/services
@@ -55,40 +54,40 @@ in
         "/home/${username}.linux"
       else
         "/home/${username}";
-    file.".config/fontconfig/fonts.conf".text = ''
-      <?xml version="1.0"?>
-      <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-      <fontconfig>
-        <match target="font">
-          <edit name="antialias" mode="assign">
-            <bool>true</bool>
-          </edit>
-          <edit name="hinting" mode="assign">
-            <bool>true</bool>
-          </edit>
-          <edit name="hintstyle" mode="assign">
-            <const>hintslight</const>
-          </edit>
-          <edit name="rgba" mode="assign">
-            <const>rgb</const>
-          </edit>
-          <edit name="lcdfilter" mode="assign">
-            <const>lcddefault</const>
-          </edit>
-        </match>
-      </fontconfig>
-    '';
+    file = lib.mkIf host.is.workstation {
+      ".config/fontconfig/fonts.conf".text = ''
+        <?xml version="1.0"?>
+        <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+        <fontconfig>
+          <match target="font">
+            <edit name="antialias" mode="assign">
+              <bool>true</bool>
+            </edit>
+            <edit name="hinting" mode="assign">
+              <bool>true</bool>
+            </edit>
+            <edit name="hintstyle" mode="assign">
+              <const>hintslight</const>
+            </edit>
+            <edit name="rgba" mode="assign">
+              <const>rgb</const>
+            </edit>
+            <edit name="lcdfilter" mode="assign">
+              <const>lcddefault</const>
+            </edit>
+          </match>
+        </fontconfig>
+      '';
+    };
     packages =
       with pkgs;
-      [
+      lib.optionals host.is.workstation [
         nerd-fonts.fira-code
         font-awesome
         noto-fonts-color-emoji
         noto-fonts-monochrome-emoji
         symbola
         work-sans
-      ]
-      ++ lib.optionals host.is.workstation [
         bebas-neue-2014-font
         bebas-neue-pro-font
         bebas-neue-rounded-font
@@ -128,8 +127,8 @@ in
 
   fonts = {
     fontconfig = {
-      enable = true;
-      defaultFonts = {
+      enable = host.is.workstation;
+      defaultFonts = lib.mkIf host.is.workstation {
         serif = [
           "Merriweather"
           "Noto Color Emoji"
@@ -243,7 +242,8 @@ in
 
   xdg = {
     enable = host.is.linux;
-    desktopEntries = lib.mkIf host.is.linux {
+    mime.enable = host.is.linux && host.is.workstation;
+    desktopEntries = lib.mkIf (host.is.linux && host.is.workstation) {
       cups = {
         name = "Manage Printing";
         noDisplay = true;

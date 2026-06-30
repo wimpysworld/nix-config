@@ -311,20 +311,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
               }
             ];
           }
-          {
-            name = "Ping";
-            group = "Linux Matters";
-            url = "icmp://linuxmatters.sh";
-            interval = "30s";
-            conditions = [
-              "[RESPONSE_TIME] < 300"
-            ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
-          }
         ];
       };
     };

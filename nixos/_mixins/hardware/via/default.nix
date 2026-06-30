@@ -7,7 +7,7 @@ let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
 in
-lib.mkIf (!host.is.iso) {
+lib.mkIf (!host.is.iso && !host.is.server) {
   services = {
     # Provides users with access to VIA
     # https://get.vial.today/manual/linux-udev.html

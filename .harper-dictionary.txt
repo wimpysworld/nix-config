@@ -19,6 +19,14 @@ Hyprland
 dBFS
 Veila
 Waybar
+Chainguard
+OpenCode
+claude
+directTools
+json
+mcp
+opencode
+piServers
 XFKEY
 XFFP
 VID

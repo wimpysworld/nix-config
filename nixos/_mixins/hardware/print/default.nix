@@ -7,7 +7,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf (!host.is.iso) {
+lib.mkIf (host.is.workstation && !host.is.iso) {
   # Only enables auxilary printing support/packages if
   # config.services.printing.enable is true; the master control
   # - https://wiki.nixos.org/wiki/Printing

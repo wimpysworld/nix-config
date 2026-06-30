@@ -31,13 +31,15 @@
     };
   };
 
-  claude-code.lspServers.bash = {
-    command = lib.getExe pkgs.bash-language-server;
-    args = [ "start" ];
-    extensionToLanguage = {
-      ".sh" = "shellscript";
-      ".bash" = "shellscript";
-      ".zsh" = "shellscript";
+  claude-code.lspServers = lib.mkIf config.programs.claude-code.enable {
+    bash = {
+      command = lib.getExe pkgs.bash-language-server;
+      args = [ "start" ];
+      extensionToLanguage = {
+        ".sh" = "shellscript";
+        ".bash" = "shellscript";
+        ".zsh" = "shellscript";
+      };
     };
   };
 

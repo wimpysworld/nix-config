@@ -2,11 +2,13 @@
   catppuccinPalette,
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
+  useKmscon = host.is.workstation || noughtyLib.hostHasTag "kmscon";
   # Helper function to convert RGB array to comma-separated string for kmscon
   rgbToKmscon =
     colorName:
@@ -16,7 +18,7 @@ let
     "${toString rgb.r},${toString rgb.g},${toString rgb.b}";
   # VTs to pre-activate at boot. Without this, logind only spawns kmscon
   # reactively when a user switches VTs, which leaves the initial TTY blank
-  # on ISOs and servers until you switch away and back.
+  # on enabled hosts until you switch away and back.
   ttyList = [
     "tty1"
     "tty2"
@@ -82,18 +84,16 @@ in
   };
 
   fonts = {
-    fontDir.enable = true;
+    fontDir.enable = host.is.workstation;
     packages =
       with pkgs;
-      [
+      lib.optionals host.is.workstation [
         nerd-fonts.fira-code
-      ]
-      ++ lib.optionals (!host.is.iso) [
         noto-fonts-monochrome-emoji
         symbola
         work-sans
       ];
-    fontconfig = {
+    fontconfig = lib.mkIf host.is.workstation {
       antialias = true;
       enable = true;
       hinting = {
@@ -143,7 +143,7 @@ in
     # kmscon delegates autologin to the agetty module in 26.05.
     getty.autologinUser = if host.is.iso then "nixos" else null;
 
-    kmscon = {
+    kmscon = lib.mkIf useKmscon {
       enable = true;
       hwRender = false;
       fonts = [
@@ -168,36 +168,38 @@ in
   # (kmsconvt@) produces getty.target.wants/kmsconvt@.service which systemd
   # ignores. Explicit instances ensure the correct symlinks are created:
   # getty.target.wants/kmsconvt@ttyN.service -> ../kmsconvt@.service
-  # This prevents the blank-screen problem on ISOs and servers where the
+  # This prevents the blank-screen problem on hosts where the
   # reactive autovt@ mechanism does not fire until a VT switch occurs.
-  systemd.services = {
-    "kmsconvt@" = {
-      after = [
-        "systemd-user-sessions.service"
-        "plymouth-quit-wait.service"
-        "getty-pre.target"
-        "dbus.service"
-        "systemd-localed.service"
-      ];
-      before = [ "getty.target" ];
-      conflicts = [ "getty@%i.service" ];
-      onFailure = [ "getty@%i.service" ];
-      unitConfig = {
-        IgnoreOnIsolate = true;
-        ConditionPathExists = "/dev/tty0";
+  systemd.services = lib.mkIf useKmscon (
+    {
+      "kmsconvt@" = {
+        after = [
+          "systemd-user-sessions.service"
+          "plymouth-quit-wait.service"
+          "getty-pre.target"
+          "dbus.service"
+          "systemd-localed.service"
+        ];
+        before = [ "getty.target" ];
+        conflicts = [ "getty@%i.service" ];
+        onFailure = [ "getty@%i.service" ];
+        unitConfig = {
+          IgnoreOnIsolate = true;
+          ConditionPathExists = "/dev/tty0";
+        };
+        serviceConfig = {
+          Type = "idle";
+        };
       };
-      serviceConfig = {
-        Type = "idle";
-      };
-    };
-  }
-  // builtins.listToAttrs (
-    map (tty: {
-      name = "kmsconvt@${tty}";
-      value = {
-        wantedBy = [ "getty.target" ];
-      };
-    }) ttyList
+    }
+    // builtins.listToAttrs (
+      map (tty: {
+        name = "kmsconvt@${tty}";
+        value = {
+          wantedBy = [ "getty.target" ];
+        };
+      }) ttyList
+    )
   );
 
   # Prevent "Failed to open /etc/geoclue/conf.d/:" errors

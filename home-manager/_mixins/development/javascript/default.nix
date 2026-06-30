@@ -4,7 +4,10 @@
   pkgs,
   ...
 }:
-{
+let
+  inherit (config.noughty) host;
+in
+lib.mkIf host.is.workstation {
   home = {
     packages = with pkgs; [
       # Node.js runtime and package manager

@@ -9,14 +9,8 @@
     felkor = {
       id = "7E5FVLT-FHN6W2E-4FJI65X-DXV4PGJ-LSFGLRX-YIUTMHG-DBEKSLB-IWY2VQO";
     };
-    malak = {
-      id = "33YEJHX-NZB34VC-KB3LI2V-HFNOALL-7O2OLEB-SE75AWA-DWOC62K-5SRXMAC";
-    };
     skrye = {
       id = "L6J7UDJ-O3WXU6L-HV5ANLQ-ADJJZP6-CFMU6G4-ZKRXUYB-3OWXI5A-TRBMGQ7";
-    };
-    maul = {
-      id = "ZEAIH76-MXTIJIT-NAO7XPT-CDGUM4D-PREAAQG-6Z3LVD5-47PB6ZB-KDCRCAS";
     };
     momin = {
       id = "BLSBPMB-XMTHCAA-FJWY57S-XBIH5Y2-25IERPU-7SL3CX3-EWF7HQ7-HYXU6A6";
@@ -59,8 +53,6 @@
         "atrius"
         "bane"
         "felkor"
-        "malak"
-        "maul"
         "momin"
         "revan"
         "shaa"
@@ -143,8 +135,6 @@
         "atrius"
         "bane"
         "felkor"
-        "malak"
-        "maul"
         "momin"
         "revan"
         "shaa"

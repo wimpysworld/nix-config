@@ -19,7 +19,7 @@ let
   quantumFrac = "${toString quantum}/${toString sampleRate}";
   powerOfTwoQuantum = quantum > 0 && builtins.bitAnd quantum (quantum - 1) == 0;
 in
-lib.mkIf (!host.is.iso) {
+lib.mkIf (host.is.workstation && !host.is.iso) {
   # Enable the threadirqs kernel parameter to reduce pipewire/audio latency
   boot = lib.mkIf config.services.pipewire.enable {
     # - Inspired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56

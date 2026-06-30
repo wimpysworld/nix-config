@@ -1,6 +1,8 @@
 # AI Agents
 
-Eleven specialist agents, 44 commands, fourteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to Claude Code, OpenCode, Codex, and Pi Agent without duplication.
+Eleven specialist agents, 44 commands, fourteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+
+Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 

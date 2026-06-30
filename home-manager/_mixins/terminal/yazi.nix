@@ -327,7 +327,7 @@ in
     };
   };
 
-  xdg = lib.mkIf host.is.linux {
+  xdg = lib.mkIf (host.is.linux && host.is.workstation) {
     desktopEntries = {
       yazi = {
         name = "Yazi";

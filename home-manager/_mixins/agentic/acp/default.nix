@@ -14,6 +14,8 @@ let
   # which keeps the ACP adapters version-pinned alongside their CLIs.
   inherit (pkgs.stdenv.hostPlatform) system;
   acpPackages = inputs.llm-agents.packages.${system};
+  zedAcpEnabled = config.programs.zed-editor.enable;
+  codexAcpEnabled = zedAcpEnabled && config.programs.codex.enable;
 
   # `agent_servers` table emitted into Zed's userSettings. Each entry is
   # gated on its agent mixin being enabled; disabling the mixin removes
@@ -29,7 +31,7 @@ let
         env = { };
       };
     }
-    // lib.optionalAttrs config.programs.codex.enable {
+    // lib.optionalAttrs codexAcpEnabled {
       Codex = {
         type = "custom";
         command = "${acpPackages.codex-acp}/bin/codex-acp";
@@ -64,7 +66,7 @@ let
         ];
       };
     }
-    ++ lib.optional config.programs.codex.enable {
+    ++ lib.optional codexAcpEnabled {
       bindings = {
         "ctrl-alt-shift-x" = [
           "agent::NewExternalAgentThread"
@@ -99,7 +101,7 @@ let
 
   zedSettingsPath = "${config.xdg.configHome}/zed/settings.json";
 in
-lib.mkIf config.programs.zed-editor.enable {
+lib.mkIf zedAcpEnabled {
   programs.zed-editor = {
     userKeymaps = acpKeymaps;
     userSettings = {

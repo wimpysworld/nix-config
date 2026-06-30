@@ -8,7 +8,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf (noughtyLib.hostHasTag "studio") {
+lib.mkIf (host.is.workstation && noughtyLib.hostHasTag "studio") {
 
   catppuccin = {
     obs.enable = config.programs.obs-studio.enable;

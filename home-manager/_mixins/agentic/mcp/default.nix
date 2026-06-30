@@ -14,23 +14,33 @@ let
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
   inherit (mcpServerDefs) opencodeServers;
 
-  # Secrets that aren't tied to any active MCP server but still need to be
-  # decrypted to disk and exported into the shell. SEMGREP_APP_TOKEN is used
-  # by the security scanner skill, not by any MCP server. The disabled
-  # *_API_KEY entries belong to firecrawl and mcp-google-cse and stay
-  # declared so flipping their global `enabled` flag back on does not need
-  # a sops-rekey round-trip.
-  additionalSecrets = [
-    "FIRECRAWL_API_KEY"
-    "GOOGLE_CSE_API_KEY"
-    "GOOGLE_CSE_ENGINE_ID"
+  piMcpEnabled = lib.elem "developer" (config.noughty.user.tags or [ ]);
+  claudeMcpEnabled = config.programs.claude-code.enable;
+  codexMcpEnabled = config.programs.codex.enable;
+  opencodeMcpEnabled = config.programs.opencode.enable;
+  zedMcpEnabled = config.programs.zed-editor.enable;
+  mcpClientEnabled =
+    claudeMcpEnabled || codexMcpEnabled || opencodeMcpEnabled || piMcpEnabled || zedMcpEnabled;
+
+  enabledMcpSecretConsumers =
+    lib.optionals claudeMcpEnabled [ "claudeCode" ]
+    ++ lib.optionals codexMcpEnabled [ "codex" ]
+    ++ lib.optionals opencodeMcpEnabled [ "opencode" ]
+    ++ lib.optionals piMcpEnabled [ "pi" ]
+    ++ lib.optionals zedMcpEnabled [ "zed" ];
+
+  # Shell-only agent workflow secrets that do not appear in server definitions.
+  workflowShellSecrets = lib.optionals (codexMcpEnabled || piMcpEnabled) [
     "SEMGREP_APP_TOKEN"
   ];
 
-  # Union of canonical-derived secrets (currently CONTEXT7_API_KEY) and the
-  # hand-maintained additional set. Drives both `sops.secrets` declarations
-  # and the shell init exports below.
-  allSecrets = lib.unique (mcpServerDefs.requiredSecrets ++ additionalSecrets);
+  # Union of enabled-client MCP secrets and extra agent workflow secrets. Drives
+  # both `sops.secrets` declarations and the shell init exports below.
+  allSecrets = lib.sort lib.lessThan (
+    lib.unique (
+      mcpServerDefs.requiredSecretsForConsumers enabledMcpSecretConsumers ++ workflowShellSecrets
+    )
+  );
 
   fishExport =
     var: "set -gx ${var} (cat ${config.sops.secrets.${var}.path} 2>/dev/null; or echo \"\")";
@@ -45,37 +55,41 @@ let
   zedSettingsPath = "${config.xdg.configHome}/zed/settings.json";
 in
 {
-  home.packages = lib.optional (mcporterPackage != null) mcporterPackage;
+  home.packages = lib.optional (mcpClientEnabled && mcporterPackage != null) mcporterPackage;
 
-  programs = {
-    fish = {
-      shellInit = ''
-        # Export MCP secrets from sops
-        ${lib.concatMapStringsSep "\n" fishExport allSecrets}
-      '';
-    };
-    bash = {
-      initExtra = ''
-        # Export MCP secrets from sops
-        ${lib.concatMapStringsSep "\n" bashExport allSecrets}
-      '';
-    };
-    opencode = lib.mkIf config.programs.opencode.enable {
-      enableMcpIntegration = true;
-      settings = {
-        mcp = opencodeServers;
+  programs = lib.mkMerge [
+    (lib.mkIf (allSecrets != [ ]) {
+      fish = {
+        shellInit = ''
+          # Export MCP secrets from sops
+          ${lib.concatMapStringsSep "\n" fishExport allSecrets}
+        '';
       };
-    };
-    zed-editor = lib.mkIf config.programs.zed-editor.enable {
-      extensions = mcpServerDefs.zedExtensions;
-      userSettings = {
-        # Stdio/HTTP context servers plus disabled-extension stubs share
-        # one `context_servers` table. The stubs let Zed's agent panel
-        # toggle extension-mode servers without a Home Manager rebuild.
-        context_servers = mcpServerDefs.zedContextServers // mcpServerDefs.zedExtensionDisables;
+      bash = {
+        initExtra = ''
+          # Export MCP secrets from sops
+          ${lib.concatMapStringsSep "\n" bashExport allSecrets}
+        '';
       };
-    };
-  };
+    })
+    {
+      opencode = lib.mkIf opencodeMcpEnabled {
+        enableMcpIntegration = true;
+        settings = {
+          mcp = opencodeServers;
+        };
+      };
+      zed-editor = lib.mkIf zedMcpEnabled {
+        extensions = mcpServerDefs.zedExtensions;
+        userSettings = {
+          # Stdio/HTTP context servers plus disabled-extension stubs share
+          # one `context_servers` table. The stubs let Zed's agent panel
+          # toggle extension-mode servers without a Home Manager rebuild.
+          context_servers = mcpServerDefs.zedContextServers // mcpServerDefs.zedExtensionDisables;
+        };
+      };
+    }
+  ];
 
   # Purge stale MCP entries from Zed's `context_servers` table before the
   # upstream `zedSettingsActivation` hook merges Nix-generated settings into
@@ -87,7 +101,7 @@ in
   # The renderer is the source of truth, so anything not in
   # `zedManagedContextServers` gets dropped. Other top-level settings keys
   # are left untouched - users may legitimately set those via Zed's UI.
-  home.activation = lib.mkIf config.programs.zed-editor.enable {
+  home.activation = lib.mkIf zedMcpEnabled {
     mcpZedContextServersPurge =
       lib.hm.dag.entryBetween [ "zedSettingsActivation" ] [ "linkGeneration" ]
         ''
@@ -117,14 +131,18 @@ in
           fi
         '';
   };
-  sops = {
-    secrets = lib.genAttrs allSecrets (_: {
-      sopsFile = mcpSopsFile;
-    });
-    # Shared MCP servers used by Claude Code, Pi Agent, and generic clients.
-    templates."mcp-config.json" = {
-      content = builtins.toJSON { mcpServers = mcpServerDefs.claudeServers; };
-      path = "${config.xdg.configHome}/mcp/mcp.json";
-    };
-  };
+  sops = lib.mkMerge [
+    (lib.mkIf (allSecrets != [ ]) {
+      secrets = lib.genAttrs allSecrets (_: {
+        sopsFile = mcpSopsFile;
+      });
+    })
+    (lib.mkIf claudeMcpEnabled {
+      # Shared MCP servers used by Claude Code.
+      templates."mcp-config.json" = {
+        content = builtins.toJSON { mcpServers = mcpServerDefs.claudeServers; };
+        path = "${config.xdg.configHome}/mcp/mcp.json";
+      };
+    })
+  ];
 }

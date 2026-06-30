@@ -8,6 +8,12 @@
 let
   username = config.noughty.user.name;
   inherit (config.noughty) host;
+  syncDefs = import ../../filesync/syncthing-devices.nix;
+  hostHasSyncthingFolder = folderName: lib.elem host.name syncDefs.folders.${folderName}.devices;
+  hostHasCryptFolder = hostHasSyncthingFolder "crypt";
+  hostHasDevelopmentFolder = hostHasSyncthingFolder "development";
+  hostHasGamesFolder = hostHasSyncthingFolder "games";
+  isLinuxHostWithCryptFolder = host.is.linux && hostHasCryptFolder;
 in
 {
   imports = [
@@ -27,23 +33,25 @@ in
     };
 
     home = {
-      file.".face".source = ./face.png;
-      file."Development/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) { text = ""; };
-      file."Development/salsa/.envrc" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
-        text = "export DEB_VENDOR=Debian";
+      file = {
+        ".face".source = ./face.png;
+        "Development/.keep" = lib.mkIf hostHasDevelopmentFolder { text = ""; };
+        "Development/salsa/.envrc" = lib.mkIf hostHasDevelopmentFolder {
+          text = "export DEB_VENDOR=Debian";
+        };
+        "Development/launchpad/.envrc" = lib.mkIf hostHasDevelopmentFolder {
+          text = "export DEB_VENDOR=Ubuntu";
+        };
+        "Development/ubuntu/.envrc" = lib.mkIf hostHasDevelopmentFolder {
+          text = "export DEB_VENDOR=Ubuntu";
+        };
+        "Development/ubuntu-mate/.envrc" = lib.mkIf hostHasDevelopmentFolder {
+          text = "export DEB_VENDOR=Ubuntu";
+        };
+        "Games/.keep" = lib.mkIf hostHasGamesFolder { text = ""; };
+        "Zero/.keep".text = "";
       };
-      file."Development/launchpad/.envrc" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
-        text = "export DEB_VENDOR=Ubuntu";
-      };
-      file."Development/ubuntu/.envrc" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
-        text = "export DEB_VENDOR=Ubuntu";
-      };
-      file."Development/ubuntu-mate/.envrc" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
-        text = "export DEB_VENDOR=Ubuntu";
-      };
-      file."Games/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) { text = ""; };
-      file."Zero/.keep".text = "";
-      packages = lib.optionals (!(noughtyLib.hostHasTag "lima")) [
+      packages = lib.optionals hostHasCryptFolder [
         pkgs.gocryptfs # Terminal encrypted filesystem
       ];
       sessionVariables = {
@@ -53,7 +61,7 @@ in
       };
     };
     programs = {
-      bash.shellAliases = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
+      bash.shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
         lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
         unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
         lock-secrets = "fusermount -u ~/Vaults/Secrets";
@@ -67,20 +75,20 @@ in
             ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
         end
       '';
-      fish.shellAliases = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
+      fish.shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
         lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
         unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
         lock-secrets = "fusermount -u ~/Vaults/Secrets";
         unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
-      zsh.shellAliases = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
+      zsh.shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
         lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
         unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
         lock-secrets = "fusermount -u ~/Vaults/Secrets";
         unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
     };
-    systemd.user.tmpfiles = lib.mkIf (host.is.linux && !(noughtyLib.hostHasTag "lima")) {
+    systemd.user.tmpfiles = lib.mkIf isLinuxHostWithCryptFolder {
       rules = [
         "d ${config.home.homeDirectory}/Crypt 0755 ${username} users - -"
         "d ${config.home.homeDirectory}/Vaults/Armstrong 0755 ${username} users - -"

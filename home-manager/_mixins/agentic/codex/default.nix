@@ -2,12 +2,14 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
+  isDeveloper = noughtyLib.userHasTag "developer";
 
   # Codex re-execs std::env::current_exe() when launching the Linux sandbox.
   # Nix store paths can disappear after a Home Manager generation switch, and
@@ -497,7 +499,7 @@ let
     ${lib.concatMapStringsSep "\n" (targetDir: ''merge_codex_config "${targetDir}"'') codexDirs}
   '';
 in
-{
+lib.mkIf isDeveloper {
   home = {
     packages = [
       codexAcpPackage

@@ -7,7 +7,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf (!host.is.iso) {
+lib.mkIf (!host.is.iso && !host.is.server) {
   environment.systemPackages =
     with pkgs;
     lib.optionals host.is.workstation [
