@@ -164,6 +164,9 @@ in
       experimental-features = "nix-command flakes";
       # Disable global registry
       flake-registry = "";
+      # Servers and ISO live images do not need fast repeat offline builds, so
+      # drop the build-graph derivations to free disk space.
+      keep-derivations = lib.mkIf (host.is.server || host.is.iso) (lib.mkDefault false);
       # Workaround for NixOS/nix#1254; avoids HTTP/2 framing errors from CDN servers
       http2 = false;
       # Increase download parallelism for faster substitution
