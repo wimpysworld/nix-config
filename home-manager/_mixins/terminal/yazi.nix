@@ -1,13 +1,14 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
 in
 {
-  config = lib.mkIf host.is.workstation {
+  config = {
     catppuccin.yazi.enable = config.programs.yazi.enable;
     home = {
       file = {
@@ -309,6 +310,17 @@ in
     programs = {
       yazi = {
         enable = true;
+        package = lib.mkIf host.is.server (
+          pkgs.yazi.override {
+            optionalDeps = with pkgs; [
+              fd
+              ripgrep
+              fzf
+              zoxide
+              jq
+            ];
+          }
+        );
         # Set explicitly to the 26.05 default `y`; pinning silences the
         # default-change warning while tracking the new default.
         shellWrapperName = "y";
