@@ -170,6 +170,7 @@ rec {
       hostDisplays ? [ ],
       hostNetworkWifi ? null,
       hostHardwareThunderbolt ? null,
+      hostHardwareSmart ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -205,9 +206,13 @@ rec {
             network = lib.optionalAttrs (hostNetworkWifi != null) {
               wifi = hostNetworkWifi;
             };
-            hardware = lib.optionalAttrs (hostHardwareThunderbolt != null) {
-              thunderbolt = hostHardwareThunderbolt;
-            };
+            hardware =
+              lib.optionalAttrs (hostHardwareThunderbolt != null) {
+                thunderbolt = hostHardwareThunderbolt;
+              }
+              // lib.optionalAttrs (hostHardwareSmart != null) {
+                smart = hostHardwareSmart;
+              };
             keyboard = {
               layout = hostKeyboardLayout;
               variant = hostKeyboardVariant;
@@ -235,6 +240,7 @@ rec {
       hostDisplays ? [ ],
       hostNetworkWifi ? null,
       hostHardwareThunderbolt ? null,
+      hostHardwareSmart ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -276,9 +282,13 @@ rec {
               network = lib.optionalAttrs (hostNetworkWifi != null) {
                 wifi = hostNetworkWifi;
               };
-              hardware = lib.optionalAttrs (hostHardwareThunderbolt != null) {
-                thunderbolt = hostHardwareThunderbolt;
-              };
+              hardware =
+                lib.optionalAttrs (hostHardwareThunderbolt != null) {
+                  thunderbolt = hostHardwareThunderbolt;
+                }
+                // lib.optionalAttrs (hostHardwareSmart != null) {
+                  smart = hostHardwareSmart;
+                };
               keyboard = {
                 layout = hostKeyboardLayout;
                 variant = hostKeyboardVariant;
@@ -306,6 +316,7 @@ rec {
       hostDisplays ? [ ],
       hostNetworkWifi ? null,
       hostHardwareThunderbolt ? null,
+      hostHardwareSmart ? null,
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
@@ -344,9 +355,13 @@ rec {
             network = lib.optionalAttrs (hostNetworkWifi != null) {
               wifi = hostNetworkWifi;
             };
-            hardware = lib.optionalAttrs (hostHardwareThunderbolt != null) {
-              thunderbolt = hostHardwareThunderbolt;
-            };
+            hardware =
+              lib.optionalAttrs (hostHardwareThunderbolt != null) {
+                thunderbolt = hostHardwareThunderbolt;
+              }
+              // lib.optionalAttrs (hostHardwareSmart != null) {
+                smart = hostHardwareSmart;
+              };
             keyboard = {
               layout = hostKeyboardLayout;
               variant = hostKeyboardVariant;
@@ -385,6 +400,7 @@ rec {
       hostDisplays = resolved.displays or [ ];
       hostNetworkWifi = (resolved.network or { }).wifi or null;
       hostHardwareThunderbolt = (resolved.hardware or { }).thunderbolt or null;
+      hostHardwareSmart = (resolved.hardware or { }).smart or null;
       hostKeyboardLayout = (resolved.keyboard or { }).layout or "gb";
       hostKeyboardVariant = (resolved.keyboard or { }).variant or "";
       userTags = (resolved.userEntry or { }).tags or [ ];

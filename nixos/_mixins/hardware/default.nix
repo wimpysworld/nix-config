@@ -19,6 +19,6 @@ in
     irqbalance = lib.mkIf (!config.services.qemuGuest.enable) {
       enable = true;
     };
-    smartd.enable = !host.is.iso;
+    smartd.enable = lib.mkDefault host.hardware.smart;
   };
 }

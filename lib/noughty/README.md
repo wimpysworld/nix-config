@@ -189,6 +189,7 @@ A bare `hostHasTag "gpu"` cannot distinguish vendors. Hosts like vader have both
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `hardware.thunderbolt` | `bool` | `true` for Linux laptop and desktop computers, else `false` | Whether this host has Thunderbolt hardware. Override from `lib/registry-systems.toml` for exceptions. |
+| `hardware.smart` | `bool` | `true` for non-ISO Linux hosts, else `false` | Whether this host supports SMART disk health monitoring. Override from `lib/registry-systems.toml` for exceptions. |
 
 ### `noughty.host.displays` - Display output configuration
 
@@ -602,6 +603,7 @@ vendors = ["amd"]          # if applicable
 
 [mynewhost.hardware]
 thunderbolt = false        # if the default does not match this host
+smart = false              # if SMART is unsupported by this host
 
 [[mynewhost.displays]]
 output     = "DP-1"

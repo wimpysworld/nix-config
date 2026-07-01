@@ -382,6 +382,12 @@ in
             ];
           description = "Whether this host has Thunderbolt hardware. Defaults to true for Linux laptop and desktop computers, false for servers, virtual hosts, containers, ISO builds, Darwin hosts, and hosts without a form factor.";
         };
+
+        smart = lib.mkOption {
+          type = lib.types.bool;
+          default = config.noughty.host.is.linux && !config.noughty.host.is.iso;
+          description = "Whether this host supports SMART disk health monitoring. Defaults to true for non-ISO Linux hosts, false for ISO builds and Darwin hosts.";
+        };
       };
 
       # ── Display output configuration ──────────────────────────────
