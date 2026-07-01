@@ -104,9 +104,9 @@ provision:
         mkdir -p "{{.Home}}/.config/sops/age"
         cp "/home/{{.User}}/.config/sops/age/keys.txt" "{{.Home}}/.config/sops/age/keys.txt"
       fi
-      # Activate home-manager configuration
+      # Activate Home Manager configuration
       pushd "{{.Home}}/Zero/nix-config"
-      nix run nixpkgs#home-manager -- switch --flake "{{.Home}}/Zero/nix-config" -L
+      nix run nixpkgs#nh -- home switch . --configuration "{{.User}}@fighter" --backup-extension backup
       if [ -e "{{.Home}}/.config/sops/age/keys.txt" ]; then
         gpg-restore
       fi
@@ -168,12 +168,12 @@ probes:
     fi
   hint: |
     See "/var/log/cloud-init-output.log" in the guest
-- description: "home-manager"
+- description: "home profile"
   script: |
     #!/bin/bash
     set -euo pipefail
-    if ! timeout 30s bash -c "until command -v home-manager >/dev/null 2>&1; do sleep 5; done"; then
-      echo >&2 "home-manager is not installed yet"
+    if ! timeout 30s bash -c "until test -x '{{.Home}}/.nix-profile/bin/fish'; do sleep 5; done"; then
+      echo >&2 "home profile is not activated yet"
       exit 1
     fi
   hint: |

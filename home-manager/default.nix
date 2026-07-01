@@ -183,7 +183,6 @@ in
         set -gx NH_SEARCH_CHANNEL (noughty channel 2>/dev/null; or echo nixos-unstable)
       '';
     };
-    home-manager.enable = true;
     info.enable = true;
     nh = {
       enable = true;

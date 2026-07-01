@@ -245,7 +245,8 @@ I keep my Home Manager configuration separate from my NixOS configuration, so af
 
 ```bash
 git clone https://github.com/wimpysworld/nix-config "$HOME/Zero/nix-config"
-home-manager switch -b backup --flake "$HOME/Zero/nix-config"
+cd "$HOME/Zero/nix-config"
+just switch-home
 ```
 
 ## Applying Changes ✨
@@ -289,7 +290,7 @@ Live images will be left in `result/iso/` and also copied to `~/Quickemu/nihilus
 
 ### Building without just
 
-If `nh`, `nom`, `just` and `home-manager` are not available, here are the traditional ways to build and switch.
+If `nh`, `nom`, and `just` are not available, here are the traditional ways to build and switch.
 
 **NixOS**
 
@@ -310,10 +311,8 @@ nix build .#darwinConfigurations.{hostname}.config.system.build.toplevel
 **Home Manager**
 
 ```shell
-home-manager build --flake $HOME/Zero/nix-config -L
-home-manager switch -b backup --flake $HOME/Zero/nix-config
-nix run nixpkgs#home-manager -- build --flake "$HOME/Zero/nix-config"
-nix run nixpkgs#home-manager -- switch -b backup --flake "$HOME/Zero/nix-config"
+nix build .#homeConfigurations.{username}@{hostname}.activationPackage
+./result/activate
 ```
 
 **ISO**

@@ -16,7 +16,6 @@ let
       gawk
       gnugrep
       git
-      home-manager
       iproute2
       rsync
       sops
