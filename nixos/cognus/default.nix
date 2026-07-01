@@ -31,11 +31,6 @@
     };
   };
 
-  hardware = {
-    enableAllFirmware = lib.mkForce false;
-    enableRedistributableFirmware = lib.mkForce false;
-  };
-
   networking.tempAddresses = "disabled";
 
   systemd.services = {
