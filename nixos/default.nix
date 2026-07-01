@@ -191,12 +191,6 @@ in
     };
   };
 
-  xdg = {
-    icons.enable = lib.mkDefault host.is.workstation;
-    mime.enable = lib.mkDefault host.is.workstation;
-    sounds.enable = lib.mkDefault host.is.workstation;
-  };
-
   services = {
     dbus = {
       enable = true;

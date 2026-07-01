@@ -96,7 +96,7 @@ in
       ++ lib.optionals host.is.workstation [
         bandwhich # Modern Unix `iftop`
         croc # Terminal file transfer
-        dotacat # Modern Unix lolcat        
+        dotacat # Modern Unix lolcat
         entr # Modern Unix `watch`
         fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
