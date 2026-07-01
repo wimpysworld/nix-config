@@ -6,6 +6,18 @@
   pkgs,
   ...
 }:
+let
+  flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
+  serverRegistryInputs = lib.filterAttrs (
+    name: _:
+    lib.elem name [
+      "self"
+      "nixpkgs"
+      "nixpkgs-unstable"
+    ]
+  ) flakeInputs;
+  registryInputs = if config.noughty.host.is.server then serverRegistryInputs else flakeInputs;
+in
 {
   # Only install the docs I use
   documentation.enable = true;
@@ -46,21 +58,17 @@
     };
   };
 
-  nix =
-    let
-      flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-    in
-    {
-      settings = {
-        # Workaround for https://github.com/NixOS/nix/issues/9574
-        nix-path = config.nix.nixPath;
-      };
-      # Disable channels
-      channel.enable = false;
-      # Make flake registry and nix path match flake inputs
-      registry = lib.mapAttrs (_: flake: { inherit flake; }) flakeInputs;
-      nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
+  nix = {
+    settings = {
+      # Workaround for https://github.com/NixOS/nix/issues/9574
+      nix-path = config.nix.nixPath;
     };
+    # Disable channels
+    channel.enable = false;
+    # Make flake registry and nix path match the selected input set.
+    registry = lib.mapAttrs (_: flake: { inherit flake; }) registryInputs;
+    nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") registryInputs;
+  };
 
   programs = {
     fish.enable = true;

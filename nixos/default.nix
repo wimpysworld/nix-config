@@ -122,7 +122,20 @@ in
 
   # NixOS-only option, unavailable on nix-darwin, so it lives here rather than
   # in ../common. Skip the expensive mandb cache generation to speed up builds.
-  documentation.man.cache.generateAtRuntime = true;
+  documentation = {
+    enable = lib.mkIf host.is.server (lib.mkForce false);
+    doc.enable = lib.mkIf host.is.server (lib.mkForce false);
+    info.enable = lib.mkIf host.is.server (lib.mkForce false);
+    nixos.enable = lib.mkIf host.is.server (lib.mkForce false);
+    man = {
+      enable = lib.mkIf host.is.server (lib.mkForce false);
+      cache = {
+        enable = lib.mkIf host.is.server (lib.mkForce false);
+        generateAtRuntime = if host.is.server then lib.mkForce false else true;
+      };
+      man-db.enable = lib.mkIf host.is.server (lib.mkForce false);
+    };
+  };
 
   environment = {
     # NixOS-specific packages; common packages are in ../common
@@ -133,8 +146,9 @@ in
         inputs.fh.packages.${pkgs.stdenv.hostPlatform.system}.default
       ]
       ++ lib.optionals (!host.is.iso) [
-        nvme-cli
         rsync
+      ]
+      ++ lib.optionals host.hardware.smart [
         smartmontools
       ];
 
@@ -174,6 +188,7 @@ in
   programs = {
     command-not-found.enable = false;
     nano.enable = lib.mkDefault false;
+    nix-index.enable = lib.mkIf host.is.server (lib.mkForce false);
     nh = {
       clean = {
         enable = !host.is.iso;
@@ -210,6 +225,10 @@ in
 
   # Only enable sudo-rs on installs, not live media (.ISO images)
   security = lib.mkIf (!host.is.iso) {
+    pam.services = lib.mkIf host.is.server {
+      su.forwardXAuth = lib.mkForce false;
+      su-l.forwardXAuth = lib.mkForce false;
+    };
     polkit.enable = true;
     sudo.enable = false;
     sudo-rs = {
