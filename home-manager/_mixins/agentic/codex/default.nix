@@ -499,7 +499,7 @@ let
     ${lib.concatMapStringsSep "\n" (targetDir: ''merge_codex_config "${targetDir}"'') codexDirs}
   '';
 in
-lib.mkIf isDeveloper {
+lib.mkIf (isDeveloper && !host.is.server) {
   home = {
     packages = [
       codexAcpPackage

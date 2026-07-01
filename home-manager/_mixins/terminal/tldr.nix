@@ -11,7 +11,7 @@ let
   inherit (config.noughty) host;
 in
 {
-  home.packages = [
+  home.packages = lib.optionals (!host.is.server) [
     pkgs.tlrc
   ];
   services = {

@@ -4,20 +4,27 @@
   pkgs,
   ...
 }:
+let
+  inherit (config.noughty) host;
+in
 {
   home = {
-    packages = with pkgs; [
-      deadnix
-      nil
-      nixd
-      nix-diff
-      nixfmt
-      nixfmt-tree
-      statix
-    ];
+    packages =
+      with pkgs;
+      [
+        deadnix
+        nix-diff
+        nixfmt
+        nixfmt-tree
+        statix
+      ]
+      ++ lib.optionals (!host.is.server) [
+        nil
+        nixd
+      ];
   };
 
-  claude-code.lspServers = lib.mkIf config.programs.claude-code.enable {
+  claude-code.lspServers = lib.mkIf (!host.is.server && config.programs.claude-code.enable) {
     nix = {
       command = lib.getExe pkgs.nixd;
       extensionToLanguage = {
@@ -26,14 +33,14 @@
     };
   };
 
-  fresh.settings.lsp.nix = {
+  fresh.settings.lsp.nix = lib.mkIf (!host.is.server) {
     command = lib.getExe pkgs.nil;
     enabled = true;
     auto_start = true;
   };
 
   programs = {
-    zed-editor = lib.mkIf config.programs.zed-editor.enable {
+    zed-editor = lib.mkIf (!host.is.server && config.programs.zed-editor.enable) {
       userSettings = {
         languages = {
           Nix = {

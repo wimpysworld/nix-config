@@ -7,6 +7,8 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
+  lspEnabled = !host.is.server;
   harperLs = "${pkgs.harper}/bin/harper-ls";
 
   # Shared user dictionary seeded across every host from a plaintext word list,
@@ -87,10 +89,10 @@ let
   };
 in
 {
-  home.packages = [ pkgs.harper ];
+  home.packages = lib.optional lspEnabled pkgs.harper;
 
   # Claude Code - LSP server plugin.
-  claude-code.lspServers = lib.mkIf config.programs.claude-code.enable {
+  claude-code.lspServers = lib.mkIf (lspEnabled && config.programs.claude-code.enable) {
     harper = {
       command = harperLs;
       args = [ "--stdio" ];
@@ -102,7 +104,7 @@ in
   };
 
   # Fresh Editor - universal grammar and spelling LSP.
-  fresh.settings.universal_lsp.harper = {
+  fresh.settings.universal_lsp.harper = lib.mkIf lspEnabled {
     command = harperLs;
     args = [ "--stdio" ];
     enabled = true;
@@ -114,7 +116,7 @@ in
   };
 
   # OpenCode - LSP server.
-  programs.opencode = lib.mkIf config.programs.opencode.enable {
+  programs.opencode = lib.mkIf (lspEnabled && config.programs.opencode.enable) {
     settings.lsp.harper = {
       command = [
         harperLs
@@ -128,7 +130,7 @@ in
   };
 
   # Zed Editor - extension and LSP settings.
-  programs.zed-editor = lib.mkIf config.programs.zed-editor.enable {
+  programs.zed-editor = lib.mkIf (lspEnabled && config.programs.zed-editor.enable) {
     extensions = [ "harper" ];
     userSettings.lsp."harper-ls" = {
       binary = {

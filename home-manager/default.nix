@@ -192,7 +192,7 @@ in
         extraArgs = "--keep 2 --keep-since 5d";
       };
     };
-    nix-index.enable = true;
+    nix-index.enable = !host.is.server;
     zsh = {
       initContent = lib.mkIf config.programs.nh.enable (
         lib.mkOrder 500 ''

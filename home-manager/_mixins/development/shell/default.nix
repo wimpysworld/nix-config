@@ -4,13 +4,18 @@
   pkgs,
   ...
 }:
+let
+  inherit (config.noughty) host;
+in
 {
   home = {
-    packages = with pkgs; [
-      bash-language-server
-      shellcheck
-      shfmt
-    ];
+    packages =
+      with pkgs;
+      [
+        shellcheck
+        shfmt
+      ]
+      ++ lib.optional (!host.is.server) bash-language-server;
   };
 
   programs = {
@@ -31,7 +36,7 @@
     };
   };
 
-  claude-code.lspServers = lib.mkIf config.programs.claude-code.enable {
+  claude-code.lspServers = lib.mkIf (!host.is.server && config.programs.claude-code.enable) {
     bash = {
       command = lib.getExe pkgs.bash-language-server;
       args = [ "start" ];
@@ -43,7 +48,7 @@
     };
   };
 
-  fresh.settings.lsp.bash = {
+  fresh.settings.lsp.bash = lib.mkIf (!host.is.server) {
     command = lib.getExe pkgs.bash-language-server;
     args = [ "start" ];
     enabled = true;

@@ -4,12 +4,17 @@
   pkgs,
   ...
 }:
+let
+  inherit (config.noughty) host;
+in
 {
   home = {
-    packages = with pkgs; [
-      yaml-language-server
-      yq-go # Terminal `jq` for YAML
-    ];
+    packages =
+      with pkgs;
+      [
+        yq-go # Terminal `jq` for YAML
+      ]
+      ++ lib.optional (!host.is.server) yaml-language-server;
   };
 
   programs = {
@@ -28,7 +33,7 @@
             };
           };
         };
-        lsp = {
+        lsp = lib.mkIf (!host.is.server) {
           yaml-language-server = {
             settings = {
               yaml = {
@@ -42,7 +47,7 @@
     };
   };
 
-  claude-code.lspServers = lib.mkIf config.programs.claude-code.enable {
+  claude-code.lspServers = lib.mkIf (!host.is.server && config.programs.claude-code.enable) {
     yaml = {
       command = lib.getExe pkgs.yaml-language-server;
       args = [ "--stdio" ];
@@ -53,7 +58,7 @@
     };
   };
 
-  fresh.settings.lsp.yaml = {
+  fresh.settings.lsp.yaml = lib.mkIf (!host.is.server) {
     command = lib.getExe pkgs.yaml-language-server;
     args = [ "--stdio" ];
     enabled = true;
