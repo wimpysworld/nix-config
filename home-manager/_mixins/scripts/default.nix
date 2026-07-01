@@ -4,6 +4,7 @@ let
   serverScripts = [
     "dl"
     "noughty"
+    "purge-root-nix-profiles"
   ];
   isDirectoryAndNotTemplate = name: type: type == "directory" && name != "_template";
   directories = lib.filterAttrs isDirectoryAndNotTemplate (builtins.readDir currentDir);
