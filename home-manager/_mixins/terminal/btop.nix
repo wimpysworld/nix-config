@@ -12,7 +12,7 @@ in
 
   programs = {
     btop = {
-      enable = true;
+      enable = host.is.workstation;
       package = pkgs.btop.override {
         cudaSupport = host.is.linux && host.is.workstation;
         rocmSupport = host.is.linux && host.is.workstation;

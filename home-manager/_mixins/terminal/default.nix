@@ -72,21 +72,14 @@ in
         doggo # Modern Unix `dig`
         dua # Modern Unix `du`
         duf # Modern Unix `df`
-        dust # Modern Unix `du`
         file # Terminal file info
-        frogmouth # Terminal Markdown viewer
-        hexyl # Modern Unix `hexedit`
-        iperf3 # Terminal network benchmarking
         mtr # Modern Unix `traceroute`
         pciutils # Terminal PCI info
         procs # Modern Unix `ps`
         rsync # Traditional `rsync`
-        sd # Modern Unix `sed`
         speedtest-go # Terminal speedtest.net
-        unixtools.xxd # Terminal Hexdump
         unzip # Terminal ZIP extractor
         wget # Terminal HTTP client
-        xh # Terminal HTTP client
       ]
       ++ lib.optionals host.is.linux [
         lurk # Modern Unix strace
@@ -98,12 +91,15 @@ in
         croc # Terminal file transfer
         dotacat # Modern Unix lolcat
         entr # Modern Unix `watch`
+        frogmouth # Terminal Markdown viewer
         fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
         gping # Modern Unix `ping`
+        hexyl # Modern Unix `hexedit`
         hr # Terminal horizontal rule
         hueadm # Terminal Philips Hue control
         hyperfine # Terminal benchmarking
+        iperf3 # Terminal network benchmarking
         jpegoptim # Terminal JPEG optimizer
         lima # Terminal VM manager
         magic-wormhole-rs # Terminal file transfer
@@ -111,9 +107,12 @@ in
         netdiscover # Modern Unix `arp`
         optipng # Terminal PNG optimizer
         rustmission # Terminal Transmission Torrent client
+        sd # Modern Unix `sed`
         timer # Terminal timer
+        unixtools.xxd # Terminal Hexdump
         upterm # Terminal sharing
         vhs # Terminal GIF recorder; depends on Chromium
+        xh # Terminal HTTP client
       ]
       ++ lib.optionals (host.is.linux && host.is.workstation) [
         batmon # Terminal battery monitor
