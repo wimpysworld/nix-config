@@ -12,20 +12,21 @@ let
 in
 lib.mkIf isDeveloper {
   home = {
-    packages = [
-      pkgs.rumdl # Markdown linter
-    ]
-    ++ lib.optionals isWorkstationDeveloper [
-      pkgs.marp-cli # Terminal Markdown presenter
-    ];
+    packages =
+      lib.optionals (!host.is.server) [
+        pkgs.rumdl # Markdown linter
+      ]
+      ++ lib.optionals isWorkstationDeveloper [
+        pkgs.marp-cli # Terminal Markdown presenter
+      ];
   };
 
   programs = {
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "emoji-completions"
-        "rumdl"
-      ];
+      ]
+      ++ lib.optional (!host.is.server) "rumdl";
       userSettings = {
         languages = {
           Markdown = {

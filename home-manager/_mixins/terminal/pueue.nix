@@ -10,7 +10,7 @@ let
     pq = "${pkgs.pueue}/bin/pueue";
   };
 in
-lib.mkIf host.is.linux {
+lib.mkIf (host.is.linux && !host.is.server) {
   programs = {
     bash.shellAliases = shellAliases;
     fish.shellAliases = shellAliases;

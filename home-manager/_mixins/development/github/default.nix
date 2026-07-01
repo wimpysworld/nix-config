@@ -128,11 +128,14 @@ lib.mkMerge [
       };
       gh = {
         enable = true;
-        extensions = with pkgs; [
-          gh-enhance
-          gh-markdown-preview
-          gh-notify
-        ];
+        extensions = lib.optionals (!host.is.server) (
+          with pkgs;
+          [
+            gh-enhance
+            gh-markdown-preview
+            gh-notify
+          ]
+        );
         settings = {
           #editor = "fresh";
           git_protocol = "https";

@@ -14,9 +14,11 @@ in
       with pkgs;
       [
         just
-        just-formatter
       ]
-      ++ lib.optional (!host.is.server) just-lsp;
+      ++ lib.optionals (!host.is.server) [
+        just-formatter
+        just-lsp
+      ];
   };
 
   programs = {
@@ -25,7 +27,7 @@ in
       userSettings = {
         languages = {
           Just = {
-            formatter = {
+            formatter = lib.mkIf (!host.is.server) {
               external = {
                 command = "${pkgs.just-formatter}/bin/just-formatter";
               };

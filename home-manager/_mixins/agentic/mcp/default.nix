@@ -6,6 +6,7 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   agentPackages = inputs.llm-agents.packages.${system} or { };
   mcporterPackage = agentPackages.mcporter or null;
@@ -21,6 +22,7 @@ let
   zedMcpEnabled = config.programs.zed-editor.enable;
   mcpClientEnabled =
     claudeMcpEnabled || codexMcpEnabled || opencodeMcpEnabled || piMcpEnabled || zedMcpEnabled;
+  mcporterEnabled = mcpClientEnabled && !host.is.server;
 
   enabledMcpSecretConsumers =
     lib.optionals claudeMcpEnabled [ "claudeCode" ]
@@ -55,7 +57,7 @@ let
   zedSettingsPath = "${config.xdg.configHome}/zed/settings.json";
 in
 {
-  home.packages = lib.optional (mcpClientEnabled && mcporterPackage != null) mcporterPackage;
+  home.packages = lib.optional (mcporterEnabled && mcporterPackage != null) mcporterPackage;
 
   programs = lib.mkMerge [
     (lib.mkIf (allSecrets != [ ]) {

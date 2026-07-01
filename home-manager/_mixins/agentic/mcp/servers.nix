@@ -185,6 +185,7 @@ rec {
     };
 
     nixos = {
+      enabled = !host.is.server;
       transport = "stdio";
       command = lib.getExe mcpNixosNoUpdateCheck;
       args = [ ];

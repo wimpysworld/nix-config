@@ -3,12 +3,15 @@
   lib,
   ...
 }:
+let
+  inherit (config.noughty) host;
+in
 {
   programs = {
     jq = {
       enable = true;
     };
-    jqp = {
+    jqp = lib.mkIf (!host.is.server) {
       enable = true;
       settings = {
         theme = {
