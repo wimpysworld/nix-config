@@ -60,6 +60,10 @@ in
       };
 
       services = {
+        dbus = {
+          enable = lib.mkDefault true;
+          implementation = lib.mkDefault "broker";
+        };
         flatpak = {
           enable = true;
           update.auto = {
@@ -76,6 +80,8 @@ in
           excludePackages = [ pkgs.xterm ];
         };
       };
+
+      security.polkit.enable = lib.mkDefault true;
     })
   ];
 }
