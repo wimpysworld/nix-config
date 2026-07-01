@@ -109,7 +109,6 @@ in
       enable = true;
       enableSSHSupport = true;
     };
-    info.enable = false;
   };
 
   # Enable TouchID for sudo authentication
