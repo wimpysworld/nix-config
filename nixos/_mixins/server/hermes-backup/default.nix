@@ -37,8 +37,10 @@ let
   backupScript = mkHermesBackupScript "hermes-backup-r2" ./hermes-backup-r2.sh;
   verifyScript = mkHermesBackupScript "hermes-backup-verify-r2" ./hermes-backup-verify-r2.sh;
   restoreScript = mkHermesBackupScript "hermes-restore-r2" ./hermes-restore-r2.sh;
+  # Disabled while the R2 backup job is reworked.
+  hermesBackupEnabled = false;
 in
-lib.mkIf (noughtyLib.hostHasTag "hermes") {
+lib.mkIf (hermesBackupEnabled && noughtyLib.hostHasTag "hermes") {
   environment.systemPackages = [
     backupScript
     verifyScript
