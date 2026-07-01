@@ -31,6 +31,18 @@
     };
   };
 
+  # Dedicated volume for the GoToSocial SQLite database, attached through Xen as
+  # /dev/xvdb. Mount by label, because OpenStack device names can shift on
+  # reattach, and grow the filesystem automatically when the volume is enlarged.
+  fileSystems."/var/lib/gotosocial" = {
+    device = "/dev/disk/by-label/gts-db";
+    fsType = "ext4";
+    options = [
+      "defaults"
+      "x-systemd.growfs"
+    ];
+  };
+
   networking.tempAddresses = "disabled";
 
   systemd.services = {
