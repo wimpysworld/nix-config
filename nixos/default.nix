@@ -160,8 +160,15 @@ in
     daemonCPUSchedPolicy = lib.mkIf host.is.workstation "idle";
     daemonIOSchedClass = lib.mkIf host.is.workstation "idle";
     daemonIOSchedPriority = lib.mkIf host.is.workstation 7;
+    # Run a scheduled store optimise so paths added before dedupe was enabled
+    # are hardlinked too, reclaiming file overlap the live dedupe missed.
+    optimise.automatic = lib.mkDefault true;
     settings = {
       experimental-features = "nix-command flakes";
+      # Hardlink identical files as new store paths are added, reclaiming the
+      # file overlap that accumulates across generations instead of waiting for
+      # a manual optimise.
+      auto-optimise-store = lib.mkDefault true;
       # Disable global registry
       flake-registry = "";
       # Servers and ISO live images do not need fast repeat offline builds, so
@@ -195,7 +202,9 @@ in
     nh = {
       clean = {
         enable = !host.is.iso;
-        extraArgs = "--keep-since 15d --keep 10";
+        # Servers need fewer rollback points than workstations, so retain a
+        # shorter window and fewer generations there to reclaim store space.
+        extraArgs = if host.is.server then "--keep-since 7d --keep 3" else "--keep-since 10d --keep 5";
       };
       enable = true;
       flake = "/home/${username}/Zero/nix-config";
