@@ -6,9 +6,28 @@
 }:
 let
   inherit (config.noughty) host;
+  fastfetchPackage = pkgs.fastfetch.override (
+    {
+      enlightenmentSupport = false;
+    }
+    // lib.optionalAttrs host.is.server {
+      audioSupport = false;
+      brightnessSupport = false;
+      dbusSupport = false;
+      gnomeSupport = false;
+      imageSupport = false;
+      openclSupport = false;
+      openglSupport = false;
+      terminalSupport = false;
+      vulkanSupport = false;
+      waylandSupport = false;
+      x11Support = false;
+      xfceSupport = false;
+    }
+  );
   shellAliases = {
-    neofetch = "${pkgs.fastfetch}/bin/fastfetch";
-    screenfetch = "${pkgs.fastfetch}/bin/fastfetch";
+    neofetch = "${fastfetchPackage}/bin/fastfetch";
+    screenfetch = "${fastfetchPackage}/bin/fastfetch";
   };
 in
 {
@@ -194,7 +213,7 @@ in
     packages =
       with pkgs;
       [
-        fastfetch
+        fastfetchPackage
       ]
       ++ lib.optionals host.is.workstation [
         cpufetch
