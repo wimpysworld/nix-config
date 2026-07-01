@@ -183,7 +183,8 @@ in
         set -gx NH_SEARCH_CHANNEL (noughty channel 2>/dev/null; or echo nixos-unstable)
       '';
     };
-    info.enable = true;
+    info.enable = !host.is.server;
+    man.enable = !host.is.server;
     nh = {
       enable = true;
       clean = {
