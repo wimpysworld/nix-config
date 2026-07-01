@@ -477,11 +477,13 @@ let
   };
 in
 {
-  config = lib.mkIf (host.is.linux && noughtyLib.userHasTag "developer") {
+  config = lib.mkIf (!host.is.server && noughtyLib.userHasTag "developer") {
     home.packages = [
       fencePackage
-      pkgs.bubblewrap
       pkgs.socat
+    ]
+    ++ lib.optionals host.is.linux [
+      pkgs.bubblewrap
       pkgs.bpftrace
     ];
 

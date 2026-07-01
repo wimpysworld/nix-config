@@ -11,11 +11,12 @@ let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   aiSopsFile = ../../../../secrets/ai.yaml;
+  fencedEnabled = !host.is.server;
   piPackage = inputs.llm-agents.packages.${system}.pi;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
-    if host.is.server then
+    if !(host.is.linux && fencedEnabled) then
       {
         runtimeInputs = [ ];
         setupShell = "";
@@ -560,9 +561,8 @@ let
   # over its control socket. Pi auto-discovers bare `.ts` files under
   # `extensions/`. The extension is a no-op unless herdr injects HERDR_ENV and
   # HERDR_SOCKET_PATH, so it is harmless outside a herdr pane. Kept verbatim
-  # from the upstream herdr integration asset (version marker preserved) so
-  # `herdr integration status` recognises it. Linux-only, matching where the
-  # fenced Pi wrapper and the herdr socket policy hole exist.
+  # from the upstream herdr integration asset so `herdr integration status`
+  # recognises it.
   piHerdrFiles = lib.optionalAttrs host.is.linux {
     ".pi/agent/extensions/herdr-agent-state.ts".source = ./extensions/herdr-agent-state.ts;
   };
@@ -622,7 +622,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       piWrapperPackage
       piNpmPackage
     ]
-    ++ lib.optional host.is.linux piFencedPackage;
+    ++ lib.optional fencedEnabled piFencedPackage;
     file = {
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;
@@ -650,7 +650,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
 
   };
 
-  programs = lib.mkIf host.is.linux {
+  programs = lib.mkIf fencedEnabled {
     bash.shellAliases.pi-fenced = lib.getExe piFencedPackage;
     fish.shellAliases.pi-fenced = lib.getExe piFencedPackage;
     zsh.shellAliases.pi-fenced = lib.getExe piFencedPackage;

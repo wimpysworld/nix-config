@@ -9,6 +9,7 @@ let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   defaultOpenCodeEnabled = !host.is.server;
+  fencedEnabled = !host.is.server;
   aiSopsFile = ../../../../secrets/ai.yaml;
   robotEmoji = builtins.fromJSON "\"\\ud83e\\udd16\"";
   # Use the pre-built binary from numtide's llm-agents.nix flake.
@@ -108,7 +109,7 @@ let
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
-    if host.is.server then
+    if !(host.is.linux && fencedEnabled) then
       {
         runtimeInputs = [ ];
         setupShell = "";
@@ -151,7 +152,7 @@ in
   catppuccin.opencode.enable = config.programs.opencode.enable;
 
   home.packages = lib.optional (
-    config.programs.opencode.enable && host.is.linux
+    config.programs.opencode.enable && fencedEnabled
   ) opencodeFencedPackage;
 
   xdg.configFile = lib.mkMerge [
@@ -170,10 +171,10 @@ in
   ];
 
   programs = {
-    bash.shellAliases = lib.mkIf (config.programs.opencode.enable && host.is.linux) {
+    bash.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
       opencode-fenced = lib.getExe opencodeFencedPackage;
     };
-    fish.shellAliases = lib.mkIf (config.programs.opencode.enable && host.is.linux) {
+    fish.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
       opencode-fenced = lib.getExe opencodeFencedPackage;
     };
     opencode = lib.mkMerge [
@@ -345,7 +346,7 @@ in
         };
       })
     ];
-    zsh.shellAliases = lib.mkIf (config.programs.opencode.enable && host.is.linux) {
+    zsh.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
       opencode-fenced = lib.getExe opencodeFencedPackage;
     };
   };

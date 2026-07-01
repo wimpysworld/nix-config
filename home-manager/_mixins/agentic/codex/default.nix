@@ -10,6 +10,7 @@ let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   isDeveloper = noughtyLib.userHasTag "developer";
+  fencedEnabled = !host.is.server;
 
   # Codex re-execs std::env::current_exe() when launching the Linux sandbox.
   # Nix store paths can disappear after a Home Manager generation switch, and
@@ -24,7 +25,7 @@ let
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
-    if host.is.server then
+    if !(host.is.linux && fencedEnabled) then
       {
         runtimeInputs = [ ];
         setupShell = "";
@@ -505,7 +506,7 @@ lib.mkIf (isDeveloper && !host.is.server) {
       codexAcpPackage
     ]
     ++ lib.optional communicationRules.enable codexTripwireAdapter.hookPackage
-    ++ lib.optional pkgs.stdenv.hostPlatform.isLinux codexFencedPackage;
+    ++ lib.optional fencedEnabled codexFencedPackage;
     # config.toml is written as a real mutable file (not a symlink) so that
     # codex can edit it in-place at runtime. See codexConfigActivationScript.
     activation.codexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] codexConfigActivationScript;
@@ -515,7 +516,7 @@ lib.mkIf (isDeveloper && !host.is.server) {
   };
 
   programs = {
-    bash.shellAliases = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    bash.shellAliases = lib.mkIf fencedEnabled {
       codex-fenced = lib.getExe codexFencedPackage;
     };
     codex = {
@@ -524,10 +525,10 @@ lib.mkIf (isDeveloper && !host.is.server) {
       # The assistants mixin writes AGENTS.md from the canonical global prompt.
       context = "";
     };
-    fish.shellAliases = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    fish.shellAliases = lib.mkIf fencedEnabled {
       codex-fenced = lib.getExe codexFencedPackage;
     };
-    zsh.shellAliases = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    zsh.shellAliases = lib.mkIf fencedEnabled {
       codex-fenced = lib.getExe codexFencedPackage;
     };
   };

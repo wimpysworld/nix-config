@@ -9,13 +9,14 @@
 let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
+  fencedEnabled = !host.is.server;
   # claude-code package selection (Linux llm-agents vs unstable) lives in
   # overlays/default.nix.
   claudePackage = pkgs.claude-code;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
-    if host.is.server then
+    if !(host.is.linux && fencedEnabled) then
       {
         runtimeInputs = [ ];
         setupShell = "";
@@ -537,7 +538,7 @@ in
         usageRemainingPackage
         contextUsedPackage
       ]
-      ++ lib.optional host.is.linux claudeFencedPackage;
+      ++ lib.optional fencedEnabled claudeFencedPackage;
       # Skip Claude Code's bundled ripgrep in favour of the system binary on
       # PATH. The bundled `rg` crashes on 16 KB-page kernels (Apple Silicon,
       # some Linux configs), silently emptying the file picker. Using the Nix
@@ -702,7 +703,7 @@ in
     };
 
     programs = {
-      bash.shellAliases = lib.mkIf host.is.linux {
+      bash.shellAliases = lib.mkIf fencedEnabled {
         claude-fenced = lib.getExe claudeFencedPackage;
       };
       claude-code = {
@@ -796,10 +797,10 @@ in
           })
         ];
       };
-      fish.shellAliases = lib.mkIf host.is.linux {
+      fish.shellAliases = lib.mkIf fencedEnabled {
         claude-fenced = lib.getExe claudeFencedPackage;
       };
-      zsh.shellAliases = lib.mkIf host.is.linux {
+      zsh.shellAliases = lib.mkIf fencedEnabled {
         claude-fenced = lib.getExe claudeFencedPackage;
       };
     };
