@@ -1,3 +1,14 @@
+# Proposed refactor of freshener.yml (move 1 of 2: deduplicate into a matrix).
+#
+# This preserves the current behaviour of every job while removing the
+# copy-pasted checkout, Nix setup, cache, and pull request scaffolding. Each
+# package now contributes one matrix entry plus a short "update" script, and
+# the shared steps run once.
+#
+# Move 2 (a separate change) migrates the "package" entries from hand-rolled
+# prefetch and sed to nix-update where the derivation shape allows it. Wavebox
+# (two platforms in one file) and Defold (artefacts re-pushed under one tag)
+# keep bespoke update logic until their derivations are reshaped.
 name: Package Freshener 🍋
 on:
   schedule:
@@ -5,13 +16,34 @@ on:
   workflow_dispatch:
 
 jobs:
-  wavebox:
-    name: Wavebox 📦
+  freshen:
+    name: ${{ matrix.name }} 📦
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
       pull-requests: write
+    strategy:
+      # Keep going when one package fails so an upstream outage does not block
+      # the others.
+      fail-fast: false
+      matrix:
+        include:
+          - id: wavebox
+            name: Wavebox
+            changelog: https://wavebox.io/blog/releases/
+          - id: defold
+            name: Defold
+            changelog: https://github.com/defold/defold/releases
+          - id: concord
+            name: Concord
+            changelog: https://github.com/chojs23/concord/releases
+          - id: voxtype
+            name: Voxtype
+            changelog: https://github.com/peteonrails/voxtype/releases
+          - id: paseo
+            name: Paseo
+            changelog: https://github.com/getpaseo/paseo/commits
     steps:
       - uses: actions/checkout@v7
       - uses: DeterminateSystems/determinate-nix-action@v3
@@ -19,575 +51,25 @@ jobs:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Check for Wavebox update 🔍
-        id: check
-        run: |
-          set -euo pipefail
 
-          PKG_NIX="pkgs/wavebox/default.nix"
-
-          LINUX_JSON="https://download.wavebox.app/stable/linux/latest.json"
-          DARWIN_JSON="https://download.wavebox.app/stable/macuniversal/latest.json"
-
-          # Extract current versions from the Nix file
-          current_linux=$(awk '/^  linux = stdenvNoCC.mkDerivation/,/^  \}\);/ { if ($0 ~ /version = "/) { match($0, /version = "([^"]+)"/, arr); print arr[1]; exit } }' "$PKG_NIX")
-          current_darwin=$(awk '/^  darwin = stdenvNoCC.mkDerivation/,/^  \}\);/ { if ($0 ~ /version = "/) { match($0, /version = "([^"]+)"/, arr); print arr[1]; exit } }' "$PKG_NIX")
-
-          echo "Current Linux:  ${current_linux}"
-          echo "Current Darwin: ${current_darwin}"
-
-          # Fetch latest versions from Wavebox API
-          latest_linux=$(curl -fsSL "$LINUX_JSON" | jq -r '.urls.deb | match("wavebox_(.+)_amd64\\.deb").captures[0].string')
-          latest_darwin=$(curl -fsSL "$DARWIN_JSON" | jq -r '.url | match("Install%20Wavebox%20(.+)\\.dmg").captures[0].string')
-
-          if [[ -z "$latest_linux" || "$latest_linux" == "null" || -z "$latest_darwin" || "$latest_darwin" == "null" ]]; then
-            echo "❌ Could not determine latest Wavebox version"
-            exit 1
-          fi
-
-          echo "Latest Linux:   ${latest_linux}"
-          echo "Latest Darwin:  ${latest_darwin}"
-
-          if [[ "$current_linux" == "$latest_linux" && "$current_darwin" == "$latest_darwin" ]]; then
-            echo "✅ Wavebox is up to date"
-            echo "updated=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          {
-            echo "updated=true"
-            echo "linux_version=${latest_linux}"
-            echo "darwin_version=${latest_darwin}"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Update Wavebox package 📝
-        if: steps.check.outputs.updated == 'true'
-        env:
-          LINUX_VERSION: ${{ steps.check.outputs.linux_version }}
-          DARWIN_VERSION: ${{ steps.check.outputs.darwin_version }}
-        run: |
-          set -euo pipefail
-
-          PKG_NIX="pkgs/wavebox/default.nix"
-
-          # Fetch and hash the Linux deb
-          linux_url="https://download.wavebox.app/stable/linux/deb/amd64/wavebox_${LINUX_VERSION}_amd64.deb"
-          echo "⬇️  Fetching Linux deb: ${linux_url}"
-          linux_store=$(nix store prefetch-file --json --hash-type sha256 "$linux_url" | jq -r '.hash')
-          echo "🔑 Linux hash: ${linux_store}"
-
-          # Fetch and hash the Darwin dmg
-          darwin_url="https://download.wavebox.app/stable/macuniversal/Install%20Wavebox%20${DARWIN_VERSION}.dmg"
-          echo "⬇️  Fetching Darwin dmg: ${darwin_url}"
-          darwin_store=$(nix store prefetch-file --json --hash-type sha256 --name wavebox.dmg "$darwin_url" | jq -r '.hash')
-          echo "🔑 Darwin hash: ${darwin_store}"
-
-          # Update Linux version and hash
-          sed -i "/^  linux = stdenvNoCC.mkDerivation/,/^  });/s/version = \".*\"/version = \"${LINUX_VERSION}\"/" "$PKG_NIX"
-          sed -i "/^  linux = stdenvNoCC.mkDerivation/,/^  });/s|hash = \".*\"|hash = \"${linux_store}\"|" "$PKG_NIX"
-
-          # Update Darwin version and hash
-          sed -i "/^  darwin = stdenvNoCC.mkDerivation/,/^  });/s/version = \".*\"/version = \"${DARWIN_VERSION}\"/" "$PKG_NIX"
-          sed -i "/^  darwin = stdenvNoCC.mkDerivation/,/^  });/s|hash = \".*\"|hash = \"${darwin_store}\"|" "$PKG_NIX"
-
-          echo "✅ Updated pkgs/wavebox/default.nix"
-          git diff "$PKG_NIX"
-
-      - name: Create pull request 🚀
-        if: steps.check.outputs.updated == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
-          LINUX_VERSION: ${{ steps.check.outputs.linux_version }}
-        run: |
-          BRANCH="wavebox-${LINUX_VERSION}"
-
-          # Check if a PR already exists for this version
-          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
-            echo "⏭️  PR already exists for ${BRANCH}"
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add pkgs/wavebox/default.nix
-          git commit -m "chore(wavebox): update to ${LINUX_VERSION}"
-          git push -u origin "$BRANCH"
-
-          PR_URL=$(gh pr create \
-            --title "chore(wavebox): update to ${LINUX_VERSION}" \
-            --body "$(cat <<EOF
-          Automated Wavebox update to version ${LINUX_VERSION}.
-
-          Changelog: https://wavebox.io/blog/releases/
-          EOF
-          )" \
-            --label "dependencies,automated")
-
-          echo "📋 Created PR: ${PR_URL}"
-
-          # Extract PR number and enable auto-merge
-          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-          gh pr merge --auto --squash "$PR_NUMBER"
-
-  defold:
-    name: Defold 📦
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: DeterminateSystems/determinate-nix-action@v3
-        with:
-          extra-conf: |
-            eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Check for Defold update 🔍
-        id: check
-        run: |
-          set -euo pipefail
-
-          DEFOLD_NIX="pkgs/defold/default.nix"
-          BOB_NIX="pkgs/defold-bob/default.nix"
-          GDC_NIX="pkgs/defold-gdc/default.nix"
-
-          # Extract current versions and hashes from the Nix files
-          current_defold_version=$(sed -n 's/^  version = "\(.*\)";/\1/p' "$DEFOLD_NIX")
-          current_bob_version=$(sed -n 's/^  version = "\(.*\)";/\1/p' "$BOB_NIX")
-          current_gdc_version=$(sed -n 's/^  version = "\(.*\)";/\1/p' "$GDC_NIX")
-
-          current_defold_hash=$(sed -n 's/.*hash = "\(sha256-[^"]*\)".*/\1/p' "$DEFOLD_NIX")
-          current_bob_hash=$(sed -n 's/.*hash = "\(sha256-[^"]*\)".*/\1/p' "$BOB_NIX")
-          current_gdc_hash=$(sed -n 's/.*hash = "\(sha256-[^"]*\)".*/\1/p' "$GDC_NIX")
-
-          echo "Current defold:     ${current_defold_version} ${current_defold_hash}"
-          echo "Current defold-bob: ${current_bob_version} ${current_bob_hash}"
-          echo "Current defold-gdc: ${current_gdc_version} ${current_gdc_hash}"
-
-          # Fetch the latest stable release from GitHub
-          latest=$(curl -fsSL "https://api.github.com/repos/defold/defold/releases?per_page=20" \
-            | jq -r '[.[] | select(.prerelease == false)][0].tag_name')
-
-          if [[ -z "$latest" || "$latest" == "null" ]]; then
-            echo "❌ Could not determine latest Defold release"
-            exit 1
-          fi
-
-          echo "Latest release:     ${latest}"
-
-          # Fetch hashes for all three artefacts
-          defold_url="https://github.com/defold/defold/releases/download/${latest}/Defold-x86_64-linux.tar.gz"
-          bob_url="https://github.com/defold/defold/releases/download/${latest}/bob.jar"
-          gdc_url="https://github.com/defold/defold/releases/download/${latest}/gdc-linux"
-
-          echo "⬇️  Prefetching Defold artefacts for hash comparison..."
-          latest_defold_hash=$(nix store prefetch-file --json --hash-type sha256 "$defold_url" | jq -r '.hash')
-          latest_bob_hash=$(nix store prefetch-file --json --hash-type sha256 "$bob_url" | jq -r '.hash')
-          latest_gdc_hash=$(nix store prefetch-file --json --hash-type sha256 "$gdc_url" 2>/dev/null | jq -r '.hash // empty') || latest_gdc_hash=""
-
-          echo "Latest defold hash:     ${latest_defold_hash}"
-          echo "Latest defold-bob hash: ${latest_bob_hash}"
-          echo "Latest defold-gdc hash: ${latest_gdc_hash}"
-
-          # Compare version AND all hashes; Defold sometimes re-pushes artefacts
-          gdc_matches=true
-          if [[ -n "$latest_gdc_hash" ]]; then
-            [[ "$current_gdc_version" == "$latest" && "$current_gdc_hash" == "$latest_gdc_hash" ]] || gdc_matches=false
-          fi
-          if [[ "$current_defold_version" == "$latest" \
-             && "$current_bob_version" == "$latest" \
-             && "$current_defold_hash" == "$latest_defold_hash" \
-             && "$current_bob_hash" == "$latest_bob_hash" \
-             && "$gdc_matches" == "true" ]]; then
-            echo "✅ All Defold packages are up to date"
-            echo "updated=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          {
-            echo "updated=true"
-            echo "version=${latest}"
-            echo "defold_hash=${latest_defold_hash}"
-            echo "bob_hash=${latest_bob_hash}"
-            echo "gdc_hash=${latest_gdc_hash}"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Update Defold packages 📝
-        if: steps.check.outputs.updated == 'true'
-        env:
-          VERSION: ${{ steps.check.outputs.version }}
-          DEFOLD_HASH: ${{ steps.check.outputs.defold_hash }}
-          BOB_HASH: ${{ steps.check.outputs.bob_hash }}
-          GDC_HASH: ${{ steps.check.outputs.gdc_hash }}
-        run: |
-          set -euo pipefail
-
-          DEFOLD_NIX="pkgs/defold/default.nix"
-          BOB_NIX="pkgs/defold-bob/default.nix"
-          GDC_NIX="pkgs/defold-gdc/default.nix"
-
-          # Update defold
-          sed -i 's/^  version = ".*"/  version = "'"${VERSION}"'"/' "$DEFOLD_NIX"
-          sed -i 's|hash = "sha256-[^"]*"|hash = "'"${DEFOLD_HASH}"'"|' "$DEFOLD_NIX"
-          echo "✅ Updated ${DEFOLD_NIX}"
-
-          # Update defold-bob
-          sed -i 's/^  version = ".*"/  version = "'"${VERSION}"'"/' "$BOB_NIX"
-          sed -i 's|hash = "sha256-[^"]*"|hash = "'"${BOB_HASH}"'"|' "$BOB_NIX"
-          echo "✅ Updated ${BOB_NIX}"
-
-          # Update defold-gdc (only if artefact is still published)
-          if [[ -n "$GDC_HASH" ]]; then
-            sed -i 's/^  version = ".*"/  version = "'"${VERSION}"'"/' "$GDC_NIX"
-            sed -i 's|hash = "sha256-[^"]*"|hash = "'"${GDC_HASH}"'"|' "$GDC_NIX"
-            echo "✅ Updated ${GDC_NIX}"
-          else
-            echo "⏭️  Skipping ${GDC_NIX} (gdc-linux artefact not available)"
-          fi
-
-          git diff "$DEFOLD_NIX" "$BOB_NIX"
-          if [[ -n "$GDC_HASH" ]]; then
-            git diff "$GDC_NIX"
-          fi
-
-      - name: Create pull request 🚀
-        if: steps.check.outputs.updated == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
-          VERSION: ${{ steps.check.outputs.version }}
-        run: |
-          # Include short hash in branch name to handle artefact re-pushes
-          SHORT_HASH=$(echo "${{ steps.check.outputs.defold_hash }}" | cut -c8-15)
-          BRANCH="defold-${VERSION}-${SHORT_HASH}"
-
-          # Check if a PR already exists for this exact version+hash
-          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
-            echo "⏭️  PR already exists for ${BRANCH}"
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add pkgs/defold/default.nix pkgs/defold-bob/default.nix
-          if [[ -n "${{ steps.check.outputs.gdc_hash }}" ]]; then
-            git add pkgs/defold-gdc/default.nix
-          fi
-          git commit -m "chore(defold): update to ${VERSION}"
-          git push -u origin "$BRANCH"
-
-          PR_URL=$(gh pr create \
-            --title "chore(defold): update to ${VERSION}" \
-            --body "$(cat <<EOF
-          Automated Defold update to version ${VERSION}.
-
-          Updates all three packages: defold, defold-bob, and defold-gdc.
-
-          Release: https://github.com/defold/defold/releases/tag/${VERSION}
-          EOF
-          )" \
-            --label "dependencies,automated")
-
-          echo "📋 Created PR: ${PR_URL}"
-
-          # Extract PR number and enable auto-merge
-          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-          gh pr merge --auto --squash "$PR_NUMBER"
-
-  concord:
-    name: Concord 📦
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: DeterminateSystems/determinate-nix-action@v3
-        with:
-          extra-conf: |
-            eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Check for Concord update 🔍
-        id: check
-        run: |
-          set -euo pipefail
-
-          current=$(awk -F/ '/concord.url = "github:chojs23\/concord\// { sub(/";$/, "", $NF); print $NF }' flake.nix)
-          latest=$(curl -fsSL "https://api.github.com/repos/chojs23/concord/tags?per_page=100" \
-            | jq -r '.[].name' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | sort -V \
-            | tail -n 1)
-
-          if [[ -z "$current" ]]; then
-            echo "❌ Could not determine current Concord release"
-            exit 1
-          fi
-
-          if [[ -z "$latest" ]]; then
-            echo "❌ Could not determine latest Concord release"
-            exit 1
-          fi
-
-          echo "Current Concord: ${current}"
-          echo "Latest Concord:  ${latest}"
-
-          if [[ "$current" == "$latest" ]]; then
-            echo "✅ Concord is up to date"
-            echo "updated=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "updated=true" >> "$GITHUB_OUTPUT"
-          echo "version=${latest}" >> "$GITHUB_OUTPUT"
-
-      - name: Update Concord input 📝
-        if: steps.check.outputs.updated == 'true'
-        env:
-          VERSION: ${{ steps.check.outputs.version }}
-        run: |
-          set -euo pipefail
-
-          perl -0pi -e 's#concord\.url = "github:chojs23/concord/[^"]+";#concord.url = "github:chojs23/concord/'"$VERSION"'";#' flake.nix
-          nix flake update concord
-          nix fmt flake.nix
-
-          git diff flake.nix flake.lock
-
-      - name: Create pull request 🚀
-        if: steps.check.outputs.updated == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
-          VERSION: ${{ steps.check.outputs.version }}
-        run: |
-          set -euo pipefail
-
-          BRANCH="concord-${VERSION}"
-
-          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
-            echo "⏭️  PR already exists for ${BRANCH}"
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add flake.nix flake.lock
-          git commit -m "chore(concord): update to ${VERSION}"
-          git push -u origin "$BRANCH"
-
-          PR_URL=$(gh pr create \
-            --title "chore(concord): update to ${VERSION}" \
-            --body "$(cat <<EOF
-          Automated Concord update to version ${VERSION}.
-
-          Release: https://github.com/chojs23/concord/releases/tag/${VERSION}
-          EOF
-          )" \
-            --label "dependencies,automated")
-
-          echo "📋 Created PR: ${PR_URL}"
-
-          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-          gh pr merge --auto --squash "$PR_NUMBER"
-
-  voxtype:
-    name: Voxtype 📦
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: DeterminateSystems/determinate-nix-action@v3
-        with:
-          extra-conf: |
-            eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Check for Voxtype update 🔍
-        id: check
-        run: |
-          set -euo pipefail
-
-          current=$(awk -F/ '/voxtype.url = "github:peteonrails\/voxtype\// { sub(/";$/, "", $NF); print $NF }' flake.nix)
-          latest=$(curl -fsSL "https://api.github.com/repos/peteonrails/voxtype/tags?per_page=100" \
-            | jq -r '.[].name' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | sort -V \
-            | tail -n 1)
-
-          if [[ -z "$current" ]]; then
-            echo "❌ Could not determine current Voxtype release"
-            exit 1
-          fi
-
-          if [[ -z "$latest" ]]; then
-            echo "❌ Could not determine latest Voxtype release"
-            exit 1
-          fi
-
-          echo "Current Voxtype: ${current}"
-          echo "Latest Voxtype:  ${latest}"
-
-          if [[ "$current" == "$latest" ]]; then
-            echo "✅ Voxtype is up to date"
-            echo "updated=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "updated=true" >> "$GITHUB_OUTPUT"
-          echo "version=${latest}" >> "$GITHUB_OUTPUT"
-
-      - name: Update Voxtype input 📝
-        if: steps.check.outputs.updated == 'true'
-        env:
-          VERSION: ${{ steps.check.outputs.version }}
-        run: |
-          set -euo pipefail
-
-          perl -0pi -e 's#voxtype\.url = "github:peteonrails/voxtype/[^"]+";#voxtype.url = "github:peteonrails/voxtype/'"$VERSION"'";#' flake.nix
-          nix flake update voxtype
-          nix fmt flake.nix
-
-          git diff flake.nix flake.lock
-
-      - name: Create pull request 🚀
-        if: steps.check.outputs.updated == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
-          VERSION: ${{ steps.check.outputs.version }}
-        run: |
-          set -euo pipefail
-
-          BRANCH="voxtype-${VERSION}"
-
-          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
-            echo "⏭️  PR already exists for ${BRANCH}"
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add flake.nix flake.lock
-          git commit -m "chore(voxtype): update to ${VERSION}"
-          git push -u origin "$BRANCH"
-
-          PR_URL=$(gh pr create \
-            --title "chore(voxtype): update to ${VERSION}" \
-            --body "$(cat <<EOF
-          Automated Voxtype update to version ${VERSION}.
-
-          Release: https://github.com/peteonrails/voxtype/releases/tag/${VERSION}
-          EOF
-          )" \
-            --label "dependencies,automated")
-
-          echo "📋 Created PR: ${PR_URL}"
-
-          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-          gh pr merge --auto --squash "$PR_NUMBER"
-
-  paseo:
-    name: Paseo 📦
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: DeterminateSystems/determinate-nix-action@v3
-        with:
-          extra-conf: |
-            eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Check for Paseo update 🔍
-        id: check
-        run: |
-          set -euo pipefail
-
-          current=$(jq -r '.nodes.paseo.locked.rev // empty' flake.lock)
-          latest=$(curl -fsSL "https://api.github.com/repos/getpaseo/paseo/commits?per_page=1" \
-            | jq -r '.[0].sha // empty')
-
-          if [[ -z "$current" ]]; then
-            echo "❌ Could not determine current Paseo revision"
-            exit 1
-          fi
-
-          if [[ -z "$latest" ]]; then
-            echo "❌ Could not determine latest Paseo revision"
-            exit 1
-          fi
-
-          echo "Current Paseo: ${current}"
-          echo "Latest Paseo:  ${latest}"
-
-          if [[ "$current" == "$latest" ]]; then
-            echo "✅ Paseo is up to date"
-            echo "updated=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "updated=true" >> "$GITHUB_OUTPUT"
-          echo "rev=${latest}" >> "$GITHUB_OUTPUT"
-
-      - name: Update Paseo input 📝
+      # Each package's update logic lives in its own script under
+      # .github/freshener/. The script decides whether an update is needed,
+      # applies it, and prints the following to $GITHUB_OUTPUT:
+      #   updated=true|false
+      #   version=<version or short revision>   (only when updated=true)
+      #   files=<space-separated paths to stage> (only when updated=true)
+      - name: Check and update ${{ matrix.name }} 🔍
         id: update
-        if: steps.check.outputs.updated == 'true'
-        run: |
-          set -euo pipefail
-
-          nix flake update paseo
-          rev=$(jq -r '.nodes.paseo.locked.rev // empty' flake.lock)
-
-          if [[ -z "$rev" ]]; then
-            echo "❌ Could not determine updated Paseo revision"
-            exit 1
-          fi
-
-          echo "rev=${rev}" >> "$GITHUB_OUTPUT"
-          git diff flake.lock
+        run: .github/freshener/${{ matrix.id }}.sh
+        # The scripts read no secrets; they only fetch public release metadata.
 
       - name: Create pull request 🚀
-        if: steps.check.outputs.updated == 'true'
+        if: steps.update.outputs.updated == 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
-          REV: ${{ steps.update.outputs.rev }}
-        run: |
-          set -euo pipefail
-
-          SHORT_REV="${REV:0:12}"
-          BRANCH="paseo-${SHORT_REV}"
-
-          if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
-            echo "⏭️  PR already exists for ${BRANCH}"
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add flake.lock
-          git commit -m "chore(paseo): update to ${SHORT_REV}"
-          git push -u origin "$BRANCH"
-
-          PR_URL=$(gh pr create \
-            --title "chore(paseo): update to ${SHORT_REV}" \
-            --body "$(cat <<EOF
-          Automated Paseo input update to revision ${REV}.
-
-          Commit: https://github.com/getpaseo/paseo/commit/${REV}
-          EOF
-          )" \
-            --label "dependencies,automated")
-
-          echo "📋 Created PR: ${PR_URL}"
-
-          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-          gh pr merge --auto --squash "$PR_NUMBER"
+          PKG_ID: ${{ matrix.id }}
+          PKG_NAME: ${{ matrix.name }}
+          CHANGELOG: ${{ matrix.changelog }}
+          VERSION: ${{ steps.update.outputs.version }}
+          FILES: ${{ steps.update.outputs.files }}
+        run: .github/freshener/open-pr.sh
