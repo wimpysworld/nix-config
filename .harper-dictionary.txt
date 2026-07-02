@@ -60,3 +60,8 @@ udev
 mixin
 remapper
 F13
+libudev
+dlopen
+XDG
+DIRS
+GSETTINGS
