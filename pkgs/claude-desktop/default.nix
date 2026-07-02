@@ -6,6 +6,8 @@
   stdenvNoCC,
   bintools,
   writeScript,
+  copyDesktopItems,
+  makeDesktopItem,
 
   # Linked dynamic libraries.
   alsa-lib,
@@ -106,7 +108,48 @@ let
     wayland
   ];
 
+  # The desktop entry reproduces the one Anthropic ship in the deb. The
+  # x-scheme-handler/claude MIME type registers the OAuth sign-in handler and
+  # must be preserved, and the two actions expose the New chat and New Claude
+  # Code session shortcuts.
+  desktopItem = makeDesktopItem {
+    name = "claude-desktop";
+    desktopName = "Claude";
+    genericName = "AI Assistant";
+    comment = "Desktop application for Claude.ai";
+    exec = "claude-desktop %U";
+    icon = "claude-desktop";
+    keywords = [
+      "AI"
+      "Chat"
+      "Assistant"
+      "Claude"
+      "Code"
+      "LLM"
+    ];
+    categories = [
+      "Utility"
+      "Development"
+    ];
+    startupNotify = true;
+    startupWMClass = "claude-desktop";
+    singleMainWindow = true;
+    mimeTypes = [ "x-scheme-handler/claude" ];
+    actions = {
+      NewChat = {
+        name = "New chat";
+        exec = "claude-desktop claude://claude.ai/new";
+      };
+      NewCode = {
+        name = "New Claude Code session";
+        exec = "claude-desktop claude://code/new";
+      };
+    };
+  };
+
   passthru = {
+    category = "AI Coding Agents";
+
     updateScript = writeScript "update-claude-desktop.sh" ''
       #!/usr/bin/env nix-shell
       #!nix-shell -i bash -p curl gnused nix
@@ -157,16 +200,19 @@ let
     '';
   };
 
-  meta = {
+  meta = with lib; {
     description = "Desktop application for Claude.ai";
     homepage = "https://claude.ai";
-    license = lib.licenses.unfree;
-    maintainers = with lib.maintainers; [ flexiondotorg ];
+    # Anthropic publish no versioned changelog or release tags for Claude
+    # Desktop, so this points at the canonical download and what's-new page.
+    changelog = "https://claude.ai/download";
+    license = licenses.unfree;
+    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
+    maintainers = with maintainers; [ flexiondotorg ];
     platforms = [
       "x86_64-linux"
       "aarch64-linux"
     ];
-    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     mainProgram = "claude-desktop";
   };
 in
@@ -184,6 +230,7 @@ stdenvNoCC.mkDerivation {
   );
 
   nativeBuildInputs = [
+    copyDesktopItems
     makeWrapper
     patchelf
   ];
@@ -194,6 +241,8 @@ stdenvNoCC.mkDerivation {
     gsettings-desktop-schemas
     gtk3
   ];
+
+  desktopItems = [ desktopItem ];
 
   unpackPhase = ''
     runHook preUnpack
@@ -212,7 +261,6 @@ stdenvNoCC.mkDerivation {
     # main binary.
     mkdir -p $out/lib $out/bin $out/share
     cp -a usr/lib/claude-desktop $out/lib/claude-desktop
-    cp -a usr/share/applications $out/share/applications
     cp -a usr/share/icons $out/share/icons
     cp -a usr/share/doc $out/share/doc
 
@@ -228,8 +276,8 @@ stdenvNoCC.mkDerivation {
       patchelf --set-rpath "$app_rpath" "$elf" 2>/dev/null || true
     done < <(find $out/lib/claude-desktop -type f \( -name "*.so" -o -name "*.so.*" -o -name "*.node" -o -executable \) -print0)
 
-    # The desktop file uses bare Exec and Icon names, so install it unchanged
-    # and point the wrapper at $out/bin/claude-desktop.
+    # The desktop file uses bare Exec and Icon names, so copyDesktopItems
+    # installs the generated item and the wrapper lands at $out/bin/claude-desktop.
     makeWrapper "$out/lib/claude-desktop/claude-desktop" "$out/bin/claude-desktop" \
       --prefix LD_LIBRARY_PATH : "$app_rpath" \
       --suffix PATH : "${lib.makeBinPath [ xdg-utils ]}" \
