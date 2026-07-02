@@ -40,7 +40,20 @@ gdc_url="https://github.com/defold/defold/releases/download/${latest}/gdc-linux"
 echo "⬇️  Prefetching Defold artefacts for hash comparison..."
 latest_defold_hash=$(nix store prefetch-file --json --hash-type sha256 "$defold_url" | jq -r '.hash')
 latest_bob_hash=$(nix store prefetch-file --json --hash-type sha256 "$bob_url" | jq -r '.hash')
-latest_gdc_hash=$(nix store prefetch-file --json --hash-type sha256 "$gdc_url" 2>/dev/null | jq -r '.hash // empty') || latest_gdc_hash=""
+
+# Defold intermittently stops publishing the gdc-linux artefact, so a genuine
+# 404 must skip defold-gdc rather than fail the run. Probe the status first so
+# only a confirmed missing artefact is treated as absent; any other outcome
+# (network error, 5xx) falls through to the prefetch, which fails the run.
+# No -f here: curl must report the real status code on a 404 rather than exit
+# non-zero. A connection failure yields 000, which is not treated as missing.
+gdc_status=$(curl -sSL -o /dev/null -w '%{http_code}' -I "$gdc_url" || echo "000")
+if [[ "$gdc_status" == "404" ]]; then
+  echo "⏭️  gdc-linux artefact not published for ${latest} (HTTP 404)"
+  latest_gdc_hash=""
+else
+  latest_gdc_hash=$(nix store prefetch-file --json --hash-type sha256 "$gdc_url" | jq -r '.hash')
+fi
 
 echo "Latest defold hash:     ${latest_defold_hash}"
 echo "Latest defold-bob hash: ${latest_bob_hash}"
