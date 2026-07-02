@@ -11,15 +11,11 @@
     final: prev:
     let
       paseoPackages = inputs.paseo.packages.${prev.stdenv.hostPlatform.system} or { };
-      # Both the Paseo daemon and the desktop client come from the upstream Paseo
-      # flake, so they track the same release.
-      paseoAttrs =
-        prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
-          paseo = paseoPackages.paseo or paseoPackages.default;
-        }
-        // prev.lib.optionalAttrs (paseoPackages ? desktop) {
-          paseo-desktop = paseoPackages.desktop;
-        };
+      # Only the Paseo daemon and CLI come from the upstream Paseo flake now; the
+      # desktop client is sourced separately from the llm-agents flake below.
+      paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
+        paseo = paseoPackages.paseo or paseoPackages.default;
+      };
     in
     rec {
       hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
@@ -76,6 +72,15 @@
           final.unstable.claude-code;
       inherit (final.unstable) librechat;
       inherit (final.unstable) playwright-driver;
+
+      # The Paseo desktop client comes from the llm-agents flake for its numtide
+      # cache, so it tracks that pin independently of the upstream paseo daemon.
+      # https://github.com/numtide/llm-agents.nix
+      paseo-desktop =
+        if final.stdenv.hostPlatform.isLinux then
+          inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.paseo-desktop
+        else
+          throw "paseo-desktop is only available on Linux";
 
       linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
         _lpself: lpsuper: {
