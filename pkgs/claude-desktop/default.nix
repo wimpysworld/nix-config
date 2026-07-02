@@ -148,8 +148,12 @@ let
       arm64_hash="$(nix-hash --to-sri --type sha256 "$arm64_sha")"
 
       sed -i "s|^  version = \".*\";$|  version = \"$amd64_version\";|" "$DEFAULT_NIX"
-      sed -i "s|hash = \"sha256-7AjUGqeYjS06P19P/fONIHtBLmYmOfQNeiZbivriEqs=\";|hash = \"$amd64_hash\";|" "$DEFAULT_NIX"
-      sed -i "s|hash = \"sha256-yeflb3qWvTYLgZjpVDV8c7wifht4yIp6BWVBU9ICWN0=\";|hash = \"$arm64_hash\";|" "$DEFAULT_NIX"
+
+      # Rewrite the hash on the line following each architecture URL. Matching
+      # the deb suffix rather than the literal hash keeps the updater working
+      # for every future release.
+      sed -i "/_amd64\.deb\";$/{n;s|hash = \".*\";|hash = \"$amd64_hash\";|;}" "$DEFAULT_NIX"
+      sed -i "/_arm64\.deb\";$/{n;s|hash = \".*\";|hash = \"$arm64_hash\";|;}" "$DEFAULT_NIX"
     '';
   };
 
