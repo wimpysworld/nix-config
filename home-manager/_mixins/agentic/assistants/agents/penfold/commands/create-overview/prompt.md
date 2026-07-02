@@ -22,7 +22,7 @@ Create overview enabling downstream agents to continue without reverse-engineeri
 | Context | Background, assumptions, constraints |
 | Findings | Core research by theme - synthesised, not a search log |
 | Options | 2-4 approaches with trade-offs; table format |
-| Open Questions | Unresolved items needing decision or investigation |
+| Hard Blockers | Real blockers the research and code do not resolve; omit if none |
 | Next Steps | Concrete actions for downstream agents |
 
 ### Example
@@ -57,3 +57,4 @@ compile-time - no runtime overhead.
 - Findings over process - what you learned, not how you searched
 - No hedging language ("perhaps", "might", "could potentially")
 - No repetition across sections
+- Hard Blockers must not be speculative. List only real blockers the prior research or the existing code does not answer. If there are none, omit the section.

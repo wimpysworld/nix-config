@@ -14,7 +14,7 @@ If `$ARGUMENTS` is blank, ask for a working document path or document text and w
 4. Group related items only when the same evidence answers them. Keep each group small enough for one bounded research task.
 5. Delegate a wide fan-out of sub-agent tasks in parallel where possible. Use `delegate-task` routing and the current available agents. Do not name a static agent set.
 6. Research enough to make a clear decision. Sources may include source code analysis in this project, upstream app source code, current documentation, web research, and project objectives.
-7. Compare the returned evidence. When evidence conflicts, choose the conservative decision that best serves the project objectives, existing patterns, testability, and reversibility.
+7. Each decision must align with the research, prior discussion, and evidence already in the document, and with current code patterns. Deviate only when the document offers no good guidance and it can be resolved by evidence-based research from authoritative sources. Flag every deviation as such, with the reason it departs from the material and the authoritative sources that support it. When evidence conflicts, choose the conservative decision that best serves the project objectives, existing patterns, testability, and reversibility.
 8. Edit the target document in place. Replace unresolved text with the chosen answer, decision, rationale, and evidence, and retitle any section header that still implies its resolved items are open. Do not only append a report.
 9. Leave an item unresolved only when research cannot answer it and outside input is required. Mark it as blocked with the missing input and the evidence already checked.
 

@@ -25,6 +25,7 @@ A comment that no longer matches the code is worse than none. This is the priori
 ### Improve - strengthen and orient
 
 - Expand a comment that states what but omits a non-obvious why
+- Shorten a wordy comment: keep the fact and the why, cut the narration the code already shows. Collapse a multi-line block to one line where the point survives; prefer terse notation (`e.g.`, `GL/Vulkan libs`) over long prose. Trim docstrings to a one-line summary when the body or signature shows the rest
 - Add doc comments to exported or public symbols that lack them
 - Add module, file, or function-level orientation where a newcomer (human or agent) would struggle to grasp purpose or non-obvious context
 

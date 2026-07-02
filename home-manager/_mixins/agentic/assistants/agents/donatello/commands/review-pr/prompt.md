@@ -6,7 +6,7 @@ Run a substantive peer review of GitHub PR `$ARGUMENTS`. Ask for the PR URL or n
 
 Fetch the PR details, description, and full diff first with dedicated `gh` subcommands (`gh pr view`, `gh pr diff`). Raw `gh api` is denied; use `gh-api-safe` for raw API reads. Record the head commit SHA reviewed. Never mutate GitHub: no comments, approvals, or merges.
 
-Delegate to a wide fan-out of sub-agents, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions. Each sub-agent's delegation packet must instruct it to:
+Delegate to a wide fan-out of sub-agents, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions. Add a topic sweep: search Linear for related issues and Slack for recent conversations on the same domain, not only what the PR links. This builds a detailed understanding of the domain and the recent changes around it, so the review learns from prior work and does not undo it. Read-only, as ever: no comments or posts. Each sub-agent's delegation packet must instruct it to:
 
 - Read the surrounding code in the working tree to understand the change in context, within its assigned concern or area.
 - Where practical, verify conclusions by building and running the relevant tests on the PR head (e.g. in a temporary worktree), restoring repo state afterwards. Distinguish environmental test failures (also failing on main) from PR-caused failures.
@@ -26,11 +26,12 @@ Relay the synthesised report verbatim. Never summarise or paraphrase it.
 
 ### 4. Draft review response
 
-Finish with a draft review response in a fenced markdown block that copies cleanly:
+Finish with a draft review response in a fenced markdown block that copies cleanly. Keep it short and actionable; humans want feedback, not a recap:
 
 - Lead with the verdict: **Approve** ✅ or **Request changes** 🔒
-- A short paragraph on what was verified and is sound
-- Blocking items (if any), then non-blocking suggestions, each with a concrete suggested fix
+- One or two sentences on what you validated and that it holds
+- Do not describe what the PR does; the code speaks for itself
+- Blocking items (if any), then non-blocking suggestions, each with a concrete suggested fix; no nits in either list
 
 ### Constraints
 
