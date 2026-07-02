@@ -37,7 +37,7 @@
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
     concord.inputs.rust-overlay.follows = "rust-overlay";
     concord.inputs.flake-utils.follows = "flake-utils";
-    paseo.url = "github:getpaseo/paseo/7dad7a377c5aef4f0184ac4dc2d38e2a4a7c8767";
+    paseo.url = "github:getpaseo/paseo/v0.1.103";
     paseo.inputs.nixpkgs.follows = "nixpkgs-unstable";
     voxtype.url = "github:peteonrails/voxtype/v0.7.5";
     voxtype.inputs.nixpkgs.follows = "nixpkgs-unstable";
