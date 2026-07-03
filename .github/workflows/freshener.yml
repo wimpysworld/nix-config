@@ -44,6 +44,9 @@ jobs:
           - id: paseo
             name: Paseo
             changelog: https://github.com/getpaseo/paseo/commits
+          - id: hermes-agent
+            name: Hermes Agent
+            changelog: https://github.com/NousResearch/hermes-agent/releases
     steps:
       - uses: actions/checkout@v7
       - uses: DeterminateSystems/determinate-nix-action@v3
