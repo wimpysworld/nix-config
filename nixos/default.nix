@@ -121,19 +121,20 @@ in
   };
 
   # NixOS-only option, unavailable on nix-darwin, so it lives here rather than
-  # in ../common. Skip the expensive mandb cache generation to speed up builds.
+  # in ../common. Servers and live ISO media skip documentation entirely,
+  # including the expensive mandb cache generation, to speed up builds.
   documentation = {
-    enable = lib.mkIf host.is.server (lib.mkForce false);
-    doc.enable = lib.mkIf host.is.server (lib.mkForce false);
-    info.enable = lib.mkIf host.is.server (lib.mkForce false);
-    nixos.enable = lib.mkIf host.is.server (lib.mkForce false);
+    enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
+    doc.enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
+    info.enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
+    nixos.enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
     man = {
-      enable = lib.mkIf host.is.server (lib.mkForce false);
+      enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
       cache = {
-        enable = lib.mkIf host.is.server (lib.mkForce false);
-        generateAtRuntime = if host.is.server then lib.mkForce false else true;
+        enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
+        generateAtRuntime = if (host.is.server || host.is.iso) then lib.mkForce false else true;
       };
-      man-db.enable = lib.mkIf host.is.server (lib.mkForce false);
+      man-db.enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
     };
   };
 
@@ -198,7 +199,9 @@ in
   programs = {
     command-not-found.enable = false;
     nano.enable = lib.mkDefault false;
-    nix-index.enable = lib.mkIf host.is.server (lib.mkForce false);
+    # The prebuilt nix-index database is roughly 115 MiB and is not needed on
+    # servers or live ISO media.
+    nix-index.enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
     nh = {
       clean = {
         enable = !host.is.iso;
