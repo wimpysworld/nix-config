@@ -134,10 +134,10 @@ in
     # https://wiki.nixos.org/wiki/Incus
     nftables.enable = lib.mkIf config.virtualisation.incus.enable true;
     useDHCP = lib.mkDefault true;
-    # Forcibly disable wireless networking on ISO images, as they now use NetworkManager/iwd
-    wireless = lib.mkIf host.is.iso {
-      enable = lib.mkForce false;
-    };
+    # Do not disable networking.wireless when NetworkManager is active: the
+    # NetworkManager module sets it in D-Bus-controlled mode to provide the
+    # wpa_supplicant it drives. Forcing it off here left the live ISO with no
+    # supplicant and therefore no Wi-Fi.
   };
   services = {
     avahi = lib.mkIf host.is.workstation {
