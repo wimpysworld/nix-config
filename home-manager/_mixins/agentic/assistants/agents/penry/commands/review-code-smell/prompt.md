@@ -31,3 +31,8 @@ Runs a full-project smell hunt. No arguments.
 7. Describe why it stinks - direct, no softening
 8. Output per-improvement format from agent definition
 9. Write the aggregated report to `CODE-SMELLS.md` in the project root
+
+### Restraint
+
+- A clean report is a valid result. If nothing reaches real stench, say so and stop. Do not manufacture smells to fill the report.
+- Report only smells you can point to in the code now. Skip anything that depends on a future the code has not reached.

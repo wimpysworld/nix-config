@@ -31,4 +31,6 @@ Runs a full-project peer review. No arguments.
 
 - No diplomatic hedging - give the honest verdict a peer would give in a code review
 - Cite specific code, not vague impressions
+- **Impressed** with few or no complaints is a valid verdict. Do not inflate minor gripes into faults to justify a harsher grade.
+- Judge the code as it stands. Do not flag speculative problems that depend on a future the code has not reached.
 - Write the aggregated review to `PEER-REVIEW.md` in the project root

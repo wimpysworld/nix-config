@@ -22,3 +22,10 @@ Runs a full-project review. No arguments.
 11. Output per-improvement format from agent definition. For standard-library and native findings, add what was reimplemented, the replacement, the minimum version, and whether the project target permits it.
 12. End the report with an estimated removal summary: lines, files, and dependencies that could be deleted.
 13. Write the aggregated report to `CODE-REVIEW.md` in the project root.
+
+### Restraint
+
+- An empty or short report is a valid result. If the code holds up, say so and stop. Do not pad the report with borderline findings to look thorough.
+- Report defects present in the code now. Do not raise speculative problems that depend on a future the code has not reached.
+- Each finding must leave the code smaller or clearer. If a fix trades one shape for another of equal weight, drop it. Do not propose change for its own sake.
+- Recommend one fix per finding. Do not list rival approaches or reopen a call you have already made.
