@@ -7,8 +7,8 @@
 let
   inherit (config.noughty) host;
 
-  # Claude Desktop is a graphical Electron application packaged from Anthropic's
-  # prebuilt Debian archive, so it is available on Linux only and belongs on
+  # Claude Desktop is a graphical Electron application sourced from the
+  # llm-agents flake, so it is available on Linux only and belongs on
   # workstations rather than servers or headless hosts.
   desktopEnabled = host.is.workstation && host.is.linux;
 in

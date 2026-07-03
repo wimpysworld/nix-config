@@ -84,6 +84,15 @@
       inherit (final.unstable) librechat;
       inherit (final.unstable) playwright-driver;
 
+      # The Claude desktop client comes from the llm-agents flake for its numtide
+      # cache, so it tracks that pin alongside the rest of the agent tooling.
+      # https://github.com/numtide/llm-agents.nix
+      claude-desktop =
+        if final.stdenv.hostPlatform.isLinux then
+          inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.claude-desktop
+        else
+          throw "claude-desktop is only available on Linux";
+
       # The Paseo desktop client comes from the llm-agents flake for its numtide
       # cache, so it tracks that pin independently of the upstream paseo daemon.
       # https://github.com/numtide/llm-agents.nix
