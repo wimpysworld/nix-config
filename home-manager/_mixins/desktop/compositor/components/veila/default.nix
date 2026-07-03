@@ -184,11 +184,15 @@ let
     # Veila's config merge replaces arrays wholesale, so defining any
     # [[visuals.backdrop]] here discards the theme's entire backdrop array.
     # The full array from the bundled catppuccin theme is therefore carried
-    # below, with two changes: the keyboard backdrop is dropped (the widget is
-    # disabled above), and the right-hand column is raised 50 px so the
+    # below, with these changes: the keyboard backdrop is dropped (the widget
+    # is disabled above) and the columns are rearranged for symmetry around
+    # the auth box. The left column (OS logo, weather icon, weather
+    # temperature at y = -275/-150/-25) mirrors the right column (poweroff,
+    # reboot, suspend at the same offsets), raised 50 px from the theme so the
     # poweroff box top (100 px box, y offset, valign centre) lines up with the
-    # auth box top (650 px box, y = 0). Review these blocks against
-    # assets/themes/catppuccin.toml on veila version bumps.
+    # auth box top (650 px box, y = 0). Battery sits below suspend on the
+    # right at y = 100 and only appears on hosts with a battery. Review these
+    # blocks against assets/themes/catppuccin.toml on veila version bumps.
 
     # Auth
     [[visuals.backdrop]]
@@ -217,8 +221,8 @@ let
     height = 100
     halign = "center"
     valign = "center"
-    y = -25
-    x = -290
+    y = 100
+    x = 290
     z = 0
 
     # Poweroff
@@ -278,8 +282,8 @@ let
     height = 100
     halign = "center"
     valign = "center"
-    y = 100
-    x = 290
+    y = -150
+    x = -290
     z = 0
 
     # Weather Temperature
@@ -294,8 +298,8 @@ let
     height = 100
     halign = "center"
     valign = "center"
-    y = 225
-    x = 290
+    y = -25
+    x = -290
     z = 0
 
     # Now Playing Artwork
