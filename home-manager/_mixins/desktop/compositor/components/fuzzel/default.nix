@@ -8,7 +8,16 @@
 let
   inherit (config.noughty) host;
   inherit (host) display;
-  fontSize = if display.primaryIsHighRes || display.primaryIsHighDpi then "30" else "18";
+  # Fuzzel defaults to dpi-aware=auto, so on a scaled output the configured
+  # point size is multiplied by the compositor scale factor. The size boost
+  # exists to compensate for high-resolution panels running at scale 1.0, so
+  # it is skipped when the scale already compensates, otherwise the boost
+  # would double-apply. High-DPI panels keep the boost for their sizing.
+  fontSize =
+    if (display.primaryIsHighRes && display.primaryScale == 1.0) || display.primaryIsHighDpi then
+      "30"
+    else
+      "18";
   fuzzelActions = pkgs.writeShellApplication {
     name = "fuzzel-actions";
     text = "fuzzel --prompt '󰌧 ' --show-actions";

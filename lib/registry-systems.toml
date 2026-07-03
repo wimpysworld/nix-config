@@ -43,6 +43,7 @@ acceleration = "vulkan"
 output = "eDP-1"
 width = 2560
 height = 1600
+scale = 1.25
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
 position = { x = 0, y = 0 }
@@ -204,6 +205,7 @@ wifi = false
 output = "DP-1"
 width = 2560
 height = 2880
+scale = 1.25
 primary = true
 workspaces = [1, 2, 7, 8]
 position = { x = 0, y = 0 }
@@ -212,6 +214,7 @@ position = { x = 0, y = 0 }
 output = "DP-4"
 width = 2560
 height = 2880
+scale = 1.25
 workspaces = [3, 4, 5, 6, 9]
 position = { x = 2560, y = 0 }
 
