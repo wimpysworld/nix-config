@@ -32,9 +32,6 @@
 
   nixpkgs.overlays = [
     (_final: super: {
-      # Prevent mbrola-voices (~650MB) from being on the live media
-      espeak = super.espeak.override { mbrolaSupport = false; };
-
       # Trim firmware classes no installer target can use (~460 MiB
       # uncompressed). GPU, Wi-Fi, Bluetooth, wired NIC, and CPU microcode
       # firmware all stay untouched.
