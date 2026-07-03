@@ -176,6 +176,159 @@ let
     # Show the Caps Lock indicator when active; the theme already sets its
     # colour, so only visibility is needed.
     enabled = true
+
+    [visuals.keyboard]
+    # Hide the xkb layout badge; single-layout systems gain nothing from it.
+    enabled = false
+
+    # Veila's config merge replaces arrays wholesale, so defining any
+    # [[visuals.backdrop]] here discards the theme's entire backdrop array.
+    # The full array from the bundled catppuccin theme is therefore carried
+    # below, with two changes: the keyboard backdrop is dropped (the widget is
+    # disabled above), and the right-hand column is raised 50 px so the
+    # poweroff box top (100 px box, y offset, valign centre) lines up with the
+    # auth box top (650 px box, y = 0). Review these blocks against
+    # assets/themes/catppuccin.toml on veila version bumps.
+
+    # Auth
+    [[visuals.backdrop]]
+    enabled = true
+    name = "auth"
+    mode = "solid"
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 420
+    height = 650
+    halign = "center"
+    valign = "center"
+    x = 0
+    y = 0
+    z = 0
+
+    # Battery
+    [[visuals.backdrop]]
+    name = "battery"
+    show_when = "battery"
+    mode = "solid"
+    enabled = true
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 100
+    height = 100
+    halign = "center"
+    valign = "center"
+    y = -25
+    x = -290
+    z = 0
+
+    # Poweroff
+    [[visuals.backdrop]]
+    enabled = true
+    name = "poweroff"
+    mode = "solid"
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 100
+    height = 100
+    halign = "center"
+    valign = "center"
+    y = -275
+    x = 290
+    z = 0
+
+    # Reboot
+    [[visuals.backdrop]]
+    enabled = true
+    name = "reboot"
+    mode = "solid"
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 100
+    height = 100
+    halign = "center"
+    valign = "center"
+    y = -150
+    x = 290
+    z = 0
+
+    # Suspend
+    [[visuals.backdrop]]
+    enabled = true
+    name = "suspend"
+    mode = "solid"
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 100
+    height = 100
+    halign = "center"
+    valign = "center"
+    y = -25
+    x = 290
+    z = 0
+
+    # Weather Icon
+    [[visuals.backdrop]]
+    name = "weather_icon"
+    show_when = "weather"
+    mode = "solid"
+    enabled = true
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 100
+    height = 100
+    halign = "center"
+    valign = "center"
+    y = 100
+    x = 290
+    z = 0
+
+    # Weather Temperature
+    [[visuals.backdrop]]
+    name = "weather_temperature"
+    show_when = "weather"
+    mode = "solid"
+    enabled = true
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 100
+    height = 100
+    halign = "center"
+    valign = "center"
+    y = 225
+    x = 290
+    z = 0
+
+    # Now Playing Artwork
+    [[visuals.backdrop]]
+    name = "now_playing_artwork"
+    show_when = "now_playing"
+    mode = "solid"
+    enabled = true
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 200
+    height = 200
+    halign = "center"
+    valign = "center"
+    y = 225
+    x = -340
+    z = 0
+
+    # Now Playing Artist/Title
+    [[visuals.backdrop]]
+    name = "now_playing_artist_title"
+    show_when = "now_playing"
+    mode = "solid"
+    enabled = true
+    color = "rgba(24, 24, 37, 1.0)"
+    radius = 20
+    width = 650
+    height = 100
+    halign = "center"
+    valign = "center"
+    y = 405
+    x = -115
+    z = 0
   '';
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
