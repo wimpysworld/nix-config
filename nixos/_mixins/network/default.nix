@@ -116,6 +116,12 @@ in
       inherit trustedInterfaces;
     };
     hostName = host.name;
+    # The live installer never installs over a cellular modem, and ModemManager
+    # pulls libqmi (~90 MiB closure) onto the ISO. NetworkManager only enables
+    # ModemManager via mkDefault, so a plain false is sufficient here.
+    modemmanager = lib.mkIf host.is.iso {
+      enable = false;
+    };
     nameservers = if builtins.hasAttr username userDns then userDns.${username} else fallbackDns;
     networkmanager = lib.mkIf useNetworkManager {
       # Use resolved for DNS resolution; tailscale MagicDNS requires it

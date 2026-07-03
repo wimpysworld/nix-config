@@ -8,7 +8,9 @@
 }:
 let
   flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-  serverRegistryInputs = lib.filterAttrs (
+  # Servers and live ISO media pin only self, nixpkgs, and nixpkgs-unstable,
+  # because pinning every input embeds all input source trees (~700 MiB) in the closure.
+  reducedRegistryInputs = lib.filterAttrs (
     name: _:
     lib.elem name [
       "self"
@@ -16,7 +18,11 @@ let
       "nixpkgs-unstable"
     ]
   ) flakeInputs;
-  registryInputs = if config.noughty.host.is.server then serverRegistryInputs else flakeInputs;
+  registryInputs =
+    if config.noughty.host.is.server || config.noughty.host.is.iso then
+      reducedRegistryInputs
+    else
+      flakeInputs;
 in
 {
   # Only install the docs I use
