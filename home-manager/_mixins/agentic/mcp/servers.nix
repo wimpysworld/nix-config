@@ -11,7 +11,10 @@ let
   # currently invoke this file with `{ inherit config pkgs; }`.
   inherit (pkgs) lib;
   inherit (config.noughty) host;
-  isBane = host.name == "bane";
+  isWorkHost = lib.elem host.name [
+    "bane"
+    "ravi"
+  ];
   chromiumEnabled = config.programs.chromium.enable || (host.is.linux && host.is.workstation);
   firefoxEnabled = config.programs.firefox.enable || (host.is.linux && host.is.workstation);
   browserAutomationEnabled = chromiumEnabled && firefoxEnabled;
@@ -217,7 +220,7 @@ rec {
       };
     };
   }
-  // lib.optionalAttrs isBane {
+  // lib.optionalAttrs isWorkHost {
     linear = {
       # Official hosted Linear MCP server. It uses Streamable HTTP with OAuth
       # 2.1 dynamic client registration by default; Linear also supports

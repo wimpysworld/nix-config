@@ -20,6 +20,7 @@ These computers are managed by this Nix flake ❄️
 | :---------: | :---------------------------: | :----------------------------: | :---: | :-------------------------: | :----------------------: | :----: | :-: | :---: |
 |  `skrye`    | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️  | ❄️  |  ✅   |
 |  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  | ✅   |
+|   `ravi`    |        [Framework 13]         |    [AMD Ryzen AI 9 HX 370]     | 96GB  |       AMD Radeon 890M       |                          |  💻️   | ❄️  |  ✅   |
 |   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  ✅   |
 |  `sidious`  |      [ThinkPad P1 Gen 1]      |      [Intel Xeon E-2176M]      | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630  | 💻️🎭️  | ❄️  |  ✅   |
 | `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️  | 🪟  |  ✅   |
@@ -145,6 +146,7 @@ The full noughty option reference, helper functions, and usage patterns are docu
 │  ├── felkor
 │  ├── malak
 │  ├── nihilus
+│  ├── ravi
 │  ├── revan
 │  ├── shaa
 │  ├── sidious
@@ -388,6 +390,7 @@ Some applications require manual configuration to apply the correct theme.
 [TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10#kf
 [ROG Crosshair VIII Impact]: https://rog.asus.com/uk/motherboards/rog-crosshair/rog-crosshair-viii-impact-model/
 [B360 HD3P-LM]: https://www.gigabyte.com/Motherboard/B360-HD3P-rev-10
+[Framework 13]: https://frame.work/gb/en/laptop13
 [Framework 16]: https://frame.work/gb/en/laptop16
 [ThinkPad P1 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadp/thinkpad-p1/22ws2wpp101
 [ThinkPad Z13 Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadz/thinkpad-z13-(13-inch-amd)/21d20012uk
@@ -413,6 +416,7 @@ Some applications require manual configuration to apply the correct theme.
 [AMD Ryzen 9 5950X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5950x
 [AMD Ryzen 9 5900X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5900x
 [AMD Ryzen 7 7940HS]: https://www.amd.com/en/products/processors/laptop/ryzen/7000-series/amd-ryzen-9-7940hs.html
+[AMD Ryzen AI 9 HX 370]: https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-9-hx-370.html
 [AMD Ryzen 5 PRO 6650U]: https://www.amd.com/en/products/apu/amd-ryzen-5-pro-6650u
 [AMD Ryzen 5 PRO 5650U]: https://www.techpowerup.com/cpu-specs/ryzen-5-pro-5650u.c2773
 [AMD Ryzen 5 PRO 4650U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen-pro/ryzen-pro-4000-series/amd-ryzen-5-pro-4650u.html
