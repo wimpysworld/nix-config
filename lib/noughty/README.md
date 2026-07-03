@@ -362,6 +362,7 @@ All helpers are accessed as `noughtyLib.<name>` in any module. `noughtyLib` is i
 | `userHasTags` | `[str] -> bool` | User has *all* listed tags. |
 | `hostHasAnyTag` | `[str] -> bool` | Host has *at least one* listed tag. |
 | `userHasAnyTag` | `[str] -> bool` | User has *at least one* listed tag. |
+| `backgroundResolution` | `str -> str` | Map a `"WIDTHxHEIGHT"` resolution to the nearest available background size (e.g. `"2880x1920"` -> `"2560x1600"`); exact matches pass through. |
 
 All closures capture `hostName`, `userName`, `hostTags`, and `userTags` from `config.noughty.*` at evaluation time.
 

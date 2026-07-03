@@ -36,4 +36,15 @@
 
   # Check whether the user has at least one of the listed tags.
   userHasAnyTag = ts: lib.any (t: lib.elem t userTags) ts;
+
+  # Map a display resolution string ("WIDTHxHEIGHT") to the nearest available
+  # background image size. Backgrounds ship at fixed sizes; resolutions without
+  # an exact match borrow the closest aspect-ratio equivalent.
+  backgroundResolution =
+    res:
+    {
+      # 3:2 laptop panels (e.g. Framework 13) use the 16:10 image.
+      "2880x1920" = "2560x1600";
+    }
+    .${res} or res;
 }

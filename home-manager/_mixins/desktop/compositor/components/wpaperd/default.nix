@@ -1,9 +1,15 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  noughtyLib,
+  ...
+}:
 let
   inherit (config.noughty) host;
   inherit (host) displays;
-  # Build a resolution string from a display's width and height.
-  resolution = d: "${toString d.width}x${toString d.height}";
+  # Build a resolution string from a display's width and height, mapped to an
+  # available background image size.
+  resolution = d: noughtyLib.backgroundResolution "${toString d.width}x${toString d.height}";
   # The first display gets a Catppuccin wallpaper; subsequent displays get Colorway.
   wallpaperVariant = i: if i == 0 then "Catppuccin" else "Colorway";
   wallpaperPath = i: d: "/etc/backgrounds/${wallpaperVariant i}-${resolution d}.png";
@@ -26,6 +32,11 @@ lib.mkIf (host.is.linux && host.is.workstation) {
   services.wpaperd = {
     enable = true;
     settings = {
+      # wpaperd's "center" is its aspect-preserving cover mode: the renderer
+      # crops the image to the display aspect ratio around the centre and
+      # stretches the result over the whole surface (BackgroundMode::Center in
+      # wpaperd's renderer), so every output fills regardless of image size or
+      # output scale. wpaperd 1.2.2 has no separate "fill" mode.
       default.mode = "center";
     }
     // (

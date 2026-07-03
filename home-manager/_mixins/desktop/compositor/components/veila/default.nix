@@ -31,7 +31,7 @@ let
   # Mirror the wpaperd per-display mapping exactly: index 0 is the primary and
   # gets a Catppuccin wallpaper; subsequent displays get Colorway. Resolution and
   # output name come from the same noughty display fields wpaperd reads.
-  resolution = d: "${toString d.width}x${toString d.height}";
+  resolution = d: noughtyLib.backgroundResolution "${toString d.width}x${toString d.height}";
   wallpaperVariant = i: if i == 0 then "Catppuccin" else "Colorway";
   wallpaperPath = i: d: "/etc/backgrounds/${wallpaperVariant i}-${resolution d}.png";
   # Global fallback: the primary display's Catppuccin wallpaper, or the 1080p
@@ -57,11 +57,14 @@ let
 
     [background]
     # Use the same per-monitor wallpapers as the desktop instead of the theme's
-    # radial scene. "file" mode overrides the catppuccin theme default; "center"
-    # mirrors wpaperd's center mode for the resolution-matched PNGs. The global
-    # path is the fallback for any output without an explicit block below.
+    # radial scene. "file" mode overrides the catppuccin theme default. Veila
+    # renders each lock surface supersampled (logical size times ceil(scale)),
+    # so "center" under-fills any output with scale > 1; "fill" scales the
+    # resolution-matched image to cover the buffer while preserving aspect,
+    # and an image whose aspect matches exactly gets no crop. The global path
+    # is the fallback for any output without an explicit block below.
     mode = "file"
-    scaling = "center"
+    scaling = "fill"
     path = "${fallbackPath}"
 
     ${backgroundOutputs}

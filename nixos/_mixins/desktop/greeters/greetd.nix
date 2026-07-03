@@ -52,7 +52,7 @@ let
     let
       res = host.display.primaryResolution;
     in
-    if res != "" then res else "1920x1080";
+    if res != "" then noughtyLib.backgroundResolution res else "1920x1080";
   # Kanshi profile for regreet: disable non-primary displays, enable primary.
   # Order matters: Cage -m last uses the last enabled output.
   # Single-monitor hosts need no kanshi profile; Cage handles one output fine.
