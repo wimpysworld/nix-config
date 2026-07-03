@@ -1,9 +1,6 @@
 _:
 let
-  # https://gist.github.com/braindevices/fde49c6a8f6b9aaf563fb977562aafec
-  # Use ls -la /dev/disk/by-id to find the correct names.
-  # Replace with the /dev/disk/by-id name once the hardware is to hand.
-  nvme0 = "/dev/nvme0n1";
+  nvme0 = "/dev/disk/by-id/nvme-WD_BLACK_SN7100_2TB_251663802244";
   # zstd level 1 compresses better than lzo at similar speed.
   defaultBtrfsOpts = [
     "compress=zstd:1"
