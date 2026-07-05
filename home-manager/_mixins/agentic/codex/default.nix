@@ -304,6 +304,12 @@ let
     model = "gpt-5.5";
     model_reasoning_effort = "high";
 
+    # Bound Codex subagent fan-out.
+    agents = {
+      max_threads = 10;
+      max_depth = 1;
+    };
+
     # Apply no vendor personality. The Communication Rules are the persona for
     # this setup, expanded into Codex base instructions via the
     # `<!-- COMMUNICATION_RULES -->` marker and enforced by the tripwire gate.
