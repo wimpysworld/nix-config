@@ -97,7 +97,23 @@ lib.mkIf host.is.workstation {
       enableBashIntegration = false;
       enableZshIntegration = false;
       settings = {
+        check_for_updates = false;
+        
         color_scheme = "Catppuccin Mocha";
+        # Cursor trail from wezterm PR 7737, carried via the overlay.
+        cursor_smear = true;
+        cursor_smear_gradient = true;
+        cursor_trail_size = 1.0;
+        cursor_trail_style = "PixieDust";
+        cursor_animation_duration = 0.575;
+        
+        default_cursor_style = "BlinkingBlock";
+        animation_fps = 15;
+        cursor_blink_ease_in = "EaseIn";
+        cursor_blink_ease_out = "EaseOut";
+        cursor_blink_rate = 750;
+        
+        hide_tab_bar_if_only_one_tab = true;
         colors = {
           tab_bar = {
             inactive_tab_edge = getColor "surface0";
