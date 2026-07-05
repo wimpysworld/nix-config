@@ -1,5 +1,5 @@
 # Harper - privacy-first grammar and spelling checking.
-# Centralised configuration for editor and coding-agent integrations.
+# Centralised configuration for editor integrations.
 {
   config,
   lib,
@@ -25,83 +25,9 @@ let
       Dashes = false;
     };
   };
-
-  extensionToLanguage = {
-    ".adoc" = "asciidoc";
-    ".asciidoc" = "asciidoc";
-    ".c" = "c";
-    ".cc" = "cpp";
-    ".clj" = "clojure";
-    ".cljc" = "clojure";
-    ".cljs" = "clojure";
-    ".cmake" = "cmake";
-    ".cpp" = "cpp";
-    ".cs" = "csharp";
-    ".cxx" = "cpp";
-    ".dart" = "dart";
-    ".go" = "go";
-    ".groovy" = "groovy";
-    ".h" = "c";
-    ".hs" = "haskell";
-    ".html" = "html";
-    ".java" = "java";
-    ".js" = "javascript";
-    ".jsx" = "javascriptreact";
-    ".kt" = "kotlin";
-    ".kts" = "kotlin";
-    ".lhs" = "lhaskell";
-    ".lua" = "lua";
-    ".md" = "markdown";
-    ".mdx" = "markdown";
-    ".nix" = "nix";
-    ".org" = "org";
-    ".php" = "php";
-    ".ps1" = "powershell";
-    ".py" = "python";
-    ".rb" = "ruby";
-    ".rs" = "rust";
-    ".scala" = "scala";
-    ".sh" = "shellscript";
-    ".sol" = "solidity";
-    ".swift" = "swift";
-    ".tex" = "tex";
-    ".toml" = "toml";
-    ".ts" = "typescript";
-    ".tsx" = "typescriptreact";
-    ".txt" = "plaintext";
-    ".typ" = "typst";
-    ".zig" = "zig";
-  };
-
-  extensions = lib.attrNames extensionToLanguage;
-
-  # Claude Code binds one LSP server per extension, so Harper is restricted to
-  # prose and markup files to leave code extensions for native language servers.
-  proseExtensionToLanguage = {
-    ".adoc" = "asciidoc";
-    ".asciidoc" = "asciidoc";
-    ".md" = "markdown";
-    ".mdx" = "markdown";
-    ".org" = "org";
-    ".tex" = "tex";
-    ".txt" = "plaintext";
-    ".typ" = "typst";
-  };
 in
 {
   home.packages = lib.optional lspEnabled pkgs.harper;
-
-  # Claude Code - LSP server plugin.
-  claude-code.lspServers = lib.mkIf (lspEnabled && config.programs.claude-code.enable) {
-    harper = {
-      command = harperLs;
-      args = [ "--stdio" ];
-      extensionToLanguage = proseExtensionToLanguage;
-      initializationOptions = {
-        "harper-ls" = harperSettings;
-      };
-    };
-  };
 
   # Fresh Editor - universal grammar and spelling LSP.
   fresh.settings.universal_lsp.harper = lib.mkIf lspEnabled {
@@ -112,20 +38,6 @@ in
     only_features = [ "diagnostics" ];
     initialization_options = {
       "harper-ls" = harperSettings;
-    };
-  };
-
-  # OpenCode - LSP server.
-  programs.opencode = lib.mkIf (lspEnabled && config.programs.opencode.enable) {
-    settings.lsp.harper = {
-      command = [
-        harperLs
-        "--stdio"
-      ];
-      inherit extensions;
-      initialization = {
-        "harper-ls" = harperSettings;
-      };
     };
   };
 
