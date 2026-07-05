@@ -251,6 +251,12 @@ let
     # `hasTrustDialogAccepted: false`, which disables the statusline, the
     # `fileSuggestion` finder, and `@` mentions. See upstream #37780.
     CLAUDE_CODE_HIDE_ACCOUNT_INFO = "1";
+    # Keep the real terminal cursor visible instead of Claude Code's own
+    # virtual cursor. Accessibility mode moves the hardware cursor normally,
+    # which lets wezterm's cursor trail and smear effect (PR 7737) animate it.
+    # Without this, Claude Code hides the real cursor and wezterm has nothing
+    # to trail. See https://github.com/wezterm/wezterm/pull/7737#issuecomment-4250126257
+    CLAUDE_CODE_ACCESSIBILITY = "1";
   };
   claudeEnvironmentExports = lib.concatLines (
     lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") claudeEnvironment

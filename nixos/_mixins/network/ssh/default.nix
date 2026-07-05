@@ -13,6 +13,7 @@ in
   environment = lib.mkIf (!host.is.iso) {
     systemPackages = with pkgs; [
       kitty.terminfo
+      wezterm.terminfo
       ssh-to-age
     ];
   };

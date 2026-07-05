@@ -68,10 +68,13 @@ in
         unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
       fish.loginShellInit = ''
-        # Only show the banner interactively. A non-interactive `fish -lc`
-        # (e.g. Codex command hooks) must not print to stdout, or it
-        # corrupts the hook's JSON output.
-        if status is-interactive
+        # Only show the banner on interactive SSH logins. Gating on
+        # SSH_CONNECTION keeps it off local terminals that start a login
+        # shell (e.g. wezterm), while still greeting remote connections on
+        # any terminal. A non-interactive `fish -lc` (e.g. Codex command
+        # hooks) must not print to stdout, or it corrupts the hook's JSON
+        # output.
+        if status is-interactive; and set -q SSH_CONNECTION
             ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
         end
       '';
