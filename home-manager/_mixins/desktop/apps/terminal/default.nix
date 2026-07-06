@@ -21,6 +21,7 @@ lib.mkIf host.is.workstation {
   # Enable the Catppuccin theme
   catppuccin = {
     kitty.enable = config.programs.kitty.enable;
+    wezterm.enable = config.programs.wezterm.enable;
   };
 
   # User specific dconf terminal-related settings. Nautilus is only installed
@@ -99,25 +100,43 @@ lib.mkIf host.is.workstation {
       settings = {
         check_for_updates = false;
 
-        color_scheme = "Catppuccin Mocha";
         # Cursor trail from wezterm PR 7737, carried via the overlay.
+        # https://github.com/wezterm/wezterm/pull/7737
         cursor_smear = true;
         cursor_smear_gradient = true;
         cursor_trail_size = 1.0;
         cursor_trail_style = "PixieDust";
         cursor_animation_duration = 0.575;
+        # Particle opacity, 1.0 = fully opaque (default: 0.6)
+        cursor_vfx_opacity = 0.475;
+        # How long particles persist in seconds (default: 0.35)
+        cursor_vfx_particle_lifetime = 0.375;
+        # Particles spawned per cell of movement (default: 0.7)
+        cursor_vfx_particle_density = 0.725;
+        # Initial particle speed in cells/sec (default: 8.0)
+        cursor_vfx_particle_speed = 8.0;
+        # Particle diameter as a fraction of cell width (default: 0.5)
+        cursor_vfx_particle_size = 0.5;
 
         default_cursor_style = "BlinkingBlock";
-        animation_fps = 15;
+        animation_fps = 30;
         cursor_blink_ease_in = "EaseIn";
         cursor_blink_ease_out = "EaseOut";
         cursor_blink_rate = 750;
-        custom_block_glyphs = false;
+
         hide_tab_bar_if_only_one_tab = true;
         scrollback_lines = 65536;
         term = "wezterm";
+        window_decorations = if hideWindowDecorations then "NONE" else "TITLE | RESIZE";
+        window_padding = {
+          left = "2px";
+          right = "2px";
+          top = "2px";
+          bottom = "2px";
+        };
 
         colors = {
+          cursor_border = getColor "flamingo";
           tab_bar = {
             inactive_tab_edge = getColor "surface0";
             active_tab = {
