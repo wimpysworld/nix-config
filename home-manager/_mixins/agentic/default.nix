@@ -30,7 +30,7 @@ in
       agentPackages.cubic
     ]
     ++ lib.optionals browserAutomationEnabled [
-      agentPackages.agent-browser
+      # agentPackages.agent-browser
     ];
   };
 }
