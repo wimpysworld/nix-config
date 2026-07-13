@@ -29,6 +29,11 @@ let
         "${profileDirectory}/**"
         "${config.xdg.configHome}/sops-nix"
         "${config.xdg.configHome}/sops-nix/**"
+
+        # Git reads these files when signing commits and verifying SSH signatures.
+        "${homeDirectory}/.ssh/id_rsa"
+        "${homeDirectory}/.ssh/id_rsa.pub"
+        "${homeDirectory}/.ssh/allowed_signers"
       ];
       allowExecute = [
         # Keep the Nix store executable as one tree. Binding a single store
@@ -101,11 +106,10 @@ let
       ];
 
       denyRead = [
-        "/etc/passwd"
         "/etc/shadow"
 
-        # SSH private keys and config
-        "~/.ssh/**"
+        # Keep every other SSH child and subtree unreadable.
+        "~/.ssh/{a,al,all,allo,allow,allowe,allowed,allowed_,allowed_s,allowed_si,allowed_sig,allowed_sign,allowed_signe,allowed_signer,i,id,id_,id_r,id_rs,[^ai]*,a[^l]*,al[^l]*,all[^o]*,allo[^w]*,allow[^e]*,allowe[^d]*,allowed[^_]*,allowed_[^s]*,allowed_s[^i]*,allowed_si[^g]*,allowed_sig[^n]*,allowed_sign[^e]*,allowed_signe[^r]*,allowed_signer[^s]*,allowed_signers?*,i[^d]*,id[^_]*,id_[^r]*,id_r[^s]*,id_rs[^a]*,id_rsa.,id_rsa.p,id_rsa.pu,id_rsa[^.]*,id_rsa.[^p]*,id_rsa.p[^u]*,id_rsa.pu[^b]*,id_rsa.pub?*}"
 
         # GPG keys
         "~/.gnupg/**"
@@ -282,7 +286,6 @@ let
         "just switch"
         "just switch-home"
         "just switch-host"
-        "git push"
         "git reset"
         "git clean"
         "git rebase"

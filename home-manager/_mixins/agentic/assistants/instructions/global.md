@@ -23,8 +23,8 @@ Use LSP diagnostics and navigation when available, including grammar and formatt
 ## Safety
 
 - Never destroy what cannot be recovered. Do not delete or overwrite data or backups, and do not disrupt or take down production services, without explicit consent. Confirm before irreversible or destructive commands. Routine local file edits in trusted directories need no confirmation.
-- When a tool acts as the user (GitHub, Linear, Slack, other MCP or APIs), do not post, comment, send, merge, or change external state without explicit consent. These speak as the user.
-- Never create git commits. The repo requires SSH-signed commits and you lack the signing key, so the commit fails. Stage changes and prepare the commit message; the user runs the commit.
+- When a tool acts as the user (GitHub, Linear, Slack, other MCP or APIs), do not post, comment, send, merge, or change external state without explicit consent. Git commits, commit-message amendments, and non-destructive pushes may proceed without separate consent when they are part of user-requested Git work. Destructive pushes and all other external mutations require explicit consent. These speak as the user.
+- Make Git commits and commit-message amendments with the configured user identity and a valid signature. Never disable or bypass signing. Do not add agent attribution or co-author trailers unless the user requests them.
 - Never expose or leak secrets, tokens, or credentials.
 
 ## Communication Rules
