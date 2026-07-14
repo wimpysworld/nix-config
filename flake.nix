@@ -10,7 +10,7 @@
     nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Shared transitive inputs; most flake-utils and blueprint depend on nix-systems/default.
+    # Shared transitive inputs; most flake-utils users depend on nix-systems/default.
     systems.url = "github:nix-systems/default";
     flake-utils.url = "github:numtide/flake-utils";
     flake-utils.inputs.systems.follows = "systems";
@@ -24,7 +24,6 @@
     llm-agents.url = "github:numtide/llm-agents.nix";
     llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
-    llm-agents.inputs.blueprint.inputs.systems.follows = "systems";
     fresh.url = "github:sinelaw/fresh";
     fresh.inputs.nixpkgs.follows = "nixpkgs-unstable";
     fresh.inputs.flake-parts.follows = "flake-parts";
