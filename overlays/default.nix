@@ -11,17 +11,17 @@
     final: prev:
     let
       paseoPackages = inputs.paseo.packages.${prev.stdenv.hostPlatform.system} or { };
-      # Only the Paseo daemon and CLI come from the upstream Paseo flake now; the
-      # desktop client is sourced separately from the llm-agents flake below.
+      # Paseo packages come from the upstream Paseo flake; the desktop client
+      # reuses the patched daemon npm closure below.
       #
-      # The v0.1.103 tag ships a wrong npm-deps fixed-output hash, which breaks
+      # The v0.1.107 tag ships a wrong npm-deps fixed-output hash, which breaks
       # the build with a hash mismatch. Correct the hash here until the next
       # upstream release carries a good one.
       fixPaseoNpmDeps =
         pkg:
         pkg.overrideAttrs (oldAttrs: {
           npmDeps = oldAttrs.npmDeps.overrideAttrs {
-            outputHash = "sha256-o+VzG7lK0qpyUXF4F5Hk08ooW5CPoZSsOG7DyIReUKQ=";
+            outputHash = "sha256-A9/bukljfvGyfv6TTP8xfdDA8+J2WLzsUiwqqHisfN8=";
           };
         });
       paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
@@ -93,12 +93,14 @@
         else
           throw "claude-desktop is only available on Linux";
 
-      # The Paseo desktop client comes from the llm-agents flake for its numtide
-      # cache, so it tracks that pin independently of the upstream paseo daemon.
-      # https://github.com/numtide/llm-agents.nix
+      # The upstream desktop client reuses the patched paseo npm closure above.
+      # The llm-agents package builds a separate large npm-deps derivation that
+      # is brittle against registry fetch failures.
       paseo-desktop =
         if final.stdenv.hostPlatform.isLinux then
-          inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.paseo-desktop
+          inputs.paseo.packages.${final.stdenv.hostPlatform.system}.desktop.override {
+            inherit (final) paseo;
+          }
         else
           throw "paseo-desktop is only available on Linux";
 
