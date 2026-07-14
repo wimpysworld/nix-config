@@ -23,6 +23,7 @@ let
   # so current_exe re-exec keeps working after Home Manager generation changes.
   codexPackage = inputs.llm-agents.packages.${system}.codex;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceGit = import ../fence/git.nix;
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
     if !(host.is.linux && fencedEnabled) then
@@ -110,6 +111,7 @@ let
     ++ fenceLogging.runtimeInputs;
     text = ''
       ${fenceWaylandBridge.setupShell}
+      ${fenceGit.setupShell}
       ${fenceChromium.setupShell}
 
       fence_log_agent="codex"
