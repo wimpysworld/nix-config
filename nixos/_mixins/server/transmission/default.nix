@@ -22,7 +22,7 @@ lib.mkIf
       enable = true;
       home = "/srv/transmission";
       openFirewall = false;
-      openRPCPort = true;
+      openRPCPort = false;
       openPeerPorts = false;
       package = pkgs.transmission_4;
       performanceNetParameters = true;
@@ -68,6 +68,10 @@ lib.mkIf
         watch-dir-enabled = true;
       };
     };
+
+    networking.firewall.extraCommands = ''
+      iptables -A nixos-fw -p tcp -s 10.10.10.0/24 --dport ${toString config.services.transmission.settings.rpc-port} -j nixos-fw-accept
+    '';
 
     sops = {
       secrets = {
