@@ -148,6 +148,11 @@ let
       useDefaults = true;
       runtimeExecPolicy = "path";
       acceptSharedBinaryCannotRuntimeDeny = [
+        # Determinate Nix uses one binary for `nix` and the legacy
+        # `nix-collect-garbage` command. Runtime-masking the denied legacy
+        # command also masks `nix`, which prevents all flake development.
+        "nix-collect-garbage"
+
         # Nixpkgs coreutils is a multicall binary. Runtime-masking any of
         # these would also mask `env`, breaking common shebangs.
         "chroot"

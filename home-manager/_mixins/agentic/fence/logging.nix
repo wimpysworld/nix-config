@@ -5,15 +5,20 @@
 # `${XDG_STATE_HOME:-$HOME/.local/state}/fence`, picks a per-launch filename
 # of the form `<agent>-<timestamp>-<pid>.log`, refreshes a
 # `<agent>-current.log` symlink, and appends `-m --fence-log-file <file>` to
-# `fence_args`. It also prepares the `direnv exec` prefix used to load the
-# project devShell inside Fence. The agent name is taken from the wrapper-local
-# variable `fence_log_agent`; only literal `claude|codex|opencode|pi` should be
-# set.
+# `fence_args`. It also prepares the `direnv exec` prefix and a `BASH_ENV` hook
+# used to load the project devShell inside Fence. The agent name is taken from
+# the wrapper-local variable `fence_log_agent`; only literal
+# `claude|codex|opencode|pi` should be set.
 #
 # Permissions: the directory is created 0700; Fence opens the file 0600 via
 # the flag path, so the helper deliberately does not pre-create the file.
 { pkgs }:
 
+let
+  fenceDirenvBashEnv = pkgs.writeText "fence-direnv-bash-env" ''
+    eval "$(BASH_ENV= ${pkgs.lib.getExe pkgs.direnv} export bash)"
+  '';
+in
 {
   runtimeInputs = [
     pkgs.coreutils
@@ -54,6 +59,7 @@
       exec
       "$PWD"
       ${pkgs.lib.getExe' pkgs.coreutils "env"}
+      "BASH_ENV=${fenceDirenvBashEnv}"
     )
   '';
 }
