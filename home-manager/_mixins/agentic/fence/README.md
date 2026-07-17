@@ -17,8 +17,10 @@ The Fence mixin owns the shared policy and runtime dependencies. Each fenced
 command is declared by the corresponding agent mixin so it appears only when
 the standard agent entry point is also installed.
 
-The wrappers use `fence -- <agent>` so any following flags are passed to the
-agent rather than parsed as Fence flags. `claude-fenced` runs Claude with
+The wrappers use `fence -- direnv exec "$PWD" env <agent>` so project devShell
+tools are available and any following flags are passed to the agent rather than
+parsed as Fence flags. Direnv runs inside Fence, so project-controlled `.envrc`
+files never execute outside the sandbox. `claude-fenced` runs Claude with
 `--dangerously-skip-permissions`; Fence is the permission boundary for that
 entry point. `codex-fenced` runs Codex with
 `--dangerously-bypass-approvals-and-sandbox`, leaving Fence as the only sandbox
@@ -71,15 +73,8 @@ keeps the generated config reviewable: full outbound network access is expressed
 as `allowedDomains = ["*"]`, with no inherited domain deny-list. Filesystem and
 command policy still apply.
 
-The Home Manager mixin builds Fence from the `llm-agents` flake input with a
-single local override in [`package.nix`](./package.nix). The override rewrites
-`linuxArgvExecMaxArgs` in `internal/sandbox/runtime_exec_argv_linux.go` to
-`4096`, raising the per-process argv vector cap that Fence's Linux argv
-runtime-exec policy will inspect. The upstream default is too low for
-long-running native-toolchain builds (C, C++, Go, Rust), whose compile and
-link invocations exceed Fence's argv cap and would otherwise be rejected
-before the policy could decide; raising it lets those builds complete under
-the policy.
+The Home Manager mixin uses the Fence package from the `llm-agents` flake
+input without local source patches.
 
 The launch directory is writable through Fence's `"."` path rule. This matters
 on Linux because Fence may otherwise re-bind the current project read-only while
@@ -88,10 +83,12 @@ reconstructing `/home` across mount boundaries.
 Device handling is pinned to Fence's `minimal` mode for deterministic Linux
 sandbox behaviour.
 
-Command runtime enforcement uses Fence's `argv` mode on Linux. This lets Fence
-inspect descendant process arguments, so multi-token denies such as `git push`,
-`just switch-home`, `nix store delete`, and `nh home switch` remain enforced
-after agent startup.
+Command runtime enforcement uses Fence's `path` mode. This permits
+multithreaded tools such as Nix and Go to execute child processes. Single-token
+executable denies remain runtime-enforced. Multi-token denies such as `git
+push`, `just switch-home`, `nix store delete`, and `nh home switch` remain
+preflight-enforced only when they are the initial fenced command. Fence cannot
+enforce them against commands spawned by an agent in this mode.
 
 Some coreutils-backed denies are listed in
 `acceptSharedBinaryCannotRuntimeDeny`. They remain preflight-denied, but are not

@@ -146,7 +146,7 @@ let
     };
     command = {
       useDefaults = true;
-      runtimeExecPolicy = "argv";
+      runtimeExecPolicy = "path";
       acceptSharedBinaryCannotRuntimeDeny = [
         # Nixpkgs coreutils is a multicall binary. Runtime-masking any of
         # these would also mask `env`, breaking common shebangs.

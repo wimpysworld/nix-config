@@ -139,7 +139,7 @@ let
       # Exa MCP server. The env var wins on conflicting keys, so the denies are
       # named here explicitly.
       export OPENCODE_PERMISSION='{"*":"allow","webfetch":"deny","websearch":"deny"}'
-      fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
+      fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
     '';
   };
 
