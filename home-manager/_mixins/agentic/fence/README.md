@@ -19,8 +19,11 @@ the standard agent entry point is also installed.
 
 The wrappers use `fence -- direnv exec "$PWD" env <agent>` so project devShell
 tools are available and any following flags are passed to the agent rather than
-parsed as Fence flags. Direnv runs inside Fence, so project-controlled `.envrc`
-files never execute outside the sandbox. `claude-fenced` runs Claude with
+parsed as Fence flags. They also set `BASH_ENV` to load direnv for each
+non-interactive Bash command. This activates the environment for the command's
+working directory when an agent server starts elsewhere and later enters a
+project. Direnv runs inside Fence, so project-controlled `.envrc` files never
+execute outside the sandbox. `claude-fenced` runs Claude with
 `--dangerously-skip-permissions`; Fence is the permission boundary for that
 entry point. `codex-fenced` runs Codex with
 `--dangerously-bypass-approvals-and-sandbox`, leaving Fence as the only sandbox
@@ -90,10 +93,12 @@ push`, `just switch-home`, `nix store delete`, and `nh home switch` remain
 preflight-enforced only when they are the initial fenced command. Fence cannot
 enforce them against commands spawned by an agent in this mode.
 
-Some coreutils-backed denies are listed in
-`acceptSharedBinaryCannotRuntimeDeny`. They remain preflight-denied, but are not
-runtime-masked because Nixpkgs coreutils is a multicall binary and masking it
-also masks essentials such as `env`.
+The `nix-collect-garbage` deny and some coreutils-backed denies are listed in
+`acceptSharedBinaryCannotRuntimeDeny`. Fence checks them only when they are the
+initial fenced command. It does not runtime-mask them because Determinate Nix
+uses one binary for `nix` and its legacy commands, while Nixpkgs coreutils uses
+one binary for tools such as `env`. Masking either shared binary blocks required
+development commands.
 
 Git commits and workflow edits are allowed. Fence has no approval or ask mode.
 Commands are allowed or denied.
