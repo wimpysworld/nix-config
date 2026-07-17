@@ -77,7 +77,10 @@ as `allowedDomains = ["*"]`, with no inherited domain deny-list. Filesystem and
 command policy still apply.
 
 The Home Manager mixin uses the Fence package from the `llm-agents` flake
-input without local source patches.
+input with a local shared-binary probe for `nix`. Fence only honours
+`acceptSharedBinaryCannotRuntimeDeny` after it detects a collision with one of
+its critical command names. The probe lets Fence detect that Determinate Nix's
+legacy commands resolve to the same binary as `nix`.
 
 The launch directory is writable through Fence's `"."` path rule. This matters
 on Linux because Fence may otherwise re-bind the current project read-only while
