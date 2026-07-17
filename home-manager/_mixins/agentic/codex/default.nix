@@ -125,7 +125,7 @@ let
 
       # Pass the bypass through as an env token so the launcher sees the real
       # first user argument and resumes the most recent session by default.
-      fence "''${fence_args[@]}" -- "''${fence_env[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"
+      fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"
     '';
   };
   codexTripwireCorrectionPromptFile = pkgs.writeTextFile {

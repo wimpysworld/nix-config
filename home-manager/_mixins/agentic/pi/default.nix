@@ -274,7 +274,7 @@ let
       ${fenceLogging.setupShell}
 
       export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
-      fence "''${fence_args[@]}" -- "''${fence_env[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
+      fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
     '';
   };
 
