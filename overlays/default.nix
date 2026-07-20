@@ -14,14 +14,14 @@
       # Paseo packages come from the upstream Paseo flake; the desktop client
       # reuses the patched daemon npm closure below.
       #
-      # The v0.1.107 tag ships a wrong npm-deps fixed-output hash, which breaks
+      # The v0.1.108 tag ships a wrong npm-deps fixed-output hash, which breaks
       # the build with a hash mismatch. Correct the hash here until the next
       # upstream release carries a good one.
       fixPaseoNpmDeps =
         pkg:
         pkg.overrideAttrs (oldAttrs: {
           npmDeps = oldAttrs.npmDeps.overrideAttrs {
-            outputHash = "sha256-A9/bukljfvGyfv6TTP8xfdDA8+J2WLzsUiwqqHisfN8=";
+            outputHash = "sha256-TiKnZMEypZYb6GGj189XUeb77j6voamTs6IPJye0UyE=";
           };
         });
       paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
@@ -65,13 +65,6 @@
       inherit (final.unstable) bun;
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) lima;
-
-      nh-unwrapped = prev.nh-unwrapped.overrideAttrs (oldAttrs: {
-        postPatch = (oldAttrs.postPatch or "") + ''
-          substituteInPlace crates/nh-search/src/search.rs \
-            --replace-fail "latest-46-" "latest-48-"
-        '';
-      });
 
       # Claude Code tracks the llm-agents flake on Linux (pinned alongside the
       # other agent tooling there) and unstable nixpkgs elsewhere.
