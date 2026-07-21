@@ -176,15 +176,15 @@
       # trail and smear effects, until it lands upstream. Remove the patch after
       # the next wezterm bump that includes the change.
       # https://github.com/wezterm/wezterm/pull/7737
-      wezterm = final.unstable.wezterm.overrideAttrs (oldAttrs: {
-        patches = (oldAttrs.patches or [ ]) ++ [
-          (final.fetchpatch {
-            name = "wezterm-cursor-trail-smear-pr7737.patch";
-            url = "https://patch-diff.githubusercontent.com/raw/wezterm/wezterm/pull/7737.diff";
-            hash = "sha256-JoYBUmOE0paR/oIfE2YS5xHlTXXHFwbJVsg7KqGFmrs=";
-          })
-        ];
-      });
+      #wezterm = final.unstable.wezterm.overrideAttrs (oldAttrs: {
+      #  patches = (oldAttrs.patches or [ ]) ++ [
+      #    (final.fetchpatch {
+      #      name = "wezterm-cursor-trail-smear-pr7737.patch";
+      #      url = "https://patch-diff.githubusercontent.com/raw/wezterm/wezterm/pull/7737.diff";
+      #      hash = "sha256-JoYBUmOE0paR/oIfE2YS5xHlTXXHFwbJVsg7KqGFmrs=";
+      #    })
+      #  ];
+      #});
 
       # Override rofi-unwrapped to remove desktop entries (this is where they come from!)
       rofi-unwrapped = prev.rofi-unwrapped.overrideAttrs (oldAttrs: {
