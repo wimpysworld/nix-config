@@ -44,7 +44,7 @@ lib.mkIf
         };
         fonts = {
           family = "FiraCode Nerd Font Mono";
-          size = 16;
+          size = 21.333333;
         };
         window.decorations = if hideWindowDecorations then "Disabled" else "Enabled";
       }

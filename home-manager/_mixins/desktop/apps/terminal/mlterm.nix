@@ -24,10 +24,13 @@ lib.mkIf
 
         ".mlterm/main".text = ''
           encoding=UTF-8
-          fontsize=16
+          fontsize=26
+          letter_space=-1
+          line_space=-1
           type_engine=cairo
           use_anti_alias=true
           use_bold_font=true
+          use_clipping=false
           use_italic_font=true
 
           bg_color=${getColor "base"}
