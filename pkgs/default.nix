@@ -17,6 +17,7 @@ pkgs: {
 
   # Local package overrides
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
+  wezterm = pkgs.callPackage ./wezterm { };
   wolfictl = pkgs.callPackage ./wolfictl { };
 
   # Local fonts
