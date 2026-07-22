@@ -19,11 +19,9 @@
       # upstream release carries a good one.
       fixPaseoNpmDeps =
         pkg:
-        pkg.overrideAttrs (oldAttrs: {
-          npmDeps = oldAttrs.npmDeps.overrideAttrs {
-            outputHash = "sha256-TiKnZMEypZYb6GGj189XUeb77j6voamTs6IPJye0UyE=";
-          };
-        });
+        pkg.override {
+          npmDepsHash = "sha256-TiKnZMEypZYb6GGj189XUeb77j6voamTs6IPJye0UyE=";
+        };
       paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
         paseo = fixPaseoNpmDeps (paseoPackages.paseo or paseoPackages.default);
       };

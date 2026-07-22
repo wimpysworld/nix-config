@@ -128,11 +128,14 @@
           inherit (inputs)
             bzmenu
             iwmenu
-            paseo
             pwmenu
             sidra
             ;
         };
+        linuxOnlyOverlaidPackages = [
+          "paseo"
+          "paseo-desktop"
+        ];
       };
 
       formatter = builder.forAllSystems (
