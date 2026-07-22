@@ -19,11 +19,9 @@
       # upstream release carries a good one.
       fixPaseoNpmDeps =
         pkg:
-        pkg.overrideAttrs (oldAttrs: {
-          npmDeps = oldAttrs.npmDeps.overrideAttrs {
-            outputHash = "sha256-TiKnZMEypZYb6GGj189XUeb77j6voamTs6IPJye0UyE=";
-          };
-        });
+        pkg.override {
+          npmDepsHash = "sha256-TiKnZMEypZYb6GGj189XUeb77j6voamTs6IPJye0UyE=";
+        };
       paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
         paseo = fixPaseoNpmDeps (paseoPackages.paseo or paseoPackages.default);
       };
@@ -171,20 +169,6 @@
           "--skip=tests::escript_success_with_dependency"
         ];
       });
-
-      # Track wezterm from unstable, and carry PR 7737, which adds the cursor
-      # trail and smear effects, until it lands upstream. Remove the patch after
-      # the next wezterm bump that includes the change.
-      # https://github.com/wezterm/wezterm/pull/7737
-      #wezterm = final.unstable.wezterm.overrideAttrs (oldAttrs: {
-      #  patches = (oldAttrs.patches or [ ]) ++ [
-      #    (final.fetchpatch {
-      #      name = "wezterm-cursor-trail-smear-pr7737.patch";
-      #      url = "https://patch-diff.githubusercontent.com/raw/wezterm/wezterm/pull/7737.diff";
-      #      hash = "sha256-JoYBUmOE0paR/oIfE2YS5xHlTXXHFwbJVsg7KqGFmrs=";
-      #    })
-      #  ];
-      #});
 
       # Override rofi-unwrapped to remove desktop entries (this is where they come from!)
       rofi-unwrapped = prev.rofi-unwrapped.overrideAttrs (oldAttrs: {

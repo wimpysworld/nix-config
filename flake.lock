@@ -138,16 +138,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1784127889,
-        "narHash": "sha256-3c5jxpJrBr6vYnbcJIYD06d932Da94hXUZA5FLa3kkU=",
+        "lastModified": 1784558872,
+        "narHash": "sha256-6L4kYGEpEoB+jbNVFDdZuRgu/aCs2Tlf7nB/FZhnW60=",
         "owner": "chojs23",
         "repo": "concord",
-        "rev": "5b31996fb69b5733ddc024375414bdd0f3ee1286",
+        "rev": "9e7fd00aae5ed5f8a65cc7bab49108e8c83de21b",
         "type": "github"
       },
       "original": {
         "owner": "chojs23",
-        "ref": "v2.4.1",
+        "ref": "v2.4.3",
         "repo": "concord",
         "type": "github"
       }
@@ -593,14 +593,14 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1783473288,
-        "narHash": "sha256-Yk/BXRlNJgfeqjy8hDOT/HbKgevWTH786Df+sQ3g9MU=",
+        "lastModified": 1784572521,
+        "narHash": "sha256-QJEiBOLAVGeYBym4EUtnDgeIyJyDQWgmat70/yujiz4=",
         "type": "tarball",
-        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.7.7.tar.gz"
+        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.7.20.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.7.7.tar.gz"
+        "url": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.7.20.tar.gz"
       }
     },
     "home-manager": {

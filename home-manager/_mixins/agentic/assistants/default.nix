@@ -36,6 +36,12 @@ let
       description = ${builtins.toJSON description}
       developer_instructions = ${tomlMultilineLiteral developerInstructions}
     '';
+  renderCodexOpenAiYaml =
+    { allowImplicitInvocation }:
+    ''
+      policy:
+        allow_implicit_invocation: ${if allowImplicitInvocation then "true" else "false"}
+    '';
   codexDir =
     if config.home.preferXdgDirectories then
       "${config.xdg.configHome}/codex"
@@ -444,6 +450,24 @@ let
       ${body}
     '';
 
+  # Build Codex's companion agents/openai.yaml for a command-derived skill
+  # when header.codex.toml declares allow-implicit-invocation. Absence keeps
+  # Codex's default implicit-selection behaviour and emits no sidecar file.
+  mkCodexCommandOpenAiYaml =
+    cmdPath:
+    let
+      codexHeaderPath = cmdPath + "/header.codex.toml";
+      codexHeader = readTomlOrEmpty codexHeaderPath;
+      hasAllowImplicitInvocation = builtins.hasAttr "allow-implicit-invocation" codexHeader;
+      rawAllowImplicitInvocation = codexHeader."allow-implicit-invocation" or null;
+    in
+    if !hasAllowImplicitInvocation then
+      null
+    else if !(builtins.isBool rawAllowImplicitInvocation) then
+      throw "Invalid allow-implicit-invocation value in ${toString codexHeaderPath}: expected boolean (true or false), got ${builtins.toJSON rawAllowImplicitInvocation}."
+    else
+      renderCodexOpenAiYaml { allowImplicitInvocation = rawAllowImplicitInvocation; };
+
   # Collision guard for the Codex skill namespace. Codex loads every skill
   # from `$CODEX_HOME/skills/<name>/SKILL.md`, so the keyspace is the union
   # of project skills, standalone commands, and agent-scoped commands.
@@ -510,6 +534,29 @@ let
     ) { } codingAgentDirs
   );
 
+  codexStandaloneCommandOpenAiYamls = lib.filterAttrs (_: yaml: yaml != null) (
+    lib.mapAttrs (cmdName: _: mkCodexCommandOpenAiYaml (./commands + "/${cmdName}")) (
+      lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) compose.standaloneCommandDirs
+    )
+  );
+  codexAgentCommandOpenAiYamls = lib.foldlAttrs (
+    acc: agentName: _:
+    let
+      commandDirs = lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) (
+        compose.discoverAgentCommands agentName
+      );
+      yamls = lib.filterAttrs (_: yaml: yaml != null) (
+        lib.mapAttrs (
+          cmdName: _: mkCodexCommandOpenAiYaml (./agents + "/${agentName}/commands/${cmdName}")
+        ) commandDirs
+      );
+    in
+    acc // yamls
+  ) { } codingAgentDirs;
+  codexCommandOpenAiYamls = builtins.seq codexCommandCollisionCheck (
+    codexStandaloneCommandOpenAiYamls // codexAgentCommandOpenAiYamls
+  );
+
   # Activation script that writes Codex skills as real files.
   # codex-rs scans for SKILL.md using entry.file_type() which does NOT follow
   # symlinks on Linux - it returns the type of the symlink itself. The scanner
@@ -521,7 +568,8 @@ let
   # Supporting entries beside SKILL.md (e.g. references/, rules/, metadata.json)
   # are symlinked into place. The scanner only inspects SKILL.md itself for the
   # is_file() check, and it does follow symlinked directories, so symlinks for
-  # extras are safe and avoid copying large reference trees.
+  # extras are safe and avoid copying large reference trees. Command-derived
+  # skills can also write agents/openai.yaml from header.codex.toml.
   codexSkillsActivationScript =
     let
       skillCmds = lib.concatStringsSep "\n" (
@@ -542,11 +590,17 @@ let
                 "ln -sfn ${lib.escapeShellArg src} ${lib.escapeShellArg dst}"
               ) extras
             );
+            openAiYaml = codexCommandOpenAiYamls.${name} or null;
+            openAiYamlCmd = lib.optionalString (openAiYaml != null) ''
+              mkdir -p "${codexDir}/skills/${name}/agents"
+              printf '%s' ${lib.escapeShellArg openAiYaml} > "${codexDir}/skills/${name}/agents/openai.yaml"
+            '';
           in
           ''
             mkdir -p "${codexDir}/skills/${name}"
             printf '%s' ${escaped} > "${codexDir}/skills/${name}/SKILL.md"
-            ${extrasCmds}''
+            ${extrasCmds}
+            ${openAiYamlCmd}''
         ) codexSkills
       );
     in
@@ -575,6 +629,8 @@ let
   # secret skill at activation: the public frontmatter plus the spawn_agent
   # prelude (or the bare standalone shape) are written from Nix, then the
   # decrypted body is appended by reading config.sops.secrets.<key>.path.
+  # Command-derived agents/openai.yaml files use the same header.codex.toml
+  # contract as non-secret commands.
   # This entry is ordered after codexFiles (which recreates skills/) and after
   # the sops-nix activation node so the decrypted secret is present.
   codexSecretSkillsActivationScript =
@@ -586,6 +642,11 @@ let
             inherit (entry) agentName cmdName cmdPath;
             description = readFileTrim (cmdPath + "/description.txt");
             secretPath = config.sops.secrets.${entry.info.key}.path;
+            openAiYaml = mkCodexCommandOpenAiYaml cmdPath;
+            openAiYamlCmd = lib.optionalString (openAiYaml != null) ''
+              mkdir -p "${codexDir}/skills/${cmdName}/agents"
+              printf '%s' ${lib.escapeShellArg openAiYaml} > "${codexDir}/skills/${cmdName}/agents/openai.yaml"
+            '';
             frontmatter = ''
               ---
               name: ${builtins.toJSON cmdName}
@@ -617,6 +678,7 @@ let
               mkdir -p "${codexDir}/skills/${cmdName}"
               printf '%s' ${prefix} > "${dst}"
               cat ${lib.escapeShellArg secretPath} >> "${dst}"
+              ${openAiYamlCmd}
             else
               echo "sops secret ${entry.info.key} not yet rendered; skipping Codex skill ${cmdName}" >&2
             fi''

@@ -435,13 +435,14 @@ rec {
     ) (generateConfigs (e: !isISOEntry e) systems);
 
   # Build the packages output for all systems.
-  # Imports local packages, filters by meta.platforms, and merges
-  # Linux-only re-exports from the given flake inputs.
+  # Imports local packages, filters by meta.platforms, and merges Linux-only
+  # re-exports from the given flake inputs and overlaid package names.
   mkPackages =
     {
       overlays,
       localPackagesPath,
       linuxOnlyFlakeInputs ? { },
+      linuxOnlyOverlaidPackages ? [ ],
     }:
     forAllSystems (
       system:
@@ -468,8 +469,14 @@ rec {
             ${name} = flakeInput.packages.${system}.default;
           }
         ) linuxOnlyFlakeInputs;
+
+        # Export selected overlaid packages only on Linux. This keeps local
+        # package fixes in the same derivations exercised by flake package CI.
+        linuxOnlyOverlaidPkgs = lib.optionalAttrs (lib.hasSuffix "linux" system) (
+          lib.genAttrs linuxOnlyOverlaidPackages (name: pkgs.${name})
+        );
       in
-      filterLocalPackages (import localPackagesPath pkgs) // linuxOnlyPkgs
+      filterLocalPackages (import localPackagesPath pkgs) // linuxOnlyPkgs // linuxOnlyOverlaidPkgs
     );
 
   # Build the devShells output for all systems.

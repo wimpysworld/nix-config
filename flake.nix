@@ -19,7 +19,7 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
-    hermes-agent.url = "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.7.7.tar.gz";
+    hermes-agent.url = "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.7.20.tar.gz";
     hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
     llm-agents.url = "github:numtide/llm-agents.nix";
     llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
@@ -32,7 +32,7 @@
     sidra.inputs.nixpkgs.follows = "nixpkgs";
     veila.url = "github:naurissteins/Veila/0.4.2";
     veila.inputs.nixpkgs.follows = "nixpkgs";
-    concord.url = "github:chojs23/concord/v2.4.1";
+    concord.url = "github:chojs23/concord/v2.4.3";
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
     concord.inputs.rust-overlay.follows = "rust-overlay";
     concord.inputs.flake-utils.follows = "flake-utils";
@@ -128,11 +128,14 @@
           inherit (inputs)
             bzmenu
             iwmenu
-            paseo
             pwmenu
             sidra
             ;
         };
+        linuxOnlyOverlaidPackages = [
+          "paseo"
+          "paseo-desktop"
+        ];
       };
 
       formatter = builder.forAllSystems (

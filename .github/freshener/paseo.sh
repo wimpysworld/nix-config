@@ -33,12 +33,39 @@ fi
 
 perl -0pi -e 's#paseo\.url = "github:getpaseo/paseo/[^"]+";#paseo.url = "github:getpaseo/paseo/'"$latest"'";#' flake.nix
 nix flake update paseo
-nix fmt flake.nix
 
-git diff flake.nix flake.lock
+overlay=overlays/default.nix
+fake_hash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+build_log=$(mktemp)
+trap 'rm -f "$build_log"' EXIT
+
+# Force Nix to report the npm dependency hash produced by this repository's
+# locked Paseo and nixpkgs inputs.
+perl -0pi -e 's#The v[0-9]+\.[0-9]+\.[0-9]+ tag ships#The '"$latest"' tag ships#' "$overlay"
+perl -0pi -e 's#npmDepsHash = "sha256-[A-Za-z0-9+/=]+";#npmDepsHash = "'"$fake_hash"'";#' "$overlay"
+
+if nix build .#paseo --no-link -L >"$build_log" 2>&1; then
+  echo "❌ Paseo unexpectedly built with the fake npm dependency hash"
+  exit 1
+fi
+
+npm_deps_hash=$(sed -n 's/^[[:space:]]*got:[[:space:]]*\(sha256-[A-Za-z0-9+/=]*\)$/\1/p' "$build_log" | tail -n 1)
+if [[ ! "$npm_deps_hash" =~ ^sha256-[A-Za-z0-9+/=]+$ ]]; then
+  echo "❌ Could not determine the Paseo npm dependency hash"
+  tail -n 40 "$build_log"
+  exit 1
+fi
+
+echo "Paseo npm dependencies: ${npm_deps_hash}"
+perl -0pi -e 's#npmDepsHash = "sha256-[A-Za-z0-9+/=]+";#npmDepsHash = "'"$npm_deps_hash"'";#' "$overlay"
+
+nix fmt flake.nix "$overlay"
+nix build .#paseo .#paseo-desktop --no-link -L
+
+git diff flake.nix flake.lock "$overlay"
 
 {
   echo "updated=true"
   echo "version=${latest}"
-  echo "files=flake.nix flake.lock"
+  echo "files=flake.nix flake.lock ${overlay}"
 } >> "$GITHUB_OUTPUT"
