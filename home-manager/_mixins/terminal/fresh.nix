@@ -1,5 +1,4 @@
 {
-  config,
   lib,
   pkgs,
   ...
@@ -14,23 +13,13 @@ let
   ) catppuccinFresh.themes;
 in
 {
-  options.fresh.settings = lib.mkOption {
-    type = lib.types.attrsOf lib.types.anything;
-    default = { };
-    description = "Fresh editor settings contributed by development modules, merged into config.json.";
-  };
-
   config = {
-    fresh.settings.theme = "catppuccin-mocha.json";
-
-    # `pkgs.fresh` comes from the `modifiedPackages` overlay, which exposes the
-    # upstream flake-input build directly.
-    home.packages = [
-      pkgs.fresh
-    ];
-
-    xdg.configFile = catppuccinThemeFiles // {
-      "fresh/config.json".text = lib.mkDefault (builtins.toJSON config.fresh.settings);
+    programs.fresh-editor = {
+      enable = true;
+      package = pkgs.unstable.fresh-editor;
+      settings.theme = "catppuccin-mocha.json";
     };
+
+    xdg.configFile = catppuccinThemeFiles;
   };
 }

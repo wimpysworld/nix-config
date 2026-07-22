@@ -20,7 +20,7 @@ lib.mkIf host.is.workstation {
     };
   };
 
-  fresh.settings.lsp = {
+  programs.fresh-editor.settings.lsp = {
     c = {
       command = "${pkgs.clang-tools}/bin/clangd";
       enabled = true;

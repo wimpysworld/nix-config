@@ -29,9 +29,7 @@
     rec {
       hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
 
-      # Fresh editor sourced directly from the upstream flake input now that the
-      # theme-key-resolution fix has landed there.
-      inherit (inputs.fresh.packages.${final.stdenv.hostPlatform.system}) fresh;
+      fresh = final.unstable.fresh-editor;
 
       voxtype = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.default;
       voxtype-vulkan = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.vulkan;

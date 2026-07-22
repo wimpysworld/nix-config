@@ -24,10 +24,6 @@
     llm-agents.url = "github:numtide/llm-agents.nix";
     llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
-    fresh.url = "github:sinelaw/fresh";
-    fresh.inputs.nixpkgs.follows = "nixpkgs-unstable";
-    fresh.inputs.flake-parts.follows = "flake-parts";
-    fresh.inputs.fenix.inputs.nixpkgs.follows = "nixpkgs-unstable";
     sidra.url = "github:wimpysworld/sidra";
     sidra.inputs.nixpkgs.follows = "nixpkgs";
     veila.url = "github:naurissteins/Veila/0.4.2";

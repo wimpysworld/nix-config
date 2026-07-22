@@ -37,7 +37,7 @@ lib.mkIf host.is.workstation {
     };
   };
 
-  fresh.settings.lsp.go = [
+  programs.fresh-editor.settings.lsp.go = [
     {
       name = "gopls";
       command = lib.getExe pkgs.gopls;

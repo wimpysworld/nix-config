@@ -21,7 +21,7 @@ lib.mkIf host.is.workstation {
     };
   };
 
-  fresh.settings.lsp.rust = {
+  programs.fresh-editor.settings.lsp.rust = {
     command = lib.getExe pkgs.rust-analyzer;
     enabled = true;
     auto_start = true;

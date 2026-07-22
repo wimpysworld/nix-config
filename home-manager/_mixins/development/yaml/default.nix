@@ -58,7 +58,7 @@ in
     };
   };
 
-  fresh.settings.lsp.yaml = lib.mkIf (!host.is.server) {
+  programs.fresh-editor.settings.lsp.yaml = lib.mkIf (!host.is.server) {
     command = lib.getExe pkgs.yaml-language-server;
     args = [ "--stdio" ];
     enabled = true;

@@ -30,7 +30,7 @@ in
   home.packages = lib.optional lspEnabled pkgs.harper;
 
   # Fresh Editor - universal grammar and spelling LSP.
-  fresh.settings.universal_lsp.harper = lib.mkIf lspEnabled {
+  programs.fresh-editor.settings.universal_lsp.harper = lib.mkIf lspEnabled {
     command = harperLs;
     args = [ "--stdio" ];
     enabled = true;

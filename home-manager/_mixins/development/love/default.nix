@@ -18,7 +18,7 @@ lib.mkIf
       };
     };
 
-    fresh.settings.lsp.lua = {
+    programs.fresh-editor.settings.lsp.lua = {
       command = lib.getExe pkgs.lua-language-server;
       enabled = true;
       auto_start = true;

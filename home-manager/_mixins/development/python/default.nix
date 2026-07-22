@@ -28,7 +28,7 @@ lib.mkIf host.is.workstation {
     };
   };
 
-  fresh.settings.lsp.python = {
+  programs.fresh-editor.settings.lsp.python = {
     command = "${pkgs.basedpyright}/bin/basedpyright-langserver";
     args = [ "--stdio" ];
     enabled = true;

@@ -16,7 +16,7 @@ lib.mkIf host.is.workstation {
     };
   };
 
-  fresh.settings.lsp.dart = {
+  programs.fresh-editor.settings.lsp.dart = {
     command = "${pkgs.dart}/bin/dart";
     args = [
       "language-server"

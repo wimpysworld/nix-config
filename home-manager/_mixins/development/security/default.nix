@@ -33,7 +33,7 @@ lib.mkIf isWorkstationDeveloper {
   # to let native language servers win the binding race for code files.
 
   # Fresh Editor - universal static-analysis LSP.
-  fresh.settings.universal_lsp.semgrep = {
+  programs.fresh-editor.settings.universal_lsp.semgrep = {
     command = "${pkgs.semgrep}/bin/semgrep";
     args = [ "lsp" ];
     enabled = true;

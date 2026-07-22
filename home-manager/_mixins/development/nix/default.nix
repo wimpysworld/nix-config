@@ -33,7 +33,7 @@ in
     };
   };
 
-  fresh.settings.lsp.nix = lib.mkIf (!host.is.server) {
+  programs.fresh-editor.settings.lsp.nix = lib.mkIf (!host.is.server) {
     command = lib.getExe pkgs.nil;
     enabled = true;
     auto_start = true;

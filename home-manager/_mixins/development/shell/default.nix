@@ -48,7 +48,7 @@ in
     };
   };
 
-  fresh.settings.lsp.bash = lib.mkIf (!host.is.server) {
+  programs.fresh-editor.settings.lsp.bash = lib.mkIf (!host.is.server) {
     command = lib.getExe pkgs.bash-language-server;
     args = [ "start" ];
     enabled = true;

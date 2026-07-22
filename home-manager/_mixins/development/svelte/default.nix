@@ -46,7 +46,7 @@ lib.mkIf host.is.workstation {
     };
   };
 
-  fresh.settings.lsp.svelte = {
+  programs.fresh-editor.settings.lsp.svelte = {
     command = lib.getExe pkgs.svelte-language-server;
     args = [ "--stdio" ];
     enabled = true;

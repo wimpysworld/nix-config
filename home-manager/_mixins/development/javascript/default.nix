@@ -181,7 +181,7 @@ lib.mkIf host.is.workstation {
     };
   };
 
-  fresh.settings.lsp = {
+  programs.fresh-editor.settings.lsp = {
     javascript = {
       command = lib.getExe pkgs.typescript-language-server;
       args = [ "--stdio" ];

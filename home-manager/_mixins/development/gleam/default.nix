@@ -26,7 +26,7 @@ lib.mkIf host.is.workstation {
     };
   };
 
-  fresh.settings.lsp.gleam = {
+  programs.fresh-editor.settings.lsp.gleam = {
     command = lib.getExe pkgs.glas;
     enabled = true;
     auto_start = true;
