@@ -28,7 +28,7 @@
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["framework", "policy", "workspace", "dropbox", "fprintd", "wayvnc", "voxtype"]
+tags = ["framework", "policy", "workspace", "dropbox", "fprintd", "wayvnc", "voxtype", "paseo"]
 
 [bane.gpu]
 vendors = ["amd"]
@@ -52,7 +52,7 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["framework", "policy", "workspace", "dropbox", "fprintd", "wayvnc", "voxtype"]
+tags = ["framework", "policy", "workspace", "dropbox", "fprintd", "wayvnc", "voxtype", "paseo"]
 
 [ravi.gpu]
 vendors = ["amd"]
