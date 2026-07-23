@@ -18,7 +18,9 @@ in
     ./kitty.nix
     ./mlterm.nix
     ./rio.nix
+    ./tmux.nix
     ./wezterm.nix
+    ./zellij.nix
   ];
 
   config = lib.mkIf host.is.workstation {
