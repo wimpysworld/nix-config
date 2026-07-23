@@ -30,5 +30,8 @@ lib.mkIf
       mouse = true;
       sensibleOnTop = true;
       terminal = "tmux-256color";
+      extraConfig = ''
+        set -s input-buffer-size 16777216
+      '';
     };
   }

@@ -61,6 +61,7 @@
       inherit (final.unstable) bun;
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) lima;
+      inherit (final.unstable) tmux;
 
       # Claude Code tracks the llm-agents flake on Linux (pinned alongside the
       # other agent tooling there) and unstable nixpkgs elsewhere.
