@@ -28,7 +28,7 @@
     sidra.inputs.nixpkgs.follows = "nixpkgs";
     veila.url = "github:naurissteins/Veila/0.4.2";
     veila.inputs.nixpkgs.follows = "nixpkgs";
-    concord.url = "github:chojs23/concord/v2.4.3";
+    concord.url = "github:chojs23/concord/v2.4.4";
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
     concord.inputs.rust-overlay.follows = "rust-overlay";
     concord.inputs.flake-utils.follows = "flake-utils";
