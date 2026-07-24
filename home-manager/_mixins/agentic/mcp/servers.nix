@@ -220,7 +220,7 @@ rec {
       };
     };
   }
-  // lib.optionalAttrs isWorkHost {
+  // {
     linear = {
       # Official hosted Linear MCP server. It uses Streamable HTTP with OAuth
       # 2.1 dynamic client registration by default; Linear also supports
@@ -240,6 +240,8 @@ rec {
         zed.enabled = false;
       };
     };
+  }
+  // lib.optionalAttrs isWorkHost {
 
     rag = {
       transport = "http";

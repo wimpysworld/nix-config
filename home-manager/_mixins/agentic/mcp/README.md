@@ -1,6 +1,6 @@
 # MCP Servers
 
-Five globally active MCP servers provide AI agents with current reference material. Playwright is emitted only on browser-automation systems. Linear, Slack, and the Chainguard RAG server are emitted only on `bane` and `ravi`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Six globally active MCP servers provide AI agents with current reference material. Playwright is emitted only on browser-automation systems. Slack and the Chainguard RAG server are emitted only on `bane` and `ravi`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. Playwright is local browser automation for agent-driven page inspection and only appears when both Chromium and Firefox are enabled under the shared browser automation policy. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -81,14 +81,14 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Five globally active servers, four conditional servers, and three disabled placeholders.
+Six globally active servers, three conditional servers, and three disabled placeholders.
 
 | Server         | Transport | Auth   | Purpose                                                                                                |
 | -------------- | --------- | ------ | ------------------------------------------------------------------------------------------------------ |
 | `context7`     | HTTP      | bearer | Live library documentation from official sources                                                       |
 | `exa`          | HTTP      | -      | Neural web search and URL content extraction                                                           |
 | `cloudflare`   | HTTP      | -      | Cloudflare product documentation                                                                       |
-| `linear`       | HTTP      | OAuth  | Conditional on `bane` and `ravi`; Linear issues, projects, and comments; active only for Claude Code and Codex |
+| `linear`       | HTTP      | OAuth  | Linear issues, projects, and comments; active only for Claude Code and Codex |
 | `nixos`        | stdio     | -      | NixOS, Home Manager, nix-darwin package and option search                                              |
 | `playwright`   | stdio     | -      | Conditional; browser automation via Playwright MCP; disabled by default where per-server toggles exist |
 | `rag`          | HTTP      | -      | Conditional on `bane` and `ravi`; Chainguard RAG search                                                |
@@ -98,7 +98,7 @@ Five globally active servers, four conditional servers, and three disabled place
 | `jina`         | HTTP      | bearer | Disabled; web reading and screenshots                                                                  |
 | `mcpGoogleCse` | stdio     | env    | Disabled; Google Custom Search Engine                                                                  |
 
-Four of the globally active servers are remote HTTP. `nixos` runs as a local binary. When enabled, `linear`, `rag`, `slack`, and `playwright` are conditional additions; `linear`, `rag`, and `slack` are remote HTTP, while `playwright` runs as a local binary.
+Five of the globally active servers are remote HTTP. `nixos` runs as a local binary. `rag`, `slack`, and `playwright` are conditional additions; `rag` and `slack` are remote HTTP, while `playwright` runs as a local binary.
 
 ### Active servers
 
@@ -134,7 +134,7 @@ Disabled by default in OpenCode and Pi via per-consumer `enabled = false` becaus
 
 Linear's official hosted MCP server. It uses Streamable HTTP at `https://mcp.linear.app/mcp` with OAuth 2.1 dynamic client registration by default. Claude Code authenticates through `/mcp` after startup. Codex authenticates with `codex mcp login linear` if it has not already completed the login flow.
 
-Linear's MCP tools can read and mutate issues, projects, and comments. The server is emitted only on `bane` and `ravi`. On those hosts, it is active only for Claude Code and Codex. OpenCode receives a disabled entry, Pi omits the server, and Zed receives a disabled context-server entry. Codex also sets `default_tools_approval_mode = "prompt"` for Linear so tool calls require review instead of inheriting the unattended default.
+Linear's MCP tools can read and mutate issues, projects, and comments. The server is emitted on every host with MCP clients. It is active only for Claude Code and Codex. OpenCode receives a disabled entry, Pi omits the server, and Zed receives a disabled context-server entry. Codex also sets `default_tools_approval_mode = "prompt"` for Linear so tool calls require review instead of inheriting the unattended default.
 
 No Linear secret is declared in this repository. Linear supports direct `Authorization: Bearer ...` authentication with an OAuth access token or a restricted API key; if that mode is needed, add a `LINEAR_API_KEY` secret to `secrets/mcp.yaml`, set `auth.kind = "bearer"` in `servers.nix`, and prefer a restricted key scoped to the minimum teams and permissions.
 
