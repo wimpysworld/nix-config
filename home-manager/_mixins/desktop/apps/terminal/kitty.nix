@@ -14,7 +14,7 @@ let
     else
       false;
 in
-{
+lib.mkIf host.is.workstation {
   catppuccin.kitty.enable = config.programs.kitty.enable;
 
   programs.kitty = {

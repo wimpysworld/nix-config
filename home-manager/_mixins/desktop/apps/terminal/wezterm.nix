@@ -5,6 +5,7 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   getColor = colorName: catppuccinPalette.getColor colorName;
   hideWindowDecorations =
     if config.wayland.windowManager.wayfire.enable then
@@ -14,7 +15,7 @@ let
     else
       false;
 in
-{
+lib.mkIf host.is.workstation {
   catppuccin.wezterm.enable = config.programs.wezterm.enable;
 
   # Secondary terminal for testing projects that use Sixel graphics. Kitty
