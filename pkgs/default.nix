@@ -3,6 +3,7 @@
 pkgs: {
   # Local packages
   brow6el = pkgs.callPackage ./brow6el { };
+  casty = pkgs.callPackage ./casty { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   heynote = pkgs.callPackage ./heynote { };
