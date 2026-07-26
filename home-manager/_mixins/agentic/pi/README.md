@@ -33,18 +33,22 @@ The `llm-agents` package wrapper disables Pi's version check and telemetry at ru
 
 Home Manager owns `~/.pi/agent/settings.json` completely. Project-specific or mutable package settings should live in `.pi/settings.json`, which Pi merges over the global settings. Nested objects merge.
 
-The managed settings use Anthropic by default:
+The managed settings use OpenAI Codex by default:
 
 ```json
 {
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-7",
-  "defaultThinkingLevel": "high",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.6-sol",
+  "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "enabledModels": [
-    "anthropic/claude-opus-4-7",
-    "anthropic/claude-sonnet-4-6",
-    "anthropic/claude-haiku-4-5"
+    "anthropic/claude-opus-5",
+    "anthropic/claude-sonnet-5",
+    "openai-codex/gpt-5.6-sol",
+    "openai-codex/gpt-5.6-terra",
+    "openai-codex/gpt-5.5",
+    "openai-codex/gpt-5.3-codex-spark",
+    "openai-codex/gpt-5.4-mini"
   ],
   "theme": "catppuccin-mocha",
   "themes": ["themes/*.json"]
@@ -119,7 +123,7 @@ The footer uses the same Catppuccin colour roles as `ccstatusline`: model yellow
 `quota-status` uses stable window labels where possible and displays remaining quota, not used quota, so Anthropic usually appears as:
 
 ```text
-anthropic/claude-opus-4-7 · high · ~/path/project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
+anthropic/claude-opus-5 · high · ~/path/project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
 ```
 
 Home Manager also owns `~/.pi/agent/pi-sub-core-settings.json` to refresh quota data every five seconds and on turn start. `sub-core` renders cached state first, so the quota segment can appear a few seconds after the footer itself. If Anthropic returns only the 5h window, `quota-status` mirrors the Claude Code statusline helper by treating the missing weekly bucket as 100% remaining. Other providers show only the usable windows they return. `quota-status` keeps the last valid value for the active provider when `sub-core` emits a transient empty update.

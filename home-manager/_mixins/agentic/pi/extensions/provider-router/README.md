@@ -26,16 +26,16 @@ keyed by provider name. Each provider value is the model id for that provider.
 ```json
 {
   "garfield": {
-    "anthropic": "claude-haiku-4-5",
+    "anthropic": "claude-sonnet-5",
     "google": "gemini-3-flash",
-    "openai-codex": "gpt-5.4-mini"
+    "openai-codex": "gpt-5.6-terra"
   }
 }
 ```
 
 For an Anthropic parent session, the runtime writes
-`anthropic/claude-haiku-4-5`. For an `openai-codex` parent session, it writes
-`openai-codex/gpt-5.4-mini`.
+`anthropic/claude-sonnet-5`. For an `openai-codex` parent session, it writes
+`openai-codex/gpt-5.6-terra`.
 
 `thinking.json` mirrors that shape with one value per provider drawn from
 Pi's closed set of effort levels (`off`, `minimal`, `low`, `medium`, `high`,
@@ -43,9 +43,7 @@ Pi's closed set of effort levels (`off`, `minimal`, `low`, `medium`, `high`,
 
 ```json
 {
-  "donatello": { "openai-codex": "xhigh" },
-  "penfold":   { "openai-codex": "high" },
-  "garfield":  { "openai-codex": "medium" }
+  "garfield": { "openai-codex": "medium" }
 }
 ```
 
@@ -63,8 +61,8 @@ suffix after `model-` or `thinking-` must match the active Pi provider name
 exactly, including hyphens (`openai-codex`, not `openai`):
 
 ```yaml
-model-anthropic: claude-haiku-4-5
-model-openai-codex: gpt-5.4-mini
+model-anthropic: claude-sonnet-5
+model-openai-codex: gpt-5.6-terra
 model-google: 'gemini-3-flash'
 thinking-openai-codex: xhigh
 ```
@@ -78,10 +76,10 @@ validated at evaluation time against the closed set
 clear message. Provider names are not validated; a typo simply becomes a map
 key that never matches the active Pi provider.
 
-This repo declares both `model-<provider>` and `thinking-<provider>`
-explicitly for every named agent, so the routing decision is readable from
-the agent's own `header.pi.yaml` rather than inferred from Pi's
-`defaultModel` and `defaultThinkingLevel`. The runtime still accepts
+Garfield is the only agent in this repo with a `header.pi.yaml`, so he is the
+only agent either map contains. Any agent that does need routing should declare
+both `model-<provider>` and `thinking-<provider>`, so the routing decision is
+readable from the agent's own `header.pi.yaml`. The runtime still accepts
 thinking-only entries (it falls back to `ctx.model.id` for the bare model in
 that case), and bare `model-<provider>` entries without a thinking sibling
 still produce `provider/modelId` without a thinking suffix. Explicit
@@ -166,7 +164,7 @@ test -f ~/.pi/agent/extensions/provider-router/README.md
 pi -p "echo hi" 2>&1 | tee /tmp/pi-provider-router-smoke.log
 ! grep -i "failed to load" /tmp/pi-provider-router-smoke.log
 jq '.garfield' ~/.pi/agent/extensions/provider-router/agents.json
-jq '.donatello' ~/.pi/agent/extensions/provider-router/thinking.json
+jq '.garfield' ~/.pi/agent/extensions/provider-router/thinking.json
 ```
 
 ## Current Validation Status

@@ -280,7 +280,7 @@ let
 
   piSettings = {
     defaultProvider = "openai-codex";
-    defaultModel = "gpt-5.5";
+    defaultModel = "gpt-5.6-sol";
     defaultThinkingLevel = "medium";
     thinkingBudgets = {
       minimal = 1024;
@@ -291,9 +291,10 @@ let
     };
     hideThinkingBlock = true;
     enabledModels = [
-      "anthropic/claude-opus-4-7"
-      "anthropic/claude-sonnet-4-6"
-      "anthropic/claude-haiku-4-5"
+      "anthropic/claude-opus-5"
+      "anthropic/claude-sonnet-5"
+      "openai-codex/gpt-5.6-sol"
+      "openai-codex/gpt-5.6-terra"
       "openai-codex/gpt-5.5"
       "openai-codex/gpt-5.3-codex-spark"
       "openai-codex/gpt-5.4-mini"

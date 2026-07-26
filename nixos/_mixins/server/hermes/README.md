@@ -14,7 +14,7 @@ The current deployment is:
 - **Hermes host**: `revan`
 - **Inference path**: OAuth-backed cloud providers managed by Hermes
 - **Primary model**: `gpt-5.5` via the `openai-codex` provider
-- **Fallback model**: `claude-opus-4-7` via the `anthropic` provider
+- **Fallback model**: `claude-opus-5` via the `anthropic` provider
 - **Memory provider**: Holographic
 - **Default TTS**: local Piper using `en_GB-vctk-medium`, speaker `p276`/`11`
 - **Web dashboard**: `https://revan.<tailnet>/` through Caddy/Tailscale
@@ -71,7 +71,7 @@ services.hermes-agent.settings = {
   fallback_providers = [
     {
       provider = "anthropic";
-      model = "claude-opus-4-7";
+      model = "claude-opus-5";
     }
   ];
 
@@ -418,7 +418,7 @@ Current source of truth:
 
 - the Hermes module selects the primary and fallback providers
 - `openai-codex` handles the primary `gpt-5.5` route
-- `anthropic` handles the fallback `claude-opus-4-7` route
+- `anthropic` handles the fallback `claude-opus-5` route
 - named custom providers preserve remote qwen routes on `skrye` and `zannah`
 
 The local llama-server stack remains available in the repo, but it is not the
@@ -427,7 +427,7 @@ active primary or fallback route in the current deployment.
 The important current routing values are:
 
 - primary model: `gpt-5.5`
-- fallback model: `claude-opus-4-7`
+- fallback model: `claude-opus-5`
 - fallback provider: `anthropic`
 - named custom qwen routes: `skrye:qwen3.6-35b-a3b`, `zannah:qwen3.6-35b-a3b`
 - Holographic memory enabled
@@ -472,7 +472,7 @@ The following are in place now:
 - auth seeding through `authFile`
 - Telegram token and allowlist injection
 - `openai-codex` primary with `gpt-5.5`
-- `anthropic` fallback with `claude-opus-4-7`
+- `anthropic` fallback with `claude-opus-5`
 - named custom qwen providers on `skrye` and `zannah`
 - Holographic memory
 - four live MCP servers: Exa, Context7, NixOS, Cloudflare

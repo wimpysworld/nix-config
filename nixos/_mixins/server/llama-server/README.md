@@ -500,7 +500,7 @@ Generation settings are also policy-driven. At the time of writing, the live pol
 | Tier | Provider | Model | Trigger |
 |---|---|---|---|
 | Cloud fallback | OpenCode Zen | `opencode-zen` | Local inference unreachable or model unavailable |
-| Frontier | Anthropic | `claude-sonnet-4-6` | Complex reasoning, deep research, tasks exceeding local tier |
+| Frontier | Anthropic | `claude-sonnet-5` | Complex reasoning, deep research, tasks exceeding local tier |
 
 An autonomous agent's reliability layer can handle automatic failover: timeout, connection error, 503, or 429 can trigger fallback to the next provider in the chain. Cloud fallback does not require manual intervention.
 

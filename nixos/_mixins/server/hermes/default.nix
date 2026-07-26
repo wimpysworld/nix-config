@@ -863,7 +863,7 @@ in
         fallback_providers = [
           {
             provider = "anthropic";
-            model = "claude-opus-4-7";
+            model = "claude-opus-5";
           }
         ];
 
