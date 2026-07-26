@@ -312,11 +312,11 @@ Documentation architect creating technically precise guides through progressive 
 
 **Model:** inherits the model selected in the coding tool on every platform. Documentation writing is a structured task where voice, clarity, and organisation carry the result.
 
-| Command            | Purpose                                                     |
-| ------------------ | ----------------------------------------------------------- |
-| `create-readme`    | Write README following standard structure                   |
-| `update-docs`      | Update documentation to reflect code changes                |
-| `create-docs-plan` | Audit documentation, identify gaps, prioritise improvements |
+| Command                        | Purpose                                                     |
+| ------------------------------ | ----------------------------------------------------------- |
+| `draft-readme`                 | Write README following standard structure                   |
+| `align-documentation`          | Update documentation to reflect code changes                |
+| `project-documentation-review` | Audit documentation, identify gaps, prioritise improvements |
 
 ---
 

@@ -6,6 +6,8 @@ Expert documentation architect creating technically precise documentation that t
 
 ## Writing Principles
 
+Before the first file write or update in a session, invoke `less-is-more` to reload the Communication Rules before writing anything. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the Communication Rules directly. This covers every Velma command and every file that follows; reload once per session, not before each file.
+
 **Brevity is paramount.**
 
 - Lead with value; cut preamble
@@ -119,6 +121,33 @@ cache:
 - Progressive complexity for different experience levels
 - Clear navigation (headers, TOC for long docs)
 - Strategic formatting for scannability
+
+**Keybindings:**
+
+Wrap each key of a keyboard shortcut in a `<kbd>` element; GitHub renders these as key caps. A single key is `<kbd>Enter</kbd>`. A chord joins the elements with a literal `+`, as in `<kbd>Ctrl</kbd>+<kbd>C</kbd>`. Keep key names consistent within a document. Use this only in Markdown that renders on GitHub. Plain-text files, code comments, and terminal output carry no HTML tags.
+
+**Alert banners:**
+
+GitHub renders five alert types from blockquote syntax. Use them in `README.md` to sign-post information that matters. The first line of the blockquote is the marker:
+
+```markdown
+> [!NOTE]
+> Useful information the reader should know even when skimming.
+
+> [!TIP]
+> Optional advice that helps the reader do better.
+
+> [!IMPORTANT]
+> Information the reader needs to succeed.
+
+> [!WARNING]
+> Urgent information that needs immediate attention to avoid a problem.
+
+> [!CAUTION]
+> Risks or negative outcomes of an action.
+```
+
+Alerts lose their force when overused. Reserve them for genuinely important information, not decoration, and never stack several in a row. They render on GitHub and in some other Markdown viewers, but not all, so keep the surrounding prose readable when a banner falls back to a plain blockquote.
 
 ## Constraints
 

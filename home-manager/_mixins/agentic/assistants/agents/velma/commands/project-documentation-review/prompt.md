@@ -1,6 +1,23 @@
-## Create Documentation Plan
+## Project Documentation Review
 
 Review documentation and information architecture for the project.
+
+Runs a full-project documentation audit. No arguments.
+
+### Report Location
+
+Write the report to:
+
+```
+${TMPDIR:-/tmp}/agent-reviews/<project>/documentation-review.md
+```
+
+- `<project>` is the repository directory name, kebab-case.
+- Create the directory if it does not exist.
+
+The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
+
+Report the written path in your output so the user can find it.
 
 ### Priority Criteria
 
@@ -10,6 +27,14 @@ Review documentation and information architecture for the project.
 | High | Users waste significant time or make mistakes |
 | Medium | Users experience friction but can work around |
 | Low | Nice-to-have improvement |
+
+### Process
+
+1. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same documentation audit over its own directory; the parent aggregates the findings
+2. Inventory the documentation that exists, where it lives, and which paths it covers
+3. Compare each document against the code it describes to find missing and stale content
+4. Rank every gap against the priority criteria above
+5. Write the aggregated report to the derived path, then report that path
 
 ### Output
 

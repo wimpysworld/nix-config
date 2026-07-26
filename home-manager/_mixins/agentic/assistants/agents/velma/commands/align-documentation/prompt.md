@@ -1,4 +1,4 @@
-## Update Documentation
+## Align Documentation
 
 Update documentation to reflect recent code changes.
 

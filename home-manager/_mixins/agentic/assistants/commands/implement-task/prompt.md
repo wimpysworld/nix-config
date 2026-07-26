@@ -20,7 +20,7 @@ Command invocation: use the current provider's command prefix. Codex uses `$comm
 2. Run `implement-plan <plan path>`. It spawns its own fresh sub-agent per phase.
 3. Validate the changed files against the task's `Acceptance criteria` and `Scope`. Fix required gaps and revalidate until it passes or a real blocker remains.
 4. Resolve any open question or decision the task or plan carries with bounded research, then continue. When evidence still conflicts after research, take the conservative path that best fits existing patterns and record why.
-5. After validation passes, run `update-docs <changed files>` where the change requires documentation. If prompt, command, skill, assistant, or project instruction artefacts changed, run the matching Rosey workflow: `update-command`, `update-skill`, `update-assistant`, or `update-agents-md`.
+5. After validation passes, run `align-documentation <changed files>` where the change requires documentation. If prompt, command, skill, assistant, or project instruction artefacts changed, run the matching Rosey workflow: `update-command`, `update-skill`, `update-assistant`, or `update-agents-md`.
 6. Write the durable record: what was built, each decision with its reason, how each acceptance criterion was met, and any risk carried forward. State the work as built, not the plan to build it. Post it as a comment on the Linear issue, or append it to the local task file.
 7. Return a short report only: task key or path, pass or fail, changed files, tests, blockers. No phase-level detail.
 
