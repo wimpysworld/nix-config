@@ -1,13 +1,29 @@
 ## Code Security Audit
 
-Run a full-project code security audit. Take no arguments. Use wide sub-agent fan-out and write only `CODE-SEC-AUDIT.md` in the project root.
+Run a full-project code security audit. Take no arguments. Use wide sub-agent fan-out and write only the report at the derived path below.
+
+### Report Location
+
+Write the report to:
+
+```
+${TMPDIR:-/tmp}/agent-reviews/<project>/code-security-audit.md
+```
+
+- `<project>` is the repository directory name, kebab-case.
+- Create the directory if it does not exist.
+
+The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
+
+Report the written path in your output so the user can find it.
 
 ### Operating rules
 
-1. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
-2. Ask only when the audit scope or threat model is unclear.
-3. This command may read source files, run the Bash checks below, and write `CODE-SEC-AUDIT.md`. Do not edit source files or stage changes.
-4. Default threat model: an external unauthenticated attacker. Record any different assumption.
+1. Invoke `less-is-more` to reload the Communication Rules before writing anything. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the Communication Rules directly.
+2. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
+3. Ask only when the audit scope or threat model is unclear.
+4. This command may read source files, run the Bash checks below, and write the report at the derived path. Do not edit source files or stage changes.
+5. Default threat model: an external unauthenticated attacker. Record any different assumption.
 
 ### Method
 
@@ -63,7 +79,7 @@ First classify the surface: chatbot, RAG, tool-using agent, fine-tuning/training
 
 ### Severity and finding format
 
-Severity: Critical means unauthenticated or remote RCE, auth bypass, mass data exposure, or full privilege escalation. High means a confirmed exploit path with high impact or privileged chaining. Medium means preconditions, authentication, or bounded impact. Low means a plausible low-impact flaw. Observation means defence-in-depth, weak evidence, or no viable exploit path. Do not mark Critical, High, Medium, or Low without a viable exploit path. Write `CODE-SEC-AUDIT.md` with scope and assumptions, checks run and limitations, findings by severity, repeat-offender patterns, and a prioritised remediation roadmap.
+Severity: Critical means unauthenticated or remote RCE, auth bypass, mass data exposure, or full privilege escalation. High means a confirmed exploit path with high impact or privileged chaining. Medium means preconditions, authentication, or bounded impact. Low means a plausible low-impact flaw. Observation means defence-in-depth, weak evidence, or no viable exploit path. Do not mark Critical, High, Medium, or Low without a viable exploit path. Write the report at the derived path with scope and assumptions, checks run and limitations, findings by severity, repeat-offender patterns, and a prioritised remediation roadmap, then report that path.
 
 ```markdown
 ### <Severity>: <Title>

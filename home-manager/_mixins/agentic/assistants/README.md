@@ -187,9 +187,9 @@ Infrastructure security auditor assessing configuration hardening, defensive res
 
 **Model:** inherits the model selected in the coding tool on every platform. Infrastructure security assessment reasons across interacting systems, trust boundaries, and attack chains simultaneously.
 
-| Command                | Purpose                                          |
-| ---------------------- | ------------------------------------------------ |
-| `audit-infra-security` | Structured 5-phase infrastructure security audit |
+| Command                | Purpose                                  |
+| ---------------------- | ---------------------------------------- |
+| `audit-infra-security` | Structured infrastructure security audit |
 
 ---
 
@@ -224,9 +224,9 @@ Code security auditor methodically patrolling codebases for vulnerabilities, ins
 
 **Model:** inherits the model selected in the coding tool on every platform. Vulnerability identification reasons across data flows, trust boundaries, and exploitation conditions.
 
-| Command               | Purpose                                |
-| --------------------- | -------------------------------------- |
-| `audit-code-security` | Structured 5-phase code security audit |
+| Command               | Purpose                        |
+| --------------------- | ------------------------------ |
+| `audit-code-security` | Structured code security audit |
 
 ---
 
