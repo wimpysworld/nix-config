@@ -1,4 +1,4 @@
-## Polish Code Comments
+## Project Polish Comments
 
 Comment-quality pass over $1. Polish ensures comments are accurate and good enough to orient humans and agents new to the codebase. Improve weak comments where you can; remove only when a comment merely restates the code. This is an improver, not a cleanser. Comments only - any edit that touches logic is out of scope: flag it, never make it.
 
@@ -6,12 +6,13 @@ Default $1 to the working tree's changed files; if there are none, the whole tre
 
 ### Workflow
 
-1. Resolve $1 to a file set; apply $2 as a filter
-2. If the set spans multiple directories: Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same comment-polish pass over its own directory; the parent aggregates the per-file counts
-3. Read each file and classify every comment: correct, improve, preserve, or remove
-4. Edit comments only; leave code untouched
-5. Run the project's formatter and tests to prove behaviour is unchanged
-6. Report per-file counts plus any behavioural concern you refused to touch
+1. Invoke `less-is-more` to reload the Communication Rules before writing anything. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the Communication Rules directly
+2. Resolve $1 to a file set; apply $2 as a filter
+3. If the set spans multiple directories: Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same comment-polish pass over its own directory; the parent aggregates the per-file counts
+4. Read each file and classify every comment: correct, improve, preserve, or remove
+5. Edit comments only; leave code untouched
+6. Run the project's formatter and tests to prove behaviour is unchanged
+7. Report per-file counts plus any behavioural concern you refused to touch
 
 ### Correct - fix inaccuracy first
 

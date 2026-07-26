@@ -244,8 +244,8 @@ Precise implementation engineer executing code changes from specifications. Read
 | `address-pr`              | Classify PR review comments: critical / robustness / quality / style |
 | `review-pr`               | Peer review a GitHub PR through a fan-out of sub-agents              |
 | `watch-ci`                | Watch PR checks to completion, then fix the failures the PR caused   |
-| `peer-review`             | Give an ecosystem-specific codebase verdict                          |
-| `polish-code-comments`    | Comment-quality pass over a file set; comments only, never logic     |
+| `project-peer-review`     | Give an ecosystem-specific codebase verdict                          |
+| `project-polish-comments` | Comment-quality pass over a file set; comments only, never logic     |
 | `add-enricher-capability` | Add a manifest-gen enricher capability                               |
 
 ---
@@ -302,8 +302,8 @@ Maintainability specialist reviewing for simplification, duplication, dead code,
 
 | Command                     | Purpose                                                       |
 | --------------------------- | ------------------------------------------------------------- |
-| `review-code`               | Maintainability review: deletion, replacement, simplification |
-| `review-code-smell`         | Hunt for genuine code smells: god objects, feature envy, etc. |
+| `project-code-review`       | Maintainability review: deletion, replacement, simplification |
+| `project-smells-review`     | Hunt for genuine code smells: god objects, feature envy, etc. |
 | `audit-communication-rules` | Validate the Communication Rules tripwire hooks end to end    |
 
 ---
