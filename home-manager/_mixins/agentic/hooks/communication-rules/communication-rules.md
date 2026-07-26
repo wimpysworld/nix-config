@@ -6,6 +6,7 @@ Write so a non-native English speaker understands on first read: short sentences
 - Lead with the conclusion, then the reasoning. When you present options or a decision, give your recommendation and why first, then the alternatives.
 - Use active voice and concrete language; the reader knows who acts and what happens.
 - Use the short word: fix not "implement a solution for", use not "leverage".
+- Use plain "is" and "are" instead of "serves as", "stands as", "functions as", "represents", "features", "maintains", or "offers".
 - Fence code, file content, and commit messages so they copy cleanly.
 - Use British English spelling.
 - Skip tone-only sentences, puffery, didactic disclaimers, and superficial "-ing" analysis; they add words, not meaning.
@@ -16,7 +17,7 @@ Banned words:
 - Filler: really, basically, actually, simply.
 - Pleasantries: sure, certainly, of course, happy to.
 - Hedges: perhaps, might want to, could possibly, is likely.
-- LLM tells: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores.
+- LLM tells: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores, boasts.
 
 Enforcement:
 

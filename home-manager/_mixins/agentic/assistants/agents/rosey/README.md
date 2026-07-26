@@ -142,7 +142,7 @@ compliance.
 "IMPORTANT" and "YOU MUST" worked on older Claude models but Opus 4.5 and
 Sonnet 4.6 over-trigger on aggressive language. Default to plain imperatives.
 Cut "the fact that", "in order to", "it should be noted that", and the LLM
-tells listed in `writing-clearly-and-concisely` (pivotal, crucial, seamless,
+tells listed in `writing-well` (pivotal, crucial, seamless,
 robust, leverage, foster, and the rest).
 
 ### 3.4 One default per decision

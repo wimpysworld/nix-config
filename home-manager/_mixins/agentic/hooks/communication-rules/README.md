@@ -40,7 +40,7 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
 - `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` the two thin TypeScript shims. Each spawns the core and applies the returned decision. They hold no policy.
 - `default.nix` two wiring helpers on a shared agent-free base: `mkCommandHookAdapter` (Claude Code, Codex) and `mkPluginAdapter` (Pi, OpenCode).
 - `fragment.nix` generates the rules text, reminder, block, and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
-- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 260 scanner fixtures (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix). `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript seams.
+- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 304 fixtures across five groups (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix): 70 scanner, 67 claude-code, 70 codex, 52 pi, 45 opencode. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript seams.
 
 ## Why this exists
 

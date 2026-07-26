@@ -39,6 +39,7 @@ BANNED_TERMS = [
     "garnered",
     "underpinning",
     "underscores",
+    "boasts",
 ]
 
 DASH_CASES = {

@@ -60,6 +60,7 @@ DEFAULT_POLICY = {
         'garnered',
         'underpinning',
         'underscores',
+        'boasts',
     ],
 }
 

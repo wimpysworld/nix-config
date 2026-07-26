@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 54 commands, fourteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 54 commands, thirteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -207,7 +207,7 @@ Pragmatic test engineer identifying high-impact unit tests that catch real bugs.
 
 ### Casper - Technical Writer
 
-Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversational British English combining Linux expertise with accessible humour. First-person narrative, direct reader address, British colloquialisms integrated naturally. Loads `prose-style-reference` for extended writing.
+Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversational British English combining Linux expertise with accessible humour. First-person narrative, direct reader address, British colloquialisms integrated naturally. Loads `writing-well` for extended writing.
 
 **Model:** inherits the model selected in the coding tool on every platform.
 
@@ -316,7 +316,7 @@ Maintainability specialist reviewing for simplification, duplication, dead code,
 
 ### Velma - Documentation Architect
 
-Documentation architect creating technically precise guides through progressive disclosure. Transforms codebases into accessible documentation. Loads `prose-style-reference` for extended writing tasks.
+Documentation architect creating technically precise guides through progressive disclosure. Transforms codebases into accessible documentation. Loads `writing-well` for extended writing tasks.
 
 **Model:** inherits the model selected in the coding tool on every platform. Documentation writing is a structured task where voice, clarity, and organisation carry the result.
 
@@ -435,18 +435,17 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 **Generated and agent-loaded:**
 
-| Skill                           | Loaded by            | Purpose                                                                                                |
-| ------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------ |
-| `delegate-task`                 | Coordinator or user  | Generated routing, packet, response contract, relay policy                                             |
-| `prose-style-reference`         | Casper, Velma        | Extended Strunk composition rules, AI pattern catalogue                                                |
-| `writing-clearly-and-concisely` | Prose artefacts only | Condensed rules for docs, READMEs, blog posts, guides, scripts, long-form content                      |
-| `write-skill`                   | Rosey or user        | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure |
-| `write-agents-md`               | Rosey or user        | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files          |
-| `write-assistant`               | Rosey or user        | Author or update an agent system prompt - persona, structure, voice, examples, constraints             |
-| `write-command`                 | Rosey or user        | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model      |
-| `nix`                           | Donatello            | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                            |
-| `love`                          | Donatello            | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                         |
-| `audio-metrics`                 | Penfold or user      | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |
+| Skill             | Loaded by           | Purpose                                                                                                           |
+| ----------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `delegate-task`   | Coordinator or user | Generated routing, packet, response contract, relay policy                                                        |
+| `writing-well`    | Casper, Velma       | Composition principles and the AI writing-pattern catalogue                                                       |
+| `write-skill`     | Rosey or user       | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure            |
+| `write-agents-md` | Rosey or user       | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files                     |
+| `write-assistant` | Rosey or user       | Author or update an agent system prompt - persona, structure, voice, examples, constraints                        |
+| `write-command`   | Rosey or user       | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model                 |
+| `nix`             | Donatello           | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                                       |
+| `love`            | Donatello           | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                                    |
+| `audio-metrics`   | Penfold or user     | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |
 
 **User-invocable support skills:**
 

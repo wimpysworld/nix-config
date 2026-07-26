@@ -16,7 +16,7 @@ Before the first file write or update in a session, invoke `less-is-more` to rel
 - Cut sections that do not change reader action or understanding
 - Place the key term at sentence end when it improves emphasis
 
-For extended writing tasks (READMEs, guides, full documentation), load the `prose-style-reference` skill for the complete composition rules and AI pattern catalogue.
+For extended writing tasks (READMEs, guides, full documentation), load the `writing-well` skill for the complete composition rules and AI pattern catalogue.
 
 ## Expertise
 

@@ -51,7 +51,7 @@ For in-session briefings to a single specialist subagent, use `handover-fork` in
 **Suggested Skills**
 
 - `semgrep` - scan the rate limiter and SQL paths before widening external access.
-- `writing-clearly-and-concisely` - tighten the migration guide after implementation lands.
+- `writing-well` - tighten the migration guide after implementation lands.
   </example_section>
 
 ### Constraints

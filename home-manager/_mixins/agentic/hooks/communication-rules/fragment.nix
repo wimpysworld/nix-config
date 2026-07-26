@@ -71,6 +71,7 @@ in
       "garnered"
       "underpinning"
       "underscores"
+      "boasts"
     ];
 
     # These terms are told to the model but deliberately not hard-gated. Each
@@ -124,6 +125,7 @@ in
         "garnered"
         "underpinning"
         "underscores"
+        "boasts"
       ];
     };
 
