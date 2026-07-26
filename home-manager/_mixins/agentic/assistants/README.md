@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 44 commands, fourteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 45 commands, fourteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -255,6 +255,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `review-alignment`               | Audit two documents for alignment gaps             |
 | `create-proposal`                | Bridge research findings into a specification      |
 | `deep-research`                  | Multi-round research tracked in `RESEARCH-PLAN.md` |
+| `make-linear-issue`              | File session outcomes into Linear as issues        |
 
 ---
 
