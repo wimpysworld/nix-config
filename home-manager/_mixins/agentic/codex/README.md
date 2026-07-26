@@ -100,7 +100,7 @@ Each agent command becomes a skill named after the bare command (matching the Pi
 ```text
 $draft-commit-message
 $implement-plan
-$deep-research
+$research-task
 ```
 
 Standalone commands sit in the same namespace under the same shape:

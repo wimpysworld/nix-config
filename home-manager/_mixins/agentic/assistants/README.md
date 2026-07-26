@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 47 commands, eleven physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 46 commands, twelve physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -288,7 +288,6 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `research-task`     | Research a task and its linked work, and synthesise one cited analysis   |
 | `update-task`       | Fold session decisions into an existing task                             |
 | `review-task`       | Judge whether a task is ready to implement, and what must change first   |
-| `deep-research`     | Multi-round research tracked in `RESEARCH-PLAN.md`                       |
 | `how-to-contribute` | Assess a project's contribution rules before contributing                |
 
 ---
@@ -443,7 +442,8 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 **User-invocable support skills:**
 
-| Skill     | Purpose                                                        |
-| --------- | -------------------------------------------------------------- |
-| `gh`      | GitHub CLI reference - PR creation, issue management, releases |
-| `semgrep` | Semgrep CLI usage and custom rule creation reference           |
+| Skill           | Purpose                                                                  |
+| --------------- | ------------------------------------------------------------------------ |
+| `deep-research` | Multi-round research on an open question, synthesised into a cited report |
+| `gh`            | GitHub CLI reference - PR creation, issue management, releases           |
+| `semgrep`       | Semgrep CLI usage and custom rule creation reference                     |

@@ -10,7 +10,7 @@ Command invocation: use the current provider's command prefix when invoking `dra
 
 Use the branch's committed diff only. Do not stage, commit, or include unstaged files in the pull request title or body.
 
-Treat unstaged overview, proposal, plan, alignment, validation, research, decision, handover, `RESEARCH-PLAN.md`, phase/task note, and files marked `working document, not for commit` as non-durable working documents. Leave them untouched and out of the pull request.
+Treat unstaged overview, proposal, plan, alignment, validation, research, decision, handover, phase/task note, and files marked `working document, not for commit` as non-durable working documents. Leave them untouched and out of the pull request.
 
 A pull request carries the branch's committed diff, so uncommitted work is out of scope. Report it as excluded rather than treating it as a blocker.
 

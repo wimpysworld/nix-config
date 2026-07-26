@@ -8,7 +8,7 @@ Command invocation: use the current provider's command prefix when invoking `dra
 
 ### Non-durable working documents
 
-Treat unstaged overview, proposal, plan, alignment, validation, research, decision, handover, `RESEARCH-PLAN.md`, phase/task note, and files marked `working document, not for commit` as non-durable working documents. Do not stage them.
+Treat unstaged overview, proposal, plan, alignment, validation, research, decision, handover, phase/task note, and files marked `working document, not for commit` as non-durable working documents. Do not stage them.
 
 A document is durable only when it is intended project documentation, for example a README, docs page, ADR, changelog entry, or a user-named durable record.
 
