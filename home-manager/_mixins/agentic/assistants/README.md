@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 45 commands, fourteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 48 commands, eleven physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -41,12 +41,13 @@ Global instructions in OpenCode are set via the `rules` option in `settings.json
 
 Pi Agent resources are rendered here and consumed by `../pi`, which owns the Pi package, runtime wrapper, settings, MCP adapter, subagent extension config, and theme files.
 
-Each file is Markdown with YAML frontmatter. Claude Code, Codex, and Pi headers may pin models. OpenCode headers intentionally omit `model` and honour the model currently selected in OpenCode, so users can switch Anthropic and OpenAI models manually. The prompt body follows the `---` delimiters. No build step required - drop the files in and they work.
+Each file is Markdown with YAML frontmatter. No agent pins a model on any platform except Garfield; every other agent inherits the model selected in the coding tool. OpenCode headers intentionally omit `model` on every agent, so users can switch Anthropic and OpenAI models manually. The prompt body follows the `---` delimiters. No build step required - drop the files in and they work.
 
 ## Contents
 
 - [Prompt Hierarchy](#prompt-hierarchy)
 - [Global Instructions](#global-instructions)
+- [Task Lifecycle](#task-lifecycle)
 - [Agents](#agents)
 - [Model Selection](#model-selection)
 - [Platform Delivery](#platform-delivery)
@@ -62,12 +63,12 @@ Instructions stack in four layers. Each layer narrows scope and increases specif
 instructions/global.md          ← environment constraints, tool preferences, response standards
     └── AGENTS.md / CLAUDE.md   ← project-specific context, conventions, commands
             └── agent prompt    ← specialist persona, expertise, tools, constraints
-                    └── command prompt  ← single task, optionally overrides model
+                    └── command prompt  ← single task, may repeat the agent's model pin
 ```
 
 **`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, response standards, and verbatim relay. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
-Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. Commands that need deeper reasoning can override the parent model without rewriting the agent.
+Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. A command can set its own model header, but only Garfield's four commands do.
 
 ---
 
@@ -99,14 +100,44 @@ Global response rules stay compact: concise peer-to-peer British English, no em 
 
 ### Standalone Commands
 
-| Command       | Purpose                                                |
-| ------------- | ------------------------------------------------------ |
-| `ack`         | Acknowledge a phase or message and yield               |
-| `botsnack`    | Celebrate agent work                                   |
-| `build-it`    | Build from overview to validated implementation        |
-| `collaborate` | Read an implementation plan and prepare to collaborate |
-| `orientate`   | Inspect the repository and report orientation notes    |
-| `ready`       | Prime the session for a broad activity                 |
+| Command          | Purpose                                                             |
+| ---------------- | ------------------------------------------------------------------- |
+| `ack`            | Acknowledge a phase or message and yield                            |
+| `botsnack`       | Celebrate agent work                                                |
+| `collaborate`    | Read an implementation plan and prepare to collaborate              |
+| `grill-me`       | Interview the user until every branch of a design is resolved       |
+| `implement-task` | Take a tracked task through to implemented, validated, committed work |
+| `less-is-more`   | Re-read the Communication Rules and apply them from now on          |
+| `orientate`      | Inspect the repository and report orientation notes                 |
+| `ready`          | Prime the session for a broad activity                              |
+
+---
+
+## Task Lifecycle
+
+Five commands share one noun. The vocabulary is strict:
+
+- **Task** - a durable, tracked work item: a Linear issue, or a local markdown file.
+- **Plan** - ephemeral, and outside any project tree.
+- **Phase** - a unit of work inside a plan.
+
+| Step | Command          | Purpose                                                                  |
+| ---- | ---------------- | ------------------------------------------------------------------------ |
+| 1    | `create-task`    | File the session outcome as a task, or a parent wrapping children        |
+| 2    | `research-task`  | Research a task and its linked work, and synthesise one cited analysis   |
+| 3    | `update-task`    | Fold session decisions into the task so it stays the source of truth     |
+| 4    | `review-task`    | Judge whether the task is ready to implement, and what must change first |
+| 5    | `implement-task` | Take the task through to implemented, validated, committed work          |
+
+`create-plan` writes to `${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md`, outside any project tree. A plan exists only while one task is implemented. It is never committed and is discarded afterwards. The durable record is the task, not the plan.
+
+### Orchestration
+
+`implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. It spawns a fresh sub-agent per task. Inside each, `create-plan` runs, then `implement-plan`, which spawns its own fresh sub-agent per phase. Fresh context per task and per phase keeps attention high and implementations small.
+
+Validation is inline. Each task's changed files are checked against the task's `Acceptance criteria` before that task is committed.
+
+`implement-task` opens one branch named from the Linear issue's `gitBranchName`, commits once per task with a `Refs: <ISSUE-KEY>` footer, and stops. It never opens or drafts a pull request; run `make-pr` yourself. Linear keys its auto-close on the branch name when the pull request is eventually merged.
 
 ---
 
@@ -116,7 +147,7 @@ Global response rules stay compact: concise peer-to-peer British English, no em 
 
 Prompt and skill specialist for agent prompts, skills, commands, and instruction files. Rosey edits these artefacts directly, applies context-efficiency constraints, and keeps prompt guidance short enough to hold. She is not the global coordinator; `instructions/global.md` owns default delegation policy. See [`agents/rosey/README.md`](agents/rosey/README.md) for the research that informs Rosey's prompt, skills, and command shims.
 
-**Model:** `opus` (Claude Code) - every Rosey command and the agent itself run on `opus`; prompt and skill authoring rewards the stronger model for structure, terseness, and cross-platform reasoning. OpenCode uses the current session model.
+**Model:** inherits the model selected in the coding tool on every platform.
 
 Rosey's prompt engineering rules:
 
@@ -136,18 +167,18 @@ The older under-10K target remains useful as compliance evidence, not as the Ope
 
 Compact, stable system prompts preserve Claude prompt-cache hits; bloated or variable prompt prefixes defeat caching. Rosey's `update-assistant` command removes ineffective patterns while preserving output templates, few-shot examples, decision criteria, explicit constraints, tool-specific guidance, and numeric limits.
 
-| Command            | Model  | Purpose                                                           |
-| ------------------ | ------ | ----------------------------------------------------------------- |
-| `create-assistant` | `opus` | Generate a new agent prompt from requirements                     |
-| `create-agents-md` | `opus` | Create `AGENTS.md` from codebase analysis                         |
-| `create-skill`     | `opus` | Create a reusable `SKILL.md`                                      |
-| `create-command`   | `opus` | Create a slash command (shim or standalone)                       |
-| `update-assistant` | `opus` | Apply context-efficiency pass to an existing agent                |
-| `update-agents-md` | `opus` | Apply targeted changes or consolidate scattered instruction files |
-| `update-skill`     | `opus` | Improve an existing reusable skill                                |
-| `update-command`   | `opus` | Update an existing slash command and its provider headers         |
-| `handover-fresh`   | `opus` | Write structured handover document for a new session              |
-| `handover-fork`    | `opus` | Fork-compact briefing for an in-session specialist subagent       |
+| Command            | Purpose                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| `create-assistant` | Generate a new agent prompt from requirements                     |
+| `create-agents-md` | Create `AGENTS.md` from codebase analysis                         |
+| `create-skill`     | Create a reusable `SKILL.md`                                      |
+| `create-command`   | Create a slash command (shim or standalone)                       |
+| `update-assistant` | Apply context-efficiency pass to an existing agent                |
+| `update-agents-md` | Apply targeted changes or consolidate scattered instruction files |
+| `update-skill`     | Improve an existing reusable skill                                |
+| `update-command`   | Update an existing slash command and its provider headers         |
+| `handover-fresh`   | Write structured handover document for a new session              |
+| `handover-fork`    | Fork-compact briefing for an in-session specialist subagent       |
 
 ---
 
@@ -155,7 +186,7 @@ Compact, stable system prompts preserve Claude prompt-cache hits; bloated or var
 
 Infrastructure security auditor assessing configuration hardening, defensive resilience, and blast radius across cloud, container, and network infrastructure. Identifies misconfigurations, privilege escalation paths, and lateral movement risks. Every finding is mapped to concrete remediation.
 
-**Model:** `opus` (Claude Code) - infrastructure security assessment requires reasoning across interacting systems, trust boundaries, and attack chains simultaneously.
+**Model:** inherits the model selected in the coding tool on every platform. Infrastructure security assessment reasons across interacting systems, trust boundaries, and attack chains simultaneously.
 
 | Command                | Purpose                                          |
 | ---------------------- | ------------------------------------------------ |
@@ -167,7 +198,7 @@ Infrastructure security auditor assessing configuration hardening, defensive res
 
 Pragmatic test engineer identifying high-impact unit tests that catch real bugs. Analyses git history to find frequently-fixed files, searches GitHub issues for bug patterns, and reads existing tests before recommending new ones. Focuses on coverage gaps that matter rather than coverage numbers.
 
-**Model:** `opus` (Claude Code) - deep codebase analysis with risk-based reasoning requires the strongest model.
+**Model:** inherits the model selected in the coding tool on every platform.
 
 | Command        | Purpose                                        |
 | -------------- | ---------------------------------------------- |
@@ -179,7 +210,7 @@ Pragmatic test engineer identifying high-impact unit tests that catch real bugs.
 
 Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversational British English combining Linux expertise with accessible humour. First-person narrative, direct reader address, British colloquialisms integrated naturally. Loads `prose-style-reference` for extended writing.
 
-**Model:** `sonnet` (Claude Code) - voice emulation and style calibration suit the mid-tier model.
+**Model:** inherits the model selected in the coding tool on every platform.
 
 | Command              | Purpose                                |
 | -------------------- | -------------------------------------- |
@@ -192,7 +223,7 @@ Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversationa
 
 Code security auditor methodically patrolling codebases for vulnerabilities, insecure patterns, and dependency risks. Cites CWE and OWASP classifications for every finding. Distinguishes confirmed vulnerabilities from theoretical risks and prioritises by exploitability.
 
-**Model:** `opus` (Claude Code) - vulnerability identification requires reasoning across data flows, trust boundaries, and exploitation conditions; the strongest model reduces false negatives.
+**Model:** inherits the model selected in the coding tool on every platform. Vulnerability identification reasons across data flows, trust boundaries, and exploitation conditions.
 
 | Command               | Purpose                                |
 | --------------------- | -------------------------------------- |
@@ -204,15 +235,18 @@ Code security auditor methodically patrolling codebases for vulnerabilities, ins
 
 Precise implementation engineer executing code changes from specifications. Reads related files before any implementation, reuses existing utilities before writing new ones, identifies blockers early. Preserves existing conventions and architectural decisions. Loads the `nix` skill for Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, and `.nix` files. Loads the `love` skill for LÖVE 2D and Lua 5.1/LuaJIT 2.1 game development.
 
-**Model:** `opus` (Claude Code) - multi-file implementation with consistency requirements across the codebase demands the strongest reasoning.
+**Model:** inherits the model selected in the coding tool on every platform.
 
-| Command            | Purpose                                                              |
-| ------------------ | -------------------------------------------------------------------- |
-| `create-plan`      | Break implementation into atomic, sequenced tasks                    |
-| `implement-plan`   | Execute tasks from a plan                                            |
-| `validate-plan`    | Check implementation against a proposal and plan                     |
-| `address-pr`       | Classify PR review comments: critical / robustness / quality / style |
-| `peer-review`      | Give an ecosystem-specific codebase verdict                          |
+| Command                   | Purpose                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| `create-plan`             | Break implementation into ordered phases in a disposable plan        |
+| `implement-plan`          | Execute a plan, one fresh sub-agent per phase                        |
+| `address-pr`              | Classify PR review comments: critical / robustness / quality / style |
+| `review-pr`               | Peer review a GitHub PR through a fan-out of sub-agents              |
+| `watch-ci`                | Watch PR checks to completion, then fix the failures the PR caused   |
+| `peer-review`             | Give an ecosystem-specific codebase verdict                          |
+| `polish-code-comments`    | Comment-quality pass over a file set; comments only, never logic     |
+| `add-enricher-capability` | Add a manifest-gen enricher capability                               |
 
 ---
 
@@ -220,12 +254,14 @@ Precise implementation engineer executing code changes from specifications. Read
 
 Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, and breaking change footers.
 
-**Model:** `haiku` (Claude Code) - commit message generation is a structured, deterministic task with clear rules. The smallest Claude Code model handles it correctly at minimum cost.
+**Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent and on all four commands. Pi takes `claude-sonnet-5` on the Anthropic route, `gpt-5.6-terra` at thinking `medium` on the OpenAI route, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Commit message generation is a structured, deterministic task with clear rules, so it does not need the session's reasoning budget.
 
 | Command                | Purpose                                                                  |
 | ---------------------- | ------------------------------------------------------------------------ |
 | `draft-commit-message` | Draft a conventional commit message for the staged or current changes    |
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body |
+| `make-commit`          | Draft the message, then create one commit from the durable work          |
+| `make-pr`              | Draft the title and body, then open the pull request                     |
 
 ---
 
@@ -233,7 +269,7 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 
 Performance optimisation specialist focused on user-perceivable improvements. Rates optimisations on a 1-10 impact scale. Only recommends changes where the user-perceivable effect justifies the maintainability cost.
 
-**Model:** `opus` (Claude Code) - identifying true bottlenecks versus theoretical micro-optimisations requires reasoning across algorithmic complexity, memory patterns, and I/O behaviour simultaneously.
+**Model:** inherits the model selected in the coding tool on every platform. Separating true bottlenecks from theoretical micro-optimisations reasons across algorithmic complexity, memory patterns, and I/O behaviour simultaneously.
 
 | Command              | Purpose                                                 |
 | -------------------- | ------------------------------------------------------- |
@@ -243,19 +279,18 @@ Performance optimisation specialist focused on user-perceivable improvements. Ra
 
 ### Penfold - Research Generalist
 
-Research partner for exploring ideas, generating options, and framing problems for downstream specialists. Synthesises findings into dense, actionable overviews. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification. Loads the `audio-metrics` skill for objective audio analysis from ffmpeg metrics: spectral statistics, loudness (EBU R128, LUFS, true peak), levels, and spectrograms.
+Research partner for exploring ideas, generating options, and framing problems for downstream specialists, and owner of the task lifecycle's read and write commands. Files session outcomes as tracked tasks, researches a task and everything it links, folds new decisions back into it, and judges when it is ready to implement. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification. Loads the `audio-metrics` skill for objective audio analysis from ffmpeg metrics: spectral statistics, loudness (EBU R128, LUFS, true peak), levels, and spectrograms.
 
-**Model:** `opus` (Claude Code) - research synthesis, problem framing, and trade-off analysis produce better direct-use results on the stronger model; specialist agents still handle domain-specific validation.
+**Model:** inherits the model selected in the coding tool on every platform. Penfold synthesises research, frames problems, and weighs trade-offs; specialist agents still handle domain-specific validation.
 
-| Command                          | Purpose                                            |
-| -------------------------------- | -------------------------------------------------- |
-| `create-overview`                | Research synthesis document                        |
-| `decide-it`                      | Resolve open questions in working documents        |
-| `review-proposal`                | Review proposal quality and readiness to plan      |
-| `review-alignment`               | Audit two documents for alignment gaps             |
-| `create-proposal`                | Bridge research findings into a specification      |
-| `deep-research`                  | Multi-round research tracked in `RESEARCH-PLAN.md` |
-| `make-linear-issue`              | File session outcomes into Linear as issues        |
+| Command             | Purpose                                                                  |
+| ------------------- | ------------------------------------------------------------------------ |
+| `create-task`       | File the session outcome as a task, or a parent wrapping children        |
+| `research-task`     | Research a task and its linked work, and synthesise one cited analysis   |
+| `update-task`       | Fold session decisions into an existing task                             |
+| `review-task`       | Judge whether a task is ready to implement, and what must change first   |
+| `deep-research`     | Multi-round research tracked in `RESEARCH-PLAN.md`                       |
+| `how-to-contribute` | Assess a project's contribution rules before contributing                |
 
 ---
 
@@ -263,12 +298,13 @@ Research partner for exploring ideas, generating options, and framing problems f
 
 Maintainability specialist reviewing for simplification, duplication, dead code, and naming clarity. Every suggestion is small, safe, and preserves exact functionality. Uses an impact scale; only flags changes where the maintainability benefit justifies the diff.
 
-**Model:** `sonnet` (Claude Code) - pattern recognition across a codebase suits sonnet; the review criteria are explicit enough that the stronger model adds little.
+**Model:** inherits the model selected in the coding tool on every platform.
 
-| Command             | Purpose                                                        |
-| ------------------- | -------------------------------------------------------------- |
-| `review-code`       | Maintainability review: deletion, replacement, simplification  |
-| `review-code-smell` | Hunt for genuine code smells: god objects, feature envy, etc.  |
+| Command                     | Purpose                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `review-code`               | Maintainability review: deletion, replacement, simplification |
+| `review-code-smell`         | Hunt for genuine code smells: god objects, feature envy, etc. |
+| `audit-communication-rules` | Validate the Communication Rules tripwire hooks end to end    |
 
 ---
 
@@ -276,7 +312,7 @@ Maintainability specialist reviewing for simplification, duplication, dead code,
 
 Documentation architect creating technically precise guides through progressive disclosure. Transforms codebases into accessible documentation. Loads `prose-style-reference` for extended writing tasks.
 
-**Model:** `sonnet` (Claude Code) - documentation writing is a structured task where voice, clarity, and organisation matter more than deep reasoning.
+**Model:** inherits the model selected in the coding tool on every platform. Documentation writing is a structured task where voice, clarity, and organisation carry the result.
 
 | Command            | Purpose                                                     |
 | ------------------ | ----------------------------------------------------------- |
@@ -288,23 +324,27 @@ Documentation architect creating technically precise guides through progressive 
 
 ## Model Selection
 
-Three Claude Code tiers map to task complexity:
+Agents follow the model selected in the coding tool. Martin picks a model once per session and every specialist he delegates to runs on it, so there is one decision to make and no per-agent tier to remember. Claude Code, OpenCode, Codex, and Pi all behave the same way: with no `model` in the header, the agent inherits the session model.
 
-| Tier                | Claude Code | Used for                                                                                         |
-| ------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
-| Heavy reasoning     | `opus`      | Deep analysis, research synthesis, complex implementation, prompt engineering, security auditing |
-| General purpose     | `sonnet`    | Writing, code review                                                                             |
-| Deterministic tasks | `haiku`     | Structured formatting with clear rules (Garfield only)                                           |
+Garfield is the sole exception. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
 
-OpenCode headers never set `model`. OpenCode honours the user's currently selected model, which keeps manual switching between Anthropic and OpenAI models intact.
+| Platform            | Pin                                                |
+| ------------------- | -------------------------------------------------- |
+| Claude Code         | `model: sonnet` on the agent and all four commands |
+| Pi (Anthropic)      | `claude-sonnet-5`                                  |
+| Pi (`openai-codex`) | `gpt-5.6-terra`, thinking `medium`                 |
+| Pi (Google)         | `gemini-3-flash`                                   |
+| Codex               | `gpt-5.6-terra`, reasoning `medium`                |
 
-**Why some commands override the parent model:** An agent's base model reflects its typical Claude Code workload. Some commands within that agent require a different level of reasoning. Rosey runs on `sonnet` because routine prompt and instruction maintenance follows tight templates. Her `create-assistant`, `create-agents-md`, `create-skill`, and `update-skill` commands override to `opus` because prompt design requires weighing what to include, what to cut, and when examples are essential - judgements where the stronger model produces measurably better output. Penfold sits in the heavy-reasoning tier because direct research synthesis and framing work performed better on `opus` than on the mid-tier model.
+No other agent or command sets a model on any platform. The ten remaining agents have no `header.pi.yaml` and no `header.codex.toml` at all, and their `header.claude.yaml` omits `model`.
+
+**Command-level model pins:** only Garfield's four commands set one. `draft-commit-message`, `draft-pr-message`, `make-commit`, and `make-pr` each repeat `model: sonnet` in Claude Code so the pin holds when the command runs outside the agent. No other command in the tree sets a model.
 
 ---
 
 ## Platform Delivery
 
-`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and per-platform headers: `header.claude.yaml`, `header.opencode.yaml`, `header.codex.toml`, and `header.pi.yaml`. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
+`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and optional per-platform headers: `header.claude.yaml`, `header.opencode.yaml`, `header.codex.toml`, and `header.pi.yaml`. Only Garfield carries the Codex and Pi headers today. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
 
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude ("Use the subagent tool to launch the `<agent>` agent...") is assembled in `default.nix` and wraps `compose.composePiCommandFromPrompt`, mirroring how the Codex side wraps `spawn_agent` guidance around skill bodies.
 
@@ -319,11 +359,14 @@ through extra `model-<provider>` and `thinking-<provider>` keys in the agent's
 `header.pi.yaml`:
 
 ```yaml
-model-anthropic: claude-haiku-4-5
-model-openai-codex: gpt-5.4-mini
-model-google: "gemini-3-flash"
-thinking-openai-codex: xhigh
+model-anthropic: claude-sonnet-5
+model-openai-codex: gpt-5.6-terra
+model-google: 'gemini-3-flash'
+thinking-openai-codex: medium
 ```
+
+That is Garfield's live header, quoted verbatim. He is the only agent with a
+`header.pi.yaml`, so he is the only agent the router matches.
 
 The suffix after `model-` or `thinking-` must match the active Pi provider
 name exactly, including hyphens (this repo's default provider is
@@ -341,18 +384,20 @@ When both keys are present, Pi receives `provider/modelId:thinking`. When only
 as the bare model, so the agent keeps the parent model and only its reasoning
 effort changes.
 
-This repo's convention is **explicit headers**: every named agent declares
-`model-anthropic`, `model-openai-codex`, and `thinking-openai-codex` so the
-active model and reasoning effort are visible in the agent's own header
-rather than inferred from Pi's `defaultModel` and `defaultThinkingLevel`.
-Additional providers (e.g. `model-google`) are added per-agent where
-relevant. The router still supports thinking-only entries (the runtime then
-reuses the active session model id), but explicit `model-<provider>` plus
-`thinking-<provider>` is preferred.
+This repo's convention is **no headers by default**. Only Garfield declares
+`model-<provider>` and `thinking-<provider>` keys; every other agent ships
+without a `header.pi.yaml` and inherits the model selected in the session. Any
+agent that does need a pin should declare `model-anthropic`,
+`model-openai-codex`, and `thinking-openai-codex` together, so the active model
+and reasoning effort are readable from the agent's own header. Additional
+providers (e.g. `model-google`) are added per-agent where relevant. The router
+also supports thinking-only entries, where the runtime reuses the active
+session model id.
 
 Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-5.5"`
-remain the fallback for the unnamed global prompt and any future agent that
-omits a header.
+set the session default for the unnamed global prompt. Agents that omit a
+header do not fall back to them per-agent; they inherit whatever model the
+session is running.
 
 Provider routing covers Pi's LLM tool-call path only. Slash commands such as
 `/run`, `/chain`, `/parallel`, `/run-chain`, and prompt-template bridge calls

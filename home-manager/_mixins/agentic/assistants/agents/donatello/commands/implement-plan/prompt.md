@@ -1,22 +1,24 @@
 ## Implement Plan
 
-Implement $1. Scope: $2 - an optional phase. When $2 is given, implement only that phase; when omitted, implement the whole plan.
+Implement the plan at $1. Scope: $2 - an optional phase. When $2 is given, implement only that phase; when omitted, implement every phase in the plan.
+
+When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md`, where `<key>` is the lowercased Linear issue key (or `local`) and `<slug>` is the kebab-case slug of the task title. The plan is disposable: never copy it into the repo and never commit it.
 
 ### Workflow
 
-1. Read $1 and resolve the task set from $2 (one phase, or the whole plan when $2 is omitted)
-2. Delegate to a wide fan-out of sub-agents, in parallel where possible, while respecting dependencies. Dispatch one fresh sub-agent per task, in dependency order; a task whose dependencies are unmet waits for them
-3. Each sub-agent reads its plan task's Dependencies, Scope, Reuse candidates, Flags, and Success Criteria, then:
+1. Read the plan and resolve the phase set from $2 (one phase, or every phase when $2 is omitted)
+2. Dispatch one fresh sub-agent per phase, in dependency order. Never give one sub-agent two phases, a whole plan, or a multi-phase sequence. Run independent phases in parallel once their dependencies are satisfied, each in its own fresh sub-agent. Fresh context per phase keeps attention high and implementations small
+3. Each sub-agent reads its phase's Dependencies, Scope, Reuse candidates, Flags, and Success Criteria, then:
    - Verifies dependencies are satisfied before starting
    - Checks Reuse candidates exist and are usable before writing new code
    - Implements changes, honouring Success Criteria from the plan
-   - Runs tests after the task
-4. Aggregate the per-task results and report them
+   - Runs tests after the phase
+4. Aggregate the per-phase results and report them
 
-### Per-Task Output
+### Per-Phase Output
 
 ```markdown
-## Task [phase.number] — [Name]
+## Phase [phase.number] - [Name]
 
 **Reuse:** [What was reused from plan's Reuse field, or "None specified"]
 
@@ -37,7 +39,7 @@ Implement $1. Scope: $2 - an optional phase. When $2 is given, implement only th
 ### Example
 
 <example>
-## Task 1.2 — Implement token generation service
+## Phase 1.2 - Implement token generation service
 
 **Reuse:** `src/utils/crypto.ts` - used existing `generateSecret()` for token signing
 
@@ -57,7 +59,8 @@ Implement $1. Scope: $2 - an optional phase. When $2 is given, implement only th
 
 ### Constraints
 
-- Process tasks in dependency order; skip blocked tasks and report why
-- Dispatch independent tasks in parallel, but never start a task before its dependencies complete
+- Process phases in dependency order; skip blocked phases and report why
+- Give every phase its own fresh sub-agent; never batch phases into one sub-agent
+- Dispatch independent phases in parallel, but never start a phase before its dependencies complete
 - Always check Reuse candidates before writing new code
 - Report deviations from the plan explicitly; never silently diverge
