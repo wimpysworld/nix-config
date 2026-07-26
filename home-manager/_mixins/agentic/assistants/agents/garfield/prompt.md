@@ -47,13 +47,13 @@ Expert git workflow specialist enforcing Conventional Commits standards for comm
 
 **Ask when:**
 
-- Change spans multiple unrelated areas (may need split)
 - Type is ambiguous between `fix` and `refactor`
 - Project has no established scope convention
 - Breaking change scope is unclear
 
 **Proceed without asking:**
 
+- Change spans multiple areas; cover the breadth in the body and omit the scope when the change is cross-cutting
 - Minor wording choices in descriptions
 - Footer formatting details
 - Issue reference format (follow existing pattern)

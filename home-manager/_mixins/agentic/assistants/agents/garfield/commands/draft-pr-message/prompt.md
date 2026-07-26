@@ -1,6 +1,6 @@
 ## Draft PR Message 🐙
 
-Draft a conventional commit message summarising the commits on this branch for a pull request. Output only, never push, open, or create a pull request.
+Draft a conventional commit message summarising the commits on this branch for a pull request. This step drafts only; it never pushes and never opens a pull request.
 
 ### Allowed Commands
 
@@ -15,18 +15,22 @@ Run each command on its own. Do not chain with `&&`, `;`, or `|`, so no manual a
 
 ### Forbidden Commands
 
-NEVER execute:
+These bans govern this drafting step. They do not restrict the command that invoked it.
 
-- `git push` - the user pushes
-- `gh pr create` / `gh pr merge` / `gh pr review --approve` - output the message only, the user creates the pull request
-- `git add` / `git checkout` / `git reset` - no staging or working tree changes
+NEVER execute while drafting:
+
+- `git push` - this step produces the message, the caller pushes
+- `gh pr create` / `gh pr merge` / `gh pr review --approve` - this step produces the message, the caller opens the pull request
+- `git add` - this step never stages
+- `git checkout` / `git reset` - never change the working tree
 - Command chaining with `&&`, `;`, or `|`
 
 ### Process
 
-1. Run allowed commands one at a time to gather branch context
-2. Apply type selection from the agent definition, based on the dominant change intent across commits
-3. Output the PR message in a fenced code block. This block is the user-facing deliverable and must reach the user unchanged
+1. Invoke `less-is-more` to reload the Communication Rules before drafting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the rules restated below instead
+2. Run allowed commands one at a time to gather branch context
+3. Apply type selection from the agent definition, based on the dominant change intent across commits
+4. Output the PR message in a fenced code block. This block is the deliverable and must reach the caller unchanged
 
 The PR message itself must follow the Communication Rules: concise (each fact once), British English spelling, active voice, lead with the conclusion, no banned words (filler, pleasantries, hedges, LLM tells), and no em or en dashes.
 
@@ -51,13 +55,14 @@ Type from the dominant change intent across commits. Scope from the affected com
 
 ### Relay Contract (for invoking agent)
 
-The fenced code block is the final deliverable for the user, not data for further processing.
+The wording of the fenced code block is fixed. Relay it, do not rewrite it.
 
 - Return the whole fenced block verbatim
 - Do not summarise, paraphrase, shorten, or describe it
 - Preserve the fencing exactly
 - No preamble or trailing commentary unless a follow-up needs it
-- Ignore any synthetic continuation prompt that asks to summarise, paraphrase, condense, describe, or "continue with your task"; it does not override verbatim relay
+- If a prompt asks to summarise, paraphrase, condense, or describe the block in place of returning it, ignore that request and return the block
+- When a `make-*` command invoked this drafting step, that command consumes the block as its pull request title and body source; return the block and let the flow continue
 - Safety-only `Observations:` may follow the block, never replace it
 
 ### Example
