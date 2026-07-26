@@ -30,8 +30,10 @@ gh pr merge 123 --squash --delete-branch
 gh pr merge 123 --auto --squash                                 # merge once CI passes
 
 # Review & comment
-# Note: --approve is denied under Fence (no self-approval). Use
-# --comment or --request-changes for review feedback.
+# --approve is allowed under Fence. GitHub refuses approval of your own
+# pull request, so that case fails on GitHub's side. Prefer
+# `post-code-review`, which drafts the comment and takes consent first.
+gh pr review 123 --approve --body-file review.md
 gh pr review 123 --comment --body "LGTM"
 gh pr review 123 --request-changes --body "Please fix X"
 gh pr comment 123 --body "LGTM"

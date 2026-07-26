@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 46 commands, twelve physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 50 commands, thirteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -236,16 +236,20 @@ Precise implementation engineer executing code changes from specifications. Read
 
 **Model:** inherits the model selected in the coding tool on every platform.
 
-| Command                   | Purpose                                                              |
-| ------------------------- | -------------------------------------------------------------------- |
-| `create-plan`             | Break implementation into ordered phases in a disposable plan        |
-| `implement-plan`          | Execute a plan, one fresh sub-agent per phase                        |
-| `address-pr`              | Classify PR review comments: critical / robustness / quality / style |
-| `review-pr`               | Peer review a GitHub PR through a fan-out of sub-agents              |
-| `watch-ci`                | Watch PR checks to completion, then fix the failures the PR caused   |
-| `project-peer-review`     | Give an ecosystem-specific codebase verdict                          |
-| `project-polish-comments` | Comment-quality pass over a file set; comments only, never logic     |
-| `add-enricher-capability` | Add a manifest-gen enricher capability                               |
+| Command                   | Purpose                                                            |
+| ------------------------- | ------------------------------------------------------------------ |
+| `create-plan`             | Break implementation into ordered phases in a disposable plan      |
+| `implement-plan`          | Execute a plan, one fresh sub-agent per phase                      |
+| `review-code-colleague`   | Review a colleague's PR for defects only; no suggestions, no nits  |
+| `review-code-community`   | Review a community PR for correctness, gaps, and malicious code    |
+| `review-code-mine`        | Adversarially review my own changes before filing a PR             |
+| `draft-code-review`       | Draft the house-style review comment from a completed review       |
+| `post-code-review`        | Post the review comment and set the verdict on GitHub              |
+| `address-code-review`     | Work review findings one at a time, committing each fix            |
+| `watch-ci`                | Watch PR checks to completion, then fix the failures the PR caused |
+| `project-peer-review`     | Give an ecosystem-specific codebase verdict                        |
+| `project-polish-comments` | Comment-quality pass over a file set; comments only, never logic   |
+| `add-enricher-capability` | Add a manifest-gen enricher capability                             |
 
 ---
 
@@ -446,4 +450,5 @@ Shared skills provide background knowledge and reference material. Most are sour
 | --------------- | ------------------------------------------------------------------------ |
 | `deep-research` | Multi-round research on an open question, synthesised into a cited report |
 | `gh`            | GitHub CLI reference - PR creation, issue management, releases           |
+| `review-code`   | Shared review method: input resolution, fan-out, pressure-test, report   |
 | `semgrep`       | Semgrep CLI usage and custom rule creation reference                     |

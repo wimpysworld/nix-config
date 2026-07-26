@@ -75,7 +75,7 @@ Merge all findings into the output format below. Deduplicate anything raised by 
 [Concrete actions]
 ```
 
-The synthesis is not filed anywhere automatically. Martin captures it with `create-task` or `update-task`.
+The synthesis is not filed anywhere automatically. The user captures it with `create-task` or `update-task`.
 
 ### Markers
 

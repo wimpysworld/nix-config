@@ -440,17 +440,18 @@ let
         # separate tooling. `gh label list` is carved out above for
         # discovery.
         "gh label"
-        # gh pr: merges, moderation, and self-approval. `update-branch`
-        # is intentionally not denied so the agent can resolve
-        # out-of-date PR branches. Both the positional `--approve` and
-        # `--approve=` forms are denied so the agent cannot rubber-stamp
-        # its own pull requests; `--comment` and `--request-changes`
-        # remain available for review feedback.
+        # gh pr: merges and moderation. `update-branch` is intentionally
+        # not denied so the agent can resolve out-of-date PR branches.
+        # `gh pr review --approve` is intentionally allowed so review
+        # workflows can set the verdict without an unfenced shell. Two
+        # guards replace the old deny: GitHub itself refuses approval of
+        # your own pull request, and `post-code-review` treats explicit
+        # human invocation as the consent to post. Fence matches command
+        # strings, so it cannot tell whose pull request is under review;
+        # that judgement belongs in the command, not here.
         "gh pr merge"
         "gh pr lock"
         "gh pr unlock"
-        "gh pr review --approve"
-        "gh pr review --approve="
         # gh project: family-wide deny. Reads are carved out above.
         "gh project"
         # gh release: family-wide deny. Reads are carved out above.
