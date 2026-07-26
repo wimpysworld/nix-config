@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 50 commands, thirteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 54 commands, fourteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -286,13 +286,17 @@ Research partner for exploring ideas, generating options, and framing problems f
 
 **Model:** inherits the model selected in the coding tool on every platform. Penfold synthesises research, frames problems, and weighs trade-offs; specialist agents still handle domain-specific validation.
 
-| Command             | Purpose                                                                  |
-| ------------------- | ------------------------------------------------------------------------ |
-| `create-task`       | File the session outcome as a task, or a parent wrapping children        |
-| `research-task`     | Research a task and its linked work, and synthesise one cited analysis   |
-| `update-task`       | Fold session decisions into an existing task                             |
-| `review-task`       | Judge whether a task is ready to implement, and what must change first   |
-| `how-to-contribute` | Assess a project's contribution rules before contributing                |
+| Command             | Purpose                                                                |
+| ------------------- | ---------------------------------------------------------------------- |
+| `create-task`       | File the session outcome as a task, or a parent wrapping children      |
+| `research-task`     | Research a task and its linked work, and synthesise one cited analysis |
+| `update-task`       | Fold session decisions into an existing task                           |
+| `review-task`       | Judge whether a task is ready to implement, and what must change first |
+| `how-to-contribute` | Assess a project's contribution rules before contributing              |
+| `draft-comment`     | Draft a GitHub, Linear, or Slack comment in the user's own voice       |
+| `post-comment`      | Post the agreed comment to GitHub, Linear, or Slack                    |
+| `draft-issue`       | Draft a GitHub issue after checking policy and duplicates              |
+| `post-issue`        | Create the agreed issue on GitHub                                      |
 
 ---
 
@@ -446,9 +450,10 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 **User-invocable support skills:**
 
-| Skill           | Purpose                                                                  |
-| --------------- | ------------------------------------------------------------------------ |
-| `deep-research` | Multi-round research on an open question, synthesised into a cited report |
-| `gh`            | GitHub CLI reference - PR creation, issue management, releases           |
-| `review-code`   | Shared review method: input resolution, fan-out, pressure-test, report   |
-| `semgrep`       | Semgrep CLI usage and custom rule creation reference                     |
+| Skill                | Purpose                                                                   |
+| -------------------- | ------------------------------------------------------------------------- |
+| `contribution-voice` | Shape rules for text published under the user's name in public            |
+| `deep-research`      | Multi-round research on an open question, synthesised into a cited report |
+| `gh`                 | GitHub CLI reference - PR creation, issue management, releases            |
+| `review-code`        | Shared review method: input resolution, fan-out, pressure-test, report    |
+| `semgrep`            | Semgrep CLI usage and custom rule creation reference                      |
