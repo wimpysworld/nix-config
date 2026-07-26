@@ -41,18 +41,13 @@ The PR message itself must follow the Communication Rules: concise (each fact on
 
 Type from the dominant change intent across commits. Scope from the affected component.
 
-### Body Structure
+### Body Decision
 
-```
-## Summary
-<one paragraph: why this change exists>
-
-## Changes
-- <bullet per logical change>
-
-## Testing
-- <validation performed or required>
-```
+- Prose is the default. Write paragraphs, not headings
+- Put validation in a sentence: what you verified and how, or nothing if there was nothing to verify. Never emit a heading with "Tested locally" under it
+- Use headings only when a reviewer needs to navigate the pull request: several independent concerns, or a long commit series that no single narrative covers. Reaching for headings on a focused change is the fault the skill names
+- One commit: do not restate its message. Say what a reviewer needs beyond it, or reuse the commit body directly
+- Keep any `Refs:` trailer or issue reference on its own line at the end
 
 ### Relay Contract (for invoking agent)
 
@@ -80,17 +75,9 @@ Commits on branch:
 ```
 feat(users): add avatar upload and display
 
-## Summary
-Enable users to upload profile avatars with automatic validation and resizing.
+Profiles had no way to set an avatar, so every user rendered with the same placeholder. POST /users/avatar now takes an upload, checks the image format, and resizes to one standard dimension before storing it, so the profile page renders a consistent size whatever was sent. Unsupported formats return 415 rather than storing a file the resizer cannot read.
 
-## Changes
-- Add POST /users/avatar endpoint with file upload handling
-- Validate image format and resize to standard dimensions
-- Display avatar on user profile page
-
-## Testing
-- Tested upload with various image formats
-- Verified resize produces consistent output
+Verified with PNG, JPEG, and WebP uploads, and with a file above the size limit.
 ```
 
 </example_output>
