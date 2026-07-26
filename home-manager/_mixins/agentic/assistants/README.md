@@ -199,9 +199,9 @@ Pragmatic test engineer identifying high-impact unit tests that catch real bugs.
 
 **Model:** inherits the model selected in the coding tool on every platform.
 
-| Command        | Purpose                                        |
-| -------------- | ---------------------------------------------- |
-| `review-tests` | Analyse codebase for high-value test additions |
+| Command                | Purpose                                        |
+| ---------------------- | ---------------------------------------------- |
+| `project-tests-review` | Analyse codebase for high-value test additions |
 
 ---
 
@@ -270,9 +270,9 @@ Performance optimisation specialist focused on user-perceivable improvements. Ra
 
 **Model:** inherits the model selected in the coding tool on every platform. Separating true bottlenecks from theoretical micro-optimisations reasons across algorithmic complexity, memory patterns, and I/O behaviour simultaneously.
 
-| Command              | Purpose                                                 |
-| -------------------- | ------------------------------------------------------- |
-| `review-performance` | Identify optimisation opportunities with impact ratings |
+| Command                      | Purpose                                                 |
+| ---------------------------- | ------------------------------------------------------- |
+| `project-performance-review` | Identify optimisation opportunities with impact ratings |
 
 ---
 
