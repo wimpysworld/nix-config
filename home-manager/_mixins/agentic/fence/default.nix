@@ -244,6 +244,18 @@ let
         "gh api rate_limit"
         "gh api meta"
         "gh api octocat"
+        # gh-review-reply is the only GitHub write path allowed under
+        # Fence. It reaches exactly one endpoint,
+        # `POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`,
+        # so an agent can answer a review comment inside its own thread
+        # instead of posting a top-level comment. The helper builds that
+        # path itself from validated arguments and never takes an
+        # endpoint from argv. Fence allow rules are token-prefix
+        # matches, so trailing arguments are permitted; that is safe
+        # here because the helper rejects every endpoint, method, and
+        # field flag itself and exits 64. The family-wide `gh api` deny
+        # below is unaffected, and `gh-api-safe` stays read-only.
+        "gh-review-reply"
         # gh extension discovery reads. These pair with the family-wide
         # `gh extension`, `gh extensions`, and `gh ext` denies below so
         # the agent can search and browse without being able to install,

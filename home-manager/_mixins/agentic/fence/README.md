@@ -156,7 +156,13 @@ assignment, `--add`, `--unset`, `--replace-all`, `--rename-section`,
 `remove-section` subcommands) is denied. Raw `gh api` is the escape hatch
 and stays denied; read-shaped requests go through the `gh-api-safe` wrapper,
 with literal allowances only for `gh api rate_limit`, `gh api meta`, and
-`gh api octocat`. The wider `gh` policy follows the same family-wide deny
+`gh api octocat`. One write path is allowed by name: `gh-review-reply`
+posts a threaded reply to a pull request review comment and reaches only
+`POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`. It builds
+that path itself from validated arguments, refuses every endpoint,
+method, and field flag, and exits 64 on a policy violation. The
+family-wide `gh api` deny is unaffected and `gh-api-safe` stays
+read-only. The wider `gh` policy follows the same family-wide deny
 plus longer-prefix allow pattern: list-like discovery reads under
 `gh extension`, `gh release`, `gh project`, `gh codespace`, `gh label`,
 `gh secret`, `gh variable`, `gh gpg-key`, `gh ssh-key`, and

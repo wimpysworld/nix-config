@@ -17,6 +17,16 @@ if TYPE_CHECKING:
     from core.config import Config
 
 
+# The gh CLI command names whose calls can put prose on an external surface
+# (Tier B2). ``gh-review-reply`` posts a reply inside a review comment thread and
+# carries its prose in a ``--body-file`` path. The extractors import this set so
+# the names live in one place.
+GH_POST_COMMANDS = frozenset({"gh", "gh-api-safe", "gh-review-reply"})
+
+# The same names in the normalised tool-name form the OpenCode extractor matches
+# on: hyphens and dots become underscores.
+GH_POST_COMMANDS_NORMALISED = frozenset(name.replace("-", "_").replace(".", "_") for name in GH_POST_COMMANDS)
+
 BODY_FLAGS = {
     "--body",
     "-b",
@@ -459,6 +469,11 @@ def is_known_post_command(argv: list[str]) -> bool:
         return any(has_body_flag(argv, index) for index in range(len(argv)))
     if name == "gh-api-safe":
         return has_api_post_signal(argv[1:])
+    if name == "gh-review-reply":
+        # The helper reaches one POST endpoint and always carries a body flag, so
+        # the body flag is the whole post test. No method or field flag exists to
+        # look for: the helper exits 64 on either.
+        return any(has_body_flag(argv, index) for index in range(len(argv)))
     return False
 
 
@@ -505,11 +520,11 @@ def has_api_post_signal(argv: list[str]) -> bool:
 
 
 def _argv_is_gh_post(argv: list[str]) -> bool:
-    # Test a parsed argv for a gh/gh-api-safe leading token carrying a post
-    # signal. The signal is judged by the SAME canonical helpers the body
-    # scanner uses (``has_body_flag`` and ``has_api_post_signal``), so the
-    # surface choice and the body scan can never drift on which flags count.
-    if not argv or argv[0] not in {"gh", "gh-api-safe"}:
+    # Test a parsed argv for a gh CLI leading token carrying a post signal. The
+    # signal is judged by the SAME canonical helpers the body scanner uses
+    # (``has_body_flag`` and ``has_api_post_signal``), so the surface choice and
+    # the body scan can never drift on which flags count.
+    if not argv or argv[0] not in GH_POST_COMMANDS:
         return False
     if any(has_body_flag(argv, index) for index in range(len(argv))):
         return True
@@ -517,7 +532,7 @@ def _argv_is_gh_post(argv: list[str]) -> bool:
 
 
 def is_bash_gh_post(command: Any) -> bool:
-    # A Bash command is external (B2) when its first token is gh/gh-api-safe and
+    # A Bash command is external (B2) when its first token is a gh CLI name and
     # it carries a post signal. A shell ``-c`` wrapper hides the gh post inside
     # one token, so also unwrap the wrapper and test the inner script's argv: a
     # wrapped ``gh issue create --body ...`` must classify as external too.

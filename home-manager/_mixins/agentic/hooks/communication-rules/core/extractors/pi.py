@@ -38,6 +38,7 @@ from typing import Any, TypeGuard
 
 from core.config import Config
 from core.detection import (
+    GH_POST_COMMANDS,
     bash_prose_sink,
     parse_command_line,
     shell_c_inner_script,
@@ -59,7 +60,7 @@ from core.types import ExtractorRecord
 # The gh CLI tools Pi packages can register. A post run through one is external
 # (B2). This is the SURFACE-CHOICE signal only; the command body is scanned by
 # scan_bash.
-POST_TOOL_NAMES = {"gh", "gh-api-safe"}
+POST_TOOL_NAMES = GH_POST_COMMANDS
 
 # Apply-patch style tools that pi packages can register on top of the four
 # built-ins. The patch body carries the prose that lands on disk, so scan it.
@@ -215,10 +216,10 @@ def collect_post_texts(value: Any, post_text_keys: frozenset[str], key: str = ""
 
 def is_external_surface(event: dict[str, Any], config: Config) -> bool:
     # External (B2) surface: the gh CLI tools, or a post-capable MCP tool. A bare
-    # "gh "/"gh-api-safe " command also counts. Everything else is local (B1).
-    # Mirrors the old Pi extension's isExternalSurface.
+    # gh CLI command also counts. Everything else is local (B1). Mirrors the old
+    # Pi extension's isExternalSurface.
     name = tool_name(event).lower()
-    if name in {"gh", "gh-api-safe", "github"}:
+    if name in GH_POST_COMMANDS or name == "github":
         return True
     if is_post_capable_mcp_tool(tool_name(event), config.post_tool_terms):
         return True
@@ -232,10 +233,10 @@ def is_external_surface(event: dict[str, Any], config: Config) -> bool:
 
 def _argv_leads_with_gh(argv: list[str]) -> bool:
     # An argv whose first token (after stripping leading env assignments) is the
-    # gh CLI. Mirrors the old bare ``gh ``/``gh-api-safe `` prefix test on this
-    # surface: any gh command is external (B2) here, read or post.
+    # gh CLI. Mirrors the old bare gh CLI prefix test on this surface: any gh
+    # command is external (B2) here, read or post.
     stripped = strip_env_assignments(argv)
-    return bool(stripped) and stripped[0] in {"gh", "gh-api-safe"}
+    return bool(stripped) and stripped[0] in GH_POST_COMMANDS
 
 
 def _command_leads_with_gh(command: str) -> bool:

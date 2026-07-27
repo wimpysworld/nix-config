@@ -1,6 +1,6 @@
 ---
 name: gh
-description: "Use when the user mentions `gh`, `gh api`, the GitHub CLI, the GitHub API, or wants to view, query, search, or change GitHub. Covers querying the GitHub API, raw API calls, PRs/pull requests, issues, workflows/Actions/CI, releases, repos, notifications, status, and any task that views or queries GitHub data."
+description: "Use when the user mentions `gh`, `gh api`, the GitHub CLI, the GitHub API, or wants to view, query, search, or change GitHub. Covers querying the GitHub API, raw API calls, PRs/pull requests, review comment replies, issues, workflows/Actions/CI, releases, repos, notifications, status, and any task that views or queries GitHub data."
 user-invocable: true
 ---
 
@@ -36,6 +36,8 @@ gh pr merge 123 --auto --squash                                 # merge once CI 
 gh pr review 123 --approve --body-file review.md
 gh pr review 123 --comment --body "LGTM"
 gh pr review 123 --request-changes --body "Please fix X"
+# `gh pr comment` posts at the top level. To answer inside a review
+# comment thread use `gh-review-reply` (see Raw API).
 gh pr comment 123 --body "LGTM"
 gh pr comment 123 --edit-last --body "Updated: LGTM"
 
@@ -177,13 +179,14 @@ Default to a dedicated `gh` subcommand. Use `gh-api-safe` only when no
 subcommand fits. Reserve raw `gh api` for mutations or `@file` field
 input, gated on explicit operator consent.
 
-| Situation                            | Use                                                  |
-| ------------------------------------ | ---------------------------------------------------- |
-| Read-only REST fetch                 | `gh-api-safe <path>`                                 |
-| GraphQL read (queries only)          | `gh-api-safe graphql -f query='…'`                   |
-| Dedicated subcommand exists          | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
-| Mutation (POST/PATCH/PUT/DELETE)     | `gh api -X ...` in unfenced shell                    |
-| Field input from file (`-F x=@file`) | raw `gh api` in unfenced shell                       |
+| Situation                              | Use                                                  |
+| -------------------------------------- | ---------------------------------------------------- |
+| Read-only REST fetch                   | `gh-api-safe <path>`                                 |
+| GraphQL read (queries only)            | `gh-api-safe graphql -f query='…'`                   |
+| Dedicated subcommand exists            | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
+| Reply inside a review comment thread   | `gh-review-reply`                                    |
+| Other mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell                    |
+| Field input from file (`-F x=@file`)   | raw `gh api` in unfenced shell                       |
 
 `gh-api-safe` wraps `gh api`, enforces a read-shaped allow-list with a
 defence-in-depth deny-list on the REST path, blocks
@@ -219,6 +222,21 @@ gh-api-safe graphql -f query=@query.graphql
 
 # Notifications (read only; PUT mark-as-read is blocked by the wrapper)
 gh-api-safe notifications --jq '.[] | {reason, subject: .subject.title}'
+```
+
+`gh-review-reply` is the one GitHub write path allowed under Fence. It
+builds one endpoint from its own validated arguments,
+`POST repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`, and reads
+the reply body from a file so quotes, backticks, and newlines survive
+verbatim. Owner and repo are literal names; `{owner}` placeholders are
+not expanded. Any other flag (`-X`, `-f`, `-F`, `--input`, or a glued
+`--body-file=PATH`) exits 64 with a single-line reason on stderr.
+
+```bash
+# Find the review comment id, then reply inside its thread
+gh-api-safe repos/{owner}/{repo}/pulls/123/comments \
+  --jq '.[] | {id, path, user: .user.login}'
+gh-review-reply owner repo 123 2109876543 --body-file reply.md
 ```
 
 See `home-manager/_mixins/agentic/fence/default.nix` for the

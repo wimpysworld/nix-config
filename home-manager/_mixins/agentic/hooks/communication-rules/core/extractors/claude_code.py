@@ -40,6 +40,7 @@ from core.dispatch import (
     Extraction,
 )
 from core.detection import (
+    GH_POST_COMMANDS,
     bash_prose_sink,
     is_bash_gh_post,
     read_text_file,
@@ -196,7 +197,7 @@ def external_target(tool_name: str, tool_input: dict[str, Any], config: Config) 
         command = tool_input.get("command")
         if isinstance(command, str):
             argv = command.split()
-            if argv and argv[0] in {"gh", "gh-api-safe"}:
+            if argv and argv[0] in GH_POST_COMMANDS:
                 return " ".join(argv[:3])
     for key in config.external_target_keys:
         value = tool_input.get(key)

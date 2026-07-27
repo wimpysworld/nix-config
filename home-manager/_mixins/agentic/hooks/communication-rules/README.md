@@ -31,7 +31,7 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
 - `scanner.py` thin CLI entry. It reads `<agent> <event>` and hands off to the core.
 - `core/` the Python package that owns all logic:
   - `types.py` shared types.
-  - `detection.py` the deterministic checker for banned words, dashes, and policy disclosure, plus the bash scan. It unwraps `bash -c`/`-lc` wrappers, scans `apply_patch` added lines, and strips leading environment assignments, so prose cannot hide behind any of them.
+  - `detection.py` the deterministic checker for banned words, dashes, and policy disclosure, plus the bash scan. It unwraps `bash -c`/`-lc` wrappers, scans `apply_patch` added lines, and strips leading environment assignments, so prose cannot hide behind any of them. It also owns `GH_POST_COMMANDS`, the shared set of external post command names that all four extractors import, so a new post helper is added in one place.
   - `config.py` config plus the post-detection lists from `policy.json`.
   - `state.py` the file-backed strike, tier, and fail-closed machine. The only place the B1 (block-then-allow-revise) and B2 (five-strike) limits live. B2 re-issues the full rules on strikes 1 and 4 and sends a short nudge on the strikes between, since the rules are already in context.
   - `responses.py` per-agent output shaping.
@@ -40,7 +40,7 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
 - `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` the two thin TypeScript shims. Each spawns the core and applies the returned decision. They hold no policy.
 - `default.nix` two wiring helpers on a shared agent-free base: `mkCommandHookAdapter` (Claude Code, Codex) and `mkPluginAdapter` (Pi, OpenCode).
 - `fragment.nix` generates the rules text, reminder, block, and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
-- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 304 fixtures across five groups (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix): 70 scanner, 67 claude-code, 70 codex, 52 pi, 45 opencode. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript seams.
+- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 306 fixtures across five groups (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix): 72 scanner, 67 claude-code, 70 codex, 52 pi, 45 opencode. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript seams.
 
 ## Why this exists
 
@@ -96,13 +96,13 @@ This covers writes, edits, patches, Bash command bodies, and post bodies (gh and
 The policy splits by blast radius into two sub-tiers. B1 blocks once then allows-and-corrects; B2 blocks then yields:
 
 - **B1 (local): writes, edits, patches, and Bash command bodies.** Cheap to retract because they land on disk, not committed. Keyed per tool-call content. One block on strike 1 re-issues the rules; from strike 2 onward the verb is `allow-revise`: the write lands and the response asks the model to revise the named file in place. The strike counter re-emits that request on every later breach to the same target, and a clean scan resets the counter so a fresh breach gets a fresh block.
-- **B2 (external): gh, gh-api-safe, MCP posts, and gh posts run through Bash.** Irretractable the instant they yield. Five strikes, keyed on a stable identity (session and tool, no body) so reworded retries of the same post draw down one budget. Strikes 1 to 4 block and re-issue; strike 5 yields with an operator-visible notice that names the tool and target (`Rules breach posted: <target>`).
+- **B2 (external): gh, gh-api-safe, gh-review-reply, MCP posts, and gh posts run through Bash.** Irretractable the instant they yield. Five strikes, keyed on a stable identity (session and tool, no body) so reworded retries of the same post draw down one budget. Strikes 1 to 4 block and re-issue; strike 5 yields with an operator-visible notice that names the tool and target (`Rules breach posted: <target>`).
 
 We block once, then either correct or yield. Blocking automation forever is friction users will not accept. The local path blocks once, then allows each later breach to land and asks for an in-place revision of the named file. The external path tries four times before the irreversible yield. The cost is that imperfect local files are sometimes surfaced and corrected after they land.
 
 The canonical [Communication Rules](communication-rules.md) carry a short Enforcement note that states this block-then-revise and block-then-yield behaviour, so the model sees it in every reminder and block message.
 
-A Bash call is external when its first token is `gh` or `gh-api-safe` and it carries a post signal (a body-bearing flag or a POST/PATCH/PUT method); read-only gh calls stay local.
+A Bash call is external when its first token is `gh`, `gh-api-safe`, or `gh-review-reply` and it carries a post signal (a body-bearing flag or a POST/PATCH/PUT method); read-only gh calls stay local.
 
 ### Tier A: user-facing and agent-facing prose
 
@@ -121,7 +121,7 @@ The gate scans only prose the agent emits as its own words:
 
 - File writes.
 - Edits and patch additions.
-- External post bodies (gh, gh-api-safe, post-capable MCP).
+- External post bodies (gh, gh-api-safe, gh-review-reply, post-capable MCP).
 - Agent-to-agent and subagent prose.
 - Final replies.
 
@@ -135,7 +135,7 @@ The gate does not scan:
 - Build logs.
 - External text the agent is reading, not posting as its own.
 
-Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh or gh-api-safe post bodies, not a full shell parse. It unwraps `bash -c`/`-lc` wrappers and skips leading environment assignments (`FOO=bar gh ...`), so a wrapped or env-prefixed command cannot slip prose past the scan. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
+Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh, gh-api-safe, and gh-review-reply post bodies, not a full shell parse. It unwraps `bash -c`/`-lc` wrappers and skips leading environment assignments (`FOO=bar gh ...`), so a wrapped or env-prefixed command cannot slip prose past the scan. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
 
 ## Per-agent validation matrix
 
@@ -144,7 +144,7 @@ Each platform uses its native hook surface. Validate the same behaviours per age
 Tier B uses the same retry split for every agent:
 
 - B1 local output (`write`, `edit`, `patch`, Bash) blocks once on strike 1, then from strike 2 onward returns `allow-revise`: the write lands and the response carries an in-place revision notice naming the file. A Bash prose write names its redirect or heredoc sink; an `apply_patch` names the patched file. The notice degrades to a generic form only when no path resolves (a dynamic sink).
-- B2 external output (`gh`, `gh-api-safe`, post-capable MCP tools, gh posts through Bash) blocks four times, then yields on the fifth strike with `Rules breach posted: <target>`.
+- B2 external output (`gh`, `gh-api-safe`, `gh-review-reply`, post-capable MCP tools, gh posts through Bash) blocks four times, then yields on the fifth strike with `Rules breach posted: <target>`.
 - B1 keys use a stable local target when available (`session + tool + path`, plus `turn` on Codex). The path is the file path for `write`/`edit`, the patched file for `apply_patch` (read from the patch body), and the prose sink for a Bash write. Only a genuinely pathless call (a dynamic sink) falls back to `session + tool`. B2 keys use stable `session + tool` identity, plus `turn` on Codex.
 
 | Agent       | Hooks used                                                                                                                            | Detection                                                                                                                                                                                                                                                                     | User notification                                                                                                                                                                                                                                                   | Rules re-issued                                                                                                                                                                                                                                                                                                                                                                            |
