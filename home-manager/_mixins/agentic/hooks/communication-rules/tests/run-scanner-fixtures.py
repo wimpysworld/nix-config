@@ -76,6 +76,8 @@ BASH_CASES = {
     "gh-post-unresolvable-body-fails-closed.sh": BLOCK,
     "gh-post-unresolved-command-substitution-fails-closed.sh": BLOCK,
     "gh-post-unresolved-variable-fails-closed.sh": BLOCK,
+    "gh-review-reply-readable-body-file-blocks.sh": BLOCK,
+    "gh-review-reply-readable-body-file-passes.sh": PASS,
 }
 
 

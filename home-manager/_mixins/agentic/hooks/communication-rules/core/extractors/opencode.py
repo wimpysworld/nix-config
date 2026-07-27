@@ -43,6 +43,8 @@ from typing import Any
 
 from core.config import Config
 from core.detection import (
+    GH_POST_COMMANDS,
+    GH_POST_COMMANDS_NORMALISED,
     bash_prose_sink,
     parse_command_line,
     patch_added_text,
@@ -234,12 +236,12 @@ def is_post_capable_mcp_tool(name: str, post_tool_terms: tuple[str, ...]) -> boo
 
 def is_post_tool(name: str, args: Any) -> bool:
     normalised = normalise_name(name)
-    if normalised in {"gh", "gh_api_safe", "github"}:
+    if normalised in GH_POST_COMMANDS_NORMALISED or normalised == "github":
         return True
     command = command_from_args(args)
     if command:
         stripped = command.strip()
-        return stripped.startswith("gh ") or stripped.startswith("gh-api-safe ")
+        return any(stripped.startswith(gh_command + " ") for gh_command in GH_POST_COMMANDS)
     if isinstance(args, dict):
         return any(key in args for key in POST_FIELDS)
     return False
@@ -296,11 +298,11 @@ def completed_subagent_text(data: Any) -> str | None:
 
 def is_external_surface(name: str, args: Any, config: Config) -> bool:
     # External (B2) surface: the gh CLI tools, a post-capable MCP tool, or a bare
-    # "gh "/"gh-api-safe " command. Everything else is local (B1). Mirrors the old
-    # OpenCode plugin's isExternalSurface. SURFACE-CHOICE signal only; the command
-    # body is scanned by scan_bash.
+    # gh CLI command. Everything else is local (B1). Mirrors the old OpenCode
+    # plugin's isExternalSurface. SURFACE-CHOICE signal only; the command body is
+    # scanned by scan_bash.
     normalised = name.lower()
-    if normalised in {"gh", "gh-api-safe", "github"}:
+    if normalised in GH_POST_COMMANDS or normalised == "github":
         return True
     if is_post_capable_mcp_tool(name, config.post_tool_terms):
         return True
@@ -312,7 +314,7 @@ def is_external_surface(name: str, args: Any, config: Config) -> bool:
         argv = parse_command_line(command)
         if argv is not None:
             stripped_argv = strip_env_assignments(argv)
-            if stripped_argv and stripped_argv[0] in {"gh", "gh-api-safe"}:
+            if stripped_argv and stripped_argv[0] in GH_POST_COMMANDS:
                 return True
             # A shell ``-c`` wrapper hides the gh post inside one token, so
             # unwrap it and test the inner script's leading token too.
@@ -321,7 +323,7 @@ def is_external_surface(name: str, args: Any, config: Config) -> bool:
                 inner_argv = parse_command_line(inner)
                 if inner_argv is not None:
                     inner_stripped = strip_env_assignments(inner_argv)
-                    return bool(inner_stripped) and inner_stripped[0] in {"gh", "gh-api-safe"}
+                    return bool(inner_stripped) and inner_stripped[0] in GH_POST_COMMANDS
     return False
 
 

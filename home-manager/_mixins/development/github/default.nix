@@ -11,6 +11,10 @@ let
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-api-safe-gh"
   '';
+  gh-review-reply-gh = pkgs.runCommand "gh-review-reply-gh" { } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-reply-gh"
+  '';
   ghDashGh = pkgs.runCommand "gh-dash-gh" { } ''
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh"
@@ -41,6 +45,21 @@ let
     + builtins.readFile ./gh-api-safe.sh;
   };
 
+  # Fence-friendly helper for replying inside a pull request review comment
+  # thread. `gh` has no subcommand for it and `gh-api-safe` refuses every
+  # POST by design, so this covers exactly one endpoint:
+  # `repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies`. The script
+  # validates every argument itself and builds the path from the validated
+  # parts, so no other endpoint is reachable; see `gh-review-reply.sh`.
+  gh-review-reply = pkgs.writeShellApplication {
+    name = "gh-review-reply";
+    runtimeInputs = [ pkgs.jq ];
+    text = ''
+      readonly GH_REVIEW_REPLY_GH=${lib.escapeShellArg "${gh-review-reply-gh}/bin/gh-review-reply-gh"}
+    ''
+    + builtins.readFile ./gh-review-reply.sh;
+  };
+
   ghUnsetFish = ''
     set -e GH_TOKEN; set -e GITHUB_TOKEN; set -e GHORG_GITHUB_TOKEN; set -e HOMEBREW_GITHUB_API_TOKEN
   '';
@@ -66,6 +85,7 @@ lib.mkMerge [
     home = {
       packages = [
         gh-api-safe
+        gh-review-reply
       ];
     };
 

@@ -13,6 +13,7 @@ These bans govern this drafting step. They do not restrict the command that invo
 NEVER execute while drafting:
 
 - `gh issue comment` / `gh pr comment` / `gh pr review` - this step produces the comment, the caller posts it
+- `gh-review-reply` - allowed under Fence, but it posts; this step produces the comment, the caller posts it
 - Raw `gh api` - denied outright; use `gh-api-safe` for raw reads
 - The Linear `save_comment` tool - this step produces the comment, the caller saves it
 - The Slack message-sending tools - this step produces the comment, the caller sends it

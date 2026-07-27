@@ -32,6 +32,7 @@ from typing import Any
 
 from core.config import Config
 from core.detection import (
+    GH_POST_COMMANDS,
     apply_patch_target,
     bash_prose_sink,
     is_bash_gh_post,
@@ -161,10 +162,10 @@ def collect_body_texts(value: Any, body_keys: frozenset[str]) -> list[str]:
 
 
 def is_post_capable_mcp_tool(name: str, post_tool_terms: tuple[str, ...]) -> bool:
-    # Match the Claude Code/Pi shape: exact gh/gh-api-safe, or an mcp__ tool whose
+    # Match the Claude Code/Pi shape: an exact gh CLI name, or an mcp__ tool whose
     # leaf segment (after the final "__") contains a post verb. No loose substring
     # match on arbitrary tool names.
-    if name in {"gh", "gh-api-safe"}:
+    if name in GH_POST_COMMANDS:
         return True
     if not name.startswith("mcp__"):
         return False
@@ -231,7 +232,7 @@ def external_target(name: str, tool_input: Any, external_target_keys: tuple[str,
             command = as_text(tool_input.get("command"))
             if isinstance(command, str):
                 argv = command.split()
-                if argv and argv[0] in {"gh", "gh-api-safe"}:
+                if argv and argv[0] in GH_POST_COMMANDS:
                     return " ".join(argv[:3])
         for key in external_target_keys:
             value = tool_input.get(key)
