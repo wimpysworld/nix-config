@@ -184,7 +184,7 @@ input, gated on explicit operator consent.
 | Read-only REST fetch                   | `gh-api-safe <path>`                                 |
 | GraphQL read (queries only)            | `gh-api-safe graphql -f query='…'`                   |
 | Dedicated subcommand exists            | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
-| Reply inside a review comment thread   | `gh-review-reply`                                    |
+| Reply inside a review comment thread   | `gh-review-reply <review-comment-url>`               |
 | Other mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell                    |
 | Field input from file (`-F x=@file`)   | raw `gh api` in unfenced shell                       |
 
@@ -225,18 +225,28 @@ gh-api-safe notifications --jq '.[] | {reason, subject: .subject.title}'
 ```
 
 `gh-review-reply` is the one GitHub write path allowed under Fence. It
-builds one endpoint from its own validated arguments,
-`POST repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`, and reads
-the reply body from a file so quotes, backticks, and newlines survive
-verbatim. Owner and repo are literal names; `{owner}` placeholders are
-not expanded. Any other flag (`-X`, `-f`, `-F`, `--input`, or a glued
+takes the review comment URL and a body file, nothing else. Owner,
+repository, pull request number, and comment id are parsed out of the
+URL, and one endpoint is built from them,
+`POST repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`. The reply
+body is read from a file so quotes, backticks, and newlines survive
+verbatim. `{owner}` placeholders are not expanded; pass the real URL.
+Any other flag (`-X`, `-f`, `-F`, `--input`, or a glued
 `--body-file=PATH`) exits 64 with a single-line reason on stderr.
 
+The URL must begin with `https://github.com/` and its path must be
+`<owner>/<repo>/pull/<number>`, with an optional trailing segment such as
+`/files`. Both anchor forms work: `#discussion_r<id>` from the
+conversation tab and `#r<id>` from the files tab. An
+`#issuecomment-<id>` fragment names a top-level comment, not a review
+comment; use `gh pr comment` for that.
+
 ```bash
-# Find the review comment id, then reply inside its thread
+# Copy the review comment URL from the thread, or find the comment id
 gh-api-safe repos/{owner}/{repo}/pulls/123/comments \
-  --jq '.[] | {id, path, user: .user.login}'
-gh-review-reply owner repo 123 2109876543 --body-file reply.md
+  --jq '.[] | {id, path, user: .user.login, url: .html_url}'
+gh-review-reply https://github.com/owner/repo/pull/123#discussion_r2109876543 \
+  --body-file reply.md
 ```
 
 See `home-manager/_mixins/agentic/fence/default.nix` for the
