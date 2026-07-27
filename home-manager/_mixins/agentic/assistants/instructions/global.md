@@ -16,7 +16,7 @@ Use the built-in read, edit, and write tools for files, not shell cat or sed. Pr
 
 Prefer current reference tools over training data. Use Exa for web research, Context7 for library and framework docs.
 
-For GitHub, load the `gh` skill. Coding agents run fenced, so raw `gh api` is denied. Use dedicated `gh` subcommands; use `gh-api-safe` for raw reads (REST and GraphQL queries). Never call raw `gh api`. To answer a pull request review comment inside its own thread, use `gh-review-reply`, the one mutation allowed under Fence. Other mutations and fence-denied commands (merge, approve, release, workflow run) are output for the operator to run unfenced with consent.
+For GitHub, load the `gh` skill. Coding agents run fenced, so raw `gh api` is denied. Use dedicated `gh` subcommands; use `gh-api-safe` for raw reads (REST and GraphQL queries). Never call raw `gh api`. To answer a pull request review comment inside its own thread, use `gh-review-reply <review-comment-url> --body-file <file>`, the one mutation allowed under Fence. Other mutations and fence-denied commands (merge, approve, release, workflow run) are output for the operator to run unfenced with consent.
 
 Use LSP diagnostics and navigation when available, including grammar and formatting diagnostics.
 

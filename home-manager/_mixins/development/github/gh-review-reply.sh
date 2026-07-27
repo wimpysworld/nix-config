@@ -10,16 +10,26 @@
 #   POST repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies
 #
 # Policy summary:
-#   * The argument list is fixed: OWNER REPO PR_NUMBER COMMENT_ID
-#     --body-file PATH. Any other argument count is rejected.
+#   * The argument list is fixed: <review-comment-url> --body-file PATH. Any
+#     other argument count is rejected. The URL is the only accepted way to
+#     name the thread; owner, repository, pull request number, and comment id
+#     are all parsed out of it, never taken from a separate argument, an API
+#     lookup, or the git remote.
+#   * The URL must begin with https://github.com/ and its path must be
+#     <owner>/<repo>/pull/<number>, optionally followed by further segments
+#     such as /files. Its fragment must be #discussion_r<digits> from the
+#     conversation tab or #r<digits> from the files tab. An
+#     #issuecomment-<digits> fragment names a top-level comment rather than a
+#     review comment, so it is rejected with that reason.
 #   * Every token that begins with `-` is rejected except the single
 #     `--body-file` flag in its expected position. That is what refuses
 #     -X/--method, -f/--field, -F/--raw-field, and --input, and it also
 #     refuses a body path of `-`, so stdin cannot be smuggled in. The glued
 #     `--body-file=PATH` form is rejected as well.
-#   * OWNER and REPO must match ^[A-Za-z0-9._-]+$ and may not be `.` or `..`,
-#     so a slash-bearing endpoint path can never pass as an owner. PR_NUMBER
-#     and COMMENT_ID must be digits only.
+#   * The owner and repository parsed from the URL must match
+#     ^[A-Za-z0-9._-]+$ and may not be `.` or `..`, so a slash-bearing
+#     endpoint path can never pass as an owner. The pull request number and
+#     the comment id must be digits only.
 #   * The endpoint path is built here from the validated components and is
 #     never taken from argv, so a request can never reach another endpoint.
 #   * The body is encoded with `jq -Rs`, which reads the whole file as one raw
@@ -45,21 +55,33 @@ usage() {
 gh-review-reply: reply inside a GitHub pull request review comment thread.
 
 USAGE
-    gh-review-reply OWNER REPO PR_NUMBER COMMENT_ID --body-file PATH
+    gh-review-reply <review-comment-url> --body-file PATH
     gh-review-reply --help
 
+EXAMPLE
+    gh-review-reply https://github.com/wimpysworld/nyala/pull/49#discussion_r3653766431 \
+        --body-file reply.md
+
 POLICY
-    The argument list is fixed and every argument is validated. OWNER and
-    REPO must match ^[A-Za-z0-9._-]+$ and may not be `.` or `..`.
-    PR_NUMBER and COMMENT_ID must be digits only. The body file must be an
-    existing, readable, regular file.
+    The argument list is fixed and every argument is validated. The URL must
+    begin with https://github.com/ and its path must be
+    <owner>/<repo>/pull/<number>, optionally followed by further segments
+    such as /files. Its fragment must be #discussion_r<id> from the
+    conversation tab or #r<id> from the files tab. An #issuecomment-<id>
+    fragment names a top-level comment, not a review comment; use
+    `gh pr comment` for that.
+
+    The owner and repository parsed from the URL must match
+    ^[A-Za-z0-9._-]+$ and may not be `.` or `..`. The pull request number and
+    the comment id must be digits only. The body file must be an existing,
+    readable, regular file.
 
     Every token beginning with `-` is rejected except `--body-file` in its
     expected position, which refuses -X/--method, -f/--field, -F/--raw-field,
     and --input. The glued `--body-file=PATH` form is rejected; pass the path
     as a separate argument.
 
-    The request path is built from the validated arguments as
+    The request path is built from the components parsed out of the URL as
     repos/OWNER/REPO/pulls/PR_NUMBER/comments/COMMENT_ID/replies and is never
     taken from argv, so no other endpoint is reachable.
 
@@ -92,20 +114,21 @@ for arg in "$@"; do
 	esac
 done
 
-if [[ $# -ne 6 ]]; then
-	die "expected exactly 6 arguments: OWNER REPO PR_NUMBER COMMENT_ID --body-file PATH (try: gh-review-reply --help)"
+if [[ $# -ne 3 ]]; then
+	die "expected exactly 3 arguments: <review-comment-url> --body-file PATH (try: gh-review-reply --help)"
 fi
 
-# Walk the argv once. Position 5 must be the literal --body-file flag; every
-# other token must not look like a flag. This is what refuses -X, --method,
-# -f, -F, --field, --raw-field, --input, and a body path of `-`.
+# Walk the argv once. Position 2 must be the literal --body-file flag; every
+# other token must not look like a flag. The URL begins with `h`, so it passes
+# this walk untouched. This is what refuses -X, --method, -f, -F, --field,
+# --raw-field, --input, and a body path of `-`.
 args=("$@")
 i=0
 while [[ ${i} -lt ${#args[@]} ]]; do
 	tok="${args[${i}]}"
-	if [[ ${i} -eq 4 ]]; then
+	if [[ ${i} -eq 1 ]]; then
 		if [[ ${tok} != "--body-file" ]]; then
-			die "expected --body-file as the fifth argument, got '${tok}'"
+			die "expected --body-file as the second argument, got '${tok}'"
 		fi
 	elif [[ ${tok} == -* ]]; then
 		die "flag-like argument '${tok}' is not permitted (--body-file is the only accepted flag)"
@@ -113,11 +136,51 @@ while [[ ${i} -lt ${#args[@]} ]]; do
 	i=$((i + 1))
 done
 
-owner="$1"
-repo="$2"
-pr_number="$3"
-comment_id="$4"
-body_file="$6"
+url="$1"
+body_file="$3"
+
+readonly URL_PREFIX="https://github.com/"
+
+# Everything below comes out of the URL. No API call and no git remote is
+# consulted, so the caller cannot be redirected to another repository.
+if [[ ${url} != "${URL_PREFIX}"* ]]; then
+	die "review comment URL must begin with ${URL_PREFIX}, got '${url}'"
+fi
+
+rest="${url#"${URL_PREFIX}"}"
+
+if [[ ${rest} != *"#"* ]]; then
+	die "review comment URL '${url}' has no fragment; expected '#discussion_r<id>' or '#r<id>' naming the review comment"
+fi
+
+url_path="${rest%%#*}"
+fragment="${rest#*#}"
+
+if [[ ${fragment} =~ ^issuecomment-[0-9]+$ ]]; then
+	die "fragment '#${fragment}' names a top-level comment, not a review comment; 'gh pr comment' handles that case"
+fi
+
+# The conversation tab anchors review comments as #discussion_r<id> and the
+# files tab as #r<id>. Both name the same comment, so both are accepted.
+if [[ ${fragment} =~ ^(discussion_r|r)([0-9]+)$ ]]; then
+	comment_id="${BASH_REMATCH[2]}"
+else
+	die "fragment '#${fragment}' is not a review comment anchor; expected '#discussion_r<id>' or '#r<id>'"
+fi
+
+if [[ ${url_path} =~ ^[^/]+/[^/]+/issues(/|$) ]]; then
+	die "review comment URL '${url}' names an issue, not a pull request; expected '<owner>/<repo>/pull/<number>' in the path"
+fi
+
+# Trailing segments such as /files are allowed, because GitHub serves the same
+# anchor from the conversation and files tabs.
+if [[ ${url_path} =~ ^([^/]+)/([^/]+)/pull/([^/]+)(/.*)?$ ]]; then
+	owner="${BASH_REMATCH[1]}"
+	repo="${BASH_REMATCH[2]}"
+	pr_number="${BASH_REMATCH[3]}"
+else
+	die "review comment URL path '${url_path}' does not match '<owner>/<repo>/pull/<number>'"
+fi
 
 if [[ ${owner} == "." || ${owner} == ".." ]]; then
 	die "owner '${owner}' is not a valid GitHub account name"

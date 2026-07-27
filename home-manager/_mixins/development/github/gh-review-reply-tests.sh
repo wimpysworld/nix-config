@@ -107,67 +107,126 @@ assert_policy() {
 	pass "${label}"
 }
 
-assert_policy 'endpoint path as OWNER' \
-	'repos/o/r/pulls/1/comments' repo 1 2 --body-file "${body_file}"
-assert_policy 'traversal owner' \
-	'..' repo 1 2 --body-file "${body_file}"
-assert_policy 'endpoint path as REPO' \
-	owner 'r/pulls/1/comments' 1 2 --body-file "${body_file}"
-assert_policy '--method POST in a validated position' \
-	owner repo --method POST --body-file "${body_file}"
-# A flag-like token in the OWNER or REPO position still matches the name
-# pattern ^[A-Za-z0-9._-]+$, so only the flag rejection stops these.
-assert_policy '--method as OWNER' \
-	--method POST 1 2 --body-file "${body_file}"
-assert_policy '-X as OWNER' \
-	-X POST 1 2 --body-file "${body_file}"
-assert_policy '-F as REPO' \
-	owner -F 1 2 --body-file "${body_file}"
-assert_policy '--field as REPO' \
-	owner --field 1 2 --body-file "${body_file}"
-assert_policy '--input as OWNER' \
-	--input - 1 2 --body-file "${body_file}"
+# Asserts that a URL is accepted and that the request path built from it is
+# exactly the one expected.
+assert_path() {
+	local label="$1" url="$2" expected_path="$3"
+	local expected_argv="${work}/expected-argv"
+	run_helper "${url}" --body-file "${body_file}"
+	if [[ ${status} -ne 0 ]]; then
+		fail "${label}" "expected exit 0, got ${status}: ${stderr}"
+		return
+	fi
+	printf '%s\n' \
+		api \
+		--method \
+		POST \
+		"${expected_path}" \
+		--input \
+		- >"${expected_argv}"
+	if ! cmp -s "${expected_argv}" "${GH_STUB_ARGV}"; then
+		fail "${label}" "got: $(tr '\n' ' ' <"${GH_STUB_ARGV}")"
+		return
+	fi
+	pass "${label}"
+}
+
+url='https://github.com/owner/repo/pull/42#discussion_r987654'
+
+# Flag policy. The URL sits in a position the flag walk leaves alone, so a
+# flag-like token there is still refused.
+assert_policy '--method as the URL' \
+	--method --body-file "${body_file}"
+assert_policy '-X as the URL' \
+	-X --body-file "${body_file}"
+assert_policy '-F as the URL' \
+	-F --body-file "${body_file}"
+assert_policy '--field as the URL' \
+	--field --body-file "${body_file}"
+assert_policy '--input as the URL' \
+	--input --body-file "${body_file}"
 assert_policy '--method POST appended' \
-	owner repo 1 2 --body-file "${body_file}" --method POST
-assert_policy '-X POST in a validated position' \
-	owner repo -X POST --body-file "${body_file}"
-assert_policy '-F body=@x' \
-	owner repo -F 'body=@x' --body-file "${body_file}"
-assert_policy '--field body=@x' \
-	owner repo --field 'body=@x' --body-file "${body_file}"
-assert_policy '--input -' \
-	owner repo --input - --body-file "${body_file}"
+	"${url}" --body-file "${body_file}" --method POST
+assert_policy '-X POST appended' \
+	"${url}" --body-file "${body_file}" -X POST
+assert_policy '-F body=@x appended' \
+	"${url}" --body-file "${body_file}" -F 'body=@x'
+assert_policy '--input - appended' \
+	"${url}" --body-file "${body_file}" --input -
 assert_policy 'body path of -' \
-	owner repo 1 2 --body-file -
+	"${url}" --body-file -
 assert_policy 'glued --body-file=PATH' \
-	owner repo 1 2 "--body-file=${body_file}" extra
-assert_policy 'non-numeric pull number' \
-	owner repo abc 2 --body-file "${body_file}"
-assert_policy 'non-numeric comment id' \
-	owner repo 1 12a --body-file "${body_file}"
-assert_policy 'missing body file' \
-	owner repo 1 2 --body-file "${work}/does-not-exist"
-assert_policy 'body file is a directory' \
-	owner repo 1 2 --body-file "${work}"
+	"${url}" "--body-file=${body_file}" extra
 assert_policy 'too few arguments' \
-	owner repo 1 2 --body-file
+	"${url}" --body-file
 assert_policy 'too many arguments' \
-	owner repo 1 2 --body-file "${body_file}" 7
-assert_policy 'flag missing from the fifth position' \
-	owner repo 1 2 "${body_file}" extra
+	"${url}" --body-file "${body_file}" 7
+assert_policy 'flag missing from the second position' \
+	"${url}" "${body_file}" extra
+
+# URL parsing. Scheme and host are fixed, and every component comes out of
+# the URL, so nothing else can name the endpoint.
+assert_policy 'http scheme' \
+	'http://github.com/owner/repo/pull/42#discussion_r987654' --body-file "${body_file}"
+assert_policy 'non-GitHub host' \
+	'https://gitlab.com/owner/repo/pull/42#discussion_r987654' --body-file "${body_file}"
+assert_policy 'GitHub Enterprise host' \
+	'https://github.example.com/owner/repo/pull/42#discussion_r987654' --body-file "${body_file}"
+assert_policy 'API host' \
+	'https://api.github.com/repos/owner/repo/pulls/42#discussion_r987654' --body-file "${body_file}"
+assert_policy 'issuecomment fragment' \
+	'https://github.com/owner/repo/pull/42#issuecomment-2109876543' --body-file "${body_file}"
+assert_policy 'missing fragment' \
+	'https://github.com/owner/repo/pull/42' --body-file "${body_file}"
+assert_policy 'unrecognised fragment' \
+	'https://github.com/owner/repo/pull/42#diff-0a1b2c3d' --body-file "${body_file}"
+assert_policy 'empty fragment' \
+	'https://github.com/owner/repo/pull/42#' --body-file "${body_file}"
+assert_policy 'non-numeric comment id in the fragment' \
+	'https://github.com/owner/repo/pull/42#discussion_r12a' --body-file "${body_file}"
+assert_policy 'issues URL rather than pull' \
+	'https://github.com/owner/repo/issues/42#discussion_r987654' --body-file "${body_file}"
+assert_policy 'repository root URL' \
+	'https://github.com/owner/repo#discussion_r987654' --body-file "${body_file}"
+assert_policy 'non-numeric pull number' \
+	'https://github.com/owner/repo/pull/abc#discussion_r987654' --body-file "${body_file}"
+assert_policy 'traversal owner' \
+	'https://github.com/../repo/pull/42#discussion_r987654' --body-file "${body_file}"
+assert_policy 'traversal repository' \
+	'https://github.com/owner/../pull/42#discussion_r987654' --body-file "${body_file}"
+assert_policy 'percent-encoded slash in the owner' \
+	'https://github.com/o%2Fw/repo/pull/42#discussion_r987654' --body-file "${body_file}"
+assert_policy 'missing body file' \
+	"${url}" --body-file "${work}/does-not-exist"
+assert_policy 'body file is a directory' \
+	"${url}" --body-file "${work}"
 
 # --help exits 0 and prints the usage text.
 run_helper --help
 if [[ ${status} -ne 0 ]]; then
 	fail '--help exits 0' "got ${status}"
-elif [[ ${stdout} != *"USAGE"* || ${stdout} != *"gh-review-reply OWNER REPO PR_NUMBER COMMENT_ID --body-file PATH"* ]]; then
+elif [[ ${stdout} != *"USAGE"* || ${stdout} != *"gh-review-reply <review-comment-url> --body-file PATH"* ]]; then
 	fail '--help exits 0' 'usage text missing from stdout'
 else
 	pass '--help exits 0 and prints usage'
 fi
 
-# Happy path: one gh call, exact argv, and a body that round-trips.
-run_helper owner repo 42 987654 --body-file "${body_file}"
+# Both anchor forms name the same comment and both must reach the same path.
+assert_path 'conversation tab anchor' \
+	'https://github.com/owner/repo/pull/42#discussion_r987654' \
+	'repos/owner/repo/pulls/42/comments/987654/replies'
+assert_path 'files tab anchor' \
+	'https://github.com/owner/repo/pull/42/files#r987654' \
+	'repos/owner/repo/pulls/42/comments/987654/replies'
+assert_path 'files tab path with a discussion anchor' \
+	'https://github.com/owner/repo/pull/42/files#discussion_r987654' \
+	'repos/owner/repo/pulls/42/comments/987654/replies'
+assert_path 'dotted owner and repository names' \
+	'https://github.com/my-org.io/my.repo-1/pull/7#r3653766431' \
+	'repos/my-org.io/my.repo-1/pulls/7/comments/3653766431/replies'
+
+# Happy path: one gh call and a body that round-trips.
+run_helper "${url}" --body-file "${body_file}"
 if [[ ${status} -ne 0 ]]; then
 	fail 'happy path exits 0' "got ${status}: ${stderr}"
 else
@@ -178,20 +237,6 @@ if [[ "$(gh_call_count)" -ne 1 ]]; then
 	fail 'happy path calls gh exactly once' "call count $(gh_call_count)"
 else
 	pass 'happy path calls gh exactly once'
-fi
-
-expected_argv="${work}/expected-argv"
-printf '%s\n' \
-	api \
-	--method \
-	POST \
-	'repos/owner/repo/pulls/42/comments/987654/replies' \
-	--input \
-	- >"${expected_argv}"
-if ! cmp -s "${expected_argv}" "${GH_STUB_ARGV}"; then
-	fail 'happy path gh argv' "got: $(tr '\n' ' ' <"${GH_STUB_ARGV}")"
-else
-	pass 'happy path gh argv is api --method POST <path> --input -'
 fi
 
 # The payload must be an object whose only key is `body`.
@@ -218,7 +263,7 @@ else
 fi
 
 # A failed request exits with gh's own status, not the policy status.
-GH_STUB_EXIT=22 run_helper owner repo 42 987654 --body-file "${body_file}"
+GH_STUB_EXIT=22 run_helper "${url}" --body-file "${body_file}"
 if [[ ${status} -ne 22 ]]; then
 	fail 'gh failure exits with gh status' "expected 22, got ${status}"
 elif [[ ${stderr} != *987654* ]]; then

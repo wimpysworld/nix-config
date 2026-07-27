@@ -18,7 +18,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 4. Show the exact comment body and the resolved target, and confirm before posting
 5. Post with the dedicated tool for that surface:
    - GitHub issue or pull request: strip only the Markdown fence lines, write the remaining body text unchanged to a temporary file, then run `gh issue comment <url> --body-file <file>` or `gh pr comment <url> --body-file <file>`. Never use raw `gh api`
-   - GitHub review comment: reply inside the thread with `gh-review-reply <owner> <repo> <pr-number> <comment-id> --body-file <file>`, using the same fence-stripped temporary file. The comment id is the number in the `#discussion_r<id>` URL. Owner and repo are literal names, not `{owner}` placeholders. Never use `gh pr comment` here; it posts at the top level, away from the question
+   - GitHub review comment: reply inside the thread with `gh-review-reply <review-comment-url> --body-file <file>`, using the same fence-stripped temporary file. Pass the review comment URL you were given, unchanged; the helper parses the owner, repository, pull request number, and comment id out of it. Both the `#discussion_r<id>` and `#r<id>` anchor forms work. Never use `gh pr comment` here; it posts at the top level, away from the question
    - Linear: the Linear MCP comment tool. Send real newlines in the body, never literal backslash-n
    - Slack: the Slack MCP message tool, replying in thread when the URL names a thread
 6. Report the surface, the target URL, and the comment body
