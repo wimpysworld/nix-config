@@ -15,6 +15,10 @@ let
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-reply-gh"
   '';
+  gh-review-resolve-gh = pkgs.runCommand "gh-review-resolve-gh" { } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-resolve-gh"
+  '';
   ghDashGh = pkgs.runCommand "gh-dash-gh" { } ''
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh"
@@ -60,6 +64,22 @@ let
     + builtins.readFile ./gh-review-reply.sh;
   };
 
+  # Fence-friendly helper for marking a pull request review thread as
+  # resolved. That is a GraphQL mutation only, `gh` has no subcommand for it,
+  # and `gh-api-safe` is read-only, so this covers exactly one mutation:
+  # `resolveReviewThread`. The script parses the thread out of a review
+  # comment URL, sends every value as a typed GraphQL variable, and holds the
+  # query and the mutation as fixed strings, so no other mutation is
+  # reachable; see `gh-review-resolve.sh`.
+  gh-review-resolve = pkgs.writeShellApplication {
+    name = "gh-review-resolve";
+    runtimeInputs = [ pkgs.jq ];
+    text = ''
+      readonly GH_REVIEW_RESOLVE_GH=${lib.escapeShellArg "${gh-review-resolve-gh}/bin/gh-review-resolve-gh"}
+    ''
+    + builtins.readFile ./gh-review-resolve.sh;
+  };
+
   ghUnsetFish = ''
     set -e GH_TOKEN; set -e GITHUB_TOKEN; set -e GHORG_GITHUB_TOKEN; set -e HOMEBREW_GITHUB_API_TOKEN
   '';
@@ -86,6 +106,7 @@ lib.mkMerge [
       packages = [
         gh-api-safe
         gh-review-reply
+        gh-review-resolve
       ];
     };
 

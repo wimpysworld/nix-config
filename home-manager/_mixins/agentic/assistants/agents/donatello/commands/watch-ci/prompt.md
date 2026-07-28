@@ -6,7 +6,7 @@ Invoke named commands with the provider's prefix. Codex uses `$make-commit`; sla
 
 ### Authority
 
-Human invocation of this command is the user's consent for: commit, push, `gh pr comment`, `gh-review-reply`, `gh run rerun --failed`, `gh pr update-branch`, Linear issue creation and comment, and Slack posts to `#eng-fulfillment-automation`.
+Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, `gh-review-resolve`, `gh run rerun --failed`, `gh pr update-branch`, Linear issue creation and comment, and Slack posts to `#eng-fulfillment-automation`.
 
 Forbidden throughout: merge, close, approve, release, force-push, `gh workflow run`, and any change to a PR the user does not own. Never use raw `gh api`; use dedicated subcommands, and `gh-api-safe` for raw reads.
 
@@ -72,9 +72,9 @@ Workspace guard: the connected Linear instance is personal when the `WW` team, W
 
 ### Answer reviews
 
-When a review or review comment lands, from a bot or a human, dispatch a fresh sub-agent running `address-code-review`. It then either fixes the code, runs `make-commit`, pushes, and replies, or replies alone when no change is needed.
+When a review or review comment lands, from a bot or a human, dispatch a fresh sub-agent running `address-code-review` against the PR URL.
 
-Reply inside the thread with `gh-review-reply` for review comments. Use `post-comment` for top-level replies. After a fix lands, re-request the reviewer and resolve the threads it addressed.
+That command owns the whole cycle. It skips threads already handled, judges each finding, fixes and commits what it accepts, pushes, replies in the thread, and resolves the threads its rules allow. Report what it returns and do nothing further with those threads.
 
 ### Output
 
@@ -83,7 +83,7 @@ Print a short status line at each watcher leg boundary. End with a summary:
 - Every failed check, its group, and the evidence.
 - The fixes and the files touched.
 - Linear issues created or commented on.
-- Review replies posted.
+- Review findings addressed, with threads replied to and resolved.
 - Anything skipped, with the reason.
 
 ### Constraints

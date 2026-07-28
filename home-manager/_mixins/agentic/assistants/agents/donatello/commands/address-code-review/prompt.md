@@ -1,6 +1,8 @@
 ## Address Code Review
 
-Evaluate review feedback, then implement or decline each finding with rationale. Commit each accepted finding as it lands. This command orchestrates; it never implements in this context.
+Judge the review feedback that is not yet handled, fix or decline each finding, then reply in the thread and resolve it. This is a single pass: work through the outstanding feedback once, then stop. This command orchestrates; it never implements in this context.
+
+Invoke named commands with the provider's prefix. Codex uses `$make-commit`; slash-command runtimes use `/make-commit`. If the platform cannot expand a command, follow that command's prompt directly.
 
 ### Input
 
@@ -8,64 +10,107 @@ Evaluate review feedback, then implement or decline each finding with rationale.
 
 For a pull request, fetch the review comments with dedicated `gh` subcommands such as `gh pr view`. Raw `gh api` is denied; use `gh-api-safe` for raw reads.
 
-### Categories
+Thread filtering, replying, and resolving apply to the pull request case only. A local file or pasted text has no threads, so judge, fix, commit, and report.
 
-| Category | Action | Examples |
-|----------|--------|----------|
-| 🚨 **Critical** | Must fix | Logic errors, crashes, security vulnerabilities, data corruption |
-| 🛡️ **Robustness** | Should fix | Unhandled edge cases, missing error handling, race conditions |
-| 🔧 **Quality** | Consider | Clear maintainability wins, measurable performance gains |
-| 📝 **Style** | Usually skip | Subjective preferences, complex refactors for marginal gains |
+### Authority
 
-### Decisions
+Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, and `gh-review-resolve`.
 
-| Decision | When |
-|----------|------|
-| ✅ **Implement** | Critical bugs, security issues, high value + low complexity |
-| ⚠️ **Defer** | High value but needs broader refactoring or benchmarks first |
-| ❌ **Decline** | False positive, style preference, complexity exceeds benefit |
-| 🔍 **Investigate** | Unclear if real issue, needs testing to validate |
+Forbidden throughout: merge, close, approve, release, force-push, and raw `gh api`. Use dedicated subcommands, and `gh-api-safe` for raw reads.
 
-### Process
+Restate this authority in every sub-agent packet. Sub-agents run with fresh context and will defer without it.
+
+### Skip handled feedback
+
+Read the pull request's review threads before judging anything. Use `gh-api-safe graphql` to read each thread's resolved state, its outdated state, and the author of its most recent comment.
+
+Skip a thread when any of these holds:
+
+- It is resolved.
+- Its most recent reply came from the user.
+- It is outdated, meaning it is anchored to a line the current diff no longer contains.
+
+Report how many threads you skipped and why. Without this filter, a second run re-replies to everything.
+
+### Judge each finding
+
+Split the outstanding feedback into discrete findings, then decide each one.
+
+A GitHub suggested-change block is a proposal, not an instruction. Judge it against the code exactly as you would judge prose feedback, and never apply it because it arrived as a diff. Reviewer confidence is not evidence. Bot reviewers produce confident wrong suggestions often.
+
+Two reviewers raising the same point is one finding. Fix it once, commit it once, then reply in both threads.
+
+Mark each finding with one of two decisions:
+
+- ✅ Real finding. Fixed, or accepted and deferred.
+- ❌ Declined. False positive, style preference, or not worth the cost.
+
+Say defer or investigate in the rationale when that is the outcome. Both change what happens at the resolve step.
+
+### Order of work
+
+A reply must be true when the reviewer reads it, so the code lands before the words.
 
 1. Invoke `less-is-more` to reload the Communication Rules before starting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the rules restated below instead
-2. Read the feedback and split it into discrete findings. Categorise and decide each one
-3. Group the findings by the files they touch. Findings that touch the same file run in sequence, never in parallel, or their edits clobber each other. Different groups may run in parallel
+2. Filter the threads, then judge every finding
+3. Group the accepted findings by the files they touch. Findings that touch the same file run in sequence, never in parallel, or their edits clobber each other. Different groups may run in parallel
 4. Dispatch one fresh sub-agent per finding, in that order. Never hand two findings to one sub-agent. Fresh context per finding keeps attention high and changes small
 5. When a finding's fix depends on or conflicts with a fix already applied, re-evaluate it against the current state of the code rather than applying it blind
 6. Commit after each finding that produced a change, one commit per finding. Stage explicitly with path-limited `git add -- <path>` using the files in that finding's report. Never `git add .`, `-A`, or `-u`. Run `draft-commit-message` for the message, or invoke `make-commit` to draft and commit in one step. Commit from this context only, one finding at a time, so parallel sub-agents never contend for the index
-7. Stop after the final commit. Never push
+7. Run the project's test suite once, after the last fix
+8. Push once. One push means one CI run
+9. Reply in every outstanding thread
+10. Resolve the threads the rules below allow
 
-Every report and commit message must follow the Communication Rules: concise (each fact once), British English spelling, active voice, lead with the conclusion, no banned words (filler, pleasantries, hedges, LLM tells), and no em or en dashes.
+### Reply
+
+Load the `contribution-voice` skill first. These replies publish under the user's name.
+
+Follow `draft-comment` for the body text, then post it with `gh-review-reply <review-comment-url> --body-file <file>`. Do not route through `post-comment`; it confirms with the user before posting, which is right for a human invoking it directly and wrong here. Never post a top-level summary comment.
+
+For a fix, say what changed and name the commit. For a decline, say why in one or two sentences. No apologies, no padding.
+
+### Resolve
+
+Use `gh-review-resolve <review-comment-url>`. It takes the review comment URL and nothing else, and it is safe to re-run because an already resolved thread exits 0.
+
+- Resolve a thread you fixed.
+- Resolve a declined bot thread.
+- Never resolve a thread you declined or deferred to a human. Reply and leave it open so they can disagree. Closing a human's thread after refusing it hides the disagreement.
 
 ### Per-Finding Output
 
 ```markdown
 ## Finding #[X]: [Brief description]
 
-**Category**: 🚨|🛡️|🔧|📝
-**Decision**: ✅|⚠️|❌|🔍
+**Decision**: ✅|❌
 **Rationale**: [1-2 sentences]
 **Files**: `path/to/file`
 **Commit**: <short-sha, or none>
+**Thread**: <replied and resolved | replied, left open | none>
 ```
 
 ### Summary Report
 
 ```markdown
 Answer: <ready to merge, or another round needed, in one sentence>
-Decisions: ✅ X implemented | ⚠️ X deferred | ❌ X declined | 🔍 X investigating
+Skipped: X threads already handled (resolved, answered, or outdated)
+Decisions: ✅ X accepted | ❌ X declined
 Key fixes:
 - <top 2-3 improvements, each with its commit sha>
 Deferred:
 - <item and priority, or none>
+Threads: X replied | X resolved | X left open
+Push: <head sha, or none>
 ```
 
 ### Constraints
 
 - Be decisive; never implement merely because someone suggested it
 - Challenge suggestions that misunderstand domain context
-- Record decline rationale so the reasoning survives
-- Verify each critical fix resolves the issue it claims to
-- Time-box investigation of non-critical items
-- Committing is in scope; pushing is not
+- Record the decline rationale so the reasoning survives
+- Verify each accepted fix resolves the issue it claims to
+- Push once, after the tests pass, before the first reply
+- Never merge, close, approve, force-push, or publish a release
+
+Every report, commit message, and reply must follow the Communication Rules: concise (each fact once), British English spelling, active voice, lead with the conclusion, no banned words (filler, pleasantries, hedges, LLM tells), and no em or en dashes.
