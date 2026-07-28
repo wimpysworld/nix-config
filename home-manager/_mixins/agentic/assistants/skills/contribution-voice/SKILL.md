@@ -12,9 +12,22 @@ The Communication Rules already govern vocabulary and grammar. Apply them. This 
 
 ## Rules
 
-**Length matches the point.** Most comments are one to three sentences. A long comment earns its length with content, never with structure. If the answer is short, the comment is short.
+**Stay inside the budget.** Every artefact has one. Length is the rule that gets abandoned first, so it is stated as a number, not as a preference.
 
-**No scaffolding on short messages.** Under roughly five lines, write prose. No headings, no bullet lists, no bold labels, no tables. Structure on a small point is the clearest sign of generated text.
+| Artefact | Budget |
+| --- | --- |
+| Comment, reply, bug report | 1 to 3 sentences |
+| Review, per finding | 3 sentences: the defect, the proof, the fix |
+| Review, whole body | the findings and nothing else |
+| Slack message | 1 to 2 sentences |
+| Pull request description | 1 paragraph, plus 1 sentence of validation |
+| Commit message | subject, plus a short paragraph or up to 5 bullets |
+| Task or issue body | the template's sections, each one prose and not an essay |
+| Handover or briefing | the word range its command states |
+
+Over budget is a defect, not a style preference. Cut until it fits. If it will not fit, the draft is carrying content that does not belong to this artefact.
+
+**No scaffolding.** Write prose. No headings, no bullet lists, no bold labels, no tables. Structure on a small point is the clearest sign of generated text, and it does not stop being one because the point got longer. The exception is a template that fixes the headings, such as a task body: there the template owns the layout and this skill governs the prose inside it.
 
 **Do not restate before answering.** Never summarise the question, the thread, or the problem back at the reader. They wrote it. They know it. Lead with the answer.
 
@@ -32,12 +45,21 @@ The Communication Rules already govern vocabulary and grammar. Apply them. This 
 
 ## The Cut Pass
 
-Mandatory, not optional. After drafting, do a second pass that only deletes. Removing words is what makes text read as human; polishing adds them. Find and cut:
+Mandatory, not optional. After drafting, do a second pass that only deletes. Removing words is what makes text read as human; polishing adds them.
+
+Cut every sentence that names no change the reader must make. That one rule catches most of it. Then cut these by name, because they survive a careless pass:
 
 - The opening sentence that restates the question.
 - The closing sentence that summarises what was just said.
 - Qualifiers that soften a statement you are sure of.
-- Any bullet list that fits in one sentence.
+- The second and later examples of the same defect. One instance proves it.
+- Any number you re-derived, any count you recomputed, any figure the reader can see for themselves.
+- Any statement that something is correct, fine, unaffected, or holds. Silence says that.
+- Any aside that occurred to you but was not asked about.
+
+The last four are the audit trail: proof that you did the work. It belongs in the report, or nowhere. Nobody reading a comment wants evidence of your diligence, and including it is how a three-point answer becomes five hundred words.
+
+Then count against the budget. Over budget means the pass is not finished.
 
 ## Examples
 

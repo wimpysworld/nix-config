@@ -50,7 +50,7 @@ Report the written path in your output so the user can find it.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
 4. Fan out to sub-agents, per **Fan-out**.
 5. Pressure-test every blocking finding, per **Adversarial pressure-test**.
-6. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. Drop duplicates raised by more than one agent.
+6. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
 7. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
 
 ### Fan-out
@@ -80,5 +80,6 @@ This step stops false positives reaching a human. Do not skip it and do not soft
 ### Constraints
 
 - British English throughout. Lead with conclusions. No filler.
-- Every sub-agent and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require it, because a sub-agent runs with fresh context and will not load it otherwise. One finding is one or two sentences: the defect, then what to do about it. No headings inside a finding, and no restating the diff back at the reader.
+- Every sub-agent and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require it, because a sub-agent runs with fresh context and will not load it otherwise.
+- A finding is three sentences at most: the defect, the proof, the fix. One `file:line` reference is the proof; a second instance of the same defect adds nothing. No headings inside a finding, no restating the diff back at the reader, and no paragraph explaining that the surrounding code is correct. A finding that runs to five paragraphs is over budget, whatever its severity.
 - The report is the only deliverable. Do not draft a review comment and do not state a verdict; `draft-code-review` owns that.
