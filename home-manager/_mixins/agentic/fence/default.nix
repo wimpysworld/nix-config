@@ -11,6 +11,15 @@ let
   inherit (config.home) homeDirectory profileDirectory;
   fencePackage = import ./package.nix { inherit inputs pkgs; };
 
+  # The gitsign credential cache daemon places its socket with Go's
+  # os.UserCacheDir, which ignores XDG variables on Darwin and returns
+  # ~/Library/Caches. Mirror the socket path branches in development/git.
+  gitsignCacheDir =
+    if host.is.darwin then
+      "${homeDirectory}/Library/Caches/sigstore/gitsign"
+    else
+      "${config.xdg.cacheHome}/sigstore/gitsign";
+
   fenceConfig = {
     allowPty = true;
     network = {
@@ -89,12 +98,14 @@ let
         "${homeDirectory}/.sigstore"
         "${homeDirectory}/.sigstore/**"
 
-        # The gitsign credential cache socket is covered by the XDG cache glob
-        # below, but list its directory as well for the same reason as /tmp. If
+        # The gitsign credential cache socket lives under ~/Library/Caches on
+        # Darwin, which no other rule covers, so this entry is the only one
+        # that reaches it there. On Linux the XDG cache glob below also covers
+        # it, but the bare directory is listed for the same reason as /tmp. If
         # the host daemon restarts mid-session it recreates the socket inode
         # after Fence started, and the bare directory keeps the Landlock rule
         # covering the new inode.
-        "${config.xdg.cacheHome}/sigstore/gitsign"
+        gitsignCacheDir
 
         # Package manager caches
         "~/.npm/_cacache"
