@@ -1,0 +1,1 @@
+$ARGUMENTS Invoke `less` to reload the Communication Rules before answering. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly. Then give me your single recommended solution and the reasoning for it. No menu of options. If it's genuinely close, say so in one line and pick anyway.

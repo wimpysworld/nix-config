@@ -103,6 +103,7 @@ Global response rules stay compact: concise peer-to-peer British English, no em 
 | Command          | Purpose                                                             |
 | ---------------- | ------------------------------------------------------------------- |
 | `ack`            | Acknowledge a phase or message and yield                            |
+| `call`           | Give one recommended solution with its reasoning, never a menu      |
 | `collaborate`    | Read a task or file, meet the team, and prepare to collaborate       |
 | `grill-me`       | Interview the user until every branch of a design is resolved       |
 | `implement-task` | Take a tracked task through to implemented, validated, committed work |
