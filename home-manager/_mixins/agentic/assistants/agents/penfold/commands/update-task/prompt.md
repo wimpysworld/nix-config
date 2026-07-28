@@ -39,6 +39,8 @@ Query the live taxonomy for labels, statuses, and the estimate scale. Load the `
 
 **5. Merge**
 
+Load the `contribution-voice` skill and follow it for every sentence you add or rewrite. A task body publishes under the user's name. The heading set is fixed, so the skill's rule against scaffolding does not apply to it; it governs the prose inside. Run its cut pass on the new text only, and leave untouched sections alone.
+
 Keep the heading set and order from `create-task`'s templates. Add a heading only when the session produced real content for it. Never stub one. Preserve every existing section, sentence, and link the session did not touch.
 
 For a task in a cohort, update the parent's `Child issues` list when dependency order or parallelism changed, and restate each changed edge in the affected child's `Dependencies` section.

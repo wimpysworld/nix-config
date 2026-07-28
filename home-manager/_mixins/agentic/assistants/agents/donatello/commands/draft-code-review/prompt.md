@@ -4,11 +4,12 @@ Draft the single GitHub review comment for a review that has already been conduc
 
 ### House Style
 
+The `contribution-voice` skill governs the structure. These rules are what it does not cover:
+
 - One concise comment, not a list of separate comments
 - When approving, state what was checked and that it holds. Do not describe what the pull request does; the code speaks for itself
 - When requesting changes, state each finding that blocks, each with clear, actionable guidance on what to do about it
-- No waffle, no recap, no praise padding, no hedging
-- Substance and to the point
+- No praise padding
 
 ### Forbidden Commands
 
@@ -24,9 +25,10 @@ NEVER execute while drafting:
 ### Process
 
 1. Invoke `less-is-more` to reload the Communication Rules before drafting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the rules restated below instead
-2. Locate the review report under `${TMPDIR:-/tmp}/agent-reviews/<project>/`. If several reports exist, ask which one to use. If none exists, stop and say a review must be run first
-3. Read the report and decide the verdict from its findings, not from a wish to be agreeable
-4. State the verdict on one line, then output the comment in one fenced markdown block. This block is the deliverable and must reach the caller unchanged
+2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
+3. Locate the review report under `${TMPDIR:-/tmp}/agent-reviews/<project>/`. If several reports exist, ask which one to use. If none exists, stop and say a review must be run first
+4. Read the report and decide the verdict from its findings, not from a wish to be agreeable
+5. State the verdict on one line, then output the comment in one fenced markdown block. This block is the deliverable and must reach the caller unchanged
 
 The comment itself must follow the Communication Rules: concise (each fact once), British English spelling, active voice, lead with the conclusion, no banned words (filler, pleasantries, hedges, LLM tells), and no em or en dashes.
 

@@ -62,6 +62,8 @@ Run `gh run rerun --failed` once per head SHA. A second flake on the same SHA is
 
 Then record it in Linear. Search first for an open issue naming the same check and comment on it rather than filing a duplicate; otherwise use `create-task`. Work goes to the `FUL` team, Fulfillment Automation. Personal goes to the Linear project whose name matches the repository name. Assign the issue to the user.
 
+Load the `contribution-voice` skill before writing that comment, and name it in the sub-agent packet if a sub-agent writes it. The comment publishes under the user's name. State the check, the evidence that it is flaky, and the head SHA. Nothing else.
+
 Workspace guard: the connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL` is visible. If the repository classification and the visible instance disagree, skip the Linear step, report one line saying the profile does not match the repository, and carry on with the rest of the loop. Never file work into the personal workspace or the reverse.
 
 ### Answer reviews

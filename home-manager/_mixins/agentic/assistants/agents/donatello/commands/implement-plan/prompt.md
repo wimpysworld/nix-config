@@ -6,14 +6,15 @@ When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-p
 
 ### Workflow
 
-1. Read the plan and resolve the phase set from $2 (one phase, or every phase when $2 is omitted)
-2. Dispatch one fresh sub-agent per phase, in dependency order. Never give one sub-agent two phases, a whole plan, or a multi-phase sequence. Run independent phases in parallel once their dependencies are satisfied, each in its own fresh sub-agent. Fresh context per phase keeps attention high and implementations small
-3. Each sub-agent reads its phase's Dependencies, Scope, Reuse candidates, Flags, and Success Criteria, then:
+1. Load the `contribution-voice` skill and follow it for every phase report and every sub-agent packet. The output tables below fix the layout; the skill governs the prose in each cell. Name the skill in each packet, because a sub-agent runs with fresh context and will not load it otherwise
+2. Read the plan and resolve the phase set from $2 (one phase, or every phase when $2 is omitted)
+3. Dispatch one fresh sub-agent per phase, in dependency order. Never give one sub-agent two phases, a whole plan, or a multi-phase sequence. Run independent phases in parallel once their dependencies are satisfied, each in its own fresh sub-agent. Fresh context per phase keeps attention high and implementations small
+4. Each sub-agent reads its phase's Dependencies, Scope, Reuse candidates, Flags, and Success Criteria, then:
    - Verifies dependencies are satisfied before starting
    - Checks Reuse candidates exist and are usable before writing new code
    - Implements changes, honouring Success Criteria from the plan
    - Runs tests after the phase
-4. Aggregate the per-phase results and report them
+5. Aggregate the per-phase results and report them
 
 ### Per-Phase Output
 

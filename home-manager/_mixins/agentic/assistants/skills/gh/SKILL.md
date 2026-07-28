@@ -20,6 +20,21 @@ Fence denies raw `gh api`, `gh pr merge`, `gh workflow run`, the
 those for the operator to run in an unfenced shell. Raw reads go through
 `gh-api-safe`.
 
+## Body text policy
+
+Every command below that carries a `--body` or `--body-file` publishes
+under the user's name. Load the `contribution-voice` skill and follow it
+before writing that text. It governs the structure: length, layout,
+sign-offs, and the cut pass.
+
+This covers `gh pr create`, `gh pr comment`, `gh pr review`,
+`gh issue create`, `gh issue comment`, and `gh-review-reply`.
+
+Prefer the dedicated commands where one fits, because each already loads
+the skill: `make-pr`, `post-comment`, `post-issue`, and
+`post-code-review`. Reach for a bare `gh` call only when no command
+covers the case.
+
 ## Pull Requests
 
 ```bash

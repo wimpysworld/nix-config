@@ -46,11 +46,12 @@ Report the written path in your output so the user can find it.
 ### Process
 
 1. Invoke `less-is-more` to reload the Communication Rules before writing anything. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the Communication Rules directly.
-2. Resolve the input to a diff and gather context, per **Input Resolution**.
-3. Fan out to sub-agents, per **Fan-out**.
-4. Pressure-test every blocking finding, per **Adversarial pressure-test**.
-5. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. Drop duplicates raised by more than one agent.
-6. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
+2. Load the `contribution-voice` skill and follow it when wording findings. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
+3. Resolve the input to a diff and gather context, per **Input Resolution**.
+4. Fan out to sub-agents, per **Fan-out**.
+5. Pressure-test every blocking finding, per **Adversarial pressure-test**.
+6. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. Drop duplicates raised by more than one agent.
+7. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
 
 ### Fan-out
 
@@ -65,6 +66,7 @@ Each sub-agent's delegation packet must instruct it to:
 - Read the surrounding code in the working tree to understand the change in context, within its assigned concern or area.
 - Where practical, verify conclusions by building and running the relevant tests on the reviewed code (for example in a temporary worktree), restoring repo state afterwards. Distinguish environmental test failures (also failing on the base branch) from failures the change caused.
 - Apply the lens and severity bar the caller set. Do not widen them.
+- Load `contribution-voice` and word every finding by it.
 - Return findings, each with `file:line` references, severity, and why it matters.
 - Say so plainly when its area is clean.
 - Never mutate GitHub: no comments, approvals, or merges.
@@ -78,9 +80,5 @@ This step stops false positives reaching a human. Do not skip it and do not soft
 ### Constraints
 
 - British English throughout. Lead with conclusions. No filler.
-- Every sub-agent and the final report must keep feedback succinct and actionable:
-  - Lead with the conclusion, then the reasoning.
-  - Use the fewest sentences that fully answer; state each fact once.
-  - Use active voice, short common words, and British English spelling.
-  - No filler, pleasantries, hedges, or waffle.
+- Every sub-agent and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require it, because a sub-agent runs with fresh context and will not load it otherwise. One finding is one or two sentences: the defect, then what to do about it. No headings inside a finding, and no restating the diff back at the reader.
 - The report is the only deliverable. Do not draft a review comment and do not state a verdict; `draft-code-review` owns that.

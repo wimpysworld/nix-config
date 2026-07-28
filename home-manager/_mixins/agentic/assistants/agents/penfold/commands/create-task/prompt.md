@@ -64,6 +64,8 @@ Leave parent tracking tasks unestimated; the children carry the size. A single t
 
 **6. Ground the body**
 
+Load the `contribution-voice` skill and follow it for the prose. A task body publishes under the user's name. The templates in Output Format fix the headings, so the skill's rule against scaffolding does not apply to them; it governs everything written inside them. Run its cut pass on every section before creating the task.
+
 Before writing any body:
 
 - Search the codebase for the utilities, helpers, and patterns that already cover part of the work. Name exact file paths and function names in `Context`.
