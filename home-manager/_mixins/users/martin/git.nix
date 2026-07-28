@@ -15,13 +15,33 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
       '';
       force = true;
     };
-    sessionVariables = {
-      GITSIGN_CONNECTOR_ID = "https://accounts.google.com";
-    };
   };
 
   programs = {
     git = {
+      # Work repositories are clones nested under ~/Chainguard and are signed
+      # with Sigstore rather than the personal SSH key. The `gitdir:` condition
+      # matches one path component before `**`, so it captures the nested
+      # clones at any depth and skips the ~/Chainguard/.git of cg-env itself.
+      includes = [
+        {
+          condition = "gitdir:~/Chainguard/*/";
+          contents = {
+            commit.gpgsign = true;
+            gitsign.connectorID = "https://accounts.google.com";
+            gpg = {
+              format = "x509";
+              # Home Manager defaults the x509 signer to gpgsm, so name gitsign.
+              x509.program = "gitsign";
+            };
+            tag.gpgsign = true;
+            user = {
+              email = "martin.wimpress@chainguard.dev";
+              name = "Martin Wimpress";
+            };
+          };
+        }
+      ];
       settings = {
         gpg = {
           ssh = {

@@ -22,10 +22,24 @@
         return 1
       fi
 
+      # Work clones live under ~/Chainguard and sign with gitsign, which needs
+      # no key inside the sandbox. Inject nothing there so the `gitdir:` include
+      # in the Git configuration governs signing. Everywhere else the base
+      # configuration signs with an SSH key that Fence read-denies, so turn
+      # signing off or the commit fails. ~/Chainguard itself is a personal
+      # repository and takes the unsigned path.
+      case "$PWD" in
+        "$HOME"/Chainguard/?*)
+          return 0
+          ;;
+      esac
+
       fence_env+=(
-        "GIT_CONFIG_COUNT=$((git_config_index + 1))"
+        "GIT_CONFIG_COUNT=$((git_config_index + 2))"
         "GIT_CONFIG_KEY_$git_config_index=commit.gpgSign"
         "GIT_CONFIG_VALUE_$git_config_index=false"
+        "GIT_CONFIG_KEY_$((git_config_index + 1))=tag.gpgSign"
+        "GIT_CONFIG_VALUE_$((git_config_index + 1))=false"
       )
     }
 
