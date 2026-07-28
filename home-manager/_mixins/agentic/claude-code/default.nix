@@ -729,10 +729,19 @@ in
             # by their `mcp__*` prefix, so the Exa tools stay available. Note this
             # also stops Claude reading a pasted URL with WebFetch; it uses Exa fetch
             # instead.
+            # Route every Slack post through `slack-post`. The Slack MCP server
+            # posts via Anthropic's Slack app, and Slack stamps those messages
+            # with a "Sent using @Claude" attribution that no local setting
+            # removes. Denying the four writing tools by name removes them from
+            # the model's tool list, so the reading and searching tools stay.
             permissions = {
               deny = [
                 "WebSearch"
                 "WebFetch"
+                "mcp__slack__slack_send_message"
+                "mcp__slack__slack_send_message_draft"
+                "mcp__slack__slack_schedule_message"
+                "mcp__slack__slack_update_canvas"
               ];
             };
 

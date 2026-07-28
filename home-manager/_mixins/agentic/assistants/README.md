@@ -457,3 +457,4 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `gh`                 | GitHub CLI reference - PR creation, issue management, releases            |
 | `review-code`        | Shared review method: input resolution, fan-out, pressure-test, report    |
 | `semgrep`            | Semgrep CLI usage and custom rule creation reference                      |
+| `slack`              | Slack reference - `slack-post` target forms, channel resolution, threads  |
