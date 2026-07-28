@@ -582,11 +582,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784222668,
-        "narHash": "sha256-Unk88a0I/bdr0MIMvuYQA7bOXyofr7avR/TPuAnX0UA=",
+        "lastModified": 1785268974,
+        "narHash": "sha256-yWBA/tNcF+JLfFYa1SGS+4b2W2uqAvhfjjiVxQ1sT3Q=",
         "owner": "kolide",
         "repo": "nix-agent",
-        "rev": "e8a0a515c9097884fc948722ba3e36668d8db328",
+        "rev": "72a0cfaa328f87589a420fa9f2994418f9a46ebd",
         "type": "github"
       },
       "original": {
