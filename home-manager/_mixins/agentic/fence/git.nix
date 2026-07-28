@@ -28,6 +28,13 @@
       # configuration signs with an SSH key that Fence read-denies, so turn
       # signing off or the commit fails. ~/Chainguard itself is a personal
       # repository and takes the unsigned path.
+      #
+      # This decision is made once, from the directory the wrapper launches in,
+      # because `GIT_CONFIG_*` is process environment. An agent launched
+      # elsewhere that reaches a work clone through `git -C`, `GIT_DIR`, or a
+      # later `cd` therefore commits unsigned. The opposite direction fails
+      # safe: signing stays on with a personal identity, so the commit fails
+      # rather than signing as the wrong identity.
       case "$PWD" in
         "$HOME"/Chainguard/?*)
           return 0
