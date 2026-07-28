@@ -82,6 +82,20 @@ let
         "${config.xdg.configHome}/herdr"
         "${config.xdg.configHome}/herdr/**"
 
+        # gitsign signs work commits inside the sandbox. Every signature, even
+        # one served from the credential cache, opens the TUF trust store at
+        # ~/.sigstore/root/tuf.db. That is a LevelDB database opened read-write
+        # with an exclusive lock, so read access alone is not enough.
+        "${homeDirectory}/.sigstore"
+        "${homeDirectory}/.sigstore/**"
+
+        # The gitsign credential cache socket is covered by the XDG cache glob
+        # below, but list its directory as well for the same reason as /tmp. If
+        # the host daemon restarts mid-session it recreates the socket inode
+        # after Fence started, and the bare directory keeps the Landlock rule
+        # covering the new inode.
+        "${config.xdg.cacheHome}/sigstore/gitsign"
+
         # Package manager caches
         "~/.npm/_cacache"
         "~/.npm/_npx"
@@ -106,7 +120,9 @@ let
       denyRead = [
         "/etc/shadow"
 
-        # Fenced agents create unsigned commits and do not need signing keys.
+        # Fenced agents never sign with a long-lived key. Commits outside
+        # ~/Chainguard are unsigned, and work commits use gitsign, which needs
+        # neither the SSH key nor a GPG key inside the sandbox.
         "${homeDirectory}/.ssh/id_rsa"
         "${homeDirectory}/.ssh/id_rsa.pub"
         "${config.xdg.configHome}/sops-nix/secrets/ssh_key"
@@ -322,6 +338,14 @@ let
         # subcommands) and every uncarved destination flag
         # (`--file`, `--blob`, etc.) falls through to this deny.
         "git config"
+        # gitsign: signing and verification stay available so work commits
+        # under ~/Chainguard can be signed, because nothing else denies the
+        # command. `initialize` is denied because it rewrites the local TUF
+        # trust root and no agent has a reason to run it. `gitsign` is
+        # deliberately not allow-listed: Fence's allow rules take precedence
+        # over denies, so a bare `gitsign` allow would shadow this longer
+        # prefix.
+        "gitsign initialize"
         "home-manager switch"
         "home-manager switch-generation"
         "nixos-rebuild switch"

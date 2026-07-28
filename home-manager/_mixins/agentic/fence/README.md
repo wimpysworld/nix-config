@@ -129,6 +129,24 @@ are protected via on-disk file permissions. The user-facing sops-nix render
 directory at `~/.config/sops-nix` is intentionally read-allowed so API keys are
 exposed inside the sandbox.
 
+Commits in work repositories under `~/Chainguard` are signed with Sigstore
+through gitsign. The `gitsign-credential-cache` daemon runs on the host; only
+its unix socket at `~/.cache/sigstore/gitsign/cache.sock` crosses into the
+sandbox. What crosses that socket is an ephemeral signing key and a Fulcio
+certificate that expires after ten minutes, so no long-lived secret enters the
+fence: no SSH key, no GPG key, and no Google ID token. Signing is scoped by a
+`gitdir:~/Chainguard/*/` include in the Git configuration, so it applies to the
+nested work clones and nowhere else. Outside those clones the fenced wrappers
+inject `commit.gpgSign=false` and `tag.gpgSign=false` through `GIT_CONFIG_*`,
+because the base configuration signs with an SSH key that Fence read-denies.
+`~/.sigstore` is writable because every signature, including a cache hit, opens
+the TUF trust store there as a LevelDB database with an exclusive lock.
+`gitsign initialize` is denied so an agent cannot rewrite that trust root.
+
+The trade-off is real. An agent that reaches the socket can sign as the work
+identity for a rolling ten-minute window, and every Sigstore signature is
+recorded in a public transparency log that is permanent and cannot be removed.
+
 The GitHub CLI needs `~/.config/gh/hosts.yml` at startup, so that file is not
 read-denied. It cannot expose the `gh` credential only to the `gh` process.
 Fence allows the `gh auth` subcommands so the agent can inspect its identity
