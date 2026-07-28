@@ -36,7 +36,7 @@ Structure:
 
 1. One-line restatement of purpose.
 2. Decision rules (when to do what).
-3. Required mechanics (frontmatter, layout, output shape).
+3. Required mechanics (frontmatter, layout, output format).
 4. Anti-patterns.
 5. Links to `references/` for material that is large, variant-heavy, or rarely needed.
 

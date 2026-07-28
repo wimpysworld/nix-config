@@ -627,7 +627,7 @@ let
   # The Codex skill activation above does `rm -rf skills`, so a sops template
   # writing into that tree would lose the race. Instead this composes each
   # secret skill at activation: the public frontmatter plus the spawn_agent
-  # prelude (or the bare standalone shape) are written from Nix, then the
+  # prelude (or the bare standalone form) are written from Nix, then the
   # decrypted body is appended by reading config.sops.secrets.<key>.path.
   # Command-derived agents/openai.yaml files use the same header.codex.toml
   # contract as non-secret commands.

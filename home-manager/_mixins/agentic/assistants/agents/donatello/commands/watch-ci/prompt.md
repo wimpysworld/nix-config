@@ -78,7 +78,7 @@ That command owns the whole cycle. It skips threads already handled, judges each
 
 ### Output
 
-Print a short status line at each watcher leg boundary. End with a summary:
+Print a short status line at the end of each watcher round. End with a summary:
 
 - Every failed check, its group, and the evidence.
 - The fixes and the files touched.

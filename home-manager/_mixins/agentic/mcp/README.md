@@ -167,7 +167,7 @@ Disabled by default in OpenCode and Pi via per-consumer `enabled = false`. Zed i
 
 These three carry `enabled = false` at the top level. They stay declared so re-enabling one is a single edit (flip `enabled` to `true`) without rediscovering URLs or schemas.
 
-- **firecrawl** - web scraping and crawling. Disabled because Exa covers the primary use case. Note that firecrawl embeds the API key in the URL path, which doesn't fit the `auth.kind = "bearer"` shape; re-enabling will need renderer logic to handle URL-embedded secrets.
+- **firecrawl** - web scraping and crawling. Disabled because Exa covers the primary use case. Note that firecrawl embeds the API key in the URL path, which doesn't fit the `auth.kind = "bearer"` model; re-enabling will need renderer logic to handle URL-embedded secrets.
 - **jina** - web reading and screenshots. Disabled because Exa covers search and URL content extraction.
 - **mcpGoogleCse** - Google Custom Search Engine. Disabled because Exa's semantic search covers the same need with better results for technical queries.
 
@@ -187,7 +187,7 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 | Zed         | `~/.config/zed/settings.json` `context_servers` and `extensions`                   | `zedContextServers`, `zedExtensions` |
 | Codex       | `~/.config/codex/config.toml` `[mcp_servers.*]`                                    | `codexServers`                       |
 
-### Platform-specific shapes
+### Platform-specific formats
 
 - **Claude Code** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
 - **Pi Agent** - per-server `enabled = false` keeps a server visible in Pi's MCP TUI but disabled by default. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference, but disabled Pi servers force `directTools = false`. Globally disabled servers and `consumers.pi.omit = true` servers are omitted. Playwright is still omitted entirely unless the shared browser automation policy enables both Chromium and Firefox.

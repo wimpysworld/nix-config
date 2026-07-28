@@ -35,7 +35,7 @@ Answer each question where it appears, replace the open marker with the decided 
 
 **4. Re-check the classification**
 
-Query the live taxonomy for labels, statuses, and the estimate scale. Load the `sizing` skill and check the estimate against it. Never invent a label. Change labels, priority, or estimate only when the session changed the shape of the work, and state what changed and why. For a local task file the same four values live in the frontmatter: `title`, `labels`, `priority`, `estimate`.
+Query the live taxonomy for labels, statuses, and the estimate scale. Load the `sizing` skill and check the estimate against it. Never invent a label. Change labels, priority, or estimate only when the session changed what the work involves, and state what changed and why. For a local task file the same four values live in the frontmatter: `title`, `labels`, `priority`, `estimate`.
 
 **5. Merge**
 

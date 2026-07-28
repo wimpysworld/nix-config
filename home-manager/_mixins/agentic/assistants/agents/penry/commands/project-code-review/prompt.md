@@ -43,5 +43,5 @@ Report the written path in your output so the user can find it.
 
 - An empty or short report is a valid result. If the code holds up, say so and stop. Do not pad the report with borderline findings to look thorough.
 - Report defects present in the code now. Do not raise speculative problems that depend on a future the code has not reached.
-- Each finding must leave the code smaller or clearer. If a fix trades one shape for another of equal weight, drop it. Do not propose change for its own sake.
+- Each finding must leave the code smaller or clearer. If a fix trades one form for another of equal weight, drop it. Do not propose change for its own sake.
 - Recommend one fix per finding. Do not list rival approaches or reopen a call you have already made.

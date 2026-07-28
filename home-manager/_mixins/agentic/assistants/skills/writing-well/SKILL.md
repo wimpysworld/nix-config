@@ -13,7 +13,7 @@ Do not load for routine operational output: sub-agent status, delegation respons
 
 ## Relationship to the other layers
 
-The generated Communication Rules govern vocabulary and brevity on every utterance and are hook-enforced. The `contribution-voice` skill governs the shape of short public text published under the user's name. This skill governs composition inside long-form artefacts.
+The generated Communication Rules govern vocabulary and brevity on every utterance and are hook-enforced. The `contribution-voice` skill governs the structure of short public text published under the user's name. This skill governs composition inside long-form artefacts.
 
 The Communication Rules say to skip puffery, didactic disclaimers, and superficial '-ing' analysis without defining any of the three. The pattern catalogue below is where those terms are defined.
 

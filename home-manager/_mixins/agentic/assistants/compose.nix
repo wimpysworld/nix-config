@@ -629,7 +629,7 @@ let
       Authority: <external mutations the sub-agent may perform on the user's behalf; restate them, because fresh context does not inherit the parent's consent>
       Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
       Validation: <checks to run or evidence needed>
-      Output: <headings, artefact shape, file path, or response contract>
+      Output: <headings, artefact format, file path, or response contract>
       Discipline: No preamble. Do not restate the task. Return user-visible output only. Omit irrelevant sections. Return raw artefacts when requested.
       ```
 

@@ -51,7 +51,7 @@ Cut every "I will", "I'll", "My job is".
 
 ## Output format
 
-Show the shape; don't describe it.
+Show the template; don't describe it.
 
 | Don't                                | Do                                             |
 | ------------------------------------ | ---------------------------------------------- |

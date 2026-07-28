@@ -34,13 +34,13 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
   - `detection.py` the deterministic checker for banned words, dashes, and policy disclosure, plus the bash scan. It unwraps `bash -c`/`-lc` wrappers, scans `apply_patch` added lines, and strips leading environment assignments, so prose cannot hide behind any of them. It also owns `GH_POST_COMMANDS`, the shared set of external post command names that all four extractors import, so a new post helper is added in one place.
   - `config.py` config plus the post-detection lists from `policy.json`.
   - `state.py` the file-backed strike, tier, and fail-closed machine. The only place the B1 (block-then-allow-revise) and B2 (five-strike) limits live. B2 re-issues the full rules on strikes 1 and 4 and sends a short nudge on the strikes between, since the rules are already in context.
-  - `responses.py` per-agent output shaping.
+  - `responses.py` per-agent output formatting.
   - `dispatch.py` the `<agent> <event>` CLI dispatcher.
   - `extractors/` the four payload extractors (`claude_code`, `codex`, `opencode`, `pi`). The Pi extractor threads the Pi session id into the strike key, so each session resets fresh rather than sharing one global namespace.
 - `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` the two thin TypeScript shims. Each spawns the core and applies the returned decision. They hold no policy.
 - `default.nix` two wiring helpers on a shared agent-free base: `mkCommandHookAdapter` (Claude Code, Codex) and `mkPluginAdapter` (Pi, OpenCode).
 - `fragment.nix` generates the rules text, reminder, block, and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
-- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 306 fixtures across five groups (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix): 72 scanner, 67 claude-code, 70 codex, 52 pi, 45 opencode. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript seams.
+- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 306 fixtures across five groups (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix): 72 scanner, 67 claude-code, 70 codex, 52 pi, 45 opencode. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript boundaries.
 
 ## Why this exists
 
@@ -69,7 +69,7 @@ Each row is one query asked twice on Opus 4.8 via Claude Code: before is the def
 
 ## Design principles
 
-These principles shape the gate.
+The gate follows these principles.
 
 **The sensor is deterministic and independent of the model.** Detection cannot ask another LLM to judge, because LLM output is probabilistic. The gate is a stdlib-only Python scanner with exact, mechanically testable checks: the em and en dash characters, and an exact-match subset of the banned words. The thing that controls the model must not be the model. That keeps the gate testable with fixtures and stops a bad model from talking its way past its own checker.
 
@@ -160,7 +160,7 @@ The explicit verbatim disclosure override is part of the scanner policy. A user 
 
 ### Validation status
 
-Tested through 2026-06-16. Claude Code and Codex were tested live. The Claude Code Tier A user notice was re-confirmed live on 2026-06-15 after the wire-shaping fix. OpenCode now has fixture, installed-plugin, live local tool-call, headless final-text, and GitHub post-block coverage. Pi now has live chat, local tool-call, GitHub post-block, and subagent-output coverage. OpenCode TUI toast rendering was not directly observed. Pi live testing confirmed the Tier A notice and next-turn re-issue in chat.
+Tested through 2026-06-16. Claude Code and Codex were tested live. The Claude Code Tier A user notice was re-confirmed live on 2026-06-15 after the wire-format fix. OpenCode now has fixture, installed-plugin, live local tool-call, headless final-text, and GitHub post-block coverage. Pi now has live chat, local tool-call, GitHub post-block, and subagent-output coverage. OpenCode TUI toast rendering was not directly observed. Pi live testing confirmed the Tier A notice and next-turn re-issue in chat.
 
 | Behaviour                                    | Claude Code                     | Codex                                           | OpenCode                                        | Pi                                                     |
 | -------------------------------------------- | ------------------------------- | ----------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
@@ -180,7 +180,7 @@ Tested through 2026-06-16. Claude Code and Codex were tested live. The Claude Co
 
 Notes:
 
-- The Claude Code Tier A user notice now shows. The `Stop` hook emits a top-level `systemMessage`, and Claude Code displays it. The earlier failure was the command hook emitting the raw core decision instead of the agent wire shape; the wire-shaping fix resolved it, confirmed live on 2026-06-15.
+- The Claude Code Tier A user notice now shows. The `Stop` hook emits a top-level `systemMessage`, and Claude Code displays it. The earlier failure was the command hook emitting the raw core decision instead of the agent wire format; the wire-format fix resolved it, confirmed live on 2026-06-15.
 - B2 external block is live-verified on Claude Code: a real gh issue create was denied on strike 1 and never posted. The strike-5 yield stays fixture-only on every agent, since a live yield would post to GitHub irreversibly.
 - B2 external block is live-verified on Codex: `gh repo view owner/private-test-repo --json nameWithOwner,isPrivate` passed, then `gh issue create` with a rule-breaking body was blocked and no issue was created.
 - Codex live validation covered Tier B clean and block paths, the B1 block-then-allow-revise cycle, and a B2 external block. B2 external yield stays fixture-only for the same irreversible-post reason.

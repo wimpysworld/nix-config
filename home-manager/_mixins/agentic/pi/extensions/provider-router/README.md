@@ -37,7 +37,7 @@ For an Anthropic parent session, the runtime writes
 `anthropic/claude-sonnet-5`. For an `openai-codex` parent session, it writes
 `openai-codex/gpt-5.6-terra`.
 
-`thinking.json` mirrors that shape with one value per provider drawn from
+`thinking.json` mirrors that structure with one value per provider drawn from
 Pi's closed set of effort levels (`off`, `minimal`, `low`, `medium`, `high`,
 `xhigh`):
 

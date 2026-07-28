@@ -163,7 +163,7 @@ setup-git` and `gh auth login --with-token` (both the bare flag and the
 git configuration, and `--with-token` silently rebinds the active credential
 from stdin or a file path. The git side of that closure is enforced directly:
 `git config` is a
-family-wide deny, with read-shaped subcommands and flags carved out so
+family-wide deny, with read-only subcommands and flags carved out so
 inspection still works. The modern reads (`git config get`, `get-all`,
 `get-regexp`, `get-urlmatch`, `list`) match on the first token after
 `config`, so any destination flag (`--global`, `--system`, `--local`,
@@ -174,11 +174,11 @@ match when the read flag is the first token after `config`; placing a
 destination flag before the read flag (e.g. `git config --global --get
 user.email`) is not carved out and falls through to the family-wide deny.
 Prefer the modern subcommand form, or put the destination flag after the
-read flag, when scripting against Fence. Every write shape (bare positional
+read flag, when scripting against Fence. Every write form (bare positional
 assignment, `--add`, `--unset`, `--replace-all`, `--rename-section`,
 `--remove-section`, `--edit`, and the modern `set`/`unset`/`rename-section`/
 `remove-section` subcommands) is denied. Raw `gh api` is the escape hatch
-and stays denied; read-shaped requests go through the `gh-api-safe` wrapper,
+and stays denied; read-only requests go through the `gh-api-safe` wrapper,
 with literal allowances only for `gh api rate_limit`, `gh api meta`, and
 `gh api octocat`. One write path is allowed by name: `gh-review-reply`
 posts a threaded reply to a pull request review comment and reaches only

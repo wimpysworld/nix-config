@@ -66,7 +66,7 @@ rec {
   # Canonical MCP server definitions.
   # Phase 1 of the MCP refactor: this attrset is the single source of truth
   # for every MCP server and its per-consumer state. Renderers added in later
-  # tasks transform these entries into the shapes Claude Code, Codex,
+  # tasks transform these entries into the formats Claude Code, Codex,
   # OpenCode, and Zed expect. While renderers are absent, the legacy
   # `mcpServers` and `opencodeServers` attrsets above remain the live data
   # and must stay byte-identical to their pre-refactor form.
@@ -341,7 +341,7 @@ rec {
   # Renderers
   # ---------------------------------------------------------------------------
   # Each renderer is a pure function of the canonical `servers` attrset above
-  # and produces the shape its target consumer expects. Consumers
+  # and produces the format its target consumer expects. Consumers
   # (`claude-code`, `codex`, `mcp/default.nix` for OpenCode and Zed) read
   # these renderer outputs directly.
   #

@@ -41,7 +41,7 @@ description: <one-sentence trigger summary>
 
 ## Output Format
 
-<templates, JSON schema, or shape contract>
+<templates, JSON schema, or structure contract>
 
 ## Constraints
 
@@ -100,7 +100,7 @@ Required when:
 
 Optional when:
 
-- The task is procedural with a single correct shape.
+- The task is procedural with one correct output form.
 - Output is short, structured, or fully constrained by a schema.
 
 Keep examples compact. Use `<example_input>` / `<example_output>` tags.

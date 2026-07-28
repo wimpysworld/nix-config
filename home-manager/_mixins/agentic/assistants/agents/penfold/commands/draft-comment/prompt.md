@@ -22,7 +22,7 @@ NEVER execute while drafting:
 ### Process
 
 1. Invoke `less-is-more` to reload the Communication Rules before drafting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the rules restated below instead
-2. Load the `contribution-voice` skill and follow it. It governs the shape of text published under the user's name
+2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
 3. Read the thread before writing. Use dedicated `gh` subcommands for GitHub; raw `gh api` is denied, so use `gh-api-safe` for raw reads. Use the Linear MCP tools for Linear and the Slack MCP tools for Slack. Read enough of the thread to answer what was actually asked, including what others already said, so the comment does not repeat a point someone has made
 4. Draft one comment and output it in a single fenced markdown block. This block is the deliverable and must reach the caller unchanged
 

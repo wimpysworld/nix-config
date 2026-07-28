@@ -451,7 +451,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 | Skill                | Purpose                                                                   |
 | -------------------- | ------------------------------------------------------------------------- |
-| `contribution-voice` | Shape rules for text published under the user's name in public            |
+| `contribution-voice` | Structure rules for text published under the user's name in public        |
 | `deep-research`      | Multi-round research on an open question, synthesised into a cited report |
 | `gh`                 | GitHub CLI reference - PR creation, issue management, releases            |
 | `review-code`        | Shared review method: input resolution, fan-out, pressure-test, report    |

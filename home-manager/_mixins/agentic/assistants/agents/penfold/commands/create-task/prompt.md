@@ -14,7 +14,7 @@ For a local target, show the resolved directory and ask the user to confirm it b
 
 This confirmation is the only approval gate. Once the target is confirmed, create immediately. There is no draft-and-approve step.
 
-**2. Choose the shape**
+**2. Choose the structure**
 
 Decide single task versus cohort:
 
@@ -51,7 +51,7 @@ Priority:
 - Never set 0 No priority deliberately.
 - A parent takes the highest priority among its children.
 
-Estimate. Load the `sizing` skill and follow it; it holds the scale and the shape each size describes. Map to the scale in use, do not assume one.
+Estimate. Load the `sizing` skill and follow it; it holds the scale and what the work at each size looks like. Map to the scale in use, do not assume one.
 
 Leave parent tracking tasks unestimated; the children carry the size. A single task that estimates at the largest size with unresolved design is the signal to split it into a parent plus children.
 
@@ -110,7 +110,7 @@ Standalone or child issue body:
 ## Scope
 
 * <Bounded statement of what changes.>
-* <One bullet per seam or subsystem touched.>
+* <One bullet per boundary or subsystem touched.>
 
 ## Requirements
 

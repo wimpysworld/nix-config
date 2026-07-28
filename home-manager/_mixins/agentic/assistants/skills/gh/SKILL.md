@@ -207,7 +207,7 @@ command for the operator to run in an unfenced shell.
 | Other mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell                    |
 | Field input from file (`-F x=@file`)   | raw `gh api` in unfenced shell                       |
 
-`gh-api-safe` wraps `gh api`, enforces a read-shaped allow-list with a
+`gh-api-safe` wraps `gh api`, enforces a read-only allow-list with a
 defence-in-depth deny-list on the REST path, blocks
 `-X`/`--method`/`-f`/`-F`/`--field`/`--raw-field`/`--input` (except `query=` value under `graphql`, where `@file` is still rejected), and runs a
 best-effort GraphQL heuristic that rejects any query whose body contains

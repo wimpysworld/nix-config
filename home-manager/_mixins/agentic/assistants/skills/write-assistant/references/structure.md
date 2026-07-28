@@ -89,7 +89,7 @@ Pi and OpenCode use the same portable two-field frontmatter as skills.
 3. **Capabilities** - what the agent owns; what it delegates.
 4. **Process / methodology** - the steps, short.
 5. **Constraints** - explicit dos and don'ts; refusal and escalation.
-6. **Output format** - templates, JSON schema, or shape contract.
+6. **Output format** - templates, JSON schema, or structure contract.
 7. **Examples** - few-shot for subjective or judgment work; omit for procedural agents.
 
 Wrap sections in XML tags only when the target prompt parser requires structure (Gemini convention). For Anthropic and OpenAI, headers are sufficient.

@@ -153,7 +153,7 @@ Text carrying these signs is not necessarily AI-generated. The models learned ev
 The practical consequence for our work:
 
 - Fix the writing fault. Do not accuse the text, or its author, of being generated.
-- Do not strip a legitimate word only because it appears on a list. *Crucial* is the right word when something is genuinely load-bearing; *vital* is the right word about organs.
+- Do not strip a legitimate word only because it appears on a list. *Crucial* is the right word when something is genuinely essential; *vital* is the right word about organs.
 - Weigh the whole passage, not the single hit. One tell means little, six in a paragraph mean something.
 - Chatbot leakage is the exception. It is evidence, not probability. See below.
 

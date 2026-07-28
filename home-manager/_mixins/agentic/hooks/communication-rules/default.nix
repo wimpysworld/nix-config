@@ -119,7 +119,7 @@ let
     {
       inherit (tripwireBase) package executable;
       inherit hookPackage;
-      # Build a single command-hook entry for one event. The shape matches the
+      # Build a single command-hook entry for one event. The form matches the
       # `type = "command"` hooks both Claude Code and Codex register. The event
       # is folded into the command string rather than carried in a separate
       # `args` list. Codex's command-hook config struct has no `args` field and

@@ -192,7 +192,7 @@ let
         "git reset --mixed"
         "git rebase --abort"
         "git rebase --continue"
-        # git config: read-shaped subcommands and flags carved out
+        # git config: read-only subcommands and flags carved out
         # of the family-wide `git config` deny below. The modern
         # subcommand reads (`get`, `get-all`, `get-regexp`,
         # `get-urlmatch`, `list`) are matched on the first token
@@ -267,7 +267,7 @@ let
         # `gh api` deny below. These three endpoints are read-only,
         # body-free, and method-fixed, so allowing them directly avoids
         # forcing every invocation through `gh-api-safe`. All other
-        # read-shaped requests must go via the wrapper.
+        # read-only requests must go via the wrapper.
         "gh api rate_limit"
         "gh api meta"
         "gh api octocat"
@@ -352,9 +352,9 @@ let
         # git config: family-wide deny to protect the Nix-managed
         # git configuration and stop the agent rewriting
         # credential helpers, `safe.directory` entries, aliases,
-        # remote URLs, or any other config surface. Read-shaped
+        # remote URLs, or any other config surface. Read-only
         # subcommands and flags are carved out in the allow block
-        # above; every write shape (bare positional assignment,
+        # above; every write form (bare positional assignment,
         # `--add`, `--unset`, `--unset-all`, `--replace-all`,
         # `--rename-section`, `--remove-section`, `--edit`, the
         # modern `set`/`unset`/`rename-section`/`remove-section`

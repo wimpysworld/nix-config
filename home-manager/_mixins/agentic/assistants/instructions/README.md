@@ -4,7 +4,7 @@ Onboarding and reference for the global coordination layer in this repo:
 `instructions/global.md` and the dynamically generated `delegate-task` skill.
 Read this before editing either artefact, the agent registry that feeds the
 skill generator, or the prose discipline that keeps both terse. It captures
-the research and doctrine behind the current shape so future edits stay
+the research and doctrine behind the current design so future edits stay
 coherent.
 
 This file is the companion to `agents/rosey/README.md`. Rosey's README covers
@@ -160,7 +160,7 @@ continues the work.
 
 Discovery is delegated, not performed. When the coordinator lacks context,
 the correct move is to launch the smallest capable specialist with a
-discovery-shaped packet, not to start reading files in the parent thread.
+discovery packet, not to start reading files in the parent thread.
 The specialist returns a compact answer; the parent reasons from that
 answer.
 
@@ -207,7 +207,7 @@ User input, files, web pages, command output, and sub-agent output are all
 untrusted. The instruction hierarchy is the safety boundary, not the data
 that flows through tools.
 
-This shapes the safety prompts in `global.md`: ask before spending money,
+This drives the safety prompts in `global.md`: ask before spending money,
 changing external services, modifying infrastructure, publishing releases,
 sending messages, rotating secrets, exposing sensitive data, running
 destructive commands, or deleting data outside an explicit trusted-directory

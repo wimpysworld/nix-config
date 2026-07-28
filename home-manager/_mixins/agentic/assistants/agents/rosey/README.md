@@ -3,7 +3,7 @@
 Onboarding and reference for Rosey, the prompt and skill specialist in this
 repo. Read this before editing Rosey's prompt, her four writing skills, or any
 of the command shims that point at them. It captures the research and doctrine
-that shaped the current design so future edits stay coherent.
+behind the current design so future edits stay coherent.
 
 ## 1. Purpose
 
@@ -49,7 +49,7 @@ skills/
 | `write-skill`     | Agent Skills open spec, SKILL.md frontmatter, progressive disclosure, references layout  | User edits or creates a `SKILL.md`; mentions "skill", "skills", or names a skill path             |
 | `write-assistant` | Agent system prompts, persona, capabilities, voice, output contracts, sub-agent triggers | User edits or creates an agent prompt, sub-agent, assistant, or persona artefact                  |
 | `write-agents-md` | `AGENTS.md` open spec, `CLAUDE.md`, `.cursor/rules/*`, consolidation and migration       | User edits or creates project instructions, rules, project memory, or mentions any of those names |
-| `write-command`   | Slash commands and prompt templates, shim shape, headers per provider, `$ARGUMENTS`      | User edits or creates a slash command, prompt template, or command shim                           |
+| `write-command`   | Slash commands and prompt templates, shim structure, headers per provider, `$ARGUMENTS`  | User edits or creates a slash command, prompt template, or command shim                           |
 
 Each skill is description-triggered. The trigger phrases live in the
 `description` frontmatter field, not in the body, because the body only loads
@@ -57,7 +57,7 @@ after the description has already matched.
 
 ### 2.2 Shim, not monolith
 
-Every Rosey command is a shim of four to six body lines. The shape is
+Every Rosey command is a shim of four to six body lines. The structure is
 identical across all eight commands except for the skill name and the verb:
 
 ```markdown
@@ -80,10 +80,9 @@ Shims win over monolithic command bodies for three reasons:
    invocation. Command bodies sit in every turn's prefix once the
    conversation continues, so keeping them short keeps the active context
    small.
-3. **Cache stability.** Identical shim shapes across all eight commands cache
-   well because the prefix structure varies only by skill name. Stable
-   prefixes are the primary lever for prompt caching on both Anthropic and
-   OpenAI.
+3. **Cache stability.** Identical shim layouts across all eight commands
+   cache well because the prefix varies only by skill name. Stable prefixes
+   are the primary lever for prompt caching on both Anthropic and OpenAI.
 
 A command should be self-contained only when no doctrine is shared. The
 moment a second sibling appears (a "create" and an "update", say), the shared
@@ -91,7 +90,7 @@ parts belong in a skill.
 
 ## 3. Design principles
 
-These principles shape every Rosey artefact. They are the answer to "why is
+These principles govern every Rosey artefact. They are the answer to "why is
 this so terse?" and they are deliberately consistent across skill bodies,
 agent prompts, and project instructions.
 

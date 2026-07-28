@@ -103,7 +103,7 @@ $implement-plan
 $research-task
 ```
 
-Standalone commands sit in the same namespace under the same shape:
+Standalone commands sit in the same namespace under the same form:
 
 ```text
 $ready

@@ -76,11 +76,19 @@ in
 
     # These terms are told to the model but deliberately not hard-gated. Each
     # has common legitimate uses, such as vital signs, foster care, and landscape
-    # orientation, so gating them would cause false-positive blocks.
+    # orientation, so gating them would cause false-positive blocks. The same
+    # applies to shape, seam, leg, arm, and load-bearing: they are banned only as
+    # metaphors for code, work, or text, while the literal senses stay legitimate,
+    # so a hard gate would block correct sentences.
     promptOnlyBannedTerms = [
       "landscape"
       "foster"
       "vital"
+      "shape"
+      "seam"
+      "leg"
+      "arm"
+      "load-bearing"
     ];
 
     bannedWordGroups = {
@@ -126,6 +134,11 @@ in
         "underpinning"
         "underscores"
         "boasts"
+        "shape"
+        "seam"
+        "leg"
+        "arm"
+        "load-bearing"
       ];
     };
 

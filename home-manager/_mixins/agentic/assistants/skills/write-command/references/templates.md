@@ -1,8 +1,8 @@
 # Command templates
 
-Three filled examples covering the supported shapes. Copy and edit; do not invent a fourth shape unless §3.1 of `SKILL.md`'s decision rules clearly demand it.
+Three filled examples covering the supported forms. Copy and edit; do not invent a fourth form unless §3.1 of `SKILL.md`'s decision rules clearly demand it.
 
-## Shape A: shim that loads a skill
+## Form A: shim that loads a skill
 
 Five-line body. Captures `$ARGUMENTS`, names the flow, loads the skill, refuses to duplicate doctrine. Mirrors `create-skill`, `create-assistant`, `create-agents-md`.
 
@@ -15,7 +15,7 @@ Load the `write-skill` skill and run its **create** flow.
 
 Skill name argument: $ARGUMENTS. Use it if provided; otherwise ask for the name and intended trigger context.
 
-Apply `write-skill` end-to-end: frontmatter, body, layout, references, anti-patterns, output shape. Do not duplicate that guidance here.
+Apply `write-skill` end-to-end: frontmatter, body, layout, references, anti-patterns, output format. Do not duplicate that guidance here.
 ```
 
 `description.txt`:
@@ -43,7 +43,7 @@ agent: rosey
 argument-hint: "[skill-name]"
 ```
 
-## Shape B: trivial standalone
+## Form B: trivial standalone
 
 One- or two-line body. No format. Mirrors `ack`, `ready`.
 
@@ -77,7 +77,7 @@ argument-hint: "[phase]"
 argument-hint: "[phase]"
 ```
 
-## Shape C: standalone with output format
+## Form C: standalone with output format
 
 30-60 line body owning a non-trivial output template, sections table, and constraints. Mirrors `handover-fresh`, `handover-fork`, `orientate`. No persona; persona lives in the bound agent.
 

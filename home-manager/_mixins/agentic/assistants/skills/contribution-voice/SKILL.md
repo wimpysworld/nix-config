@@ -1,6 +1,6 @@
 ---
 name: contribution-voice
-description: "Use when drafting text that is published under the user's name in public: a GitHub, Linear, or Slack comment, an issue, a bug report, a pull request description, a review reply, or a commit message. Governs the shape of the text (length, structure, sign-offs, the cut pass) rather than its vocabulary. Use even if the user only says 'reply to this issue', 'write the PR description', or 'draft a comment'."
+description: "Use when drafting text that is published under the user's name in public: a GitHub, Linear, or Slack comment, an issue, a bug report, a pull request description, a review reply, or a commit message. Governs the structure of the text (length, layout, sign-offs, the cut pass) rather than its vocabulary. Use even if the user only says 'reply to this issue', 'write the PR description', or 'draft a comment'."
 user-invocable: true
 ---
 
@@ -8,7 +8,7 @@ user-invocable: true
 
 This text is published under the user's name, in public, next to their reputation. Maintainers have grown cautious and reject contributions that read as AI-generated on sight, whatever their technical merit. Many readers do not speak English as a first language, so short plain sentences serve them.
 
-The Communication Rules already govern vocabulary and grammar. Apply them. This skill adds what they do not cover: shape. Shape is the real tell. A reader spots generated text by a three-line point wrapped in headings and bullets, long before they notice a single word.
+The Communication Rules already govern vocabulary and grammar. Apply them. This skill adds what they do not cover: structure. Structure is the real tell. A reader spots generated text by a three-line point wrapped in headings and bullets, long before they notice a single word.
 
 ## Rules
 
@@ -28,7 +28,7 @@ The Communication Rules already govern vocabulary and grammar. Apply them. This 
 
 **Code blocks for code and output only.** Never for emphasis or decoration.
 
-**Vary the shape.** Consecutive messages built on an identical skeleton read as generated, even when each one is fine alone.
+**Vary the structure.** Consecutive messages built on an identical skeleton read as generated, even when each one is fine alone.
 
 ## The Cut Pass
 

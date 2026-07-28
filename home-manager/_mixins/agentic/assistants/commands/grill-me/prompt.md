@@ -8,5 +8,5 @@ Input: `$ARGUMENTS` is the plan, design, or topic to grill me on. It may be a UR
 
 - Ask the questions one at a time. For each question, lead with your recommended answer with rationale.
 - If a question can be answered by exploring the codebase, explore the codebase instead of asking.
-- Only ask where the answer changes implementation shape. Do not ask derivative questions.
+- Only ask where the answer changes the implementation. Do not ask derivative questions.
 - Continue until every branch of the decision tree is resolved.

@@ -18,6 +18,7 @@ Banned words:
 - Pleasantries: sure, certainly, of course, happy to.
 - Hedges: perhaps, might want to, could possibly, is likely.
 - LLM tells: pivotal, crucial, vital, testament, seamless, robust, cutting-edge, delve, leverage, multifaceted, foster, realm, tapestry, vibrant, nuanced, intricate, showcasing, streamline, landscape (figurative), garnered, underpinning, underscores, boasts.
+- Metaphors for code, work, or text: shape, seam, leg, arm, load-bearing. Use form, boundary, pass, branch, essential. Literal senses stay fine: a broken arm, a load-bearing wall.
 
 Enforcement:
 
