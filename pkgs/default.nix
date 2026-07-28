@@ -7,6 +7,7 @@ pkgs: {
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   heynote = pkgs.callPackage ./heynote { };
+  linear-tui = pkgs.callPackage ./linear-tui { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
   tcount = pkgs.callPackage ./tcount { };
   defold = pkgs.callPackage ./defold { };
