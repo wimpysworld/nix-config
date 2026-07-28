@@ -140,7 +140,10 @@ fence: no SSH key, no GPG key, and no Google ID token. Signing is scoped by a
 nested work clones and nowhere else. Outside those clones the fenced wrappers
 inject `commit.gpgSign=false` and `tag.gpgSign=false` through `GIT_CONFIG_*`,
 because the base configuration signs with an SSH key that Fence read-denies.
-`~/.sigstore` is writable because every signature, including a cache hit, opens
+The wrappers pick between those two paths once, from the directory they start
+in, so launch a fenced agent inside the work repository you want it to commit
+in. An agent started elsewhere commits unsigned even when it reaches a work
+clone with `git -C`. `~/.sigstore` is writable because every signature, including a cache hit, opens
 the TUF trust store there as a LevelDB database with an exclusive lock.
 `gitsign initialize` is denied because it rewrites that trust root and changes
 what later local verification accepts. The multi-token enforcement limit above
