@@ -1,12 +1,12 @@
 ## Watch CI
 
-Watch GitHub PR `$ARGUMENTS` and shepherd it: fix the CI failures the PR caused, triage flakes, answer reviews, and announce work PRs. Ask for the PR URL only if `$ARGUMENTS` is blank.
+Watch GitHub PR `$ARGUMENTS` and shepherd it: fix the CI failures the PR caused, triage flakes, and answer reviews. Ask for the PR URL only if `$ARGUMENTS` is blank.
 
 Invoke named commands with the provider's prefix. Codex uses `$make-commit`; slash-command runtimes use `/make-commit`. If the platform cannot expand a command, follow that command's prompt directly.
 
 ### Authority
 
-Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, `gh-review-resolve`, `gh run rerun --failed`, `gh pr update-branch`, Linear issue creation and comment, and Slack posts to `#eng-fulfillment-automation`.
+Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, `gh-review-resolve`, `gh run rerun --failed`, `gh pr update-branch`, and Linear issue creation and comment.
 
 Forbidden throughout: merge, close, approve, release, force-push, `gh workflow run`, and any change to a PR the user does not own. Never use raw `gh api`; use dedicated subcommands, and `gh-api-safe` for raw reads.
 
@@ -21,12 +21,6 @@ Check these before anything else. If one fails, stop and state the reason in one
 - The PR is open.
 
 Classify the repository from `git config user.email` inside it. `martin.wimpress@chainguard.dev` means work; anything else means personal or community. For a work repository, confirm `$PWD` is under `~/Chainguard/*/` so gitsign applies, and stop if it is not.
-
-### Announce work PRs
-
-For a work PR that is not a draft, post once at loop start, before any CI result. Post exactly `:wtb2 <pr-url> - <pr-title>` to `#eng-fulfillment-automation` and keep the thread timestamp. If the Slack MCP is unavailable, print the line for the operator and carry on.
-
-Reply in that same thread when CI first goes green and when the PR merges. Never post a second top-level message.
 
 ### Link Linear
 
