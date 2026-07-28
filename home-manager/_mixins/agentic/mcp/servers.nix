@@ -242,12 +242,6 @@ rec {
     };
   }
   // lib.optionalAttrs isWorkHost {
-
-    rag = {
-      transport = "http";
-      url = "https://rag-mcp.enforce.dev/mcp";
-    };
-
     slack = {
       # Official Slack-hosted MCP server over Streamable HTTP with OAuth.
       # Slack has no OAuth dynamic client registration, so the pre-registered
