@@ -35,7 +35,7 @@ Answer each question where it appears, replace the open marker with the decided 
 
 **4. Re-check the classification**
 
-Query the live taxonomy for labels, statuses, and the estimate scale. Never invent a label. Change labels, priority, or estimate only when the session changed the shape of the work, and state what changed and why. For a local task file the same four values live in the frontmatter: `title`, `labels`, `priority`, `estimate`.
+Query the live taxonomy for labels, statuses, and the estimate scale. Load the `sizing` skill and check the estimate against it. Never invent a label. Change labels, priority, or estimate only when the session changed the shape of the work, and state what changed and why. For a local task file the same four values live in the frontmatter: `title`, `labels`, `priority`, `estimate`.
 
 **5. Merge**
 
@@ -75,7 +75,7 @@ Show the change summary, then write. Do not ask for approval. Report after, nami
 - Never put tool, agent, or workflow instructions into a task body.
 - Every decision carries a reason and its evidence.
 - Research only as far as the decision needs. Stop once the answer is clear.
-- Draw labels, priority, and estimate from the live taxonomy.
+- Draw labels, priority, and estimate from the live taxonomy. The `sizing` skill holds the rubric the estimate must match.
 - Write to Linear or to a local file only. Never write to GitHub.
 - British spelling. No hedging language.
 - Ask nothing after the target resolves. Update the task.

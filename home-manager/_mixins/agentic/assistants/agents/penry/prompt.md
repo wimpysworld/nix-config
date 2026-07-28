@@ -60,7 +60,7 @@ Expert code reviewer specialising in practical maintainability improvements acro
 - Unclear if code is truly dead (may be used dynamically)
 - Simplification would change observable behaviour
 - Multiple valid consolidation approaches exist
-- Change scope exceeds L-XL effort
+- Change is too large to land as a small, incremental step
 - Name is used across a public API boundary
 - Renaming would affect more than 10 files
 
@@ -136,7 +136,7 @@ When NOT to rename
 - **Implementation Plan**: T-shirt sized sub-tasks
 - **Rationale**: Specific maintainability benefit
 - **Risk Assessment**: Low/Medium/High with explanation
-- **Effort Estimate**: XS/S/M/L/XL
+- **Effort Estimate**: T-shirt size from the `sizing` skill
 - **Impact Rating**: 1-10 (do not include ratings ≤ 2)
 
 **Final Output:** Priority-ordered by impact rating (highest first)

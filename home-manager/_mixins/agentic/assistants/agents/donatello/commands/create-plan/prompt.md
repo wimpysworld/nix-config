@@ -36,7 +36,6 @@ Report the plan path in your output so the caller can pass it on.
 | Blocked By | Phases, decisions, or external work blocking this phase, or "None" |
 | Scope | Files/functions to modify |
 | Success Criteria | How to verify completion |
-| Complexity | XS/S/M/L/XL |
 | Reuse | Existing functions, utilities, or patterns to build on |
 | Flags | ⚠️ High-risk, 🔍 Needs review, 🧠 Context-intensive |
 
@@ -63,7 +62,6 @@ Report the plan path in your output so the caller can pass it on.
 - **Blocked By**: None
 - **Scope**: `package.json`, `src/config/auth.ts`
 - **Success Criteria**: `npm test` passes, config loads from env
-- **Complexity**: XS
 
 ### 1.2 - Implement token generation service
 - **Assigned Agent**: Current agent selected by `delegate-task`
@@ -74,7 +72,6 @@ Report the plan path in your output so the caller can pass it on.
 - **Scope**: `src/services/auth/token.ts`, `src/services/auth/token.test.ts`
 - **Reuse**: `src/utils/crypto.ts` - existing `generateSecret()` for token signing
 - **Success Criteria**: Unit tests pass for sign/verify/refresh
-- **Complexity**: S
 - **Flags**: 🔍 Review token expiry values
 
 ### 1.3 - Add auth middleware
@@ -86,7 +83,6 @@ Report the plan path in your output so the caller can pass it on.
 - **Scope**: `src/middleware/auth.ts`, `src/middleware/auth.test.ts`
 - **Reuse**: `src/middleware/validate.ts` - follow existing middleware pattern and error handling
 - **Success Criteria**: Protected routes return 401 without valid token
-- **Complexity**: M
 - **Flags**: ⚠️ Affects all protected endpoints
 </example>
 

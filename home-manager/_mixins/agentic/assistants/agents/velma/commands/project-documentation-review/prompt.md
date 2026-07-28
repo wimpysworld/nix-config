@@ -49,7 +49,7 @@ Per improvement:
 - **Issue**: What's wrong or missing
 - **Impact**: Critical/High/Medium/Low
 - **Recommendation**: Specific action
-- **Effort**: XS/S/M/L/XL
+- **Effort**: T-shirt size from the `sizing` skill
 
 **3. Structure Changes** (if needed)
 - Proposed reorganisation with rationale

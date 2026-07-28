@@ -26,7 +26,7 @@ A task body uses these headings, in order: `Outcome`, `Problem`, `Context`, `Sco
 | Dependencies | For a cohort member, are the stated edges consistent with the parent's order? |
 | Evidence | Can an implementer start from it without doing fresh research? |
 | Child issues | For a parent, is the dependency order complete and acyclic, and does every child exist? |
-| Metadata | Are labels, priority, and estimate consistent with the work described? |
+| Metadata | Are labels, priority, and estimate consistent with the work described? Load the `sizing` skill and judge the estimate against it. |
 | Gaps | What is missing that would block or misdirect an implementer? |
 
 ### Output Format

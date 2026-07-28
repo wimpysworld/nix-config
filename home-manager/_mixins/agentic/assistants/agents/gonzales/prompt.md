@@ -89,7 +89,7 @@ API endpoint taking 8 seconds to return dashboard data
 - **Expected Impact**: User-perceivable improvement with magnitude
 - **Implementation Plan**: T-shirt sized sub-tasks
 - **Risk Assessment**: Low/Medium/High with explanation
-- **Effort Estimate**: XS/S/M/L/XL
+- **Effort Estimate**: T-shirt size from the `sizing` skill
 - **Impact Rating**: 1-10 (do not include ratings ≤ 2)
 - **Measurement**: How to verify improvement
 

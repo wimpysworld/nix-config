@@ -51,15 +51,7 @@ Priority:
 - Never set 0 No priority deliberately.
 - A parent takes the highest priority among its children.
 
-Estimate. Map to the scale in use, do not assume one. The current workspace uses a T-shirt scale; read this as a shape guide, not a fixed set of values:
-
-| Size | Points | Shape                                                            |
-| ---- | ------ | ---------------------------------------------------------------- |
-| XS   | 1      | A few lines changed, plus a test                                 |
-| S    | 2      | Single-file change, or a bounded investigation                   |
-| M    | 3      | Multi-file change inside one subsystem                           |
-| L    | 5      | New component, or a cross-cutting seam change with a known design |
-| XL   | 8      | Multiple subsystems, or unresolved design risk                   |
+Estimate. Load the `sizing` skill and follow it; it holds the scale and the shape each size describes. Map to the scale in use, do not assume one.
 
 Leave parent tracking tasks unestimated; the children carry the size. A single task that estimates at the largest size with unresolved design is the signal to split it into a parent plus children.
 
