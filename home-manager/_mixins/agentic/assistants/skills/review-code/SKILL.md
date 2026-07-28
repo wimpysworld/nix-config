@@ -45,7 +45,7 @@ Report the written path in your output so the user can find it.
 
 ### Process
 
-1. Invoke `less-is-more` to reload the Communication Rules before writing anything. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the Communication Rules directly.
+1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
 2. Load the `contribution-voice` skill and follow it when wording findings. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
 4. Fan out to sub-agents, per **Fan-out**.

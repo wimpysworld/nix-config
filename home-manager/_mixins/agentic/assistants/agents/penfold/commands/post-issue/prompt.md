@@ -14,7 +14,7 @@ Command invocation: use the current provider's command prefix when invoking `dra
 
 Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 
-1. Invoke `less-is-more` to reload the Communication Rules before starting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`
+1. Invoke `less` to reload the Communication Rules before starting. Codex uses `$less`; slash-command runtimes use `/less`
 2. Resolve the target repository. If it does not resolve, stop and say so
 3. Invoke or follow `draft-issue`. Preserve its fenced output verbatim as the issue source
 4. Strip only the Markdown fence lines. Use the first remaining line as the title. Write the remaining body text unchanged to a temporary file

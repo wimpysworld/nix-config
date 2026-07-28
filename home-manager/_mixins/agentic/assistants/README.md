@@ -106,7 +106,7 @@ Global response rules stay compact: concise peer-to-peer British English, no em 
 | `collaborate`    | Read a task or file, meet the team, and prepare to collaborate       |
 | `grill-me`       | Interview the user until every branch of a design is resolved       |
 | `implement-task` | Take a tracked task through to implemented, validated, committed work |
-| `less-is-more`   | Re-read the Communication Rules and apply them from now on          |
+| `less`           | Re-read the Communication Rules and apply them from now on          |
 | `orientate`      | Inspect the repository and report orientation notes                 |
 | `ready`          | Prime the session for a broad activity                              |
 

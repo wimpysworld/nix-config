@@ -19,7 +19,7 @@ NEVER execute while drafting:
 
 ### Process
 
-1. Invoke `less-is-more` to reload the Communication Rules before drafting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the rules restated below instead
+1. Invoke `less` to reload the Communication Rules before drafting. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the rules restated below instead
 2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
 3. Run `how-to-contribute` against the target repository first, or follow that prompt directly if the platform cannot expand a command. A project may require a discussion before an issue, may ban AI-assisted contributions, or may carry AI traps. Report any such policy and stop rather than filing an issue that breaches it
 4. Search existing issues for duplicates before drafting. Use `gh issue list` and `gh search issues`. If a likely duplicate exists, say so plainly and stop

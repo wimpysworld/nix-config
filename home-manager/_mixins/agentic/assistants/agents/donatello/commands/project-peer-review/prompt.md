@@ -21,7 +21,7 @@ Report the written path in your output so the user can find it.
 
 ### Process
 
-1. Invoke `less-is-more` to reload the Communication Rules before writing anything. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the Communication Rules directly
+1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly
 2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same peer review over its own directory; the parent aggregates the findings
 3. Detect the primary language(s) and ecosystem from project manifests
 4. Survey the codebase - structure, patterns, idioms, quality signals

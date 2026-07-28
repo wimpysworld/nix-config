@@ -18,7 +18,7 @@ There is no reject verdict: GitHub has no reject state, `--request-changes` is t
 
 Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 
-1. Invoke `less-is-more` to reload the Communication Rules before starting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`
+1. Invoke `less` to reload the Communication Rules before starting. Codex uses `$less`; slash-command runtimes use `/less`
 2. Resolve the target pull request. If the review targeted a local branch, worktree, or commit rather than a pull request, stop and say there is nothing to post to
 3. Invoke or follow `draft-code-review`. Preserve its fenced comment verbatim as the comment source
 4. Compare the pull request's current head SHA against the SHA recorded when the review ran. If it has moved, stop and report that the contributor pushed during the review, so the findings may no longer apply. Do not post. This guard is internal; never write a SHA into the comment body

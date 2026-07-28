@@ -24,7 +24,7 @@ NEVER execute while drafting:
 
 ### Process
 
-1. Invoke `less-is-more` to reload the Communication Rules before drafting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the rules restated below instead
+1. Invoke `less` to reload the Communication Rules before drafting. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the rules restated below instead
 2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
 3. Locate the review report under `${TMPDIR:-/tmp}/agent-reviews/<project>/`. If several reports exist, ask which one to use. If none exists, stop and say a review must be run first
 4. Read the report and decide the verdict from its findings, not from a wish to be agreeable

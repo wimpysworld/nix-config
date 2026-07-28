@@ -19,7 +19,7 @@ Report the written path in your output so the user can find it.
 
 ### Operating rules
 
-1. Invoke `less-is-more` to reload the Communication Rules before writing anything. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the Communication Rules directly.
+1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
 2. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
 3. Ask only when the audit scope or threat model is unclear.
 4. This command may read source files, run the Bash checks below, and write the report at the derived path. Do not edit source files or stage changes.

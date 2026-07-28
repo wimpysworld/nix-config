@@ -6,7 +6,7 @@ Default $1 to the working tree's changed files; if there are none, the whole tre
 
 ### Workflow
 
-1. Invoke `less-is-more` to reload the Communication Rules before writing anything. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`. If the platform cannot expand a command, apply the Communication Rules directly
+1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly
 2. Load the `contribution-voice` skill and follow it. Comments ship in the repository under the user's name, and its cut pass is what the Improve rules below ask for. Name the skill in every sub-agent packet, because a sub-agent runs with fresh context and will not load it otherwise
 3. Resolve $1 to a file set; apply $2 as a filter
 4. If the set spans multiple directories: Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same comment-polish pass over its own directory; the parent aggregates the per-file counts

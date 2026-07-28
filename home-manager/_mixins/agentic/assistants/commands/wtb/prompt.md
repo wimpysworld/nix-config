@@ -10,7 +10,7 @@ Human invocation of this command is the user's consent to post that one line to 
 
 ### Process
 
-- Invoke `less-is-more` to reload the Communication Rules before posting. Codex uses `$less-is-more`; slash-command runtimes use `/less-is-more`.
+- Invoke `less` to reload the Communication Rules before posting. Codex uses `$less`; slash-command runtimes use `/less`.
 - Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name. The `:wtb2 <pr-url> - <pr-title>` format is fixed, so apply the skill to anything you add and never to the line itself.
 - Read the title with `gh pr view`. Never use raw `gh api`; use `gh-api-safe` for raw reads.
 - Post the line with the Slack MCP message tool. `:wtb2` is a custom emote. Reproduce it verbatim, never as a Unicode emoji.
