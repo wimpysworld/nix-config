@@ -233,6 +233,14 @@ in
   };
 
   systemd.user = lib.mkIf host.is.linux {
+    # The daemon creates and owns its own socket at GITSIGN_CREDENTIAL_CACHE,
+    # removing any existing file at that path first. A systemd socket unit
+    # would bind the same path and lose the race, so socket activation is not
+    # used here. Activating it properly would need
+    # `--systemd-socket-activation` on ExecStart, which calls log.Fatalf when
+    # LISTEN_PID is absent, so the service could no longer be started
+    # directly. The daemon is wanted from login either way, so the simpler
+    # arrangement wins.
     services.gitsign-credential-cache = {
       Unit = {
         Description = "GitSign credential cache";
@@ -240,30 +248,6 @@ in
       Service = {
         Type = "simple";
         ExecStart = "${pkgs.gitsign}/bin/gitsign-credential-cache";
-      };
-      Install = {
-        WantedBy = [ "default.target" ];
-      };
-    };
-
-    sockets.gitsign-credential-cache = {
-      Unit = {
-        Description = "GitSign credential cache socket";
-      };
-      Socket = {
-        ListenStream = "${gitsignCredentialCache}";
-        DirectoryMode = "0700";
-      };
-      Install = {
-        WantedBy = [ "default.target" ];
-      };
-    };
-
-    # Enable and start the socket by default
-    targets.gitsign-credential-cache = {
-      Unit = {
-        Description = "Start gitsign-credential-cache socket";
-        Requires = [ "gitsign-credential-cache.socket" ];
       };
       Install = {
         WantedBy = [ "default.target" ];
