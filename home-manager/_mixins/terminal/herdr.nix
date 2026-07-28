@@ -9,6 +9,12 @@ let
   inherit (config.noughty) host;
   # Herdr reads its configuration from `~/.config/herdr/config.toml`.
   tomlFormat = pkgs.formats.toml { };
+  # Herdr uses a single worktree root for every repository and appends
+  # `<repo-name>/<branch>` to it. The root sits under `~/Chainguard` because
+  # Fence permits writes there, and it keeps work worktrees beside the clones
+  # they come from. The path is absolute because herdr's own tilde expansion is
+  # not something this module should depend on.
+  worktreeRoot = "${config.home.homeDirectory}/Chainguard/_worktrees";
   settings = {
     # Match the repository's Catppuccin Mocha theming.
     theme.name = "catppuccin";
@@ -17,6 +23,7 @@ let
     ui.sound.enabled = false;
     ui.toast.delivery = "herdr";
     experimental.kitty_graphics = true;
+    worktrees.directory = worktreeRoot;
   };
   herdrWorktree = pkgs.writeShellApplication {
     name = "herdr-worktree";
@@ -124,9 +131,12 @@ let
 
       [[ -n "$selected_root" ]] || die "current directory is outside the allowed workspace roots"
 
-      worktree_root="$(realpath -m -- "$selected_root/_worktrees")"
-      contains_path "$worktree_root" "$selected_root" \
-        || die "worktree root resolves outside the selected workspace root"
+      # The terminal interface uses one fixed worktree root for every
+      # repository, so the wrapper uses the same root instead of deriving one
+      # from the selected workspace root.
+      worktree_root="$(realpath -m -- ${lib.escapeShellArg worktreeRoot})" \
+        || die "failed to resolve the worktree root"
+      [[ "$worktree_root" == /* ]] || die "worktree root must be absolute"
 
       repo_root_raw="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)" \
         || die "current directory is not inside a Git repository"
@@ -140,6 +150,12 @@ let
 
       repo_name="$(basename -- "$repo_root")"
       [[ -n "$repo_name" ]] || die "failed to determine repository name"
+
+      repo_worktree_root="$(realpath -m -- "$worktree_root/$repo_name")"
+      [[ "$repo_worktree_root" != "$worktree_root" ]] \
+        || die "repository worktree root must be below the worktree root"
+      contains_path "$repo_worktree_root" "$worktree_root" \
+        || die "repository worktree root resolves outside the allowed worktree root"
 
       args=()
       branch=""
@@ -185,7 +201,7 @@ let
           args+=("--branch" "$branch")
         fi
         branch_slug="$(branch_to_path_slug "$branch")"
-        checkout_path="$worktree_root/$repo_name/$branch_slug"
+        checkout_path="$repo_worktree_root/$branch_slug"
       fi
 
       checkout_path="$(realpath -m -- "$checkout_path")"
