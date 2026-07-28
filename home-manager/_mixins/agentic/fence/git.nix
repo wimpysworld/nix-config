@@ -1,7 +1,11 @@
+{ pkgs }:
+
 {
   setupShell = ''
     setup_fence_git() {
       local git_config_index
+      local git_common_dir
+      local home_dir
 
       git_config_index="''${GIT_CONFIG_COUNT:-0}"
       case "$git_config_index" in
@@ -22,24 +26,42 @@
         return 1
       fi
 
-      # Work clones live under ~/Chainguard and sign with gitsign, which needs
-      # no key inside the sandbox. Inject nothing there so the `gitdir:` include
-      # in the Git configuration governs signing. Everywhere else the base
-      # configuration signs with an SSH key that Fence read-denies, so turn
-      # signing off or the commit fails. ~/Chainguard itself is a personal
-      # repository and takes the unsigned path.
+      # Signing follows the repository, not the directory. Ask Git for the
+      # common directory of the repository that owns the launch directory. For
+      # a linked worktree that is the main repository rather than the worktree
+      # checkout, so a work worktree placed anywhere still counts as work.
       #
-      # This decision is made once, from the directory the wrapper launches in,
-      # because `GIT_CONFIG_*` is process environment. An agent launched
-      # elsewhere that reaches a work clone through `git -C`, `GIT_DIR`, or a
-      # later `cd` therefore commits unsigned. The opposite direction fails
-      # safe: signing stays on with a personal identity, so the commit fails
-      # rather than signing as the wrong identity.
-      case "$PWD" in
-        "$HOME"/Chainguard/?*)
-          return 0
-          ;;
-      esac
+      # Work clones live under ~/Chainguard and sign with gitsign, which needs
+      # no key inside the sandbox. Inject nothing there so the `gitdir:`
+      # include in the Git configuration governs signing. Everywhere else the
+      # base configuration signs with an SSH key that Fence read-denies, so
+      # turn signing off or the commit fails.
+      #
+      # The pattern requires a component between Chainguard and the Git
+      # directory, so ~/Chainguard/<repo>/.git matches. ~/Chainguard itself is
+      # a personal repository whose common directory is ~/Chainguard/.git.
+      # That has no such component, so it takes the unsigned path.
+      #
+      # The decision is still made once, at launch, because `GIT_CONFIG_*` is
+      # process environment. A repository that cannot be resolved, including a
+      # launch directory outside any repository, falls through to unsigned.
+      # Failing closed that way is safe: the opposite error would sign a work
+      # commit with a personal identity.
+      if ! git_common_dir="$(${pkgs.lib.getExe pkgs.git} rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+        git_common_dir=""
+      fi
+
+      if ! home_dir="$(${pkgs.lib.getExe' pkgs.coreutils "realpath"} -- "$HOME" 2>/dev/null)"; then
+        home_dir=""
+      fi
+
+      if [[ -n "$git_common_dir" && -n "$home_dir" ]]; then
+        case "$git_common_dir" in
+          "$home_dir"/Chainguard/*/*)
+            return 0
+            ;;
+        esac
+      fi
 
       fence_env+=(
         "GIT_CONFIG_COUNT=$((git_config_index + 2))"

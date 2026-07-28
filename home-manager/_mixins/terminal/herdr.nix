@@ -124,7 +124,7 @@ let
 
       [[ -n "$selected_root" ]] || die "current directory is outside the allowed workspace roots"
 
-      worktree_root="$(realpath -m -- "$selected_root/.worktrees")"
+      worktree_root="$(realpath -m -- "$selected_root/_worktrees")"
       contains_path "$worktree_root" "$selected_root" \
         || die "worktree root resolves outside the selected workspace root"
 
