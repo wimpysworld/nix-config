@@ -92,9 +92,10 @@ sandbox behaviour.
 Command runtime enforcement uses Fence's `path` mode. This permits
 multithreaded tools such as Nix and Go to execute child processes. Single-token
 executable denies remain runtime-enforced. Multi-token denies such as `git
-push`, `just switch-home`, `nix store delete`, and `nh home switch` remain
-preflight-enforced only when they are the initial fenced command. Fence cannot
-enforce them against commands spawned by an agent in this mode.
+push`, `just switch-home`, `nix store delete`, `nh home switch`, and `gitsign
+initialize` remain preflight-enforced only when they are the initial fenced
+command. Fence cannot enforce them against commands spawned by an agent in this
+mode.
 
 The `nix-collect-garbage` deny and some coreutils-backed denies are listed in
 `acceptSharedBinaryCannotRuntimeDeny`. Fence checks them only when they are the
@@ -141,7 +142,9 @@ inject `commit.gpgSign=false` and `tag.gpgSign=false` through `GIT_CONFIG_*`,
 because the base configuration signs with an SSH key that Fence read-denies.
 `~/.sigstore` is writable because every signature, including a cache hit, opens
 the TUF trust store there as a LevelDB database with an exclusive lock.
-`gitsign initialize` is denied so an agent cannot rewrite that trust root.
+`gitsign initialize` is denied because it rewrites that trust root and changes
+what later local verification accepts. The multi-token enforcement limit above
+applies to that deny.
 
 The trade-off is real. An agent that reaches the socket can sign as the work
 identity for a rolling ten-minute window, and every Sigstore signature is
