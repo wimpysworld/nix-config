@@ -351,11 +351,17 @@ let
         "git config"
         # gitsign: signing and verification stay available so work commits
         # under ~/Chainguard can be signed, because nothing else denies the
-        # command. `initialize` is denied because it rewrites the local TUF
-        # trust root and no agent has a reason to run it. `gitsign` is
-        # deliberately not allow-listed: Fence's allow rules take precedence
-        # over denies, so a bare `gitsign` allow would shadow this longer
-        # prefix.
+        # command. `initialize` rewrites the local TUF trust root, so an
+        # agent that runs it repoints what later local verification trusts.
+        # This is a multi-token deny, so under `path` mode Fence checks it
+        # only when it is the initial fenced command and cannot enforce it
+        # against a command the agent spawns from its own shell. The entry
+        # stops the obvious case and records the intent; it is not a
+        # boundary. Runtime enforcement would mean masking the `gitsign`
+        # binary, which breaks the signing this policy exists to allow.
+        # `gitsign` is deliberately not allow-listed: Fence's allow rules
+        # take precedence over denies, so a bare `gitsign` allow would
+        # shadow this longer prefix.
         "gitsign initialize"
         "home-manager switch"
         "home-manager switch-generation"
