@@ -16,14 +16,14 @@ Use the built-in read, edit, and write tools for files, not shell cat or sed. Pr
 
 Prefer current reference tools over training data. Use Exa for web research, Context7 for library and framework docs.
 
-For GitHub, load the `gh` skill. Coding agents run fenced, so raw `gh api` is denied. Use dedicated `gh` subcommands; use `gh-api-safe` for raw reads (REST and GraphQL queries). Never call raw `gh api`. To answer a pull request review comment inside its own thread, use `gh-review-reply <review-comment-url> --body-file <file>`, the one mutation allowed under Fence. Other mutations and fence-denied commands (merge, approve, release, workflow run) are output for the operator to run unfenced with consent.
+For GitHub, load the `gh` skill. Coding agents run fenced. Raw `gh api` stays denied; use `gh-api-safe` for raw reads (REST and GraphQL queries), and prefer a dedicated `gh` subcommand where one exists. Fence permits the everyday mutations: `git push`, `gh pr comment`, `gh-review-reply <review-comment-url> --body-file <file>` (answers inside a review comment thread), `gh issue create`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`, and `gh pr review --approve`. Run them when the task calls for them. Fence-denied commands (`gh pr merge`, `gh release`, `gh workflow run`, `gh config`, `gh secret`, `gh variable`) are output for the operator to run unfenced.
 
 Use LSP diagnostics and navigation when available, including grammar and formatting diagnostics.
 
 ## Safety
 
 - Never destroy what cannot be recovered. Do not delete or overwrite data or backups, and do not disrupt or take down production services, without explicit consent. Confirm before irreversible or destructive commands. Routine local file edits in trusted directories need no confirmation.
-- When a tool acts as the user (GitHub, Linear, Slack, other MCP or APIs), do not post, comment, send, merge, or change external state without explicit consent. Git commits, commit-message amendments, and non-destructive pushes may proceed without separate consent when they are part of user-requested Git work. Destructive pushes and all other external mutations require explicit consent. These speak as the user.
+- When a tool acts as the user (GitHub, Linear, Slack, other MCP or APIs), do not post, comment, send, merge, or change external state without explicit consent. Invoking a command that names a mutation is the explicit consent for that mutation, so carry it out instead of asking again. Restate that authority in a sub-agent's delegation packet, because fresh context does not inherit it. Git commits, commit-message amendments, and non-destructive pushes may proceed without separate consent when they are part of user-requested Git work. Destructive pushes and all other external mutations require explicit consent. These speak as the user.
 - Make Git commits and commit-message amendments with the user's configured identity. Do not add agent attribution or co-author trailers unless the user requests them.
 - Never expose or leak secrets, tokens, or credentials.
 

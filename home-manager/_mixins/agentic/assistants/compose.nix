@@ -605,7 +605,15 @@ let
 
       ## Depth
 
-      Specialists do not launch further specialists. If a delegated task would require another specialist, return early with a packet describing what is needed; the parent routes the follow-up.
+      Specialists do not launch further specialists. If a delegated task would require another specialist, return early with a packet describing what is needed; the parent routes the follow-up. A user-invoked command runs as an orchestrator and may delegate; the no-further-delegation rule applies to the specialists that command launches.
+
+      ## Waiting
+
+      Never wait in the parent. Delegate any wait to a background sub-agent and act on its completion notification. Do not use sleep loops in the parent.
+
+      Inside the waiting sub-agent, prefer a blocking server-side watch command over a poll loop. Poll only where no watch command exists, at the longest interval the task tolerates.
+
+      Give every waiting sub-agent a hard deadline. On reaching it, report "still waiting" rather than exceeding it, so the parent can dispatch a fresh one with clean context.
 
       ## Context
 
@@ -618,6 +626,7 @@ let
       ```markdown
       Task: <outcome required>
       Context: <decisions, constraints, paths, risks, user preferences>
+      Authority: <external mutations the sub-agent may perform on the user's behalf; restate them, because fresh context does not inherit the parent's consent>
       Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
       Validation: <checks to run or evidence needed>
       Output: <headings, artefact shape, file path, or response contract>

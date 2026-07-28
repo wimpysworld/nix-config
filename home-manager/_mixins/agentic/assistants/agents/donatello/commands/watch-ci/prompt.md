@@ -1,42 +1,94 @@
 ## Watch CI
 
-Watch CI on GitHub PR `$ARGUMENTS` until every check finishes, then fix the failures the PR caused. Ask for the PR URL if not provided.
+Watch GitHub PR `$ARGUMENTS` and shepherd it: fix the CI failures the PR caused, triage flakes, answer reviews, and announce work PRs. Ask for the PR URL only if `$ARGUMENTS` is blank.
 
-### 1. Delegate the watch
+Invoke named commands with the provider's prefix. Codex uses `$make-commit`; slash-command runtimes use `/make-commit`. If the platform cannot expand a command, follow that command's prompt directly.
 
-Delegate a sub-agent to poll the PR checks until they all complete. Use dedicated `gh` subcommands: `gh pr checks` for status, `gh run view` and `gh run view --log-failed` for failing runs. Raw `gh api` is denied; use `gh-api-safe` for raw API reads. Never mutate GitHub: no comments, approvals, re-runs, or merges. Record the head commit SHA watched.
+### Authority
 
-### 2. Triage failures
+Human invocation of this command is the user's consent for: commit, push, `gh pr comment`, `gh-review-reply`, `gh run rerun --failed`, `gh pr update-branch`, Linear issue creation and comment, and Slack posts to `#eng-fulfillment-automation`.
 
-Sort each failed check into one of two groups:
+Forbidden throughout: merge, close, approve, release, force-push, `gh workflow run`, and any change to a PR the user does not own. Never use raw `gh api`; use dedicated subcommands, and `gh-api-safe` for raw reads.
 
-- **Caused by this PR**: the failure traces to code the PR changed. In scope to fix.
-- **Unrelated**: flaky infrastructure, a failure that also fails on the base branch, or a check untouched by the diff. Out of scope. Report it, do not fix it.
+Restate this authority in every sub-agent packet. Sub-agents run with fresh context and will defer without it.
 
-Read the diff and the failing logs together to decide. State the evidence for each call.
+### Preconditions
 
-### 3. Delegate the fixes
+Check these before anything else. If one fails, stop and state the reason in one line.
 
-Delegate each in-scope failure to its own sub-agent, in parallel where possible, one error per agent. Each sub-agent's packet must instruct it to:
+- The working tree is clean.
+- The local branch has not diverged from its remote.
+- The PR is open.
 
-- Read the failing log and the surrounding code in the working tree.
-- Make the smallest change that fixes the error without breaking other checks.
-- Verify the fix locally where practical.
-- Return the files changed and why.
+Classify the repository from `git config user.email` inside it. `martin.wimpress@chainguard.dev` means work; anything else means personal or community. For a work repository, confirm `$PWD` is under `~/Chainguard/*/` so gitsign applies, and stop if it is not.
 
-### 4. Draft the commit message
+### Announce work PRs
 
-After the fixes land, run `/draft-commit-message` to draft the commit message for the staged review.
+For a work PR that is not a draft, post once at loop start, before any CI result. Post exactly `:wtb2 <pr-url> - <pr-title>` to `#eng-fulfillment-automation` and keep the thread timestamp. If the Slack MCP is unavailable, print the line for the operator and carry on.
+
+Reply in that same thread when CI first goes green and when the PR merges. Never post a second top-level message.
+
+### Link Linear
+
+If the branch name or PR body names a Linear issue, attach the PR to that issue at start. Move the issue to Done when the PR merges.
+
+### The watch loop
+
+Dispatch two background watchers with `delegate-task`, each with fresh context and read-only:
+
+- **CI watcher**: `gh pr checks --watch --fail-fast`. It blocks server side, so never sleep or poll around it.
+- **Review watcher**: poll new reviews and review comments through `gh-api-safe` at about 90 second intervals. GitHub has no watch command for reviews.
+
+Each watcher stops at a 30 minute deadline and reports rather than exceeding it. The orchestrator never sleeps and never polls; it acts when a watcher returns. Replace a watcher that reports "still running" with a fresh one.
+
+Watchers never edit files. Dispatch every follow-up to a fresh sub-agent, and serialise everything that touches the working tree so two sub-agents never edit at once.
+
+End the loop when the PR merges, the PR closes, checks are green with no unresolved threads, or the 4 hour total budget expires.
+
+### Triage failures
+
+Check whether the branch is behind base before blaming the PR. If it is, run `gh pr update-branch` and watch again; a stale base produces false attributions.
+
+Then sort each failure:
+
+- **Caused by this PR**: the failure traces to code the PR changed.
+- **Flaky and unrelated**: infrastructure, a failure that also fails on base, or a check untouched by the diff.
+
+State the evidence for each call.
+
+### Fix what the PR caused
+
+One fresh sub-agent per distinct failure, in parallel where the fixes do not overlap, one error each. Each sub-agent makes the smallest fix, verifies locally where practical, and returns the files changed and why. The orchestrator then runs `make-commit` and pushes.
+
+Two fix attempts per distinct check is the limit. Report a third failure; do not fix it again.
+
+### Handle flakes
+
+Run `gh run rerun --failed` once per head SHA. A second flake on the same SHA is not a flake; treat it as caused by the PR.
+
+Then record it in Linear. Search first for an open issue naming the same check and comment on it rather than filing a duplicate; otherwise use `create-task`. Work goes to the `FUL` team, Fulfillment Automation. Personal goes to the Linear project whose name matches the repository name. Assign the issue to the user.
+
+Workspace guard: the connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL` is visible. If the repository classification and the visible instance disagree, skip the Linear step, report one line saying the profile does not match the repository, and carry on with the rest of the loop. Never file work into the personal workspace or the reverse.
+
+### Answer reviews
+
+When a review or review comment lands, from a bot or a human, dispatch a fresh sub-agent running `address-code-review`. It then either fixes the code, runs `make-commit`, pushes, and replies, or replies alone when no change is needed.
+
+Reply inside the thread with `gh-review-reply` for review comments. Use `post-comment` for top-level replies. After a fix lands, re-request the reviewer and resolve the threads it addressed.
 
 ### Output
 
-- List each failed check, its group (caused by this PR or unrelated), and the evidence.
-- For in-scope failures, list the fix and the files touched.
-- For unrelated failures, name them and stop; do not fix them.
-- End with the drafted commit message in a fenced block.
+Print a short status line at each watcher leg boundary. End with a summary:
+
+- Every failed check, its group, and the evidence.
+- The fixes and the files touched.
+- Linear issues created or commented on.
+- Review replies posted.
+- Anything skipped, with the reason.
 
 ### Constraints
 
 - British English throughout. Short sentences, active voice, no filler.
-- Edits land in the working tree only. Stage nothing. Commit nothing. The user reviews and commits.
-- Never mutate GitHub: no comments, approvals, re-runs, or merges.
+- Unsigned commits on personal repositories are expected under Fence. They are not an error.
+- Never merge, close, approve, force-push, publish a release, or dispatch a workflow.
+- Never use raw `gh api`.

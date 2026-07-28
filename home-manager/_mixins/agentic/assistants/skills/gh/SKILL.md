@@ -6,6 +6,20 @@ user-invocable: true
 
 # GitHub CLI (gh) Reference
 
+## Fence policy
+
+Coding agents run fenced. Fence permits the everyday mutations:
+`git push`, `gh pr comment`, `gh-review-reply`, `gh issue create`,
+`gh issue edit`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`,
+and `gh pr review --approve`. Invoking a command that names a mutation
+is the consent for that mutation, so run it rather than asking again.
+
+Fence denies raw `gh api`, `gh pr merge`, `gh workflow run`, the
+`gh release` mutations, `gh repo create` and `gh repo edit`, `gh config`,
+`gh secret`, `gh variable`, and the other destructive namespaces. Output
+those for the operator to run in an unfenced shell. Raw reads go through
+`gh-api-safe`.
+
 ## Pull Requests
 
 ```bash
@@ -32,7 +46,7 @@ gh pr merge 123 --auto --squash                                 # merge once CI 
 # Review & comment
 # --approve is allowed under Fence. GitHub refuses approval of your own
 # pull request, so that case fails on GitHub's side. Prefer
-# `post-code-review`, which drafts the comment and takes consent first.
+# `post-code-review`, which drafts the review and then posts it.
 gh pr review 123 --approve --body-file review.md
 gh pr review 123 --comment --body "LGTM"
 gh pr review 123 --request-changes --body "Please fix X"
@@ -54,6 +68,7 @@ gh pr checkout 123
 gh pr diff 123
 gh pr revert 123 --title "revert: undo X"
 gh pr ready 123                                                 # mark draft as ready
+gh pr update-branch 123                                         # merge base into head
 ```
 
 ## Issues
@@ -105,6 +120,9 @@ gh run watch 12345678
 gh run rerun 12345678
 gh run rerun 12345678 --failed                                  # only failed jobs
 gh run rerun 12345678 --debug                                   # with debug logging
+
+# Cancel
+gh run cancel 12345678
 
 # Trigger workflow_dispatch — `gh workflow run`, `enable`, and `disable`
 # are denied under Fence. Output the command for operator consent.
@@ -176,8 +194,9 @@ gh search code "sops.placeholder" --repo owner/repo --language nix
 ## Raw API
 
 Default to a dedicated `gh` subcommand. Use `gh-api-safe` only when no
-subcommand fits. Reserve raw `gh api` for mutations or `@file` field
-input, gated on explicit operator consent.
+subcommand fits. Raw `gh api` is denied under Fence. Reserve it for
+mutations with no subcommand and for `@file` field input, and output the
+command for the operator to run in an unfenced shell.
 
 | Situation                              | Use                                                  |
 | -------------------------------------- | ---------------------------------------------------- |
@@ -224,10 +243,11 @@ gh-api-safe graphql -f query=@query.graphql
 gh-api-safe notifications --jq '.[] | {reason, subject: .subject.title}'
 ```
 
-`gh-review-reply` is the one GitHub write path allowed under Fence. It
-takes the review comment URL and a body file, nothing else. Owner,
-repository, pull request number, and comment id are parsed out of the
-URL, and one endpoint is built from them,
+`gh-review-reply` is the only write path through the raw API surface
+allowed under Fence; every other permitted mutation runs as a dedicated
+`gh` subcommand. It takes the review comment URL and a body file,
+nothing else. Owner, repository, pull request number, and comment id are
+parsed out of the URL, and one endpoint is built from them,
 `POST repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`. The reply
 body is read from a file so quotes, backticks, and newlines survive
 verbatim. `{owner}` placeholders are not expanded; pass the real URL.
@@ -260,7 +280,7 @@ wrapper source.
 > ⚠️ The commands below mutate GitHub state. They use `gh api` directly
 > with `-X` / `-F` / `--input` and are rejected by `gh-api-safe`. They must
 > only be run in an unfenced shell with explicit operator consent. Prefer
-> the dedicated `gh` subcommands (`gh issue edit`, `gh label create`, etc.)
+> the dedicated `gh` subcommands (`gh issue edit`, `gh pr edit`, etc.)
 > wherever they exist.
 
 ```bash
@@ -297,6 +317,6 @@ gh issue list --json number,title,labels | jq '.[] | select(.labels | any(.name 
 ```bash
 gh status                  # cross-repo overview: assigned PRs, review requests, mentions
 gh auth status             # active account, token scopes, expiry
-# `gh auth token` is denied under Fence. If a tool needs the token,
-# read it from ~/.config/gh/hosts.yml directly (filesystem-allowed).
+gh auth token              # allowed under Fence; never echo the value
+# `gh auth setup-git` and `gh auth login --with-token` stay denied.
 ```
