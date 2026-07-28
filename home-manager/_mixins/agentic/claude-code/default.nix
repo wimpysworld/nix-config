@@ -14,7 +14,7 @@ let
   # overlays/default.nix.
   claudePackage = pkgs.claude-code;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
-  fenceGit = import ../fence/git.nix { inherit pkgs; };
+  fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
     if !(host.is.linux && fencedEnabled) then

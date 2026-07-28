@@ -131,10 +131,10 @@ let
       denyRead = [
         "/etc/shadow"
 
-        # Fenced agents never sign with a long-lived key. Commits in a
-        # repository whose common directory is outside ~/Chainguard are
-        # unsigned, and work commits use gitsign, which needs neither the SSH
-        # key nor a GPG key inside the sandbox.
+        # Fenced agents never sign with a long-lived key. Git decides this per
+        # repository, when it runs: commits in a repository whose Git directory
+        # is outside ~/Chainguard are unsigned, and work commits use gitsign,
+        # which needs neither the SSH key nor a GPG key inside the sandbox.
         "${homeDirectory}/.ssh/id_rsa"
         "${homeDirectory}/.ssh/id_rsa.pub"
         "${config.xdg.configHome}/sops-nix/secrets/ssh_key"

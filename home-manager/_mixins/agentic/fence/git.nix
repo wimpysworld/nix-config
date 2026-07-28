@@ -1,77 +1,49 @@
-{ pkgs }:
+{ config, pkgs }:
 
+let
+  # Work clones under ~/Chainguard sign with gitsign, which needs no key inside
+  # the sandbox. Everywhere else the base configuration signs with an SSH key
+  # that Fence read-denies, so signing must be off or the commit fails.
+  #
+  # Git evaluates the `includeIf` condition per repository, every time it runs.
+  # So the launch directory stops mattering, and so do a later `cd`, `git -C`,
+  # and `GIT_DIR`. An agent launched from ~/.herdr, which belongs to no
+  # repository, still signs correctly once it reaches a work clone.
+  #
+  # `GIT_CONFIG_*` cannot express this. Those variables carry `command line:`
+  # origin, which outranks every configuration file including a conditional
+  # include, so an injected `commit.gpgSign=false` would win inside work clones
+  # too. The two mechanisms cannot coexist, hence a Fence-owned global file.
+  #
+  # The condition matches `home-manager/_mixins/users/martin/git.nix`, so the
+  # two stay consistent. It requires a path component between Chainguard and
+  # the Git directory, so ~/Chainguard/<repo>/.git matches while the
+  # ~/Chainguard/.git of the cg-env repository does not. cg-env therefore keeps
+  # the unsigned path.
+  workOverrideConfig = pkgs.writeText "fence-git-work.conf" ''
+    [commit]
+    	gpgSign = true
+    [tag]
+    	gpgSign = true
+  '';
+
+  # Order matters: later settings win. Pull in the real global configuration
+  # first, turn signing off, then turn it back on for work clones only.
+  fenceGitConfig = pkgs.writeText "fence-git.conf" ''
+    [include]
+    	path = ${config.xdg.configHome}/git/config
+    [commit]
+    	gpgSign = false
+    [tag]
+    	gpgSign = false
+    [includeIf "gitdir:~/Chainguard/*/"]
+    	path = ${workOverrideConfig}
+  '';
+in
 {
   setupShell = ''
-    setup_fence_git() {
-      local git_config_index
-      local git_common_dir
-      local home_dir
-
-      git_config_index="''${GIT_CONFIG_COUNT:-0}"
-      case "$git_config_index" in
-        *[!0-9]*)
-          printf 'fence: GIT_CONFIG_COUNT must be a decimal integer from 0 to 1024.\n' >&2
-          return 1
-          ;;
-      esac
-
-      if (( ''${#git_config_index} > 4 )); then
-        printf 'fence: GIT_CONFIG_COUNT must be a decimal integer from 0 to 1024.\n' >&2
-        return 1
-      fi
-
-      git_config_index=$((10#$git_config_index))
-      if (( git_config_index > 1024 )); then
-        printf 'fence: GIT_CONFIG_COUNT must be a decimal integer from 0 to 1024.\n' >&2
-        return 1
-      fi
-
-      # Signing follows the repository, not the directory. Ask Git for the
-      # common directory of the repository that owns the launch directory. For
-      # a linked worktree that is the main repository rather than the worktree
-      # checkout, so a work worktree placed anywhere still counts as work.
-      #
-      # Work clones live under ~/Chainguard and sign with gitsign, which needs
-      # no key inside the sandbox. Inject nothing there so the `gitdir:`
-      # include in the Git configuration governs signing. Everywhere else the
-      # base configuration signs with an SSH key that Fence read-denies, so
-      # turn signing off or the commit fails.
-      #
-      # The pattern requires a component between Chainguard and the Git
-      # directory, so ~/Chainguard/<repo>/.git matches. ~/Chainguard itself is
-      # a personal repository whose common directory is ~/Chainguard/.git.
-      # That has no such component, so it takes the unsigned path.
-      #
-      # The decision is still made once, at launch, because `GIT_CONFIG_*` is
-      # process environment. A repository that cannot be resolved, including a
-      # launch directory outside any repository, falls through to unsigned.
-      # Failing closed that way is safe: the opposite error would sign a work
-      # commit with a personal identity.
-      if ! git_common_dir="$(${pkgs.lib.getExe pkgs.git} rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
-        git_common_dir=""
-      fi
-
-      if ! home_dir="$(${pkgs.lib.getExe' pkgs.coreutils "realpath"} -- "$HOME" 2>/dev/null)"; then
-        home_dir=""
-      fi
-
-      if [[ -n "$git_common_dir" && -n "$home_dir" ]]; then
-        case "$git_common_dir" in
-          "$home_dir"/Chainguard/*/*)
-            return 0
-            ;;
-        esac
-      fi
-
-      fence_env+=(
-        "GIT_CONFIG_COUNT=$((git_config_index + 2))"
-        "GIT_CONFIG_KEY_$git_config_index=commit.gpgSign"
-        "GIT_CONFIG_VALUE_$git_config_index=false"
-        "GIT_CONFIG_KEY_$((git_config_index + 1))=tag.gpgSign"
-        "GIT_CONFIG_VALUE_$((git_config_index + 1))=false"
-      )
-    }
-
-    setup_fence_git
+    fence_env+=(
+      "GIT_CONFIG_GLOBAL=${fenceGitConfig}"
+    )
   '';
 }

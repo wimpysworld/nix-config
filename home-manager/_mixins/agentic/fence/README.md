@@ -137,18 +137,23 @@ sandbox. What crosses that socket is an ephemeral signing key and a Fulcio
 certificate that expires after ten minutes, so no long-lived secret enters the
 fence: no SSH key, no GPG key, and no Google ID token. Signing is scoped by a
 `gitdir:~/Chainguard/*/` include in the Git configuration, so it applies to the
-nested work clones and nowhere else. Outside those clones the fenced wrappers
-inject `commit.gpgSign=false` and `tag.gpgSign=false` through `GIT_CONFIG_*`,
-because the base configuration signs with an SSH key that Fence read-denies.
-The wrappers pick between those two paths once, at launch, by asking Git for
-the common directory of the repository that owns the launch directory. That
-follows the repository rather than the directory, so a linked worktree of a
-work clone checked out anywhere still signs with gitsign. A launch directory
-that belongs to no repository falls through to unsigned. So does `~/Chainguard`
-itself, which is a personal repository. The decision is still made once,
-because `GIT_CONFIG_*` is process environment, so an agent that starts in one
-repository and reaches another with `git -C` keeps the first repository's
-answer. `~/.sigstore` is writable because every signature, including a cache hit, opens
+nested work clones and nowhere else. The fenced wrappers point
+`GIT_CONFIG_GLOBAL` at a Fence-owned global file. That file includes the real
+global configuration, turns `commit.gpgSign` and `tag.gpgSign` off, then turns
+them back on under the same `gitdir:~/Chainguard/*/` condition. Signing is off
+by default because the base configuration signs with an SSH key that Fence
+read-denies. Git evaluates the condition per repository, every time it runs, so
+the launch directory does not matter, and neither does a later `cd`, `git -C`,
+or `GIT_DIR`. An agent launched from a directory in no repository at all still
+signs correctly once it reaches a work clone. A linked worktree of a work clone
+checked out anywhere also signs with gitsign, because its Git directory lives
+under the main clone. `~/Chainguard` itself is a personal repository and takes
+the unsigned path, because the condition needs a path component between
+Chainguard and the Git directory. `GIT_CONFIG_*` cannot express this: those
+variables carry `command line:` origin, which outranks every configuration file
+including a conditional include, so an injected `commit.gpgSign=false` would
+win inside work clones too.
+`~/.sigstore` is writable because every signature, including a cache hit, opens
 the TUF trust store there as a LevelDB database with an exclusive lock.
 `gitsign initialize` is denied because it rewrites that trust root and changes
 what later local verification accepts. The multi-token enforcement limit above
