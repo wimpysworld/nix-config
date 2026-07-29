@@ -15,6 +15,25 @@ let
       "${config.home.homeDirectory}/Library/Caches/sigstore/gitsign/cache.sock"
     else
       "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock";
+  gitsignVerify = pkgs.writeShellApplication {
+    name = "gitsign-verify";
+    runtimeInputs = with pkgs; [
+      git
+      gitsign
+    ];
+    text = builtins.readFile ./gitsign-verify.sh;
+  };
+  gitsignOff = pkgs.writeShellApplication {
+    name = "gitsign-off";
+    # The sign-off reports the resulting signature through gitsign-verify, so
+    # the report lives in one place rather than in both scripts.
+    runtimeInputs = [
+      pkgs.git
+      pkgs.gitsign
+      gitsignVerify
+    ];
+    text = builtins.readFile ./gitsign-off.sh;
+  };
   precommitSetup = pkgs.writeShellApplication {
     name = "pre-commit-setup";
     runtimeInputs = with pkgs; [
@@ -66,6 +85,8 @@ in
       with pkgs;
       [
         gitsign # Sign Git commits and tags with Sigstore
+        gitsignOff # Re-sign the most recent commit and add a sign-off trailer
+        gitsignVerify # Report the signature state of a commit
       ]
       ++ lib.optionals gitWorkflowToolsEnabled [
         hunk # Review local diffs with Hunk
