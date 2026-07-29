@@ -64,14 +64,4 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
       signOff = true;
     };
   };
-
-  sops = {
-    secrets = {
-      cg-repos = {
-        path = "${config.xdg.configHome}/cg-repos";
-        sopsFile = ../../../../secrets/cg-repos.yaml;
-        mode = "0644";
-      };
-    };
-  };
 }
