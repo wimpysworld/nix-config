@@ -9,15 +9,10 @@ Runs a full-project test-gap analysis. No arguments.
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/test-review.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/test-review.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
 
 ### Process
 
@@ -26,4 +21,5 @@ Report the written path in your output so the user can find it.
 3. Analyse existing test patterns and coverage
 4. Apply priority criteria from agent definition
 5. Recommend tests ranked by bug-prevention value
-6. Write the aggregated report to the derived path, then report that path
+6. Load the `review-report-path` skill and derive the report path
+7. Write the aggregated report to the derived path, then report that path

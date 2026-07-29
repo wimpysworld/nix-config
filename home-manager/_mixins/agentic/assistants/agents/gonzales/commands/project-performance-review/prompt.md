@@ -9,15 +9,10 @@ Runs a full-project performance analysis. No arguments.
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/performance-review.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/performance-review.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
 
 ### Process
 
@@ -29,4 +24,5 @@ Report the written path in your output so the user can find it.
 6. Apply impact rating from agent definition
 7. Only include improvements that produce human-perceptible results: immediate UI responsiveness, or processing/response time savings a user would notice. Micro-optimisations are justified only when they compound across the primary execution path to produce a measurable aggregate improvement. Discard any suggestion with no demonstrable, observable effect.
 8. Skip optimisations rated below 5
-9. Write the aggregated report to the derived path, then report that path
+9. Load the `review-report-path` skill and derive the report path
+10. Write the aggregated report to the derived path, then report that path

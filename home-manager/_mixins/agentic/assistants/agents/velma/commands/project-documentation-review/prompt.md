@@ -9,15 +9,10 @@ Runs a full-project documentation audit. No arguments.
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/documentation-review.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/documentation-review.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
 
 ### Priority Criteria
 
@@ -34,7 +29,8 @@ Report the written path in your output so the user can find it.
 2. Inventory the documentation that exists, where it lives, and which paths it covers
 3. Compare each document against the code it describes to find missing and stale content
 4. Rank every gap against the priority criteria above
-5. Write the aggregated report to the derived path, then report that path
+5. Load the `review-report-path` skill and derive the report path
+6. Write the aggregated report to the derived path, then report that path
 
 ### Output
 

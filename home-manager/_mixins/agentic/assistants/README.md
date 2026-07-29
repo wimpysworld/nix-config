@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 54 commands, thirteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 56 commands, sixteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -436,17 +436,19 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 **Generated and agent-loaded:**
 
-| Skill             | Loaded by           | Purpose                                                                                                           |
-| ----------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `delegate-task`   | Coordinator or user | Generated routing, packet, response contract, relay policy                                                        |
-| `writing-well`    | Casper, Velma       | Composition principles and the AI writing-pattern catalogue                                                       |
-| `write-skill`     | Rosey or user       | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure            |
-| `write-agents-md` | Rosey or user       | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files                     |
-| `write-assistant` | Rosey or user       | Author or update an agent system prompt - persona, structure, voice, examples, constraints                        |
-| `write-command`   | Rosey or user       | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model                 |
-| `nix`             | Donatello           | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                                       |
-| `love`            | Donatello           | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                                    |
-| `audio-metrics`   | Penfold or user     | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |
+| Skill                | Loaded by                 | Purpose                                                                                                           |
+| -------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `delegate-task`      | Coordinator or user       | Generated routing, packet, response contract, relay policy                                                        |
+| `writing-well`       | Casper, Velma             | Composition principles and the AI writing-pattern catalogue                                                       |
+| `write-skill`        | Rosey or user             | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure            |
+| `write-agents-md`    | Rosey or user             | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files                     |
+| `write-assistant`    | Rosey or user             | Author or update an agent system prompt - persona, structure, voice, examples, constraints                        |
+| `write-command`      | Rosey or user             | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model                 |
+| `review-report-path` | Review and audit commands | The `${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/` path and the slug rules for concurrent reviews            |
+| `sizing`             | Task and review commands  | T-shirt sizing scale, spikes, parent tracking issues, and splitting oversized work                                |
+| `nix`                | Donatello                 | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                                       |
+| `love`               | Donatello                 | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                                    |
+| `audio-metrics`      | Penfold or user           | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |
 
 **User-invocable support skills:**
 

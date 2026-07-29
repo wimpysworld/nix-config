@@ -10,15 +10,10 @@ Runs a full-project smell hunt. No arguments.
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/code-smells.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/code-smells.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
 
 ### Classical Smells (non-exhaustive)
 
@@ -46,7 +41,8 @@ Report the written path in your output so the user can find it.
 7. Prioritise smells that increase change surface, hide intent, or concentrate responsibility
 8. Describe why it stinks - direct, no softening
 9. Output per-improvement format from agent definition
-10. Write the aggregated report to the derived path, then report that path
+10. Load the `review-report-path` skill and derive the report path
+11. Write the aggregated report to the derived path, then report that path
 
 ### Restraint
 

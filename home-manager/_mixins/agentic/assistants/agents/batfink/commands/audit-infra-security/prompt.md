@@ -11,15 +11,12 @@ workflows, or runtime state.
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/infra-security-audit.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/infra-security-audit.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>`
+from it. This command takes no argument, so the target is the checkout it
+runs in.
 
 ### Flow
 
@@ -28,6 +25,7 @@ Report the written path in your output so the user can find it.
      anything. Codex uses `$less`; slash-command runtimes use `/less`. If
      the platform cannot expand a command, apply the Communication Rules
      directly.
+   - Load the `review-report-path` skill and derive the report path.
 2. **Fan-out**
    - Delegate to a wide fan-out of sub-agents, in parallel where possible.
      Split by directory, concern, tool, platform, or attack surface so each

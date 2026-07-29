@@ -9,15 +9,10 @@ Runs a full-project review. No arguments.
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/code-review.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/code-review.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
 
 ### Process
 
@@ -37,7 +32,8 @@ Report the written path in your output so the user can find it.
 11. Include dead code with clear evidence even when small. Skip other findings rated below 4.
 12. Output per-improvement format from agent definition. For standard-library and native findings, add what was reimplemented, the replacement, the minimum version, and whether the project target permits it.
 13. End the report with an estimated removal summary: lines, files, and dependencies that could be deleted.
-14. Write the aggregated report to the derived path, then report that path.
+14. Load the `review-report-path` skill and derive the report path.
+15. Write the aggregated report to the derived path, then report that path.
 
 ### Restraint
 

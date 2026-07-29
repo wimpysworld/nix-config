@@ -9,15 +9,10 @@ Runs a full-project peer review. No arguments.
 Write the review to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/peer-review.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/peer-review.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
 
 ### Process
 
@@ -27,6 +22,7 @@ Report the written path in your output so the user can find it.
 4. Survey the codebase - structure, patterns, idioms, quality signals
 5. Evaluate against what an experienced practitioner of this ecosystem would expect
 6. Deliver a verdict with evidence
+7. Load the `review-report-path` skill, derive the report path, write the review there, then report that path
 
 ### Verdict Criteria
 

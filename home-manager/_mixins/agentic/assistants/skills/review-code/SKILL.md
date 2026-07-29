@@ -32,26 +32,21 @@ Record the head commit SHA reviewed. Keep it internal: it is a guard for `post-c
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<review-name>.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/<review-name>.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- `<review-name>` is supplied by the calling command.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>` from it. `<review-name>` is supplied by the calling command.
 
 ### Process
 
 1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
 2. Load the `contribution-voice` skill and follow it when wording findings. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
-4. Fan out to sub-agents, per **Fan-out**.
-5. Pressure-test every blocking finding, per **Adversarial pressure-test**.
-6. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
-7. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
+4. Load the `review-report-path` skill and derive the report path from the resolved target.
+5. Fan out to sub-agents, per **Fan-out**.
+6. Pressure-test every blocking finding, per **Adversarial pressure-test**.
+7. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
+8. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
 
 ### Fan-out
 

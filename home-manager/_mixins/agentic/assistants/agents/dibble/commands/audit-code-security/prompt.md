@@ -7,23 +7,19 @@ Run a full-project code security audit. Take no arguments. Use wide sub-agent fa
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/code-security-audit.md
+${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/code-security-audit.md
 ```
 
-- `<project>` is the repository directory name, kebab-case.
-- Create the directory if it does not exist.
-
-The report is disposable. It lasts for one review only. Never commit it and never write it inside the repo.
-
-Report the written path in your output so the user can find it.
+Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
 
 ### Operating rules
 
 1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
-2. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
-3. Ask only when the audit scope or threat model is unclear.
-4. This command may read source files, run the Bash checks below, and write the report at the derived path. Do not edit source files or stage changes.
-5. Default threat model: an external unauthenticated attacker. Record any different assumption.
+2. Load the `review-report-path` skill and derive the report path.
+3. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
+4. Ask only when the audit scope or threat model is unclear.
+5. This command may read source files, run the Bash checks below, and write the report at the derived path. Do not edit source files or stage changes.
+6. Default threat model: an external unauthenticated attacker. Record any different assumption.
 
 ### Method
 

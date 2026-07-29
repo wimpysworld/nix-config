@@ -2,6 +2,10 @@
 
 Draft the single GitHub review comment for a review that has already been conducted. This step drafts only; it never posts, approves, or mutates GitHub.
 
+### Input
+
+`$ARGUMENTS` is the review target the report belongs to: a pull request URL or number, a branch, a worktree path, or a commit. Blank means the current worktree.
+
 ### House Style
 
 The `contribution-voice` skill governs the structure. These rules are what it does not cover:
@@ -27,10 +31,11 @@ NEVER execute while drafting:
 
 1. Invoke `less` to reload the Communication Rules before drafting. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the rules restated below instead
 2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
-3. Locate the review report under `${TMPDIR:-/tmp}/agent-reviews/<project>/`. If several reports exist, ask which one to use. If none exists, stop and say a review must be run first
-4. Read the report and decide the verdict from its findings, not from a wish to be agreeable
-5. Draft from the report's Findings section only. Its summary, verification, resolved, still-open, and notes sections are evidence that the review happened; none of them reaches the comment. A comment that follows the report's section order is a compression of the report, which is the failure
-6. State the verdict on one line, then output the comment in one fenced markdown block. This block is the deliverable and must reach the caller unchanged
+3. Load the `review-report-path` skill and derive `<project>` and `<target>` from `$ARGUMENTS` with it
+4. Read the review report from `${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/`. If that directory holds several reports, ask which one to use. If it is missing or empty, list the target directories under `${TMPDIR:-/tmp}/agent-reviews/<project>/` and stop, saying a review must be run first for this target
+5. Read the report and decide the verdict from its findings, not from a wish to be agreeable
+6. Draft from the report's Findings section only. Its summary, verification, resolved, still-open, and notes sections are evidence that the review happened; none of them reaches the comment. A comment that follows the report's section order is a compression of the report, which is the failure
+7. State the verdict on one line, then output the comment in one fenced markdown block. This block is the deliverable and must reach the caller unchanged
 
 The comment itself must follow the Communication Rules: concise (each fact once), British English spelling, active voice, lead with the conclusion, no banned words (filler, pleasantries, hedges, LLM tells), and no em or en dashes.
 
