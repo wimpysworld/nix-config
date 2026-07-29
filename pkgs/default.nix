@@ -18,6 +18,7 @@ pkgs: {
   obs-vertical-canvas = pkgs.qt6Packages.callPackage ./obs-plugins/obs-vertical-canvas.nix { };
   obs-webkitgtk = pkgs.callPackage ./obs-plugins/obs-webkitgtk.nix { };
   wavebox = pkgs.callPackage ./wavebox { };
+  yam = pkgs.callPackage ./yam { };
 
   # Local package overrides
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };

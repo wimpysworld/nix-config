@@ -56,6 +56,7 @@ lib.mkIf (isDeveloper && isPolicyHost) {
     # cgr.dev, which chainctl installs by symlinking itself.
     pkgs.chainctl # Command-line interface for the Chainguard platform
     pkgs.wolfictl # Command-line interface for the Wolfi OSS project
+    pkgs.yam # YAML formatter used by Wolfi package definitions
     cgTokens # Login through the browser flow, for a desktop session
     cgTokensHeadless # Login through the device flow, for an SSH session
   ];
