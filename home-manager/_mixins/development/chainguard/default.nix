@@ -1,20 +1,19 @@
-# Chainguard - command-line tools for the Chainguard platform.
+# Chainguard - command-line tools for the Chainguard platform and Wolfi.
 {
-  config,
   lib,
   noughtyLib,
   pkgs,
   ...
 }:
 let
-  inherit (config.noughty) host;
   isDeveloper = noughtyLib.userHasTag "developer";
-  isWorkstationDeveloper = isDeveloper && host.is.workstation;
+  isPolicyHost = noughtyLib.hostHasTag "policy";
 in
-lib.mkIf isWorkstationDeveloper {
+lib.mkIf (isDeveloper && isPolicyHost) {
   home.packages = [
     # Also provides docker-credential-cgr, the Docker credential helper for
     # cgr.dev, which chainctl installs by symlinking itself.
     pkgs.chainctl # Command-line interface for the Chainguard platform
+    pkgs.wolfictl # Command-line interface for the Wolfi OSS project
   ];
 }

@@ -50,6 +50,9 @@ jobs:
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases
+          - id: wolfictl
+            name: wolfictl
+            changelog: https://github.com/wolfi-dev/wolfictl/releases
     steps:
       - uses: actions/checkout@v7
       - uses: DeterminateSystems/determinate-nix-action@v3
