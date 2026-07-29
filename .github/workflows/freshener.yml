@@ -35,6 +35,9 @@ jobs:
           - id: defold
             name: Defold
             changelog: https://github.com/defold/defold/releases
+          - id: chainctl
+            name: chainctl
+            changelog: https://edu.chainguard.dev/chainguard/chainctl/
           - id: concord
             name: Concord
             changelog: https://github.com/chojs23/concord/releases
