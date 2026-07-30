@@ -175,12 +175,6 @@ in
       # Servers and ISO live images do not need fast repeat offline builds, so
       # drop the build-graph derivations to free disk space.
       keep-derivations = lib.mkIf (host.is.server || host.is.iso) (lib.mkDefault false);
-      # Workaround for NixOS/nix#1254; avoids HTTP/2 framing errors from CDN servers
-      http2 = false;
-      # Increase download parallelism for faster substitution
-      max-substitution-jobs = 64;
-      http-connections = 128;
-      connect-timeout = 10;
       # Use Numtide's cache for llm-agents.nix packages such as Codex.
       extra-substituters = [ "https://cache.numtide.com" ];
       extra-trusted-public-keys = [

@@ -72,12 +72,6 @@ in
       experimental-features = "nix-command flakes";
       # Disable global registry
       flake-registry = "";
-      # Workaround for NixOS/nix#1254; avoids HTTP/2 framing errors from CDN servers
-      http2 = false;
-      # Increase download parallelism for faster substitution
-      max-substitution-jobs = 64;
-      http-connections = 128;
-      connect-timeout = 10;
       # Use Numtide's cache for llm-agents.nix packages such as Codex.
       extra-substituters = [ "https://cache.numtide.com" ];
       extra-trusted-public-keys = [
