@@ -14,7 +14,9 @@ Command invocation: use the current provider's command prefix. Codex uses `$comm
 
 **3. Open one branch for the whole piece of work.** Use the Linear `gitBranchName`, or the parent's for a cohort. For a local task, derive a kebab-case name from the task title. Linear keys its auto-close on the branch name when the pull request is eventually merged, so the name must match exactly.
 
-**4. Spawn a fresh sub-agent per task.** Never implement a task in this context. Never hand two tasks to one sub-agent. Fresh context per task and per phase keeps attention high and implementations small. Give each sub-agent its own task body and this instruction set:
+For a Linear task, once the branch exists, assign the issue to the user and move it to the team's in-progress status. For a cohort, do this to the parent here; each child is claimed in step 4 as its turn comes. Resolve both values at run time: take the user from the authenticated Linear identity, and take the status from the team's live workflow states by picking the one whose type is started. Never hard-code an identifier or a status name.
+
+**4. Spawn a fresh sub-agent per task.** Before spawning, claim the task: for a Linear issue, assign it to the user and move it to the in-progress status resolved in step 3. Claim each task at its own start, not the whole cohort up front, so the board shows what is running now. Never implement a task in this context. Never hand two tasks to one sub-agent. Fresh context per task and per phase keeps attention high and implementations small. Give each sub-agent its own task body and this instruction set:
 
 1. Run `create-plan ${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md`, where `<key>` is the Linear issue key or the task file stem, and `<slug>` is a short kebab-case title. The plan is ephemeral, lives outside the repo, and is discarded at the end.
 2. Run `implement-plan <plan path>`. It spawns its own fresh sub-agent per phase.
@@ -33,6 +35,8 @@ If the platform cannot expand a command from inside this command, do the same wo
 ### Constraints
 
 - The plan never enters the repo and is never committed. Delete its directory once the task's commit lands.
+- Leave every issue at the in-progress status after its commit lands. This command stops before the pull request, so nothing is reviewable or done yet. `make-pr` and the merge carry the status forward.
+- Claiming an issue, assignment and status, happens in this context only. Sub-agents never touch issue state.
 - The durable record is the permanent artefact; the plan is not.
 - Never absorb phase-level detail into this context.
 

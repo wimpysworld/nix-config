@@ -79,7 +79,7 @@ Before writing any body:
 
 Where the research exceeds roughly 6,000 characters, or will outlive the work, create a Linear document holding the durable record, link it from the parent, and say so in one line in the parent body. For a local target, write the durable record as a sibling file and link it by relative path.
 
-To Linear: create children as sub-issues of the parent, in dependency order, so identifiers ascend with the sequence.
+To Linear: create children as sub-issues of the parent, in dependency order, so identifiers ascend with the sequence. Assign every issue, parent and children, to the user creating them. Resolve that user at run time from the authenticated Linear identity; never hard-code an identifier.
 
 To a local file: write one file per task in the confirmed directory. For a cohort, write the parent as `00-<slug>.md` and each child as `NN-<slug>.md`, numbered in dependency order, so the filenames carry the sequence. Start every local task file with the frontmatter block below, then the matching body template unchanged:
 
@@ -201,6 +201,7 @@ Implement in this order:
 - Bullets over paragraphs, except `Problem` and `Context`, where one or two short paragraphs are allowed.
 - The parent holds boundaries, shared decisions, dependency order, and cohort completion. Children hold delivery scope, acceptance, priority, estimate, and labels.
 - Every issue gets labels, priority, and an estimate, drawn from the live taxonomy. Local files carry the same four values in frontmatter.
+- Every Linear issue is assigned to the user creating it. Local task files carry no assignee.
 - The body templates are identical for Linear and for local files. Only the frontmatter differs.
 - British spelling. No hedging language.
 - Ask nothing after the target is confirmed. Create the task.
