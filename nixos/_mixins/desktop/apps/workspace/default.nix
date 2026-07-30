@@ -125,6 +125,7 @@ lib.mkIf (noughtyLib.hostHasTag "workspace") {
     wavebox
     googleMeetDesktopItem
     slackWavebox
+    pkgs.slk
     waveboxXdgOpen
   ];
 

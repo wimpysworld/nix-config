@@ -50,6 +50,9 @@ jobs:
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases
+          - id: slk
+            name: slk
+            changelog: https://github.com/gammons/slk/releases
           - id: wolfictl
             name: wolfictl
             changelog: https://github.com/wolfi-dev/wolfictl/releases

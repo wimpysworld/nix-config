@@ -10,6 +10,7 @@ pkgs: {
   heynote = pkgs.callPackage ./heynote { };
   linear-tui = pkgs.callPackage ./linear-tui { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
+  slk = pkgs.callPackage ./slk { };
   tcount = pkgs.callPackage ./tcount { };
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
