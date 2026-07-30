@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 56 commands, sixteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 58 commands, seventeen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -287,17 +287,19 @@ Research partner for exploring ideas, generating options, and framing problems f
 
 **Model:** inherits the model selected in the coding tool on every platform. Penfold synthesises research, frames problems, and weighs trade-offs; specialist agents still handle domain-specific validation.
 
-| Command             | Purpose                                                                |
-| ------------------- | ---------------------------------------------------------------------- |
-| `create-task`       | File the session outcome as a task, or a parent wrapping children      |
-| `research-task`     | Research a task and its linked work, and synthesise one cited analysis |
-| `update-task`       | Fold session decisions into an existing task                           |
-| `review-task`       | Judge whether a task is ready to implement, and what must change first |
-| `how-to-contribute` | Assess a project's contribution rules before contributing              |
-| `draft-comment`     | Draft a GitHub, Linear, or Slack comment in the user's own voice       |
-| `post-comment`      | Post the agreed comment to GitHub, Linear, or Slack                    |
-| `draft-issue`       | Draft a GitHub issue after checking policy and duplicates              |
-| `post-issue`        | Create the agreed issue on GitHub                                      |
+| Command              | Purpose                                                                |
+| -------------------- | ---------------------------------------------------------------------- |
+| `create-task`        | File the session outcome as a task, or a parent wrapping children      |
+| `research-task`      | Research a task and its linked work, and synthesise one cited analysis |
+| `update-task`        | Fold session decisions into an existing task                           |
+| `review-task`        | Judge whether a task is ready to implement, and what must change first |
+| `how-to-contribute`  | Assess a project's contribution rules before contributing              |
+| `draft-comment`      | Draft a GitHub, Linear, or Slack comment in the user's own voice       |
+| `post-comment`       | Post the agreed comment to GitHub, Linear, or Slack                    |
+| `draft-issue`        | Draft a GitHub issue after checking policy and duplicates              |
+| `post-issue`         | Create the agreed issue on GitHub                                      |
+| `gather-review-data` | Collect the user's own contribution evidence for a date range          |
+| `draft-self-review`  | Draft a periodic self-review from gathered evidence                    |
 
 ---
 
@@ -430,6 +432,16 @@ This split keeps the surfaces semantically clean: prompts take inputs, skills pr
 | Codex       | `~/.config/codex/agents/*.toml`        | `~/.config/codex/skills/*/SKILL.md`       | `~/.config/codex/AGENTS.md`       | `~/.config/codex/skills/*/SKILL.md`    |
 | Pi Agent    | `~/.pi/agent/agents/*.md`              | `~/.pi/agent/prompts/*.md`                | `~/.pi/agent/AGENTS.md`           | `~/.pi/agent/skills/*/SKILL.md`        |
 
+### Secret prompts
+
+A few command and skill bodies must not enter git or the Nix store. Those directories ship a marker file instead of the plaintext: `prompt.sops` for a command, `SKILL.sops` for a skill. The marker holds one thing, the name of a top-level key in `secrets/assistant-prompts.yaml` whose value is the body. A secret skill's supporting files follow the same convention under the general rule that any `<name>.sops` marker renders to `<name>`, so `references/cycle-mechanics.md.sops` renders to `references/cycle-mechanics.md`; `SKILL.sops` and `prompt.sops` are the two fixed, named exceptions to that rule.
+
+`compose.nix` detects the marker and composes the file with a sops placeholder where the body would go. Claude Code, OpenCode, and Pi receive a sops template that sops-nix renders at activation. Codex gets an activation script that appends the decrypted body, because the Codex skill step clears its own output directory first. Either way the plaintext lives only in the activated file, never in the store.
+
+A directory holding both the marker and its plaintext counterpart fails evaluation, so the two can never drift apart.
+
+`description.txt` and the `header.*.yaml` files stay plaintext and are composed normally. Keep them free of whatever the encrypted body protects.
+
 ### Skills
 
 Shared skills provide background knowledge and reference material. Most are sourced from `skills/*/SKILL.md`; `delegate-task` is generated from the agent registry so delegation guidance cannot drift from the configured agents.
@@ -449,6 +461,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `nix`                | Donatello                 | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                                       |
 | `love`               | Donatello                 | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                                    |
 | `audio-metrics`      | Penfold or user           | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |
+| `self-review`        | Penfold or user           | Structure and checklist for a periodic self-review                                                                |
 
 **User-invocable support skills:**
 

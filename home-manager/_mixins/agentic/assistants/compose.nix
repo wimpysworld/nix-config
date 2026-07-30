@@ -558,13 +558,101 @@ let
 
   # ============ SKILLS ============
 
-  # Discover all candidate skill directories, then keep only those containing
-  # a SKILL.md. Stray empty directories under skills/ are ignored so they do
-  # not break evaluation. `delegate-task` is generated below from the agent
-  # registry, so static directories with generated-skill names are ignored.
-  physicalSkillDirs = lib.removeAttrs (lib.filterAttrs (
-    name: _: builtins.pathExists (basePath + "/skills/${name}/SKILL.md")
-  ) (discoverDirs (basePath + "/skills"))) [ "delegate-task" ];
+  # All candidate skill directories. `delegate-task` is generated below from
+  # the agent registry, so a static directory with that name is ignored.
+  skillCandidateDirs = lib.removeAttrs (discoverDirs (basePath + "/skills")) [ "delegate-task" ];
+
+  # Report whether a skill is secret and, if so, its sops key. A skill is
+  # secret when its directory holds a `SKILL.sops` marker (and no plaintext
+  # `SKILL.md`). `SKILL.sops` is a fixed, named marker that renders to
+  # `SKILL.md`, exactly as `prompt.sops` renders to `prompt.md` for commands;
+  # every other marker renders to its own name minus the suffix, which
+  # secretSkillSupportFiles below handles. The marker's trimmed content is the
+  # top-level key in `secrets/assistant-prompts.yaml` whose value is the entire
+  # file, its frontmatter included. Unlike a command there is no public header
+  # to compose around the secret, so the decrypted value is written verbatim at
+  # activation time and plaintext never reaches the Nix store. Having both
+  # files is a configuration error and fails evaluation. Returns
+  # `{ secret = bool; key = stringOrNull; }`.
+  skillSecretInfo =
+    skillName:
+    let
+      skillPath = basePath + "/skills/${skillName}";
+      sopsPath = skillPath + "/SKILL.sops";
+      hasSops = builtins.pathExists sopsPath;
+      hasPlain = builtins.pathExists (skillPath + "/SKILL.md");
+    in
+    if hasSops && hasPlain then
+      throw "Skill ${skillName} (${toString skillPath}) has both SKILL.sops and SKILL.md. A secret skill must have only SKILL.sops; remove SKILL.md."
+    else if hasSops then
+      {
+        secret = true;
+        key = readFile sopsPath;
+      }
+    else
+      {
+        secret = false;
+        key = null;
+      };
+
+  # Secret skill directories. These are deliberately absent from every
+  # store-backed skill attrset below, because a secret skill cannot be
+  # deployed by symlinking its source directory the way a public skill is;
+  # `default.nix` writes its files from decrypted secrets at activation.
+  secretSkillDirs = lib.filterAttrs (name: _: (skillSecretInfo name).secret) skillCandidateDirs;
+
+  # Collect a secret skill's `.sops` supporting-file markers, walking
+  # subdirectories so progressive-disclosure trees such as `references/`
+  # survive encryption. A marker renders to its own name with the `.sops`
+  # suffix removed, so a supporting file carries its full deployed name plus
+  # the suffix: `references/cycle-mechanics.md.sops` renders to
+  # `references/cycle-mechanics.md`. `SKILL.sops` is excluded here because it
+  # is the fixed body marker handled by skillSecretInfo above. Returns a list
+  # of `{ path; key; }` where `path` is the rendered path relative to the skill
+  # root and `key` is the sops key whose value is the whole file. A marker
+  # sitting beside a plaintext file of the same rendered name is a
+  # configuration error and fails evaluation, because the plaintext would
+  # otherwise be the copy that reaches the store.
+  secretSkillSupportFiles =
+    skillName:
+    let
+      skillPath = basePath + "/skills/${skillName}";
+      walk =
+        prefix: dir:
+        lib.concatLists (
+          lib.mapAttrsToList (
+            entryName: type:
+            let
+              prefixed = name: if prefix == "" then name else "${prefix}/${name}";
+            in
+            if type == "directory" then
+              walk (prefixed entryName) (dir + "/${entryName}")
+            else if entryName == "SKILL.sops" || !(lib.hasSuffix ".sops" entryName) then
+              [ ]
+            else
+              let
+                rendered = prefixed (lib.removeSuffix ".sops" entryName);
+              in
+              if builtins.pathExists (skillPath + "/${rendered}") then
+                throw "Secret skill ${skillName} (${toString skillPath}) has both ${prefixed entryName} and ${rendered}. A secret supporting file must have only the .sops marker; remove ${rendered}."
+              else
+                [
+                  {
+                    path = rendered;
+                    key = readFile (dir + "/${entryName}");
+                  }
+                ]
+          ) (builtins.readDir dir)
+        );
+    in
+    walk "" skillPath;
+
+  # Public skill directories: those holding a plaintext SKILL.md. Stray empty
+  # directories under skills/ are ignored so they do not break evaluation, and
+  # secret skills are filtered out first so their bodies never enter the store.
+  physicalSkillDirs = lib.filterAttrs (
+    name: _: !(secretSkillDirs ? ${name}) && builtins.pathExists (basePath + "/skills/${name}/SKILL.md")
+  ) skillCandidateDirs;
 
   delegateTaskSkillContent =
     let
@@ -686,7 +774,9 @@ let
       inherit extras;
     };
 
-  # Generate all skills
+  # Generate all skills. Secret skills are excluded, because every consumer of
+  # this attrset either reads the SKILL.md body or symlinks the source
+  # directory, and both would put plaintext in the store.
   # Returns attrset: { skillName = { content; path; extras; }; ... }
   composeSkills = generatedSkills // lib.mapAttrs (name: _: composeSkill name) physicalSkillDirs;
 
@@ -736,8 +826,14 @@ in
     composeInstructions
     ;
 
-  # Skills composition
-  inherit composeSkills;
+  # Skills composition. The secret helpers are consumed by `default.nix`,
+  # which deploys secret skills from decrypted files rather than store paths.
+  inherit
+    composeSkills
+    skillSecretInfo
+    secretSkillDirs
+    secretSkillSupportFiles
+    ;
 
   # Discovery helpers (useful for debugging)
   inherit

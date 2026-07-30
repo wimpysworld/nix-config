@@ -164,6 +164,90 @@ let
     ) secretCommandList
   );
 
+  # ============ SECRET SKILLS ============
+
+  # Collect every secret skill with the metadata each platform needs. A skill
+  # is secret when its directory holds a `SKILL.sops` marker instead of a
+  # plaintext `SKILL.md`; supporting `.sops` markers render beside it so
+  # progressive disclosure survives encryption. Nothing here enters the store:
+  # Claude, OpenCode, and Pi receive sops templates written to explicit paths
+  # at activation, and Codex copies the decrypted secrets in its activation
+  # script.
+  secretSkillList = lib.mapAttrsToList (skillName: _: {
+    name = skillName;
+    inherit ((compose.skillSecretInfo skillName)) key;
+    supportFiles = compose.secretSkillSupportFiles skillName;
+  }) compose.secretSkillDirs;
+
+  # sops secret declarations: one per key referenced by a secret skill's
+  # SKILL.sops marker or by any of its supporting markers.
+  secretSkillSecrets = lib.listToAttrs (
+    lib.concatMap (
+      entry:
+      [ (lib.nameValuePair entry.key { sopsFile = assistantPromptsSopsFile; }) ]
+      ++ map (
+        file: lib.nameValuePair file.key { sopsFile = assistantPromptsSopsFile; }
+      ) entry.supportFiles
+    ) secretSkillList
+  );
+
+  # Per-platform destination directory for a secret skill's rendered files.
+  secretSkillClaudeDir = name: "${config.home.homeDirectory}/.claude/skills/${name}";
+  secretSkillOpencodeDir = name: "${config.xdg.configHome}/opencode/skills/${name}";
+  secretSkillPiDir = name: "${config.home.homeDirectory}/.pi/agent/skills/${name}";
+
+  # sops template names double as filenames in the rendered-templates
+  # directory, so a supporting file's relative path is flattened into a slug.
+  secretSkillFileSlug =
+    path:
+    lib.replaceStrings
+      [
+        "/"
+        "."
+      ]
+      [
+        "-"
+        "-"
+      ]
+      path;
+
+  # sops templates for one platform. Unlike a secret command there is no public
+  # frontmatter or prelude to compose around the body: the encrypted value is
+  # the entire file, so each template's content is the placeholder alone.
+  mkSecretSkillTemplates =
+    platform: skillDir:
+    lib.concatMap (
+      entry:
+      let
+        dir = skillDir entry.name;
+      in
+      [
+        (lib.nameValuePair "assistant-${platform}-skill-${entry.name}" {
+          content = config.sops.placeholder.${entry.key};
+          path = "${dir}/SKILL.md";
+        })
+      ]
+      ++ map (
+        file:
+        lib.nameValuePair "assistant-${platform}-skill-${entry.name}-${secretSkillFileSlug file.path}" {
+          content = config.sops.placeholder.${file.key};
+          path = "${dir}/${file.path}";
+        }
+      ) entry.supportFiles
+    ) secretSkillList;
+
+  # Claude and OpenCode only receive templates when their programs are enabled;
+  # Pi is ungated, matching how secret commands are deployed.
+  secretSkillTemplates = lib.listToAttrs (
+    lib.optionals config.programs.claude-code.enable (
+      mkSecretSkillTemplates "claude" secretSkillClaudeDir
+    )
+    ++ lib.optionals config.programs.opencode.enable (
+      mkSecretSkillTemplates "opencode" secretSkillOpencodeDir
+    )
+    ++ mkSecretSkillTemplates "pi" secretSkillPiDir
+  );
+
   # ============ CLAUDE CODE ============
 
   claudeAgents = lib.mapAttrs (name: _: compose.composeAgent "claude" name) codingAgentDirs;
@@ -472,12 +556,18 @@ let
   # from `$CODEX_HOME/skills/<name>/SKILL.md`, so the keyspace is the union
   # of project skills, standalone commands, and agent-scoped commands.
   # Project skills have no single source path, so a synthetic `skill:<name>`
-  # identifier is used in the throw message to make the origin obvious.
+  # identifier is used in the throw message to make the origin obvious. Secret
+  # skills are absent from `skillContents`, so they are listed separately;
+  # without them a command could silently overwrite a secret skill's directory.
   codexCommandSources =
     lib.mapAttrsToList (name: _: {
       inherit name;
       source = "skill: ${name}";
     }) skillContents
+    ++ map (entry: {
+      inherit (entry) name;
+      source = "skill: ${entry.name}";
+    }) secretSkillList
     ++ lib.mapAttrsToList (cmdName: _: {
       name = cmdName;
       source = toString (./commands + "/${cmdName}");
@@ -690,6 +780,42 @@ let
       ${cmds}
     '';
 
+  # Activation script that writes Codex files for secret project skills. A sops
+  # template cannot be used here for the same reason as above: the Codex skill
+  # activation does `rm -rf skills`, so a template writing into that tree would
+  # lose the race. Each decrypted secret is the whole file, so it is copied
+  # verbatim rather than composed. Supporting files keep their relative path
+  # under the skill directory so progressive-disclosure links still resolve.
+  codexSecretProjectSkillsActivationScript =
+    let
+      writeSecretFile =
+        key: dst:
+        let
+          secretPath = config.sops.secrets.${key}.path;
+        in
+        ''
+          if [ -r ${lib.escapeShellArg secretPath} ]; then
+            mkdir -p "$(dirname ${lib.escapeShellArg dst})"
+            cat ${lib.escapeShellArg secretPath} > ${lib.escapeShellArg dst}
+          else
+            echo "sops secret ${key} not yet rendered; skipping Codex skill file ${dst}" >&2
+          fi'';
+      cmds = lib.concatStringsSep "\n" (
+        lib.concatMap (
+          entry:
+          let
+            dir = "${codexDir}/skills/${entry.name}";
+          in
+          [ (writeSecretFile entry.key "${dir}/SKILL.md") ]
+          ++ map (file: writeSecretFile file.key "${dir}/${file.path}") entry.supportFiles
+        ) secretSkillList
+      );
+    in
+    lib.optionalString (secretSkillList != [ ]) ''
+      # Write Codex files for secret project skills from decrypted secrets.
+      ${cmds}
+    '';
+
 in
 {
   options.agentic.assistants.pi = {
@@ -720,14 +846,15 @@ in
       providerRouterThinkingMap = piProviderRouterThinkingMap;
     };
 
-    # sops-nix declarations for secret command prompts. Secrets decrypt the
-    # prompt bodies; templates substitute the placeholder into the composed
-    # Claude, OpenCode, and Pi command files at activation, writing each to its
-    # explicit path so plaintext never enters the store. Codex is handled by an
-    # activation script instead (see codexSecretSkillsActivationScript).
+    # sops-nix declarations for secret command prompts and secret skills.
+    # Secrets decrypt the bodies; templates substitute the placeholder into the
+    # composed Claude, OpenCode, and Pi files at activation, writing each to its
+    # explicit path so plaintext never enters the store. Codex is handled by
+    # activation scripts instead (see codexSecretSkillsActivationScript and
+    # codexSecretProjectSkillsActivationScript).
     sops = {
-      secrets = secretCommandSecrets;
-      templates = secretCommandTemplates;
+      secrets = secretCommandSecrets // secretSkillSecrets;
+      templates = secretCommandTemplates // secretSkillTemplates;
     };
 
     home = {
@@ -753,14 +880,18 @@ in
         )
       );
 
-      # Compose Codex SKILL.md files for secret commands after codexFiles has
-      # recreated skills/ and after sops-nix has rendered the decrypted
-      # secrets. A sops template cannot be used here because codexFiles does
-      # `rm -rf skills`; this entry writes the public prefix and appends the
-      # decrypted body from the secret path.
-      activation.codexSecretFiles = lib.mkIf (config.programs.codex.enable && secretCommandList != [ ]) (
-        lib.hm.dag.entryAfter [ "codexFiles" "sops-nix" ] codexSecretSkillsActivationScript
-      );
+      # Write Codex files for secret commands and secret skills after
+      # codexFiles has recreated skills/ and after sops-nix has rendered the
+      # decrypted secrets. A sops template cannot be used here because
+      # codexFiles does `rm -rf skills`; these entries write the decrypted
+      # bodies from the secret paths instead.
+      activation.codexSecretFiles =
+        lib.mkIf (config.programs.codex.enable && (secretCommandList != [ ] || secretSkillList != [ ]))
+          (
+            lib.hm.dag.entryAfter [ "codexFiles" "sops-nix" ] (
+              codexSecretSkillsActivationScript + codexSecretProjectSkillsActivationScript
+            )
+          );
     };
 
     programs = {
