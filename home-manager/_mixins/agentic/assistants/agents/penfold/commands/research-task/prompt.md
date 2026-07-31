@@ -1,6 +1,6 @@
 ## Research Task
 
-Deeply research a task, everything it links to, and related work across Linear, GitHub, and Slack, then synthesise one analysis with recommended solutions. Aim for a complete understanding of the task and the work already done around it, so we learn from prior contributions, respect them, and do not blindly revert or undo valuable work. Every claim must trace to a source.
+Deeply research a task, everything it links to, and related work across Linear, GitHub, Slack, and any data warehouse that is reachable, then synthesise one analysis with recommended solutions. Aim for a complete understanding of the task and the work already done around it, so we learn from prior contributions, respect them, and do not blindly revert or undo valuable work. Every claim must trace to a source.
 
 `research-task` anchors on an existing task; `deep-research` is for an open question with no task yet.
 
@@ -33,6 +33,9 @@ Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by s
 | Linear topic search | Linear MCP - search other issues on the same domain, feature, or problem, not only linked ones |
 | GitHub topic search | `gh search issues`, `gh search prs`, `gh search code` - related work the target does not link |
 | Slack topic search | Slack tooling - search recent conversations on the same topic, not only linked threads |
+| Counts, rates, trends | BigQuery, when a client is available - a CLI, an MCP server, or an existing export |
+
+Reach for BigQuery when the task makes a quantitative claim, when a recommendation would be stronger with a number, or when the size of a problem is unknown. Prefer a measured number over an estimate. Record the query and the date it ran beside the number, so the claim traces to its source like every other claim here. When no client is reachable, say so plainly and move on; absence is not a finding.
 
 Derive search terms from the problem statement, feature names, symbols, and error strings in the target. For each related item found, capture what it decided or changed and whether it is open, merged, or abandoned, so the synthesis can respect prior work.
 
@@ -86,6 +89,7 @@ The synthesis is not filed anywhere automatically. The user captures it with `cr
 - Every claim traces to a source; no uncited assertions
 - Search Linear, GitHub, and Slack for related work by topic, not only the sources linked from the target
 - Note prior contributions to respect; do not recommend undoing valuable work without saying why
+- Where a BigQuery dataset is reachable, measure the number and cite the query and its run date; where none is, say so and carry on
 - Deduplicate findings raised by more than one sub-agent
 - Never mutate external state in any source system
 - No hedging language

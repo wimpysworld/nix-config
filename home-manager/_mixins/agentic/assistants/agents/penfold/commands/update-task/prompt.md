@@ -10,7 +10,11 @@ Input: $ARGUMENTS is a Linear issue key or URL, or a path to a local task file. 
 
 Resolve $ARGUMENTS and read the whole task before judging anything. Never write blind. If the key, URL, or path does not resolve, say so and stop.
 
-**2. Collect what the session changed**
+**2. Check the task is active**
+
+Gate on the workflow status type, never the status name. Type `completed` (Done) or `cancelled` (Cancelled, Duplicate) means the task is not active: report the status and stop, changing nothing at all - no body, no labels, no comment. This refusal is the one stop permitted after the target resolves. Type `triage` (Triage) is active: promote it to the team's `backlog`-type status as part of this update. A local task file has no status, so neither rule applies to one.
+
+**3. Collect what the session changed**
 
 From this session only, list:
 
@@ -22,7 +26,7 @@ From this session only, list:
 
 Ignore session talk that changes nothing in the task.
 
-**3. Resolve what the task still leaves open**
+**4. Resolve what the task still leaves open**
 
 Find the unresolved items in the task: `Open questions`, `TBD`, `TODO`, `TBC`, `FIXME`, option lists with no choice made, and assumptions that block implementation. For each item the session has not already settled:
 
@@ -33,11 +37,11 @@ Find the unresolved items in the task: `Open questions`, `TBD`, `TODO`, `TBC`, `
 
 Answer each question where it appears, replace the open marker with the decided action, and keep the evidence next to the decision it supports. Retitle a heading once its items are resolved, keeping the original heading level. Never leave `Open questions` standing above answered questions.
 
-**4. Re-check the classification**
+**5. Re-check the classification**
 
 Query the live taxonomy for labels, statuses, and the estimate scale. Load the `sizing` skill and check the estimate against it. Never invent a label. Change labels, priority, or estimate only when the session changed what the work involves, and state what changed and why. For a local task file the same four values live in the frontmatter: `title`, `labels`, `priority`, `estimate`.
 
-**5. Merge**
+**6. Merge**
 
 Load the `contribution-voice` skill and follow it for every sentence you add or rewrite. A task body publishes under the user's name. The heading set is fixed, so the skill's rule against scaffolding does not apply to it; it governs the prose inside. Run its cut pass on the new text only, and leave untouched sections alone.
 
@@ -45,7 +49,7 @@ Keep the heading set and order from `create-task`'s templates. Add a heading onl
 
 For a task in a cohort, update the parent's `Child issues` list when dependency order or parallelism changed, and restate each changed edge in the affected child's `Dependencies` section.
 
-**6. Write**
+**7. Write**
 
 Show the change summary, then write. Do not ask for approval. Report after, naming the Linear issue key or the file path written.
 
@@ -62,7 +66,7 @@ Show the change summary, then write. Do not ask for approval. Report after, nami
 
 ## Classification
 
-* <label, priority, or estimate change> - <why>. Omit when nothing changed.
+* <label, priority, estimate, or status change> - <why>. Omit when nothing changed.
 
 ## Still open
 
@@ -79,5 +83,6 @@ Show the change summary, then write. Do not ask for approval. Report after, nami
 - Research only as far as the decision needs. Stop once the answer is clear.
 - Draw labels, priority, and estimate from the live taxonomy. The `sizing` skill holds the rubric the estimate must match.
 - Write to Linear or to a local file only. Never write to GitHub.
+- Never touch a task whose status type is `completed` or `cancelled`. Report why and stop.
 - British spelling. No hedging language.
-- Ask nothing after the target resolves. Update the task.
+- Ask nothing after the target resolves. Update the task, unless step 2 refuses it.
