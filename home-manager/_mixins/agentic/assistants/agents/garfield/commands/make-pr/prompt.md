@@ -1,8 +1,8 @@
 ## Make PR
 
-Draft the pull request title and body with `draft-pr-message`, then create a pull request for the current branch.
+Draft the pull request title and body with `draft-pr-message`, then create a pull request for the current branch. On a work repository, append a reviewer orientation block to the body before the pull request is created.
 
-This command mutates remote Git and GitHub state by pushing only when needed and running `gh pr create`. Treat explicit human invocation of this command as consent for those actions. Never use raw `gh api`.
+This command mutates remote Git and GitHub state by pushing only when needed and running `gh pr create`, and it moves any linked Linear issue to In Review. Treat explicit human invocation of this command as consent for those actions. Never use raw `gh api`.
 
 Command invocation: use the current provider's command prefix when invoking `draft-pr-message`. Codex uses `$draft-pr-message`; slash-command runtimes use `/draft-pr-message`. If the platform cannot expand another command, follow the existing `draft-pr-message` prompt directly for the draft phase only. After its fenced message is produced, this command resumes and creates the pull request.
 
@@ -23,15 +23,68 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 3. If staged files or unstaged files exist, leave them unchanged. Note that they are excluded because only committed branch changes are used.
 4. Invoke or follow `draft-pr-message`. Preserve its fenced pull request message verbatim as the pull request source.
 5. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
-6. Check whether the branch has an upstream with `git rev-parse --abbrev-ref --symbolic-full-name @{u}`. If no upstream exists, push with `git push -u origin HEAD`. If the branch is ahead of its upstream, push with `git push`. If the push requires force, deletion, tags, or a non-fast-forward update, stop.
-7. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. Never use raw `gh api`.
-8. Report the pull request URL, title, and any uncommitted files left out.
+6. Append the reviewer orientation block to that temporary file, following **Reviewer orientation** below. The block is part of the pull request from the moment it exists, so never add it later by editing the pull request.
+7. Check whether the branch has an upstream with `git rev-parse --abbrev-ref --symbolic-full-name @{u}`. If no upstream exists, push with `git push -u origin HEAD`. If the branch is ahead of its upstream, push with `git push`. If the push requires force, deletion, tags, or a non-fast-forward update, stop.
+8. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. Never use raw `gh api`.
+9. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
+10. Report the pull request URL, title, whether the orientation block was included, each Linear outcome, and any uncommitted files left out.
+
+### Reviewer orientation
+
+Work pull requests only. Classify the repository from `git config user.email`, as in **Linear transition** below: an address on the `chainguard.dev` domain means work; anything else means personal or community. A personal or community pull request gets no block and no mention of one.
+
+Append this block to the end of the body file:
+
+```markdown
+<details>
+<summary>Reviewer orientation</summary>
+
+**Outcome** - what this change achieves, one line.
+
+**Scope** - what it touches.
+
+**Out of scope** - what it deliberately leaves alone, and why.
+
+**Worth attention** - the two or three places a defect would hurt most.
+
+**Verified** - what was run and what passed.
+
+**Tracking** - <ISSUE-KEY>
+
+</details>
+```
+
+Filling it in:
+
+- Write orientation, not instructions. State what the change does and where a defect would hurt. Never write a direction aimed at a reviewer or their tooling, such as what to look at or what to skip. Facts let a reviewer decide; instructions invite them to stop thinking.
+- Summarise, never paste. A task written by `create-task` carries `Outcome`, `Scope`, and `Non-goals` headings that map onto the first three fields. Restate each one in the reviewer's terms, one line each. Never copy the issue body across.
+- Control leaks. These pull requests land on repositories that may be public. Drop anything naming an internal system, a customer, a colleague, a roadmap item, or a dated plan. Omit any field that cannot be written without one of those. An omitted field is a clean outcome; a leaked one is not.
+- `Tracking` is the bare issue key, never a URL. A Linear URL carries a title slug, so on a public repository the link publishes the issue title. The key alone is enough for a colleague to find it.
+- Derive `Worth attention` and `Verified` from the branch's committed diff and what this session ran, not from the issue. Never claim a check that was not run.
+- Omit an empty field. Never stub one with "N/A" or "None".
+- Skip the whole block when every field would restate the title. Noise trains reviewers to collapse it unread. Say in the report that it was skipped, and why.
+
+### Linear transition
+
+Two things link an issue, and nothing else does: the branch name, when the branch came from Linear's `gitBranchName`, and a `Refs: <ISSUE-KEY>` trailer on any commit in `main..HEAD`. Never take a key from the pull request body or a commit subject. A key mentioned in prose is not a link.
+
+Workspace guard: classify the repository from `git config user.email`. An address on the `chainguard.dev` domain means work; anything else means personal. The connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL` is visible. If the classification and the visible instance disagree, skip the transition and report one line saying the profile does not match the repository. Never touch a work issue from the personal workspace or the reverse.
+
+Handle each linked issue on its own, and report each one. A branch may carry more than one `Refs:` trailer.
+
+- Match the status by name. List the team's workflow statuses and take the `started`-type status named In Review. Linear's types are `triage`, `backlog`, `unstarted`, `started`, `completed`, and `cancelled`, and both In Progress and In Review are `started`, so the type alone cannot tell them apart. If the team has no `started`-type status named In Review, skip the issue and say so. Never invent a status and never create one.
+- Move forward only. Leave the issue where it is when it is already In Review, when its type is `completed` or `cancelled`, or when its `started`-type status sits after In Review in the team's own order. Write only from `triage`, `backlog`, `unstarted`, or an earlier `started` status.
+
+Never fatal. The pull request is the deliverable. If Linear is unreachable, a key does not resolve, the team has no In Review status, or the write fails, report it in one line and finish successfully. Never block, never retry in a loop, and never undo or amend anything because of a Linear failure.
 
 ### Output
 
 ```markdown
 Pull request: <url>
 Title: <title>
+Reviewer orientation: <included, or skipped and the reason>
+Linear:
+- <issue key and its new status, the reason it was skipped, or none>
 Excluded:
 - <uncommitted file left out, or none>
 ```

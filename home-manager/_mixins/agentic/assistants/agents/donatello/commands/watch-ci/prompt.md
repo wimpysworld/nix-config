@@ -20,7 +20,7 @@ Check these before anything else. If one fails, stop and state the reason in one
 - The local branch has not diverged from its remote.
 - The PR is open.
 
-Classify the repository from `git config user.email` inside it. `martin.wimpress@chainguard.dev` means work; anything else means personal or community. For a work repository, confirm `$PWD` is under `~/Chainguard/*/` so gitsign applies, and stop if it is not.
+Classify the repository from `git config user.email` inside it. An address on the `chainguard.dev` domain means work; anything else means personal or community. For a work repository, confirm `$PWD` is under `~/Chainguard/*/` so gitsign applies, and stop if it is not.
 
 ### Link Linear
 

@@ -269,7 +269,7 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 | `draft-commit-message` | Draft a conventional commit message for the staged or current changes    |
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body |
 | `make-commit`          | Draft the message, then create one commit from the durable work          |
-| `make-pr`              | Draft the title and body, then open the pull request                     |
+| `make-pr`              | Draft the title and body, open the PR, move Linear to In Review          |
 
 ---
 
