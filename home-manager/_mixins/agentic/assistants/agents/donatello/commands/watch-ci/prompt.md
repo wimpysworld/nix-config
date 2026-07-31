@@ -60,7 +60,14 @@ Two fix attempts per distinct check is the limit. Report a third failure; do not
 
 Run `gh run rerun --failed` once per head SHA. A second flake on the same SHA is not a flake; treat it as caused by the PR.
 
-Then record it in Linear. Search first for an open issue naming the same check and comment on it rather than filing a duplicate; otherwise use `create-task`. Work goes to the `FUL` team, Fulfillment Automation. Personal goes to the Linear project whose name matches the repository name. Assign the issue to the user.
+Then record it in Linear. Search first for an open issue naming the same check and comment on it rather than filing a duplicate.
+
+Otherwise file it into the flake bucket project. Call `create-project` to find or create that project, then `create-task` with status `Triage` to file into it. Assign the issue to the user.
+
+- Work, the `FUL` team, Fulfillment Automation: a per-cycle project named `Reduce CI flakiness: Cycle <N>`, where `<N>` is that team's current cycle number. Set the issue's cycle to the current cycle.
+- Personal, the `WW` team, Wimpy's World: one permanent project named `Reduce CI flakiness`. No cycle in the name, no cycle on the issue. It is not time-boxed and is reused for all time.
+
+Flakes no longer go to the Linear project whose name matches the repository name. That rule still holds for anything else this command files.
 
 Load the `contribution-voice` skill before writing that comment, and name it in the sub-agent packet if a sub-agent writes it. The comment publishes under the user's name. State the check, the evidence that it is flaky, and the head SHA. Nothing else.
 

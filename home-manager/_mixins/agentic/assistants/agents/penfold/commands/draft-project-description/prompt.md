@@ -1,4 +1,4 @@
-## Linear Project Description
+## Draft Project Description
 
 Write or rewrite a Linear project description so it earns a high score from the LensAgent project-quality coach on the first pass. The coach files a coaching issue rating the project on four dimensions: name quality, what is accomplished, quantitative measure, and precise date. This is a full rewrite of the description field, not a merge.
 

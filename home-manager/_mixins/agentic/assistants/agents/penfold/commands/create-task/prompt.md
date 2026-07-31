@@ -2,7 +2,7 @@
 
 File the outcome of this session as a durable task: one Linear issue, several issues wrapped in a parent tracking issue, or a local markdown file. Capture all information and research from the session in the task body, so the implementer needs nothing else. This is the write counterpart to `research-task`, which reads.
 
-Input: $ARGUMENTS is a Linear project name, or a filesystem path for a local task file. If $ARGUMENTS is blank, stop and ask for the target before doing anything else.
+Input: $ARGUMENTS is a Linear project name, or a filesystem path for a local task file, optionally followed by a status. If $ARGUMENTS is blank, stop and ask for the target before doing anything else.
 
 ### Process
 
@@ -34,6 +34,13 @@ Never assume label, status, or estimate names. Each project has its own taxonomy
 Pick from what exists. Never invent or create a label. For a local target, query the workspace's team taxonomy when one exists; otherwise reuse the vocabulary already present in sibling task files.
 
 **4. Classify**
+
+Status:
+
+- Default to the team's Backlog status when the caller names none.
+- A caller may name a different status. Resolve it against the team's workflow statuses from step 3.
+- If the team has no status by that name, use the team's default entry status and say so in the report. An unattended caller cannot answer a question.
+- Local task files carry no status.
 
 Labels:
 
