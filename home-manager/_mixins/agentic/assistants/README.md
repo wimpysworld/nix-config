@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 61 commands, seventeen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 62 commands, seventeen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -270,6 +270,7 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body |
 | `make-commit`          | Draft the message, then create one commit from the durable work          |
 | `make-pr`              | Draft the title and body, open the PR, move Linear to In Review          |
+| `pr-is-merged`         | Tidy up after a merged PR: update main, drop its worktree and branch     |
 
 ---
 
