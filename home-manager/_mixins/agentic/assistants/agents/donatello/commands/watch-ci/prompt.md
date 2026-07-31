@@ -64,14 +64,13 @@ Then record it in Linear. Search first for an open issue naming the same check a
 
 Otherwise file it into the flake bucket project. Call `create-project` to find or create that project, then `create-task` with status `Triage` to file into it. Assign the issue to the user.
 
-- Work, the `FUL` team, Fulfillment Automation: a per-cycle project named `Reduce CI flakiness: Cycle <N>`, where `<N>` is that team's current cycle number. Set the issue's cycle to the current cycle.
-- Personal, the `WW` team, Wimpy's World: one permanent project named `Reduce CI flakiness`. No cycle in the name, no cycle on the issue. It is not time-boxed and is reused for all time.
+One project name, used in both workspaces: `Triage and reduce encountered CI flakiness by 50%`. No cycle in the name, and no cycle on the issue. The project is perpetual and reused. The user closes it and creates its replacement on their own schedule, so this command neither knows nor cares about that rollover.
 
 Flakes no longer go to the Linear project whose name matches the repository name. That rule still holds for anything else this command files.
 
 Load the `contribution-voice` skill before writing that comment, and name it in the sub-agent packet if a sub-agent writes it. The comment publishes under the user's name. State the check, the evidence that it is flaky, and the head SHA. Nothing else.
 
-Workspace guard: the connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL` is visible. If the repository classification and the visible instance disagree, skip the Linear step, report one line saying the profile does not match the repository, and carry on with the rest of the loop. Never file work into the personal workspace or the reverse.
+Workspace guard: the connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL`, Fulfillment Automation, is visible. The guard picks the destination, never the project name. File work into the `FUL` team and personal into the `WW` team. One shared project name is still two projects in two workspaces, so keep this guard. If the repository classification and the visible instance disagree, skip the Linear step, report one line saying the profile does not match the repository, and carry on with the rest of the loop. Never file work into the personal workspace or the reverse.
 
 ### Answer reviews
 

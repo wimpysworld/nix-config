@@ -10,7 +10,9 @@ Authority: invocation by a human, or by another command, is consent to create th
 
 **1. Find first**
 
-Call `list_projects` with `query` set to the name and read the results. Match on the exact name. If a project with that exact name exists, report it and stop; the work is already done.
+Call `list_projects` with `query` set to the name and read the results. Match on the exact name. If an open project with that exact name exists, report it and stop; the work is already done.
+
+A closed project is not a match. `list_projects` returns `status` with a `type` field: type `completed` or `cancelled` means closed. Gate on the status type, never the status name. When every same-named project is closed, create a new one. A caller rolls a perpetual project over by closing it and expects the next run to create the replacement, so without this rule `watch-ci` would file this quarter's flakes into last quarter's closed project.
 
 Never fuzzy match, and never create a project whose name only resembles the request. A near miss creates a second project the caller cannot find on its next run.
 
@@ -62,7 +64,7 @@ Report and stop. Do not ask for approval at any point; a caller running unattend
 * **Team** - <team>
 * **Lead** - <lead>
 * **Dates** - <start> to <target>, or `unset`
-* **Result** - found existing, or created
+* **Result** - found existing, created, or created because the same-named project was closed
 
 ## Manual
 
