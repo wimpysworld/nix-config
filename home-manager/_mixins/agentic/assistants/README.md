@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 58 commands, seventeen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 59 commands, seventeen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -130,6 +130,8 @@ Five commands share one noun. The vocabulary is strict:
 | 5    | `implement-task` | Take the task through to implemented, validated, committed work          |
 
 `create-plan` writes to `${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md`, outside any project tree. A plan exists only while one task is implemented. It is never committed and is discarded afterwards. The durable record is the task, not the plan.
+
+`linear-project-description` writes the project the tasks live in, and sits outside the lifecycle. It takes a project, not a task, so it carries no step number and no place in the run order.
 
 ### Orchestration
 
@@ -287,19 +289,20 @@ Research partner for exploring ideas, generating options, and framing problems f
 
 **Model:** inherits the model selected in the coding tool on every platform. Penfold synthesises research, frames problems, and weighs trade-offs; specialist agents still handle domain-specific validation.
 
-| Command              | Purpose                                                                |
-| -------------------- | ---------------------------------------------------------------------- |
-| `create-task`        | File the session outcome as a task, or a parent wrapping children      |
-| `research-task`      | Research a task and its linked work, and synthesise one cited analysis |
-| `update-task`        | Fold session decisions into an existing task                           |
-| `review-task`        | Judge whether a task is ready to implement, and what must change first |
-| `how-to-contribute`  | Assess a project's contribution rules before contributing              |
-| `draft-comment`      | Draft a GitHub, Linear, or Slack comment in the user's own voice       |
-| `post-comment`       | Post the agreed comment to GitHub, Linear, or Slack                    |
-| `draft-issue`        | Draft a GitHub issue after checking policy and duplicates              |
-| `post-issue`         | Create the agreed issue on GitHub                                      |
-| `gather-review-data` | Collect the user's own contribution evidence for a date range          |
-| `draft-self-review`  | Draft a periodic self-review from gathered evidence                    |
+| Command                      | Purpose                                                                 |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `create-task`                | File the session outcome as a task, or a parent wrapping children       |
+| `research-task`              | Research a task and its linked work, and synthesise one cited analysis  |
+| `update-task`                | Fold session decisions into an existing task                            |
+| `review-task`                | Judge whether a task is ready to implement, and what must change first  |
+| `linear-project-description` | Write a Linear project description in the form the quality coach scores |
+| `how-to-contribute`          | Assess a project's contribution rules before contributing               |
+| `draft-comment`              | Draft a GitHub, Linear, or Slack comment in the user's own voice        |
+| `post-comment`               | Post the agreed comment to GitHub, Linear, or Slack                     |
+| `draft-issue`                | Draft a GitHub issue after checking policy and duplicates               |
+| `post-issue`                 | Create the agreed issue on GitHub                                       |
+| `gather-review-data`         | Collect the user's own contribution evidence for a date range           |
+| `draft-self-review`          | Draft a periodic self-review from gathered evidence                     |
 
 ---
 
