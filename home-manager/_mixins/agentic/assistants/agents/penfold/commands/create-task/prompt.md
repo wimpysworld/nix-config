@@ -37,9 +37,9 @@ Pick from what exists. Never invent or create a label. For a local target, query
 
 Status:
 
-- Default to the team's Backlog status when the caller names none.
-- A caller may name a different status. Resolve it against the team's workflow statuses from step 3.
-- If the team has no status by that name, use the team's default entry status and say so in the report. An unattended caller cannot answer a question.
+- Default to the team's `triage`-type status when the caller names none. Gate on the status type, never the status name.
+- A caller may name a different status. Resolve it against the team's workflow statuses from step 3. This is how a caller with an already-researched task files straight to Backlog.
+- If the team has no `triage`-type status, or no status by the name the caller gave, use the team's default entry status and say so in the report. Linear's Triage is a per-team feature that can be switched off, and an unattended caller cannot answer a question.
 - Local task files carry no status.
 
 Labels:

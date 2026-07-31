@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 60 commands, seventeen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 61 commands, seventeen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -134,6 +134,8 @@ Five commands share one noun. The vocabulary is strict:
 `create-project` and `draft-project-description` write the project the tasks live in, and sit outside the lifecycle. They take a project, not a task, so they carry no step number and no place in the run order.
 
 ### Orchestration
+
+`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. It finds the Linear issues waiting in Triage, reports the batch, then spawns one fresh sub-agent per issue that runs `research-task` and then `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
 
 `implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. It spawns a fresh sub-agent per task. Inside each, `create-plan` runs, then `implement-plan`, which spawns its own fresh sub-agent per phase. Fresh context per task and per phase keeps attention high and implementations small.
 
@@ -294,6 +296,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `create-task`               | File the session outcome as a task, or a parent wrapping children       |
 | `research-task`             | Research a task and its linked work, and synthesise one cited analysis  |
 | `update-task`               | Fold session decisions into an existing task                            |
+| `triage-tasks`              | Research and update the Linear issues waiting in Triage, in bulk        |
 | `review-task`               | Judge whether a task is ready to implement, and what must change first  |
 | `create-project`            | Find or create one Linear project, and stop                             |
 | `draft-project-description` | Write a Linear project description in the form the quality coach scores |
