@@ -1,4 +1,4 @@
-## PR Is Merged
+## PR Done
 
 The user says the pull request they have been working on is merged. Return the repository to a clean state: `main` checked out and up to date, the merged branch gone, and any worktree for it removed. Then move any associated Linear issue to Done.
 

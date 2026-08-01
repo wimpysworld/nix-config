@@ -1,4 +1,4 @@
-## Watch CI
+## PR Watch
 
 Watch GitHub PR `$ARGUMENTS` and shepherd it: fix the CI failures the PR caused, triage flakes, and answer reviews. Ask for the PR URL only if `$ARGUMENTS` is blank.
 

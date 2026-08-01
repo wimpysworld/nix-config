@@ -252,7 +252,7 @@ Precise implementation engineer executing code changes from specifications. Read
 | `draft-code-review`       | Draft the house-style review comment from a completed review       |
 | `post-code-review`        | Post the review comment and set the verdict on GitHub              |
 | `address-code-review`     | Work review findings one at a time, committing each fix            |
-| `watch-ci`                | Watch PR checks to completion, then fix the failures the PR caused |
+| `pr-watch`                | Watch a PR: fix CI failures, triage flakes, answer reviews         |
 | `project-peer-review`     | Give an ecosystem-specific codebase verdict                        |
 | `project-polish-comments` | Comment-quality pass over a file set; comments only, never logic   |
 | `add-enricher-capability` | Add a manifest-gen enricher capability                             |
@@ -271,7 +271,7 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body |
 | `make-commit`          | Draft the message, then create one commit from the durable work          |
 | `make-pr`              | Draft the title and body, open the PR, move Linear to In Review          |
-| `pr-is-merged`         | Update main, drop the worktree and branch, move Linear to Done           |
+| `pr-done`              | Update main, drop the worktree and branch, move Linear to Done           |
 
 ---
 
