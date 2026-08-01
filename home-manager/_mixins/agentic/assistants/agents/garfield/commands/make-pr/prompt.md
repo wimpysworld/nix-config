@@ -28,6 +28,24 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 8. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. Never use raw `gh api`.
 9. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
 10. Report the pull request URL, title, whether the orientation block was included, each Linear outcome, and any uncommitted files left out.
+11. Offer the watch handover, following **Watch handover** below. Print it after the report, as the last thing you say.
+
+### Watch handover
+
+This command runs in a sub-task on every platform, so it cannot put a question to the user itself. Never call an interactive question tool, and never invoke `pr-watch`. End with the offer and let the caller act on the answer.
+
+Offer only when the pull request exists. Say nothing when this command stopped early or `gh pr create` failed: no offer, no empty section, no "nothing to watch here".
+
+Fill in the URL so the command copies and runs as it stands, never leave a placeholder. Put it after the report, on its own, as the last thing in the response:
+
+```markdown
+**Watch this pull request?**
+
+- **Yes** - run `pr-watch <url>`. It watches the checks, fixes the failures this pull request caused, triages flakes, and answers reviews.
+- **No** - the pull request is open and nothing else happens.
+```
+
+The caller relays that offer and waits. On Yes it invokes `pr-watch <url>` with its own provider's command prefix. Anything else is a No. Never treat silence as consent.
 
 ### Reviewer orientation
 
@@ -79,7 +97,9 @@ Never fatal. The pull request is the deliverable. If Linear is unreachable, a ke
 
 ### Output
 
-```markdown
+The report, then the offer after it:
+
+````markdown
 Pull request: <url>
 Title: <title>
 Reviewer orientation: <included, or skipped and the reason>
@@ -87,4 +107,9 @@ Linear:
 - <issue key and its new status, the reason it was skipped, or none>
 Excluded:
 - <uncommitted file left out, or none>
-```
+
+**Watch this pull request?**
+
+- **Yes** - run `pr-watch <url>`. It watches the checks, fixes the failures this pull request caused, triages flakes, and answers reviews.
+- **No** - the pull request is open and nothing else happens.
+````
