@@ -154,9 +154,12 @@ stdenv.mkDerivation (finalAttrs: {
       binaryNativeCode
     ];
     mainProgram = "brow6el";
+    # The aarch64-linux build fails deterministically because the CEF
+    # distribution's libcef_dll_wrapper CMake project passes the x86-only
+    # '-m64' flag to g++. The aarch64 CEF selection above is kept so that a
+    # future fix only has to restore this platform.
     platforms = [
       "x86_64-linux"
-      "aarch64-linux"
     ];
   };
 })
