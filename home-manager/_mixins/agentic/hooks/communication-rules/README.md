@@ -40,7 +40,7 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
 - `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` the two thin TypeScript shims. Each spawns the core and applies the returned decision. They hold no policy.
 - `default.nix` two wiring helpers on a shared agent-free base: `mkCommandHookAdapter` (Claude Code, Codex) and `mkPluginAdapter` (Pi, OpenCode).
 - `fragment.nix` generates the rules text, reminder, block, and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
-- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 306 fixtures across five groups (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix): 72 scanner, 67 claude-code, 70 codex, 52 pi, 45 opencode. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript boundaries.
+- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 310 fixtures across five groups (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix): 76 scanner, 67 claude-code, 70 codex, 52 pi, 45 opencode. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript boundaries.
 
 ## Why this exists
 
@@ -131,11 +131,12 @@ The gate does not scan:
 
 - Incoming tool output. It may quote external text the agent does not own, so blocking on it would punish the agent for words it did not write.
 - Arbitrary Bash arguments.
+- Read-only gh calls. A query publishes no words, so there is nothing to check.
 - Binary content.
 - Build logs.
 - External text the agent is reading, not posting as its own.
 
-Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh, gh-api-safe, and gh-review-reply post bodies, not a full shell parse. It unwraps `bash -c`/`-lc` wrappers and skips leading environment assignments (`FOO=bar gh ...`), so a wrapped or env-prefixed command cannot slip prose past the scan. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
+Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh, gh-api-safe, and gh-review-reply post bodies, not a full shell parse. A gh call is scanned only when it names a prose sink: a body flag, a body-file flag, `--input`, or an API field whose key carries prose. A read such as `gh api graphql -f query='{repository(...){...}}'` names none of those, so it is out of scope and runs untouched. A graphql mutation keeps its body inside the document, where the field reader cannot pull it out, so it stays a fail-closed block. It unwraps `bash -c`/`-lc` wrappers and skips leading environment assignments (`FOO=bar gh ...`), so a wrapped or env-prefixed command cannot slip prose past the scan. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
 
 ## Per-agent validation matrix
 

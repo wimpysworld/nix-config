@@ -64,6 +64,21 @@ BASH_CASES = {
     "bash-prose-heredoc-redirection-blocks.sh": BLOCK,
     "bash-prose-redirection-blocks.sh": BLOCK,
     "bash-unrecognised-command-pass.sh": PASS,
+    # A read publishes no prose, so it is out of scope and must pass. The two
+    # graphql reads are the exact shape that used to be blocked: a bare "-f"
+    # field flag is a post signal, so the command reached the post branch, and
+    # the "query" key is not a body key, so the extraction came back empty and
+    # failed closed. The chained case also guards the second command in the
+    # line, a plain jq read, which the same false block took down with it. The
+    # approve case carries no body flag at all and is not a gh-api-safe call, so
+    # it holds the general property: no prose sink, no scan.
+    "gh-api-safe-graphql-read-pass.sh": PASS,
+    "gh-api-safe-graphql-read-chained-pass.sh": PASS,
+    "gh-review-approve-no-body-pass.sh": PASS,
+    # A graphql MUTATION does publish prose, inside the document, and the field
+    # reader cannot pull that body out. So it stays a fail-closed block, clean
+    # body or not. This is the boundary of the pass cases above.
+    "gh-api-safe-graphql-mutation-fails-closed.sh": BLOCK,
     "gh-api-safe-post-readable-body-file-blocks.sh": BLOCK,
     "gh-api-safe-post-resolved-body-blocks.sh": BLOCK,
     "gh-api-safe-post-unresolvable-body-fails-closed.sh": BLOCK,

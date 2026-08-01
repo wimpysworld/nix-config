@@ -620,6 +620,61 @@ def extract_api_field_text(value: str | None, heredoc_files: dict[str, str]) -> 
     return raw_value, False
 
 
+# A GraphQL document that writes. ``gh api graphql`` carries its document in a
+# ``query`` field, so the field key alone cannot say whether the call reads or
+# writes: a read document publishes nothing, a mutation publishes its arguments.
+GRAPHQL_MUTATION = re.compile(r"(?<![A-Za-z0-9_])mutation(?![A-Za-z0-9_])")
+
+
+def field_names_prose(value: str | None) -> bool:
+    """Return True when an API field flag names prose the agent publishes.
+
+    The KEY decides. Only the ``API_BODY_KEYS`` names carry prose. A ``query``
+    field counts when the GraphQL document mutates, because a mutation's
+    arguments are published text; a read document is not. A field we cannot read
+    (missing, or with no ``key=value`` form) counts too, so an unreadable body
+    still fails closed.
+    """
+    if value is None or "=" not in value:
+        return True
+    key, raw_value = value.split("=", 1)
+    if key in API_BODY_KEYS:
+        return True
+    if key == "query":
+        return has_dynamic_value(raw_value) or GRAPHQL_MUTATION.search(raw_value) is not None
+    return False
+
+
+def has_prose_sink(argv: list[str]) -> bool:
+    """Return True when a post command names somewhere its prose comes from.
+
+    This is what keeps a read-only call out of scope. A gh call publishes prose
+    only through a body flag, a body-file flag, ``--input``, or an API field that
+    names prose. A call with none of those writes no words of its own, so there
+    is nothing to scan: ``gh api graphql -f query='{repository(...){...}}'`` and
+    ``gh pr review 65 --approve`` both read or act without publishing text.
+
+    The flags read here are exactly the ones ``extract_post_texts`` reads, so the
+    two cannot drift: whatever this says is a sink, that function goes on to
+    resolve, and a sink it cannot resolve fails closed.
+    """
+    index = 0
+    while index < len(argv):
+        token = argv[index]
+        if token in BODY_FLAGS or any(token.startswith(flag + "=") for flag in BODY_FLAGS if flag.startswith("--")):
+            return True
+        if token in BODY_FILE_FLAGS or any(token.startswith(flag + "=") for flag in BODY_FILE_FLAGS if flag.startswith("--")):
+            return True
+        if token == "--input" or token.startswith("--input="):
+            return True
+        if token in API_FIELD_FLAGS or token.startswith("--field=") or token.startswith("--raw-field="):
+            value, index = option_value(argv, index)
+            if field_names_prose(value):
+                return True
+        index += 1
+    return False
+
+
 def prose_target(path_value: str) -> bool:
     cleaned = clean_literal_path(path_value)
     if cleaned is None:
@@ -790,7 +845,15 @@ def scan_bash(command_text: str, config: Config, _depth: int = 0) -> bool:
                     blocked = blocked or scan_bash(inner, config, _depth + 1)
                     continue
 
-            if is_known_post_command(segment):
+            # Scan the body a post PUBLISHES, not the command string around it.
+            # ``is_known_post_command`` answers "could this write?", which a
+            # read-only call such as ``gh api graphql -f query='{...}'`` also
+            # satisfies, since a bare field flag is a post signal. Asking for a
+            # prose sink as well keeps such a call out of scope: it has no body,
+            # so an empty extraction is the correct answer, not a fail-closed
+            # block. A command that DOES name a sink still fails closed when the
+            # sink cannot be read.
+            if is_known_post_command(segment) and has_prose_sink(segment):
                 texts, unresolved = extract_post_texts(segment, body_files)
                 if unresolved or not texts:
                     return True
