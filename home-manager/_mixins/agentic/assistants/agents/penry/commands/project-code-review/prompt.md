@@ -17,7 +17,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 ### Process
 
 1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
-2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area; the parent aggregates findings.
+2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area, writes its findings to the file its packet names, and returns them. Derive the report directory now with the `review-report-path` skill and name each file `<report-dir>/findings-<area>.md`, so no two collide.
 3. Detect languages and target versions from project manifests and toolchain files, preferring explicit runtime declarations over inference (`go.mod`, `pyproject.toml`, `Cargo.toml`, `.tool-versions`, `.python-version`, `package.json`, etc.).
 4. Hunt first for code that can disappear:
    dead code, unreachable blocks, unused exports/functions, commented-out code, obsolete feature flags, dead config, unused flexibility, one-implementation interfaces, factories with one product, wrappers that only delegate, and uncalled code paths.
@@ -33,7 +33,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 12. Output per-improvement format from agent definition. For standard-library and native findings, add what was reimplemented, the replacement, the minimum version, and whether the project target permits it.
 13. End the report with an estimated removal summary: lines, files, and dependencies that could be deleted.
 14. Load the `review-report-path` skill and derive the report path.
-15. Write the aggregated report to the derived path, then report that path.
+15. Aggregate from the findings files, each one the source of record when its sub-agent's reply did not arrive. Write the aggregated report to the derived path, then report that path.
 
 ### Restraint
 

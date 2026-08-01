@@ -43,9 +43,9 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 2. Load the `contribution-voice` skill and follow it when wording findings. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
 4. Load the `review-report-path` skill and derive the report path from the resolved target.
-5. Fan out to sub-agents, per **Fan-out**.
+5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's findings file in its packet, `<report-dir>/findings-<concern>.md`, so no two collide.
 6. Pressure-test every blocking finding, per **Adversarial pressure-test**.
-7. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
+7. Read every findings file and synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. A findings file is the source of record when its sub-agent's reply did not arrive. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
 8. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
 
 ### Fan-out
@@ -62,13 +62,13 @@ Each sub-agent's delegation packet must instruct it to:
 - Where practical, verify conclusions by building and running the relevant tests on the reviewed code (for example in a temporary worktree), restoring repo state afterwards. Distinguish environmental test failures (also failing on the base branch) from failures the change caused.
 - Apply the lens and severity bar the caller set. Do not widen them.
 - Load `contribution-voice` and word every finding by it.
-- Return findings, each with `file:line` references, severity, and why it matters.
+- Write its findings to the file its packet names, then return them. Each finding carries `file:line` references, severity, and why it matters.
 - Say so plainly when its area is clean.
 - Never mutate GitHub: no comments, approvals, or merges.
 
 ### Adversarial pressure-test
 
-For each finding rated medium or higher that would justify blocking, send a follow-up to the sub-agent that raised it (continue its context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold.
+For each finding rated medium or higher that would justify blocking, send a follow-up to the sub-agent that raised it (continue its context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold. Where the sub-agent cannot be reached, pressure-test the finding yourself to the same standard, rather than letting it through or dropping it.
 
 This step stops false positives reaching a human. Do not skip it and do not soften it.
 
