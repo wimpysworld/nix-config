@@ -42,8 +42,7 @@ Load the `sizing` skill and cite its scale; do not invent one. Order the project
 **9. Post to Slack.** Load the `slack` skill and follow it.
 
 - Resolve the channel argument to a channel ID with `slack_search_channels` first. A name only reaches a public channel, so a private channel fails without this.
-- Resolve the user's Slack display name at run time from the authenticated identity. Never hard-code it.
-- Parent message: the display name, then `update for <date> 👇`, with a British date such as `31 July 2026`.
+- Parent message: `My weekly update for <date> 👇`, with a British date such as `31 July 2026`. It posts as the user, so it does not name them.
 - Reply in that message's thread with one line per project: the project name and a link to its status update, nothing else.
 - Write each body to a file and post it with `slack-post`. To reply in the thread, pass the parent message's URL unchanged; never hand-convert a timestamp.
 - The skill's brevity rule governs. One or two sentences, no headings, no bullet lists, no sign-off. The substance lives in Linear; Slack carries the pointer.
@@ -86,6 +85,6 @@ Thread: <reply url>
 - One bullet per issue, one short sentence. State what changed, not what the issue is about.
 - `Up Next` is a proposal, never a commitment. Never estimate in days or weeks.
 - Skip a project with no matching issues. Never post an empty update.
-- Never hard-code a Slack channel, a channel ID, or a display name.
+- Never hard-code a Slack channel or a channel ID.
 - Ask once, at the gate, and nothing else.
 - British spelling. No hedging language.
