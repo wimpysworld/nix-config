@@ -723,6 +723,8 @@ let
 
       ## Response contract
 
+      Delivery is part of the contract. A background sub-agent must send its report to the orchestrator (`main`) with `SendMessage` before it finishes; ending the turn or writing the report as plain output is not delivery, because the orchestrator never sees plain output. This holds for success, failure, and blocked work alike: a blocked agent that goes quiet cannot be told apart from one still working. A synchronous sub-agent returns its result to the caller directly and sends no message.
+
       Non-artefact work starts with `Answer:`. Pure artefacts return only the artefact.
 
       Sub-agents are ephemeral workers; the parent/orchestrator window is durable coordination context. Protect it: report only decision-useful or user-visible conclusions, evidence, changes, tests, and blockers; omit exploration notes, tool logs, raw command output, and noisy detail.
