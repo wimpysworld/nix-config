@@ -43,14 +43,17 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 2. Load the `contribution-voice` skill and follow it when wording findings. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
 4. Load the `review-report-path` skill and derive the report path from the resolved target.
-5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's findings file in its packet, `<report-dir>/findings-<concern>.md`, so no two collide.
-6. Pressure-test every blocking finding, per **Adversarial pressure-test**.
-7. Read every findings file and synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. A findings file is the source of record when its sub-agent's reply did not arrive. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
-8. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
+5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's fallback findings file in its packet, `<report-dir>/findings-<concern>.md`, so no two collide.
+6. Re-request once from any sub-agent that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A sub-agent that fails twice is your own work to finish, to the same standard, not a gap in the report.
+7. Pressure-test every blocking finding, per **Adversarial pressure-test**.
+8. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. The sub-agent replies are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
+9. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
 
 ### Fan-out
 
 Delegate to a wide fan-out of sub-agents, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions.
+
+Keep each packet's attack list short, around three or four concrete targets. A long multi-target packet correlates with a sub-agent stalling and returning nothing. Split the concern across two sub-agents instead of lengthening one list.
 
 Route the security concern to `dibble` sub-agents. Donatello implements; Dibble is the security specialist.
 
@@ -62,8 +65,9 @@ Each sub-agent's delegation packet must instruct it to:
 - Where practical, verify conclusions by building and running the relevant tests on the reviewed code (for example in a temporary worktree), restoring repo state afterwards. Distinguish environmental test failures (also failing on the base branch) from failures the change caused.
 - Apply the lens and severity bar the caller set. Do not widen them.
 - Load `contribution-voice` and word every finding by it.
-- Write its findings to the file its packet names, then return them. Each finding carries `file:line` references, severity, and why it matters.
-- Say so plainly when its area is clean.
+- Return its findings in its final reply. The reply is the deliverable: a reply that does not contain the findings is a failed task, whatever else it did. Each finding carries `file:line` references, severity, and why it matters.
+- Reply "my area is clean" when it is. That is a complete, valid reply and still has to be sent.
+- Copy the findings to the file its packet names as a fallback, never as the primary channel. Where the Write tool is refused, a shell heredoc writes the file instead. Never retry or fight a refused write, and never let a blocked write stop the reply.
 - Never mutate GitHub: no comments, approvals, or merges.
 
 ### Adversarial pressure-test
