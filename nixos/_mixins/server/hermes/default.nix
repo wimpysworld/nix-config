@@ -13,6 +13,7 @@ let
   agentsviewSopsFile = ../../../../secrets + "/agentsview.yaml";
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
+  linearSopsFile = ../../../../secrets + "/linear.yaml";
   mcpSopsFile = ../../../../secrets + "/mcp.yaml";
   trayaSopsFile = ../../../../secrets + "/traya.yaml";
   claudePackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code;
@@ -532,6 +533,14 @@ in
         mode = "0400";
       };
 
+      LINEAR_API_KEY = {
+        sopsFile = linearSopsFile;
+        key = "hermes";
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+
       GITHUB_TOKEN = {
         sopsFile = hermesSopsFile;
         owner = "root";
@@ -607,6 +616,7 @@ in
         ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
+        LINEAR_API_KEY=${config.sops.placeholder.LINEAR_API_KEY}
         GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         TUYA_API_KEY=${config.sops.placeholder.TUYA_API_KEY}
@@ -750,6 +760,12 @@ in
           url = "https://mcp.context7.com/mcp";
           headers = {
             Authorization = "Bearer \${CONTEXT7_API_KEY}";
+          };
+        };
+        linear = {
+          url = "https://mcp.linear.app/mcp";
+          headers = {
+            Authorization = "Bearer \${LINEAR_API_KEY}";
           };
         };
         nixos = {

@@ -222,6 +222,7 @@ Hermes currently draws from several secret sources:
 - `secrets/hermes.yaml`
 - `secrets/cloudflare.yaml`
 - `secrets/hermes-auth.json`
+- `secrets/linear.yaml`
 - `secrets/mcp.yaml`
 - `secrets/traya.yaml`
 
@@ -236,6 +237,7 @@ currently exports:
 - `ANTHROPIC_API_KEY`
 - `CONTEXT7_API_KEY`
 - `JINA_API_KEY`
+- `LINEAR_API_KEY`
 - `GH_TOKEN`
 - `GITHUB_TOKEN`
 
@@ -255,6 +257,7 @@ Operationally:
 - OpenAI device auth for `openai-codex` comes from `auth.json`, not from an
   `OPENAI_API_KEY` env var
 - `ANTHROPIC_API_KEY` provides the Anthropic fallback route
+- `LINEAR_API_KEY` comes from the `hermes` key in `secrets/linear.yaml`
 - `traya@darth.cc` Fastmail access is rendered to the Himalaya config from
   `secrets/traya.yaml`
 - `EMAIL_PASSWORD` must be a Fastmail app password, not the regular web login
@@ -379,6 +382,7 @@ The current declared MCP servers are:
 
 - `exa`
 - `context7`
+- `linear`
 - `nixos`
 - `cloudflare`
 
@@ -396,6 +400,11 @@ services.hermes-agent.mcpServers = {
     headers.Authorization = "Bearer \${CONTEXT7_API_KEY}";
   };
 
+  linear = {
+    url = "https://mcp.linear.app/mcp";
+    headers.Authorization = "Bearer \${LINEAR_API_KEY}";
+  };
+
   nixos = {
     command = "${pkgs.mcp-nixos}/bin/mcp-nixos";
     args = [ ];
@@ -407,6 +416,8 @@ services.hermes-agent.mcpServers = {
 
 Notes:
 
+- Linear uses its read-write endpoint with API-key bearer authentication. No
+  tool filters are set, so Hermes exposes every tool that the server provides.
 - `JINA_API_KEY` is already provisioned in the env template, but there is no
   live Jina MCP server declaration in the module yet.
 - The README should stay aligned with the declared set above, not the broader
@@ -501,7 +512,7 @@ The following are in place now:
 - `anthropic` fallback with `claude-opus-5`
 - named custom qwen providers on `skrye` and `zannah`
 - Holographic memory
-- four live MCP servers: Exa, Context7, NixOS, Cloudflare
+- Linear MCP with read-write, unfiltered tool access
 
 ## What Is Deliberately Deferred
 
