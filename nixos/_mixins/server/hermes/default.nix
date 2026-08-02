@@ -785,9 +785,11 @@ in
         };
 
         model = {
-          default = "gpt-5.5";
+          default = "gpt-5.6-sol";
           provider = "openai-codex";
         };
+
+        agent.reasoning_effort = "medium";
 
         custom_providers = [
           {
@@ -826,36 +828,48 @@ in
           ];
         };
 
+        delegation = {
+          provider = "openai-codex";
+          model = "gpt-5.6-sol";
+          reasoning_effort = "high";
+        };
+
         auxiliary = {
           approval = {
             provider = "openai-codex";
-            model = "gpt-5.3-codex-spark";
+            model = "gpt-5.6-luna";
+            reasoning_effort = "xhigh";
             timeout = 30;
           };
           session_search = {
             provider = "openai-codex";
-            model = "gpt-5.3-codex-spark";
+            model = "gpt-5.6-luna";
+            reasoning_effort = "xhigh";
             timeout = 30;
             max_concurrency = 2;
           };
           skills_hub = {
             provider = "openai-codex";
-            model = "gpt-5.3-codex-spark";
+            model = "gpt-5.6-luna";
+            reasoning_effort = "xhigh";
             timeout = 30;
           };
           mcp = {
             provider = "openai-codex";
-            model = "gpt-5.3-codex-spark";
+            model = "gpt-5.6-terra";
+            reasoning_effort = "high";
             timeout = 30;
           };
           web_extract = {
             provider = "openai-codex";
-            model = "gpt-5.3-codex-spark";
+            model = "gpt-5.6-luna";
+            reasoning_effort = "xhigh";
             timeout = 30;
           };
           title_generation = {
             provider = "openai-codex";
-            model = "gpt-5.3-codex-spark";
+            model = "gpt-5.6-luna";
+            reasoning_effort = "xhigh";
             timeout = 30;
           };
         };

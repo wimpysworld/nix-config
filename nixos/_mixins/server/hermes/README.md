@@ -13,7 +13,9 @@ The current deployment is:
 - **Chat interface**: Telegram
 - **Hermes host**: `revan`
 - **Inference path**: OAuth-backed cloud providers managed by Hermes
-- **Primary model**: `gpt-5.5` via the `openai-codex` provider
+- **Primary model**: `gpt-5.6-terra` at high reasoning via the `openai-codex` provider
+- **Delegation model**: `gpt-5.6-sol` at high reasoning via the `openai-codex` provider
+- **Auxiliary model**: `gpt-5.6-luna` at extra-high (`xhigh`) reasoning via the `openai-codex` provider
 - **Fallback model**: `claude-opus-5` via the `anthropic` provider
 - **Memory provider**: Holographic
 - **Default TTS**: local Piper using `en_GB-vctk-medium`, speaker `p276`/`11`
@@ -64,8 +66,24 @@ The key current settings are:
 ```nix
 services.hermes-agent.settings = {
   model = {
-    default = "gpt-5.5";
+    default = "gpt-5.6-terra";
     provider = "openai-codex";
+  };
+
+  agent.reasoning_effort = "high";
+
+  delegation = {
+    provider = "openai-codex";
+    model = "gpt-5.6-sol";
+    reasoning_effort = "high";
+  };
+
+  auxiliary = {
+    approval = {
+      provider = "openai-codex";
+      model = "gpt-5.6-luna";
+      reasoning_effort = "xhigh";
+    };
   };
 
   fallback_providers = [
@@ -83,8 +101,10 @@ services.hermes-agent.settings = {
 };
 ```
 
-This means the live default is `gpt-5.5` through `openai-codex`, with
-Anthropic held as fallback.
+This means the live default is `gpt-5.6-terra` at high reasoning through
+`openai-codex`. Delegated work uses `gpt-5.6-sol` at high reasoning, the
+configured auxiliary roles use `gpt-5.6-luna` at extra-high (`xhigh`)
+reasoning, and Anthropic is held as fallback.
 
 ## Local Piper TTS
 
@@ -417,7 +437,9 @@ integrations rather than the local llama-server path.
 Current source of truth:
 
 - the Hermes module selects the primary and fallback providers
-- `openai-codex` handles the primary `gpt-5.5` route
+- `openai-codex` handles the primary `gpt-5.6-terra` route at high reasoning
+- `openai-codex` handles delegated work with `gpt-5.6-sol` at high reasoning
+- `openai-codex` handles configured auxiliary roles with `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
 - `anthropic` handles the fallback `claude-opus-5` route
 - named custom providers preserve remote qwen routes on `skrye` and `zannah`
 
@@ -426,7 +448,9 @@ active primary or fallback route in the current deployment.
 
 The important current routing values are:
 
-- primary model: `gpt-5.5`
+- primary model: `gpt-5.6-terra` at high reasoning
+- delegation model: `gpt-5.6-sol` at high reasoning
+- auxiliary model: `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
 - fallback model: `claude-opus-5`
 - fallback provider: `anthropic`
 - named custom qwen routes: `skrye:qwen3.6-35b-a3b`, `zannah:qwen3.6-35b-a3b`
@@ -471,7 +495,9 @@ The following are in place now:
 - managed `.env` rendering through sops-nix
 - auth seeding through `authFile`
 - Telegram token and allowlist injection
-- `openai-codex` primary with `gpt-5.5`
+- `openai-codex` primary with `gpt-5.6-terra` at high reasoning
+- `openai-codex` delegation with `gpt-5.6-sol` at high reasoning
+- `openai-codex` auxiliary roles with `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
 - `anthropic` fallback with `claude-opus-5`
 - named custom qwen providers on `skrye` and `zannah`
 - Holographic memory
