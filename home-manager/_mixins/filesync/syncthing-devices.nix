@@ -15,6 +15,9 @@
     momin = {
       id = "BLSBPMB-XMTHCAA-FJWY57S-XBIH5Y2-25IERPU-7SL3CX3-EWF7HQ7-HYXU6A6";
     };
+    ravi = {
+      id = "2TAIMFO-3IWBNDB-NLWY65H-YRNOQZS-G4X7SY7-IRAZRLB-Z2HGNBR-T6DWFQE";
+    };
     revan = {
       id = "AVBGEWD-VDVP7JE-T5MHZAG-CZVDIFZ-2F37L7T-IBY4ZIM-O5OOLN3-JV3ZDQA";
     };
@@ -40,6 +43,7 @@
       path = "~/Chainguard";
       devices = [
         "bane"
+        "ravi"
         "skrye"
         "zannah"
       ];
@@ -54,6 +58,7 @@
         "bane"
         "felkor"
         "momin"
+        "ravi"
         "revan"
         "shaa"
         "sidious"
@@ -70,6 +75,7 @@
       devices = [
         "bane"
         "momin"
+        "ravi"
         "skrye"
         "tanis"
         "zannah"
@@ -83,6 +89,7 @@
       devices = [
         "bane"
         "momin"
+        "ravi"
         "revan"
         "skrye"
         "tanis"
@@ -97,6 +104,7 @@
       devices = [
         "bane"
         "momin"
+        "ravi"
         "revan"
         "skrye"
         "tanis"
@@ -136,6 +144,7 @@
         "bane"
         "felkor"
         "momin"
+        "ravi"
         "revan"
         "shaa"
         "sidious"
@@ -151,6 +160,7 @@
       path = "~/Pictures";
       devices = [
         "bane"
+        "ravi"
         "revan"
         "skrye"
         "tanis"
@@ -165,6 +175,7 @@
       rescanIntervalS = 21600;
       devices = [
         "bane"
+        "ravi"
         "revan"
         "skrye"
         "tanis"
