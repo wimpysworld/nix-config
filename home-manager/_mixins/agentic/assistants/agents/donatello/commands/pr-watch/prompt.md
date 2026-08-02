@@ -28,6 +28,10 @@ If the branch name or PR body names a Linear issue, attach the PR to that issue 
 
 ### The watch loop
 
+Before dispatching watchers for the current head SHA, synchronously fetch the PR's current reviews and review threads through `gh-api-safe`. Apply the same thread filter as `address-code-review`: skip resolved threads, threads whose most recent reply came from the user, and outdated threads. Dispatch `address-code-review` for any feedback that remains, then wait for it to finish. This scan is an orchestrator action, not a third watcher or another polling process.
+
+Run this scan before the first 90-second review poller and repeat it after every PR head SHA change, before dispatching watchers for the new head. Never report green or end the loop for a head until its scan has completed.
+
 Dispatch two background watchers with `delegate-task`, each with fresh context and read-only:
 
 - **CI watcher**: `gh pr checks --watch --fail-fast`. It blocks server side, so never sleep or poll around it.
