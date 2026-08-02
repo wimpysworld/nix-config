@@ -213,7 +213,7 @@ position = { x = 0, y = 0 }
 output = "DP-4"
 width = 2560
 height = 2880
-workspaces = [3, 4, 5, 6, 9]
+workspaces = [3, 4, 5, 6]
 position = { x = 2560, y = 0 }
 
 [zannah]
