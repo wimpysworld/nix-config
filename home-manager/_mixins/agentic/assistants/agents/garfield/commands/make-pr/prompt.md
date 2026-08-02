@@ -24,11 +24,12 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 4. Invoke or follow `draft-pr-message`. Preserve its fenced pull request message verbatim as the pull request source.
 5. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
 6. Append the reviewer orientation block to that temporary file, following **Reviewer orientation** below. The block is part of the pull request from the moment it exists, so never add it later by editing the pull request.
-7. Check whether the branch has an upstream with `git rev-parse --abbrev-ref --symbolic-full-name @{u}`. If no upstream exists, push with `git push -u origin HEAD`. If the branch is ahead of its upstream, push with `git push`. If the push requires force, deletion, tags, or a non-fast-forward update, stop.
-8. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. Never use raw `gh api`.
-9. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
-10. Report the pull request URL, title, whether the orientation block was included, each Linear outcome, and any uncommitted files left out.
-11. Offer the watch handover, following **Watch handover** below. Print it after the report, as the last thing you say.
+7. Push with an explicit refspec: `git push -u origin <branch>`. A bare `git push` depends on tracking configuration that may be absent or unwritable, and pushes nothing when it is. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
+8. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a failed `.git/config` write leaves a push reporting success while doing nothing.
+9. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. Never use raw `gh api`.
+10. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
+11. Report the pull request URL, title, whether the orientation block was included, each Linear outcome, and any uncommitted files left out.
+12. Offer the watch handover, following **Watch handover** below. Print it after the report, as the last thing you say.
 
 ### Watch handover
 

@@ -52,7 +52,9 @@ State the evidence for each call.
 
 ### Fix what the PR caused
 
-One fresh sub-agent per distinct failure, in parallel where the fixes do not overlap, one error each. Each sub-agent makes the smallest fix, verifies locally where practical, and returns the files changed and why. The orchestrator then runs `make-commit` and pushes.
+One fresh sub-agent per distinct failure, in parallel where the fixes do not overlap, one error each. Each sub-agent makes the smallest fix, verifies locally where practical, and returns the files changed and why. The orchestrator then runs `make-commit` and pushes with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent or unwritable, and pushes nothing when it is.
+
+Verify the push landed before you watch, reply, or report the fix. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop. Never trust the exit status alone: a failed `.git/config` write leaves a push reporting success while doing nothing, so CI never runs and the pull request sits on stale code.
 
 Two fix attempts per distinct check is the limit. Report a third failure; do not fix it again.
 
