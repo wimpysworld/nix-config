@@ -36,4 +36,6 @@ Changelog: ${CHANGELOG}" \
 echo "📋 Created PR: ${PR_URL}"
 
 PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-gh pr merge --auto --squash "$PR_NUMBER"
+if ! gh pr merge --auto --squash "$PR_NUMBER"; then
+  echo "::warning::Pull request ${PR_NUMBER} was created, but auto-merge could not be enabled"
+fi
