@@ -27,6 +27,24 @@ let
     	gpgSign = true
   '';
 
+  # Fence bind-mounts `<repo>/.git/config` and `<repo>/.git/hooks` read-only
+  # inside the sandbox. That is Fence's own protection, not this policy, and it
+  # has no configuration switch. Git writes `config.lock` and then renames it
+  # over `config`, and the kernel refuses a rename onto a mount point, so every
+  # local write fails with `Device or resource busy`. Exposing the file
+  # read-write would not help, because a read-write bind is still a mount point.
+  #
+  # The one thing a fenced agent loses is branch tracking: `git push -u` pushes
+  # the branch and then fails to record the upstream. The base configuration
+  # sets `push.default = matching`, under which a bare `git push` on a branch
+  # the remote does not have yet pushes nothing and still exits zero. Pair those
+  # two and an agent can believe it pushed when it did not.
+  #
+  # `push.default = current` removes the dependency. A bare `git push` sends the
+  # current branch to the branch of the same name on the remote and creates it
+  # when it is missing, with no upstream and no local configuration write. Only
+  # fenced agents get this; the interactive configuration keeps `matching`.
+  #
   # Order matters: later settings win. Pull in the real global configuration
   # first, turn signing off, then turn it back on for work clones only.
   fenceGitConfig = pkgs.writeText "fence-git.conf" ''
@@ -36,6 +54,8 @@ let
     	gpgSign = false
     [tag]
     	gpgSign = false
+    [push]
+    	default = current
     [includeIf "gitdir:~/Chainguard/*/"]
     	path = ${workOverrideConfig}
   '';

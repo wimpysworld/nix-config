@@ -92,7 +92,7 @@ sandbox behaviour.
 Command runtime enforcement uses Fence's `path` mode. This permits
 multithreaded tools such as Nix and Go to execute child processes. Single-token
 executable denies remain runtime-enforced. Multi-token denies such as `git
-push`, `just switch-home`, `nix store delete`, `nh home switch`, and `gitsign
+config`, `just switch-home`, `nix store delete`, `nh home switch`, and `gitsign
 initialize` remain preflight-enforced only when they are the initial fenced
 command. Fence cannot enforce them against commands spawned by an agent in this
 mode.
@@ -106,6 +106,54 @@ development commands.
 
 Git commits and workflow edits are allowed. Fence has no approval or ask mode.
 Commands are allowed or denied.
+
+## Local Git configuration is read-only
+
+Fence bind-mounts `<repo>/.git/config` and `<repo>/.git/hooks` read-only for the
+repository the agent launches in. Fence does this itself. It is not part of this
+policy, `filesystem.denyWrite` is empty, and Fence exposes no switch for it. The
+`allowGitConfig` option is unrelated: it controls read access to the user's own
+`~/.gitconfig`.
+
+Confirm it with `findmnt`, from inside a fenced agent:
+
+```console
+findmnt -rno TARGET,OPTIONS | grep '\.git'
+```
+
+Every local Git configuration write therefore fails:
+
+```console
+$ git config --local fence.probe 1
+error: could not write config file .git/config: Device or resource busy
+```
+
+The error is `EBUSY`, not a permission error. Git writes `config.lock` and then
+renames it over `config`, and the kernel refuses a rename onto a mount point.
+`fence --expose-host-path-rw` does not help, because a read-write bind is still
+a mount point. The same applies to any tool that rewrites the file, so a fenced
+agent cannot repoint a remote, a credential helper, or `core.hooksPath` this
+way.
+
+What an agent loses is branch tracking. `git push -u origin <branch>` pushes the
+branch and then fails on the upstream write. Nothing else about pushing is
+affected: `git push` is not denied, and pushing as the user is intended.
+
+[`git.nix`](./git.nix) sets `push.default = current` for fenced agents so this
+costs nothing in practice. A bare `git push` sends the current branch to the
+branch of the same name on the remote and creates it when missing, without an
+upstream and without a local write. This matters because the base configuration
+uses `push.default = matching`, under which a bare push of a branch the remote
+does not have yet pushes nothing and still exits zero.
+
+Guidance for agent prompts:
+
+- Push with an explicit refspec, `git push origin <branch>`, and drop `-u`.
+- Read the remote head as `origin/<branch>`, not `<branch>@{u}`.
+- Verify a push by comparing `git rev-parse HEAD` with `git rev-parse FETCH_HEAD`
+  after `git fetch origin <branch>`.
+- Treat the read-only mount as a fact to report, never as a safety control to
+  refuse work over.
 
 Filesystem policy is intentionally permissive for autonomous development and is
 kept close to Fence's upstream coding-agent policy. Reads use Fence's normal

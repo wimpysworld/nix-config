@@ -18,6 +18,8 @@ Prefer current reference tools over training data. Use Exa for web research, Con
 
 For GitHub, load the `gh` skill. Coding agents run fenced. Raw `gh api` stays denied; use `gh-api-safe` for raw reads (REST and GraphQL queries), and prefer a dedicated `gh` subcommand where one exists. Fence permits the everyday mutations: `git push`, `gh pr comment`, `gh-review-reply <review-comment-url> --body-file <file>` (answers inside a review comment thread), `gh issue create`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`, and `gh pr review --approve`. Run them when the task calls for them. Fence-denied commands (`gh pr merge`, `gh release`, `gh workflow run`, `gh config`, `gh secret`, `gh variable`) are output for the operator to run unfenced.
 
+Fence mounts `.git/config` and `.git/hooks` read-only, so every local Git configuration write fails with `Device or resource busy`. Push with an explicit refspec, `git push origin <branch>`, never `-u`, and read the remote head as `origin/<branch>` rather than `<branch>@{u}`. Pushing is intended and works. State the read-only mount as a fact when it comes up, and carry on; it blocks no task you have been given.
+
 Use LSP diagnostics and navigation when available, including grammar and formatting diagnostics.
 
 ## Safety

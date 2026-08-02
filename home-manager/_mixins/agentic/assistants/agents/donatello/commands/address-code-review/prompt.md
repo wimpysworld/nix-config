@@ -58,8 +58,8 @@ A reply must be true when the reviewer reads it, so the code lands before the wo
 5. When a finding's fix depends on or conflicts with a fix already applied, re-evaluate it against the current state of the code rather than applying it blind
 6. Commit after each finding that produced a change, one commit per finding. Stage explicitly with path-limited `git add -- <path>` using the files in that finding's report. Never `git add .`, `-A`, or `-u`. Run `draft-commit-message` for the message, or invoke `make-commit` to draft and commit in one step. Commit from this context only, one finding at a time, so parallel sub-agents never contend for the index
 7. Run the project's test suite once, after the last fix
-8. Push once with an explicit refspec: `git push origin <branch>`. One push means one CI run. A bare `git push` depends on tracking configuration that may be absent or unwritable, and pushes nothing when it is
-9. Verify the push landed before you reply. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop. Never trust the exit status alone: a failed `.git/config` write leaves a push reporting success while doing nothing, and a reply would then name a commit the remote never received
+8. Push once with an explicit refspec: `git push origin <branch>`. One push means one CI run. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed
+9. Verify the push landed before you reply. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop. Never trust the exit status alone: a push that matches nothing reports success while doing nothing, and a reply would then name a commit the remote never received
 10. Reply in every outstanding thread
 11. Resolve the threads the rules below allow
 
