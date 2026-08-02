@@ -703,6 +703,14 @@ let
 
       Give every waiting sub-agent a hard deadline. On reaching it, report "still waiting" rather than exceeding it, so the parent can dispatch a fresh one with clean context.
 
+      ## Teardown
+
+      A sub-agent stays alive only while the orchestrator may still resume it. Decide that point and stop it there, using the current platform's stop mechanism.
+
+      Stop a waiting sub-agent as soon as it is superseded or its loop ends. Stop an implementation sub-agent once its change is committed, because follow-up work gets fresh context anyway. Keep review sub-agents alive until the pressure-test round closes, then stop them together.
+
+      A command that fans out ends by stopping what it spawned, so a finished run leaves nothing behind.
+
       ## Context
 
       Use fresh context by default. Fork only when the user explicitly requires it or when the parent transcript is essential. When the parent context is essential but bulky, run `handover-fork` first and pass its output as the packet's `Context:` field; do not inherit the raw transcript. Use `handover-fresh` for cross-session handovers where a new session continues the work.
@@ -723,7 +731,7 @@ let
 
       ## Response contract
 
-      Delivery is part of the contract. A background sub-agent must send its report to the orchestrator (`main`) with `SendMessage` before it finishes; ending the turn or writing the report as plain output is not delivery, because the orchestrator never sees plain output. This holds for success, failure, and blocked work alike: a blocked agent that goes quiet cannot be told apart from one still working. A synchronous sub-agent returns its result to the caller directly and sends no message.
+      Delivery is part of the contract. A background sub-agent must send its report to the orchestrator (`main`) with `SendMessage` before it finishes; ending the turn or writing the report as plain output is not delivery, because the orchestrator never sees plain output. This holds for success, failure, and blocked work alike: a blocked agent that goes quiet cannot be told apart from one still working. A finished agent that goes quiet looks the same, so the orchestrator must chase every silent agent, and that cost falls on the run. A synchronous sub-agent returns its result to the caller directly and sends no message.
 
       Non-artefact work starts with `Answer:`. Pure artefacts return only the artefact.
 
