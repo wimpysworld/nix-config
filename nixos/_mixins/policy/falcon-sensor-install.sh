@@ -7,6 +7,8 @@
 
 REPO_FILE="/run/secrets/falcon-repo"
 INSTALL_DIR="/opt/CrowdStrike"
+TAG_PREFIX="falcon-v"
+VERSION_PATTERN='[0-9]+\.[0-9]+\.[0-9]+-[0-9]+'
 VERSION=""
 FORCE=0
 
@@ -103,6 +105,7 @@ aarch64)
 esac
 
 # Determine which version to install.
+LATEST_TAG=""
 if [[ -z "${VERSION}" ]]; then
 	echo "Querying latest release from ${REPO}..."
 	# Use --json for reliable structured output instead of parsing tab-separated text.
@@ -118,11 +121,23 @@ if [[ -z "${VERSION}" ]]; then
 		echo "Check your gh CLI authentication and access to ${REPO}."
 		exit 1
 	fi
-	# Strip the leading 'v' to get the version number.
-	VERSION="${LATEST_TAG#v}"
+	if [[ ! "${LATEST_TAG}" =~ ^${TAG_PREFIX}${VERSION_PATTERN}$ ]]; then
+		echo "ERROR: Unexpected release tag format: ${LATEST_TAG}"
+		echo "Expected ${TAG_PREFIX}MAJOR.MINOR.PATCH-BUILD."
+		exit 1
+	fi
+	VERSION="${LATEST_TAG#"${TAG_PREFIX}"}"
 	echo "Latest release: ${LATEST_TAG} (version ${VERSION})"
-else
-	LATEST_TAG="v${VERSION}"
+fi
+
+if [[ ! "${VERSION}" =~ ^${VERSION_PATTERN}$ ]]; then
+	echo "ERROR: Invalid version: ${VERSION}"
+	echo "Expected MAJOR.MINOR.PATCH-BUILD (for example, 7.29.0-18202)."
+	exit 1
+fi
+
+if [[ -z "${LATEST_TAG}" ]]; then
+	LATEST_TAG="${TAG_PREFIX}${VERSION}"
 	echo "Using specified version: ${VERSION} (tag ${LATEST_TAG})"
 fi
 

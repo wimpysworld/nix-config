@@ -38,8 +38,8 @@ The Falcon sensor RPM is hosted in a private GitHub repository. The repository
 name is stored as the `falcon-repo` sops secret and read by the
 `falcon-sensor-install` script at runtime. The script handles downloading,
 extracting, and patching automatically. If you need to download manually, the
-release tag format is `v{VERSION}` (e.g. `v7.29.0-18202`) and RPM filenames
-follow these patterns:
+release tag format is `falcon-v{VERSION}` (e.g. `falcon-v7.29.0-18202`) and
+RPM filenames follow these patterns:
 
 - x86\_64: `falcon-sensor-{VERSION}.el10.x86_64.rpm`
 - aarch64: `falcon-sensor-{VERSION}.el10.aarch64.rpm`

@@ -19,6 +19,7 @@ let
     name = "falcon-sensor-install";
     runtimeInputs = with pkgs; [
       coreutils
+      cpio
       gh
       gnugrep
       jq
