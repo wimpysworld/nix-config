@@ -11,6 +11,8 @@ let
   agentPackages = inputs.llm-agents.packages.${system} or { };
   mcporterPackage = agentPackages.mcporter or null;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
+  linearSopsFile = ../../../../secrets/linear.yaml;
+  isWorkHost = lib.elem "workspace" (host.tags or [ ]);
   # Import shared MCP server definitions.
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
   inherit (mcpServerDefs) opencodeServers;
@@ -48,6 +50,15 @@ let
     var: "set -gx ${var} (cat ${config.sops.secrets.${var}.path} 2>/dev/null; or echo \"\")";
   bashExport =
     var: "export ${var}=$(cat ${config.sops.secrets.${var}.path} 2>/dev/null || echo \"\")";
+  secretConfig =
+    secretName:
+    if secretName == "LINEAR_API_KEY" then
+      {
+        sopsFile = linearSopsFile;
+        key = if isWorkHost then "chainguard" else "wimpysworld";
+      }
+    else
+      { sopsFile = mcpSopsFile; };
 
   # Keys we expect to see in Zed's `context_servers` table after activation.
   # Computed from the renderer output so it stays in sync with `servers.nix`.
@@ -135,9 +146,7 @@ in
   };
   sops = lib.mkMerge [
     (lib.mkIf (allSecrets != [ ]) {
-      secrets = lib.genAttrs allSecrets (_: {
-        sopsFile = mcpSopsFile;
-      });
+      secrets = lib.genAttrs allSecrets secretConfig;
     })
     (lib.mkIf claudeMcpEnabled {
       # Shared MCP servers used by Claude Code.

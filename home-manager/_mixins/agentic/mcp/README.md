@@ -1,6 +1,6 @@
 # MCP Servers
 
-Five globally active MCP servers provide AI agents with current reference material. Playwright is emitted only on browser-automation systems. Slack is emitted only on `bane` and `ravi`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Five globally active MCP servers provide AI agents with current reference material. Playwright is emitted only on browser-automation systems. Slack is emitted only on hosts tagged `workspace`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. Playwright is local browser automation for agent-driven page inspection and only appears when both Chromium and Firefox are enabled under the shared browser automation policy. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -88,9 +88,9 @@ Five globally active servers, two conditional servers, and three disabled placeh
 | `context7`     | HTTP      | bearer | Live library documentation from official sources                                                       |
 | `exa`          | HTTP      | -      | Neural web search and URL content extraction                                                           |
 | `cloudflare`   | HTTP      | -      | Cloudflare product documentation                                                                       |
-| `linear`       | HTTP      | OAuth  | Linear issues, projects, and comments; active only for Claude Code and Codex |
+| `linear`       | HTTP      | bearer | Linear issues, projects, and comments; active only for Claude Code and Codex |
 | `playwright`   | stdio     | -      | Conditional; browser automation via Playwright MCP; disabled by default where per-server toggles exist |
-| `slack`        | HTTP      | OAuth  | Conditional on `bane` and `ravi`; official Slack hosted server; active only for Claude Code            |
+| `slack`        | HTTP      | OAuth  | Conditional on the `workspace` tag; official Slack hosted server; active only for Claude Code           |
 | `svelte`       | HTTP      | -      | Svelte documentation and playground                                                                    |
 | `firecrawl`    | HTTP      | -      | Disabled (`enabled = false`); web scraping and crawling                                                |
 | `jina`         | HTTP      | bearer | Disabled; web reading and screenshots                                                                  |
@@ -132,11 +132,11 @@ Disabled by default in OpenCode and Pi via per-consumer `enabled = false` becaus
 
 #### linear
 
-Linear's official hosted MCP server. It uses Streamable HTTP at `https://mcp.linear.app/mcp` with OAuth 2.1 dynamic client registration by default. Claude Code authenticates through `/mcp` after startup. Codex authenticates with `codex mcp login linear` if it has not already completed the login flow.
+Linear's official hosted MCP server. It uses Streamable HTTP at `https://mcp.linear.app/mcp` with `LINEAR_API_KEY` bearer authentication. Manual OAuth login is not required.
 
 Linear's MCP tools can read and mutate issues, projects, and comments. The server is emitted on every host with MCP clients. It is active only for Claude Code and Codex. OpenCode receives a disabled entry, Pi omits the server, and Zed receives a disabled context-server entry. Codex also sets `default_tools_approval_mode = "prompt"` for Linear so tool calls require review instead of inheriting the unattended default.
 
-No Linear secret is declared in this repository. Linear supports direct `Authorization: Bearer ...` authentication with an OAuth access token or a restricted API key; if that mode is needed, add a `LINEAR_API_KEY` secret to `secrets/mcp.yaml`, set `auth.kind = "bearer"` in `servers.nix`, and prefer a restricted key scoped to the minimum teams and permissions.
+`LINEAR_API_KEY` reads from `secrets/linear.yaml`. Hosts tagged `workspace` select the `chainguard` key. Other hosts select `wimpysworld`. The existing fish and bash secret exports expose the selected value to coding-agent clients.
 
 #### playwright
 
@@ -148,7 +148,7 @@ The shared browser automation policy requires both Chromium and Firefox. Servers
 
 Slack's official hosted MCP server. It uses Streamable HTTP at `https://mcp.slack.com/mcp` with OAuth. Slack has no OAuth dynamic client registration, so the pre-registered public client id `1601185624273.8899143856786` and `callbackPort = 3118` from Anthropic's published Slack app are supplied inline. Claude Code authenticates through a one-time `/mcp` browser sign-in per machine, which routes through Okta SSO; the token lands in the OS keychain, not in this repository.
 
-The server is emitted only on `bane` and `ravi`. On those hosts, it is active only for Claude Code, because only Claude Code's JSON MCP schema accepts the `oauth` block. Codex, OpenCode, Pi, and Zed have no config field for a pre-registered client id, so each receives a disabled entry (Pi omits the server) to avoid emitting a broken OAuth server.
+The server is emitted only on hosts tagged `workspace`. On those hosts, it is active only for Claude Code, because only Claude Code's JSON MCP schema accepts the `oauth` block. Codex, OpenCode, Pi, and Zed have no config field for a pre-registered client id, so each receives a disabled entry (Pi omits the server) to avoid emitting a broken OAuth server.
 
 No Slack secret is declared in this repository; OAuth handles authentication.
 
@@ -198,7 +198,7 @@ Enabled clients drive `sops.secrets` and the shell init exports.
 
 ### `requiredSecretsForConsumers` (derived)
 
-Computed from the `auth.envVar` and `env` values needed by the enabled consumers. Today this resolves to `["CONTEXT7_API_KEY"]` for clients that consume context7. Disabled servers do not contribute, so flipping a server's global `enabled` flag automatically adds or removes its secrets from this list.
+Computed from the `auth.envVar` and `env` values needed by the enabled consumers. Today this resolves to `["CONTEXT7_API_KEY", "LINEAR_API_KEY"]` for clients that consume context7 and Linear. Disabled servers do not contribute, so flipping a server's global `enabled` flag automatically adds or removes its secrets from this list.
 
 Per-consumer hard omissions gate inclusion for that consumer. Toggleable disabled entries still count for clients that render them as visible but disabled.
 
@@ -215,7 +215,7 @@ The union (`allSecrets`) drives both `sops.secrets = lib.genAttrs allSecrets ...
 - **OpenCode** - `{env:<NAME>}` placeholder resolved at process start from the shell environment.
 - **Shell** - fish `shellInit` and bash `initExtra` export each secret by reading its sops-managed path. This makes the env vars available to OpenCode, Codex, and any other tool launched from a shell.
 
-Edit secrets with `sops secrets/mcp.yaml`. Re-activate with `just home` after changes.
+Edit shared secrets with `sops secrets/mcp.yaml` and Linear keys with `sops secrets/linear.yaml`. Re-activate with `just home` after changes.
 
 ---
 

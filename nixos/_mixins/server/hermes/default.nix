@@ -535,7 +535,7 @@ in
 
       LINEAR_API_KEY = {
         sopsFile = linearSopsFile;
-        key = "hermes";
+        key = "wimpysworld";
         owner = "root";
         group = "root";
         mode = "0400";

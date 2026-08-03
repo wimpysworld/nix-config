@@ -257,7 +257,7 @@ Operationally:
 - OpenAI device auth for `openai-codex` comes from `auth.json`, not from an
   `OPENAI_API_KEY` env var
 - `ANTHROPIC_API_KEY` provides the Anthropic fallback route
-- `LINEAR_API_KEY` comes from the `hermes` key in `secrets/linear.yaml`
+- `LINEAR_API_KEY` comes from the `wimpysworld` key in `secrets/linear.yaml`
 - `traya@darth.cc` Fastmail access is rendered to the Himalaya config from
   `secrets/traya.yaml`
 - `EMAIL_PASSWORD` must be a Fastmail app password, not the regular web login

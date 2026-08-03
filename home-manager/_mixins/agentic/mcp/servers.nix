@@ -11,10 +11,7 @@ let
   # currently invoke this file with `{ inherit config pkgs; }`.
   inherit (pkgs) lib;
   inherit (config.noughty) host;
-  isWorkHost = lib.elem host.name [
-    "bane"
-    "ravi"
-  ];
+  isWorkHost = lib.elem "workspace" (host.tags or [ ]);
   chromiumEnabled = config.programs.chromium.enable || (host.is.linux && host.is.workstation);
   firefoxEnabled = config.programs.firefox.enable || (host.is.linux && host.is.workstation);
   browserAutomationEnabled = chromiumEnabled && firefoxEnabled;
@@ -201,11 +198,14 @@ rec {
   }
   // {
     linear = {
-      # Official hosted Linear MCP server. It uses Streamable HTTP with OAuth
-      # 2.1 dynamic client registration by default; Linear also supports
-      # bearer API keys, but no Linear secret is currently declared here.
+      # Official hosted Linear MCP server over Streamable HTTP with API-key
+      # bearer authentication.
       transport = "http";
       url = "https://mcp.linear.app/mcp";
+      auth = {
+        kind = "bearer";
+        envVar = "LINEAR_API_KEY";
+      };
       consumers = {
         # Linear exposes issue/project/comment reads and mutations. Keep it
         # active only in the requested clients, and make Codex ask before tool
