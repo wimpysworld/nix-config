@@ -49,7 +49,6 @@ Each entry in `servers` carries the following fields. Only `transport` is mandat
 | `args`      | list of strings       | no       | Stdio only. Defaults to `[]`.                                                                             |
 | `auth`      | attrset               | no       | Currently only `{ kind = "bearer"; envVar = "..."; }`. The `envVar` value is a sops secret name.          |
 | `oauth`     | attrset               | http     | Pre-registered OAuth client `{ clientId = "..."; callbackPort = <int>; }` for servers without dynamic client registration. Emitted only into Claude Code's config. |
-| `env`       | attrset               | no       | Stdio env passthrough. Schema is `{ ENV_VAR_IN_PROCESS = "SOPS_SECRET_NAME"; }`.                          |
 | `consumers` | attrset               | no       | Per-consumer overrides; see below.                                                                        |
 
 ### Per-consumer overrides
@@ -63,7 +62,7 @@ Each entry in `servers` carries the following fields. Only `transport` is mandat
 | `consumers.pi.omit`            | bool                                            | `false`                              | Hard-omits the server from Pi when even a manual toggle would be unsafe or unwanted.                                                                                                                                                            |
 | `consumers.pi.directTools`     | bool or list of strings                         | follows `consumers.opencode.enabled` | `true` promotes all tools from that server into Pi's first-class tool list. `false` keeps the server proxy-only through the adapter's `mcp` tool. A list promotes only the named original MCP tools. Disabled Pi servers force this to `false`. |
 | `consumers.zed.enabled`        | bool                                            | `true`                               | Mirrors OpenCode. When `false`, the server is **still emitted** with `enabled = false` so Zed's agent panel can toggle it at runtime. Works for stdio, HTTP, and extension-mode servers.                                                        |
-| `consumers.zed.mode`           | `"context_server"` \| `"extension"` \| `"skip"` | `"context_server"`                   | How Zed installs the server. `"extension"` requires `consumers.zed.id` to name the marketplace slug. `"skip"` excludes Zed entirely.                                                                                                            |
+| `consumers.zed.mode`           | `"context_server"` \| `"extension"`            | `"context_server"`                   | How Zed installs the server. `"extension"` requires `consumers.zed.id` to name the marketplace slug.                                                                                                                                            |
 | `consumers.zed.id`             | string                                          | -                                    | Required when `mode = "extension"`.                                                                                                                                                                                                             |
 
 ### Global vs per-consumer disable
@@ -81,7 +80,7 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Five globally active servers, two conditional servers, and three disabled placeholders.
+Five globally active servers and two conditional servers.
 
 | Server         | Transport | Auth   | Purpose                                                                                                |
 | -------------- | --------- | ------ | ------------------------------------------------------------------------------------------------------ |
@@ -92,9 +91,6 @@ Five globally active servers, two conditional servers, and three disabled placeh
 | `playwright`   | stdio     | -      | Conditional; browser automation via Playwright MCP; disabled by default where per-server toggles exist |
 | `slack`        | HTTP      | OAuth  | Conditional on the `workspace` tag; official Slack hosted server; active only for Claude Code           |
 | `svelte`       | HTTP      | -      | Svelte documentation and playground                                                                    |
-| `firecrawl`    | HTTP      | -      | Disabled (`enabled = false`); web scraping and crawling                                                |
-| `jina`         | HTTP      | bearer | Disabled; web reading and screenshots                                                                  |
-| `mcpGoogleCse` | stdio     | env    | Disabled; Google Custom Search Engine                                                                  |
 
 All globally active servers are remote HTTP. `slack` and `playwright` are conditional additions; `slack` is remote HTTP, while `playwright` runs as a local binary.
 
@@ -158,14 +154,6 @@ The official Svelte MCP server, maintained by the Svelte team. Provides document
 
 Disabled by default in OpenCode and Pi via per-consumer `enabled = false`. Zed installs it through the `svelte-mcp` extension rather than as a context server.
 
-### Disabled servers
-
-These three carry `enabled = false` at the top level. They stay declared so re-enabling one is a single edit (flip `enabled` to `true`) without rediscovering URLs or schemas.
-
-- **firecrawl** - web scraping and crawling. Disabled because Exa covers the primary use case. Note that firecrawl embeds the API key in the URL path, which doesn't fit the `auth.kind = "bearer"` model; re-enabling will need renderer logic to handle URL-embedded secrets.
-- **jina** - web reading and screenshots. Disabled because Exa covers search and URL content extraction.
-- **mcpGoogleCse** - Google Custom Search Engine. Disabled because Exa's semantic search covers the same need with better results for technical queries.
-
 ---
 
 ## Platform delivery
@@ -186,7 +174,7 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 
 - **Claude Code** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
 - **Pi Agent** - per-server `enabled = false` keeps a server visible in Pi's MCP TUI but disabled by default. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference, but disabled Pi servers force `directTools = false`. Globally disabled servers and `consumers.pi.omit = true` servers are omitted. Playwright is still omitted entirely unless the shared browser automation policy enables both Chromium and Firefox.
-- **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits keys Codex accepts: `url`, `bearer_token_env_var`, `command`, `args`, `env`, and `enabled`. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Every entry carries an `enabled` field (default `true`); flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
+- **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits keys Codex accepts: `url`, `bearer_token_env_var`, `command`, `args`, and `enabled`. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Every entry carries an `enabled` field (default `true`); flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
 - **OpenCode** - bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
 - **Zed** - HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.
 
@@ -198,7 +186,7 @@ Enabled clients drive `sops.secrets` and the shell init exports.
 
 ### `requiredSecretsForConsumers` (derived)
 
-Computed from the `auth.envVar` and `env` values needed by the enabled consumers. Today this resolves to `["CONTEXT7_API_KEY", "LINEAR_API_KEY"]` for clients that consume context7 and Linear. Disabled servers do not contribute, so flipping a server's global `enabled` flag automatically adds or removes its secrets from this list.
+Computed from the `auth.envVar` values needed by the enabled consumers. Today this resolves to `["CONTEXT7_API_KEY", "LINEAR_API_KEY"]` for clients that consume context7 and Linear. Disabled servers do not contribute, so flipping a server's global `enabled` flag automatically adds or removes its secrets from this list.
 
 Per-consumer hard omissions gate inclusion for that consumer. Toggleable disabled entries still count for clients that render them as visible but disabled.
 
@@ -275,7 +263,7 @@ my-server = {
 
 ### If the server needs a secret
 
-The renderer reads the secret from `auth.envVar` or `env` values, but the secret itself still needs to exist in sops:
+The renderer reads the secret from `auth.envVar`, but the secret itself still needs to exist in sops:
 
 1. Add the key to `secrets/mcp.yaml` via `sops secrets/mcp.yaml`
 2. `requiredSecretsForConsumers` picks it up automatically; no changes to `mcp/default.nix` are needed

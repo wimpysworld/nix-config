@@ -73,7 +73,6 @@ rec {
   #                { clientId = "..."; callbackPort = <int>; }. Emitted only
   #                into Claude Code's config; other consumers have no config
   #                field for a pre-set client id.
-  #   env        - optional, stdio env passthrough; values are env var names
   #   startupTimeoutSec
   #              - optional, integer seconds; rendered into Codex's
   #                `startup_timeout_sec` to bound how long the leader waits for
@@ -115,7 +114,7 @@ rec {
   #                                     `false` keeps the entry visible in
   #                                     Zed's agent panel with `enabled = false`
   #                                     so the user can toggle at runtime.
-  #                  zed.mode           "context_server" | "extension" | "skip"
+  #                  zed.mode           "context_server" | "extension"
   #                  zed.id             extension id when mode = "extension"
   servers = {
     cloudflare = {
@@ -263,57 +262,6 @@ rec {
         };
       };
     };
-
-    # Disabled servers retained as real entries with `enabled = false`. This
-    # gives a single off-switch (flip `enabled = true` to re-enable) and keeps
-    # them visible to the renderers and `requiredSecrets` derivation. The
-    # commented blocks in `mcpServers` and `opencodeServers` above are the
-    # legacy form and remain untouched while phase 1 is in flight.
-
-    # Firecrawl embeds the API key in the URL path rather than supplying it
-    # via a header. This does not fit `auth.kind = "bearer"`, so the URL
-    # carries a literal `config.sops.placeholder` interpolation and the entry
-    # has no `auth` attribute. Re-enabling firecrawl will require renderer
-    # logic to translate the interpolated URL into OpenCode's `{env:VAR}`
-    # syntax (see today's commented block in `opencodeServers`).
-    firecrawl = {
-      enabled = false;
-      transport = "http";
-      url = "https://mcp.firecrawl.dev/${config.sops.placeholder.FIRECRAWL_API_KEY}/v2/mcp";
-      consumers = {
-        zed.mode = "skip";
-      };
-    };
-
-    jina = {
-      enabled = false;
-      transport = "http";
-      url = "https://mcp.jina.ai/v1?exclude_tools=deduplicate_strings,expand_query,parallel_search_arxiv,parallel_search_ssrn,parallel_search_web,show_api_key,search_arxiv,search_jina_blog,search_ssrn,search_web";
-      auth = {
-        kind = "bearer";
-        envVar = "JINA_API_KEY";
-      };
-      consumers = {
-        zed.mode = "skip";
-      };
-    };
-
-    # `env` attribute names are the env vars the spawned process sees; values
-    # name the sops secret to inject. The `requiredSecrets` derivation in
-    # task 1.6 will read these values.
-    mcpGoogleCse = {
-      enabled = false;
-      transport = "stdio";
-      command = "${pkgs.uv}/bin/uvx";
-      args = [ "mcp-google-cse" ];
-      env = {
-        API_KEY = "GOOGLE_CSE_API_KEY";
-        ENGINE_ID = "GOOGLE_CSE_ENGINE_ID";
-      };
-      consumers = {
-        zed.mode = "skip";
-      };
-    };
   };
 
   # ---------------------------------------------------------------------------
@@ -325,8 +273,7 @@ rec {
   # these renderer outputs directly.
   #
   # Filter rules (shared except where noted):
-  #   * Skip servers with global `enabled = false` (firecrawl, jina,
-  #     mcpGoogleCse today).
+  #   * Skip servers with global `enabled = false`.
   #   * For Claude Code, skip servers where `consumers.claudeCode.enabled`
   #     is explicitly false (default true).
   #   * Codex, OpenCode, and Zed share the emit-with-disabled pattern when a
@@ -360,20 +307,15 @@ rec {
             type = "stdio";
             inherit (s) command;
           }
-          // lib.optionalAttrs ((s.args or [ ]) != [ ]) { inherit (s) args; }
-          // lib.optionalAttrs ((s.env or { }) != { }) {
-            # Translate canonical `env.KEY = "SECRET_NAME"` into the
-            # placeholder interpolation Claude Code reads at activation time.
-            env = lib.mapAttrs (_: secretName: config.sops.placeholder.${secretName}) s.env;
-          };
+          // lib.optionalAttrs ((s.args or [ ]) != [ ]) { inherit (s) args; };
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
   # codexServers: Codex's `config.toml` `[mcp_servers.<name>]` tables.
   # Codex's `RawMcpServerConfig` enforces `deny_unknown_fields`, so the
   # renderer must never emit fields outside its accepted set. The fields
-  # we use here are: `url`, `bearer_token_env_var`, `command`, `args`,
-  # `env`, and `enabled` - all defined on `RawMcpServerConfig`.
+  # we use here are: `url`, `bearer_token_env_var`, `command`, `args`, and
+  # `enabled` - all defined on `RawMcpServerConfig`.
   #
   # Per-consumer disable mirrors OpenCode and Zed: `consumers.codex.enabled
   # = false` keeps the entry in the rendered `[mcp_servers.<name>]` table
@@ -408,11 +350,6 @@ rec {
             startup_timeout_sec = s.startupTimeoutSec;
           }
         else
-          # Codex's config.toml env table holds static literals with no secret
-          # resolution, so the canonical `env` (values are sops secret names) is
-          # NOT emitted here. Codex's MCP child inherits the real token from the
-          # sops-exported shell environment (see mcp/default.nix shellInit), the
-          # same path the user's interactive shell uses.
           {
             inherit enabled;
             inherit (s) command;
@@ -460,9 +397,6 @@ rec {
             # Canonical schema stores `command` as a string and `args` as a
             # list; OpenCode wants them concatenated into a single argv list.
             command = [ s.command ] ++ (s.args or [ ]);
-          }
-          // lib.optionalAttrs ((s.env or { }) != { }) {
-            environment = lib.mapAttrs (_: secretName: "{env:${secretName}}") s.env;
           };
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
@@ -514,10 +448,7 @@ rec {
             inherit (s) command;
             args = s.args or [ ];
           }
-          // common
-          // lib.optionalAttrs ((s.env or { }) != { }) {
-            env = lib.mapAttrs (_: secretName: config.sops.placeholder.${secretName}) s.env;
-          };
+          // common;
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
@@ -618,7 +549,7 @@ rec {
           else if consumer == "pi" then
             !(s.consumers.pi.omit or false)
           else if consumer == "zed" then
-            (s.consumers.zed.mode or "context_server") != "skip"
+            true
           else
             false
         );
@@ -628,9 +559,8 @@ rec {
       authSecrets = lib.mapAttrsToList (
         _: s: if (s.auth or null) != null && s.auth.kind or null == "bearer" then [ s.auth.envVar ] else [ ]
       ) keptServers;
-      envSecrets = lib.mapAttrsToList (_: s: lib.attrValues (s.env or { })) keptServers;
     in
-    lib.sort lib.lessThan (lib.unique (lib.flatten (authSecrets ++ envSecrets)));
+    lib.sort lib.lessThan (lib.unique (lib.flatten authSecrets));
 
   # Full legacy set for callers that do not have an enabled-client context.
   requiredSecrets = requiredSecretsForConsumers [

@@ -73,8 +73,6 @@ Configured servers:
 
 `playwright` is emitted only when both Chromium and Firefox are enabled under the shared browser automation policy.
 
-`jina` is intentionally not wired here. It requires `JINA_API_KEY`, and Codex startup should not warn about an MCP server that is not explicitly enabled.
-
 ## Skills
 
 Skills inject instructions into the active conversation. Type `$` in the composer to open the picker, or type `$skill-name` directly.

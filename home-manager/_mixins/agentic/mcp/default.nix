@@ -109,7 +109,7 @@ in
   # the on-disk file. Home Manager merges with `jq '$dynamic * $static'`,
   # which is a deep merge: top-level keys on disk that the Nix config no
   # longer emits are kept forever. For `context_servers` specifically that
-  # leaks removed or globally-disabled servers (e.g. `jina`) into Zed.
+  # leaks removed or globally-disabled servers into Zed.
   #
   # The renderer is the source of truth, so anything not in
   # `zedManagedContextServers` gets dropped. Other top-level settings keys
