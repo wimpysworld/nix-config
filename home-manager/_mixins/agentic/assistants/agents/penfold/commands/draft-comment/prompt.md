@@ -6,24 +6,17 @@ Target argument: $ARGUMENTS. This is the thread URL, optionally followed by the 
 
 The thread URL may be a GitHub issue, pull request, or review comment; a Linear issue or comment; or a Slack message or thread.
 
-### Forbidden Commands
+### Read-only boundary
 
-These bans govern this drafting step. They do not restrict the command that invoked it.
+This command reads context and drafts text. It never posts or mutates a provider. `post-comment` is the write path for this flow.
 
-NEVER execute while drafting:
-
-- `gh issue comment` / `gh pr comment` / `gh pr review` - this step produces the comment, the caller posts it
-- `gh-review-reply` - allowed under Fence, but it posts; this step produces the comment, the caller posts it
-- Raw `gh api` - denied outright; use `gh-api-safe` for raw reads
-- The Linear `save_comment` tool - this step produces the comment, the caller saves it
-- The Slack message-sending tools - this step produces the comment, the caller sends it
-- Any command that closes, merges, locks, or otherwise changes thread state
+For GitHub thread and context retrieval, follow the global GitHub read rule: prefer dedicated `gh` reads, then `gh-api-safe`; otherwise use only documented, clearly read-only GitHub MCP operations. Never use a GitHub MCP mutation or a tool whose effect is unclear. Never call Linear or Slack write tools while drafting.
 
 ### Process
 
 1. Invoke `less` to reload the Communication Rules before drafting. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the rules restated below instead
 2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
-3. Read the thread before writing. Use dedicated `gh` subcommands for GitHub; raw `gh api` is denied, so use `gh-api-safe` for raw reads. Use the Linear MCP tools for Linear and the Slack MCP tools for Slack. Read enough of the thread to answer what was actually asked, including what others already said, so the comment does not repeat a point someone has made
+3. Read the thread before writing. Apply the read-only boundary above for GitHub, use Linear MCP reads for Linear, and use Slack reads for Slack. Read enough of the thread to answer what was asked, including what others already said, so the comment does not repeat an existing point
 4. Draft one comment and output it in a single fenced markdown block. This block is the deliverable and must reach the caller unchanged
 
 The comment answers the question asked and nothing adjacent. If the honest answer is one sentence, the comment is one sentence.

@@ -8,7 +8,7 @@ user-invocable: true
 
 Run a substantive review of a change and write a findings report. The caller supplies the review target, the lens, the severity bar, and the report name. This skill supplies the method.
 
-Never mutate GitHub: no comments, approvals, reviews, or merges. Posting is a separate step.
+Keep GitHub access read-only. For PR metadata, diffs, comments, reviews, threads, and status, follow the global GitHub read rule: prefer dedicated `gh` reads, then `gh-api-safe`; otherwise use only documented, clearly read-only GitHub MCP operations. Never use a GitHub MCP mutation or a tool whose effect is unclear. Posting is a separate step.
 
 ### Input Resolution
 
@@ -16,14 +16,12 @@ Resolve the target to a diff before anything else:
 
 | Input | Reviewed diff |
 | --- | --- |
-| PR URL or number | `gh pr diff`, and `gh pr view` for description and context |
+| PR URL or number | GitHub read path: diff plus description, metadata, comments, reviews, and status |
 | Branch name | merge-base with the default branch, to the branch tip |
 | The default branch itself | `origin/main..main`, the unpushed commits; if there are none, stop and ask what to review |
 | Worktree path | staged and unstaged changes against HEAD |
 | Commit SHA | that commit alone |
 | No argument | the current worktree's changes |
-
-Use dedicated `gh` subcommands. Raw `gh api` is denied; use `gh-api-safe` for raw API reads.
 
 Record the head commit SHA reviewed. Keep it internal: it is a guard for `post-code-review` and never appears in a review comment.
 
@@ -68,7 +66,7 @@ Each sub-agent's delegation packet must instruct it to:
 - Return its findings in its final reply. The reply is the deliverable: a reply that does not contain the findings is a failed task, whatever else it did. Each finding carries `file:line` references, severity, and why it matters.
 - Reply "my area is clean" when it is. That is a complete, valid reply and still has to be sent.
 - Copy the findings to the file its packet names as a fallback, never as the primary channel. Where the Write tool is refused, a shell heredoc writes the file instead. Never retry or fight a refused write, and never let a blocked write stop the reply.
-- Never mutate GitHub: no comments, approvals, or merges.
+- Keep GitHub access read-only. Never use GitHub MCP mutations.
 
 ### Adversarial pressure-test
 

@@ -6,6 +6,8 @@ Deeply research a task, everything it links to, and related work across Linear, 
 
 Input: $ARGUMENTS. The first token names the task: a Linear issue key or URL, a GitHub issue or PR URL or `owner/repo#123` shorthand, or a path to a local markdown task file. Any text after the first token is extra context from the user. If $ARGUMENTS is blank, ask which task to research before starting.
 
+Keep every source read-only. For GitHub issue, PR, code, comment, review, and status reads or searches, follow the global GitHub rule: prefer dedicated `gh` reads and searches, then `gh-api-safe`; otherwise use only documented, clearly read-only GitHub MCP operations. Never use a GitHub MCP mutation or a tool whose effect is unclear.
+
 ### Process
 
 **1. Anchor**
@@ -15,7 +17,7 @@ Detect the input type from the first token and read the target:
 | Input | How to read it |
 |-------|----------------|
 | Linear issue key or URL | Linear MCP |
-| GitHub issue or PR URL, or `owner/repo#123` | `gh issue view` or `gh pr view`; `gh-api-safe` for raw REST and GraphQL reads. Never raw `gh api` |
+| GitHub issue or PR URL, or `owner/repo#123` | Read through the provider-neutral GitHub path, including linked context and status |
 | Path to a local markdown task file | Read the file and derive search terms from its content |
 
 Extract the problem statement, acceptance criteria, and every embedded or linked source: other Linear issues, GitHub PRs and issues, Slack links, arbitrary URLs, and attachments. A task written by `create-task` carries these under `Outcome`, `Problem`, `Context`, `Scope`, `Requirements`, `Acceptance criteria`, `Validation`, `Non-goals`, `Dependencies`, and `Evidence`.
@@ -27,11 +29,11 @@ Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by s
 | Source | Tool |
 |--------|------|
 | Linked Linear issues | Linear MCP |
-| GitHub PRs and issues | `gh` subcommands; `gh-api-safe` for raw reads |
+| GitHub PRs, issues, code, and status | Provider-neutral GitHub reads and searches |
 | Linked Slack threads | Slack tooling |
 | General URLs, web context | `mcp__exa__web_fetch_exa`, `mcp__exa__web_search_exa` |
 | Linear topic search | Linear MCP - search other issues on the same domain, feature, or problem, not only linked ones |
-| GitHub topic search | `gh search issues`, `gh search prs`, `gh search code` - related work the target does not link |
+| GitHub topic search | Search issues, PRs, code, and status for related work the target does not link |
 | Slack topic search | Slack tooling - search recent conversations on the same topic, not only linked threads |
 | Counts, rates, trends | BigQuery, when a client is available - a CLI, an MCP server, or an existing export |
 

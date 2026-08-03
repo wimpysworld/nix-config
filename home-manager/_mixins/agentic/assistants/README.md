@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 64 commands, seventeen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 64 commands, nineteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
 
@@ -302,7 +302,6 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `review-task`               | Judge whether a task is ready to implement, and what must change first  |
 | `create-project`            | Find or create one Linear project, and stop                             |
 | `draft-project-description` | Write a Linear project description in the form the quality coach scores |
-| `how-to-contribute`         | Assess a project's contribution rules before contributing               |
 | `draft-comment`             | Draft a GitHub, Linear, or Slack comment in the user's own voice        |
 | `post-comment`              | Post the agreed comment to GitHub, Linear, or Slack                     |
 | `draft-issue`               | Draft a GitHub issue after checking policy and duplicates               |
@@ -461,6 +460,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | Skill                | Loaded by                 | Purpose                                                                                                           |
 | -------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `delegate-task`      | Coordinator or user       | Generated routing, packet, response contract, relay policy                                                        |
+| `agentic-repo-capability` | Rosey or user             | Add a repository-local MCP server, skill, or command across supported agent clients                               |
 | `writing-well`       | Casper, Velma             | Composition principles and the AI writing-pattern catalogue                                                       |
 | `write-skill`        | Rosey or user             | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure            |
 | `write-agents-md`    | Rosey or user             | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files                     |
@@ -472,6 +472,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `love`               | Donatello                 | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                                    |
 | `audio-metrics`      | Penfold or user           | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |
 | `self-review`        | Penfold or user           | Structure and checklist for a periodic self-review                                                                |
+| `how-to-contribute`  | Penfold or user           | Assess a project's contribution rules before an issue or pull request                                             |
 
 **User-invocable support skills:**
 
