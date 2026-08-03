@@ -1,6 +1,6 @@
 # MCP Servers
 
-Five globally active MCP servers provide AI agents with current reference material. Playwright is emitted only on browser-automation systems. Slack is emitted only on hosts tagged `workspace`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Seven unconditional MCP servers provide reference material and agent delegation. Playwright is emitted only on browser-automation systems. Slack is emitted only on hosts tagged `workspace`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. Playwright is local browser automation for agent-driven page inspection and only appears when both Chromium and Firefox are enabled under the shared browser automation policy. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -49,6 +49,7 @@ Each entry in `servers` carries the following fields. Only `transport` is mandat
 | `args`      | list of strings       | no       | Stdio only. Defaults to `[]`.                                                                             |
 | `auth`      | attrset               | no       | Currently only `{ kind = "bearer"; envVar = "..."; }`. The `envVar` value is a sops secret name.          |
 | `oauth`     | attrset               | http     | Pre-registered OAuth client `{ clientId = "..."; callbackPort = <int>; }` for servers without dynamic client registration. Emitted only into Claude Code's config. |
+| `startupTimeoutSec` | integer          | no       | Codex startup timeout in seconds.                                                                         |
 | `consumers` | attrset               | no       | Per-consumer overrides; see below.                                                                        |
 
 ### Per-consumer overrides
@@ -57,6 +58,7 @@ Each entry in `servers` carries the following fields. Only `transport` is mandat
 | ------------------------------ | ----------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `consumers.claudeCode.enabled` | bool                                            | `true`                               | When `false`, the server is omitted from Claude Code output.                                                                                                                                                                                    |
 | `consumers.codex.enabled`      | bool                                            | `true`                               | Mirrors OpenCode. When `false`, the server is **still emitted** with `enabled = false` so `codex mcp list` continues to show it, but Codex skips initialising the server.                                                                       |
+| `consumers.codex.defaultToolsApprovalMode` | `"auto"` \| `"prompt"` \| `"approve"` | `"approve"`                         | Controls Codex's default approval policy for the server's tools.                                                                                                                                                                               |
 | `consumers.opencode.enabled`   | bool                                            | `true`                               | When `false`, the server is **still emitted** with `enabled = false` so the OpenCode TUI can toggle it at runtime.                                                                                                                              |
 | `consumers.pi.enabled`         | bool                                            | `true`                               | Mirrors OpenCode. When `false`, the server is **still emitted** with `enabled = false` so Pi's MCP TUI can toggle it at runtime.                                                                                                                |
 | `consumers.pi.omit`            | bool                                            | `false`                              | Hard-omits the server from Pi when even a manual toggle would be unsafe or unwanted.                                                                                                                                                            |
@@ -80,23 +82,35 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Five globally active servers and two conditional servers.
+Seven unconditional servers and two conditional servers. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
 
-| Server         | Transport | Auth   | Purpose                                                                                                |
-| -------------- | --------- | ------ | ------------------------------------------------------------------------------------------------------ |
-| `context7`     | HTTP      | bearer | Live library documentation from official sources                                                       |
-| `exa`          | HTTP      | -      | Neural web search and URL content extraction                                                           |
-| `cloudflare`   | HTTP      | -      | Cloudflare product documentation                                                                       |
-| `linear`       | HTTP      | bearer | Linear issues, projects, and comments; active in all five clients            |
-| `playwright`   | stdio     | -      | Conditional; browser automation via Playwright MCP; disabled by default where per-server toggles exist |
-| `slack`        | HTTP      | OAuth  | Conditional on the `workspace` tag; official Slack hosted server; active only for Claude Code           |
-| `svelte`       | HTTP      | -      | Svelte documentation and playground                                                                    |
+| Server       | Transport | Auth   | Claude Code | Codex | OpenCode | Pi      | Zed       | Purpose                                      |
+| ------------ | --------- | ------ | ----------- | ----- | -------- | ------- | --------- | -------------------------------------------- |
+| `claude`     | stdio     | login  | Omitted     | On    | Off      | Omitted | Off       | Claude Code tools and agent delegation       |
+| `cloudflare` | HTTP      | -      | Omitted     | Off   | Off      | Off     | On        | Cloudflare product documentation             |
+| `codex`      | stdio     | login  | On          | Off   | Off      | Omitted | Off       | Codex tools and agent delegation              |
+| `context7`   | HTTP      | bearer | On          | On    | On       | On      | Extension | Live library documentation                   |
+| `exa`        | HTTP      | -      | On          | On    | On       | On      | On        | Web search and URL content extraction        |
+| `linear`     | HTTP      | bearer | On          | On    | On       | On      | On        | Linear issues, projects, and comments        |
+| `playwright` | stdio     | -      | Omitted     | Off   | Off      | Off     | On        | Conditional browser automation               |
+| `slack`      | HTTP      | OAuth  | On          | Off   | Off      | Omitted | Off       | Conditional workspace Slack access           |
+| `svelte`     | HTTP      | -      | Omitted     | Off   | Off      | Off     | Extension | Svelte documentation and playground          |
 
-All globally active servers are remote HTTP. `slack` and `playwright` are conditional additions; `slack` is remote HTTP, while `playwright` runs as a local binary.
+`claude`, `codex`, and `playwright` run as local binaries. The other unconditional servers use remote HTTP. `slack` and `playwright` are conditional additions.
 
 NixOS MCP is project-owned rather than part of this Home Manager registry. Projects that use it provide the package in their development shell and define their own client configuration.
 
 ### Active servers
+
+#### claude
+
+The Claude MCP runs `claude --strict-mcp-config mcp serve` from the direct `pkgs.claude-code` package. It does not use the interactive Claude wrapper. The strict MCP flag prevents the child Claude process from loading configured MCP servers.
+
+Only Codex enables this server. Claude Code omits it to prevent recursive Claude calls. OpenCode and Zed keep disabled entries, while Pi omits it. Codex uses `default_tools_approval_mode = "prompt"`, so every Claude MCP tool call requires approval.
+
+The raw server currently exposes 25 tools, including `Agent`. Claude Code does not provide a server-side tool allowlist for this mode, so the registry cannot expose only `Agent`.
+
+The server uses Claude Code's existing authentication and normal account quota. It adds no repository secret or separate quota. Calls fail when the local login is unavailable or its usage limit is exhausted.
 
 #### context7
 
@@ -174,7 +188,7 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 
 - **Claude Code** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
 - **Pi Agent** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time. Per-server `enabled = false` keeps a server visible in Pi's MCP TUI but disabled by default. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference, but disabled Pi servers force `directTools = false`. Globally disabled servers and `consumers.pi.omit = true` servers are omitted. Playwright is still omitted entirely unless the shared browser automation policy enables both Chromium and Firefox.
-- **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits keys Codex accepts: `url`, `bearer_token_env_var`, `command`, `args`, and `enabled`. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Every entry carries an `enabled` field (default `true`); flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
+- **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits accepted keys. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Every entry carries `enabled` and `default_tools_approval_mode`; `startup_timeout_sec` is emitted when configured. Flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
 - **OpenCode** - bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
 - **Zed** - HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Bearer auth adds `--header "Authorization: Bearer ${<envVar>}"`; `mcp-remote` resolves the environment reference at process start. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.
 

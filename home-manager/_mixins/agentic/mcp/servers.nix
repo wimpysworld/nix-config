@@ -117,6 +117,32 @@ rec {
   #                  zed.mode           "context_server" | "extension"
   #                  zed.id             extension id when mode = "extension"
   servers = {
+    claude = {
+      transport = "stdio";
+      command = lib.getExe pkgs.claude-code;
+      args = [
+        "--strict-mcp-config"
+        "mcp"
+        "serve"
+      ];
+      startupTimeoutSec = 10;
+      consumers = {
+        # Claude's native MCP exposes an agent-calling-agent surface. Keep it
+        # available only to Codex and avoid recursive Claude MCP exposure.
+        claudeCode.enabled = false;
+        codex = {
+          enabled = true;
+          defaultToolsApprovalMode = "prompt";
+        };
+        opencode.enabled = false;
+        pi = {
+          enabled = false;
+          omit = true;
+        };
+        zed.enabled = false;
+      };
+    };
+
     cloudflare = {
       transport = "http";
       url = "https://docs.mcp.cloudflare.com/mcp";
@@ -307,8 +333,9 @@ rec {
   # codexServers: Codex's `config.toml` `[mcp_servers.<name>]` tables.
   # Codex's `RawMcpServerConfig` enforces `deny_unknown_fields`, so the
   # renderer must never emit fields outside its accepted set. The fields
-  # we use here are: `url`, `bearer_token_env_var`, `command`, `args`, and
-  # `enabled` - all defined on `RawMcpServerConfig`.
+  # we use here are: `url`, `bearer_token_env_var`, `command`, `args`,
+  # `enabled`, `default_tools_approval_mode`, and `startup_timeout_sec` - all
+  # defined on `RawMcpServerConfig`.
   #
   # Per-consumer disable mirrors OpenCode and Zed: `consumers.codex.enabled
   # = false` keeps the entry in the rendered `[mcp_servers.<name>]` table
