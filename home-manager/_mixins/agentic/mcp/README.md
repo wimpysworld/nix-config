@@ -87,7 +87,7 @@ Five globally active servers and two conditional servers.
 | `context7`     | HTTP      | bearer | Live library documentation from official sources                                                       |
 | `exa`          | HTTP      | -      | Neural web search and URL content extraction                                                           |
 | `cloudflare`   | HTTP      | -      | Cloudflare product documentation                                                                       |
-| `linear`       | HTTP      | bearer | Linear issues, projects, and comments; active only for Claude Code and Codex |
+| `linear`       | HTTP      | bearer | Linear issues, projects, and comments; active in all five clients            |
 | `playwright`   | stdio     | -      | Conditional; browser automation via Playwright MCP; disabled by default where per-server toggles exist |
 | `slack`        | HTTP      | OAuth  | Conditional on the `workspace` tag; official Slack hosted server; active only for Claude Code           |
 | `svelte`       | HTTP      | -      | Svelte documentation and playground                                                                    |
@@ -130,7 +130,7 @@ Disabled by default in OpenCode and Pi via per-consumer `enabled = false` becaus
 
 Linear's official hosted MCP server. It uses Streamable HTTP at `https://mcp.linear.app/mcp` with `LINEAR_API_KEY` bearer authentication. Manual OAuth login is not required.
 
-Linear's MCP tools can read and mutate issues, projects, and comments. The server is emitted on every host with MCP clients. It is active only for Claude Code and Codex. OpenCode receives a disabled entry, Pi omits the server, and Zed receives a disabled context-server entry. Codex also sets `default_tools_approval_mode = "prompt"` for Linear so tool calls require review instead of inheriting the unattended default.
+Linear's MCP tools can read and mutate issues, projects, and comments. The server is active in Claude Code, Codex, OpenCode, Pi, and Zed on every host with those clients. Codex also sets `default_tools_approval_mode = "prompt"` for Linear so tool calls require review instead of inheriting the unattended default.
 
 `LINEAR_API_KEY` reads from `secrets/linear.yaml`. Hosts tagged `workspace` select the `chainguard` key. Other hosts select `wimpysworld`. The existing fish and bash secret exports expose the selected value to coding-agent clients.
 
@@ -173,10 +173,10 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 ### Platform-specific formats
 
 - **Claude Code** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
-- **Pi Agent** - per-server `enabled = false` keeps a server visible in Pi's MCP TUI but disabled by default. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference, but disabled Pi servers force `directTools = false`. Globally disabled servers and `consumers.pi.omit = true` servers are omitted. Playwright is still omitted entirely unless the shared browser automation policy enables both Chromium and Firefox.
+- **Pi Agent** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time. Per-server `enabled = false` keeps a server visible in Pi's MCP TUI but disabled by default. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference, but disabled Pi servers force `directTools = false`. Globally disabled servers and `consumers.pi.omit = true` servers are omitted. Playwright is still omitted entirely unless the shared browser automation policy enables both Chromium and Firefox.
 - **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits keys Codex accepts: `url`, `bearer_token_env_var`, `command`, `args`, and `enabled`. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Every entry carries an `enabled` field (default `true`); flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
 - **OpenCode** - bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
-- **Zed** - HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.
+- **Zed** - HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Bearer auth adds `--header "Authorization: Bearer ${<envVar>}"`; `mcp-remote` resolves the environment reference at process start. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.
 
 ---
 
@@ -199,8 +199,10 @@ The union (`allSecrets`) drives both `sops.secrets = lib.genAttrs allSecrets ...
 ### How secrets reach each platform
 
 - **Claude Code** - `config.sops.placeholder.*` injects the decrypted value directly into the generated JSON at Home Manager activation. No environment variable is read at runtime.
+- **Pi Agent** - `config.sops.placeholder.*` injects the decrypted value directly into the generated JSON at Home Manager activation.
 - **Codex** - `bearer_token_env_var = "<NAME>"` tells Codex which env var to read at process start.
 - **OpenCode** - `{env:<NAME>}` placeholder resolved at process start from the shell environment.
+- **Zed** - `mcp-remote` resolves `${<NAME>}` in its bearer header from the process environment.
 - **Shell** - fish `shellInit` and bash `initExtra` export each secret by reading its sops-managed path. This makes the env vars available to OpenCode, Codex, and any other tool launched from a shell.
 
 Edit shared secrets with `sops secrets/mcp.yaml` and Linear keys with `sops secrets/linear.yaml`. Re-activate with `just home` after changes.

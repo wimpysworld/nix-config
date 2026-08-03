@@ -206,16 +206,9 @@ rec {
         envVar = "LINEAR_API_KEY";
       };
       consumers = {
-        # Linear exposes issue/project/comment reads and mutations. Keep it
-        # active only in the requested clients, and make Codex ask before tool
-        # calls rather than inheriting the unattended default.
+        # Linear exposes issue/project/comment reads and mutations. Make Codex
+        # ask before tool calls rather than inheriting the unattended default.
         codex.defaultToolsApprovalMode = "prompt";
-        opencode.enabled = false;
-        pi = {
-          enabled = false;
-          omit = true;
-        };
-        zed.enabled = false;
       };
     };
   }
@@ -480,6 +473,10 @@ rec {
               "-y"
               "mcp-remote"
               s.url
+            ]
+            ++ lib.optionals (s.auth or null != null && s.auth.kind == "bearer") [
+              "--header"
+              ("Authorization: Bearer " + "$" + "{${s.auth.envVar}}")
             ];
           }
         else
