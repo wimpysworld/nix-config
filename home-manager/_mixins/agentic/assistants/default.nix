@@ -396,6 +396,18 @@ let
   # it can merge in command-derived skill texts. Project skills only.
   skillContents = lib.mapAttrs (_: skill: skill.content) skills;
 
+  # Native skills take precedence over same-named command-derived Codex
+  # skills. Secret skills are included even though their content is deployed
+  # separately at activation time.
+  codexNativeSkillNames =
+    skillContents // lib.listToAttrs (map (entry: lib.nameValuePair entry.name true) secretSkillList);
+  hasCodexNativeSkill = name: codexNativeSkillNames ? ${name};
+  selectCodexCommands = lib.filterAttrs (name: _: !(hasCodexNativeSkill name));
+  selectPublicCodexCommands = lib.filterAttrs (
+    name: _: !(isSecretCommand name) && !(hasCodexNativeSkill name)
+  );
+  codexSecretCommandList = lib.filter (entry: !(hasCodexNativeSkill entry.cmdName)) secretCommandList;
+
   # Generate home.file entries for Claude Code skills.
   # Symlink the entire skill directory so SKILL.md plus all supporting files
   # and subdirectories (references/, rules/, metadata.json, ...) deploy as
@@ -474,9 +486,9 @@ let
   # spawn dispatch is undesirable (e.g. a command that must inspect the
   # parent thread's context); no command in the tree uses it today.
   # The skill name itself is the bare command name, matching the Pi prompt
-  # convention; the `codexCommandCollisionCheck` below guards against name
-  # clashes across project skills, standalone commands, and agent-scoped
-  # commands.
+  # convention. A same-named native skill suppresses this Codex-only form;
+  # the `codexCommandCollisionCheck` below still guards against clashes among
+  # command-derived skills that remain.
   mkCodexSkillText =
     skillName: agentName: cmdPath:
     let
@@ -554,7 +566,7 @@ let
 
   # Collision guard for the Codex skill namespace. Codex loads every skill
   # from `$CODEX_HOME/skills/<name>/SKILL.md`, so the keyspace is the union
-  # of project skills, standalone commands, and agent-scoped commands.
+  # of native skills and command-derived skills not shadowed by a native one.
   # Project skills have no single source path, so a synthetic `skill:<name>`
   # identifier is used in the throw message to make the origin obvious. Secret
   # skills are absent from `skillContents`, so they are listed separately;
@@ -571,14 +583,14 @@ let
     ++ lib.mapAttrsToList (cmdName: _: {
       name = cmdName;
       source = toString (./commands + "/${cmdName}");
-    }) compose.standaloneCommandDirs
+    }) (selectCodexCommands compose.standaloneCommandDirs)
     ++ lib.concatLists (
       lib.mapAttrsToList (
         agentName: _:
         lib.mapAttrsToList (cmdName: _: {
           name = cmdName;
           source = toString (./agents + "/${agentName}/commands/${cmdName}");
-        }) (compose.discoverAgentCommands agentName)
+        }) (selectCodexCommands (compose.discoverAgentCommands agentName))
       ) codingAgentDirs
     );
   codexCommandCollisionCheck = compose.assertNoCommandCollisions {
@@ -586,11 +598,11 @@ let
     sources = codexCommandSources;
   };
 
-  # Collect all Codex skill name -> content pairs: shared skills + standalone
-  # command skills + agent-scoped command skills. Agent-scoped command skills
-  # now emit under the bare `cmdName` to match the Pi convention; the
-  # `codexCommandCollisionCheck` above guarantees the merge order below does
-  # not silently overwrite anything.
+  # Collect all Codex skill name -> content pairs: native skills plus
+  # non-shadowed standalone and agent-scoped command skills. Agent-scoped
+  # command skills emit under the bare `cmdName` to match the Pi convention;
+  # the collision check guarantees command-derived skills do not silently
+  # overwrite each other.
   codexSkills = builtins.seq codexCommandCollisionCheck (
     skillContents
     // lib.mapAttrs' (
@@ -602,13 +614,11 @@ let
         name = cmdName;
         value = mkCodexSkillText cmdName null cmdPath;
       }
-    ) (lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) compose.standaloneCommandDirs)
+    ) (selectPublicCodexCommands compose.standaloneCommandDirs)
     // lib.foldlAttrs (
       acc: agentName: _:
       let
-        commandDirs = lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) (
-          compose.discoverAgentCommands agentName
-        );
+        commandDirs = selectPublicCodexCommands (compose.discoverAgentCommands agentName);
       in
       acc
       // lib.mapAttrs' (
@@ -626,15 +636,13 @@ let
 
   codexStandaloneCommandOpenAiYamls = lib.filterAttrs (_: yaml: yaml != null) (
     lib.mapAttrs (cmdName: _: mkCodexCommandOpenAiYaml (./commands + "/${cmdName}")) (
-      lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) compose.standaloneCommandDirs
+      selectPublicCodexCommands compose.standaloneCommandDirs
     )
   );
   codexAgentCommandOpenAiYamls = lib.foldlAttrs (
     acc: agentName: _:
     let
-      commandDirs = lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) (
-        compose.discoverAgentCommands agentName
-      );
+      commandDirs = selectPublicCodexCommands (compose.discoverAgentCommands agentName);
       yamls = lib.filterAttrs (_: yaml: yaml != null) (
         lib.mapAttrs (
           cmdName: _: mkCodexCommandOpenAiYaml (./agents + "/${agentName}/commands/${cmdName}")
@@ -772,10 +780,10 @@ let
             else
               echo "sops secret ${entry.info.key} not yet rendered; skipping Codex skill ${cmdName}" >&2
             fi''
-        ) secretCommandList
+        ) codexSecretCommandList
       );
     in
-    lib.optionalString (secretCommandList != [ ]) ''
+    lib.optionalString (codexSecretCommandList != [ ]) ''
       # Compose Codex SKILL.md files for secret commands from decrypted bodies.
       ${cmds}
     '';
@@ -886,7 +894,7 @@ in
       # codexFiles does `rm -rf skills`; these entries write the decrypted
       # bodies from the secret paths instead.
       activation.codexSecretFiles =
-        lib.mkIf (config.programs.codex.enable && (secretCommandList != [ ] || secretSkillList != [ ]))
+        lib.mkIf (config.programs.codex.enable && (codexSecretCommandList != [ ] || secretSkillList != [ ]))
           (
             lib.hm.dag.entryAfter [ "codexFiles" "sops-nix" ] (
               codexSecretSkillsActivationScript + codexSecretProjectSkillsActivationScript

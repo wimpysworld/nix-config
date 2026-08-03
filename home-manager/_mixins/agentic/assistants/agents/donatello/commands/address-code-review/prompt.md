@@ -65,9 +65,9 @@ A reply must be true when the reviewer reads it, so the code lands before the wo
 
 ### Reply
 
-Load the `contribution-voice` skill first. These replies publish under the user's name.
+Load the `draft-comment` skill before writing replies. Apply its drafting rules to each reply body with the review thread context already fetched, then post it with `gh-review-reply <review-comment-url> --body-file <file>`.
 
-Follow `draft-comment` for the body text, then post it with `gh-review-reply <review-comment-url> --body-file <file>`. Do not route through `post-comment`; it confirms with the user before posting, which is right for a human invoking it directly and wrong here. Never post a top-level summary comment.
+Do not route through `post-comment`; it confirms with the user before posting, which is right for direct human invocation and wrong inside this authorised flow. Never post a top-level summary comment.
 
 For a fix, say what changed and name the commit. For a decline, say why in one or two sentences. No apologies, no padding.
 

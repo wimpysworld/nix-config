@@ -302,9 +302,9 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `review-task`               | Judge whether a task is ready to implement, and what must change first  |
 | `create-project`            | Find or create one Linear project, and stop                             |
 | `draft-project-description` | Write a Linear project description in the form the quality coach scores |
-| `draft-comment`             | Draft a GitHub, Linear, or Slack comment in the user's own voice        |
+| `draft-comment`             | Explicitly run the shared read-only comment drafting skill              |
 | `post-comment`              | Post the agreed comment to GitHub, Linear, or Slack                     |
-| `draft-issue`               | Draft a GitHub issue after checking policy and duplicates               |
+| `draft-issue`               | Explicitly run the shared read-only issue drafting skill                |
 | `post-issue`                | Create the agreed issue on GitHub                                       |
 | `weekly-update`             | Write this week's Linear project updates, and point at them in Slack    |
 | `gather-review-data`        | Collect the user's own contribution evidence for a date range           |
@@ -480,6 +480,8 @@ Shared skills provide background knowledge and reference material. Most are sour
 | -------------------- | ------------------------------------------------------------------------- |
 | `contribution-voice` | Structure rules for text published under the user's name in public        |
 | `deep-research`      | Multi-round research on an open question, synthesised into a cited report |
+| `draft-comment`      | Read-only drafting for GitHub, Linear, or Slack comments and replies      |
+| `draft-issue`        | Read-only GitHub issue drafting with policy and duplicate checks          |
 | `gh`                 | GitHub CLI reference - PR creation, issue management, releases            |
 | `review-code`        | Shared review method: input resolution, fan-out, pressure-test, report    |
 | `semgrep`            | Semgrep CLI usage and custom rule creation reference                      |
