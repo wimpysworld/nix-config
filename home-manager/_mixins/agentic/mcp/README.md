@@ -91,7 +91,7 @@ Five unconditional servers and one conditional server. `On` means enabled by def
 | `context7`   | HTTP      | bearer | On          | On    | On       | On      | Extension | Live library documentation                   |
 | `exa`        | HTTP      | -      | On          | On    | On       | On      | On        | Web search and URL content extraction        |
 | `linear`     | HTTP      | bearer | On          | On    | On       | On      | On        | Linear issues, projects, and comments        |
-| `slack`      | HTTP      | OAuth  | On          | Off   | Off      | Omitted | Off       | Conditional workspace Slack access           |
+| `slack`      | HTTP      | OAuth  | On          | On    | On       | On      | Off       | Conditional workspace Slack access           |
 
 `claude` and `codex` run as local binaries. The other unconditional servers use remote HTTP. `slack` is a conditional addition.
 
@@ -141,11 +141,22 @@ Linear's MCP tools can read and mutate issues, projects, and comments. The serve
 
 #### slack
 
-Slack's official hosted MCP server. It uses Streamable HTTP at `https://mcp.slack.com/mcp` with OAuth. Slack has no OAuth dynamic client registration, so the pre-registered public client id `1601185624273.8899143856786` and `callbackPort = 3118` from Anthropic's published Slack app are supplied inline. Claude Code authenticates through a one-time `/mcp` browser sign-in per machine, which routes through Okta SSO; the token lands in the OS keychain, not in this repository.
+Slack's official hosted MCP server. It uses Streamable HTTP at `https://mcp.slack.com/mcp`. Slack rejects dynamic client registration, so each supported client receives the public client id `1601185624273.8899143856786` and callback port `3118` from Slack's Claude connection guide.
 
-The server is emitted only on hosts tagged `workspace`. On those hosts, it is active only for Claude Code, because only Claude Code's JSON MCP schema accepts the `oauth` block. Codex, OpenCode, Pi, and Zed have no config field for a pre-registered client id, so each receives a disabled entry (Pi omits the server) to avoid emitting a broken OAuth server.
+The server exists only on hosts tagged `workspace`. Claude Code, Codex, OpenCode, and Pi enable it. Zed stays disabled.
 
-No Slack secret is declared in this repository; OAuth handles authentication.
+After applying Home Manager, sign in once per client and work computer:
+
+| Client      | Login step                                                                                   |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| Claude Code | Run `claude mcp login slack`.                                                                  |
+| Codex       | Run `codex mcp login slack`.                                                                   |
+| OpenCode    | Run `opencode mcp auth slack`.                                                                  |
+| Pi          | Run `pi`, enter `/mcp`, select `slack`, then press `Ctrl+A` to authenticate.                  |
+
+Each step opens Slack in a browser. Complete the organisation's Okta sign-in and approve the workspace. Claude Code stores credentials in the macOS keychain or its credentials file. Codex's default `auto` MCP OAuth store uses the OS credential store when available and falls back to a local file. OpenCode stores tokens in `~/.local/share/opencode/mcp-auth.json`. Pi stores them in `~/.pi/agent/mcp-oauth/` with mode `0600` on each token file.
+
+No Slack token, environment variable, or secret is declared in this repository.
 
 ---
 
@@ -166,9 +177,9 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 ### Platform-specific formats
 
 - **Claude Code** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
-- **Pi Agent** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time. Per-server `enabled = false` keeps a server visible in Pi's MCP TUI but disabled by default. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference, but disabled Pi servers force `directTools = false`. Globally disabled servers and `consumers.pi.omit = true` servers are omitted.
-- **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits accepted keys. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Every entry carries `enabled` and `default_tools_approval_mode`; `startup_timeout_sec` is emitted when configured. Flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
-- **OpenCode** - bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
+- **Pi Agent** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time. Pre-registered OAuth becomes `oauth.clientId` plus an exact `oauth.redirectUri`. Per-server `enabled = false` keeps a server visible in Pi's MCP TUI but disabled by default. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference, but disabled Pi servers force `directTools = false`. Globally disabled servers and `consumers.pi.omit = true` servers are omitted.
+- **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits accepted keys. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Pre-registered OAuth becomes `oauth.client_id`; work hosts also set the callback port. Every entry carries `enabled` and `default_tools_approval_mode`; `startup_timeout_sec` is emitted when configured. Flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
+- **OpenCode** - bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"` (resolved at process start from the shell environment). Pre-registered OAuth becomes `oauth.clientId` plus an exact `oauth.redirectUri`. Stdio `command` is rendered as a list (canonical `command` plus `args` concatenated).
 - **Zed** - HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Bearer auth adds `--header "Authorization: Bearer ${<envVar>}"`; `mcp-remote` resolves the environment reference at process start. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.
 
 ---

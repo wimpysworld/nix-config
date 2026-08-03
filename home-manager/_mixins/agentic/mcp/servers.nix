@@ -31,9 +31,9 @@ rec {
   #   auth       - optional, currently only { kind = "bearer"; envVar = "..."; }
   #   oauth      - optional, http transport only; pre-registered OAuth client
   #                for servers without dynamic client registration:
-  #                { clientId = "..."; callbackPort = <int>; }. Emitted only
-  #                into Claude Code's config; other consumers have no config
-  #                field for a pre-set client id.
+  #                { clientId = "..."; callbackPort = <int>;
+  #                  redirectUri = "..."; }. Renderers map this to each
+  #                supported client's native schema.
   #   startupTimeoutSec
   #              - optional, integer seconds; rendered into Codex's
   #                `startup_timeout_sec` to bound how long the leader waits for
@@ -171,26 +171,17 @@ rec {
     slack = {
       # Official Slack-hosted MCP server over Streamable HTTP with OAuth.
       # Slack has no OAuth dynamic client registration, so the pre-registered
-      # public client id and callback port from Anthropic's published Slack app
-      # are supplied inline. Sign-in is a one-time interactive `/mcp` browser
-      # flow per machine, which routes through Okta SSO; the token lands in the
-      # OS keychain, not here. Only Claude Code consumes this, because its JSON
-      # MCP schema accepts the `oauth` block. Codex, OpenCode, Pi, and Zed have
-      # no config field for a pre-registered client id, so they stay disabled
-      # to avoid emitting a broken OAuth server.
+      # public client id and callback port from Slack's Claude connection guide
+      # are supplied inline. Claude Code, Codex, OpenCode, and Pi each complete
+      # the browser OAuth flow and store the resulting credentials locally.
       transport = "http";
       url = "https://mcp.slack.com/mcp";
       oauth = {
         clientId = "1601185624273.8899143856786";
         callbackPort = 3118;
+        redirectUri = "http://localhost:3118/callback";
       };
       consumers = {
-        codex.enabled = false;
-        opencode.enabled = false;
-        pi = {
-          enabled = false;
-          omit = true;
-        };
         zed.enabled = false;
       };
     };
@@ -232,7 +223,9 @@ rec {
             };
           }
           // lib.optionalAttrs (s.oauth or null != null) {
-            inherit (s) oauth;
+            oauth = {
+              inherit (s.oauth) clientId callbackPort;
+            };
           }
         else
           {
@@ -247,8 +240,8 @@ rec {
   # Codex's `RawMcpServerConfig` enforces `deny_unknown_fields`, so the
   # renderer must never emit fields outside its accepted set. The fields
   # we use here are: `url`, `bearer_token_env_var`, `command`, `args`,
-  # `enabled`, `default_tools_approval_mode`, and `startup_timeout_sec` - all
-  # defined on `RawMcpServerConfig`.
+  # `enabled`, `default_tools_approval_mode`, `startup_timeout_sec`, and
+  # `oauth.client_id` - all defined on `RawMcpServerConfig`.
   #
   # Per-consumer disable mirrors OpenCode and Zed: `consumers.codex.enabled
   # = false` keeps the entry in the rendered `[mcp_servers.<name>]` table
@@ -278,6 +271,9 @@ rec {
           // common s
           // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
             bearer_token_env_var = s.auth.envVar;
+          }
+          // lib.optionalAttrs (s.oauth or null != null) {
+            oauth.client_id = s.oauth.clientId;
           }
           // lib.optionalAttrs (s ? startupTimeoutSec) {
             startup_timeout_sec = s.startupTimeoutSec;
@@ -321,6 +317,12 @@ rec {
           // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
             headers = {
               Authorization = "Bearer {env:${s.auth.envVar}}";
+            };
+          }
+          // lib.optionalAttrs (s.oauth or null != null) {
+            oauth = {
+              clientId = s.oauth.clientId;
+              inherit (s.oauth) redirectUri;
             };
           }
         else
@@ -375,6 +377,12 @@ rec {
               Authorization = "Bearer ${config.sops.placeholder.${s.auth.envVar}}";
             };
           }
+          // lib.optionalAttrs (s.oauth or null != null) {
+            oauth = {
+              clientId = s.oauth.clientId;
+              inherit (s.oauth) redirectUri;
+            };
+          }
         else
           {
             type = "stdio";
@@ -384,6 +392,9 @@ rec {
           // common;
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
+
+  codexOAuthCallbackPort = if isWorkHost then servers.slack.oauth.callbackPort else null;
+  codexOAuthCallbackUrl = if isWorkHost then servers.slack.oauth.redirectUri else null;
 
   # zedContextServers: entries Zed launches as local context servers, either
   # by spawning the canonical stdio command directly or by wrapping an HTTP
