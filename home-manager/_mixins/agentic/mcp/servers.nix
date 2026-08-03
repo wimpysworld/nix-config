@@ -56,6 +56,8 @@ rec {
   #                                     to "approve" to preserve unattended
   #                                     agent runs unless a server needs a
   #                                     narrower human-review posture.
+  #                  codex.disabledTools list of MCP tool names removed from
+  #                                     Codex's tool list for this server.
   #                  opencode.enabled   (default true)
   #                  pi.enabled         (default true) - mirrors OpenCode:
   #                                     `false` keeps the server visible in
@@ -182,6 +184,14 @@ rec {
         redirectUri = "http://localhost:3118/callback";
       };
       consumers = {
+        # Match Claude Code's Slack policy. Keep read and reaction tools, but
+        # route message writes through the user-attributed `slack-post` helper.
+        codex.disabledTools = [
+          "slack_send_message"
+          "slack_send_message_draft"
+          "slack_schedule_message"
+          "slack_update_canvas"
+        ];
         zed.enabled = false;
       };
     };
@@ -240,8 +250,9 @@ rec {
   # Codex's `RawMcpServerConfig` enforces `deny_unknown_fields`, so the
   # renderer must never emit fields outside its accepted set. The fields
   # we use here are: `url`, `bearer_token_env_var`, `command`, `args`,
-  # `enabled`, `default_tools_approval_mode`, `startup_timeout_sec`, and
-  # `oauth.client_id` - all defined on `RawMcpServerConfig`.
+  # `enabled`, `default_tools_approval_mode`, `disabled_tools`,
+  # `startup_timeout_sec`, and `oauth.client_id` - all defined on
+  # `RawMcpServerConfig`.
   #
   # Per-consumer disable mirrors OpenCode and Zed: `consumers.codex.enabled
   # = false` keeps the entry in the rendered `[mcp_servers.<name>]` table
@@ -255,9 +266,14 @@ rec {
       # servers can tighten this when their tool surface can mutate external
       # state. Codex's `RawMcpServerConfig` accepts `auto`, `prompt`, and
       # `approve`.
-      common = s: {
-        default_tools_approval_mode = s.consumers.codex.defaultToolsApprovalMode or "approve";
-      };
+      common =
+        s:
+        {
+          default_tools_approval_mode = s.consumers.codex.defaultToolsApprovalMode or "approve";
+        }
+        // lib.optionalAttrs ((s.consumers.codex.disabledTools or [ ]) != [ ]) {
+          disabled_tools = s.consumers.codex.disabledTools;
+        };
       render =
         _: s:
         let
