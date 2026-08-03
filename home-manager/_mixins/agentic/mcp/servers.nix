@@ -12,6 +12,12 @@ let
   inherit (pkgs) lib;
   inherit (config.noughty) host;
   isWorkHost = lib.elem "workspace" (host.tags or [ ]);
+  slackWriteTools = [
+    "slack_send_message"
+    "slack_send_message_draft"
+    "slack_schedule_message"
+    "slack_update_canvas"
+  ];
 in
 rec {
   # Canonical MCP server definitions.
@@ -59,6 +65,9 @@ rec {
   #                  codex.disabledTools list of MCP tool names removed from
   #                                     Codex's tool list for this server.
   #                  opencode.enabled   (default true)
+  #                  opencode.disabledTools list of original MCP tool names
+  #                                     denied through OpenCode's native
+  #                                     permission map.
   #                  pi.enabled         (default true) - mirrors OpenCode:
   #                                     `false` keeps the server visible in
   #                                     Pi's MCP TUI with `enabled = false` so
@@ -73,6 +82,9 @@ rec {
   #                                     the server proxy-only through Pi's
   #                                     single `mcp` tool, and a list promotes
   #                                     only the named original MCP tools.
+  #                  pi.excludeTools    list of original MCP tool names hidden
+  #                                     by pi-mcp-adapter from direct tools,
+  #                                     proxy discovery, and its MCP panel.
   #                  zed.enabled        (default true) - mirrors OpenCode:
   #                                     `false` keeps the entry visible in
   #                                     Zed's agent panel with `enabled = false`
@@ -186,12 +198,9 @@ rec {
       consumers = {
         # Match Claude Code's Slack policy. Keep read and reaction tools, but
         # route message writes through the user-attributed `slack-post` helper.
-        codex.disabledTools = [
-          "slack_send_message"
-          "slack_send_message_draft"
-          "slack_schedule_message"
-          "slack_update_canvas"
-        ];
+        codex.disabledTools = slackWriteTools;
+        opencode.disabledTools = slackWriteTools;
+        pi.excludeTools = slackWriteTools;
         zed.enabled = false;
       };
     };
@@ -352,6 +361,24 @@ rec {
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
+  # OpenCode has no per-server tool exclusion field. Its native permission map
+  # accepts exact tool names, and MCP tools use `<server>_<tool>`. Denying those
+  # names blocks calls while leaving every other tool from the server available.
+  opencodeToolPermissions =
+    let
+      keep = _: s: s.enabled or true;
+      rendered = lib.concatLists (
+        lib.mapAttrsToList (
+          serverName: s:
+          map (toolName: {
+            name = "${serverName}_${toolName}";
+            value = "deny";
+          }) (s.consumers.opencode.disabledTools or [ ])
+        ) (lib.filterAttrs keep servers)
+      );
+    in
+    lib.listToAttrs rendered;
+
   # piServers: Pi adapter server entries for `~/.pi/agent/mcp.json`.
   # `pi-mcp-adapter` supports per-server `enabled` flags, so
   # `consumers.pi.enabled = false` keeps the server visible but disabled by
@@ -380,6 +407,9 @@ rec {
           common = {
             inherit enabled;
             directTools = if enabled then directToolsFor s else false;
+          }
+          // lib.optionalAttrs ((s.consumers.pi.excludeTools or [ ]) != [ ]) {
+            excludeTools = s.consumers.pi.excludeTools;
           };
         in
         if s.transport == "http" then

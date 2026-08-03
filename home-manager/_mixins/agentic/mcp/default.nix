@@ -15,7 +15,7 @@ let
   isWorkHost = lib.elem "workspace" (host.tags or [ ]);
   # Import shared MCP server definitions.
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
-  inherit (mcpServerDefs) opencodeServers;
+  inherit (mcpServerDefs) opencodeServers opencodeToolPermissions;
 
   piMcpEnabled = lib.elem "developer" (config.noughty.user.tags or [ ]);
   claudeMcpEnabled = config.programs.claude-code.enable;
@@ -90,6 +90,7 @@ in
         enableMcpIntegration = true;
         settings = {
           mcp = opencodeServers;
+          permission = opencodeToolPermissions;
         };
       };
       zed-editor = lib.mkIf zedMcpEnabled {
