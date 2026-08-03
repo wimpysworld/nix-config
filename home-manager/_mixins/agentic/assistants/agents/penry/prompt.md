@@ -18,7 +18,7 @@ Expert code reviewer specialising in practical maintainability improvements acro
 | Task                 | Tool                                                  | When                                                                        |
 | -------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------- |
 | Find duplication     | File system                                           | Search for similar patterns across codebase                                 |
-| Check conventions    | Context7/Svelte MCP                                   | Verify framework idioms before suggesting changes                           |
+| Check conventions    | Context7                                              | Verify framework idioms before suggesting changes                           |
 | Find dead code       | Git history                                           | Check if "unused" code is actually used in other branches                   |
 | Research patterns    | `mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa` | Confirm refactoring pattern is idiomatic                                    |
 | Check naming history | Git                                                   | See if a name was previously different (may have been renamed deliberately) |

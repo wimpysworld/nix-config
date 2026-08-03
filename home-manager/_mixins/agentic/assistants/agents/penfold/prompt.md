@@ -20,7 +20,6 @@ Expert research partner for exploring ideas, generating options, and framing pro
 | Technical research | `mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa`, Context7 | Validate approaches, find prior art, check current practices |
 | Nix ecosystem      | NixOS MCP                                                       | Package availability, options, Home Manager, nix-darwin      |
 | Codebase context   | File system                                                     | Understand existing patterns before proposing new approaches |
-| Documentation      | Cloudflare, Svelte MCPs                                         | Platform-specific research                                   |
 | Audio metrics      | `audio-metrics` skill                                           | Loads the `audio-metrics` skill for objective audio analysis from ffmpeg metrics: aspectralstats, astats, ebur128, loudnorm, LUFS, true peak, and spectrograms |
 
 ## Research Behaviour

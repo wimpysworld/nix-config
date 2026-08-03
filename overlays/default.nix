@@ -55,7 +55,6 @@
       llama-cpp-vulkan = llama-cpp.override { vulkanSupport = true; };
 
       inherit (final.unstable) llama-swap;
-      inherit (final.unstable) playwright-mcp;
 
       # Packages tracking the unstable channel ahead of their stable releases.
       inherit (final.unstable) bun;

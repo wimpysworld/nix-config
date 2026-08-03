@@ -62,16 +62,14 @@ MCP servers are imported from `../mcp/servers.nix` and translated into Codex's n
 
 Configured servers:
 
-| Server       | Transport | Notes                                                                               |
-| ------------ | --------- | ----------------------------------------------------------------------------------- |
-| `cloudflare` | HTTP      | Shared Cloudflare docs/tools server                                                 |
-| `context7`   | HTTP      | Uses `CONTEXT7_API_KEY` via `bearer_token_env_var`                                  |
-| `exa`        | HTTP      | Web search and fetch                                                                |
-| `nixos`      | stdio     | Shared NixOS/Home Manager/nix-darwin reference server                               |
-| `playwright` | stdio     | Conditional browser automation server; configured with `enabled = false` by default |
-| `svelte`     | HTTP      | Svelte documentation tools                                                          |
-
-`playwright` is emitted only when both Chromium and Firefox are enabled under the shared browser automation policy.
+| Server     | Transport | Notes                                                             |
+| ---------- | --------- | ----------------------------------------------------------------- |
+| `claude`   | stdio     | Claude tools and agents; tool calls require approval              |
+| `codex`    | stdio     | Disabled to prevent recursive Codex calls                         |
+| `context7` | HTTP      | Uses `CONTEXT7_API_KEY` via `bearer_token_env_var`                 |
+| `exa`      | HTTP      | Web search and fetch                                              |
+| `linear`   | HTTP      | Uses `LINEAR_API_KEY`; tool calls require approval                 |
+| `slack`    | HTTP      | Workspace hosts only; disabled because Codex cannot set its OAuth |
 
 ## Skills
 

@@ -12,45 +12,6 @@ let
   inherit (pkgs) lib;
   inherit (config.noughty) host;
   isWorkHost = lib.elem "workspace" (host.tags or [ ]);
-  chromiumEnabled = config.programs.chromium.enable || (host.is.linux && host.is.workstation);
-  firefoxEnabled = config.programs.firefox.enable || (host.is.linux && host.is.workstation);
-  browserAutomationEnabled = chromiumEnabled && firefoxEnabled;
-  playwrightMcpWithNixBrowser = pkgs.writeShellApplication {
-    name = "playwright-mcp-with-nix-browser";
-    text = ''
-      has_proxy_server_arg=false
-      proxy_server=""
-
-      for arg in "$@"; do
-        case "$arg" in
-          --proxy-server|--proxy-server=*)
-            has_proxy_server_arg=true
-            ;;
-        esac
-      done
-
-      if [ "$has_proxy_server_arg" = false ] && [ "''${NOUGHTY_AGENT_ISOLATION-}" = Fenced ]; then
-        for candidate in "''${HTTPS_PROXY-}" "''${https_proxy-}" "''${HTTP_PROXY-}" "''${http_proxy-}"; do
-          if [ -n "$candidate" ]; then
-            proxy_server="$candidate"
-            break
-          fi
-        done
-      fi
-
-      if [ -n "$proxy_server" ]; then
-        exec ${pkgs.playwright-mcp}/bin/.playwright-mcp-wrapped "$@" "--proxy-server=$proxy_server"
-      fi
-
-      exec ${pkgs.playwright-mcp}/bin/.playwright-mcp-wrapped "$@"
-    '';
-  };
-  playwrightChromiumHeadlessShell = pkgs.playwright-driver.components."chromium-headless-shell";
-  playwrightChromiumExecutable =
-    if pkgs.stdenv.hostPlatform.isLinux then
-      "${playwrightChromiumHeadlessShell}/chrome-headless-shell-linux64/chrome-headless-shell"
-    else
-      throw "Playwright MCP Chromium executable is not configured for ${pkgs.stdenv.hostPlatform.system}";
 in
 rec {
   # Canonical MCP server definitions.
@@ -143,18 +104,6 @@ rec {
       };
     };
 
-    cloudflare = {
-      transport = "http";
-      url = "https://docs.mcp.cloudflare.com/mcp";
-      consumers = {
-        claudeCode.enabled = false;
-        codex.enabled = false;
-        opencode.enabled = false;
-        pi.enabled = false;
-        zed.mode = "context_server";
-      };
-    };
-
     codex = {
       transport = "stdio";
       command = lib.getExe config.programs.codex.package;
@@ -202,26 +151,6 @@ rec {
       };
     };
 
-  }
-  // lib.optionalAttrs browserAutomationEnabled {
-    playwright = {
-      transport = "stdio";
-      command = lib.getExe playwrightMcpWithNixBrowser;
-      args = [
-        "--executable-path"
-        playwrightChromiumExecutable
-        "--headless"
-      ];
-      consumers = {
-        claudeCode.enabled = false;
-        codex.enabled = false;
-        opencode.enabled = false;
-        pi.enabled = false;
-        zed.mode = "context_server";
-      };
-    };
-  }
-  // {
     linear = {
       # Official hosted Linear MCP server over Streamable HTTP with API-key
       # bearer authentication.
@@ -263,22 +192,6 @@ rec {
           omit = true;
         };
         zed.enabled = false;
-      };
-    };
-  }
-  // {
-    svelte = {
-      transport = "http";
-      url = "https://mcp.svelte.dev/mcp";
-      consumers = {
-        claudeCode.enabled = false;
-        codex.enabled = false;
-        opencode.enabled = false;
-        pi.enabled = false;
-        zed = {
-          mode = "extension";
-          id = "svelte-mcp";
-        };
       };
     };
   };

@@ -136,11 +136,10 @@ For skills, every generated skill is explicitly enabled in `config.toml`. Codex 
 I only wire the MCP servers I actually want:
 
 ```text
-cloudflare
+claude
 context7
 exa
-nixos
-svelte
+linear
 ```
 
 ## The Result

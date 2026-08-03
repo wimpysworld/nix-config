@@ -225,18 +225,13 @@ Pi's adapter supports per-server `enabled` flags. Disabled servers remain visibl
 
 Pi follows OpenCode's enabled-by-default MCP preference through `enabled` and `directTools`:
 
-| Server       | Pi default                                                                     |
-| ------------ | ------------------------------------------------------------------------------ |
-| `context7`   | Enabled, direct tools promoted                                                 |
-| `exa`        | Enabled, direct tools promoted                                                 |
-| `nixos`      | Disabled, proxy-only                                                           |
-| `cloudflare` | Disabled, proxy-only                                                           |
-| `svelte`     | Disabled, proxy-only                                                           |
-| `playwright` | Present only on browser automation hosts, disabled and proxy-only when present |
+| Server     | Pi default                     |
+| ---------- | ------------------------------ |
+| `context7` | Enabled, direct tools promoted |
+| `exa`      | Enabled, direct tools promoted |
+| `linear`   | Enabled, direct tools promoted |
 
 The Pi-specific file emits full server entries, not partial overrides, because `pi-mcp-adapter` shallow-merges MCP config files by server name. A partial entry that only set `directTools` would replace the shared command, args, URL, or auth fields.
-
-The Playwright MCP server remains gated by the shared MCP module. It appears only where browser automation is enabled, so server hosts such as `malak` do not receive it.
 
 ## Subagents
 
