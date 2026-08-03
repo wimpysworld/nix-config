@@ -178,6 +178,7 @@
             home-manager
             jq
             just
+            mcp-nixos
             nh
             nixfmt-tree
             nixfmt

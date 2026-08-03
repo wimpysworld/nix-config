@@ -1,0 +1,4 @@
+[mcp_servers.nixos]
+command = "mcp-nixos"
+enabled = true
+env = { FASTMCP_CHECK_FOR_UPDATES = "off" }

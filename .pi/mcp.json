@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "nixos": {
+      "type": "stdio",
+      "command": "mcp-nixos",
+      "args": [],
+      "env": {
+        "FASTMCP_CHECK_FOR_UPDATES": "off"
+      },
+      "enabled": true,
+      "directTools": false
+    }
+  }
+}

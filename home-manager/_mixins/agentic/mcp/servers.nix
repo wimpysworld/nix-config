@@ -18,13 +18,6 @@ let
   chromiumEnabled = config.programs.chromium.enable || (host.is.linux && host.is.workstation);
   firefoxEnabled = config.programs.firefox.enable || (host.is.linux && host.is.workstation);
   browserAutomationEnabled = chromiumEnabled && firefoxEnabled;
-  mcpNixosNoUpdateCheck = pkgs.writeShellApplication {
-    name = "mcp-nixos-no-update-check";
-    text = ''
-      export FASTMCP_CHECK_FOR_UPDATES=off
-      exec ${pkgs.mcp-nixos}/bin/mcp-nixos "$@"
-    '';
-  };
   playwrightMcpWithNixBrowser = pkgs.writeShellApplication {
     name = "playwright-mcp-with-nix-browser";
     text = ''
@@ -183,20 +176,6 @@ rec {
       transport = "http";
       url = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa";
       consumers = {
-        zed.mode = "context_server";
-      };
-    };
-
-    nixos = {
-      enabled = !host.is.server;
-      transport = "stdio";
-      command = lib.getExe mcpNixosNoUpdateCheck;
-      args = [ ];
-      consumers = {
-        claudeCode.enabled = false;
-        codex.enabled = false;
-        opencode.enabled = false;
-        pi.enabled = false;
         zed.mode = "context_server";
       };
     };

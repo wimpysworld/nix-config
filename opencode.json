@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "nixos": {
+      "type": "local",
+      "command": [
+        "mcp-nixos"
+      ],
+      "enabled": true,
+      "environment": {
+        "FASTMCP_CHECK_FOR_UPDATES": "off"
+      }
+    }
+  }
+}
