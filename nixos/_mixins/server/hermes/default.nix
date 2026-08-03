@@ -365,8 +365,6 @@ let
         ++ hermesExtraPackages
       )
     }"
-    export TRAYA_SANCTUARY_DIR="/var/lib/hermes/workspace/trayas-sanctuary"
-    export TRAYA_SANCTUARY_REPO="the-cauldron/trayas-sanctuary"
     export GNUPGHOME=${hermesGnupgHome}
     export PYTHONPATH="${hermesManagedPythonPath}:${hermesTuyaPythonPath}:${piperPythonPath}:\''${PYTHONPATH-}"
 
@@ -744,8 +742,6 @@ in
         HERMES_PIPER_SPEAKER_ID = "11";
         PYTHONPATH = "${hermesManagedPythonPath}:${hermesTuyaPythonPath}:${piperPythonPath}";
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
-        TRAYA_SANCTUARY_DIR = "/var/lib/hermes/workspace/trayas-sanctuary";
-        TRAYA_SANCTUARY_REPO = "the-cauldron/trayas-sanctuary";
       };
       extraPackages = [
         wrappedHermesBash
@@ -804,32 +800,6 @@ in
 
         agent.reasoning_effort = "medium";
 
-        custom_providers = [
-          {
-            name = "skrye";
-            base_url = "http://skrye.drongo-gamma.ts.net:8080/v1";
-            model = "qwen3.6-35b-a3b";
-            models = {
-              "qwen3.6-35b-a3b" = {
-                context_length = 262144;
-              };
-            };
-          }
-          {
-            name = "zannah";
-            base_url = "http://zannah.drongo-gamma.ts.net:8080/v1";
-            model = "qwen3-coder-next";
-            models = {
-              qwen3-coder-next = {
-                context_length = 262144;
-              };
-              "qwen3.6-35b-a3b" = {
-                context_length = 262144;
-              };
-            };
-          }
-        ];
-
         terminal = {
           backend = "local";
           cwd = "/var/lib/hermes/workspace";
@@ -886,13 +856,6 @@ in
             timeout = 30;
           };
         };
-
-        fallback_providers = [
-          {
-            provider = "anthropic";
-            model = "claude-opus-5";
-          }
-        ];
 
         stt = {
           enabled = true;
@@ -954,8 +917,6 @@ in
         HERMES_HOME = hermesHome;
         HERMES_MANAGED = "true";
         HOME = config.services.hermes-agent.stateDir;
-        TRAYA_SANCTUARY_DIR = "/var/lib/hermes/workspace/trayas-sanctuary";
-        TRAYA_SANCTUARY_REPO = "the-cauldron/trayas-sanctuary";
       };
       path = [
         wrappedHermesBash
@@ -1068,6 +1029,12 @@ in
       install -m 0640 -o ${hermesUser} -g ${hermesGroup} ${managedHermesConfig} ${hermesHome}/config.yaml
     '';
 
+    system.activationScripts.hermes-agent-soul = lib.stringAfter [ "hermes-agent-setup" ] ''
+      # Deploy this after Hermes creates its state directory and sops-nix
+      # renders the template. A tmpfiles rule can run before either exists.
+      ln -sTf ${config.sops.templates."hermes-soul".path} ${hermesHome}/SOUL.md
+    '';
+
     system.activationScripts.hermes-agentsview-config = lib.stringAfter [ "hermes-agent-setup" ] ''
       ${agentsviewConfigPython}/bin/python - <<'PY'
       import pathlib
@@ -1163,7 +1130,6 @@ in
       "L+ ${config.services.hermes-agent.stateDir}/.gitconfig - - - - ${
         config.sops.templates."hermes-gitconfig".path
       }"
-      "L+ ${hermesHome}/SOUL.md - - - - ${config.sops.templates."hermes-soul".path}"
     ];
 
     system.activationScripts.hermes-agent-skills-permissions =
