@@ -779,9 +779,6 @@ in
             HOME = config.services.hermes-agent.stateDir;
           };
         };
-        cloudflare = {
-          url = "https://docs.mcp.cloudflare.com/mcp";
-        };
       };
 
       # Upstream seeds these ${hermesHome}/.env.

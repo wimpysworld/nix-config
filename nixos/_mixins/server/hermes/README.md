@@ -384,7 +384,7 @@ The current declared MCP servers are:
 - `context7`
 - `linear`
 - `nixos`
-- `cloudflare`
+- `openhue`
 
 They are configured directly in
 [default.nix](default.nix).
@@ -410,7 +410,11 @@ services.hermes-agent.mcpServers = {
     args = [ ];
   };
 
-  cloudflare.url = "https://docs.mcp.cloudflare.com/mcp";
+  openhue = {
+    command = "${pkgs.openhue-cli}/bin/openhue";
+    args = [ "mcp" ];
+    env.HOME = config.services.hermes-agent.stateDir;
+  };
 };
 ```
 
