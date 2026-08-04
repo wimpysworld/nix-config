@@ -11,6 +11,17 @@
   ...
 }:
 let
+  username = config.noughty.user.name;
+  userUid =
+    if config.users.users.${username}.uid == null then 1000 else config.users.users.${username}.uid;
+  xdgDataDirs = lib.concatStringsSep ":" [
+    "/home/${username}/.nix-profile/share"
+    "/home/${username}/.local/state/nix/profile/share"
+    "/etc/profiles/per-user/${username}/share"
+    "/nix/var/nix/profiles/default/share"
+    "/run/current-system/sw/share"
+  ];
+
   # Automates the bootstrap and update process for CrowdStrike Falcon on NixOS.
   # Downloads the sensor RPM, extracts it, copies binaries to /opt/CrowdStrike/,
   # and patches all ELF binaries with the NixOS glibc interpreter.
@@ -61,7 +72,20 @@ lib.mkIf (noughtyLib.hostHasTag "policy") {
   # a SIGKILL of launcher + osqueryd, leaving event-store writes
   # half-flushed. 180 s gives generous headroom without delaying boot
   # meaningfully.
-  systemd.services.kolide-launcher.serviceConfig.TimeoutStopSec = lib.mkDefault 180;
+  systemd.services.kolide-launcher = {
+    path = [
+      pkgs.xdg-utils
+      pkgs.glib
+    ];
+    environment = {
+      DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/${toString userUid}/bus";
+      XDG_DATA_DIRS = xdgDataDirs;
+    };
+    serviceConfig = {
+      Environment = lib.mkForce "PATH=/run/wrappers/bin:/bin:/sbin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:${config.systemd.services.kolide-launcher.environment.PATH}";
+      TimeoutStopSec = lib.mkDefault 180;
+    };
+  };
 
   # CrowdStrike Falcon sensor for security monitoring and intrusion detection.
   # The NixOS module (modules/nixos/falcon-sensor.nix) manages the systemd service
