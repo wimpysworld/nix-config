@@ -8,7 +8,7 @@ Invoke named commands with the provider's prefix. Codex uses `$make-commit`; sla
 
 `$ARGUMENTS` is a pull request URL or number, a path to a local file holding review feedback, or the feedback pasted directly as text. If it is blank, ask which of those you have, then wait.
 
-For a pull request, fetch the review comments with dedicated `gh` subcommands such as `gh pr view`. Raw `gh api` is denied; use `gh-api-safe` for raw reads.
+For a pull request, load the `gh` skill before any GitHub access and follow its GitHub policy. Fetch the review comments with dedicated `gh` subcommands such as `gh pr view`.
 
 Thread filtering, replying, and resolving apply to the pull request case only. A local file or pasted text has no threads, so judge, fix, commit, and report.
 
@@ -16,7 +16,7 @@ Thread filtering, replying, and resolving apply to the pull request case only. A
 
 Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, and `gh-review-resolve`.
 
-Forbidden throughout: merge, close, approve, release, force-push, and raw `gh api`. Use dedicated subcommands, and `gh-api-safe` for raw reads.
+Forbidden throughout: merge, close, approve, release, and force-push. Follow the `gh` skill for every GitHub route.
 
 Restate this authority in every sub-agent packet. Sub-agents run with fresh context and will defer without it.
 

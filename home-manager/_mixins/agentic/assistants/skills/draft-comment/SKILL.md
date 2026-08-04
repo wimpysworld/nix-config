@@ -17,7 +17,7 @@ If the target is missing, ask for it and wait. If it does not resolve to a real 
 
 Read context and draft text. Never post, comment, send, edit, or change provider state. Defer writes to `post-comment` or to the write flow that loaded this skill.
 
-For GitHub, load `gh`. Prefer dedicated `gh` reads, then `gh-api-safe`. Otherwise use only documented read-only GitHub MCP operations. Never use raw `gh api`, a GitHub MCP mutation, or a tool whose effect is unclear.
+For GitHub, load `gh` before any GitHub access and follow it for all GitHub tool and policy choices.
 
 Use Linear MCP reads for Linear. Use Slack reads for Slack. Never call their write tools while drafting.
 
