@@ -2,7 +2,7 @@
 
 Draft the pull request title and body with `draft-pr-message`, then create a pull request for the current branch. On a work repository, append a reviewer orientation block to the body before the pull request is created.
 
-This command mutates remote Git and GitHub state by pushing only when needed and running `gh pr create`, and it moves any linked Linear issue to In Review. Treat explicit human invocation of this command as consent for those actions. Never use raw `gh api`.
+Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed and running `gh pr create`, and it moves any linked Linear issue to In Review. Treat explicit human invocation of this command as consent for those actions.
 
 Command invocation: use the current provider's command prefix when invoking `draft-pr-message`. Codex uses `$draft-pr-message`; slash-command runtimes use `/draft-pr-message`. If the platform cannot expand another command, follow the existing `draft-pr-message` prompt directly for the draft phase only. After its fenced message is produced, this command resumes and creates the pull request.
 
@@ -26,7 +26,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 6. Append the reviewer orientation block to that temporary file, following **Reviewer orientation** below. The block is part of the pull request from the moment it exists, so never add it later by editing the pull request.
 7. Push with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
 8. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a push that matches nothing reports success while doing nothing.
-9. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. Never use raw `gh api`.
+9. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`.
 10. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
 11. Report the pull request URL, title, whether the orientation block was included, each Linear outcome, and any uncommitted files left out.
 12. Offer the watch handover, following **Watch handover** below. Print it after the report, as the last thing you say.
