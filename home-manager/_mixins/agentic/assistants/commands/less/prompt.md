@@ -1,1 +1,1 @@
-Load and follow the `communication-rules` skill. Do not acknowledge; carry on.
+Load and follow the `communication-rules` skill. Rewrite your immediately preceding response under those rules and get to the fucking point. Return only the replacement response; do not acknowledge this instruction.
