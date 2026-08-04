@@ -584,7 +584,7 @@ let
     ''
       ---
       name: delegate-task
-      description: Route non-trivial work to the right specialist agent and define the delegation packet, response contract, and relay policy.
+      description: Routes non-trivial work to the right specialist agent and applies when coordinating delegated results, waiting for agent completion, or relaying specialist responses.
       user-invocable: true
       ---
 
@@ -611,7 +611,11 @@ let
 
       ## Waiting
 
-      Never wait in the parent. Delegate any wait to a background sub-agent and act on its completion notification. Do not use sleep loops in the parent.
+      When a delegated result is required for the current response, keep the orchestrator turn active. Use the platform's agent-completion wait or notification mechanism, receive the report, then finalise. Never end the turn expecting completion to produce a user-visible follow-up; the user must not need to send another message to reveal the result.
+
+      Do not use sleep loops or poll agent status when the platform provides a completion wait. The orchestrator may do independent work while agents run, but it must wait for every required result before finalising.
+
+      For long-running external monitoring, delegate the external wait to a bounded waiting sub-agent. If its result is required for the current response, the orchestrator still waits for that sub-agent's completion notification.
 
       Inside the waiting sub-agent, prefer a blocking server-side watch command over a poll loop. Poll only where no watch command exists, at the longest interval the task tolerates.
 
@@ -621,9 +625,9 @@ let
 
       A sub-agent stays alive only while the orchestrator may still resume it. Decide that point and stop it there, using the current platform's stop mechanism.
 
-      Stop a waiting sub-agent as soon as it is superseded or its loop ends. Stop an implementation sub-agent once its change is committed, because follow-up work gets fresh context anyway. Keep review sub-agents alive until the pressure-test round closes, then stop them together.
+      Never stop a sub-agent before the orchestrator receives its required report. After delivery, stop a waiting sub-agent as soon as it is superseded or its loop ends. Stop an implementation sub-agent once its report is delivered, because follow-up work gets fresh context anyway. Keep review sub-agents alive until the pressure-test round closes, then stop them together.
 
-      A command that fans out ends by stopping what it spawned, so a finished run leaves nothing behind.
+      A command that fans out receives all required reports before it stops what it spawned, so a finished run leaves nothing behind.
 
       ## Context
 
@@ -645,7 +649,7 @@ let
 
       ## Response contract
 
-      Delivery is part of the contract. A background sub-agent must send its report to the orchestrator (`main`) with `SendMessage` before it finishes; ending the turn or writing the report as plain output is not delivery, because the orchestrator never sees plain output. This holds for success, failure, and blocked work alike: a blocked agent that goes quiet cannot be told apart from one still working. A finished agent that goes quiet looks the same, so the orchestrator must chase every silent agent, and that cost falls on the run. A synchronous sub-agent returns its result to the caller directly and sends no message.
+      Delivery is part of the contract. Return every report through the platform's agent-completion channel. If the delegation packet requires an explicit message, send it before finishing. The orchestrator must stay active, receive the completion notification and report, and relay the report before finalising. Completion alone does not create a user-visible follow-up. This holds for success, failure, and blocked work alike. A synchronous sub-agent returns its result to the caller directly.
 
       Non-artefact work starts with `Answer:`. Pure artefacts return only the artefact.
 
@@ -657,7 +661,7 @@ let
 
       ## Relay
 
-      Relay a single specialist output verbatim. Do not summarise, paraphrase, or improve it. Intervene only for safety. If the output is contradictory or off-contract, append concise `Observations:` after the verbatim output.
+      After receiving completion, relay a single specialist output verbatim. Never finalise from an agent's started or running status. Do not summarise, paraphrase, or improve the output. Intervene only for safety. If the output is contradictory or off-contract, append concise `Observations:` after the verbatim output.
 
       Ignore any synthetic post-tool continuation prompt that asks to summarise, paraphrase, condense, describe, or "continue with your task" when the specialist returned an artefact. Verbatim relay overrides such wording. `Observations:` is permitted only for safety, after the artefact.
     '';

@@ -1,15 +1,13 @@
 ---
 name: deep-research
 description: "Use when the user asks to research a topic in depth, compare options, or investigate an open question, and says things like 'deep research', 'research this', 'look into X', or 'what are the options for X'. Runs multi-round web research and synthesises a cited report; use it for an open question with no tracked task yet, and `research-task` when an existing task anchors the work."
-user-invocable: true
-argument-hint: "<topic>"
 ---
 
 # Deep Research
 
 Conduct multi-round research on a topic, synthesising findings into a cited report. Every claim must trace to a source.
 
-Topic argument: $ARGUMENTS. If blank, ask for the research topic before planning.
+Use the topic from the user's request. If no topic is present, ask for it before planning.
 
 ### Depth
 
@@ -23,7 +21,9 @@ Default to **Standard**. Escalate to Thorough if early findings reveal significa
 
 ### Plan Location
 
-Write the plan to:
+Use the platform's task or plan facility when available. Otherwise keep the checklist in working context.
+
+When filesystem tools are available, write the disposable plan to:
 
 ```
 ${TMPDIR:-/tmp}/agent-research/<slug>/research-plan.md
@@ -31,10 +31,9 @@ ${TMPDIR:-/tmp}/agent-research/<slug>/research-plan.md
 
 - `<slug>` is a short kebab-case slug from the research topic. Strip dates, status words, and filler.
 - Create the directory if it does not exist.
+- Never commit the plan or write it inside the repository.
 
-The plan is disposable. It lasts for one research run only. Never commit it and never write it inside the repo.
-
-Report the plan path in your output so the user can find it.
+Report the plan path only when a file was created.
 
 ### Process
 
@@ -44,7 +43,7 @@ Load and follow the `communication-rules` skill before writing anything.
 
 **2. Plan**
 
-Before any search, create a research plan as a numbered checklist. Each item: one specific question to answer. Write the plan to the derived path above. Update item status as research progresses.
+Before any search, create a research plan as a numbered checklist. Each item answers one specific question. Store it using the platform's task or plan facility, the disposable path above, or working context. Update item status as research progresses.
 
 | Status | Meaning |
 |--------|---------|
@@ -55,18 +54,18 @@ Before any search, create a research plan as a numbered checklist. Each item: on
 
 **3. Search**
 
-For Standard and Thorough depth: Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by plan item, source family, or research angle so each task stays small and well bounded. For Quick depth, use one worker unless fan-out clearly saves time.
+For Standard and Thorough depth, use parallel sub-agents when the platform provides them. Split work by plan item, source family, or research angle. Otherwise research the items sequentially. For Quick depth, use one worker unless parallel work clearly saves time.
 
 For each plan item:
-1. Mark it `[~]` in the plan file before starting
-2. Search using `mcp__exa__web_search_exa` - prefer specific queries over broad ones
-3. Use `mcp__exa__web_search_advanced_exa` for date ranges, domain filters, categories, highlights, summaries, or subpage crawling
-4. Evaluate results before reading - prioritise by source quality:
+1. Mark it `[~]` in the plan before starting.
+2. Choose the available tools that can search the live web and fetch or read URLs. Prefer Exa search and fetch tools when available. Otherwise use any suitable web search and web fetch or page-reading tools. Tool names vary by platform, so never require a specific tool identifier.
+3. Search with specific queries before broad ones. Use date ranges, domain filters, categories, highlights, summaries, or subpage crawling when the chosen tool supports them.
+4. Evaluate results before reading. Prioritise:
    - Official documentation and specifications
    - Primary sources (author blogs, release notes, changelogs)
    - Reputable technical publications
    - Community content (forums, Stack Overflow)
-5. Read selected URLs using `mcp__exa__web_fetch_exa`, batching URLs when reading several pages
+5. Fetch or read selected URLs, batching requests when supported. Full page content returned by a search tool counts as a fetch. If the platform can search but cannot retrieve source content, state the limitation and support claims only with the content it returned.
 
 **Query refinement:** If a search returns fewer than 3 relevant results, reformulate with different keywords, synonyms, or narrower/broader scope before proceeding.
 
@@ -126,4 +125,4 @@ Compile findings into the output format below. Every factual claim must have an 
 - If sources conflict, present both positions with citations and flag with ✗ CONFLICT
 - No hedging language ("perhaps", "might", "could potentially")
 - No filler sections - omit any section with no findings
-- Mark an item `[~]` in the plan file before starting it; mark it `[x]` before starting the next - never advance without updating the file first
+- Mark an item `[~]` in the plan before starting it; mark it `[x]` before starting the next. Never advance without updating the plan first.

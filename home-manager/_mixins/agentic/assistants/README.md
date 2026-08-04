@@ -1,10 +1,10 @@
 # AI Agents
 
-Eleven specialist agents, 64 commands, nineteen physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 60 commands, twenty-four physical skills, and one generated skill - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
-Developer servers keep Codex and Pi Agent resources. Claude Code and OpenCode resources are emitted only when those clients are enabled.
+Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex resources are emitted only when those clients are enabled.
 
-The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The output is plain Markdown files with YAML frontmatter. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
+The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The portable source uses Markdown prompts with provider-specific headers, and Nix emits each client's native file layout. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
 ### File layout
 
@@ -13,8 +13,8 @@ The Nix composition is the delivery mechanism, not the strategy. Everything belo
 ```
 ~/.claude/
 ├── rules/instructions.md          # Global instructions (loaded every session)
-├── agents/<name>.agent.md          # Agent definitions (selectable with --agent)
-├── commands/<name>.prompt.md       # Slash commands (invocable with /<name>)
+├── agents/<name>.md               # Agent definitions (selectable with --agent)
+├── commands/<name>.md             # Slash commands (invocable with /<name>)
 └── skills/<name>/SKILL.md          # Reference knowledge (loaded contextually)
 ```
 
@@ -22,12 +22,11 @@ The Nix composition is the delivery mechanism, not the strategy. Everything belo
 
 ```
 ~/.config/opencode/
-├── agents/<name>.agent.md          # Agent definitions (selectable with --agent)
-├── commands/<name>.prompt.md       # Slash commands (invocable with /<name>)
+├── AGENTS.md                       # Global instructions (loaded every session)
+├── agents/<name>.md               # Agent definitions (selectable with --agent)
+├── commands/<name>.md             # Slash commands (invocable with /<name>)
 └── skills/<name>/SKILL.md          # Reference knowledge (loaded contextually)
 ```
-
-Global instructions in OpenCode are set via the `rules` option in `settings.json` rather than a file.
 
 **Pi Agent:**
 
@@ -41,7 +40,7 @@ Global instructions in OpenCode are set via the `rules` option in `settings.json
 
 Pi Agent resources are rendered here and consumed by `../pi`, which owns the Pi package, runtime wrapper, settings, MCP adapter, subagent extension config, and theme files.
 
-Each file is Markdown with YAML frontmatter. No agent pins a model on any platform except Garfield; every other agent inherits the model selected in the coding tool. OpenCode headers intentionally omit `model` on every agent, so users can switch Anthropic and OpenAI models manually. The prompt body follows the `---` delimiters. No build step required - drop the files in and they work.
+Agent, command, prompt, and skill files use Markdown with YAML frontmatter. Pi and Codex global instruction files are plain Markdown; Codex agent definitions are TOML. No agent pins a model on any platform except Garfield; every other agent inherits the model selected in the coding tool. OpenCode headers intentionally omit `model` on every agent, so users can switch Anthropic and OpenAI models manually. In frontmatter files, the prompt body follows the `---` delimiters. No build step is required - drop the files in and they work.
 
 ## Contents
 
@@ -92,7 +91,7 @@ Every session begins with `/ready We are going to <broad activity description>`.
 
 Parent context is permanent and finite. Specialist context windows are ephemeral. Protect the parent window by using fresh context for file reads, code search, web research, implementation, audits, and other tool-heavy work. Fork only when the user explicitly requires it or when the parent transcript is essential.
 
-When the coordinator lacks context, it delegates discovery instead of researching first. `delegate-task` owns routing, packet fields, the response contract, default discipline, fresh-context rule, and relay policy. Nix work routes to Donatello with the `nix` skill.
+When the coordinator lacks context, it delegates discovery instead of researching first. `delegate-task` owns routing, delegation depth, waiting and teardown, packet fields, the response contract, fresh-context rule, and relay policy. Nix work routes to Donatello with the `nix` skill.
 
 ### Response Discipline
 
@@ -111,32 +110,33 @@ The `communication-rules` skill owns response discipline and the hooks enforce i
 | `orientate`      | Inspect the repository and report orientation notes                 |
 | `ready`          | Prime the session for a broad activity                              |
 | `reflect`        | Review the session and suggest tooling and AGENTS.md changes        |
+| `wtb`            | Run the Want to Buy workflow for a pull request and Slack channel   |
 
 ---
 
 ## Task Lifecycle
 
-Five commands share one noun. The vocabulary is strict:
+Four commands and one skill share one noun. The vocabulary is strict:
 
 - **Task** - a durable, tracked work item: a Linear issue, or a local markdown file.
 - **Plan** - ephemeral, and outside any project tree.
 - **Phase** - a unit of work inside a plan.
 
-| Step | Command          | Purpose                                                                  |
-| ---- | ---------------- | ------------------------------------------------------------------------ |
-| 1    | `create-task`    | File the session outcome as a task, or a parent wrapping children        |
-| 2    | `research-task`  | Research a task and its linked work, and synthesise one cited analysis   |
-| 3    | `update-task`    | Fold session decisions into the task so it stays the source of truth     |
-| 4    | `review-task`    | Judge whether the task is ready to implement, and what must change first |
-| 5    | `implement-task` | Take the task through to implemented, validated, committed work          |
+| Step | Capability       | Form    | Purpose                                                                  |
+| ---- | ---------------- | ------- | ------------------------------------------------------------------------ |
+| 1    | `create-task`    | Command | File the session outcome as a task, or a parent wrapping children        |
+| 2    | `research-task`  | Skill   | Research a task and its linked work, and synthesise one cited analysis   |
+| 3    | `update-task`    | Command | Fold session decisions into the task so it stays the source of truth     |
+| 4    | `review-task`    | Command | Judge whether a task is ready to implement, and what must change first   |
+| 5    | `implement-task` | Command | Take the task through to implemented, validated, committed work          |
 
 `create-plan` writes to `${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md`, outside any project tree. A plan exists only while one task is implemented. It is never committed and is discarded afterwards. The durable record is the task, not the plan.
 
-`create-project` and `draft-project-description` write the project the tasks live in, and sit outside the lifecycle. They take a project, not a task, so they carry no step number and no place in the run order.
+The `create-project` command and `draft-project-description` skill write the project the tasks live in, and sit outside the lifecycle. They take a project, not a task, so they carry no step number and no place in the run order.
 
 ### Orchestration
 
-`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. It finds the Linear issues waiting in Triage, reports the batch, then spawns one fresh sub-agent per issue that runs `research-task` and then `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
+`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. It finds the Linear issues waiting in Triage, reports the batch, then spawns one fresh sub-agent per issue that applies the `research-task` skill and then runs `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
 
 `implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. It spawns a fresh sub-agent per task. Inside each, `create-plan` runs, then `implement-plan`, which spawns its own fresh sub-agent per phase. Fresh context per task and per phase keeps attention high and implementations small.
 
@@ -255,6 +255,7 @@ Precise implementation engineer executing code changes from specifications. Read
 | `pr-watch`                | Watch a PR: fix CI failures, triage flakes, answer reviews         |
 | `project-peer-review`     | Give an ecosystem-specific codebase verdict                        |
 | `project-polish-comments` | Comment-quality pass over a file set; comments only, never logic   |
+| `add-agentic-repo-capability` | Add a repository-local MCP server, skill, or command across clients |
 | `add-enricher-capability` | Add a manifest-gen enricher capability                             |
 
 ---
@@ -289,22 +290,18 @@ Performance optimisation specialist focused on user-perceivable improvements. Ra
 
 ### Penfold - Research Generalist
 
-Research partner for exploring ideas, generating options, and framing problems for downstream specialists, and owner of the task lifecycle's read and write commands. Files session outcomes as tracked tasks, researches a task and everything it links, folds new decisions back into it, and judges when it is ready to implement. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification. Loads the `audio-metrics` skill for objective audio analysis from ffmpeg metrics: spectral statistics, loudness (EBU R128, LUFS, true peak), levels, and spectrograms.
+Research partner for exploring ideas, generating options, and framing problems for downstream specialists. Penfold owns the task lifecycle commands that file session outcomes, fold decisions back into tasks, triage the queue, and judge implementation readiness. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification. Loads the `audio-metrics` skill for objective audio analysis from ffmpeg metrics: spectral statistics, loudness (EBU R128, LUFS, true peak), levels, and spectrograms.
 
 **Model:** inherits the model selected in the coding tool on every platform. Penfold synthesises research, frames problems, and weighs trade-offs; specialist agents still handle domain-specific validation.
 
 | Command                     | Purpose                                                                 |
 | --------------------------- | ----------------------------------------------------------------------- |
 | `create-task`               | File the session outcome as a task, or a parent wrapping children       |
-| `research-task`             | Research a task and its linked work, and synthesise one cited analysis  |
 | `update-task`               | Fold session decisions into an existing task                            |
 | `triage-tasks`              | Research and update the Linear issues waiting in Triage, in bulk        |
 | `review-task`               | Judge whether a task is ready to implement, and what must change first  |
 | `create-project`            | Find or create one Linear project, and stop                             |
-| `draft-project-description` | Write a Linear project description in the form the quality coach scores |
-| `draft-comment`             | Explicitly run the shared read-only comment drafting skill              |
 | `post-comment`              | Post the agreed comment to GitHub, Linear, or Slack                     |
-| `draft-issue`               | Explicitly run the shared read-only issue drafting skill                |
 | `post-issue`                | Create the agreed issue on GitHub                                       |
 | `weekly-update`             | Write this week's Linear project updates, and point at them in Slack    |
 | `gather-review-data`        | Collect the user's own contribution evidence for a date range           |
@@ -412,7 +409,7 @@ providers (e.g. `model-google`) are added per-agent where relevant. The router
 also supports thinking-only entries, where the runtime reuses the active
 session model id.
 
-Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-5.5"`
+Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-5.6-sol"`
 set the session default for the unnamed global prompt. Agents that omit a
 header do not fall back to them per-agent; they inherit whatever model the
 session is running.
@@ -436,8 +433,8 @@ This split keeps the surfaces semantically clean: prompts take inputs, skills pr
 
 | Platform    | Agents                                 | Commands                                  | Global rules                      | Skills                                 |
 | ----------- | -------------------------------------- | ----------------------------------------- | --------------------------------- | -------------------------------------- |
-| Claude Code | `~/.claude/agents/*.agent.md`          | `~/.claude/commands/*.prompt.md`          | `~/.claude/rules/instructions.md` | `~/.claude/skills/*/SKILL.md`          |
-| OpenCode    | `~/.config/opencode/agents/*.agent.md` | `~/.config/opencode/commands/*.prompt.md` | `rules` option                    | `~/.config/opencode/skills/*/SKILL.md` |
+| Claude Code | `~/.claude/agents/*.md`                | `~/.claude/commands/*.md`                 | `~/.claude/rules/instructions.md` | `~/.claude/skills/*/SKILL.md`          |
+| OpenCode    | `~/.config/opencode/agents/*.md`       | `~/.config/opencode/commands/*.md`        | `~/.config/opencode/AGENTS.md`    | `~/.config/opencode/skills/*/SKILL.md` |
 | Codex       | `~/.config/codex/agents/*.toml`        | `~/.config/codex/skills/*/SKILL.md`       | `~/.config/codex/AGENTS.md`       | `~/.config/codex/skills/*/SKILL.md`    |
 | Pi Agent    | `~/.pi/agent/agents/*.md`              | `~/.pi/agent/prompts/*.md`                | `~/.pi/agent/AGENTS.md`           | `~/.pi/agent/skills/*/SKILL.md`        |
 
@@ -459,8 +456,9 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 | Skill                | Loaded by                 | Purpose                                                                                                           |
 | -------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `delegate-task`      | Coordinator or user       | Generated routing, packet, response contract, relay policy                                                        |
-| `agentic-repo-capability` | Rosey or user             | Add a repository-local MCP server, skill, or command across supported agent clients                               |
+| `delegate-task`      | Coordinator or user       | Generated routing, depth, waiting, teardown, packet, response contract, and relay policy                          |
+| `communication-rules` | Every prose-producing path | Concise, plain British English for user-visible prose                                                             |
+| `agentic-repo-capability` | Donatello or user         | Add a repository-local MCP server, skill, or command across supported agent clients                               |
 | `writing-well`       | Casper, Velma             | Composition principles and the AI writing-pattern catalogue                                                       |
 | `write-skill`        | Rosey or user             | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure            |
 | `write-agents-md`    | Rosey or user             | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files                     |
@@ -480,6 +478,8 @@ Shared skills provide background knowledge and reference material. Most are sour
 | -------------------- | ------------------------------------------------------------------------- |
 | `contribution-voice` | Structure rules for text published under the user's name in public        |
 | `deep-research`      | Multi-round research on an open question, synthesised into a cited report |
+| `research-task`      | Research an existing tracked task and its linked work into a cited report |
+| `draft-project-description` | Write a Linear project description in the form the quality coach scores   |
 | `draft-comment`      | Read-only drafting for GitHub, Linear, or Slack comments and replies      |
 | `draft-issue`        | Read-only GitHub issue drafting with policy and duplicate checks          |
 | `gh`                 | GitHub CLI reference - PR creation, issue management, releases            |

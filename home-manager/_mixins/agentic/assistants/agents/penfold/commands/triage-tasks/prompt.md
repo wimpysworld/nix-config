@@ -16,7 +16,7 @@ Command invocation: use the current provider's command prefix. Codex uses `$comm
 
 **4. Spawn one fresh sub-agent per issue.** Never research an issue or write to Linear in this context. Never hand two issues to one sub-agent. Give each sub-agent the issue key and this instruction set:
 
-1. Run `research-task <issue key>`.
+1. Load and apply the `research-task` skill to the issue key.
 2. Run `update-task <issue key>` in the same context. `research-task` files nothing, so `update-task` must see that research as its own session in order to have anything to merge. A sub-agent that runs only one of the two has done nothing useful.
 3. Where the research concludes the issue is a duplicate, is obsolete, or should be dropped, report that as a recommendation and change nothing.
 4. Return a short report only: issue key, what changed, the new status, and any recommendation. No research detail.

@@ -300,13 +300,13 @@ let
     # built-in fetch tool. MCP servers are independent, so Exa is unaffected.
     web_search = "disabled";
 
-    model = "gpt-5.5";
+    model = "gpt-5.6-sol";
     model_reasoning_effort = "high";
 
     # Bound Codex subagent fan-out.
     agents = {
       max_threads = 10;
-      max_depth = 1;
+      max_depth = 2;
     };
 
     # Apply no vendor personality. The Communication Rules skill and tripwire

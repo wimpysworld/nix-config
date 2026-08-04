@@ -39,7 +39,7 @@ Call `save_project` with no `id`, so it creates:
 Placeholder description, verbatim:
 
 ```markdown
-Description written by `draft-project-description` once this project has issues.
+Description written with the `draft-project-description` skill once this project has issues.
 ```
 
 Do not attempt the full description template. The project has no issues yet, so there is nothing to describe.
