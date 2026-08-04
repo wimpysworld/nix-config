@@ -1,6 +1,6 @@
 # Communication Rules tripwire
 
-One shared Python core, thin per-agent shims, and fixtures enforce the [Communication Rules](communication-rules.md) across Claude Code, Codex, Pi, and OpenCode. Nix generates the rules fragment, the core, and the policy once. Every agent runs the same core; only the wiring differs.
+One shared Python core, thin per-agent shims, and fixtures enforce the [Communication Rules](../../assistants/skills/communication-rules/SKILL.md) across Claude Code, Codex, Pi, and OpenCode. Nix strips the skill frontmatter and generates the raw rules file, the core, and the policy once. Every agent runs the same core; only the wiring differs.
 
 ## Status: initial PoC
 
@@ -39,7 +39,7 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
   - `extractors/` the four payload extractors (`claude_code`, `codex`, `opencode`, `pi`). The Pi extractor threads the Pi session id into the strike key, so each session resets fresh rather than sharing one global namespace.
 - `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` the two thin TypeScript shims. Each spawns the core and applies the returned decision. They hold no policy.
 - `default.nix` two wiring helpers on a shared agent-free base: `mkCommandHookAdapter` (Claude Code, Codex) and `mkPluginAdapter` (Pi, OpenCode).
-- `fragment.nix` generates the rules text, reminder, block, and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
+- `fragment.nix` reads the canonical skill, strips its YAML frontmatter, and generates the raw rules text, reminder, block, and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
 - `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 310 fixtures across five groups (banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, env-prefix): 76 scanner, 67 claude-code, 70 codex, 52 pi, 45 opencode. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (4 each) exercise the TypeScript boundaries.
 
 ## Why this exists
@@ -75,7 +75,7 @@ The gate follows these principles.
 
 **Agent tells are alignment signals.** The em dash and other banned tells are the habits agents drift back to when attention drops or context is stretched. Their emergence means the agent is no longer aligned with the Communication Rules. On blockable output, the hook punches the agent in the face, blocks the transgressed output, re-issues the Communication Rules, and asks it to try again.
 
-**One source of truth feeds the model and the gate.** Nix generates a single Communication Rules fragment. The same fragment feeds global instructions, every generated subagent prompt, session reminders, and the hook re-issue text. So what the model is told and what the gate enforces cannot drift apart.
+**One source of truth feeds the model and the gate.** The portable `communication-rules` skill is canonical. Global instructions, agents, commands, and other skills refer to it by name. Nix sends its complete body, without YAML frontmatter, through session reminders and every full hook re-issue path. The scanner receives the same raw body.
 
 **Each agent uses its own best native mechanism.** The design does not force one shared hook model across the four agents. Each agent uses the hook or extension that fits its platform, so output contracts differ per agent (see the table below). Claude Code and Codex run the core directly from a command hook. Pi and OpenCode force an in-process plugin, so each keeps one thin shim that spawns the core and applies its decision.
 
@@ -100,7 +100,7 @@ The policy splits by blast radius into two sub-tiers. B1 blocks once then allows
 
 We block once, then either correct or yield. Blocking automation forever is friction users will not accept. The local path blocks once, then allows each later breach to land and asks for an in-place revision of the named file. The external path tries four times before the irreversible yield. The cost is that imperfect local files are sometimes surfaced and corrected after they land.
 
-The canonical [Communication Rules](communication-rules.md) carry a short Enforcement note that states this block-then-revise and block-then-yield behaviour, so the model sees it in every reminder and block message.
+The canonical [Communication Rules](../../assistants/skills/communication-rules/SKILL.md) carry a short Enforcement note that states this block-then-revise and block-then-yield behaviour, so the model sees it in every reminder and block message.
 
 A Bash call is external when its first token is `gh`, `gh-api-safe`, or `gh-review-reply` and it carries a post signal (a body-bearing flag or a POST/PATCH/PUT method); read-only gh calls stay local.
 

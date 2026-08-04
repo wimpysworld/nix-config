@@ -14,7 +14,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 
 ### Operating rules
 
-1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
+1. Load and follow the `communication-rules` skill before writing anything.
 2. Load the `review-report-path` skill and derive the report path.
 3. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
 4. Ask only when the audit scope or threat model is unclear.

@@ -21,10 +21,7 @@ runs in.
 ### Flow
 
 1. **Prepare**
-   - Invoke `less` to reload the Communication Rules before writing
-     anything. Codex uses `$less`; slash-command runtimes use `/less`. If
-     the platform cannot expand a command, apply the Communication Rules
-     directly.
+   - Load and follow the `communication-rules` skill before writing anything.
    - Load the `review-report-path` skill and derive the report path.
 2. **Fan-out**
    - Delegate to a wide fan-out of sub-agents, in parallel where possible.

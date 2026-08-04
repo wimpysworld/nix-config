@@ -40,7 +40,7 @@ Report the plan path in your output so the user can find it.
 
 **1. Prepare**
 
-Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
+Load and follow the `communication-rules` skill before writing anything.
 
 **2. Plan**
 

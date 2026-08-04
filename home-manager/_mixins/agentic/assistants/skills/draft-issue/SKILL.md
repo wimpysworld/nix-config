@@ -21,7 +21,7 @@ Never run `gh issue create`, `comment`, `edit`, `close`, `delete`, `lock`, `unlo
 
 ## Process
 
-1. Invoke `less` to reload the Communication Rules. Codex uses `$less`; slash-command runtimes use `/less`. If command expansion is unavailable, apply the Communication Rules directly.
+1. Load and follow the `communication-rules` skill.
 2. Load `contribution-voice` and follow it. It owns the common structure and cut pass for text published under the user's name.
 3. Load `how-to-contribute` and apply it to the repository. If the project requires prior discussion, bans AI-assisted contributions, or contains an AI trap, report the policy and stop.
 4. Search existing issues for duplicates. If a likely duplicate exists, link it, say so plainly, and stop.

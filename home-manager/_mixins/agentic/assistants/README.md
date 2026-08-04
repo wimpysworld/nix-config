@@ -60,13 +60,13 @@ Each file is Markdown with YAML frontmatter. No agent pins a model on any platfo
 Instructions stack in four layers. Each layer narrows scope and increases specificity.
 
 ```
-instructions/global.md          ← environment constraints, tool preferences, response standards
+instructions/global.md          ← environment constraints, tool preferences, skill references
     └── AGENTS.md / CLAUDE.md   ← project-specific context, conventions, commands
             └── agent prompt    ← specialist persona, expertise, tools, constraints
                     └── command prompt  ← single task, may repeat the agent's model pin
 ```
 
-**`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, response standards, and verbatim relay. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
+**`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and verbatim relay. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
 Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. A command can set its own model header, but only Garfield's four commands do.
 
@@ -78,9 +78,9 @@ Agent prompts inherit the global constraints and add specialisation. Command pro
 
 ### Agent Tripwire
 
-Nix owns one generated Communication Rules fragment through the `hooks/communication-rules` mixin. The visible `<!-- COMMUNICATION_RULES -->` marker in `instructions/global.md` is expanded by the shared composer, so Claude Code, OpenCode, Codex, Pi Agent, generated subagents, reminders, block messages, and correction prompts use the same text.
+The portable `skills/communication-rules/SKILL.md` file is the canonical Communication Rules source. Global instructions, agents, commands, and other skills load it by name instead of receiving copied rule text.
 
-The human-maintained prompt source is `hooks/communication-rules/communication-rules.md`. The generated fragment is also written to `~/.config/agent-communication-rules/communication-rules.md` with the shared scanner assets. Do not copy the rules into platform modules. Change the Markdown source instead, then let each platform consume the generated output.
+The `hooks/communication-rules` mixin strips the skill frontmatter and writes the complete body to `~/.config/agent-communication-rules/communication-rules.md` with the shared scanner assets. Reminders, block messages, correction prompts, and runtime disclosures embed that body. Do not copy the rules into platform modules.
 
 Agent Tripwire is not an agent bypass system. Blocked write, edit, post, and surfaced prose paths must be revised by the agent or stopped. Operator recovery stays outside the agent path: use the normal config disablement mechanism, such as `disableAllHooks`, or rebuild without the Agent Tripwire mixin when a false positive or broken hook needs human recovery.
 
@@ -96,7 +96,7 @@ When the coordinator lacks context, it delegates discovery instead of researchin
 
 ### Response Discipline
 
-Global response rules stay compact: concise peer-to-peer British English, no em dashes, one statement per fact, fenced blocks for code, file content, and commit messages. A single specialist output is relayed verbatim, with intervention only for safety.
+The `communication-rules` skill owns response discipline and the hooks enforce it. A single specialist output is relayed verbatim, with intervention only for safety.
 
 ### Standalone Commands
 
@@ -107,7 +107,7 @@ Global response rules stay compact: concise peer-to-peer British English, no em 
 | `collaborate`    | Read a task or file, meet the team, and prepare to collaborate       |
 | `grill-me`       | Interview the user until every branch of a design is resolved       |
 | `implement-task` | Take a tracked task through to implemented, validated, committed work |
-| `less`           | Re-read the Communication Rules and apply them from now on          |
+| `less`           | Load the `communication-rules` skill                                |
 | `orientate`      | Inspect the repository and report orientation notes                 |
 | `ready`          | Prime the session for a broad activity                              |
 | `reflect`        | Review the session and suggest tooling and AGENTS.md changes        |

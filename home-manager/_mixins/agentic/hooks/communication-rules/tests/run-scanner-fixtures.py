@@ -10,11 +10,13 @@ import sys
 import tempfile
 from pathlib import Path
 
+from skill_source import materialised_rules_path
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "fixtures"
 SCANNER = ROOT / "scanner.py"
-RULES = ROOT / "communication-rules.md"
+RULES = materialised_rules_path()
 
 BLOCK = 1
 PASS = 0

@@ -149,8 +149,9 @@ Pi `subagent` tool calls to provider-specific models declared in assistant
 `pi-footer`.
 
 `communication-rules` lives at `~/.pi/agent/extensions/communication-rules/`.
-It receives the same generated Communication Rules fragment as the Pi
-`AGENTS.md` file and generated agents. The extension uses Pi's native
+It receives the complete body of the `communication-rules` skill without
+frontmatter. Pi also installs the skill under `~/.pi/agent/skills/`, while
+`AGENTS.md` and generated agents load it by name. The extension uses Pi's native
 `context` event for model-call injection, `input` for non-blocking reminders,
 `tool_call` for outgoing writes, edits, Bash prose side effects, and post
 bodies, `message_end` for final-message correction, and `tool_result` for

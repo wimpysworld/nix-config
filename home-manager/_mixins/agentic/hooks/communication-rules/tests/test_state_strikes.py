@@ -52,10 +52,12 @@ import sys
 import tempfile
 from pathlib import Path
 
+from skill_source import materialised_rules_path
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCANNER = ROOT / "scanner.py"
-RULES = ROOT / "communication-rules.md"
+RULES = materialised_rules_path()
 
 # Per-agent strike-dir env var the state machine honours (core/state.py
 # _strike_dir). Pointing it at a temp dir shares one on-disk strike root across

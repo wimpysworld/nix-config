@@ -29,7 +29,7 @@ NEVER execute while drafting:
 
 ### Process
 
-1. Invoke `less` to reload the Communication Rules before drafting. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the rules restated below instead
+1. Load and follow the `communication-rules` skill before drafting
 2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
 3. Load the `review-report-path` skill and derive `<project>` and `<target>` from `$ARGUMENTS` with it
 4. Read the review report from `${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/`. If that directory holds several reports, ask which one to use. If it is missing or empty, list the target directories under `${TMPDIR:-/tmp}/agent-reviews/<project>/` and stop, saying a review must be run first for this target

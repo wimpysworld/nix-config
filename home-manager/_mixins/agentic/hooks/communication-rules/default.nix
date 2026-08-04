@@ -202,39 +202,25 @@ in
       description = "Whether the generated Communication Rules source is available for agentic modules.";
     };
 
-    text = lib.mkOption {
-      type = lib.types.str;
-      default = "";
-      internal = true;
-      description = "Generated Communication Rules fragment body.";
-    };
-
-    section = lib.mkOption {
-      type = lib.types.str;
-      default = "";
-      internal = true;
-      description = "Generated Communication Rules section with heading.";
-    };
-
     reminderPrompt = lib.mkOption {
       type = lib.types.str;
       default = "";
       internal = true;
-      description = "Reminder prompt that embeds the generated Communication Rules fragment.";
+      description = "Reminder prompt that embeds the Communication Rules skill body.";
     };
 
     blockMessage = lib.mkOption {
       type = lib.types.str;
       default = "";
       internal = true;
-      description = "Block message that embeds the generated Communication Rules fragment.";
+      description = "Block message that embeds the Communication Rules skill body.";
     };
 
     correctionPrompt = lib.mkOption {
       type = lib.types.str;
       default = "";
       internal = true;
-      description = "Correction prompt that embeds the generated Communication Rules fragment.";
+      description = "Correction prompt that embeds the Communication Rules skill body.";
     };
 
     detectionPolicy = lib.mkOption {
@@ -269,7 +255,7 @@ in
       type = lib.types.str;
       default = "";
       internal = true;
-      description = "Runtime path to the generated Communication Rules fragment.";
+      description = "Runtime path to the Communication Rules skill body.";
     };
 
     policyPath = lib.mkOption {
@@ -324,8 +310,6 @@ in
         correctionPrompt
         detectionPolicy
         reminderPrompt
-        section
-        text
         ;
     };
 

@@ -20,7 +20,7 @@ Agents, commands, skills, and global instructions are managed separately in the 
 
 ## Agent Tripwire
 
-OpenCode receives the shared Communication Rules fragment from the assistants module. The fragment is generated once by Nix and reused by OpenCode global context, generated agents, reminders, block messages, and correction requests.
+OpenCode receives the portable `communication-rules` skill from the assistants module. Global context and generated agents load it by name. Reminders, block messages, and correction requests use the complete skill body without frontmatter.
 
 Tripwire uses a global OpenCode plugin. The native `tool.execute.before` surface gates outgoing writes, edits, patches, Bash prose side effects, and external post bodies. If an outgoing side effect cannot be inspected, the plugin fails closed.
 

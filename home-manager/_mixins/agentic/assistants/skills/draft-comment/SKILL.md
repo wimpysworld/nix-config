@@ -23,7 +23,7 @@ Use Linear MCP reads for Linear. Use Slack reads for Slack. Never call their wri
 
 ## Process
 
-1. Invoke `less` to reload the Communication Rules. Codex uses `$less`; slash-command runtimes use `/less`. If command expansion is unavailable, apply the Communication Rules directly.
+1. Load and follow the `communication-rules` skill.
 2. Load `contribution-voice` and follow it. It owns the common structure and cut pass for text published under the user's name.
 3. Read enough of the target and any thread to answer what was asked without repeating a point already made.
 4. Draft one comment that answers the question and nothing adjacent.

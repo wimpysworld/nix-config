@@ -161,11 +161,8 @@ let
     };
   codexTripwireHookEvents = {
     # No SessionStart or SubagentStart reminder hook is registered here on
-    # purpose. Codex already loads the full Communication Rules silently
-    # through its instructions: the assistants mixin expands the single-source
-    # rules at the `<!-- COMMUNICATION_RULES -->` marker into Codex
-    # developer_instructions and AGENTS.md via compose.expandCommunicationRules,
-    # so the standing rules reach the model at session start. Codex also has no
+    # purpose. Codex loads the Communication Rules skill through the explicit
+    # reference in its root instructions. Codex also has no
     # silent SessionStart hook channel: a hook emitting
     # hookSpecificOutput.additionalContext is recorded as a visible developer
     # message in the transcript (see openai/codex#16933), and SubagentStart is
@@ -312,9 +309,8 @@ let
       max_depth = 1;
     };
 
-    # Apply no vendor personality. The Communication Rules are the persona for
-    # this setup, expanded into Codex base instructions via the
-    # `<!-- COMMUNICATION_RULES -->` marker and enforced by the tripwire gate.
+    # Apply no vendor personality. The Communication Rules skill and tripwire
+    # gate own the prose policy for this setup.
     # `personality` is an enum (none/friendly/pragmatic) and cannot carry the
     # rules text, so "none" keeps the vendor tone block from competing.
     personality = "none";

@@ -1,7 +1,7 @@
 # Global Rules and `delegate-task`
 
 Onboarding and reference for the global coordination layer in this repo:
-`instructions/global.md` and the dynamically generated `delegate-task` skill.
+`instructions/global.md`, the portable `communication-rules` skill, and the dynamically generated `delegate-task` skill.
 Read this before editing either artefact, the agent registry that feeds the
 skill generator, or the prose discipline that keeps both terse. It captures
 the research and doctrine behind the current design so future edits stay
@@ -14,14 +14,17 @@ agent operates inside, regardless of who edited it.
 
 ## 1. Purpose
 
-Together, `instructions/global.md` and the generated `delegate-task` skill
+Together, `instructions/global.md`, `communication-rules`, and the generated `delegate-task` skill
 define a token-optimised communication loop:
 
 - **`global.md`** is role-neutral and omnipresent. It tells whichever model is
   driving the parent thread when to delegate, that fresh context is the
   default, how to treat untrusted input, which reference tools to prefer, and
-  how to write user-visible output. It points to `delegate-task` for full
-  routing and contract detail rather than restating it.
+  which skills own routing and user-visible prose. It points to those skills
+  rather than restating them.
+- **`communication-rules`** owns the complete prose policy. Hooks strip its
+  portable frontmatter and inject the complete body into reminders, blocks,
+  corrections, and runtime disclosures.
 - **`delegate-task`** is generated from the live agent registry in
   `compose.nix`. It owns the routing table, the delegation packet fields, the
   sub-agent response contract, and the verbatim relay policy. It loads on
@@ -113,7 +116,7 @@ rule, packet template, response contract, and relay policy already filled in.
 - Trust hierarchy for user input, files, web pages, command output, and
   sub-agent output.
 - Reference-tool preferences (Exa, Context7, `gh`, LSP).
-- The compact prose discipline that governs user-visible output.
+- A pointer to the `communication-rules` skill for user-visible prose.
 - A single pointer to `delegate-task` for full routing and contract detail.
 
 ### 3.3 Why generated, not hand-written
@@ -231,7 +234,7 @@ families, not the individual functions.
 
 ## 5. Style as token discipline
 
-The prose rules in `global.md` exist because writing style directly affects
+The prose rules in the `communication-rules` skill exist because writing style directly affects
 token consumption and cache behaviour.
 
 ### 5.1 Cache stability
@@ -274,7 +277,7 @@ chasing a 10K total that the platform floor already exceeds.
 
 ### 5.3 The rules in service of the loop
 
-The concrete prose rules in `global.md` (lead with conclusions, one
+The concrete prose rules in `communication-rules` (lead with conclusions, one
 statement per fact, no em dashes, no filler, no hedging, no LLM-tell words,
 no tone-only sentences) exist so that user-visible output is short, the
 cache prefix stays clean, and the parent thread accumulates as few tokens
@@ -283,9 +286,9 @@ prose surface of the token-efficient loop.
 
 ## 6. Cross-platform notes
 
-Each runtime loads `global.md` and `delegate-task` differently. The split
-between role-neutral global rules and an on-demand routing skill keeps the
-artefacts portable.
+Each runtime loads `global.md`, `communication-rules`, and `delegate-task`
+differently. Keeping role-neutral global rules and portable skills separate
+keeps the artefacts portable.
 
 ### 6.1 Claude Code
 
@@ -354,6 +357,7 @@ Authoritative sources behind the global rules and the generated
 ### 7.3 Local source artefacts
 
 - `home-manager/_mixins/agentic/assistants/instructions/global.md`
+- `home-manager/_mixins/agentic/assistants/skills/communication-rules/SKILL.md`
 - `home-manager/_mixins/agentic/assistants/instructions/header.claude.yaml`
 - `home-manager/_mixins/agentic/assistants/instructions/header.opencode.yaml`
 - `home-manager/_mixins/agentic/assistants/compose.nix` (the `delegate-task`

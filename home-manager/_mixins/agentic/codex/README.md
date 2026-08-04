@@ -50,7 +50,7 @@ Both legacy `~/.codex` and XDG Codex homes are seeded because Codex, Home Manage
 
 ## Agent Tripwire
 
-Codex receives the shared Communication Rules fragment from the assistants module. The fragment is generated once by Nix and reused by the root `AGENTS.md`, generated agent TOML, reminders, block messages, and correction prompts.
+Codex receives the portable `communication-rules` skill from the assistants module. Root instructions and generated agents load it by name. Hook reminders, block messages, and correction prompts use the complete skill body without frontmatter.
 
 Tripwire hook config is merged into the generated mutable `config.toml`. `SessionStart`, `SubagentStart`, and `UserPromptSubmit` remind without blocking. `PreToolUse` gates outgoing `apply_patch`, writes, edits, Bash prose side effects, and post tools. Where the installed Codex hook surface supports it, `Stop` and `SubagentStop` gate final and surfaced subagent prose through correction instead of showing trigger details.
 

@@ -16,7 +16,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 
 ### Process
 
-1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
+1. Load and follow the `communication-rules` skill before writing anything.
 2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area, writes its findings to the file its packet names, and returns them. Derive the report directory now with the `review-report-path` skill and name each file `<report-dir>/findings-<area>.md`, so no two collide.
 3. Detect languages and target versions from project manifests and toolchain files, preferring explicit runtime declarations over inference (`go.mod`, `pyproject.toml`, `Cargo.toml`, `.tool-versions`, `.python-version`, `package.json`, etc.).
 4. Hunt first for code that can disappear:

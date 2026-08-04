@@ -40,10 +40,12 @@ import sys
 import tempfile
 from pathlib import Path
 
+from skill_source import materialised_rules_path
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCANNER = ROOT / "scanner.py"
-RULES = ROOT / "communication-rules.md"
+RULES = materialised_rules_path()
 
 # Agents whose B2 gate path the dispatcher drives through a real extractor.
 GATE_AGENTS = ("pi", "opencode")

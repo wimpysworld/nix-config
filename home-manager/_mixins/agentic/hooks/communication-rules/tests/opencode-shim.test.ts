@@ -24,7 +24,10 @@ import * as path from "node:path";
 
 const root = path.resolve(import.meta.dir, "..");
 const scanner = path.join(root, "scanner.py");
-const rulesSource = path.join(root, "communication-rules.md");
+const rulesSource = path.resolve(
+  root,
+  "../../assistants/skills/communication-rules/SKILL.md",
+);
 const pluginSource = path.resolve(
   root,
   "../../opencode/plugins/communication-rules.ts",
@@ -63,6 +66,20 @@ interface Hooks {
 let tempDir: string;
 let strikeDir: string;
 let toasts: string[];
+
+function skillBody(source: string): string {
+  const parts = source.split("\n---\n");
+  const frontmatter = parts[0] ?? "";
+  if (
+    parts.length < 2 ||
+    !frontmatter.startsWith("---\n") ||
+    !frontmatter.includes("\nname: communication-rules") ||
+    !frontmatter.includes("\ndescription:")
+  ) {
+    throw new Error(`Invalid Communication Rules skill frontmatter: ${rulesSource}`);
+  }
+  return parts.slice(1).join("\n---\n").trim();
+}
 
 // Load the real plugin with its build-time tokens substituted: the scanner
 // token points at a wrapper that execs the core with temp state dirs, so the
@@ -153,7 +170,7 @@ beforeAll(() => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-shim-test-"));
   strikeDir = path.join(tempDir, "strikes");
 
-  const rules = fs.readFileSync(rulesSource, "utf-8").trim();
+  const rules = skillBody(fs.readFileSync(rulesSource, "utf-8"));
   const rulesPath = path.join(tempDir, "rules.md");
   const correctionPromptPath = path.join(tempDir, "correction-prompt.md");
   fs.writeFileSync(rulesPath, `${rules}\n`, "utf-8");

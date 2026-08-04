@@ -23,7 +23,7 @@ The package source varies by platform:
 
 ## Agent Tripwire
 
-Claude Code receives the shared Communication Rules fragment from the assistants module. The fragment is generated once by Nix and reused by the Claude Code instructions and hook adapters.
+Claude Code receives the portable `communication-rules` skill from the assistants module. Global instructions load it by name, and hook adapters use the complete skill body without frontmatter.
 
 Tripwire uses Claude Code settings hooks. `SessionStart` and `UserPromptSubmit` remind without blocking. `PreToolUse` gates outgoing writes, edits, Bash prose side effects, and configured post-capable MCP tools. Where final-response correction is enabled, the native `Stop` surface scans final assistant prose and asks Claude Code to revise without showing trigger details.
 

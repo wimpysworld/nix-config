@@ -33,4 +33,4 @@ Use LSP diagnostics and navigation when available, including grammar and formatt
 
 ## Communication Rules
 
-<!-- COMMUNICATION_RULES -->
+Load and follow the `communication-rules` skill before producing or writing prose. The Communication Rules hooks enforce file writes, edits, patches, posts, and runtime replies.

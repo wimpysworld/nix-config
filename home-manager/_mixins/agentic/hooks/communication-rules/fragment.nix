@@ -1,15 +1,22 @@
 { lib }:
 let
-  text = lib.trim (builtins.readFile ./communication-rules.md);
+  skillPath = ../../assistants/skills/communication-rules/SKILL.md;
+  skillSource = builtins.readFile skillPath;
+  skillParts = lib.splitString "\n---\n" skillSource;
+  frontmatter = lib.head skillParts;
+  hasValidFrontmatter =
+    lib.length skillParts >= 2
+    && lib.hasPrefix "---\n" frontmatter
+    && lib.hasInfix "\nname: communication-rules" frontmatter
+    && lib.hasInfix "\ndescription:" frontmatter;
+  text =
+    if hasValidFrontmatter then
+      lib.trim (lib.concatStringsSep "\n---\n" (lib.tail skillParts))
+    else
+      throw "${toString skillPath} must contain portable communication-rules skill frontmatter.";
 in
 {
   inherit text;
-
-  section = ''
-    ## Communication Rules
-
-    ${text}
-  '';
 
   reminderPrompt = ''
     Reminder: Follow the Communication Rules for any prose you produce or write.

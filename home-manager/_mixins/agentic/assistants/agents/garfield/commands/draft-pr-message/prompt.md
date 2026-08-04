@@ -27,7 +27,7 @@ NEVER execute while drafting:
 
 ### Process
 
-1. Invoke `less` to reload the Communication Rules before drafting. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the rules restated below instead
+1. Load and follow the `communication-rules` skill before drafting
 2. Load the `contribution-voice` skill before drafting anything. It governs the structure of text published under the user's name. If the platform cannot load a skill, continue with the rules restated below
 3. Run allowed commands one at a time to gather branch context
 4. Apply type selection from the agent definition, based on the dominant change intent across commits

@@ -1,1 +1,1 @@
-Re-read the Communication Rules at `~/.config/agent-communication-rules/communication-rules.md`. Apply them to every reply and every file write from now on: fewest sentences, lead with the conclusion, active voice, British English, no filler or banned words. Do not acknowledge; carry on.
+Load and follow the `communication-rules` skill. Do not acknowledge; carry on.

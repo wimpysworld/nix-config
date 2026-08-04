@@ -38,7 +38,7 @@ Where `slack-post` is missing, print the command for the operator to run.
 
 **Reply in the thread when the target is a thread.**
 
-**Invoke `less` to reload the Communication Rules before drafting.** Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
+**Load and follow the `communication-rules` skill before drafting.**
 
 **Load `contribution-voice` before drafting.** Anything posted publishes under the user's name. Run its cut pass, then cut again for Slack.
 

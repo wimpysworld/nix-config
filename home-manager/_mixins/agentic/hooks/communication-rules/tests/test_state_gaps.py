@@ -33,10 +33,12 @@ import sys
 import tempfile
 from pathlib import Path
 
+from skill_source import materialised_rules_path
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCANNER = ROOT / "scanner.py"
-RULES = ROOT / "communication-rules.md"
+RULES = materialised_rules_path()
 
 sys.path.insert(0, str(ROOT))
 from core.config import DEFAULT_POLICY  # noqa: E402

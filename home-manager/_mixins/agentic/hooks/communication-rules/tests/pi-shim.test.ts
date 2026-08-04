@@ -22,7 +22,10 @@ import { pathToFileURL } from "node:url";
 
 const root = path.resolve(import.meta.dirname, "..");
 const scanner = path.join(root, "scanner.py");
-const rulesSource = path.join(root, "communication-rules.md");
+const rulesSource = path.resolve(
+  root,
+  "../../assistants/skills/communication-rules/SKILL.md",
+);
 const extension = path.resolve(
   root,
   "../../pi/extensions/communication-rules/index.ts",
@@ -48,6 +51,20 @@ interface Decision {
 let tempHome: string;
 let strikeDir: string;
 
+function skillBody(source: string): string {
+  const parts = source.split("\n---\n");
+  const frontmatter = parts[0] ?? "";
+  if (
+    parts.length < 2 ||
+    !frontmatter.startsWith("---\n") ||
+    !frontmatter.includes("\nname: communication-rules") ||
+    !frontmatter.includes("\ndescription:")
+  ) {
+    throw new Error(`Invalid Communication Rules skill frontmatter: ${rulesSource}`);
+  }
+  return parts.slice(1).join("\n---\n").trim();
+}
+
 // Build the temp HOME the shim loads its config from, plus a wrapper the shim
 // spawns as `adapterPath pi <event>`. The wrapper execs the real core with a
 // temp strike dir, so the file-backed counter is hermetic and shared across the
@@ -58,7 +75,7 @@ before(() => {
   const configDir = path.join(tempHome, ".pi/agent/extensions/communication-rules");
   fs.mkdirSync(configDir, { recursive: true });
 
-  const rules = fs.readFileSync(rulesSource, "utf-8").trim();
+  const rules = skillBody(fs.readFileSync(rulesSource, "utf-8"));
   const rulesPath = path.join(tempHome, "rules.md");
   const correctionPromptPath = path.join(tempHome, "correction-prompt.md");
   fs.writeFileSync(rulesPath, `${rules}\n`, "utf-8");

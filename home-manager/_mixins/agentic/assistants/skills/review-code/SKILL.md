@@ -37,7 +37,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 
 ### Process
 
-1. Invoke `less` to reload the Communication Rules before writing anything. Codex uses `$less`; slash-command runtimes use `/less`. If the platform cannot expand a command, apply the Communication Rules directly.
+1. Load and follow the `communication-rules` skill before writing anything.
 2. Load the `contribution-voice` skill and follow it when wording findings. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
 4. Load the `review-report-path` skill and derive the report path from the resolved target.
