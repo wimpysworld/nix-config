@@ -92,50 +92,6 @@ rec {
   #                  zed.mode           "context_server" | "extension"
   #                  zed.id             extension id when mode = "extension"
   servers = {
-    claude = {
-      transport = "stdio";
-      command = lib.getExe pkgs.claude-code;
-      args = [
-        "--strict-mcp-config"
-        "mcp"
-        "serve"
-      ];
-      startupTimeoutSec = 10;
-      consumers = {
-        # Claude's native MCP exposes an agent-calling-agent surface. Keep it
-        # available only to Codex and avoid recursive Claude MCP exposure.
-        claudeCode.enabled = false;
-        codex = {
-          enabled = true;
-          defaultToolsApprovalMode = "prompt";
-        };
-        opencode.enabled = false;
-        pi = {
-          enabled = false;
-          omit = true;
-        };
-        zed.enabled = false;
-      };
-    };
-
-    codex = {
-      transport = "stdio";
-      command = lib.getExe config.programs.codex.package;
-      args = [ "mcp-server" ];
-      consumers = {
-        # Native Codex MCP is an agent-calling-agent surface. Keep it
-        # available only to Claude Code and avoid recursive Codex exposure.
-        claudeCode.enabled = true;
-        codex.enabled = false;
-        opencode.enabled = false;
-        pi = {
-          enabled = false;
-          omit = true;
-        };
-        zed.enabled = false;
-      };
-    };
-
     context7 = {
       transport = "http";
       url = "https://mcp.context7.com/mcp";
