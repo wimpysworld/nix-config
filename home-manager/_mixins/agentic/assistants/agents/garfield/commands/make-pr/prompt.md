@@ -58,30 +58,26 @@ Append this block to the end of the body file:
 <details>
 <summary>Reviewer orientation</summary>
 
-**Outcome** - what this change achieves, one line.
+**Why this change exists and why a reviewer should care, one line.**
 
-**Scope** - what it touches.
-
-**Out of scope** - what it deliberately leaves alone, and why.
-
-**Worth attention** - the two or three places a defect would hurt most.
-
-**Verified** - what was run and what passed.
-
-**Tracking** - <ISSUE-KEY>
+- **Out of scope** - what it deliberately leaves alone, and links to the follow-on issues where they exist.
+- **Verified** - what was run and what passed.
+- **Tracking** - [<ISSUE-KEY>](<issue link>)
 
 </details>
 ```
 
 Filling it in:
 
-- Write orientation, not instructions. State what the change does and where a defect would hurt. Never write a direction aimed at a reviewer or their tooling, such as what to look at or what to skip. Facts let a reviewer decide; instructions invite them to stop thinking.
-- Summarise, never paste. A task written by `create-task` carries `Outcome`, `Scope`, and `Non-goals` headings that map onto the first three fields. Restate each one in the reviewer's terms, one line each. Never copy the issue body across.
-- Control leaks. These pull requests land on repositories that may be public. Drop anything naming an internal system, a customer, a colleague, a roadmap item, or a dated plan. Omit any field that cannot be written without one of those. An omitted field is a clean outcome; a leaked one is not.
-- `Tracking` is the bare issue key, never a URL. A Linear URL carries a title slug, so on a public repository the link publishes the issue title. The key alone is enough for a colleague to find it.
-- Derive `Worth attention` and `Verified` from the branch's committed diff and what this session ran, not from the issue. Never claim a check that was not run.
-- Omit an empty field. Never stub one with "N/A" or "None".
-- Skip the whole block when every field would restate the title. Noise trains reviewers to collapse it unread. Say in the report that it was skipped, and why.
+- The first line is bold, carries no label, and says why the change exists, not what it does. The diff says what. Write what breaks or stays broken without it, so a reviewer knows why it is worth their time.
+- Write orientation, not instructions. Never write a direction aimed at a reviewer or their tooling, such as what to look at or what to skip. Facts let a reviewer decide; instructions invite them to stop thinking.
+- Summarise, never paste. A task written by `create-task` carries a `Non-goals` heading that maps onto `Out of scope`. Restate it in the reviewer's terms, one line. Never copy the issue body across.
+- `Out of scope` names follow-on work only where a tracked issue exists. Link it the same way as `Tracking`. Say nothing where no follow-on is tracked.
+- Control leaks. These pull requests land on repositories that may be public. Drop anything naming an internal system, a customer, a colleague, a roadmap item, or a dated plan. Omit any line that cannot be written without one of those. An omitted line is a clean outcome; a leaked one is not.
+- Every issue is a link, and its text is the bare key. For Linear, write `[FUL-1](https://linear.app/<workspace>/issue/FUL-1)`: that URL resolves, while the slugged URL Linear hands you ends in the issue title and publishes it on a repository that may be public. Never paste a slugged Linear URL. For a GitHub issue in this repository write `#123`, and `owner/repo#123` for one elsewhere; GitHub links both itself, so neither takes a URL.
+- Derive `Verified` from the branch's committed diff and what this session ran, not from the issue. Never claim a check that was not run.
+- Omit an empty bullet. Never stub one with "N/A" or "None".
+- Skip the whole block when the first line would restate the pull request title and no bullet adds anything. Noise trains reviewers to collapse it unread. Say in the report that it was skipped, and why.
 
 ### Linear transition
 
