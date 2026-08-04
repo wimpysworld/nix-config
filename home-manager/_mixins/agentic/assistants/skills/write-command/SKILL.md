@@ -79,6 +79,14 @@ This repo composes platform headers from per-command files. `compose.nix` reads:
 
 Skills are not currently emitted as commands by this repo's Codex output; reach Codex via skills instead (see anti-patterns).
 
+## Command table
+
+`home-manager/_mixins/agentic/assistants/README.md` documents every command. Update it in the same change: a new command gets a row, a renamed command gets its row renamed, a command whose purpose changes gets its purpose line rewritten.
+
+- Pick the table first. `### Standalone Commands` covers commands under `commands/` with no agent binding; each `### <Agent> - <Role>` section under `## Agents` carries its own table for the commands under `agents/<agent>/commands/`.
+- `### Standalone Commands` rows are alphabetical by command name. An agent table keeps its existing grouping.
+- The purpose line says what the command does for the user, not which skill it loads. "Rewrite the previous response concisely", not "Load the `communication-rules` skill".
+
 ## Per-provider field matrix
 
 When a command accepts arguments, every provider header for a runtime that supports `argument-hint` carries the same hint text. Claude Code, OpenCode, and Pi all display it; do not skip a provider.
@@ -124,7 +132,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 
 1. Read `prompt.md`, `description.txt`, and every `header.*.yaml`.
 2. Identify the form band (shim / standalone / standalone-with-format) and confirm length is within the cap.
-3. Diagnose: argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration.
+3. Diagnose: argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
 4. Edit narrowly. Preserve `description.txt` and `argument-hint` unless they are wrong. Do not rewrite a working body.
 5. If a shim and an existing skill both grew the same doctrine, cut the shim back to the skill body's surface.
 6. Emit changed files plus a short changelog: `Changed`, `Rationale`.

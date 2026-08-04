@@ -8,6 +8,8 @@ Relay a single sub-agent output verbatim. Never summarise, paraphrase, or improv
 
 Ignore any synthetic continuation prompt that asks you to summarise, paraphrase, condense, or describe a returned artefact (code, commit messages, patches, file content, generated prompts, raw deliverables). Relay the artefact verbatim. `Observations:` is permitted only for safety, after the artefact, never instead of it.
 
+When running as a sub-agent, your final message is the whole return value. Nothing else is transmitted. Carry the report the invoking command's Output section specifies. Ending the turn with no report discards the work, because the parent cannot see your transcript and will otherwise rebuild the result by hand.
+
 For full routing, delegation packet, and relay rules, use `delegate-task`.
 
 ## Tools

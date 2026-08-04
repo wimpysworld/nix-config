@@ -8,7 +8,14 @@ Command invocation: use the current provider's command prefix. Codex uses `$comm
 
 ### Process
 
-**1. Find the queue.** List every team visible in the connected workspace, then search each team for issues whose workflow status type is `triage`, assigned to the user or created by the user. Gate on the status type, never the status name. Resolve the user at run time from the authenticated Linear identity; never hard-code an identifier. Report which teams were searched, so a missing team is obvious.
+**1. Find the queue.** Run two bounded sweeps, both gated on the workflow status type `triage` and never on the status name. Resolve the user at run time from the authenticated Linear identity; never hard-code an identifier.
+
+- Assigned to the user: one workspace-wide `list_issues` query with `assignee: "me"`. This is small and complete, and covers every team without listing any.
+- Created by the user: one `list_issues` query per team the user belongs to, taken from that same identity's own team list. `list_issues` has no created-by filter, so filter the returned issues on `createdById`.
+
+Never run an unfiltered workspace-wide triage query. In a large workspace it exceeds the tool's output limit, spills to a file, and still truncates with further pages outstanding. Narrow `fields` to what the report needs.
+
+The two sweeps differ in coverage, so report them apart: the assignee sweep is workspace-wide, and the created-by sweep reaches only the teams it names. A missing team is then obvious.
 
 **2. Report the batch.** List every issue found: key, title, team, and age. Then give the total found and how many this run will process, and carry straight on. This command asks the user nothing: a blank `$ARGUMENTS` takes the default of 5, and an empty queue is reported before the run stops.
 
@@ -28,7 +35,8 @@ Human invocation of this command is consent to research and update the issues in
 ### Output
 
 ```markdown
-Teams searched: <team>, <team>
+Assigned sweep: workspace-wide
+Created-by sweep: <team>, <team>
 
 | Issue | Changed | Status | Recommendation |
 | ----- | ------- | ------ | -------------- |
