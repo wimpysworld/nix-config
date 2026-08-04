@@ -36,10 +36,3 @@ Write so a non-native English speaker understands on first read: short sentences
 
 ## The Cut Pass
 - After drafting, make one pass that only deletes. Cut every sentence that names no change the reader must make, and every number you re-derived that the reader can see for themselves.
-
-Enforcement:
-
-- A breach in a file write, edit, patch, or post is caught before it runs.
-- The first breach is blocked. Revise it to comply.
-- A later write may land with a request to revise the file in place. Treat that as a requirement to fix the file, not as approval.
-- Fix an external post body to comply before it goes out.

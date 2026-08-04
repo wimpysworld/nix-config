@@ -34,3 +34,11 @@ Use LSP diagnostics and navigation when available, including grammar and formatt
 ## Communication Rules
 
 Load and follow the `communication-rules` skill before producing or writing prose. The Communication Rules hooks enforce file writes, edits, patches, posts, and runtime replies.
+
+### Enforcement
+
+- A breach in a file write, edit, patch, or post is caught before it runs.
+- The first breach is blocked. Revise it to comply.
+- A later write may land with a request to revise the file in place. Treat that as a requirement to fix the file, not as approval.
+- Fix an external post body to comply before it goes out.
+
