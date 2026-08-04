@@ -250,9 +250,6 @@ let
         --add-flags "--simulate-outdated-no-au='Tue, 31 Dec 2099 23:59:59 GMT'" \
         --add-flags ${lib.escapeShellArg commandLineArgs}
 
-      # Make sure that libGL and libvulkan are found by ANGLE libGLESv2.so
-      patchelf --set-rpath $rpath $out/share/wavebox.io/wavebox/lib*GL*
-
       for elf in $out/share/wavebox.io/wavebox/{wavebox,chrome-sandbox,chrome_crashpad_handler}; do
         patchelf --set-rpath $rpath $elf
         patchelf --set-interpreter ${bintools.dynamicLinker} $elf
