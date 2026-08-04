@@ -1,0 +1,1 @@
+Load and follow the `communication-rules` skill in full, and this fucking time hold to it for the rest of this session. Reply with 🤦 and nothing else: no apology, no excuses, no rewrite, and no acknowledgement in words. There is no third warning.

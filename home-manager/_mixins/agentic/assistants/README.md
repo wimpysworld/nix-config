@@ -102,12 +102,14 @@ The `communication-rules` skill owns response discipline and the hooks enforce i
 | Command          | Purpose                                                             |
 | ---------------- | ------------------------------------------------------------------- |
 | `ack`            | Acknowledge a phase or message and yield                            |
+| `ahem`           | Re-issue the Communication Rules as a first warning                 |
 | `ask`            | Answer a question without treating it as an instruction              |
 | `call`           | Give one recommended solution with its reasoning, never a menu      |
 | `collaborate`    | Read a task or file, meet the team, and prepare to collaborate       |
 | `gist`           | Rewrite the previous response concisely                             |
 | `grill-me`       | Interview the user until every branch of a design is resolved       |
 | `implement-task` | Take a tracked task through to implemented, validated, committed work |
+| `oi`             | Re-issue the Communication Rules bluntly, after `ahem` failed        |
 | `orientate`      | Inspect the repository and report orientation notes                 |
 | `ready`          | Prime the session for a broad activity                              |
 | `reflect`        | Review the session and suggest tooling and AGENTS.md changes        |

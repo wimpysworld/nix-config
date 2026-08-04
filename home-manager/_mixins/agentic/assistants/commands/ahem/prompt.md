@@ -1,0 +1,1 @@
+Load and follow the `communication-rules` skill in full, and hold to it for the rest of this session. Reply with 🙇 and nothing else: no apology, no explanation, no rewrite, and no acknowledgement in words.
