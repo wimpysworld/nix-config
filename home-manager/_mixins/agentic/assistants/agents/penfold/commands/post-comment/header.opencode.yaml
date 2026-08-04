@@ -1,2 +1,2 @@
 agent: penfold
-argument-hint: "<thread-url>"
+argument-hint: "[target]"
