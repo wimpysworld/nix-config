@@ -90,7 +90,7 @@ let
       config.services.reframe.enable
       (config.services.reframe.configs == { })
       (builtins.elem "uinput" config.boot.kernelModules)
-      (!(builtins.elem "reframe" config.users.users.martin.extraGroups))
+      (builtins.elem "reframe" config.users.users.martin.extraGroups)
 
       (hasLine "card=card1" reframeConfig)
       (hasLine "connector=${expected.connector}" reframeConfig)
@@ -166,7 +166,10 @@ let
       package: (package.pname or package.name or "") == "wayvnc"
     ) config.home.packages);
 
+  sessionPasses = name: (homeConfigFor name).systemd.user.services ? reframe-session;
+
   untaggedConfig = configFor "tanis";
+  untaggedHomeConfig = homeConfigFor "tanis";
   untaggedCaddy =
     untaggedConfig.services.caddy.virtualHosts."tanis.${untaggedConfig.noughty.network.tailNet}".extraConfig;
   reframePackage = (configFor "bane").services.reframe.package;
@@ -180,11 +183,13 @@ let
 in
 assert lib.all targetPasses targetNames;
 assert lib.all homePasses (targetNames ++ [ "tanis" ]);
+assert lib.all sessionPasses targetNames;
 assert !(builtins.elem "reframe" untaggedConfig.noughty.host.tags);
 assert !untaggedConfig.services.reframe.enable;
 assert !(builtins.elem "uinput" untaggedConfig.boot.kernelModules);
 assert !(untaggedConfig.sops.templates ? reframe-main);
 assert !(untaggedConfig.systemd.services ? reframe-websockify);
+assert !(untaggedHomeConfig.systemd.user.services ? reframe-session);
 assert !(lib.hasInfix "/novnc" untaggedCaddy);
 assert !(builtins.pathExists (root + "/home-manager/_mixins/services/wayvnc/default.nix"));
 assert !(builtins.pathExists (root + "/home-manager/_mixins/services/wayvnc/README.md"));
