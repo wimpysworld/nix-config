@@ -53,8 +53,9 @@ let
       res = host.display.primaryResolution;
     in
     if res != "" then noughtyLib.backgroundResolution res else "1920x1080";
-  # Kanshi profile for regreet: disable non-primary displays, enable primary.
-  # Order matters: Cage -m last uses the last enabled output.
+  # ReFrame needs the greeter and user session to share the registry layout.
+  # Other hosts keep the primary-only greeter layout. Cage -m last uses the
+  # last enabled output, so the primary output remains last in both profiles.
   # Single-monitor hosts need no kanshi profile; Cage handles one output fine.
   kanshiProfile =
     if !host.display.isMultiMonitor then
@@ -63,13 +64,21 @@ let
       let
         inherit (host.display) primary;
         nonPrimary = lib.filter (d: d.output != primary.output) host.displays;
-        disableLines = map (d: "    output ${d.output} disable") nonPrimary;
-        enableLine = "    output ${primary.output} enable mode ${toString primary.width}x${toString primary.height}@${toString primary.refresh}Hz position 0,0 scale 1";
+        mkEnableLine =
+          display:
+          "    output ${display.output} enable mode ${toString display.width}x${toString display.height}@${toString display.refresh}Hz position ${toString display.position.x},${toString display.position.y} scale ${builtins.toJSON display.scale}";
+        profileLines =
+          if noughtyLib.hostHasTag "reframe" then
+            map mkEnableLine nonPrimary ++ [ (mkEnableLine primary) ]
+          else
+            map (d: "    output ${d.output} disable") nonPrimary
+            ++ [
+              "    output ${primary.output} enable mode ${toString primary.width}x${toString primary.height}@${toString primary.refresh}Hz position 0,0 scale 1"
+            ];
       in
       ''
         profile {
-        ${lib.concatStringsSep "\n" disableLines}
-        ${enableLine}
+        ${lib.concatStringsSep "\n" profileLines}
         }
       '';
 in

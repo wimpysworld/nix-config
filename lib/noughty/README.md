@@ -337,13 +337,15 @@ Tags are freeform `listOf str`. The canonical vocabulary is documented in a comm
 - **Host tags:**
   - `studio`, `davinci`, `gamedev`, `keyd`, `streamdeck`
   - `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`
-  - `iso`, `wayvnc`, `inference`, `workspace`, `scrutiny`, `dropbox`
+  - `iso`, `reframe`, `inference`, `workspace`, `scrutiny`, `dropbox`
   - `borgbackup`, `fprintd`, `strix-halo`, `gatus`, `irc-bouncer`, `voxtype`
 - **User tags:** `developer`, `admin`, `family`
 
 Tags centralise classification that was previously scattered as hostname comparisons across the tree (e.g. `hostname == "phasma" || hostname == "vader"` becomes the `"studio"` tag, set once in the registry).
 
 Because `tags` is `listOf str`, values from the registry and host-specific modules merge automatically via the module system. Tags are for *classification* ("this host is a studio"), not *configuration* ("this host uses DP-1").
+
+The `reframe` tag enables the NixOS remote desktop stack and the full registry display layout at greetd. Keep card, connector, scale, and position data in the relevant module or `host.displays`; the tag only selects the feature.
 
 Start simple; add enum validation only if typos become a real problem.
 

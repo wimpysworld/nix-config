@@ -447,6 +447,7 @@ RandomGenerator
 RandomGenerator's
 Rasterizer
 ReDoS
+ReFrame
 RecordingDevices
 RedKenrok
 Rekeying
@@ -1274,7 +1275,6 @@ waf
 wasm
 waveforms
 waybar
-wayvnc
 webpages
 webroot
 websockify
