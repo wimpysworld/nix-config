@@ -12,15 +12,29 @@
 }:
 let
   username = config.noughty.user.name;
-  userUid =
-    if config.users.users.${username}.uid == null then 1000 else config.users.users.${username}.uid;
-  xdgDataDirs = lib.concatStringsSep ":" [
-    "/home/${username}/.nix-profile/share"
-    "/home/${username}/.local/state/nix/profile/share"
-    "/etc/profiles/per-user/${username}/share"
-    "/nix/var/nix/profiles/default/share"
-    "/run/current-system/sw/share"
-  ];
+
+  # Logging wrapper around xdg-open for the Kolide desktop process. Tray
+  # menu clicks run xdg-open with output discarded and the exit status
+  # unchecked (kolide/launcher issue 2430), so this wrapper logs every
+  # invocation to /tmp/kolide-xdg-open.log before delegating to the real
+  # xdg-open from xdg-utils. The host desktop name is baked in at build
+  # time because only PATH reaches the desktop process.
+  kolideXdgOpen = pkgs.writeShellApplication {
+    name = "xdg-open";
+    runtimeInputs = with pkgs; [
+      coreutils
+      dbus
+      xdg-utils
+    ];
+    runtimeEnv = {
+      KOLIDE_XDG_CURRENT_DESKTOP =
+        {
+          hyprland = "Hyprland";
+        }
+        .${toString config.noughty.host.desktop} or "";
+    };
+    text = builtins.readFile ./kolide-xdg-open.sh;
+  };
 
   # Automates the bootstrap and update process for CrowdStrike Falcon on NixOS.
   # Downloads the sensor RPM, extracts it, copies binaries to /opt/CrowdStrike/,
@@ -66,23 +80,27 @@ lib.mkIf (noughtyLib.hostHasTag "policy") {
     enable = true;
   };
 
-  # Give Kolide longer to flush osquery state on shutdown.
-  # Default systemd TimeoutStopSec=90s is occasionally insufficient for
-  # long-running launcher processes on busy workstations and results in
-  # a SIGKILL of launcher + osqueryd, leaving event-store writes
-  # half-flushed. 180 s gives generous headroom without delaying boot
-  # meaningfully.
+  # The launcher spawns the per-user "launcher desktop" process with a
+  # fresh environment and copies only PATH from this unit (desktopCommand
+  # in ee/desktop/runner/runner.go), so setting any other variable here
+  # has no effect. Everything the AppIndicator needs must therefore
+  # resolve via PATH: the logging xdg-open wrapper comes first, then the
+  # system profiles, then the per-user Home Manager profiles so browsers
+  # referenced by .desktop Exec entries are found, then the unit's own
+  # path list (xdg-utils and glib).
   systemd.services.kolide-launcher = {
     path = [
       pkgs.xdg-utils
       pkgs.glib
     ];
-    environment = {
-      DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/${toString userUid}/bus";
-      XDG_DATA_DIRS = xdgDataDirs;
-    };
     serviceConfig = {
-      Environment = lib.mkForce "PATH=/run/wrappers/bin:/bin:/sbin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:${config.systemd.services.kolide-launcher.environment.PATH}";
+      Environment = lib.mkForce "PATH=${kolideXdgOpen}/bin:/run/wrappers/bin:/bin:/sbin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${username}/bin:/home/${username}/.nix-profile/bin:${config.systemd.services.kolide-launcher.environment.PATH}";
+      # Give Kolide longer to flush osquery state on shutdown. The default
+      # TimeoutStopSec of 90 seconds is occasionally insufficient for
+      # long-running launcher processes on busy workstations and results
+      # in a SIGKILL of launcher and osqueryd, leaving event-store writes
+      # half-flushed. 180 seconds gives generous headroom without
+      # delaying shutdown meaningfully.
       TimeoutStopSec = lib.mkDefault 180;
     };
   };
