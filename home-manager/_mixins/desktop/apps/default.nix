@@ -12,6 +12,22 @@ let
   archiveManager = [ "org.gnome.FileRoller.desktop" ];
   webBrowser =
     if noughtyLib.hostHasTag "workspace" then [ "wavebox.desktop" ] else [ "brave-browser.desktop" ];
+  # Browser mimetypes are shared between added associations and default
+  # applications so URL handlers resolve without a desktop session.
+  browserMimeTypes = lib.genAttrs [
+    "application/x-extension-htm"
+    "application/x-extension-html"
+    "application/x-extension-shtml"
+    "application/x-extension-xht"
+    "application/x-extension-xhtml"
+    "application/xhtml+xml"
+    "text/html"
+    "x-scheme-handler/about"
+    "x-scheme-handler/ftp"
+    "x-scheme-handler/http"
+    "x-scheme-handler/https"
+    "x-scheme-handler/unknown"
+  ] (_: webBrowser);
   documentViewer = [ "org.gnome.Papers.desktop" ];
   imageViewer = [ "org.gnome.Loupe.desktop" ];
   videoPlayer = [ "io.github.celluloid_player.Celluloid.desktop" ];
@@ -82,7 +98,7 @@ in
     mime.enable = true;
     mimeApps = {
       enable = true;
-      associations.added = {
+      associations.added = browserMimeTypes // {
         "application/x-7z-compressed" = archiveManager;
         "application/x-7z-compressed-tar" = archiveManager;
         "application/x-bzip" = archiveManager;
@@ -105,19 +121,6 @@ in
         "application/gzip" = archiveManager;
         "application/bzip2" = archiveManager;
         "application/vnd.rar" = archiveManager;
-
-        "application/x-extension-htm" = webBrowser;
-        "application/x-extension-html" = webBrowser;
-        "application/x-extension-shtml" = webBrowser;
-        "application/x-extension-xht" = webBrowser;
-        "application/x-extension-xhtml" = webBrowser;
-        "application/xhtml+xml" = webBrowser;
-        "text/html" = webBrowser;
-        "x-scheme-handler/about" = webBrowser;
-        "x-scheme-handler/ftp" = webBrowser;
-        "x-scheme-handler/http" = webBrowser;
-        "x-scheme-handler/https" = webBrowser;
-        "x-scheme-handler/unknown" = webBrowser;
 
         "application/vnd.comicbook-rar" = documentViewer;
         "application/vnd.comicbook+zip" = documentViewer;
@@ -269,11 +272,10 @@ in
         "x-scheme-handler/icy" = videoPlayer;
         "x-scheme-handler/icyx" = videoPlayer;
       };
-      defaultApplications = {
+      defaultApplications = browserMimeTypes // {
         "audio/*" = audioPlayer;
         "application/pdf" = documentViewer;
         "image/*" = imageViewer;
-        "text/html" = webBrowser;
         "video/*" = videoPlayer;
       };
     };
