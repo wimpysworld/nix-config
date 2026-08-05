@@ -16,20 +16,6 @@ let
     zannah = "card1";
   };
 
-  logicalDisplays = map (display: {
-    width = builtins.floor (display.width / display.scale);
-    height = builtins.floor (display.height / display.scale);
-    inherit (display) position;
-  }) host.displays;
-  logicalDesktopWidth = lib.foldl' (
-    width: display: lib.max width (display.position.x + display.width)
-  ) 0 logicalDisplays;
-  logicalDesktopHeight = lib.foldl' (
-    height: display: lib.max height (display.position.y + display.height)
-  ) 0 logicalDisplays;
-  # ReFrame combines physical CRTC dimensions with desktop coordinates, so
-  # express the logical layout in the primary display's physical coordinate space.
-  reframeScale = value: builtins.floor (value * primary.scale);
 in
 lib.mkIf (noughtyLib.hostHasTag "reframe") {
   boot.kernelModules = [ "uinput" ];
@@ -60,15 +46,21 @@ lib.mkIf (noughtyLib.hostHasTag "reframe") {
     };
 
     templates.reframe-main = {
+      # The compositor maps ReFrame's absolute pointer over the bounding box
+      # of the live output layout, and secondary monitors drop off DRM in deep
+      # standby, which is the normal state when connecting remotely. Describe
+      # the desktop as the primary display alone so pointer mapping is exact
+      # in that state; while a secondary display is awake the pointer skews
+      # until it sleeps again.
       content = ''
         [reframe]
         card=${drmCards.${host.name}}
         connector=${host.display.primaryOutput}
         rotation=0
-        desktop-width=${toString (reframeScale logicalDesktopWidth)}
-        desktop-height=${toString (reframeScale logicalDesktopHeight)}
-        monitor-x=${toString (reframeScale primary.position.x)}
-        monitor-y=${toString (reframeScale primary.position.y)}
+        desktop-width=${toString primary.width}
+        desktop-height=${toString primary.height}
+        monitor-x=0
+        monitor-y=0
         default-width=${toString primary.width}
         default-height=${toString primary.height}
         resize=true
