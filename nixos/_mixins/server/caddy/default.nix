@@ -9,6 +9,14 @@ let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
   basePath = "/syncthing";
+  syncthingConfig = ''
+    redir ${basePath} ${basePath}/
+    handle_path ${basePath}/* {
+      reverse_proxy localhost:8384 {
+        header_up Host localhost
+      }
+    }
+  '';
   # Only enable caddy if tailscale is enabled or the host is malak
   useCaddy = config.services.tailscale.enable || noughtyLib.isHost [ "malak" ];
 in
@@ -36,39 +44,41 @@ lib.mkIf useCaddy {
     virtualHosts."${host.name}.${config.noughty.network.tailNet}" = lib.mkMerge [
       # Reverse proxy syncthing; which is configured/enabled via Home Manager
       (lib.mkIf config.services.tailscale.enable {
-        extraConfig = ''
-          redir ${basePath} ${basePath}/
-          handle_path ${basePath}/* {
-            reverse_proxy localhost:8384 {
-              header_up Host localhost
-            }
-          }
-        '';
+        extraConfig = lib.mkIf (!(noughtyLib.hostHasTag "reframe")) syncthingConfig;
         logFormat = lib.mkDefault ''
           output file /var/log/caddy/tailscale.log
         '';
       })
-      # noVNC web client for browser-based VNC access via the Tailnet
-      (lib.mkIf (config.services.tailscale.enable && noughtyLib.hostHasTag "wayvnc") {
+      # noVNC web client for browser-based ReFrame access via the Tailnet
+      (lib.mkIf (config.services.tailscale.enable && noughtyLib.hostHasTag "reframe") {
         extraConfig = ''
-          # Redirect bare /novnc and /novnc/ to the noVNC client.
-          # path=/websockify is relative to vnc.html's directory, so noVNC
-          # will connect to wss://<host>/novnc/websockify.
-          # autoconnect=true skips the connect dialog and connects immediately.
-          redir /novnc /novnc/vnc.html?path=websockify&autoconnect=true 301
-          redir /novnc/ /novnc/vnc.html?path=websockify&autoconnect=true 301
+          route {
+            @notTailscale {
+              not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+            }
+            respond @notTailscale 403
 
-          # noVNC: WebSocket reverse proxy must be matched BEFORE
-          # handle_path strips the prefix, otherwise Caddy's directive
-          # ordering may route to file_server instead.
-          handle /novnc/websockify {
-            reverse_proxy localhost:5900
-          }
+            # Redirect bare /novnc and /novnc/ to the noVNC client.
+            # path=/websockify is relative to vnc.html's directory, so noVNC
+            # will connect to wss://<host>/novnc/websockify.
+            # autoconnect=true skips the connect dialog and connects immediately.
+            redir /novnc /novnc/vnc.html?path=websockify&autoconnect=true 301
+            redir /novnc/ /novnc/vnc.html?path=websockify&autoconnect=true 301
 
-          # noVNC static assets (vnc.html, JS, CSS) served from the Nix store.
-          handle_path /novnc/* {
-            root * ${pkgs.novnc}/share/webapps/novnc
-            file_server
+            # noVNC: WebSocket reverse proxy must be matched BEFORE
+            # handle_path strips the prefix, otherwise Caddy's directive
+            # ordering may route to file_server instead.
+            handle /novnc/websockify {
+              reverse_proxy 127.0.0.1:5900
+            }
+
+            # noVNC static assets (vnc.html, JS, CSS) served from the Nix store.
+            handle_path /novnc/* {
+              root * ${pkgs.novnc}/share/webapps/novnc
+              file_server
+            }
+
+            ${syncthingConfig}
           }
         '';
       })

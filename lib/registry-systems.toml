@@ -1,7 +1,7 @@
 # System registry - central definition of all systems and their properties
 #
 # Canonical tag vocabulary:
-#   Host tags: studio, davinci, gamedev, keyd, streamdeck, pci-hdmi-capture, thinkpad, framework, policy, steamdeck, lima, wsl, iso, wayvnc, inference, workspace, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, paseo, voxtype, kmscon, openstack
+#   Host tags: studio, davinci, gamedev, keyd, streamdeck, pci-hdmi-capture, thinkpad, framework, policy, steamdeck, lima, wsl, iso, reframe, inference, workspace, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, paseo, voxtype, kmscon, openstack
 #   User tags: developer, admin, family
 #
 # Registry fields:
@@ -28,7 +28,16 @@
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["framework", "policy", "workspace", "dropbox", "fprintd", "wayvnc", "voxtype", "paseo"]
+tags = [
+  "framework",
+  "policy",
+  "workspace",
+  "dropbox",
+  "fprintd",
+  "reframe",
+  "voxtype",
+  "paseo",
+]
 
 [bane.gpu]
 vendors = ["amd"]
@@ -52,7 +61,16 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["framework", "policy", "workspace", "dropbox", "fprintd", "wayvnc", "voxtype", "paseo"]
+tags = [
+  "framework",
+  "policy",
+  "workspace",
+  "dropbox",
+  "fprintd",
+  "reframe",
+  "voxtype",
+  "paseo",
+]
 
 [ravi.gpu]
 vendors = ["amd"]
@@ -180,7 +198,7 @@ tags = [
   "streamdeck",
   "pci-hdmi-capture",
   "inference",
-  "wayvnc",
+  "reframe",
   "scrutiny",
   "dropbox",
   "borgbackup",
@@ -228,7 +246,7 @@ tags = [
   "streamdeck",
   "pci-hdmi-capture",
   "inference",
-  "wayvnc",
+  "reframe",
   "scrutiny",
   "dropbox",
   "borgbackup",

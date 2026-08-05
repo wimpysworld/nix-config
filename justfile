@@ -210,6 +210,10 @@ check:
 
     echo "󰸞 Flake check passed for ${system}"
 
+# Run the declarative ReFrame module regression test
+test-reframe:
+    nix build --no-link --impure --expr 'let root = toString ./.; flake = builtins.getFlake root; homeFlake = builtins.getFlake ("git+file://" + root); in import ./nixos/_mixins/server/reframe/tests/module-test.nix { inherit flake homeFlake; inherit (flake.inputs.nixpkgs) lib; }'
+
 # Evaluate configurations without building
 eval:
     @just eval-flake
