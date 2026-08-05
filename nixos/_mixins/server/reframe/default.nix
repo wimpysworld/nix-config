@@ -37,6 +37,10 @@ lib.mkIf (noughtyLib.hostHasTag "reframe") {
   services.reframe = {
     enable = true;
     package = pkgs.reframe.overrideAttrs (oldAttrs: {
+      # Veila powers displays off while locked and ignores the pointer motion
+      # ReFrame injects for wakeup, so add a KEY_WAKEUP press and retry the
+      # CRTC lookup while the display wakes.
+      patches = (oldAttrs.patches or [ ]) ++ [ ./reframe-wakeup-key.patch ];
       postInstall = (oldAttrs.postInstall or "") + ''
         rm "$out/etc/xdg/autostart/reframe-session.desktop"
       '';
@@ -70,7 +74,7 @@ lib.mkIf (noughtyLib.hostHasTag "reframe") {
         resize=true
         cursor=true
         wakeup=true
-        damage=cpu
+        damage=gpu
         fps=30
 
         [vnc]
@@ -100,16 +104,33 @@ lib.mkIf (noughtyLib.hostHasTag "reframe") {
     d /etc/reframe 0750 root reframe - -
   '';
 
+  # Clipboard text synchronisation requires the desktop user to read the
+  # session socket in /run/reframe-session, which is owned by the reframe
+  # group. The reframe-session user service lives in Home Manager.
+  users.users.${config.noughty.user.name}.extraGroups = [ "reframe" ];
+
   systemd.services = {
     "reframe-server@main" = {
       overrideStrategy = "asDropin";
       after = [ "sops-install-secrets.service" ];
       requires = [ "sops-install-secrets.service" ];
       wantedBy = [ "multi-user.target" ];
+      # The server translates VNC keysyms through libxkbcommon, which reads
+      # the layout and variant from the environment and falls back to US.
+      environment = {
+        XKB_DEFAULT_LAYOUT = host.keyboard.layout;
+        # The reframe user's home is /var/empty, so give Mesa a writable
+        # shader cache to avoid recompiling the damage shaders every start.
+        XDG_CACHE_HOME = "/var/cache/reframe-server";
+      }
+      // lib.optionalAttrs (host.keyboard.variant != "") {
+        XKB_DEFAULT_VARIANT = host.keyboard.variant;
+      };
       serviceConfig = {
         WorkingDirectory = "/";
         AmbientCapabilities = [ "" ];
         CapabilityBoundingSet = [ "" ];
+        CacheDirectory = "reframe-server";
       };
     };
 

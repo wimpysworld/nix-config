@@ -1,0 +1,59 @@
+diff --git a/reframe-streamer/main.c b/reframe-streamer/main.c
+index d04f85d..20b741d 100644
+--- a/reframe-streamer/main.c
++++ b/reframe-streamer/main.c
+@@ -629,8 +629,20 @@ static void setup_drm(struct this *this)
+ 
+ 	this->card_path = rf_config_get_card_path(this->config);
+ 	this->connector_name = rf_config_get_connector(this->config);
+-	drmModeConnector *connector =
+-		get_card_and_connector(this, this->connector_name);
++	// The display may still be waking up after the uinput wakeup events,
++	// so poll for an active CRTC for a while instead of aborting at once.
++	drmModeConnector *connector = NULL;
++	for (int i = 0; i < 20; ++i) {
++		connector = get_card_and_connector(this, this->connector_name);
++		if (connector != NULL)
++			break;
++		if (this->cfd >= 0) {
++			close(this->cfd);
++			this->cfd = -1;
++		}
++		g_message("DRM: No usable connector yet, retrying.");
++		g_usleep(G_USEC_PER_SEC / 2);
++	}
+ 	if (connector == NULL)
+ 		g_error("DRM: Failed to find a usable connector.");
+ 
+@@ -703,6 +715,31 @@ static void wakeup_uinput(struct this *this)
+ 	ies[3].value = 0;
+ 
+ 	write_may(this->ufd, ies, WAKEUP_MAX_EVENTS * sizeof(*ies));
++
++	// Some session lockers ignore pointer motion while outputs are
++	// powered off so accidental knocks don't wake the screen, and they
++	// only wake on a key or button press. Press and release the harmless
++	// wakeup key so those lockers power the outputs back on.
++	struct input_event kes[WAKEUP_MAX_EVENTS];
++	memset(kes, 0, WAKEUP_MAX_EVENTS * sizeof(*kes));
++
++	kes[0].type = EV_KEY;
++	kes[0].code = KEY_WAKEUP;
++	kes[0].value = 1;
++
++	kes[1].type = EV_SYN;
++	kes[1].code = SYN_REPORT;
++	kes[1].value = 0;
++
++	kes[2].type = EV_KEY;
++	kes[2].code = KEY_WAKEUP;
++	kes[2].value = 0;
++
++	kes[3].type = EV_SYN;
++	kes[3].code = SYN_REPORT;
++	kes[3].value = 0;
++
++	write_may(this->ufd, kes, WAKEUP_MAX_EVENTS * sizeof(*kes));
+ }
+ 
+ static void setup_uinput(struct this *this)
