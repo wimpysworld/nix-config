@@ -124,8 +124,8 @@ let
         "${config.xdg.cacheHome}/**"
         "${config.xdg.dataHome}/**"
         "${config.xdg.stateHome}/**"
-        "~/.local/go"
-        "~/.local/go/**"
+        "${homeDirectory}/.local/go"
+        "${homeDirectory}/.local/go/**"
       ];
 
       denyRead = [
