@@ -3,7 +3,7 @@
 ReFrame provides browser-based remote access to the four tagged Hyprland hosts. The supported entry point is `https://<host>.<tailnet>/novnc` from a Tailscale peer.
 
 > [!WARNING]
-> This stack has not been deployed or tested on a live host. Complete the per-host acceptance checklist before relying on it. Keep a local or out-of-band recovery path throughout the rollout.
+> This stack is deployed and verified on `zannah`. Complete the per-host acceptance checklist on the remaining hosts before relying on it there. Keep a local or out-of-band recovery path throughout the rollout.
 
 ## Architecture
 
@@ -22,25 +22,28 @@ Do not open TCP ports `5900` or `5933` in a firewall or publish them through ano
 
 ## Host mappings
 
-The `reframe` tag enables the NixOS ReFrame, websockify, and Caddy configuration. Display connectors and geometry come from `lib/registry-systems.toml`. Each target uses DRM `card1`.
+The `reframe` tag enables the NixOS ReFrame, websockify, and Caddy configuration. The captured connector comes from the primary display in `lib/registry-systems.toml`. Each target uses DRM `card1`.
 
-| Host | Captured connector | Registry layout | ReFrame desktop and primary offset |
-| --- | --- | --- | --- |
-| `bane` | `eDP-1` | `eDP-1` at `2560x1600+0+0`, scale `1.25` | `2560x1600`, offset `0,0` |
-| `ravi` | `eDP-1` | `eDP-1` at `2880x1920+0+0`, scale `1.5` | `2880x1920`, offset `0,0` |
-| `skrye` | `DP-1` | `DP-1` at `2560x2880+0+0`; `DP-4` at `2560x2880+2560+0` | `5120x2880`, offset `0,0` |
-| `zannah` | `DP-1` | `DP-1` at `3440x1440+0+1280`; `HDMI-A-1` at `2560x1600+1920+0`, scale `1.25` | `3968x2720`, offset `0,1280` |
+| Host | Captured connector | ReFrame desktop |
+| --- | --- | --- |
+| `bane` | `eDP-1` | `2560x1600` |
+| `ravi` | `eDP-1` | `2880x1920` |
+| `skrye` | `DP-1` | `2560x2880` |
+| `zannah` | `DP-1` | `3440x1440` |
 
-Tagged multi-monitor hosts use their full registry layout at the greetd login screen. Single-monitor hosts use Cage's single-output layout. ReFrame starts as a system service, so the design supports capture before login and after Hyprland starts. This behaviour still needs live verification on every target.
+ReFrame captures and maps input over the primary display alone. The compositor maps ReFrame's absolute pointer across the bounding box of the live output layout, and secondary monitors drop off DRM in deep standby, which is the normal state when connecting remotely. With the primary-only desktop the pointer mapping is exact in that state. While a secondary display is awake and in the layout, the pointer skews until it sleeps again.
+
+ReFrame starts as a system service, so the design supports capture before login and after Hyprland starts. This behaviour still needs live verification on every target.
 
 ## Capture and input
 
 - The `uinput` kernel module provides remote keyboard and pointer input.
 - `cursor=true` includes the pointer in the captured image.
 - `resize=true` lets the VNC client request a size change.
-- `wakeup=true` wakes a blanked display when input arrives.
-- `damage=cpu` uses CPU damage tracking.
+- `wakeup=true` wakes a blanked display when input arrives. `reframe-wakeup-key.patch` adds a KEY_WAKEUP press for lockers such as Veila that ignore pointer motion while displays are off, and retries the connector lookup while the display wakes. Filed upstream as [AlynxZhou/reframe#42](https://github.com/AlynxZhou/reframe/issues/42) and [PR #43](https://github.com/AlynxZhou/reframe/pull/43); drop the patch when a release includes it.
+- `damage=gpu` compares frames on the GPU in 4 px tiles. The server has a persistent Mesa shader cache in `/var/cache/reframe-server`. Fall back to `damage=cpu` if tile artifacts appear.
 - `fps=30` sets the capture target to 30 frames per second.
+- `XKB_DEFAULT_LAYOUT` on `reframe-server@main` follows `host.keyboard.layout`, so VNC keysym translation matches the host layout instead of falling back to US.
 
 ## Password and runtime file
 
@@ -60,11 +63,9 @@ Never place the decrypted password in a command argument, shell history, Nix val
 
 ## Clipboard
 
-Text clipboard sync is deferred. Tagged desktop users do not join the `reframe` group, and the configured package omits its XDG autostart file. No `reframe-session` process starts in a graphical session.
+Text clipboard sync is enabled on tagged workstations. The desktop user joins the `reframe` group, which grants access to `/run/reframe-session/*.sock`, and a Home Manager user service (`home-manager/_mixins/services/reframe-session/`) runs `reframe-session` bound to `graphical-session.target`. The configured package still omits its XDG autostart file so untagged hosts and other users never start a session process.
 
-This keeps user sessions outside the group that can connect to `/run/reframe-session/*.sock`. It also prevents a connected VNC client from reading or replacing local clipboard text. noVNC users cannot copy text between the remote desktop and their local device.
-
-Enable clipboard sync only after a deployed tagged host passes a logged-in Hyprland test. Add only its desktop user to `reframe`, restore the packaged autostart file, rebuild, and log out and back in. Test distinct benign text in both directions. Confirm that an untagged host has no group membership, autostart entry, or session process.
+A connected, authenticated VNC client can read and replace the local clipboard text. This is accepted: the VNC password and the Tailnet boundary gate access. Group membership takes effect after logging out and back in.
 
 ## Operations
 
@@ -143,17 +144,17 @@ Repeat this checklist on `bane`, `ravi`, `skrye`, and `zannah`. Stop and roll ba
 - [ ] Authentication accepts the configured password and rejects an incorrect password.
 - [ ] `/etc/reframe` and `/etc/reframe/main.conf` have the expected owner, group, and mode.
 - [ ] Service arguments and logs contain no password or decrypted config content.
-- [ ] The greetd screen is visible before login with the registry connector layout and pointer mapping.
+- [ ] The greetd screen is visible before login with correct pointer mapping on the primary display.
 - [ ] Capture continues after login to Hyprland with the same geometry.
-- [ ] Keyboard and pointer input work through `uinput` without affecting local input.
+- [ ] Keyboard and pointer input work through `uinput` without affecting local input, and keysym translation matches the host keyboard layout.
 - [ ] The remote cursor is visible and tracks the pointer.
 - [ ] Client resizing works and preserves pointer mapping.
-- [ ] Input wakes the display after blanking.
-- [ ] CPU damage tracking remains stable during screen motion.
+- [ ] Input wakes the display after blanking, including from a locked session with displays powered off.
+- [ ] GPU damage tracking remains stable during screen motion with no tile artifacts.
 - [ ] Capture reaches the configured 30 FPS target during screen motion.
-- [ ] Clipboard text does not cross the session boundary, no `reframe-session` process runs, and the desktop user is not in the `reframe` group.
+- [ ] Clipboard text syncs in both directions after the desktop user re-logs in with `reframe` group membership.
 
-Record results per host. These checks have not yet run.
+Record results per host. `zannah` passes wakeup, capture, input, layout, clipboard, and GPU damage checks; the remaining hosts have not yet run them.
 
 ## Rollback
 
