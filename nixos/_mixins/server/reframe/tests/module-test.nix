@@ -35,7 +35,7 @@ let
     };
     skrye = {
       connector = "DP-1";
-      desktopWidth = 5120;
+      desktopWidth = 2560;
       desktopHeight = 2880;
       monitorX = 0;
       monitorY = 0;
@@ -50,10 +50,10 @@ let
     };
     zannah = {
       connector = "DP-1";
-      desktopWidth = 3968;
-      desktopHeight = 2720;
+      desktopWidth = 3440;
+      desktopHeight = 1440;
       monitorX = 0;
-      monitorY = 1280;
+      monitorY = 0;
       defaultWidth = 3440;
       defaultHeight = 1440;
       greetdLayout = ''
@@ -103,7 +103,7 @@ let
       (hasLine "resize=true" reframeConfig)
       (hasLine "cursor=true" reframeConfig)
       (hasLine "wakeup=true" reframeConfig)
-      (hasLine "damage=cpu" reframeConfig)
+      (hasLine "damage=gpu" reframeConfig)
       (hasLine "fps=30" reframeConfig)
       (hasLine "ip=127.0.0.1" reframeConfig)
       (hasLine "port=5933" reframeConfig)
