@@ -3,7 +3,16 @@
 # (kolide/launcher issue 2430), so failures are silent. Each invocation is
 # logged with its arguments and environment to aid diagnosis. Logging must
 # never break the open itself; the log file may be owned by another user.
-LOG_FILE="/tmp/kolide-xdg-open.log"
+# The log captures auth tokens from the environment and one-time codes
+# from URL arguments, so it must stay private: prefer the user-only
+# XDG_RUNTIME_DIR (mode 0700) and create the file 0600 via umask even on
+# the /tmp fallback.
+umask 077
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+  LOG_FILE="${XDG_RUNTIME_DIR}/kolide-xdg-open.log"
+else
+  LOG_FILE="/tmp/kolide-xdg-open.log"
+fi
 
 {
   printf '=== %s ===\n' "$(date --iso-8601=seconds)"

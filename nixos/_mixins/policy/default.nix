@@ -16,7 +16,8 @@ let
   # Logging wrapper around xdg-open for the Kolide desktop process. Tray
   # menu clicks run xdg-open with output discarded and the exit status
   # unchecked (kolide/launcher issue 2430), so this wrapper logs every
-  # invocation to /tmp/kolide-xdg-open.log before delegating to the real
+  # invocation to a private log in XDG_RUNTIME_DIR (falling back to /tmp,
+  # created 0600) before delegating to the real
   # xdg-open from xdg-utils. The host desktop name is baked in at build
   # time because only PATH reaches the desktop process.
   kolideXdgOpen = pkgs.writeShellApplication {
