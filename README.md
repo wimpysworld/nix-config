@@ -229,10 +229,9 @@ See [install-system documentation](./nixos/_mixins/scripts/install-system/README
 
 ### Installing to a remote host 🌍
 
-As [Disko] is used to declare the disk layout for all my NixOS hosts, each NixOS configuration can be deployed to a remote host using [nixos-anywhere].
-The justfile includes an `install` recipe that wraps `nixos-anywhere` to simplify remote deployments.
+Use `just install` for the first installation of a remote NixOS host. It wraps [nixos-anywhere] and uses the [Disko] layout declared by the host configuration.
 For example, `malak` is a Hetzner dedicated server.
-To deploy it, enable the Hetzner Rescue system and then run the following from one of my workstations:
+To install it, enable the Hetzner Rescue system and then run the following from one of my workstations:
 
 ```bash
 just install malak <ip-address>
@@ -240,7 +239,7 @@ just install malak <ip-address>
 
 Optional parameters: `keep_disks="true"` preserves existing disk partitions, and `vm_test="true"` runs a local VM test instead of deploying.
 
-When the deployment is complete, the remote host will be automatically rebooted.
+When the installation is complete, the remote host will be automatically rebooted.
 The `just install` recipe handles SOPS age keys (user and host), initrd SSH keys, and per-host SSH host keys automatically, decrypting them from sops secrets and injecting them into the target.
 
 I keep my Home Manager configuration separate from my NixOS configuration, so after the NixOS configuration has been deployed, I SSH in to the remote host and activate the Home Manager configuration:
@@ -250,6 +249,8 @@ git clone https://github.com/wimpysworld/nix-config "$HOME/Zero/nix-config"
 cd "$HOME/Zero/nix-config"
 just switch-home
 ```
+
+For later configuration changes, use the remote push recipes from the workstation instead of running the installer again.
 
 ## Applying Changes ✨
 
@@ -271,6 +272,18 @@ This flake includes a [justfile](./justfile) that provides convenient commands f
 - 🌍️ **All:**
   - `just build` to build both NixOS/nix-darwin and Home Manager configurations.
   - `just switch` to switch to both NixOS/nix-darwin and Home Manager configurations.
+
+For day-to-day changes on a remote NixOS host, the push recipes build on the workstation and copy the closures to the target. The target defaults to `root@<hostname>`; pass the target as the second argument to override it:
+
+```bash
+just push cognus
+just push cognus root@<ip-address>
+```
+
+- `just push <hostname> [target]` switches NixOS, then activates Home Manager.
+- `just push-host <hostname> [target]` switches NixOS immediately.
+- `just push-host-boot <hostname> [target]` selects the NixOS generation for the next boot without activating it on the live system.
+- `just push-home <hostname> [target]` activates Home Manager only.
 
 #### The fast path: FlakeHub Cache
 
