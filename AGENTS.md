@@ -34,6 +34,7 @@ Run `just --list --unsorted` before inventing commands.
 | Build one host or Home config | `just build-host hostname=<host>`; `just build-home username=<user> hostname=<host>`                                                     |
 | Build a package               | `just build-pkg pkg=<pkg> hostname=<host>`                                                                                               |
 | Switch or apply configs       | `just switch`; `just apply`; `just apply-home`; `just apply-host`                                                                        |
+| Push configs to a remote host | `just push <host> [target]`; `just push-host <host> [target]`; `just push-host-boot <host> [target]`; `just push-home <host> [target]`   |
 | Update flake inputs           | `just update`                                                                                                                            |
 | ISO and install               | `just iso`; `just inject-tokens remote=<host> user=nixos`; `just install host=<host> remote=<target> keep_disks="false" vm_test="false"` |
 

@@ -519,6 +519,66 @@ build-host hostname=current_hostname: prefetch
       echo "Unsupported OS: $(uname)"
     fi
 
+# Push NixOS and Home Manager configurations to a remote host
+push hostname target=("root@" + hostname):
+    @just push-host {{ quote(hostname) }} {{ quote(target) }}
+    @just push-home {{ quote(hostname) }} {{ quote(target) }}
+
+# Push NixOS configuration to a remote host
+push-host hostname target=("root@" + hostname):
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    hostname={{ quote(hostname) }}
+    target={{ quote(target) }}
+
+    echo "NixOS 󱄅 Pushing: ${hostname} to ${target}"
+    nixos-rebuild switch --flake ".#${hostname}" --target-host "${target}" --build-host "" --print-build-logs
+
+# Push NixOS configuration to activate on the remote host's next boot
+push-host-boot hostname target=("root@" + hostname):
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    hostname={{ quote(hostname) }}
+    target={{ quote(target) }}
+
+    echo "NixOS ♺  Pushing: ${hostname} to ${target}"
+    nixos-rebuild boot --flake ".#${hostname}" --target-host "${target}" --build-host "" --print-build-logs
+
+# Push Home Manager configuration to a remote host
+push-home hostname target=("root@" + hostname):
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    hostname={{ quote(hostname) }}
+    target={{ quote(target) }}
+
+    username=$(nix eval --raw ".#nixosConfigurations.\"${hostname}\".config.noughty.user.name")
+    home_directory="/home/${username}"
+    activation_path=$(nix build --no-link --print-out-paths ".#homeConfigurations.\"${username}@${hostname}\".activationPackage")
+
+    echo "Home Manager  Pushing: ${username}@${hostname} to ${target}"
+    nix copy --to "ssh://${target}" "${activation_path}"
+
+    printf -v quoted_username '%q' "${username}"
+    printf -v quoted_home_directory '%q' "${home_directory}"
+    printf -v quoted_profile_directory '%q' "/nix/var/nix/profiles/per-user/${username}"
+    printf -v quoted_state_directory '%q' "${home_directory}/.local/state/nix/profiles"
+    printf -v quoted_data_directory '%q' "${home_directory}/.local/share/home-manager"
+    printf -v quoted_activation_path '%q' "${activation_path}"
+    activation_command=$(printf 'target_uid=$(id -u) && cd %s && env -u DBUS_SESSION_BUS_ADDRESS USER=%s LOGNAME=%s HOME=%s XDG_STATE_HOME=%s/.local/state XDG_RUNTIME_DIR="/run/user/${target_uid}" HOME_MANAGER_BACKUP_EXT=backup %s/activate --driver-version 1' \
+        "${quoted_home_directory}" \
+        "${quoted_username}" \
+        "${quoted_username}" \
+        "${quoted_home_directory}" \
+        "${quoted_home_directory}" \
+        "${quoted_activation_path}")
+    printf -v quoted_activation_command '%q' "${activation_command}"
+
+    remote_command="install -d -o ${quoted_username} -g users ${quoted_profile_directory} ${quoted_state_directory} ${quoted_data_directory} && su -s /bin/sh ${quoted_username} -c ${quoted_activation_command}"
+    printf '%s\n' "${remote_command}" | ssh -- "${target}" bash
+
 # Switch OS configuration
 switch-host hostname=current_hostname: prefetch
     #!/usr/bin/env bash
