@@ -13,16 +13,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "slk";
-  version = "0.12.0";
+  version = "0.13.1";
 
   src = fetchFromGitHub {
     owner = "gammons";
     repo = "slk";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-jyKXzQQ/e5o4voj9KZM4WXvVPm6bnPBUjFPpIXaqKAk=";
+    hash = "sha256-jVozy5EHf8uUYo04IeCy6+P+hjw4FfUzFCNMtH9WGkA=";
   };
 
-  vendorHash = "sha256-+eO1mgwuEkF+0rGEENzmJLOTaq82hP2LExGuOreypmc=";
+  vendorHash = "sha256-deqCUDgRvhe/Bpmy+9bIHjSBo+KTCtAN2XcGMhAj/G0=";
 
   subPackages = [ "cmd/slk" ];
 
