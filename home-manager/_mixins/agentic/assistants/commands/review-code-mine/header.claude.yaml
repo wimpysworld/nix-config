@@ -1,2 +1,1 @@
-agent: donatello
 argument-hint: "[pr|branch|worktree|commit]"

@@ -51,6 +51,8 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 
 Delegate to a wide fan-out of sub-agents, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions.
 
+The user-invoked review command is the sole orchestrator. Review-lane workers complete their assigned lane and return directly. They never launch agents or invoke orchestrating commands.
+
 Keep each packet's attack list short, around three or four concrete targets. A long multi-target packet correlates with a sub-agent stalling and returning nothing. Split the concern across two sub-agents instead of lengthening one list.
 
 Route the security concern to `dibble` sub-agents. Donatello implements; Dibble is the security specialist.
@@ -59,6 +61,7 @@ Add a topic sweep: search Linear for related issues and Slack for recent convers
 
 Each sub-agent's delegation packet must instruct it to:
 
+- Never launch another agent or invoke an orchestrating command. Complete the assigned review lane and return its findings directly to the caller.
 - Read the surrounding code in the working tree to understand the change in context, within its assigned concern or area.
 - Where practical, verify conclusions by building and running the relevant tests on the reviewed code (for example in a temporary worktree), restoring repo state afterwards. Distinguish environmental test failures (also failing on the base branch) from failures the change caused.
 - Apply the lens and severity bar the caller set. Do not widen them.

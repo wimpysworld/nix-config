@@ -99,21 +99,24 @@ The `communication-rules` skill owns response discipline and the hooks enforce i
 
 ### Standalone Commands
 
-| Command          | Purpose                                                             |
-| ---------------- | ------------------------------------------------------------------- |
-| `ack`            | Acknowledge a phase or message and yield                            |
-| `ahem`           | Re-issue the Communication Rules as a first warning                 |
-| `ask`            | Answer a question without treating it as an instruction              |
-| `call`           | Give one recommended solution with its reasoning, never a menu      |
-| `collaborate`    | Read a task or file, meet the team, and prepare to collaborate       |
-| `gist`           | Rewrite the previous response concisely                             |
-| `grill-me`       | Interview the user until every branch of a design is resolved       |
-| `implement-task` | Take a tracked task through to implemented, validated, committed work |
-| `oi`             | Re-issue the Communication Rules bluntly, after `ahem` failed        |
-| `orientate`      | Inspect the repository and report orientation notes                 |
-| `ready`          | Prime the session for a broad activity                              |
-| `reflect`        | Review the session and suggest tooling and AGENTS.md changes        |
-| `wtb`            | Run the Want to Buy workflow for a pull request and Slack channel   |
+| Command                 | Purpose                                                               |
+| ----------------------- | --------------------------------------------------------------------- |
+| `ack`                   | Acknowledge a phase or message and yield                              |
+| `ahem`                  | Re-issue the Communication Rules as a first warning                   |
+| `ask`                   | Answer a question without treating it as an instruction              |
+| `call`                  | Give one recommended solution with its reasoning, never a menu        |
+| `collaborate`           | Read a task or file, meet the team, and prepare to collaborate         |
+| `gist`                  | Rewrite the previous response concisely                               |
+| `grill-me`              | Interview the user until every branch of a design is resolved         |
+| `implement-task`        | Take a tracked task through to implemented, validated, committed work |
+| `oi`                    | Re-issue the Communication Rules bluntly, after `ahem` failed         |
+| `orientate`             | Inspect the repository and report orientation notes                   |
+| `ready`                 | Prime the session for a broad activity                                |
+| `reflect`               | Review the session and suggest tooling and AGENTS.md changes          |
+| `review-code-colleague` | Review a colleague's PR for defects only; no suggestions, no nits     |
+| `review-code-community` | Review a community PR for correctness, gaps, and malicious code       |
+| `review-code-mine`      | Adversarially review my own changes before filing a PR                |
+| `wtb`                   | Run the Want to Buy workflow for a pull request and Slack channel     |
 
 ---
 
@@ -249,9 +252,6 @@ Precise implementation engineer executing code changes from specifications. Read
 | ------------------------- | ------------------------------------------------------------------ |
 | `create-plan`             | Break implementation into ordered phases in a disposable plan      |
 | `implement-plan`          | Execute a plan, one fresh sub-agent per phase                      |
-| `review-code-colleague`   | Review a colleague's PR for defects only; no suggestions, no nits  |
-| `review-code-community`   | Review a community PR for correctness, gaps, and malicious code    |
-| `review-code-mine`        | Adversarially review my own changes before filing a PR             |
 | `draft-code-review`       | Draft the house-style review comment from a completed review       |
 | `post-code-review`        | Post the review comment and set the verdict on GitHub              |
 | `address-code-review`     | Work review findings one at a time, committing each fix            |

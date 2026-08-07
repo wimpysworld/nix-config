@@ -27,5 +27,3 @@ Report nothing that is not a defect.
 - No optional suggestions. No "consider" or "you might want to". No nits.
 - An empty finding list is a good outcome. Report it plainly; never pad it.
 - If the only thing to say is that the change looks correct, say exactly that.
-
-Donatello's instincts as an implementer will surface improvements. Those are out of scope here. Discard them; do not list them as non-blocking.
