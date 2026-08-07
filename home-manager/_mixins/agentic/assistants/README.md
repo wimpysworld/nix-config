@@ -141,7 +141,7 @@ The `create-project` command and `draft-project-description` skill write the pro
 
 `triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. It finds the Linear issues waiting in Triage, reports the batch, then spawns one fresh sub-agent per issue that applies the `research-task` skill and then runs `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
 
-`implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. It spawns a fresh sub-agent per task. Inside each, `create-plan` runs, then `implement-plan`, which spawns its own fresh sub-agent per phase. Fresh context per task and per phase keeps attention high and implementations small.
+`implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. The user-invoked command is the sole dispatcher: it launches one fresh planning worker per task, then one fresh implementation worker per phase in dependency order. Every worker returns directly to the command and never launches another agent.
 
 Validation is inline. Each task's changed files are checked against the task's `Acceptance criteria` before that task is committed.
 
