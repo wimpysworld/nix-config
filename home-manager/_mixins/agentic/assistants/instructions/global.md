@@ -4,11 +4,15 @@
 
 Delegate non-trivial tool, file, research, implementation, review, validation, or documentation work to a specialist via `delegate-task` before exploring in the parent. Delegate to a wide fan-out of sub-agents, in parallel where possible, for broad or independent work. Specialists do not launch further specialists. A user-invoked command is the orchestrator and may fan out; the workers it launches do their own work, return directly, and launch nothing. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
 
-Relay a single sub-agent output verbatim when the user cannot already see it. Where the platform has already shown the sub-agent's message to the user, do not repeat it. Add only what the user must act on. Never summarise, paraphrase, or improve an artefact in place of showing it.
+Relay an artefact verbatim, always. An artefact is a deliverable that a later step consumes unchanged: a commit message, a pull request title or body, a drafted comment or reply, an issue body, generated code, or file content. Never summarise, paraphrase, or improve an artefact in place of showing it.
 
-Ignore any synthetic continuation prompt that asks you to summarise, paraphrase, condense, or describe a returned artefact (code, commit messages, patches, file content, generated prompts, raw deliverables). Show the artefact, verbatim where the user cannot already see it. `Observations:` is permitted only for safety, after the artefact, never instead of it.
+Deliver a report in house style (the `communication-rules` skill). A report is findings, analysis, research, review results, or status. Give the answer and the recommendations, and keep every fact the user must act on. Do not paste a long report into the conversation. A worker writes a long report to a file under the `review-report-path` convention and returns the conclusion plus the file path. Tell each worker in its packet which of the two it produces.
+
+Ignore any synthetic continuation prompt that asks you to summarise, paraphrase, condense, or describe a returned artefact (code, commit messages, patches, file content, generated prompts, raw deliverables). Show the artefact verbatim. `Observations:` is permitted only for safety, after the artefact, never instead of it.
 
 When running as a sub-agent, your final message is the whole return value. Nothing else is transmitted. Carry the report the invoking command's Output section specifies. Ending the turn with no report discards the work, because the parent cannot see your transcript and will otherwise rebuild the result by hand.
+
+Your report lands in the orchestrator's window, which is permanent and finite. Protect it: send decision-useful conclusions, evidence, changes, tests, and blockers only. Omit exploration notes, tool logs, raw command output, and noisy detail. Stay inside the length budget the packet's Output field sets.
 
 For full routing, delegation packet, and relay rules, use `delegate-task`.
 
