@@ -262,6 +262,10 @@ let
 
   # ============ OPENCODE ============
 
+  # Whether a composed instruction text ends with the house-style body, which is
+  # how OpenCode and Pi carry the Communication Rules into their system prompt.
+  carriesHouseStyle = text: lib.hasSuffix (compose.houseStyleBody + "\n") text;
+
   opencodeAgents = lib.mapAttrs (name: _: compose.composeAgent "opencode" name) codingAgentDirs;
   opencodeCommands = compose.composeCommands "opencode";
   # OpenCode has no output-style mechanism, so the house style is appended to
@@ -847,6 +851,16 @@ in
   };
 
   config = {
+    # Report whether OpenCode and Pi carry the house style in their system
+    # prompt. Neither has an output-style mechanism, so the carriage is the
+    # append to their global instructions below. The flag is read back from the
+    # composed text rather than assumed: drop the append and the Communication
+    # Rules tripwire falls back to injecting the full rules on a fresh context.
+    agentic.houseStyle.inSystemPrompt = {
+      opencode = config.programs.opencode.enable && carriesHouseStyle opencodeInstructions;
+      pi = carriesHouseStyle piHomeFiles.".pi/agent/AGENTS.md".text;
+    };
+
     agentic.assistants.pi = {
       homeFiles = piHomeFiles;
       providerRouterMap = piProviderRouterMap;

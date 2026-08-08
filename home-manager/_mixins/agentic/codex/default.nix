@@ -516,6 +516,17 @@ let
   '';
 in
 lib.mkIf (isDeveloper && !host.is.server) {
+  # Report whether Codex carries the house style in its system prompt. The
+  # `developer_instructions` key in codexSettings is the carriage, so the flag
+  # is read back from it: drop or empty that key and the Communication Rules
+  # tripwire falls back to injecting the full rules on a fresh session. A Codex
+  # sub-agent gets the full rules either way, since no developer instructions
+  # reach a sub-agent context.
+  agentic.houseStyle.inSystemPrompt.codex =
+    config.programs.codex.enable
+    && (codexSettings ? developer_instructions)
+    && codexSettings.developer_instructions != "";
+
   home = {
     packages = [
       codexAcpPackage

@@ -37,14 +37,14 @@ function decide(event: string, payload: unknown): Decision {
   } catch { /* fall through */ }
   return { decision: "block", surface: "B1", notice: "", level: "error", inject_base_rules: false, append_correction: false, block_message: "" };
 }
-// Fresh-context reminder: a brief pointer to the house style, which OpenCode's
-// global instructions already carry, so the rules are not injected twice
-// (content, cached). The full rules file is the fallback when the core cannot
-// supply it.
+// Fresh-context reminder (content, cached). The core answers for `opencode`: a
+// brief pointer when OpenCode's global instructions carry the house style, so
+// the rules are not injected twice, and the full rules when they do not. The
+// full rules file is the fallback when the core cannot supply it.
 let reminderText: string | undefined;
 function reminder(): string {
   if (reminderText === undefined) {
-    const r = Bun.spawnSync([scannerPath, "remind-brief"], { stdout: "pipe", stderr: "pipe" });
+    const r = Bun.spawnSync([scannerPath, "remind-brief", "opencode"], { stdout: "pipe", stderr: "pipe" });
     reminderText = r.exitCode === 0 ? new TextDecoder().decode(r.stdout).trim() : "";
   }
   return reminderText || `Communication Rules:\n${readText(rulesPath)}`;

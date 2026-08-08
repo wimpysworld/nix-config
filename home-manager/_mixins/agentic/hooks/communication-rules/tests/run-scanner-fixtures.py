@@ -98,6 +98,23 @@ BASH_CASES = {
 }
 
 
+def write_carriage_policy(directory: Path, name: str, flags: dict[str, bool]) -> str:
+    """Write a policy.json stand-in carrying only the house-style carriage map.
+
+    The generated production policy reports, per platform, whether that
+    platform's system prompt carries the house style. The reminder cases run
+    both branches from these files: carriage on selects the brief pointer,
+    carriage off selects the full rules. Every other key is left out, so the
+    rest of the run keeps the ``--rules`` defaults.
+    """
+    path = directory / f"policy-{name}.json"
+    path.write_text(
+        json.dumps({"communicationRules": {"houseStyleInSystemPrompt": flags}}),
+        encoding="utf-8",
+    )
+    return str(path)
+
+
 def fixture_text(path: Path) -> str:
     text = path.read_text(encoding="utf-8")
     return text.replace("\\u2014", chr(0x2014)).replace("\\u2013", chr(0x2013))
@@ -281,8 +298,25 @@ _B2_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply 
 _FACING = _expect("block", "tierA", notice=FACING_NOTICE, level="warning")
 _PASS_TIERA = _expect("pass", "tierA", level="warning")
 _REISSUE = _expect("re-issue", "tierA", append_correction=True)
-# SessionStart / SubagentStart inject the rules reminder.
-_REMIND = _expect("remind", "tierA")
+
+
+def _remind(reminder: str) -> dict:
+    """A SessionStart / SubagentStart reminder expectation.
+
+    ``reminder`` is ``"brief"`` or ``"full"``: which of the two texts the wire
+    output must carry. It is a wire hint, not a Decision field (the core verb is
+    ``remind`` either way), so the record assertion skips it.
+    """
+    expected = _expect("remind", "tierA")
+    expected["reminder"] = reminder
+    return expected
+
+
+# A fresh context whose platform carries the house style gets the brief pointer.
+_REMIND_BRIEF = _remind("brief")
+# A fresh context whose platform carries nothing, and every sub-agent start,
+# gets the full rules.
+_REMIND_FULL = _remind("full")
 
 
 def _b2_yield(notice: str) -> dict:
@@ -300,7 +334,7 @@ def _assert_record_fields(label: str, record: dict, expected: dict) -> None:
     rules as the block reason). Every other field compares for equality.
     """
     for field, want in expected.items():
-        if field == "block_message":
+        if field in {"block_message", "reminder"}:
             continue
         got = record.get(field)
         if got != want:
@@ -348,11 +382,11 @@ _WIRE_HOOKSPECIFIC_KEYS = {
 _DENY_REASON_PREFIX = "Blocked. Revise this prose to follow the Communication Rules."
 _REISSUE_CONTEXT_PREFIX = "Your previous reply broke the Communication Rules."
 _REMINDER_CONTEXT_PREFIX = "Reminder: Follow the Communication Rules"
-# A fresh MAIN-THREAD context gets the brief pointer instead of the full rules,
-# because its system prompt already carries the house style. Only a sub-agent
-# start still receives the full body.
+# A fresh MAIN-THREAD context gets the brief pointer instead of the full rules
+# only where the platform reports carrying the house style in its system
+# prompt. A platform that carries nothing, and every sub-agent start, gets the
+# full body.
 _BRIEF_REMINDER_CONTEXT_PREFIX = "Reminder: the house style in your system prompt is the Communication Rules."
-_SUBAGENT_REMINDER_EVENTS = {"SubagentStart"}
 
 
 def _assert_wire_schema(name: str, parsed: dict) -> None:
@@ -396,12 +430,14 @@ def expected_wire(event: str, decision: dict) -> dict | None:
         return None
     if verb == "remind":
         # SessionStart / SubagentStart reminder as additionalContext under the
-        # event name the hook fired on. A sub-agent start carries the full rules;
-        # a fresh main thread carries the brief pointer.
+        # event name the hook fired on. Which text is expected comes from the
+        # case, not from the event: a sub-agent start always carries the full
+        # rules, and a fresh main thread carries the brief pointer only where
+        # the loaded policy reports that platform carrying the house style.
         prefix = (
-            _REMINDER_CONTEXT_PREFIX
-            if event in _SUBAGENT_REMINDER_EVENTS
-            else _BRIEF_REMINDER_CONTEXT_PREFIX
+            _BRIEF_REMINDER_CONTEXT_PREFIX
+            if decision.get("reminder") == "brief"
+            else _REMINDER_CONTEXT_PREFIX
         )
         return {
             "hookSpecificOutput": {
@@ -515,7 +551,9 @@ def assert_wire(name: str, event: str, stdout: str, decision: dict) -> None:
         raise AssertionError(f"{name} {event}: wire mismatch\n  expected {expected}\n  got      {parsed}")
 
 
-def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) -> int:
+def run_claude_code_agent_cases(
+    env: dict, strike_dir: str, reissue_dir: str, carriage_on: str, carriage_off: str
+) -> int:
     """Run the claude-code fixture sequence, asserting the full record.
 
     Mirrors the group structure of the old run-fixtures.sh. Returns the number
@@ -543,14 +581,16 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
         expected: dict,
         existing_blocked: bool = False,
         payload: dict | None = None,
+        policy: str | None = None,
     ) -> None:
         nonlocal count
         case_env = dict(env)
         if existing_blocked:
             case_env["TRIPWIRE_EXISTING_BLOCKED"] = "1"
         input_text = json.dumps(payload) if payload is not None else materialise(name)
+        policy_args = ["--policy-json", policy] if policy is not None else []
         completed = subprocess.run(
-            [sys.executable, str(SCANNER), "--rules", str(RULES), "claude-code", event],
+            [sys.executable, str(SCANNER), "--rules", str(RULES), *policy_args, "claude-code", event],
             input=input_text,
             text=True,
             stdout=subprocess.PIPE,
@@ -569,9 +609,15 @@ def run_claude_code_agent_cases(env: dict, strike_dir: str, reissue_dir: str) ->
         assert_wire(f"claude-code {name}", event, completed.stdout, expected)
         count += 1
 
-    # SessionStart injects the rules reminder as additionalContext; a clean
-    # UserPromptSubmit (no pending flag) emits nothing.
-    run_case("session-start.json", "SessionStart", _REMIND)
+    # SessionStart injects the rules reminder as additionalContext. Which text
+    # it injects is derived, not assumed: with the house-style output style
+    # pinned, the policy reports the carriage and the session gets the brief
+    # pointer. Point Claude Code at another output style and the policy reports
+    # no carriage, so the full rules come back. A run with no policy at all is
+    # the same no-carriage branch, so it also gets the full rules.
+    run_case("session-start.json", "SessionStart", _REMIND_BRIEF, policy=carriage_on)
+    run_case("session-start.json", "SessionStart", _REMIND_FULL, policy=carriage_off)
+    run_case("session-start.json", "SessionStart", _REMIND_FULL)
     run_case("user-prompt-submit.json", "UserPromptSubmit", _PASS_TIERA)
 
     # B1 write: pass, then the hybrid on a shared key. Strike 1 blocks (one
@@ -802,7 +848,9 @@ def claude_code_agent_cases() -> int:
         env["TRIPWIRE_CLAUDE_CODE_REISSUE_DIR"] = reissue_dir
         env["TRIPWIRE_CORRECTION_PROMPT"] = str(correction)
         env.pop("TRIPWIRE_EXISTING_BLOCKED", None)
-        return run_claude_code_agent_cases(env, strike_dir, reissue_dir)
+        carriage_on = write_carriage_policy(Path(temp_dir), "cc-on", {"claude-code": True})
+        carriage_off = write_carriage_policy(Path(temp_dir), "cc-off", {"claude-code": False})
+        return run_claude_code_agent_cases(env, strike_dir, reissue_dir, carriage_on, carriage_off)
 
 
 # --- Codex agent fixtures ---------------------------------------------------
@@ -827,7 +875,7 @@ def claude_code_agent_cases() -> int:
 CODEX_FX = FIXTURES / "codex"
 
 
-def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
+def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage_off: str) -> int:
     """Run the codex fixture sequence, asserting the full record."""
     count = 0
 
@@ -845,6 +893,7 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
         expected: dict,
         existing_blocked: bool = False,
         payload: dict | None = None,
+        policy: str | None = None,
     ) -> None:
         nonlocal count
         case_env = dict(env)
@@ -854,8 +903,9 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
             input_text = json.dumps(payload)
         else:
             input_text = (CODEX_FX / name).read_text(encoding="utf-8")
+        policy_args = ["--policy-json", policy] if policy is not None else []
         completed = subprocess.run(
-            [sys.executable, str(SCANNER), "--rules", str(RULES), "codex", event],
+            [sys.executable, str(SCANNER), "--rules", str(RULES), *policy_args, "codex", event],
             input=input_text,
             text=True,
             stdout=subprocess.PIPE,
@@ -877,8 +927,18 @@ def run_codex_agent_cases(env: dict, strike_dir: str) -> int:
     # SessionStart and SubagentStart inject the rules reminder as
     # additionalContext under their own event name; a clean UserPromptSubmit
     # (no pending flag) emits nothing.
-    run_case("session-start.json", "SessionStart", _REMIND)
-    run_case("subagent-start.json", "SubagentStart", _REMIND)
+    #
+    # SessionStart follows the reported carriage: with developer_instructions
+    # set, the policy reports the carriage and the session gets the brief
+    # pointer; drop that key and the full rules come back. SubagentStart keeps
+    # the full rules under BOTH policies, because no developer_instructions copy
+    # reaches a sub-agent whatever the main thread carries.
+    run_case("session-start.json", "SessionStart", _REMIND_BRIEF, policy=carriage_on)
+    run_case("session-start.json", "SessionStart", _REMIND_FULL, policy=carriage_off)
+    run_case("session-start.json", "SessionStart", _REMIND_FULL)
+    run_case("subagent-start.json", "SubagentStart", _REMIND_FULL, policy=carriage_on)
+    run_case("subagent-start.json", "SubagentStart", _REMIND_FULL, policy=carriage_off)
+    run_case("subagent-start.json", "SubagentStart", _REMIND_FULL)
     run_case("user-prompt-submit.json", "UserPromptSubmit", _PASS_TIERA)
 
     # Pass cases: clean apply_patch, bash, post, multiedit (not a post tool),
@@ -1242,7 +1302,9 @@ def codex_agent_cases() -> int:
         env["TRIPWIRE_CORRECTION_PROMPT"] = str(correction)
         env.pop("TRIPWIRE_EXISTING_BLOCKED", None)
         env.pop("TRIPWIRE_REISSUE_DIR", None)
-        return run_codex_agent_cases(env, strike_dir)
+        carriage_on = write_carriage_policy(Path(temp_dir), "codex-on", {"codex": True})
+        carriage_off = write_carriage_policy(Path(temp_dir), "codex-off", {"codex": False})
+        return run_codex_agent_cases(env, strike_dir, carriage_on, carriage_off)
 
 
 # --- Pi agent fixtures ------------------------------------------------------
