@@ -66,7 +66,7 @@ instructions/global.md          ← environment constraints, tool preferences, s
                     └── command prompt  ← single task, may repeat the agent's model pin
 ```
 
-**`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and verbatim relay. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
+**`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and the relay rules for artefacts and reports. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
 Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. A command can set its own model header, but only Garfield's four commands do.
 
@@ -107,7 +107,7 @@ When the coordinator lacks context, it delegates discovery instead of researchin
 
 ### Response Discipline
 
-The house style owns response discipline, every platform carries it in the system prompt, and the hooks enforce it. A single specialist output is relayed verbatim where the user cannot already see it, is never summarised in its place, and is intervened on only for safety.
+The house style owns response discipline, every platform carries it in the system prompt, and the hooks enforce it. The parent relays an artefact verbatim and never summarises it in place. The parent delivers a report as the answer plus the recommendations, and a long report goes to a file under the `review-report-path` convention, returned as the conclusion plus the path. The parent intervenes only for safety.
 
 ### Standalone Commands
 

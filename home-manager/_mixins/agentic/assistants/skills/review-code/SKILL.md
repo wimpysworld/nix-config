@@ -45,7 +45,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 6. Re-request once from any sub-agent that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A sub-agent that fails twice is your own work to finish, to the same standard, not a gap in the report.
 7. Pressure-test every blocking finding, per **Adversarial pressure-test**.
 8. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. The sub-agent replies are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
-9. Relay the report verbatim. Never summarise or paraphrase it. Report the path.
+9. Deliver the conclusion and every finding the user must act on, in house style (the `communication-rules` skill). Report the path. The file keeps the full report.
 
 ### Fan-out
 

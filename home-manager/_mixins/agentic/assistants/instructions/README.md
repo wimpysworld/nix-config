@@ -71,27 +71,34 @@ packet, and lets the specialist do discovery. Picking imperfectly is cheap;
 the specialist's fresh context absorbs the cost of getting close, while the
 parent stays clean for the next decision.
 
-### 2.3 Verbatim relay
+### 2.3 Artefact relay and report delivery
 
-When a single specialist returns an answer, the parent relays it verbatim
-rather than summarising it. No summary, no paraphrase, no "improvement".
-This protects three things:
+The rule splits on what the specialist returned, not on who can see it.
+
+An artefact is a deliverable that a later step consumes unchanged: a commit
+message, a pull request body, a drafted comment or reply, an issue body,
+generated code, or file content. The parent relays an artefact verbatim. No
+summary, no paraphrase, no "improvement". This protects two things:
 
 1. **Artefact fidelity.** Commit messages, patches, file content, and other
    raw artefacts must not be rewritten by a second pass.
-2. **Evidence integrity.** Research findings, source URLs, and test results
-   lose information through paraphrase.
-3. **Parent context.** A second pass would re-read the full specialist
+2. **Parent context.** A second pass would re-read the full specialist
    output, reason about it, and produce a longer version. The parent thread
    pays twice.
 
-The rule turns on visibility. Some platforms, Claude Code among them, render
-a sub-agent's message to the user as it arrives. Repeating it then costs
-twice over: the same text lands in the parent context again, and the user
-reads the same report twice. So the parent relays in full only what the user
-cannot already see, such as a report written to a file. Where the user has
-already seen the artefact, the parent adds just what the user must act on.
-The prohibition on summarising in place of the artefact holds either way.
+A report is findings, analysis, research, review results, or status. The
+parent delivers the answer and the recommendations in house style and keeps
+every fact the user must act on, because research findings, source URLs, and
+test results lose information through a careless paraphrase. A long report is
+not pasted: the worker writes it to a file under the `review-report-path`
+convention and returns the conclusion plus the path. The evidence stays on
+disk, and the conversation carries the answer alone.
+
+An earlier version of the rule turned on visibility: relay in full only what
+the platform had not yet shown the user. That test proved unreliable, because
+the orchestrator misjudges what the platform renders, and it pushed long
+reports into the conversation twice. The artefact-or-report split needs no guess
+about the display.
 
 The parent intervenes only for safety. If output is contradictory or
 off-contract, a concise `Observations:` block goes after the artefact, never
