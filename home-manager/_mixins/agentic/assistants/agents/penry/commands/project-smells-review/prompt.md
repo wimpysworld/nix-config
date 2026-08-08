@@ -34,6 +34,9 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 
 1. Load and follow the `communication-rules` skill before writing anything
 2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same smell hunt over its own directory; the parent aggregates the findings
+
+   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+
 3. Identify genuine smells only - not style nits, not minor awkwardness
 4. Ignore formatting preferences, naming taste, and idiomatic disagreements unless they indicate a recognised smell
 5. Name the smell precisely using classical terminology where applicable

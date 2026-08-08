@@ -18,6 +18,9 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 
 1. Load and follow the `communication-rules` skill before writing anything.
 2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area, writes its findings to the file its packet names, and returns them. Derive the report directory now with the `review-report-path` skill and name each file `<report-dir>/findings-<area>.md`, so no two collide.
+
+   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+
 3. Detect languages and target versions from project manifests and toolchain files, preferring explicit runtime declarations over inference (`go.mod`, `pyproject.toml`, `Cargo.toml`, `.tool-versions`, `.python-version`, `package.json`, etc.).
 4. Hunt first for code that can disappear:
    dead code, unreachable blocks, unused exports/functions, commented-out code, obsolete feature flags, dead config, unused flexibility, one-implementation interfaces, factories with one product, wrappers that only delegate, and uncalled code paths.

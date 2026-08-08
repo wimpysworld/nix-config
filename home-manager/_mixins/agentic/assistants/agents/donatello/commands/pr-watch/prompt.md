@@ -82,6 +82,8 @@ Workspace guard: the connected Linear instance is personal when the `WW` team, W
 
 When a review or review comment lands, from a bot or a human, dispatch a fresh sub-agent running `address-code-review` against the PR URL.
 
+Give that sub-agent the same 30 minute deadline as a watcher, and require one progress message when it stops judging and starts fixing. On the deadline it reports the threads answered so far and stops, and the loop dispatches a fresh one.
+
 That command owns the whole cycle. It skips threads already handled, judges each finding, fixes and commits what it accepts, pushes, replies in the thread, and resolves the threads its rules allow. Report what it returns and do nothing further with those threads.
 
 ### Output

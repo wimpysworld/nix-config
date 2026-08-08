@@ -627,7 +627,7 @@ let
 
       Inside the waiting sub-agent, prefer a blocking server-side watch command over a poll loop. Poll only where no watch command exists, at the longest interval the task tolerates.
 
-      Give every waiting sub-agent a hard deadline. On reaching it, report "still waiting" rather than exceeding it, so the parent can dispatch a fresh one with clean context.
+      Give every sub-agent a hard deadline, not only a waiting one. On reaching it, report what is done and stop rather than exceeding it, so the parent can dispatch a fresh one with clean context. A sub-agent that fans out to workers of its own sends its parent a progress message at each phase boundary. Silence past a boundary means a wedge, not work.
 
       ## Teardown
 
@@ -650,6 +650,7 @@ let
       Context: <decisions, constraints, paths, risks, user preferences>
       Authority: <external mutations the sub-agent may perform on the user's behalf; restate them, because fresh context does not inherit the parent's consent>
       Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
+      Deadline: <hard stop, and the progress messages expected before it>
       Validation: <checks to run or evidence needed>
       Output: <headings, artefact format, file path, or response contract>
       Discipline: No preamble. Do not restate the task. Return user-visible output only. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.

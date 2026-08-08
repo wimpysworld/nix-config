@@ -10,6 +10,9 @@ Default $1 to the working tree's changed files; if there are none, the whole tre
 2. Load the `contribution-voice` skill and follow it. Comments ship in the repository under the user's name, and its cut pass is what the Improve rules below ask for. Name the skill in every sub-agent packet, because a sub-agent runs with fresh context and will not load it otherwise
 3. Resolve $1 to a file set; apply $2 as a filter
 4. If the set spans multiple directories: Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same comment-polish pass over its own directory; the parent aggregates the per-file counts
+
+   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+
 5. Read each file and classify every comment: correct, improve, preserve, or remove
 6. Edit comments only; leave code untouched
 7. Run the project's formatter and tests to prove behaviour is unchanged

@@ -17,6 +17,9 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 1. Load and follow the `communication-rules` skill before writing anything.
 2. Load the `review-report-path` skill and derive the report path.
 3. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
+
+   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+
 4. Ask only when the audit scope or threat model is unclear.
 5. This command may read source files, run the Bash checks below, and write the report at the derived path. Do not edit source files or stage changes.
 6. Default threat model: an external unauthenticated attacker. Record any different assumption.

@@ -18,6 +18,9 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 
 1. Load and follow the `communication-rules` skill before writing anything
 2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same performance analysis over its own directory; the parent aggregates the findings
+
+   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+
 3. Identify performance-critical paths
 4. Analyse for bottlenecks (algorithmic, memory, I/O, CPU)
 5. Reject any suggestion that requires restructuring or contradicts the project's existing architecture, design patterns, or intent - regardless of the performance gain
