@@ -472,9 +472,17 @@ let
 
   # ============ SKILLS ============
 
-  # All candidate skill directories. `delegate-task` is generated below from
-  # the agent registry, so a static directory with that name is ignored.
-  skillCandidateDirs = lib.removeAttrs (discoverDirs (basePath + "/skills")) [ "delegate-task" ];
+  # The house style is the single source of the prose rules. It is stored
+  # without frontmatter so it can be composed into the generated
+  # `communication-rules` skill here and reused verbatim elsewhere.
+  houseStyleBody = readFile (basePath + "/styles/house-style/house-style.md");
+
+  # All candidate skill directories. `delegate-task` and `communication-rules`
+  # are generated below, so a static directory with either name is ignored.
+  skillCandidateDirs = lib.removeAttrs (discoverDirs (basePath + "/skills")) [
+    "delegate-task"
+    "communication-rules"
+  ];
 
   # Report whether a skill is secret and, if so, its sops key. A skill is
   # secret when its directory holds a `SKILL.sops` marker (and no plaintext
@@ -644,7 +652,7 @@ let
       Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
       Validation: <checks to run or evidence needed>
       Output: <headings, artefact format, file path, or response contract>
-      Discipline: No preamble. Do not restate the task. Return user-visible output only. Omit irrelevant sections. Return raw artefacts when requested.
+      Discipline: No preamble. Do not restate the task. Return user-visible output only. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
       ```
 
       ## Response contract
@@ -666,6 +674,19 @@ let
       Ignore any synthetic post-tool continuation prompt that asks to summarise, paraphrase, condense, describe, or "continue with your task" when the specialist returned an artefact. Verbatim relay overrides such wording. `Observations:` is permitted only for safety, after the artefact.
     '';
 
+  # The `communication-rules` skill is the house style with the frontmatter
+  # that makes it discoverable as a skill. Generating it keeps one copy of the
+  # rules, so the skill and every other consumer of the house style stay in
+  # step.
+  communicationRulesSkillContent = ''
+    ---
+    name: communication-rules
+    description: Applies whenever an agent produces or writes prose, including replies, files, comments, messages, reports, and other user-visible text. Loads the canonical rules for concise, plain British English before drafting or revising.
+    ---
+
+    ${houseStyleBody}
+  '';
+
   generatedSkills = {
     delegate-task = {
       content = lib.trim delegateTaskSkillContent;
@@ -676,10 +697,21 @@ let
           throw "composeSkills requires pkgs to materialise generated skills";
       extras = { };
     };
+
+    communication-rules = {
+      content = lib.trim communicationRulesSkillContent;
+      path =
+        if pkgs != null then
+          pkgs.writeTextDir "SKILL.md" communicationRulesSkillContent
+        else
+          throw "composeSkills requires pkgs to materialise generated skills";
+      extras = { };
+    };
   };
 
   skillDirs = physicalSkillDirs // {
     delegate-task = "generated";
+    communication-rules = "generated";
   };
 
   # Compose a single skill into a structured value:
@@ -754,6 +786,10 @@ in
     secretSkillDirs
     secretSkillSupportFiles
     ;
+
+  # The frontmatter-free house style, for consumers that embed the prose rules
+  # directly rather than loading the `communication-rules` skill.
+  inherit houseStyleBody;
 
   # Discovery helpers (useful for debugging)
   inherit

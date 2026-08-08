@@ -1,8 +1,3 @@
----
-name: communication-rules
-description: Applies whenever an agent produces or writes prose, including replies, files, comments, messages, reports, and other user-visible text. Loads the canonical rules for concise, plain British English before drafting or revising.
----
-
 Write so a non-native English speaker understands on first read: short sentences, common words, one idea per sentence.
 
 ## Substance
