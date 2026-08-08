@@ -1,8 +1,9 @@
 { lib }:
 let
-  # The house-style output style is the canonical rules body. It carries no
-  # frontmatter, so the file is read verbatim.
-  text = lib.trim (builtins.readFile ../../assistants/styles/house-style/house-style.md);
+  # The canonical rules body, shared with every other consumer through
+  # compose.nix, which strips the output-style frontmatter from
+  # house-style.md.
+  text = (import ../../assistants/compose.nix { inherit lib; }).houseStyleBody;
 in
 {
   inherit text;

@@ -15,6 +15,21 @@ let
   # Adds blank line after frontmatter and trailing newline
   composeWithFrontmatter = header: body: "---\n${header}\n---\n\n${body}\n";
 
+  # Strip a leading YAML frontmatter block. When the text starts with a
+  # `---` line, drop everything up to and including the closing `---` line,
+  # then trim the remainder.
+  stripFrontmatter =
+    text:
+    let
+      lines = lib.splitString "\n" text;
+      rest = lib.drop 1 lines;
+      closingIndex = lib.lists.findFirstIndex (line: line == "---") null rest;
+    in
+    if lib.head lines == "---" && closingIndex != null then
+      lib.trim (lib.concatStringsSep "\n" (lib.drop (closingIndex + 1) rest))
+    else
+      lib.trim text;
+
   isQuotedString =
     value:
     let
@@ -472,10 +487,12 @@ let
 
   # ============ SKILLS ============
 
-  # The house style is the single source of the prose rules. It is stored
-  # without frontmatter so it can be composed into the generated
-  # `communication-rules` skill here and reused verbatim elsewhere.
-  houseStyleBody = readFile (basePath + "/styles/house-style/house-style.md");
+  # The house style is the single source of the prose rules. The file is a
+  # complete Claude Code output style, so its frontmatter is stripped here to
+  # recover the bare rules body for the generated `communication-rules` skill
+  # and every other consumer that embeds the prose directly.
+  houseStyleOutputStyle = readFile (basePath + "/styles/house-style/house-style.md");
+  houseStyleBody = stripFrontmatter houseStyleOutputStyle;
 
   # All candidate skill directories. `delegate-task` and `communication-rules`
   # are generated below, so a static directory with either name is ignored.
@@ -795,8 +812,9 @@ in
     ;
 
   # The frontmatter-free house style, for consumers that embed the prose rules
-  # directly rather than loading the `communication-rules` skill.
-  inherit houseStyleBody;
+  # directly rather than loading the `communication-rules` skill, and the
+  # complete output-style file for the Claude Code deployment.
+  inherit houseStyleBody houseStyleOutputStyle;
 
   # Discovery helpers (useful for debugging)
   inherit

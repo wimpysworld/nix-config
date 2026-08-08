@@ -8,14 +8,25 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-# The house style is the canonical rules body, the same file ``fragment.nix``
-# reads. It carries no frontmatter, so it is used verbatim.
+# The house style is a complete output style file. The deployed hook receives
+# its body with the frontmatter stripped by ``compose.nix``, which
+# ``fragment.nix`` shares, so the tests strip it the same way.
 HOUSE_STYLE = ROOT.parents[1] / "assistants/styles/house-style/house-style.md"
+
+
+def _strip_frontmatter(text: str) -> str:
+    """Drop a leading YAML frontmatter block, mirroring ``compose.nix``."""
+    if not text.startswith("---\n"):
+        return text
+    closing = text.find("\n---\n", len("---\n") - 1)
+    if closing == -1:
+        return text
+    return text[closing + len("\n---\n") :]
 
 
 def skill_body() -> str:
     """Return the canonical rules body."""
-    return HOUSE_STYLE.read_text(encoding="utf-8").strip()
+    return _strip_frontmatter(HOUSE_STYLE.read_text(encoding="utf-8")).strip()
 
 
 def materialised_rules_path() -> Path:

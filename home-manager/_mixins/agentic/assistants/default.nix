@@ -247,18 +247,10 @@ let
   claudeCommands = compose.composeCommands "claude";
   claudeInstructions = compose.composeInstructions "claude";
 
-  # Claude Code output style carrying the house style. compose.nix keeps its
-  # frontmatter helper internal, so the frontmatter is assembled here around
-  # the shared body.
-  claudeHouseStyle = ''
-    ---
-    name: house-style
-    description: Carries the Communication Rules for concise, plain British English in every response.
-    keep-coding-instructions: true
-    ---
-
-    ${compose.houseStyleBody}
-  '';
+  # Claude Code output style carrying the house style. The source file is a
+  # complete output style, frontmatter included, so it deploys verbatim with
+  # a trailing newline restored after compose.nix trims it.
+  claudeHouseStyle = compose.houseStyleOutputStyle + "\n";
 
   # ============ OPENCODE ============
 
