@@ -52,6 +52,12 @@ SCAN_BASH = "bash"
 SCAN_TEXT = "text"
 SCAN_NONE = "none"
 
+# Events that start a SUB-AGENT context. These get the full rules reminder,
+# because no output style and no developer_instructions copy reaches a
+# sub-agent. Every other reminder event starts a main thread, whose system
+# prompt already carries the house style, so it gets the brief pointer instead.
+SUBAGENT_REMINDER_EVENTS = frozenset({"SubagentStart"})
+
 
 @dataclass
 class Extraction:
@@ -313,6 +319,10 @@ def shape_response(agent: str, event: str, decision: Decision, config: Config | 
     ``tripwire_emit_reminder`` for the reminder. They were conflated here, which
     sent the reminder where the correction belonged.
 
+    The reminder itself splits by context, resolved in ``_reminder_text``: a
+    sub-agent start gets the full rules, a fresh main thread gets the brief
+    pointer to the house style its system prompt already carries.
+
     An ``allow-revise`` decision (B1 strike >= 2) carries the RAW target in
     ``decision.notice`` (the gate placed ``record.target or ""`` there). This
     resolves the B1 revision prompt and substitutes the concrete target before
@@ -323,7 +333,7 @@ def shape_response(agent: str, event: str, decision: Decision, config: Config | 
     """
     block_message = config.block_message if config is not None else ""
     correction = config.correction_prompt if config is not None else ""
-    reminder = config.reminder_prompt if config is not None else ""
+    reminder = _reminder_text(event, config)
     if decision.decision == "block" and decision.surface == "B2" and decision.notice:
         # A middle B2 block carries the short nudge in ``decision.notice`` (the
         # state machine set it for ``1 < strike < limit - 1``). Promote it to the
@@ -343,6 +353,28 @@ def shape_response(agent: str, event: str, decision: Decision, config: Config | 
         return responses.codex_response(decision, block_message, correction, reminder, event)
     # Pi and OpenCode share the plugin response shape.
     return responses.plugin_response(decision, block_message, correction)
+
+
+def _reminder_text(event: str, config: Config | None) -> str:
+    """Resolve the reminder text for one context-start event.
+
+    A sub-agent start (``SUBAGENT_REMINDER_EVENTS``) gets the full rules,
+    because no output style and no ``developer_instructions`` copy reaches a
+    sub-agent. Every other reminder surface starts a main thread, whose system
+    prompt already carries the house style, so it gets the brief pointer and the
+    rules are not duplicated.
+
+    This is content resolution, not policy: both texts come from the generated
+    policy, and the state machine still decides whether a reminder is emitted at
+    all. Pi and OpenCode read their own reminder text through the scanner's
+    ``remind-brief`` subcommand, because their shims consume the raw ``Decision``
+    rather than a shaped response.
+    """
+    if config is None:
+        return ""
+    if event in SUBAGENT_REMINDER_EVENTS:
+        return config.reminder_prompt
+    return config.brief_reminder_prompt
 
 
 # Marker the B1 revision prompt may use for the concrete target. Substituted

@@ -52,6 +52,17 @@ function blockMessage(config: Config): string {
   }
   return blockReason || FALLBACK_BLOCK;
 }
+// Fresh-context reminder: a brief pointer to the house style, which Pi's global
+// instructions already carry, so the rules are not injected twice (content,
+// cached). The full rules file is the fallback when the core cannot supply it.
+let reminderText: string | undefined;
+function reminder(config: Config): string {
+  if (reminderText === undefined) {
+    const r = spawnSync(config.adapterPath, ["remind-brief"], { encoding: "utf-8" });
+    reminderText = !r.error && r.status === 0 ? (r.stdout ?? "").trim() : "";
+  }
+  return reminderText || `Communication Rules:\n${readText(config.rulesPath)}`;
+}
 function message(content: string): AgentMessage {
   return { role: "custom", customType: "communication-rules", content, display: false, timestamp: Date.now() } as unknown as AgentMessage;
 }
@@ -65,7 +76,7 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
   pi.on("context", (event, ctx) => {
     const d = decide(config, "context", event, ctx);
     const additions: AgentMessage[] = [];
-    if (d.inject_base_rules) additions.push(message(`Communication Rules:\n${readText(config.rulesPath)}`));
+    if (d.inject_base_rules) additions.push(message(reminder(config)));
     if (d.append_correction) additions.push(message(readText(config.correctionPromptPath)));
     const messages = Array.isArray(event.messages) ? event.messages : [];
     return additions.length > 0 ? { messages: [...messages, ...additions] } : undefined;

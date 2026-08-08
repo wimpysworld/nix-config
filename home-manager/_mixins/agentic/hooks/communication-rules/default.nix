@@ -19,6 +19,7 @@ let
       inherit (fragment)
         b1RevisionPrompt
         blockMessage
+        briefReminderPrompt
         correctionPrompt
         detectionPolicy
         reminderPrompt

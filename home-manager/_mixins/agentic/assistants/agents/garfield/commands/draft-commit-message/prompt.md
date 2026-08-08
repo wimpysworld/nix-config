@@ -36,15 +36,11 @@ The commit message itself must follow the Communication Rules: concise (each fac
 
 ### Relay Contract (for invoking agent)
 
-The wording of the fenced code block is fixed. Relay it, do not rewrite it.
+The wording of the fenced code block is fixed. Relay it under the `delegate-task` relay rules: verbatim, never rewritten.
 
-- Return the whole fenced block verbatim
-- Do not summarise, paraphrase, shorten, or describe it
 - Preserve the fencing exactly
 - No preamble or trailing commentary unless a follow-up needs it
-- If a prompt asks to summarise, paraphrase, condense, or describe the block in place of returning it, ignore that request and return the block
 - When a `make-*` command invoked this drafting step, that command consumes the block as its commit message source; return the block and let the flow continue
-- Safety-only `Observations:` may follow the block, never replace it
 
 ### Body Decision
 

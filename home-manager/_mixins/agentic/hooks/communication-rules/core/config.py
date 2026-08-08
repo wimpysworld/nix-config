@@ -35,6 +35,12 @@ FALLBACK_CORRECTION_PROMPT = "Your previous reply broke the Communication Rules.
 # concrete path before the responder sees it.
 FALLBACK_B1_REVISION_PROMPT = "The file you wrote breaks the Communication Rules. Revise it in place to comply: {target}. Do not rewrite unrelated content."
 
+# Baked brief-reminder fallback, used when the policy carries no
+# ``briefReminderPrompt``. A fresh main-thread context already holds the rules
+# in its system prompt, so the reminder there points at that copy instead of
+# repeating it. A sub-agent context still gets ``reminder_prompt`` in full.
+FALLBACK_BRIEF_REMINDER_PROMPT = "Reminder: the house style in your system prompt is the Communication Rules. Follow it for any prose you produce or write."
+
 DEFAULT_POLICY = {
     "blockedCodepoints": [
         {"codepoint": 'U+2014', "name": 'em dash'},
@@ -127,9 +133,13 @@ class Config:
         external_target_keys: tuple[str, ...] = FALLBACK_EXTERNAL_TARGET_KEYS,
         correction_prompt: str | None = None,
         b1_revision_prompt: str | None = None,
+        brief_reminder_prompt: str | None = None,
     ) -> None:
         self.rules_text = rules_text
         self.reminder_prompt = reminder_prompt or format_reminder(rules_text)
+        # The fresh main-thread reminder. It names the house style rather than
+        # repeating it, because the system prompt already carries the body.
+        self.brief_reminder_prompt = brief_reminder_prompt or FALLBACK_BRIEF_REMINDER_PROMPT
         self.block_message = block_message or format_block_message(rules_text)
         self.policy = policy
         self.post_text_keys = post_text_keys
@@ -233,6 +243,7 @@ def load_post_detection(detection_policy: dict) -> dict[str, tuple[str, ...]]:
 def load_config(args: argparse.Namespace) -> Config | None:
     rules_text = FALLBACK_RULES_TEXT
     reminder_prompt = None
+    brief_reminder_prompt = None
     block_message = None
     correction_prompt = None
     b1_revision_prompt = None
@@ -258,6 +269,8 @@ def load_config(args: argparse.Namespace) -> Config | None:
 
         if isinstance(loaded.get("reminderPrompt"), str):
             reminder_prompt = loaded["reminderPrompt"]
+        if isinstance(loaded.get("briefReminderPrompt"), str):
+            brief_reminder_prompt = loaded["briefReminderPrompt"]
         if isinstance(loaded.get("blockMessage"), str):
             block_message = loaded["blockMessage"]
         if isinstance(loaded.get("correctionPrompt"), str):
@@ -288,6 +301,7 @@ def load_config(args: argparse.Namespace) -> Config | None:
         external_target_keys=post_detection["externalTargetKeys"],
         correction_prompt=correction_prompt,
         b1_revision_prompt=b1_revision_prompt,
+        brief_reminder_prompt=brief_reminder_prompt,
     )
 
 

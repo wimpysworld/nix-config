@@ -1,4 +1,4 @@
-"""Materialise the canonical Communication Rules skill body for tests."""
+"""Materialise the canonical Communication Rules body for tests."""
 
 from __future__ import annotations
 
@@ -8,22 +8,14 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT.parents[1] / "assistants/skills/communication-rules/SKILL.md"
+# The house style is the canonical rules body, the same file ``fragment.nix``
+# reads. It carries no frontmatter, so it is used verbatim.
+HOUSE_STYLE = ROOT.parents[1] / "assistants/styles/house-style/house-style.md"
 
 
 def skill_body() -> str:
-    """Return the skill body without portable YAML frontmatter."""
-    source = SKILL.read_text(encoding="utf-8")
-    parts = source.split("\n---\n")
-    frontmatter = parts[0]
-    if (
-        len(parts) < 2
-        or not frontmatter.startswith("---\n")
-        or "\nname: communication-rules" not in frontmatter
-        or "\ndescription:" not in frontmatter
-    ):
-        raise ValueError(f"Invalid Communication Rules skill frontmatter: {SKILL}")
-    return "\n---\n".join(parts[1:]).strip()
+    """Return the canonical rules body."""
+    return HOUSE_STYLE.read_text(encoding="utf-8").strip()
 
 
 def materialised_rules_path() -> Path:

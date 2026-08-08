@@ -24,9 +24,11 @@ import * as path from "node:path";
 
 const root = path.resolve(import.meta.dir, "..");
 const scanner = path.join(root, "scanner.py");
+// The house style is the canonical rules body, the same file `fragment.nix`
+// reads. It carries no frontmatter, so it is used verbatim.
 const rulesSource = path.resolve(
   root,
-  "../../assistants/skills/communication-rules/SKILL.md",
+  "../../assistants/styles/house-style/house-style.md",
 );
 const pluginSource = path.resolve(
   root,
@@ -66,20 +68,6 @@ interface Hooks {
 let tempDir: string;
 let strikeDir: string;
 let toasts: string[];
-
-function skillBody(source: string): string {
-  const parts = source.split("\n---\n");
-  const frontmatter = parts[0] ?? "";
-  if (
-    parts.length < 2 ||
-    !frontmatter.startsWith("---\n") ||
-    !frontmatter.includes("\nname: communication-rules") ||
-    !frontmatter.includes("\ndescription:")
-  ) {
-    throw new Error(`Invalid Communication Rules skill frontmatter: ${rulesSource}`);
-  }
-  return parts.slice(1).join("\n---\n").trim();
-}
 
 // Load the real plugin with its build-time tokens substituted: the scanner
 // token points at a wrapper that execs the core with temp state dirs, so the
@@ -170,7 +158,7 @@ beforeAll(() => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-shim-test-"));
   strikeDir = path.join(tempDir, "strikes");
 
-  const rules = skillBody(fs.readFileSync(rulesSource, "utf-8"));
+  const rules = fs.readFileSync(rulesSource, "utf-8").trim();
   const rulesPath = path.join(tempDir, "rules.md");
   const correctionPromptPath = path.join(tempDir, "correction-prompt.md");
   fs.writeFileSync(rulesPath, `${rules}\n`, "utf-8");
@@ -351,5 +339,10 @@ test("Tier A inject: chat.system.transform pushes the rules into live output.sys
   );
   expect(Array.isArray(output.system)).toBe(true);
   expect(output.system!.length).toBe(1);
-  expect(output.system![0]).toMatch(/Communication Rules:/);
+  // A fresh context gets the brief pointer, not a second copy of the rules:
+  // OpenCode's global instructions already carry the house style.
+  expect(output.system![0]).toMatch(
+    /^Reminder: the house style in your system prompt is the Communication Rules\./,
+  );
+  expect(output.system![0]).not.toContain("## The Cut Pass");
 });

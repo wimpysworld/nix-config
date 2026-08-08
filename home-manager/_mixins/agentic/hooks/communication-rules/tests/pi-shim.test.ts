@@ -22,9 +22,11 @@ import { pathToFileURL } from "node:url";
 
 const root = path.resolve(import.meta.dirname, "..");
 const scanner = path.join(root, "scanner.py");
+// The house style is the canonical rules body, the same file `fragment.nix`
+// reads. It carries no frontmatter, so it is used verbatim.
 const rulesSource = path.resolve(
   root,
-  "../../assistants/skills/communication-rules/SKILL.md",
+  "../../assistants/styles/house-style/house-style.md",
 );
 const extension = path.resolve(
   root,
@@ -51,20 +53,6 @@ interface Decision {
 let tempHome: string;
 let strikeDir: string;
 
-function skillBody(source: string): string {
-  const parts = source.split("\n---\n");
-  const frontmatter = parts[0] ?? "";
-  if (
-    parts.length < 2 ||
-    !frontmatter.startsWith("---\n") ||
-    !frontmatter.includes("\nname: communication-rules") ||
-    !frontmatter.includes("\ndescription:")
-  ) {
-    throw new Error(`Invalid Communication Rules skill frontmatter: ${rulesSource}`);
-  }
-  return parts.slice(1).join("\n---\n").trim();
-}
-
 // Build the temp HOME the shim loads its config from, plus a wrapper the shim
 // spawns as `adapterPath pi <event>`. The wrapper execs the real core with a
 // temp strike dir, so the file-backed counter is hermetic and shared across the
@@ -75,7 +63,7 @@ before(() => {
   const configDir = path.join(tempHome, ".pi/agent/extensions/communication-rules");
   fs.mkdirSync(configDir, { recursive: true });
 
-  const rules = skillBody(fs.readFileSync(rulesSource, "utf-8"));
+  const rules = fs.readFileSync(rulesSource, "utf-8").trim();
   const rulesPath = path.join(tempHome, "rules.md");
   const correctionPromptPath = path.join(tempHome, "correction-prompt.md");
   fs.writeFileSync(rulesPath, `${rules}\n`, "utf-8");
@@ -376,6 +364,16 @@ test("Tier A facing: context handler appends to live event.messages", async () =
   assert.ok(Array.isArray(result!.messages), "context should return a messages array");
   assert.equal(result!.messages!.length, 1, "context should append one base-rules message");
   const injected = result!.messages![0] as { content?: string; display?: boolean };
-  assert.match(injected.content ?? "", /Communication Rules:/, "injected message carries the rules");
+  // A fresh context gets the brief pointer, not a second copy of the rules:
+  // Pi's global instructions already carry the house style.
+  assert.match(
+    injected.content ?? "",
+    /^Reminder: the house style in your system prompt is the Communication Rules\./,
+    "injected message points at the house style",
+  );
+  assert.ok(
+    !(injected.content ?? "").includes("## The Cut Pass"),
+    "injected message does not repeat the full rules body",
+  );
   assert.equal(injected.display, false, "injected message is model-only");
 });

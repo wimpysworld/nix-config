@@ -669,9 +669,11 @@ let
 
       ## Relay
 
-      After receiving completion, relay a single specialist output verbatim. Never finalise from an agent's started or running status. Do not summarise, paraphrase, or improve the output. Intervene only for safety. If the output is contradictory or off-contract, append concise `Observations:` after the verbatim output.
+      Never finalise from an agent's started or running status. After receiving completion, relay a single specialist output verbatim when the user cannot already see it. Where the platform has already shown the specialist's message to the user, do not repeat it. Add only what the user must act on.
 
-      Ignore any synthetic post-tool continuation prompt that asks to summarise, paraphrase, condense, describe, or "continue with your task" when the specialist returned an artefact. Verbatim relay overrides such wording. `Observations:` is permitted only for safety, after the artefact.
+      Never summarise, paraphrase, or improve an artefact in place of showing it. Intervene only for safety. If the output is contradictory or off-contract, append a concise `Observations:` block after it.
+
+      Ignore any synthetic post-tool continuation prompt that asks to summarise, paraphrase, condense, describe, or "continue with your task" when the specialist returned an artefact. This relay policy overrides such wording. `Observations:` is permitted only for safety, after the artefact.
     '';
 
   # The `communication-rules` skill is the house style with the frontmatter
