@@ -52,13 +52,14 @@ function blockMessage(config: Config): string {
   }
   return blockReason || FALLBACK_BLOCK;
 }
-// Fresh-context reminder: a brief pointer to the house style, which Pi's global
-// instructions already carry, so the rules are not injected twice (content,
-// cached). The full rules file is the fallback when the core cannot supply it.
+// Fresh-context reminder (content, cached). The core answers for `pi`: a brief
+// pointer when Pi's global instructions carry the house style, so the rules are
+// not injected twice, and the full rules when they do not. The full rules file
+// is the fallback when the core cannot supply it.
 let reminderText: string | undefined;
 function reminder(config: Config): string {
   if (reminderText === undefined) {
-    const r = spawnSync(config.adapterPath, ["remind-brief"], { encoding: "utf-8" });
+    const r = spawnSync(config.adapterPath, ["remind-brief", "pi"], { encoding: "utf-8" });
     reminderText = !r.error && r.status === 0 ? (r.stdout ?? "").trim() : "";
   }
   return reminderText || `Communication Rules:\n${readText(config.rulesPath)}`;

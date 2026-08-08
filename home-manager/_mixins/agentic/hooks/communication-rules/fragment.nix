@@ -14,13 +14,15 @@ in
     ${text}
   '';
 
-  # Every main-thread context already carries this same body in its system
-  # prompt, as the Claude Code house-style output style, the Codex
-  # developer_instructions, and the OpenCode and Pi global instructions.
-  # Injecting the full rules again on a fresh context duplicates them, so a
-  # fresh main thread gets this pointer instead. A Codex sub-agent keeps the
-  # full reminderPrompt above, because neither an output style nor
-  # developer_instructions reaches a sub-agent context.
+  # The pointer used on a fresh main thread whose system prompt already carries
+  # this same body, as the Claude Code house-style output style, the Codex
+  # developer_instructions, or the OpenCode and Pi global instructions.
+  # Injecting the full rules again there duplicates them. Which contexts get
+  # this pointer is not assumed: each platform module reports its own carriage
+  # through agentic.houseStyle.inSystemPrompt, and a platform that carries
+  # nothing gets the full reminderPrompt above. A Codex sub-agent always keeps
+  # the full body, because neither an output style nor developer_instructions
+  # reaches a sub-agent context.
   briefReminderPrompt = "Reminder: the house style in your system prompt is the Communication Rules. Follow it for any prose you produce or write.";
 
   blockMessage = ''

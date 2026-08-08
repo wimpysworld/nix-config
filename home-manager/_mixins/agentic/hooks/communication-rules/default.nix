@@ -25,6 +25,13 @@ let
         reminderPrompt
         text
         ;
+      # Per-agent carriage of the house style in the system prompt. Each
+      # platform module derives its own entry from the carriage it actually
+      # writes, so the core picks the brief pointer only where the rules are
+      # already in the system prompt and the full body everywhere else. A name
+      # absent from this map resolves to the full body, so a new or unwired
+      # platform never silently loses the rules.
+      houseStyleInSystemPrompt = config.agentic.houseStyle.inSystemPrompt;
     };
   };
   policyFile =
@@ -195,6 +202,22 @@ let
     };
 in
 {
+  options.agentic.houseStyle.inSystemPrompt = lib.mkOption {
+    type = lib.types.attrsOf lib.types.bool;
+    default = { };
+    internal = true;
+    description = ''
+      Whether each agent platform carries the house style in its system prompt,
+      keyed by the core agent name (claude-code, codex, pi, opencode). Each
+      platform module sets its own entry from the carriage it writes: the Claude
+      Code output style, the Codex developer instructions, and the OpenCode and
+      Pi global instructions. The Communication Rules tripwire reads this to
+      choose the fresh-context reminder, so a platform that stops carrying the
+      house style gets the full rules back instead of a pointer to a copy that
+      is no longer there.
+    '';
+  };
+
   options.agentic.communicationRules = {
     enable = lib.mkOption {
       type = lib.types.bool;

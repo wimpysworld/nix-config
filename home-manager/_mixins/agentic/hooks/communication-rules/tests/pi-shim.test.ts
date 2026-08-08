@@ -73,27 +73,49 @@ before(() => {
     "utf-8",
   );
 
-  // The wrapper is `adapterPath`: it runs the core with the temp strike dir so
-  // strikes do not leak and survive across the shim's spawns within a test.
-  const wrapper = path.join(tempHome, "core-wrapper");
-  const q = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
+  // The generated policy reports whether Pi carries the house style in its
+  // system prompt, which is what selects the fresh-context reminder. Production
+  // reports it on, because the Pi global instructions carry the body. The
+  // carriage-off file is the same policy with the append gone, used below to
+  // prove the full rules come back.
+  const carriageOn = path.join(tempHome, "policy-pi-on.json");
+  const carriageOff = path.join(tempHome, "policy-pi-off.json");
   fs.writeFileSync(
-    wrapper,
-    [
-      "#!/usr/bin/env bash",
-      "set -euo pipefail",
-      `export TRIPWIRE_STRIKE_DIR=${q(strikeDir)}`,
-      `export TRIPWIRE_REISSUE_DIR=${q(path.join(tempHome, "reissue"))}`,
-      // Isolate the once-per-session injected-rules flag too. Without this a
-      // stale flag from an earlier suite leaks in, making the Tier A injection
-      // assertion order-dependent.
-      `export TRIPWIRE_INJECTED_DIR=${q(path.join(tempHome, "injected"))}`,
-      `exec python3 ${q(scanner)} --rules ${q(rulesPath)} "$@"`,
-      "",
-    ].join("\n"),
+    carriageOn,
+    JSON.stringify({ communicationRules: { houseStyleInSystemPrompt: { pi: true } } }),
     "utf-8",
   );
-  fs.chmodSync(wrapper, 0o755);
+  fs.writeFileSync(
+    carriageOff,
+    JSON.stringify({ communicationRules: { houseStyleInSystemPrompt: { pi: false } } }),
+    "utf-8",
+  );
+
+  // The wrapper is `adapterPath`: it runs the core with the temp strike dir so
+  // strikes do not leak and survive across the shim's spawns within a test.
+  const q = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
+  const writeWrapper = (file: string, policy: string): void => {
+    fs.writeFileSync(
+      file,
+      [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        `export TRIPWIRE_STRIKE_DIR=${q(strikeDir)}`,
+        `export TRIPWIRE_REISSUE_DIR=${q(path.join(tempHome, "reissue"))}`,
+        // Isolate the once-per-session injected-rules flag too. Without this a
+        // stale flag from an earlier suite leaks in, making the Tier A injection
+        // assertion order-dependent.
+        `export TRIPWIRE_INJECTED_DIR=${q(path.join(tempHome, "injected"))}`,
+        `exec python3 ${q(scanner)} --rules ${q(rulesPath)} --policy-json ${q(policy)} "$@"`,
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+    fs.chmodSync(file, 0o755);
+  };
+  const wrapper = path.join(tempHome, "core-wrapper");
+  writeWrapper(wrapper, carriageOn);
+  writeWrapper(path.join(tempHome, "core-wrapper-no-carriage"), carriageOff);
 
   fs.writeFileSync(
     path.join(configDir, "config.json"),
@@ -376,4 +398,31 @@ test("Tier A facing: context handler appends to live event.messages", async () =
     "injected message does not repeat the full rules body",
   );
   assert.equal(injected.display, false, "injected message is model-only");
+});
+
+test("Fresh-context reminder follows the reported carriage, not an assumption", async () => {
+  // The shim asks the core for `remind-brief pi`, so the reminder text is the
+  // core's answer for Pi. With the carriage reported on, it is the pointer;
+  // with the house style gone from Pi's global instructions, the same call
+  // returns the full rules, so enforcement does not quietly weaken.
+  const onWrapper = path.join(tempHome, "core-wrapper");
+  const offWrapper = path.join(tempHome, "core-wrapper-no-carriage");
+
+  const carried = spawnSync(onWrapper, ["remind-brief", "pi"], { encoding: "utf-8" });
+  assert.equal(carried.status, 0, "remind-brief should exit 0");
+  assert.match(
+    (carried.stdout ?? "").trim(),
+    /^Reminder: the house style in your system prompt is the Communication Rules\./,
+    "a carried house style selects the brief pointer",
+  );
+
+  const dropped = spawnSync(offWrapper, ["remind-brief", "pi"], { encoding: "utf-8" });
+  assert.equal(dropped.status, 0, "remind-brief should exit 0");
+  const text = (dropped.stdout ?? "").trim();
+  assert.match(
+    text,
+    /^Reminder: Follow the Communication Rules/,
+    "no carriage brings the full rules back",
+  );
+  assert.ok(text.includes("## The Cut Pass"), "the full rules body is injected");
 });
