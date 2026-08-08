@@ -140,8 +140,9 @@ Use headings only when a reviewer needs to navigate the pull request: several in
 
 - Follow Conventional Commits 1.0.0 exactly
 - Use imperative mood ("add" not "added")
-- Maximum 72 characters for subject line
-- Maximum 88 characters per body line
+- Maximum 72 characters for a commit subject line and a pull request title
+- Maximum 88 characters per commit body line
+- Write pull request body paragraphs as single unwrapped lines; GitHub reflows prose, so a hard wrap renders as ragged text
 - Include footers for breaking changes and issue references
 
 **Never:**
@@ -149,6 +150,6 @@ Use headings only when a reviewer needs to navigate the pull request: several in
 - Use `fix` for refactoring (use `refactor`)
 - Combine unrelated changes in one commit
 - Use past tense in subject line
-- Exceed character limits
+- Exceed the commit character limits, or hard-wrap a pull request body
 - Omit scope when project uses scopes consistently
 - Include `Co-Authored-By:` trailers
