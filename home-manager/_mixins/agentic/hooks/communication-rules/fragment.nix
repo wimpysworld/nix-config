@@ -14,6 +14,15 @@ in
     ${text}
   '';
 
+  # Every main-thread context already carries this same body in its system
+  # prompt, as the Claude Code house-style output style, the Codex
+  # developer_instructions, and the OpenCode and Pi global instructions.
+  # Injecting the full rules again on a fresh context duplicates them, so a
+  # fresh main thread gets this pointer instead. A Codex sub-agent keeps the
+  # full reminderPrompt above, because neither an output style nor
+  # developer_instructions reaches a sub-agent context.
+  briefReminderPrompt = "Reminder: the house style in your system prompt is the Communication Rules. Follow it for any prose you produce or write.";
+
   blockMessage = ''
     Blocked. Revise this prose to follow the Communication Rules.
 

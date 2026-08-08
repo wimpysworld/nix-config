@@ -30,7 +30,7 @@ Together, `instructions/global.md`, the house style, and the generated
   disclosures.
 - **`delegate-task`** is generated from the live agent registry in
   `compose.nix`. It owns the routing table, the delegation packet fields, the
-  sub-agent response contract, and the verbatim relay policy. It loads on
+  sub-agent response contract, and the relay policy. It loads on
   demand and is user-invocable.
 
 The split exists because routing changes whenever the agent registry changes,
@@ -73,8 +73,9 @@ parent stays clean for the next decision.
 
 ### 2.3 Verbatim relay
 
-When a single specialist returns an answer, the parent relays it verbatim.
-No summary, no paraphrase, no "improvement". This protects three things:
+When a single specialist returns an answer, the parent relays it verbatim
+rather than summarising it. No summary, no paraphrase, no "improvement".
+This protects three things:
 
 1. **Artefact fidelity.** Commit messages, patches, file content, and other
    raw artefacts must not be rewritten by a second pass.
@@ -84,11 +85,19 @@ No summary, no paraphrase, no "improvement". This protects three things:
    output, reason about it, and produce a longer version. The parent thread
    pays twice.
 
+The rule turns on visibility. Some platforms, Claude Code among them, render
+a sub-agent's message to the user as it arrives. Repeating it then costs
+twice over: the same text lands in the parent context again, and the user
+reads the same report twice. So the parent relays in full only what the user
+cannot already see, such as a report written to a file. Where the user has
+already seen the artefact, the parent adds just what the user must act on.
+The prohibition on summarising in place of the artefact holds either way.
+
 The parent intervenes only for safety. If output is contradictory or
-off-contract, a concise `Observations:` block goes after the verbatim
-output, never in place of it. Fan-in across multiple specialists is the only
-case that still requires parent synthesis, because reconciling several
-answers is itself the parent's job.
+off-contract, a concise `Observations:` block goes after the artefact, never
+in place of it. Fan-in across multiple specialists is the only case that
+still requires parent synthesis, because reconciling several answers is
+itself the parent's job.
 
 ## 3. `delegate-task` as a generated skill
 
@@ -187,8 +196,8 @@ where every routing decision is already visible.
 
 ### 4.3 The response contract
 
-The contract exists so that the parent can relay one specialist output
-verbatim without inspection.
+The contract exists so that the parent can pass one specialist output
+through without inspection or rewriting.
 
 - Non-artefact work starts with `Answer:`. The answer is the first thing the
   user sees.

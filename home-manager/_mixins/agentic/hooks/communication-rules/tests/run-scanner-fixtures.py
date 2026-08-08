@@ -348,6 +348,11 @@ _WIRE_HOOKSPECIFIC_KEYS = {
 _DENY_REASON_PREFIX = "Blocked. Revise this prose to follow the Communication Rules."
 _REISSUE_CONTEXT_PREFIX = "Your previous reply broke the Communication Rules."
 _REMINDER_CONTEXT_PREFIX = "Reminder: Follow the Communication Rules"
+# A fresh MAIN-THREAD context gets the brief pointer instead of the full rules,
+# because its system prompt already carries the house style. Only a sub-agent
+# start still receives the full body.
+_BRIEF_REMINDER_CONTEXT_PREFIX = "Reminder: the house style in your system prompt is the Communication Rules."
+_SUBAGENT_REMINDER_EVENTS = {"SubagentStart"}
 
 
 def _assert_wire_schema(name: str, parsed: dict) -> None:
@@ -391,11 +396,17 @@ def expected_wire(event: str, decision: dict) -> dict | None:
         return None
     if verb == "remind":
         # SessionStart / SubagentStart reminder as additionalContext under the
-        # event name the hook fired on.
+        # event name the hook fired on. A sub-agent start carries the full rules;
+        # a fresh main thread carries the brief pointer.
+        prefix = (
+            _REMINDER_CONTEXT_PREFIX
+            if event in _SUBAGENT_REMINDER_EVENTS
+            else _BRIEF_REMINDER_CONTEXT_PREFIX
+        )
         return {
             "hookSpecificOutput": {
                 "hookEventName": event,
-                "additionalContext": ("PREFIX", _REMINDER_CONTEXT_PREFIX),
+                "additionalContext": ("PREFIX", prefix),
             }
         }
     if verb == "re-issue":

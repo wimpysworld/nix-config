@@ -8,7 +8,7 @@ user-invocable: true
 
 This text is published under the user's name, in public, next to their reputation. Maintainers have grown cautious and reject contributions that read as AI-generated on sight, whatever their technical merit. Many readers do not speak English as a first language, so short plain sentences serve them.
 
-The Communication Rules already govern vocabulary and grammar. Apply them. This skill adds what they do not cover: structure. Structure is the real tell. A reader spots generated text by a three-line point wrapped in headings and bullets, long before they notice a single word.
+The Communication Rules govern vocabulary and grammar, and every agent already carries them in its system prompt. This skill adds what they do not cover: structure. Structure is the real tell. A reader spots generated text by a three-line point wrapped in headings and bullets, long before they notice a single word.
 
 ## Rules
 
@@ -29,35 +29,23 @@ Over budget is a defect, not a style preference. Cut until it fits. If it will n
 
 **No scaffolding.** Write prose. No headings, no bullet lists, no bold labels, no tables. Structure on a small point is the clearest sign of generated text, and it does not stop being one because the point got longer. The exception is a template that fixes the headings, such as a task body: there the template owns the layout and this skill governs the prose inside it.
 
-**Do not restate before answering.** Never summarise the question, the thread, or the problem back at the reader. They wrote it. They know it. Lead with the answer.
-
-**No sign-off and no closing summary.** Cut "Let me know if you need anything else", "Hope that helps", "In summary", and any final paragraph that repeats what came before it.
-
-**State uncertainty once.** Write "I have not tested this on Windows" once, plainly, then move on. Do not soften every sentence that follows.
-
 **Answer only what was asked.** Do not pre-empt questions nobody asked. Do not attach adjacent advice.
 
 **No emoji as section markers.** One emoji inside a sentence, where a human would use one, is fine. A column of emoji headings is not.
-
-**Code blocks for code and output only.** Never for emphasis or decoration.
 
 **Vary the structure.** Consecutive messages built on an identical skeleton read as generated, even when each one is fine alone.
 
 ## The Cut Pass
 
-Mandatory, not optional. After drafting, do a second pass that only deletes. Removing words is what makes text read as human; polishing adds them.
+The house-style cut pass applies here too, and it is mandatory. Removing words is what makes text read as human; polishing adds them.
 
-Cut every sentence that names no change the reader must make. That one rule catches most of it. Then cut these by name, because they survive a careless pass:
+These items survive a careless pass, so cut them by name:
 
-- The opening sentence that restates the question.
-- The closing sentence that summarises what was just said.
-- Qualifiers that soften a statement you are sure of.
 - The second and later examples of the same defect. One instance proves it.
-- Any number you re-derived, any count you recomputed, any figure the reader can see for themselves.
 - Any statement that something is correct, fine, unaffected, or holds. Silence says that.
 - Any aside that occurred to you but was not asked about.
 
-The last four are the audit trail: proof that you did the work. It belongs in the report, or nowhere. Nobody reading a comment wants evidence of your diligence, and including it is how a three-point answer becomes five hundred words.
+These are the audit trail: proof that you did the work. It belongs in the report, or nowhere. Nobody reading a comment wants evidence of your diligence, and including it is how a three-point answer becomes five hundred words.
 
 Then count against the budget. Over budget means the pass is not finished.
 

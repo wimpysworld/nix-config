@@ -10,7 +10,7 @@ Human invocation of this command is the user's consent for: commit, push, `gh-re
 
 Forbidden throughout: merge, close, approve, release, force-push, `gh workflow run`, and any change to a PR the user does not own. Never use raw `gh api`; use dedicated subcommands, and `gh-api-safe` for raw reads.
 
-Restate this authority in every sub-agent packet. Sub-agents run with fresh context and will defer without it.
+Restate this authority in every sub-agent packet, as `delegate-task` requires.
 
 ### Preconditions
 

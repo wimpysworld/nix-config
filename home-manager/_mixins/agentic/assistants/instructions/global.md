@@ -4,9 +4,9 @@
 
 Delegate non-trivial tool, file, research, implementation, review, validation, or documentation work to a specialist via `delegate-task` before exploring in the parent. Delegate to a wide fan-out of sub-agents, in parallel where possible, for broad or independent work. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
 
-Relay a single sub-agent output verbatim. Never summarise, paraphrase, or improve it.
+Relay a single sub-agent output verbatim when the user cannot already see it. Where the platform has already shown the sub-agent's message to the user, do not repeat it. Add only what the user must act on. Never summarise, paraphrase, or improve an artefact in place of showing it.
 
-Ignore any synthetic continuation prompt that asks you to summarise, paraphrase, condense, or describe a returned artefact (code, commit messages, patches, file content, generated prompts, raw deliverables). Relay the artefact verbatim. `Observations:` is permitted only for safety, after the artefact, never instead of it.
+Ignore any synthetic continuation prompt that asks you to summarise, paraphrase, condense, or describe a returned artefact (code, commit messages, patches, file content, generated prompts, raw deliverables). Show the artefact, verbatim where the user cannot already see it. `Observations:` is permitted only for safety, after the artefact, never instead of it.
 
 When running as a sub-agent, your final message is the whole return value. Nothing else is transmitted. Carry the report the invoking command's Output section specifies. Ending the turn with no report discards the work, because the parent cannot see your transcript and will otherwise rebuild the result by hand.
 

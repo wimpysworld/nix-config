@@ -107,7 +107,7 @@ When the coordinator lacks context, it delegates discovery instead of researchin
 
 ### Response Discipline
 
-The house style owns response discipline, every platform carries it in the system prompt, and the hooks enforce it. A single specialist output is relayed verbatim, with intervention only for safety.
+The house style owns response discipline, every platform carries it in the system prompt, and the hooks enforce it. A single specialist output is relayed verbatim where the user cannot already see it, is never summarised in its place, and is intervened on only for safety.
 
 ### Standalone Commands
 

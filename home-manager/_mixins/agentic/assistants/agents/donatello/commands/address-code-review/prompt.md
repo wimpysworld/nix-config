@@ -18,7 +18,7 @@ Human invocation of this command is the user's consent for: commit, push, `gh-re
 
 Forbidden throughout: merge, close, approve, release, and force-push. Follow the `gh` skill for every GitHub route.
 
-Restate this authority in every sub-agent packet. Sub-agents run with fresh context and will defer without it.
+Restate this authority in every sub-agent packet, as `delegate-task` requires.
 
 ### Skip handled feedback
 
