@@ -1,9 +1,10 @@
 # Global Rules and `delegate-task`
 
 Onboarding and reference for the global coordination layer in this repo:
-`instructions/global.md`, the portable `communication-rules` skill, and the dynamically generated `delegate-task` skill.
-Read this before editing either artefact, the agent registry that feeds the
-skill generator, or the prose discipline that keeps both terse. It captures
+`instructions/global.md`, the house style that carries the Communication
+Rules, and the dynamically generated `delegate-task` skill. Read this before
+editing either artefact, the agent registry that feeds the skill generator,
+or the prose discipline that keeps both terse. It captures
 the research and doctrine behind the current design so future edits stay
 coherent.
 
@@ -14,17 +15,19 @@ agent operates inside, regardless of who edited it.
 
 ## 1. Purpose
 
-Together, `instructions/global.md`, `communication-rules`, and the generated `delegate-task` skill
-define a token-optimised communication loop:
+Together, `instructions/global.md`, the house style, and the generated
+`delegate-task` skill define a token-optimised communication loop:
 
 - **`global.md`** is role-neutral and omnipresent. It tells whichever model is
   driving the parent thread when to delegate, that fresh context is the
   default, how to treat untrusted input, which reference tools to prefer, and
   which skills own routing and user-visible prose. It points to those skills
   rather than restating them.
-- **`communication-rules`** owns the complete prose policy. Hooks strip its
-  portable frontmatter and inject the complete body into reminders, blocks,
-  corrections, and runtime disclosures.
+- **The house style** at `styles/house-style/house-style.md` owns the complete
+  prose policy. It is frontmatter-free, so every consumer reads the same body:
+  each platform's system prompt, the generated `communication-rules` skill, and
+  the hooks that inject it into reminders, blocks, corrections, and runtime
+  disclosures.
 - **`delegate-task`** is generated from the live agent registry in
   `compose.nix`. It owns the routing table, the delegation packet fields, the
   sub-agent response contract, and the verbatim relay policy. It loads on
@@ -130,8 +133,10 @@ and removing one drops it from the listing. The platform wrappers in
 vs fork flags), so the generated skill body itself stays portable across
 Claude Code, OpenCode, Codex, and Pi.
 
-The generator lives in `compose.nix` around lines 422-510. Edit the source
-prompt or the registry, never the rendered runtime files.
+The generator lives in `compose.nix` around lines 579-676; the
+`communication-rules` generator sits just below it at lines 681-689. Edit the
+source prompt, the house style, or the registry, never the rendered runtime
+files.
 
 ## 4. Design principles
 
@@ -234,7 +239,7 @@ families, not the individual functions.
 
 ## 5. Style as token discipline
 
-The prose rules in the `communication-rules` skill exist because writing style directly affects
+The prose rules in the house style exist because writing style directly affects
 token consumption and cache behaviour.
 
 ### 5.1 Cache stability
@@ -277,7 +282,7 @@ chasing a 10K total that the platform floor already exceeds.
 
 ### 5.3 The rules in service of the loop
 
-The concrete prose rules in `communication-rules` (lead with conclusions, one
+The concrete prose rules in the house style (lead with conclusions, one
 statement per fact, no em dashes, no filler, no hedging, no LLM-tell words,
 no tone-only sentences) exist so that user-visible output is short, the
 cache prefix stays clean, and the parent thread accumulates as few tokens
@@ -286,14 +291,26 @@ prose surface of the token-efficient loop.
 
 ## 6. Cross-platform notes
 
-Each runtime loads `global.md`, `communication-rules`, and `delegate-task`
+Each runtime loads `global.md`, the house style, and `delegate-task`
 differently. Keeping role-neutral global rules and portable skills separate
 keeps the artefacts portable.
+
+The house style body is identical everywhere; only the carrier changes. Claude
+Code takes an output style, Codex takes developer-role instructions, and
+OpenCode and Pi append it to their global instructions. The generated
+`communication-rules` skill remains on every platform for command-driven
+reinforcement and for surfaces with no system-prompt access, such as Codex
+Cloud.
 
 ### 6.1 Claude Code
 
 `global.md` is rendered to `~/.claude/rules/instructions.md` and loaded
-every session. Memory guidance caps instruction files at around 200 lines.
+every session. The house style ships as an output style at
+`~/.claude/output-styles/house-style.md` and is selected by
+`outputStyle = "house-style"` in settings. Its `keep-coding-instructions: true`
+header keeps the built-in coding prompt, so the prose policy is added rather
+than substituted. Pinning the value also stops a stray project or plugin style
+taking over. Memory guidance caps instruction files at around 200 lines.
 Skills load full content only when invoked or relevant; descriptions are
 always in the skill listing. Subagents have their own context, tools, and
 system prompt. Fresh subagents do not see parent history; forks inherit it
@@ -305,8 +322,10 @@ as user invocation.
 
 OpenCode reads global rules from the `rules` option in `settings.json`
 rather than a dedicated file; the same body is supplied through that
-channel. Skills live under `~/.config/opencode/skills/*/SKILL.md` and load
-on description match. OpenCode honours the currently selected session
+channel. OpenCode has no output-style mechanism, so the house style is
+appended to the composed global instructions. Skills live under
+`~/.config/opencode/skills/*/SKILL.md` and load on description match.
+OpenCode honours the currently selected session
 model, so model pinning in headers is intentionally absent for OpenCode and
 the same global rules apply across Anthropic and OpenAI models without
 modification.
@@ -314,7 +333,8 @@ modification.
 ### 6.3 Pi
 
 Pi loads `global.md` as `~/.pi/agent/AGENTS.md` and skills from
-`~/.pi/agent/skills/*/SKILL.md`. Pi agents are emitted with default
+`~/.pi/agent/skills/*/SKILL.md`. The house style is appended to that same
+`AGENTS.md`. Pi agents are emitted with default
 frontmatter `systemPromptMode: append`, `inheritProjectContext: false`, and
 `inheritSkills: true`, so the global text is likely appended to specialist
 subagent system prompts. This is why `global.md` is strictly role-neutral:
@@ -326,7 +346,11 @@ so `/skill:delegate-task` remains available as an explicit fallback.
 ### 6.4 Codex
 
 Codex loads `global.md` as `AGENTS.md` with a 32 KiB project-doc cap and
-`AGENTS.override.md` for nearest-wins overrides. Skills follow the Agent
+`AGENTS.override.md` for nearest-wins overrides. The house style goes in
+`developer_instructions` in `config.toml`, which injects it at the developer
+role from the first turn. That is additive: `model_instructions_file` stays
+unset so Codex keeps its built-in coding prompt, and `personality` stays
+`none` so no vendor tone competes. Skills follow the Agent
 Skills open spec from `.agents/skills/`. The skill listing is capped at
 roughly 2% of the context window, so `delegate-task`'s description has to
 front-load its use case. Codex command skills in `default.nix` dispatch
@@ -357,11 +381,14 @@ Authoritative sources behind the global rules and the generated
 ### 7.3 Local source artefacts
 
 - `home-manager/_mixins/agentic/assistants/instructions/global.md`
-- `home-manager/_mixins/agentic/assistants/skills/communication-rules/SKILL.md`
+- `home-manager/_mixins/agentic/assistants/styles/house-style/house-style.md`
 - `home-manager/_mixins/agentic/assistants/instructions/header.claude.yaml`
 - `home-manager/_mixins/agentic/assistants/instructions/header.opencode.yaml`
 - `home-manager/_mixins/agentic/assistants/compose.nix` (the `delegate-task`
-  generator at lines 422-510)
+  generator at lines 579-676 and the `communication-rules` generator at
+  lines 681-689)
+- `home-manager/_mixins/agentic/hooks/communication-rules/fragment.nix` (reads
+  the house style body for every hook prompt)
 - `home-manager/_mixins/agentic/assistants/default.nix` (Pi command
   preludes and Codex `spawn_agent` wrappers)
 - `home-manager/_mixins/agentic/assistants/README.md`

@@ -315,6 +315,13 @@ let
     # rules text, so "none" keeps the vendor tone block from competing.
     personality = "none";
 
+    # Inject the Communication Rules at the developer role, so the prose policy
+    # applies from the first turn without waiting for a skill load. This is
+    # additive: `model_instructions_file` is deliberately left unset, so Codex
+    # keeps its built-in coding prompt, and `personality` deliberately stays
+    # "none" above rather than carrying any of this text.
+    developer_instructions = assistantCompose.houseStyleBody;
+
     # Sandbox: workspace-write confines writes to the current project, /tmp,
     # and the explicit writable roots below. Do not use default_permissions
     # here on Linux: Codex split permission profiles cannot currently combine

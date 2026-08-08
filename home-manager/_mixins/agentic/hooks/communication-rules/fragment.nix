@@ -1,19 +1,8 @@
 { lib }:
 let
-  skillPath = ../../assistants/skills/communication-rules/SKILL.md;
-  skillSource = builtins.readFile skillPath;
-  skillParts = lib.splitString "\n---\n" skillSource;
-  frontmatter = lib.head skillParts;
-  hasValidFrontmatter =
-    lib.length skillParts >= 2
-    && lib.hasPrefix "---\n" frontmatter
-    && lib.hasInfix "\nname: communication-rules" frontmatter
-    && lib.hasInfix "\ndescription:" frontmatter;
-  text =
-    if hasValidFrontmatter then
-      lib.trim (lib.concatStringsSep "\n---\n" (lib.tail skillParts))
-    else
-      throw "${toString skillPath} must contain portable communication-rules skill frontmatter.";
+  # The house-style output style is the canonical rules body. It carries no
+  # frontmatter, so the file is read verbatim.
+  text = lib.trim (builtins.readFile ../../assistants/styles/house-style/house-style.md);
 in
 {
   inherit text;

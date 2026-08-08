@@ -247,11 +247,28 @@ let
   claudeCommands = compose.composeCommands "claude";
   claudeInstructions = compose.composeInstructions "claude";
 
+  # Claude Code output style carrying the house style. compose.nix keeps its
+  # frontmatter helper internal, so the frontmatter is assembled here around
+  # the shared body.
+  claudeHouseStyle = ''
+    ---
+    name: house-style
+    description: Carries the Communication Rules for concise, plain British English in every response.
+    keep-coding-instructions: true
+    ---
+
+    ${compose.houseStyleBody}
+  '';
+
   # ============ OPENCODE ============
 
   opencodeAgents = lib.mapAttrs (name: _: compose.composeAgent "opencode" name) codingAgentDirs;
   opencodeCommands = compose.composeCommands "opencode";
-  opencodeInstructions = compose.composeInstructions "opencode";
+  # OpenCode has no output-style mechanism, so the house style is appended to
+  # the global context instead. The composed instructions already end with a
+  # newline, so a single extra newline leaves one blank line between them.
+  opencodeInstructions =
+    compose.composeInstructions "opencode" + "\n" + compose.houseStyleBody + "\n";
 
   # ============ PI AGENT ============
 
@@ -363,7 +380,10 @@ let
   # paths.
   piHomeFiles = builtins.seq piCommandCollisionCheck (
     {
-      ".pi/agent/AGENTS.md".text = globalInstructions;
+      # Pi has no output-style mechanism, so the house style is appended to
+      # the global instructions. `globalInstructions` is trimmed, so two
+      # newlines leave one blank line between them.
+      ".pi/agent/AGENTS.md".text = globalInstructions + "\n\n" + compose.houseStyleBody + "\n";
     }
     // piAgentFiles
     // piSkillFiles
@@ -850,6 +870,9 @@ in
           {
             # Claude Code global instructions
             "${config.home.homeDirectory}/.claude/rules/instructions.md".text = claudeInstructions;
+
+            # Claude Code output style carrying the house style.
+            "${config.home.homeDirectory}/.claude/output-styles/house-style.md".text = claudeHouseStyle;
           }
           # Claude Code skill files
           // mkClaudeSkillFiles

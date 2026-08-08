@@ -761,11 +761,12 @@ in
             # /review and /simplify.
             disableBundledSkills = true;
 
-            # Pin the neutral built-in output style. The Communication Rules
-            # skill and tripwire gate own the prose policy, so the vendor persona stays
-            # Default. Pinning it also stops a stray project or plugin style
-            # being picked up and silently dropping the built-in coding prompt.
-            outputStyle = "Default";
+            # Pin the house-style output style. It carries the Communication
+            # Rules in the system prompt with keep-coding-instructions enabled,
+            # so the prose policy applies without displacing the built-in coding
+            # prompt. Pinning the value also stops a stray project or plugin
+            # style being picked up and taking over.
+            outputStyle = "house-style";
 
             # Disable Claude Code's built-in auto memory. The user runs a
             # centralised memory system instead. The `CLAUDE_CODE_DISABLE_AUTO_MEMORY`
