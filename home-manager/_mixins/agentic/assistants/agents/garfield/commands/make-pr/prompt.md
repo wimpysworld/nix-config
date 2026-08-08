@@ -1,8 +1,8 @@
 ## Make PR
 
-Draft the pull request title and body with `draft-pr-message`, then create a pull request for the current branch. On a work repository, append a reviewer orientation block to the body before the pull request is created.
+Draft the pull request title and body with `draft-pr-message`, then create a pull request for the current branch. On a work repository, append a reviewer orientation block to the body before the pull request is created. A work pull request also carries a review request for the work review team and the `ai-review` label.
 
-Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed and running `gh pr create`, and it moves any linked Linear issue to In Review. Treat explicit human invocation of this command as consent for those actions.
+Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed, running `gh pr create`, and repairing missing review metadata with `gh pr edit`, and it moves any linked Linear issue to In Review. Treat explicit human invocation of this command as consent for those actions.
 
 Command invocation: use the current provider's command prefix when invoking `draft-pr-message`. Codex uses `$draft-pr-message`; slash-command runtimes use `/draft-pr-message`. If the platform cannot expand another command, follow the existing `draft-pr-message` prompt directly for the draft phase only. After its fenced message is produced, this command resumes and creates the pull request.
 
@@ -21,15 +21,18 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 1. Inspect branch state with `git status --short --branch`, `git rev-parse --abbrev-ref HEAD`, `git log main..HEAD --oneline`, and `git diff main..HEAD --stat`.
 2. Stop if the current branch is `main`, or if there are no commits in `main..HEAD`.
 3. If staged files or unstaged files exist, leave them unchanged. Note that they are excluded because only committed branch changes are used.
-4. Invoke or follow `draft-pr-message`. Preserve its fenced pull request message verbatim as the pull request source.
-5. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
-6. Append the reviewer orientation block to that temporary file, following **Reviewer orientation** below. The block is part of the pull request from the moment it exists, so never add it later by editing the pull request.
-7. Push with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
-8. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a push that matches nothing reports success while doing nothing.
-9. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`.
-10. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
-11. Report the pull request URL, title, whether the orientation block was included, each Linear outcome, and any uncommitted files left out.
-12. Offer the watch handover, following **Watch handover** below. Print it after the report, as the last thing you say.
+4. Classify the repository once, following **Work repository classification** below. Reuse that one result for the reviewer orientation, the review metadata, and the Linear workspace guard.
+5. Invoke or follow `draft-pr-message`. Preserve its fenced pull request message verbatim as the pull request source.
+6. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
+7. Append the reviewer orientation block to that temporary file, following **Reviewer orientation** below. The block is part of the pull request from the moment it exists, so never add it later by editing the pull request.
+8. Push with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
+9. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a push that matches nothing reports success while doing nothing.
+10. On a work repository, resolve the owner with `gh repo view --json owner` and build the team handle, following **Work review metadata** below. Do this before the pull request is created.
+11. Create the pull request with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`.
+12. Verify the created object, following **Work review metadata** below. Never report success from `gh pr create` alone.
+13. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
+14. Report the pull request URL, title, whether the orientation block was included, the review metadata outcome on a work repository, each Linear outcome, and any uncommitted files left out.
+15. Offer the watch handover, following **Watch handover** below. Print it after the report, as the last thing you say.
 
 ### Watch handover
 
@@ -48,9 +51,15 @@ Fill in the URL so the command copies and runs as it stands, never leave a place
 
 The caller relays that offer and waits. On Yes it invokes `pr-watch <url>` with its own provider's command prefix. Anything else is a No. Never treat silence as consent.
 
+### Work repository classification
+
+Run `git config user.email`. An address on the `chainguard.dev` domain means work. Anything else means personal or community, including an empty address and a malformed one.
+
+Classify once, at the step after branch inspection, and reuse that one result. The reviewer orientation, the review metadata, and the Linear workspace guard all read the same answer.
+
 ### Reviewer orientation
 
-Work pull requests only. Classify the repository from `git config user.email`, as in **Linear transition** below: an address on the `chainguard.dev` domain means work; anything else means personal or community. A personal or community pull request gets no block and no mention of one.
+Work pull requests only, as decided in **Work repository classification** above. A personal or community pull request gets no block and no mention of one.
 
 Append this block to the end of the body file:
 
@@ -79,11 +88,50 @@ Filling it in:
 - Omit an empty bullet. Never stub one with "N/A" or "None".
 - Skip the whole block when the first line would restate the pull request title and no bullet adds anything. Noise trains reviewers to collapse it unread. Say in the report that it was skipped, and why.
 
+### Work review metadata
+
+Work pull requests only, as decided in **Work repository classification** above. On a personal or community repository, run `gh pr create` with the existing arguments alone. Name no team and no label, look neither one up, and report neither one. Skip the rest of this section.
+
+The review request and the label are repository metadata. Never write either into the pull request body. The reviewer orientation block stands on its own and does not change.
+
+Resolving the team handle:
+
+- Run `gh repo view --json owner` before creating the pull request, then build the handle `<owner>/fulfillment-automation-team-write`. Never hard-code an organisation, because a work repository may sit under more than one.
+- Where the owner is a user account rather than an organisation, or the lookup fails, create the pull request without `--reviewer` and report the missing prerequisite. The label still applies.
+
+Creating and verifying:
+
+- Create with `gh pr create --base main --head <branch> --title <title> --body-file <temp-file> --reviewer <owner>/fulfillment-automation-team-write --label ai-review`.
+- Where `gh pr create` fails on the reviewer or the label, look for the pull request first with `gh pr view <branch>`. Where one exists, the failure came after creation, so repair the field instead, following the repair rules below. Where none exists, retry `gh pr create` once with only the failing argument removed, then report the dropped argument and the reason. Never retry on a failure whose outcome is unclear until that lookup answers it.
+- Verify the object after creation with `gh pr view <url> --json url,title,labels,reviewRequests`. Never report success from `gh pr create` alone.
+- The label matches when `ai-review` appears in `labels`. The review request matches when a `Team` entry in `reviewRequests` carries the `slug` `fulfillment-automation-team-write`. A team carries `name` and `slug` and never a `login`, so a match on `login` finds nothing and reports a false failure.
+- Use dedicated `gh` subcommands only. Never call `gh api`.
+
+Repairing one missing field:
+
+- Where the pull request exists and a field is missing, discover the existing pull request with `gh pr view <branch>`. Never run `gh pr create` again. A duplicate pull request is never created after an ambiguous partial success.
+- Make one focused attempt for the missing field only, with `gh pr edit <url> --add-reviewer <owner>/fulfillment-automation-team-write` or `gh pr edit <url> --add-label ai-review`.
+- Fetch the object again with `gh pr view`, then report the exact field that is still missing. Stop after that one attempt.
+- A reviewer or label failure never rewrites the branch, force-pushes, closes the pull request, or rolls a Linear issue back. The pull request is the deliverable and it stays open.
+- Never create the label, the team, a repository permission, or an organisation membership. Report the missing prerequisite and who must supply it.
+
+Named failures, and what each one means:
+
+- The `ai-review` label does not exist on the repository. Creation fails on `--label`. Retry without it, then report that an administrator must create the label.
+- The team handle needs organisation qualification. A bare `fulfillment-automation-team-write` does not resolve, which is why the handle always carries the `<owner>/` prefix.
+- The team is not visible to the authenticated account. The handle does not resolve. Report that the account needs to see the team, and never guess another handle.
+- The team has no access to the repository. The request is refused. Report that an administrator must grant the team access to the repository.
+- The token cannot request reviewers or apply labels. Creation fails on the argument, or the field comes back empty. Report the missing permission and the argument it blocked.
+- The author is also in the requested team. GitHub may drop the author from the request, so `reviewRequests` can come back without the team after a call that succeeded. Report the request as made, name the author's membership as the reason, and never retry in a loop.
+- The branch already has an open pull request. Creation fails. Discover that pull request, repair the missing field once, and report its URL.
+- Creation succeeds but the metadata fails. Report the pull request as created, name the field that failed, and finish. The command still succeeded.
+- `gh pr view` returns a different representation for the team. Where `reviewRequests` carries neither a matching `slug` nor a recognisable `Team` entry, report the field as unverified rather than failed, and print what came back.
+
 ### Linear transition
 
 Two things link an issue, and nothing else does: the branch name, when the branch came from Linear's `gitBranchName`, and a `Refs: <ISSUE-KEY>` trailer on any commit in `main..HEAD`. Never take a key from the pull request body or a commit subject. A key mentioned in prose is not a link.
 
-Workspace guard: classify the repository from `git config user.email`. An address on the `chainguard.dev` domain means work; anything else means personal. The connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL` is visible. If the classification and the visible instance disagree, skip the transition and report one line saying the profile does not match the repository. Never touch a work issue from the personal workspace or the reverse.
+Workspace guard: take the repository classification from **Work repository classification** above. The connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL` is visible. If the classification and the visible instance disagree, skip the transition and report one line saying the profile does not match the repository. Never touch a work issue from the personal workspace or the reverse.
 
 Handle each linked issue on its own, and report each one. A branch may carry more than one `Refs:` trailer.
 
@@ -100,6 +148,8 @@ The report, then the offer after it:
 Pull request: <url>
 Title: <title>
 Reviewer orientation: <included, or skipped and the reason>
+Review requested: fulfillment-automation-team-write, applied or failed with reason
+Label: ai-review, applied or failed with reason
 Linear:
 - <issue key and its new status, the reason it was skipped, or none>
 Excluded:
@@ -110,3 +160,5 @@ Excluded:
 - **Yes** - run `pr-watch <url>`. It watches the checks, fixes the failures this pull request caused, triages flakes, and answers reviews.
 - **No** - the pull request is open and nothing else happens.
 ````
+
+The `Review requested` and `Label` lines belong to a work pull request. Omit both lines on a personal or community repository, so that no work name reaches a report that is not a work report.

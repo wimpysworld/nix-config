@@ -281,13 +281,13 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 
 **Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent and on all four commands. Pi takes `claude-sonnet-5` on the Anthropic route, `gpt-5.6-terra` at thinking `medium` on the OpenAI route, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Commit message generation is a structured, deterministic task with clear rules, so it does not need the session's reasoning budget.
 
-| Command                | Purpose                                                                  |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `draft-commit-message` | Draft a conventional commit message for the staged or current changes    |
-| `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body |
-| `make-commit`          | Draft the message, then create one commit from the durable work          |
-| `make-pr`              | Draft the title and body, open the PR, move Linear to In Review          |
-| `pr-done`              | Update main, drop the worktree and branch, move Linear to Done           |
+| Command                | Purpose                                                                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `draft-commit-message` | Draft a conventional commit message for the staged or current changes                                                                    |
+| `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body                                                                 |
+| `make-commit`          | Draft the message, then create one commit from the durable work                                                                          |
+| `make-pr`              | Draft the title and body, open the PR, move Linear to In Review, and on a work PR request the work review team and apply `ai-review`     |
+| `pr-done`              | Update main, drop the worktree and branch, move Linear to Done                                                                           |
 
 ---
 
