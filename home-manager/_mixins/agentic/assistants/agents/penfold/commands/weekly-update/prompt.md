@@ -31,9 +31,11 @@ Take the marker from `statusType`. In Review and Duplicate are the two exception
 
 **5. Propose what is next.** Add an `Up Next` section only when open issues remain in that project. Omit it otherwise, and never stub it.
 
-Load the `sizing` skill and cite its scale; do not invent one. Order the project's open issues by priority, then by size ascending, and fill to roughly one week of capacity. That is half the two-week sanity check in the skill: about 4 XS, or 2 S, or 1 M. State that capacity assumption in the update, and label the list a proposal for the user to cut. It is not a plan and not a commitment.
+Load the `sizing` skill and use its scale; do not invent one. Order the project's open issues by priority, then by size ascending, and fill to roughly one week of capacity: about 4 XS, or 2 S, or 1 M. The scale works silently. Never explain the sizing guidelines, the scale, or the capacity arithmetic in the update body; the reader sees the issue list with a size per issue and nothing more. The list is a proposal, not a plan and not a commitment. The user trims it at the approval gate in step 7; the posted body presents the list plainly and never describes it as a proposal, a draft, or something to cut.
 
 **6. Propose the health.** For each project propose `onTrack`, `atRisk`, or `offTrack`, with a one-line reason. Never default silently.
+
+A goodwill collector has no schedule to be behind. The flaky CI project is one: reports accumulate there and the user fixes them as time permits, so a backlog of open reports is its normal state. Propose `onTrack` for it, always.
 
 **7. Ask once.** Show every project update in full, the proposed health for each, and both Slack messages. Ask for approval, then act. This publishes under the user's name to two systems, one of them a team channel, and there is no cheap undo. This is the only question the command asks.
 
@@ -64,8 +66,6 @@ Project update body:
 
 ## Up Next
 
-<One line naming the capacity assumption, and that this is a proposal for the user to cut.>
-
 * <Issue title> - <size on the `sizing` scale>
 ```
 
@@ -84,6 +84,7 @@ Thread: <reply url>
 
 - One bullet per issue, one short sentence. State what changed, not what the issue is about.
 - `Up Next` is a proposal, never a commitment. Never estimate in days or weeks.
+- Never explain the sizing scale or the capacity assumption in an update.
 - Skip a project with no matching issues. Never post an empty update.
 - Never hard-code a Slack channel or a channel ID.
 - Ask once, at the gate, and nothing else.
