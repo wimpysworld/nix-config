@@ -53,6 +53,8 @@ Derive search terms from the problem statement, feature names, symbols, and erro
 
 Each sub-agent returns findings with source references. Never mutate external state: no comments, approvals, merges, or posts.
 
+The caller is the sole orchestrator. Each sub-agent covers its assigned source and returns its findings directly. It never launches another agent.
+
 ## Output
 
 ```markdown

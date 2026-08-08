@@ -54,7 +54,7 @@ Before any search, create a research plan as a numbered checklist. Each item ans
 
 **3. Search**
 
-For Standard and Thorough depth, use parallel sub-agents when the platform provides them. Split work by plan item, source family, or research angle. Otherwise research the items sequentially. For Quick depth, use one worker unless parallel work clearly saves time.
+For Standard and Thorough depth, use parallel sub-agents when the platform provides them. Split work by plan item, source family, or research angle. Otherwise research the items sequentially. For Quick depth, use one worker unless parallel work clearly saves time. The caller is the sole orchestrator. Each sub-agent covers its assigned source and returns its findings directly. It never launches another agent.
 
 For each plan item:
 1. Mark it `[~]` in the plan before starting.

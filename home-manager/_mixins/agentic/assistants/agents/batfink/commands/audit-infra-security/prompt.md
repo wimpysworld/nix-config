@@ -29,6 +29,9 @@ runs in.
      sub-agent has a small audit surface. Recurse into nested directories when
      useful. First-party infrastructure only; exclude git submodules. Each
      sub-agent runs this audit over its own area; the parent aggregates findings.
+   - The user-invoked command is the sole orchestrator. Workers complete their
+     assigned area and return directly. They never launch agents or invoke
+     orchestrating commands.
 3. **Scope and threat model**
    - Inventory first-party Terraform/HCL, Kubernetes, Docker/Compose, GitHub Actions, Nix, Helm, secrets, DNS, TLS, storage, logging, IAM, network, and supply-chain config.
    - Map trust boundaries: internet to edge, edge to service, service to data store, CI/CD to cloud, build to deploy.

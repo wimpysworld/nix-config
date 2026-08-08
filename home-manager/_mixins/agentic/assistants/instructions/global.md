@@ -2,7 +2,7 @@
 
 ## Delegation
 
-Delegate non-trivial tool, file, research, implementation, review, validation, or documentation work to a specialist via `delegate-task` before exploring in the parent. Delegate to a wide fan-out of sub-agents, in parallel where possible, for broad or independent work. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
+Delegate non-trivial tool, file, research, implementation, review, validation, or documentation work to a specialist via `delegate-task` before exploring in the parent. Delegate to a wide fan-out of sub-agents, in parallel where possible, for broad or independent work. Specialists do not launch further specialists. A user-invoked command is the orchestrator and may fan out; the workers it launches do their own work, return directly, and launch nothing. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
 
 Relay a single sub-agent output verbatim when the user cannot already see it. Where the platform has already shown the sub-agent's message to the user, do not repeat it. Add only what the user must act on. Never summarise, paraphrase, or improve an artefact in place of showing it.
 

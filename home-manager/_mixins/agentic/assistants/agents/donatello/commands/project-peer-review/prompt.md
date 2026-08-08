@@ -18,6 +18,9 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 
 1. Load and follow the `communication-rules` skill before writing anything
 2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same peer review over its own directory; the parent aggregates the findings
+
+   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+
 3. Detect the primary language(s) and ecosystem from project manifests
 4. Survey the codebase - structure, patterns, idioms, quality signals
 5. Evaluate against what an experienced practitioner of this ecosystem would expect

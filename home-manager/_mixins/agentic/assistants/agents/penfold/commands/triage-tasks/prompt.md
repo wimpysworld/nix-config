@@ -27,6 +27,8 @@ The two sweeps differ in coverage, so report them apart: the assignee sweep is w
 2. Run `update-task <issue key>` in the same context. `research-task` files nothing, so `update-task` must see that research as its own session in order to have anything to merge. A sub-agent that runs only one of the two has done nothing useful.
 3. Where the research concludes the issue is a duplicate, is obsolete, or should be dropped, report that as a recommendation and change nothing.
 4. Return a short report only: issue key, what changed, the new status, and any recommendation. No research detail.
+5. Send one progress message to the parent when research completes and `update-task` starts.
+6. Hard deadline 20 minutes for the issue. On reaching it, report the issue key and what is done, then stop.
 
 Human invocation of this command is consent to research and update the issues in the batch, and nothing else: no cancelling, no closing, no creating issues, no GitHub, no Slack. State that authority in every sub-agent packet, as `delegate-task` requires, and name `research-task` and `update-task` in it.
 
