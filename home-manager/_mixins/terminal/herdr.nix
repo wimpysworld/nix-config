@@ -16,6 +16,11 @@ let
   # not something this module should depend on.
   worktreeRoot = "${config.home.homeDirectory}/Chainguard/_worktrees";
   settings = {
+    # Herdr shows the onboarding screen until it writes `onboarding = false`
+    # back to the configuration file. Nix renders that file as a read-only
+    # symlink into the store, so herdr can never record completion itself. The
+    # flag is pre-set here to skip onboarding on every start.
+    onboarding = false;
     # Match the repository's Catppuccin Mocha theming.
     theme.name = "catppuccin";
     ui.accent = catppuccinPalette.getColor "blue";
