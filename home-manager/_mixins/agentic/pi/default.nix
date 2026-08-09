@@ -25,24 +25,31 @@ let
     else
       import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  piMcpAdapterVersion = "2.10.0";
-  # When bumping pi-subagents, verify the tool still uses the `subagent`
-  # name; execution parameters still include `agent`, `task`, `context`, and
-  # `model`; model thinking still travels as a `provider/id:level` suffix; and
-  # `context` still accepts `"fresh"` and `"fork"` with `"fresh"` as the safer
-  # non-forking default. If any of these change, update
-  # `extensions/provider-router/index.ts` and the agent-launch prelude in
-  # `assistants/default.nix` before merging.
-  piSubagentsVersion = "0.31.0";
-  piLensVersion = "3.8.53";
-  piFooterVersion = "0.4.1";
+  # pi-mcp-adapter 2.21.1 requires pi-ai 0.84.1. Keep the newest release
+  # that supports the pinned Pi 0.83.0 runtime.
+  piMcpAdapterVersion = "2.21.0";
+  # When bumping pi-subagents, verify the tool still uses the `subagent` name;
+  # workflow execution still uses `workflowScript`, `runs.run`, and `runs.all`;
+  # child parameters still include `agent`, `task`, and `model`; model thinking
+  # still travels as a `provider/id:level` suffix; and `context` still accepts
+  # `"fresh"` and `"fork"` with `"fresh"` as the safer non-forking default. If
+  # any of these change, update `extensions/provider-router/index.ts` and the
+  # agent-launch prelude in `assistants/default.nix` before merging.
+  piSubagentsVersion = "0.44.0";
+  piLensVersion = "3.8.74";
+  # pi-lens imports the compiler API at runtime, but 3.8.74 lists TypeScript as
+  # a development dependency. Keep it as a direct Pi npm dependency until the
+  # upstream package restores TypeScript to dependencies.
+  piLensTypescriptVersion = "7.0.2";
+  piFooterVersion = "0.5.1";
   piSubCoreVersion = "1.5.0";
   piLogoVersion = "1.0.0";
-  rpivBtwVersion = "1.20.0";
-  rpivTodoVersion = "1.20.0";
+  rpivBtwVersion = "2.4.0";
+  rpivTodoVersion = "2.4.0";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:pi-subagents@${piSubagentsVersion}";
   piLensSource = "npm:pi-lens@${piLensVersion}";
+  piLensTypescriptSource = "npm:typescript@${piLensTypescriptVersion}";
   piFooterSource = "npm:pi-footer@${piFooterVersion}";
   piSubCoreSource = "npm:@marckrenn/pi-sub-core@${piSubCoreVersion}";
   piLogoSource = "npm:pi-logo@${piLogoVersion}";
@@ -331,6 +338,13 @@ let
       piMcpAdapterSource
       piSubagentsSource
       piLensSource
+      {
+        source = piLensTypescriptSource;
+        extensions = [ ];
+        skills = [ ];
+        prompts = [ ];
+        themes = [ ];
+      }
       piFooterSource
       piSubCoreSource
       {

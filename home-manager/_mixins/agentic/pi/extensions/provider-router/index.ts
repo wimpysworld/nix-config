@@ -26,6 +26,7 @@ type SubagentToolInput = Record<string, unknown> &
 		action?: unknown;
 		tasks?: unknown;
 		chain?: unknown;
+		workflowScript?: unknown;
 	};
 
 const mapFile = path.join(
@@ -163,6 +164,61 @@ function applyModel(
 	task.model = routedModel;
 }
 
+function buildWorkflowRoutes(
+	provider: string | undefined,
+	map: AgentModelMap,
+	thinkingMap: AgentThinkingMap,
+	ctx: ExtensionContext,
+): Record<string, string> {
+	const routes: Record<string, string> = Object.create(null);
+	const agents = new Set([...Object.keys(map), ...Object.keys(thinkingMap)]);
+
+	for (const agent of agents) {
+		const task: RoutedTask = { agent };
+		applyModel(task, provider, map, thinkingMap, ctx);
+		if (typeof task.model === "string") routes[agent] = task.model;
+	}
+
+	return routes;
+}
+
+function wrapWorkflowScript(
+	input: SubagentToolInput,
+	provider: string | undefined,
+	map: AgentModelMap,
+	thinkingMap: AgentThinkingMap,
+	ctx: ExtensionContext,
+): void {
+	if (typeof input.workflowScript !== "string") return;
+
+	const routes = buildWorkflowRoutes(provider, map, thinkingMap, ctx);
+	if (Object.keys(routes).length === 0) return;
+
+	const script = input.workflowScript;
+	input.workflowScript = `
+const __providerRouterModels = ${JSON.stringify(routes)};
+const __providerRouterRoute = (spec) => {
+	if (!spec || typeof spec !== "object" || typeof spec.agent !== "string") return spec;
+	const model = __providerRouterModels[spec.agent];
+	if (!model) return spec;
+	if (typeof spec.model === "string" && spec.model !== model) {
+		console.error(\`provider-router: override model for agent=\${spec.agent} orchestrator=\${spec.model} -> routed=\${model}\`);
+	}
+	return { ...spec, model };
+};
+const __providerRouterRuns = Object.freeze({
+	run: (key, spec) => runs.run(key, __providerRouterRoute(spec)),
+	all: (specs) => runs.all(specs.map(__providerRouterRoute)),
+	status: (...args) => runs.status(...args),
+	ref: (...args) => runs.ref(...args),
+	refs: (...args) => runs.refs(...args),
+});
+return await (async (runs) => {
+${script}
+})(__providerRouterRuns);
+`.trim();
+}
+
 export default function registerProviderRouter(pi: ExtensionAPI): void {
 	let map = loadMap();
 	let thinkingMap = loadThinkingMap();
@@ -182,6 +238,11 @@ export default function registerProviderRouter(pi: ExtensionAPI): void {
 		if (input.action && input.action !== "append-step") return;
 
 		const provider = ctx.model?.provider;
+		if (typeof input.workflowScript === "string") {
+			wrapWorkflowScript(input, provider, map, thinkingMap, ctx);
+			return;
+		}
+
 		applyModel(input, provider, map, thinkingMap, ctx);
 
 		if (Array.isArray(input.tasks)) {

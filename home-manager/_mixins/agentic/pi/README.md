@@ -82,22 +82,29 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "npm:pi-mcp-adapter@2.10.0",
-    "npm:pi-subagents@0.31.0",
-    "npm:pi-lens@3.8.53",
-    "npm:pi-footer@0.4.1",
+    "npm:pi-mcp-adapter@2.21.0",
+    "npm:pi-subagents@0.44.0",
+    "npm:pi-lens@3.8.74",
+    {
+      "source": "npm:typescript@7.0.2",
+      "extensions": [],
+      "skills": [],
+      "prompts": [],
+      "themes": []
+    },
+    "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     {
       "source": "npm:pi-logo@1.0.0",
       "extensions": []
     },
-    "npm:@juicesharp/rpiv-btw@1.20.0",
-    "npm:@juicesharp/rpiv-todo@1.20.0"
+    "npm:@juicesharp/rpiv-btw@2.4.0",
+    "npm:@juicesharp/rpiv-todo@2.4.0"
   ]
 }
 ```
 
-Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `pi-logo` is installed with its package extension disabled so the local `pi-logo-filter` wrapper can constrain startup logos while reusing upstream rendering code.
+Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `typescript` supplies the compiler API that `pi-lens` imports at runtime but lists only as a development dependency. Its Pi resources are disabled because it is a runtime dependency, not an extension. `pi-logo` is installed with its package extension disabled so the local `pi-logo-filter` wrapper can constrain startup logos while reusing upstream rendering code.
 
 `pi-logo-filter` keeps only `logo-001` through `logo-009` on random. These are the compact line-art logos that animate with Pi theme colours.
 

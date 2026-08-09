@@ -1,12 +1,11 @@
 # Provider Router
 
 Provider Router is a local Pi extension for subagent model routing. It
-intercepts Pi `tool_call` events for the `subagent` tool. When the requested
-subagent has a model and/or thinking-level mapping for the active provider, it
-writes `params.model` in Pi's canonical `provider/id[:thinking]` form. For known
-agents the routing is authoritative: the per-agent mapping always wins, even if
-the orchestrator passed an explicit `model` on the tool call. Pi then hands the
-call to `pi-subagents`.
+intercepts Pi `tool_call` events for the `subagent` tool. For workflow scripts,
+it wraps `runs.run` and `runs.all` so each child receives the mapped model. For
+legacy structured calls, it writes the child `model` directly. The per-agent
+mapping always wins when the active provider has a model or thinking-level
+entry. Pi then hands the call to `pi-subagents`.
 
 ## Deployed Scope
 
@@ -87,25 +86,26 @@ still produce `provider/modelId` without a thinking suffix. Explicit
 
 ## Runtime Constraints
 
-Provider Router covers the LLM tool-call path only. It rewrites `subagent`
-calls produced by the model during a Pi session, including single calls,
-top-level `tasks[]`, sequential chain steps, static chain `parallel: []`
-steps, dynamic chain `parallel: { ... }` fanout templates, and appended chain
-steps from `action: "append-step"`. It does not cover other management actions,
-slash commands such as `/run`, `/chain`, `/parallel`, or `/run-chain`, or
-prompt-template-bridge invocations. v1 has no per-project override.
+Provider Router covers the LLM tool-call path only. Current `pi-subagents`
+execution uses `workflowScript`. The router wraps the script in an async
+function and supplies a routing adapter for `runs`. The adapter routes child
+specifications passed to `runs.run` and `runs.all`, including specifications
+that the script creates dynamically. Other `runs` methods pass through
+unchanged.
 
-For known agents - those with a `model-<provider>` and/or
-`thinking-<provider>` entry for the active provider - the runtime is
-authoritative. It rewrites `params.model` whether or not the orchestrator
-supplied one, and applies the thinking suffix consistently. Unknown agents
-(no entry for the active provider in either map) pass through untouched. The
-runtime validates the bare model via `ctx.modelRegistry.find(provider, modelId)`
-before writing anything; only models available to the authenticated Pi session
-are used. The suffixed string is never passed to the registry.
+The router retains support for legacy single calls, `tasks[]`, chain steps,
+parallel chain steps, and `action: "append-step"`. It does not change other
+management actions, slash-command calls, or prompt-template-bridge calls. The
+router has no per-project override.
 
-When the extension overrides a value the orchestrator passed (i.e. `task.model`
-was set and differs from the routed value), it emits a single line to stderr:
+For known agents, the runtime is authoritative. It replaces the child `model`
+whether or not the orchestrator supplied one, and it applies the thinking
+suffix consistently. Unknown agents pass through unchanged. The runtime
+validates the bare model with `ctx.modelRegistry.find(provider, modelId)` before
+it builds the workflow wrapper. The suffixed string never reaches the registry.
+
+When the extension overrides a child model that the orchestrator passed, it
+emits a single line to stderr:
 
 ```text
 provider-router: override model for agent=<name> orchestrator=<orig> -> routed=<new>
@@ -115,7 +115,7 @@ No log is emitted in the common case where the orchestrator left `model` unset.
 
 ## Graceful No-Ops
 
-These miss paths leave `params.model` unchanged:
+These miss paths leave the child model unchanged:
 
 1. The agent is absent from both `agents.json` and `thinking.json`.
 2. The agent has no entry for the active provider in either map.
