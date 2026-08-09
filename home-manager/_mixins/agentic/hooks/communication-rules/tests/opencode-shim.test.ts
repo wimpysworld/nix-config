@@ -41,7 +41,8 @@ const BANNED = String.fromCharCode(108, 101, 118, 101, 114, 97, 103, 101);
 
 // The short B2 nudge the core emits on the middle blocks of the external cap
 // (strikes 2 .. limit - 2). Byte-identical to `core.state.EXTERNAL_REPEAT_NOTICE`.
-const B2_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply before posting.";
+const B2_REPEAT_NOTICE =
+  "Communication Rules still unmet. Revise the body to comply before posting.";
 
 interface Decision {
   decision: string;
@@ -63,6 +64,7 @@ interface Hooks {
     input: unknown,
     output: { text?: string },
   ) => Promise<void>;
+  event: (input: unknown) => Promise<void>;
 }
 
 let tempDir: string;
@@ -98,7 +100,11 @@ async function loadShimWithStubDecision(decisionJson: string): Promise<Hooks> {
   const stub = path.join(tempDir, `stub-core-${Date.now()}`);
   fs.writeFileSync(
     stub,
-    ["#!/usr/bin/env bash", `printf '%s' ${`'${decisionJson.replaceAll("'", "'\\''")}'`}`, ""].join("\n"),
+    [
+      "#!/usr/bin/env bash",
+      `printf '%s' ${`'${decisionJson.replaceAll("'", "'\\''")}'`}`,
+      "",
+    ].join("\n"),
     "utf-8",
   );
   fs.chmodSync(stub, 0o755);
@@ -106,7 +112,10 @@ async function loadShimWithStubDecision(decisionJson: string): Promise<Hooks> {
     .readFileSync(pluginSource, "utf-8")
     .replaceAll("@tripwireScanner@", stub)
     .replaceAll("@tripwireRules@", path.join(tempDir, "rules.md"))
-    .replaceAll("@tripwireCorrectionPrompt@", path.join(tempDir, "correction-prompt.md"));
+    .replaceAll(
+      "@tripwireCorrectionPrompt@",
+      path.join(tempDir, "correction-prompt.md"),
+    );
   const pluginFile = path.join(tempDir, `plugin-stub-${Date.now()}.ts`);
   fs.writeFileSync(pluginFile, pluginText, "utf-8");
   const client = {
@@ -150,7 +159,9 @@ const B1_TARGET = "/tmp/comm-rules-b1-revise.md";
 function b1WritePayload(): { input: unknown; output: { args: unknown } } {
   return {
     input: { tool: { name: "write" } },
-    output: { args: { file_path: B1_TARGET, content: `We should ${BANNED} this.` } },
+    output: {
+      args: { file_path: B1_TARGET, content: `We should ${BANNED} this.` },
+    },
   };
 }
 
@@ -177,12 +188,16 @@ beforeAll(() => {
   const carriageOff = path.join(tempDir, "policy-opencode-off.json");
   fs.writeFileSync(
     carriageOn,
-    JSON.stringify({ communicationRules: { houseStyleInSystemPrompt: { opencode: true } } }),
+    JSON.stringify({
+      communicationRules: { houseStyleInSystemPrompt: { opencode: true } },
+    }),
     "utf-8",
   );
   fs.writeFileSync(
     carriageOff,
-    JSON.stringify({ communicationRules: { houseStyleInSystemPrompt: { opencode: false } } }),
+    JSON.stringify({
+      communicationRules: { houseStyleInSystemPrompt: { opencode: false } },
+    }),
     "utf-8",
   );
 
@@ -239,7 +254,9 @@ test("B2 yield: tool.execute.before walks the cap then yields with level=error, 
   // penultimate block (strike 4); the shim maps the thrown message from the wire
   // notice, falling back to the full block message when the notice is empty.
   for (let strike = 2; strike <= 4; strike += 1) {
-    const call = before(b2Payload(), { args: (b2Payload() as { args: unknown }).args });
+    const call = before(b2Payload(), {
+      args: (b2Payload() as { args: unknown }).args,
+    });
     if (strike < 4) {
       await expect(call).rejects.toThrow(B2_REPEAT_NOTICE);
     } else {
@@ -302,6 +319,37 @@ test("Tier A facing: text.complete writes live output.text and toasts", async ()
   await complete({ event: "message.final" }, output);
   expect(output.text).toContain(decision.notice);
   expect(toasts.length).toBe(toastsBefore + 1);
+});
+
+test("Raw event: only completed subagent output is scanned", async () => {
+  const hooks = await loadShim();
+  const rawEvent = hooks.event;
+
+  const toastsBeforeNoise = toasts.length;
+  await rawEvent({
+    session_id: "oc-raw-noise",
+    event: {
+      type: "session.updated",
+      properties: { message: `We should ${BANNED} this.` },
+    },
+  });
+  expect(toasts.length).toBe(toastsBeforeNoise);
+
+  const toastsBeforeSubagent = toasts.length;
+  await rawEvent({
+    session_id: "oc-raw-subagent",
+    event: {
+      type: "message.part.updated",
+      properties: {
+        part: {
+          type: "tool",
+          tool: "task",
+          state: { status: "completed", output: `We should ${BANNED} this.` },
+        },
+      },
+    },
+  });
+  expect(toasts.length).toBe(toastsBeforeSubagent + 1);
 });
 
 test("Default-deny: an unknown decision on tool.execute.before throws, a clean pass allows", async () => {
@@ -374,9 +422,13 @@ test("Fresh-context reminder follows the reported carriage, not an assumption", 
   // the core's answer for OpenCode. With the carriage reported on it is the
   // pointer; with the house style gone from OpenCode's global instructions the
   // same call returns the full rules, so enforcement does not quietly weaken.
-  const carried = spawnSync(path.join(tempDir, "core-wrapper"), ["remind-brief", "opencode"], {
-    encoding: "utf-8",
-  });
+  const carried = spawnSync(
+    path.join(tempDir, "core-wrapper"),
+    ["remind-brief", "opencode"],
+    {
+      encoding: "utf-8",
+    },
+  );
   expect(carried.status).toBe(0);
   expect((carried.stdout ?? "").trim()).toMatch(
     /^Reminder: the house style in your system prompt is the Communication Rules\./,

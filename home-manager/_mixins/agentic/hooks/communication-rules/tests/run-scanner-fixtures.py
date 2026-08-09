@@ -145,7 +145,9 @@ def run_scanner(
     )
 
 
-def assert_result(name: str, completed: subprocess.CompletedProcess[str], expected: int) -> None:
+def assert_result(
+    name: str, completed: subprocess.CompletedProcess[str], expected: int
+) -> None:
     expected_word = "block" if expected == BLOCK else "pass"
     output = completed.stdout.strip()
     if completed.returncode != expected or output != expected_word:
@@ -176,7 +178,10 @@ def scan_policy_disclosure_cases() -> int:
     cases = {
         "policy body": (rules, PASS),
         "policy heading": (f"Communication Rules:\n{rules}", PASS),
-        "policy quote": ("\n".join(f"> {line}" if line else ">" for line in rules.splitlines()), PASS),
+        "policy quote": (
+            "\n".join(f"> {line}" if line else ">" for line in rules.splitlines()),
+            PASS,
+        ),
         "policy with prose": (f"Here are the rules:\n{rules}", BLOCK),
     }
     for name, (text, expected) in cases.items():
@@ -211,7 +216,13 @@ CLAUDE_CODE_FX = FIXTURES / "claude-code"
 FACING_NOTICE = "Communication Rules breach seen, correcting next reply."
 
 
-def _expect(decision: str, surface: str, notice: str = "", level: str = "warning", append_correction: bool = False) -> dict:
+def _expect(
+    decision: str,
+    surface: str,
+    notice: str = "",
+    level: str = "warning",
+    append_correction: bool = False,
+) -> dict:
     return {
         "decision": decision,
         "surface": surface,
@@ -259,7 +270,9 @@ _B1_REVISION_CLAUSE = "Revise it in place to comply:"
 _B1_REVISION_TRAILER = "Do not rewrite unrelated content."
 # The generic form used when the target is empty (a Bash B1 breach). It names no
 # file and carries no placeholder.
-_B1_REVISION_GENERIC = "Revise the prose you just wrote to comply with the Communication Rules."
+_B1_REVISION_GENERIC = (
+    "Revise the prose you just wrote to comply with the Communication Rules."
+)
 _TARGET_PLACEHOLDER = "{target}"
 
 
@@ -285,7 +298,11 @@ def _assert_no_target_placeholder(name: str, notice: object) -> None:
     the placeholder into the record.
     """
     if isinstance(notice, str) and _TARGET_PLACEHOLDER in notice:
-        raise AssertionError(f"{name}: notice carries a literal {_TARGET_PLACEHOLDER}: {notice!r}")
+        raise AssertionError(
+            f"{name}: notice carries a literal {_TARGET_PLACEHOLDER}: {notice!r}"
+        )
+
+
 # B2 gating blocks and yields.
 _B2_BLOCK = _expect("block", "B2", level="error")
 
@@ -293,7 +310,9 @@ _B2_BLOCK = _expect("block", "B2", level="error")
 # (strikes 2 .. limit - 2). The first and the penultimate block re-issue the
 # full rules; the blocks in between carry this instead. Byte-identical to
 # ``core.state.EXTERNAL_REPEAT_NOTICE``.
-_B2_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply before posting."
+_B2_REPEAT_NOTICE = (
+    "Communication Rules still unmet. Revise the body to comply before posting."
+)
 # Tier A facing.
 _FACING = _expect("block", "tierA", notice=FACING_NOTICE, level="warning")
 _PASS_TIERA = _expect("pass", "tierA", level="warning")
@@ -386,7 +405,9 @@ _REMINDER_CONTEXT_PREFIX = "Reminder: Follow the Communication Rules"
 # only where the platform reports carrying the house style in its system
 # prompt. A platform that carries nothing, and every sub-agent start, gets the
 # full body.
-_BRIEF_REMINDER_CONTEXT_PREFIX = "Reminder: the house style in your system prompt is the Communication Rules."
+_BRIEF_REMINDER_CONTEXT_PREFIX = (
+    "Reminder: the house style in your system prompt is the Communication Rules."
+)
 
 
 def _assert_wire_schema(name: str, parsed: dict) -> None:
@@ -399,14 +420,20 @@ def _assert_wire_schema(name: str, parsed: dict) -> None:
     """
     leaked = _DECISION_ONLY_KEYS & set(parsed)
     if leaked:
-        raise AssertionError(f"{name}: wire output leaked raw Decision keys {sorted(leaked)}: {parsed}")
+        raise AssertionError(
+            f"{name}: wire output leaked raw Decision keys {sorted(leaked)}: {parsed}"
+        )
     unknown = set(parsed) - _WIRE_TOPLEVEL_KEYS
     if unknown:
-        raise AssertionError(f"{name}: wire output has non-schema top-level keys {sorted(unknown)}: {parsed}")
+        raise AssertionError(
+            f"{name}: wire output has non-schema top-level keys {sorted(unknown)}: {parsed}"
+        )
     specific = parsed.get("hookSpecificOutput")
     if specific is not None:
         if not isinstance(specific, dict):
-            raise AssertionError(f"{name}: hookSpecificOutput must be an object: {parsed}")
+            raise AssertionError(
+                f"{name}: hookSpecificOutput must be an object: {parsed}"
+            )
         unknown_specific = set(specific) - _WIRE_HOOKSPECIFIC_KEYS
         if unknown_specific:
             raise AssertionError(
@@ -471,7 +498,10 @@ def expected_wire(event: str, decision: dict) -> dict | None:
         # yields the generic sentence. Either way no literal "{target}" appears.
         target = notice.strip()
         if target:
-            reason_match = ("CONTAINS", (_B1_REVISION_CLAUSE, target, _B1_REVISION_TRAILER))
+            reason_match = (
+                "CONTAINS",
+                (_B1_REVISION_CLAUSE, target, _B1_REVISION_TRAILER),
+            )
         else:
             reason_match = ("CONTAINS", (_B1_REVISION_GENERIC,))
         return {
@@ -536,19 +566,27 @@ def assert_wire(name: str, event: str, stdout: str, decision: dict) -> None:
     output = stdout.strip()
     if expected is None:
         if output:
-            raise AssertionError(f"{name} {event}: expected empty wire output, got {output!r}")
+            raise AssertionError(
+                f"{name} {event}: expected empty wire output, got {output!r}"
+            )
         return
     if not output:
-        raise AssertionError(f"{name} {event}: expected wire output {expected}, got empty")
+        raise AssertionError(
+            f"{name} {event}: expected wire output {expected}, got empty"
+        )
     try:
         parsed = json.loads(output)
     except json.JSONDecodeError as error:
-        raise AssertionError(f"{name} {event}: non-JSON wire output {output!r}") from error
+        raise AssertionError(
+            f"{name} {event}: non-JSON wire output {output!r}"
+        ) from error
     if not isinstance(parsed, dict):
         raise AssertionError(f"{name} {event}: wire output not an object: {parsed!r}")
     _assert_wire_schema(f"{name} {event}", parsed)
     if not _wire_value_matches(expected, parsed):
-        raise AssertionError(f"{name} {event}: wire mismatch\n  expected {expected}\n  got      {parsed}")
+        raise AssertionError(
+            f"{name} {event}: wire mismatch\n  expected {expected}\n  got      {parsed}"
+        )
 
 
 def run_claude_code_agent_cases(
@@ -590,7 +628,15 @@ def run_claude_code_agent_cases(
         input_text = json.dumps(payload) if payload is not None else materialise(name)
         policy_args = ["--policy-json", policy] if policy is not None else []
         completed = subprocess.run(
-            [sys.executable, str(SCANNER), "--rules", str(RULES), *policy_args, "claude-code", event],
+            [
+                sys.executable,
+                str(SCANNER),
+                "--rules",
+                str(RULES),
+                *policy_args,
+                "claude-code",
+                event,
+            ],
             input=input_text,
             text=True,
             stdout=subprocess.PIPE,
@@ -627,15 +673,31 @@ def run_claude_code_agent_cases(
     run_case("pre-tool-use-write-pass.json", "PreToolUse", _PASS_TIERB)
     reset_strikes()
     run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
-    run_case("pre-tool-use-write-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
+    run_case(
+        "pre-tool-use-write-block.json",
+        "PreToolUse",
+        _b1_allow_revise("/tmp/status.md"),
+    )
+    run_case(
+        "pre-tool-use-write-block.json",
+        "PreToolUse",
+        _b1_allow_revise("/tmp/status.md"),
+    )
 
     # B1 stable-key regression: three different bodies, one file_path+session.
     # The shared key still walks block then allow-revise, never the old yield.
     reset_strikes()
     run_case("pre-tool-use-write-vary-1-block.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-vary-2-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
-    run_case("pre-tool-use-write-vary-3-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
+    run_case(
+        "pre-tool-use-write-vary-2-block.json",
+        "PreToolUse",
+        _b1_allow_revise("/tmp/status.md"),
+    )
+    run_case(
+        "pre-tool-use-write-vary-3-block.json",
+        "PreToolUse",
+        _b1_allow_revise("/tmp/status.md"),
+    )
 
     # A clean pass on a DIFFERENT session (the pass fixture is session-fixture,
     # the vary fixtures are session-vary) does NOT reset the vary key, so the
@@ -645,7 +707,11 @@ def run_claude_code_agent_cases(
     reset_strikes()
     run_case("pre-tool-use-write-vary-1-block.json", "PreToolUse", _B1_BLOCK)
     run_case("pre-tool-use-write-pass.json", "PreToolUse", _PASS_TIERB)
-    run_case("pre-tool-use-write-vary-2-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
+    run_case(
+        "pre-tool-use-write-vary-2-block.json",
+        "PreToolUse",
+        _b1_allow_revise("/tmp/status.md"),
+    )
 
     # Extraction failure fails closed on a gating surface: deny, not pass.
     reset_strikes()
@@ -661,7 +727,11 @@ def run_claude_code_agent_cases(
 
     # An MCP post is an external (B2) surface, so even its clean pass tags B2.
     reset_strikes()
-    run_case("pre-tool-use-mcp-post-pass.json", "PreToolUse", _expect("pass", "B2", level="warning"))
+    run_case(
+        "pre-tool-use-mcp-post-pass.json",
+        "PreToolUse",
+        _expect("pass", "B2", level="warning"),
+    )
     run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _B2_BLOCK)
 
     # A clean pass on the SAME key resets the counter, so the next breach is
@@ -670,7 +740,11 @@ def run_claude_code_agent_cases(
     # proves the pass reset it.
     reset_strikes()
     run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-block.json", "PreToolUse", _b1_allow_revise("/tmp/status.md"))
+    run_case(
+        "pre-tool-use-write-block.json",
+        "PreToolUse",
+        _b1_allow_revise("/tmp/status.md"),
+    )
     run_case("pre-tool-use-write-pass.json", "PreToolUse", _PASS_TIERB)
     run_case("pre-tool-use-write-block.json", "PreToolUse", _B1_BLOCK)
 
@@ -680,7 +754,9 @@ def run_claude_code_agent_cases(
     # (strikes 2 and 3) carry the short nudge as the deny reason.
     reset_strikes()
     for nudge in (False, True, True, False):
-        run_case("pre-tool-use-mcp-post-target-block.json", "PreToolUse", _b2_block(nudge))
+        run_case(
+            "pre-tool-use-mcp-post-target-block.json", "PreToolUse", _b2_block(nudge)
+        )
     run_case(
         "pre-tool-use-mcp-post-target-block.json",
         "PreToolUse",
@@ -693,8 +769,14 @@ def run_claude_code_agent_cases(
     # nudge. The clean pass resets, so the final breach is strike 1 (full rules).
     reset_strikes()
     run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _b2_block())
-    run_case("pre-tool-use-mcp-post-block-reworded.json", "PreToolUse", _b2_block(nudge=True))
-    run_case("pre-tool-use-mcp-post-pass.json", "PreToolUse", _expect("pass", "B2", level="warning"))
+    run_case(
+        "pre-tool-use-mcp-post-block-reworded.json", "PreToolUse", _b2_block(nudge=True)
+    )
+    run_case(
+        "pre-tool-use-mcp-post-pass.json",
+        "PreToolUse",
+        _expect("pass", "B2", level="warning"),
+    )
     run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _b2_block())
 
     # B2 gh-via-Bash: a gh post run through Bash walks the five-strike cap with a
@@ -702,7 +784,11 @@ def run_claude_code_agent_cases(
     # rules on strikes 1 and 4, the short nudge on strikes 2 and 3.
     reset_strikes()
     for nudge in (False, True, True, False):
-        run_case("pre-tool-use-bash-gh-post-target-block.json", "PreToolUse", _b2_block(nudge))
+        run_case(
+            "pre-tool-use-bash-gh-post-target-block.json",
+            "PreToolUse",
+            _b2_block(nudge),
+        )
     run_case(
         "pre-tool-use-bash-gh-post-target-block.json",
         "PreToolUse",
@@ -718,7 +804,8 @@ def run_claude_code_agent_cases(
 
     reset_strikes()
     _env_gh_command = (
-        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'" % _banned_env
+        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'"
+        % _banned_env
     )
 
     def _env_gh_post() -> dict:
@@ -734,7 +821,9 @@ def run_claude_code_agent_cases(
     # the raw command string, where the leading token is the env assignment, so
     # the yield target falls back to the tool label "Bash".
     for nudge in (False, True, True, False):
-        run_case("env-prefix gh post", "PreToolUse", _b2_block(nudge), payload=_env_gh_post())
+        run_case(
+            "env-prefix gh post", "PreToolUse", _b2_block(nudge), payload=_env_gh_post()
+        )
     run_case(
         "env-prefix gh post yield",
         "PreToolUse",
@@ -752,7 +841,9 @@ def run_claude_code_agent_cases(
         payload={
             "session_id": "cc-env-clean",
             "tool_name": "Bash",
-            "tool_input": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/cc-env-clean.md"},
+            "tool_input": {
+                "command": "GH_TOKEN=x printf 'a clean line' > /tmp/cc-env-clean.md"
+            },
         },
     )
 
@@ -821,8 +912,18 @@ def run_claude_code_agent_cases(
     # Existing-blocked per-turn dedupe: a duplicate breach takes no second
     # notice (and no second strike). The decision stays block with empty notice.
     reset_strikes()
-    run_case("pre-tool-use-write-block.json", "PreToolUse", _expect("block", "B1", level="warning"), existing_blocked=True)
-    run_case("stop-transcript-block.json", "Stop", _expect("block", "tierA", level="warning"), existing_blocked=True)
+    run_case(
+        "pre-tool-use-write-block.json",
+        "PreToolUse",
+        _expect("block", "B1", level="warning"),
+        existing_blocked=True,
+    )
+    run_case(
+        "stop-transcript-block.json",
+        "Stop",
+        _expect("block", "tierA", level="warning"),
+        existing_blocked=True,
+    )
 
     # SubagentStop mirrors the Stop facing path: clean pass, breach notice.
     run_case("subagent-stop-pass.json", "SubagentStop", _PASS_TIERA)
@@ -848,9 +949,15 @@ def claude_code_agent_cases() -> int:
         env["TRIPWIRE_CLAUDE_CODE_REISSUE_DIR"] = reissue_dir
         env["TRIPWIRE_CORRECTION_PROMPT"] = str(correction)
         env.pop("TRIPWIRE_EXISTING_BLOCKED", None)
-        carriage_on = write_carriage_policy(Path(temp_dir), "cc-on", {"claude-code": True})
-        carriage_off = write_carriage_policy(Path(temp_dir), "cc-off", {"claude-code": False})
-        return run_claude_code_agent_cases(env, strike_dir, reissue_dir, carriage_on, carriage_off)
+        carriage_on = write_carriage_policy(
+            Path(temp_dir), "cc-on", {"claude-code": True}
+        )
+        carriage_off = write_carriage_policy(
+            Path(temp_dir), "cc-off", {"claude-code": False}
+        )
+        return run_claude_code_agent_cases(
+            env, strike_dir, reissue_dir, carriage_on, carriage_off
+        )
 
 
 # --- Codex agent fixtures ---------------------------------------------------
@@ -875,7 +982,9 @@ def claude_code_agent_cases() -> int:
 CODEX_FX = FIXTURES / "codex"
 
 
-def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage_off: str) -> int:
+def run_codex_agent_cases(
+    env: dict, strike_dir: str, carriage_on: str, carriage_off: str
+) -> int:
     """Run the codex fixture sequence, asserting the full record."""
     count = 0
 
@@ -905,7 +1014,15 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
             input_text = (CODEX_FX / name).read_text(encoding="utf-8")
         policy_args = ["--policy-json", policy] if policy is not None else []
         completed = subprocess.run(
-            [sys.executable, str(SCANNER), "--rules", str(RULES), *policy_args, "codex", event],
+            [
+                sys.executable,
+                str(SCANNER),
+                "--rules",
+                str(RULES),
+                *policy_args,
+                "codex",
+                event,
+            ],
             input=input_text,
             text=True,
             stdout=subprocess.PIPE,
@@ -946,7 +1063,11 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     reset_strikes()
     run_case("pre-tool-use-apply-patch-clean.json", "PreToolUse", _PASS_TIERB)
     run_case("pre-tool-use-bash-clean.json", "PreToolUse", _PASS_TIERB)
-    run_case("pre-tool-use-post-clean.json", "PreToolUse", _expect("pass", "B2", level="warning"))
+    run_case(
+        "pre-tool-use-post-clean.json",
+        "PreToolUse",
+        _expect("pass", "B2", level="warning"),
+    )
     # multiedit is not a post tool, so it routes through the non-gating pass
     # (surface tierA), matching the old adapter's assert_pass (no output).
     run_case("pre-tool-use-multiedit-surface-local.json", "PreToolUse", _PASS_TIERA)
@@ -971,8 +1092,12 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     # allow-revise on strike 2+ naming the file path (here "note.txt").
     reset_strikes()
     run_case("pre-tool-use-write-blocked.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
-    run_case("pre-tool-use-write-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
+    run_case(
+        "pre-tool-use-write-blocked.json", "PreToolUse", _b1_allow_revise("note.txt")
+    )
+    run_case(
+        "pre-tool-use-write-blocked.json", "PreToolUse", _b1_allow_revise("note.txt")
+    )
 
     # B1 apply_patch keys per-file from the patch body. Codex's apply_patch
     # carries no file_path key; pre_tool_use_target reads the target from the
@@ -982,19 +1107,27 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     # to one coarse session+turn+tool key: the first patch blocked and every later
     # patch (any file) landed. The U+2014 payload keeps each patch a breach.
     reset_strikes()
-    base_patch = json.loads((CODEX_FX / "pre-tool-use-apply-patch-blocked.json").read_text(encoding="utf-8"))
+    base_patch = json.loads(
+        (CODEX_FX / "pre-tool-use-apply-patch-blocked.json").read_text(encoding="utf-8")
+    )
 
     def _patch_to(path: str) -> dict:
         payload = json.loads(json.dumps(base_patch))
         payload["tool_input"]["command"] = (
-            "*** Begin Patch\n*** Add File: %s\n+Blocked\u2014payload text.\n*** End Patch\n" % path
+            "*** Begin Patch\n*** Add File: %s\n+Blocked\u2014payload text.\n*** End Patch\n"
+            % path
         )
         return payload
 
     patch_a = _patch_to("note-a.txt")
     patch_b = _patch_to("note-b.txt")
     run_case("apply_patch a strike 1", "PreToolUse", _B1_BLOCK, payload=patch_a)
-    run_case("apply_patch a strike 2", "PreToolUse", _b1_allow_revise("note-a.txt"), payload=patch_a)
+    run_case(
+        "apply_patch a strike 2",
+        "PreToolUse",
+        _b1_allow_revise("note-a.txt"),
+        payload=patch_a,
+    )
     # A DIFFERENT patched file is its own strike 1 (deny), not a shared
     # allow-revise. A coarse key would allow-revise this second file instead.
     run_case("apply_patch b strike 1", "PreToolUse", _B1_BLOCK, payload=patch_b)
@@ -1004,11 +1137,18 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     # hybrid walks block then allow-revise; turn-B resets to a fresh block. The
     # write-blocked fixture path is note.txt; vary the turn_id to a second turn.
     reset_strikes()
-    base_write = json.loads((CODEX_FX / "pre-tool-use-write-blocked.json").read_text(encoding="utf-8"))
+    base_write = json.loads(
+        (CODEX_FX / "pre-tool-use-write-blocked.json").read_text(encoding="utf-8")
+    )
     turn_one = dict(base_write, turn_id="turn-A")
     turn_two = dict(base_write, turn_id="turn-B")
     run_case("write turn-A strike 1", "PreToolUse", _B1_BLOCK, payload=turn_one)
-    run_case("write turn-A strike 2", "PreToolUse", _b1_allow_revise("note.txt"), payload=turn_one)
+    run_case(
+        "write turn-A strike 2",
+        "PreToolUse",
+        _b1_allow_revise("note.txt"),
+        payload=turn_one,
+    )
     # A different turn id resets to strike 1 (deny) rather than continuing to
     # allow-revise, proving the turn id is part of the key.
     run_case("write turn-B strike 1", "PreToolUse", _B1_BLOCK, payload=turn_two)
@@ -1017,8 +1157,16 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     # The shared key walks block then allow-revise, never the old yield.
     reset_strikes()
     run_case("pre-tool-use-write-vary-1-blocked.json", "PreToolUse", _B1_BLOCK)
-    run_case("pre-tool-use-write-vary-2-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
-    run_case("pre-tool-use-write-vary-3-blocked.json", "PreToolUse", _b1_allow_revise("note.txt"))
+    run_case(
+        "pre-tool-use-write-vary-2-blocked.json",
+        "PreToolUse",
+        _b1_allow_revise("note.txt"),
+    )
+    run_case(
+        "pre-tool-use-write-vary-3-blocked.json",
+        "PreToolUse",
+        _b1_allow_revise("note.txt"),
+    )
 
     # A clean pass on the same key resets the counter.
     reset_strikes()
@@ -1031,8 +1179,12 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     # Full rules on strikes 1 and 4, the short nudge on strikes 2 and 3.
     reset_strikes()
     run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _b2_block())
-    run_case("pre-tool-use-post-reworded-blocked.json", "PreToolUse", _b2_block(nudge=True))
-    run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _b2_block(nudge=True))
+    run_case(
+        "pre-tool-use-post-reworded-blocked.json", "PreToolUse", _b2_block(nudge=True)
+    )
+    run_case(
+        "pre-tool-use-post-target-blocked.json", "PreToolUse", _b2_block(nudge=True)
+    )
     run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _b2_block())
     run_case(
         "pre-tool-use-post-target-blocked.json",
@@ -1043,7 +1195,11 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     # B2 reset on a clean post on the same session+turn+tool.
     reset_strikes()
     run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _B2_BLOCK)
-    run_case("pre-tool-use-post-clean-same-target.json", "PreToolUse", _expect("pass", "B2", level="warning"))
+    run_case(
+        "pre-tool-use-post-clean-same-target.json",
+        "PreToolUse",
+        _expect("pass", "B2", level="warning"),
+    )
     run_case("pre-tool-use-post-target-blocked.json", "PreToolUse", _B2_BLOCK)
 
     # B2 gh-via-Bash: a gh post run through Bash walks the five-strike cap with a
@@ -1051,7 +1207,9 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     # rules on strikes 1 and 4, the short nudge on strikes 2 and 3.
     reset_strikes()
     for nudge in (False, True, True, False):
-        run_case("pre-tool-use-bash-gh-post-blocked.json", "PreToolUse", _b2_block(nudge))
+        run_case(
+            "pre-tool-use-bash-gh-post-blocked.json", "PreToolUse", _b2_block(nudge)
+        )
     run_case(
         "pre-tool-use-bash-gh-post-blocked.json",
         "PreToolUse",
@@ -1068,7 +1226,7 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     _banned_local = "del" + "ve"
 
     def _wrapped_local_bash(sink: str) -> dict:
-        command = 'bash -lc "printf \'%s here\' > %s"' % (_banned_local, sink)
+        command = "bash -lc \"printf '%s here' > %s\"" % (_banned_local, sink)
         return {
             "session_id": "wrapped-local",
             "turn_id": "wrap-turn",
@@ -1076,17 +1234,29 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
             "tool_input": {"command": command},
         }
 
-    run_case("wrapped local sink A", "PreToolUse", _B1_BLOCK, payload=_wrapped_local_bash("wrap-a.md"))
+    run_case(
+        "wrapped local sink A",
+        "PreToolUse",
+        _B1_BLOCK,
+        payload=_wrapped_local_bash("wrap-a.md"),
+    )
     # A DIFFERENT wrapped sink in the same session+turn is its own strike 1, not a
     # shared allow-revise. The inner sink is the per-file key.
-    run_case("wrapped local sink B", "PreToolUse", _B1_BLOCK, payload=_wrapped_local_bash("wrap-b.md"))
+    run_case(
+        "wrapped local sink B",
+        "PreToolUse",
+        _B1_BLOCK,
+        payload=_wrapped_local_bash("wrap-b.md"),
+    )
 
     # Wrapped gh post: a "bash -lc \"gh issue create --body ...\"" wrapper must
     # classify as B2 external (hard five-strike block), never B1 allow-revise. The
     # body routes through scan_bash and detects the banned word; the surface stays
     # external so it walks the five-strike cap and yields on strike 5.
     reset_strikes()
-    _wrapped_gh_command = 'bash -lc "gh issue create --title hi --body \'we %s here\'"' % _banned_local
+    _wrapped_gh_command = (
+        "bash -lc \"gh issue create --title hi --body 'we %s here'\"" % _banned_local
+    )
 
     def _wrapped_gh_post() -> dict:
         return {
@@ -1097,7 +1267,12 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
         }
 
     for nudge in (False, True, True, False):
-        run_case("wrapped gh post", "PreToolUse", _b2_block(nudge), payload=_wrapped_gh_post())
+        run_case(
+            "wrapped gh post",
+            "PreToolUse",
+            _b2_block(nudge),
+            payload=_wrapped_gh_post(),
+        )
     # The B2 yield names the operator target. A wrapped command exposes no bare gh
     # subcommand, so the target falls back to the tool label "Bash". The point of
     # this case is the SURFACE (B2 hard block, not B1 allow-revise), not the label.
@@ -1149,7 +1324,8 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
 
     reset_strikes()
     _env_gh_command = (
-        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'" % _banned_env
+        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'"
+        % _banned_env
     )
 
     def _env_gh_post() -> dict:
@@ -1165,7 +1341,9 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
     # nudge. Strike 5 yields. The wrapped command exposes a bare gh subcommand
     # after the env strip, so the target names the subcommand.
     for nudge in (False, True, True, False):
-        run_case("env-prefix gh post", "PreToolUse", _b2_block(nudge), payload=_env_gh_post())
+        run_case(
+            "env-prefix gh post", "PreToolUse", _b2_block(nudge), payload=_env_gh_post()
+        )
     # The B2 yield names the operator target. external_target reads the bare gh
     # subcommand from the raw command string, where the leading token is the env
     # assignment, so it falls back to the tool label "Bash". The point of this
@@ -1208,7 +1386,9 @@ def run_codex_agent_cases(env: dict, strike_dir: str, carriage_on: str, carriage
             "session_id": "env-clean",
             "turn_id": "env-clean-turn",
             "tool_name": "Bash",
-            "tool_input": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/env-clean.md"},
+            "tool_input": {
+                "command": "GH_TOKEN=x printf 'a clean line' > /tmp/env-clean.md"
+            },
         },
     )
 
@@ -1303,7 +1483,9 @@ def codex_agent_cases() -> int:
         env.pop("TRIPWIRE_EXISTING_BLOCKED", None)
         env.pop("TRIPWIRE_REISSUE_DIR", None)
         carriage_on = write_carriage_policy(Path(temp_dir), "codex-on", {"codex": True})
-        carriage_off = write_carriage_policy(Path(temp_dir), "codex-off", {"codex": False})
+        carriage_off = write_carriage_policy(
+            Path(temp_dir), "codex-off", {"codex": False}
+        )
         return run_codex_agent_cases(env, strike_dir, carriage_on, carriage_off)
 
 
@@ -1379,7 +1561,9 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
         try:
             record = json.loads(completed.stdout.strip())
         except json.JSONDecodeError as error:
-            raise AssertionError(f"pi {name} {event}: non-JSON {completed.stdout!r}") from error
+            raise AssertionError(
+                f"pi {name} {event}: non-JSON {completed.stdout!r}"
+            ) from error
         _assert_no_target_placeholder(f"pi {name} {event}", record.get("notice"))
         _assert_record_fields(f"pi {name} {event}", record, expected)
         count += 1
@@ -1414,10 +1598,14 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
     # B1 fail-closed: missing write content and missing subagent content fail
     # closed on a gating surface (deny, never pass).
     reset_strikes()
-    run_case("tool-call-write-missing-content-fails-closed.json", "tool_call", _B1_BLOCK)
+    run_case(
+        "tool-call-write-missing-content-fails-closed.json", "tool_call", _B1_BLOCK
+    )
     reset_strikes()
     run_case(
-        "tool-result-subagent-missing-content-fails-closed.json", "tool_result", _B1_BLOCK
+        "tool-result-subagent-missing-content-fails-closed.json",
+        "tool_result",
+        _B1_BLOCK,
     )
 
     # B2 external block cases: an mcp post and a gh-via-bash post. The gh
@@ -1467,7 +1655,8 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
 
     reset_strikes()
     _env_gh_command = (
-        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'" % _banned_env
+        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'"
+        % _banned_env
     )
 
     def _env_gh_post() -> dict:
@@ -1483,7 +1672,9 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
     # the B1 allow-revise path. The bash tool with a command has no structured
     # identifier, so the yield target falls back to the tool name "bash".
     for nudge in (False, True, True, False):
-        run_case("env-prefix gh post", "tool_call", _b2_block(nudge), payload=_env_gh_post())
+        run_case(
+            "env-prefix gh post", "tool_call", _b2_block(nudge), payload=_env_gh_post()
+        )
     run_case(
         "env-prefix gh post yield",
         "tool_call",
@@ -1503,7 +1694,9 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
             "type": "tool_call",
             "toolName": "bash",
             "toolCallId": "env-clean-call",
-            "input": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/pi-env-clean.md"},
+            "input": {
+                "command": "GH_TOKEN=x printf 'a clean line' > /tmp/pi-env-clean.md"
+            },
         },
     )
 
@@ -1660,7 +1853,9 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
         try:
             record = json.loads(completed.stdout.strip())
         except json.JSONDecodeError as error:
-            raise AssertionError(f"opencode {name} {event}: non-JSON {completed.stdout!r}") from error
+            raise AssertionError(
+                f"opencode {name} {event}: non-JSON {completed.stdout!r}"
+            ) from error
         _assert_no_target_placeholder(f"opencode {name} {event}", record.get("notice"))
         _assert_record_fields(f"opencode {name} {event}", record, expected)
         count += 1
@@ -1672,7 +1867,11 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
     run_case("tool-write-clean.json", "tool.execute.before", _PASS_TIERB)
     run_case("tool-multiedit-clean.json", "tool.execute.before", _PASS_TIERB)
     run_case("tool-apply-patch-context-clean.json", "tool.execute.before", _PASS_TIERB)
-    run_case("tool-post-clean.json", "tool.execute.before", _expect("pass", "B2", level="warning"))
+    run_case(
+        "tool-post-clean.json",
+        "tool.execute.before",
+        _expect("pass", "B2", level="warning"),
+    )
 
     # B1 local block cases, each on a fresh counter (strike 1, deny). write,
     # edit, multiedit, apply_patch, and bash are local; the extraction failure
@@ -1699,8 +1898,12 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
     # for the shim to resolve into the revision prompt.
     reset_strikes()
     run_case("tool-write-blocked.json", "tool.execute.before", _B1_BLOCK)
-    run_case("tool-write-blocked.json", "tool.execute.before", _b1_allow_revise("notes.md"))
-    run_case("tool-write-blocked.json", "tool.execute.before", _b1_allow_revise("notes.md"))
+    run_case(
+        "tool-write-blocked.json", "tool.execute.before", _b1_allow_revise("notes.md")
+    )
+    run_case(
+        "tool-write-blocked.json", "tool.execute.before", _b1_allow_revise("notes.md")
+    )
 
     # A clean pass on the same key resets the counter, so the next breach is
     # strike 1 (deny), never the yield.
@@ -1731,7 +1934,7 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
     _banned_oc = "del" + "ve"
 
     def _wrapped_local_bash(sink: str) -> dict:
-        command = 'bash -lc "printf \'%s here\' > %s"' % (_banned_oc, sink)
+        command = "bash -lc \"printf '%s here' > %s\"" % (_banned_oc, sink)
         return {
             "session_id": "oc-wrapped-local",
             "event": "tool.execute.before",
@@ -1739,17 +1942,29 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
             "args": {"command": command},
         }
 
-    run_case("wrapped local sink A", "tool.execute.before", _B1_BLOCK, payload=_wrapped_local_bash("wrap-a.md"))
+    run_case(
+        "wrapped local sink A",
+        "tool.execute.before",
+        _B1_BLOCK,
+        payload=_wrapped_local_bash("wrap-a.md"),
+    )
     # A DIFFERENT wrapped sink in the same session is its own strike 1, not a
     # shared allow-revise. The inner sink is the per-file key.
-    run_case("wrapped local sink B", "tool.execute.before", _B1_BLOCK, payload=_wrapped_local_bash("wrap-b.md"))
+    run_case(
+        "wrapped local sink B",
+        "tool.execute.before",
+        _B1_BLOCK,
+        payload=_wrapped_local_bash("wrap-b.md"),
+    )
 
     # Wrapped gh post: a "bash -lc \"gh issue create --body ...\"" wrapper must
     # classify as B2 external (hard five-strike block), never B1 allow-revise. The
     # body routes through scan_bash and detects the banned word; the surface stays
     # external so it walks the five-strike cap and yields on strike 5.
     reset_strikes()
-    _wrapped_gh = 'bash -lc "gh issue create --title hi --body \'we %s here\'"' % _banned_oc
+    _wrapped_gh = (
+        "bash -lc \"gh issue create --title hi --body 'we %s here'\"" % _banned_oc
+    )
 
     def _wrapped_gh_post() -> dict:
         return {
@@ -1760,7 +1975,12 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
         }
 
     for nudge in (False, True, True, False):
-        run_case("wrapped gh post", "tool.execute.before", _b2_block(nudge), payload=_wrapped_gh_post())
+        run_case(
+            "wrapped gh post",
+            "tool.execute.before",
+            _b2_block(nudge),
+            payload=_wrapped_gh_post(),
+        )
     # The B2 yield names the operator target. The bash tool with a wrapped command
     # has no structured identifier, so the target falls back to the tool name
     # "bash". The point is the SURFACE (B2 hard block, not B1 allow-revise).
@@ -1776,6 +1996,44 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
     run_case("post-display-clean.json", "message.final", _PASS_TIERA)
     run_case("post-display-final-blocked.json", "message.final", _FACING)
     run_case("post-display-subagent-blocked.json", "subagent.final", _FACING)
+
+    # Raw OpenCode events are narrow by design. The generic event stream can hold
+    # arbitrary text from state updates, so it must pass unless it is a completed
+    # task, agent, or subagent tool part.
+    _banned_raw = "piv" + "otal"
+    run_case(
+        "raw non-subagent event pass",
+        "event",
+        _PASS_TIERA,
+        payload={
+            "session_id": "oc-raw-noise",
+            "event": {
+                "type": "session.updated",
+                "properties": {"message": f"We should {_banned_raw} this."},
+            },
+        },
+    )
+    run_case(
+        "raw completed subagent output blocked",
+        "event",
+        _FACING,
+        payload={
+            "session_id": "oc-raw-subagent",
+            "event": {
+                "type": "message.part.updated",
+                "properties": {
+                    "part": {
+                        "type": "tool",
+                        "tool": "task",
+                        "state": {
+                            "status": "completed",
+                            "output": f"We should {_banned_raw} this.",
+                        },
+                    },
+                },
+            },
+        },
+    )
 
     # Policy disclosure (the rules themselves) on a display surface is exempt and
     # passes. Built at runtime from the rules file so this file holds no banned
@@ -1802,13 +2060,21 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
         "final-extraction-failure",
         "message.final",
         _FACING,
-        payload={"event": "message.final", "surface": "final", "session_id": "oc-empty-final"},
+        payload={
+            "event": "message.final",
+            "surface": "final",
+            "session_id": "oc-empty-final",
+        },
     )
     run_case(
         "subagent-extraction-failure",
         "subagent.final",
         _FACING,
-        payload={"event": "subagent.final", "surface": "subagent", "session_id": "oc-empty-subagent"},
+        payload={
+            "event": "subagent.final",
+            "surface": "subagent",
+            "session_id": "oc-empty-subagent",
+        },
     )
 
     # Env-prefix evasion: a leading "GH_TOKEN=x gh ..." or "FOO=bar printf ..."
@@ -1818,7 +2084,10 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
     _banned_env = "rob" + "ust"
 
     reset_strikes()
-    _env_gh = "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'" % _banned_env
+    _env_gh = (
+        "GH_TOKEN=x gh issue create --repo o/r --title t --body 'a %s body'"
+        % _banned_env
+    )
 
     def _env_gh_post() -> dict:
         return {
@@ -1832,7 +2101,12 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
     # the B1 allow-revise path. The bash tool with a command has no structured
     # identifier, so the yield target falls back to the tool name "bash".
     for nudge in (False, True, True, False):
-        run_case("env-prefix gh post", "tool.execute.before", _b2_block(nudge), payload=_env_gh_post())
+        run_case(
+            "env-prefix gh post",
+            "tool.execute.before",
+            _b2_block(nudge),
+            payload=_env_gh_post(),
+        )
     run_case(
         "env-prefix gh post yield",
         "tool.execute.before",
@@ -1853,7 +2127,12 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
             "args": {"command": _env_write},
         }
 
-    run_case("env-prefix write strike 1", "tool.execute.before", _B1_BLOCK, payload=_env_write_payload())
+    run_case(
+        "env-prefix write strike 1",
+        "tool.execute.before",
+        _B1_BLOCK,
+        payload=_env_write_payload(),
+    )
     run_case(
         "env-prefix write strike 2",
         "tool.execute.before",
@@ -1871,7 +2150,9 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
             "session_id": "oc-env-clean",
             "event": "tool.execute.before",
             "tool": {"name": "bash"},
-            "args": {"command": "GH_TOKEN=x printf 'a clean line' > /tmp/oc-env-clean.md"},
+            "args": {
+                "command": "GH_TOKEN=x printf 'a clean line' > /tmp/oc-env-clean.md"
+            },
         },
     )
 

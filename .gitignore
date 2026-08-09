@@ -2,6 +2,7 @@
 !home-manager/_mixins/development/direnv/
 result/
 __pycache__/
+.pi-subagents/
 
 .env
 .env.local

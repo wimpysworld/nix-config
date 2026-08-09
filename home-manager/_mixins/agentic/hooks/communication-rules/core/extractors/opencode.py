@@ -185,6 +185,12 @@ def event_name(data: Any) -> str:
         value = data.get(key)
         if isinstance(value, str):
             return value
+        if (
+            key == "event"
+            and isinstance(value, dict)
+            and isinstance(value.get("type"), str)
+        ):
+            return value["type"]
     return ""
 
 
@@ -209,12 +215,19 @@ def command_from_args(args: Any) -> str | None:
 
 def is_write_tool(name: str) -> bool:
     normalised = normalise_name(name)
-    return normalised in {"write", "file_write", "write_file"} or normalised.endswith("_write")
+    return normalised in {"write", "file_write", "write_file"} or normalised.endswith(
+        "_write"
+    )
 
 
 def is_edit_tool(name: str) -> bool:
     normalised = normalise_name(name)
-    return normalised in {"edit", "multiedit", "multi_edit", "str_replace"} or normalised.endswith("_edit")
+    return normalised in {
+        "edit",
+        "multiedit",
+        "multi_edit",
+        "str_replace",
+    } or normalised.endswith("_edit")
 
 
 def is_patch_tool(name: str) -> bool:
@@ -241,7 +254,9 @@ def is_post_tool(name: str, args: Any) -> bool:
     command = command_from_args(args)
     if command:
         stripped = command.strip()
-        return any(stripped.startswith(gh_command + " ") for gh_command in GH_POST_COMMANDS)
+        return any(
+            stripped.startswith(gh_command + " ") for gh_command in GH_POST_COMMANDS
+        )
     if isinstance(args, dict):
         return any(key in args for key in POST_FIELDS)
     return False
@@ -323,7 +338,9 @@ def is_external_surface(name: str, args: Any, config: Config) -> bool:
                 inner_argv = parse_command_line(inner)
                 if inner_argv is not None:
                     inner_stripped = strip_env_assignments(inner_argv)
-                    return bool(inner_stripped) and inner_stripped[0] in GH_POST_COMMANDS
+                    return (
+                        bool(inner_stripped) and inner_stripped[0] in GH_POST_COMMANDS
+                    )
     return False
 
 
@@ -423,13 +440,17 @@ def _session(payload: dict[str, Any]) -> str:
 
 def _pass(session: str) -> Extraction:
     return Extraction(
-        record=ExtractorRecord(session=session, turn=None, tool="", target=None, texts=[]),
+        record=ExtractorRecord(
+            session=session, turn=None, tool="", target=None, texts=[]
+        ),
         event_class=EVENT_PASS,
         scan_mode=SCAN_NONE,
     )
 
 
-def _extract_tool_execute_before(payload: dict[str, Any], session: str, config: Config) -> Extraction:
+def _extract_tool_execute_before(
+    payload: dict[str, Any], session: str, config: Config
+) -> Extraction:
     action, value = extract_tool(payload)
 
     if action == "pass":
@@ -439,8 +460,14 @@ def _extract_tool_execute_before(payload: dict[str, Any], session: str, config: 
     args = arguments(payload)
     is_external = is_external_surface(name, args, config)
     surface = "external" if is_external else "local"
-    target = external_target(name, args, config.external_target_keys) if is_external else local_target(name, args)
-    record = ExtractorRecord(session=session, turn=None, tool=name, target=target, texts=[])
+    target = (
+        external_target(name, args, config.external_target_keys)
+        if is_external
+        else local_target(name, args)
+    )
+    record = ExtractorRecord(
+        session=session, turn=None, tool=name, target=target, texts=[]
+    )
 
     gate_args = {
         "record": record,
@@ -470,7 +497,9 @@ def _extract_tool_execute_before(payload: dict[str, Any], session: str, config: 
 
 
 def _extract_display(payload: dict[str, Any], session: str) -> Extraction:
-    record = ExtractorRecord(session=session, turn=None, tool="display", target=None, texts=[])
+    record = ExtractorRecord(
+        session=session, turn=None, tool="display", target=None, texts=[]
+    )
     facing = {"record": record, "event_class": EVENT_FACING}
 
     if not display_surface(payload):
@@ -524,11 +553,19 @@ def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
     session = _session(payload)
     payload_event = event_name(payload)
 
-    if event in {"context", "chat.system.transform"} or payload_event == "chat.system.transform":
-        record = ExtractorRecord(session=session, turn=None, tool="context", target=None, texts=[])
+    if (
+        event in {"context", "chat.system.transform"}
+        or payload_event == "chat.system.transform"
+    ):
+        record = ExtractorRecord(
+            session=session, turn=None, tool="context", target=None, texts=[]
+        )
         return Extraction(record=record, event_class=EVENT_CONTEXT, scan_mode=SCAN_NONE)
 
-    if event in {"tool-execute-before", "tool.execute.before"} or payload_event == "tool.execute.before":
+    if (
+        event in {"tool-execute-before", "tool.execute.before"}
+        or payload_event == "tool.execute.before"
+    ):
         return _extract_tool_execute_before(payload, session, config)
 
     if event == "event" or payload_event == "message.part.updated":
@@ -540,13 +577,25 @@ def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
         if not session:
             properties = _event_properties(payload)
             part = properties.get("part") if isinstance(properties, dict) else None
-            session = first_string(part, ("sessionID", "sessionId", "session_id")) or (
-                first_string(properties, ("sessionID", "sessionId", "session_id")) if properties else None
-            ) or ""
-        record = ExtractorRecord(session=session, turn=None, tool="display", target=None, texts=[text])
+            session = (
+                first_string(part, ("sessionID", "sessionId", "session_id"))
+                or (
+                    first_string(properties, ("sessionID", "sessionId", "session_id"))
+                    if properties
+                    else None
+                )
+                or ""
+            )
+        record = ExtractorRecord(
+            session=session, turn=None, tool="display", target=None, texts=[text]
+        )
         return Extraction(record=record, event_class=EVENT_FACING, scan_mode=SCAN_TEXT)
 
-    if event in {"post-display"} or event in _DISPLAY_EVENTS or display_surface(payload):
+    if (
+        event in {"post-display"}
+        or event in _DISPLAY_EVENTS
+        or display_surface(payload)
+    ):
         return _extract_display(payload, session)
 
     return _pass(session)

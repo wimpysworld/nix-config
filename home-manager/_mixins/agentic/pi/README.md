@@ -155,6 +155,25 @@ Pi `subagent` tool calls to provider-specific models declared in assistant
 `sub-core` quota updates and publishes the compact quota segment consumed by
 `pi-footer`.
 
+`prompt-template-display` lives at
+`~/.pi/agent/extensions/prompt-template-display/`. In TUI mode, it discovers
+file-backed commands that Pi reports with the `prompt` source. It displays only
+the original slash invocation while it reads and expands the current
+`sourceInfo.path` with Pi 0.83.0 argument rules. For an idle prompt, it stores
+one raw command and expansion, sends the raw command as a user message, and
+returns a hidden marker from `before_agent_start`. The `context` hook uses the
+marker to replace the nearest earlier user message text with the expansion. It
+keeps attached images and removes the marker. Steer and follow-up input keep the
+hidden custom message path because streaming input does not run
+`before_agent_start`. SDK prompt commands pass through because
+their source paths can be virtual.
+
+Run the focused tests with:
+
+```console
+node --experimental-loader ./home-manager/_mixins/agentic/pi/extensions/prompt-template-display/test-loader.mjs --test home-manager/_mixins/agentic/pi/extensions/prompt-template-display/index.test.ts
+```
+
 `communication-rules` lives at `~/.pi/agent/extensions/communication-rules/`.
 It receives the complete body of the `communication-rules` skill without
 frontmatter. Pi also installs the skill under `~/.pi/agent/skills/`, while
@@ -184,6 +203,8 @@ Managed files:
 - `~/.pi/agent/extensions/provider-router/README.md`
 - `~/.pi/agent/extensions/provider-router/LICENSE`
 - `~/.pi/agent/extensions/pi-logo-filter/index.ts`
+- `~/.pi/agent/extensions/prompt-template-display/index.ts`
+- `~/.pi/agent/extensions/prompt-template-display/types.d.ts`
 - `~/.pi/agent/extensions/quota-status/index.ts`
 - `~/.pi/agent/extensions/communication-rules/index.ts`
 - `~/.pi/agent/extensions/communication-rules/config.json`

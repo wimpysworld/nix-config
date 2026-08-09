@@ -658,6 +658,10 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
       ".pi/agent/extensions/isolation-status/index.ts".text = piIsolationStatusExtension;
       ".pi/agent/extensions/pi-logo-filter/index.ts".source = ./extensions/pi-logo-filter/index.ts;
+      ".pi/agent/extensions/prompt-template-display/index.ts".source =
+        ./extensions/prompt-template-display/index.ts;
+      ".pi/agent/extensions/prompt-template-display/types.d.ts".source =
+        ./extensions/prompt-template-display/types.d.ts;
       ".pi/agent/extensions/quota-status/index.ts".source = ./extensions/quota-status/index.ts;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
     }
