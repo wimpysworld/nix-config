@@ -43,7 +43,7 @@ let
   piLensTypescriptVersion = "7.0.2";
   piFooterVersion = "0.5.1";
   piSubCoreVersion = "1.5.0";
-  piLogoVersion = "1.0.0";
+  piCcHeaderVersion = "0.9.4";
   rpivBtwVersion = "2.4.0";
   rpivTodoVersion = "2.4.0";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
@@ -52,7 +52,20 @@ let
   piLensTypescriptSource = "npm:typescript@${piLensTypescriptVersion}";
   piFooterSource = "npm:pi-footer@${piFooterVersion}";
   piSubCoreSource = "npm:@marckrenn/pi-sub-core@${piSubCoreVersion}";
-  piLogoSource = "npm:pi-logo@${piLogoVersion}";
+  piCcHeaderSource = "npm:pi-cc-header@${piCcHeaderVersion}";
+  piCcHeaderUpstream = pkgs.fetchFromGitHub {
+    owner = "eriiic7z";
+    repo = "pi-cc-header";
+    rev = "v${piCcHeaderVersion}";
+    hash = "sha256-lBYwrsQh2mywAucvOePVgoWtC7jZJIiOlv8r5t6lwm8=";
+  };
+  piCcHeaderPatched =
+    pkgs.runCommand "pi-cc-header-${piCcHeaderVersion}-patched" { nativeBuildInputs = [ pkgs.patch ]; }
+      ''
+        cp -R ${piCcHeaderUpstream} "$out"
+        chmod -R u+w "$out"
+        patch -d "$out" -p1 < ${./patches/pi-cc-header-writable-state.patch}
+      '';
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
@@ -309,6 +322,7 @@ let
 
     theme = piThemeName;
     quietStartup = true;
+    clearOnStart = true;
     collapseChangelog = true;
     enableInstallTelemetry = false;
     enableAnalytics = false;
@@ -348,7 +362,7 @@ let
       piFooterSource
       piSubCoreSource
       {
-        source = piLogoSource;
+        source = piCcHeaderSource;
         extensions = [ ];
       }
       rpivBtwSource
@@ -627,12 +641,18 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
   };
 
   home = {
-    # Pi Lens creates its state directory at startup. Fence cannot allow
-    # creation of this leaf directory without also allowing writes to $HOME, so
-    # create it during Home Manager activation before fenced Pi sessions start.
-    activation.piLensStateDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      mkdir -p "${config.home.homeDirectory}/.pi-lens"
-      chmod 700 "${config.home.homeDirectory}/.pi-lens"
+    # Create writable state directories before fenced Pi sessions start.
+    activation.piStateDirectories = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      mkdir -p \
+        "${config.home.homeDirectory}/.pi-lens" \
+        "${config.home.homeDirectory}/.pi/agent/state"
+      chmod 700 \
+        "${config.home.homeDirectory}/.pi-lens" \
+        "${config.home.homeDirectory}/.pi/agent/state"
+      if [[ ! -e "${config.home.homeDirectory}/.pi/agent/state/pi-cc-header.json" ]]; then
+        printf '{}\n' > "${config.home.homeDirectory}/.pi/agent/state/pi-cc-header.json"
+      fi
+      chmod 600 "${config.home.homeDirectory}/.pi/agent/state/pi-cc-header.json"
     '';
 
     packages = [
@@ -657,7 +677,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
       ".pi/agent/extensions/isolation-status/index.ts".text = piIsolationStatusExtension;
-      ".pi/agent/extensions/pi-logo-filter/index.ts".source = ./extensions/pi-logo-filter/index.ts;
+      ".pi/agent/extensions/pi-cc-header.ts".source = "${piCcHeaderPatched}/extensions/pi-cc-header.ts";
       ".pi/agent/extensions/prompt-template-display/index.ts".source =
         ./extensions/prompt-template-display/index.ts;
       ".pi/agent/extensions/prompt-template-display/types.d.ts".source =
