@@ -8,13 +8,9 @@ let
   inherit (config.noughty) host;
   gitWorkflowToolsEnabled = host.is.server || host.is.workstation;
   gitExtrasEnabled = host.is.workstation;
-  gitsignCredentialCache =
-    if host.is.linux then
-      "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock"
-    else if host.is.darwin then
-      "${config.home.homeDirectory}/Library/Caches/sigstore/gitsign/cache.sock"
-    else
-      "${config.xdg.cacheHome}/sigstore/gitsign/cache.sock";
+  platformCacheHome =
+    if host.is.darwin then "${config.home.homeDirectory}/Library/Caches" else config.xdg.cacheHome;
+  sigstoreCacheHome = "${platformCacheHome}/sigstore";
   gitsignVerify = pkgs.writeShellApplication {
     name = "gitsign-verify";
     runtimeInputs = with pkgs; [
@@ -102,7 +98,8 @@ in
       ];
     sessionVariables = {
       GIT_EDITOR = "${freshGitEditor}/bin/fresh-git-editor";
-      GITSIGN_CREDENTIAL_CACHE = "${gitsignCredentialCache}";
+      GITSIGN_CREDENTIAL_CACHE = "${sigstoreCacheHome}/gitsign/cache.sock";
+      TUF_ROOT = lib.mkDefault "${sigstoreCacheHome}/root";
     }
     // lib.optionalAttrs gitWorkflowToolsEnabled {
       HUNK_DISABLE_UPDATE_NOTICE = "1";

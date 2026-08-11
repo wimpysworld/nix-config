@@ -179,11 +179,15 @@ directory at `~/.config/sops-nix` is intentionally read-allowed so API keys are
 exposed inside the sandbox.
 
 Commits in work repositories under `~/Chainguard` are signed with Sigstore
-through gitsign. The `gitsign-credential-cache` daemon runs on the host; only
-its unix socket at `~/.cache/sigstore/gitsign/cache.sock` crosses into the
-sandbox. What crosses that socket is an ephemeral signing key and a Fulcio
-certificate that expires after ten minutes, so no long-lived secret enters the
-fence: no SSH key, no GPG key, and no Google ID token. Signing is scoped by a
+through gitsign. The `gitsign-credential-cache` daemon runs on the host. On
+Linux, its socket is at `~/.cache/sigstore/gitsign/cache.sock` and the TUF root
+is `~/.cache/sigstore/root`. On Darwin, the matching paths are
+`~/Library/Caches/sigstore/gitsign/cache.sock` and
+`~/Library/Caches/sigstore/root`. Fenced and unfenced gitsign share this
+writable TUF state through `TUF_ROOT`. What crosses the socket is an ephemeral
+signing key and a Fulcio certificate that expires after ten minutes, so no
+long-lived secret enters the fence: no SSH key, no GPG key, and no Google ID
+token. Signing is scoped by a
 `gitdir:~/Chainguard/*/` include in the Git configuration, so it applies to the
 nested work clones and nowhere else. The fenced wrappers point
 `GIT_CONFIG_GLOBAL` at a Fence-owned global file. That file includes the real
@@ -201,8 +205,8 @@ Chainguard and the Git directory. `GIT_CONFIG_*` cannot express this: those
 variables carry `command line:` origin, which outranks every configuration file
 including a conditional include, so an injected `commit.gpgSign=false` would
 win inside work clones too.
-`~/.sigstore` is writable because every signature, including a cache hit, opens
-the TUF trust store there as a LevelDB database with an exclusive lock.
+The Linux XDG cache grant covers the Sigstore cache. Darwin grants only the
+Sigstore cache directory and its descendants.
 `gitsign initialize` is denied because it rewrites that trust root and changes
 what later local verification accepts. The multi-token enforcement limit above
 applies to that deny.

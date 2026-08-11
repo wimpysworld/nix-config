@@ -25,6 +25,7 @@ lib.mkIf host.is.workstation {
       # Language servers for web technologies
       vscode-langservers-extracted # JSON, HTML, CSS, ESLint
     ];
+    sessionVariables.npm_config_cache = lib.mkDefault "${config.xdg.cacheHome}/npm";
   };
 
   programs = {

@@ -21,12 +21,13 @@ lib.mkIf host.is.workstation {
       govulncheck
     ];
     sessionPath = [
-      "${config.home.homeDirectory}/.local/go/bin"
+      "${config.xdg.dataHome}/go/bin"
     ];
     sessionVariables = {
-      GOBIN = "${config.home.homeDirectory}/.local/go/bin";
-      GOCACHE = "${config.home.homeDirectory}/.local/go/cache";
-      GOPATH = "${config.home.homeDirectory}/.local/go";
+      GOBIN = lib.mkDefault "${config.xdg.dataHome}/go/bin";
+      GOCACHE = lib.mkDefault "${config.xdg.cacheHome}/go-build";
+      GOMODCACHE = lib.mkDefault "${config.xdg.cacheHome}/go/mod";
+      GOPATH = lib.mkDefault "${config.xdg.dataHome}/go";
     };
   };
 

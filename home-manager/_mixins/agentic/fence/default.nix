@@ -11,14 +11,7 @@ let
   inherit (config.home) homeDirectory profileDirectory;
   fencePackage = import ./package.nix { inherit inputs pkgs; };
 
-  # The gitsign credential cache daemon places its socket with Go's
-  # os.UserCacheDir, which ignores XDG variables on Darwin and returns
-  # ~/Library/Caches. Mirror the socket path branches in development/git.
-  gitsignCacheDir =
-    if host.is.darwin then
-      "${homeDirectory}/Library/Caches/sigstore/gitsign"
-    else
-      "${config.xdg.cacheHome}/sigstore/gitsign";
+  darwinSigstoreCacheHome = "${homeDirectory}/Library/Caches/sigstore";
 
   fenceConfig = {
     allowPty = true;
@@ -91,25 +84,7 @@ let
         "${config.xdg.configHome}/herdr"
         "${config.xdg.configHome}/herdr/**"
 
-        # gitsign signs work commits inside the sandbox. Every signature, even
-        # one served from the credential cache, opens the TUF trust store at
-        # ~/.sigstore/root/tuf.db. That is a LevelDB database opened read-write
-        # with an exclusive lock, so read access alone is not enough.
-        "${homeDirectory}/.sigstore"
-        "${homeDirectory}/.sigstore/**"
-
-        # The gitsign credential cache socket lives under ~/Library/Caches on
-        # Darwin, which no other rule covers, so this entry is the only one
-        # that reaches it there. On Linux the XDG cache glob below also covers
-        # it, but the bare directory is listed for the same reason as /tmp. If
-        # the host daemon restarts mid-session it recreates the socket inode
-        # after Fence started, and the bare directory keeps the Landlock rule
-        # covering the new inode.
-        gitsignCacheDir
-
         # Package manager caches
-        "~/.npm/_cacache"
-        "~/.npm/_npx"
         "~/.bun/**"
 
         # Cargo cache (Rust, used by Codex)
@@ -124,8 +99,10 @@ let
         "${config.xdg.cacheHome}/**"
         "${config.xdg.dataHome}/**"
         "${config.xdg.stateHome}/**"
-        "${homeDirectory}/.local/go"
-        "${homeDirectory}/.local/go/**"
+      ]
+      ++ lib.optionals host.is.darwin [
+        darwinSigstoreCacheHome
+        "${darwinSigstoreCacheHome}/**"
       ];
 
       denyRead = [
