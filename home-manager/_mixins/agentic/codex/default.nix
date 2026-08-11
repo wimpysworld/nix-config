@@ -283,7 +283,11 @@ let
     check_for_update_on_startup = false;
 
     # Do not prompt to install missing MCP dependencies for skills.
+    # `code_mode_host` is on by default upstream, but state it here so the
+    # feature stays on if that default changes. The activation script installs
+    # the `codex-code-mode-host` helper the feature needs.
     features = {
+      code_mode_host = true;
       skill_mcp_dependency_install = false;
     };
 
@@ -480,17 +484,29 @@ let
     + "\n"
   );
   codexConfigActivationScript = ''
+    install_stable_binary() {
+      source="$1"
+      target="$2"
+      mkdir -p "$(dirname "$target")"
+      binary_tmp="$(mktemp "$(dirname "$target")/.install.XXXXXX")"
+      cp "$source" "$binary_tmp"
+      chmod 755 "$binary_tmp"
+      mv -f "$binary_tmp" "$target"
+    }
+
     install_codex_binary() {
       target="$1"
-      mkdir -p "$(dirname "$target")"
-      codex_tmp="$(mktemp "$(dirname "$target")/codex.XXXXXX")"
       if [ -x "${codexPackage}/bin/.codex-wrapped" ]; then
-        cp "${codexPackage}/bin/.codex-wrapped" "$codex_tmp"
+        install_stable_binary "${codexPackage}/bin/.codex-wrapped" "$target"
       else
-        cp "${codexPackage}/bin/codex" "$codex_tmp"
+        install_stable_binary "${codexPackage}/bin/codex" "$target"
       fi
-      chmod 755 "$codex_tmp"
-      mv -f "$codex_tmp" "$target"
+      # Codex resolves the code-mode host as a sibling of current_exe(), so the
+      # helper must sit beside every stable copy. Without it, code mode fails
+      # closed and Codex falls back to direct tools.
+      install_stable_binary \
+        "${codexPackage}/bin/codex-code-mode-host" \
+        "$(dirname "$target")/codex-code-mode-host"
     }
 
     merge_codex_config() {
