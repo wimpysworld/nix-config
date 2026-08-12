@@ -40,7 +40,7 @@ ReFrame starts as a system service, so the design supports capture before login 
 - The `uinput` kernel module provides remote keyboard and pointer input.
 - `cursor=true` includes the pointer in the captured image.
 - `resize=true` lets the VNC client request a size change.
-- `wakeup=true` wakes a blanked display when input arrives. `reframe-wakeup-key.patch` adds a KEY_WAKEUP press for lockers such as Veila that ignore pointer motion while displays are off, and retries the connector lookup while the display wakes. Filed upstream as [AlynxZhou/reframe#42](https://github.com/AlynxZhou/reframe/issues/42) and [PR #43](https://github.com/AlynxZhou/reframe/pull/43); drop the patch when a release includes it.
+- `wakeup=true` enables automatic display wakeup. `wakeup-device=keyboard` uses the upstream `KEY_WAKEUP` event for lockers such as Veila that ignore pointer motion while displays are off. ReFrame 1.20.1 includes that keyboard support. `reframe-wakeup-key.patch` keeps the connector lookup retry while the display wakes because upstream does not include that part of [AlynxZhou/reframe#42](https://github.com/AlynxZhou/reframe/issues/42).
 - `damage=gpu` compares frames on the GPU in 4 px tiles. The server has a persistent Mesa shader cache in `/var/cache/reframe-server`. Fall back to `damage=cpu` if tile artifacts appear.
 - `fps=30` sets the capture target to 30 frames per second.
 - `XKB_DEFAULT_LAYOUT` on `reframe-server@main` follows `host.keyboard.layout`, so VNC keysym translation matches the host layout instead of falling back to US.

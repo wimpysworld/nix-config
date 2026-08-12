@@ -103,10 +103,12 @@ let
       (hasLine "resize=true" reframeConfig)
       (hasLine "cursor=true" reframeConfig)
       (hasLine "wakeup=true" reframeConfig)
+      (hasLine "wakeup-device=keyboard" reframeConfig)
       (hasLine "damage=gpu" reframeConfig)
       (hasLine "fps=30" reframeConfig)
       (hasLine "ip=127.0.0.1" reframeConfig)
       (hasLine "port=5933" reframeConfig)
+      (hasLine "backend=libvncserver" reframeConfig)
       (lib.length passwordLines == 1)
       (lib.hasPrefix "password=<SOPS:" (builtins.head passwordLines))
       (lib.hasSuffix ":PLACEHOLDER>" (builtins.head passwordLines))
@@ -193,4 +195,5 @@ assert !(untaggedHomeConfig.systemd.user.services ? reframe-session);
 assert !(lib.hasInfix "/novnc" untaggedCaddy);
 assert !(builtins.pathExists (root + "/home-manager/_mixins/services/wayvnc/default.nix"));
 assert !(builtins.pathExists (root + "/home-manager/_mixins/services/wayvnc/README.md"));
+assert reframePackage.version == "1.20.1";
 autostartCheck

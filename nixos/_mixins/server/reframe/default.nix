@@ -22,10 +22,16 @@ lib.mkIf (noughtyLib.hostHasTag "reframe") {
 
   services.reframe = {
     enable = true;
-    package = pkgs.reframe.overrideAttrs (oldAttrs: {
-      # Veila powers displays off while locked and ignores the pointer motion
-      # ReFrame injects for wakeup, so add a KEY_WAKEUP press and retry the
-      # CRTC lookup while the display wakes.
+    package = pkgs.reframe.overrideAttrs (oldAttrs: rec {
+      version = "1.20.1";
+      src = pkgs.fetchgit {
+        url = oldAttrs.src.url;
+        rev = "refs/tags/v${version}";
+        hash = "sha256-Y67tjv4HXOsilU4ki56queSid517F0TzGnf66l+7zok=";
+        fetchSubmodules = true;
+      };
+      # The upstream keyboard wake event starts the display wake sequence.
+      # Retry the CRTC lookup while the display completes that sequence.
       patches = (oldAttrs.patches or [ ]) ++ [ ./reframe-wakeup-key.patch ];
       postInstall = (oldAttrs.postInstall or "") + ''
         rm "$out/etc/xdg/autostart/reframe-session.desktop"
@@ -66,6 +72,7 @@ lib.mkIf (noughtyLib.hostHasTag "reframe") {
         resize=true
         cursor=true
         wakeup=true
+        wakeup-device=keyboard
         damage=gpu
         fps=30
 
@@ -73,7 +80,7 @@ lib.mkIf (noughtyLib.hostHasTag "reframe") {
         ip=127.0.0.1
         port=5933
         password=${config.sops.placeholder.reframe-password}
-        type=libvncserver
+        backend=libvncserver
 
         [libvncserver]
 
