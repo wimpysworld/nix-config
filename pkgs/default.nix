@@ -11,6 +11,7 @@ pkgs: {
   linear-term = pkgs.callPackage ./linear-term { };
   linear-tui = pkgs.callPackage ./linear-tui { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
+  perch = pkgs.callPackage ./perch { };
   slk = pkgs.callPackage ./slk { };
   tcount = pkgs.callPackage ./tcount { };
   defold = pkgs.callPackage ./defold { };

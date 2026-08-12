@@ -106,6 +106,7 @@ in
         mprocs # Terminal parallel process runner
         netdiscover # Modern Unix `arp`
         optipng # Terminal PNG optimizer
+        perch # Terminal social client
         rustmission # Terminal Transmission Torrent client
         sd # Modern Unix `sed`
         timer # Terminal timer
