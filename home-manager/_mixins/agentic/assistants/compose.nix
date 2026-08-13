@@ -668,13 +668,13 @@ let
       Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
       Deadline: <hard stop, and the progress messages expected before it>
       Validation: <checks to run or evidence needed>
-      Output: <artefact or report, then the format: headings, artefact format, file path, or response contract, and a length budget for the returned message. A long report goes to a file under the `review-report-path` convention, and the worker returns the conclusion plus the path>
-      Discipline: No preamble. Do not restate the task. Return user-visible output only. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
+      Output: <artefact or report, then the format: headings, artefact format, file path, or response contract, and a length budget for the returned message. A long report goes to a file under the `review-report-path` convention, and the worker returns the conclusion plus the path. For a background worker, name the report recipient for `SendMessage`>
+      Discipline: No preamble. Do not restate the task. Always send a final report message, and put only user-visible output in it. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
       ```
 
       ## Response contract
 
-      Delivery is part of the contract. Return every report through the platform's agent-completion channel. If the delegation packet requires an explicit message, send it before finishing. The orchestrator must stay active, receive the completion notification and report, and deliver the result before finalising. Completion alone does not create a user-visible follow-up. This holds for success, failure, and blocked work alike. A synchronous sub-agent returns its result to the caller directly.
+      Delivery is part of the contract. A background sub-agent must send its report to the orchestrator with the platform's agent messaging tool (`SendMessage` on Claude Code, addressed to the orchestrator the packet names, or `main` when the packet names none) before it finishes. Ending the turn is not delivery, writing a file is not delivery, and plain final output is not delivery, because the orchestrator never sees plain output. A synchronous sub-agent returns its result to the caller directly. The orchestrator must stay active, receive the report, and deliver the result before finalising. Completion alone does not create a user-visible follow-up. This holds for success, failure, and blocked work alike.
 
       Non-artefact work starts with `Answer:`. Pure artefacts return only the artefact. When the packet names a long report, write the report to a file under the `review-report-path` convention and return the conclusion plus the path.
 

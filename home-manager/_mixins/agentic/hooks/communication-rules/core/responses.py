@@ -262,9 +262,9 @@ def codex_response(
 # shim needs is the same for both agents; the shim maps it to its own
 # return/throw and live-object writes.
 #
-# Pi return shapes (pi/extensions/communication-rules/index.ts:432-492):
+# Pi return shapes (pi/extensions/communication-rules/index.ts):
 # - tool_call block  -> { block: true, reason }
-# - tool_result block -> { content: [...], isError: true }
+# - tool_result       -> ctx.ui.notify(notice, level); the report always lands
 # - context           -> append messages (base rules, correction)
 # - facing            -> ctx.ui.notify(notice, level)
 #

@@ -4,7 +4,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { TextContent } from "@mariozechner/pi-ai";
 
 // Thin shim. All policy lives in the Python core; each handler spawns
 // `core pi <event>` and maps the decision to Pi's return shape. The context
@@ -101,8 +100,10 @@ export default function registerCommunicationRules(pi: ExtensionAPI): void {
     return undefined;
   });
   pi.on("tool_result", (event, ctx) => {
-    if (decide(config, "tool_result", event, ctx).decision !== "block") return undefined;
-    const details = event && typeof event === "object" ? (event as { details?: unknown }).details : undefined;
-    return { content: [{ type: "text", text: blockMessage(config) } as TextContent], details, isError: true };
+    // A subagent report is a deliverable: Tier A facing. Notify on a breach,
+    // never replace the returned report with the block message.
+    const d = decide(config, "tool_result", event, ctx);
+    notify(ctx, d.notice, d.level);
+    return undefined;
   });
 }

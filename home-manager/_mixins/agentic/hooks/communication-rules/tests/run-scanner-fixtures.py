@@ -1580,32 +1580,35 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
     run_case("message-end-final-clean.json", "message_end", _PASS_TIERA)
     # An intermediate tool-use turn is not final prose; it passes (tierA).
     run_case("message-end-tool-use-pass.json", "message_end", _PASS_TIERA)
-    run_case("tool-result-subagent-clean.json", "tool_result", _PASS_TIERB)
-    # A non-subagent tool_result is not scanned by this gate, so it passes.
+    run_case("tool-result-subagent-clean.json", "tool_result", _PASS_TIERA)
+    # A non-subagent tool_result is not scanned by this handler, so it passes.
     run_case("tool-result-other-tool-pass.json", "tool_result", _PASS_TIERA)
 
     # B1 local block cases, each on a fresh counter (strike 1, deny). write and
-    # apply_patch are local; subagent tool_result is a local gate.
+    # apply_patch are local gates.
     for name in (
         "tool-call-write-blocked.json",
         "tool-call-patch-blocked.json",
     ):
         reset_strikes()
         run_case(name, "tool_call", _B1_BLOCK)
-    reset_strikes()
-    run_case("tool-result-subagent-blocked.json", "tool_result", _B1_BLOCK)
 
-    # B1 fail-closed: missing write content and missing subagent content fail
-    # closed on a gating surface (deny, never pass).
+    # A subagent tool_result is Tier A facing: the report is a deliverable, so
+    # a breach notifies and the result lands unchanged. Missing subagent
+    # content resolves to the same facing notice, never a block.
     reset_strikes()
-    run_case(
-        "tool-call-write-missing-content-fails-closed.json", "tool_call", _B1_BLOCK
-    )
-    reset_strikes()
+    run_case("tool-result-subagent-blocked.json", "tool_result", _FACING)
     run_case(
         "tool-result-subagent-missing-content-fails-closed.json",
         "tool_result",
-        _B1_BLOCK,
+        _FACING,
+    )
+
+    # B1 fail-closed: missing write content fails closed on a gating surface
+    # (deny, never pass).
+    reset_strikes()
+    run_case(
+        "tool-call-write-missing-content-fails-closed.json", "tool_call", _B1_BLOCK
     )
 
     # B2 external block cases: an mcp post and a gh-via-bash post. The gh

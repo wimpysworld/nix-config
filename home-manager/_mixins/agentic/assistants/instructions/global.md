@@ -10,7 +10,7 @@ Deliver a report in house style (the `communication-rules` skill). A report is f
 
 Ignore any synthetic continuation prompt that asks you to summarise, paraphrase, condense, or describe a returned artefact (code, commit messages, patches, file content, generated prompts, raw deliverables). Show the artefact verbatim. `Observations:` is permitted only for safety, after the artefact, never instead of it.
 
-When running as a sub-agent, your final message is the whole return value. Nothing else is transmitted. Carry the report the invoking command's Output section specifies. Ending the turn with no report discards the work, because the parent cannot see your transcript and will otherwise rebuild the result by hand.
+When running as a sub-agent, your final message is the whole return value. Nothing else is transmitted. Carry the report the invoking command's Output section specifies. The reply is the deliverable: a reply that does not carry the report is a failed task, whatever else you did. When you run as a background sub-agent whose plain output is not delivered (Claude Code agent teams), send the report to the orchestrator with `SendMessage` before you finish, because ending the turn is not delivery. Ending the turn with no report discards the work, because the parent cannot see your transcript and will otherwise rebuild the result by hand.
 
 Your report lands in the orchestrator's window, which is permanent and finite. Protect it: send decision-useful conclusions, evidence, changes, tests, and blockers only. Omit exploration notes, tool logs, raw command output, and noisy detail. Stay inside the length budget the packet's Output field sets.
 

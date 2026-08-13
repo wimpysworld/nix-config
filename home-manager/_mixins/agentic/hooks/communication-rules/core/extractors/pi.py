@@ -407,31 +407,34 @@ def _extract_message_end(event: dict[str, Any], session: str) -> Extraction:
 
 
 def _extract_tool_result(event: dict[str, Any], session: str, config: Config) -> Extraction:
+    # A subagent report is a deliverable the orchestrator consumes. Tier A
+    # facing never blocks, so a breach notifies and the report still lands.
+    # Gating this surface destroyed first-strike reports, which cost more than
+    # the style breach it prevented.
     record = ExtractorRecord(session=session, turn=None, tool="tool_result", target=None, texts=[])
-    gate_args = {
+    facing = {
         "record": record,
-        "event_class": EVENT_GATE,
-        "surface": "local",
+        "event_class": EVENT_FACING,
         "existing_blocked": _existing_blocked(),
     }
 
     text = tool_result_text(event)
     if text is None:
-        return Extraction(scan_mode=SCAN_NONE, unresolved=True, **gate_args)
+        return Extraction(scan_mode=SCAN_NONE, unresolved=True, **facing)
     if text == "":
         return _pass(session)
 
     record.texts = [text]
-    return Extraction(scan_mode=SCAN_TEXT, **gate_args)
+    return Extraction(scan_mode=SCAN_TEXT, **facing)
 
 
 def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
     """Return the normalised Extraction for one Pi event.
 
     Routes the registered handlers: ``tool_call`` (gate), ``message_end``
-    (Tier A facing), ``tool_result`` (gate, subagent only). The ``context``
-    reminder and ``input`` events are a pass the core ignores; the shim still
-    injects the rules via the Tier A injection flags.
+    (Tier A facing), ``tool_result`` (Tier A facing, subagent only). The
+    ``context`` reminder and ``input`` events are a pass the core ignores; the
+    shim still injects the rules via the Tier A injection flags.
 
     The Pi event payload may be nested under ``event`` or ``payload``; an
     unreadable shape fails closed on a gating surface.
@@ -448,10 +451,11 @@ def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
 
     inner = event_payload(payload)
     if inner is None:
-        # A broken payload fails closed on a gating handler; message_end stays
-        # Tier A (re-issue, not block). Map both to an unresolved record.
+        # A broken payload fails closed on a gating handler; message_end and
+        # tool_result stay Tier A (re-issue, not block). Map both shapes to an
+        # unresolved record.
         record = ExtractorRecord(session=session, turn=None, tool=event, target=None, texts=[])
-        if event == "message_end":
+        if event in {"message_end", "tool_result"}:
             return Extraction(
                 record=record,
                 event_class=EVENT_FACING,
@@ -459,7 +463,7 @@ def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
                 unresolved=True,
                 existing_blocked=_existing_blocked(),
             )
-        if event in {"tool_call", "tool_result"}:
+        if event == "tool_call":
             return Extraction(
                 record=record,
                 event_class=EVENT_GATE,
