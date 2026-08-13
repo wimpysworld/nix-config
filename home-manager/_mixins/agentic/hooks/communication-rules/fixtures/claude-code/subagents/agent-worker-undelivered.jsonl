@@ -1,0 +1,2 @@
+{"type":"user","isSidechain":true,"sessionId":"session-parent","message":{"role":"user","content":[{"type":"text","text":"Trace the hook internals."}]}}
+{"type":"assistant","isSidechain":true,"sessionId":"session-parent","message":{"role":"assistant","content":[{"type":"text","text":"Answer: the hook takes the facing path and the report follows."}]}}

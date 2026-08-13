@@ -90,17 +90,44 @@ def assistant_text_from_object(value: Any) -> list[str]:
     return []
 
 
-def transcript_last_assistant_text(path: str) -> str | None:
+def _sidechain_matches(item: Any, sidechain: bool | None) -> bool:
+    if sidechain is None or not isinstance(item, dict):
+        return True
+    return bool(item.get("isSidechain")) == sidechain
+
+
+def transcript_last_assistant_text(path: str, sidechain: bool | None = None) -> str | None:
+    """Read the last assistant text from a transcript file.
+
+    ``sidechain`` filters entries by their top-level ``isSidechain`` flag:
+    True keeps sub-agent entries (SubagentStop), False keeps main-thread
+    entries (Stop), so a mixed transcript never hands one surface the other
+    actor's prose. A transcript with no matching entry falls back to the
+    unfiltered last text, so a transcript without the flag keeps the old
+    behaviour.
+    """
     raw = read_text_file(path)
     if raw is None:
         return None
 
-    last_text: str | None = None
     stripped = raw.strip()
     if not stripped:
         return None
 
     import json
+
+    last_match: str | None = None
+    last_any: str | None = None
+
+    def consider(item: Any) -> None:
+        nonlocal last_match, last_any
+        parts = assistant_text_from_object(item)
+        if not parts:
+            return
+        text = "\n".join(parts)
+        last_any = text
+        if _sidechain_matches(item, sidechain):
+            last_match = text
 
     try:
         parsed = json.loads(stripped)
@@ -109,10 +136,8 @@ def transcript_last_assistant_text(path: str) -> str | None:
 
     if isinstance(parsed, list):
         for item in parsed:
-            parts = assistant_text_from_object(item)
-            if parts:
-                last_text = "\n".join(parts)
-        return last_text
+            consider(item)
+        return last_match if last_match is not None else last_any
 
     if isinstance(parsed, dict):
         parts = assistant_text_from_object(parsed)
@@ -126,11 +151,47 @@ def transcript_last_assistant_text(path: str) -> str | None:
             item = json.loads(line)
         except json.JSONDecodeError:
             continue
-        parts = assistant_text_from_object(item)
-        if parts:
-            last_text = "\n".join(parts)
+        consider(item)
 
-    return last_text
+    return last_match if last_match is not None else last_any
+
+
+def transcript_has_send_message(path: str) -> bool:
+    """True when the transcript holds an assistant SendMessage tool call.
+
+    In agent-teams mode a sub-agent's plain final output is not delivered to
+    the orchestrator; only a SendMessage call is. This is the delivery check
+    behind the SubagentStop lost-report warning.
+    """
+    raw = read_text_file(path)
+    if raw is None:
+        return False
+
+    import json
+
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(item, dict) or item.get("type") != "assistant":
+            continue
+        message = item.get("message")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if (
+                isinstance(block, dict)
+                and block.get("type") == "tool_use"
+                and block.get("name") == "SendMessage"
+            ):
+                return True
+    return False
 
 
 def collect_post_texts(value: Any, post_text_keys: frozenset[str], key: str = "") -> list[str]:
@@ -319,12 +380,26 @@ def _extract_stop(payload: dict[str, Any], session: str) -> Extraction:
     if not isinstance(transcript_path, str) or not transcript_path:
         return Extraction(scan_mode=SCAN_NONE, unresolved=True, **facing)
 
-    text = transcript_last_assistant_text(transcript_path)
+    text = transcript_last_assistant_text(transcript_path, sidechain=False)
     if text is None or not text.strip():
         return Extraction(scan_mode=SCAN_NONE, unresolved=True, **facing)
 
     record.texts = [text]
     return Extraction(scan_mode=SCAN_TEXT, **facing)
+
+
+def _subagent_report_undelivered(transcript_path: str) -> bool:
+    """True when a teams-mode worker transcript shows no SendMessage delivery.
+
+    Gated to agent-teams mode and to the per-agent transcript files under a
+    ``subagents`` directory. A classic synchronous sub-agent returns its final
+    text as the tool result, so it never raises this warning.
+    """
+    if os.environ.get("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS") != "1":
+        return False
+    if "/subagents/" not in transcript_path:
+        return False
+    return not transcript_has_send_message(transcript_path)
 
 
 def _extract_subagent_stop(payload: dict[str, Any], session: str) -> Extraction:
@@ -332,23 +407,29 @@ def _extract_subagent_stop(payload: dict[str, Any], session: str) -> Extraction:
     # read from the same transcript via transcript_path. Claude Code does not
     # populate last_assistant_message for SubagentStop, so go straight to the
     # transcript and reuse the Stop extraction logic.
+    #
+    # The event carries the PARENT session id, so this surface must not touch
+    # the pending-reissue flag: setting it charges the parent for a sub-agent
+    # breach, and a clean pass would clear a pending parent correction.
     record = ExtractorRecord(session=session, turn=None, tool="SubagentStop", target=None, texts=[])
     facing = {
         "record": record,
         "event_class": EVENT_FACING,
         "existing_blocked": _existing_blocked(),
+        "reissue": False,
     }
 
     transcript_path = payload.get("transcript_path")
     if not isinstance(transcript_path, str) or not transcript_path:
         return Extraction(scan_mode=SCAN_NONE, unresolved=True, **facing)
 
-    text = transcript_last_assistant_text(transcript_path)
+    text = transcript_last_assistant_text(transcript_path, sidechain=True)
+    undelivered = _subagent_report_undelivered(transcript_path)
     if text is None or not text.strip():
-        return Extraction(scan_mode=SCAN_NONE, unresolved=True, **facing)
+        return Extraction(scan_mode=SCAN_NONE, unresolved=True, undelivered=undelivered, **facing)
 
     record.texts = [text]
-    return Extraction(scan_mode=SCAN_TEXT, **facing)
+    return Extraction(scan_mode=SCAN_TEXT, undelivered=undelivered, **facing)
 
 
 def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:

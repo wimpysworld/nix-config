@@ -1,0 +1,8 @@
+{
+  "session_id": "session-parent",
+  "transcript_path": "__TRANSCRIPT_DIR__/subagents/agent-worker-delivered.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false
+}

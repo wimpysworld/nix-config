@@ -81,6 +81,13 @@ class Extraction:
       passes.
     - ``existing_blocked``: True when this turn already raised a breach, so the
       state machine takes no second strike and no second notice.
+    - ``reissue``: False on a facing surface that must not touch the pending
+      re-issue flag. A SubagentStop carries the parent session id, so letting it
+      set or clear the flag charges the parent for a sub-agent breach, or
+      discards a pending parent correction.
+    - ``undelivered``: True when a finished sub-agent never sent its report
+      through the delivery channel, so the facing decision carries a lost-report
+      notice even on clean prose.
     """
 
     record: ExtractorRecord
@@ -89,6 +96,8 @@ class Extraction:
     scan_mode: str = SCAN_NONE
     unresolved: bool = False
     existing_blocked: bool = False
+    reissue: bool = True
+    undelivered: bool = False
 
 
 def pass_decision() -> Decision:
@@ -259,7 +268,14 @@ def _decide(agent: str, extraction: Extraction, config: Config) -> Decision:
     scan = _run_scan(extraction, config)
 
     if extraction.event_class == EVENT_FACING:
-        return state.facing(agent, extraction.record, scan, extraction.existing_blocked)
+        return state.facing(
+            agent,
+            extraction.record,
+            scan,
+            extraction.existing_blocked,
+            reissue=extraction.reissue,
+            undelivered=extraction.undelivered,
+        )
 
     # EVENT_GATE: Tier B PreToolUse.
     return state.gate(

@@ -61,6 +61,13 @@ LOCAL_YIELD_NOTICE = "Communication Rules unmet after retries, output allowed."
 EXTERNAL_YIELD_PREFIX = "Rules breach posted: "
 FACING_NOTICE = "Communication Rules breach seen, correcting next reply."
 
+# Lost-report notice for a finished sub-agent that never sent its report
+# through the delivery channel. The extractor detects the fact; this text is
+# the user-facing warning the facing decision carries.
+UNDELIVERED_NOTICE = (
+    "Sub-agent finished without SendMessage delivery, so its report never reached the orchestrator."
+)
+
 # Short B2 nudge for the middle blocks of the external cap. The first and the
 # penultimate block re-issue the full rules; the blocks in between emit this
 # instead, since the rules are already in context. The dispatcher promotes this
@@ -406,6 +413,9 @@ def facing(
     record: ExtractorRecord,
     scan: str,
     existing_blocked: bool = False,
+    *,
+    reissue: bool = True,
+    undelivered: bool = False,
 ) -> Decision:
     """Decide a Tier A facing surface (Stop / SubagentStop): never block.
 
@@ -413,9 +423,27 @@ def facing(
     re-issued against. A breach (or fail-closed unresolved scan) sets the
     pending-reissue flag and returns a notice; the next UserPromptSubmit re-
     issues the rules. A duplicate breach in the same turn stays silent.
+
+    ``reissue=False`` keeps the surface away from the pending flag in both
+    directions: a SubagentStop carries the parent session id, so setting the
+    flag would charge the parent for a sub-agent breach, and clearing it on a
+    clean pass would discard a pending parent correction.
+
+    ``undelivered=True`` adds the lost-report notice: the sub-agent finished
+    without sending its report, which the user must know even on clean prose.
     """
     if scan == SCAN_PASS:
-        take_pending_reissue(agent, record.session)
+        if reissue:
+            take_pending_reissue(agent, record.session)
+        if undelivered:
+            return Decision(
+                decision="block",
+                surface="tierA",
+                notice=UNDELIVERED_NOTICE,
+                level="warning",
+                inject_base_rules=False,
+                append_correction=False,
+            )
         return Decision(
             decision="pass",
             surface="tierA",
@@ -429,17 +457,21 @@ def facing(
         return Decision(
             decision="block",
             surface="tierA",
-            notice="",
+            notice=UNDELIVERED_NOTICE if undelivered else "",
             level="warning",
             inject_base_rules=False,
             append_correction=False,
         )
 
-    set_pending_reissue(agent, record.session)
+    if reissue:
+        set_pending_reissue(agent, record.session)
+    notice = FACING_NOTICE
+    if undelivered:
+        notice = f"{FACING_NOTICE} {UNDELIVERED_NOTICE}"
     return Decision(
         decision="block",
         surface="tierA",
-        notice=FACING_NOTICE,
+        notice=notice,
         level="warning",
         inject_base_rules=False,
         append_correction=False,

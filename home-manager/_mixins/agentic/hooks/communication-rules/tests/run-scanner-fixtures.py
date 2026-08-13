@@ -214,6 +214,9 @@ def scan_policy_disclosure_cases() -> int:
 CLAUDE_CODE_FX = FIXTURES / "claude-code"
 
 FACING_NOTICE = "Communication Rules breach seen, correcting next reply."
+UNDELIVERED_NOTICE = (
+    "Sub-agent finished without SendMessage delivery, so its report never reached the orchestrator."
+)
 
 
 def _expect(
@@ -315,6 +318,7 @@ _B2_REPEAT_NOTICE = (
 )
 # Tier A facing.
 _FACING = _expect("block", "tierA", notice=FACING_NOTICE, level="warning")
+_UNDELIVERED = _expect("block", "tierA", notice=UNDELIVERED_NOTICE, level="warning")
 _PASS_TIERA = _expect("pass", "tierA", level="warning")
 _REISSUE = _expect("re-issue", "tierA", append_correction=True)
 
@@ -620,11 +624,14 @@ def run_claude_code_agent_cases(
         existing_blocked: bool = False,
         payload: dict | None = None,
         policy: str | None = None,
+        extra_env: dict | None = None,
     ) -> None:
         nonlocal count
         case_env = dict(env)
         if existing_blocked:
             case_env["TRIPWIRE_EXISTING_BLOCKED"] = "1"
+        if extra_env:
+            case_env.update(extra_env)
         input_text = json.dumps(payload) if payload is not None else materialise(name)
         policy_args = ["--policy-json", policy] if policy is not None else []
         completed = subprocess.run(
@@ -929,6 +936,36 @@ def run_claude_code_agent_cases(
     run_case("subagent-stop-pass.json", "SubagentStop", _PASS_TIERA)
     run_case("subagent-stop-block.json", "SubagentStop", _FACING)
 
+    # A sub-agent breach must not charge the parent session: the breach above
+    # sets no pending flag, so the next UserPromptSubmit on the same session id
+    # passes instead of re-issuing.
+    run_case("user-prompt-submit-subagent.json", "UserPromptSubmit", _PASS_TIERA)
+
+    # Sidechain filter on a mixed transcript: Stop scans the last main-thread
+    # text and ignores the sub-agent breach, SubagentStop scans the sub-agent
+    # text and reports it.
+    run_case("stop-transcript-mixed-pass.json", "Stop", _PASS_TIERA)
+    run_case("subagent-stop-mixed-block.json", "SubagentStop", _FACING)
+
+    # Lost-report warning: in agent-teams mode a worker transcript under a
+    # subagents directory with no SendMessage call warns on clean prose. A
+    # delivered report passes, and the same transcript passes without the
+    # teams flag.
+    teams_env = {"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"}
+    run_case(
+        "subagent-stop-undelivered.json",
+        "SubagentStop",
+        _UNDELIVERED,
+        extra_env=teams_env,
+    )
+    run_case(
+        "subagent-stop-delivered.json",
+        "SubagentStop",
+        _PASS_TIERA,
+        extra_env=teams_env,
+    )
+    run_case("subagent-stop-undelivered.json", "SubagentStop", _PASS_TIERA)
+
     return count
 
 
@@ -949,6 +986,9 @@ def claude_code_agent_cases() -> int:
         env["TRIPWIRE_CLAUDE_CODE_REISSUE_DIR"] = reissue_dir
         env["TRIPWIRE_CORRECTION_PROMPT"] = str(correction)
         env.pop("TRIPWIRE_EXISTING_BLOCKED", None)
+        # Keep the suite hermetic when it runs inside an agent-teams session:
+        # the lost-report cases set the flag themselves via extra_env.
+        env.pop("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", None)
         carriage_on = write_carriage_policy(
             Path(temp_dir), "cc-on", {"claude-code": True}
         )
@@ -1296,8 +1336,11 @@ def run_codex_agent_cases(
     # Clear the flag set by the extraction-failure Stop so it does not leak.
     run_case("user-prompt-submit.json", "UserPromptSubmit", _REISSUE)
 
+    # A sub-agent breach emits the notice but must not charge the parent
+    # session: SubagentStop carries the parent session id, so it sets no
+    # pending flag, and the next UserPromptSubmit passes.
     run_case("subagent-stop-blocked.json", "SubagentStop", _FACING)
-    run_case("user-prompt-submit.json", "UserPromptSubmit", _REISSUE)
+    run_case("user-prompt-submit.json", "UserPromptSubmit", _PASS_TIERA)
 
     # Existing-blocked per-turn dedupe: a duplicate breach takes no second notice
     # (and no second strike). The decision stays block with empty notice.

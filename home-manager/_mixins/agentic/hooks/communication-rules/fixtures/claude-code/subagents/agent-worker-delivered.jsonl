@@ -1,0 +1,3 @@
+{"type":"user","isSidechain":true,"sessionId":"session-parent","message":{"role":"user","content":[{"type":"text","text":"Trace the hook internals."}]}}
+{"type":"assistant","isSidechain":true,"sessionId":"session-parent","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01","name":"SendMessage","input":{"to":"main","summary":"Report delivered","message":"Answer: the area is clean."}}]}}
+{"type":"assistant","isSidechain":true,"sessionId":"session-parent","message":{"role":"assistant","content":[{"type":"text","text":"Report sent to the orchestrator."}]}}

@@ -370,6 +370,9 @@ def _extract_stop(payload: dict[str, Any], tool: str) -> Extraction:
         "record": record,
         "event_class": EVENT_FACING,
         "existing_blocked": _existing_blocked(),
+        # A SubagentStop carries the parent session id, so it must not set or
+        # clear the parent's pending-reissue flag.
+        "reissue": tool != "SubagentStop",
     }
 
     message = _assistant_message(payload)
