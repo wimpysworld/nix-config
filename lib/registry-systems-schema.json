@@ -99,11 +99,20 @@
       "additionalProperties": false,
       "properties": {
         "output": { "type": "string" },
+        "match": {
+          "type": "string",
+          "description": "Output match criteria for kanshi, such as the output description. Defaults to the output name."
+        },
         "width": { "type": "integer", "minimum": 1 },
         "height": { "type": "integer", "minimum": 1 },
         "refresh": { "type": "integer", "minimum": 1, "default": 60 },
         "scale": { "type": "number", "minimum": 0.5, "default": 1.0 },
         "primary": { "type": "boolean", "default": false },
+        "hotplug": {
+          "type": "boolean",
+          "default": false,
+          "description": "True when the display is hot-pluggable, such as a dock display, rather than fixed."
+        },
         "workspaces": {
           "type": "array",
           "items": { "type": "integer", "minimum": 1 }

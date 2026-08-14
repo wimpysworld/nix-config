@@ -12,6 +12,7 @@ in
   imports = [
     ../components/avizo
     ../components/fuzzel
+    ../components/kanshi
     ../components/wpaperd
     ../components/rofi
     ../components/swaync

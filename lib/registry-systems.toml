@@ -85,9 +85,21 @@ acceleration = "vulkan"
 output = "eDP-1"
 width = 2880
 height = 1920
+refresh = 120
 scale = 1.5
 primary = true
-workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+workspaces = [1, 2, 3, 4, 5, 6, 7]
+position = { x = 2048, y = 0 }
+
+[[ravi.displays]]
+output = "DP-3"
+match = "CYS J560J07 0x00000054"
+width = 2560
+height = 1600
+refresh = 120
+scale = 1.25
+hotplug = true
+workspaces = [8]
 position = { x = 0, y = 0 }
 
 [tanis]

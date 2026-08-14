@@ -67,6 +67,7 @@ in
   imports = [
     ../components/avizo # on-screen display for audio and backlight
     ../components/fuzzel # app launcher, emoji picker and clipboard manager
+    ../components/kanshi # dynamic display profile switcher
     ../components/veila # screen locker
     ../components/wpaperd # wallpaper setter
     ../components/hyprshot # screenshot grabber and annotator

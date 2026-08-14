@@ -18,6 +18,11 @@ let
         type = lib.types.str;
         description = "Output connector name (e.g. \"DP-1\", \"eDP-1\").";
       };
+      match = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Output match criteria for kanshi, such as the output description. Defaults to the output name.";
+      };
       width = lib.mkOption {
         type = lib.types.int;
         description = "Horizontal resolution in pixels.";
@@ -61,6 +66,11 @@ let
         type = lib.types.bool;
         default = false;
         description = "Whether this is the primary display.";
+      };
+      hotplug = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Whether this display is hot-pluggable, such as a dock display, rather than fixed.";
       };
       workspaces = lib.mkOption {
         type = lib.types.listOf lib.types.int;
@@ -493,6 +503,13 @@ in
           type = lib.types.bool;
           default = builtins.length config.noughty.host.displays > 1;
           description = "Whether multiple displays are configured.";
+          readOnly = true;
+        };
+
+        hasHotplug = lib.mkOption {
+          type = lib.types.bool;
+          default = lib.any (d: d.hotplug) config.noughty.host.displays;
+          description = "Whether any configured display is hot-pluggable.";
           readOnly = true;
         };
 
