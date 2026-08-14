@@ -154,7 +154,7 @@ The `create-project` command and `draft-project-description` skill write the pro
 
 ### Orchestration
 
-`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. It finds the Linear issues waiting in Triage, reports the batch, then spawns one fresh sub-agent per issue that applies the `research-task` skill and then runs `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
+`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. By default it finds every Linear issue waiting in Triage; given one or more issue keys, it takes those as the queue instead. It reports the batch, then spawns one fresh sub-agent per issue that applies the `research-task` skill and then runs `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
 
 `implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. The user-invoked command is the sole dispatcher: it launches one fresh planning worker per task, then one fresh implementation worker per phase in dependency order. Every worker returns directly to the command and never launches another agent.
 
@@ -313,7 +313,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 | --------------------------- | ----------------------------------------------------------------------- |
 | `create-task`               | File the session outcome as a task, or a parent wrapping children       |
 | `update-task`               | Fold session decisions into an existing task                            |
-| `triage-tasks`              | Research and update the Linear issues waiting in Triage, in bulk        |
+| `triage-tasks`              | Research and update the whole Triage queue, or the named Linear issues  |
 | `review-task`               | Judge whether a task is ready to implement, and what must change first  |
 | `create-project`            | Find or create one Linear project, and stop                             |
 | `post-comment`              | Post the agreed comment to GitHub, Linear, or Slack                     |

@@ -1,14 +1,16 @@
 ## Triage Tasks
 
-Work the Linear issues waiting in Triage in bulk. This command orchestrates; it never researches an issue and never writes to Linear itself. One fresh sub-agent per issue does both.
+Work Linear issues in bulk: the whole Triage queue by default, or the issues named in the input. This command orchestrates; it never researches an issue and never writes to Linear itself. One fresh sub-agent per issue does both.
 
-Input: `$ARGUMENTS` is how many issues to process this run, or `all`. Default to 5 when blank. This is a fan-out of fan-outs: each issue spawns `research-task`, which itself fans out across Linear, GitHub, Slack, and the web, so twenty issues is easily hundreds of sub-agents. The bound is the point. Never exceed it.
+Input: `$ARGUMENTS` is one or more Linear issue keys to triage, separated by spaces or commas. Blank means all: triage the whole queue. This is a fan-out of fan-outs: each issue spawns `research-task`, which itself fans out across Linear, GitHub, Slack, and the web, so twenty issues is easily hundreds of sub-agents. Run at most five issue sub-agents at once. The cap is the point. Never exceed it.
 
 Command invocation: use the current provider's command prefix. Codex uses `$command`; slash-command runtimes use `/command`. The steps below name commands without a prefix.
 
 ### Process
 
-**1. Find the queue.** Run two bounded sweeps, both gated on the workflow status type `triage` and never on the status name. Resolve the user at run time from the authenticated Linear identity; never hard-code an identifier.
+**1. Establish the queue.** When `$ARGUMENTS` names issue keys, that list is the queue: fetch each key to read its team, parent, and status, and skip the sweeps. A named issue is processed whatever its status, because naming it is the consent. Report a key that does not resolve under Failed and carry on.
+
+When `$ARGUMENTS` is blank, run two bounded sweeps, both gated on the workflow status type `triage` and never on the status name. Resolve the user at run time from the authenticated Linear identity; never hard-code an identifier.
 
 - Assigned to the user: one workspace-wide `list_issues` query with `assignee: "me"`. This is small and complete, and covers every team without listing any.
 - Created by the user: one `list_issues` query per team the user belongs to, taken from that same identity's own team list. `list_issues` has no created-by filter, so filter the returned issues on `createdById`.
@@ -17,9 +19,9 @@ Never run an unfiltered workspace-wide triage query. In a large workspace it exc
 
 The two sweeps differ in coverage, so report them apart: the assignee sweep is workspace-wide, and the created-by sweep reaches only the teams it names. A missing team is then obvious.
 
-**2. Report the batch.** List every issue found: key, title, team, and age. Then give the total found and how many this run will process, and carry straight on. This command asks the user nothing: a blank `$ARGUMENTS` takes the default of 5, and an empty queue is reported before the run stops.
+**2. Report the batch.** List every issue in the queue: key, title, team, and age. Then give the total and carry straight on. This command asks the user nothing: a blank `$ARGUMENTS` triages the whole queue, and an empty queue is reported before the run stops.
 
-**3. Group by parent.** `update-task` edits a parent's `Child issues` list, so two children of one parent updated at the same time clobber the parent. Put every child of one parent into one cohort and run its members in sequence. Different cohorts and unparented issues run in parallel.
+**3. Group by parent.** `update-task` edits a parent's `Child issues` list, so two children of one parent updated at the same time clobber the parent. Put every child of one parent into one cohort and run its members in sequence. Different cohorts and unparented issues run in parallel, within the cap of five sub-agents at once.
 
 **4. Spawn one fresh sub-agent per issue.** Never research an issue or write to Linear in this context. Never hand two issues to one sub-agent. Give each sub-agent the issue key and this instruction set:
 
@@ -37,6 +39,7 @@ Human invocation of this command is consent to research and update the issues in
 ### Output
 
 ```markdown
+Queue: <keys from input | full Triage queue>
 Assigned sweep: workspace-wide
 Created-by sweep: <team>, <team>
 
@@ -50,13 +53,16 @@ Failed:
 Left in Triage: <n>
 ```
 
+Omit the two sweep lines when `$ARGUMENTS` named issue keys.
+
 ### Constraints
 
 - Orchestrate only. Never research an issue or write to Linear in this context.
 - One issue per sub-agent, one sub-agent per issue.
 - Members of a parent cohort run in sequence. Never run two children of one parent at once.
+- Never run more than five issue sub-agents at once.
 - Never cancel, close, or delete an issue. A duplicate, obsolete, or droppable issue is reported as a recommendation, because that call is the user's.
 - Never create an issue, and never touch GitHub or Slack.
 - Restate the authority in every sub-agent packet.
-- Ask the user nothing. A blank `$ARGUMENTS` takes the default; an empty queue is reported, then the run stops.
+- Ask the user nothing. A blank `$ARGUMENTS` triages the whole queue; an empty queue is reported, then the run stops.
 - British spelling. No hedging language.
