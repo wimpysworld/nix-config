@@ -1,6 +1,6 @@
 ## Weekly Update
 
-Write one Linear project status update for every project the user worked in this week, then post a short pointer to those updates in Slack. The user runs this on a Friday, and their team reads it for progress, blockers, and what is next.
+Write one Linear project status update for every project the user worked in this week, then post a headline for each update in Slack. The user runs this on a Friday, and their team reads it for progress, blockers, and what is next.
 
 This command serves work only: the `FUL` team. Skip issues from any other team.
 
@@ -35,7 +35,7 @@ Take the marker from `statusType`. In Review and Duplicate are the two exception
 
 Pick the target cycle from the `FUL` team. When the run falls on the last Thursday, Friday, Saturday, or Sunday of the current cycle, the target is the next cycle. Otherwise the target is the current cycle. When no cycle exists, skip the cycle logic and build the list from the backlog alone, as below.
 
-Start the list with what is scheduled: the project's open issues assigned to the user in the target cycle. Then propose additions from the user's backlog, that is, the project's open issues assigned to the user and not in the target cycle, when the scheduled work leaves capacity free.
+Start the list with what is scheduled: the project's open issues assigned to the user in the target cycle. Fetch that list with a separate `list_issues` call filtered to the target cycle, because the step 2 window misses a scheduled issue with no update this week. Then propose additions from the user's backlog, that is, the project's open issues assigned to the user and not in the target cycle, when the scheduled work leaves capacity free.
 
 Load the `sizing` skill and use its scale; do not invent one. Order the backlog candidates by priority, then by size ascending, and fill the capacity that the scheduled work leaves, roughly one week in total: about 4 XS, or 2 S, or 1 M. The scale works silently. Never explain the sizing guidelines, the scale, or the capacity arithmetic in the update body; the reader sees the issue list with a size per issue and nothing more. The additions are a proposal until the gate in step 7 approves them, and the user trims or extends the list there. The posted body presents one plain list of scheduled work and never describes it as a proposal, a draft, or something to cut.
 
