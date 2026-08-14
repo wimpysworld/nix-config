@@ -274,16 +274,7 @@ height = 1440
 refresh = 100
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
-position = { x = 0, y = 1280 }
-
-[[zannah.displays]]
-output = "HDMI-A-1"
-width = 2560
-height = 1600
-refresh = 120
-scale = 1.25
-workspaces = [9]
-position = { x = 1920, y = 0 }
+position = { x = 0, y = 0 }
 
 # Gaming - non-standard username and desktop, so both explicit
 

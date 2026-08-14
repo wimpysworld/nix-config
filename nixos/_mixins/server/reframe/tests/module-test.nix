@@ -56,12 +56,7 @@ let
       monitorY = 0;
       defaultWidth = 3440;
       defaultHeight = 1440;
-      greetdLayout = ''
-        profile {
-            output HDMI-A-1 enable mode 2560x1600@120Hz position 1920,0 scale 1.25
-            output DP-1 enable mode 3440x1440@100Hz position 0,1280 scale 1.0
-        }
-      '';
+      greetdLayout = "";
     };
   };
 
