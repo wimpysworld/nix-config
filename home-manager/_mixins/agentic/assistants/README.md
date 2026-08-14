@@ -265,7 +265,7 @@ Precise implementation engineer executing code changes from specifications. Read
 | `create-plan`             | Break implementation into ordered phases in a disposable plan      |
 | `implement-plan`          | Execute a plan, one fresh sub-agent per phase                      |
 | `draft-code-review`       | Draft the house-style review comment from a completed review       |
-| `post-code-review`        | Post the review comment and set the verdict on GitHub              |
+| `post-code-review`        | Post your text or a drafted review, as comment or approval         |
 | `address-code-review`     | Work review findings one at a time, committing each fix            |
 | `pr-watch`                | Watch a PR: fix CI failures, triage flakes, answer reviews         |
 | `project-peer-review`     | Give an ecosystem-specific codebase verdict                        |

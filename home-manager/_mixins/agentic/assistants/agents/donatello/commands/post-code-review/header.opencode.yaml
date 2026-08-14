@@ -1,2 +1,2 @@
 agent: donatello
-argument-hint: "<approve|changes|comment>"
+argument-hint: "[approve|comment] [text]"
