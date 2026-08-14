@@ -8,14 +8,13 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
-  home.packages =
-    with pkgs;
-    lib.optionals host.is.linux [
-      cpu-x
-      gnome-firmware
-      lan-mouse
-      usbimager
-      vaults
-    ];
+lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation && host.is.linux) {
+  home.packages = with pkgs; [
+    cpu-x
+    gnome-firmware
+    usbimager
+    vaults
+  ];
+
+  programs.lan-mouse.enable = true;
 }

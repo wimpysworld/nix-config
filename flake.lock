@@ -592,6 +592,30 @@
         "type": "github"
       }
     },
+    "lan-mouse": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1781269631,
+        "narHash": "sha256-6EqA9WfiukOymUT4FkNdMvzmFKByW0LLoI/9sv4TzBU=",
+        "owner": "feschber",
+        "repo": "lan-mouse",
+        "rev": "0d2190e787db9e482e17d4c16fb7c00ef4841bcb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "feschber",
+        "ref": "v0.11.0",
+        "repo": "lan-mouse",
+        "type": "github"
+      }
+    },
     "llm-agents": {
       "inputs": {
         "bun2nix": "bun2nix",
@@ -1029,6 +1053,7 @@
         "home-manager": "home-manager",
         "iwmenu": "iwmenu",
         "kolide-launcher": "kolide-launcher",
+        "lan-mouse": "lan-mouse",
         "llm-agents": "llm-agents",
         "mac-app-util": "mac-app-util",
         "nix-darwin": "nix-darwin",

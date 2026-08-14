@@ -58,7 +58,6 @@
 
       # Packages tracking the unstable channel ahead of their stable releases.
       inherit (final.unstable) bun;
-      inherit (final.unstable) lan-mouse;
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) lima;
       inherit (final.unstable) tmux;

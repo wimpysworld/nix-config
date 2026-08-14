@@ -34,6 +34,9 @@
     concord.inputs.flake-utils.follows = "flake-utils";
     paseo.url = "github:getpaseo/paseo/v0.3.1";
     paseo.inputs.nixpkgs.follows = "nixpkgs-unstable";
+    lan-mouse.url = "github:feschber/lan-mouse/v0.11.0";
+    lan-mouse.inputs.nixpkgs.follows = "nixpkgs";
+    lan-mouse.inputs.rust-overlay.follows = "rust-overlay";
     voxtype.url = "github:peteonrails/voxtype/v0.7.5";
     voxtype.inputs.nixpkgs.follows = "nixpkgs-unstable";
     voxtype.inputs.flake-utils.follows = "flake-utils";

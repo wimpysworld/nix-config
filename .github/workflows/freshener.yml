@@ -47,6 +47,9 @@ jobs:
           - id: paseo
             name: Paseo
             changelog: https://github.com/getpaseo/paseo/commits
+          - id: lan-mouse
+            name: Lan Mouse
+            changelog: https://github.com/feschber/lan-mouse/releases
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases
