@@ -318,7 +318,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `create-project`            | Find or create one Linear project, and stop                             |
 | `post-comment`              | Post the agreed comment to GitHub, Linear, or Slack                     |
 | `post-issue`                | Create the agreed issue on GitHub                                       |
-| `weekly-update`             | Write this week's Linear project updates, and point at them in Slack    |
+| `weekly-update`             | Write this week's project updates, schedule Up Next, post to Slack      |
 | `gather-review-data`        | Collect the user's own contribution evidence for a date range           |
 | `draft-self-review`         | Draft a periodic self-review from gathered evidence                     |
 
