@@ -14,6 +14,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation) {
     lib.optionals host.is.linux [
       cpu-x
       gnome-firmware
+      lan-mouse
       usbimager
       vaults
     ];
