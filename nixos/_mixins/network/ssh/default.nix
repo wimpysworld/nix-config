@@ -12,8 +12,18 @@ in
 {
   environment = lib.mkIf (!host.is.iso) {
     systemPackages = with pkgs; [
+      alacritty.terminfo
+      contour.terminfo
+      foot.terminfo
+      ghostty.terminfo
       kitty.terminfo
+      rio.terminfo
+      rxvt-unicode-unwrapped.terminfo
+      st.terminfo
+      yaft.terminfo
       wezterm.terminfo
+      mtm.terminfo
+      tmux.terminfo
       ssh-to-age
     ];
   };
