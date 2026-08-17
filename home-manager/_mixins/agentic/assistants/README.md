@@ -309,19 +309,20 @@ Research partner for exploring ideas, generating options, and framing problems f
 
 **Model:** inherits the model selected in the coding tool on every platform. Penfold synthesises research, frames problems, and weighs trade-offs; specialist agents still handle domain-specific validation.
 
-| Command                     | Purpose                                                                 |
-| --------------------------- | ----------------------------------------------------------------------- |
-| `create-task`               | File the session outcome as a task, or a parent wrapping children       |
-| `update-task`               | Fold session decisions into an existing task                            |
-| `triage-tasks`              | Research and update the whole Triage queue, or the named Linear issues  |
-| `review-task`               | Judge whether a task is ready to implement, and what must change first  |
-| `create-project`            | Find or create one Linear project, and stop                             |
-| `post-comment`              | Post the agreed comment to GitHub, Linear, or Slack                     |
-| `post-issue`                | Create the agreed issue on GitHub                                       |
-| `weekly-update`             | Write this week's project updates, schedule Up Next, post to Slack      |
-| `work-order`                | Order a cycle's issues into waves, publish and wire the document        |
-| `gather-review-data`        | Collect the user's own contribution evidence for a date range           |
-| `draft-self-review`         | Draft a periodic self-review from gathered evidence                     |
+| Command                          | Purpose                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| `create-task`                    | File the session outcome as a task, or a parent wrapping children       |
+| `update-task`                    | Fold session decisions into an existing task                            |
+| `triage-tasks`                   | Research and update the whole Triage queue, or the named Linear issues  |
+| `review-task`                    | Judge whether a task is ready to implement, and what must change first  |
+| `create-project`                 | Find or create one Linear project, and stop                             |
+| `post-comment`                   | Post the agreed comment to GitHub, Linear, or Slack                     |
+| `post-issue`                     | Create the agreed issue on GitHub                                       |
+| `weekly-update`                  | Write this week's project updates, schedule Up Next, post to Slack      |
+| `work-order`                     | Order a cycle's issues into waves, publish and wire the document        |
+| `gather-review-data`             | Collect the user's own contribution evidence for a date range           |
+| `draft-self-review`              | Draft a periodic self-review from gathered evidence                     |
+| `review-open-source-attestation` | Check whether a `mono` change is safe to export, before human sign-off  |
 
 ---
 
