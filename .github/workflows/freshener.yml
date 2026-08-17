@@ -6,9 +6,9 @@
 # the shared steps run once.
 #
 # Move 2 (a separate change) migrates the "package" entries from hand-rolled
-# prefetch and sed to nix-update where the derivation shape allows it. Wavebox
-# (two platforms in one file) and Defold (artefacts re-pushed under one tag)
-# keep bespoke update logic until their derivations are reshaped.
+# prefetch and sed to nix-update where the derivation shape allows it. Defold
+# (artefacts re-pushed under one tag) keeps bespoke update logic until its
+# derivation is reshaped.
 name: Package Freshener 🍋
 on:
   schedule:
@@ -29,9 +29,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: wavebox
-            name: Wavebox
-            changelog: https://wavebox.io/blog/releases/
           - id: defold
             name: Defold
             changelog: https://github.com/defold/defold/releases
@@ -69,7 +66,6 @@ jobs:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
-
       # Each package's update logic lives in its own script under
       # .github/freshener/. The script decides whether an update is needed,
       # applies it, and prints the following to $GITHUB_OUTPUT:

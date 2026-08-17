@@ -12,15 +12,6 @@
   [keys.widget]
     id = "button"
     [keys.widget.config]
-      icon = "~/Studio/StreamDeck/Icons/wavebox.png"
-  [keys.action]
-    exec = "wavebox"
-
-[[keys]]
-  index = 3
-  [keys.widget]
-    id = "button"
-    [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Google_Chrome.png"
   [keys.action]
     exec = "google-chrome-stable"

@@ -10,11 +10,11 @@ let
   # decode/encode in Chromium-family browsers. The full hardware acceleration
   # path stays on; only the VPE ring that wedges the AMDGPU SMU is avoided.
   videoAccelDisableFlags = "--disable-accelerated-video-decode --disable-accelerated-video-encode";
-  wavebox =
+  googleChrome =
     if noughtyLib.hostHasTag "strix-halo" then
-      pkgs.wavebox.override { commandLineArgs = videoAccelDisableFlags; }
+      pkgs.google-chrome.override { commandLineArgs = videoAccelDisableFlags; }
     else
-      pkgs.wavebox;
+      pkgs.google-chrome;
 
   # Google Meet icon from Wikimedia Commons (public domain)
   googleMeetIcon = pkgs.writeText "google-meet.svg" ''
@@ -28,7 +28,7 @@ let
     </svg>
   '';
 
-  # Google Meet desktop entry for launching Meet in a separate Wavebox window.
+  # Google Meet desktop entry for launching Meet in a separate Chrome window.
   # Install the icon into hicolor so desktop launchers can find it by name.
   googleMeetDesktopItem = pkgs.symlinkJoin {
     name = "google-meet-desktop";
@@ -36,7 +36,7 @@ let
       (pkgs.makeDesktopItem {
         name = "google-meet";
         desktopName = "Google Meet";
-        exec = "wavebox --profile-directory=Default --app-id=kjgfgldnnfoeklkmfkjfagphfepbbdan";
+        exec = "google-chrome-stable --profile-directory=Default --app-id=kjgfgldnnfoeklkmfkjfagphfepbbdan";
         terminal = false;
         type = "Application";
         icon = "google-meet";
@@ -54,12 +54,12 @@ let
     '';
   };
 
-  # Wrap Slack to open all URLs in Wavebox
-  slackWavebox = inputs.xdg-override.lib.wrapPackage {
+  # Wrap Slack to open all URLs in Chrome
+  slackChrome = inputs.xdg-override.lib.wrapPackage {
     nameMatch = [
       {
         case = "^https?://";
-        command = "wavebox";
+        command = "google-chrome-stable";
       }
     ];
   } pkgs.slack;
@@ -88,33 +88,33 @@ let
     "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
   ];
 
-  # Global xdg-open proxy to route specific URLs to Wavebox
-  waveboxXdgOpen = inputs.xdg-override.lib.proxyPkg {
+  # Global xdg-open proxy to route specific URLs to Chrome
+  chromeXdgOpen = inputs.xdg-override.lib.proxyPkg {
     inherit pkgs;
     nameMatch = [
       {
         case = "^https?://accounts.google.com";
-        command = "wavebox";
+        command = "google-chrome-stable";
       }
       {
         case = "^https?://github.com/login/device";
-        command = "wavebox";
+        command = "google-chrome-stable";
       }
       {
         case = "^https?://auth.chainguard.dev/activate";
-        command = "wavebox";
+        command = "google-chrome-stable";
       }
       {
         case = "^https?://issuer.enforce.dev";
-        command = "wavebox";
+        command = "google-chrome-stable";
       }
       {
         case = "^https?://oauth2.sigstore.dev/auth";
-        command = "wavebox";
+        command = "google-chrome-stable";
       }
       {
         case = "^https?://auth.openai.com/oauth";
-        command = "wavebox";
+        command = "google-chrome-stable";
       }
     ];
   };
@@ -122,14 +122,14 @@ in
 lib.mkIf (noughtyLib.hostHasTag "workspace") {
   environment.systemPackages = [
     pkgs._1password-gui
-    wavebox
+    googleChrome
     googleMeetDesktopItem
-    slackWavebox
+    slackChrome
     pkgs.slk
-    waveboxXdgOpen
+    chromeXdgOpen
   ];
 
-  programs.wavebox = {
+  programs.chromium = {
     enable = true;
     extraOpts = workspaceBrowserOpts;
     extensions = workspaceBrowserExtensions;
