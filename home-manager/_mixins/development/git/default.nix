@@ -55,16 +55,6 @@ let
   shellAliases = {
     gitso = "${pkgs.git}/bin/git --signoff";
   };
-  tomlFormat = pkgs.formats.toml { };
-  hunkTheme = "catppuccin-mocha";
-  hunkConfig = tomlFormat.generate "hunk-config.toml" {
-    mode = "stack";
-    theme = hunkTheme;
-    pager = {
-      mode = "stack";
-      theme = hunkTheme;
-    };
-  };
 in
 {
   catppuccin = {
@@ -84,9 +74,6 @@ in
         gitsignOff # Re-sign the most recent commit and add a sign-off trailer
         gitsignVerify # Report the signature state of a commit
       ]
-      ++ lib.optionals gitWorkflowToolsEnabled [
-        hunk # Review local diffs with Hunk
-      ]
       ++ lib.optionals gitExtrasEnabled [
         diffnav # Navigate Git diffs
         git-igitt # git log/graph
@@ -100,15 +87,7 @@ in
       GIT_EDITOR = "${freshGitEditor}/bin/fresh-git-editor";
       GITSIGN_CREDENTIAL_CACHE = "${sigstoreCacheHome}/gitsign/cache.sock";
       TUF_ROOT = lib.mkDefault "${sigstoreCacheHome}/root";
-    }
-    // lib.optionalAttrs gitWorkflowToolsEnabled {
-      HUNK_DISABLE_UPDATE_NOTICE = "1";
-      HUNK_MCP_DISABLE = "1";
     };
-  };
-
-  xdg.configFile = lib.mkIf gitWorkflowToolsEnabled {
-    "hunk/config.toml".source = lib.mkDefault hunkConfig;
   };
 
   programs = {
@@ -149,9 +128,6 @@ in
             # message at line 1, column 1 so the cursor starts at the top
             # instead of a restored per-file position.
             editor = "${freshGitEditor}/bin/fresh-git-editor";
-          }
-          // lib.optionalAttrs gitWorkflowToolsEnabled {
-            pager = "${pkgs.hunk}/bin/hunk pager --theme ${hunkTheme}";
           };
           diff = {
             colorMoved = "default";
@@ -195,12 +171,7 @@ in
         git = {
           # Auto-fetch from remote periodically
           autoFetch = true;
-          # Use Hunk for diffs, while keeping Delta available as a fallback pager.
           pagers = [
-            {
-              colorArg = "always";
-              pager = "env HUNK_TEXT_PAGER=cat ${pkgs.hunk}/bin/hunk pager --theme ${hunkTheme}";
-            }
             { pager = "${pkgs.delta}/bin/delta --dark --paging=never"; }
           ];
         };
