@@ -3,7 +3,7 @@
 Reference document for the `strix-halo` host tag and the
 `--disable-accelerated-video-decode --disable-accelerated-video-encode`
 workaround applied to Chromium-family browsers (Brave, Google Chrome,
-Microsoft Edge, Wavebox) on hosts with that tag.
+Microsoft Edge) on hosts with that tag.
 
 Source evidence captured 2026-05-04 ~14:10 BST on `skrye`, after a hard
 reboot triggered by playing an embedded video in a GitHub README in
@@ -40,7 +40,7 @@ Martin clicked play on an embedded video in a GitHub README, viewed in Brave on 
 
 Causal chain in one line: video element played in Brave -> Chromium engaged hardware video decode/scaling on AMD VPE -> VPE-related SMU message timed out -> power-gate operations failed -> VPE ring timed out -> GPU reset attempted but SMU was already wedged -> display unrecoverable, user-initiated reboot.
 
-This is a hardware-correlated fault on Strix Halo (dcn35 / `vpe_v6_1_0`), reproduced on both `skrye` and `zannah`. It was previously misattributed to Wavebox during Google Meet calls, where blanket `--disable-gpu` masked it. Brave hits the identical fault path because it engages the same hardware video acceleration. This correlation is the rationale for the `strix-halo` host tag and the `--disable-accelerated-video-decode --disable-accelerated-video-encode` workaround applied to Chromium-family browsers in this repo.
+This is a hardware-correlated fault on Strix Halo (dcn35 / `vpe_v6_1_0`), reproduced on both `skrye` and `zannah`. The fault was first observed during Google Meet calls in Wavebox and was misattributed to Wavebox because blanket `--disable-gpu` masked it. Brave hits the identical fault path because it engages the same hardware video acceleration. This correlation is the rationale for the `strix-halo` host tag and the `--disable-accelerated-video-decode --disable-accelerated-video-encode` workaround applied to Chromium-family browsers in this repo.
 
 ## Upstream bug correlation
 

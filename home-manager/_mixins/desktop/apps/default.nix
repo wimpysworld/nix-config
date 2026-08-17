@@ -11,7 +11,10 @@ let
   audioPlayer = [ "org.gnome.Decibels.desktop" ];
   archiveManager = [ "org.gnome.FileRoller.desktop" ];
   webBrowser =
-    if noughtyLib.hostHasTag "workspace" then [ "wavebox.desktop" ] else [ "brave-browser.desktop" ];
+    if noughtyLib.hostHasTag "workspace" then
+      [ "google-chrome.desktop" ]
+    else
+      [ "brave-browser.desktop" ];
   # Browser mimetypes are shared between added associations and default
   # applications so URL handlers resolve without a desktop session.
   browserMimeTypes = lib.genAttrs [

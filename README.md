@@ -361,7 +361,22 @@ Things I currently need to do manually after installation.
 - [ ] Matrix - authenticate
 - [ ] Slack - authenticate
 - [ ] Telegram - authenticate
-- [ ] Wavebox - authenticate Google and restore profile
+- [ ] Google Chrome
+  - Sign in.
+  - Confirm that the managed extensions appear at `chrome://extensions`: 1Password, LastPass, Harper, Disable Ctrl + Scroll Zoom, GoLinks, Okta, Glean, Ramp, and Meet Linky.
+
+### Wavebox to Chrome migration
+
+On workspace hosts, Chrome replaces Wavebox as the default browser. Slack links and selected authentication URLs open in Chrome. Brave remains the default elsewhere.
+
+1. Activate the new NixOS generation.
+2. Sign in to Chrome.
+3. Confirm that the managed extensions appear at `chrome://extensions`.
+4. Reauthenticate Slack and OAuth flows as needed.
+
+Browser profile data does not migrate from Wavebox to Chrome automatically.
+
+To roll back, select the previous NixOS generation at boot or rebuild and switch to a previous configuration. A rollback requires a previous generation that still contains Wavebox. The old Wavebox profile stays in the user home unless it is manually removed.
 
 ### System
 
