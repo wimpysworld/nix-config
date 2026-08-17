@@ -11,6 +11,16 @@ let
   defaultOpenCodeEnabled = !host.is.server;
   fencedEnabled = !host.is.server;
   aiSopsFile = ../../../../secrets/ai.yaml;
+  # Directories whose project-level OpenCode config is trusted to load.
+  trustedProjectConfigRoots = [
+    "${config.home.homeDirectory}/Chainguard"
+    "${config.home.homeDirectory}/Development"
+    "${config.home.homeDirectory}/Volatile"
+    "${config.home.homeDirectory}/Zero"
+  ];
+  trustedProjectConfigPatterns = lib.concatMapStringsSep " | " (
+    root: "${root} | ${root}/*"
+  ) trustedProjectConfigRoots;
   robotEmoji = builtins.fromJSON "\"\\ud83e\\udd16\"";
   # Use the pre-built binary from numtide's llm-agents.nix flake.
   # This avoids upstream source build issues entirely.
@@ -78,9 +88,15 @@ let
         # Stop the background model-catalogue fetch to models.dev. Each release
         # bundles a catalogue snapshot, and Nix pins the OpenCode version.
         export OPENCODE_DISABLE_MODELS_FETCH=1
-        # Ignore project-level OpenCode config so an untrusted repository cannot
-        # inject config, plugins, or agents into a session.
-        export OPENCODE_DISABLE_PROJECT_CONFIG=1
+        # Ignore project-level OpenCode config outside trusted roots so an
+        # untrusted repository cannot inject config, plugins, or agents into a
+        # session.
+        case "$PWD" in
+          ${trustedProjectConfigPatterns}) ;;
+          *)
+            export OPENCODE_DISABLE_PROJECT_CONFIG=1
+            ;;
+        esac
         opencode_resume=(--continue)
         case "''${1:-}" in
           completion | acp | mcp | attach | run | debug | providers | auth | agent | upgrade | uninstall | serve | web | models | stats | export | import | github | pr | session | plugin | plug | db | -h | --help | -v | --version)

@@ -8,7 +8,7 @@
         "FASTMCP_CHECK_FOR_UPDATES": "off"
       },
       "enabled": true,
-      "directTools": false
+      "directTools": true
     }
   }
 }
