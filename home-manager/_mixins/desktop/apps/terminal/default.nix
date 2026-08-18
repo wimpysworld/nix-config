@@ -6,6 +6,39 @@
 }:
 let
   inherit (config.noughty) host;
+  terminalEmulators = {
+    alacritty = rec {
+      launchCommand = lib.getExe config.programs.alacritty.package;
+      fuzzelExecute = "${launchCommand} -e";
+      nautilusIdentifier = "alacritty";
+      desktopFileId = "Alacritty.desktop";
+    };
+    foot = rec {
+      launchCommand = lib.getExe config.programs.foot.package;
+      fuzzelExecute = "${launchCommand} -e";
+      nautilusIdentifier = "foot";
+      desktopFileId = "foot.desktop";
+    };
+    ghostty = rec {
+      launchCommand = lib.getExe config.programs.ghostty.package;
+      fuzzelExecute = "${launchCommand} -e";
+      nautilusIdentifier = "ghostty";
+      desktopFileId = "com.mitchellh.ghostty.desktop";
+    };
+    kitty = rec {
+      launchCommand = lib.getExe config.programs.kitty.package;
+      fuzzelExecute = "${launchCommand} --";
+      nautilusIdentifier = "kitty";
+      desktopFileId = "kitty.desktop";
+    };
+    wezterm = rec {
+      launchCommand = lib.getExe config.programs.wezterm.package;
+      fuzzelExecute = "${launchCommand} start --";
+      nautilusIdentifier = "wezterm";
+      desktopFileId = "org.wezfurlong.wezterm.desktop";
+    };
+  };
+  defaultTerminal = terminalEmulators.kitty;
   # Get a colour as a hexadecimal string.
   getColor = colorName: catppuccinPalette.getColor colorName;
 in
@@ -30,14 +63,14 @@ in
     dconf = lib.mkIf (host.is.linux && host.is.workstation) {
       settings = with lib.hm.gvariant; {
         "com/github/stunkymonkey/nautilus-open-any-terminal" = {
-          terminal = "${lib.getExe config.programs.kitty.package}";
+          terminal = defaultTerminal.nautilusIdentifier;
         };
       };
     };
 
     programs = {
       fuzzel = lib.mkIf config.programs.fuzzel.enable {
-        settings.main.terminal = "${lib.getExe config.programs.kitty.package}";
+        settings.main.terminal = defaultTerminal.fuzzelExecute;
       };
     };
 
@@ -45,7 +78,7 @@ in
       hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
         settings = {
           bind = [
-            "$mod, T, exec, ${lib.getExe config.programs.kitty.package}"
+            "$mod, T, exec, ${defaultTerminal.launchCommand}"
           ];
         };
       };
@@ -54,7 +87,7 @@ in
           command = {
             # Super+T launches a terminal.
             binding_terminal = "<super> KEY_T";
-            command_terminal = "${lib.getExe config.programs.kitty.package}";
+            command_terminal = defaultTerminal.launchCommand;
           };
         };
       };
@@ -112,8 +145,9 @@ in
     };
     xdg = {
       terminal-exec = {
+        enable = true;
         settings = {
-          default = [ "kitty.desktop" ];
+          default = [ defaultTerminal.desktopFileId ];
         };
       };
     };
