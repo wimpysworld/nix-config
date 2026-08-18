@@ -6,7 +6,7 @@
 }:
 let
   inherit (config.noughty) host;
-  cursorTrailShader = "tinkle"; # Valid values: "boo", "tinkle", and "wisp".
+  cursorTrailShader = "wisp"; # Valid values: "boo", "tinkle", and "wisp".
   cursorTrailShaders = pkgs.fetchFromGitHub {
     owner = "hced";
     repo = "ghostty-cursor-trails";
@@ -48,6 +48,7 @@ lib.mkIf host.is.workstation {
       font-family = "FiraCode Nerd Font Mono";
       font-size = 16;
       mouse-hide-while-typing = true;
+      shell-integration-features = "no-cursor";
       window-decoration = if hideWindowDecorations then "none" else "auto";
     };
   };
