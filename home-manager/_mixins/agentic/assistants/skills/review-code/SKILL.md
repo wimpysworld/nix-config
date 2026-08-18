@@ -30,21 +30,21 @@ Record the head commit SHA reviewed. Keep it internal: it is a guard for `post-c
 Write the report to:
 
 ```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/<review-name>.md
+${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/<target>/<run-id>/<review-name>.md
 ```
 
-Load the `review-report-path` skill and derive `<project>` and `<target>` from it. `<review-name>` is supplied by the calling command.
+Load the `review-report-path` skill and derive `<project>`, `<target>`, and a new exclusive `<run-id>` from it. `<review-name>` is supplied by the calling command.
 
 ### Process
 
 1. Load and follow the `communication-rules` skill before writing anything.
 2. Load the `contribution-voice` skill and follow it when wording findings. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
-4. Load the `review-report-path` skill and derive the report path from the resolved target.
-5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's fallback findings file in its packet, `<report-dir>/findings-<concern>.md`, so no two collide.
+4. Load the `review-report-path` skill, create a new run directory, and derive the report path from the resolved target. Do this before any worker starts, so fallback findings use durable storage.
+5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's fallback findings file in its packet, `<run-dir>/findings-<concern>-<worker-id>.md`, so no two collide. Never reuse a fallback path.
 6. Re-request once from any sub-agent that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A sub-agent that fails twice is your own work to finish, to the same standard, not a gap in the report.
 7. Pressure-test every blocking finding, per **Adversarial pressure-test**.
-8. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. The sub-agent replies are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
+8. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. The sub-agent replies and durable fallback files are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads. If the report path exists, stop and create a new run directory instead of overwriting it.
 9. Deliver the conclusion and every finding the user must act on, in house style (the `communication-rules` skill). Report the path. The file keeps the full report.
 
 ### Fan-out
@@ -80,6 +80,7 @@ This step stops false positives reaching a human. Do not skip it and do not soft
 ### Constraints
 
 - British English throughout. Lead with conclusions. No filler.
+- Never delete a review run, report, or fallback findings file. Never overwrite one with a later run.
 - Every sub-agent and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require it, because a sub-agent runs with fresh context and will not load it otherwise.
 - A finding is three sentences at most: the defect, the proof, the fix. One `file:line` reference is the proof; a second instance of the same defect adds nothing. No headings inside a finding, no restating the diff back at the reader, and no paragraph explaining that the surrounding code is correct. A finding that runs to five paragraphs is over budget, whatever its severity.
 - The report is the only deliverable. Do not draft a review comment and do not state a verdict; `draft-code-review` owns that.

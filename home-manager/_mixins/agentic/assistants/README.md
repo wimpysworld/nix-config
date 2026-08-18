@@ -481,7 +481,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `write-agents-md`    | Rosey or user             | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files                     |
 | `write-assistant`    | Rosey or user             | Author or update an agent system prompt - persona, structure, voice, examples, constraints                        |
 | `write-command`      | Rosey or user             | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model                 |
-| `review-report-path` | Review and audit commands | The `${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/` path and the slug rules for concurrent reviews            |
+| `review-report-path` | Review and audit commands | Durable `${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/<target>/<run-id>/` paths, exclusive runs, and no deletion or overwrite |
 | `sizing`             | Task and review commands  | T-shirt sizing scale, spikes, parent tracking issues, and splitting oversized work                                |
 | `nix`                | Donatello                 | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                                       |
 | `love`               | Donatello                 | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                                    |

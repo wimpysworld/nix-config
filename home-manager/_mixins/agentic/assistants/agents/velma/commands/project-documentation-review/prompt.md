@@ -6,13 +6,7 @@ Runs a full-project documentation audit. No arguments.
 
 ### Report Location
 
-Write the report to:
-
-```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/documentation-review.md
-```
-
-Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
+Before any worker starts, load and follow the `review-report-path` skill. Create a new run for the checkout target. Write the report as `documentation-review.md` in the derived run directory, and use that directory for any fallback findings.
 
 ### Priority Criteria
 
@@ -32,7 +26,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 2. Inventory the documentation that exists, where it lives, and which paths it covers
 3. Compare each document against the code it describes to find missing and stale content
 4. Rank every gap against the priority criteria above
-5. Load the `review-report-path` skill and derive the report path
+5. Use the report path derived before fan-out
 6. Write the aggregated report to the derived path, then report that path
 
 ### Output

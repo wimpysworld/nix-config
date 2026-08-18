@@ -4,18 +4,12 @@ Run a full-project code security audit. Take no arguments. Use wide sub-agent fa
 
 ### Report Location
 
-Write the report to:
-
-```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/code-security-audit.md
-```
-
-Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
+Before any worker starts, load and follow the `review-report-path` skill. Create a new run for the checkout target. Write the report as `code-security-audit.md` in the derived run directory, and use that directory for any fallback findings.
 
 ### Operating rules
 
 1. Load and follow the `communication-rules` skill before writing anything.
-2. Load the `review-report-path` skill and derive the report path.
+2. Use the report path derived before fan-out.
 3. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
 
    The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.

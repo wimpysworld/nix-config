@@ -8,21 +8,13 @@ workflows, or runtime state.
 
 ### Report Location
 
-Write the report to:
-
-```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/infra-security-audit.md
-```
-
-Load the `review-report-path` skill and derive `<project>` and `<target>`
-from it. This command takes no argument, so the target is the checkout it
-runs in.
+Before any worker starts, load and follow the `review-report-path` skill. Create a new run for the checkout target. Write the report as `infra-security-audit.md` in the derived run directory, and use that directory for any fallback findings.
 
 ### Flow
 
 1. **Prepare**
    - Load and follow the `communication-rules` skill before writing anything.
-   - Load the `review-report-path` skill and derive the report path.
+   - Use the report path derived before fan-out.
 2. **Fan-out**
    - Delegate to a wide fan-out of sub-agents, in parallel where possible.
      Split by directory, concern, tool, platform, or attack surface so each

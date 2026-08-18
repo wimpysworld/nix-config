@@ -4,7 +4,7 @@ Post one GitHub review to the target pull request. The comment body is the user'
 
 This command mutates GitHub state and speaks as the user. Treat explicit human invocation of this command as consent for those actions. Never use raw `gh api`.
 
-Command invocation: use the current provider's command prefix when invoking `draft-code-review`. Codex uses `$draft-code-review`; slash-command runtimes use `/draft-code-review`. If the platform cannot expand another command, follow the existing `draft-code-review` prompt directly for the draft phase only. After its fenced comment is produced, this command resumes and posts the review.
+Command invocation: use the current provider's command prefix when invoking `draft-code-review`. Codex uses `$draft-code-review`; slash-command runtimes use `/draft-code-review`. Pass the exact selected report path as its argument. If the platform cannot expand another command or preserve that argument, follow the existing `draft-code-review` prompt directly for the draft phase only. After its fenced comment is produced, this command resumes and posts the review.
 
 ### Verdict and body
 
@@ -22,12 +22,14 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 
 1. Load and follow the `communication-rules` skill before starting. The rules never apply to user-supplied comment text, which stays verbatim
 2. Resolve the target pull request. If the review targeted a local branch, worktree, or commit rather than a pull request, stop and say there is nothing to post to
-3. When `$ARGUMENTS` carries comment text, take that text verbatim as the comment source and skip to step 5. Otherwise invoke or follow `draft-code-review`, passing the pull request resolved in step 2 as its argument so it reads the report for that target. Preserve its fenced comment verbatim as the comment source
-4. Compare the pull request's current head SHA against the SHA recorded when the review ran. If it has moved, stop and report that the contributor pushed during the review, so the findings may no longer apply. Do not post. This guard is internal; never write a SHA into the comment body
-5. Show the exact comment body and the verdict, and confirm before posting
-6. If the comment source came from `draft-code-review`, strip only the Markdown fence lines. Write the remaining body text unchanged to a temporary file
-7. Post with the dedicated subcommand matching the verdict: `gh pr review <pr> --approve --body-file <temp-file>` or `gh pr review <pr> --comment --body-file <temp-file>`. Never use raw `gh api`
-8. Report the pull request URL, the verdict posted, and the comment body
+3. When `$ARGUMENTS` carries comment text, take that text verbatim as the comment source and skip to step 7. Do not select a report or validate a review SHA
+4. Load and follow the `review-report-path` skill. Derive the project and pull request target, then select the report for that target. Exclude fallback files named `findings-*.md`. Use the sole report. If several reports remain, list each run ID and report name, then ask which one to use. If none remain, list the available target directories and stop, saying that a review must run first. Never delete or overwrite a run directory or report
+5. Invoke or follow `draft-code-review` with the exact selected report path as its argument. Preserve its fenced comment verbatim as the comment source
+6. Compare the pull request's current head SHA against the SHA recorded when the selected review ran. If it has moved, stop and report that the contributor pushed during the review, so the findings may no longer apply. Do not post. This guard is internal; never write a SHA into the comment body
+7. Show the exact comment body and the verdict, and confirm before posting
+8. If the comment source came from `draft-code-review`, strip only the Markdown fence lines. Write the remaining body text unchanged to a temporary file
+9. Post with the dedicated subcommand matching the verdict: `gh pr review <pr> --approve --body-file <temp-file>` or `gh pr review <pr> --comment --body-file <temp-file>`. Never use raw `gh api`
+10. Report the pull request URL, the verdict posted, and the comment body
 
 ### Output
 

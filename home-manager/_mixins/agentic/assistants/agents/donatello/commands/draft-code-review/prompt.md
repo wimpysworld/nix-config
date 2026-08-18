@@ -4,7 +4,7 @@ Draft the single GitHub review comment for a review that has already been conduc
 
 ### Input
 
-`$ARGUMENTS` is the review target the report belongs to: a pull request URL or number, a branch, a worktree path, or a commit. Blank means the current worktree.
+`$ARGUMENTS` identifies the report context. It can be an exact final report path, a `run-*` ID, or the review target: a pull request URL or number, a branch, a worktree path, or a commit. Blank means the current worktree.
 
 ### House Style
 
@@ -31,11 +31,19 @@ NEVER execute while drafting:
 
 1. Load and follow the `communication-rules` skill before drafting
 2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
-3. Load the `review-report-path` skill and derive `<project>` and `<target>` from `$ARGUMENTS` with it
-4. Read the review report from `${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/`. If that directory holds several reports, ask which one to use. If it is missing or empty, list the target directories under `${TMPDIR:-/tmp}/agent-reviews/<project>/` and stop, saying a review must be run first for this target
-5. Read the report and decide the verdict from its findings, not from a wish to be agreeable
-6. Draft from the report's Findings section only. Its summary, verification, resolved, still-open, and notes sections are evidence that the review happened; none of them reaches the comment. A comment that follows the report's section order is a compression of the report, which is the failure
-7. State the verdict on one line, then output the comment in one fenced markdown block. This block is the deliverable and must reach the caller unchanged
+3. Load and follow the `review-report-path` skill. Use `${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/` as the report root
+4. Resolve the report from `$ARGUMENTS`:
+   - For an exact report path, derive `<project>` from the current repository:
+     1. Resolve the report root and the file's parent directory with POSIX `cd -P` and `pwd -P`. Do not use `realpath` or `readlink -f`
+     2. Accept only a regular, non-symbolic-link file under `<physical-report-root>/<project>/<target>/run-*/`. Require `<target>` and `run-*` to be single directory components
+     3. Reject paths outside that tree, missing files, and names that match `findings-*.md`
+     4. Use the accepted file only
+   - For a `run-*` ID, find that exact run directory under the current project's report tree. Stop and list the matches if the ID is not unique. In the unique run, exclude `findings-*.md` and use the sole final report. If several final reports remain, list their names and ask which one to use
+   - For a target or blank input, derive `<project>` and `<target>` with `review-report-path`. Find final reports under `<report-root>/<project>/<target>/run-*/`, excluding `findings-*.md`. Use the sole report. If several reports remain, list each run ID and report name, then ask which one to use. If none remain, list the target directories under `<report-root>/<project>/` and stop, saying a review must be run first for this target
+5. Never delete or overwrite a run directory or report
+6. Read the report and decide the verdict from its findings, not from a wish to be agreeable
+7. Draft from the report's Findings section only. Its summary, verification, resolved, still-open, and notes sections are evidence that the review happened; none of them reaches the comment. A comment that follows the report's section order is a compression of the report, which is the failure
+8. State the verdict on one line, then output the comment in one fenced markdown block. This block is the deliverable and must reach the caller unchanged
 
 The comment itself must follow the Communication Rules: concise (each fact once), British English spelling, active voice, lead with the conclusion, no banned words (filler, pleasantries, hedges, LLM tells), and no em or en dashes.
 

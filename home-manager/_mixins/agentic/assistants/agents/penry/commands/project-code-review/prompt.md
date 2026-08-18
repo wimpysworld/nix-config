@@ -6,18 +6,12 @@ Runs a full-project review. No arguments.
 
 ### Report Location
 
-Write the report to:
-
-```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/code-review.md
-```
-
-Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
+Before any worker starts, load and follow the `review-report-path` skill. Create a new run for the checkout target. Write the report as `code-review.md` in the derived run directory, and use that directory for all fallback findings.
 
 ### Process
 
 1. Load and follow the `communication-rules` skill before writing anything.
-2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area, writes its findings to the file its packet names, and returns them. Derive the report directory now with the `review-report-path` skill and name each file `<report-dir>/findings-<area>.md`, so no two collide.
+2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area, writes its findings to the file its packet names, and returns them. Name each file `<run-dir>/findings-<area>.md`, so no two collide.
 
    The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
 
@@ -35,7 +29,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 11. Include dead code with clear evidence even when small. Skip other findings rated below 4.
 12. Output per-improvement format from agent definition. For standard-library and native findings, add what was reimplemented, the replacement, the minimum version, and whether the project target permits it.
 13. End the report with an estimated removal summary: lines, files, and dependencies that could be deleted.
-14. Load the `review-report-path` skill and derive the report path.
+14. Use the report path derived before fan-out.
 15. Aggregate from the findings files, each one the source of record when its sub-agent's reply did not arrive. Write the aggregated report to the derived path, then report that path.
 
 ### Restraint

@@ -6,13 +6,7 @@ Runs a full-project test-gap analysis. No arguments.
 
 ### Report Location
 
-Write the report to:
-
-```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/test-review.md
-```
-
-Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
+Before any worker starts, load and follow the `review-report-path` skill. Create a new run for the checkout target. Write the report as `test-review.md` in the derived run directory, and use that directory for any fallback findings.
 
 ### Process
 
@@ -24,5 +18,5 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 3. Analyse existing test patterns and coverage
 4. Apply priority criteria from agent definition
 5. Recommend tests ranked by bug-prevention value
-6. Load the `review-report-path` skill and derive the report path
+6. Use the report path derived before fan-out
 7. Write the aggregated report to the derived path, then report that path

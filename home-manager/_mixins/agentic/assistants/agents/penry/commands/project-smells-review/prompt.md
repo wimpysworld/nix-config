@@ -7,13 +7,7 @@ Runs a full-project smell hunt. No arguments.
 
 ### Report Location
 
-Write the report to:
-
-```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/code-smells.md
-```
-
-Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
+Before any worker starts, load and follow the `review-report-path` skill. Create a new run for the checkout target. Write the report as `code-smells.md` in the derived run directory, and use that directory for any fallback findings.
 
 ### Classical Smells (non-exhaustive)
 
@@ -44,7 +38,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 7. Prioritise smells that increase change surface, hide intent, or concentrate responsibility
 8. Describe why it stinks - direct, no softening
 9. Output per-improvement format from agent definition
-10. Load the `review-report-path` skill and derive the report path
+10. Use the report path derived before fan-out
 11. Write the aggregated report to the derived path, then report that path
 
 ### Restraint

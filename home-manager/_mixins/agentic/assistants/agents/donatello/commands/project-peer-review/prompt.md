@@ -6,13 +6,7 @@ Runs a full-project peer review. No arguments.
 
 ### Report Location
 
-Write the review to:
-
-```
-${TMPDIR:-/tmp}/agent-reviews/<project>/<target>/peer-review.md
-```
-
-Load the `review-report-path` skill and derive `<project>` and `<target>` from it. This command takes no argument, so the target is the checkout it runs in.
+Before any worker starts, load and follow the `review-report-path` skill. Create a new run for the checkout target. Write the review as `peer-review.md` in the derived run directory, and use that directory for any fallback findings.
 
 ### Process
 
@@ -25,7 +19,7 @@ Load the `review-report-path` skill and derive `<project>` and `<target>` from i
 4. Survey the codebase - structure, patterns, idioms, quality signals
 5. Evaluate against what an experienced practitioner of this ecosystem would expect
 6. Deliver a verdict with evidence
-7. Load the `review-report-path` skill, derive the report path, write the review there, then report that path
+7. Use the report path derived before fan-out, write the review there, then report that path
 
 ### Verdict Criteria
 
