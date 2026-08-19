@@ -4,8 +4,8 @@
  * Derived from Wisp at:
  * https://github.com/hced/ghostty-cursor-trails/blob/78f597cf66427bc382077e5e33f26981a86bb207/wisp-cursor.glsl
  *
- * Winkle removes Wisp's synthetic cursor and masks the trail inside Ghostty's
- * native cursor rectangle, so Ghostty controls the cursor blink.
+ * Winkle masks the trail inside Ghostty's native cursor rectangle and adds a
+ * smooth WezTerm-style fade to its synthetic cursor.
  *
  * MIT License
  *
@@ -207,8 +207,8 @@ vec4 TRAIL_END_COLOR = vec4(0.2, 0.6, 1.0, 0.8);  // Blue
 // This multiplies the final alpha: color_alpha * TRAIL_BASE_ALPHA * fade * antialias
 const float TRAIL_BASE_ALPHA = 0.80;
 
-// Opacity of actual cursor (rendered on top of trail)
-const float CURSOR_ALPHA = 0.5;
+// Each half of the cursor fade lasts this many seconds.
+const float CURSOR_FADE_HALF_PERIOD = 0.75;
 
 // ──────────────────────────────────────────────────────────────────────────
 // RENDERING SETTINGS
@@ -247,6 +247,19 @@ float easeBounce(float t) { t = clamp(t, 0.0, 1.0); float n1 = 7.5625, d1 = 2.75
 float easeBack(float t) { t = clamp(t, 0.0, 1.0); float c1 = 1.70158, c3 = c1 + 1.0; return c3 * t * t * t - c1 * t * t; }
 float easeSmoothStep(float t) { t = clamp(t, 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
 float easeExponential(float t) { t = clamp(t, 0.0, 1.0); if (t < 0.001) return 0.0; return pow(2.0, 10.0 * (t - 1.0)); }
+
+float cubic(float a, float b, float c, float d, float t) {
+    float mt = 1.0 - t;
+    return a * mt * mt * mt + 3.0 * b * mt * mt * t + 3.0 * c * mt * t * t + d * t * t * t;
+}
+
+float getCursorAlpha(float elapsed) {
+    float phase = mod(elapsed, 2.0 * CURSOR_FADE_HALF_PERIOD);
+    float t = mod(phase, CURSOR_FADE_HALF_PERIOD) / CURSOR_FADE_HALF_PERIOD;
+    return phase < CURSOR_FADE_HALF_PERIOD
+        ? 1.0 - cubic(0.42, 0.0, 1.0, 1.0, t)
+        : cubic(0.0, 0.0, 0.58, 1.0, t);
+}
 
 float applyTailEasing(float t) {
     if (TAIL_EASING_PRESET < 0.5) return easeLinear(t);
@@ -471,6 +484,18 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 outC = mix(outC, vec4(trailColor.rgb, outC.a), trailColor.a);
             }
         }
+    }
+
+    bool cursorGeometryValid = cur.z > 0.0 && cur.w > 0.0;
+    if (iFocus > 0 && iCursorVisible > 0 && cursorGeometryValid) {
+        float cursorAlpha = 1.0;
+        if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
+            float resetTime = max(iTimeCursorChange, iTimeFocus);
+            cursorAlpha = getCursorAlpha(max(iTime - resetTime, 0.0));
+        }
+
+        float cursorMask = antialiasNoBlur(sdfCur) * cursorAlpha;
+        outC = mix(outC, vec4(iCurrentCursorColor.rgb, outC.a), cursorMask);
     }
 
     fragColor = outC;

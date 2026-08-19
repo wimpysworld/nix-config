@@ -31,9 +31,10 @@ lib.mkIf host.is.workstation {
 
     settings = {
       custom-shader = "shaders/winkle-cursor.glsl";
-      custom-shader-animation = "always";
-      cursor-style = "block";
-      cursor-style-blink = true;
+      custom-shader-animation = true;
+      cursor-opacity = 0.0;
+      cursor-style = "block_hollow";
+      cursor-style-blink = false;
       font-family = "FiraCode Nerd Font Mono";
       font-size = 16;
       mouse-hide-while-typing = true;
