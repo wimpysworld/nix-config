@@ -84,6 +84,19 @@ Key gates:
 - `host.display.primaryOutput`, `host.display.isMultiMonitor`
 - `noughtyLib.isUser [ "martin" ]`, `noughtyLib.isHost [ "skrye" "zannah" ]`, `noughtyLib.hostHasTag "studio"`, `noughtyLib.userHasTag "developer"`
 
+## Wayland compositor architecture
+
+- Treat `lib/wayland-compositors.nix` as the canonical pure-data contract selected by `config.noughty.host.desktop`.
+- Route compositor configuration through the shared Home Manager compositor hub.
+- Keep Hyprland as the default. Support Wayfire as the second compositor.
+- Put generic packages, configuration, scripts, styles, and services in shared components.
+- Keep bindings, native settings, portals, workspace modules, session adapters, and other compositor syntax in compositor-owned modules.
+- Never write `wayland.windowManager.hyprland` or `wayland.windowManager.wayfire` from shared components.
+- When adding a compositor, add its contract entry, NixOS and Home Manager modules, bindings, and session adapter.
+- Add its portal and service metadata, capability gates, and forced evaluation when no registry host selects it.
+- Preserve valid upstream names exactly, such as `hyprpicker`.
+- Keep generic fallbacks for unsupported compositors. Gamescope must use the generic fallback.
+
 ## Module gating patterns
 
 Use the flat pattern for most modules:
@@ -135,6 +148,11 @@ Read `.github/workflows/` before changing CI assumptions. Auto-merge of update P
 
 ## Constraints
 
+- Never run Session Obliterate.
+- Never run graphical checks that lock, suspend, log out, or disrupt the active desktop.
+- Never run checks that restart portals, start or stop compositors, capture, or record.
+- For compositor changes, stop agent validation after static evaluation and builds.
+- Leave graphical runtime checks to the user.
 - Never edit `flake.lock` directly; use `just update`.
 - Never change `stateVersion` on existing systems.
 - Never commit unencrypted secrets outside `secrets/`.

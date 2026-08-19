@@ -37,6 +37,15 @@ let
     ];
     text = builtins.readFile ./virtualcam-toggle.sh;
   };
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [
+        host.desktop
+      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
+    else
+      null;
+  sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
+  workspaceModule = compositor.waybar.workspaceModule or "hyprland/workspaces";
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   catppuccin = {
@@ -260,12 +269,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           modules-left = [
             "custom/launcher"
           ]
-          ++ lib.optionals config.wayland.windowManager.hyprland.enable [
-            "hyprland/workspaces"
-          ]
-          ++ lib.optionals config.wayland.windowManager.wayfire.enable [
-            "wayfire/workspaces"
-          ];
+          ++ lib.optional (compositor != null) workspaceModule;
           modules-center = [
             "idle_inhibitor"
             "clock"
@@ -293,47 +297,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
             on-click-right = "fuzzel-session-menu";
             tooltip-format = "  Applications Menu";
           };
-          # https://github.com/bluebyt/Wayfire-dots/blob/main/.config/waybar/config_wayfire_now.ini#L162
-          "hyprland/workspaces" = lib.mkIf config.wayland.windowManager.hyprland.enable {
-            active-only = false;
-            all-outputs = true;
-            format = "<big>{icon}</big>";
-            format-icons = {
-              "1" = "󰎤";
-              "2" = "󰎧";
-              "3" = "󰎪";
-              "4" = "󰎭";
-              "5" = "󰎱";
-              "6" = "󰎳";
-              "7" = "󰎶";
-              "8" = "󰎹";
-              "9" = "󰎼";
-              "10" = "󰎡";
-              default = "󱢍";
-            };
-            on-click = "activate";
-            sort-by-number = true;
-          };
-          "wayfire/workspaces" = lib.mkIf config.wayland.windowManager.wayfire.enable {
-            #active-only = false;
-            #all-outputs = true;
-            format = "<big>{icon}</big>";
-            format-icons = {
-              "1" = "󰎤";
-              "2" = "󰎧";
-              "3" = "󰎪";
-              "4" = "󰎭";
-              "5" = "󰎱";
-              "6" = "󰎳";
-              "7" = "󰎶";
-              "8" = "󰎹";
-              "9" = "󰎼";
-              "10" = "󰎡";
-              default = "󱢍";
-            };
-            on-click = "activate";
-            sort-by-number = true;
-          };
+          "${workspaceModule}" = lib.mkIf (compositor != null) compositor.waybar.workspaceSettings;
           idle_inhibitor = {
             format = "<big>{icon}</big>";
             format-icons = {
@@ -563,17 +527,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
       ];
       systemd = {
-        inherit (config.wayland.windowManager.hyprland) enable;
-        targets = [
-          (
-            if config.wayland.windowManager.hyprland.enable then
-              "hyprland-session.target"
-            else if config.wayland.windowManager.wayfire.enable then
-              "wayfire-session.target"
-            else
-              "graphical-session.target"
-          )
-        ];
+        enable = compositor != null;
+        targets = [ sessionTarget ];
       };
     };
   };

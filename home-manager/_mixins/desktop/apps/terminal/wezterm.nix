@@ -7,13 +7,12 @@
 let
   inherit (config.noughty) host;
   getColor = colorName: catppuccinPalette.getColor colorName;
-  hideWindowDecorations =
-    if config.wayland.windowManager.wayfire.enable then
-      false
-    else if config.wayland.windowManager.hyprland.enable then
-      true
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [ host.desktop ] null (import ../../../../../lib/wayland-compositors.nix).compositors
     else
-      false;
+      null;
+  hideWindowDecorations = compositor != null && !compositor.capabilities.clientSideDecorations;
 in
 lib.mkIf host.is.workstation {
   catppuccin.wezterm.enable = config.programs.wezterm.enable;

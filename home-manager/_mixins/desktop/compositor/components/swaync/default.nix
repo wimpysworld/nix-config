@@ -8,6 +8,14 @@
 let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [
+        host.desktop
+      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
+    else
+      null;
+  pickerEnabled = compositor != null && compositor.capabilities.picker;
   swayncRun = pkgs.writeShellApplication {
     name = "swaync-run";
     text = ''
@@ -53,11 +61,11 @@ lib.mkIf (host.is.linux && host.is.workstation) {
                   label = "󰹑  Screenshot  ";
                   command = "${lib.getExe swayncRun} fuzzel-capture";
                 }
-                {
-                  label = "󰏘  Color Picker";
-                  command = "${lib.getExe swayncRun} fuzzel-picker";
-                }
-              ];
+              ]
+              ++ lib.optional pickerEnabled {
+                label = "󰏘  Color Picker";
+                command = "${lib.getExe swayncRun} fuzzel-picker";
+              };
             };
             "menu#powermode-buttons" = {
               label = "󱐋";
@@ -558,23 +566,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           min-height: 21px;
         }
       '';
-    };
-  };
-  wayland.windowManager = {
-    hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
-      settings = {
-        bind = [
-          "CTRL ALT, N, exec, ${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait"
-        ];
-      };
-    };
-    wayfire = lib.mkIf config.wayland.windowManager.wayfire.enable {
-      settings = {
-        command = {
-          binding_notifications = "<ctrl> <alt> KEY_N";
-          command_notifications = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
-        };
-      };
     };
   };
 }

@@ -16,7 +16,13 @@ picker="󰏘 Colour Picker"
 # Power
 logout="󰐦 Logout"
 
-selected=$(echo -e "$wifi\n$bluetooth\n$audio\n$picker\n\n$session_obliterate\n$logout" |
+menu="$wifi\n$bluetooth\n$audio"
+if command -v fuzzel-picker >/dev/null 2>&1; then
+	menu="$menu\n$picker"
+fi
+menu="$menu\n\n$session_obliterate\n$logout"
+
+selected=$(echo -e "$menu" |
 	fuzzel --dmenu --prompt "󱑞 " --lines=8 --width=21)
 
 case $selected in

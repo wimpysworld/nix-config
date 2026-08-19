@@ -1,8 +1,8 @@
 # Fingerprint Unlock
 
-Enables fprintd and configures PAM so fingerprint authentication works only
-through hyprlock's native D-Bus integration. Login, sudo, and polkit require
-a passphrase.
+Enables fprintd and configures Veila fingerprint unlock for Hyprland and
+Wayfire. Veila authenticates fingerprints through fprintd's D-Bus API. Login,
+sudo, and polkit require a password.
 
 ## Enabling
 
@@ -31,33 +31,47 @@ Enrolled prints persist in `/var/lib/fprint/martin/` across rebuilds.
 
 ## How It Works
 
-Two modules collaborate:
+Three modules collaborate:
 
 **NixOS mixin** (`nixos/_mixins/hardware/fprint/default.nix`)
 
 - Enables `services.fprintd`
-- Sets `fprintAuth = false` on greetd, login, hyprlock, sudo, and polkit-1
+- Sets `fprintAuth = false` on greetd, login, veila, sudo, and polkit-1
   PAM services. NixOS defaults `fprintAuth = true` on every PAM service when
-  fprintd is enabled; these overrides restrict fingerprint to screen unlock
+  fprintd is enabled; these overrides restrict fingerprint to Veila's native
+  integration
 - Runs a `fprintd-resume` systemd unit that restarts fprintd after
   suspend/resume to clear stale device handles
 
-**Hyprlock module** (`home-manager/.../hyprlock/default.nix`)
+**Veila NixOS module** (`nixos/_mixins/desktop/default.nix`)
 
-- Adds an `auth.fingerprint` block when the host carries the `"fprintd"` tag.
-  Hyprlock v0.5.0+ opens password and fingerprint channels in parallel via
-  D-Bus, so either method unlocks without waiting
-- Displays a `$FPRINTPROMPT` label (renders empty on non-fprintd hosts)
-- Swaps the input-field glyph from a key icon to a fingerprint icon
+- Enables `programs.veila` on non-ISO Linux workstations
+- Provides the Veila package and the `veila` PAM service
 
-The PAM lockdown on hyprlock is required. Without it, both hyprlock's D-Bus
-path and PAM's `pam_fprintd.so` attempt to claim the sensor simultaneously,
-causing a "device already open" error on one or both.
+**Veila Home Manager module**
+(`home-manager/_mixins/desktop/compositor/components/veila/default.nix`)
+
+- Writes `~/.config/veila/config.toml` and enables `[fingerprint]` only when
+  the host carries the `"fprintd"` tag
+- Uses Veila's native fprintd D-Bus integration for fingerprints and the
+  `veila` PAM service for passwords
+- Displays a fingerprint glyph on tagged hosts and a key glyph elsewhere
+- Runs `veilad.service` and `veila-idle.service` under the selected compositor
+  session target. The idle service locks after 300 seconds and before sleep
+- Binds `veila lock` to <kbd>Super</kbd>+<kbd>L</kbd> and
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> in Hyprland and Wayfire.
+  `wayland-session lock` uses the same command
+
+The PAM lockdown on `veila` is required. Without it, both Veila's D-Bus path
+and PAM's `pam_fprintd.so` attempt to claim the sensor simultaneously, causing
+a "device already open" error on one or both.
 
 ## Rollback
 
-Remove `"fprintd"` from the host's tags and rebuild. Both modules gate on the
-tag, so they become inert. Enrolled fingerprints remain on disk but are unused.
+Remove `"fprintd"` from the host's tags and rebuild. The fprintd mixin becomes
+inactive, and Veila disables `[fingerprint]`. Veila remains the screen locker,
+and password unlock continues to work. Enrolled fingerprints remain on disk
+but are unused.
 
 ## Troubleshooting
 

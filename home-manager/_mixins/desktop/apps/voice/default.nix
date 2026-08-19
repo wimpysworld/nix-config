@@ -68,17 +68,4 @@ lib.mkIf isVoxtypeHost {
     color3     = "${palette.getColor "yellow"}"
   '';
 
-  wayland.windowManager.hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
-    # Laptops toggle voice with Super+V; desktops use the Pause/Break key.
-    # Bind the Pause key by keycode (xkb 127 = evdev KEY_PAUSE 119 + 8) because
-    # Hyprland does not reliably match the Pause keysym by name.
-    settings.bind = [
-      (
-        if host.is.laptop then
-          "$mod, V, exec, ${lib.getExe config.programs.voxtype.package} record toggle"
-        else
-          ", code:127, exec, ${lib.getExe config.programs.voxtype.package} record toggle"
-      )
-    ];
-  };
 }

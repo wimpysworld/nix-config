@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  inputs,
   lib,
   ...
 }:
@@ -9,7 +8,6 @@ let
   inherit (config.noughty) host;
 in
 {
-  imports = [ inputs.veila.nixosModules.default ];
   config = lib.mkIf (host.desktop == "hyprland") {
     environment.sessionVariables = {
       # Make sure the cursor size is the same in all environments
@@ -61,9 +59,6 @@ in
       };
       udevil.enable = true;
     };
-    # Veila screen locker: installs binaries and the `veila` PAM service.
-    programs.veila.enable = true;
-
     services.devmon.enable = true;
   };
 }

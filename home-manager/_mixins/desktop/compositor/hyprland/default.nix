@@ -74,20 +74,7 @@ let
   };
 in
 {
-  # Hyprland is a Wayland compositor and dynamic tiling window manager
-  # Additional applications are required to create a full desktop shell
-  imports = [
-    ../components/avizo # on-screen display for audio and backlight
-    ../components/fuzzel # app launcher, emoji picker and clipboard manager
-    ../components/kanshi # dynamic display profile switcher
-    ../components/veila # screen locker
-    ../components/wpaperd # wallpaper setter
-    ../components/capture # screenshot grabber and annotator
-    ../components/rofi # application launcher
-    ../components/swaync # notification center
-    ../components/waybar # status bar
-    ../components/wleave # session menu
-  ];
+  imports = [ ./bindings.nix ];
 
   config = lib.mkIf (host.desktop == "hyprland") {
     # Disable the Catppuccin Hyprland module. It only works under `lua`, where it
@@ -101,15 +88,18 @@ in
     };
 
     home.packages = with pkgs; [
-      hyprpicker
       sessionAdapter
       wdisplays
     ];
+    home.pointerCursor.hyprcursor = {
+      enable = true;
+      size = 32;
+    };
     wayland.windowManager.hyprland = {
       enable = true;
       # Force the hyprlang config format. The 26.05 default flipped to `lua`, which
       # makes the HM module emit `hyprland.lua` and drop `hyprland.conf`. Hyprland
-      # 0.52.1 core reads `hyprland.conf`, and the session manager (Hyprshim) launches
+      # 0.52.1 core reads `hyprland.conf`, and the session launcher starts
       # it the normal way, so under `lua` it finds no `hyprland.conf` and falls back to
       # a built-in default config. hyprlang is the format this setup actually uses, and
       # setting it explicitly silences the 26.05 default-change warning.
@@ -117,12 +107,6 @@ in
       settings = {
         inherit (monitors) monitor workspace;
         "$mod" = "SUPER";
-        # Work when input inhibitor (l) is active.
-        bindl = [
-          ", XF86AudioPlay, exec, ${lib.getExe pkgs.playerctl} play-pause"
-          ", XF86AudioPrev, exec, ${lib.getExe pkgs.playerctl} previous"
-          ", XF86AudioNext, exec, ${lib.getExe pkgs.playerctl} next"
-        ];
         # https://en.wikipedia.org/wiki/Table_of_keyboard_shortcuts
         bindm = [
           # Move windows with AltGr + LMB (for lefties) and $mod + LMB
@@ -134,8 +118,6 @@ in
         bind = [
           # Process management
           "$mod, Q, killactive"
-          # Launch applications
-          "$mod, E, exec, ${pkgs.nautilus}/bin/nautilus --new-window"
           # Move focus
           "ALT, Tab, cyclenext"
           "ALT, Tab, bringactivetotop"

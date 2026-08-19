@@ -2,7 +2,6 @@
   catppuccinPalette,
   config,
   lib,
-  pkgs,
   ...
 }:
 let
@@ -33,42 +32,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           width = 480;
           height = 240;
           y-offset = 0.75;
-        };
-      };
-    };
-  };
-  wayland.windowManager = {
-    hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
-      settings = {
-        # Work when input inhibitor (l) is active.
-        bindl = [
-          ", XF86AudioMute, exec, ${pkgs.avizo}/bin/volumectl toggle-mute"
-          ", XF86AudioMicMute, exec, ${pkgs.avizo}/bin/volumectl -m toggle-mute"
-        ];
-        # Work when input inhibitor (l) is active, with repeat (e)
-        bindle = [
-          ", XF86AudioRaiseVolume, exec, ${pkgs.avizo}/bin/volumectl -u up"
-          ", XF86AudioLowerVolume, exec, ${pkgs.avizo}/bin/volumectl -u down"
-          ", XF86MonBrightnessUp, exec, ${pkgs.avizo}/bin/lightctl up"
-          ", XF86MonBrightnessDown, exec, ${pkgs.avizo}/bin/lightctl down"
-        ];
-      };
-    };
-    wayfire = lib.mkIf config.wayland.windowManager.wayfire.enable {
-      settings = {
-        command = {
-          binding_mute = "KEY_MUTE";
-          command_mute = "${pkgs.avizo}/bin/volumectl toggle-mute";
-          binding_micmute = "KEY_MICMUTE";
-          command_micmute = "${pkgs.avizo}/bin/volumectl -m toggle-mute";
-          binding_volumeup = "KEY_VOLUMEUP";
-          command_volumeup = "${pkgs.avizo}/bin/volumectl -u up";
-          binding_volumedown = "KEY_VOLUMEDOWN";
-          command_volumedown = "${pkgs.avizo}/bin/volumectl -u down";
-          binding_brightnessup = "KEY_BRIGHTNESSUP";
-          command_brightnessup = "${pkgs.avizo}/bin/lightctl up";
-          binding_brightnessdown = "KEY_BRIGHTNESSDOWN";
-          command_brightnessdown = "${pkgs.avizo}/bin/lightctl down";
         };
       };
     };

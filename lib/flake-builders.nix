@@ -8,6 +8,7 @@
 }:
 let
   inherit (inputs.nixpkgs) lib;
+  waylandCompositors = import ./wayland-compositors.nix;
 
   # Resolve a registry entry by merging four layers (later wins):
   # 1. baseline username
@@ -22,7 +23,7 @@ let
       kDefaults = {
         desktop =
           {
-            computer = if isDarwin then "aqua" else "hyprland";
+            computer = if isDarwin then "aqua" else waylandCompositors.default;
             server = null;
             vm = null;
             container = null;

@@ -74,25 +74,6 @@ in
       };
     };
 
-    wayland.windowManager = {
-      hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
-        settings = {
-          bind = [
-            "$mod, T, exec, ${defaultTerminal.launchCommand}"
-          ];
-        };
-      };
-      wayfire = lib.mkIf config.wayland.windowManager.wayfire.enable {
-        settings = {
-          command = {
-            # Super+T launches a terminal.
-            binding_terminal = "<super> KEY_T";
-            command_terminal = defaultTerminal.launchCommand;
-          };
-        };
-      };
-    };
-
     xresources.properties = {
       "*background" = getColor "base";
       "*foreground" = getColor "text";

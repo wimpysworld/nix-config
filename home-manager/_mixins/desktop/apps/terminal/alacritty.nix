@@ -6,13 +6,12 @@
 }:
 let
   inherit (config.noughty) host;
-  hideWindowDecorations =
-    if config.wayland.windowManager.wayfire.enable then
-      false
-    else if config.wayland.windowManager.hyprland.enable then
-      true
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [ host.desktop ] null (import ../../../../../lib/wayland-compositors.nix).compositors
     else
-      false;
+      null;
+  hideWindowDecorations = compositor != null && !compositor.capabilities.clientSideDecorations;
 in
 lib.mkIf host.is.workstation {
   catppuccin.alacritty.enable = config.programs.alacritty.enable;

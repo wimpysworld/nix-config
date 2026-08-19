@@ -6,28 +6,21 @@
 }:
 let
   inherit (config.noughty) host;
-  desktops = {
-    hyprland = {
-      comment = "An intelligent dynamic tiling Wayland compositor";
-      desktopNames = "Hyprland";
-      launcher = "/run/current-system/sw/bin/start-hyprland";
-      launcherPrefixArgs = [ "--" ];
-      logName = "hyprland";
-      name = "Hyprland";
-      nativeSessions = config.programs.hyprland.package.providedSessions;
-    };
-    wayfire = {
-      comment = "A modular and extensible Wayland compositor";
-      desktopNames = "Wayfire";
-      launcher = "/run/current-system/sw/bin/wayfire";
-      launcherPrefixArgs = [ ];
-      logName = "wayfire";
-      name = "Wayfire";
-      nativeSessions = config.programs.wayfire.package.providedSessions;
-    };
+  waylandCompositors = (import ../../../../lib/wayland-compositors.nix).compositors;
+  desktopName = if builtins.isString host.desktop then host.desktop else "";
+  compositor = lib.attrByPath [ desktopName ] null waylandCompositors;
+  supportedDesktop = compositor != null;
+  desktop = {
+    inherit (compositor.launcher)
+      comment
+      desktopNames
+      logName
+      name
+      ;
+    launcher = compositor.launcher.command;
+    launcherPrefixArgs = compositor.launcher.prefixArgs;
+    nativeSessions = lib.attrByPath compositor.launcher.nativeSessionsPath [ ] config;
   };
-  supportedDesktop = builtins.isString host.desktop && builtins.hasAttr host.desktop desktops;
-  desktop = desktops.${host.desktop};
   hiddenWaylandSessions = map (
     name:
     pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''

@@ -9,17 +9,21 @@ let
   inherit (config.noughty) host;
 in
 {
-  # Import the DE specific configuration; each compositor gates itself internally
+  # Import compositor-specific configuration; each compositor gates itself internally.
   imports = [
     ./apps
-    ./compositor/hyprland
-    ./compositor/wayfire
+    ./compositor
   ];
 
   config = lib.mkIf host.is.workstation (
     let
-      buttonLayout =
-        if config.wayland.windowManager.hyprland.enable then ":appmenu" else ":close,minimize,maximize";
+      compositor =
+        if host.is.linux && host.is.workstation then
+          lib.attrByPath [ host.desktop ] null (import ../../../lib/wayland-compositors.nix).compositors
+        else
+          null;
+      clientSideDecorations = compositor == null || compositor.capabilities.clientSideDecorations;
+      buttonLayout = if clientSideDecorations then ":close,minimize,maximize" else ":appmenu";
       clockFormat = "24h";
       cursorSize = 32;
       gtkCatppuccinThemeName = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
@@ -82,10 +86,6 @@ in
         pointerCursor = {
           dotIcons.enable = true;
           gtk.enable = true;
-          hyprcursor = {
-            inherit (config.wayland.windowManager.hyprland) enable;
-            size = cursorSize;
-          };
           size = cursorSize;
           x11.enable = true;
         };
@@ -95,7 +95,7 @@ in
           NIXOS_OZONE_WL = "1";
           QT_QPA_PLATFORM = "wayland;xcb";
           QT_STYLE_OVERRIDE = "kvantum";
-          QT_WAYLAND_DISABLE_WINDOWDECORATION = if config.wayland.windowManager.hyprland.enable then 1 else 0;
+          QT_WAYLAND_DISABLE_WINDOWDECORATION = if clientSideDecorations then 0 else 1;
         };
       };
 
@@ -199,14 +199,7 @@ in
         portal = {
           config = {
             common = {
-              default =
-                if config.wayland.windowManager.hyprland.enable then
-                  [
-                    "hyprland"
-                    "gtk"
-                  ]
-                else
-                  [ "gtk" ];
+              default = lib.optional (compositor != null) compositor.portal.backend ++ [ "gtk" ];
               # For "Open With" dialogs. GTK portal provides the familiar GNOME-style app chooser.
               "org.freedesktop.impl.portal.AppChooser" = [ "gtk" ];
               "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
@@ -229,12 +222,7 @@ in
             pkgs.xdg-desktop-portal
             pkgs.xdg-desktop-portal-gtk
           ]
-          ++ lib.optionals config.wayland.windowManager.hyprland.enable [
-            pkgs.xdg-desktop-portal-hyprland
-          ]
-          ++ lib.optionals config.wayland.windowManager.wayfire.enable [
-            pkgs.xdg-desktop-portal-wlr
-          ];
+          ++ lib.optional (compositor != null) pkgs.${compositor.portal.packageAttr};
           xdgOpenUsePortal = true;
         };
       };

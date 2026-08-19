@@ -11,7 +11,11 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   username = config.noughty.user.name;
+  waylandCompositors = (import ../../../lib/wayland-compositors.nix).compositors;
+  desktopName = if builtins.isString host.desktop then host.desktop else "";
+  desktopNames = lib.attrByPath [ desktopName "launcher" "desktopNames" ] "" waylandCompositors;
 
   # Logging wrapper around xdg-open for the Kolide desktop process. Tray
   # menu clicks run xdg-open with output discarded and the exit status
@@ -28,11 +32,7 @@ let
       xdg-utils
     ];
     runtimeEnv = {
-      KOLIDE_XDG_CURRENT_DESKTOP =
-        {
-          hyprland = "Hyprland";
-        }
-        .${toString config.noughty.host.desktop} or "";
+      KOLIDE_XDG_CURRENT_DESKTOP = desktopNames;
     };
     text = builtins.readFile ./kolide-xdg-open.sh;
   };

@@ -70,7 +70,7 @@ let
     ${backgroundOutputs}
     [lock]
     # Keep the pointer visible so the user can navigate and click while locked;
-    # Hyprland supplies the cursor via the cursor-shape protocol.
+    # the Wayland compositor supplies the cursor via the cursor-shape protocol.
     hide_cursor = false
     # Submit Enter-on-empty to PAM so the fingerprint flow can proceed.
     allow_empty_password = true
@@ -334,6 +334,14 @@ let
     x = -115
     z = 0
   '';
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [
+        host.desktop
+      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
+    else
+      null;
+  sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   # Veila is a Wayland-native screen locker that replaces hyprlock. The package
@@ -354,8 +362,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
     veilad = {
       Unit = {
         Description = "Veila screen locker daemon";
-        After = [ "graphical-session.target" ];
-        PartOf = [ "graphical-session.target" ];
+        After = [ sessionTarget ];
+        PartOf = [ sessionTarget ];
         # Hash the config so the unit file changes when config.toml changes,
         # making sd-switch restart veilad on `home-manager switch`.
         X-Restart-Triggers = [ (builtins.hashString "sha256" veilaConfig) ];
@@ -371,16 +379,16 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         RestartSec = 2;
         PassEnvironment = passEnvironment;
       };
-      Install.WantedBy = [ "graphical-session.target" ];
+      Install.WantedBy = [ sessionTarget ];
     };
     veila-idle = {
       Unit = {
         Description = "Veila idle and sleep lock monitor";
         After = [
-          "graphical-session.target"
+          sessionTarget
           "veilad.service"
         ];
-        PartOf = [ "graphical-session.target" ];
+        PartOf = [ sessionTarget ];
       };
       Service = {
         Type = "simple";
@@ -394,16 +402,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         RestartSec = 2;
         PassEnvironment = passEnvironment;
       };
-      Install.WantedBy = [ "graphical-session.target" ];
-    };
-  };
-
-  wayland.windowManager.hyprland = {
-    settings = {
-      bind = [
-        "$mod, L, exec, ${veilaBin} lock"
-        "CTRL ALT, L, exec, ${veilaBin} lock"
-      ];
+      Install.WantedBy = [ sessionTarget ];
     };
   };
 }

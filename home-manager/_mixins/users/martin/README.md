@@ -101,6 +101,9 @@ issue, change the custom script to `entryAfter [ "importGpgKeys" ]`.
   pkgs,
   ...
 }:
+let
+  inherit (config.noughty) host;
+in
 {
   programs = {
     gpg = {
@@ -113,7 +116,7 @@ issue, change the custom script to `entryAfter [ "importGpgKeys" ]`.
       enable = true;
       enableSshSupport = true;
       pinentry.package =
-        if config.wayland.windowManager.hyprland.enable then pkgs.pinentry-gnome3 else pkgs.pinentry-curses;
+        if host.is.linux && host.is.workstation then pkgs.pinentry-gnome3 else pkgs.pinentry-curses;
     };
   };
 }

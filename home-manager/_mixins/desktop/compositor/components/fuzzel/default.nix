@@ -45,15 +45,6 @@ let
     name = "fuzzel-history";
     text = "$SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | wl-copy --primary --trim-newline";
   };
-  fuzzelPicker = pkgs.writeShellApplication {
-    name = "fuzzel-picker";
-    runtimeInputs = with pkgs; [
-      hyprpicker
-      notify-desktop
-      wl-clipboard
-    ];
-    text = builtins.readFile ./fuzzel-picker.sh;
-  };
   fuzzelLauncher = pkgs.writeShellApplication {
     name = "fuzzel-launcher";
     text = "fuzzel --prompt '󱓞 '";
@@ -62,6 +53,14 @@ let
     name = "fuzzel-wifi";
     text = ''iwmenu --launcher custom --launcher-command "fuzzel --dmenu --width=40 --prompt '󱚾 ' {password_flag:--password}"'';
   };
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [
+        host.desktop
+      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
+    else
+      null;
+  sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   catppuccin = {
@@ -80,7 +79,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       fuzzelClipboard
       fuzzelEmoji
       fuzzelHistory
-      fuzzelPicker
       fuzzelLauncher
       fuzzelWifi
       wl-clipboard
@@ -112,43 +110,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
   services = {
     cliphist = {
       enable = true;
-      systemdTargets =
-        if config.wayland.windowManager.hyprland.enable then
-          "hyprland-session.target"
-        else if config.wayland.windowManager.wayfire.enable then
-          "wayfire-session.target"
-        else
-          "graphical-session.target";
-    };
-  };
-  wayland.windowManager = {
-    hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
-      settings = {
-        bind = [
-          "CTRL ALT, SPACE, exec, fuzzel-session-menu"
-          "CTRL ALT, E, exec, fuzzel-emoji"
-          "CTRL ALT, P, exec, fuzzel-clipboard"
-          "CTRL ALT, R, exec, fuzzel-history"
-        ];
-      };
-    };
-    wayfire = lib.mkIf config.wayland.windowManager.wayfire.enable {
-      settings = {
-        command = {
-          binding_bluetooth = "<ctrl> <alt> KEY_B";
-          command_bluetooth = "fuzzel-bluetooth";
-          binding_emoji = "<ctrl> <alt> KEY_E";
-          command_emoji = "fuzzel-emoji";
-          binding_clipboard = "<ctrl> <alt> KEY_P";
-          command_clipboard = "fuzzel-clipboard";
-          binding_history = "<ctrl> <alt> KEY_R";
-          command_history = "fuzzel-history";
-          binding_session = "<ctrl> <alt> KEY_SPACE";
-          command_session = "fuzzel-session-menu";
-          binding_wifi = "<ctrl> <alt> KEY_W";
-          command_wifi = "fuzzel-wifi";
-        };
-      };
+      systemdTargets = sessionTarget;
     };
   };
 }

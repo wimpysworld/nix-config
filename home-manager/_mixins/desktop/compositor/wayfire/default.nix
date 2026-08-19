@@ -18,17 +18,7 @@ let
   };
 in
 {
-  imports = [
-    ../components/avizo
-    ../components/capture
-    ../components/fuzzel
-    ../components/kanshi
-    ../components/wpaperd
-    ../components/rofi
-    ../components/swaync
-    ../components/waybar
-    ../components/wleave
-  ];
+  imports = [ ./bindings.nix ];
 
   config = lib.mkIf (host.desktop == "wayfire") {
     #TODO: IPC tooling for wayfire
@@ -64,20 +54,7 @@ in
         autostart = {
           # Disable wf-shell autostart, we're using waybar et al instead
           autostart_wf_shell = false;
-          bar = "${pkgs.waybar}/bin/waybar";
           session = "wayland-session start";
-        };
-        command = {
-          # Super+E launches the file manager
-          binding_files = "<super> KEY_E";
-          command_files = "${lib.getExe pkgs.nautilus} --new-window";
-          # Media controls
-          binding_play_pause = "KEY_PLAYPAUSE";
-          command_play_pause = "${lib.getExe pkgs.playerctl} play-pause";
-          binding_previous = "KEY_PREVIOUS";
-          command_previous = "${lib.getExe pkgs.playerctl} previous";
-          binding_next = "KEY_NEXT";
-          command_next = "${lib.getExe pkgs.playerctl} next";
         };
         core = {
           plugins = "animate autostart blur command decoration foreign-toplevel grid gtk-shell idle ipc ipc-rules move place resize session-lock switcher vswitch wm-actions wobbly xdg-activation";

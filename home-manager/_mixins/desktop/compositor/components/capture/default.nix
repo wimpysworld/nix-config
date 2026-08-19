@@ -6,7 +6,6 @@
 }:
 let
   inherit (config.noughty) host;
-  inherit (host) display;
   fuzzelCapture = pkgs.writeShellApplication {
     name = "fuzzel-capture";
     runtimeInputs = with pkgs; [
@@ -59,25 +58,4 @@ lib.mkIf (host.is.linux && host.is.workstation) {
     ];
   };
 
-  wayland.windowManager.hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
-    settings.bind = [
-      ", Print, exec, fuzzel-capture"
-      "ALT, Print, exec, fuzzel-capture window"
-      "SHIFT, Print, exec, fuzzel-capture region"
-      "CTRL ALT, Print, exec, fuzzel-capture output ${display.primaryOutput}"
-    ];
-  };
-
-  wayland.windowManager.wayfire = lib.mkIf config.wayland.windowManager.wayfire.enable {
-    settings.command = {
-      binding_capture_menu = "KEY_PRINT";
-      command_capture_menu = "fuzzel-capture";
-      binding_capture_window = "<alt> KEY_PRINT";
-      command_capture_window = "fuzzel-capture window";
-      binding_capture_region = "<shift> KEY_PRINT";
-      command_capture_region = "fuzzel-capture region";
-      binding_capture_output = "<ctrl> <alt> KEY_PRINT";
-      command_capture_output = "fuzzel-capture output ${display.primaryOutput}";
-    };
-  };
 }

@@ -115,25 +115,4 @@ lib.mkIf (host.is.linux && host.is.workstation) {
     };
   };
 
-  wayland.windowManager = {
-    hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
-      settings = {
-        bindr = [
-          "$mod, $mod_L, exec, ${pkgs.procps}/bin/pkill rofi || rofi -theme ${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi -show drun"
-        ];
-      };
-    };
-    wayfire = lib.mkIf config.wayland.windowManager.wayfire.enable {
-      settings = {
-        autostart = {
-          rofi = false;
-        };
-        command = {
-          # Super key toggles rofi launcher
-          binding_launcher = "<super>";
-          command_launcher = "${pkgs.procps}/bin/pkill rofi || rofi -theme ${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi -show drun";
-        };
-      };
-    };
-  };
 }

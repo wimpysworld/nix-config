@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -9,6 +10,7 @@ let
 in
 {
   imports = [
+    inputs.veila.nixosModules.default
     ./apps
     ./backgrounds
     ./greeters/greetd.nix
@@ -84,6 +86,9 @@ in
       };
 
       security.polkit.enable = lib.mkDefault true;
+    })
+    (lib.mkIf (host.is.linux && host.is.workstation && !host.is.iso) {
+      programs.veila.enable = true;
     })
   ];
 }
