@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# A tool to pick colors from the screen using hyprpicker and fuzzel
+# A tool to pick colours from the screen with hyprpicker and Fuzzel.
 
 set +u  # Disable nounset
-APP_NAME="fuzzel-hyprpicker"
+APP_NAME="fuzzel-picker"
 NOTIFY="notify-desktop --app-name=$APP_NAME --icon=org.gnome.design.Palette"
 
 # Set up the storage directory and file

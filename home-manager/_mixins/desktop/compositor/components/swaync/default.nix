@@ -55,7 +55,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
                 }
                 {
                   label = "󰏘  Color Picker";
-                  command = "${lib.getExe swayncRun} fuzzel-hyprpicker";
+                  command = "${lib.getExe swayncRun} fuzzel-picker";
                 }
               ];
             };

@@ -33,7 +33,7 @@ case $selected in
 	fuzzel-audio
 	;;
 "$picker")
-	fuzzel-hyprpicker
+	fuzzel-picker
 	;;
 "$logout")
 	wleave-session

@@ -45,14 +45,14 @@ let
     name = "fuzzel-history";
     text = "$SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | wl-copy --primary --trim-newline";
   };
-  fuzzelHyprpicker = pkgs.writeShellApplication {
-    name = "fuzzel-hyprpicker";
+  fuzzelPicker = pkgs.writeShellApplication {
+    name = "fuzzel-picker";
     runtimeInputs = with pkgs; [
       hyprpicker
       notify-desktop
       wl-clipboard
     ];
-    text = builtins.readFile ./fuzzel-hyprpicker.sh;
+    text = builtins.readFile ./fuzzel-picker.sh;
   };
   fuzzelLauncher = pkgs.writeShellApplication {
     name = "fuzzel-launcher";
@@ -80,7 +80,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       fuzzelClipboard
       fuzzelEmoji
       fuzzelHistory
-      fuzzelHyprpicker
+      fuzzelPicker
       fuzzelLauncher
       fuzzelWifi
       wl-clipboard
