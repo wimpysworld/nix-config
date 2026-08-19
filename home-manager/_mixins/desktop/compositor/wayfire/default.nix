@@ -29,10 +29,6 @@ in
     # https://github.com/soreau/pixdecor
     # https://github.com/NixOS/nixpkgs/pull/355376
     # https://github.com/NixOS/nixpkgs/pull/355376#issuecomment-3290317610
-    # TODO: Wayfire 0.10.0
-    # Integrate this patch for colour picking support
-    # https://github.com/WayfireWM/wayfire/pull/2852
-
     home.packages = with pkgs; [
       sessionAdapter
       wayland-logout

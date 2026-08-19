@@ -75,7 +75,7 @@
       };
       capabilities = {
         clientSideDecorations = true;
-        picker = false;
+        picker = true;
       };
       waybar = {
         workspaceModule = "wayfire/workspaces";
