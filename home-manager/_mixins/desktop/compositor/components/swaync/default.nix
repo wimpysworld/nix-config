@@ -83,15 +83,15 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               actions = [
                 {
                   label = "󰌾  Lock    ";
-                  command = "${lib.getExe swayncRun} hypr-session lock";
+                  command = "${lib.getExe swayncRun} wayland-session lock";
                 }
                 {
                   label = "󰗽  Logout  ";
-                  command = "${lib.getExe swayncRun} hypr-session logout";
+                  command = "${lib.getExe swayncRun} wayland-session logout";
                 }
                 {
                   label = "󱍷  Reboot  ";
-                  command = "${lib.getExe swayncRun} hypr-session reboot";
+                  command = "${lib.getExe swayncRun} wayland-session reboot";
                 }
                 {
                   label = "󰤄  Suspend ";
@@ -99,7 +99,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
                 }
                 {
                   label = "  Shutdown";
-                  command = "${lib.getExe swayncRun} hypr-session shutdown";
+                  command = "${lib.getExe swayncRun} wayland-session shutdown";
                 }
               ];
             };

@@ -5,21 +5,14 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   name = builtins.baseNameOf (builtins.toString ./.);
   shellApplication = pkgs.writeShellApplication {
     inherit name;
-    runtimeInputs = with pkgs; [
-      coreutils
-      findutils
-      gnugrep
-      gnused
-      gawk
-      jq
-      procps
-    ];
+    runtimeInputs = with pkgs; [ fuzzel ];
     text = builtins.readFile ./${name}.sh;
   };
 in
-lib.mkIf config.wayland.windowManager.hyprland.enable {
+lib.mkIf (host.is.linux && host.is.workstation) {
   home.packages = [ shellApplication ];
 }

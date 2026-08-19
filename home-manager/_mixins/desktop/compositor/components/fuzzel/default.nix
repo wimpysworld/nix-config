@@ -140,7 +140,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       settings = {
         bind = [
           ", Print, exec, fuzzel-hyprshot"
-          "CTRL ALT, SPACE, exec, hypr-session-menu"
+          "CTRL ALT, SPACE, exec, fuzzel-session-menu"
           "CTRL ALT, E, exec, fuzzel-emoji"
           "CTRL ALT, P, exec, fuzzel-clipboard"
           "CTRL ALT, R, exec, fuzzel-history"
@@ -158,6 +158,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           command_clipboard = "fuzzel-clipboard";
           binding_history = "<ctrl> <alt> KEY_R";
           command_history = "fuzzel-history";
+          binding_session = "<ctrl> <alt> KEY_SPACE";
+          command_session = "fuzzel-session-menu";
           binding_wifi = "<ctrl> <alt> KEY_W";
           command_wifi = "fuzzel-wifi";
         };

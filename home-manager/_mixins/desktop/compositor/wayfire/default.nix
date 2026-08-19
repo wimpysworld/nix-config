@@ -7,6 +7,15 @@
 }:
 let
   inherit (config.noughty) host;
+  sessionAdapter = pkgs.writeShellApplication {
+    name = "wayland-session-adapter";
+    runtimeInputs = with pkgs; [
+      coreutils
+      wayland-logout
+      wlrctl
+    ];
+    text = builtins.readFile ./wayland-session-adapter.sh;
+  };
 in
 {
   imports = [
@@ -34,6 +43,7 @@ in
     # https://github.com/WayfireWM/wayfire/pull/2852
 
     home.packages = with pkgs; [
+      sessionAdapter
       wayland-logout
     ];
 
@@ -54,7 +64,7 @@ in
           # Disable wf-shell autostart, we're using waybar et al instead
           autostart_wf_shell = false;
           bar = "${pkgs.waybar}/bin/waybar";
-          button_layout = "dconf write /org/gnome/desktop/wm/preferences/button-layout \"':close,minimize,maximize'\"";
+          session = "wayland-session start";
         };
         command = {
           # Super+E launches the file manager

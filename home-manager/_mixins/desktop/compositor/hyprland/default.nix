@@ -60,6 +60,18 @@ let
         monitor = [ ", preferred, auto, 1" ];
         workspace = [ ];
       };
+  sessionAdapter = pkgs.writeShellApplication {
+    name = "wayland-session-adapter";
+    runtimeInputs = [
+      config.wayland.windowManager.hyprland.package
+    ]
+    ++ (with pkgs; [
+      coreutils
+      findutils
+      jq
+    ]);
+    text = builtins.readFile ./wayland-session-adapter.sh;
+  };
 in
 {
   # Hyprland is a Wayland compositor and dynamic tiling window manager
@@ -90,6 +102,7 @@ in
 
     home.packages = with pkgs; [
       hyprpicker
+      sessionAdapter
       wdisplays
     ];
     wayland.windowManager.hyprland = {
@@ -209,7 +222,7 @@ in
           };
         };
         exec-once = [
-          "hypr-session start"
+          "wayland-session start"
         ];
         general = {
           gesture = "3, horizontal, workspace";

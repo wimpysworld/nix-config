@@ -50,7 +50,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       settings.buttons = [
         {
           label = "lock";
-          action = "hypr-session lock";
+          action = "wayland-session lock";
           text = "  Lock  ";
           keybind = "l";
           icon = "${icons}/lock.svg";
@@ -64,21 +64,21 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
         {
           label = "logout";
-          action = "hypr-session logout";
+          action = "wayland-session logout";
           text = " Logout ";
           keybind = "e";
           icon = "${icons}/logout.svg";
         }
         {
           label = "reboot";
-          action = "hypr-session reboot";
+          action = "wayland-session reboot";
           text = " Reboot ";
           keybind = "r";
           icon = "${icons}/reboot.svg";
         }
         {
           label = "shutdown";
-          action = "hypr-session shutdown";
+          action = "wayland-session shutdown";
           text = "Shutdown";
           keybind = "s";
           icon = "${icons}/shutdown.svg";

@@ -6,6 +6,7 @@
   ...
 }:
 let
+  inherit (config.noughty) host;
   name = builtins.baseNameOf (builtins.toString ./.);
   veila = inputs.veila.packages.${pkgs.stdenv.hostPlatform.system}.default;
   shellApplication = pkgs.writeShellApplication {
@@ -16,13 +17,13 @@ let
     ++ (with pkgs; [
       bluez
       coreutils
-      gnused
+      inetutils
       playerctl
       procps
     ]);
     text = builtins.readFile ./${name}.sh;
   };
 in
-lib.mkIf config.wayland.windowManager.hyprland.enable {
-  home.packages = with pkgs; [ shellApplication ];
+lib.mkIf (host.is.linux && host.is.workstation) {
+  home.packages = [ shellApplication ];
 }
