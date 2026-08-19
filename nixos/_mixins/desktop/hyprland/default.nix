@@ -3,83 +3,20 @@
   config,
   inputs,
   lib,
-  pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
-  mkHiddenWaylandSession =
-    name:
-    pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''
-      [Desktop Entry]
-      Name="Hidden-${name}"
-      NoDisplay=true
-    '';
-  # Create a Wayland session that starts Hyprland and cleans up after itself
-  hyprShim = pkgs.symlinkJoin {
-    name = "hyprshim";
-    paths = [
-      (pkgs.writeShellScriptBin "Hyprshim" ''
-        # Ensure log directory exists
-        LOG_DIR="$HOME/.local/log"
-        LOG_FILE="$LOG_DIR/hyprland.log"
-        mkdir -p "$LOG_DIR"
-        # Rotate logs before starting new session
-        if [ -f "$LOG_FILE" ]; then
-          # Remove oldest log (10)
-          [ -f "$LOG_FILE.10" ] && rm "$LOG_FILE.10"
-          # Rotate existing logs
-          for i in $(seq 9 -1 1); do
-            [ -f "$LOG_FILE.$i" ] && mv "$LOG_FILE.$i" "$LOG_FILE.$((i+1))"
-          done
-          # Move current log to .1
-          mv "$LOG_FILE" "$LOG_FILE.1"
-        fi
-        # Run Hyprland via its launcher and log output.
-        ${pkgs.expect}/bin/unbuffer /run/current-system/sw/bin/start-hyprland -- "$@" 2>&1 | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE" &>/dev/null
-        # Log the exit code here
-        echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Hyprland exited with code $?" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
-      '')
-      (pkgs.writeTextFile {
-        name = "hyprshim-desktop";
-        destination = "/share/wayland-sessions/Hyprshim.desktop";
-        text = ''
-          [Desktop Entry]
-          Name=Hyprland
-          Comment=An intelligent dynamic tiling Wayland compositor
-          Exec=Hyprshim
-          Type=Application
-          DesktopNames=Hyprland
-          Keywords=tiling;wayland;compositor;
-        '';
-      })
-    ];
-    # Add passthru metadata to specify session names
-    passthru.providedSessions = [ "Hyprshim" ];
-  };
 in
 {
-  imports = [
-    ../greeters/greetd.nix
-    inputs.veila.nixosModules.default
-  ];
+  imports = [ inputs.veila.nixosModules.default ];
   config = lib.mkIf (host.desktop == "hyprland") {
-    environment = {
-      sessionVariables = {
-        # Make sure the cursor size is the same in all environments
-        HYPRCURSOR_SIZE = 32;
-        HYPRCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
-        NIXOS_OZONE_WL = 1;
-        QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
-        # The the desktop sessions provided by the Hyprland package
-        XDG_DATA_DIRS = [
-          "${mkHiddenWaylandSession "hyprland"}/share"
-          "${mkHiddenWaylandSession "hyprland-systemd"}/share"
-        ];
-      };
-      systemPackages = [
-        hyprShim
-      ];
+    environment.sessionVariables = {
+      # Make sure the cursor size is the same in all environments
+      HYPRCURSOR_SIZE = 32;
+      HYPRCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+      NIXOS_OZONE_WL = 1;
+      QT_WAYLAND_DISABLE_WINDOWDECORATION = 1;
     };
 
     programs = {
@@ -117,6 +54,7 @@ in
       hyprland = {
         enable = true;
         systemd.setPath.enable = true;
+        withUWSM = false;
       };
       iio-hyprland = {
         enable = true;
@@ -126,11 +64,6 @@ in
     # Veila screen locker: installs binaries and the `veila` PAM service.
     programs.veila.enable = true;
 
-    services = {
-      devmon.enable = true;
-      displayManager = {
-        sessionPackages = [ hyprShim ];
-      };
-    };
+    services.devmon.enable = true;
   };
 }

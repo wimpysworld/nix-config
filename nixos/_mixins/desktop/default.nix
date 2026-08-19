@@ -11,8 +11,10 @@ in
   imports = [
     ./apps
     ./backgrounds
+    ./greeters/greetd.nix
     ./hyprland
     ./wayfire
+    ./wayland-shim
   ];
 
   config = lib.mkMerge [

@@ -7,58 +7,8 @@
 }:
 let
   inherit (config.noughty) host;
-  mkHiddenWaylandSession =
-    name:
-    pkgs.writeTextDir "share/wayland-sessions/${name}.desktop" ''
-      [Desktop Entry]
-      Name="Hidden-${name}"
-      NoDisplay=true
-    '';
-  # Create a Wayland session that starts Wayfire and cleans up after itself
-  wayfireShim = pkgs.symlinkJoin {
-    name = "wayfireShim";
-    paths = [
-      (pkgs.writeShellScriptBin "WayfireShim" ''
-        # Ensure log directory exists
-        LOG_DIR="$HOME/.local/log"
-        LOG_FILE="$LOG_DIR/wayfire.log"
-        mkdir -p "$LOG_DIR"
-        # Rotate logs before starting new session
-        if [ -f "$LOG_FILE" ]; then
-          # Remove oldest log (10)
-          [ -f "$LOG_FILE.10" ] && rm "$LOG_FILE.10"
-          # Rotate existing logs
-          for i in $(seq 9 -1 1); do
-            [ -f "$LOG_FILE.$i" ] && mv "$LOG_FILE.$i" "$LOG_FILE.$((i+1))"
-          done
-          # Move current log to .1
-          mv "$LOG_FILE" "$LOG_FILE.1"
-        fi
-        # Run Wayfire and log output
-        ${pkgs.expect}/bin/unbuffer /run/current-system/sw/bin/wayfire $@ 2>&1 | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE" &>/dev/null
-        # Log the exit code here
-        echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S')] Wayfire exited with code $?" | ${pkgs.coreutils}/bin/tee -a "$LOG_FILE"
-      '')
-      (pkgs.writeTextFile {
-        name = "wayfireShim-desktop";
-        destination = "/share/wayland-sessions/WayfireShim.desktop";
-        text = ''
-          [Desktop Entry]
-          Name=Wayfire
-          Comment=A modular and extensible wayland compositor
-          Exec=WayfireShim
-          Type=Application
-          DesktopNames=Wayfire
-          Keywords=tiling;wayland;compositor;
-        '';
-      })
-    ];
-    # Add passthru metadata to specify session names
-    passthru.providedSessions = [ "WayfireShim" ];
-  };
 in
 {
-  imports = [ ../greeters/greetd.nix ];
   config = lib.mkIf (host.desktop == "wayfire") {
     environment = {
       sessionVariables = {
@@ -66,13 +16,8 @@ in
         XCURSOR_SIZE = 32;
         XCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
         NIXOS_OZONE_WL = 1;
-        # Hide the default wayfire session provided by the Wayfire package
-        XDG_DATA_DIRS = [
-          "${mkHiddenWaylandSession "wayfire"}/share"
-        ];
       };
       systemPackages = with pkgs; [
-        wayfireShim
         wayfire
       ];
     };
@@ -111,12 +56,6 @@ in
       ];
       wayfire = {
         enable = true;
-      };
-    };
-
-    services = {
-      displayManager = {
-        sessionPackages = [ wayfireShim ];
       };
     };
   };

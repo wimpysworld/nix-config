@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=@name@
+Comment=@comment@
+Exec=start-wayland
+Type=Application
+DesktopNames=@desktopNames@
+Keywords=tiling;wayland;compositor;
