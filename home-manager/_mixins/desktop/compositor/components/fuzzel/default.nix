@@ -54,19 +54,6 @@ let
     ];
     text = builtins.readFile ./fuzzel-hyprpicker.sh;
   };
-  fuzzelHyprshot = pkgs.writeShellApplication {
-    name = "fuzzel-hyprshot";
-    runtimeInputs = with pkgs; [
-      gnugrep
-      hyprshot
-      jq
-      pulseaudio
-      satty
-      slurp
-      wl-screenrec
-    ];
-    text = builtins.readFile ./fuzzel-hyprshot.sh;
-  };
   fuzzelLauncher = pkgs.writeShellApplication {
     name = "fuzzel-launcher";
     text = "fuzzel --prompt '󱓞 '";
@@ -94,7 +81,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       fuzzelEmoji
       fuzzelHistory
       fuzzelHyprpicker
-      fuzzelHyprshot
       fuzzelLauncher
       fuzzelWifi
       wl-clipboard
@@ -139,7 +125,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
     hyprland = lib.mkIf config.wayland.windowManager.hyprland.enable {
       settings = {
         bind = [
-          ", Print, exec, fuzzel-hyprshot"
           "CTRL ALT, SPACE, exec, fuzzel-session-menu"
           "CTRL ALT, E, exec, fuzzel-emoji"
           "CTRL ALT, P, exec, fuzzel-clipboard"

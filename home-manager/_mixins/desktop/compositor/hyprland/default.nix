@@ -82,7 +82,7 @@ in
     ../components/kanshi # dynamic display profile switcher
     ../components/veila # screen locker
     ../components/wpaperd # wallpaper setter
-    ../components/hyprshot # screenshot grabber and annotator
+    ../components/capture # screenshot grabber and annotator
     ../components/rofi # application launcher
     ../components/swaync # notification center
     ../components/waybar # status bar

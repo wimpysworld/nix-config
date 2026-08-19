@@ -51,7 +51,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               actions = [
                 {
                   label = "󰹑  Screenshot  ";
-                  command = "${lib.getExe swayncRun} fuzzel-hyprshot";
+                  command = "${lib.getExe swayncRun} fuzzel-capture";
                 }
                 {
                   label = "󰏘  Color Picker";
