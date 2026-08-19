@@ -23,7 +23,7 @@ in
         else
           null;
       clientSideDecorations = compositor == null || compositor.capabilities.clientSideDecorations;
-      buttonLayout = if clientSideDecorations then ":close,minimize,maximize" else ":appmenu";
+      buttonLayout = if clientSideDecorations then ":minimize,maximize,close" else ":appmenu";
       clockFormat = "24h";
       cursorSize = 32;
       gtkCatppuccinThemeName = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
