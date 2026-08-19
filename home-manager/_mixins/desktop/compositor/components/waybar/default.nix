@@ -108,7 +108,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           padding: 0.25rem 0.75rem;
         }
 
-        #workspaces button.active {
+        #workspaces button.active,
+        #workspaces button.focused {
           color: @peach;
         }
 

@@ -93,6 +93,10 @@ assert
 assert entriesHaveRequiredFields;
 assert isPureData contract;
 assert contract.default == "hyprland";
+assert contract.compositors.hyprland.waybar.workspaceSettings.on-click == "activate";
+assert contract.compositors.hyprland.waybar.workspaceSettings.sort-by-number;
+assert !(contract.compositors.wayfire.waybar.workspaceSettings ? on-click);
+assert !(contract.compositors.wayfire.waybar.workspaceSettings ? sort-by-number);
 {
   compositorNames = builtins.attrNames contract.compositors;
   inherit (contract) default;

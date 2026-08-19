@@ -94,8 +94,6 @@
             "10" = "󰎡";
             default = "󱢍";
           };
-          on-click = "activate";
-          sort-by-number = true;
         };
       };
     };
