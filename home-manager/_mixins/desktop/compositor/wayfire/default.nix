@@ -40,6 +40,15 @@ in
         wcm
         wayfire-plugins-extra
       ];
+      systemd.variables = [
+        "DISPLAY"
+        "WAYLAND_DISPLAY"
+        "XDG_CURRENT_DESKTOP"
+        "NIXOS_OZONE_WL"
+        "XCURSOR_THEME"
+        "XCURSOR_SIZE"
+        "WAYFIRE_SOCKET"
+      ];
       settings = {
         # Window animations
         animate = {
