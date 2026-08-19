@@ -7,6 +7,16 @@
 }:
 let
   inherit (config.noughty) host;
+  toWayfireColor =
+    color: alpha:
+    let
+      hex = catppuccinPalette.getColor color;
+      red = builtins.substring 1 2 hex;
+      green = builtins.substring 3 2 hex;
+      blue = builtins.substring 5 2 hex;
+      toFloat = hexString: toString (builtins.div (builtins.fromTOML "value=0x${hexString}").value 255.0);
+    in
+    "${toFloat red} ${toFloat green} ${toFloat blue} ${toString alpha}";
   sessionAdapter = pkgs.writeShellApplication {
     name = "wayland-session-adapter";
     runtimeInputs = with pkgs; [
@@ -25,14 +35,12 @@ in
     # https://github.com/killown/wayfire-rs
     # https://github.com/AR-CADE/wayfire-ipc
     # https://github.com/bluebyt/Wayfire-dots/tree/main/.config/ipc-scripts
-    # TODO: pixdecor
-    # https://github.com/soreau/pixdecor
-    # https://github.com/NixOS/nixpkgs/pull/355376
-    # https://github.com/NixOS/nixpkgs/pull/355376#issuecomment-3290317610
     home.packages = with pkgs; [
       sessionAdapter
       wayland-logout
     ];
+
+    programs.ghostty.settings.window-decoration = lib.mkForce "server";
 
     wayland.windowManager.wayfire = {
       enable = true;
@@ -62,38 +70,26 @@ in
           session = "wayland-session start";
         };
         core = {
-          plugins = "animate autostart blur command decoration foreign-toplevel grid gtk-shell idle ipc ipc-rules move place resize session-lock switcher vswitch wm-actions wobbly xdg-activation";
-          preferred_decoration_mode = "client";
+          plugins = "animate autostart blur command foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswitch wm-actions wobbly xdg-activation";
+          preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
         };
-        # Window decorations (title bars, borders)
-        decoration = {
-          # Active window: use mantle colour for visibility against surface
-          active_color =
-            let
-              hex = catppuccinPalette.getColor "mantle";
-              r = builtins.substring 1 2 hex;
-              g = builtins.substring 3 2 hex;
-              b = builtins.substring 5 2 hex;
-              toFloat = hexStr: toString (builtins.div (builtins.fromTOML "x=0x${hexStr}").x 255.0);
-            in
-            "${toFloat r} ${toFloat g} ${toFloat b} 1.0";
-
-          # Inactive window: use base for subtle, recessed appearance
-          inactive_color =
-            let
-              hex = catppuccinPalette.getColor "base";
-              r = builtins.substring 1 2 hex;
-              g = builtins.substring 3 2 hex;
-              b = builtins.substring 5 2 hex;
-              toFloat = hexStr: toString (builtins.div (builtins.fromTOML "x=0x${hexStr}").x 255.0);
-            in
-            "${toFloat r} ${toFloat g} ${toFloat b} 1.0";
-          font = "Work Sans 12";
-          border_size = 4;
-          title_height = 30;
-          button_order = "minimize maximize close";
+        pixdecor = {
+          bg_color = toWayfireColor "base" 0.95;
+          bg_text_color = toWayfireColor "subtext0" 1.0;
+          border_size = 2;
+          button_color = toWayfireColor "text" 1.0;
+          button_line_thickness = 1.0;
+          button_spacing = 6;
+          fg_color = toWayfireColor "mantle" 1.0;
+          fg_text_color = toWayfireColor "text" 1.0;
+          overlay_engine = "rounded_corners";
+          rounded_corner_radius = 10;
+          shadow_color = toWayfireColor "crust" 0.4;
+          shadow_radius = 12;
+          title_font = "Work Sans 12";
+          titlebar = true;
         };
         # Grid snapping - position windows in screen regions
         grid = {
