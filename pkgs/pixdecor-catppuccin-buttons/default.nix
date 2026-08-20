@@ -7,7 +7,7 @@
   buttonSize ? 30,
   circleRadius ? 7,
   glyphSize ? 16,
-  hoverCornerRadius ? 8,
+  hoverCornerRadius ? 6,
   activeGlyphColor ? null,
   inactiveCircleColor ? null,
   inactiveGlyphColor ? null,
@@ -28,8 +28,9 @@ let
   gtkAssets = "${catppuccin-gtk.src}/sources/colloid/src/assets/gtk/symbolics";
   activeGlyph = if activeGlyphColor == null then defaultColors.text.hex else activeGlyphColor;
   inactiveCircle =
-    if inactiveCircleColor == null then defaultColors.overlay0.hex else inactiveCircleColor;
-  inactiveGlyph = if inactiveGlyphColor == null then defaultColors.text.hex else inactiveGlyphColor;
+    if inactiveCircleColor == null then defaultColors.surface2.hex else inactiveCircleColor;
+  inactiveGlyph =
+    if inactiveGlyphColor == null then defaultColors.subtext1.hex else inactiveGlyphColor;
   hoverBackground =
     if hoverBackgroundColor == null then defaultColors.surface1.hex else hoverBackgroundColor;
   minimiseCircle =
