@@ -43,25 +43,35 @@ stdenvNoCC.mkDerivation {
     make_button() {
       local name="$1"
       local asset="$2"
-      local hover_background="$3"
+      local active_background="$3"
       local glyph="$TMPDIR/$name-glyph.png"
 
       rsvg-convert --width ${toString glyphSize} --height ${toString glyphSize} \
         --output "$glyph" "$asset"
 
       magick -size ${toString buttonSize}x${toString buttonSize} xc:none \
-        -fill "${normalBackground}" \
+        -fill "$active_background" \
         -draw "circle $(( ${toString buttonSize} / 2 )),$(( ${toString buttonSize} / 2 )) $(( ${toString buttonSize} / 2 )),1" \
-        \( "$glyph" -fill "${normalGlyph}" -colorize 100 \) \
-        -gravity center -composite \
         "PNG32:$out/share/pixdecor/buttons/$name.png"
 
       magick -size ${toString buttonSize}x${toString buttonSize} xc:none \
-        -fill "$hover_background" \
+        -fill "$active_background" \
         -draw "circle $(( ${toString buttonSize} / 2 )),$(( ${toString buttonSize} / 2 )) $(( ${toString buttonSize} / 2 )),1" \
         \( "$glyph" -fill "${hoverGlyph}" -colorize 100 \) \
         -gravity center -composite \
         "PNG32:$out/share/pixdecor/buttons/$name-hover.png"
+
+      magick -size ${toString buttonSize}x${toString buttonSize} xc:none \
+        -fill "${normalBackground}" \
+        -draw "circle $(( ${toString buttonSize} / 2 )),$(( ${toString buttonSize} / 2 )) $(( ${toString buttonSize} / 2 )),1" \
+        "PNG32:$out/share/pixdecor/buttons/$name-inactive.png"
+
+      magick -size ${toString buttonSize}x${toString buttonSize} xc:none \
+        -fill "${normalBackground}" \
+        -draw "circle $(( ${toString buttonSize} / 2 )),$(( ${toString buttonSize} / 2 )) $(( ${toString buttonSize} / 2 )),1" \
+        \( "$glyph" -fill "${normalGlyph}" -colorize 100 \) \
+        -gravity center -composite \
+        "PNG32:$out/share/pixdecor/buttons/$name-inactive-hover.png"
     }
 
     make_button minimize "${gtkAssets}/minimize-symbolic.svg" "${minimiseHover}"

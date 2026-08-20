@@ -44,6 +44,7 @@
             rm -rf subprojects/pixdecor
             cp -r ${pixdecorSrc} subprojects/pixdecor
             chmod -R u+w subprojects/pixdecor
+            patch -d subprojects/pixdecor -p1 < ${./pixdecor-inactive-buttons.patch}
           '';
 
           passthru = (oldAttrs.passthru or { }) // {
