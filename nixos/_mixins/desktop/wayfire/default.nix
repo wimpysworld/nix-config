@@ -7,6 +7,26 @@
 }:
 let
   inherit (config.noughty) host;
+
+  wayfireWithGSettingsSchemas = pkgs.symlinkJoin {
+    inherit (pkgs.wayfire) version;
+    pname = "wayfire-with-gsettings-schemas";
+    paths = [ pkgs.wayfire ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+
+    postBuild = ''
+      wrapProgram $out/bin/wayfire \
+        --prefix XDG_DATA_DIRS : ${pkgs.glib.makeSchemaDataDirPath pkgs.gsettings-desktop-schemas pkgs.gsettings-desktop-schemas.name}
+    '';
+
+    passthru = pkgs.wayfire.passthru // {
+      unwrapped = pkgs.wayfire;
+    };
+
+    meta = pkgs.wayfire.meta // {
+      outputsToInstall = [ "out" ];
+    };
+  };
 in
 {
   config = lib.mkIf (host.desktop == "wayfire") {
@@ -56,6 +76,7 @@ in
       ];
       wayfire = {
         enable = true;
+        package = wayfireWithGSettingsSchemas;
         plugins = with pkgs.wayfirePlugins; [
           wcm
           wf-shell
