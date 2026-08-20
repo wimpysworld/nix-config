@@ -106,13 +106,13 @@ in
           button_restore_image = "${pixdecorButtonPath}/restore.png";
           button_restore_inactive_hover_image = "${pixdecorButtonPath}/restore-inactive-hover.png";
           button_restore_inactive_image = "${pixdecorButtonPath}/restore-inactive.png";
-          left_button_spacing = 12;
+          left_button_spacing = 32;
           left_button_x_offset = 0;
           fg_color = toWayfireColor "mantle" 1.0;
           fg_text_color = toWayfireColor "text" 1.0;
           overlay_engine = "rounded_corners";
-          right_button_spacing = 12;
-          right_button_x_offset = 0;
+          right_button_spacing = 32;
+          right_button_x_offset = -24;
           rounded_corner_radius = 10;
           shadow_color = toWayfireColor "crust" 0.4;
           shadow_radius = 12;
