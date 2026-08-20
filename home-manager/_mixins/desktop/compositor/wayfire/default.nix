@@ -116,7 +116,7 @@ in
           rounded_corner_radius = 10;
           shadow_color = toWayfireColor "crust" 0.4;
           shadow_radius = 12;
-          title_font = "Work Sans 12";
+          title_font = "${config.gtk.font.name} Bold ${toString config.gtk.font.size}";
           titlebar = true;
         };
         # Grid snapping - position windows in screen regions
