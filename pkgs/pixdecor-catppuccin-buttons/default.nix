@@ -28,7 +28,7 @@ let
   gtkAssets = "${catppuccin-gtk.src}/sources/colloid/src/assets/gtk/symbolics";
   activeGlyph = if activeGlyphColor == null then defaultColors.text.hex else activeGlyphColor;
   inactiveCircle =
-    if inactiveCircleColor == null then defaultColors.surface2.hex else inactiveCircleColor;
+    if inactiveCircleColor == null then defaultColors.surface1.hex else inactiveCircleColor;
   inactiveGlyph =
     if inactiveGlyphColor == null then defaultColors.subtext0.hex else inactiveGlyphColor;
   hoverBackground =
