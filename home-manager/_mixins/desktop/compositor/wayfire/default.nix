@@ -122,7 +122,7 @@ in
           titlebar = true;
         };
         winshadows = {
-          clip_shadow_inside = true;
+          clip_shadow_inside = false;
           enabled_views = ''type is "toplevel" & floating is true'';
           glow_color = "0.0 0.0 0.0 1.0";
           glow_emissivity = 0.0;
