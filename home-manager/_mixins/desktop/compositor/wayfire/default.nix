@@ -128,12 +128,12 @@ in
           slot_r = "<super> <alt> KEY_RIGHT"; # Snap to right half
           slot_t = "<super> <alt> KEY_UP"; # Snap to top half
           slot_b = "<super> <alt> KEY_DOWN"; # Snap to bottom half
-          #slot_c = "<super> KEY_C"; # Center/maximize
+          slot_c = "none";
           #slot_tl = "<super> <shift> KEY_UP"; # Top-left quarter
           #slot_tr = "<super> <ctrl> KEY_UP"; # Top-right quarter
           #slot_bl = "<super> <shift> KEY_DOWN"; # Bottom-left quarter
           #slot_br = "<super> <ctrl> KEY_DOWN"; # Bottom-right quarter
-          restore = "<super> KEY_DOWN"; # Restore original size
+          restore = "none";
         };
         idle = {
           toggle = "<super> KEY_Z";
@@ -182,8 +182,10 @@ in
           binding_6 = "<ctrl> <alt> KEY_6";
           binding_7 = "<ctrl> <alt> KEY_7";
           binding_8 = "<ctrl> <alt> KEY_8";
+          binding_down = "none";
           binding_left = "<ctrl> <alt> KEY_LEFT";
           binding_right = "<ctrl> <alt> KEY_RIGHT";
+          binding_up = "none";
           with_win_1 = "<super> <alt> KEY_1";
           with_win_2 = "<super> <alt> KEY_2";
           with_win_3 = "<super> <alt> KEY_3";
@@ -192,6 +194,8 @@ in
           with_win_6 = "<super> <alt> KEY_6";
           with_win_7 = "<super> <alt> KEY_7";
           with_win_8 = "<super> <alt> KEY_8";
+          with_win_down = "none";
+          with_win_up = "none";
         };
         # Window management actions
         wm-actions = {
