@@ -39,13 +39,13 @@ in
         binding_brightnessdown = "KEY_BRIGHTNESSDOWN";
         command_brightnessdown = "${pkgs.avizo}/bin/lightctl down";
 
-        binding_capture_menu = "KEY_PRINT";
+        binding_capture_menu = "KEY_SYSRQ";
         command_capture_menu = "fuzzel-capture";
-        binding_capture_window = "<alt> KEY_PRINT";
+        binding_capture_window = "<alt> KEY_SYSRQ";
         command_capture_window = "fuzzel-capture window";
-        binding_capture_region = "<shift> KEY_PRINT";
+        binding_capture_region = "<shift> KEY_SYSRQ";
         command_capture_region = "fuzzel-capture region";
-        binding_capture_output = "<ctrl> <alt> KEY_PRINT";
+        binding_capture_output = "<ctrl> <alt> KEY_SYSRQ";
         command_capture_output = "fuzzel-capture output ${display.primaryOutput}";
 
         binding_bluetooth = "<ctrl> <alt> KEY_B";
