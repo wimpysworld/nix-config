@@ -3,6 +3,7 @@
   imagemagick,
   librsvg,
   stdenvNoCC,
+  canvasSize ? 34,
   buttonSize ? 18,
   circleRadius ? 7,
   glyphSize ? 16,
@@ -18,9 +19,11 @@
 let
   defaultColors =
     (builtins.fromJSON (builtins.readFile ../../lib/catppuccin-palette.json)).mocha.colors;
-  buttonCentreWhole = builtins.div buttonSize 2 - 1;
+  buttonCentreWhole = builtins.div canvasSize 2 - 1;
   buttonCentre = "${toString buttonCentreWhole}.5";
-  buttonMax = toString (buttonSize - 1);
+  buttonOffset = builtins.div (canvasSize - buttonSize) 2;
+  buttonMin = toString buttonOffset;
+  buttonMax = toString (buttonOffset + buttonSize - 1);
   circleTop = "${toString (buttonCentreWhole - circleRadius)}.5";
   gtkAssets = "${catppuccin-gtk.src}/sources/colloid/src/assets/gtk/symbolics";
   activeGlyph = if activeGlyphColor == null then defaultColors.text.hex else activeGlyphColor;
@@ -61,32 +64,32 @@ stdenvNoCC.mkDerivation {
       rsvg-convert --width ${toString glyphSize} --height ${toString glyphSize} \
         --output "$glyph" "$asset"
 
-      magick -size ${toString buttonSize}x${toString buttonSize} xc:none \
+      magick -size ${toString canvasSize}x${toString canvasSize} xc:none \
         -fill "$active_circle" \
         -draw "circle ${buttonCentre},${buttonCentre} ${buttonCentre},${circleTop}" \
         \( "$glyph" -fill "${activeGlyph}" -colorize 100 \) \
         -gravity center -composite \
         "PNG32:$out/share/pixdecor/buttons/$name.png"
 
-      magick -size ${toString buttonSize}x${toString buttonSize} xc:none \
+      magick -size ${toString canvasSize}x${toString canvasSize} xc:none \
         -fill "${hoverBackground}" \
-        -draw "roundrectangle 0,0 ${buttonMax},${buttonMax} ${toString hoverCornerRadius},${toString hoverCornerRadius}" \
+        -draw "roundrectangle ${buttonMin},${buttonMin} ${buttonMax},${buttonMax} ${toString hoverCornerRadius},${toString hoverCornerRadius}" \
         -fill "$active_circle" \
         -draw "circle ${buttonCentre},${buttonCentre} ${buttonCentre},${circleTop}" \
         \( "$glyph" -fill "${activeGlyph}" -colorize 100 \) \
         -gravity center -composite \
         "PNG32:$out/share/pixdecor/buttons/$name-hover.png"
 
-      magick -size ${toString buttonSize}x${toString buttonSize} xc:none \
+      magick -size ${toString canvasSize}x${toString canvasSize} xc:none \
         -fill "${inactiveCircle}" \
         -draw "circle ${buttonCentre},${buttonCentre} ${buttonCentre},${circleTop}" \
         \( "$glyph" -fill "${inactiveGlyph}" -colorize 100 \) \
         -gravity center -composite \
         "PNG32:$out/share/pixdecor/buttons/$name-inactive.png"
 
-      magick -size ${toString buttonSize}x${toString buttonSize} xc:none \
+      magick -size ${toString canvasSize}x${toString canvasSize} xc:none \
         -fill "${hoverBackground}" \
-        -draw "roundrectangle 0,0 ${buttonMax},${buttonMax} ${toString hoverCornerRadius},${toString hoverCornerRadius}" \
+        -draw "roundrectangle ${buttonMin},${buttonMin} ${buttonMax},${buttonMax} ${toString hoverCornerRadius},${toString hoverCornerRadius}" \
         -fill "${inactiveCircle}" \
         -draw "circle ${buttonCentre},${buttonCentre} ${buttonCentre},${circleTop}" \
         \( "$glyph" -fill "${inactiveGlyph}" -colorize 100 \) \
@@ -104,6 +107,7 @@ stdenvNoCC.mkDerivation {
 
   passthru = {
     inherit
+      canvasSize
       buttonSize
       circleRadius
       glyphSize

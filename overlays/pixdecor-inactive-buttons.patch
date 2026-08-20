@@ -2,7 +2,14 @@ diff --git a/metadata/pixdecor.xml b/metadata/pixdecor.xml
 index 571e4cc..8664dae 100644
 --- a/metadata/pixdecor.xml
 +++ b/metadata/pixdecor.xml
-@@ -282,6 +282,54 @@
+@@ -19,0 +20,6 @@
++			<option name="title_height" type="int">
++				<_short>Titlebar Height</_short>
++				<_long>Sets the final title texture height in pixels. Zero uses the automatic height.</_long>
++				<default>0</default>
++				<min>0</min>
++			</option>
+@@ -282,6 +288,54 @@
  				<default></default>
  				<hint>file</hint>
  			</option>
@@ -164,7 +171,15 @@ diff --git a/src/deco-theme.cpp b/src/deco-theme.cpp
 index 7f9050b..029aa09 100644
 --- a/src/deco-theme.cpp
 +++ b/src/deco-theme.cpp
-@@ -23,6 +23,14 @@ wf::option_wrapper_t<std::string> button_minimize_hover_image{"pixdecor/button_mi
+@@ -11,6 +11,7 @@ namespace pixdecor
+ {
+ wf::option_wrapper_t<int> border_size{"pixdecor/border_size"};
+ wf::option_wrapper_t<bool> titlebar{"pixdecor/titlebar"};
++wf::option_wrapper_t<int> title_height{"pixdecor/title_height"};
+ wf::option_wrapper_t<wf::color_t> fg_color{"pixdecor/fg_color"};
+ wf::option_wrapper_t<wf::color_t> bg_color{"pixdecor/bg_color"};
+ wf::option_wrapper_t<wf::color_t> fg_text_color{"pixdecor/fg_text_color"};
+@@ -23,6 +24,14 @@ wf::option_wrapper_t<std::string> button_minimize_hover_image{"pixdecor/button_mi
  wf::option_wrapper_t<std::string> button_maximize_hover_image{"pixdecor/button_maximize_hover_image"};
  wf::option_wrapper_t<std::string> button_restore_hover_image{"pixdecor/button_restore_hover_image"};
  wf::option_wrapper_t<std::string> button_close_hover_image{"pixdecor/button_close_hover_image"};
@@ -179,7 +194,13 @@ index 7f9050b..029aa09 100644
  wf::option_wrapper_t<wf::color_t> button_color{"pixdecor/button_color"};
  wf::option_wrapper_t<double> button_line_thickness{"pixdecor/button_line_thickness"};
  /** Create a new theme with the default parameters */
-@@ -327,9 +335,22 @@ static cairo_surface_t *get_cairo_surface(button_type_t button, int w, int h, int
+@@ -150,0 +160,5 @@ int pixdecor_theme_t::get_title_height()
++    if (title_height > 0)
++    {
++        return titlebar ? int(title_height) : 0;
++    }
++
+@@ -327,9 +341,22 @@ static cairo_surface_t *get_cairo_surface(button_type_t button, int w, int h, int
      return surface;
  }
  
@@ -263,7 +284,14 @@ diff --git a/src/decoration.cpp b/src/decoration.cpp
 index db22493..370b2a1 100644
 --- a/src/decoration.cpp
 +++ b/src/decoration.cpp
-@@ -73,6 +73,14 @@ class wayfire_pixdecor : public wf::plugin_interface_t
+@@ -50,5 +50,6 @@ class wayfire_pixdecor : public wf::plugin_interface_t
+ {
+     wf::option_wrapper_t<int> border_size{"pixdecor/border_size"};
++    wf::option_wrapper_t<int> title_height{"pixdecor/title_height"};
+     wf::option_wrapper_t<std::string> title_font{"pixdecor/title_font"};
+     wf::option_wrapper_t<int> title_text_align{"pixdecor/title_text_align"};
+     wf::option_wrapper_t<bool> titlebar{"pixdecor/titlebar"};
+@@ -73,6 +74,14 @@ class wayfire_pixdecor : public wf::plugin_interface_t
      wf::option_wrapper_t<std::string> button_maximize_hover_image{"pixdecor/button_maximize_hover_image"};
      wf::option_wrapper_t<std::string> button_restore_hover_image{"pixdecor/button_restore_hover_image"};
      wf::option_wrapper_t<std::string> button_close_hover_image{"pixdecor/button_close_hover_image"};
@@ -278,7 +306,9 @@ index db22493..370b2a1 100644
      wf::option_wrapper_t<std::string> ignore_views_string{"pixdecor/ignore_views"};
      wf::option_wrapper_t<std::string> always_decorate_string{"pixdecor/always_decorate"};
      wf::option_wrapper_t<std::string> effect_type{"pixdecor/effect_type"};
-@@ -440,6 +448,14 @@ class wayfire_pixdecor : public wf::plugin_interface_t
+@@ -423,0 +433,1 @@ class wayfire_pixdecor : public wf::plugin_interface_t
++        title_height.set_callback([=] {recreate_frames();});
+@@ -440,6 +450,14 @@ class wayfire_pixdecor : public wf::plugin_interface_t
          button_maximize_hover_image.set_callback([=] {recreate_frames();});
          button_restore_hover_image.set_callback([=] {recreate_frames();});
          button_close_hover_image.set_callback([=] {recreate_frames();});
