@@ -47,7 +47,7 @@ let
   ];
 
   pname = "catppuccin-gtk";
-  version = "1.0.4-unstable-20250528";
+  version = "1.0.6";
 in
 
 lib.checkListOfEnum "${pname}: theme accent" validAccents accents lib.checkListOfEnum
@@ -70,10 +70,9 @@ lib.checkListOfEnum "${pname}: theme accent" validAccents accents lib.checkListO
     src = fetchFromGitHub {
       owner = "VanillaDaFur";
       repo = "catppuccin-gtk";
-      #tag = "v${version}";
-      rev = "07bef8cedda75ef42a4bac6f9ac5afc88d1ba062";
+      rev = "083e72740eab977c9d01b7a20652b624724d9f1f";
       fetchSubmodules = true;
-      hash = "sha256-QUpkKAm/rxbXc7AYdiHJXx4LRjSG73c6jBcIfVn6Y2M=";
+      hash = "sha256-xBwFua0IV1fZSUyS2KEDN/PQYkeGKTxYRWsQPLEK+QA=";
     };
 
     nativeBuildInputs = [
