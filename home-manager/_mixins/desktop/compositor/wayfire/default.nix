@@ -70,7 +70,7 @@ in
           session = "wayland-session start";
         };
         core = {
-          plugins = "animate autostart blur command foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswitch wm-actions wobbly xdg-activation";
+          plugins = "animate autostart blur command foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswipe vswitch wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
@@ -138,8 +138,14 @@ in
           next_view = "<alt> KEY_TAB";
           prev_view = "<alt> <shift> KEY_TAB";
         };
+        vswipe = {
+          enable_horizontal = true;
+          enable_vertical = false;
+          fingers = 3;
+        };
         # Virtual desktop switching with Ctrl+Alt+[1-8]
         vswitch = {
+          duration = 0;
           binding_1 = "<ctrl> <alt> KEY_1";
           binding_2 = "<ctrl> <alt> KEY_2";
           binding_3 = "<ctrl> <alt> KEY_3";
