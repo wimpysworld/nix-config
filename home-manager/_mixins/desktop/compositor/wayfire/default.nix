@@ -80,7 +80,7 @@ in
           session = "wayland-session start";
         };
         core = {
-          plugins = "animate autostart blur command foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswipe vswitch wm-actions wobbly xdg-activation";
+          plugins = "animate autostart blur command foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
@@ -116,10 +116,29 @@ in
           right_button_x_offset = -16;
           rounded_corner_radius = 10;
           shadow_color = toWayfireColor "crust" 0.4;
-          shadow_radius = 12;
+          shadow_radius = 0;
           title_height = 46;
           title_font = "${config.gtk.font.name} Bold ${toString config.gtk.font.size}";
           titlebar = true;
+        };
+        winshadows = {
+          clip_shadow_inside = true;
+          enabled_views = ''type is "toplevel" & floating is true'';
+          glow_color = "0.0 0.0 0.0 1.0";
+          glow_emissivity = 0.0;
+          glow_enabled = true;
+          glow_intensity = 0.5;
+          # The glow has no offset, so 35 pixels is the midpoint between GTK4's 30-pixel side and 40-pixel lower extents.
+          glow_radius_limit = 35;
+          glow_spread = 5.0;
+          glow_threshold = 0.09;
+          horizontal_offset = 0;
+          include_undecorated_views = false;
+          light_type = "gaussian";
+          overscale = 0.0;
+          shadow_color = "0.0 0.0 0.0 0.0";
+          shadow_radius = 1;
+          vertical_offset = 0;
         };
         # Grid snapping - position windows in screen regions
         grid = {
