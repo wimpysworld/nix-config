@@ -270,6 +270,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       settings = [
         {
           exclusive = true;
+          margin-bottom = lib.mkIf (host.desktop == "wayfire") 5;
           output = outputDisplay;
           layer = "bottom";
           position = "top";
