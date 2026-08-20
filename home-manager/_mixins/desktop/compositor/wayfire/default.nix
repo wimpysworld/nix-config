@@ -20,7 +20,7 @@ let
   pixdecorButtons = pkgs.pixdecor-catppuccin-buttons.override {
     activeGlyphColor = catppuccinPalette.getColor "text";
     inactiveCircleColor = catppuccinPalette.getColor "surface1";
-    inactiveGlyphColor = catppuccinPalette.getColor "subtext0";
+    inactiveGlyphColor = "#878892";
     hoverBackgroundColor = catppuccinPalette.getColor "surface0";
     minimiseCircleColor = catppuccinPalette.getColor "yellow";
     maximiseCircleColor = catppuccinPalette.getColor "green";
@@ -87,7 +87,7 @@ in
         };
         pixdecor = {
           bg_color = toWayfireColor "base" 0.95;
-          bg_text_color = toWayfireColor "subtext0" 1.0;
+          bg_text_color = "0.527451 0.531373 0.570588 1.0";
           border_size = 2;
           button_color = toWayfireColor "text" 1.0;
           button_close_hover_image = "${pixdecorButtonPath}/close-hover.png";
