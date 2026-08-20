@@ -108,6 +108,12 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           padding: 0.25rem 0.75rem;
         }
 
+        ${lib.optionalString (host.desktop == "wayfire") ''
+          #workspaces button {
+            padding: 0.25rem;
+          }
+        ''}
+
         #workspaces button.active,
         #workspaces button.focused {
           color: @peach;
