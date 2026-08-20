@@ -10,6 +10,13 @@
   modifiedPackages =
     final: prev:
     let
+      pixdecorRev = "1bf966ac581ef4fb85163d41dda5479a51e5457a";
+      pixdecorSrc = final.fetchFromGitHub {
+        owner = "soreau";
+        repo = "pixdecor";
+        rev = pixdecorRev;
+        hash = "sha256-KkppmNeKfOw7KmAVok5lGPlb8ZAC6cBUVoPRkZRfiss=";
+      };
       paseoPackages = inputs.paseo.packages.${prev.stdenv.hostPlatform.system} or { };
       # Paseo packages come from the upstream Paseo flake; the desktop client
       # reuses the patched daemon npm closure below.
@@ -30,6 +37,20 @@
       hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
 
       fresh = final.unstable.fresh-editor;
+
+      wayfirePlugins = prev.wayfirePlugins // {
+        wayfire-plugins-extra = prev.wayfirePlugins.wayfire-plugins-extra.overrideAttrs (oldAttrs: {
+          postPatch = (oldAttrs.postPatch or "") + ''
+            rm -rf subprojects/pixdecor
+            cp -r ${pixdecorSrc} subprojects/pixdecor
+            chmod -R u+w subprojects/pixdecor
+          '';
+
+          passthru = (oldAttrs.passthru or { }) // {
+            inherit pixdecorRev;
+          };
+        });
+      };
 
       voxtype = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.default;
       voxtype-vulkan = inputs.voxtype.packages.${final.stdenv.hostPlatform.system}.vulkan;

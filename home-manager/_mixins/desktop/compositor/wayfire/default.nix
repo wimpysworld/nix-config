@@ -17,6 +17,15 @@ let
       toFloat = hexString: toString (builtins.div (builtins.fromTOML "value=0x${hexString}").value 255.0);
     in
     "${toFloat red} ${toFloat green} ${toFloat blue} ${toString alpha}";
+  pixdecorButtons = pkgs.pixdecor-catppuccin-buttons.override {
+    normalBackgroundColor = catppuccinPalette.getColor "surface0";
+    normalGlyphColor = catppuccinPalette.getColor "text";
+    hoverGlyphColor = catppuccinPalette.getColor "crust";
+    minimiseHoverColor = catppuccinPalette.getColor "yellow";
+    maximiseHoverColor = catppuccinPalette.getColor "green";
+    closeHoverColor = catppuccinPalette.getColor "red";
+  };
+  pixdecorButtonPath = "${pixdecorButtons}/share/pixdecor/buttons";
   sessionAdapter = pkgs.writeShellApplication {
     name = "wayland-session-adapter";
     runtimeInputs = with pkgs; [
@@ -80,11 +89,22 @@ in
           bg_text_color = toWayfireColor "subtext0" 1.0;
           border_size = 2;
           button_color = toWayfireColor "text" 1.0;
+          button_close_hover_image = "${pixdecorButtonPath}/close-hover.png";
+          button_close_image = "${pixdecorButtonPath}/close.png";
           button_line_thickness = 1.0;
-          button_spacing = 6;
+          button_maximize_hover_image = "${pixdecorButtonPath}/maximize-hover.png";
+          button_maximize_image = "${pixdecorButtonPath}/maximize.png";
+          button_minimize_hover_image = "${pixdecorButtonPath}/minimize-hover.png";
+          button_minimize_image = "${pixdecorButtonPath}/minimize.png";
+          button_restore_hover_image = "${pixdecorButtonPath}/restore-hover.png";
+          button_restore_image = "${pixdecorButtonPath}/restore.png";
+          left_button_spacing = 6;
+          left_button_x_offset = 0;
           fg_color = toWayfireColor "mantle" 1.0;
           fg_text_color = toWayfireColor "text" 1.0;
           overlay_engine = "rounded_corners";
+          right_button_spacing = 6;
+          right_button_x_offset = 0;
           rounded_corner_radius = 10;
           shadow_color = toWayfireColor "crust" 0.4;
           shadow_radius = 12;
