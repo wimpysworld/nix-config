@@ -18,12 +18,13 @@ let
     in
     "${toFloat red} ${toFloat green} ${toFloat blue} ${toString alpha}";
   pixdecorButtons = pkgs.pixdecor-catppuccin-buttons.override {
-    normalBackgroundColor = catppuccinPalette.getColor "surface0";
-    normalGlyphColor = catppuccinPalette.getColor "text";
-    hoverGlyphColor = catppuccinPalette.getColor "crust";
-    minimiseHoverColor = catppuccinPalette.getColor "yellow";
-    maximiseHoverColor = catppuccinPalette.getColor "green";
-    closeHoverColor = catppuccinPalette.getColor "red";
+    activeGlyphColor = catppuccinPalette.getColor "text";
+    inactiveCircleColor = catppuccinPalette.getColor "surface0";
+    inactiveGlyphColor = catppuccinPalette.getColor "subtext0";
+    hoverBackgroundColor = catppuccinPalette.getColor "surface1";
+    minimiseCircleColor = catppuccinPalette.getColor "yellow";
+    maximiseCircleColor = catppuccinPalette.getColor "green";
+    closeCircleColor = catppuccinPalette.getColor "red";
   };
   pixdecorButtonPath = "${pixdecorButtons}/share/pixdecor/buttons";
   sessionAdapter = pkgs.writeShellApplication {
