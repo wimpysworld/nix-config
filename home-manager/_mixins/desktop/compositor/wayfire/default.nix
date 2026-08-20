@@ -86,7 +86,7 @@ in
           vheight = 1;
         };
         pixdecor = {
-          bg_color = toWayfireColor "base" 0.95;
+          bg_color = toWayfireColor "base" 1.0;
           bg_text_color = "0.527451 0.531373 0.570588 1.0";
           border_size = 2;
           button_color = toWayfireColor "text" 1.0;
