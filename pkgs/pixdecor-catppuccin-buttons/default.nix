@@ -30,9 +30,9 @@ let
   inactiveCircle =
     if inactiveCircleColor == null then defaultColors.surface2.hex else inactiveCircleColor;
   inactiveGlyph =
-    if inactiveGlyphColor == null then defaultColors.subtext1.hex else inactiveGlyphColor;
+    if inactiveGlyphColor == null then defaultColors.subtext0.hex else inactiveGlyphColor;
   hoverBackground =
-    if hoverBackgroundColor == null then defaultColors.surface1.hex else hoverBackgroundColor;
+    if hoverBackgroundColor == null then defaultColors.surface0.hex else hoverBackgroundColor;
   minimiseCircle =
     if minimiseCircleColor == null then defaultColors.yellow.hex else minimiseCircleColor;
   maximiseCircle =
