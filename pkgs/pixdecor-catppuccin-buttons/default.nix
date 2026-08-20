@@ -4,10 +4,10 @@
   librsvg,
   stdenvNoCC,
   canvasSize ? 34,
-  buttonSize ? 18,
+  buttonSize ? 30,
   circleRadius ? 7,
   glyphSize ? 16,
-  hoverCornerRadius ? 5,
+  hoverCornerRadius ? 8,
   activeGlyphColor ? null,
   inactiveCircleColor ? null,
   inactiveGlyphColor ? null,
@@ -28,9 +28,8 @@ let
   gtkAssets = "${catppuccin-gtk.src}/sources/colloid/src/assets/gtk/symbolics";
   activeGlyph = if activeGlyphColor == null then defaultColors.text.hex else activeGlyphColor;
   inactiveCircle =
-    if inactiveCircleColor == null then defaultColors.surface0.hex else inactiveCircleColor;
-  inactiveGlyph =
-    if inactiveGlyphColor == null then defaultColors.subtext0.hex else inactiveGlyphColor;
+    if inactiveCircleColor == null then defaultColors.overlay0.hex else inactiveCircleColor;
+  inactiveGlyph = if inactiveGlyphColor == null then defaultColors.text.hex else inactiveGlyphColor;
   hoverBackground =
     if hoverBackgroundColor == null then defaultColors.surface1.hex else hoverBackgroundColor;
   minimiseCircle =

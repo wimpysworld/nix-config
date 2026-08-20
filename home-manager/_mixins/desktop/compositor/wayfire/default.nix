@@ -19,8 +19,8 @@ let
     "${toFloat red} ${toFloat green} ${toFloat blue} ${toString alpha}";
   pixdecorButtons = pkgs.pixdecor-catppuccin-buttons.override {
     activeGlyphColor = catppuccinPalette.getColor "text";
-    inactiveCircleColor = catppuccinPalette.getColor "surface0";
-    inactiveGlyphColor = catppuccinPalette.getColor "subtext0";
+    inactiveCircleColor = catppuccinPalette.getColor "overlay0";
+    inactiveGlyphColor = catppuccinPalette.getColor "text";
     hoverBackgroundColor = catppuccinPalette.getColor "surface1";
     minimiseCircleColor = catppuccinPalette.getColor "yellow";
     maximiseCircleColor = catppuccinPalette.getColor "green";
