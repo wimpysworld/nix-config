@@ -17,6 +17,12 @@ let
     variant = catppuccinPalette.flavor;
   };
   iconTheme = if catppuccinPalette.isDark then "Papirus-Dark" else "Papirus-Light";
+  regreetDataDirs = lib.makeSearchPath "share" [
+    config.services.displayManager.sessionData.desktops
+    gtkThemePackage
+    cursorPackage
+    pkgs.papirus-icon-theme
+  ];
   # Reference for setting display configuration for cage
   # - https://github.com/cage-kiosk/cage/issues/304
   # - https://github.com/cage-kiosk/cage/issues/257
@@ -36,7 +42,7 @@ let
     export GTK_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard"
     export XCURSOR_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors"
     export XCURSOR_SIZE="32"
-    export XDG_DATA_DIRS="${gtkThemePackage}/share:${cursorPackage}/share:${pkgs.papirus-icon-theme}/share:$XDG_DATA_DIRS"
+    export XDG_DATA_DIRS="${regreetDataDirs}"
 
     # If there is a kanshi profile for regreet, use it.
     KANSHI_REGREET="$(${pkgs.coreutils}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
