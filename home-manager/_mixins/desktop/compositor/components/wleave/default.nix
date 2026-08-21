@@ -120,7 +120,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         button:hover {
-            background-color: ${palette.mkRgba "surface0" "0.1"};
+            background-color: ${palette.mkRgba "crust" "0.5"};
         }
 
         button:focus {
