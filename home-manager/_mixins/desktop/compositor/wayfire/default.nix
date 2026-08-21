@@ -80,10 +80,15 @@ in
           session = "wayland-session start";
         };
         core = {
-          plugins = "animate autostart blur command foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
+          plugins = "animate autostart blur command cube foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
+        };
+        cube = {
+          activate = "none";
+          rotate_left = "<ctrl> <alt> KEY_LEFT";
+          rotate_right = "<ctrl> <alt> KEY_RIGHT";
         };
         pixdecor = {
           bg_color = toWayfireColor "base" 1.0;
@@ -204,18 +209,19 @@ in
           binding_7 = "<ctrl> <alt> KEY_7";
           binding_8 = "<ctrl> <alt> KEY_8";
           binding_down = "none";
-          binding_left = "<ctrl> <alt> KEY_LEFT";
-          binding_right = "<ctrl> <alt> KEY_RIGHT";
+          binding_last = "none";
+          binding_left = "none";
+          binding_right = "none";
           binding_up = "none";
-          with_win_1 = "<super> <alt> KEY_1";
-          with_win_2 = "<super> <alt> KEY_2";
-          with_win_3 = "<super> <alt> KEY_3";
-          with_win_4 = "<super> <alt> KEY_4";
-          with_win_5 = "<super> <alt> KEY_5";
-          with_win_6 = "<super> <alt> KEY_6";
-          with_win_7 = "<super> <alt> KEY_7";
-          with_win_8 = "<super> <alt> KEY_8";
+          send_win_down = "none";
+          send_win_last = "none";
+          send_win_left = "none";
+          send_win_right = "none";
+          send_win_up = "none";
           with_win_down = "none";
+          with_win_last = "none";
+          with_win_left = "none";
+          with_win_right = "none";
           with_win_up = "none";
         };
         # Window management actions
