@@ -80,7 +80,7 @@ in
           session = "wayland-session start";
         };
         core = {
-          plugins = "animate autostart blur command cube foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
+          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
@@ -90,6 +90,7 @@ in
           rotate_left = "<ctrl> <alt> KEY_LEFT";
           rotate_right = "<ctrl> <alt> KEY_RIGHT";
         };
+        expo.toggle = "<super> KEY_HOME";
         pixdecor = {
           bg_color = toWayfireColor "base" 1.0;
           bg_text_color = "0.527451 0.531373 0.570588 1.0";
