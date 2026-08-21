@@ -36,5 +36,5 @@ lib.mkIf (host.is.workstation && supportedDesktop) {
     sessionVariables.XDG_DATA_DIRS = map (session: "${session}/share") hiddenWaylandSessions;
     systemPackages = [ waylandShim ];
   };
-  services.displayManager.sessionPackages = [ waylandShim ];
+  services.displayManager.sessionPackages = lib.mkForce [ waylandShim ];
 }
