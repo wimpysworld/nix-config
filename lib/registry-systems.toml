@@ -28,6 +28,7 @@
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
+desktop = "wayfire"
 tags = [
   "framework",
   "policy",
