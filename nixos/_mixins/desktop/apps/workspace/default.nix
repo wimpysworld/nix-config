@@ -41,6 +41,7 @@ let
   workspaceBrowserExtensions = [
     "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
     "lodbfhdipoipcjmlebjbgmmgekckhpfb" # Harper
+    "dfjdfadcciciboknnahlhgonamhfgmhp" # Disable Automatic Gain Control
     "mdpfkohgfpidohkakdbpmnngaocglmhl" # Disable Ctrl + Scroll Zoom
     "aeblfdkhhhdcdjpifhhbdiojplfjncoa" # 1Password
     "mdkgfdijbhbcbajcdlebbodoppgnmhab" # GoLinks

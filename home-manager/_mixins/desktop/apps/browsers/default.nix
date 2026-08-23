@@ -16,7 +16,7 @@ let
     { id = "mnjggcdmjocbbbhaepdhchncahnbgone"; } # SponsorBlock for YouTube
     { id = "gebbhagfogifgggkldgodflihgfeippi"; } # Return YouTube Dislike
     { id = "fdpohaocaechififmbbbbbknoalclacl"; } # GoFullPage
-    { id = "clpapnmmlmecieknddelobgikompchkk"; } # Disable Automatic Gain Control
+    { id = "dfjdfadcciciboknnahlhgonamhfgmhp"; } # Disable Automatic Gain Control
     { id = "cdglnehniifkbagbbombnjghhcihifij"; } # Kagi
     { id = "dpaefegpjhgeplnkomgbcmmlffkijbgp"; } # Kagi Summariser
     #{ id = "bkkmolkhemgaeaeggcmfbghljjjoofoh"; } # Catppuccin Mocha

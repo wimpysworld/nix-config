@@ -48,7 +48,7 @@ let
     "mnjggcdmjocbbbhaepdhchncahnbgone" # SponsorBlock for YouTube
     "gebbhagfogifgggkldgodflihgfeippi" # Return YouTube Dislike
     "fdpohaocaechififmbbbbbknoalclacl" # GoFullPage
-    "clpapnmmlmecieknddelobgikompchkk" # Disable Automatic Gain Control
+    "dfjdfadcciciboknnahlhgonamhfgmhp" # Disable Automatic Gain Control
     "cdglnehniifkbagbbombnjghhcihifij" # Kagi
     "dpaefegpjhgeplnkomgbcmmlffkijbgp" # Kagi Summariser
     #"bkkmolkhemgaeaeggcmfbghljjjoofoh" # Catppuccin Mocha
@@ -266,6 +266,12 @@ in
           "PasswordManagerEnabled" = false;
           "PopupBlocking" = {
             "Default" = true;
+          };
+          "Preferences" = {
+            "media.getusermedia.audio.processing.agc.enabled" = {
+              "Value" = false;
+              "Status" = "locked";
+            };
           };
           "PromptForDownloadLocation" = true;
           "SearchBar" = "unified";
