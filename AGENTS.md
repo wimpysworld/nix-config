@@ -94,6 +94,10 @@ Key gates:
 - Never write `wayland.windowManager.hyprland` or `wayland.windowManager.wayfire` from shared components.
 - When adding a compositor, add its contract entry, NixOS and Home Manager modules, bindings, and session adapter.
 - Add its portal and service metadata, capability gates, and forced evaluation when no registry host selects it.
+- Derive session targets and lifecycle environments from `lib/wayland-compositors.nix`.
+- Attach session services to the selected compositor target with both `WantedBy` and `PartOf`.
+- Keep recovery best-effort. Fail session startup when environment import or target startup fails.
+- Run logout orchestration outside the compositor target so target shutdown cannot terminate logout orchestration early.
 - Preserve valid upstream names exactly, such as `hyprpicker`.
 - Keep generic fallbacks for unsupported compositors. Gamescope must use the generic fallback.
 
