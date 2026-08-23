@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
@@ -29,6 +30,7 @@ in
   ];
 
   config = lib.mkIf (compositor != null) {
+    home.packages = [ pkgs.wdisplays ];
     wayland.systemd.target = compositor.sessionTarget;
   };
 }

@@ -90,7 +90,6 @@ in
 
     home.packages = with pkgs; [
       sessionAdapter
-      wdisplays
     ];
     home.pointerCursor.hyprcursor = {
       enable = true;
