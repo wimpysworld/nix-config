@@ -37,11 +37,17 @@ function prepare_exit() {
 }
 
 function start_session() {
+	local recovery_status=0
+
 	if [ -z "$session_target" ]; then
 		return 0
 	fi
 
-	wayland-session-cleanup recover || return
+	wayland-session-cleanup recover || recovery_status=$?
+	if [ "$recovery_status" -ne 0 ]; then
+		printf 'wayland-session: recovery failed with code %d, startup will continue\n' \
+			"$recovery_status" >&2
+	fi
 	dbus-update-activation-environment --systemd "${session_environment[@]}" || return
 	systemctl --user start "$session_target"
 }

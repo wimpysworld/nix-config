@@ -38,6 +38,20 @@ systemctl)
 	fi
 	if [[ $* == "--user show --property=Wants --value "* ]]; then
 		printf '%s\n' "${FAKE_SYSTEMCTL_WANTS:-}"
+	elif [[ $* == "--user show --property=LoadState --value "* ]]; then
+		unit=${*: -1}
+		if selected "${FAKE_SYSTEMCTL_NOT_FOUND:-}" "$unit"; then
+			printf 'not-found\n'
+		else
+			printf 'loaded\n'
+		fi
+	elif [[ $* == "--user show --property=ActiveState --value "* ]]; then
+		unit=${*: -1}
+		if selected "${FAKE_SYSTEMCTL_INACTIVE:-}" "$unit"; then
+			printf 'inactive\n'
+		else
+			printf 'active\n'
+		fi
 	fi
 	;;
 dbus-update-activation-environment)

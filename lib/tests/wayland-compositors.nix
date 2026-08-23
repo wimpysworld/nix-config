@@ -293,6 +293,45 @@ pkgs.runCommand "wayland-compositor-contract" { } ''
       ${sessionPackage felkorHome}/bin/wayland-session >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${hyprlandStartupArguments} \"\$@\""} \
       ${sessionPackage skryeHome}/bin/wayland-session >/dev/null
+
+    export bane_startup_log="$TMPDIR/bane-startup.log"
+    : > "$bane_startup_log"
+    record_bane_event() {
+      local argument
+      local command_name=$1
+      shift
+
+      printf '%s' "$command_name" >> "$bane_startup_log"
+      for argument in "$@"; do
+        printf ' <%s>' "$argument" >> "$bane_startup_log"
+      done
+      printf '\n' >> "$bane_startup_log"
+    }
+    wayland-session-cleanup() {
+      record_bane_event wayland-session-cleanup "$@"
+      printf 'wayland-session-cleanup: generated Bane recovery warning\n' >&2
+      return 9
+    }
+    dbus-update-activation-environment() {
+      record_bane_event dbus-update-activation-environment "$@"
+    }
+    systemctl() {
+      record_bane_event systemctl "$@"
+    }
+    hostname() {
+      printf 'bane\n'
+    }
+    export -f record_bane_event wayland-session-cleanup
+    export -f dbus-update-activation-environment systemctl hostname
+
+    ${sessionPackage baneHome}/bin/wayland-session start 2>"$TMPDIR/bane-startup.stderr"
+    printf '%s' $'wayland-session-cleanup <recover>\ndbus-update-activation-environment <--systemd> <DISPLAY> <WAYLAND_DISPLAY> <XDG_SESSION_TYPE> <XDG_CURRENT_DESKTOP> <NIXOS_OZONE_WL> <XCURSOR_THEME> <XCURSOR_SIZE> <WAYFIRE_SOCKET>\nsystemctl <--user> <start> <wayfire-session.target>\n' \
+      >"$TMPDIR/bane-startup.expected"
+    diff -u "$TMPDIR/bane-startup.expected" "$bane_startup_log"
+    grep -Fx 'wayland-session-cleanup: generated Bane recovery warning' \
+      "$TMPDIR/bane-startup.stderr" >/dev/null
+    grep -Fx 'wayland-session: recovery failed with code 9, startup will continue' \
+      "$TMPDIR/bane-startup.stderr" >/dev/null
   ''}
   printf '%s\n' ${lib.escapeShellArg (builtins.toJSON contractResult)} > "$out"
 ''

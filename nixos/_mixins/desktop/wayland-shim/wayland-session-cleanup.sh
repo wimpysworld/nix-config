@@ -38,19 +38,62 @@ attempt() {
 	"$@" || record_failure "$description" "$?"
 }
 
+unit_is_missing() {
+	local load_state
+	local unit=$1
+
+	load_state=$(systemctl --user show --property=LoadState --value "$unit") || return 1
+	[[ $load_state == "not-found" ]]
+}
+
+unit_needs_no_stop() {
+	local active_state
+	local unit=$1
+
+	if unit_is_missing "$unit"; then
+		return 0
+	fi
+	active_state=$(systemctl --user show --property=ActiveState --value "$unit") || return 1
+	[[ $active_state == "inactive" || $active_state == "failed" || $active_state == "deactivating" ]]
+}
+
+stop_unit() {
+	local step_status
+	local unit=$1
+
+	if systemctl --user stop "$unit"; then
+		return 0
+	else
+		step_status=$?
+	fi
+	if unit_needs_no_stop "$unit"; then
+		return 0
+	fi
+	record_failure "stop $unit" "$step_status"
+}
+
 stop_session() {
-	attempt "stop $session_target" systemctl --user stop "$session_target"
-	attempt "stop $portal_service" systemctl --user stop "$portal_service"
+	stop_unit "$session_target"
+	stop_unit "$portal_service"
 }
 
 reset_start_limits() {
+	local load_state
 	local service
+	local step_status
 	local wants
 	local -a reset_units=("$session_target" "$portal_service")
+	local -a retry_units=()
 	local -a wanted_units=()
 
-	wants=$(systemctl --user show --property=Wants --value "$session_target") \
-		|| record_failure "read direct wants for $session_target" "$?"
+	if wants=$(systemctl --user show --property=Wants --value "$session_target"); then
+		:
+	else
+		step_status=$?
+		if ! unit_is_missing "$session_target"; then
+			record_failure "read direct wants for $session_target" "$step_status"
+		fi
+	fi
 	read -r -a wanted_units <<<"${wants:-}"
 	for service in "${wanted_units[@]}"; do
 		case "$service" in
@@ -58,7 +101,24 @@ reset_start_limits() {
 		esac
 	done
 
-	attempt "reset session failures" systemctl --user reset-failed "${reset_units[@]}"
+	if systemctl --user reset-failed "${reset_units[@]}"; then
+		return 0
+	else
+		step_status=$?
+	fi
+
+	for service in "${reset_units[@]}"; do
+		load_state=$(systemctl --user show --property=LoadState --value "$service") || load_state=""
+		if [[ $load_state != "not-found" ]]; then
+			retry_units+=("$service")
+		fi
+	done
+
+	if (( ${#retry_units[@]} == ${#reset_units[@]} )); then
+		record_failure "reset session failures" "$step_status"
+	elif (( ${#retry_units[@]} > 0 )); then
+		attempt "reset session failures" systemctl --user reset-failed "${retry_units[@]}"
+	fi
 }
 
 neutralise_environment() {
