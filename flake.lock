@@ -50,29 +50,6 @@
         "type": "github"
       }
     },
-    "bzmenu": {
-      "inputs": {
-        "flake-utils": [
-          "flake-utils"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-overlay": [
-          "rust-overlay"
-        ]
-      },
-      "locked": {
-        "lastModified": 1772318773,
-        "narHash": "sha256-O8SC/dfAo1fxnYuaXTTFJCHxOVQgU0sWNdF8lcxdrlU=",
-        "type": "tarball",
-        "url": "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.4.0.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.4.0.tar.gz"
-      }
-    },
     "catppuccin": {
       "inputs": {
         "nixpkgs": [
@@ -542,29 +519,6 @@
         "type": "github"
       }
     },
-    "iwmenu": {
-      "inputs": {
-        "flake-utils": [
-          "flake-utils"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-overlay": [
-          "rust-overlay"
-        ]
-      },
-      "locked": {
-        "lastModified": 1772318569,
-        "narHash": "sha256-2DprhM1gaKWqj3eORLqTuy5Qq0htI+kQhKR3rM0DL/Y=",
-        "type": "tarball",
-        "url": "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.4.0.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.4.0.tar.gz"
-      }
-    },
     "kolide-launcher": {
       "inputs": {
         "flake-compat": [
@@ -965,29 +919,6 @@
         "type": "github"
       }
     },
-    "pwmenu": {
-      "inputs": {
-        "flake-utils": [
-          "flake-utils"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-overlay": [
-          "rust-overlay"
-        ]
-      },
-      "locked": {
-        "lastModified": 1772318919,
-        "narHash": "sha256-aaYXW9QX8JKk1Zk3wk3g4YGjP7DplQKqEzx7YC8w+Ts=",
-        "type": "tarball",
-        "url": "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.4.0.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.4.0.tar.gz"
-      }
-    },
     "pyproject-build-systems": {
       "inputs": {
         "nixpkgs": [
@@ -1040,7 +971,6 @@
     },
     "root": {
       "inputs": {
-        "bzmenu": "bzmenu",
         "catppuccin": "catppuccin",
         "concord": "concord",
         "determinate": "determinate",
@@ -1051,7 +981,6 @@
         "flake-utils": "flake-utils",
         "hermes-agent": "hermes-agent",
         "home-manager": "home-manager",
-        "iwmenu": "iwmenu",
         "kolide-launcher": "kolide-launcher",
         "lan-mouse": "lan-mouse",
         "llm-agents": "llm-agents",
@@ -1065,7 +994,6 @@
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "paseo": "paseo",
-        "pwmenu": "pwmenu",
         "rust-overlay": "rust-overlay",
         "sidra": "sidra",
         "sops-nix": "sops-nix",

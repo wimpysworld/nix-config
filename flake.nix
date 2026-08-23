@@ -40,18 +40,6 @@
     voxtype.url = "github:peteonrails/voxtype/v0.7.5";
     voxtype.inputs.nixpkgs.follows = "nixpkgs-unstable";
     voxtype.inputs.flake-utils.follows = "flake-utils";
-    bzmenu.url = "https://github.com/e-tho/bzmenu/archive/refs/tags/v0.4.0.tar.gz";
-    bzmenu.inputs.nixpkgs.follows = "nixpkgs";
-    bzmenu.inputs.rust-overlay.follows = "rust-overlay";
-    bzmenu.inputs.flake-utils.follows = "flake-utils";
-    iwmenu.url = "https://github.com/e-tho/iwmenu/archive/refs/tags/v0.4.0.tar.gz";
-    iwmenu.inputs.nixpkgs.follows = "nixpkgs";
-    iwmenu.inputs.rust-overlay.follows = "rust-overlay";
-    iwmenu.inputs.flake-utils.follows = "flake-utils";
-    pwmenu.url = "https://github.com/e-tho/pwmenu/archive/refs/tags/v0.4.0.tar.gz";
-    pwmenu.inputs.nixpkgs.follows = "nixpkgs";
-    pwmenu.inputs.rust-overlay.follows = "rust-overlay";
-    pwmenu.inputs.flake-utils.follows = "flake-utils";
     catppuccin.url = "github:catppuccin/nix/release-26.05";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     direnv-instant.url = "github:Mic92/direnv-instant";
@@ -125,15 +113,15 @@
         localPackagesPath = ./pkgs;
         linuxOnlyFlakeInputs = {
           inherit (inputs)
-            bzmenu
-            iwmenu
-            pwmenu
             sidra
             ;
         };
         linuxOnlyOverlaidPackages = [
+          "bzmenu"
+          "iwmenu"
           "paseo"
           "paseo-desktop"
+          "pwmenu"
         ];
       };
 

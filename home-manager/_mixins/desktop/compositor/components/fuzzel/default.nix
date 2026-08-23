@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
@@ -70,9 +69,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
   # Fuzzel menus for app launcher, emoji picker, wifi manager, clipboard manager, etc
   home = {
     packages = with pkgs; [
-      inputs.bzmenu.packages.${pkgs.stdenv.hostPlatform.system}.default
-      inputs.iwmenu.packages.${pkgs.stdenv.hostPlatform.system}.default
-      inputs.pwmenu.packages.${pkgs.stdenv.hostPlatform.system}.default
+      bzmenu
       fuzzelActions
       fuzzelAudio
       fuzzelBluetooth
@@ -81,6 +78,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       fuzzelHistory
       fuzzelLauncher
       fuzzelWifi
+      iwmenu
+      pwmenu
       wl-clipboard
       wtype
     ];
