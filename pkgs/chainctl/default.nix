@@ -12,7 +12,7 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "chainctl";
-  version = "0.2.333";
+  version = "0.2.335";
 
   # Upstream installer: https://edu.chainguard.dev/chainguard/chainctl-usage/how-to-install-chainctl/
   src =
@@ -59,19 +59,19 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     {
       x86_64-linux = fetchurl {
         url = "${base}/chainctl_linux_x86_64";
-        hash = "sha256-3Tvl+wH3RofpaLJyR58vNJrtQ2c2BkJep+CJjjwLusA=";
+        hash = "sha256-EHEwS0jngRP1nXIG3Ot6JXx/7oqeEJnjNBsnIzmHVms=";
       };
       aarch64-linux = fetchurl {
         url = "${base}/chainctl_linux_arm64";
-        hash = "sha256-fBDNtulp4MWKidkFlxqr4kK/ciCgu5bgJt4BbBZqQ4c=";
+        hash = "sha256-DoeDF5gLpYnxBpNwQWIQ3SNPSBdOlBFUu39A1qxDlPA=";
       };
       x86_64-darwin = fetchurl {
         url = "${base}/chainctl_darwin_x86_64";
-        hash = "sha256-l/4kR001l2Mq7tHV2VM6Ds+znygCo4/vR4AyQMxjrHc=";
+        hash = "sha256-aOBqBJpaISM0VXCgB08dKHDhv+m6yHOos5BUya3MO64=";
       };
       aarch64-darwin = fetchurl {
         url = "${base}/chainctl_darwin_arm64";
-        hash = "sha256-l4xH3qxRR3FOW/tD+WRkU+JM1lwenixun4AEderzY74=";
+        hash = "sha256-Zb1f82vW6Jn/4NJB39G4kyWM2c+Rq+AXAw3Im/xDXoI=";
       };
     };
 
