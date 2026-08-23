@@ -18,6 +18,23 @@
         ];
       };
       sessionTarget = "hyprland-session.target";
+      startupEnvironment = [
+        "DISPLAY"
+        "WAYLAND_DISPLAY"
+        "XDG_SESSION_TYPE"
+        "XDG_CURRENT_DESKTOP"
+        "NIXOS_OZONE_WL"
+        "XCURSOR_THEME"
+        "XCURSOR_SIZE"
+        "HYPRLAND_INSTANCE_SIGNATURE"
+      ];
+      ephemeralEnvironment = [
+        "DISPLAY"
+        "HYPRLAND_INSTANCE_SIGNATURE"
+        "WAYLAND_DISPLAY"
+        "XDG_SESSION_TYPE"
+        "XDG_CURRENT_DESKTOP"
+      ];
       portal = {
         backend = "hyprland";
         packageAttr = "xdg-desktop-portal-hyprland";
@@ -68,6 +85,23 @@
         ];
       };
       sessionTarget = "wayfire-session.target";
+      startupEnvironment = [
+        "DISPLAY"
+        "WAYLAND_DISPLAY"
+        "XDG_SESSION_TYPE"
+        "XDG_CURRENT_DESKTOP"
+        "NIXOS_OZONE_WL"
+        "XCURSOR_THEME"
+        "XCURSOR_SIZE"
+        "WAYFIRE_SOCKET"
+      ];
+      ephemeralEnvironment = [
+        "DISPLAY"
+        "WAYFIRE_SOCKET"
+        "WAYLAND_DISPLAY"
+        "XDG_SESSION_TYPE"
+        "XDG_CURRENT_DESKTOP"
+      ];
       portal = {
         backend = "wlr";
         packageAttr = "xdg-desktop-portal-wlr";

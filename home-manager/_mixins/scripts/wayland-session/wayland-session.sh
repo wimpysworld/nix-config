@@ -3,6 +3,23 @@
 set +e
 set +u
 
+if (( $# < 3 )); then
+	echo "wayland-session: invalid lifecycle configuration" >&2
+	exit 2
+fi
+
+session_target=$1
+environment_count=$2
+shift 2
+
+if [[ ! $environment_count =~ ^[0-9]+$ ]] || (( $# < environment_count + 1 )); then
+	echo "wayland-session: invalid environment configuration" >&2
+	exit 2
+fi
+
+session_environment=("${@:1:environment_count}")
+shift "$environment_count"
+
 HOSTNAME=$(hostname -s)
 
 function bluetooth_devices() {
@@ -19,6 +36,35 @@ function prepare_exit() {
 	playerctl --all-players pause
 }
 
+function start_session() {
+	if [ -z "$session_target" ]; then
+		return 0
+	fi
+
+	wayland-session-cleanup recover || return
+	dbus-update-activation-environment --systemd "${session_environment[@]}" || return
+	systemctl --user start "$session_target"
+}
+
+function prepare_logout() {
+	local status=0
+	local step_status
+
+	prepare_exit
+	step_status=$?
+	if [ "$step_status" -ne 0 ]; then
+		status=$step_status
+	fi
+
+	wayland-session-cleanup prepare
+	step_status=$?
+	if [ "$status" -eq 0 ] && [ "$step_status" -ne 0 ]; then
+		status=$step_status
+	fi
+
+	return "$status"
+}
+
 function require_adapter() {
 	if ! command -v wayland-session-adapter >/dev/null 2>&1; then
 		echo "wayland-session: no compositor adapter is available for $1" >&2
@@ -28,6 +74,11 @@ function require_adapter() {
 
 case "${1:-}" in
 start)
+	start_session
+	status=$?
+	if [ "$status" -ne 0 ]; then
+		exit "$status"
+	fi
 	bluetooth_devices connect
 	;;
 lock)
@@ -41,9 +92,18 @@ obliterate)
 	wayland-session-adapter close-windows
 	;;
 logout)
+	systemctl --user start --no-block wayland-session-logout.service
+	;;
+logout-action)
 	require_adapter logout
-	prepare_exit
+	prepare_logout
+	prepare_status=$?
 	wayland-session-adapter logout
+	adapter_status=$?
+	if [ "$adapter_status" -ne 0 ]; then
+		exit "$adapter_status"
+	fi
+	exit "$prepare_status"
 	;;
 reboot)
 	prepare_exit

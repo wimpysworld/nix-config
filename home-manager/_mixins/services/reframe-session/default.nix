@@ -5,6 +5,9 @@
   pkgs,
   ...
 }:
+let
+  sessionTarget = config.wayland.systemd.target;
+in
 lib.mkIf (noughtyLib.hostHasTag "reframe" && config.noughty.host.is.workstation) {
   # ReFrame synchronises clipboard text through reframe-session, which must
   # run inside the graphical session. The NixOS mixin strips the package's
@@ -14,8 +17,8 @@ lib.mkIf (noughtyLib.hostHasTag "reframe" && config.noughty.host.is.workstation)
   systemd.user.services.reframe-session = {
     Unit = {
       Description = "ReFrame clipboard synchronisation";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
+      After = [ sessionTarget ];
+      PartOf = [ sessionTarget ];
     };
     Service = {
       ExecStart = "${pkgs.reframe}/bin/reframe-session --socket-dir=/run/reframe-session";
@@ -23,7 +26,7 @@ lib.mkIf (noughtyLib.hostHasTag "reframe" && config.noughty.host.is.workstation)
       RestartSec = 5;
     };
     Install = {
-      WantedBy = [ "graphical-session.target" ];
+      WantedBy = [ sessionTarget ];
     };
   };
 }

@@ -1,3 +1,10 @@
+{
+  lib,
+  pkgs,
+  enableHostIntegration ? false,
+  nixosConfigurations ? { },
+  homeConfigurations ? { },
+}:
 let
   contract = import ../wayland-compositors.nix;
   requiredPaths = [
@@ -30,6 +37,8 @@ let
       "nativeSessionsPath"
     ]
     [ "sessionTarget" ]
+    [ "startupEnvironment" ]
+    [ "ephemeralEnvironment" ]
     [
       "portal"
       "backend"
@@ -84,6 +93,95 @@ let
         "null"
         "string"
       ];
+
+  sharedStartupEnvironment = [
+    "DISPLAY"
+    "WAYLAND_DISPLAY"
+    "XDG_SESSION_TYPE"
+    "XDG_CURRENT_DESKTOP"
+    "NIXOS_OZONE_WL"
+    "XCURSOR_THEME"
+    "XCURSOR_SIZE"
+  ];
+  hyprlandStartupEnvironment = sharedStartupEnvironment ++ [ "HYPRLAND_INSTANCE_SIGNATURE" ];
+  hyprlandEphemeralEnvironment = [
+    "DISPLAY"
+    "HYPRLAND_INSTANCE_SIGNATURE"
+    "WAYLAND_DISPLAY"
+    "XDG_SESSION_TYPE"
+    "XDG_CURRENT_DESKTOP"
+  ];
+  wayfireStartupEnvironment = sharedStartupEnvironment ++ [ "WAYFIRE_SOCKET" ];
+  wayfireEphemeralEnvironment = [
+    "DISPLAY"
+    "WAYFIRE_SOCKET"
+    "WAYLAND_DISPLAY"
+    "XDG_SESSION_TYPE"
+    "XDG_CURRENT_DESKTOP"
+  ];
+
+  requiredHostConfigurationsExist =
+    nixosConfigurations ? bane
+    && nixosConfigurations ? felkor
+    && nixosConfigurations ? skrye
+    && homeConfigurations ? "martin@bane"
+    && homeConfigurations ? "martin@felkor"
+    && homeConfigurations ? "martin@skrye";
+  baneHome = homeConfigurations."martin@bane".config;
+  felkorHome = homeConfigurations."martin@felkor".config;
+  skryeHome = homeConfigurations."martin@skrye".config;
+  packageNamed =
+    name: packages:
+    let
+      matches = builtins.filter (package: lib.getName package == name) packages;
+    in
+    assert builtins.length matches == 1;
+    builtins.head matches;
+  sessionPackage = home: packageNamed "wayland-session" home.home.packages;
+  logoutService = home: home.systemd.user.services.wayland-session-logout;
+  waylandShim =
+    host: builtins.head nixosConfigurations.${host}.config.services.displayManager.sessionPackages;
+
+  wayfireCleanupArguments = lib.escapeShellArgs (
+    [
+      "wayfire-session.target"
+      "xdg-desktop-portal-wlr"
+      "5"
+    ]
+    ++ wayfireEphemeralEnvironment
+  );
+  hyprlandCleanupArguments = lib.escapeShellArgs (
+    [
+      "hyprland-session.target"
+      "xdg-desktop-portal-hyprland"
+      "5"
+    ]
+    ++ hyprlandEphemeralEnvironment
+  );
+  wayfireStartupArguments = lib.escapeShellArgs (
+    [
+      "wayfire-session.target"
+      "8"
+    ]
+    ++ wayfireStartupEnvironment
+  );
+  hyprlandStartupArguments = lib.escapeShellArgs (
+    [
+      "hyprland-session.target"
+      "8"
+    ]
+    ++ hyprlandStartupEnvironment
+  );
+
+  contractResult = {
+    compositorNames = builtins.attrNames contract.compositors;
+    inherit (contract) default;
+    pureData = isPureData contract;
+    requiredFields = entriesHaveRequiredFields;
+  };
+  cleanupSource = ../../nixos/_mixins/desktop/wayland-shim/wayland-session-cleanup.sh;
+  launcherSource = ../../nixos/_mixins/desktop/wayland-shim/start-wayland.sh;
+  sessionSource = ../../home-manager/_mixins/scripts/wayland-session/wayland-session.sh;
 in
 assert
   builtins.attrNames contract.compositors == [
@@ -93,13 +191,108 @@ assert
 assert entriesHaveRequiredFields;
 assert isPureData contract;
 assert contract.default == "hyprland";
+assert contract.compositors.hyprland.sessionTarget == "hyprland-session.target";
+assert contract.compositors.hyprland.startupEnvironment == hyprlandStartupEnvironment;
+assert contract.compositors.hyprland.ephemeralEnvironment == hyprlandEphemeralEnvironment;
+assert contract.compositors.hyprland.portal.service == "xdg-desktop-portal-hyprland";
+assert contract.compositors.wayfire.sessionTarget == "wayfire-session.target";
+assert contract.compositors.wayfire.startupEnvironment == wayfireStartupEnvironment;
+assert contract.compositors.wayfire.ephemeralEnvironment == wayfireEphemeralEnvironment;
+assert contract.compositors.wayfire.portal.service == "xdg-desktop-portal-wlr";
 assert contract.compositors.hyprland.waybar.workspaceSettings.on-click == "activate";
 assert contract.compositors.hyprland.waybar.workspaceSettings.sort-by-number;
 assert !(contract.compositors.wayfire.waybar.workspaceSettings ? on-click);
 assert !(contract.compositors.wayfire.waybar.workspaceSettings ? sort-by-number);
-{
-  compositorNames = builtins.attrNames contract.compositors;
-  inherit (contract) default;
-  pureData = isPureData contract;
-  requiredFields = entriesHaveRequiredFields;
-}
+assert !enableHostIntegration || requiredHostConfigurationsExist;
+assert
+  !enableHostIntegration
+  || baneHome.wayland.windowManager.wayfire.systemd.variables == wayfireStartupEnvironment;
+assert
+  !enableHostIntegration
+  || felkorHome.wayland.windowManager.wayfire.systemd.variables == wayfireStartupEnvironment;
+assert
+  !enableHostIntegration
+  || skryeHome.wayland.windowManager.hyprland.systemd.variables == hyprlandStartupEnvironment;
+assert !enableHostIntegration || baneHome.wayland.systemd.target == "wayfire-session.target";
+assert !enableHostIntegration || felkorHome.wayland.systemd.target == "wayfire-session.target";
+assert !enableHostIntegration || skryeHome.wayland.systemd.target == "hyprland-session.target";
+assert
+  !enableHostIntegration
+  || baneHome.systemd.user.services.reframe-session.Unit.PartOf == [ "wayfire-session.target" ];
+assert
+  !enableHostIntegration
+  || baneHome.systemd.user.services.reframe-session.Install.WantedBy == [ "wayfire-session.target" ];
+assert
+  !enableHostIntegration
+  || felkorHome.systemd.user.services.lan-mouse.Unit.PartOf == [ "wayfire-session.target" ];
+assert
+  !enableHostIntegration
+  || felkorHome.systemd.user.services.lan-mouse.Install.WantedBy == [ "wayfire-session.target" ];
+assert
+  !enableHostIntegration
+  || skryeHome.systemd.user.services.reframe-session.Unit.PartOf == [ "hyprland-session.target" ];
+assert
+  !enableHostIntegration
+  ||
+    skryeHome.systemd.user.services.reframe-session.Install.WantedBy == [ "hyprland-session.target" ];
+assert
+  !enableHostIntegration
+  ||
+    (logoutService baneHome).Service.ExecStart == [
+      "${sessionPackage baneHome}/bin/wayland-session logout-action"
+    ];
+assert !enableHostIntegration || (logoutService baneHome).Service.Type == "oneshot";
+assert !enableHostIntegration || !((logoutService baneHome).Unit ? PartOf);
+assert !enableHostIntegration || !(logoutService baneHome ? Install);
+assert
+  !enableHostIntegration
+  ||
+    (logoutService felkorHome).Service.ExecStart == [
+      "${sessionPackage felkorHome}/bin/wayland-session logout-action"
+    ];
+assert !enableHostIntegration || (logoutService felkorHome).Service.Type == "oneshot";
+assert !enableHostIntegration || !((logoutService felkorHome).Unit ? PartOf);
+assert !enableHostIntegration || !(logoutService felkorHome ? Install);
+assert
+  !enableHostIntegration
+  ||
+    (logoutService skryeHome).Service.ExecStart == [
+      "${sessionPackage skryeHome}/bin/wayland-session logout-action"
+    ];
+assert !enableHostIntegration || (logoutService skryeHome).Service.Type == "oneshot";
+assert !enableHostIntegration || !((logoutService skryeHome).Unit ? PartOf);
+assert !enableHostIntegration || !(logoutService skryeHome ? Install);
+pkgs.runCommand "wayland-compositor-contract" { } ''
+  finalise_block=$(sed -n '/^finalise)/,/^recover)/p' ${cleanupSource})
+  test "$finalise_block" = $'finalise)\n\tstop_session\n\tneutralise_environment\n\treset_start_limits\n\t;;\nrecover)'
+
+  dbus_line=$(grep -nF 'dbus-update-activation-environment --systemd' ${cleanupSource} | cut -d: -f1)
+  systemd_line=$(grep -nF 'systemctl --user unset-environment' ${cleanupSource} | cut -d: -f1)
+  test "$dbus_line" -lt "$systemd_line"
+  grep -F -- 'systemctl --user show --property=Wants --value "$session_target"' \
+    ${cleanupSource} >/dev/null
+  grep -F -- 'reset-failed "''${reset_units[@]}"' ${cleanupSource} >/dev/null
+
+  prepare_line=$(grep -nF $'\tprepare_logout' ${sessionSource} | cut -d: -f1)
+  adapter_line=$(grep -nF $'\twayland-session-adapter logout' ${sessionSource} | cut -d: -f1)
+  test "$prepare_line" -lt "$adapter_line"
+  grep -F -- $'logout)\n\tsystemctl --user start --no-block wayland-session-logout.service' \
+    ${sessionSource} >/dev/null
+  grep -F -- 'exit "$launcher_status"' ${launcherSource} >/dev/null
+
+  ${lib.optionalString enableHostIntegration ''
+    grep -F -- ${lib.escapeShellArg wayfireCleanupArguments} \
+      ${waylandShim "bane"}/bin/wayland-session-cleanup >/dev/null
+    grep -F -- ${lib.escapeShellArg wayfireCleanupArguments} \
+      ${waylandShim "felkor"}/bin/wayland-session-cleanup >/dev/null
+    grep -F -- ${lib.escapeShellArg hyprlandCleanupArguments} \
+      ${waylandShim "skrye"}/bin/wayland-session-cleanup >/dev/null
+    grep -F -- ${lib.escapeShellArg "set -- ${wayfireStartupArguments} \"\$@\""} \
+      ${sessionPackage baneHome}/bin/wayland-session >/dev/null
+    grep -F -- ${lib.escapeShellArg "set -- ${wayfireStartupArguments} \"\$@\""} \
+      ${sessionPackage felkorHome}/bin/wayland-session >/dev/null
+    grep -F -- ${lib.escapeShellArg "set -- ${hyprlandStartupArguments} \"\$@\""} \
+      ${sessionPackage skryeHome}/bin/wayland-session >/dev/null
+  ''}
+  printf '%s\n' ${lib.escapeShellArg (builtins.toJSON contractResult)} > "$out"
+''

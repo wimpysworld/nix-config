@@ -20,6 +20,8 @@ let
     launcher = compositor.launcher.command;
     launcherPrefixArgs = compositor.launcher.prefixArgs;
     nativeSessions = lib.attrByPath compositor.launcher.nativeSessionsPath [ ] config;
+    inherit (compositor) ephemeralEnvironment sessionTarget;
+    portalService = compositor.portal.service;
   };
   hiddenWaylandSessions = map (
     name:

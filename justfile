@@ -198,9 +198,12 @@ check:
         fi
     done
 
-    # Check this system's per-system outputs (packages, devShells, formatter)
+    # Check this system's per-system outputs (checks, packages, devShells, formatter)
     echo " Per-system outputs (${system}):"
     nix eval .#formatter.${system}.drvPath --raw >/dev/null
+    for check in $(nix eval .#checks.${system} --apply builtins.attrNames --json | jq -r '.[]'); do
+        nix build .#checks.${system}.${check} --no-link
+    done
     for shell in $(nix eval .#devShells.${system} --apply builtins.attrNames --json | jq -r '.[]'); do
         nix eval .#devShells.${system}.${shell}.drvPath --raw >/dev/null
     done
@@ -242,6 +245,7 @@ eval-flake:
 
     echo " Per-system outputs (${system}):"
     nix eval .#packages.${system} --apply builtins.attrNames --json | jq -r '.[] | "    packages." + .'
+    nix eval .#checks.${system} --apply builtins.attrNames --json | jq -r '.[] | "    checks." + .'
     nix eval .#devShells.${system} --apply builtins.attrNames --json | jq -r '.[] | "    devShells." + .'
     nix eval .#formatter.${system}.name --raw | sed 's/^/    formatter: /'
     echo

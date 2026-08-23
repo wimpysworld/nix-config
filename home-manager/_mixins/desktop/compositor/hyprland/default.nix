@@ -7,6 +7,7 @@
 }:
 let
   inherit (config.noughty) host;
+  compositor = (import ../../../../../lib/wayland-compositors.nix).compositors.hyprland;
 
   # Format a float scale as a clean string; builtins.toString produces "1.000000" for 1.0.
   # Uses toJSON which gives "1.0", then strips the trailing ".0" if present.
@@ -203,9 +204,6 @@ in
             ignore_opacity = true;
           };
         };
-        exec-once = [
-          "wayland-session start"
-        ];
         general = {
           gesture = "3, horizontal, workspace";
           gaps_in = 5;
@@ -346,7 +344,8 @@ in
       };
       systemd = {
         enableXdgAutostart = true;
-        variables = [ "--all" ];
+        variables = compositor.startupEnvironment;
+        extraCommands = [ "wayland-session start" ];
       };
       xwayland.enable = true;
     };

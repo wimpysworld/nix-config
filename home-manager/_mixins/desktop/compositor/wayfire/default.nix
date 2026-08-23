@@ -7,6 +7,7 @@
 }:
 let
   inherit (config.noughty) host;
+  compositor = (import ../../../../../lib/wayland-compositors.nix).compositors.wayfire;
   toWayfireColor =
     color: alpha:
     let
@@ -58,15 +59,10 @@ in
         wcm
         wayfire-plugins-extra
       ];
-      systemd.variables = [
-        "DISPLAY"
-        "WAYLAND_DISPLAY"
-        "XDG_CURRENT_DESKTOP"
-        "NIXOS_OZONE_WL"
-        "XCURSOR_THEME"
-        "XCURSOR_SIZE"
-        "WAYFIRE_SOCKET"
-      ];
+      systemd = {
+        variables = compositor.startupEnvironment;
+        extraCommands = [ "wayland-session start" ];
+      };
       settings = {
         # Window animations
         animate = {
@@ -77,7 +73,6 @@ in
         autostart = {
           # Disable wf-shell autostart, we're using waybar et al instead
           autostart_wf_shell = false;
-          session = "wayland-session start";
         };
         core = {
           plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock shortcuts-inhibit switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";

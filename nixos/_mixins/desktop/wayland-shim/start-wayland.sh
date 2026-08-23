@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-if (( $# < 4 )); then
+if (( $# < 5 )); then
 	echo "start-wayland: invalid launcher configuration" >&2
 	exit 2
 fi
@@ -10,8 +10,9 @@ fi
 native_launcher=$1
 desktop_name=$2
 log_name=$3
-prefix_arg_count=$4
-shift 4
+cleanup_command=$4
+prefix_arg_count=$5
+shift 5
 
 if [[ ! $prefix_arg_count =~ ^[0-9]+$ ]] || (( $# < prefix_arg_count )); then
 	echo "start-wayland: invalid launcher prefix" >&2
@@ -38,7 +39,14 @@ fi
 set +e
 unbuffer "$native_launcher" "${launcher_prefix_args[@]}" "$@" 2>&1 | tee -a "$log_file" >/dev/null
 launcher_status=${PIPESTATUS[0]}
-set -e
+
+cleanup_status=0
+"$cleanup_command" finalise || cleanup_status=$?
+
+if (( cleanup_status != 0 )); then
+	printf '[%s] Session cleanup failed with code %d\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$cleanup_status" \
+		| tee -a "$log_file" >/dev/null
+fi
 
 printf '[%s] %s exited with code %d\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$desktop_name" "$launcher_status" \
 	| tee -a "$log_file" >/dev/null

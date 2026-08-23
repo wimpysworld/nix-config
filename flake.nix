@@ -137,6 +137,26 @@
         ];
       };
 
+      checks = builder.forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          includeHostConfigurations = system == "x86_64-linux";
+        in
+        {
+          wayland-compositors = import ./lib/tests/wayland-compositors.nix {
+            inherit (nixpkgs) lib;
+            inherit pkgs;
+            enableHostIntegration = includeHostConfigurations;
+            nixosConfigurations = if includeHostConfigurations then self.nixosConfigurations else { };
+            homeConfigurations = if includeHostConfigurations then self.homeConfigurations else { };
+          };
+          wayland-session-lifecycle = import ./lib/tests/wayland-session-lifecycle.nix {
+            inherit pkgs;
+          };
+        }
+      );
+
       formatter = builder.forAllSystems (
         system:
         let

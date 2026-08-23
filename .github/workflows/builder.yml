@@ -75,7 +75,7 @@ jobs:
           extra-conf: |
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
-      - name: Build devShells & formatter
+      - name: Build checks, devShells & formatter
         env:
           SYSTEM: ${{ matrix.target.system }}
           SHELLS_JSON: ${{ toJSON(matrix.target.shells) }}
@@ -116,6 +116,20 @@ jobs:
               FAILED+=("${ATTR}")
             fi
           fi
+
+          # Build checks for this platform.
+          while IFS= read -r check; do
+            [ -z "${check}" ] && continue
+            ATTR="checks.${SYSTEM}.${check}"
+            echo "🔨 Building ${ATTR}"
+            if nix build ".#${ATTR}" --no-link -L; then
+              echo "✅ Built ${ATTR}"
+              BUILT=$((BUILT + 1))
+            else
+              echo "❌ Failed to build ${ATTR}" >&2
+              FAILED+=("${ATTR}")
+            fi
+          done < <(nix eval ".#checks.${SYSTEM}" --apply builtins.attrNames --json | jq -r '.[]')
 
           echo ""
           echo "Built: ${BUILT}, Skipped: ${SKIPPED}, Failed: ${#FAILED[@]}"
