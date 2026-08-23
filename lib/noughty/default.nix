@@ -32,7 +32,7 @@ let
         description = "Vertical resolution in pixels.";
       };
       refresh = lib.mkOption {
-        type = lib.types.int;
+        type = lib.types.number;
         default = 60;
         description = "Refresh rate in Hz.";
       };

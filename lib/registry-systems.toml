@@ -53,9 +53,20 @@ acceleration = "vulkan"
 output = "eDP-1"
 width = 2560
 height = 1600
+refresh = 165.0
 scale = 1.25
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
+position = { x = 696, y = 1440 }
+
+[[bane.displays]]
+output = "DP-4"
+match = "Philips Consumer Electronics Company PHL 345B1C 0x00000251"
+width = 3440
+height = 1440
+refresh = 99.982
+scale = 1.0
+hotplug = true
 position = { x = 0, y = 0 }
 
 [ravi]
