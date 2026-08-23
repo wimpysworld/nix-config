@@ -24,7 +24,7 @@ lib.mkIf (host.is.linux && !host.is.server) {
       settings = {
         daemon = {
           default_parallel_tasks = 1;
-          callback = "${pkgs.notify-desktop}/bin/notify-desktop \"Task {{ id }}\nCommand: {{ command }}\nPath: {{ path }}\nFinished with status '{{ result }}'\nTook: $(bc <<< \"{{end}} - {{start}}\") seconds\" --app-name=pueue";
+          callback = "${pkgs.fyi}/bin/fyi --app-name=pueue \"Task {{ id }}\nCommand: {{ command }}\nPath: {{ path }}\nFinished with status '{{ result }}'\nTook: $(bc <<< \"{{end}} - {{start}}\") seconds\"";
         };
       };
     };

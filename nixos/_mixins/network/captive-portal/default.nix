@@ -71,11 +71,10 @@ lib.mkIf (!host.is.iso && host.network.wifi) {
                     RUNTIME_DIR="/run/user/$USER_ID"
 
                     if [ -d "$RUNTIME_DIR" ]; then
-                      # Notify the user; notify-desktop does not support actions,
-                      # so the notification is informational only
+                      # Notify the user. This notification is informational only.
                       ${pkgs.systemd}/bin/systemd-run --user --machine="$SESSION_USER@.host" \
                         --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNTIME_DIR/bus" \
-                        ${pkgs.notify-desktop}/bin/notify-desktop \
+                        ${pkgs.fyi}/bin/fyi \
                           --urgency=critical \
                           --icon=network-wireless \
                           "Captive Portal Detected" \

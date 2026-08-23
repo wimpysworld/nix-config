@@ -6,7 +6,7 @@ app_name="fuzzel-capture"
 recording_state_file="${XDG_RUNTIME_DIR:?}/$app_name-recording.state"
 recording_lock_file="${XDG_RUNTIME_DIR:?}/$app_name-recording.lock"
 wl_screenrec="$(readlink -f "@wlScreenrec@")"
-notify=(notify-desktop "--app-name=$app_name")
+notify=(fyi "--app-name=$app_name")
 
 countdown() {
   local seconds=5

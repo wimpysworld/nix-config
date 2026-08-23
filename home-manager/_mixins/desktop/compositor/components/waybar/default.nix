@@ -15,6 +15,7 @@ let
     name = "bluetooth-toggle";
     runtimeInputs = with pkgs; [
       bluez
+      fyi
       gawk
       gnugrep
     ];
@@ -33,7 +34,7 @@ let
     runtimeInputs = with pkgs; [
       coreutils
       gnugrep
-      notify-desktop
+      fyi
     ];
     text = builtins.readFile ./virtualcam-toggle.sh;
   };

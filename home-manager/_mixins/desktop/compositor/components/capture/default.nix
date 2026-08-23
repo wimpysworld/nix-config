@@ -14,7 +14,7 @@ let
       grim
       jq
       lswt
-      notify-desktop
+      fyi
       pulseaudio
       satty
       slurp

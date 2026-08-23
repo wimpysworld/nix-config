@@ -6,7 +6,7 @@ let
     runtimeInputs = with pkgs; [
       coreutils
       gnused
-      notify-desktop
+      fyi
       pulseaudio
     ];
     text = builtins.readFile ./${name}.sh;

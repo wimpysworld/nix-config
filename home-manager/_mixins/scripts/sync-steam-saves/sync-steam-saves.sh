@@ -46,4 +46,4 @@ else
 	rsync -a --human-readable --info=progress2 --protect-args "${SOURCE}" "${BACKUP_NOW}/"
 fi
 
-notify-desktop "Steam Backup" "${GAME_NAME} backup completed"
+fyi "Steam Backup" "${GAME_NAME} backup completed"

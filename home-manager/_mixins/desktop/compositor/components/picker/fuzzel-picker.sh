@@ -3,7 +3,7 @@
 
 set +u  # Disable nounset
 APP_NAME="fuzzel-picker"
-NOTIFY="notify-desktop --app-name=$APP_NAME --icon=org.gnome.design.Palette"
+NOTIFY="fyi --app-name=$APP_NAME --icon=org.gnome.design.Palette"
 
 # Set up the storage directory and file
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/$APP_NAME"

@@ -12,7 +12,7 @@ let
       netcat-gnu
       openssh
       rsync
-      notify-desktop
+      fyi
     ];
     text = builtins.readFile ../../scripts/sync-steam-saves/sync-steam-saves.sh;
   };

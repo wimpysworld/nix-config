@@ -78,7 +78,7 @@ in
         packages = [
           pkgs.kdePackages.qt6ct
           pkgs.libsForQt5.qt5ct
-          pkgs.notify-desktop
+          pkgs.fyi
           pkgs.wlr-randr
           pkgs.wl-clipboard
           pkgs.wtype

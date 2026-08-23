@@ -17,7 +17,7 @@ let
     name = "fuzzel-picker";
     runtimeInputs = with pkgs; [
       hyprpicker
-      notify-desktop
+      fyi
       wl-clipboard
     ];
     text = builtins.readFile ./fuzzel-picker.sh;

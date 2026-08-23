@@ -17,7 +17,7 @@ case "${1}" in
         if [ "${STATE}" == "ON" ]; then
             ICON="audio-input-microphone"
         fi
-        notify-desktop "Microphone Status" "Microphone is ${STATE}" --icon="${ICON}" >/dev/null
+        fyi --icon="${ICON}" "Microphone Status" "Microphone is ${STATE}" >/dev/null
         ;;
     *) echo "Usage: $0 {status|toggle}";;
 esac

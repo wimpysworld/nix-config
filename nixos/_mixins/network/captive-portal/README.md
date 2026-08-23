@@ -109,12 +109,11 @@ user's systemd user instance, preserving the session environment. The
 `--setenv` flags pass `DBUS_SESSION_BUS_ADDRESS` and `XDG_RUNTIME_DIR`
 explicitly.
 
-### Why `notify-desktop`
+### Why `fyi`
 
-`notify-desktop` sends D-Bus desktop notifications without depending on
-libnotify. It does not support notification actions, so the notification is
-informational only, telling the user a portal was detected and the login
-page is opening.
+`fyi` sends the D-Bus desktop notification from the dispatcher script. This
+notification is informational only. It tells the user that a portal was
+detected and that the login page is opening.
 
 ### Why the GNOME connectivity endpoint
 

@@ -7,7 +7,7 @@ let
       coreutils
       findutils
       netcat-gnu
-      notify-desktop
+      fyi
       openssh
       rsync
     ];
