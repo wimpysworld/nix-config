@@ -80,7 +80,7 @@ in
           session = "wayland-session start";
         };
         core = {
-          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
+          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock shortcuts-inhibit switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;

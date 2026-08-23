@@ -2,6 +2,7 @@
   catppuccinPalette,
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -36,6 +37,7 @@ in
         XCURSOR_SIZE = 32;
         XCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
         NIXOS_OZONE_WL = 1;
+        WLR_NO_HARDWARE_CURSORS = lib.mkIf (noughtyLib.hostHasTag "reframe") 1;
       };
       systemPackages = with pkgs; [
         wayfire
