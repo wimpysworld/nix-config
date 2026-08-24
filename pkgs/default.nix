@@ -12,7 +12,6 @@ pkgs: {
   linear-tui = pkgs.callPackage ./linear-tui { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
   perch = pkgs.callPackage ./perch { };
-  pixdecor-catppuccin-buttons = pkgs.callPackage ./pixdecor-catppuccin-buttons { };
   slk = pkgs.callPackage ./slk { };
   tcount = pkgs.callPackage ./tcount { };
   vecdecor = pkgs.callPackage ./vecdecor { };

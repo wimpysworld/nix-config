@@ -18,16 +18,6 @@ let
       toFloat = hexString: toString (builtins.div (builtins.fromTOML "value=0x${hexString}").value 255.0);
     in
     "${toFloat red} ${toFloat green} ${toFloat blue} ${toString alpha}";
-  pixdecorButtons = pkgs.pixdecor-catppuccin-buttons.override {
-    activeGlyphColor = catppuccinPalette.getColor "text";
-    inactiveCircleColor = catppuccinPalette.getColor "surface1";
-    inactiveGlyphColor = "#878892";
-    hoverBackgroundColor = catppuccinPalette.getColor "surface0";
-    minimiseCircleColor = catppuccinPalette.getColor "yellow";
-    maximiseCircleColor = catppuccinPalette.getColor "green";
-    closeCircleColor = catppuccinPalette.getColor "red";
-  };
-  pixdecorButtonPath = "${pixdecorButtons}/share/pixdecor/buttons";
   sessionAdapter = pkgs.writeShellApplication {
     name = "wayland-session-adapter";
     runtimeInputs = with pkgs; [
@@ -57,7 +47,7 @@ in
       enable = true;
       plugins = with pkgs.wayfirePlugins; [
         wcm
-        wayfire-plugins-extra
+        (wayfire-plugins-extra.override { withPixdecorPlugin = false; })
         pkgs.vecdecor
       ];
       systemd = {
@@ -76,7 +66,7 @@ in
           autostart_wf_shell = false;
         };
         core = {
-          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock shortcuts-inhibit switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
+          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move vecdecor place resize session-lock shortcuts-inhibit switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
@@ -87,38 +77,27 @@ in
           rotate_right = "<ctrl> <alt> KEY_RIGHT";
         };
         expo.toggle = "<super> KEY_HOME";
-        pixdecor = {
+        vecdecor = {
           bg_color = toWayfireColor "base" 1.0;
           bg_text_color = "0.527451 0.531373 0.570588 1.0";
           border_size = 2;
+          button_close_svg = "";
           button_color = toWayfireColor "text" 1.0;
-          button_close_hover_image = "${pixdecorButtonPath}/close-hover.png";
-          button_close_image = "${pixdecorButtonPath}/close.png";
-          button_close_inactive_hover_image = "${pixdecorButtonPath}/close-inactive-hover.png";
-          button_close_inactive_image = "${pixdecorButtonPath}/close-inactive.png";
+          button_hover_color = toWayfireColor "surface0" 1.0;
+          button_inactive_color = "0.529412 0.533333 0.572549 1.0";
           button_line_thickness = 1.0;
-          button_maximize_hover_image = "${pixdecorButtonPath}/maximize-hover.png";
-          button_maximize_image = "${pixdecorButtonPath}/maximize.png";
-          button_maximize_inactive_hover_image = "${pixdecorButtonPath}/maximize-inactive-hover.png";
-          button_maximize_inactive_image = "${pixdecorButtonPath}/maximize-inactive.png";
-          button_minimize_hover_image = "${pixdecorButtonPath}/minimize-hover.png";
-          button_minimize_image = "${pixdecorButtonPath}/minimize.png";
-          button_minimize_inactive_hover_image = "${pixdecorButtonPath}/minimize-inactive-hover.png";
-          button_minimize_inactive_image = "${pixdecorButtonPath}/minimize-inactive.png";
-          button_restore_hover_image = "${pixdecorButtonPath}/restore-hover.png";
-          button_restore_image = "${pixdecorButtonPath}/restore.png";
-          button_restore_inactive_hover_image = "${pixdecorButtonPath}/restore-inactive-hover.png";
-          button_restore_inactive_image = "${pixdecorButtonPath}/restore-inactive.png";
+          button_maximize_svg = "";
+          button_minimize_svg = "";
+          button_pressed_color = toWayfireColor "surface1" 1.0;
+          button_restore_svg = "";
+          button_size = 34;
           left_button_spacing = 16;
           left_button_x_offset = 0;
           fg_color = toWayfireColor "mantle" 1.0;
           fg_text_color = toWayfireColor "text" 1.0;
-          overlay_engine = "rounded_corners";
           right_button_spacing = 16;
           right_button_x_offset = -16;
           rounded_corner_radius = 10;
-          shadow_color = toWayfireColor "crust" 0.4;
-          shadow_radius = 0;
           title_height = 46;
           title_font = "${config.gtk.font.name} Bold ${toString config.gtk.font.size}";
           titlebar = true;
