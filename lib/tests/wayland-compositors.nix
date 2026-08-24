@@ -130,6 +130,8 @@ let
   baneHome = homeConfigurations."martin@bane".config;
   felkorHome = homeConfigurations."martin@felkor".config;
   skryeHome = homeConfigurations."martin@skrye".config;
+  baneNixosWayfirePlugins = nixosConfigurations.bane.config.programs.wayfire.plugins;
+  felkorNixosWayfirePlugins = nixosConfigurations.felkor.config.programs.wayfire.plugins;
   packageNamed =
     name: packages:
     let
@@ -137,6 +139,18 @@ let
     in
     assert builtins.length matches == 1;
     builtins.head matches;
+  baneHomeWayfire = baneHome.wayland.windowManager.wayfire;
+  felkorHomeWayfire = felkorHome.wayland.windowManager.wayfire;
+  baneNixosVecdecor = packageNamed "vecdecor" baneNixosWayfirePlugins;
+  baneHomeVecdecor = packageNamed "vecdecor" baneHomeWayfire.plugins;
+  felkorNixosVecdecor = packageNamed "vecdecor" felkorNixosWayfirePlugins;
+  felkorHomeVecdecor = packageNamed "vecdecor" felkorHomeWayfire.plugins;
+  baneNixosExtraPlugins = packageNamed "wayfire-plugins-extra" baneNixosWayfirePlugins;
+  baneHomeExtraPlugins = packageNamed "wayfire-plugins-extra" baneHomeWayfire.plugins;
+  felkorNixosExtraPlugins = packageNamed "wayfire-plugins-extra" felkorNixosWayfirePlugins;
+  felkorHomeExtraPlugins = packageNamed "wayfire-plugins-extra" felkorHomeWayfire.plugins;
+  coreHasPlugin =
+    wayfire: plugin: builtins.elem plugin (lib.splitString " " wayfire.settings.core.plugins);
   sessionPackage = home: packageNamed "wayland-session" home.home.packages;
   logoutService = home: home.systemd.user.services.wayland-session-logout;
   waylandShim =
@@ -216,6 +230,22 @@ assert
 assert !enableHostIntegration || baneHome.wayland.systemd.target == "wayfire-session.target";
 assert !enableHostIntegration || felkorHome.wayland.systemd.target == "wayfire-session.target";
 assert !enableHostIntegration || skryeHome.wayland.systemd.target == "hyprland-session.target";
+assert !enableHostIntegration || lib.getName felkorNixosVecdecor == "vecdecor";
+assert !enableHostIntegration || lib.getName felkorHomeVecdecor == "vecdecor";
+assert
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" felkorNixosExtraPlugins.mesonFlags;
+assert
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" felkorHomeExtraPlugins.mesonFlags;
+assert !enableHostIntegration || coreHasPlugin felkorHomeWayfire "pixdecor";
+assert !enableHostIntegration || !(coreHasPlugin felkorHomeWayfire "vecdecor");
+assert !enableHostIntegration || lib.getName baneNixosVecdecor == "vecdecor";
+assert !enableHostIntegration || lib.getName baneHomeVecdecor == "vecdecor";
+assert
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" baneNixosExtraPlugins.mesonFlags;
+assert
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" baneHomeExtraPlugins.mesonFlags;
+assert !enableHostIntegration || coreHasPlugin baneHomeWayfire "vecdecor";
+assert !enableHostIntegration || !(coreHasPlugin baneHomeWayfire "pixdecor");
 assert
   !enableHostIntegration
   || baneHome.systemd.user.services.reframe-session.Unit.PartOf == [ "wayfire-session.target" ];

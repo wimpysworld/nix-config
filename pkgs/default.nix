@@ -15,6 +15,7 @@ pkgs: {
   pixdecor-catppuccin-buttons = pkgs.callPackage ./pixdecor-catppuccin-buttons { };
   slk = pkgs.callPackage ./slk { };
   tcount = pkgs.callPackage ./tcount { };
+  vecdecor = pkgs.callPackage ./vecdecor { };
   defold = pkgs.callPackage ./defold { };
   defold-bob = pkgs.callPackage ./defold-bob { };
   defold-gdc = pkgs.callPackage ./defold-gdc { };
