@@ -33,6 +33,25 @@ let
     name = "fuzzel-clipboard";
     text = "cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | wl-copy --primary --trim-newline";
   };
+  fuzzelControlCenter = pkgs.writeShellApplication {
+    name = "fuzzel-control-center";
+    runtimeInputs = with pkgs; [
+      cpu-x
+      easyeffects
+      gnome-disk-utility
+      gnome-firmware
+      iwgtk
+      networkmanagerapplet
+      overskride
+      piper
+      pwvucontrol
+      system-config-printer
+      usbimager
+      util-linux
+      wdisplays
+    ];
+    text = builtins.readFile ./fuzzel-control-center.sh;
+  };
   # Workaround Nix failing to evaluate the DATA in fuzzel-emoji
   fuzzelEmoji = pkgs.writeTextFile {
     name = "fuzzel-emoji";
@@ -74,6 +93,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       fuzzelAudio
       fuzzelBluetooth
       fuzzelClipboard
+      fuzzelControlCenter
       fuzzelEmoji
       fuzzelHistory
       fuzzelLauncher
