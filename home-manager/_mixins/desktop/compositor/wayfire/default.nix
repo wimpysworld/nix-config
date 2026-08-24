@@ -47,7 +47,7 @@ in
       enable = true;
       plugins = with pkgs.wayfirePlugins; [
         wcm
-        (wayfire-plugins-extra.override { withPixdecorPlugin = false; })
+        wayfire-plugins-extra
         pkgs.vecdecor
       ];
       systemd = {
