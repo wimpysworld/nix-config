@@ -12,11 +12,10 @@ WARN="WARN"
 INFO="INFO"
 ERRORS=0
 
-# Must run as root to query falconctl.
+# Root is required to query falconctl. Self-elevate so a plain
+# falcon-sensor-check works.
 if [[ "$(id -u)" -ne 0 ]]; then
-	echo "ERROR: This script must be run as root."
-	echo "  sudo falcon-sensor-check"
-	exit 1
+	exec sudo "$0" "$@"
 fi
 
 echo "===================================="
@@ -117,6 +116,21 @@ elif [[ -n "${PROTECTION_OUTPUT}" ]]; then
 	echo "  ${INFO}: ${PROTECTION_OUTPUT}"
 else
 	echo "  ${WARN}: Unable to determine protection status"
+fi
+echo ""
+
+# Report a staged update awaiting the next boot.
+echo "--- Staged Update ---"
+STAGE_DIR="/opt/CrowdStrike.staged"
+if [[ -f "${STAGE_DIR}/.stage-complete" ]]; then
+	STAGED_VERSION=$(cat "${STAGE_DIR}/.staged-version" 2>/dev/null || echo unknown)
+	echo "  ${INFO}: Update to ${STAGED_VERSION} is staged"
+	echo "         It is applied at the next boot, before the sensor starts."
+elif [[ -d "${STAGE_DIR}" ]]; then
+	echo "  ${WARN}: Incomplete stage at ${STAGE_DIR}"
+	echo "         Re-run: falcon-sensor-install"
+else
+	echo "  ${INFO}: No update staged"
 fi
 echo ""
 

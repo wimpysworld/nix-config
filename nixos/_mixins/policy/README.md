@@ -56,5 +56,8 @@ sudo nixos-rebuild switch --flake .
 Health-check the Falcon sensor at any time with:
 
 ```bash
-sudo falcon-sensor-check
+falcon-sensor-check
 ```
+
+Both `falcon-sensor-check` and `falcon-sensor-install` elevate themselves
+with `sudo`; the installer also carries your `gh` token across.

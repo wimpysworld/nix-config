@@ -52,6 +52,7 @@ let
       patchelf
       procps
       rpm
+      systemd
     ];
     text = builtins.readFile ./falcon-sensor-install.sh;
   };

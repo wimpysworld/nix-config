@@ -25,8 +25,9 @@ This is unofficial and unsupported by CrowdStrike.
 The declarative setup has three layers:
 
 1. **NixOS module** (`modules/nixos/falcon-sensor.nix`): declares the systemd
-   service (with CID/BPF configuration in ExecStartPre), tmpfiles rules, and
-   a `logrotate` policy for the sensor's log files.
+   service (with CID/BPF configuration in ExecStartPre), the boot-time
+   staged-update oneshot, tmpfiles rules, and a `logrotate` policy for the
+   sensor's log files.
 2. **Policy mixin** (`nixos/_mixins/policy/default.nix`): enables the module
    and wires up the CID via sops-nix for hosts carrying the `policy` tag.
 3. **Bootstrap script** (`falcon-sensor-install`): automates the one-time
@@ -84,45 +85,48 @@ and patching all ELF binaries with the NixOS glibc interpreter.
 ### Install the latest version
 
 ```bash
-sudo --preserve-env=GH_TOKEN falcon-sensor-install
+falcon-sensor-install
 ```
 
 ### Install a specific version
 
 ```bash
-sudo --preserve-env=GH_TOKEN falcon-sensor-install --version 7.29.0-18202
+falcon-sensor-install --version 7.29.0-18202
 ```
 
 The script will:
 
 1. Detect the host architecture (x86\_64 or aarch64).
-2. Read the repository name from the `falcon-repo` sops secret and query the
+2. Choose the mode: stage the update when the sensor is running, or
+   install in place when it is not (`--direct` forces in place).
+3. Read the repository name from the `falcon-repo` sops secret and query the
    latest release (or use the specified version).
-3. Download the correct RPM using `gh release download`.
-4. Extract the RPM and copy binaries to `/opt/CrowdStrike/`.
-5. Stop the `falcon-sensor` service if it is running.
-6. Set ownership and permissions (root:root, 0750).
-7. Patch all ELF binaries with the NixOS glibc interpreter via `patchelf`.
-8. Print next steps for starting the service.
+4. Download the correct RPM using `gh release download`.
+5. Extract the RPM and copy binaries to `/opt/CrowdStrike/` (or to
+   `/opt/CrowdStrike.staged/` when staging).
+6. For an in-place install, stop the `falcon-sensor` service and verify
+   that the sensor processes exited.
+7. Set ownership and permissions (root:root, 0750).
+8. Patch all ELF binaries with the NixOS glibc interpreter via `patchelf`.
+9. Start the service after an in-place install, or report the staged
+   update.
 
-The script requires `GH_TOKEN` or `GITHUB_TOKEN` to be set for `gh` CLI
-authentication. Since `sudo` strips environment variables by default, pass
-the token explicitly:
-
-```bash
-sudo --preserve-env=GH_TOKEN falcon-sensor-install
-```
-
-Or pass it inline:
-
-```bash
-sudo GH_TOKEN=$GH_TOKEN falcon-sensor-install
-```
-
-If you need to authenticate the `gh` CLI first:
+Run the script as your own user. It elevates itself with `sudo` and
+carries your GitHub token across: while still unprivileged it reads the
+token from your `gh` session (`gh auth token`) or from `GH_TOKEN` or
+`GITHUB_TOKEN`, then re-executes itself under
+`sudo --preserve-env=GH_TOKEN,GITHUB_TOKEN`. The only prerequisite is an
+authenticated `gh` CLI:
 
 ```bash
 gh auth login
+```
+
+From a root shell there is no user keyring to read, so pass a token
+explicitly:
+
+```bash
+GH_TOKEN=<token> falcon-sensor-install
 ```
 
 ## Deploying the configuration
@@ -145,7 +149,7 @@ This will:
 The quickest health check is the bundled diagnostic script:
 
 ```bash
-sudo falcon-sensor-check
+falcon-sensor-check
 ```
 
 It walks the service state, sensor configuration, RFM, kernel compatibility,
@@ -244,57 +248,83 @@ The NixOS module therefore sets `restartIfChanged = false` and
 unit. Unit changes take effect at the next reboot. Do not restart the
 unit by hand while the sensor is armed.
 
-To update the sensor while protection is armed, either:
+To update the sensor while protection is armed, pick one of:
 
-1. Disarm it with the per-host maintenance token from infosec, then run
-   the install script:
+1. Stage the update (recommended). While the sensor runs,
+   `falcon-sensor-install` stages automatically: it writes only to
+   `/opt/CrowdStrike.staged/`, which the sensor does not protect. The
+   `falcon-sensor-staged-update.service` oneshot applies the stage at the
+   next boot, before the sensor starts and arms itself:
+
+   ```bash
+   falcon-sensor-install
+   # Reboot whenever convenient; the update applies during boot.
+   ```
+
+2. Disarm it with the per-host maintenance token from infosec, then run
+   an in-place install; the script restarts the service afterwards:
 
    ```bash
    sudo /opt/CrowdStrike/falconctl -s --maintenance-token
-   sudo --preserve-env=GH_TOKEN falcon-sensor-install
+   falcon-sensor-install --direct
    ```
 
-2. Or disable the service, reboot, install, then re-enable:
-
-   ```bash
-   sudo systemctl disable falcon-sensor
-   sudo systemctl reboot
-   # After the reboot:
-   sudo --preserve-env=GH_TOKEN falcon-sensor-install
-   sudo systemctl enable --now falcon-sensor
-   ```
+Do not use `systemctl disable` or `systemctl enable` for this: NixOS
+rebuilds the unit and its `wants` links from the store at every
+activation, so those changes do not stick.
 
 The install script checks protection status before it touches
 `/opt/CrowdStrike/` and refuses to proceed while the sensor is armed. It
 also verifies that the sensor processes exited after `systemctl stop`.
 
+## Staged updates
+
+While the sensor is running, `falcon-sensor-install` stages
+automatically: it downloads, extracts, and patches the sensor into
+`/opt/CrowdStrike.staged/` without touching the running sensor, then
+writes a `.staged-version` file and a `.stage-complete` marker. With no
+sensor running it installs in place instead, and `--direct` forces an
+in-place install. At boot, `falcon-sensor-staged-update.service` runs
+before `falcon-sensor.service` and applies the stage:
+
+- The copy overlays files into `/opt/CrowdStrike/` instead of replacing
+  the directory, so runtime state such as `falconstore` (the agent ID)
+  survives the update.
+- The staging directory is removed only after a successful copy. An
+  interrupted apply leaves the marker in place, so the next boot retries.
+- The oneshot is skipped when no complete stage exists, and it defers to
+  the next boot if the sensor is somehow already running.
+- `nixos-rebuild switch` never starts or restarts the oneshot; staged
+  updates apply only during boot.
+
+`falcon-sensor-check` reports any pending or incomplete stage.
+
 ## Updating the sensor
 
 CrowdStrike Falcon does not auto-update on NixOS. To update, re-run the
-install script:
+install script; it picks the right mode automatically:
 
 ```bash
 # Update to the latest available version
-sudo --preserve-env=GH_TOKEN falcon-sensor-install
+falcon-sensor-install
 
 # Or pin a specific version
-sudo --preserve-env=GH_TOKEN falcon-sensor-install --version 7.30.0-19000
+falcon-sensor-install --version 7.30.0-19000
 ```
 
-When maintenance protection is armed, follow the procedure in the
-"Maintenance protection" section above instead.
+While the sensor is running, the update is staged and applied at the
+next boot, which never disrupts the running sensor. With no sensor
+running, the binaries are installed in place immediately. `--direct`
+forces an in-place install while the sensor runs, which only works after
+disarming maintenance protection (see the "Maintenance protection"
+section above).
 
-The script automatically stops the running service before replacing the
-binaries. After the script completes, start the service:
+After a staged update, reboot whenever convenient. After an in-place
+install, the script starts the service itself and reports its state.
+Verify either with:
 
 ```bash
-sudo systemctl start falcon-sensor
-```
-
-Or rebuild the full configuration:
-
-```bash
-just switch
+falcon-sensor-check
 ```
 
 ## Troubleshooting
@@ -304,7 +334,7 @@ just switch
 The sensor binaries have not been bootstrapped yet. Run the install script:
 
 ```bash
-sudo --preserve-env=GH_TOKEN falcon-sensor-install
+falcon-sensor-install
 ```
 
 ### Install fails with "Operation not permitted" or "Text file busy"
@@ -333,7 +363,7 @@ The ELF binaries were not patched correctly. Re-run the install script to
 re-download, re-extract, and re-patch all binaries:
 
 ```bash
-sudo --preserve-env=GH_TOKEN falcon-sensor-install
+falcon-sensor-install
 ```
 
 ### Reduced Functionality Mode (RFM)
@@ -424,8 +454,8 @@ as a recipient in `.sops.yaml`.
   protection" section for updates.
 - **Manual updates required**: NixOS's declarative architecture prevents
   Falcon from auto-updating. You are responsible for running
-  `sudo --preserve-env=GH_TOKEN falcon-sensor-install` when sensor updates
-  are available.
+  `falcon-sensor-install` when sensor updates are available; while the
+  sensor runs, the update is staged and applies at the next boot.
 - **Unofficial**: CrowdStrike does not officially support NixOS. This
   configuration is based on community workarounds.
 - **Architecture**: the install script automatically detects the host

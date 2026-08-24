@@ -20,6 +20,31 @@ let
     ;
   cfg = config.services.falcon-sensor;
   installDir = "/opt/CrowdStrike";
+  stageDir = "/opt/CrowdStrike.staged";
+
+  # Applies a staged sensor update at boot, before falcon-sensor starts and
+  # arms tamper protection. falcon-sensor-install prepares the tree; it
+  # stages automatically whenever the sensor is running.
+  # The copy overlays files into the live directory instead of replacing it,
+  # so runtime state such as falconstore (the agent ID) survives updates.
+  # The staging directory is removed last: an interrupted apply leaves the
+  # completion marker in place, so the next boot retries the whole copy.
+  falconApplyStaged = pkgs.writeShellScript "falcon-apply-staged" ''
+    set -euo pipefail
+    if pgrep -x falcond > /dev/null; then
+      echo "Sensor is running; deferring the staged update to the next boot."
+      exit 0
+    fi
+    STAGED_VERSION="$(cat "${stageDir}/.staged-version" 2>/dev/null || echo unknown)"
+    echo "Applying staged Falcon sensor update (version $STAGED_VERSION)..."
+    mkdir -p "${installDir}"
+    cp -a "${stageDir}/." "${installDir}/"
+    rm -f "${installDir}/.stage-complete" "${installDir}/.staged-version"
+    chown -R root:root "${installDir}"
+    chmod -R 0750 "${installDir}"
+    rm -rf "${stageDir}"
+    echo "Staged Falcon sensor update applied."
+  '';
 
   # Pre-start script that configures CID, tags, and BPF backend before
   # launching the daemon. Running in ExecStartPre means failures are visible
@@ -203,6 +228,30 @@ in
       su = "root root";
     };
 
+    # Applies a staged sensor update at boot, before the sensor starts and
+    # arms tamper protection. Skipped unless falcon-sensor-install left a
+    # complete stage behind. Never started by nixos-rebuild switch:
+    # applying a stage over a running, armed sensor would fail, so the
+    # apply happens only at boot.
+    systemd.services.falcon-sensor-staged-update = {
+      description = "Apply staged CrowdStrike Falcon sensor update";
+      before = [ "falcon-sensor.service" ];
+      wantedBy = [ "multi-user.target" ];
+      restartIfChanged = false;
+      stopIfChanged = false;
+      unitConfig = {
+        ConditionPathExists = "${stageDir}/.stage-complete";
+      };
+      path = [
+        pkgs.coreutils
+        pkgs.procps
+      ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = falconApplyStaged;
+      };
+    };
+
     # The falcon-sensor systemd service.
     # falcond is a forking daemon that manages the sensor process.
     systemd.services.falcon-sensor = {
@@ -211,7 +260,9 @@ in
         "local-fs.target"
         "network.target"
         "sops-nix.service"
+        "falcon-sensor-staged-update.service"
       ];
+      wants = [ "falcon-sensor-staged-update.service" ];
       wantedBy = [ "multi-user.target" ];
 
       # Ensure the sensor shuts down cleanly before the system powers off.

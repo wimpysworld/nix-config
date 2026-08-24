@@ -7,23 +7,32 @@
 
 REPO_FILE="/run/secrets/falcon-repo"
 INSTALL_DIR="/opt/CrowdStrike"
+STAGE_DIR="/opt/CrowdStrike.staged"
 TAG_PREFIX="falcon-v"
 VERSION_PATTERN='[0-9]+\.[0-9]+\.[0-9]+-[0-9]+'
 VERSION=""
 FORCE=0
+DIRECT=0
 
 function usage() {
-	echo "Usage: $(basename "$0") [--version VERSION] [--force]"
+	echo "Usage: $(basename "$0") [--version VERSION] [--force] [--direct]"
 	echo ""
 	echo "Bootstrap or update the CrowdStrike Falcon sensor binaries on NixOS."
+	echo ""
+	echo "When the sensor is running, the update is staged in ${STAGE_DIR}"
+	echo "and applied at the next boot, before the sensor starts. When no"
+	echo "sensor is running, the binaries are installed in place."
 	echo ""
 	echo "Options:"
 	echo "  --version VERSION  Install a specific version (e.g. 7.29.0-18202)"
 	echo "                     Default: latest release"
 	echo "  --force            Install even if the same version is already running"
+	echo "  --direct           Force an in-place install even while the sensor"
+	echo "                     runs, for example after disarming maintenance"
+	echo "                     protection with the maintenance token"
 	echo ""
-	echo "Must be run as root with GH_TOKEN or GITHUB_TOKEN set."
-	echo "  sudo --preserve-env=GH_TOKEN falcon-sensor-install"
+	echo "Elevates itself with sudo and takes the GitHub token from your gh"
+	echo "session automatically. Authenticate once with: gh auth login"
 	exit 1
 }
 
@@ -42,6 +51,10 @@ while [[ $# -gt 0 ]]; do
 		FORCE=1
 		shift
 		;;
+	--direct)
+		DIRECT=1
+		shift
+		;;
 	--help | -h)
 		usage
 		;;
@@ -52,11 +65,38 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-# Must run as root because we write to /opt/CrowdStrike/ and stop system services.
+# Root is required to write to /opt/CrowdStrike/ and stop system services.
+# Self-elevate: capture the invoking user's GitHub token from the gh
+# keyring while still unprivileged (the keyring is not readable as root),
+# then re-exec under sudo with the token preserved.
 if [[ "$(id -u)" -ne 0 ]]; then
-	echo "ERROR: This script must be run as root."
-	echo "  sudo --preserve-env=GH_TOKEN falcon-sensor-install"
-	exit 1
+	if [[ -z "${GH_TOKEN:-}" && -z "${GITHUB_TOKEN:-}" ]]; then
+		GH_TOKEN="$(gh auth token 2>/dev/null || true)"
+		export GH_TOKEN
+	fi
+	if [[ -z "${GH_TOKEN:-}" && -z "${GITHUB_TOKEN:-}" ]]; then
+		echo "ERROR: No GitHub token available."
+		echo "Authenticate the gh CLI first:"
+		echo "  gh auth login"
+		exit 1
+	fi
+	echo "Elevating with sudo..."
+	exec sudo --preserve-env=GH_TOKEN,GITHUB_TOKEN "$0" "$@"
+fi
+
+# Decide between a staged update and a direct install. A running sensor
+# must not be disrupted, and an armed one cannot be stopped, so the update
+# is staged in the staging directory and a boot-time oneshot
+# (falcon-sensor-staged-update.service) applies it before the sensor
+# starts. With no sensor running, the binaries are installed in place.
+# --direct forces an in-place install, for example after disarming
+# maintenance protection with the maintenance token.
+STAGE=0
+TARGET_DIR="${INSTALL_DIR}"
+if [[ "${DIRECT}" -eq 0 ]] && pgrep -x falcond >/dev/null; then
+	STAGE=1
+	TARGET_DIR="${STAGE_DIR}"
+	echo "Falcon sensor is running; the update will be staged and applied at the next boot."
 fi
 
 # Read the private repository name from the sops-nix managed secret.
@@ -68,9 +108,8 @@ if [[ ! -f "${REPO_FILE}" ]]; then
 fi
 REPO="$(cat "${REPO_FILE}")"
 
-# gh CLI requires authentication. When running under sudo, environment
-# variables are stripped by default. Pass GH_TOKEN explicitly if needed:
-#   sudo --preserve-env=GH_TOKEN falcon-sensor-install
+# The gh CLI requires authentication. Self-elevation above carries the
+# token across sudo; this fallback covers invocations from a root shell.
 if [[ -z "${GH_TOKEN:-}" && -n "${GITHUB_TOKEN:-}" ]]; then
 	export GH_TOKEN="${GITHUB_TOKEN}"
 fi
@@ -78,14 +117,9 @@ fi
 if [[ -z "${GH_TOKEN:-}" && -z "${GITHUB_TOKEN:-}" ]]; then
 	echo "ERROR: No GitHub authentication token found."
 	echo ""
-	echo "The gh CLI requires GH_TOKEN or GITHUB_TOKEN to authenticate."
-	echo "When running under sudo, environment variables are stripped."
-	echo ""
-	echo "Run with:"
-	echo "  sudo GH_TOKEN=\$GH_TOKEN falcon-sensor-install"
-	echo ""
-	echo "Or use --preserve-env:"
-	echo "  sudo --preserve-env=GH_TOKEN falcon-sensor-install"
+	echo "Run this script as your own user; it elevates itself and takes the"
+	echo "token from your gh session. From a root shell, pass one explicitly:"
+	echo "  GH_TOKEN=<token> falcon-sensor-install"
 	exit 1
 fi
 
@@ -182,21 +216,22 @@ fi
 # sensor blocks kill signals (even from systemd) and write access to
 # /opt/CrowdStrike (even for root), so an in-place update is impossible.
 # Refuse early with instructions rather than fail part-way through the copy.
-if [[ -x "${INSTALL_DIR}/falconctl" ]]; then
+# Staging is unaffected: it writes only to the staging directory, which the
+# sensor does not protect.
+if [[ "${STAGE}" -eq 0 && -x "${INSTALL_DIR}/falconctl" ]]; then
 	PROTECTION_STATUS=$("${INSTALL_DIR}/falconctl" -g --protection-status 2>/dev/null | grep -i 'Maintenance Protection' || true)
 	if [[ "${PROTECTION_STATUS,,}" == *"armed=true"* ]]; then
 		echo "ERROR: Sensor maintenance protection is armed:"
 		echo "  ${PROTECTION_STATUS}"
 		echo ""
 		echo "An armed sensor cannot be stopped or updated in place. Either:"
-		echo "  1. Disarm it with the per-host maintenance token from infosec:"
+		echo "  1. Re-run without --direct to stage the update; it is applied"
+		echo "     at the next boot:"
+		echo "       falcon-sensor-install"
+		echo "  2. Disarm it with the per-host maintenance token from infosec,"
+		echo "     then re-run with --direct:"
 		echo "       sudo ${INSTALL_DIR}/falconctl -s --maintenance-token"
-		echo "     then re-run this script."
-		echo "  2. Or disable the service, reboot, and re-run this script:"
-		echo "       sudo systemctl disable falcon-sensor"
-		echo "       sudo systemctl reboot"
-		echo "     After installing, re-enable and start the service:"
-		echo "       sudo systemctl enable --now falcon-sensor"
+		echo "       falcon-sensor-install --direct"
 		exit 1
 	fi
 fi
@@ -210,7 +245,7 @@ function cleanup() {
 	if [[ "${status}" -ne 0 ]]; then
 		echo ""
 		echo "ERROR: Installation did not complete (exit ${status})."
-		echo "Check the messages above; ${INSTALL_DIR} may be unchanged or incomplete."
+		echo "Check the messages above; ${TARGET_DIR} may be unchanged or incomplete."
 	fi
 }
 trap cleanup EXIT
@@ -245,30 +280,37 @@ if [[ ! -d "${SENSOR_DIR}" ]]; then
 	exit 1
 fi
 
-# Stop the falcon-sensor service if it is running.
-echo "Stopping falcon-sensor service (if running)..."
-systemctl stop falcon-sensor 2>/dev/null || true
+if [[ "${STAGE}" -eq 0 ]]; then
+	# Stop the falcon-sensor service if it is running.
+	echo "Stopping falcon-sensor service (if running)..."
+	systemctl stop falcon-sensor 2>/dev/null || true
 
-# Verify the sensor processes actually exited. Tamper protection can leave
-# falcond running after a "successful" systemctl stop, and copying over
-# binaries that are still executing fails part-way through.
-for _ in $(seq 1 30); do
-	pgrep -x falcond >/dev/null || break
-	sleep 1
-done
-if pgrep -x falcond >/dev/null; then
-	echo "ERROR: falcond is still running after systemctl stop."
-	echo "The sensor processes survived the stop request, so ${INSTALL_DIR} is not safe to modify."
-	echo "Reboot the host, or disarm maintenance protection, then re-run this script."
-	exit 1
+	# Verify the sensor processes actually exited. Tamper protection can
+	# leave falcond running after a "successful" systemctl stop, and copying
+	# over binaries that are still executing fails part-way through.
+	for _ in $(seq 1 30); do
+		pgrep -x falcond >/dev/null || break
+		sleep 1
+	done
+	if pgrep -x falcond >/dev/null; then
+		echo "ERROR: falcond is still running after systemctl stop."
+		echo "The sensor processes survived the stop request, so ${INSTALL_DIR} is not safe to modify."
+		echo "Re-run this script to stage the update instead, reboot the host,"
+		echo "or disarm maintenance protection first."
+		exit 1
+	fi
+else
+	# Discard any previous stage so the staging directory only ever holds
+	# one complete, freshly patched tree.
+	rm -rf "${STAGE_DIR}"
 fi
 
-# Copy binaries to /opt/CrowdStrike/.
-echo "Installing sensor binaries to ${INSTALL_DIR}..."
-mkdir -p "${INSTALL_DIR}"
-cp -r "${SENSOR_DIR}/." "${INSTALL_DIR}/"
-chown -R root:root "${INSTALL_DIR}"
-chmod -R 0750 "${INSTALL_DIR}"
+# Copy binaries to the target directory.
+echo "Installing sensor binaries to ${TARGET_DIR}..."
+mkdir -p "${TARGET_DIR}"
+cp -r "${SENSOR_DIR}/." "${TARGET_DIR}/"
+chown -R root:root "${TARGET_DIR}"
+chmod -R 0750 "${TARGET_DIR}"
 
 # Patch all ELF binaries with the NixOS glibc interpreter.
 # NixOS does not have /lib/ld-linux-*.so.1 in the standard location, so all
@@ -277,7 +319,7 @@ echo "Patching ELF binaries with NixOS interpreter..."
 INTERP=$(patchelf --print-interpreter "$(command -v bash)")
 PATCHED=0
 SKIPPED=0
-for binary in "${INSTALL_DIR}"/*; do
+for binary in "${TARGET_DIR}"/*; do
 	if [[ -x "${binary}" && -f "${binary}" ]]; then
 		if patchelf --set-interpreter "${INTERP}" "${binary}" 2>/dev/null; then
 			PATCHED=$((PATCHED + 1))
@@ -289,21 +331,45 @@ done
 echo "Patched ${PATCHED} binaries, skipped ${SKIPPED} (non-ELF or static)."
 
 # Summary and next steps.
-echo ""
-echo "===================================="
-echo " Falcon sensor ${VERSION} installed"
-echo "===================================="
-echo ""
-echo "Binaries installed to: ${INSTALL_DIR}"
-echo "Architecture: ${RPM_ARCH}"
-echo ""
-echo "Next steps:"
-echo "  Start the service:"
-echo "    sudo systemctl start falcon-sensor"
-echo ""
-echo "  Or rebuild and switch the full configuration:"
-echo "    just switch"
-echo ""
-echo "  Verify the installation:"
-echo "    sudo /opt/CrowdStrike/falconctl -g --cid --aid --version"
-echo "    systemctl status falcon-sensor"
+if [[ "${STAGE}" -eq 1 ]]; then
+	# Mark the stage as complete only after patching, so the boot-time
+	# oneshot never applies a partially prepared tree.
+	echo "${VERSION}" >"${STAGE_DIR}/.staged-version"
+	touch "${STAGE_DIR}/.stage-complete"
+	echo ""
+	echo "===================================="
+	echo " Falcon sensor ${VERSION} staged"
+	echo "===================================="
+	echo ""
+	echo "Staged to: ${STAGE_DIR}"
+	echo "Architecture: ${RPM_ARCH}"
+	echo ""
+	echo "The update is applied automatically at the next boot, before the"
+	echo "sensor starts. Reboot whenever convenient, then verify with:"
+	echo "    falcon-sensor-check"
+else
+	echo ""
+	echo "===================================="
+	echo " Falcon sensor ${VERSION} installed"
+	echo "===================================="
+	echo ""
+	echo "Binaries installed to: ${INSTALL_DIR}"
+	echo "Architecture: ${RPM_ARCH}"
+	echo ""
+	# Start the service when this host defines it. On a host that has not
+	# enabled the module yet, leave startup to the first rebuild.
+	if systemctl cat falcon-sensor.service >/dev/null 2>&1; then
+		echo "Starting falcon-sensor.service..."
+		if systemctl start falcon-sensor.service; then
+			STATE=$(systemctl is-active falcon-sensor.service || true)
+			echo "falcon-sensor.service is ${STATE}."
+			echo "Verify with: falcon-sensor-check"
+		else
+			echo "WARNING: falcon-sensor.service failed to start."
+			echo "Inspect with: journalctl -u falcon-sensor"
+		fi
+	else
+		echo "falcon-sensor.service is not defined on this host yet."
+		echo "Enable the policy module and rebuild: just switch"
+	fi
+fi
