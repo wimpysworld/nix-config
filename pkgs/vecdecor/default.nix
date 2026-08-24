@@ -14,6 +14,7 @@
   libxkbcommon,
   pango,
   wayfire,
+  wf-config,
 }:
 let
   sources = {
@@ -75,6 +76,7 @@ stdenv.mkDerivation {
     libxkbcommon
     pango
     wayfire
+    wf-config
   ];
 
   env.PKG_CONFIG_WAYFIRE_METADATADIR = "${placeholder "out"}/share/wayfire/metadata";
