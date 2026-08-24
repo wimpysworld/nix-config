@@ -96,7 +96,11 @@ in
     };
     delta = {
       enable = true;
-      enableGitIntegration = false;
+      # Git integration writes the [delta] options and the Catppuccin theme
+      # include into Git config, which every delta invocation reads,
+      # including the lazygit pager. Without it the theme feature is defined
+      # nowhere and delta falls back to stock colours.
+      enableGitIntegration = true;
       options = {
         hyperlinks = true;
         line-numbers = true;
