@@ -151,6 +151,56 @@ let
   felkorHomeExtraPlugins = packageNamed "wayfire-plugins-extra" felkorHomeWayfire.plugins;
   coreHasPlugin =
     wayfire: plugin: builtins.elem plugin (lib.splitString " " wayfire.settings.core.plugins);
+  vecdecorSettings = wayfire: wayfire.settings.vecdecor or { };
+  expectedVecdecorSettings = {
+    bg_color = "0.117647 0.117647 0.180392 1.000000";
+    bg_text_color = "0.527451 0.531373 0.570588 1.0";
+    border_size = 2;
+    button_close_svg = "";
+    button_color = "0.803922 0.839216 0.956863 1.000000";
+    button_hover_color = "0.192157 0.196078 0.266667 1.000000";
+    button_inactive_color = "0.529412 0.533333 0.572549 1.0";
+    button_line_thickness = 1.0;
+    button_maximize_svg = "";
+    button_minimize_svg = "";
+    button_pressed_color = "0.270588 0.278431 0.352941 1.000000";
+    button_restore_svg = "";
+    button_size = 34;
+    fg_color = "0.094118 0.094118 0.145098 1.000000";
+    fg_text_color = "0.803922 0.839216 0.956863 1.000000";
+    left_button_spacing = 16;
+    left_button_x_offset = 0;
+    right_button_spacing = 16;
+    right_button_x_offset = -16;
+    rounded_corner_radius = 10;
+    title_font = "Work Sans Bold 13";
+    title_height = 46;
+    titlebar = true;
+  };
+  matchesVecdecorSettings =
+    wayfire:
+    lib.getAttrs (builtins.attrNames expectedVecdecorSettings) (vecdecorSettings wayfire)
+    == expectedVecdecorSettings;
+  hasGeneratedPngStatePath =
+    wayfire: lib.hasInfix ".png" (builtins.toJSON (vecdecorSettings wayfire));
+  expectedWinshadowsSettings = {
+    clip_shadow_inside = false;
+    enabled_views = ''type is "toplevel" & floating is true'';
+    glow_color = "0.0 0.0 0.0 1.0";
+    glow_emissivity = 0.0;
+    glow_enabled = true;
+    glow_intensity = 0.45;
+    glow_radius_limit = 35;
+    glow_spread = 5.0;
+    glow_threshold = 0.09;
+    horizontal_offset = 0;
+    include_undecorated_views = false;
+    light_type = "gaussian";
+    overscale = 0.0;
+    shadow_color = "0.0 0.0 0.0 0.0";
+    shadow_radius = 1;
+    vertical_offset = 0;
+  };
   sessionPackage = home: packageNamed "wayland-session" home.home.packages;
   logoutService = home: home.systemd.user.services.wayland-session-logout;
   waylandShim =
@@ -233,19 +283,31 @@ assert !enableHostIntegration || skryeHome.wayland.systemd.target == "hyprland-s
 assert !enableHostIntegration || lib.getName felkorNixosVecdecor == "vecdecor";
 assert !enableHostIntegration || lib.getName felkorHomeVecdecor == "vecdecor";
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" felkorNixosExtraPlugins.mesonFlags;
+  !enableHostIntegration
+  || builtins.elem "-Denable_pixdecor=false" felkorNixosExtraPlugins.mesonFlags;
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" felkorHomeExtraPlugins.mesonFlags;
-assert !enableHostIntegration || coreHasPlugin felkorHomeWayfire "pixdecor";
-assert !enableHostIntegration || !(coreHasPlugin felkorHomeWayfire "vecdecor");
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" felkorHomeExtraPlugins.mesonFlags;
+assert !enableHostIntegration || coreHasPlugin felkorHomeWayfire "vecdecor";
+assert !enableHostIntegration || !(coreHasPlugin felkorHomeWayfire "pixdecor");
+assert !enableHostIntegration || felkorHomeWayfire.settings ? vecdecor;
+assert !enableHostIntegration || !(felkorHomeWayfire.settings ? pixdecor);
+assert !enableHostIntegration || matchesVecdecorSettings felkorHomeWayfire;
+assert !enableHostIntegration || !(hasGeneratedPngStatePath felkorHomeWayfire);
+assert
+  !enableHostIntegration || felkorHomeWayfire.settings.winshadows == expectedWinshadowsSettings;
 assert !enableHostIntegration || lib.getName baneNixosVecdecor == "vecdecor";
 assert !enableHostIntegration || lib.getName baneHomeVecdecor == "vecdecor";
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" baneNixosExtraPlugins.mesonFlags;
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" baneNixosExtraPlugins.mesonFlags;
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" baneHomeExtraPlugins.mesonFlags;
-assert !enableHostIntegration || coreHasPlugin baneHomeWayfire "pixdecor";
-assert !enableHostIntegration || !(coreHasPlugin baneHomeWayfire "vecdecor");
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" baneHomeExtraPlugins.mesonFlags;
+assert !enableHostIntegration || coreHasPlugin baneHomeWayfire "vecdecor";
+assert !enableHostIntegration || !(coreHasPlugin baneHomeWayfire "pixdecor");
+assert !enableHostIntegration || baneHomeWayfire.settings ? vecdecor;
+assert !enableHostIntegration || !(baneHomeWayfire.settings ? pixdecor);
+assert !enableHostIntegration || matchesVecdecorSettings baneHomeWayfire;
+assert !enableHostIntegration || !(hasGeneratedPngStatePath baneHomeWayfire);
+assert !enableHostIntegration || baneHomeWayfire.settings.winshadows == expectedWinshadowsSettings;
 assert
   !enableHostIntegration
   || baneHome.systemd.user.services.reframe-session.Unit.PartOf == [ "wayfire-session.target" ];

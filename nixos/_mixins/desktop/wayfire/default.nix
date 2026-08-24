@@ -82,7 +82,7 @@ in
         plugins = with pkgs.wayfirePlugins; [
           wcm
           wf-shell
-          wayfire-plugins-extra
+          (wayfire-plugins-extra.override { withPixdecorPlugin = false; })
           pkgs.vecdecor
         ];
       };
