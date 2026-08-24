@@ -171,6 +171,20 @@ directory, common agent state, package caches, XDG config/data/state paths, and
 the private `/tmp` tmpfs. `/tmp` is allowed as a bare directory rather than a
 glob so Landlock covers temp paths created after Fence starts.
 
+The filesystem root is read-granted. Landlock rules are additive and Fence
+grants subtrees, never `/` itself, so `open("/")` fails with `EACCES` in the
+default policy. Nix opens `/` whenever evaluation leaves pure flake mode:
+`nix eval --impure`, `nix-instantiate`, `nix shell`, `nix run`, and
+registry-resolved installables such as `nixpkgs#hello` all fail with
+`error: opening file "/": Permission denied` without the grant, which also
+breaks `just eval`. The `"/"` entry in `allowRead` fixes this. It does not
+expose secret material: `denyRead` paths are enforced by Fence's mount
+masks, not by Landlock, and the Landlock read layer already covered the
+home directory, `/tmp`, and every system path. What the grant adds is the
+`/` and `/home` directory inodes plus paths that remain guarded by ordinary
+file permissions, such as `/root`. The narrower entries stay listed so the
+policy still stands on its own if the root grant is ever removed.
+
 SOPS material is denied across both the Home Manager and NixOS sides of this
 flake: the user age key under `~/.config/sops/`, and the host age key under
 `/var/lib/private/sops/`. Runtime mounts at `/run/secrets` and `/run/secrets.d`

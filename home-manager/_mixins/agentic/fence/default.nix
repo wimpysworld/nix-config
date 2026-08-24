@@ -25,6 +25,18 @@ let
     filesystem = {
       defaultDenyRead = false;
       allowRead = [
+        # Landlock rules are additive and Fence grants subtrees, never the
+        # filesystem root, so open("/") fails with EACCES even though every
+        # interesting subtree is readable. Nix opens "/" whenever evaluation
+        # leaves pure flake mode: nix eval --impure, nix-instantiate, nix
+        # shell, nix run, and registry-resolved installables all fail with
+        # "error: opening file '/': Permission denied" without this grant.
+        # Granting "/" is safe here because denyRead secrets are enforced by
+        # Fence's mount masks, not by Landlock, and the Landlock read layer
+        # already covers the home directory, /tmp, and every system path.
+        # The entries below stay listed so the policy still stands on its
+        # own if this root grant is ever removed.
+        "/"
         "/nix"
         "/nix/**"
         "${profileDirectory}"
