@@ -283,10 +283,9 @@ assert !enableHostIntegration || skryeHome.wayland.systemd.target == "hyprland-s
 assert !enableHostIntegration || lib.getName felkorNixosVecdecor == "vecdecor";
 assert !enableHostIntegration || lib.getName felkorHomeVecdecor == "vecdecor";
 assert
-  !enableHostIntegration
-  || builtins.elem "-Denable_pixdecor=false" felkorNixosExtraPlugins.mesonFlags;
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" felkorNixosExtraPlugins.mesonFlags;
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" felkorHomeExtraPlugins.mesonFlags;
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" felkorHomeExtraPlugins.mesonFlags;
 assert !enableHostIntegration || coreHasPlugin felkorHomeWayfire "vecdecor";
 assert !enableHostIntegration || !(coreHasPlugin felkorHomeWayfire "pixdecor");
 assert !enableHostIntegration || felkorHomeWayfire.settings ? vecdecor;
@@ -298,9 +297,9 @@ assert
 assert !enableHostIntegration || lib.getName baneNixosVecdecor == "vecdecor";
 assert !enableHostIntegration || lib.getName baneHomeVecdecor == "vecdecor";
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" baneNixosExtraPlugins.mesonFlags;
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" baneNixosExtraPlugins.mesonFlags;
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" baneHomeExtraPlugins.mesonFlags;
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" baneHomeExtraPlugins.mesonFlags;
 assert !enableHostIntegration || coreHasPlugin baneHomeWayfire "vecdecor";
 assert !enableHostIntegration || !(coreHasPlugin baneHomeWayfire "pixdecor");
 assert !enableHostIntegration || baneHomeWayfire.settings ? vecdecor;
