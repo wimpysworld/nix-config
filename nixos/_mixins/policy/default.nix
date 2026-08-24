@@ -50,6 +50,7 @@ let
       gnugrep
       jq
       patchelf
+      procps
       rpm
     ];
     text = builtins.readFile ./falcon-sensor-install.sh;
@@ -61,6 +62,8 @@ let
     name = "falcon-sensor-check";
     runtimeInputs = with pkgs; [
       coreutils
+      gnugrep
+      procps
       systemd
     ];
     text = builtins.readFile ./falcon-sensor-check.sh;

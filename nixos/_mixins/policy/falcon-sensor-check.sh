@@ -103,6 +103,23 @@ else
 fi
 echo ""
 
+# Check maintenance (tamper) protection status. Sensor 7.38+ arms this
+# while running when console policy enables it. An armed sensor blocks
+# stop, restart, and in-place updates.
+echo "--- Maintenance Protection ---"
+PROTECTION_OUTPUT=$("${FALCONCTL}" -g --protection-status 2>&1 | grep -i 'Maintenance Protection' || true)
+if [[ "${PROTECTION_OUTPUT}" == *"Armed=True"* ]]; then
+	echo "  ${INFO}: ${PROTECTION_OUTPUT}"
+	echo "         The running sensor blocks stop, restart, and in-place"
+	echo "         updates. Disarm with the maintenance token, or disable"
+	echo "         the service and reboot, before falcon-sensor-install."
+elif [[ -n "${PROTECTION_OUTPUT}" ]]; then
+	echo "  ${INFO}: ${PROTECTION_OUTPUT}"
+else
+	echo "  ${WARN}: Unable to determine protection status"
+fi
+echo ""
+
 # Check tags.
 echo "--- Tags ---"
 TAGS_OUTPUT=$("${FALCONCTL}" -g --tags 2>&1) || true
@@ -121,6 +138,12 @@ else
 	STATE=$(systemctl is-active falcon-sensor 2>&1) || true
 	echo "  ${FAIL}: falcon-sensor.service is ${STATE}"
 	ERRORS=$((ERRORS + 1))
+	# An armed sensor survives unit stops and restarts, which leaves the
+	# unit dead while falcond keeps running detached from systemd.
+	if pgrep -x falcond >/dev/null; then
+		echo "         falcond is running outside systemd's control (split-brain)."
+		echo "         Reboot the host to restore normal supervision."
+	fi
 fi
 
 if systemctl is-enabled --quiet falcon-sensor; then

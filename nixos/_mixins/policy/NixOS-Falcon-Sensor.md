@@ -203,15 +203,70 @@ rendered into `/etc/logrotate.conf` and invoked by `logrotate.timer` at
 12:00 daily.
 
 Rotation uses `copytruncate` rather than the usual rename-and-reopen dance.
-`falcond` holds the log file descriptor open and offers no SIGHUP-style
-reopen signal; restarting the EDR sensor purely to reopen its log would
-open a blind window in security telemetry, which is unacceptable.
+The vendor package ships a logrotate rule that reopens the log with
+`pkill -HUP falcon-sensor`, but maintenance protection blocks external
+signals while the sensor is armed, and restarting the EDR sensor purely to
+reopen its log would open a blind window in security telemetry.
 `copytruncate` accepts a brief race on the very last bytes written during
 the copy in exchange for keeping the sensor uninterrupted.
 
 `/var/log/falconctl.log` is deliberately excluded. Falcon owns that path
 and recreates it as a symlink to `/dev/stdout` at every service start; see
 the troubleshooting entry below.
+
+## Maintenance protection
+
+Sensor 7.38 and later arms maintenance protection (tamper protection)
+while the sensor runs, when console policy enables it. Check it with:
+
+```bash
+sudo /opt/CrowdStrike/falconctl -g --protection-status
+```
+
+`Enabled=True Armed=True` means the running sensor:
+
+- blocks SIGTERM and SIGKILL at kernel level, even from systemd as PID 1,
+- write-protects `/opt/CrowdStrike/`, even against root.
+
+On NixOS this has two consequences:
+
+- `systemctl stop` or `systemctl restart` cannot terminate the sensor.
+  systemd marks the unit stopped while the processes keep running in the
+  `sensor.falcon` sub-cgroup, detached from supervision (split-brain).
+  A later start spawns a second `falcond` whose `falcon-sensor` child
+  exits with status 85 every second until falcond gives up with
+  "Respawn count exceeded maximum".
+- `falcon-sensor-install` cannot replace the binaries; `cp` fails with
+  `Operation not permitted` and `Text file busy`.
+
+The NixOS module therefore sets `restartIfChanged = false` and
+`stopIfChanged = false`, so `nixos-rebuild switch` never restarts the
+unit. Unit changes take effect at the next reboot. Do not restart the
+unit by hand while the sensor is armed.
+
+To update the sensor while protection is armed, either:
+
+1. Disarm it with the per-host maintenance token from infosec, then run
+   the install script:
+
+   ```bash
+   sudo /opt/CrowdStrike/falconctl -s --maintenance-token
+   sudo --preserve-env=GH_TOKEN falcon-sensor-install
+   ```
+
+2. Or disable the service, reboot, install, then re-enable:
+
+   ```bash
+   sudo systemctl disable falcon-sensor
+   sudo systemctl reboot
+   # After the reboot:
+   sudo --preserve-env=GH_TOKEN falcon-sensor-install
+   sudo systemctl enable --now falcon-sensor
+   ```
+
+The install script checks protection status before it touches
+`/opt/CrowdStrike/` and refuses to proceed while the sensor is armed. It
+also verifies that the sensor processes exited after `systemctl stop`.
 
 ## Updating the sensor
 
@@ -225,6 +280,9 @@ sudo --preserve-env=GH_TOKEN falcon-sensor-install
 # Or pin a specific version
 sudo --preserve-env=GH_TOKEN falcon-sensor-install --version 7.30.0-19000
 ```
+
+When maintenance protection is armed, follow the procedure in the
+"Maintenance protection" section above instead.
 
 The script automatically stops the running service before replacing the
 binaries. After the script completes, start the service:
@@ -248,6 +306,26 @@ The sensor binaries have not been bootstrapped yet. Run the install script:
 ```bash
 sudo --preserve-env=GH_TOKEN falcon-sensor-install
 ```
+
+### Install fails with "Operation not permitted" or "Text file busy"
+
+Maintenance protection is armed, so the running sensor write-protects
+`/opt/CrowdStrike/`. Follow the update procedure in the "Maintenance
+protection" section: disarm with the maintenance token, or disable the
+service and reboot before installing.
+
+### Unit is inactive or looping while falcond still runs (split-brain)
+
+`systemctl status falcon-sensor` reports `inactive` or `activating`, yet
+`ps -eo pid,ppid,cmd | grep falcon` shows `falcond` and
+`falcon-sensor-bpf` running with the journal full of
+`falcon-sensor[...] exited with status 85` and
+`Failed to kill control group ... Operation not permitted`. An armed
+sensor survived a unit stop or restart and now runs detached from
+systemd, and every new start conflicts with it. Reboot the host; exactly
+one sensor instance starts at boot and the unit returns to `active`.
+Kolide reports CrowdStrike as not running while the unit is in this
+state.
 
 ### "falconctl: not found" or binary errors
 
@@ -341,6 +419,9 @@ as a recipient in `.sops.yaml`.
 - **BPF mode only**: the kernel module backend does not work on NixOS. The BPF
   (eBPF) backend is configured automatically by the service's ExecStartPre
   script.
+- **Maintenance protection**: sensor 7.38+ arms tamper protection while it
+  runs. Never restart the unit by hand, and follow the "Maintenance
+  protection" section for updates.
 - **Manual updates required**: NixOS's declarative architecture prevents
   Falcon from auto-updating. You are responsible for running
   `sudo --preserve-env=GH_TOKEN falcon-sensor-install` when sensor updates

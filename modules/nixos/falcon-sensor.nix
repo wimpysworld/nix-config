@@ -168,9 +168,10 @@ in
     ];
 
     # Log rotation for Falcon's sensor logs.
-    # The Falcon sensor is a proprietary forking daemon (falcond) with no
-    # documented log-reopen signal, so the usual postrotate + kill -HUP
-    # pattern is not safe here. Restarting a security sensor purely to
+    # The vendor package ships a logrotate rule that reopens the log with
+    # "pkill -HUP falcon-sensor", but sensor 7.38+ tamper protection
+    # blocks external signals while the sensor is armed, so that pattern
+    # is not reliable here. Restarting a security sensor purely to
     # rotate its logs would create blind windows in EDR coverage and is
     # unacceptable. copytruncate sidesteps this: logrotate copies the
     # current file then truncates the original in place, so the daemon's
@@ -217,9 +218,28 @@ in
       conflicts = [ "shutdown.target" ];
       before = [ "shutdown.target" ];
 
+      # Sensor 7.38+ arms maintenance (tamper) protection while it runs:
+      # kill signals are blocked at kernel level, even from systemd as
+      # PID 1, and /opt/CrowdStrike is write-protected, even against root.
+      # A unit restart therefore cannot kill the old instance; the new
+      # falcond spawns falcon-sensor children that exit with status 85
+      # until "Respawn count exceeded maximum", and the unit ends up dead
+      # while the original sensor keeps running detached from systemd.
+      # Never restart or stop this unit on nixos-rebuild switch; unit
+      # changes take effect at the next reboot, which also avoids gaps in
+      # EDR telemetry.
+      restartIfChanged = false;
+      stopIfChanged = false;
+
       # Only start if the sensor binaries have been bootstrapped.
       unitConfig = {
         ConditionPathExists = "${installDir}/falcond";
+        # When startup genuinely fails, stop retrying after five attempts
+        # in ten minutes instead of looping indefinitely. A restart loop of
+        # 461 attempts was observed while an armed orphan instance blocked
+        # startup.
+        StartLimitIntervalSec = 600;
+        StartLimitBurst = 5;
       };
 
       serviceConfig = {
@@ -232,6 +252,10 @@ in
         TimeoutStopSec = "60s";
         KillMode = "control-group";
         KillSignal = "SIGTERM";
+        # The sensor moves its processes into a private sensor.falcon
+        # sub-cgroup. Delegation matches the vendor 7.38 unit and stops
+        # systemd from managing inside the delegated subtree.
+        Delegate = true;
         # LD_LIBRARY_PATH is for our own Falcon binaries, which are patched
         # with patchelf to use the Nix glibc interpreter and rely on nix-ld's
         # library directory to resolve shared objects (libssl, libnl, libz,

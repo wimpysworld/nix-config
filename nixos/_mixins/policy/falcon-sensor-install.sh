@@ -178,11 +178,40 @@ else
 	echo "Falcon sensor not found, proceeding with fresh install."
 fi
 
+# Sensor 7.38+ arms maintenance (tamper) protection while it runs. An armed
+# sensor blocks kill signals (even from systemd) and write access to
+# /opt/CrowdStrike (even for root), so an in-place update is impossible.
+# Refuse early with instructions rather than fail part-way through the copy.
+if [[ -x "${INSTALL_DIR}/falconctl" ]]; then
+	PROTECTION_STATUS=$("${INSTALL_DIR}/falconctl" -g --protection-status 2>/dev/null | grep -i 'Maintenance Protection' || true)
+	if [[ "${PROTECTION_STATUS,,}" == *"armed=true"* ]]; then
+		echo "ERROR: Sensor maintenance protection is armed:"
+		echo "  ${PROTECTION_STATUS}"
+		echo ""
+		echo "An armed sensor cannot be stopped or updated in place. Either:"
+		echo "  1. Disarm it with the per-host maintenance token from infosec:"
+		echo "       sudo ${INSTALL_DIR}/falconctl -s --maintenance-token"
+		echo "     then re-run this script."
+		echo "  2. Or disable the service, reboot, and re-run this script:"
+		echo "       sudo systemctl disable falcon-sensor"
+		echo "       sudo systemctl reboot"
+		echo "     After installing, re-enable and start the service:"
+		echo "       sudo systemctl enable --now falcon-sensor"
+		exit 1
+	fi
+fi
+
 # Create a temporary working directory and arrange cleanup on exit.
 WORK_DIR=$(mktemp -d --tmpdir falcon-sensor-install.XXXXXXXXXX)
 function cleanup() {
+	local status=$?
 	echo "Cleaning up temporary files..."
 	rm -rf "${WORK_DIR}"
+	if [[ "${status}" -ne 0 ]]; then
+		echo ""
+		echo "ERROR: Installation did not complete (exit ${status})."
+		echo "Check the messages above; ${INSTALL_DIR} may be unchanged or incomplete."
+	fi
 }
 trap cleanup EXIT
 
@@ -219,6 +248,20 @@ fi
 # Stop the falcon-sensor service if it is running.
 echo "Stopping falcon-sensor service (if running)..."
 systemctl stop falcon-sensor 2>/dev/null || true
+
+# Verify the sensor processes actually exited. Tamper protection can leave
+# falcond running after a "successful" systemctl stop, and copying over
+# binaries that are still executing fails part-way through.
+for _ in $(seq 1 30); do
+	pgrep -x falcond >/dev/null || break
+	sleep 1
+done
+if pgrep -x falcond >/dev/null; then
+	echo "ERROR: falcond is still running after systemctl stop."
+	echo "The sensor processes survived the stop request, so ${INSTALL_DIR} is not safe to modify."
+	echo "Reboot the host, or disarm maintenance protection, then re-run this script."
+	exit 1
+fi
 
 # Copy binaries to /opt/CrowdStrike/.
 echo "Installing sensor binaries to ${INSTALL_DIR}..."
