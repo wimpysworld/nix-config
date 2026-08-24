@@ -43,7 +43,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         positionY = "top";
         widgets = [
           "menubar"
-          "buttons-grid"
           "backlight"
           "volume"
           "mpris"
@@ -112,56 +111,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               ];
             };
           };
-          buttons-grid.actions = [
-            {
-              label = "󰕾";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.pwvucontrol}";
-            }
-            {
-              label = "󱑽";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.easyeffects}";
-            }
-            {
-              label = "";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.overskride}";
-            }
-            {
-              label = "󰈀";
-              command = "${lib.getExe swayncRun} ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
-            }
-            {
-              label = "󰖩";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.iwgtk}";
-            }
-            {
-              label = "󱁗";
-              command = "${lib.getExe swayncRun} ${pkgs.system-config-printer}/bin/system-config-printer";
-            }
-            {
-              label = "󱋆";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.wdisplays}";
-            }
-            {
-              label = "";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.piper}";
-            }
-            {
-              label = "󰋊";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.gnome-disk-utility}";
-            }
-            {
-              label = "󱊞";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.usbimager}";
-            }
-            {
-              label = "";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.cpu-x}";
-            }
-            {
-              label = "󰉁";
-              command = "${lib.getExe swayncRun} ${lib.getExe pkgs.gnome-firmware}";
-            }
-          ];
           title = {
             text = "Notifications";
             clear-all-button = true;
@@ -511,18 +460,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         .control-center .widget-label > label {
           color: ${palette.getColor "text"};
           font-size: 2rem;
-        }
-
-        .widget-buttons-grid {
-          padding-top: 0.5rem;
-        }
-
-        .widget-buttons-grid > flowbox > flowboxchild > button label {
-          font-size: 2.5rem;
-        }
-
-        .widget-buttons-grid > flowbox > flowboxchild > button:hover label {
-          color: ${palette.getColor "blue"};
         }
 
         .widget-volume {
