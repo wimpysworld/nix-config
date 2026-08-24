@@ -8,6 +8,8 @@
 let
   inherit (config.noughty) host;
   compositor = (import ../../../../../lib/wayland-compositors.nix).compositors.wayfire;
+  useVecdecor = host.name != "felkor";
+  decoratorPlugin = if useVecdecor then "vecdecor" else "pixdecor";
   toWayfireColor =
     color: alpha:
     let
@@ -57,7 +59,8 @@ in
       enable = true;
       plugins = with pkgs.wayfirePlugins; [
         wcm
-        wayfire-plugins-extra
+        (wayfire-plugins-extra.override { withPixdecorPlugin = !useVecdecor; })
+        pkgs.vecdecor
       ];
       systemd = {
         variables = compositor.startupEnvironment;
@@ -75,7 +78,7 @@ in
           autostart_wf_shell = false;
         };
         core = {
-          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move pixdecor place resize session-lock shortcuts-inhibit switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
+          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move ${decoratorPlugin} place resize session-lock shortcuts-inhibit switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
