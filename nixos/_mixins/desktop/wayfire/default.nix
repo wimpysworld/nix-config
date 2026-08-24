@@ -8,7 +8,6 @@
 }:
 let
   inherit (config.noughty) host;
-  useVecdecor = host.name != "felkor";
 
   wayfireWithGSettingsSchemas = pkgs.symlinkJoin {
     inherit (pkgs.wayfire) version;
@@ -83,7 +82,7 @@ in
         plugins = with pkgs.wayfirePlugins; [
           wcm
           wf-shell
-          (wayfire-plugins-extra.override { withPixdecorPlugin = !useVecdecor; })
+          wayfire-plugins-extra
           pkgs.vecdecor
         ];
       };
