@@ -241,11 +241,11 @@ assert !enableHostIntegration || !(coreHasPlugin felkorHomeWayfire "vecdecor");
 assert !enableHostIntegration || lib.getName baneNixosVecdecor == "vecdecor";
 assert !enableHostIntegration || lib.getName baneHomeVecdecor == "vecdecor";
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" baneNixosExtraPlugins.mesonFlags;
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" baneNixosExtraPlugins.mesonFlags;
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=false" baneHomeExtraPlugins.mesonFlags;
-assert !enableHostIntegration || coreHasPlugin baneHomeWayfire "vecdecor";
-assert !enableHostIntegration || !(coreHasPlugin baneHomeWayfire "pixdecor");
+  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" baneHomeExtraPlugins.mesonFlags;
+assert !enableHostIntegration || coreHasPlugin baneHomeWayfire "pixdecor";
+assert !enableHostIntegration || !(coreHasPlugin baneHomeWayfire "vecdecor");
 assert
   !enableHostIntegration
   || baneHome.systemd.user.services.reframe-session.Unit.PartOf == [ "wayfire-session.target" ];
