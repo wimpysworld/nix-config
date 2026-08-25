@@ -16,6 +16,11 @@ if [[ ${FAKE_HERDR_FAIL_COMMAND:-} == "$*" ]]; then
   exit 42
 fi
 
+if [[ ${FAKE_HERDR_MALFORMED_COMMAND:-} == "$*" ]]; then
+  printf '{"id":"fake","result":{"type":"tab_created"}}\n'
+  exit 0
+fi
+
 case "$1 $2" in
   "workspace rename")
     jq -cn \
@@ -31,24 +36,28 @@ case "$1 $2" in
     ;;
   "tab create")
     label=
+    workspace_id=
     while (($# > 0)); do
-      if [[ $1 == "--label" ]]; then
-        label=$2
-        break
-      fi
-      shift
+      case "$1" in
+        --label)
+          label=$2
+          shift 2
+          ;;
+        --workspace)
+          workspace_id=$2
+          shift 2
+          ;;
+        *) shift ;;
+      esac
     done
-    case "$label" in
-      Codex) suffix=codex ;;
-      Git) suffix=git ;;
-      Shell) suffix=shell ;;
-      *) exit 2 ;;
-    esac
+    [[ -n $label && -n $workspace_id ]] || exit 2
+    suffix=${label,,}
     jq -cn \
       --arg label "$label" \
+      --arg workspace_id "$workspace_id" \
       --arg tab_id "tab-$suffix" \
       --arg pane_id "pane-$suffix" \
-      '{id:"fake",result:{type:"tab_created",tab:{tab_id:$tab_id,workspace_id:"workspace-1",label:$label},root_pane:{pane_id:$pane_id,tab_id:$tab_id,workspace_id:"workspace-1"}}}'
+      '{id:"fake",result:{type:"tab_created",tab:{tab_id:$tab_id,workspace_id:$workspace_id,label:$label},root_pane:{pane_id:$pane_id,tab_id:$tab_id,workspace_id:$workspace_id}}}'
     ;;
   "pane run") ;;
   "tab focus")

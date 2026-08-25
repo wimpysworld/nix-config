@@ -1,10 +1,10 @@
 id = "local.work-layout"
 name = "Work layout"
-version = "0.1.0"
+version = "0.2.0"
 min_herdr_version = "0.8.2"
-description = "Prepare agent and shell tabs for Chainguard worktrees"
+description = "Prepare shell tabs for new workspaces"
 platforms = ["linux"]
 
 [[events]]
-on = "worktree.created"
+on = "workspace.created"
 command = ["bin/herdr-work-layout"]

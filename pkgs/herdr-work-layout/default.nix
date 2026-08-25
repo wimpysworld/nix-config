@@ -12,7 +12,6 @@ let
   eventScript = writeShellApplication {
     name = "herdr-work-layout";
     runtimeInputs = [
-      coreutils
       jq
     ];
     text = builtins.readFile ./herdr-work-layout.sh;
@@ -25,7 +24,6 @@ let
     ];
     script = "${eventScript}/bin/herdr-work-layout";
     fakeHerdr = ./tests/fake-herdr.sh;
-    fixtures = ./tests/fixtures;
   } (builtins.readFile ./tests/test.sh);
 in
 assert lib.assertMsg (
@@ -33,7 +31,7 @@ assert lib.assertMsg (
 ) "herdr-work-layout requires the Herdr v0.8.2 event schema";
 stdenvNoCC.mkDerivation {
   pname = "herdr-work-layout";
-  version = "0.1.0";
+  version = "0.2.0";
 
   dontUnpack = true;
 
@@ -52,7 +50,7 @@ stdenvNoCC.mkDerivation {
   passthru.tests.herdr-work-layout = test;
 
   meta = {
-    description = "Herdr worktree layout for Chainguard repositories";
+    description = "Shell tab layout for new Herdr workspaces";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ flexiondotorg ];
     mainProgram = "herdr-work-layout";
