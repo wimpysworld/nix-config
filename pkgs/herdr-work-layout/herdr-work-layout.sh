@@ -64,6 +64,7 @@ if ! jq -e \
 fi
 
 workspace_cwd=$(jq -er '.workspace_cwd' <<<"$context_json")
+claude_pane_id=$(jq -er '.focused_pane_id' <<<"$context_json")
 
 if [[ ${HERDR_ENV:-} != "1" ]]; then
   fail_workspace "expected HERDR_ENV=1"
@@ -96,11 +97,42 @@ validate_tab_info() {
     --arg workspace_id "$workspace_id" \
     --arg tab_id "$tab_id" \
     --arg label "$label" '
-      .result.type == "tab_info"
+      type == "object"
+      and (.result | type == "object")
+      and .result.type == "tab_info"
       and .result.tab.workspace_id == $workspace_id
       and .result.tab.tab_id == $tab_id
+      and (.result.tab.number | type == "number" and . >= 1 and floor == .)
       and .result.tab.label == $label
+      and (.result.tab.focused | type == "boolean")
+      and (.result.tab.pane_count | type == "number" and . >= 1 and floor == .)
+      and (.result.tab.agent_status | type == "string" and length > 0)
     ' >/dev/null 2>&1 <<<"$response"; then
+    fail_workspace "$operation returned an invalid Herdr response"
+  fi
+}
+
+validate_focused_tab_info() {
+  local response=$1
+  local tab_id=$2
+  local label=$3
+  local operation=$4
+
+  validate_tab_info "$response" "$tab_id" "$label" "$operation"
+  if ! jq -e '.result.tab.focused == true' >/dev/null 2>&1 <<<"$response"; then
+    fail_workspace "$operation returned an invalid Herdr response"
+  fi
+}
+
+validate_ok() {
+  local response=$1
+  local operation=$2
+
+  if ! jq -e '
+    type == "object"
+    and (.result | type == "object")
+    and .result.type == "ok"
+  ' >/dev/null 2>&1 <<<"$response"; then
     fail_workspace "$operation returned an invalid Herdr response"
   fi
 }
@@ -119,24 +151,98 @@ create_tab() {
   if ! jq -e \
     --arg workspace_id "$workspace_id" \
     --arg label "$label" '
-      .result.type == "tab_created"
+      type == "object"
+      and (.result | type == "object")
+      and .result.type == "tab_created"
       and .result.tab.workspace_id == $workspace_id
       and .result.tab.label == $label
       and (.result.tab.tab_id | type == "string" and length > 0)
+      and (.result.tab.number | type == "number" and . >= 1 and floor == .)
+      and .result.tab.focused == false
+      and .result.tab.pane_count == 1
+      and (.result.tab.agent_status | type == "string" and length > 0)
+      and (.result.root_pane | type == "object")
       and .result.root_pane.workspace_id == $workspace_id
       and .result.root_pane.tab_id == .result.tab.tab_id
       and (.result.root_pane.pane_id | type == "string" and length > 0)
+      and (.result.root_pane.terminal_id | type == "string" and length > 0)
+      and .result.root_pane.focused == false
+      and (.result.root_pane.agent_status | type == "string" and length > 0)
+      and (.result.root_pane.revision | type == "number" and . >= 0 and floor == .)
     ' >/dev/null 2>&1 <<<"$response"; then
     fail_workspace "creating the $label tab returned an invalid Herdr response"
   fi
+
+  created_tab_id=$(jq -er '.result.tab.tab_id' <<<"$response")
+  created_pane_id=$(jq -er '.result.root_pane.pane_id' <<<"$response")
 }
 
 herdr_call response "renaming the initial tab" tab rename "$claude_tab_id" Claude
 validate_tab_info "$response" "$claude_tab_id" Claude "renaming the initial tab"
 
+declare -A tab_ids=( [Claude]="$claude_tab_id" )
+declare -A pane_ids=( [Claude]="$claude_pane_id" )
+
 for label in Codex OpenCode Pi Git Code Linear GitHub Shell; do
   create_tab "$label"
+  tab_ids["$label"]=$created_tab_id
+  pane_ids["$label"]=$created_pane_id
 done
 
-printf 'herdr-work-layout: prepared shell tabs in workspace %s. Initial tab %s remains active.\n' \
-  "$workspace_id" "$claude_tab_id"
+worktree_checkout=$(jq -r '.data.workspace.worktree.checkout_path // empty' <<<"$event_json")
+if [[ -z $worktree_checkout ]]; then
+  printf 'herdr-work-layout: prepared shell tabs in workspace %s.\n' "$workspace_id"
+  exit 0
+fi
+
+home_directory=${HOME:-}
+if [[ -z $home_directory ]]; then
+  fail_workspace "HOME is not set"
+fi
+
+chainguard_root_path="$home_directory/Chainguard"
+if ! chainguard_root=$(realpath -e -- "$chainguard_root_path" 2>/dev/null) \
+  || [[ ! -d $chainguard_root ]]; then
+  printf 'herdr-work-layout: prepared shell tabs in workspace %s.\n' "$workspace_id"
+  exit 0
+fi
+
+if ! checkout_path=$(realpath -e -- "$worktree_checkout" 2>/dev/null) \
+  || [[ ! -d $checkout_path ]] \
+  || [[ $checkout_path != "$chainguard_root/"* ]]; then
+  printf 'herdr-work-layout: prepared shell tabs in workspace %s.\n' "$workspace_id"
+  exit 0
+fi
+
+run_in_pane() {
+  local pane_id=$1
+  local command_text=$2
+  local response
+
+  herdr_call response "running '$command_text' in pane $pane_id" \
+    pane run "$pane_id" "$command_text"
+  validate_ok "$response" "running '$command_text' in pane $pane_id"
+}
+
+close_created_tab() {
+  local label=$1
+  local tab_id=${tab_ids[$label]}
+  local response
+
+  herdr_call response "closing the $label tab" tab close "$tab_id"
+  validate_ok "$response" "closing the $label tab"
+}
+
+run_in_pane "${pane_ids[Claude]}" "claude-fenced"
+run_in_pane "${pane_ids[Codex]}" "codex-fenced"
+run_in_pane "${pane_ids[Git]}" "lg"
+run_in_pane "${pane_ids[Code]}" "fresh ."
+
+close_created_tab OpenCode
+close_created_tab Pi
+
+herdr_call response "focusing the Claude tab" tab focus "${tab_ids[Claude]}"
+validate_focused_tab_info "$response" "${tab_ids[Claude]}" Claude "focusing the Claude tab"
+
+printf 'herdr-work-layout: prepared Chainguard worktree workspace %s and focused tab %s.\n' \
+  "$workspace_id" "${tab_ids[Claude]}"
