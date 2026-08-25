@@ -23,6 +23,7 @@ let
   # so current_exe re-exec keeps working after Home Manager generation changes.
   codexPackage = inputs.llm-agents.packages.${system}.codex;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceAgentShare = import ../fence/agent-share.nix { inherit pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
@@ -40,6 +41,7 @@ let
   # The binary is `codex-acp`, pinned via the llm-agents flake input so the
   # adapter version stays in lockstep with the codex CLI it speaks to.
   codexAcpPackage = inputs.llm-agents.packages.${system}.codex-acp;
+  herdrIntegrations = pkgs.herdr-integrations;
   codexLegacyDir = "${config.home.homeDirectory}/.codex";
   codexXdgDir = "${config.xdg.configHome}/codex";
   codexStableBin = "${config.xdg.dataHome}/codex/bin/codex";
@@ -56,6 +58,9 @@ let
     codexXdgDir
   ];
   codexConfigPaths = map (targetDir: "${targetDir}/config.toml") codexDirs;
+  codexHerdrScript = "${herdrIntegrations}/home/.codex/herdr-agent-state.sh";
+  codexDeployedHerdrScript = "${codexDir}/herdr-agent-state.sh";
+  codexHerdrScriptPaths = map (targetDir: "${targetDir}/herdr-agent-state.sh") codexDirs;
   codexStableBins = lib.unique [
     codexStableBin
     codexLegacyStableBin
@@ -106,11 +111,14 @@ let
     runtimeInputs = [
       fencePackage
     ]
+    ++ fenceAgentShare.runtimeInputs
     ++ fenceWaylandBridge.runtimeInputs
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      ${fenceAgentShare.captureShell}
       ${fenceWaylandBridge.setupShell}
+      ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
       ${fenceChromium.setupShell}
 
@@ -160,9 +168,9 @@ let
       inherit statusMessage;
     };
   codexTripwireHookEvents = {
-    # No SessionStart or SubagentStart reminder hook is registered here on
-    # purpose. Codex loads the Communication Rules skill through the explicit
-    # reference in its root instructions. Codex also has no
+    # No Communication Rules SessionStart or SubagentStart reminder hook is
+    # registered here on purpose. Codex loads the Communication Rules skill
+    # through the explicit reference in its root instructions. Codex also has no
     # silent SessionStart hook channel: a hook emitting
     # hookSpecificOutput.additionalContext is recorded as a visible developer
     # message in the transcript (see openai/codex#16933), and SubagentStart is
@@ -194,6 +202,21 @@ let
       }
     ];
   };
+  codexHerdrHookEvents = {
+    SessionStart = [
+      {
+        hooks = [
+          {
+            type = "command";
+            command = "bash '${codexDeployedHerdrScript}' session";
+            timeout = 10;
+          }
+        ];
+      }
+    ];
+  };
+  codexHookEvents =
+    (lib.optionalAttrs communicationRules.enable codexTripwireHookEvents) // codexHerdrHookEvents;
   codexHookStateEntriesForConfigPath =
     configPath:
     lib.flatten (
@@ -211,14 +234,14 @@ let
             };
           }) group.hooks
         ) groups
-      ) codexTripwireHookEvents
+      ) codexHookEvents
     );
-  codexTripwireHookState = lib.listToAttrs (
+  codexHookState = lib.listToAttrs (
     lib.concatMap codexHookStateEntriesForConfigPath codexConfigPaths
   );
-  codexTripwireHooks = lib.optionalAttrs communicationRules.enable {
-    hooks = codexTripwireHookEvents // {
-      state = codexTripwireHookState;
+  codexHooks = {
+    hooks = codexHookEvents // {
+      state = codexHookState;
     };
   };
   tomlMergePython = pkgs.python3.withPackages (ps: [ ps.tomli-w ]);
@@ -288,6 +311,7 @@ let
     # the `codex-code-mode-host` helper the feature needs.
     features = {
       code_mode_host = true;
+      hooks = true;
       skill_mcp_dependency_install = false;
     };
 
@@ -417,7 +441,7 @@ let
     mcp_oauth_callback_port = mcpServerDefs.codexOAuthCallbackPort;
     mcp_oauth_callback_url = mcpServerDefs.codexOAuthCallbackUrl;
   }
-  // codexTripwireHooks;
+  // codexHooks;
 
   # Generate the config.toml content in the nix store, then deploy it as a real
   # mutable file during activation.
@@ -528,6 +552,9 @@ let
     # Codex's own config discovery, the Home Manager module, and whether an
     # older ~/.codex tree already exists.
     ${lib.concatMapStringsSep "\n" (target: ''install_codex_binary "${target}"'') codexStableBins}
+    ${lib.concatMapStringsSep "\n" (
+      target: ''install_stable_binary "${codexHerdrScript}" "${target}"''
+    ) codexHerdrScriptPaths}
     ${lib.concatMapStringsSep "\n" (targetDir: ''merge_codex_config "${targetDir}"'') codexDirs}
   '';
 in

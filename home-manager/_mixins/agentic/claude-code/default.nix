@@ -18,7 +18,11 @@ let
   # claude-code package selection (Linux llm-agents vs unstable) lives in
   # overlays/default.nix.
   claudePackage = pkgs.claude-code;
+  herdrIntegrations = pkgs.herdr-integrations;
+  claudeHerdrScript = "${herdrIntegrations}/home/.claude/hooks/herdr-agent-state.sh";
+  claudeDeployedHerdrScript = "${config.home.homeDirectory}/.claude/hooks/herdr-agent-state.sh";
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceAgentShare = import ../fence/agent-share.nix { inherit pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
@@ -37,6 +41,10 @@ let
   # llm-agents flake input so the version is pinned alongside claude-code.
   claudeAgentAcpPackage = inputs.llm-agents.packages.${system}.claude-agent-acp;
   ccstatuslinePackage = inputs.llm-agents.packages.${system}.ccstatusline;
+  claudeStatusLinePackage = import ./claude-statusline {
+    inherit ccstatuslinePackage pkgs;
+    herdrAgentUsagePackage = pkgs.herdr-agent-usage;
+  };
   usageRemainingPackage = pkgs.writeTextFile {
     name = "ccstatusline-usage-remaining";
     destination = "/bin/ccstatusline-usage-remaining";
@@ -289,6 +297,20 @@ let
     correctionPrompt = claudeCodeTripwireCorrectionPrompt;
   };
   claudeCodeTripwireHook = event: claudeCodeTripwireAdapter.mkHook event;
+  claudeHerdrHooks = {
+    SessionStart = lib.mkAfter [
+      {
+        matcher = "*";
+        hooks = [
+          {
+            type = "command";
+            command = "bash '${claudeDeployedHerdrScript}' session";
+            timeout = 10;
+          }
+        ];
+      }
+    ];
+  };
   claudeCodeTripwireHooks = {
     SessionStart = lib.mkAfter [
       {
@@ -465,11 +487,14 @@ let
       fencePackage
       pkgs.ncurses
     ]
+    ++ fenceAgentShare.runtimeInputs
     ++ fenceWaylandBridge.runtimeInputs
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      ${fenceAgentShare.captureShell}
       ${fenceWaylandBridge.setupShell}
+      ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
       ${fenceChromium.setupShell}
 
@@ -549,9 +574,14 @@ in
       config.programs.claude-code.enable && claudeOutputStyle == "house-style";
 
     home = {
-      file = lib.mkIf (lspServers != { }) {
-        ".claude/plugins/nix-lsp/.lsp.json".text = builtins.toJSON lspServers;
-      };
+      file = lib.mkMerge [
+        (lib.mkIf (lspServers != { }) {
+          ".claude/plugins/nix-lsp/.lsp.json".text = builtins.toJSON lspServers;
+        })
+        {
+          ".claude/hooks/herdr-agent-state.sh".source = claudeHerdrScript;
+        }
+      ];
       packages = [
         ccstatuslinePackage
         claudeAgentAcpPackage
@@ -799,12 +829,11 @@ in
               pr = "";
             };
 
-            # Wire ccstatusline into Claude Code's status bar. The module writes
-            # this value to ~/.claude/settings.json under the "statusLine" key,
-            # which Claude Code reads on startup to invoke the formatter.
+            # Send Claude Code's status-line data to Agent Usage before
+            # ccstatusline formats the visible status bar.
             statusLine = {
               type = "command";
-              command = lib.getExe ccstatuslinePackage;
+              command = lib.getExe claudeStatusLinePackage;
               padding = 0;
             };
 
@@ -822,6 +851,9 @@ in
           (lib.mkIf communicationRules.enable {
             hooks = claudeCodeTripwireHooks;
           })
+          {
+            hooks = claudeHerdrHooks;
+          }
           (lib.optionalAttrs host.is.linux {
             skipDangerousModePermissionPrompt = true;
           })

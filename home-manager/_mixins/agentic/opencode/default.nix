@@ -11,6 +11,7 @@ let
   defaultOpenCodeEnabled = !host.is.server;
   fencedEnabled = !host.is.server;
   aiSopsFile = ../../../../secrets/ai.yaml;
+  herdrIntegrations = pkgs.herdr-integrations;
   # Directories whose project-level OpenCode config is trusted to load.
   trustedProjectConfigRoots = [
     "${config.home.homeDirectory}/Chainguard"
@@ -123,6 +124,7 @@ let
         };
       });
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceAgentShare = import ../fence/agent-share.nix { inherit pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
@@ -139,11 +141,14 @@ let
     runtimeInputs = [
       fencePackage
     ]
+    ++ fenceAgentShare.runtimeInputs
     ++ fenceWaylandBridge.runtimeInputs
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      ${fenceAgentShare.captureShell}
       ${fenceWaylandBridge.setupShell}
+      ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
       ${fenceChromium.setupShell}
 
@@ -177,15 +182,25 @@ in
     (lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
       "opencode/plugins/communication-rules.ts".text = opencodeTripwirePlugin.pluginText;
     })
-    # Herdr's OpenCode plugin reports session identity and state to the
-    # multiplexer over its control socket. OpenCode auto-loads any file under
-    # `plugins/`. The plugin is a no-op unless herdr injects HERDR_ENV and
-    # HERDR_SOCKET_PATH, so it is harmless outside a herdr pane. Kept verbatim
-    # from the upstream herdr integration asset (version marker preserved) so
-    # `herdr integration status` recognises it.
+    # Herdr's OpenCode plugins report session identity and state to the
+    # multiplexer over its control socket. The generated assets match the
+    # installed Herdr release.
     (lib.mkIf (config.programs.opencode.enable && host.is.linux) {
-      "opencode/plugins/herdr-agent-state.js".source = ./plugins/herdr-agent-state.js;
+      "opencode/herdr-tui-session.js".source =
+        "${herdrIntegrations}/home/.config/opencode/herdr-tui-session.js";
+      "opencode/plugins/herdr-agent-state.js".source =
+        "${herdrIntegrations}/home/.config/opencode/plugins/herdr-agent-state.js";
+      "opencode/tui.jsonc".text = builtins.toJSON {
+        plugin = [ "./herdr-tui-session.js" ];
+      };
     })
+  ];
+
+  assertions = [
+    {
+      assertion = herdrIntegrations.version == pkgs.herdr.version;
+      message = "The OpenCode Herdr integrations must match Herdr ${pkgs.herdr.version}.";
+    }
   ];
 
   programs = {

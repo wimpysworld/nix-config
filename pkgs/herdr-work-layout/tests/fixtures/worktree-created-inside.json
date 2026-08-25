@@ -1,0 +1,33 @@
+{
+  "event": "worktree_created",
+  "data": {
+    "type": "worktree_created",
+    "workspace": {
+      "workspace_id": "workspace-1",
+      "number": 2,
+      "label": "feature",
+      "focused": false,
+      "pane_count": 1,
+      "tab_count": 1,
+      "active_tab_id": "tab-claude",
+      "agent_status": "idle",
+      "worktree": {
+        "repo_key": "chainguard/project",
+        "repo_name": "project",
+        "repo_root": "/fixture/Chainguard/project",
+        "checkout_path": "/fixture/Chainguard/project/feature",
+        "is_linked_worktree": true
+      }
+    },
+    "worktree": {
+      "path": "/fixture/Chainguard/project/feature",
+      "branch": "feature/agents",
+      "is_bare": false,
+      "is_detached": false,
+      "is_prunable": false,
+      "is_linked_worktree": true,
+      "open_workspace_id": "workspace-1",
+      "label": "project"
+    }
+  }
+}

@@ -8,6 +8,10 @@ pkgs: {
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   heynote = pkgs.callPackage ./heynote { };
+  herdr-agent-usage = pkgs.callPackage ./herdr-agent-usage { };
+  herdr-integrations = pkgs.callPackage ./herdr-integrations { };
+  herdr-pc-ram-and-cpu-usage-overlay = pkgs.callPackage ./herdr-pc-ram-and-cpu-usage-overlay { };
+  herdr-work-layout = pkgs.callPackage ./herdr-work-layout { };
   linear-term = pkgs.callPackage ./linear-term { };
   linear-tui = pkgs.callPackage ./linear-tui { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };

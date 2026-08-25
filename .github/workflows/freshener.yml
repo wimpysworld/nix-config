@@ -50,6 +50,12 @@ jobs:
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases
+          - id: herdr-agent-usage
+            name: Herdr Agent Usage
+            changelog: https://github.com/senna-lang/herdr-agent-usage/releases
+          - id: herdr-pc-ram-and-cpu-usage-overlay
+            name: Herdr PC RAM and CPU Usage Overlay
+            changelog: https://github.com/ezcorp-org/herdr-pc-ram-and-cpu-usage-overlay/commits/main
           - id: slk
             name: slk
             changelog: https://github.com/gammons/slk/releases

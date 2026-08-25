@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 60 commands, twenty-three physical skills, and two generated skills - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 60 commands, twenty-four physical skills, and two generated skills - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex resources are emitted only when those clients are enabled.
 
@@ -500,6 +500,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `draft-comment`      | Read-only drafting for GitHub, Linear, or Slack comments and replies      |
 | `draft-issue`        | Read-only GitHub issue drafting with policy and duplicate checks          |
 | `gh`                 | GitHub CLI reference - PR creation, issue management, releases            |
+| `herdr`              | Control Herdr workspaces, tabs, panes, commands, and coding agents         |
 | `review-code`        | Shared review method: input resolution, fan-out, pressure-test, report    |
 | `semgrep`            | Semgrep CLI usage and custom rule creation reference                      |
 | `slack`              | Slack reference - `slack-post` target forms, channel resolution, threads  |

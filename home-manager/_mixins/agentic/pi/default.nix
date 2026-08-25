@@ -13,7 +13,9 @@ let
   aiSopsFile = ../../../../secrets/ai.yaml;
   fencedEnabled = !host.is.server;
   piPackage = inputs.llm-agents.packages.${system}.pi;
+  herdrIntegrations = pkgs.herdr-integrations;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceAgentShare = import ../fence/agent-share.nix { inherit pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
@@ -282,11 +284,14 @@ let
     runtimeInputs = [
       fencePackage
     ]
+    ++ fenceAgentShare.runtimeInputs
     ++ fenceWaylandBridge.runtimeInputs
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      ${fenceAgentShare.captureShell}
       ${fenceWaylandBridge.setupShell}
+      ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
       ${fenceChromium.setupShell}
 
@@ -590,12 +595,10 @@ let
 
   # Herdr's Pi extension reports session identity and state to the multiplexer
   # over its control socket. Pi auto-discovers bare `.ts` files under
-  # `extensions/`. The extension is a no-op unless herdr injects HERDR_ENV and
-  # HERDR_SOCKET_PATH, so it is harmless outside a herdr pane. Kept verbatim
-  # from the upstream herdr integration asset so `herdr integration status`
-  # recognises it.
+  # `extensions/`. The generated asset matches the installed Herdr release.
   piHerdrFiles = lib.optionalAttrs host.is.linux {
-    ".pi/agent/extensions/herdr-agent-state.ts".source = ./extensions/herdr-agent-state.ts;
+    ".pi/agent/extensions/herdr-agent-state.ts".source =
+      "${herdrIntegrations}/home/.pi/agent/extensions/herdr-agent-state.ts";
   };
 
   # sub-core does not fetch quota data on session start; it first renders cached
@@ -624,6 +627,13 @@ let
   };
 in
 lib.mkIf (noughtyLib.userHasTag "developer") {
+  assertions = [
+    {
+      assertion = herdrIntegrations.version == pkgs.herdr.version;
+      message = "The Pi Herdr integration must match Herdr ${pkgs.herdr.version}.";
+    }
+  ];
+
   sops.secrets.ANTHROPIC_API_KEY = {
     sopsFile = aiSopsFile;
     mode = "0400";

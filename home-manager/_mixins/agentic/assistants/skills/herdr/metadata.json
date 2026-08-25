@@ -1,0 +1,8 @@
+{
+  "upstream": "https://github.com/herdrdev/herdr/tree/v0.8.2/skills/herdr",
+  "upstream_tag": "v0.8.2",
+  "upstream_commit": "9eb521456ac0d19d3ab3d9d7cea3cca10baa8a4c",
+  "upstream_commit_date": "2026-08-19T17:49:54Z",
+  "upstream_commit_message": "release: v0.8.2",
+  "vendored_date": "2026-08-25"
+}

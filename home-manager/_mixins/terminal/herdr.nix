@@ -1,5 +1,4 @@
 {
-  catppuccinPalette,
   config,
   lib,
   pkgs,
@@ -21,9 +20,48 @@ let
     # symlink into the store, so herdr can never record completion itself. The
     # flag is pre-set here to skip onboarding on every start.
     onboarding = false;
-    # Match the repository's Catppuccin Mocha theming.
-    theme.name = "catppuccin";
-    ui.accent = catppuccinPalette.getColor "blue";
+    # Use the host terminal palette for the Herdr interface.
+    theme.name = "terminal";
+    keys.command = [
+      {
+        key = "prefix+u";
+        type = "plugin_action";
+        command = "usagebar.open-limits";
+        description = "Agent Usage: open limits pane";
+      }
+      {
+        key = "prefix+m";
+        type = "plugin_action";
+        command = "usagebar.refresh";
+        description = "Agent Usage: refresh sidebar meters";
+      }
+    ];
+    ui.sidebar.agents = {
+      row_gap = 0;
+      rows = [
+        [
+          "state_icon"
+          "$title"
+        ]
+        [
+          "$provider"
+          "$limit"
+        ]
+        [ "$context" ]
+      ];
+    };
+    ui.sidebar.spaces.rows = [
+      [
+        "state_icon"
+        "workspace"
+      ]
+      [
+        "branch"
+        "git_status"
+      ]
+      [ "$usage" ]
+    ];
+    ui.status_indicators = "symbols";
     ui.show_agent_labels_on_pane_borders = true;
     ui.sound.enabled = false;
     ui.toast.delivery = "herdr";
@@ -225,7 +263,42 @@ in
     home.packages = [
       herdrWorktree
       pkgs.herdr
+      pkgs.herdr-agent-usage
+      pkgs.herdr-pc-ram-and-cpu-usage-overlay
+      pkgs.herdr-work-layout
     ];
+
+    home.activation.herdrAgentUsagePlugin = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      ${pkgs.herdr}/bin/herdr plugin link \
+        ${pkgs.herdr-agent-usage}/share/herdr/plugins/usagebar --enabled
+    '';
+
+    home.activation.herdrPcRamAndCpuUsageOverlayPlugin =
+      lib.hm.dag.entryAfter [ "herdrAgentUsagePlugin" ]
+        ''
+          ${pkgs.herdr}/bin/herdr plugin link \
+            ${pkgs.herdr-pc-ram-and-cpu-usage-overlay}/share/herdr/plugins/space-usage --enabled
+        '';
+
+    home.activation.herdrWorkLayoutPlugin =
+      lib.hm.dag.entryAfter [ "herdrPcRamAndCpuUsageOverlayPlugin" ]
+        ''
+          ${pkgs.herdr}/bin/herdr plugin link \
+            ${pkgs.herdr-work-layout}/share/herdr/plugins/work-layout --enabled
+        '';
+
+    home.activation.herdrReloadConfig = lib.hm.dag.entryAfter [ "herdrWorkLayoutPlugin" ] ''
+      herdr_reload_status=0
+      herdr_reload_output="$(${pkgs.herdr}/bin/herdr server reload-config 2>&1)" \
+        || herdr_reload_status=$?
+
+      if ((herdr_reload_status != 0)) \
+        && ! printf '%s\n' "$herdr_reload_output" \
+          | ${pkgs.jq}/bin/jq -e '.error.code == "server_not_running"' >/dev/null 2>&1; then
+        printf '%s\n' "$herdr_reload_output" >&2
+        exit "$herdr_reload_status"
+      fi
+    '';
 
     xdg.configFile."herdr/config.toml".source = lib.mkDefault (
       tomlFormat.generate "herdr-config.toml" settings

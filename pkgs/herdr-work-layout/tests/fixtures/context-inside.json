@@ -1,0 +1,19 @@
+{
+  "workspace_id": "workspace-1",
+  "workspace_label": "feature",
+  "workspace_cwd": "/fixture/Chainguard/project/feature",
+  "worktree": {
+    "repo_key": "chainguard/project",
+    "repo_name": "project",
+    "repo_root": "/fixture/Chainguard/project",
+    "checkout_path": "/fixture/Chainguard/project/feature",
+    "is_linked_worktree": true
+  },
+  "tab_id": "tab-claude",
+  "tab_label": "1",
+  "focused_pane_id": "pane-claude",
+  "focused_pane_cwd": "/fixture/Chainguard/project/feature",
+  "focused_pane_status": "idle",
+  "invocation_source": "api",
+  "correlation_id": "worktree.created"
+}
