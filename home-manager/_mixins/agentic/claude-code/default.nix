@@ -769,6 +769,7 @@ in
             enableAllProjectMcpServers = false;
 
             theme = "custom:catppuccin:catppuccin-mocha";
+            tui = "fullscreen";
 
             # Route all web search and fetch through the Exa MCP server. Deny the
             # built-in WebSearch and WebFetch tools by bare name, which removes them
