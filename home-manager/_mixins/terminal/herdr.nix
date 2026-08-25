@@ -26,8 +26,8 @@ let
       custom = {
         accent = catppuccinPalette.getColor "blue";
         sidebar_bg = catppuccinPalette.getColor "crust";
-        active_row_bg = "#263a5f";
-        selection_bg = "#314a75";
+        active_row_bg = catppuccinPalette.getColor "surface0";
+        selection_bg = catppuccinPalette.getColor "surface1";
         surface_dim = catppuccinPalette.getColor "surface2";
       };
     };
@@ -51,13 +51,29 @@ let
       rows = [
         [
           "state_icon"
-          "$title"
+          {
+            token = "$title";
+            fg = catppuccinPalette.getColor "text";
+            bold = true;
+            dim = false;
+          }
         ]
         [
-          "$provider"
-          "$limit"
+          {
+            token = "$provider";
+            dim = false;
+          }
+          {
+            token = "$limit";
+            dim = false;
+          }
         ]
-        [ "$context" ]
+        [
+          {
+            token = "$context";
+            dim = false;
+          }
+        ]
       ];
     };
     ui.sidebar.spaces.rows = [
