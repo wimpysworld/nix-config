@@ -22,6 +22,25 @@ let
   herdrIntegrations = pkgs.herdr-integrations;
   claudeHerdrScript = "${herdrIntegrations}/home/.claude/hooks/herdr-agent-state.sh";
   claudeDeployedHerdrScript = "${config.home.homeDirectory}/.claude/hooks/herdr-agent-state.sh";
+  # Claude Code runs a command hook through `/bin/sh -c` with the session PATH.
+  # Inside fence that PATH has no `bash`, and no `mktemp` or `cat` either, so a
+  # bare `bash '<script>'` command fails with "bash: command not found" and the
+  # herdr POSIX script would exit early even if it did start. This wrapper puts
+  # the tools the script needs on PATH and runs it by absolute path. The script
+  # is skipped when it is not deployed yet, so a first activation cannot report
+  # a hook error.
+  claudeHerdrHookPackage = pkgs.writeShellApplication {
+    name = "claude-herdr-agent-state";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.python3
+    ];
+    text = ''
+      script=${lib.escapeShellArg claudeDeployedHerdrScript}
+      [[ -x "$script" ]] || exit 0
+      exec "$script" "$@"
+    '';
+  };
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceAgentShare = import ../fence/agent-share.nix { inherit pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
@@ -305,7 +324,7 @@ let
         hooks = [
           {
             type = "command";
-            command = "bash '${claudeDeployedHerdrScript}' session";
+            command = "${lib.getExe claudeHerdrHookPackage} session";
             timeout = 10;
           }
         ];

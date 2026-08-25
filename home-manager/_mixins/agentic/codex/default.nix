@@ -61,6 +61,25 @@ let
   codexHerdrScript = "${herdrIntegrations}/home/.codex/herdr-agent-state.sh";
   codexDeployedHerdrScript = "${codexDir}/herdr-agent-state.sh";
   codexHerdrScriptPaths = map (targetDir: "${targetDir}/herdr-agent-state.sh") codexDirs;
+  # Codex runs a command hook through `/bin/sh -c` with the session PATH.
+  # Inside fence that PATH has no `bash`, and no `mktemp` or `cat` either, so a
+  # bare `bash '<script>'` command fails with "bash: command not found" and the
+  # herdr POSIX script would exit early even if it did start. This wrapper puts
+  # the tools the script needs on PATH and runs it by absolute path. The script
+  # is skipped when it is not deployed yet, so a first activation cannot report
+  # a hook error.
+  codexHerdrHookPackage = pkgs.writeShellApplication {
+    name = "codex-herdr-agent-state";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.python3
+    ];
+    text = ''
+      script=${lib.escapeShellArg codexDeployedHerdrScript}
+      [[ -x "$script" ]] || exit 0
+      exec "$script" "$@"
+    '';
+  };
   codexStableBins = lib.unique [
     codexStableBin
     codexLegacyStableBin
@@ -208,7 +227,7 @@ let
         hooks = [
           {
             type = "command";
-            command = "bash '${codexDeployedHerdrScript}' session";
+            command = "${lib.getExe codexHerdrHookPackage} session";
             timeout = 10;
           }
         ];
