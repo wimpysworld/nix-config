@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   lib,
   pkgs,
@@ -20,8 +21,16 @@ let
     # symlink into the store, so herdr can never record completion itself. The
     # flag is pre-set here to skip onboarding on every start.
     onboarding = false;
-    # Use the host terminal palette for the Herdr interface.
-    theme.name = "terminal";
+    theme = {
+      name = "catppuccin";
+      custom = {
+        accent = catppuccinPalette.getColor "blue";
+        sidebar_bg = catppuccinPalette.getColor "crust";
+        active_row_bg = "#263a5f";
+        selection_bg = "#314a75";
+        surface_dim = catppuccinPalette.getColor "surface2";
+      };
+    };
     keys.command = [
       {
         key = "prefix+u";
@@ -36,6 +45,7 @@ let
         description = "Agent Usage: refresh sidebar meters";
       }
     ];
+    ui.agent_panel_sort = "priority";
     ui.sidebar.agents = {
       row_gap = 0;
       rows = [
