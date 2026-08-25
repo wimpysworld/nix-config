@@ -68,6 +68,9 @@ let
         # Landlock rule covers runtime-created temp paths inside the sandbox.
         "/tmp"
 
+        # Shared temporary files for fenced agents.
+        "/run/user/*/fence-share"
+
         # Claude Code
         "${config.xdg.configHome}/ccstatusline"
         "~/.claude*"
