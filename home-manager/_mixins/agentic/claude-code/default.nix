@@ -18,6 +18,7 @@ let
   # claude-code package selection (Linux llm-agents vs unstable) lives in
   # overlays/default.nix.
   claudePackage = pkgs.claude-code;
+  claudeThemePackage = pkgs.claude-themes-catppuccin;
   herdrIntegrations = pkgs.herdr-integrations;
   claudeHerdrScript = "${herdrIntegrations}/home/.claude/hooks/herdr-agent-state.sh";
   claudeDeployedHerdrScript = "${config.home.homeDirectory}/.claude/hooks/herdr-agent-state.sh";
@@ -444,6 +445,8 @@ let
         fi
         ;;
     esac
+
+    claude_plugin_args=(--plugin-dir ${claudeThemePackage})
   '';
 
   # Home Manager's native `mcpServers` wrapper emits `--mcp-config <path>`
@@ -472,11 +475,11 @@ let
 
         for mcp_config in "''${mcp_configs[@]}"; do
           if [[ -f "$mcp_config" ]]; then
-            exec "$claude" "--mcp-config=$mcp_config" "''${claude_defaults[@]}" "$@"
+            exec "$claude" "''${claude_plugin_args[@]}" "--mcp-config=$mcp_config" "''${claude_defaults[@]}" "$@"
           fi
         done
 
-        exec "$claude" "''${claude_defaults[@]}" "$@"
+        exec "$claude" "''${claude_plugin_args[@]}" "''${claude_defaults[@]}" "$@"
         EOF
         chmod +x "$out/bin/claude"
       '';
@@ -542,16 +545,16 @@ let
       case "$width" in
         "" | *[!0-9]*)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
         *)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
       esac
@@ -764,6 +767,8 @@ in
             # MCP servers are selected by the shared MCP mixin. Project
             # MCP servers remain opt-in instead of being silently trusted.
             enableAllProjectMcpServers = false;
+
+            theme = "custom:catppuccin:catppuccin-mocha";
 
             # Route all web search and fetch through the Exa MCP server. Deny the
             # built-in WebSearch and WebFetch tools by bare name, which removes them

@@ -38,6 +38,9 @@ jobs:
           - id: concord
             name: Concord
             changelog: https://github.com/chojs23/concord/releases
+          - id: claude-themes-catppuccin
+            name: Claude Themes Catppuccin
+            changelog: https://github.com/matcra587/claude-themes/commits/main/plugins/catppuccin
           - id: voxtype
             name: Voxtype
             changelog: https://github.com/peteonrails/voxtype/releases
