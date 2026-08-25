@@ -221,7 +221,6 @@ run_in_pane() {
 
   herdr_call response "running '$command_text' in pane $pane_id" \
     pane run "$pane_id" "$command_text"
-  validate_ok "$response" "running '$command_text' in pane $pane_id"
 }
 
 close_created_tab() {

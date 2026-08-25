@@ -1,6 +1,6 @@
 id = "local.work-layout"
 name = "Work layout"
-version = "0.3.0"
+version = "0.3.1"
 min_herdr_version = "0.8.2"
 description = "Prepare workspace tabs and Chainguard worktree commands"
 platforms = ["linux"]

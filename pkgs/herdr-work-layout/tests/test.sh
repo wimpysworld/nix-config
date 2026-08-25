@@ -224,14 +224,14 @@ unset FAKE_HERDR_MISMATCH_COMMAND
 
 write_invocation "$inside_path" true
 : >"$log_file"
-export FAKE_HERDR_MALFORMED_COMMAND="pane run $git_pane_id lg"
+export FAKE_HERDR_FAIL_COMMAND="pane run $git_pane_id lg"
 if output=$(run_layout 2>&1); then
-  fail "the malformed pane response case succeeded"
+  fail "the pane run failure case succeeded"
 fi
-unset FAKE_HERDR_MALFORMED_COMMAND
-[[ $output == *"running 'lg' in pane $git_pane_id returned an invalid Herdr response"* ]] \
-  || fail "the malformed pane response error was not useful"
-[[ $(wc -l <"$log_file") -eq 12 ]] || fail "the layout continued after a malformed pane response"
+unset FAKE_HERDR_FAIL_COMMAND
+[[ $output == *"running 'lg' in pane $git_pane_id failed"* ]] \
+  || fail "the pane run failure error was not useful"
+[[ $(wc -l <"$log_file") -eq 12 ]] || fail "the layout continued after a pane run failure"
 
 : >"$log_file"
 export FAKE_HERDR_FAIL_COMMAND="tab close $pi_tab_id"

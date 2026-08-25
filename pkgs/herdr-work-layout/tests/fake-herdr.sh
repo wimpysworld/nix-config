@@ -160,7 +160,9 @@ case "$1 $2" in
         }
       '
     ;;
-  "pane run" | "tab close")
+  "pane run")
+    ;;
+  "tab close")
     jq -cn '{id:"fake",result:{type:"ok"}}'
     ;;
   "tab focus")

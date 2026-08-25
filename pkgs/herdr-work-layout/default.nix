@@ -32,7 +32,7 @@ assert lib.assertMsg (
 ) "herdr-work-layout requires the Herdr v0.8.2 event schema";
 stdenvNoCC.mkDerivation {
   pname = "herdr-work-layout";
-  version = "0.3.0";
+  version = "0.3.1";
 
   dontUnpack = true;
 
