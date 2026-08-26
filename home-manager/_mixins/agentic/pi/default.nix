@@ -421,6 +421,10 @@ let
       # deliberately wider tool surface.
       directTools = false;
       disableProxyTool = false;
+      # Silence the advisory shown when 75 or more direct tools resolve. The
+      # work hosts intentionally register the full Chainguard tool set, so
+      # the count is a requirement, not an accident.
+      warnOnLargeDirectTools = false;
       autoAuth = false;
       sampling = false;
       samplingAutoApprove = false;
