@@ -146,6 +146,11 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
+        export OPENCODE_PERMISSION='{"*":"allow","webfetch":"deny","websearch":"deny"}'
+        exec ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
+      fi
+
       ${fenceAgentShare.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}

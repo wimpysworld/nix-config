@@ -289,6 +289,11 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
+        export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
+        exec ${lib.getExe' piWrapperPackage "pi"} "$@"
+      fi
+
       ${fenceAgentShare.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}

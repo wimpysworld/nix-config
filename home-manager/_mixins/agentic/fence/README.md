@@ -1,7 +1,8 @@
-# Fence Agent Policy
+# Fence agent policy
 
-Fence is the policy boundary for Claude Code, Codex, OpenCode, and Pi when the
-fenced aliases are used:
+Fence is a permissive accident guard for Claude Code, Codex, OpenCode, and Pi.
+It reduces accidental damage when the fenced aliases are used, but it does not
+contain a hostile or compromised agent:
 
 ```console
 claude-fenced
@@ -12,6 +13,25 @@ pi-fenced
 
 The default user policy is managed by Home Manager at
 `~/.config/fence/fence.jsonc`.
+
+## Security model
+
+Fence blocks selected commands and secret paths, isolates some temporary state,
+and limits device access. The policy intentionally gives agents enough host
+access for autonomous development:
+
+| Access | Intentional scope |
+| --- | --- |
+| Filesystem reads | The filesystem root is readable, except for explicit `denyRead` masks and normal Unix permissions. |
+| Network | Outbound domains, local outbound connections, and local listeners are unrestricted. |
+| MCP secrets | The process receives required MCP API keys through its inherited environment and can read required client credentials and state. |
+| Herdr | The Herdr control socket is writable, so agents can report their identity and state. |
+| Temporary files | All fenced agents share a host directory through `TMPDIR`, at `~/.cache/fence-share`. |
+| Writes | The launch directory, the main workspace trees, agent state, and broad XDG cache, data, and state trees are writable. Selected XDG configuration trees are also writable. |
+
+These grants let an agent send readable data over the network, use authorised
+credentials and services, and change writable host state. Use Fence to catch
+mistakes, not as a security boundary against hostile code or prompt injection.
 
 The Fence mixin owns the shared policy and runtime dependencies. Each fenced
 command is declared by the corresponding agent mixin so it appears only when
@@ -24,21 +44,22 @@ non-interactive Bash command. This activates the environment for the command's
 working directory when an agent server starts elsewhere and later enters a
 project. Direnv runs inside Fence, so project-controlled `.envrc` files never
 execute outside the sandbox. `claude-fenced` runs Claude with
-`--dangerously-skip-permissions`; Fence is the permission boundary for that
-entry point. `codex-fenced` runs Codex with
+`--dangerously-skip-permissions`. Fence supplies the remaining local accident
+guards for that entry point. `codex-fenced` runs Codex with
 `--dangerously-bypass-approvals-and-sandbox`, leaving Fence as the only sandbox
-and command boundary for that entry point. `opencode-fenced` runs the normal
-OpenCode TUI entry point with `OPENCODE_PERMISSION='{"*":"allow"}'` in the
-environment, so it loads the same configuration path as plain `opencode` while
-leaving Fence as the permission boundary. `pi-fenced` runs the standard `pi`
-wrapper under Fence.
+and command filter for that entry point. This sandbox is still an accident
+guard, not hostile-agent containment. `opencode-fenced` runs the normal OpenCode
+TUI entry point with broad tool permission, while `webfetch` and `websearch`
+remain denied so web access uses the Exa MCP server. It loads the same
+configuration path as plain `opencode` while leaving Fence as the local accident
+guard. `pi-fenced` runs the standard `pi` wrapper under Fence.
 
 On Wayland, the fenced wrappers create a private per-launch runtime directory
 with a symlink to the host Wayland socket for clipboard access. They expose
 that temporary directory and the socket path to Fence, pass `XDG_RUNTIME_DIR`
 and `WAYLAND_DISPLAY` to the fenced agent, and leave `/run/user/$UID` unexposed
 as a directory. This is deliberately narrower than binding the host runtime
-wholesale: image paste needs the compositor socket, and the session bus is not
+wholesale. Image paste needs the compositor socket, and the session bus is not
 exposed.
 
 Fenced agents on non-server hosts also get a Chromium wrapper first on `PATH`.
@@ -89,13 +110,12 @@ reconstructing `/home` across mount boundaries.
 Device handling is pinned to Fence's `minimal` mode for deterministic Linux
 sandbox behaviour.
 
-Command runtime enforcement uses Fence's `path` mode. This permits
+Command runtime enforcement uses `runtimeExecPolicy = "path"`. This permits
 multithreaded tools such as Nix and Go to execute child processes. Single-token
 executable denies remain runtime-enforced. Multi-token denies such as `git
 config`, `just switch-home`, `nix store delete`, `nh home switch`, and `gitsign
-initialize` remain preflight-enforced only when they are the initial fenced
-command. Fence cannot enforce them against commands spawned by an agent in this
-mode.
+initialize` are initial preflight checks. Fence applies them only when the
+matching command is the initial fenced command.
 
 The `nix-collect-garbage` deny and some coreutils-backed denies are listed in
 `acceptSharedBinaryCannotRuntimeDeny`. Fence checks them only when they are the

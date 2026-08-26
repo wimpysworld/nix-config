@@ -135,6 +135,12 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
+        export HERDR_AGENT=codex
+        export NOUGHTY_CODEX_BYPASS=1
+        exec ${lib.getExe' codexLauncherPackage "codex"} "$@"
+      fi
+
       ${fenceAgentShare.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}

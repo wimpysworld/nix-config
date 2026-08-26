@@ -492,13 +492,18 @@ let
 
         ${claudeLaunchDefaults}
 
+        claude_permission_args=()
+        if [[ "''${FENCE_SANDBOX:-0}" == 1 && "''${NOUGHTY_CLAUDE_BYPASS:-0}" == 1 ]]; then
+          claude_permission_args=(--dangerously-skip-permissions)
+        fi
+
         for mcp_config in "''${mcp_configs[@]}"; do
           if [[ -f "$mcp_config" ]]; then
-            exec "$claude" "''${claude_plugin_args[@]}" "--mcp-config=$mcp_config" "''${claude_defaults[@]}" "$@"
+            exec "$claude" "''${claude_plugin_args[@]}" "--mcp-config=$mcp_config" "''${claude_permission_args[@]}" "''${claude_defaults[@]}" "$@"
           fi
         done
 
-        exec "$claude" "''${claude_plugin_args[@]}" "''${claude_defaults[@]}" "$@"
+        exec "$claude" "''${claude_plugin_args[@]}" "''${claude_permission_args[@]}" "''${claude_defaults[@]}" "$@"
         EOF
         chmod +x "$out/bin/claude"
       '';
@@ -514,6 +519,20 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
+        export HERDR_AGENT=claude
+        export NOUGHTY_CLAUDE_BYPASS=1
+        export NOUGHTY_AGENT_ISOLATION=Fenced
+
+        width="$(tput cols 2>/dev/null || true)"
+        case "$width" in
+          "" | *[!0-9]*) ;;
+          *) export CCSTATUSLINE_WIDTH="$width" ;;
+        esac
+
+        exec ${lib.getExe' claudePackageWithMcp "claude"} "$@"
+      fi
+
       ${fenceAgentShare.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}
