@@ -341,6 +341,9 @@ let
     doubleEscapeAction = "tree";
     treeFilterMode = "default";
     autocompleteMaxVisible = 8;
+    # Pad the editor content two columns from the border. Pi clamps this key
+    # to the 0-3 range and has no prompt-prefix glyph option.
+    editorPaddingX = 2;
 
     compaction = {
       enabled = true;
@@ -443,7 +446,9 @@ let
   piFooterColors = {
     # Match the Catppuccin roles used by ccstatusline: model and thinking
     # yellow, fast state mauve, cwd green, quota red, context peach,
-    # isolation purple.
+    # isolation purple. The white agent icon marks the footer as Pi at a
+    # glance, distinguishing it from the Codex status line.
+    agentIcon = "pi:text";
     model = "pi:warning";
     serviceTier = "pi:thinkingHigh";
     thinking = "pi:warning";
@@ -495,6 +500,12 @@ let
     };
     lines = [
       [
+        # White Pi glyph so the footer reads as Pi at a glance.
+        (piFooterWidget "agent-icon" "custom-text" {
+          raw = true;
+          fg = piFooterColors.agentIcon;
+          text = " ";
+        })
         # Bare model id and thinking level joined by a space, matching the
         # Codex status line's model-with-reasoning segment.
         (piFooterWidget "model" "model" {
