@@ -45,10 +45,11 @@ let
   piLensTypescriptVersion = "7.0.2";
   piFooterVersion = "0.5.1";
   piSubCoreVersion = "1.5.0";
-  # pi-cc-header is held at 0.9.4. Release 1.1.1 restructures the settings
-  # handling and still writes Pi's settings.json, so the writable-state patch
-  # must be rewritten against the new source before an update.
-  piCcHeaderVersion = "0.9.4";
+  # pi-cc-header 1.1.1 ships a native read-only config mode for declarative
+  # setups (`ccHeader.readOnlyConfig` in Pi's settings.json). It replaces the
+  # local writable-state patch that earlier releases needed, so the extension
+  # loads straight from the npm package again.
+  piCcHeaderVersion = "1.1.1";
   rpivBtwVersion = "2.7.1";
   rpivTodoVersion = "2.7.1";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
@@ -58,19 +59,6 @@ let
   piFooterSource = "npm:pi-footer@${piFooterVersion}";
   piSubCoreSource = "npm:@marckrenn/pi-sub-core@${piSubCoreVersion}";
   piCcHeaderSource = "npm:pi-cc-header@${piCcHeaderVersion}";
-  piCcHeaderUpstream = pkgs.fetchFromGitHub {
-    owner = "eriiic7z";
-    repo = "pi-cc-header";
-    rev = "v${piCcHeaderVersion}";
-    hash = "sha256-lBYwrsQh2mywAucvOePVgoWtC7jZJIiOlv8r5t6lwm8=";
-  };
-  piCcHeaderPatched =
-    pkgs.runCommand "pi-cc-header-${piCcHeaderVersion}-patched" { nativeBuildInputs = [ pkgs.patch ]; }
-      ''
-        cp -R ${piCcHeaderUpstream} "$out"
-        chmod -R u+w "$out"
-        patch -d "$out" -p1 < ${./patches/pi-cc-header-writable-state.patch}
-      '';
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
@@ -360,6 +348,16 @@ let
     markdown.codeBlockIndent = " ";
     warnings.anthropicExtraUsage = true;
 
+    # Declarative pi-cc-header configuration. `readOnlyConfig` stops the
+    # extension writing this settings file, which Home Manager owns, so header
+    # toggles such as /htg apply for the current session only. The remaining
+    # keys pre-configure the header: `color = "p"` selects the blue logo.
+    ccHeader = {
+      readOnlyConfig = true;
+      color = "p";
+      slogan = "May Pi serve you well ";
+    };
+
     # Versioned Pi package specs are pinned and skipped by `pi update`.
     packages = [
       piMcpAdapterSource
@@ -374,10 +372,7 @@ let
       }
       piFooterSource
       piSubCoreSource
-      {
-        source = piCcHeaderSource;
-        extensions = [ ];
-      }
+      piCcHeaderSource
       rpivBtwSource
       rpivTodoSource
     ];
@@ -688,10 +683,6 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       chmod 700 \
         "${config.home.homeDirectory}/.pi-lens" \
         "${config.home.homeDirectory}/.pi/agent/state"
-      if [[ ! -e "${config.home.homeDirectory}/.pi/agent/state/pi-cc-header.json" ]]; then
-        printf '{}\n' > "${config.home.homeDirectory}/.pi/agent/state/pi-cc-header.json"
-      fi
-      chmod 600 "${config.home.homeDirectory}/.pi/agent/state/pi-cc-header.json"
     '';
 
     packages = [
@@ -716,7 +707,6 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
       ".pi/agent/extensions/isolation-status/index.ts".text = piIsolationStatusExtension;
-      ".pi/agent/extensions/pi-cc-header.ts".source = "${piCcHeaderPatched}/extensions/pi-cc-header.ts";
       ".pi/agent/extensions/prompt-template-display/index.ts".source =
         ./extensions/prompt-template-display/index.ts;
       ".pi/agent/extensions/prompt-template-display/types.d.ts".source =

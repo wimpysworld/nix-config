@@ -82,9 +82,9 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "npm:pi-mcp-adapter@2.21.0",
-    "npm:pi-subagents@0.44.0",
-    "npm:pi-lens@3.8.74",
+    "npm:pi-mcp-adapter@2.28.0",
+    "npm:pi-subagents@0.57.0",
+    "npm:pi-lens@4.1.2",
     {
       "source": "npm:typescript@7.0.2",
       "extensions": [],
@@ -94,19 +94,16 @@ Pi packages are installed through the Home Manager-owned package setting:
     },
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
-    {
-      "source": "npm:pi-cc-header@0.9.4",
-      "extensions": []
-    },
-    "npm:@juicesharp/rpiv-btw@2.4.0",
-    "npm:@juicesharp/rpiv-todo@2.4.0"
+    "npm:pi-cc-header@1.1.1",
+    "npm:@juicesharp/rpiv-btw@2.7.1",
+    "npm:@juicesharp/rpiv-todo@2.7.1"
   ]
 }
 ```
 
-Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `typescript` supplies the compiler API that `pi-lens` imports at runtime but lists only as a development dependency. Its Pi resources are disabled because it is a runtime dependency, not an extension. `pi-cc-header` also has its package extension disabled because Home Manager deploys a patched copy from the pinned `v0.9.4` source.
+Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `typescript` supplies the compiler API that `pi-lens` imports at runtime but lists only as a development dependency. Its Pi resources are disabled because it is a runtime dependency, not an extension.
 
-The patch moves `ccHeader` preferences to the writable `~/.pi/agent/state/pi-cc-header.json` file. Upstream writes those preferences and startup settings to `settings.json`, but Home Manager owns that file as a read-only symlink. Home Manager sets `quietStartup` and `clearOnStart`, so `/hrl` can only explain that limit and cannot change the resource list.
+`pi-cc-header` loads from its npm package with `ccHeader.readOnlyConfig` set in the Home Manager-owned `settings.json`. That upstream read-only mode (added in 1.1.1 for declarative setups) stops the extension writing `settings.json`, so header commands such as `/htg` apply for the current session only. It replaces the local writable-state patch that earlier releases needed.
 
 The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 
@@ -146,11 +143,6 @@ Home Manager deploys local Pi extensions under `~/.pi/agent/extensions/`.
 `provider-router` lives at `~/.pi/agent/extensions/provider-router/`. It routes
 Pi `subagent` tool calls to provider-specific models declared in assistant
 `header.pi.yaml` files.
-
-The patched `pi-cc-header` extension lives at
-`~/.pi/agent/extensions/pi-cc-header.ts`. Its interactive header commands store
-preferences in `~/.pi/agent/state/pi-cc-header.json`. `/hrl` does not change the
-resource list because Home Manager controls the required startup settings.
 
 `quota-status` lives at `~/.pi/agent/extensions/quota-status/`. It listens to
 `sub-core` quota updates and publishes the compact quota segment consumed by
@@ -203,7 +195,6 @@ Managed files:
 - `~/.pi/agent/extensions/provider-router/agents.json`
 - `~/.pi/agent/extensions/provider-router/README.md`
 - `~/.pi/agent/extensions/provider-router/LICENSE`
-- `~/.pi/agent/extensions/pi-cc-header.ts`
 - `~/.pi/agent/extensions/prompt-template-display/index.ts`
 - `~/.pi/agent/extensions/prompt-template-display/types.d.ts`
 - `~/.pi/agent/extensions/quota-status/index.ts`
