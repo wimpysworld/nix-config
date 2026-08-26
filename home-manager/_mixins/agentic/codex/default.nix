@@ -155,6 +155,67 @@ let
       fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"
     '';
   };
+  # Codex writes one rollout transcript per session under
+  # $CODEX_HOME/sessions/<year>/<month>/<day>/ and never prunes them. There is
+  # no retention setting in config.toml, and `codex delete` removes a single
+  # named session only, so retention is enforced here. Rollouts older than the
+  # window are removed, then the date directories they leave empty are removed
+  # too. Pass a number of days to override the window. Set
+  # CODEX_PRUNE_DRY_RUN=1 to list what would go without deleting anything.
+  #
+  # This deletes session transcripts permanently. `codex resume` and the
+  # session picker can only reach what survives the window.
+  rolloutRetentionDays = 14;
+  codexPruneRolloutsPackage = pkgs.writeShellApplication {
+    name = "codex-prune-rollouts";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+    ];
+    text = ''
+      retention_days="''${1:-${toString rolloutRetentionDays}}"
+      case "$retention_days" in
+        "" | *[!0-9]*)
+          echo "codex-prune-rollouts: retention days must be a whole number, got '$retention_days'" >&2
+          exit 1
+          ;;
+      esac
+
+      dry_run="''${CODEX_PRUNE_DRY_RUN:-0}"
+      if [[ "$dry_run" == 1 ]]; then
+        action="listed"
+      else
+        action="removed"
+      fi
+
+      # `-mmin +N` is true when the age in whole minutes exceeds N, so this is
+      # exactly "older than $retention_days days" with no rounding surprise.
+      retention_minutes="$((retention_days * 1440))"
+      count=0
+
+      for sessions_dir in ${
+        lib.concatStringsSep " " (map (dir: lib.escapeShellArg "${dir}/sessions") codexDirs)
+      }; do
+        [[ -d "$sessions_dir" ]] || continue
+
+        while IFS= read -r -d "" rollout; do
+          if [[ "$dry_run" == 1 ]]; then
+            printf 'would remove %s\n' "$rollout"
+          else
+            rm -f -- "$rollout"
+          fi
+          count=$((count + 1))
+        done < <(find "$sessions_dir" -type f -name 'rollout-*.jsonl' -mmin "+$retention_minutes" -print0)
+
+        if [[ "$dry_run" != 1 ]]; then
+          find "$sessions_dir" -mindepth 1 -type d -empty -delete
+        fi
+      done
+
+      printf 'codex-prune-rollouts: %s %d rollout file(s) older than %s day(s)\n' \
+        "$action" "$count" "$retention_days"
+    '';
+  };
   codexTripwireCorrectionPromptFile = pkgs.writeTextFile {
     name = "codex-communication-rules-correction-prompt.md";
     text = communicationRules.correctionPrompt;
@@ -331,7 +392,26 @@ let
     features = {
       code_mode_host = true;
       hooks = true;
+      # Disable Codex memories, the cross-session note system that summarises
+      # past rollouts and injects them into later sessions. A centralised memory
+      # system replaces it, matching the Claude Code opt-out. This flag is the
+      # master gate; the [memories] table below repeats the opt-out per
+      # direction so it holds if the gate default changes. The feature became
+      # stable in Codex 0.145.0 and ships off by default, so this pins the
+      # current default rather than changing behaviour. There is no environment
+      # variable equivalent. See https://developers.openai.com/codex/memories
+      memories = false;
       skill_mcp_dependency_install = false;
+    };
+
+    # Belt and braces alongside `features.memories` above. `use_memories` stops
+    # existing memories being injected into a session; `generate_memories` stops
+    # new ones being recorded. Codex writes these same keys itself when the
+    # feature is toggled from the TUI, so declaring them keeps activation
+    # authoritative over a runtime change.
+    memories = {
+      use_memories = false;
+      generate_memories = false;
     };
 
     # Plain `codex` remains usable without Fence by keeping Codex's native
@@ -592,6 +672,7 @@ lib.mkIf (isDeveloper && !host.is.server) {
   home = {
     packages = [
       codexAcpPackage
+      codexPruneRolloutsPackage
     ]
     ++ lib.optional communicationRules.enable codexTripwireAdapter.hookPackage
     ++ lib.optional fencedEnabled codexFencedPackage;
@@ -601,6 +682,33 @@ lib.mkIf (isDeveloper && !host.is.server) {
     sessionVariables = {
       CODEX_HOME = codexDir;
     };
+  };
+
+  # Enforce the rollout retention window on a daily schedule. macOS gets the
+  # `codex-prune-rollouts` command but no timer, matching the agentsview mixin,
+  # which also schedules on Linux only.
+  systemd.user.services.codex-prune-rollouts = lib.mkIf host.is.linux {
+    Unit.Description = "Prune Codex session rollouts older than ${toString rolloutRetentionDays} days";
+
+    Service = {
+      Type = "oneshot";
+      ExecStart = lib.getExe codexPruneRolloutsPackage;
+    };
+  };
+
+  systemd.user.timers.codex-prune-rollouts = lib.mkIf host.is.linux {
+    Unit.Description = "Prune Codex session rollouts on a schedule";
+
+    Timer = {
+      OnCalendar = "daily";
+      RandomizedDelaySec = "1h";
+      Persistent = true;
+      Unit = "codex-prune-rollouts.service";
+    };
+
+    Install.WantedBy = [
+      "timers.target"
+    ];
   };
 
   programs = {
