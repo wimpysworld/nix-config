@@ -766,13 +766,18 @@ in
             commandPath = lib.getExe' fastModeIndicatorPackage "ccstatusline-fast-mode";
             timeout = 1000;
           }
+          # Show the git repository root's name, matching the Codex
+          # `project-name` item and Pi's `cwd-basename` widget. The cwd
+          # widget cannot render a bare basename (its segments mode always
+          # prefixes "…/"), so the git root widget carries the segment, and
+          # `hideNoGit` omits it outside a repository as Codex does.
           {
             id = "3";
-            type = "current-working-dir";
+            type = "git-root-dir";
             color = ccColor "green";
             rawValue = true;
             metadata = {
-              abbreviateHome = "true";
+              hideNoGit = "true";
             };
           }
           {

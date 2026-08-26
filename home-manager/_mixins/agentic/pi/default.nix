@@ -536,11 +536,10 @@ let
           trimValue = 0;
           preserveTrimStyles = true;
         })
-        (piFooterWidget "cwd" "cwd" {
+        # Only the last path segment, matching the Claude Code status line.
+        (piFooterWidget "cwd" "cwd-basename" {
           icon = " · ";
           fg = piFooterColors.cwd;
-          cwdDisplayStyle = "full-home";
-          segments = 3;
         })
         (piFooterWidget "quota" "external-status" {
           icon = " · ";

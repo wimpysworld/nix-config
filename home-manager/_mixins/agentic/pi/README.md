@@ -121,7 +121,7 @@ The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 [`pi-footer`](https://github.com/wobondar/pi-footer) replaces the older `pi-bar` footer. Home Manager owns `~/.pi/agent/extensions/pi-footer.json` and renders one compact line:
 
 ```text
- model thinking · Fast state · cwd · quota windows · context window · Context N% used
+ model thinking · Fast state · dir · quota windows · context window · Context N% used
 ```
 
 Quota data comes from [`@marckrenn/pi-sub-core`](https://github.com/marckrenn/pi-sub). `sub-core` auto-detects the active provider from the current model. The local `quota-status` extension publishes the first two quota windows through Pi's extension status API, which `pi-footer` displays when data is available. Anthropic can provide 5h and weekly windows. OpenAI Codex provides its primary and secondary windows.
@@ -131,7 +131,7 @@ The footer uses the same Catppuccin colour roles as `ccstatusline`: model and th
 `quota-status` uses stable window labels where possible and displays remaining quota, not used quota, so Anthropic usually appears as:
 
 ```text
- claude-opus-5 high · Fast off · ~/path/project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
+ claude-opus-5 high · Fast off · project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
 ```
 
 Home Manager also owns `~/.pi/agent/pi-sub-core-settings.json` to refresh quota data every five seconds and on turn start. `sub-core` renders cached state first, so the quota segment can appear a few seconds after the footer itself. If Anthropic returns only the 5h window, `quota-status` mirrors the Claude Code statusline helper by treating the missing weekly bucket as 100% remaining. Other providers show only the usable windows they return. `quota-status` keeps the last valid value for the active provider when `sub-core` emits a transient empty update.

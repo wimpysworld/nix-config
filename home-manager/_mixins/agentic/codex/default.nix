@@ -489,10 +489,14 @@ let
 
     tui = {
       theme = "catppuccin-mocha";
+      # `project-name` shows only the project root's name, matching the
+      # basename-only directory segment on the Claude Code and Pi lines. It
+      # is omitted outside a detected project, where `current-dir` would
+      # have shown the full path.
       status_line = [
         "model-with-reasoning"
         "fast-mode"
-        "current-dir"
+        "project-name"
         "five-hour-limit"
         "weekly-limit"
         "context-window-size"
