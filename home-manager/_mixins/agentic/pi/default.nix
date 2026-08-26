@@ -292,6 +292,7 @@ let
     ++ fenceLogging.runtimeInputs;
     text = ''
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
+        export HERDR_AGENT=pi
         export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
         exec ${lib.getExe' piWrapperPackage "pi"} "$@"
       fi
@@ -304,6 +305,12 @@ let
 
       fence_log_agent="pi"
       ${fenceLogging.setupShell}
+
+      # herdr identifies a pane's agent from the foreground process group
+      # environ. Export the hint host-side so fence and the whole wrapper chain
+      # inherit it; an inline post-`--` token would land only inside the sandbox
+      # PID namespace, which herdr does not read.
+      export HERDR_AGENT=pi
 
       export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
       fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
