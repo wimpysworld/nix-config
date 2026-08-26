@@ -323,13 +323,13 @@ let
     };
     hideThinkingBlock = true;
     enabledModels = [
+      "anthropic/claude-fable-5"
       "anthropic/claude-opus-5"
       "anthropic/claude-sonnet-5"
       "openai-codex/gpt-5.6-sol"
       "openai-codex/gpt-5.6-terra"
-      "openai-codex/gpt-5.5"
+      "openai-codex/gpt-5.6-luna"
       "openai-codex/gpt-5.3-codex-spark"
-      "openai-codex/gpt-5.4-mini"
     ];
 
     theme = piThemeName;
@@ -370,11 +370,11 @@ let
     # Declarative pi-cc-header configuration. `readOnlyConfig` stops the
     # extension writing this settings file, which Home Manager owns, so header
     # toggles such as /htg apply for the current session only. The remaining
-    # keys pre-configure the header: `color = "p"` selects the blue logo.
+    # keys pre-configure the header: `color = "b"` selects the blue logo.
     ccHeader = {
       readOnlyConfig = true;
-      color = "p";
-      slogan = "May Pi serve you well ";
+      color = "b";
+      slogan = "May Pi serve you well";
     };
 
     # Versioned Pi package specs are pinned and skipped by `pi update`.
