@@ -10,7 +10,7 @@ These are the user's own changes, reviewed locally before they file a pull reque
 
 ### Lens
 
-- **Goal conformance**: does the change deliver the stated outcome and acceptance criteria of its task or plan. `$ARGUMENTS` may carry a Linear issue key or URL, or a plan path, after the target; use it as extra context. If none is given, look for a plan under `${TMPDIR:-/tmp}/agent-plans/` and say so if none is found
+- **Goal conformance**: does the change deliver the stated outcome and acceptance criteria of its task or plan. `$ARGUMENTS` may carry a Linear issue key or URL, or a plan path, after the target; use it as extra context. If none is given, look for `${TMPDIR:-/tmp}/agent-plans/<branch>/plan.md`, where `<branch>` is the current branch name with `/` flattened to `-`, and say so if none is found
 - **Completeness**: adjacent code, callers, and functionality that should have been updated with this change but were not
 - **Regressions** in existing behaviour
 - **Security** best practice

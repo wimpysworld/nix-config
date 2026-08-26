@@ -4,7 +4,7 @@ Implement the plan at $1. Scope: $2 - an optional phase. When $2 is given, imple
 
 Invoke this command from a user session or a top-level orchestrator only. A sub-agent that needs a plan implemented reports what is needed and returns; it does not invoke this command.
 
-When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md`, where `<key>` is the lowercased Linear issue key (or `local`) and `<slug>` is the kebab-case slug of the task title. The plan is disposable: never copy it into the repo and never commit it.
+When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-plans/<key>/plan.md`, where `<key>` is the lowercased Linear issue key, or the current branch name with `/` flattened to `-` when the task has no key. The plan is disposable: never copy it into the repo and never commit it.
 
 ### Workflow
 

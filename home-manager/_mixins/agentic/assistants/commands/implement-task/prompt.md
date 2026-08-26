@@ -12,17 +12,17 @@ Command invocation: use the current provider's command prefix. Codex uses `$comm
 
 ### Process
 
-**1. Resolve the task.** For a Linear key or URL, read the issue, its `gitBranchName`, and its sub-issues. For a path, read the file. Decide whether it is a single task or a parent wrapping children.
+**1. Resolve the task.** For a Linear key or URL, read the issue and its sub-issues. For a path, read the file. Decide whether it is a single task or a parent wrapping children.
 
 **2. Order the work.** For a parent, take the run order from its `Child issues` list. Run children in parallel only where that list says they are independent. Preserve that order for commits. A single task is its own order of one.
 
-**3. Open one branch for the whole piece of work.** Use the Linear `gitBranchName`, or the parent's for a cohort. For a local task, derive a kebab-case name from the task title. Linear keys its auto-close on the branch name when the pull request is eventually merged, so the name must match exactly.
+**3. Open one branch for the whole piece of work.** When a branch other than `main` is already checked out, use it. Otherwise create one named with the bare lowercased issue key, such as `ful-123`, or the parent's key for a cohort. A local task needs an existing branch, so stop and ask when the checkout is `main`. Linear links and auto-closes the issue when the branch name contains its key, so add nothing to the key.
 
 For a Linear task, once the branch exists, assign the issue to the user and move it to the team's in-progress status. For a cohort, do this to the parent here; each child is claimed as its turn starts. Resolve both values at run time: take the user from the authenticated Linear identity, and take the status from the team's live workflow states by picking the one whose type is started. Never hard-code an identifier or a status name.
 
 **4. Plan each task directly.** Before planning, claim the task: for a Linear issue, assign it to the user and move it to the in-progress status resolved in step 3. Claim each task at its own start, not the whole cohort up front, so the board shows what is running now.
 
-Dispatch one fresh planning worker for one task body. Give it read-only repository authority plus permission to write only `${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md`, where `<key>` is the lowercased Linear key or task file stem and `<slug>` is a short kebab-case title. Require atomic phases with an assigned agent and reason, dependencies, parallel eligibility, blockers, scope, success criteria, reuse candidates, and flags. The worker writes the disposable plan, returns its path and complete contents directly to this command, and stops. It never implements, changes issue state, invokes `create-plan`, or launches an agent.
+Dispatch one fresh planning worker for one task body. Give it read-only repository authority plus permission to write only `${TMPDIR:-/tmp}/agent-plans/<key>/plan.md`, where `<key>` is the lowercased Linear key, or the branch name with `/` flattened to `-` for a local task. Require atomic phases with an assigned agent and reason, dependencies, parallel eligibility, blockers, scope, success criteria, reuse candidates, and flags. The worker writes the disposable plan, returns its path and complete contents directly to this command, and stops. It never implements, changes issue state, invokes `create-plan`, or launches an agent.
 
 **5. Dispatch each phase directly.** Read the returned plan here. Route every phase against the current agent list, re-routing the plan's assignment where current evidence calls for it. Dispatch one fresh worker per phase, in dependency order. Run independent, non-overlapping phases in parallel. Never give one worker two phases, a task, or the whole plan.
 

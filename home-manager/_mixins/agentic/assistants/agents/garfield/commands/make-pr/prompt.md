@@ -129,7 +129,7 @@ Named failures, and what each one means:
 
 ### Linear transition
 
-Two things link an issue, and nothing else does: the branch name, when the branch came from Linear's `gitBranchName`, and a `Refs: <ISSUE-KEY>` trailer on any commit in `main..HEAD`. Never take a key from the pull request body or a commit subject. A key mentioned in prose is not a link.
+Two things link an issue, and nothing else does: the branch name, when it contains the issue key (a branch named `ful-123` links FUL-123), and a `Refs: <ISSUE-KEY>` trailer on any commit in `main..HEAD`. Never take a key from the pull request body or a commit subject. A key mentioned in prose is not a link.
 
 Workspace guard: take the repository classification from **Work repository classification** above. The connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL` is visible. If the classification and the visible instance disagree, skip the transition and report one line saying the profile does not match the repository. Never touch a work issue from the personal workspace or the reverse.
 

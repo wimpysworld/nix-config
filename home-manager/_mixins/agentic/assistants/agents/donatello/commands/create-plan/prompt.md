@@ -11,11 +11,10 @@ Create implementation plan optimised for AI-assisted development.
 Write the plan to:
 
 ```
-${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md
+${TMPDIR:-/tmp}/agent-plans/<key>/plan.md
 ```
 
-- `<key>` is the Linear issue key, lowercased (for example `ww-65`). Use `local` when the task has no issue key.
-- `<slug>` is a short kebab-case slug from the task title. Strip dates, status words, and filler.
+- `<key>` is the Linear issue key, lowercased (for example `ww-65`). When the task has no issue key, use the current branch name with `/` flattened to `-`.
 - Create the directory if it does not exist.
 
 The path is derived from the task so a fresh sub-agent can find the plan without being handed it.

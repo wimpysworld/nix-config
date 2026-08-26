@@ -18,7 +18,7 @@ Do not change GitHub state or remote branches. Do not comment on, close, merge, 
 
 1. Resolve the branch from `$ARGUMENTS`, or from the current branch when the argument is blank.
 2. Collect associated Linear issue keys from exactly two sources:
-   - An issue whose `gitBranchName` exactly matches the branch.
+   - An issue whose key appears in the branch name, matched case-insensitively. A branch named `ful-123` names FUL-123.
    - A `Refs: <ISSUE-KEY>` trailer returned by the read-only `git log` command above.
 3. Deduplicate the keys. Never take a key from commit prose, a pull request body, or any other text.
 4. Apply the workspace guard below.

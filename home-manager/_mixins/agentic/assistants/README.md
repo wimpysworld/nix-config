@@ -148,7 +148,7 @@ Four commands and one skill share one noun. The vocabulary is strict:
 | 4    | `review-task`    | Command | Judge whether a task is ready to implement, and what must change first   |
 | 5    | `implement-task` | Command | Take the task through to implemented, validated, committed work          |
 
-`create-plan` writes to `${TMPDIR:-/tmp}/agent-plans/<key>-<slug>/plan.md`, outside any project tree. A plan exists only while one task is implemented. It is never committed and is discarded afterwards. The durable record is the task, not the plan.
+`create-plan` writes to `${TMPDIR:-/tmp}/agent-plans/<key>/plan.md`, outside any project tree. A plan exists only while one task is implemented. It is never committed and is discarded afterwards. The durable record is the task, not the plan.
 
 The `create-project` command and `draft-project-description` skill write the project the tasks live in, and sit outside the lifecycle. They take a project, not a task, so they carry no step number and no place in the run order.
 
@@ -160,7 +160,7 @@ The `create-project` command and `draft-project-description` skill write the pro
 
 Validation is inline. Each task's changed files are checked against the task's `Acceptance criteria` before that task is committed.
 
-`implement-task` opens one branch named from the Linear issue's `gitBranchName`, commits once per task with a `Refs: <ISSUE-KEY>` footer, and stops. It never opens or drafts a pull request; run `make-pr` yourself. Linear keys its auto-close on the branch name when the pull request is eventually merged.
+`implement-task` reuses the checked-out branch, or opens one named with the bare lowercased issue key, such as `ful-123`. It commits once per task with a `Refs: <ISSUE-KEY>` footer, and stops. It never opens or drafts a pull request; run `make-pr` yourself. Linear auto-closes the issue when a merged pull request's branch name contains its key.
 
 ---
 
