@@ -39,6 +39,12 @@ let
     args = [ url ];
     consumers = {
       claudeCode.enabled = false;
+      # pi-mcp-adapter defaults every server to a lazy lifecycle and only
+      # bootstraps uncached servers when its metadata cache file is missing,
+      # so a server added after the first run never connects and its tools
+      # never appear. Eager connects at session start regardless of the
+      # cache, and the local proxy makes that connection cheap.
+      pi.lifecycle = "eager";
     };
   };
 in
@@ -108,6 +114,14 @@ rec {
   #                  pi.excludeTools    list of original MCP tool names hidden
   #                                     by pi-mcp-adapter from direct tools,
   #                                     proxy discovery, and its MCP panel.
+  #                  pi.lifecycle       "keep-alive" | "lazy" | "lazy-keep-alive"
+  #                                     | "eager"; omitted by default, which
+  #                                     leaves pi-mcp-adapter's lazy default.
+  #                                     Set "eager" for servers that must
+  #                                     connect at session start, because the
+  #                                     adapter never bootstraps an uncached
+  #                                     lazy server once its metadata cache
+  #                                     file exists.
   #                  zed.enabled        (default true) - mirrors OpenCode:
   #                                     `false` keeps the entry visible in
   #                                     Zed's agent panel with `enabled = false`
@@ -399,6 +413,9 @@ rec {
           }
           // lib.optionalAttrs ((s.consumers.pi.excludeTools or [ ]) != [ ]) {
             excludeTools = s.consumers.pi.excludeTools;
+          }
+          // lib.optionalAttrs (s.consumers.pi.lifecycle or null != null) {
+            inherit (s.consumers.pi) lifecycle;
           };
         in
         if s.transport == "http" then
