@@ -355,13 +355,10 @@ let
   # edits through symlink chains, but a Home Manager symlink into the read-only
   # Nix store is still the wrong target for runtime config writes.
   codexSettings = {
-    # codex_apps (a built-in ChatGPT-hosted connector) cannot be overridden
-    # from user config: any [mcp_servers.codex_apps] entry without command
-    # or url is rejected by Codex's config parser with "invalid transport",
-    # and runtime code unconditionally rebuilds the built-in entry on top of
-    # any user-supplied stub. Its 30s startup timeout is hard-coded in
-    # codex-rs/codex-mcp/src/mcp/mod.rs and there is no user-facing knob.
-    # See openai/codex#18068 for the underlying TUI routing bug.
+    # These are the user MCP servers only. The built-in codex_apps server is
+    # not declared here and cannot be overridden through this table: an entry
+    # without `command` or `url` fails the config parser with "invalid
+    # transport". It is switched off through `features.apps` below instead.
     mcp_servers = mcpServerDefs.codexServers;
 
     # Disable first-party telemetry, analytics, and feedback. The [analytics]
@@ -390,6 +387,16 @@ let
     # feature stays on if that default changes. The activation script installs
     # the `codex-code-mode-host` helper the feature needs.
     features = {
+      # Disable the built-in codex_apps MCP server, the ChatGPT-hosted app
+      # connector. It is on by default and adds a 30s hard-coded startup
+      # timeout that no user setting shortens, so removing the server is the
+      # only fix. Codex drops codex_apps before it tries to connect when this
+      # flag is false, so the timeout never applies. The user MCP servers in
+      # `mcp_servers` above and the ChatGPT login are both unaffected. What
+      # stops working: every hosted app connector, the /apps command, and
+      # ChatGPT-hosted plugins, which route through the same server.
+      # See https://developers.openai.com/codex/config-reference
+      apps = false;
       code_mode_host = true;
       hooks = true;
       # Disable Codex memories, the cross-session note system that summarises
