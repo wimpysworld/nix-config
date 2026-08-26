@@ -458,14 +458,25 @@ let
       widthMode = "full";
       colorLevel = "ansi256";
     };
+    # pi-footer drops the extension status row entirely when every published
+    # key is hidden. The noughty keys are duplicates of dedicated widgets, and
+    # the MCP and pi-lens statuses are static noise. The pi-subagents keys stay
+    # visible on purpose: they publish only during a subagent run, so transient
+    # progress still surfaces without a permanent row.
     extensionStatusRow = {
       hiddenKeys = [
+        "mcp"
+        "mcp-auth"
         "noughty-quota:usage"
         "noughty-isolation:status"
+        "pi-lens-lsp"
       ];
       knownKeys = [
+        "mcp"
+        "mcp-auth"
         "noughty-quota:usage"
         "noughty-isolation:status"
+        "pi-lens-lsp"
       ];
     };
     lines = [
@@ -606,6 +617,16 @@ let
       "${herdrIntegrations}/home/.pi/agent/extensions/herdr-agent-state.ts";
   };
 
+  # Hide the pi-lens diagnostics widget shown above the editor. It renders a
+  # whole "pi-lens" line even when there are no diagnostics, and the useful
+  # signal (the LSP status) already reaches the footer's extension status row.
+  # `/lens-widget-toggle` still shows the widget on demand for one session.
+  piLensConfig = {
+    widget = {
+      visible = false;
+    };
+  };
+
   # sub-core does not fetch quota data on session start; it first renders cached
   # state, then waits for its refresh timer. Keep that timer short enough that
   # the footer fills in promptly, and refresh again when work starts.
@@ -699,6 +720,9 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
         ./extensions/prompt-template-display/types.d.ts;
       ".pi/agent/extensions/quota-status/index.ts".source = ./extensions/quota-status/index.ts;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
+      # pi-lens reads user preferences from ~/.pi-lens/config.json and never
+      # writes the file back, so a store-backed symlink is safe here.
+      ".pi-lens/config.json".text = builtins.toJSON piLensConfig;
     }
     // piCommunicationRulesFiles
     // piHerdrFiles

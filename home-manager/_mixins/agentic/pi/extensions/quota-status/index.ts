@@ -47,6 +47,10 @@ function toWindows(value: unknown): RateWindow[] {
 	return value.filter((window): window is RateWindow => typeof window === "object" && window !== null);
 }
 
+// Account-level windows carry short labels. Model-scoped bonus windows carry
+// the model name, for example "GPT-5.3-Codex-Spark 5h", and are excluded.
+const ACCOUNT_WINDOW_LABELS = new Set(["", "5h", "daily", "weekly"]);
+
 function formatUsage(provider: string | undefined, usage: UsageSnapshot | undefined): string | undefined {
 	const windows = toWindows(usage?.windows);
 	const parts = windows
@@ -54,7 +58,8 @@ function formatUsage(provider: string | undefined, usage: UsageSnapshot | undefi
 			label: normaliseLabel(window),
 			text: formatWindow(window),
 		}))
-		.filter((part): part is { label: string; text: string } => part.text !== undefined);
+		.filter((part): part is { label: string; text: string } => part.text !== undefined)
+		.filter((part) => ACCOUNT_WINDOW_LABELS.has(part.label.toLowerCase()));
 
 	const hasWeeklyWindow = parts.some((part) => part.label === "weekly");
 	const hasAnthropicFiveHourWindow = provider === "anthropic" && parts.some((part) => part.label === "5h");
