@@ -50,6 +50,10 @@ let
   # local writable-state patch that earlier releases needed, so the extension
   # loads straight from the npm package again.
   piCcHeaderVersion = "1.1.1";
+  # pi-pretty re-renders built-in tool output (read, bash, ls, find, grep) and
+  # replaces find/grep with its bundled FFF frecency search. Do not install
+  # pi-fff alongside it: both would claim the same built-in tool names.
+  piPrettyVersion = "0.6.24";
   rpivBtwVersion = "2.7.1";
   rpivTodoVersion = "2.7.1";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
@@ -59,6 +63,7 @@ let
   piFooterSource = "npm:pi-footer@${piFooterVersion}";
   piSubCoreSource = "npm:@marckrenn/pi-sub-core@${piSubCoreVersion}";
   piCcHeaderSource = "npm:pi-cc-header@${piCcHeaderVersion}";
+  piPrettySource = "npm:@heyhuynhgiabuu/pi-pretty@${piPrettyVersion}";
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
@@ -373,6 +378,7 @@ let
       piFooterSource
       piSubCoreSource
       piCcHeaderSource
+      piPrettySource
       rpivBtwSource
       rpivTodoSource
     ];
@@ -625,6 +631,15 @@ let
     };
   };
 
+  # pi-pretty reads ~/.pi/agent/pi-pretty.json once at startup. The Shiki
+  # theme name matches the Pi theme, every host runs Nerd Fonts so the icon
+  # glyphs render, and `ls` is opt-in upstream so it is enabled here.
+  piPrettyConfig = {
+    theme = piThemeName;
+    icons = "nerd";
+    enableTools = [ "ls" ];
+  };
+
   # sub-core does not fetch quota data on session start; it first renders cached
   # state, then waits for its refresh timer. Keep that timer short enough that
   # the footer fills in promptly, and refresh again when work starts.
@@ -694,6 +709,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;
       ".pi/agent/extensions/pi-footer.json".text = builtins.toJSON piFooterConfig;
+      ".pi/agent/pi-pretty.json".text = builtins.toJSON piPrettyConfig;
       ".pi/agent/pi-sub-core-settings.json".text = builtins.toJSON piSubCoreConfig;
       ".pi/agent/extensions/subagent/config.json".text = builtins.toJSON piSubagentsConfig;
       # Provider-router deploys its static extension files beside the generated

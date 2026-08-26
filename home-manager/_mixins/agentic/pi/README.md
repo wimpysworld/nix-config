@@ -95,6 +95,7 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
+    "npm:@heyhuynhgiabuu/pi-pretty@0.6.24",
     "npm:@juicesharp/rpiv-btw@2.7.1",
     "npm:@juicesharp/rpiv-todo@2.7.1"
   ]
@@ -104,6 +105,8 @@ Pi packages are installed through the Home Manager-owned package setting:
 Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `typescript` supplies the compiler API that `pi-lens` imports at runtime but lists only as a development dependency. Its Pi resources are disabled because it is a runtime dependency, not an extension.
 
 `pi-cc-header` loads from its npm package with `ccHeader.readOnlyConfig` set in the Home Manager-owned `settings.json`. That upstream read-only mode (added in 1.1.1 for declarative setups) stops the extension writing `settings.json`, so header commands such as `/htg` apply for the current session only. It replaces the local writable-state patch that earlier releases needed.
+
+[`pi-pretty`](https://github.com/heyhuynhgiabuu/pi-pretty) re-renders built-in tool output: syntax-highlighted `read` previews, coloured `bash` exit summaries, Nerd Font `ls` icons, and FFF frecency-backed `find`/`grep`. Home Manager owns `~/.pi/agent/pi-pretty.json`, which selects the Catppuccin Shiki theme, keeps Nerd Font icons on, and opts in the `ls` renderer. `pi-fff` must not be installed alongside it because both claim the same built-in tool names. FFF index data lives under `~/.pi/agent/pi-pretty/fff/`.
 
 The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 
