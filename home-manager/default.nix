@@ -48,6 +48,20 @@ in
   home = {
     inherit stateVersion;
     username = config.noughty.user.name;
+    # Force a user daemon reload and a sops-nix rerun after every switch.
+    # sd-switch is enabled below, but it restarted a stale in-memory
+    # sops-nix.service twice on ravi (the unit is a store symlink placed
+    # outside systemd.user.services, so the generation diff can miss it),
+    # which left sops templates rendering old content until a manual
+    # daemon-reload. Both commands are idempotent, and the failure guards
+    # keep activation working when the user bus is unreachable, for
+    # example during a remote push-home.
+    activation.refreshSopsNix = lib.mkIf host.is.linux (
+      lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
+        run ${pkgs.systemd}/bin/systemctl --user daemon-reload || true
+        run ${pkgs.systemd}/bin/systemctl --user restart sops-nix.service || true
+      ''
+    );
     homeDirectory =
       if host.is.darwin then
         "/Users/${username}"
