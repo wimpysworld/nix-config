@@ -68,8 +68,15 @@ let
         # Landlock rule covers runtime-created temp paths inside the sandbox.
         "/tmp"
 
-        # Shared temporary files for fenced agents.
-        "/run/user/*/fence-share"
+        # Shared temporary files for fenced agents. This must not live under
+        # /run. Fence rebuilds any mount boundary it has to cross: naming a
+        # path on a different device places a tmpfs at the first boundary and
+        # then rebinds only the named paths. /run is its own tmpfs on NixOS, so
+        # a single entry under it blanks the whole tree, taking
+        # /run/current-system/sw/bin (and therefore `bash` and `sha1sum`) and
+        # /run/user/$UID/secrets.d (and therefore every sops secret) with it.
+        # ~/.cache is on the same device as /, so no rebuild happens.
+        "${config.xdg.cacheHome}/fence-share"
 
         # Claude Code
         "${config.xdg.configHome}/ccstatusline"
@@ -561,7 +568,11 @@ in
     xdg.configFile."fence/fence.jsonc".text = builtins.toJSON fenceConfig;
 
     systemd.user.tmpfiles.rules = [
-      "d %t/fence-share 0700 - - 1d"
+      # Shared launch directory for fenced agents, used as TMPDIR inside the
+      # sandbox. It sits under ~/.cache rather than $XDG_RUNTIME_DIR so Fence
+      # never has to cross the /run mount boundary. See the allowWrite note
+      # above. Contents age out after a day.
+      "d ${config.xdg.cacheHome}/fence-share 0700 - - 1d"
 
       # Per-launch Fence logs land in ${XDG_STATE_HOME}/fence. The fenced
       # wrappers create the directory on demand, but pin permissions and

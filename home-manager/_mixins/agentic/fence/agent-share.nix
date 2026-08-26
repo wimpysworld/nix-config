@@ -1,37 +1,46 @@
-{ pkgs }:
+# Shared launch directory for fenced agents.
+#
+# The directory is exposed read-write into the sandbox and used as `TMPDIR`
+# there, so an agent and the host can hand files to each other.
+#
+# It lives under `~/.cache`, not `$XDG_RUNTIME_DIR`. Fence rebuilds any mount
+# boundary it has to cross: naming a path on a different device places a tmpfs
+# at the first boundary and then rebinds only the named paths. `/run` is its own
+# tmpfs on NixOS, so a single entry under it blanks the whole tree, taking
+# `/run/current-system/sw/bin` and `/run/user/$UID/secrets.d` with it. `~/.cache`
+# is on the same device as `/`, so nothing is rebuilt.
+{ config, pkgs }:
 
+let
+  shareParentDir = config.xdg.cacheHome;
+in
 {
   runtimeInputs = [ pkgs.coreutils ];
   captureShell = ''
-    capture_fence_agent_share_runtime_dir() {
+    capture_fence_agent_share_base_dir() {
       local current_uid
       local owner_uid
 
-      fence_agent_share_host_runtime_dir="''${XDG_RUNTIME_DIR:-}"
-      if [[ -z "$fence_agent_share_host_runtime_dir" ]]; then
-        echo "fence agent share: XDG_RUNTIME_DIR is not set" >&2
-        return 1
-      fi
-      if [[ "$fence_agent_share_host_runtime_dir" != /* ]]; then
-        echo "fence agent share: XDG_RUNTIME_DIR must be an absolute path" >&2
-        return 1
-      fi
-      if [[ -L "$fence_agent_share_host_runtime_dir" || ! -d "$fence_agent_share_host_runtime_dir" ]]; then
-        echo "fence agent share: XDG_RUNTIME_DIR must be a real directory" >&2
+      fence_agent_share_host_base_dir=${pkgs.lib.escapeShellArg shareParentDir}
+
+      install -d -m 0700 -- "$fence_agent_share_host_base_dir"
+
+      if [[ -L "$fence_agent_share_host_base_dir" || ! -d "$fence_agent_share_host_base_dir" ]]; then
+        echo "fence agent share: $fence_agent_share_host_base_dir must be a real directory" >&2
         return 1
       fi
 
       current_uid="$(id -u)"
-      owner_uid="$(stat -c %u -- "$fence_agent_share_host_runtime_dir")"
+      owner_uid="$(stat -c %u -- "$fence_agent_share_host_base_dir")"
       if [[ "$owner_uid" != "$current_uid" ]]; then
-        echo "fence agent share: XDG_RUNTIME_DIR is not owned by the current user" >&2
+        echo "fence agent share: $fence_agent_share_host_base_dir is not owned by the current user" >&2
         return 1
       fi
 
-      fence_agent_share_host_runtime_dir="$(realpath -e -- "$fence_agent_share_host_runtime_dir")"
+      fence_agent_share_host_base_dir="$(realpath -e -- "$fence_agent_share_host_base_dir")"
     }
 
-    capture_fence_agent_share_runtime_dir
+    capture_fence_agent_share_base_dir
   '';
   setupShell = ''
     setup_fence_agent_share() {
@@ -40,7 +49,7 @@
       local current_uid
       local owner_uid
 
-      share_path="$fence_agent_share_host_runtime_dir/fence-share"
+      share_path="$fence_agent_share_host_base_dir/fence-share"
 
       if [[ -L "$share_path" ]]; then
         echo "fence agent share: $share_path must not be a symlink" >&2

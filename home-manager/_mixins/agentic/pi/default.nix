@@ -15,7 +15,7 @@ let
   piPackage = inputs.llm-agents.packages.${system}.pi;
   herdrIntegrations = pkgs.herdr-integrations;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
-  fenceAgentShare = import ../fence/agent-share.nix { inherit pkgs; };
+  fenceAgentShare = import ../fence/agent-share.nix { inherit config pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =

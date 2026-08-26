@@ -192,6 +192,27 @@ are protected via on-disk file permissions. The user-facing sops-nix render
 directory at `~/.config/sops-nix` is intentionally read-allowed so API keys are
 exposed inside the sandbox.
 
+## Never name a path under `/run` in this policy
+
+Fence rebuilds any mount boundary it has to cross. For each `allowExecute`,
+`allowRead`, or `allowWrite` path on a different device from `/`, it places a
+`--tmpfs` at the first mount boundary, recreates the intermediate directories,
+and then binds only the named target. `/run` is its own tmpfs on NixOS, so a
+single policy entry anywhere under `/run` blanks the entire tree and leaves
+behind only what the policy names.
+
+That is not a theoretical risk. Adding `/run/user/*/fence-share` to `allowWrite`
+removed `/run/current-system/sw/bin` from the sandbox, so `bash`, `sha1sum`, and
+every other system binary stopped resolving, and it removed
+`/run/user/$UID/secrets.d`, so every sops-nix secret became unreadable. Three
+unrelated-looking faults followed: a herdr hook that could not find `bash`, a
+project devShell that would not load because nix-direnv could not hash its cache
+key, and `slack-post` reporting that its token file was missing.
+
+Keep shared paths on the same device as `/`. The agent share directory is
+`~/.cache/fence-share` for this reason. The Wayland bridge and the Chromium
+wrapper both use `/tmp`, which the policy already tmpfs-mounts on purpose.
+
 Commits in work repositories under `~/Chainguard` are signed with Sigstore
 through gitsign. The `gitsign-credential-cache` daemon runs on the host. On
 Linux, its socket is at `~/.cache/sigstore/gitsign/cache.sock` and the TUF root

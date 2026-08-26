@@ -23,7 +23,7 @@ let
   # so current_exe re-exec keeps working after Home Manager generation changes.
   codexPackage = inputs.llm-agents.packages.${system}.codex;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
-  fenceAgentShare = import ../fence/agent-share.nix { inherit pkgs; };
+  fenceAgentShare = import ../fence/agent-share.nix { inherit config pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
   fenceChromium =
