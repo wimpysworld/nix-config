@@ -787,6 +787,15 @@ in
             # MCP servers remain opt-in instead of being silently trusted.
             enableAllProjectMcpServers = false;
 
+            # Approve named servers from a project `.mcp.json` without
+            # trusting every project server. `nixos` is the mcp-nixos
+            # reference server that this repository's own `.mcp.json`
+            # declares, and AGENTS.md makes it the primary source for NixOS,
+            # Home Manager, and nix-darwin option lookups. Note the approval
+            # matches by name, so any project declaring a server called
+            # `nixos` is approved too.
+            enabledMcpjsonServers = [ "nixos" ];
+
             theme = "custom:catppuccin:catppuccin-mocha";
             tui = "fullscreen";
 

@@ -18,6 +18,34 @@ let
   fenceDirenvBashEnv = pkgs.writeText "fence-direnv-bash-env" ''
     eval "$(BASH_ENV= ${pkgs.lib.getExe pkgs.direnv} export bash)"
   '';
+
+  # Load the project devShell inside Fence. Two separate faults break a bare
+  # `direnv exec` in the sandbox, and both must be fixed or the devShell is
+  # lost entirely.
+  #
+  # First, Fence masks /run/current-system/sw/bin, so nix-direnv's `has
+  # sha1sum` test fails. With no hash program it computes an empty cache
+  # suffix and looks for `.direnv/flake-profile` rather than the real
+  # `.direnv/flake-profile-<sha1>`. It finds nothing, declares the cache
+  # invalid, and falls back to `nix`, which Fence masks too, so `direnv exec`
+  # exits 125. Putting coreutils on PATH restores the hash program and the
+  # cached shell loads.
+  #
+  # Second, the host DIRENV_* variables leak into the sandbox. direnv then
+  # treats the environment as already applied and exports nothing, while the
+  # sandbox PATH never had the devShell entries. Clearing them forces a real
+  # load.
+  fenceDirenvLauncher = pkgs.writeShellApplication {
+    name = "fence-direnv-exec";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.direnv
+    ];
+    text = ''
+      unset DIRENV_DIFF DIRENV_DIR DIRENV_FILE DIRENV_IN_ENVRC DIRENV_WATCHES
+      exec direnv exec "$PWD" env "BASH_ENV=${fenceDirenvBashEnv}" "$@"
+    '';
+  };
 in
 {
   runtimeInputs = [
@@ -55,11 +83,7 @@ in
     setup_fence_logging
 
     fence_direnv=(
-      ${pkgs.lib.getExe pkgs.direnv}
-      exec
-      "$PWD"
-      ${pkgs.lib.getExe' pkgs.coreutils "env"}
-      "BASH_ENV=${fenceDirenvBashEnv}"
+      ${pkgs.lib.getExe fenceDirenvLauncher}
     )
   '';
 }
