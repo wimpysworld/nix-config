@@ -263,11 +263,21 @@ let
         "gh auth status"
         "gh auth switch"
         "gh auth token"
+        # GitHub CLI 2.98 agent-task reads. Creation can start work through
+        # another agent and stays denied by the family-wide entry below.
+        "gh agent-task list"
+        "gh agent-task view"
+        # GitHub CLI 2.98 skill discovery. Installation, publication, and
+        # updates change agent capabilities and stay denied below.
+        "gh skill list"
+        "gh skill preview"
+        "gh skill search"
         # Literal-path `gh api` allows that pair with the family-wide
         # `gh api` deny below. These three endpoints are read-only,
-        # body-free, and method-fixed, so allowing them directly avoids
-        # forcing every invocation through `gh-api-safe`. All other
-        # read-only requests must go via the wrapper.
+        # body-free, and method-fixed. The allowance lets an initial command
+        # reach the environment-aware gh dispatcher, which routes every raw
+        # fenced API request through gh-api-safe. All other read-only requests
+        # must start from inside the fenced agent so the dispatcher can apply.
         "gh api rate_limit"
         "gh api meta"
         "gh api octocat"
@@ -444,6 +454,9 @@ let
         # gh-api-safe; the literal allow entries above are the only
         # bypass.
         "gh api"
+        # gh agent-task: list and view are carved out above. Creation starts
+        # remote agent work and remains denied.
+        "gh agent-task"
         # gh alias: shell aliasing is a configuration surface.
         "gh alias delete"
         "gh alias import"
@@ -473,6 +486,9 @@ let
         # so no read carve-outs are offered here even though the rest
         # of the gh policy applies the list-like-read principle.
         "gh config"
+        # gh copilot downloads or starts another agent, so the whole command
+        # stays outside Fence.
+        "gh copilot"
         # gh extension: family-wide deny. Discovery reads are carved
         # out in the allow block above.
         "gh extension"
@@ -545,6 +561,9 @@ let
         # values); setting, deleting, and reading secret values stay
         # denied.
         "gh secret"
+        # gh skill: discovery is carved out above. Installation, publication,
+        # and updates change the available agent capabilities.
+        "gh skill"
         "gh variable"
         # gh workflow: dispatch and enable/disable mutate CI state.
         "gh workflow disable"

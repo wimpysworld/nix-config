@@ -154,6 +154,12 @@ while [[ ${j} -lt ${nargs} ]]; do
 	-X | --method)
 		die "method override (${tok}) is not permitted"
 		;;
+	-X?*)
+		die "glued method override (-X) is not permitted"
+		;;
+	-[^-]*X*)
+		die "grouped method override (-X) is not permitted"
+		;;
 	--method=*)
 		die "method override (--method=) is not permitted"
 		;;
@@ -182,6 +188,9 @@ while [[ ${j} -lt ${nargs} ]]; do
 		;;
 	-f* | -F*)
 		die "glued ${tok:0:2} short flags are not supported by gh-api-safe"
+		;;
+	-[^-]*[fF]*)
+		die "grouped field flag (-f/-F) is not permitted"
 		;;
 	esac
 	j=$((j + 1))

@@ -7,6 +7,10 @@
 }:
 let
   inherit (config.noughty) host;
+  gh-dispatch-gh = pkgs.runCommand "gh-dispatch-gh" { } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-dispatch-gh"
+  '';
   gh-api-safe-gh = pkgs.runCommand "gh-api-safe-gh" { } ''
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-api-safe-gh"
@@ -19,10 +23,6 @@ let
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-resolve-gh"
   '';
-  ghDashGh = pkgs.runCommand "gh-dash-gh" { } ''
-    mkdir -p "$out/bin"
-    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh"
-  '';
   ghDashPackage = pkgs.symlinkJoin rec {
     pname = "gh-dash";
     version = pkgs.gh-dash.version;
@@ -31,7 +31,7 @@ let
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram "$out/bin/gh-dash" \
-        --prefix PATH : "${ghDashGh}/bin" \
+        --prefix PATH : "${gh-dispatch}/bin" \
         --set GH_TELEMETRY false
     '';
   };
@@ -47,6 +47,30 @@ let
       readonly GH_API_SAFE_GH=${lib.escapeShellArg "${gh-api-safe-gh}/bin/gh-api-safe-gh"}
     ''
     + builtins.readFile ./gh-api-safe.sh;
+  };
+
+  # Fence cannot enforce multi-token command rules after an agent starts a
+  # shell under the path policy. This dispatcher applies the GitHub rules when
+  # Fence sets FENCE_SANDBOX=1. Unfenced calls use the private backend without
+  # policy checks, and raw fenced API reads use gh-api-safe.
+  gh-dispatch = pkgs.writeShellApplication {
+    name = "gh";
+    text = ''
+      readonly GH_DISPATCH_GH=${lib.escapeShellArg "${gh-dispatch-gh}/bin/gh-dispatch-gh"}
+      readonly GH_DISPATCH_API_SAFE=${lib.escapeShellArg "${gh-api-safe}/bin/gh-api-safe"}
+    ''
+    + builtins.readFile ./gh-dispatch.sh;
+  };
+  ghPackage = pkgs.symlinkJoin {
+    pname = "gh";
+    version = "${pkgs.gh.version}-dispatched";
+    name = "gh-${pkgs.gh.version}-dispatched";
+    paths = [ pkgs.gh ];
+    meta.mainProgram = "gh";
+    postBuild = ''
+      unlink "$out/bin/gh"
+      ln -s ${gh-dispatch}/bin/gh "$out/bin/gh"
+    '';
   };
 
   # Fence-friendly helper for replying inside a pull request review comment
@@ -169,6 +193,7 @@ lib.mkMerge [
       };
       gh = {
         enable = true;
+        package = ghPackage;
         extensions = lib.optionals (!host.is.server) (
           with pkgs;
           [
@@ -311,7 +336,7 @@ lib.mkMerge [
             {
               key = "T";
               name = "enhance";
-              command = "${lib.getExe pkgs.gh} enhance -R {{.RepoName}} {{.PrNumber}}";
+              command = "${lib.getExe gh-dispatch} enhance -R {{.RepoName}} {{.PrNumber}}";
             }
           ];
         };

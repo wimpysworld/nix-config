@@ -275,9 +275,22 @@ read flag, when scripting against Fence. Every write form (bare positional
 assignment, `--add`, `--unset`, `--replace-all`, `--rename-section`,
 `--remove-section`, `--edit`, and the modern `set`/`unset`/`rename-section`/
 `remove-section` subcommands) is denied. Raw `gh api` is the escape hatch
-and stays denied; read-only requests go through the `gh-api-safe` wrapper,
-with literal allowances only for `gh api rate_limit`, `gh api meta`, and
-`gh api octocat`. One write path is allowed by name: `gh-review-reply`
+and stays denied in the Fence command policy. The `gh` command is an
+environment-aware dispatcher. Inside Fence, it sends every raw API request
+to `gh-api-safe` and applies the GitHub deny families before it starts the
+private `gh` backend. It also blocks unknown top-level names, which prevents
+configured aliases and unmanaged extensions from bypassing those rules. The
+managed `dash`, `enhance`, `markdown-preview`, and `notify` extensions remain
+available. `gh agent-task` permits `list` and `view`, while `create` stays
+blocked. `gh skill` permits `list`, `preview`, and `search`, while its change
+commands stay blocked. `gh copilot` stays blocked because it downloads or
+starts another agent. `gh discussion` remains available because its normal
+changes match the permitted issue and comment workflows. Outside Fence, it
+starts the backend without policy checks. The
+Fence policy keeps literal allowances for `gh api rate_limit`,
+`gh api meta`, and `gh api octocat` so those initial commands can reach the
+dispatcher. Other raw reads must start inside the fenced agent. One write
+path is allowed by name: `gh-review-reply`
 posts a threaded reply to a pull request review comment and reaches only
 `POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`. It builds
 that path itself from validated arguments, refuses every endpoint,
@@ -290,8 +303,10 @@ plus longer-prefix allow pattern: list-like discovery reads under
 `gh repo deploy-key` are carved out above their respective family-wide
 denies. `gh config` is the sole exception and is denied wholesale
 because `gh config get oauth_token --host github.com` can disclose the
-OAuth token stored in `~/.config/gh/hosts.yml`. The source of truth is
-[`default.nix`](./default.nix).
+OAuth token stored in `~/.config/gh/hosts.yml`. The Fence source of truth is
+[`default.nix`](./default.nix). The dispatcher mirrors its GitHub rules in
+[`gh-dispatch.sh`](../../development/github/gh-dispatch.sh), because the
+Fence configuration and the shell wrapper use different policy formats.
 
 Project-level `fence.jsonc` files should extend the user policy:
 
