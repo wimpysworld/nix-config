@@ -96,6 +96,7 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
     "npm:@heyhuynhgiabuu/pi-pretty@0.6.24",
+    "npm:pi-service-tier@0.3.0",
     "npm:@juicesharp/rpiv-btw@2.7.1",
     "npm:@juicesharp/rpiv-todo@2.7.1"
   ]
@@ -120,24 +121,24 @@ The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 [`pi-footer`](https://github.com/wobondar/pi-footer) replaces the older `pi-bar` footer. Home Manager owns `~/.pi/agent/extensions/pi-footer.json` and renders one compact line:
 
 ```text
-provider/model · thinking · cwd · quota windows · context window · Context N% used
+model thinking · Fast state · cwd · quota windows · context window · Context N% used
 ```
 
 Quota data comes from [`@marckrenn/pi-sub-core`](https://github.com/marckrenn/pi-sub). `sub-core` auto-detects the active provider from the current model. The local `quota-status` extension publishes the first two quota windows through Pi's extension status API, which `pi-footer` displays when data is available. Anthropic can provide 5h and weekly windows. OpenAI Codex provides its primary and secondary windows.
 
-The footer uses the same Catppuccin colour roles as `ccstatusline`: model yellow, thinking mauve, current directory green, quotas red, and context peach.
+The footer uses the same Catppuccin colour roles as `ccstatusline`: model and thinking yellow, fast state mauve, current directory green, quotas red, and context peach.
 
 `quota-status` uses stable window labels where possible and displays remaining quota, not used quota, so Anthropic usually appears as:
 
 ```text
-anthropic/claude-opus-5 · high · ~/path/project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
+claude-opus-5 high · Fast off · ~/path/project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
 ```
 
 Home Manager also owns `~/.pi/agent/pi-sub-core-settings.json` to refresh quota data every five seconds and on turn start. `sub-core` renders cached state first, so the quota segment can appear a few seconds after the footer itself. If Anthropic returns only the 5h window, `quota-status` mirrors the Claude Code statusline helper by treating the missing weekly bucket as 100% remaining. Other providers show only the usable windows they return. `quota-status` keeps the last valid value for the active provider when `sub-core` emits a transient empty update.
 
 Anthropic quota data requires an OAuth token, not the `ANTHROPIC_API_KEY` used for model calls. The `pi` wrapper reads `~/.claude/.credentials.json` or `$CLAUDE_CONFIG_DIR/.credentials.json` and exports `ANTHROPIC_OAUTH_TOKEN` when the Claude Code login token has the `user:profile` scope. Without that local login, the Anthropic quota segment stays hidden. OpenAI Codex quota data comes from Pi's `auth.json`, Codex environment variables, or the legacy Codex auth file as supported by `sub-core`.
 
-`pi-service-tier` is not installed. Its provider-aware `/fast` support only exposes a footer widget through `pi-fancy-footer`, not through `pi-footer` or Pi's extension status API, so adding it here would not give an accurate status-line signal when switching between OpenAI and Anthropic.
+[`pi-service-tier`](https://github.com/mavam/pi-service-tier) provides `/fast` and `/service-tier` for provider service tiers (OpenAI and Codex flex/priority, Anthropic priority/standard). It persists to its own `~/.pi/agent/service-tier.json` and never writes `settings.json`. It publishes its state only as `pi-fancy-footer` widget events, so the local `service-tier-status` extension bridges those events into the `noughty-service-tier:status` key, which the footer shows as a yellow `Fast on` or `Fast off` segment after the thinking level. The bridge sends the `pi-fancy-footer:ready` handshake at session start so the load order does not matter. Do not install `pi-fancy-footer` alongside the bridge, because both would answer the same handshake.
 
 ## Local extensions
 
@@ -150,6 +151,10 @@ Pi `subagent` tool calls to provider-specific models declared in assistant
 `quota-status` lives at `~/.pi/agent/extensions/quota-status/`. It listens to
 `sub-core` quota updates and publishes the compact quota segment consumed by
 `pi-footer`.
+
+`service-tier-status` lives at `~/.pi/agent/extensions/service-tier-status/`.
+It mirrors `pi-service-tier`'s fast-mode widget events into the
+`noughty-service-tier:status` key consumed by `pi-footer`.
 
 `prompt-template-display` lives at
 `~/.pi/agent/extensions/prompt-template-display/`. In TUI mode, it discovers
@@ -201,6 +206,7 @@ Managed files:
 - `~/.pi/agent/extensions/prompt-template-display/index.ts`
 - `~/.pi/agent/extensions/prompt-template-display/types.d.ts`
 - `~/.pi/agent/extensions/quota-status/index.ts`
+- `~/.pi/agent/extensions/service-tier-status/index.ts`
 - `~/.pi/agent/extensions/communication-rules/index.ts`
 - `~/.pi/agent/extensions/communication-rules/config.json`
 

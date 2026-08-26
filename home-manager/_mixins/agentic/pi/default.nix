@@ -54,6 +54,11 @@ let
   # replaces find/grep with its bundled FFF frecency search. Do not install
   # pi-fff alongside it: both would claim the same built-in tool names.
   piPrettyVersion = "0.6.24";
+  # pi-service-tier adds /fast and /service-tier for provider service tiers.
+  # It persists to its own ~/.pi/agent/service-tier.json and never touches
+  # settings.json. The local service-tier-status extension bridges its
+  # pi-fancy-footer widget events into the footer's fast-mode segment.
+  piServiceTierVersion = "0.3.0";
   rpivBtwVersion = "2.7.1";
   rpivTodoVersion = "2.7.1";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
@@ -64,6 +69,7 @@ let
   piSubCoreSource = "npm:@marckrenn/pi-sub-core@${piSubCoreVersion}";
   piCcHeaderSource = "npm:pi-cc-header@${piCcHeaderVersion}";
   piPrettySource = "npm:@heyhuynhgiabuu/pi-pretty@${piPrettyVersion}";
+  piServiceTierSource = "npm:pi-service-tier@${piServiceTierVersion}";
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
@@ -379,6 +385,7 @@ let
       piSubCoreSource
       piCcHeaderSource
       piPrettySource
+      piServiceTierSource
       rpivBtwSource
       rpivTodoSource
     ];
@@ -434,11 +441,12 @@ let
   };
 
   piFooterColors = {
-    # Match the Catppuccin roles used by ccstatusline:
-    # model yellow, thinking mauve, cwd green, quota red, context peach,
+    # Match the Catppuccin roles used by ccstatusline: model and thinking
+    # yellow, fast state mauve, cwd green, quota red, context peach,
     # isolation purple.
     model = "pi:warning";
-    thinking = "pi:thinkingHigh";
+    serviceTier = "pi:thinkingHigh";
+    thinking = "pi:warning";
     cwd = "pi:success";
     quota = "pi:error";
     context = "pi:bashMode";
@@ -473,6 +481,7 @@ let
         "mcp-auth"
         "noughty-quota:usage"
         "noughty-isolation:status"
+        "noughty-service-tier:status"
         "pi-lens-lsp"
       ];
       knownKeys = [
@@ -480,19 +489,32 @@ let
         "mcp-auth"
         "noughty-quota:usage"
         "noughty-isolation:status"
+        "noughty-service-tier:status"
         "pi-lens-lsp"
       ];
     };
     lines = [
       [
-        (piFooterWidget "model-provider" "model-provider" {
+        # Bare model id and thinking level joined by a space, matching the
+        # Codex status line's model-with-reasoning segment.
+        (piFooterWidget "model" "model" {
           raw = true;
           fg = piFooterColors.model;
         })
         (piFooterWidget "thinking" "thinking-level" {
-          icon = " · ";
+          icon = " ";
           fg = piFooterColors.thinking;
           hideWhenEmpty = true;
+        })
+        # Fast-mode state from pi-service-tier, mirroring the Codex status
+        # line's fast-mode position after the model and reasoning segments.
+        (piFooterWidget "service-tier" "external-status" {
+          icon = " · ";
+          fg = piFooterColors.serviceTier;
+          externalStatusKey = "noughty-service-tier:status";
+          hideWhenEmpty = true;
+          trimValue = 0;
+          preserveTrimStyles = true;
         })
         (piFooterWidget "cwd" "cwd" {
           icon = " · ";
@@ -728,6 +750,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/prompt-template-display/types.d.ts".source =
         ./extensions/prompt-template-display/types.d.ts;
       ".pi/agent/extensions/quota-status/index.ts".source = ./extensions/quota-status/index.ts;
+      ".pi/agent/extensions/service-tier-status/index.ts".source =
+        ./extensions/service-tier-status/index.ts;
       ".pi/agent/themes/${piThemeName}.json".text = builtins.toJSON piCatppuccinTheme;
       # pi-lens reads user preferences from ~/.pi-lens/config.json and never
       # writes the file back, so a store-backed symlink is safe here.

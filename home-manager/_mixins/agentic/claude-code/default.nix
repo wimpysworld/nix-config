@@ -247,6 +247,39 @@ let
       }
     '';
   };
+  # Print the fast-mode state from the status-line JSON on stdin as
+  # "Fast on", "Fast cooldown", or "Fast off", matching the Codex status
+  # line. The payload's `fast_mode` field carries the state (on/cooldown/off,
+  # with the exact shape undocumented, so string, boolean, and object forms
+  # are all accepted).
+  fastModeIndicatorPackage = pkgs.writeTextFile {
+    name = "ccstatusline-fast-mode";
+    destination = "/bin/ccstatusline-fast-mode";
+    executable = true;
+    text = ''
+      #!${lib.getExe pkgs.nodejs}
+      const fs = require("fs");
+
+      function fastModeState(value) {
+        if (value === true) return "on";
+        if (typeof value === "string") return value;
+        if (value && typeof value === "object") {
+          if (typeof value.state === "string") return value.state;
+          if (value.enabled === true) return "on";
+        }
+        return "off";
+      }
+
+      try {
+        const data = JSON.parse(fs.readFileSync(0, "utf8"));
+        const state = fastModeState(data.fast_mode);
+        const label = state === "on" || state === "cooldown" ? state : "off";
+        process.stdout.write("Fast " + label + "\n");
+      } catch {
+        process.stdout.write("Fast off\n");
+      }
+    '';
+  };
   sharedMcpConfigPath = "${config.xdg.configHome}/mcp/mcp.json";
   renderedMcpConfigPath = "${config.xdg.configHome}/sops-nix/secrets/rendered/mcp-config.json";
   claudeEnvironment = {
@@ -628,6 +661,7 @@ in
         claudeAgentAcpPackage
         usageRemainingPackage
         contextUsedPackage
+        fastModeIndicatorPackage
       ]
       ++ lib.optional fencedEnabled claudeFencedPackage;
       # Skip Claude Code's bundled ripgrep in favour of the system binary on
@@ -699,17 +733,38 @@ in
           # Single-line layout mirroring the Codex status line ordering as
           # closely as ccstatusline permits. Claude has no native equivalents
           # for Codex run-state, fast-mode, or permissions segments.
+          # Model and thinking effort joined by a space, matching the Codex
+          # status line's model-with-reasoning segment. The merge fields join
+          # each item to the next without the " · " separator, and the
+          # single-space custom-text supplies the gap.
           {
             id = "1";
             type = "model";
             color = ccColor "yellow";
             rawValue = true;
+            merge = "no-padding";
+          }
+          {
+            id = "15";
+            type = "custom-text";
+            color = ccColor "yellow";
+            customText = " ";
+            merge = "no-padding";
           }
           {
             id = "2";
             type = "thinking-effort";
-            color = ccColor "mauve";
+            color = ccColor "yellow";
             rawValue = true;
+          }
+          # Fast-mode state after the thinking effort, mirroring the Codex
+          # status line's fast-mode position and Pi's service-tier segment.
+          {
+            id = "14";
+            type = "custom-command";
+            color = ccColor "mauve";
+            commandPath = lib.getExe' fastModeIndicatorPackage "ccstatusline-fast-mode";
+            timeout = 1000;
           }
           {
             id = "3";
