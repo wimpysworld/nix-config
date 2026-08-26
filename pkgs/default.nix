@@ -4,6 +4,7 @@ pkgs: {
   # Local packages
   brow6el = pkgs.callPackage ./brow6el { };
   casty = pkgs.callPackage ./casty { };
+  cg-mcp-proxy = pkgs.callPackage ./cg-mcp-proxy { };
   chainctl = pkgs.callPackage ./chainctl { };
   claude-themes-catppuccin = pkgs.callPackage ./claude-themes-catppuccin { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };

@@ -18,6 +18,29 @@ let
     "slack_schedule_message"
     "slack_update_canvas"
   ];
+  # Every Chainguard MCP server is reached through cg-mcp-proxy rather than as an
+  # http entry. Those servers use an OAuth flow that registers a client per
+  # session, and that registration does not outlive the session, so a direct http
+  # entry fails with "invalid client_id" once an agent re-sends what it cached.
+  # The proxy asks chainctl for the audience token instead and replaces it before
+  # it expires, so no agent stores a credential for these servers.
+  #
+  # The staging server needs no extra flag. chainctl keys its token cache by
+  # audience and holds the issuer that signed each entry, so a staging audience
+  # returns a token from the staging issuer through the shared config.
+  #
+  # claudeCode is off. Chainguard's mono checks a .mcp.json into the repository
+  # that already defines these six at project scope, and a second definition at
+  # user scope would collide on the same names. Claude Code keeps the project
+  # entries, and mcp-tokens keeps their tokens fresh.
+  chainguardServer = url: {
+    transport = "stdio";
+    command = "${pkgs.cg-mcp-proxy}/bin/cg-mcp-proxy";
+    args = [ url ];
+    consumers = {
+      claudeCode.enabled = false;
+    };
+  };
 in
 rec {
   # Canonical MCP server definitions.
@@ -160,7 +183,17 @@ rec {
         zed.enabled = false;
       };
     };
-  };
+  }
+  // lib.optionalAttrs isWorkHost (
+    lib.mapAttrs (_: chainguardServer) {
+      cg-apk = "https://apk.cgr.dev/mcp";
+      cg-oci = "https://cgr.dev/mcp";
+      cg-versions = "https://versions.cgr.dev/mcp";
+      cg-build-logs = "https://build-mcp.enforce.dev/mcp";
+      agent-trace-mcp = "https://agent-trace-mcp.enforce.dev/mcp";
+      agent-trace-mcp-stage = "https://agent-trace-mcp.chainops.dev/mcp";
+    }
+  );
 
   # ---------------------------------------------------------------------------
   # Renderers
