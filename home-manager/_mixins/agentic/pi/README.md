@@ -156,6 +156,15 @@ Pi `subagent` tool calls to provider-specific models declared in assistant
 It mirrors `pi-service-tier`'s fast-mode widget events into the
 `noughty-service-tier:status` key consumed by `pi-footer`.
 
+`hardware-cursor` lives at `~/.pi/agent/extensions/hardware-cursor/`. Pi's
+editor always paints its own inverse-block cursor, and `showHardwareCursor`
+only un-hides the terminal cursor on top of it. While `showHardwareCursor` is
+true in `settings.json`, this extension strips the inverse block from the
+editor render so the terminal emulator draws the only cursor. Set
+`showHardwareCursor` to false to make the extension inert and restore stock
+behaviour. When a Pi update changes the cursor escape codes, the strip finds
+no match and the stock double cursor returns, so the editor never breaks.
+
 `prompt-template-display` lives at
 `~/.pi/agent/extensions/prompt-template-display/`. In TUI mode, it discovers
 file-backed commands that Pi reports with the `prompt` source. It displays only
@@ -203,6 +212,7 @@ Managed files:
 - `~/.pi/agent/extensions/provider-router/agents.json`
 - `~/.pi/agent/extensions/provider-router/README.md`
 - `~/.pi/agent/extensions/provider-router/LICENSE`
+- `~/.pi/agent/extensions/hardware-cursor/index.ts`
 - `~/.pi/agent/extensions/prompt-template-display/index.ts`
 - `~/.pi/agent/extensions/prompt-template-display/types.d.ts`
 - `~/.pi/agent/extensions/quota-status/index.ts`

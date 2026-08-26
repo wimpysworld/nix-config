@@ -344,6 +344,11 @@ let
     # Pad the editor content two columns from the border. Pi clamps this key
     # to the 0-3 range and has no prompt-prefix glyph option.
     editorPaddingX = 2;
+    # Let the terminal emulator draw the cursor, which restores WezTerm's
+    # blinking Catppuccin cursor and trail. Pi's editor still paints its own
+    # inverse block on top; the local hardware-cursor extension strips that
+    # block while this key is true, and is inert when this key is false.
+    showHardwareCursor = true;
 
     compaction = {
       enabled = true;
@@ -755,6 +760,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/provider-router/types.d.ts".source = ./extensions/provider-router/types.d.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
+      ".pi/agent/extensions/hardware-cursor/index.ts".source = ./extensions/hardware-cursor/index.ts;
       ".pi/agent/extensions/isolation-status/index.ts".text = piIsolationStatusExtension;
       ".pi/agent/extensions/prompt-template-display/index.ts".source =
         ./extensions/prompt-template-display/index.ts;
