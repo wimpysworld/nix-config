@@ -77,7 +77,6 @@ lib.mkMerge [
           docker-compose
           docker-init
           docker-sbom
-          lazydocker
         ]
         ++ lib.optional rootlessMode fuse-overlayfs;
     };
