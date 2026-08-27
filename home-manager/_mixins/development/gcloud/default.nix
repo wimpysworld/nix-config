@@ -1,4 +1,4 @@
-# Chainguard command-line tools for platform and Wolfi development.
+# Google Cloud command-line tools.
 {
   lib,
   noughtyLib,
@@ -11,8 +11,6 @@ let
 in
 lib.mkIf (isDeveloper && isPolicyHost) {
   home.packages = [
-    pkgs.chainctl
-    pkgs.wolfictl
-    pkgs.yam
+    (pkgs.google-cloud-sdk.withExtraComponents (with pkgs.google-cloud-sdk.components; [ beta ]))
   ];
 }

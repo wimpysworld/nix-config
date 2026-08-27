@@ -11,8 +11,8 @@ audience is the resource URL, and chainctl mints one from the refresh token it
 already holds, so this program mints one token per server and copies it into
 Claude Code's credential store.
 
-It creates no tokens of its own and it starts no login. cg-tokens and the
-chainctl-auth-refresh unit own that work, so a missing credential is reported
+It creates no tokens of its own and it starts no login. mint-tokens and the
+chainctl refresh units own that work, so a missing credential is reported
 with the login that fixes it and is not an error.
 """
 
@@ -193,7 +193,7 @@ def main(argv: list[str]) -> int:
         say("◍ No usable credential for:")
         for audience in missing:
             say(f"    {audience}")
-        say("⊚ Run cg-tokens, or cg-tokens-headless over SSH.")
+        say("⊚ Run mint-tokens, or mint-tokens --headless over SSH.")
 
     if not tokens:
         return 0
@@ -245,9 +245,14 @@ def main(argv: list[str]) -> int:
         say(f"◍ {name} did not answer, so its token is unwritten: {why}")
     for name, why in rejected:
         print(f"✘ ERROR! {name} rejected the token: {why}", file=sys.stderr)
-    advice = "Authenticate it once through /mcp in Claude Code, then run mcp-tokens again."
+    advice = (
+        "Authenticate it once through /mcp in Claude Code, then run mint-tokens again."
+    )
     for audience in absent:
         say(f"⊚ {audience} has no entry yet. {advice}")
+
+    if not (written or missing or unreachable or rejected or absent):
+        say("✔ MCP tokens are current. No action is required.")
 
     if written:
         backup = save(credentials, store)

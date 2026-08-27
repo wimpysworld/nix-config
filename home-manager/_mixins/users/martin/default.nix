@@ -22,6 +22,7 @@ in
     ./u2f.nix
     ./gpg.nix
     ./git.nix
+    ./tokens
   ];
 
   config = lib.mkIf (noughtyLib.isUser [ "martin" ]) {
