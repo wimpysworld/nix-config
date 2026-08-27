@@ -90,7 +90,10 @@ in
           button_minimize_svg = "";
           button_pressed_color = toWayfireColor "surface1" 1.0;
           button_restore_svg = "";
+          left_button_spacing = 16;
           left_button_x_offset = 0;
+          right_button_spacing = 16;
+          right_button_x_offset = -8;
           fg_color = toWayfireColor "mantle" 1.0;
           fg_text_color = toWayfireColor "text" 1.0;
           rounded_corner_radius = 10;
