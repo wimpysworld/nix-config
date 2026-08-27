@@ -16,13 +16,34 @@
 #
 # The applier and the follower run as two background jobs because each
 # blocks on its own stream.  Bash cannot share arrays across processes,
-# so the applier writes one file per client handle in a private runtime
+# so the applier writes one file per client handle in a fixed state
 # directory and the follower reads that file on a return.  When either
 # job dies the script exits and systemd restarts both together.
 
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 lan_mouse_socket="$runtime/lan-mouse-socket.sock"
-state_dir=$(mktemp -d "$runtime/lan-mouse-hookd.XXXXXX")
+
+# The state directory is fixed and survives restarts, so the marker
+# writer and the marker reader always share one directory.  Stale
+# files are harmless: the applier rewrites them on every daemon
+# connect, and the marker is timestamp-guarded.
+state_dir="$runtime/lan-mouse-hookd"
+mkdir -p "$state_dir"
+
+# Workers from an older hookd generation can survive a restart, because
+# keeper subshells orphan when the main trap misses them.  The main
+# process records its pid as the current generation; every worker
+# captures the value at spawn and exits quietly the moment the file no
+# longer matches, so an orphan dies on its first activity instead of
+# warping twice.
+generation="$$"
+printf '%s\n' "$generation" > "$state_dir/generation"
+
+function generation_current() {
+	local recorded=""
+	read -r recorded 2> /dev/null < "$state_dir/generation" || recorded=""
+	[ "$recorded" = "$generation" ]
+}
 
 # The same SSH options as lan-mouse-handoff, so the direct fallback
 # rides the control master that the channel keeper's connection opens.
@@ -56,7 +77,7 @@ fi
 # because the keeper knows its hostname but not its handle.
 function dispatch_return() {
 	local hostname="$1" edge="$2" fraction="$3" pos
-	if ! read -r pos < "$state_dir/pos-$hostname" 2> /dev/null; then
+	if ! read -r pos 2> /dev/null < "$state_dir/pos-$hostname"; then
 		echo "lan-mouse-hookd: no recorded position for $hostname" >&2
 		return 0
 	fi
@@ -107,6 +128,9 @@ function channel_keeper() {
 	# bridged ssh down with it so the pipe keeps a single reader.
 	trap 'if [ -n "${ssh_pid:-}" ]; then kill "$ssh_pid" 2> /dev/null; fi; exit 0' TERM
 	while true; do
+		if ! generation_current; then
+			exit 0
+		fi
 		# Drop lines queued while the channel was down; a warp
 		# delivered seconds late would move the cursor unprompted.
 		while read -r -t 0.01 -u "$in_hold" _; do :; done
@@ -114,6 +138,12 @@ function channel_keeper() {
 		exec {ssh_out}< <(ssh "${ssh_options[@]}" "$address" "lan-mouse-warp serve" < "$in_fifo")
 		ssh_pid=$!
 		while IFS=' ' read -r -u "$ssh_out" cmd edge fraction rest; do
+			# A keeper from a dead generation must never warp; take the
+			# bridged ssh down with it so the pipe keeps a single reader.
+			if ! generation_current; then
+				kill "$ssh_pid" 2> /dev/null || true
+				exit 0
+			fi
 			if [ "$cmd" = "return" ] && [ -z "$rest" ]; then
 				dispatch_return "$hostname" "$edge" "$fraction"
 			else
@@ -137,7 +167,13 @@ function channel_keeper() {
 function apply_hooks() {
 	local backoff=1 line handle hostname pos cmd address desired
 	declare -A keeper_pids keeper_addresses
+	# The keepers are children of the applier, invisible to the main
+	# trap; kill them here so an applier exit leaves no idle orphans.
+	trap 'if [ "${#keeper_pids[@]}" -gt 0 ]; then kill "${keeper_pids[@]}" 2> /dev/null || true; fi' EXIT
 	while true; do
+		if ! generation_current; then
+			exit 0
+		fi
 		coproc LMSOCK { socat - "UNIX-CONNECT:$lan_mouse_socket"; }
 		while IFS= read -r line <&"${LMSOCK[0]}"; do
 			backoff=1
@@ -211,11 +247,11 @@ function handle_return() {
 	local hostname pos address opposite fraction marker now
 	local state_file="$state_dir/client-$active_handle"
 	active_handle=""
-	if ! read -r hostname pos address < "$state_file" 2> /dev/null; then
+	if ! read -r hostname pos address 2> /dev/null < "$state_file"; then
 		echo "lan-mouse-hookd: no recorded client for the return" >&2
 		return 0
 	fi
-	if read -r marker < "$state_dir/last-return-$hostname" 2> /dev/null &&
+	if read -r marker 2> /dev/null < "$state_dir/last-return-$hostname" &&
 		[[ "$marker" =~ ^[0-9]+$ ]]; then
 		now=$(date +%s)
 		if [ $((now - marker)) -lt 2 ]; then
@@ -251,6 +287,9 @@ function follow_returns() {
 		# "releasing capture: left remote client device region" is a
 		# return from that session.
 		while IFS= read -r line; do
+			if ! generation_current; then
+				exit 0
+			fi
 			if [[ "$line" =~ entering\ client\ ([0-9]+) ]]; then
 				active_handle="${BASH_REMATCH[1]}"
 			elif [[ "$line" == *"left remote client device region"* ]] && [ -n "$active_handle" ]; then
@@ -266,7 +305,7 @@ apply_hooks &
 applier_pid=$!
 follow_returns &
 follower_pid=$!
-trap 'kill "$applier_pid" "$follower_pid" 2> /dev/null; rm -rf "$state_dir"' EXIT
+trap 'kill "$applier_pid" "$follower_pid" 2> /dev/null' EXIT
 
 # Exit when the first job dies so systemd restarts the pair.
 wait -n

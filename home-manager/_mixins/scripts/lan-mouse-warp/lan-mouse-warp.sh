@@ -6,11 +6,11 @@
 # The report mode is the reverse read: it prints the current cursor's
 # fraction along an edge so the peer can mirror a return crossing.
 # The serve mode reads warp and report lines from stdin over one
-# held-open SSH session, so a crossing costs no process spawn.  It
-# also watches the local lan-mouse daemon for incoming sessions and
-# pushes the return correction upstream the moment the cursor touches
-# the entry edge, because the controlled machine knows about a return
-# before anyone else.
+# held-open SSH session, so a crossing costs no process spawn.  Every
+# forward warp command also arms a watcher that pushes the return
+# correction upstream the moment the cursor touches the entry edge,
+# because the controlled machine knows about a return before anyone
+# else.
 
 # Print the cursor position in logical layout coordinates, as in
 # lan-mouse-handoff.  Shellcheck rejects a shared copy in
@@ -142,73 +142,16 @@ function opposite_edge() {
 	esac
 }
 
-# The serve watcher state.  A DeviceEntered event from the local
-# daemon arms the watcher with the entry edge.  The guard stays
-# closed until the cursor moves more than 15 logical pixels inward,
-# because the peer's entry warp parks the cursor 2 pixels inside that
-# same edge and must not fire a push.
+# The serve watcher state.  A valid forward warp command arms the
+# watcher with the warp edge, because lan-mouse-handoff sends that
+# command at every entry.  The guard stays closed until the cursor
+# moves more than 15 logical pixels inward, because the entry warp
+# parks the cursor 2 pixels inside that same edge and must not fire a
+# push.  The arming time bounds how long an abandoned session can
+# leave the edge watched.
 armed_edge=""
 guard_open=0
-events_fd=""
-events_pid=""
-events_backoff=1
-events_retry_at=0
-
-# Connect a socat coproc to the local lan-mouse daemon socket.  The
-# daemon pushes newline-delimited JSON events; serve only reads.  The
-# coproc fd is duplicated because bash closes its own copy when the
-# coproc dies, and the duplicate keeps buffered events readable.
-function events_connect() {
-	local socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/lan-mouse-socket.sock"
-	if [ ! -S "$socket" ]; then
-		return 1
-	fi
-	coproc LMEVENTS { socat -u "UNIX-CONNECT:$socket" -; }
-	events_pid="$LMEVENTS_PID"
-	exec {events_fd}<&"${LMEVENTS[0]}"
-}
-
-# Drain pending daemon events without blocking.  When the coproc is
-# dead (daemon restart), reconnect with capped backoff so command
-# handling never stalls.  When the socket stays unavailable, serve
-# degrades to the plain command loop.
-function events_poll() {
-	local event pos
-	if [ -z "$events_fd" ]; then
-		if [ "$SECONDS" -lt "$events_retry_at" ]; then
-			return 0
-		fi
-		if ! events_connect; then
-			events_retry_at=$((SECONDS + events_backoff))
-			if [ "$events_backoff" -lt 30 ]; then
-				events_backoff=$((events_backoff * 2))
-			fi
-			return 0
-		fi
-	fi
-	# read -t 0 only checks for input; the blocking read that follows
-	# consumes one whole line.
-	while read -r -t 0 -u "$events_fd"; do
-		if ! read -r -u "$events_fd" event; then
-			exec {events_fd}<&-
-			events_fd=""
-			wait "$events_pid" 2> /dev/null || true
-			events_pid=""
-			events_retry_at=$((SECONDS + events_backoff))
-			if [ "$events_backoff" -lt 30 ]; then
-				events_backoff=$((events_backoff * 2))
-			fi
-			return 0
-		fi
-		events_backoff=1
-		pos=$(jq -r '.DeviceEntered.pos // empty' <<< "$event" 2> /dev/null || true)
-		if [ -n "$pos" ] && valid_edge "$pos"; then
-			# Re-arm on every DeviceEntered.
-			armed_edge="$pos"
-			guard_open=0
-		fi
-	done
-}
+armed_at=0
 
 # One armed cursor poll.  Open the guard once the cursor is more than
 # 15 logical pixels from the armed edge; then, when the distance drops
@@ -234,12 +177,14 @@ function watch_poll() {
 
 # Serve mode: the peer's hookd bridges stdin to a named pipe over one
 # held-open SSH session and reads this stdout.  A warp line answers
-# nothing, a report line answers one fraction line, an invalid line
-# logs and the loop continues, and EOF on stdin ends the session
-# cleanly.  Between commands the loop drains local daemon events and,
-# when armed, polls the cursor so a return crossing pushes one
-# "return <edge> <fraction>" line upstream.  An idle unarmed serve
-# spawns nothing.
+# nothing and arms the return watcher with the warp edge, a report
+# line answers one fraction line, an invalid line logs and the loop
+# continues, and EOF on stdin ends the session cleanly.  While armed
+# the loop polls the cursor between commands so a return crossing
+# pushes one "return <edge> <fraction>" line upstream.  A watcher
+# armed for more than ten minutes disarms without pushing, so an
+# abandoned session cannot leave an edge tripwire on a locally
+# operated machine.  An idle unarmed serve spawns nothing.
 function serve() {
 	local cmd a b rest rc interval
 	while true; do
@@ -254,7 +199,11 @@ function serve() {
 			case "$cmd" in
 				warp)
 					if [ -z "$rest" ] && valid_edge "$a" && valid_fraction "$b"; then
-						do_warp "$a" "$b" || true
+						if do_warp "$a" "$b"; then
+							armed_edge="$a"
+							guard_open=0
+							armed_at="$SECONDS"
+						fi
 					else
 						echo "lan-mouse-warp: invalid serve line: $cmd $a $b $rest" >&2
 					fi
@@ -276,9 +225,13 @@ function serve() {
 			# EOF: the peer closed the channel.
 			break
 		fi
-		events_poll
 		if [ -n "$armed_edge" ]; then
-			watch_poll
+			if [ "$((SECONDS - armed_at))" -gt 600 ]; then
+				armed_edge=""
+				guard_open=0
+			else
+				watch_poll
+			fi
 		fi
 	done
 }

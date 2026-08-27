@@ -31,6 +31,18 @@ client's recorded position (so a peer cannot warp an arbitrary edge),
 warps the local cursor, and writes a `last-return-<hostname>` marker
 in the state directory.
 
+**State and lifecycle.** All state files (`client-<handle>`,
+`pos-<hostname>`, `last-return-<hostname>`, `generation`) live in the
+fixed directory `$XDG_RUNTIME_DIR/lan-mouse-hookd/`, which survives
+restarts, so the marker writer and the marker reader always share one
+directory. Stale files are harmless: the applier rewrites them on
+every daemon connect, and the marker is timestamp-guarded. At startup
+the main process writes its pid to `generation`. The applier, the
+follower, and every keeper capture that value at spawn, check the
+file before acting, and exit quietly on a mismatch, so a worker
+orphaned by an older hookd dies on its first activity instead of
+warping twice.
+
 **Return mirror, the fallback.** The follower watches the daemon
 journal: `entering client <handle>` opens a session, and
 `releasing capture: left remote client device region` marks a return.

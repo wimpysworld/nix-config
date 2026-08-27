@@ -25,18 +25,19 @@ The receiver side of proportional cursor placement for
   restart does not wedge the server.
 
   serve is also a stateful watcher for return crossings, because the
-  controlled machine knows about a return before anyone else. It
-  follows the local daemon's IPC socket through a socat coproc, and a
-  `DeviceEntered` event arms it with the entry edge. While armed it
+  controlled machine knows about a return before anyone else. Every
+  valid `warp` command arms the watcher with the warp edge, so arming
+  happens per crossing with no daemon involvement. While armed it
   polls the cursor every 40 ms. A guard stays closed until the cursor
   moves more than 15 logical pixels from the armed edge (the entry
   warp parks the cursor 2 pixels inside that same edge and must not
   fire a push). Once the guard is open and the cursor comes back
   within 2 pixels of the edge, serve emits one
   `return <opposite-edge> <fraction>` line to stdout and disarms.
-  An idle unarmed serve polls nothing. When the daemon socket is
-  unavailable or the coproc dies, serve reconnects with capped
-  backoff and degrades to the plain command loop meanwhile.
+  A watcher armed for more than ten minutes disarms without pushing.
+  An idle unarmed serve polls nothing. A session that never receives
+  a warp line never arms; the controller's journald mirror remains
+  the fallback.
 
 Each warp appends one line to `~/.cache/lan-mouse-warp.log` for latency
 measurement.

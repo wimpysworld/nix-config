@@ -15,8 +15,6 @@ pkgs.writeShellApplication {
     coreutils
     findutils
     jq
-    # The serve watcher reads the local lan-mouse daemon events.
-    socat
   ]);
   text =
     builtins.readFile ./compositor-query.sh
