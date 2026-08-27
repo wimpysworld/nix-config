@@ -12,17 +12,18 @@ Input: $ARGUMENTS is a Linear issue key or URL, or a path to a local markdown ta
 4. Judge each area below.
 5. Decide whether an implementer can start without further research and without new product or architecture decisions.
 
-A task body uses these headings, in order: `Outcome`, `Problem`, `Context`, `Scope`, `Requirements`, `Acceptance criteria`, `Validation`, `Non-goals`, `Dependencies`, `Evidence`. `Outcome`, `Scope`, and `Acceptance criteria` are mandatory. The rest appear only when there is real content, so a missing optional section is a finding only when its absence leaves the implementer guessing.
+A standalone or child task body uses these headings, in order: `Outcome`, `Why`, `Problem`, `Context`, `Scope` with `In scope` and `Out of scope`, `Requirements`, `Success Criteria`, `Validation`, `Dependencies`, `Evidence`. A parent uses `Outcome`, `Why`, `Problem`, `Context`, `Scope` with `In scope` and `Out of scope`, `Shared decisions`, `Child issues`, `Success Criteria`, and `Evidence`. `Outcome`, `Why`, `Scope`, and `Success Criteria` are mandatory. The rest appear only when there is real content, so a missing optional section is a finding only when its absence leaves the implementer guessing.
 
 | Area | Question |
 | ---- | -------- |
 | Outcome | Is it a single, testable statement of the end state, not a list of activities? |
-| Problem and Context | Is it clear why the work exists and what must not break? |
-| Scope | Is it bounded, with no hidden work that the Outcome implies but the Scope omits? |
+| Why | Does it state the broader user, business, reliability, or delivery impact without repeating the Problem? |
+| Problem | Does it state the technical failure, mechanism, or gap? |
+| Context | Does it state the existing behaviour and constraints that the work must preserve or build on? |
+| Scope | Do `In scope` and `Out of scope` bound the work, with no hidden work that the Outcome implies but the Scope omits? |
 | Requirements | Where present, are the rules numbered, testable, and free of overlap with Scope? |
-| Acceptance criteria | Are they observable and independently checkable, rather than restatements of the Scope? |
+| Success Criteria | Are they observable and independently checkable, rather than restatements of the Scope? |
 | Validation | Where commands are needed, do they exist and run in this repository? |
-| Non-goals | Do they fence off the work a reasonable implementer would otherwise do? |
 | Dependencies | For a cohort member, are the stated edges consistent with the parent's order? |
 | Evidence | Can an implementer start from it without doing fresh research? |
 | Child issues | For a parent, is the dependency order complete and acyclic, and does every child exist? |

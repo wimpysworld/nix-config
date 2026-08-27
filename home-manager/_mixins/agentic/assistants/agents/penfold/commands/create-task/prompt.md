@@ -80,7 +80,7 @@ Before writing any body:
 - Give every material claim its source: a permalink pinned to a commit SHA, a spec URL, or a repo path with what the implementer will find there. Cut a claim that carries none.
 - Record findings, not the search log. Where the session weighed options, state the chosen approach and the rejected alternatives in one line each.
 - Record a blocker only when the session's research and the existing code do not resolve it. Speculation is not a blocker.
-- Write acceptance criteria a reader can check by observation or by running a command. Subjective criteria do not ship.
+- Write success criteria that a reader can check by observation or by running a command. Subjective criteria do not ship.
 
 **7. Create**
 
@@ -108,24 +108,34 @@ Standalone or child issue body:
 
 <One sentence, present tense, from the reader's point of view. What is true when this is done.>
 
+## Why
+
+<In one short paragraph, state the broader user, business, reliability, or delivery impact. Keep the technical problem in Problem.>
+
 ## Problem
 
-<Why this exists. For a bug: the observed failure, where it was confirmed, and the mechanism. For a feature: the gap. Omit only when the Outcome is self-evident.>
+<The technical problem. For a bug: the observed failure, where it was confirmed, and the mechanism. For a feature: the technical gap. Omit only when the Outcome is self-evident.>
 
 ## Context
 
-<What exists today that the implementer must not break or must build on: current behaviour, file paths, measured numbers, standing decisions. Omit when there is no prior art.>
+<Existing behaviour and constraints that the implementer must not break or must build on: current behaviour, file paths, measured numbers, standing decisions. Omit when there is no prior art.>
 
 ## Scope
 
+### In scope
+
 * <Bounded statement of what changes.>
 * <One bullet per boundary or subsystem touched.>
+
+### Out of scope
+
+* Do not <thing a reasonable implementer would otherwise do>.
 
 ## Requirements
 
 <Numbered, testable rules. Use only when Scope needs more than six bullets or splits into named groups. Otherwise omit and let Scope carry it.>
 
-## Acceptance criteria
+## Success Criteria
 
 * <Observable end state, not a task.>
 * <Each bullet is independently checkable.>
@@ -136,10 +146,6 @@ Standalone or child issue body:
 <fenced sh block with the exact commands to run>
 
 <Include only when commands or measurements are required. State what to record before and after for performance work.>
-
-## Non-goals
-
-* Do not <thing a reasonable implementer would otherwise do>.
 
 ## Dependencies
 
@@ -158,19 +164,27 @@ Parent tracking issue body:
 
 <One sentence describing the state of the whole cohort when every child is closed.>
 
+## Why
+
+<In one short paragraph, state the broader user, business, reliability, or delivery impact of the cohort. Keep the technical problem in Problem.>
+
 ## Problem
 
-<The shared problem all children serve. Two or three paragraphs maximum.>
+<The shared technical problem all children solve. Two or three paragraphs maximum.>
 
-## Boundaries
+## Context
 
-In scope:
+<Existing behaviour and constraints that every child must honour, including file paths, measured numbers, and standing decisions. Omit when there is no prior art.>
+
+## Scope
+
+### In scope
 
 * <area>
 
-Out of scope:
+### Out of scope
 
-* <area>
+* <area that the cohort will not change>
 
 ## Shared decisions
 
@@ -187,7 +201,7 @@ Implement in this order:
 
 <Mark which steps ship inert and which change user-visible behaviour.>
 
-## Completion criteria
+## Success Criteria
 
 * Every child issue has a ship, reject, or defer decision.
 * <Cross-cutting gate that no single child owns.>
@@ -201,12 +215,13 @@ Implement in this order:
 
 ### Constraints
 
-- `Outcome`, `Scope`, and `Acceptance criteria` are mandatory. Every other section appears only when there is real content.
+- `Outcome`, `Why`, `Scope`, and `Success Criteria` are mandatory. Every other section appears only when there is real content.
+- `Scope` always contains both `In scope` and `Out of scope`.
 - Never stub a section with "N/A" or "None". Omit it.
 - Use exactly these heading names. No synonyms.
 - Never put tool, agent, or workflow instructions into an issue body.
-- Bullets over paragraphs, except `Problem` and `Context`, where one or two short paragraphs are allowed.
-- The parent holds boundaries, shared decisions, dependency order, and cohort completion. Children hold delivery scope, acceptance, priority, estimate, and labels.
+- Keep `Why` to one short paragraph. `Problem` and `Context` can use one or two short paragraphs; use bullets elsewhere.
+- The parent holds cohort scope, shared decisions, dependency order, and cohort success. Children hold delivery scope, success criteria, priority, estimate, and labels.
 - Every issue gets labels, priority, and an estimate, drawn from the live taxonomy. Local files carry the same four values in frontmatter.
 - Every Linear issue is assigned to the user creating it. Local task files carry no assignee.
 - The body templates are identical for Linear and for local files. Only the frontmatter differs.
