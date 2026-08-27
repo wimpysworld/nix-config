@@ -23,7 +23,7 @@ Resolve the target to a diff before anything else:
 | Commit SHA | that commit alone |
 | No argument | the current worktree's changes |
 
-Record the head commit SHA reviewed. Keep it internal: it is a guard for `post-code-review` and never appears in a review comment.
+Record the full head commit SHA in the private report. It is a guard for `post-code-review` and never appears in a review comment.
 
 ### Report Location
 
@@ -44,7 +44,7 @@ Load the `review-report-path` skill and derive `<project>`, `<target>`, and a ne
 5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's fallback findings file in its packet, `<run-dir>/findings-<concern>-<worker-id>.md`, so no two collide. Never reuse a fallback path.
 6. Re-request once from any sub-agent that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A sub-agent that fails twice is your own work to finish, to the same standard, not a gap in the report.
 7. Pressure-test every blocking finding, per **Adversarial pressure-test**.
-8. Synthesise one report at the derived path: summary of the change, verification performed, deduplicated findings, conclusion. The sub-agent replies and durable fallback files are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads. If the report path exists, stop and create a new run directory instead of overwriting it.
+8. Synthesise one report at the derived path: resolved target, full reviewed head SHA, caller-supplied lens and severity bar, summary of the change, verification performed, deduplicated findings, and conclusion. Put `Target`, `Reviewed SHA`, `Lens`, and `Severity bar` fields before the Summary heading, so follow-up and posting commands can recover the review contract. The sub-agent replies and durable fallback files are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads. If the report path exists, stop and create a new run directory instead of overwriting it.
 9. Deliver the conclusion and every finding the user must act on, in house style (the `communication-rules` skill). Report the path. The file keeps the full report.
 
 ### Fan-out

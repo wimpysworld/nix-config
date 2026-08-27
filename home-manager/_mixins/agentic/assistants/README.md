@@ -1,6 +1,6 @@
 # AI Agents
 
-Eleven specialist agents, 60 commands, twenty-four physical skills, and two generated skills - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Eleven specialist agents, 61 commands, twenty-five physical skills, and two generated skills - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
 
 Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex resources are emitted only when those clients are enabled.
 
@@ -125,6 +125,7 @@ The house style owns response discipline, every platform carries it in the syste
 | `orientate`             | Inspect the repository and report orientation notes                   |
 | `ready`                 | Prime the session for a broad activity                                |
 | `reflect`               | Review the session and suggest tooling and AGENTS.md changes          |
+| `review-code-again`     | Recheck prior findings and defects caused by the author's response    |
 | `review-code-colleague` | Review a colleague's PR for defects only; no suggestions, no nits     |
 | `review-code-community` | Review a community PR for correctness, gaps, and malicious code       |
 | `review-code-mine`      | Adversarially review my own changes before filing a PR                |
@@ -501,6 +502,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `draft-issue`        | Read-only GitHub issue drafting with policy and duplicate checks          |
 | `gh`                 | GitHub CLI reference - PR creation, issue management, releases            |
 | `herdr`              | Control Herdr workspaces, tabs, panes, commands, and coding agents         |
-| `review-code`        | Shared review method: input resolution, fan-out, pressure-test, report    |
-| `semgrep`            | Semgrep CLI usage and custom rule creation reference                      |
+| `review-code`           | Shared review method: input resolution, fan-out, pressure-test, report    |
+| `review-code-follow-up` | Follow-up review method: prior findings, response delta, restrained report |
+| `semgrep`               | Semgrep CLI usage and custom rule creation reference                      |
 | `slack`              | Slack reference - `slack-post` target forms, channel resolution, threads  |
