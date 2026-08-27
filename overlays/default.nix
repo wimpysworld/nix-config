@@ -56,10 +56,13 @@
       inherit (final.unstable) llama-swap;
 
       # Packages tracking the unstable channel ahead of their stable releases.
+      inherit (final.unstable) apko;
       inherit (final.unstable) bun;
+      inherit (final.unstable) cosign;
       inherit (final.unstable) hyprland;
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) lima;
+      inherit (final.unstable) melange;
       inherit (final.unstable) tmux;
 
       # Claude Code tracks the llm-agents flake on Linux (pinned alongside the

@@ -11,7 +11,10 @@ let
 in
 lib.mkIf (isDeveloper && isPolicyHost) {
   home.packages = [
+    pkgs.apko
     pkgs.chainctl
+    pkgs.cosign
+    pkgs.melange
     pkgs.wolfictl
     pkgs.yam
   ];
