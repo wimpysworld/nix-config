@@ -7,9 +7,12 @@
 # re-applies every session and config.toml stays the GUI's file.
 #
 # A return crossing (the emulated cursor leaves the peer's screen) runs
-# no hook, so a journal follower closes the gap: it watches the daemon
-# log, queries the peer's frozen cursor over SSH, and warps the local
-# cursor to the matching fraction.
+# no hook.  The peer's "lan-mouse-warp serve" watcher pushes the
+# corrected fraction over the held-open channel the moment its cursor
+# touches the entry edge, and the channel keeper warps locally.  A
+# journal follower stays as the fallback: it watches the daemon log
+# and, when no push arrived within the last two seconds, queries the
+# peer's frozen cursor over SSH and warps to the matching fraction.
 #
 # The applier and the follower run as two background jobs because each
 # blocks on its own stream.  Bash cannot share arrays across processes,
@@ -21,8 +24,8 @@ runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 lan_mouse_socket="$runtime/lan-mouse-socket.sock"
 state_dir=$(mktemp -d "$runtime/lan-mouse-hookd.XXXXXX")
 
-# The same SSH options as lan-mouse-handoff, so the follower rides the
-# control master that the applier pre-warms.
+# The same SSH options as lan-mouse-handoff, so the direct fallback
+# rides the control master that the channel keeper's connection opens.
 ssh_options=(
 	-o BatchMode=yes
 	-o ConnectTimeout=1
@@ -44,27 +47,96 @@ if [ ! -S "$lan_mouse_socket" ]; then
 	exit 1
 fi
 
-# Best effort: pre-warm one SSH control master per client address so
-# the first crossing does not pay connection setup.
-function prewarm() {
-	local address="$1"
-	if [ -z "$address" ] || [ -n "${prewarmed[$address]:-}" ]; then
+# Apply one pushed return from a channel keeper: the controlled peer's
+# serve watcher saw its cursor touch the session's entry edge and sent
+# the corrected fraction upstream.  The pushed edge must match the
+# client's recorded position, so a peer cannot warp an arbitrary edge.
+# The marker file makes the journal follower a fallback only.  The
+# position is read from the pos-<hostname> file the applier writes,
+# because the keeper knows its hostname but not its handle.
+function dispatch_return() {
+	local hostname="$1" edge="$2" fraction="$3" pos
+	if ! read -r pos < "$state_dir/pos-$hostname" 2> /dev/null; then
+		echo "lan-mouse-hookd: no recorded position for $hostname" >&2
 		return 0
 	fi
-	prewarmed[$address]=1
-	timeout 5 ssh \
-		-o BatchMode=yes \
-		-o ConnectTimeout=2 \
-		-o ControlMaster=auto \
-		-o ControlPath="$runtime/lan-mouse-ssh-%C" \
-		-o ControlPersist=yes \
-		-o StrictHostKeyChecking=accept-new \
-		"$address" true > /dev/null 2>&1 || true
+	case "$edge" in
+		left | right | top | bottom) ;;
+		*)
+			echo "lan-mouse-hookd: invalid pushed edge '$edge' from $hostname" >&2
+			return 0
+			;;
+	esac
+	if [[ ! "$fraction" =~ ^(0|1|0?\.[0-9]+|1\.0+)$ ]]; then
+		echo "lan-mouse-hookd: invalid pushed fraction '$fraction' from $hostname" >&2
+		return 0
+	fi
+	if [ "$edge" != "$pos" ]; then
+		echo "lan-mouse-hookd: pushed edge $edge does not match $hostname at $pos" >&2
+		return 0
+	fi
+	if lan-mouse-warp "$pos" "$fraction"; then
+		date +%s > "$state_dir/last-return-$hostname"
+	else
+		echo "lan-mouse-hookd: local warp for the pushed return failed" >&2
+	fi
+	return 0
+}
+
+# One channel keeper per client hostname holds a persistent
+# "lan-mouse-warp serve" session on the peer.  The handoff and the
+# return mirror write one line to the .in pipe instead of spawning
+# ssh, so a crossing costs one round trip.  The keeper is the only
+# reader of ssh stdout: the peer's serve watcher pushes
+# "return <edge> <fraction>" lines there and the keeper warps locally.
+# The keeper restarts the channel with capped backoff when it dies
+# (peer reboot, laptop sleep).
+function channel_keeper() {
+	local hostname="$1" address="$2" backoff=1 in_hold ssh_out ssh_pid
+	local cmd edge fraction rest
+	local in_fifo="$runtime/lan-mouse-chan-$hostname.in"
+	if [ ! -p "$in_fifo" ]; then
+		rm -f "$in_fifo"
+		mkfifo "$in_fifo"
+	fi
+	# Hold the pipe open read-write from here: a writer on .in never
+	# blocks waiting for a reader while ssh restarts, and ssh never
+	# sees EOF between crossings.
+	exec {in_hold}<> "$in_fifo"
+	# The applier kills the keeper on an address change; take the
+	# bridged ssh down with it so the pipe keeps a single reader.
+	trap 'if [ -n "${ssh_pid:-}" ]; then kill "$ssh_pid" 2> /dev/null; fi; exit 0' TERM
+	while true; do
+		# Drop lines queued while the channel was down; a warp
+		# delivered seconds late would move the cursor unprompted.
+		while read -r -t 0.01 -u "$in_hold" _; do :; done
+		SECONDS=0
+		exec {ssh_out}< <(ssh "${ssh_options[@]}" "$address" "lan-mouse-warp serve" < "$in_fifo")
+		ssh_pid=$!
+		while IFS=' ' read -r -u "$ssh_out" cmd edge fraction rest; do
+			if [ "$cmd" = "return" ] && [ -z "$rest" ]; then
+				dispatch_return "$hostname" "$edge" "$fraction"
+			else
+				echo "lan-mouse-hookd: unexpected channel line from $hostname: $cmd $edge $fraction $rest" >&2
+			fi
+		done
+		exec {ssh_out}<&-
+		wait "$ssh_pid" 2> /dev/null || true
+		ssh_pid=""
+		# A channel that lived a while earns a fast reconnect.
+		if [ "$SECONDS" -ge 30 ]; then
+			backoff=1
+		fi
+		sleep "$backoff"
+		if [ "$backoff" -lt 30 ]; then
+			backoff=$((backoff * 2))
+		fi
+	done
 }
 
 function apply_hooks() {
 	local backoff=1 line handle hostname pos cmd address desired
-	declare -A prewarmed
+	declare -A keeper_pids keeper_addresses
 	while true; do
 		coproc LMSOCK { socat - "UNIX-CONNECT:$lan_mouse_socket"; }
 		while IFS= read -r line <&"${LMSOCK[0]}"; do
@@ -90,13 +162,28 @@ function apply_hooks() {
 					# DNS resolves, and the hook is set then.
 					continue
 				fi
-				# Record the tuple for the journal follower.
+				# Record the tuple for the journal follower, and the
+				# position keyed by hostname for the channel keeper's
+				# push dispatch, which knows no handle.
 				printf '%s %s %s\n' "$hostname" "$pos" "$address" > "$state_dir/client-$handle"
+				printf '%s\n' "$pos" > "$state_dir/pos-$hostname"
 				desired="lan-mouse-handoff $hostname $pos $address"
 				if [ "$cmd" != "$desired" ]; then
 					printf '{"UpdateEnterHook":[%s,"%s"]}\n' "$handle" "$desired" >&"${LMSOCK[1]}" || break
 				fi
-				prewarm "$address" &
+				# Keepers are tracked by hostname so repeated State
+				# events never spawn duplicates.  An address change
+				# replaces the keeper; a client removed in the GUI
+				# leaves a harmless keeper that retries with backoff
+				# until the next hookd restart.
+				if [ "${keeper_addresses[$hostname]:-}" != "$address" ]; then
+					if [ -n "${keeper_pids[$hostname]:-}" ]; then
+						kill "${keeper_pids[$hostname]}" 2> /dev/null || true
+					fi
+					channel_keeper "$hostname" "$address" &
+					keeper_pids[$hostname]=$!
+					keeper_addresses[$hostname]="$address"
+				fi
 			done < <(jq -r '
 				select(type == "object")
 				| (.Enumerate // empty)[], (.Created // empty), (.State // empty)
@@ -113,17 +200,27 @@ function apply_hooks() {
 	done
 }
 
-# Mirror one return crossing: read the peer's frozen cursor as a
-# fraction along its exit edge, then warp the local cursor to the same
-# fraction on the local edge the client sits on.  Every failure logs
-# and returns so the follower never hangs and never crashes.
+# Mirror one return crossing that the channel keeper's push missed:
+# read the peer's frozen cursor as a fraction along its exit edge over
+# a direct ssh exec, then warp the local cursor to the same fraction
+# on the local edge the client sits on.  The keeper's marker file
+# skips the mirror when a push already handled this return, so the
+# journal follower is the fallback only.  Every failure logs and
+# returns so the follower never hangs and never crashes.
 function handle_return() {
-	local hostname pos address opposite fraction
+	local hostname pos address opposite fraction marker now
 	local state_file="$state_dir/client-$active_handle"
 	active_handle=""
 	if ! read -r hostname pos address < "$state_file" 2> /dev/null; then
 		echo "lan-mouse-hookd: no recorded client for the return" >&2
 		return 0
+	fi
+	if read -r marker < "$state_dir/last-return-$hostname" 2> /dev/null &&
+		[[ "$marker" =~ ^[0-9]+$ ]]; then
+		now=$(date +%s)
+		if [ $((now - marker)) -lt 2 ]; then
+			return 0
+		fi
 	fi
 	case "$pos" in
 		left) opposite="right" ;;

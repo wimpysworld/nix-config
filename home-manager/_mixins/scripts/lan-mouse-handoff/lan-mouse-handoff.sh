@@ -65,6 +65,16 @@ fraction=$(jq -n --argjson monitors "$monitors" --argjson x "$cursor_x" --argjso
 	| . * 10000 | round | . / 10000
 ')
 
+# Try the persistent warp channel first: one line into the keeper's
+# .in pipe reaches the peer's held-open "lan-mouse-warp serve" with no
+# process spawn.  Opening a FIFO with no reader blocks, so tee opens
+# the pipe under a short timeout; any failure falls back to the direct
+# SSH exec below.
+channel="$runtime/lan-mouse-chan-$client.in"
+if [ -p "$channel" ] && printf 'warp %s %s\n' "$entry_edge" "$fraction" | timeout 0.1s tee -- "$channel" > /dev/null; then
+	exit 0
+fi
+
 # Hard timeout so a dead peer degrades to current behaviour.  The
 # remote login shell is fish, so the command is one plain line.
 if ! timeout 0.25s ssh \
