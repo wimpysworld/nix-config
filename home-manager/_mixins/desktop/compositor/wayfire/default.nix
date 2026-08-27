@@ -66,7 +66,7 @@ in
           autostart_wf_shell = false;
         };
         core = {
-          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move vecdecor place resize session-lock shortcuts-inhibit switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
+          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move vecdecor place resize session-lock shortcuts-inhibit stipc switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
