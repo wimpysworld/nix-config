@@ -14,13 +14,13 @@
       # Paseo packages come from the upstream Paseo flake; the desktop client
       # reuses the patched daemon npm closure below.
       #
-      # The v0.5.2 tag ships a wrong npm-deps fixed-output hash, which breaks
+      # The v0.6.1 tag ships a wrong npm-deps fixed-output hash, which breaks
       # the build with a hash mismatch. Correct the hash here until the next
       # upstream release carries a good one.
       fixPaseoNpmDeps =
         pkg:
         pkg.override {
-          npmDepsHash = "sha256-TRZej2L43C3go4NWe496Dqs/4A+0GivCRtGzt3pX2dw=";
+          npmDepsHash = "sha256-dUvEe+j2E1ptWtjCAi858TnmugqT/+GrgfYJA74oB5I=";
         };
       paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
         paseo = fixPaseoNpmDeps (paseoPackages.paseo or paseoPackages.default);
