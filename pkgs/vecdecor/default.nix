@@ -20,14 +20,14 @@ let
   sources = {
     "0.10.1" = {
       version = "0.10.0";
-      rev = "8a6ab5a7434760d65cd9218625802a13bf40c7ff";
-      hash = "sha256-uyv3u0XmMtn84MFLAbj4dwN97rfoKo7hL1DH1QcHaOs=";
+      rev = "eec39739905e7b8e1fc73324a50eebedb649f48f";
+      hash = "sha256-4ymcZz2QVOCWCA/SEj04oaDGEJezGdCLI0wJdm5XJtU=";
       wayfireConstraint = "['>=0.10.1', '<0.11.0']";
     };
     "0.11.0" = {
       version = "0.11.0";
-      rev = "29a15499317e9da12c83dd5e8fccb74223afe445";
-      hash = "sha256-gWtZ2zkcqzsYj+jKcAJ3qFvTHBjUCu5Wx2JliPxrUDQ=";
+      rev = "33391f81343dc18698445a2a3e07e2caa5468b0e";
+      hash = "sha256-jaTcqWWm6VJYBV7COfXsz3y31TDh9M1Q5NGGMCg5AZg=";
       wayfireConstraint = "['>=0.11.0', '<0.12.0']";
     };
   };

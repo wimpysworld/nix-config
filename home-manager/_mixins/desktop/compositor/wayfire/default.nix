@@ -90,13 +90,9 @@ in
           button_minimize_svg = "";
           button_pressed_color = toWayfireColor "surface1" 1.0;
           button_restore_svg = "";
-          button_size = 34;
-          left_button_spacing = 16;
           left_button_x_offset = 0;
           fg_color = toWayfireColor "mantle" 1.0;
           fg_text_color = toWayfireColor "text" 1.0;
-          right_button_spacing = 16;
-          right_button_x_offset = -16;
           rounded_corner_radius = 10;
           title_height = 46;
           title_font = "${config.gtk.font.name} Bold ${toString config.gtk.font.size}";
