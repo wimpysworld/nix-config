@@ -510,7 +510,7 @@ in
         mode = "0400";
       };
 
-      ANTHROPIC_API_KEY = {
+      BASETEN_API_KEY = {
         sopsFile = aiSopsFile;
         owner = "root";
         group = "root";
@@ -611,7 +611,7 @@ in
         WEBHOOK_ENABLED=true
         WEBHOOK_PORT=8644
         WEBHOOK_SECRET=${config.sops.placeholder.WEBHOOK_SECRET}
-        ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
+        BASETEN_API_KEY=${config.sops.placeholder.BASETEN_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         LINEAR_API_KEY=${config.sops.placeholder.LINEAR_API_KEY}
@@ -622,7 +622,7 @@ in
         TUYA_API_REGION=${config.sops.placeholder.TUYA_API_REGION}
         TUYA_API_DEVICE_ID=${config.sops.placeholder.TUYA_API_DEVICE_ID}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
-        _HERMES_FORCE_ANTHROPIC_API_KEY=${config.sops.placeholder.ANTHROPIC_API_KEY}
+        _HERMES_FORCE_BASETEN_API_KEY=${config.sops.placeholder.BASETEN_API_KEY}
         _HERMES_FORCE_CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         _HERMES_FORCE_JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         _HERMES_FORCE_GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
@@ -794,8 +794,16 @@ in
         };
 
         model = {
-          default = "gpt-5.6-sol";
-          provider = "openai-codex";
+          default = "zai-org/GLM-5.3-Flash";
+          provider = "custom:baseten";
+        };
+
+        providers.baseten = {
+          name = "baseten";
+          api = "https://inference.baseten.co/v1";
+          key_env = "BASETEN_API_KEY";
+          default_model = "zai-org/GLM-5.3-Flash";
+          discover_models = true;
         };
 
         agent.reasoning_effort = "medium";

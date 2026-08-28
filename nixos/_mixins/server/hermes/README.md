@@ -12,11 +12,10 @@ The current deployment is:
 - **Agent framework**: Hermes Agent
 - **Chat interface**: Telegram
 - **Hermes host**: `revan`
-- **Inference path**: OAuth-backed cloud providers managed by Hermes
-- **Primary model**: `gpt-5.6-terra` at high reasoning via the `openai-codex` provider
+- **Inference path**: Baseten Model APIs plus OAuth-backed cloud providers managed by Hermes
+- **Primary model**: `zai-org/GLM-5.3-Flash` via the `custom:baseten` provider
 - **Delegation model**: `gpt-5.6-sol` at high reasoning via the `openai-codex` provider
 - **Auxiliary model**: `gpt-5.6-luna` at extra-high (`xhigh`) reasoning via the `openai-codex` provider
-- **Fallback model**: `claude-opus-5` via the `anthropic` provider
 - **Memory provider**: Holographic
 - **Default TTS**: local Piper using `en_GB-vctk-medium`, speaker `p276`/`11`
 - **Web dashboard**: `https://revan.<tailnet>/` through Caddy/Tailscale
@@ -66,11 +65,19 @@ The key current settings are:
 ```nix
 services.hermes-agent.settings = {
   model = {
-    default = "gpt-5.6-terra";
-    provider = "openai-codex";
+    default = "zai-org/GLM-5.3-Flash";
+    provider = "custom:baseten";
   };
 
-  agent.reasoning_effort = "high";
+  providers.baseten = {
+    name = "baseten";
+    api = "https://inference.baseten.co/v1";
+    key_env = "BASETEN_API_KEY";
+    default_model = "zai-org/GLM-5.3-Flash";
+    discover_models = true;
+  };
+
+  agent.reasoning_effort = "medium";
 
   delegation = {
     provider = "openai-codex";
@@ -86,13 +93,6 @@ services.hermes-agent.settings = {
     };
   };
 
-  fallback_providers = [
-    {
-      provider = "anthropic";
-      model = "claude-opus-5";
-    }
-  ];
-
   memory = {
     memory_enabled = true;
     user_profile_enabled = true;
@@ -101,10 +101,15 @@ services.hermes-agent.settings = {
 };
 ```
 
-This means the live default is `gpt-5.6-terra` at high reasoning through
-`openai-codex`. Delegated work uses `gpt-5.6-sol` at high reasoning, the
-configured auxiliary roles use `gpt-5.6-luna` at extra-high (`xhigh`)
-reasoning, and Anthropic is held as fallback.
+This means the live default is `zai-org/GLM-5.3-Flash` through the Baseten
+Model APIs endpoint. Baseten is configured as a named custom provider with
+model discovery enabled, so Hermes fetches the full multi-model catalogue
+from `/v1/models` at runtime. Delegated work uses `gpt-5.6-sol` at high
+reasoning, and the configured auxiliary roles use `gpt-5.6-luna` at
+extra-high (`xhigh`) reasoning, both through `openai-codex`.
+
+At runtime, any Baseten model is reachable with the triple syntax
+`custom:baseten:<model-id>`, for example `custom:baseten:zai-org/GLM-5.2`.
 
 ## Local Piper TTS
 
@@ -159,11 +164,6 @@ the upstream model defaults while preserving a soft, breathy cadence:
 The model and JSON config are symlinked into one Nix store directory before
 use. Piper resolves `<model>.json` next to the ONNX model at runtime, so the
 two fetched files must remain adjacent.
-
-The remote qwen endpoints remain available as named custom providers:
-
-- `skrye` for `qwen3.6-35b-a3b`
-- `zannah` for `qwen3-coder-next` and `qwen3.6-35b-a3b`
 
 ## Web Dashboard
 
@@ -234,7 +234,7 @@ currently exports:
 - `WEBHOOK_ENABLED`
 - `WEBHOOK_PORT`
 - `WEBHOOK_SECRET`
-- `ANTHROPIC_API_KEY`
+- `BASETEN_API_KEY`
 - `CONTEXT7_API_KEY`
 - `JINA_API_KEY`
 - `LINEAR_API_KEY`
@@ -256,7 +256,8 @@ Operationally:
 - `auth.json` is seeded from `secrets/hermes-auth.json`
 - OpenAI device auth for `openai-codex` comes from `auth.json`, not from an
   `OPENAI_API_KEY` env var
-- `ANTHROPIC_API_KEY` provides the Anthropic fallback route
+- `BASETEN_API_KEY` authenticates the Baseten custom provider and comes from
+  `secrets/ai.yaml`
 - `LINEAR_API_KEY` comes from the `wimpysworld` key in `secrets/linear.yaml`
 - `traya@darth.cc` Fastmail access is rendered to the Himalaya config from
   `secrets/traya.yaml`
@@ -451,24 +452,28 @@ integrations rather than the local llama-server path.
 
 Current source of truth:
 
-- the Hermes module selects the primary and fallback providers
-- `openai-codex` handles the primary `gpt-5.6-terra` route at high reasoning
+- the Hermes module selects the primary and role providers
+- `custom:baseten` handles the primary `zai-org/GLM-5.3-Flash` route
 - `openai-codex` handles delegated work with `gpt-5.6-sol` at high reasoning
 - `openai-codex` handles configured auxiliary roles with `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
-- `anthropic` handles the fallback `claude-opus-5` route
-- named custom providers preserve remote qwen routes on `skrye` and `zannah`
+- there is no cloud fallback provider configured
+
+The Baseten provider points at the OpenAI-compatible Model APIs endpoint
+`https://inference.baseten.co/v1`. Authentication uses `BASETEN_API_KEY` from
+the managed env file, and `discover_models = true` keeps the model picker
+populated from the live catalogue. Baseten honours top-level
+`reasoning_effort`, which matches how Hermes sends effort for custom
+providers.
 
 The local llama-server stack remains available in the repo, but it is not the
-active primary or fallback route in the current deployment.
+active primary route in the current deployment.
 
 The important current routing values are:
 
-- primary model: `gpt-5.6-terra` at high reasoning
+- primary model: `zai-org/GLM-5.3-Flash` at medium reasoning
 - delegation model: `gpt-5.6-sol` at high reasoning
 - auxiliary model: `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
-- fallback model: `claude-opus-5`
-- fallback provider: `anthropic`
-- named custom qwen routes: `skrye:qwen3.6-35b-a3b`, `zannah:qwen3.6-35b-a3b`
+- Baseten multi-model catalogue: reachable as `custom:baseten:<model-id>`
 - Holographic memory enabled
 
 For local backend and model policy detail, use the llama-server docs:
@@ -510,11 +515,9 @@ The following are in place now:
 - managed `.env` rendering through sops-nix
 - auth seeding through `authFile`
 - Telegram token and allowlist injection
-- `openai-codex` primary with `gpt-5.6-terra` at high reasoning
+- `custom:baseten` primary with `zai-org/GLM-5.3-Flash` and multi-model discovery
 - `openai-codex` delegation with `gpt-5.6-sol` at high reasoning
 - `openai-codex` auxiliary roles with `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
-- `anthropic` fallback with `claude-opus-5`
-- named custom qwen providers on `skrye` and `zannah`
 - Holographic memory
 - Linear MCP with read-write, unfiltered tool access
 
@@ -523,7 +526,7 @@ The following are in place now:
 The following are still future work, not part of the current implementation:
 
 - additional MCP servers such as Jina or GitHub
-- richer routing policies beyond the current primary model and fallback
+- richer routing policies beyond the current primary model and the role models
 - multi-agent activation for Skrye or Zannah as separate Hermes instances
 - broader GitHub automation policy
 - any return to podman container mode
@@ -538,7 +541,7 @@ The most likely future areas are:
 
 - adding more MCP servers from the secrets already provisioned
 - widening model routing once the Hermes config grows beyond a single primary
-  remote model and a single cloud fallback
+  remote model
 - expanding the inference host layout as the `llama-server` model policy evolves
 - turning the reserved Sith identities into active subordinate agents once Traya
   is stable
