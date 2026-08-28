@@ -73,6 +73,11 @@ let
   managedHermesConfig =
     (pkgs.formats.yaml { }).generate "hermes-managed-config.yaml"
       config.services.hermes-agent.settings;
+  # Config schema version expected by the deployed hermes-agent release
+  # (hermes-agent 0.20.5 / 2026.8.19 carries `_config_version: 38` in
+  # DEFAULT_CONFIG). Stamping it in the generated config.yaml keeps
+  # `hermes doctor` from flagging the config as outdated.
+  hermesConfigSchemaVersion = 38;
   # Hermes 0.10 started enforcing owner-only chmods in several Python code paths
   # such as auth.json and cron state. That breaks this deployment because the
   # service account and the interactive host user intentionally share one
@@ -906,7 +911,19 @@ in
         # The bundled google_chat-platform plugin auto-loads and fails because
         # google_chat is not a valid Platform here, so deny-list it to silence
         # the startup error.
-        plugins.disabled = [ "google_chat-platform" ];
+        plugins = {
+          enabled = [ ];
+          disabled = [ "google_chat-platform" ];
+        };
+
+        # Stamp the config schema version so `hermes doctor` stops reporting
+        # "Config version outdated (v0 → vN)". Keep this in lockstep with the
+        # `_config_version` in the deployed Hermes' DEFAULT_CONFIG: the value
+        # for a given Hermes release can be read with:
+        #   python3 -c "from hermes_cli.config import DEFAULT_CONFIG; \
+        #     print(DEFAULT_CONFIG['_config_version'])"
+        # run against the deployed hermes-agent package's site-packages.
+        _config_version = hermesConfigSchemaVersion;
       };
     };
 
