@@ -82,11 +82,6 @@ let
   # such as auth.json and cron state. That breaks this deployment because the
   # service account and the interactive host user intentionally share one
   # managed HERMES_HOME via the hermes group.
-  hermesTuyaPythonPackages = with pkgs.python3Packages; [
-    tinytuya
-    tuyaha
-  ];
-  hermesTuyaPythonPath = pkgs.python3Packages.makePythonPath hermesTuyaPythonPackages;
   hermesManagedPythonPath = pkgs.writeTextDir "sitecustomize.py" ''
     """Keep managed Hermes state group-accessible, patch Piper speaker selection, and patch doctor checks."""
 
@@ -266,6 +261,11 @@ let
       # and load the chmod shim above before Hermes imports its Python modules.
       # Also prepend the extra toolset here because services.hermes-agent.extraPackages
       # only affects the systemd unit, not host-side `hermes` invocations.
+      #
+      # PYTHONPATH uses --set, not --prefix: the managed path must be
+      # authoritative so a hostile ambient PYTHONPATH (for example cp313
+      # pydantic from an agent harness) cannot shadow the sealed venv's cp312
+      # modules and break OpenAI client initialisation.
       for program in hermes hermes-agent hermes-acp; do
         if [ -x "$out/bin/$program" ]; then
           wrapProgram "$out/bin/$program" \
@@ -274,7 +274,7 @@ let
             --set-default TRAYA_SANCTUARY_DIR "/var/lib/hermes/workspace/trayas-sanctuary" \
             --set-default TRAYA_SANCTUARY_REPO "the-cauldron/trayas-sanctuary" \
             --prefix PATH : "${lib.makeBinPath hermesExtraPackages}" \
-            --prefix PYTHONPATH : "${hermesManagedPythonPath}:${hermesTuyaPythonPath}:${piperPythonPath}" \
+            --set PYTHONPATH "${hermesManagedPythonPath}:${piperPythonPath}" \
             --set-default HERMES_MANAGED "true" \
             --set-default HERMES_PIPER_SPEAKER_ID "11"
         fi
@@ -288,8 +288,6 @@ let
   himalayaConfigPath = "${himalayaConfigDir}/config.toml";
   openhueConfigDir = "${config.services.hermes-agent.stateDir}/.openhue";
   openhueConfigPath = "${openhueConfigDir}/config.yaml";
-  tinytuyaConfigDir = "${config.services.hermes-agent.stateDir}/.config/tinytuya";
-  tinytuyaConfigPath = "${tinytuyaConfigDir}/tinytuya.json";
   hermesSshDir = "${config.services.hermes-agent.stateDir}/.ssh";
   hermesGnupgHome = "${config.services.hermes-agent.stateDir}/.gnupg";
   # GPG runtime config for Traya's keyring. Loopback pinentry guards against
@@ -341,7 +339,6 @@ let
     piperTtsPythonPackage
     procps
     python3
-    python3Packages.tinytuya
     rclone
     ripgrep
     rsync
@@ -371,7 +368,10 @@ let
       )
     }"
     export GNUPGHOME=${hermesGnupgHome}
-    export PYTHONPATH="${hermesManagedPythonPath}:${hermesTuyaPythonPath}:${piperPythonPath}:\''${PYTHONPATH-}"
+    # No trailing \''${PYTHONPATH-}: inherit the caller's PYTHONPATH and the
+    # wrapped shell reintroduces the shadowing problem the wrapper exists to
+    # prevent. Managed paths are authoritative here too.
+    export PYTHONPATH="${hermesManagedPythonPath}:${piperPythonPath}"
 
     # Interactive CLI sandboxing: systemd hardening does not apply to host
     # shells, so we reuse bubblewrap to hide the same paths the gateway
@@ -466,34 +466,6 @@ in
       };
 
       HUE_BRIDGE_APPLICATION_KEY = {
-        sopsFile = hermesSopsFile;
-        owner = "root";
-        group = "root";
-        mode = "0400";
-      };
-
-      TUYA_API_KEY = {
-        sopsFile = hermesSopsFile;
-        owner = "root";
-        group = "root";
-        mode = "0400";
-      };
-
-      TUYA_API_SECRET = {
-        sopsFile = hermesSopsFile;
-        owner = "root";
-        group = "root";
-        mode = "0400";
-      };
-
-      TUYA_API_REGION = {
-        sopsFile = hermesSopsFile;
-        owner = "root";
-        group = "root";
-        mode = "0400";
-      };
-
-      TUYA_API_DEVICE_ID = {
         sopsFile = hermesSopsFile;
         owner = "root";
         group = "root";
@@ -622,10 +594,6 @@ in
         LINEAR_API_KEY=${config.sops.placeholder.LINEAR_API_KEY}
         GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
-        TUYA_API_KEY=${config.sops.placeholder.TUYA_API_KEY}
-        TUYA_API_SECRET=${config.sops.placeholder.TUYA_API_SECRET}
-        TUYA_API_REGION=${config.sops.placeholder.TUYA_API_REGION}
-        TUYA_API_DEVICE_ID=${config.sops.placeholder.TUYA_API_DEVICE_ID}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
         _HERMES_FORCE_BASETEN_API_KEY=${config.sops.placeholder.BASETEN_API_KEY}
         _HERMES_FORCE_CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
@@ -726,18 +694,6 @@ in
       mode = "0440";
     };
 
-    sops.templates."hermes-tinytuya-config" = {
-      content = builtins.toJSON {
-        apiDeviceID = config.sops.placeholder.TUYA_API_DEVICE_ID;
-        apiKey = config.sops.placeholder.TUYA_API_KEY;
-        apiRegion = config.sops.placeholder.TUYA_API_REGION;
-        apiSecret = config.sops.placeholder.TUYA_API_SECRET;
-      };
-      owner = hermesUser;
-      group = hermesGroup;
-      mode = "0440";
-    };
-
     services.hermes-agent = {
       enable = true;
       addToSystemPackages = true;
@@ -745,7 +701,7 @@ in
       environment = {
         GNUPGHOME = hermesGnupgHome;
         HERMES_PIPER_SPEAKER_ID = "11";
-        PYTHONPATH = "${hermesManagedPythonPath}:${hermesTuyaPythonPath}:${piperPythonPath}";
+        PYTHONPATH = "${hermesManagedPythonPath}:${piperPythonPath}";
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
       };
       extraPackages = [
@@ -1138,7 +1094,6 @@ in
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${himalayaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
-      "d ${tinytuyaConfigDir} 2750 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesSshDir} 0700 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesGnupgHome} 0700 ${hermesUser} ${hermesGroup} - -"
       "d ${hermesAgentsviewDataDir} 0750 ${hermesUser} ${hermesGroup} - -"
@@ -1146,7 +1101,6 @@ in
       "d ${hermesHome}/skills/traya 2770 ${hermesUser} ${hermesGroup} - -"
       "d ${openhueConfigDir} 2770 ${hermesUser} ${hermesGroup} - -"
       "L+ ${himalayaConfigPath} - - - - ${config.sops.templates."hermes-himalaya-config".path}"
-      "L+ ${tinytuyaConfigPath} - - - - ${config.sops.templates."hermes-tinytuya-config".path}"
       "L+ ${openhueConfigPath} - - - - ${config.sops.templates."hermes-openhue-config".path}"
       "L+ ${hermesSshDir}/id_ed25519 - - - - ${config.sops.secrets.SSH_PRIVATE_KEY.path}"
       "L+ ${hermesSshDir}/id_ed25519.pub - - - - ${config.sops.secrets.SSH_PUBLIC_KEY.path}"
