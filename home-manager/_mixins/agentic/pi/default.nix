@@ -244,6 +244,12 @@ let
         export GOOGLE_GENERATIVE_AI_API_KEY
       fi
 
+      baseten_api_key_path="${config.sops.secrets.BASETEN_API_KEY.path}"
+      if [ -r "$baseten_api_key_path" ]; then
+        BASETEN_API_KEY="$(cat "$baseten_api_key_path")"
+        export BASETEN_API_KEY
+      fi
+
       if [ "''${NOUGHTY_AGENT_LAUNCH_COMMAND:-pi}" = "pi-fenced" ]; then
         export NOUGHTY_AGENT_ISOLATION="Fenced"
       else
@@ -727,6 +733,11 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
   };
 
   sops.secrets.GEMINI_API_KEY = {
+    sopsFile = aiSopsFile;
+    mode = "0400";
+  };
+
+  sops.secrets.BASETEN_API_KEY = {
     sopsFile = aiSopsFile;
     mode = "0400";
   };

@@ -10,6 +10,7 @@ The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, match
 - Adds `pi-fenced`, which runs the standard `pi` wrapper under the shared [Fence](../fence) permission and isolation policy
 - Gates installation with `noughtyLib.userHasTag "developer"`
 - Exports `ANTHROPIC_API_KEY` from the sops-nix runtime secret path before execing the Nix-provided Pi binary
+- Exports `GEMINI_API_KEY` (and `GOOGLE_GENERATIVE_AI_API_KEY`) and `BASETEN_API_KEY` from sops-nix runtime secret paths when present
 - Exports `ANTHROPIC_OAUTH_TOKEN` from Claude Code's local OAuth credentials when available, so quota extensions can query Anthropic plan windows
 - Adds a `pi-npm` wrapper backed by Nixpkgs `nodejs`, with npm's global prefix redirected to `~/.pi/agent/npm-global` and routine npm advisory output disabled
 - Owns Pi config and resource files through Home Manager:
@@ -232,7 +233,7 @@ This module writes `~/.pi/agent/themes/catppuccin-mocha.json` from the repositor
 
 ## Authentication
 
-`secrets/ai.yaml` provides `ANTHROPIC_API_KEY`.
+`secrets/ai.yaml` provides `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `BASETEN_API_KEY`.
 
 The `pi` wrapper reads `config.sops.secrets.ANTHROPIC_API_KEY.path` at runtime and exports the key only for the Pi process. When Claude Code OAuth credentials exist locally, it also exports `ANTHROPIC_OAUTH_TOKEN` for Pi's quota extensions. The managed `settings.json` and all managed Pi resource files contain no literal secret values.
 
