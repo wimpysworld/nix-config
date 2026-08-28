@@ -75,7 +75,7 @@ This week: <n> completed, <n> added, <n> remaining this cycle.
 
 Blocked: <issue key> waits on <the blocker, one sentence>.
 
-Next: [<first name>'s Cycle <n> work order](<document url>)
+Plan: [<first name>'s Cycle <n> work order](<document url>)
 
 Next cycle: [<first name>'s Cycle <n+1> work order](<document url>)
 ```
