@@ -30,6 +30,8 @@ Select only real work. An updated issue counts only when the user acted on it in
 
 **5. Resolve the work order link.** Resolve the current `FUL` cycle, then find the Linear document titled `<first name>'s Cycle <n> work order` with `list_documents` filtered to the team. `list_documents` has no cycle filter, so match on the title. That living document is the source of truth for what is done and what is planned, and it satisfies "what next". When no current cycle exists, or the document does not exist, surface the problem at the gate in step 7 instead of posting a broken link.
 
+Also match the next cycle's document, titled with cycle `<n + 1>`, in the same `list_documents` result. When that document exists, the Linear body and the Slack reply each gain a `Next cycle` line. When it does not exist, omit the line, and never stub it. This is an existence rule, not date arithmetic: a planned next cycle has a document, an unplanned one does not.
+
 **6. Compose one update per project.** Use the body shape in Output. After the counts line, list the counted issues under three headings, `Completed`, `Added`, and `Remaining this cycle`, so the TPM sees the work without leaving the update. One bullet per issue: the issue title, linked to the issue. Omit a heading whose count is zero, and never stub one. The Blocked line appears only when one of the user's open issues in the project is blocked, via a blocking relation or a blocked state. Omit the line otherwise, and never stub it.
 
 **7. Ask once.** Show every Linear update body, every Slack message, and any missing-document problem from step 5. Ask for approval, then act. This publishes under the user's name to two systems, one of them a team channel, and there is no cheap undo. This is the only question the command asks.
@@ -42,6 +44,7 @@ Select only real work. An updated issue counts only when the user acted on it in
 - Parent message: `My weekly update for <date> 🧵`, with a British date such as `28 August 2026`. It posts as the user, so it does not name them.
 - Post one thread reply for all projects. Give each project one line: `*<update-url|Project name>* - <project status>: <n> completed, <n> added, <n> remaining this cycle`. The asterisks make the linked project name bold in Slack. Put one blank line after each project line. The project status is the project's own Linear status name, never an invented name.
 - End the reply with the line `Plan: *<doc-url|<first name>'s Cycle <n> work order>*`. The asterisks make the linked document title bold in Slack.
+- When the next cycle's work order document exists, add one more line after Plan: `Next cycle: *<doc-url|<first name>'s Cycle <n+1> work order>*`.
 - Write each body to a file and post it with `slack-post`. To reply in the thread, pass the parent message's URL unchanged, and never hand-convert a timestamp.
 - No headings, no bullet lists, no sign-off.
 
@@ -73,6 +76,8 @@ This week: <n> completed, <n> added, <n> remaining this cycle.
 Blocked: <issue key> waits on <the blocker, one sentence>.
 
 Next: [<first name>'s Cycle <n> work order](<document url>)
+
+Next cycle: [<first name>'s Cycle <n+1> work order](<document url>)
 ```
 
 Final report:
