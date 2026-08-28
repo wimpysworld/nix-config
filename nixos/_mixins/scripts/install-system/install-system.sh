@@ -9,10 +9,19 @@ function usage() {
 	echo "  username   Target user (default: martin)"
 	echo "  branch     Git branch to use (default: main)"
 	echo
+	echo "  -h, --help Show this help and exit without installing"
+	echo
 	echo "The install path is determined automatically:"
 	echo "  - Age keys: required (inject with 'just inject-tokens' or SCP manually)"
 	echo "  - FlakeHub: authenticates automatically from sops-encrypted token"
 }
+
+case "${1:-}" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+esac
 
 TARGET_HOST="${1:-}"
 TARGET_USER="${2:-martin}"
@@ -97,13 +106,15 @@ function run_disko() {
 
 # Run a command that may fail on the first pass in the chroot environment.
 # Retries up to MAX_ATTEMPTS times; exits on final failure.
+# The '|| exit_code=$?' guard is required. Without it, errexit ends the script
+# on the first failure, so no retry ever happens.
 function run_with_retry() {
 	local MAX_ATTEMPTS=2
 	local attempt
 	local exit_code
 	for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-		"$@"
-		exit_code=$?
+		exit_code=0
+		"$@" || exit_code=$?
 		if [[ "$exit_code" -eq 0 ]]; then
 			return 0
 		elif [[ "$attempt" -lt "$MAX_ATTEMPTS" ]]; then
@@ -138,12 +149,31 @@ function build_home_manager_activation() {
 		--option http-connections 256
 }
 
-sudo umount -R /mnt || true
-
+# --- Check the arguments before any destructive or stateful action ---
+# Nothing below this block unmounts, clones, or changes branch until the
+# hostname and username are known to be valid.
 if [ "$(id -u)" -eq 0 ]; then
 	echo "ERROR! $(basename "$0") should be run as a regular user"
 	exit 1
 fi
+
+if [[ -z "$TARGET_HOST" ]]; then
+	echo "ERROR! $(basename "$0") requires a hostname as the first argument"
+	echo
+	usage
+	exit 1
+fi
+
+if [[ -z "$TARGET_USER" ]]; then
+	echo "ERROR! $(basename "$0") requires a username as the second argument"
+	echo
+	usage
+	exit 1
+fi
+
+validate_target_identifiers
+
+sudo umount -R /mnt || true
 
 if [ ! -d "$HOME/Zero/nix-config/.git" ]; then
 	git clone https://github.com/wimpysworld/nix-config.git "$HOME/Zero/nix-config"
@@ -155,21 +185,21 @@ if [[ -n "$TARGET_BRANCH" ]]; then
 	git checkout "$TARGET_BRANCH"
 fi
 
-if [[ -z "$TARGET_HOST" ]]; then
-	echo "ERROR! $(basename "$0") requires a hostname as the first argument"
+# The repository is available from here, so the valid hosts and users can be
+# listed when the requested one does not exist.
+if [ ! -e "nixos/$TARGET_HOST/default.nix" ]; then
+	echo "ERROR! $(basename "$0") found no NixOS configuration for $TARGET_HOST"
 	echo "       The following hosts are available"
 	find nixos -mindepth 2 -maxdepth 2 -type f -name default.nix | cut -d'/' -f2 | grep -v iso
 	exit 1
 fi
 
-if [[ -z "$TARGET_USER" ]]; then
-	echo "ERROR! $(basename "$0") requires a username as the second argument"
+if [ ! -d "nixos/_mixins/users/$TARGET_USER" ]; then
+	echo "ERROR! $(basename "$0") found no user configuration for $TARGET_USER"
 	echo "       The following users are available"
 	find nixos/_mixins/users/ -mindepth 1 -maxdepth 1 -type d | cut -d'/' -f4 | grep -v -E "nixos|root"
 	exit 1
 fi
-
-validate_target_identifiers
 
 # --- Ingest injected tokens ---
 # If just inject-tokens was run from the workstation, files will be

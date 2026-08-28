@@ -14,6 +14,8 @@ install-system <hostname> [username] [branch]
 | `username` | No       | `martin` | Target user account               |
 | `branch`   | No       | `main`   | Git branch to clone and check out |
 
+Pass `-h` or `--help` to print the usage and exit without installing.
+
 ## Prerequisites
 
 1. Boot the target machine from an ISO built by this flake (`just iso console`)
@@ -57,16 +59,18 @@ No files need to be injected for FlakeHub, authentication is handled interactive
 
 ## What the script does
 
-1. **Clone the repo** - Clones `nix-config` to `~/Zero/nix-config` if not already present, checks out the requested branch
-2. **Ingest tokens** - Copies any files from `/tmp/injected-tokens/` to their final locations, then cleans up the staging directory
-3. **Validate keys** - Checks that both user and host age keys exist at their final paths; aborts with a helpful message if not
-4. **Detect FlakeHub** - Checks `determinate-nixd status`; prompts for login if needed; sets the install path accordingly
-5. **Prepare disks** - Runs [Disko] to partition and format the target disk(s) using the host's `disks.nix` (prompts for confirmation before destructive operations)
-6. **Install NixOS** - Runs `nixos-install` with `--no-channel-copy` using either FlakeHub Cache or the local flake; cleans up any channel artefacts afterwards
-7. **Copy secrets to target** - Copies the host age key and user age key to the mounted target filesystem
-8. **Inject SSH keys** - Cleans and recreates `/mnt/etc/ssh/`, then decrypts initrd and per-host SSH keys from sops-encrypted secrets
-9. **Rsync the flake** - Copies `~/Zero/` to the target user's home directory
-10. **Activate Home Manager** - Resolves or builds the Home Manager activation package into the target's Nix store, then activates it as the target user inside the chroot so Home Manager package profiles are not written to root's default profile
+1. **Check the arguments** - Refuses to run as root, requires a hostname and a username, and rejects unsupported characters in either. Nothing is unmounted, cloned or checked out until these checks pass
+2. **Clone the repo** - Clones `nix-config` to `~/Zero/nix-config` if not already present, checks out the requested branch
+3. **Check the configurations exist** - Lists the available hosts or users when `nixos/<hostname>/default.nix` or `nixos/_mixins/users/<username>` is missing
+4. **Ingest tokens** - Copies any files from `/tmp/injected-tokens/` to their final locations, then cleans up the staging directory
+5. **Validate keys** - Checks that both user and host age keys exist at their final paths; aborts with a helpful message if not
+6. **Detect FlakeHub** - Checks `determinate-nixd status`; prompts for login if needed; sets the install path accordingly
+7. **Prepare disks** - Runs [Disko] to partition and format the target disk(s) using the host's `disks.nix` (prompts for confirmation before destructive operations)
+8. **Install NixOS** - Runs `nixos-install` with `--no-channel-copy` using either FlakeHub Cache or the local flake; cleans up any channel artefacts afterwards
+9. **Copy secrets to target** - Copies the host age key and user age key to the mounted target filesystem
+10. **Inject SSH keys** - Cleans and recreates `/mnt/etc/ssh/`, then decrypts initrd and per-host SSH keys from sops-encrypted secrets
+11. **Rsync the flake** - Copies `~/Zero/` to the target user's home directory
+12. **Activate Home Manager** - Resolves or builds the Home Manager activation package into the target's Nix store, then activates it as the target user inside the chroot so Home Manager package profiles are not written to root's default profile
 
 ## LUKS disk encryption
 

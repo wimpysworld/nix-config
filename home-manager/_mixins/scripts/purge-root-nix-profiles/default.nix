@@ -6,6 +6,7 @@ let
     runtimeInputs = with pkgs; [
       coreutils
       findutils
+      gnugrep
     ];
     text = builtins.readFile ./${name}.sh;
   };

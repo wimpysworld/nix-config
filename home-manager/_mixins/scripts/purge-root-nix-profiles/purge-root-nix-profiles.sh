@@ -3,10 +3,12 @@
 usage() {
 	echo "Usage: purge-root-nix-profiles [--apply] [--include-root-state]"
 	echo ""
-	echo "Find root-owned Nix profile and bootstrap cruft."
+	echo "Find root-owned Nix profile and bootstrap cruft, including a stale"
+	echo "home-manager-path package in a live root profile."
 	echo ""
 	echo "Options:"
-	echo "  --apply               Remove safe candidates. Dry-run is the default."
+	echo "  --apply               Remove safe candidates and uninstall stale packages."
+	echo "                        Dry-run is the default."
 	echo "  --include-root-state  Also remove cautious /root Nix state candidates."
 	echo "  -h, --help            Show this help."
 }
@@ -56,9 +58,28 @@ if ! "${apply}" && [[ "${EUID}" -ne 0 ]] && { ! "${sudo_available}" || ! "${sudo
 	root_state_not_inspected=true
 fi
 
+# A home-manager-path package is never legitimate in a root profile. Match
+# only this known-bad package, because the default profile can legitimately
+# hold Nix itself on machines that are not NixOS.
+stale_package="home-manager-path"
+root_profiles=(
+	"/nix/var/nix/profiles/default"
+	"/nix/var/nix/profiles/per-user/root/profile"
+)
+
+# Resolve nix-env from the system profile. sudo does not extend the restricted
+# PATH that writeShellApplication sets, so a bare name fails to resolve.
+nix_env=
+if [[ -x /run/current-system/sw/bin/nix-env ]]; then
+	nix_env=/run/current-system/sw/bin/nix-env
+elif command -v nix-env >/dev/null 2>&1; then
+	nix_env=$(command -v nix-env)
+fi
+
 safe_candidates=()
 cautious_candidates=()
 skipped_live=()
+stale_live_profiles=()
 
 path_exists() {
 	test -e "${1}" || test -L "${1}" || { "${sudo_available}" && "${sudo_cmd[@]}" test -e "${1}" 2>/dev/null; } || { "${sudo_available}" && "${sudo_cmd[@]}" test -L "${1}" 2>/dev/null; }
@@ -84,8 +105,11 @@ is_live_generation() {
 	[[ -n "${current_target}" && "${current_target}" == "${candidate_target}" ]]
 }
 
+# The optional stem filter keeps a scan to one profile. /nix/var/nix/profiles
+# also holds the NixOS system generations, which this script must never touch.
 append_inactive_generation_links() {
 	local directory="${1}"
+	local stem_filter="${2:-}"
 	local path
 	local base
 	local stem
@@ -110,6 +134,9 @@ append_inactive_generation_links() {
 		fi
 
 		stem="${BASH_REMATCH[1]}"
+		if [[ -n "${stem_filter}" && "${stem}" != "${stem_filter}" ]]; then
+			continue
+		fi
 		current="${directory}/${stem}"
 
 		if is_live_generation "${current}" "${path}"; then
@@ -126,6 +153,22 @@ append_cautious_candidate() {
 	if path_exists "${path}"; then
 		cautious_candidates+=("${path}")
 	fi
+}
+
+# Nix keeps a profile manifest in the world-readable store, so this detection
+# needs no sudo even for root-owned profiles.
+append_stale_live_profiles() {
+	local profile
+	local manifest
+
+	for profile in "${root_profiles[@]}"; do
+		for manifest in "${profile}/manifest.nix" "${profile}/manifest.json"; do
+			if [[ -e "${manifest}" ]] && grep -q "${stale_package}" "${manifest}"; then
+				stale_live_profiles+=("${profile}")
+				break
+			fi
+		done
+	done
 }
 
 print_paths() {
@@ -160,6 +203,31 @@ remove_paths() {
 	done
 }
 
+uninstall_stale_live_packages() {
+	local title="${1}"
+	shift
+	local profile
+
+	echo "${title}"
+	if [[ $# -eq 0 ]]; then
+		echo "  None"
+		return 0
+	fi
+
+	if [[ -z "${nix_env}" ]]; then
+		echo "ERROR: nix-env was not found, so ${stale_package} cannot be uninstalled." >&2
+		return 1
+	fi
+
+	for profile in "$@"; do
+		echo "Uninstalling: ${stale_package} from ${profile}"
+		"${sudo_cmd[@]}" "${nix_env}" --profile "${profile}" --uninstall "${stale_package}"
+	done
+	echo "Each uninstall wrote a new generation. Run again to collect the superseded generation links."
+}
+
+append_stale_live_profiles
+append_inactive_generation_links "/nix/var/nix/profiles" "default"
 append_inactive_generation_links "/nix/var/nix/profiles/per-user/root"
 append_inactive_generation_links "/root/.local/state/nix/profiles"
 
@@ -173,6 +241,7 @@ append_cautious_candidate "/root/.local/state/nix"
 
 if "${apply}"; then
 	echo "Mode: apply"
+	uninstall_stale_live_packages "Stale packages in live root profiles:" "${stale_live_profiles[@]}"
 	remove_paths "Safe candidates:" "${safe_candidates[@]}"
 
 	if "${include_root_state}"; then
@@ -182,6 +251,7 @@ if "${apply}"; then
 	fi
 else
 	echo "Mode: dry-run"
+	print_paths "Stale ${stale_package} in live root profiles (uninstalled with --apply):" "${stale_live_profiles[@]}"
 	print_paths "Safe candidates:" "${safe_candidates[@]}"
 	print_paths "Cautious /root Nix state candidates (not removed without --include-root-state):" "${cautious_candidates[@]}"
 	if "${root_state_not_inspected}"; then
