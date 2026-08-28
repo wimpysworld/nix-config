@@ -74,10 +74,10 @@ let
     (pkgs.formats.yaml { }).generate "hermes-managed-config.yaml"
       config.services.hermes-agent.settings;
   # Config schema version expected by the deployed hermes-agent release
-  # (hermes-agent 0.20.5 / 2026.8.19 carries `_config_version: 38` in
+  # (hermes-agent 0.20.6 / 2026.8.27 carries `_config_version: 39` in
   # DEFAULT_CONFIG). Stamping it in the generated config.yaml keeps
   # `hermes doctor` from flagging the config as outdated.
-  hermesConfigSchemaVersion = 38;
+  hermesConfigSchemaVersion = 39;
   # Hermes 0.10 started enforcing owner-only chmods in several Python code paths
   # such as auth.json and cron state. That breaks this deployment because the
   # service account and the interactive host user intentionally share one
