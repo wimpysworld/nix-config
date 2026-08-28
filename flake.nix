@@ -117,11 +117,8 @@
             ;
         };
         linuxOnlyOverlaidPackages = [
-          "bzmenu"
-          "iwmenu"
           "paseo"
           "paseo-desktop"
-          "pwmenu"
         ];
       };
 
