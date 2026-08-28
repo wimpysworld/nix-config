@@ -320,7 +320,8 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `post-comment`                   | Post the agreed comment to GitHub, Linear, or Slack                     |
 | `post-issue`                     | Create the agreed issue on GitHub                                       |
 | `weekly-update`                  | Write this week's project updates, schedule Up Next, post to Slack      |
-| `work-order`                     | Order a cycle's issues into waves, publish and wire the document        |
+| `work-order-create`              | Order a cycle's issues into waves, publish and wire the document        |
+| `work-order-update`              | Apply the user's instructions to the work order, and report drift       |
 | `gather-review-data`             | Collect the user's own contribution evidence for a date range           |
 | `draft-self-review`              | Draft a periodic self-review from gathered evidence                     |
 | `review-open-source-attestation` | Check whether a `mono` change is safe to export, before human sign-off  |
