@@ -441,6 +441,8 @@ let
     web_search = "disabled";
 
     model = "gpt-5.6-sol";
+    model_context_window = 400000;
+    model_auto_compact_token_limit = 350000;
     model_reasoning_effort = "high";
 
     # Bound Codex subagent fan-out.
