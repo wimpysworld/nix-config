@@ -2,6 +2,8 @@
 # Update the Hermes Agent flake input, which pins a tag inside its tarball URL.
 set -euo pipefail
 
+MODULE_SCHEMA="nixos/_mixins/server/hermes/default.nix"
+
 current=$(awk -F/ '/hermes-agent.url = "https:\/\/github.com\/NousResearch\/hermes-agent\// { sub(/\.tar\.gz";$/, "", $NF); print $NF }' flake.nix)
 latest=$(curl -fsSL "https://api.github.com/repos/NousResearch/hermes-agent/tags?per_page=100" \
   | jq -r '.[].name' \
@@ -38,7 +40,10 @@ git diff flake.nix flake.lock
 # version, and those files join the flake bump in the same pull request. A
 # helper failure aborts the freshener: publishing a flake bump without its
 # schema stamp would leave `hermes doctor` reporting the config as outdated.
-SCHEMA_VERSION="$latest"
+# The fallback stamp is the version currently in the module: when the new
+# release keeps the existing schema the helper emits no outputs, and the title
+# must still name a schema number, not the release tag.
+SCHEMA_VERSION=$(awk '/hermesConfigSchemaVersion = / { sub(/.*= /, ""); sub(/;.*/, ""); print; exit }' "$MODULE_SCHEMA")
 SCHEMA_FILES=""
 .github/freshener/hermes-schema.sh
 SCHEMA_FILES=$(sed -n 's/^files=//p' "$GITHUB_OUTPUT")
