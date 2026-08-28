@@ -769,6 +769,25 @@ in
 
         agent.reasoning_effort = "medium";
 
+        # Baseten's 429 responses carry no Retry-After header, so the retry
+        # loop falls back to the short default backoff (2s doubling to 60s).
+        # Three retries — the upstream default — exhaust in ~20 seconds, well
+        # inside a rate-limit window, which let sessions die on 429 storms.
+        # Eight retries stretch the same schedule to roughly three minutes
+        # before the fallback chain takes over.
+        agent.api_max_retries = 8;
+
+        # Cross-provider failover once the primary model's retries exhaust.
+        # Codex is already authenticated on this host, so a Baseten 429 storm
+        # hands off to it seamlessly; the primary is restored automatically
+        # after its escalating 60s-to-4h cooldown clears.
+        fallback_providers = [
+          {
+            provider = "openai-codex";
+            model = "gpt-5.6-sol";
+          }
+        ];
+
         terminal = {
           backend = "local";
           cwd = "/var/lib/hermes/workspace";
