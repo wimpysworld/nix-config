@@ -323,9 +323,16 @@ let
     '';
   };
 
-  piModels.providers."openai-codex".modelOverrides = {
-    "gpt-5.6-sol".contextWindow = 400000;
-    "gpt-5.6-terra".contextWindow = 400000;
+  piModels.providers = {
+    anthropic.modelOverrides = {
+      "claude-fable-5".contextWindow = 400000;
+      "claude-opus-5".contextWindow = 400000;
+      "claude-sonnet-5".contextWindow = 400000;
+    };
+    "openai-codex".modelOverrides = {
+      "gpt-5.6-sol".contextWindow = 400000;
+      "gpt-5.6-terra".contextWindow = 400000;
+    };
   };
 
   piSettings = {

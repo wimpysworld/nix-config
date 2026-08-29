@@ -257,6 +257,31 @@ in
           # forwards `reasoning.effort` on the Responses API call.
           model = "openai/gpt-5.5";
           provider = {
+            anthropic = {
+              models = {
+                "claude-fable-5" = {
+                  limit = {
+                    context = 400000;
+                    input = 400000;
+                    output = 128000;
+                  };
+                };
+                "claude-opus-5" = {
+                  limit = {
+                    context = 400000;
+                    input = 400000;
+                    output = 128000;
+                  };
+                };
+                "claude-sonnet-5" = {
+                  limit = {
+                    context = 400000;
+                    input = 400000;
+                    output = 128000;
+                  };
+                };
+              };
+            };
             openai = {
               models = {
                 "gpt-5.5" = {

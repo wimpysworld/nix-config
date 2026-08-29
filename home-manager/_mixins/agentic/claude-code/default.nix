@@ -285,6 +285,9 @@ let
   claudeEnvironment = {
     CLAUDE_CODE_HIDE_CWD = "1";
     ENABLE_CLAUDEAI_MCP_SERVERS = "false";
+    # Cap Claude Code at 400,000 tokens and disable automatic compaction.
+    CLAUDE_CODE_MAX_CONTEXT_TOKENS = "400000";
+    DISABLE_COMPACT = "1";
     # Enable the experimental agent-teams feature, which exposes the
     # SendMessage tool for resuming subagents and messaging teammates.
     CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
