@@ -184,6 +184,7 @@ let
     text = ''
       #!${lib.getExe pkgs.nodejs}
       const fs = require("fs");
+      const ceiling = ${toString contextCeilingTokens};
 
       function toNumber(value) {
         if (typeof value === "number" && Number.isFinite(value)) {
@@ -218,24 +219,14 @@ let
           return 0;
         }
 
-        const explicitUsed = toNumber(contextWindow.used_percentage);
-        if (explicitUsed !== null) {
-          return explicitUsed;
-        }
-
-        const windowSize = toNumber(contextWindow.context_window_size);
-        if (!windowSize || windowSize <= 0) {
-          return 0;
-        }
-
         const currentUsage = usageTokens(contextWindow.current_usage);
         if (currentUsage !== null) {
-          return currentUsage / windowSize * 100;
+          return currentUsage / ceiling * 100;
         }
 
         const totalInput = toNumber(contextWindow.total_input_tokens) || 0;
         const totalOutput = toNumber(contextWindow.total_output_tokens) || 0;
-        return (totalInput + totalOutput) / windowSize * 100;
+        return (totalInput + totalOutput) / ceiling * 100;
       }
 
       try {
@@ -282,12 +273,18 @@ let
   };
   sharedMcpConfigPath = "${config.xdg.configHome}/mcp/mcp.json";
   renderedMcpConfigPath = "${config.xdg.configHome}/sops-nix/secrets/rendered/mcp-config.json";
+  # One source of truth for the Claude Code context budget.
+  contextCeilingTokens = 400000;
+  compactionReserveTokens = 50000;
+  # Claude Code fires auto-compact at (window - 33000): a 20K summary
+  # reserve plus a 13K buffer. Constants observed in v2.1.x source
+  # analysis, not in the official docs, so re-verify after upgrades.
+  autoCompactWindowTokens = contextCeilingTokens - compactionReserveTokens + 33000;
   claudeEnvironment = {
     CLAUDE_CODE_HIDE_CWD = "1";
     ENABLE_CLAUDEAI_MCP_SERVERS = "false";
-    # Cap Claude Code at 400,000 tokens and disable automatic compaction.
-    CLAUDE_CODE_MAX_CONTEXT_TOKENS = "400000";
-    DISABLE_COMPACT = "1";
+    # Compact within a 400K budget. See autoCompactWindowTokens above.
+    CLAUDE_CODE_AUTO_COMPACT_WINDOW = toString autoCompactWindowTokens;
     # Enable the experimental agent-teams feature, which exposes the
     # SendMessage tool for resuming subagents and messaging teammates.
     CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
@@ -868,6 +865,7 @@ in
             # MCP servers are selected by the shared MCP mixin. Project
             # MCP servers remain opt-in instead of being silently trusted.
             enableAllProjectMcpServers = false;
+            autoCompactWindow = autoCompactWindowTokens;
 
             # Approve named servers from a project `.mcp.json` without
             # trusting every project server. `nixos` is the mcp-nixos
