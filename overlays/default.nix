@@ -31,7 +31,7 @@
 
       fresh = final.unstable.fresh-editor;
 
-      handy = inputs.handy.packages.${final.stdenv.hostPlatform.system}.default;
+      handy = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.handy;
 
       # Agent-adjacent tools sourced from the same pinned llm-agents flake as the
       # rest of the agent tooling.
