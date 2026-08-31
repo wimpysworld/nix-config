@@ -57,7 +57,7 @@ let
     # sherpa-onnx, which this package does not build, and we run no remote
     # speech services. Both flags default to true, so disable them explicitly to
     # stop the speech runtime starting and degrading. Voice is deferred until a
-    # shared local Whisper backend is in place (see Voxtype).
+    # shared local Whisper backend is in place (see Handy).
     features = {
       dictation.enabled = false;
       voiceMode.enabled = false;

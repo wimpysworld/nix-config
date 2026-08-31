@@ -75,10 +75,13 @@ in
         binding_terminal = "<super> KEY_T";
         command_terminal = lib.getExe config.programs.kitty.package;
       }
-      // lib.optionalAttrs config.programs.voxtype.enable {
-        # Laptops toggle voice with Super+V; desktops use the Pause/Break key.
-        binding_voxtype = if host.is.laptop then "<super> KEY_V" else "KEY_PAUSE";
-        command_voxtype = "${lib.getExe config.programs.voxtype.package} record toggle";
+      // lib.optionalAttrs config.services.handy.enable {
+        binding_handy = "<super> KEY_V";
+        command_handy = "${lib.getExe config.services.handy.package} --toggle-transcription";
+      }
+      // lib.optionalAttrs (config.services.handy.enable && !host.is.laptop) {
+        binding_handy_pause = "KEY_PAUSE";
+        command_handy_pause = "${lib.getExe config.services.handy.package} --toggle-transcription";
       };
     };
   };

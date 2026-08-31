@@ -26,7 +26,7 @@ in
     inputs.mac-app-util.homeManagerModules.default
     inputs.nix-index-database.homeModules.nix-index
     inputs.lan-mouse.homeManagerModules.default
-    inputs.voxtype.homeManagerModules.default
+    inputs.handy.homeManagerModules.default
     ./_mixins/agentic
     ./_mixins/development
     ./_mixins/filesync

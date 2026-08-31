@@ -338,7 +338,7 @@ Tags are freeform `listOf str`. The canonical vocabulary is documented in a comm
   - `studio`, `davinci`, `gamedev`, `keyd`, `streamdeck`
   - `pci-hdmi-capture`, `thinkpad`, `policy`, `steamdeck`, `lima`, `wsl`
   - `iso`, `reframe`, `inference`, `workspace`, `scrutiny`, `dropbox`
-  - `borgbackup`, `fprintd`, `strix-halo`, `gatus`, `irc-bouncer`, `voxtype`
+  - `borgbackup`, `fprintd`, `strix-halo`, `gatus`, `irc-bouncer`, `handy`
 - **User tags:** `developer`, `admin`, `family`
 
 Tags centralise classification that was previously scattered as hostname comparisons across the tree (e.g. `hostname == "phasma" || hostname == "vader"` becomes the `"studio"` tag, set once in the registry).
