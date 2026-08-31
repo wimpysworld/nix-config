@@ -810,16 +810,9 @@ in
           }
           {
             id = "8";
-            type = "context-window";
-            color = ccColor "peach";
-            rawValue = true;
-            merge = "no-padding";
-          }
-          {
-            id = "9";
             type = "custom-text";
             color = ccColor "peach";
-            customText = " window";
+            customText = "${toString (builtins.div contextCeilingTokens 1000)}K window";
           }
           {
             id = "10";
