@@ -41,9 +41,9 @@ jobs:
           - id: claude-themes-catppuccin
             name: Claude Themes Catppuccin
             changelog: https://github.com/matcra587/claude-themes/commits/main/plugins/catppuccin
-          - id: voxtype
-            name: Voxtype
-            changelog: https://github.com/peteonrails/voxtype/releases
+          - id: handy
+            name: Handy
+            changelog: https://github.com/cjpais/Handy/releases
           - id: paseo
             name: Paseo
             changelog: https://github.com/getpaseo/paseo/commits

@@ -76,12 +76,12 @@
     id = "button"
     [keys.widget.config]
       icon = "~/Studio/StreamDeck/Icons/Clarity-Standard/Normal/Mic-On.png"            
-      #label = "Voxtype"
+      #label = "Handy"
       #fontsize = 6.0
       #color = "#fefefe"
       #flatten = false
     [keys.action]
-      exec = "voxtype record toggle"
+      exec = "handy --toggle-transcription"
 
 [[keys]]
   index = 8

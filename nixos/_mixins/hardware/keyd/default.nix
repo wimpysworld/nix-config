@@ -26,7 +26,7 @@ lib.mkIf enableKeyd {
         };
       };
 
-      # The XFFP XFKEY single-button USB key emits Enter. Voxtype listens on Pause.
+      # The XFFP XFKEY single-button USB key emits Enter. keyd maps it to Pause for Handy.
       xfkey = {
         ids = [ "af88:6688" ];
         settings.main.enter = "pause";

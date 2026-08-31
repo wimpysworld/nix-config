@@ -37,9 +37,8 @@
     lan-mouse.url = "github:feschber/lan-mouse/v0.11.0";
     lan-mouse.inputs.nixpkgs.follows = "nixpkgs";
     lan-mouse.inputs.rust-overlay.follows = "rust-overlay";
-    voxtype.url = "github:peteonrails/voxtype/v0.7.5";
-    voxtype.inputs.nixpkgs.follows = "nixpkgs-unstable";
-    voxtype.inputs.flake-utils.follows = "flake-utils";
+    handy.url = "github:cjpais/Handy/v0.9.6";
+    handy.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "github:catppuccin/nix/release-26.05";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     direnv-instant.url = "github:Mic92/direnv-instant";
