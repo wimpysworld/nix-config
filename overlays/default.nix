@@ -25,13 +25,36 @@
       paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
         paseo = fixPaseoNpmDeps (paseoPackages.paseo or paseoPackages.default);
       };
+      catppuccinPalette = builtins.fromJSON (builtins.readFile ../lib/catppuccin-palette.json);
+      handyAttrs = prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
+        handy = inputs.handy.packages.${prev.stdenv.hostPlatform.system}.handy.overrideAttrs (oldAttrs: {
+          postPatch = (oldAttrs.postPatch or "") + ''
+            patch -p1 < ${
+              prev.runCommand "handy-scale-and-catppuccin.patch"
+                {
+                  src = ./patches/handy/scale-and-catppuccin.patch;
+                  mochaBase = catppuccinPalette.mocha.colors.base.hex;
+                  mochaBlue = catppuccinPalette.mocha.colors.blue.hex;
+                  mochaCrust = catppuccinPalette.mocha.colors.crust.hex;
+                  mochaLavender = catppuccinPalette.mocha.colors.lavender.hex;
+                  mochaOverlay0 = catppuccinPalette.mocha.colors.overlay0.hex;
+                  mochaRed = catppuccinPalette.mocha.colors.red.hex;
+                  mochaSubtext0 = catppuccinPalette.mocha.colors.subtext0.hex;
+                  mochaText = catppuccinPalette.mocha.colors.text.hex;
+                  mochaYellow = catppuccinPalette.mocha.colors.yellow.hex;
+                }
+                ''
+                  substituteAll "$src" "$out"
+                ''
+            }
+          '';
+        });
+      };
     in
     rec {
       hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
 
       fresh = final.unstable.fresh-editor;
-
-      handy = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.handy;
 
       # Agent-adjacent tools sourced from the same pinned llm-agents flake as the
       # rest of the agent tooling.
@@ -172,7 +195,8 @@
         '';
       });
     }
-    // paseoAttrs;
+    // paseoAttrs
+    // handyAttrs;
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
   # be accessible through 'pkgs.unstable'

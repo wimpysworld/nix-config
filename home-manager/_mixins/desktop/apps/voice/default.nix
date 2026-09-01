@@ -8,6 +8,10 @@
 let
   inherit (config.noughty) host;
   isHandyHost = host.is.linux && host.is.workstation && noughtyLib.hostHasTag "handy";
+  waylandCompositors = (import ../../../../../lib/wayland-compositors.nix).compositors;
+  desktopName = if builtins.isString host.desktop then host.desktop else "";
+  compositor = lib.attrByPath [ desktopName ] null waylandCompositors;
+  sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
   providers = [
     {
       id = "openai";
@@ -140,7 +144,7 @@ let
     mute_while_recording = false;
     append_trailing_space = false;
     app_language = "en";
-    theme = "system";
+    theme = "dark";
     experimental_enabled = false;
     lazy_stream_close = false;
     keyboard_implementation = "tauri";
@@ -157,7 +161,7 @@ let
     transcribe_gpu_device = null;
     extra_recording_buffer_ms = 0;
     vad_enabled = true;
-    overlay_style = "live";
+    overlay_style = "minimal";
   };
   handySettingsStore = pkgs.writeText "handy-settings-store.json" (
     builtins.toJSON {
@@ -171,12 +175,12 @@ let
       pkgs.jq
     ];
     text = ''
-      config_home="''${XDG_CONFIG_HOME:-"$HOME/.config"}"
-      config_dir="$config_home/com.pais.handy"
-      settings_file="$config_dir/settings_store.json"
+      data_home="''${XDG_DATA_HOME:-"$HOME/.local/share"}"
+      data_dir="$data_home/com.pais.handy"
+      settings_file="$data_dir/settings_store.json"
       dynamic_settings='{"selected_model":"","onboarding_completed":false}'
 
-      mkdir -p "$config_dir"
+      mkdir -p "$data_dir"
 
       if [ -f "$settings_file" ]; then
         if existing_settings="$(
@@ -204,7 +208,7 @@ let
         fi
       fi
 
-      temporary_file="$(mktemp "$config_dir/.settings_store.json.XXXXXX")"
+      temporary_file="$(mktemp "$data_dir/.settings_store.json.XXXXXX")"
       trap 'rm -f -- "$temporary_file"' EXIT
 
       jq --compact-output --argjson dynamic "$dynamic_settings" \
@@ -227,5 +231,15 @@ lib.mkIf isHandyHost {
     pkgs.wtype
   ];
 
-  systemd.user.services.handy.Service.ExecStartPre = lib.getExe prepareHandySettings;
+  systemd.user.services.handy = {
+    Unit = {
+      After = lib.mkForce [ sessionTarget ];
+      PartOf = lib.mkForce [ sessionTarget ];
+      ConditionEnvironment = [ "WAYLAND_DISPLAY" ];
+    };
+    Service = {
+      ExecStartPre = lib.getExe prepareHandySettings;
+    };
+    Install.WantedBy = lib.mkForce [ sessionTarget ];
+  };
 }
