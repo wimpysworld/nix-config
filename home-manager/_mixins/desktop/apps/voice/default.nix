@@ -178,41 +178,26 @@ let
       data_home="''${XDG_DATA_HOME:-"$HOME/.local/share"}"
       data_dir="$data_home/com.pais.handy"
       settings_file="$data_dir/settings_store.json"
-      dynamic_settings='{"selected_model":"","onboarding_completed":false}'
+      existing_store='{}'
 
       mkdir -p "$data_dir"
 
       if [ -f "$settings_file" ]; then
-        if existing_settings="$(
+        if parsed_store="$(
           jq --compact-output --slurp '
             (if length == 1 then .[0] else {} end)
-            |
-            (if type == "object" and (.settings? | type == "object") then .settings else {} end) as $settings
-            | {
-                selected_model: (
-                  if ($settings.selected_model? | type) == "string"
-                  then $settings.selected_model
-                  else ""
-                  end
-                ),
-                onboarding_completed: (
-                  if ($settings.onboarding_completed? | type) == "boolean"
-                  then $settings.onboarding_completed
-                  else false
-                  end
-                )
-              }
+            | if type == "object" and (.settings? | type == "object") then . else {} end
           ' "$settings_file" 2>/dev/null
         )"; then
-          dynamic_settings="$existing_settings"
+          existing_store="$parsed_store"
         fi
       fi
 
       temporary_file="$(mktemp "$data_dir/.settings_store.json.XXXXXX")"
       trap 'rm -f -- "$temporary_file"' EXIT
 
-      jq --compact-output --argjson dynamic "$dynamic_settings" \
-        '.settings += $dynamic' \
+      jq --compact-output --argjson existing "$existing_store" \
+        '. * $existing' \
         ${handySettingsStore} > "$temporary_file"
       chmod 0600 "$temporary_file"
       mv -T -- "$temporary_file" "$settings_file"
