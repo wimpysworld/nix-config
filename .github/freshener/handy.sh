@@ -4,8 +4,7 @@ set -euo pipefail
 
 current=$(awk -F/ '/handy.url = "github:cjpais\/Handy\// { sub(/";$/, "", $NF); print $NF }' flake.nix)
 latest=$(curl -fsSL "https://api.github.com/repos/cjpais/Handy/tags?per_page=100" \
-  | jq -r '.[].name' \
-  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+  | jq -r '.[].name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
   | sort -V \
   | tail -n 1)
 
