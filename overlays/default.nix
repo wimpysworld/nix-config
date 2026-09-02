@@ -1,5 +1,38 @@
 # This file defines overlays
 { inputs, ... }:
+let
+  inherit (inputs) handy;
+  upstreamBun2nix = handy.inputs.bun2nix;
+  bun2nixInputs = upstreamBun2nix.inputs // {
+    self = bun2nix;
+  };
+  bun2nixModules = upstreamBun2nix.inputs.import-tree (upstreamBun2nix.outPath + "/nix");
+  bun2nixOutputs =
+    upstreamBun2nix.inputs.flake-parts.lib.mkFlake
+      {
+        inputs = bun2nixInputs;
+        self = bun2nix;
+        moduleLocation = upstreamBun2nix.outPath + "/flake.nix";
+      }
+      (
+        bun2nixModules
+        // {
+          # Handy only supports Linux. Exclude unsupported systems before bun2nix
+          # creates its flake-parts package sets.
+          systems = inputs.nixpkgs.lib.mkForce [
+            "aarch64-linux"
+            "x86_64-linux"
+          ];
+        }
+      );
+  bun2nix = upstreamBun2nix // bun2nixOutputs // { inputs = bun2nixInputs; };
+  handyPackages =
+    ((import (handy.outPath + "/flake.nix")).outputs {
+      self = handy;
+      inherit (inputs) nixpkgs;
+      inherit bun2nix;
+    }).packages;
+in
 {
   # This one brings our custom packages from the 'pkgs' directory
   localPackages = final: _prev: import ../pkgs final;
@@ -27,7 +60,7 @@
       };
       catppuccinPalette = builtins.fromJSON (builtins.readFile ../lib/catppuccin-palette.json);
       handyAttrs = prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
-        handy = inputs.handy.packages.${prev.stdenv.hostPlatform.system}.handy.overrideAttrs (oldAttrs: {
+        handy = handyPackages.${prev.stdenv.hostPlatform.system}.handy.overrideAttrs (oldAttrs: {
           postPatch = (oldAttrs.postPatch or "") + ''
             patch -p1 < ${
               prev.runCommand "handy-scale-and-catppuccin.patch"
