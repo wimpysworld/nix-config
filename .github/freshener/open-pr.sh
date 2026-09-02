@@ -10,7 +10,21 @@
 #   GH_TOKEN   token with permission to push and open pull requests
 set -euo pipefail
 
-BRANCH="${PKG_ID}-${VERSION}"
+BRANCH_VERSION=$VERSION
+if ! git check-ref-format --branch "${PKG_ID}-${BRANCH_VERSION}" >/dev/null 2>&1; then
+  BRANCH_VERSION=$(printf '%s' "$VERSION" \
+    | LC_ALL=C tr '[:upper:]' '[:lower:]' \
+    | LC_ALL=C tr -cs 'a-z0-9' '-')
+  BRANCH_VERSION=${BRANCH_VERSION#-}
+  BRANCH_VERSION=${BRANCH_VERSION%-}
+fi
+
+if [[ -z "$BRANCH_VERSION" ]]; then
+  echo "❌ Version '${VERSION}' cannot form a branch name"
+  exit 1
+fi
+
+BRANCH="${PKG_ID}-${BRANCH_VERSION}"
 
 # Skip when a pull request already exists for this exact branch.
 if gh pr list --search "head:${BRANCH}" --json number --jq '.[0].number' | grep -q .; then
