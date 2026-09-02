@@ -58,6 +58,7 @@ actions:
     - "nick-fields/retry@*"
     - "robherley/go-test-action@*"
     - "softprops/action-gh-release@*"
+    - "srz-zumix/post-run-action@v3"
     - "wimpysworld/nothing-but-nix@*"
 
 labels:
