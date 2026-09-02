@@ -8,7 +8,6 @@ Nix package for [Heynote](https://heynote.com/), a dedicated scratchpad for deve
 |----------|-------------|--------|
 | `x86_64-linux` | x86_64 | Builds and tested |
 | `aarch64-linux` | ARM64 | Builds |
-| `x86_64-darwin` | Intel Mac | Builds |
 | `aarch64-darwin` | Apple Silicon | Builds |
 
 Platform support matches `electron_39` availability in nixpkgs.
@@ -50,7 +49,7 @@ A helper variable computes the electron-builder cache tag dynamically:
 ```nix
 electronPlatformTag =
   if stdenv.hostPlatform.isDarwin then
-    "darwin-${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}"
+    "darwin-arm64"
   else
     "linux-${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}";
 ```

@@ -65,10 +65,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
         url = "${base}/chainctl_linux_arm64";
         hash = "sha256-jULJLBxys8xNV/cVcIARavJaGRPOH7J4o6rS9Gef8IM=";
       };
-      x86_64-darwin = fetchurl {
-        url = "${base}/chainctl_darwin_x86_64";
-        hash = "sha256-UZJr2TbYDoz4YHQi2JcO2YUwSM7Crpj0O1wbfxNaMoc=";
-      };
       aarch64-darwin = fetchurl {
         url = "${base}/chainctl_darwin_arm64";
         hash = "sha256-gscCWB7cGReSz0r4QJVz2tsQXJ67E5F0OMbSbz/BdEY=";

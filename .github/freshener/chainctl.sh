@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Update the chainctl package from Chainguard's release metadata.
 #
-# Move 2 note: nix-update cannot drive this as-is because one file holds four
+# Move 2 note: nix-update cannot drive this as-is because one file holds three
 # per-platform sources under passthru.sources, each with its own hash.
 set -euo pipefail
 
@@ -34,7 +34,6 @@ fi
 declare -A binaries=(
   [x86_64-linux]=chainctl_linux_x86_64
   [aarch64-linux]=chainctl_linux_arm64
-  [x86_64-darwin]=chainctl_darwin_x86_64
   [aarch64-darwin]=chainctl_darwin_arm64
 )
 

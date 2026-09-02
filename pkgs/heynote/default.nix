@@ -16,7 +16,7 @@ let
   electron = electron_41;
   electronPlatformTag =
     if stdenv.hostPlatform.isDarwin then
-      "darwin-${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}"
+      "darwin-arm64"
     else
       "linux-${if stdenv.hostPlatform.isAarch64 then "arm64" else "x64"}";
 
@@ -681,7 +681,7 @@ buildNpmPackage (finalAttrs: {
     homepage = "https://heynote.com/";
     license = licenses.mit;
     maintainers = with maintainers; [ ];
-    platforms = lib.platforms.linux ++ lib.platforms.darwin;
+    platforms = lib.platforms.linux ++ [ "aarch64-darwin" ];
     sourceProvenance = with sourceTypes; [
       fromSource
       binaryNativeCode # electron and some node modules
