@@ -83,9 +83,16 @@ in
           '';
         });
       };
+      hermesStdenv = final.unstable.stdenv // {
+        isLinux = final.unstable.stdenv.hostPlatform.isLinux;
+      };
     in
     rec {
-      hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.default;
+      # The host module selects its dependency groups, so avoid the upstream
+      # full-package Linux predicate until Hermes adopts hostPlatform.
+      hermesAgent = inputs.hermes-agent.packages.${final.stdenv.hostPlatform.system}.minimal.override {
+        stdenv = hermesStdenv;
+      };
 
       fresh = final.unstable.fresh-editor;
 
