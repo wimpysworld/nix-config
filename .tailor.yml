@@ -1,4 +1,4 @@
-# Initially fitted by tailor on 2026-03-14
+# Refitted by tailor on 2026-09-02
 license: BlueOak-1.0.0
 
 repository:
@@ -18,6 +18,9 @@ repository:
   allow_update_branch: false
   allow_auto_merge: false
   web_commit_signoff_required: false
+  private_vulnerability_reporting_enabled: true
+  vulnerability_alerts_enabled: true
+  automated_security_fixes_enabled: true
   default_workflow_permissions: write
   can_approve_pull_request_reviews: true
   topics:
@@ -41,6 +44,20 @@ repository:
     - pantheon
     - sops-nix
 
+actions:
+  enabled: true
+  allowed_actions: selected
+  sha_pinning_required: false
+  github_owned_allowed: true
+  verified_allowed: true
+  patterns_allowed:
+    - "freerangebytes/setup-actionlint@*"
+    - "golang/govulncheck-action@*"
+    - "golangci/golangci-lint-action@*"
+    - "nick-fields/retry@*"
+    - "robherley/go-test-action@*"
+    - "softprops/action-gh-release@*"
+
 labels:
   - name: bug
     color: d20f39
@@ -63,7 +80,7 @@ labels:
     description: Good for newcomers
 
   - name: help wanted
-    color: 179299
+    color: "179299"
     description: Extra attention needed
 
   - name: invalid
@@ -91,9 +108,6 @@ labels:
     description: Hacktoberfest contribution
 
 swatches:
-  - path: .github/workflows/tailor.yml
-    alteration: always
-
   - path: .github/dependabot.yml
     alteration: first-fit
 
@@ -141,6 +155,3 @@ swatches:
 
   - path: .tailor.yml
     alteration: always
-
-  - path: .github/workflows/tailor-automerge.yml
-    alteration: never

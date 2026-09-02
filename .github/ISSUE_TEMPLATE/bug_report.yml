@@ -16,10 +16,6 @@ body:
         1. Run command: `...`
         2. Do something else: `...`
         3. Error occurs
-      value: |
-        1.
-        2.
-        3.
     validations:
       required: true
 
