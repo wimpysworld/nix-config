@@ -4,7 +4,7 @@ Draft the commit message with `draft-commit-message`, then create one Git commit
 
 This command mutates Git by staging selected files and running `git commit`. It never pushes.
 
-Command invocation: use the current provider's command prefix when invoking `draft-commit-message`. Codex uses `$draft-commit-message`; slash-command runtimes use `/draft-commit-message`. If the platform cannot expand another command, follow the existing `draft-commit-message` prompt directly for the draft phase only. After its fenced message is produced, this command resumes and creates the commit.
+Run this command in the current context. Do not launch a sub-agent or a Task for any step; the current context holds the change intent that the commit message needs, and a delegation round trip loses it. For the draft phase, follow the `draft-commit-message` prompt directly in this context, ignoring any launch instruction in its composed body, and produce its fenced message here. One exception: when the staged diff is large and this session did not author it, delegate the whole command to the `garfield` agent instead.
 
 ### Non-durable working documents
 
@@ -21,7 +21,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 3. Identify unstaged durable changes that clearly belong in this commit. Leave unstaged non-durable working documents untouched. If a path is ambiguous, ask before staging it.
 4. Stage extra durable paths only with explicit path-limited `git add -- <path> ...`. Never use `git add .`, `git add -A`, `git add -u`, broad globs, or directory-wide staging unless every file in that directory was inspected and is intended for the commit.
 5. Verify the index with `git diff --staged --name-status` and `git diff --staged --check`. Stop if the index is empty or contains a non-durable working document.
-6. Invoke or follow `draft-commit-message`. Preserve its fenced commit message verbatim as the commit message source.
+6. Follow the `draft-commit-message` prompt. Preserve its fenced commit message verbatim as the commit message source.
 7. Strip only the Markdown fence lines. Write the remaining message text unchanged to a temporary file.
 8. Run `git commit -F <temp-file>`.
 9. Report the new short SHA and the commit message.

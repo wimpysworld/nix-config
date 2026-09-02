@@ -2,7 +2,7 @@
 
 ## Delegation
 
-Delegate non-trivial tool, file, research, implementation, review, validation, or documentation work to a specialist via `delegate-task` before exploring in the parent. Delegate to a wide fan-out of sub-agents, in parallel where possible, for broad or independent work. Specialists do not launch further specialists. A user-invoked command is the orchestrator and may fan out; the workers it launches do their own work, return directly, and launch nothing. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
+Delegate non-trivial tool, file, research, implementation, review, validation, or documentation work to a specialist via `delegate-task` before exploring in the parent. Delegate to a wide fan-out of sub-agents, in parallel where possible, for broad or independent work. Specialists do not launch further specialists. A user-invoked command is the orchestrator and may fan out; the workers it launches do their own work, return directly, and launch nothing. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential. Commit work inline with the `make-commit` command; delegate a commit only when the staged diff is large and the session did not author it.
 
 Relay an artefact verbatim, always. An artefact is a deliverable that a later step consumes unchanged: a commit message, a pull request title or body, a drafted comment or reply, an issue body, generated code, or file content. Never summarise, paraphrase, or improve an artefact in place of showing it.
 

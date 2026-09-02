@@ -68,7 +68,7 @@ instructions/global.md          ← environment constraints, tool preferences, s
 
 **`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and the relay rules for artefacts and reports. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
-Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. A command can set its own model header, but only Garfield's four commands do.
+Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. A command can set its own model header, but only Garfield's three commands do.
 
 ---
 
@@ -121,6 +121,7 @@ The house style owns response discipline, every platform carries it in the syste
 | `gist`                  | Rewrite the previous response concisely                               |
 | `grill-me`              | Interview the user until every branch of a design is resolved         |
 | `implement-task`        | Take a tracked task through to implemented, validated, committed work |
+| `make-commit`           | Draft the message, then create one commit from the durable work       |
 | `oi`                    | Re-issue the Communication Rules bluntly, after `ahem` failed         |
 | `orientate`             | Inspect the repository and report orientation notes                   |
 | `ready`                 | Prime the session for a broad activity                                |
@@ -280,13 +281,12 @@ Precise implementation engineer executing code changes from specifications. Read
 
 Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, and breaking change footers.
 
-**Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent and on all four commands. Pi takes `claude-sonnet-5` on the Anthropic route, `gpt-5.6-terra` at thinking `medium` on the OpenAI route, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Commit message generation is a structured, deterministic task with clear rules, so it does not need the session's reasoning budget.
+**Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent and on his three message-drafting commands. Pi takes `claude-sonnet-5` on the Anthropic route, `gpt-5.6-terra` at thinking `medium` on the OpenAI route, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Commit message generation is a structured, deterministic task with clear rules, so it does not need the session's reasoning budget.
 
 | Command                | Purpose                                                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `draft-commit-message` | Draft a conventional commit message for the staged or current changes                                                                    |
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body                                                                 |
-| `make-commit`          | Draft the message, then create one commit from the durable work                                                                          |
 | `make-pr`              | Draft the title and body, open the PR, move Linear to In Review, and on a work PR request the work review team and apply `ai-review`     |
 | `pr-done`              | Move the merged branch's Linear issues to Done, leave local Git and GitHub state unchanged                                               |
 
@@ -365,7 +365,7 @@ Garfield is the sole exception. Commit and PR message work is structured and det
 
 | Platform            | Pin                                                |
 | ------------------- | -------------------------------------------------- |
-| Claude Code         | `model: sonnet` on the agent and all four commands |
+| Claude Code         | `model: sonnet` on the agent and his three message-drafting commands |
 | Pi (Anthropic)      | `claude-sonnet-5`                                  |
 | Pi (`openai-codex`) | `gpt-5.6-terra`, thinking `medium`                 |
 | Pi (Google)         | `gemini-3-flash`                                   |
@@ -373,7 +373,7 @@ Garfield is the sole exception. Commit and PR message work is structured and det
 
 No other agent or command sets a model on any platform. The ten remaining agents have no `header.pi.yaml` and no `header.codex.toml` at all, and their `header.claude.yaml` omits `model`.
 
-**Command-level model pins:** only Garfield's four commands set one. `draft-commit-message`, `draft-pr-message`, `make-commit`, and `make-pr` each repeat `model: sonnet` in Claude Code so the pin holds when the command runs outside the agent. No other command in the tree sets a model.
+**Command-level model pins:** only Garfield's three commands set one. `draft-commit-message`, `draft-pr-message`, and `make-pr` each repeat `model: sonnet` in Claude Code so the pin holds when the command runs outside the agent. No other command in the tree sets a model. `make-commit` is a standalone command that runs in the caller's context and inherits the session model.
 
 ---
 

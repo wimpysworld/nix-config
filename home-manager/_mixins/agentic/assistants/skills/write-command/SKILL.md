@@ -108,7 +108,7 @@ Repo convention for Rosey's shims: **omit `subtask`**. The `agent: <name>` bindi
 
 In this repo:
 
-- Command-level pins are rare. Only Garfield's four commands set one: `draft-commit-message`, `draft-pr-message`, `make-commit`, and `make-pr` repeat the agent's Claude Code pin so it still holds when the command runs outside the agent. Every other command omits `model` and inherits the session or agent model.
+- Command-level pins are rare. Only Garfield's three commands set one: `draft-commit-message`, `draft-pr-message`, and `make-pr` repeat the agent's Claude Code pin so it still holds when the command runs outside the agent. Every other command omits `model` and inherits the session or agent model.
 - Pin a model on a new command only when both hold: the work needs a specific tier regardless of the caller's session, and the command can run detached from its agent. Otherwise leave it out.
 - OpenCode headers omit `model` so the user's session model wins. Per-command `model` was ignored on OpenCode 0.6.4 and below; treat it as a hint, not a guarantee.
 - Pi has no model field at the prompt-template layer; model and routing live on the agent.

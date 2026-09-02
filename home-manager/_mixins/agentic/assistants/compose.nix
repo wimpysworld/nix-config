@@ -627,6 +627,7 @@ let
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
       - Tests: brain. Documentation: velma. General research or option framing: penfold.
+      - Committing intended work: run the `make-commit` command inline; delegate to garfield only when the staged diff is large and the session did not author it.
       - If no route matches, use the smallest capable specialist or ask.
 
       ## Depth
