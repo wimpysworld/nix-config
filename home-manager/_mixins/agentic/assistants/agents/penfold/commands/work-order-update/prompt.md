@@ -20,15 +20,17 @@ Load the `contribution-voice` skill before writing any document patch or comment
 
 **5. Patch, never resend.** Edit the document only with `save_document` using `id` and `patch`. Never resend the full body. Never renumber an existing wave. When a wave empties, remove its section and never reuse its number.
 
-**6. Ask once.** Show every document patch, every comment, and every cycle change. Ask for approval, then act. This is the only question the command asks.
+**6. Summarise on the document.** Draft one comment on the document that summarises this update: the additions, the deferrals, and the cycle changes, each with its one-line reason. Post it with `save_comment` and `documentId`. Each run posts a new comment; never edit an earlier run's summary. Skip the comment when the run changes nothing.
 
-**7. Check drift, report only.** Compare both directions: issues assigned to the user in the current cycle that the document does not mention, and issues in the document that left the cycle or the user's assignment. List them in the final report under `Drift`. Propose nothing and change nothing: drift feeds the user's next instruction.
+**7. Ask once.** Show every document patch, every comment, and every cycle change. Ask for approval, then act. This is the only question the command asks.
 
-**8. Report** the document URL, the changes, and the drift lists.
+**8. Check drift, report only.** Compare both directions: issues assigned to the user in the current cycle that the document does not mention, and issues in the document that left the cycle or the user's assignment. List them in the final report under `Drift`. Propose nothing and change nothing: drift feeds the user's next instruction.
+
+**9. Report** the document URL, the changes, and the drift lists.
 
 ### Authority
 
-Human invocation of this command is consent to patch the one cycle work order document, to add or update the link attachment and the comment on the issues the instructions name, and to set or clear the cycle on the issues the instructions add or drop. Nothing else. Never close an issue, never cancel an issue, never edit any other issue field, and never touch GitHub or Slack.
+Human invocation of this command is consent to patch the one cycle work order document, to post one summary comment on that document, to add or update the link attachment and the comment on the issues the instructions name, and to set or clear the cycle on the issues the instructions add or drop. Nothing else. Never close an issue, never cancel an issue, never edit any other issue field, and never touch GitHub or Slack.
 
 ### Output
 
@@ -42,6 +44,7 @@ Changes:
 * Added: <issue key> to Wave <n>, or none
 * Deferred: <issue key>, or none
 * Cycle: <issue key> set or cleared, or none
+* Comment: posted on the document, or none
 
 Drift:
 
@@ -55,6 +58,7 @@ Drift:
 - Never renumber an existing wave, and never reuse a removed wave's number.
 - Every issue in a wave runs in parallel with every other. Sequencing prose never enters a bullet.
 - One comment per issue. An update edits that comment by `id`.
+- One summary comment on the document per run. Never edit an earlier run's summary.
 - Drift is report-only. It changes nothing without a new instruction.
 - Never explain the sizing scale in the document or in a comment.
 - Never estimate in days or weeks.
