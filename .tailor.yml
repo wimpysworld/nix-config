@@ -51,12 +51,14 @@ actions:
   github_owned_allowed: true
   verified_allowed: true
   patterns_allowed:
+    - "actionhippie/swap-space@*"
     - "freerangebytes/setup-actionlint@*"
     - "golang/govulncheck-action@*"
     - "golangci/golangci-lint-action@*"
     - "nick-fields/retry@*"
     - "robherley/go-test-action@*"
     - "softprops/action-gh-release@*"
+    - "wimpysworld/nothing-but-nix@*"
 
 labels:
   - name: bug
