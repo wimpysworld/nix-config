@@ -1,8 +1,6 @@
 {
   description = "Wimpy's NixOS, nix-darwin and Home Manager Configuration";
   inputs = {
-    determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
-    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -74,6 +72,9 @@
     xdg-override.url = "github:koiuo/xdg-override";
     xdg-override.inputs.nixpkgs.follows = "nixpkgs";
     xdg-override.inputs.flake-parts.follows = "flake-parts";
+    # Keep wildcard FlakeHub inputs last because Dependabot misparses their URL suffixes.
+    determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
+    fh.url = "https://flakehub.com/f/DeterminateSystems/fh/*";
   };
   outputs =
     {
