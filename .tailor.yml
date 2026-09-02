@@ -52,13 +52,18 @@ actions:
   verified_allowed: true
   patterns_allowed:
     - "actionhippie/swap-space@*"
+    - "DeterminateSystems/determinate-nix-action@*"
+    - "DeterminateSystems/flakehub-cache-action@*"
+    - "DeterminateSystems/flakehub-push@*"
+    - "DeterminateSystems/magic-nix-cache-action@*"
+    - "DeterminateSystems/nix-installer-action@*"
     - "freerangebytes/setup-actionlint@*"
     - "golang/govulncheck-action@*"
     - "golangci/golangci-lint-action@*"
     - "nick-fields/retry@*"
     - "robherley/go-test-action@*"
     - "softprops/action-gh-release@*"
-    - "srz-zumix/post-run-action@v3"
+    - "srz-zumix/post-run-action@*"
     - "wimpysworld/nothing-but-nix@*"
 
 labels:
