@@ -49,6 +49,7 @@ Run `just eval` before finishing Nix changes. Run `just lint-registry` after edi
 - Use explicit `inherit` statements for clarity.
 - Use string interpolation inside strings: `"${variable}"`.
 - Use camelCase for Nix attributes and functions; kebab-case for files and directories.
+- Use `stdenv.hostPlatform.isLinux`, not the deprecated `stdenv.isLinux`.
 - Hostnames follow themes: Sith Lords for workstations/servers, TIE fighters for VMs.
 
 ## Layout

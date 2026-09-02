@@ -25,7 +25,7 @@ lib.mkIf isWorkstationDeveloper {
     pkgs.syft
     pkgs.trivy
   ]
-  ++ lib.optionals pkgs.stdenv.isLinux [
+  ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     pkgs.dockle # requires btrfs-progs and lvm2 (Linux-only)
   ];
 
