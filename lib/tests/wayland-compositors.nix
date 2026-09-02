@@ -165,13 +165,12 @@ let
     button_minimize_svg = "";
     button_pressed_color = "0.270588 0.278431 0.352941 1.000000";
     button_restore_svg = "";
-    button_size = 34;
     fg_color = "0.094118 0.094118 0.145098 1.000000";
     fg_text_color = "0.803922 0.839216 0.956863 1.000000";
     left_button_spacing = 16;
     left_button_x_offset = 0;
     right_button_spacing = 16;
-    right_button_x_offset = -16;
+    right_button_x_offset = -8;
     rounded_corner_radius = 10;
     title_font = "Work Sans Bold 13";
     title_height = 46;
