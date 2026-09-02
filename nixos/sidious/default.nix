@@ -2,6 +2,8 @@
 
 {
   inputs,
+  lib,
+  pkgs,
   ...
 }:
 {
@@ -14,6 +16,7 @@
 
   boot = {
     initrd.systemd.enable = true;
+    kernelPackages = lib.mkForce pkgs.linuxPackages_6_18;
     kernelModules = [
       "kvm-intel"
       "nvidia"
