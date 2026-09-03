@@ -17,7 +17,7 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
-    hermes-agent.url = "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.8.27.tar.gz";
+    hermes-agent.url = "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.8.31.tar.gz";
     hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
     hermes-agent.inputs.uv2nix.url = "github:pyproject-nix/uv2nix";
     llm-agents.url = "github:numtide/llm-agents.nix";
