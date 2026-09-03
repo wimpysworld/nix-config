@@ -31,6 +31,10 @@ let
         surface_dim = catppuccinPalette.getColor "surface2";
       };
     };
+    # After a server restart, herdr resumes supported agent panes into their
+    # previous conversation sessions. The restarted agents cost more attention
+    # than they save, so panes come back as plain shells instead.
+    session.resume_agents_on_restore = false;
     keys.command = [
       {
         key = "prefix+u";
