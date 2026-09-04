@@ -68,7 +68,7 @@ instructions/global.md          ← environment constraints, tool preferences, s
 
 **`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and the relay rules for artefacts and reports. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
-Agent prompts inherit the global constraints and add specialisation. Command prompts inherit the agent context and focus on a single task - they stay short because the agent prompt already carries the persona, tools, and constraints. A command can set its own model header, but only Garfield's three commands do.
+Agent prompts inherit the global constraints and add specialisation. Agent-scoped command prompts inherit the agent context and focus on one task. Standalone commands run in the caller's context. A command can set its own model header. Only `draft-commit-message` and `draft-pr-message` do.
 
 ---
 
@@ -111,26 +111,29 @@ The house style owns response discipline, every platform carries it in the syste
 
 ### Standalone Commands
 
-| Command                 | Purpose                                                               |
-| ----------------------- | --------------------------------------------------------------------- |
-| `ack`                   | Acknowledge a phase or message and yield                              |
-| `ahem`                  | Re-issue the Communication Rules as a first warning                   |
-| `ask`                   | Answer a question without treating it as an instruction              |
-| `call`                  | Give one recommended solution with its reasoning, never a menu        |
-| `collaborate`           | Read a task or file, meet the team, and prepare to collaborate         |
-| `gist`                  | Rewrite the previous response concisely                               |
-| `grill-me`              | Interview the user until every branch of a design is resolved         |
-| `implement-task`        | Take a tracked task through to implemented, validated, committed work |
-| `make-commit`           | Draft the message, then create one commit from the durable work       |
-| `oi`                    | Re-issue the Communication Rules bluntly, after `ahem` failed         |
-| `orientate`             | Inspect the repository and report orientation notes                   |
-| `ready`                 | Prime the session for a broad activity                                |
-| `reflect`               | Review the session and suggest tooling and AGENTS.md changes          |
-| `review-code-again`     | Recheck prior findings and defects caused by the author's response    |
-| `review-code-colleague` | Review a colleague's PR for defects only; no suggestions, no nits     |
-| `review-code-community` | Review a community PR for correctness, gaps, and malicious code       |
-| `review-code-mine`      | Adversarially review my own changes before filing a PR                |
-| `wtb`                   | Run the Want to Buy workflow for a pull request and Slack channel     |
+| Command                 | Purpose                                                                  |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `ack`                   | Acknowledge a phase or message and yield                                 |
+| `ahem`                  | Re-issue the Communication Rules as a first warning                      |
+| `ask`                   | Answer a question without treating it as an instruction                 |
+| `call`                  | Give one recommended solution with its reasoning, never a menu           |
+| `collaborate`           | Read a task or file, meet the team, and prepare to collaborate            |
+| `gist`                  | Rewrite the previous response concisely                                  |
+| `grill-me`              | Interview the user until every branch of a design is resolved            |
+| `implement-task`        | Take a tracked task through to implemented, validated, committed work    |
+| `make-commit`           | Draft the message, then create one commit from the durable work          |
+| `make-pr`               | Draft and open a PR, update linked Linear issues, and offer `pr-watch`    |
+| `oi`                    | Re-issue the Communication Rules bluntly, after `ahem` failed            |
+| `orientate`             | Inspect the repository and report orientation notes                      |
+| `ready`                 | Prime the session for a broad activity                                   |
+| `reflect`               | Review the session and suggest tooling and AGENTS.md changes             |
+| `review-code-again`     | Recheck prior findings and defects caused by the author's response       |
+| `review-code-colleague` | Review a colleague's PR for defects only; no suggestions, no nits        |
+| `review-code-community` | Review a community PR for correctness, gaps, and malicious code          |
+| `review-code-mine`      | Adversarially review my own changes before filing a PR                   |
+| `wtb`                   | Run the Want to Buy workflow for a pull request and Slack channel        |
+
+The root `make-pr` command keeps the current context and inherits the root session model for message drafting, PR creation, and the `pr-watch` choice. It does not launch Garfield.
 
 ---
 
@@ -281,13 +284,12 @@ Precise implementation engineer executing code changes from specifications. Read
 
 Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, and breaking change footers.
 
-**Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent and on his three message-drafting commands. Pi takes `claude-sonnet-5` on the Anthropic route, `gpt-5.6-terra` at thinking `medium` on the OpenAI route, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Commit message generation is a structured, deterministic task with clear rules, so it does not need the session's reasoning budget.
+**Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent and his two message-drafting commands. Pi takes `claude-sonnet-5` on the Anthropic route, `gpt-5.6-terra` at thinking `medium` on the OpenAI route, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Git message generation is a structured task with clear rules, so it does not need the session's reasoning budget.
 
 | Command                | Purpose                                                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `draft-commit-message` | Draft a conventional commit message for the staged or current changes                                                                    |
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body                                                                 |
-| `make-pr`              | Draft the title and body, open the PR, move Linear to In Review, and on a work PR request the work review team and apply `ai-review`     |
 | `pr-done`              | Summarise the merged PR in Linear, move linked issues to Done, and safely delete its local and remote branch                             |
 
 ---
@@ -362,19 +364,19 @@ Documentation architect creating technically precise guides through progressive 
 
 Agents follow the model selected in the coding tool. Martin picks a model once per session and every specialist he delegates to runs on it, so there is one decision to make and no per-agent tier to remember. Claude Code, OpenCode, Codex, and Pi all behave the same way: with no `model` in the header, the agent inherits the session model.
 
-Garfield is the sole exception. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
+Garfield is the sole pinned agent. His two message-drafting commands also set a Claude Code model. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
 
-| Platform            | Pin                                                |
-| ------------------- | -------------------------------------------------- |
-| Claude Code         | `model: sonnet` on the agent and his three message-drafting commands |
-| Pi (Anthropic)      | `claude-sonnet-5`                                  |
-| Pi (`openai-codex`) | `gpt-5.6-terra`, thinking `medium`                 |
-| Pi (Google)         | `gemini-3-flash`                                   |
-| Codex               | `gpt-5.6-terra`, reasoning `medium`                |
+| Platform            | Pin                                                         |
+| ------------------- | ----------------------------------------------------------- |
+| Claude Code         | `model: sonnet` on the agent and two Git message commands   |
+| Pi (Anthropic)      | `claude-sonnet-5`                                           |
+| Pi (`openai-codex`) | `gpt-5.6-terra`, thinking `medium`                          |
+| Pi (Google)         | `gemini-3-flash`                                            |
+| Codex               | `gpt-5.6-terra`, reasoning `medium`                         |
 
 No other agent or command sets a model on any platform. The ten remaining agents have no `header.pi.yaml` and no `header.codex.toml` at all, and their `header.claude.yaml` omits `model`.
 
-**Command-level model pins:** only Garfield's three commands set one. `draft-commit-message`, `draft-pr-message`, and `make-pr` each repeat `model: sonnet` in Claude Code so the pin holds when the command runs outside the agent. No other command in the tree sets a model. `make-commit` is a standalone command that runs in the caller's context and inherits the session model.
+**Command-level model pins:** `draft-commit-message` and `draft-pr-message` set `model: sonnet` in Claude Code. No other command sets a model. The standalone `make-commit` and `make-pr` commands run in the caller's context and inherit the root session model.
 
 ---
 
@@ -382,7 +384,7 @@ No other agent or command sets a model on any platform. The ten remaining agents
 
 `compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and optional per-platform headers: `header.claude.yaml`, `header.opencode.yaml`, `header.codex.toml`, and `header.pi.yaml`. Only Garfield carries the Codex and Pi headers today. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
 
-Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude ("Use the subagent tool to launch the `<agent>` agent...") is assembled in `default.nix` and wraps `compose.composePiCommandFromPrompt`, mirroring how the Codex side wraps `spawn_agent` guidance around skill bodies.
+Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude is assembled in `default.nix` and wraps `composePiCommandFromPrompt`. The Codex output uses the same pattern with a `spawn_agent` wrapper around command-derived skills.
 
 `header.pi.yaml` is optional. When absent, Pi subagents inherit three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, `maxSubagentDepth`, plus per-command `argument-hint`. Fields present in the file are appended verbatim, so explicit per-agent depth limits are preserved.
 

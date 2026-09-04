@@ -98,6 +98,7 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-cc-header@1.1.1",
     "npm:@heyhuynhgiabuu/pi-pretty@0.6.24",
     "npm:pi-service-tier@0.3.0",
+    "npm:@juicesharp/rpiv-ask-user-question@2.9.0",
     "npm:@juicesharp/rpiv-btw@2.7.1",
     "npm:@juicesharp/rpiv-todo@2.7.1"
   ]
@@ -112,6 +113,7 @@ Versioned Pi package specs are pinned and skipped by `pi update`. These packages
 
 The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 
+- `rpiv-ask-user-question` gives the model a structured questionnaire with typed options
 - `rpiv-btw` performs an explicit side model call using current conversation context
 - `rpiv-todo` adds a model-visible todo tool and `/todos` UI
 

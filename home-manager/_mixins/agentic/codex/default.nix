@@ -409,6 +409,9 @@ let
       # See https://developers.openai.com/codex/config-reference
       apps = false;
       code_mode_host = true;
+      # Let command-derived skills use the structured question picker while
+      # they run in the default interactive mode.
+      default_mode_request_user_input = true;
       hooks = true;
       # Disable Codex memories, the cross-session note system that summarises
       # past rollouts and injects them into later sessions. A centralised memory

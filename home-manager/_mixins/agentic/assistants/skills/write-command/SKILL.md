@@ -78,7 +78,7 @@ This repo composes platform headers from per-command files. `compose.nix` reads:
 
 `header.claude.yaml` and `header.opencode.yaml` are read with `readFile` and **must exist for every command, even if no per-provider fields are set** - leave them as empty files; omitting them makes Nix evaluation fail. `header.pi.yaml` is genuinely optional (read with `readOptionalFile`) and can be omitted when the command takes no arguments. On Claude Code, an agent binding via `header.opencode.yaml: agent:` causes `compose.nix` to prepend `@<agent>` to the body automatically; do not write `@agent` into `prompt.md`. The repo-local `use-task: true` field in `header.claude.yaml` rewrites the body into "Use the Task tool to launch the `<agent>` agent for the following task: …". `compose.nix` discovers commands by directory; no codegen edits are required when adding a new command.
 
-Skills are not currently emitted as commands by this repo's Codex output; reach Codex via skills instead (see anti-patterns).
+Codex receives each command as a command-derived skill. New Codex-only reference guidance belongs in a native skill instead (see anti-patterns).
 
 ## Command table
 
@@ -109,7 +109,7 @@ Repo convention for Rosey's shims: **omit `subtask`**. The `agent: <name>` bindi
 
 In this repo:
 
-- Command-level pins are rare. Only Garfield's three commands set one: `draft-commit-message`, `draft-pr-message`, and `make-pr` repeat the agent's Claude Code pin so it still holds when the command runs outside the agent. Every other command omits `model` and inherits the session or agent model.
+- Command-level pins are rare. Only `draft-commit-message` and `draft-pr-message` set `model: sonnet` in Claude Code. Every standalone command, including `make-pr`, omits `model` and inherits the root session model.
 - Pin a model on a new command only when both hold: the work needs a specific tier regardless of the caller's session, and the command can run detached from its agent. Otherwise leave it out.
 - OpenCode headers omit `model` so the user's session model wins. Per-command `model` was ignored on OpenCode 0.6.4 and below; treat it as a hint, not a guarantee.
 - Pi has no model field at the prompt-template layer; model and routing live on the agent.

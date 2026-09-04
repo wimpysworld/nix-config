@@ -59,6 +59,7 @@ let
   # settings.json. The local service-tier-status extension bridges its
   # pi-fancy-footer widget events into the footer's fast-mode segment.
   piServiceTierVersion = "0.3.0";
+  rpivAskUserQuestionVersion = "2.9.0";
   rpivBtwVersion = "2.7.1";
   rpivTodoVersion = "2.7.1";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
@@ -70,6 +71,7 @@ let
   piCcHeaderSource = "npm:pi-cc-header@${piCcHeaderVersion}";
   piPrettySource = "npm:@heyhuynhgiabuu/pi-pretty@${piPrettyVersion}";
   piServiceTierSource = "npm:pi-service-tier@${piServiceTierVersion}";
+  rpivAskUserQuestionSource = "npm:@juicesharp/rpiv-ask-user-question@${rpivAskUserQuestionVersion}";
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
   piAssistant = config.agentic.assistants.pi;
@@ -419,6 +421,7 @@ let
       piCcHeaderSource
       piPrettySource
       piServiceTierSource
+      rpivAskUserQuestionSource
       rpivBtwSource
       rpivTodoSource
     ];

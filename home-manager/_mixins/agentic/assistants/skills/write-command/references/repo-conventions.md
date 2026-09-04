@@ -1,6 +1,6 @@
 # Repo conventions
 
-This repo's command estate composes through `home-manager/_mixins/agentic/assistants/compose.nix`. Authors should know the four conventions below; everything else is generic command authoring.
+This repo's command estate composes through `home-manager/_mixins/agentic/assistants/compose.nix`. Authors should know the conventions below. Everything else is generic command authoring.
 
 ## File set per command
 
@@ -42,4 +42,4 @@ This dispatches the command through Claude's Task tool instead of the `@agent` p
 
 ## Codex output
 
-The repo's current `compose.nix` does not emit per-command output for Codex. Codex coverage runs through skills; new Codex work belongs in `write-skill`.
+Codex receives every command as a command-derived skill. Agent-scoped commands use `spawn_agent` by default. Set `spawn-agent = false` to embed the owning agent prompt in the caller's context. New Codex-only reference guidance belongs in a native skill.
