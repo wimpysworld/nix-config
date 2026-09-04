@@ -288,7 +288,7 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 | `draft-commit-message` | Draft a conventional commit message for the staged or current changes                                                                    |
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body                                                                 |
 | `make-pr`              | Draft the title and body, open the PR, move Linear to In Review, and on a work PR request the work review team and apply `ai-review`     |
-| `pr-done`              | Move the merged branch's Linear issues to Done, leave local Git and GitHub state unchanged                                               |
+| `pr-done`              | Summarise the merged PR in Linear, move linked issues to Done, and safely delete its local and remote branch                             |
 
 ---
 
