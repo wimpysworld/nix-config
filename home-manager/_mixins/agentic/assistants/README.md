@@ -323,6 +323,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 | `work-order-create`              | Order a cycle's issues into waves, publish and wire the document        |
 | `work-order-update`              | Apply the user's instructions to the work order, and report drift       |
 | `work-order-plan`                | Shortlist next cycle's issues to a live capacity target from Linear     |
+| `work-order-next`                | Find the next ready implementation work in the current cycle order      |
 | `gather-review-data`             | Collect the user's own contribution evidence for a date range           |
 | `draft-self-review`              | Draft a periodic self-review from gathered evidence                     |
 | `review-open-source-attestation` | Check whether a `mono` change is safe to export, before human sign-off  |
