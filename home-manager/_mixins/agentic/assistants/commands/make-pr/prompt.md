@@ -1,6 +1,6 @@
 ## Make PR
 
-Draft the pull request title and body with the inline contract below. Then create a pull request for the current branch. On a work repository, append a reviewer orientation block before creation. A work pull request also carries a review request for the work review team and the `ai-review` label.
+Draft the pull request title and body with the inline contract below. Then create a pull request for the current branch. On a work repository, open the body with a bold why line and append a reviewer orientation block, both before creation. A work pull request also carries a review request for the work review team and the `ai-review` label.
 
 Run the pull request creation flow in the current context. Do not launch a sub-agent or a Task for any step. The current context holds the change intent, validation results, and non-goals that the pull request message needs. The watch handover after successful creation is separate and may invoke `pr-watch` when the user selects it.
 
@@ -49,7 +49,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 4. Classify the repository once, following **Work repository classification** below. Reuse that one result for the reviewer orientation, the review metadata, and the Linear workspace guard.
 5. Apply **Pull request draft** above. Preserve its fenced pull request message verbatim as the pull request source.
 6. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
-7. Append the reviewer orientation block to that temporary file, following **Reviewer orientation** below. The block is part of the pull request from the moment it exists, so never add it later by editing the pull request.
+7. Insert the bold why line at the top of that temporary file and append the reviewer orientation block to its end, following **Reviewer orientation** below. Both are part of the pull request from the moment it exists, so never add either later by editing the pull request.
 8. Push with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
 9. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a push that matches nothing reports success while doing nothing.
 10. Look for an existing pull request, following **Pull request lookup and verification** below.
@@ -57,7 +57,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 12. If no pull request exists, create one with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`.
 13. Verify the pull request URL and title on every repository. On a work repository, also verify and repair the review metadata, following **Work review metadata** below. Never report success from `gh pr create` alone.
 14. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
-15. Report the verified pull request URL, title, whether the orientation block was included, the review metadata outcome on a work repository, each Linear outcome, and any uncommitted files left out.
+15. Report the verified pull request URL, title, whether the why line and the orientation block were included, the review metadata outcome on a work repository, each Linear outcome, and any uncommitted files left out.
 
 ### Work repository classification
 
@@ -69,13 +69,17 @@ Classify once, at the step after branch inspection, and reuse that one result. T
 
 Work pull requests only, as decided in **Work repository classification** above. A personal or community pull request gets no block and no mention of one.
 
+Insert the why line as the first line of the body file, followed by a blank line, so the benefit reads before anything else:
+
+```markdown
+**Why this change exists and why a reviewer should care, one line.**
+```
+
 Append this block to the end of the body file:
 
 ```markdown
 <details>
 <summary>Reviewer orientation</summary>
-
-**Why this change exists and why a reviewer should care, one line.**
 
 - **Out of scope** - what it deliberately leaves alone, and links to the follow-on issues where they exist.
 - **Verified** - what was run and what passed.
@@ -86,7 +90,7 @@ Append this block to the end of the body file:
 
 Filling it in:
 
-- The first line is bold, carries no label, and says why the change exists, not what it does. The diff says what. Write what breaks or stays broken without it, so a reviewer knows why it is worth their time.
+- The why line is bold, carries no label, and says why the change exists, not what it does. The diff says what. Write what breaks or stays broken without it, so a reviewer knows why it is worth their time.
 - Write orientation, not instructions. Never write a direction aimed at a reviewer or their tooling, such as what to look at or what to skip. Facts let a reviewer decide; instructions invite them to stop thinking.
 - Summarise, never paste. A task written by `create-task` carries a `Non-goals` heading that maps onto `Out of scope`. Restate it in the reviewer's terms, one line. Never copy the issue body across.
 - `Out of scope` names follow-on work only where a tracked issue exists. Link it the same way as `Tracking`. Say nothing where no follow-on is tracked.
@@ -94,7 +98,7 @@ Filling it in:
 - Every issue is a link, and its text is the bare key. For Linear, write `[FUL-1](https://linear.app/<workspace>/issue/FUL-1)`: that URL resolves, while the slugged URL Linear hands you ends in the issue title and publishes it on a repository that may be public. Never paste a slugged Linear URL. For a GitHub issue in this repository write `#123`, and `owner/repo#123` for one elsewhere; GitHub links both itself, so neither takes a URL.
 - Derive `Verified` from the branch's committed diff and what this session ran, not from the issue. Never claim a check that was not run.
 - Omit an empty bullet. Never stub one with "N/A" or "None".
-- Skip the whole block when the first line would restate the pull request title and no bullet adds anything. Noise trains reviewers to collapse it unread. Say in the report that it was skipped, and why.
+- Omit the why line when it would only restate the pull request title. Skip the details block when no bullet adds anything; noise trains reviewers to collapse it unread. Say in the report what was skipped, and why.
 
 ### Pull request lookup and verification
 
@@ -111,7 +115,7 @@ These rules apply to work, personal, and community repositories.
 
 Work pull requests only, as decided in **Work repository classification** above. On a personal or community repository, run `gh pr create` with the existing arguments alone when creation is needed. Name no team and no label, look neither one up, and report neither one. Skip the rest of this section.
 
-The review request and the label are repository metadata. Never write either into the pull request body. The reviewer orientation block stands on its own and does not change.
+The review request and the label are repository metadata. Never write either into the pull request body. The why line and the reviewer orientation block stand on their own and do not change.
 
 Resolving the team handle:
 
@@ -166,7 +170,7 @@ Return this report to the user:
 ````markdown
 Pull request: <url>
 Title: <title>
-Reviewer orientation: <included, or skipped and the reason>
+Reviewer orientation: <why line and block included, or what was skipped and the reason>
 Review requested: fulfillment-automation-team-write, applied or failed with reason
 Label: ai-review, applied or failed with reason
 Linear:
