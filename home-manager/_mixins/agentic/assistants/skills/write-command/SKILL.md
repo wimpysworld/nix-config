@@ -9,18 +9,19 @@ Author and maintain slash commands across Claude Code, OpenCode, Pi prompt templ
 
 ## Decide first
 
-- **Shim** vs **standalone** vs **standalone-with-format** vs **split into two**. A shim is a 3-8 line body that names the flow and loads a skill. A standalone command carries its own one-verb body. Add an inline output format only when it is non-trivial and not reused.
-- **Single-purpose output-format commands stay standalone.** Do not refactor a working standalone-with-format command into a shim speculatively; only convert once a sibling command appears that would share ≥30% of the body.
-- **Command** vs **skill**. Commands are user-invoked and deterministic; skills are description-triggered and reusable. If the workflow needs an argument and a fixed name, build a shim that loads a skill. If the workflow has no argument and should auto-load on description, build a skill instead.
-- **Shared doctrine extraction.** If a body copies ≥30% from another command, lift the shared part into a skill and reduce both commands to shims.
+- **Long command choice.** Before editing, when a command is likely to exceed 100 lines, pause and ask one focused question: keep it inline, or use a thin command plus a skill for reusable guidance? Recommend based on reuse, not length alone. Keep command-specific guidance inline; recommend a skill when the guidance has independent reuse. Honour the user's choice.
+- **Shim** vs **standalone** vs **standalone-with-format**. A shim is a 3-8 line body that names the flow and loads a skill. A standalone command carries its own one-verb body. Add an inline output format only when it is non-trivial and not reused.
+- **Single-purpose output-format commands stay standalone.** Do not refactor a working standalone-with-format command into a shim speculatively. Recommend extraction when a sibling command would share ≥30% of the body or the guidance has independent reuse.
+- **Command** vs **skill**. Commands are user-invoked and deterministic; skills are description-triggered and reusable. If the workflow needs an argument and a fixed name, use a command; pair it with a skill when the guidance is reusable. If the workflow has no argument and should auto-load on description, build a skill instead.
+- **Shared doctrine extraction.** If a body copies ≥30% from another command, recommend lifting the shared part into a skill and reducing both commands to shims. This advice does not override an explicit choice to keep the command inline.
 
 Length bands:
 
-| Form                           | Target lines | Hard cap |
-| ------------------------------ | ------------ | -------- |
-| Shim (loads a skill)           | 4-6          | 10       |
-| Trivial standalone (no format) | 1-2          | 3        |
-| Standalone with output format  | 30-60        | 80       |
+| Form                           | Target lines | Limit or decision |
+| ------------------------------ | ------------ | ----------------- |
+| Shim (loads a skill)           | 4-6          | Hard cap: 10      |
+| Trivial standalone (no format) | 1-2          | Hard cap: 3       |
+| Standalone with output format  | 30-60        | Ask above 100     |
 
 ## Frontmatter (portable, required)
 
@@ -131,7 +132,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 ## Update flow
 
 1. Read `prompt.md`, `description.txt`, and every `header.*.yaml`.
-2. Identify the form band (shim / standalone / standalone-with-format) and confirm length is within the cap.
+2. Identify the form band (shim / standalone / standalone-with-format). Enforce the shim and trivial caps; apply the long command choice before editing a standalone-with-format command.
 3. Diagnose: argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
 4. Edit narrowly. Preserve `description.txt` and `argument-hint` unless they are wrong. Do not rewrite a working body.
 5. If a shim and an existing skill both grew the same doctrine, cut the shim back to the skill body's surface.
