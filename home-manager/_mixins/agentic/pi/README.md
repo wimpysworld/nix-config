@@ -9,7 +9,7 @@ The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, match
 - Adds a `pi` wrapper to `home.packages`
 - Adds `pi-fenced`, which runs the standard `pi` wrapper under the shared [Fence](../fence) permission and isolation policy
 - Gates installation with `noughtyLib.userHasTag "developer"`
-- Exports `ANTHROPIC_API_KEY` from the sops-nix runtime secret path before execing the Nix-provided Pi binary
+- Exports `ANTHROPIC_API_KEY` from the sops-nix runtime secret path only on personal physical computers
 - Exports `GEMINI_API_KEY` (and `GOOGLE_GENERATIVE_AI_API_KEY`) and `BASETEN_API_KEY` from sops-nix runtime secret paths when present
 - Exports `ANTHROPIC_OAUTH_TOKEN` from Claude Code's local OAuth credentials when available, so quota extensions can query Anthropic plan windows
 - Adds a `pi-npm` wrapper backed by Nixpkgs `nodejs`, with npm's global prefix redirected to `~/.pi/agent/npm-global` and routine npm advisory output disabled
@@ -237,16 +237,17 @@ This module writes `~/.pi/agent/themes/catppuccin-mocha.json` from the repositor
 
 `secrets/ai.yaml` provides `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `BASETEN_API_KEY`.
 
-The `pi` wrapper reads `config.sops.secrets.ANTHROPIC_API_KEY.path` at runtime and exports the key only for the Pi process. When Claude Code OAuth credentials exist locally, it also exports `ANTHROPIC_OAUTH_TOKEN` for Pi's quota extensions. The managed `settings.json` and all managed Pi resource files contain no literal secret values.
+On personal physical computers, the `pi` wrapper reads `config.sops.secrets.ANTHROPIC_API_KEY.path` at runtime and exports the key only for the Pi process. On other hosts, the evaluated wrapper contains neither that secret path nor the `ANTHROPIC_API_KEY` export. When Claude Code OAuth credentials exist locally, every host still exports `ANTHROPIC_OAUTH_TOKEN` for Pi's quota extensions. The managed `settings.json` and all managed Pi resource files contain no literal secret values.
 
 This module does not manage `~/.pi/agent/auth.json`. Pi can still create that file through `/login` for subscription providers or manually entered API keys.
 
 ## Fenced mode
 
 Use `pi-fenced` for the Fence-isolated entry point. It runs the same Home
-Manager-managed `pi` wrapper as plain `pi`, so the Anthropic key handling and
-Pi configuration path remain identical while Fence provides the managed
-filesystem, network, and command policy.
+Manager-managed `pi` wrapper as plain `pi`, so both entry points use the same
+host gate and runtime secret read. Fence receives no secret value in its
+arguments. Fence still provides the managed filesystem, network, and command
+policy.
 
 ## MCP
 

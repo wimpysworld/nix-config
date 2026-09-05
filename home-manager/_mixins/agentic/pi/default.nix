@@ -77,6 +77,16 @@ let
   piAssistant = config.agentic.assistants.pi;
   communicationRules = config.agentic.communicationRules;
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
+  anthropicApiKeyShell = lib.optionalString config.agentic.personalComputer ''
+    anthropic_api_key_path="${config.sops.secrets.ANTHROPIC_API_KEY.path}"
+    if [ ! -r "$anthropic_api_key_path" ]; then
+      echo "pi: Anthropic API key secret is missing or unreadable: $anthropic_api_key_path" >&2
+      exit 1
+    fi
+
+    ANTHROPIC_API_KEY="$(cat "$anthropic_api_key_path")"
+    export ANTHROPIC_API_KEY
+  '';
   piThemeName = "catppuccin-${catppuccinPalette.flavor}";
   piCatppuccinTheme =
     let
@@ -207,14 +217,7 @@ let
       # Reinforce telemetry-off at runtime; the env var overrides the setting.
       export PI_TELEMETRY=0
 
-      anthropic_api_key_path="${config.sops.secrets.ANTHROPIC_API_KEY.path}"
-      if [ ! -r "$anthropic_api_key_path" ]; then
-        echo "pi: Anthropic API key secret is missing or unreadable: $anthropic_api_key_path" >&2
-        exit 1
-      fi
-
-      ANTHROPIC_API_KEY="$(cat "$anthropic_api_key_path")"
-      export ANTHROPIC_API_KEY
+      ${anthropicApiKeyShell}
 
       # pi-sub-core reads Anthropic quota data from the OAuth usage endpoint.
       # Reuse Claude Code's login token when available; API keys cannot query
@@ -741,11 +744,6 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       message = "The Pi Herdr integration must match Herdr ${pkgs.herdr.version}.";
     }
   ];
-
-  sops.secrets.ANTHROPIC_API_KEY = {
-    sopsFile = aiSopsFile;
-    mode = "0400";
-  };
 
   sops.secrets.GEMINI_API_KEY = {
     sopsFile = aiSopsFile;

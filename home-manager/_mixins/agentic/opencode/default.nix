@@ -27,6 +27,20 @@ let
   # This avoids upstream source build issues entirely.
   opencodeUpstreamPackage = inputs.llm-agents.packages.${system}.opencode;
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
+  opencodeApiKeyShell = ''
+    if [ -r "${geminiKeyPath}" ]; then
+      GEMINI_API_KEY="$(cat "${geminiKeyPath}")"
+      export GEMINI_API_KEY
+      GOOGLE_GENERATIVE_AI_API_KEY="$GEMINI_API_KEY"
+      export GOOGLE_GENERATIVE_AI_API_KEY
+    fi
+  ''
+  + lib.optionalString config.agentic.personalComputer ''
+    if [ -r "${config.sops.secrets.ANTHROPIC_API_KEY.path}" ]; then
+      ANTHROPIC_API_KEY="$(cat "${config.sops.secrets.ANTHROPIC_API_KEY.path}")"
+      export ANTHROPIC_API_KEY
+    fi
+  '';
   communicationRules = config.agentic.communicationRules;
   opencodeTripwireCorrectionPromptFile = pkgs.writeTextFile {
     name = "opencode-communication-rules-correction-prompt.md";
@@ -51,33 +65,27 @@ let
           "@tripwireCorrectionPrompt@" = "${opencodeTripwireCorrectionPromptFile}";
         };
       };
-  # Wrap opencode so its process inherits Gemini env vars sourced from sops at
-  # invocation time. opencode's loader recognises GEMINI_API_KEY; the
-  # underlying @ai-sdk/google SDK reads GOOGLE_GENERATIVE_AI_API_KEY. Export
-  # both so the Google provider works regardless of which path opencode
-  # follows. The read is non-fatal because opencode is multi-provider and
-  # must still launch for non-Google providers when the key is absent.
+  # Wrap opencode so its process inherits API keys sourced from sops at
+  # invocation time. The Anthropic key is available only on personal physical
+  # computers. OpenCode's loader recognises GEMINI_API_KEY; the underlying
+  # @ai-sdk/google SDK reads GOOGLE_GENERATIVE_AI_API_KEY. Export both Google
+  # names so the provider works through either path. The reads are non-fatal
+  # because OpenCode is multi-provider and must still launch when a key is
+  # absent.
   opencodePackage = pkgs.symlinkJoin {
     name = "opencode-wrapped-${opencodeUpstreamPackage.version or "unknown"}";
     paths = [ opencodeUpstreamPackage ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram $out/bin/opencode \
-        --run '
-          if [ -r "${geminiKeyPath}" ]; then
-            GEMINI_API_KEY="$(cat "${geminiKeyPath}")"
-            export GEMINI_API_KEY
-            GOOGLE_GENERATIVE_AI_API_KEY="$GEMINI_API_KEY"
-            export GOOGLE_GENERATIVE_AI_API_KEY
-          fi
-        '
+        --run ${lib.escapeShellArg opencodeApiKeyShell}
     '';
     inherit (opencodeUpstreamPackage) meta;
     passthru = (opencodeUpstreamPackage.passthru or { }) // {
       unwrapped = opencodeUpstreamPackage;
     };
   };
-  # Resume the most recent session by default. The gemini-key env wrapper stays
+  # Resume the most recent session by default. The API-key env wrapper stays
   # in opencodePackage; this launcher only injects `--continue` for interactive
   # launches and execs the wrapped binary. Resume is skipped for subcommands
   # (run, mcp, serve, ...), help/version, and when the caller already selects a
@@ -146,6 +154,10 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      # Read keys before entering Fence and pass them through the inherited
+      # environment. This keeps their values out of Fence's command arguments.
+      ${opencodeApiKeyShell}
+
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
         export HERDR_AGENT=opencode
         export OPENCODE_PERMISSION='{"*":"allow","webfetch":"deny","websearch":"deny"}'

@@ -421,6 +421,29 @@ let
     else
       claudePackage;
 
+  # Read the managed API key only when a Claude Code process starts. The
+  # wrapper does not put the key in a Nix value, a session variable, or Fence
+  # arguments. Work hosts skip this step and keep subscription authentication.
+  claudePackageWithCredentials =
+    if config.agentic.personalComputer then
+      pkgs.writeShellApplication {
+        name = "claude";
+        text = ''
+          anthropic_api_key_path=${lib.escapeShellArg config.sops.secrets.ANTHROPIC_API_KEY.path}
+          if [[ ! -r "$anthropic_api_key_path" ]]; then
+            echo "claude: Anthropic API key secret is missing or unreadable: $anthropic_api_key_path" >&2
+            exit 1
+          fi
+
+          ANTHROPIC_API_KEY="$(< "$anthropic_api_key_path")"
+          export ANTHROPIC_API_KEY
+
+          exec ${lib.escapeShellArg (lib.getExe' claudePackageWithLsp "claude")} "$@"
+        '';
+      }
+    else
+      claudePackageWithLsp;
+
   # Launch defaults shared by the plain and fenced `claude` wrappers. Builds a
   # `claude_defaults` bash array holding the Opus model, high effort, and, when
   # a prior session exists for the current directory, a resume of the newest
@@ -519,7 +542,7 @@ let
           ${lib.escapeShellArg sharedMcpConfigPath}
           ${lib.escapeShellArg renderedMcpConfigPath}
         )
-        claude=${lib.escapeShellArg (lib.getExe' claudePackageWithLsp "claude")}
+        claude=${lib.escapeShellArg (lib.getExe' claudePackageWithCredentials "claude")}
 
         ${claudeEnvironmentExports}
 
@@ -616,16 +639,16 @@ let
       case "$width" in
         "" | *[!0-9]*)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
         *)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithLsp "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
       esac

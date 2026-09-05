@@ -6,6 +6,14 @@ Home Manager enables this module on workstations. Default servers keep Codex, Pi
 
 Agents, commands, skills, and global instructions are managed separately in the **[assistants module](../assistants/README.md)** and composed for Claude Code, OpenCode, Codex, and Pi Agent by the assistants mixin.
 
+## Authentication
+
+On personal physical computers, the `claude` launch wrapper reads the managed `ANTHROPIC_API_KEY` secret when Claude Code starts. The wrapper exports the key only to the Claude Code process and its children.
+
+The normal and fenced launch paths use the same credential wrapper. The fenced path reads the secret inside Fence, so the key does not enter Fence arguments.
+
+Work hosts do not receive the API key and keep Claude subscription authentication. The Claude ACP adapter does not use this wrapper.
+
 ## Package selection
 
 The package source varies by platform:

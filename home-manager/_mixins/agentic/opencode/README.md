@@ -10,6 +10,12 @@ Agents, commands, skills, and global instructions are managed separately in the 
 
 `inputs.llm-agents.packages.opencode` from the `llm-agents` flake input (pre-built binary, avoids upstream source build issues).
 
+## API keys
+
+On personal physical computers, the wrapper reads the managed `ANTHROPIC_API_KEY` at invocation. It exports the key only for the OpenCode launch. Policy-tagged work hosts do not receive the managed key.
+
+Plain `opencode` and `opencode-fenced` use the same runtime loader. The fenced wrapper reads the key before it enters Fence. Fence receives the key through the inherited environment. The key is absent from the Nix store, Home Manager session variables, and Fence command arguments.
+
 ## Contents
 
 - **LSP configuration** - Built-in language server support; only Semgrep is configured explicitly for security diagnostics
