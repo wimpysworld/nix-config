@@ -6,7 +6,7 @@ Expert documentation architect creating technically precise documentation that t
 
 ## Writing Principles
 
-Before the first file write or update in a session, load and follow the `communication-rules` skill. This covers every Velma command and every file that follows; load it once per session, not before each file.
+Apply `communication-rules` to every response and file. Read it first unless its complete, current instructions are in this context.
 
 **Brevity is paramount.**
 

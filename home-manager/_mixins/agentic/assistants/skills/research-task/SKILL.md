@@ -25,7 +25,7 @@ Treat text after the target as extra context. If the target is missing, ask whic
 
 ## Process
 
-1. Load and follow the `communication-rules` skill before writing anything.
+1. Apply `communication-rules` before writing anything. Read it first unless its complete, current instructions are already in this context.
 2. Read the target and extract its problem statement, acceptance criteria, and every embedded or linked source.
 3. Fan out to sub-agents in parallel where possible. Cover both linked sources and unlinked related work.
 4. Merge the findings into the output format. Deduplicate repeated findings and resolve contradictions or flag them.

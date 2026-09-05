@@ -10,8 +10,8 @@ Human invocation of this command is the user's consent to post that one line to 
 
 ### Process
 
-- Load and follow the `communication-rules` skill before posting.
-- Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name. The `:wtb2: <pr-url> - <pr-title>` format is fixed, so apply the skill to anything you add and never to the line itself.
+- Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before posting.
+- Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. It governs the structure of text published under the user's name. The `:wtb2: <pr-url> - <pr-title>` format is fixed, so apply the skill to anything you add and never to the line itself.
 - Read the title with `gh pr view`. Never use raw `gh api`; use `gh-api-safe` for raw reads.
 - Load the `slack` skill and follow it. It holds the posting rules and the `slack-post` target forms.
 - `:wtb2:` is a workspace emote. Reproduce it verbatim, both colons: `:wtb2` alone is text. Never substitute a Unicode emoji.

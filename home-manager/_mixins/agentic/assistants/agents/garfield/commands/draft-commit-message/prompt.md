@@ -26,8 +26,8 @@ NEVER execute while drafting:
 
 ### Process
 
-1. Load and follow the `communication-rules` skill before drafting
-2. Load the `contribution-voice` skill before drafting anything. It governs the structure of text published under the user's name. If the platform cannot load a skill, continue with the rules restated below
+1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before drafting
+2. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it before drafting anything. It governs the structure of text published under the user's name. If the platform cannot load a skill, continue with the rules restated below
 3. When invoked inline, reuse known intent, conventions, status and staged evidence. Run allowed commands only for missing context. For standalone drafting, start with `git status --short --branch` and `git diff --staged`.
 4. If nothing is staged, use `git diff` and read relevant untracked files to describe the current changes. If there are no changes, report that there is nothing to draft.
 5. If Garfield's commit rules are absent from context, read its agent prompt without launching an agent. Apply its Type Selection, Scope Selection and commit-message Constraints. Reuse known scope conventions instead of repeating history discovery.

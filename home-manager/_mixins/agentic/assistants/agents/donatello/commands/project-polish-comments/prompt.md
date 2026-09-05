@@ -6,8 +6,8 @@ Default $1 to the working tree's changed files; if there are none, the whole tre
 
 ### Workflow
 
-1. Load and follow the `communication-rules` skill before writing anything
-2. Load the `contribution-voice` skill and follow it. Comments ship in the repository under the user's name, and its cut pass is what the Improve rules below ask for. Name the skill in every sub-agent packet, because a sub-agent runs with fresh context and will not load it otherwise
+1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before writing anything
+2. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. Comments ship in the repository under the user's name, and its cut pass is what the Improve rules below ask for. Name the skill in every sub-agent packet. Require its complete, current instructions in each worker's own context before dependent work
 3. Resolve $1 to a file set; apply $2 as a filter
 4. If the set spans multiple directories: Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same comment-polish pass over its own directory; the parent aggregates the per-file counts
 

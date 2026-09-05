@@ -8,7 +8,7 @@ Load the `gh` skill before any GitHub access and follow its GitHub policy. This 
 
 ### Pull request draft
 
-Before drafting, load and follow the `communication-rules` and `contribution-voice` skills. If the platform cannot load a skill, apply this contract directly.
+Before drafting, ensure that this context contains the complete, current `communication-rules` and `contribution-voice` instructions. Read either skill whose instructions are missing, then apply both. If the platform cannot load a skill, apply this contract directly.
 
 Draft from the committed changes already inspected in `main..HEAD` and the bounded history of `main`. Select one Conventional Commit type from the dominant change intent across the branch:
 

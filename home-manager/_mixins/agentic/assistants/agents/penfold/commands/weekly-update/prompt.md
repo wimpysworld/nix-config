@@ -6,7 +6,7 @@ This command serves work only: the `FUL` team. Skip issues from any other team.
 
 Input: `$ARGUMENTS` is the Slack channel to post to. If it is blank, stop and ask for the channel before doing anything else.
 
-Load the `contribution-voice` skill before writing any update body or Slack message. All of it publishes under the user's name. Resolve the user's first name at run time from the authenticated Linear identity. Never hard-code a name or an identifier.
+Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it before writing any update body or Slack message. All of it publishes under the user's name. Resolve the user's first name at run time from the authenticated Linear identity. Never hard-code a name or an identifier.
 
 ### Process
 

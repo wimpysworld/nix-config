@@ -1,1 +1,1 @@
-$ARGUMENTS That is a question, not an instruction: change nothing and start no work. Load and follow the `communication-rules` skill, answer directly, then yield your turn.
+$ARGUMENTS That is a question, not an instruction: change nothing and start no work. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it, answer directly, then yield your turn.

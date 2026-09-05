@@ -8,7 +8,7 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 
 ### Operating rules
 
-1. Load and follow the `communication-rules` skill before writing anything.
+1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before writing anything.
 2. Use the report path derived before fan-out.
 3. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
 

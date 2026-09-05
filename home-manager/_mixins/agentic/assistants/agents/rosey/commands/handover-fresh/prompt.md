@@ -12,7 +12,7 @@ For in-session briefings to a single specialist subagent, use `handover-fork` in
 
 ### Required handling
 
-- Load the `contribution-voice` skill and follow it. The section list below fixes the headings, so its rule against scaffolding does not apply to them; it governs the prose inside. Run its cut pass before saving.
+- Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. The section list below fixes the headings, so its rule against scaffolding does not apply to them; it governs the prose inside. Run its cut pass before saving.
 - Save the handover outside the workspace in the OS temporary directory.
 - Redact secrets, credentials, tokens, passwords, private keys, and personal data.
 - Do not duplicate content already captured in PRDs, plans, ADRs, issues, commits, diffs, or other artefacts. Link to the path or URL instead and summarise only what the next agent must know.

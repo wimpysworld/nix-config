@@ -10,7 +10,7 @@ Verify the author's response to a completed review. Keep GitHub access read-only
 
 ## Resolve the target and prior report
 
-1. Load and follow `communication-rules`, `contribution-voice`, and `review-report-path`.
+1. Apply `communication-rules`, `contribution-voice`, and `review-report-path`. Read each first unless its complete, current instructions are already in this context.
 2. Resolve the input as an exact final report path, a `run-*` ID, or a review target. Blank means the current worktree.
 3. For an exact path, derive the project from the current repository. Resolve the report root and file parent with POSIX `cd -P` and `pwd -P`, without `realpath` or `readlink -f`. Accept only a regular, non-symbolic-link file under `<physical-report-root>/<project>/<target>/run-*/`, with single directory components for `<target>` and `run-*`. Reject paths outside that tree and `findings-*.md`.
 4. For a target, derive the exact project and target directory with `review-report-path`. If the target can resolve to more than one pull request, branch, worktree, or commit, list the choices and ask the user to select one.
@@ -98,6 +98,6 @@ Severity bar: <original bar>
 
 Put each `partly resolved` or `unresolved` prior defect in `Findings`. Also put response-caused defects and permitted serious missed defects there. Keep resolved and withdrawn items only in `Prior Findings`, so `draft-code-review` continues to read `Findings` only.
 
-Load and enforce `contribution-voice` when wording every actionable finding. Each finding is at most three sentences: the defect, the proof with one `file:line`, and the fix. Do not draft or post a GitHub comment, state a review verdict, or mutate GitHub.
+Apply `contribution-voice` when wording every actionable finding. Each finding is at most three sentences: the defect, the proof with one `file:line`, and the fix. Do not draft or post a GitHub comment, state a review verdict, or mutate GitHub.
 
 Return the conclusion, each finding that needs action, and the report path.

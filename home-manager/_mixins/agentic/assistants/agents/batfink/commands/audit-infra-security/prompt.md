@@ -13,7 +13,7 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 ### Flow
 
 1. **Prepare**
-   - Load and follow the `communication-rules` skill before writing anything.
+   - Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before writing anything.
    - Use the report path derived before fan-out.
 2. **Fan-out**
    - Delegate to a wide fan-out of sub-agents, in parallel where possible.

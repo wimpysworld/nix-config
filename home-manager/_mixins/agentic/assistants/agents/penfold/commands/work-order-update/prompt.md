@@ -6,7 +6,7 @@ This command serves work only: the `FUL` team by default. Skip issues from any o
 
 Input: `$ARGUMENTS` is the instructions, optionally naming a cycle or team. If the instructions are blank, stop and ask for them. When no cycle is named, resolve the current cycle. Resolve the user at run time from the authenticated Linear identity; never hard-code an identifier.
 
-Load the `contribution-voice` skill before writing any document patch or comment. All of it publishes under the user's name. Load the `sizing` skill for the size scale; never invent one, and never estimate in days or weeks. Load the `work-order-format` skill for the document contract; every patch preserves it.
+Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it before writing any document patch or comment. All of it publishes under the user's name. Load the `sizing` skill for the size scale; never invent one, and never estimate in days or weeks. Load the `work-order-format` skill for the document contract; every patch preserves it.
 
 ### Process
 

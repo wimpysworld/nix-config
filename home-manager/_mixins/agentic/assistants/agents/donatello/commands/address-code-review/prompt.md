@@ -51,7 +51,7 @@ Say defer or investigate in the rationale when that is the outcome. Both change 
 
 A reply must be true when the reviewer reads it, so the code lands before the words.
 
-1. Load and follow the `communication-rules` skill before starting
+1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before starting
 2. Filter the threads, then judge every finding
 3. Group the accepted findings by the files they touch. Findings that touch the same file run in sequence, never in parallel, or their edits clobber each other. Different groups may run in parallel
 4. Dispatch one fresh sub-agent per finding, in that order. Never hand two findings to one sub-agent. Fresh context per finding keeps attention high and changes small

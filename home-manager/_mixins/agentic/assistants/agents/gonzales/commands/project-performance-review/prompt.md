@@ -10,7 +10,7 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 
 ### Process
 
-1. Load and follow the `communication-rules` skill before writing anything
+1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before writing anything
 2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same performance analysis over its own directory; the parent aggregates the findings
 
    The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.

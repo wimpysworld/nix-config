@@ -74,7 +74,7 @@ One project name, used in both workspaces: `Triage and reduce encountered CI fla
 
 Flakes no longer go to the Linear project whose name matches the repository name. That rule still holds for anything else this command files.
 
-Load the `contribution-voice` skill before writing that comment, and name it in the sub-agent packet if a sub-agent writes it. The comment publishes under the user's name. State the check, the evidence that it is flaky, and the head SHA. Nothing else.
+Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it before writing that comment, and name it in the sub-agent packet if a sub-agent writes it. The comment publishes under the user's name. State the check, the evidence that it is flaky, and the head SHA. Nothing else.
 
 Workspace guard: the connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL`, Fulfillment Automation, is visible. The guard picks the destination, never the project name. File work into the `FUL` team and personal into the `WW` team. One shared project name is still two projects in two workspaces, so keep this guard. If the repository classification and the visible instance disagree, skip the Linear step, report one line saying the profile does not match the repository, and carry on with the rest of the loop. Never file work into the personal workspace or the reverse.
 

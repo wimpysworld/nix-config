@@ -38,8 +38,8 @@ Where `slack-post` is missing, print the command for the operator to run.
 
 **Reply in the thread when the target is a thread.**
 
-**Load and follow the `communication-rules` skill before drafting.**
+**Apply `communication-rules` before drafting.** Read it first unless its complete, current instructions are already in this context.
 
-**Load `contribution-voice` before drafting.** Anything posted publishes under the user's name. Run its cut pass, then cut again for Slack.
+**Apply `contribution-voice` before drafting.** Read it first unless its complete, current instructions are already in this context. Anything posted publishes under the user's name. Run its cut pass, then cut again for Slack.
 
 **Report the `ts` that `slack-post` prints.**

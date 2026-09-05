@@ -29,8 +29,8 @@ NEVER execute while drafting:
 
 ### Process
 
-1. Load and follow the `communication-rules` skill before drafting
-2. Load the `contribution-voice` skill and follow it. It governs the structure of text published under the user's name
+1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before drafting
+2. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. It governs the structure of text published under the user's name
 3. Load and follow the `review-report-path` skill. Use `${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/` as the report root
 4. Resolve the report from `$ARGUMENTS`:
    - For an exact report path, derive `<project>` from the current repository:

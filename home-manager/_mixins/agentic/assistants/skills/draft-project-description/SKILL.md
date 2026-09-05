@@ -17,12 +17,12 @@ Rewrite the whole description. Do not merge prose into the current description.
 
 ## Process
 
-1. Load and follow `communication-rules`.
+1. Apply `communication-rules`. Read it first unless its complete, current instructions are already in this context.
 2. Resolve the project by fuzzy matching the supplied name, ID, or slug against workspace projects. Read the resolved project and its current description.
 3. Show the match and ask the user to confirm it. If several projects match, list them and ask which one. If none match, say so and stop. This is the only approval gate. Ask nothing after confirmation.
 4. Read every issue in the project, including sub-issues. Derive the outcomes and boundaries from the complete membership.
 5. Find any open LensAgent coaching issue for the project. Address every gap it names across name quality, what is accomplished, quantitative measure, and precise date. For a missing number, find it in the issues or name the issue that will supply it.
-6. Load `contribution-voice` and follow it for the prose inside the required headings. Run its cut pass.
+6. Apply `contribution-voice` to the prose inside the required headings. Read it first unless its complete, current instructions are already in this context. Run its cut pass.
 7. Compose the replacement description with the template below.
 8. Show the change summary, then write the authorised project fields without another approval request.
 9. Report the project changed and any manual steps left for the operator.

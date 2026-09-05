@@ -1,1 +1,1 @@
-$ARGUMENTS Load and follow the `communication-rules` skill before answering. Then give me your single recommended solution and the reasoning for it. No menu of options. If it's genuinely close, say so in one line and pick anyway.
+$ARGUMENTS Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before answering. Then give me your single recommended solution and the reasoning for it. No menu of options. If it's genuinely close, say so in one line and pick anyway.

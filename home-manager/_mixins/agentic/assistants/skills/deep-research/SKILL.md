@@ -39,7 +39,7 @@ Report the plan path only when a file was created.
 
 **1. Prepare**
 
-Load and follow the `communication-rules` skill before writing anything.
+Apply `communication-rules` before writing anything. Read it first unless its complete, current instructions are already in this context.
 
 **2. Plan**
 

@@ -37,10 +37,10 @@ Load the `review-report-path` skill and derive `<project>`, `<target>`, and a ne
 
 ### Process
 
-1. Load and follow the `communication-rules` skill before writing anything.
-2. Load the `contribution-voice` skill and follow it when wording findings. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
+1. Apply `communication-rules` before writing anything. Read it first unless its complete, current instructions are already in this context.
+2. Apply `contribution-voice` when wording findings. Read it first unless its complete, current instructions are already in this context. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
-4. Load the `review-report-path` skill, create a new run directory, and derive the report path from the resolved target. Do this before any worker starts, so fallback findings use durable storage.
+4. Apply `review-report-path`, create a new run directory, and derive the report path from the resolved target. Do this before any worker starts, so fallback findings use durable storage.
 5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's fallback findings file in its packet, `<run-dir>/findings-<concern>-<worker-id>.md`, so no two collide. Never reuse a fallback path.
 6. Re-request once from any sub-agent that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A sub-agent that fails twice is your own work to finish, to the same standard, not a gap in the report.
 7. Pressure-test every blocking finding, per **Adversarial pressure-test**.
@@ -65,7 +65,7 @@ Each sub-agent's delegation packet must instruct it to:
 - Read the surrounding code in the working tree to understand the change in context, within its assigned concern or area.
 - Where practical, verify conclusions by building and running the relevant tests on the reviewed code (for example in a temporary worktree), restoring repo state afterwards. Distinguish environmental test failures (also failing on the base branch) from failures the change caused.
 - Apply the lens and severity bar the caller set. Do not widen them.
-- Load `contribution-voice` and word every finding by it.
+- Apply `contribution-voice` to every finding. Read it first unless its complete, current instructions are already in the worker's context.
 - Return its findings in its final reply. The reply is the deliverable: a reply that does not contain the findings is a failed task, whatever else it did. Each finding carries `file:line` references, severity, and why it matters.
 - Reply "my area is clean" when it is. That is a complete, valid reply and still has to be sent.
 - Copy the findings to the file its packet names as a fallback, never as the primary channel. Where the Write tool is refused, a shell heredoc writes the file instead. Never retry or fight a refused write, and never let a blocked write stop the reply.
@@ -81,6 +81,6 @@ This step stops false positives reaching a human. Do not skip it and do not soft
 
 - British English throughout. Lead with conclusions. No filler.
 - Never delete a review run, report, or fallback findings file. Never overwrite one with a later run.
-- Every sub-agent and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require it, because a sub-agent runs with fresh context and will not load it otherwise.
+- Every sub-agent and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require its complete, current instructions in that worker's context.
 - A finding is three sentences at most: the defect, the proof, the fix. One `file:line` reference is the proof; a second instance of the same defect adds nothing. No headings inside a finding, no restating the diff back at the reader, and no paragraph explaining that the surrounding code is correct. A finding that runs to five paragraphs is over budget, whatever its severity.
 - The report is the only deliverable. Do not draft a review comment and do not state a verdict; `draft-code-review` owns that.

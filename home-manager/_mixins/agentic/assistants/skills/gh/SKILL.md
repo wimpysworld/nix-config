@@ -23,8 +23,9 @@ those for the operator to run in an unfenced shell. Raw reads go through
 ## Body text policy
 
 Every command below that carries a `--body` or `--body-file` publishes
-under the user's name. Load the `contribution-voice` skill and follow it
-before writing that text. It governs the structure: length, layout,
+under the user's name. Apply `contribution-voice` before writing that text.
+Read it first unless its complete, current instructions are already in this context.
+It governs the structure: length, layout,
 sign-offs, and the cut pass.
 
 This covers `gh pr create`, `gh pr comment`, `gh pr review`,

@@ -21,8 +21,8 @@ Never run `gh issue create`, `comment`, `edit`, `close`, `delete`, `lock`, `unlo
 
 ## Process
 
-1. Load and follow the `communication-rules` skill.
-2. Load `contribution-voice` and follow it. It owns the common structure and cut pass for text published under the user's name.
+1. Apply `communication-rules`. Read it first unless its complete, current instructions are already in this context.
+2. Apply `contribution-voice`. Read it first unless its complete, current instructions are already in this context. It owns the common structure and cut pass for text published under the user's name.
 3. Load `how-to-contribute` and apply it to the repository. If the project requires prior discussion, bans AI-assisted contributions, or contains an AI trap, report the policy and stop.
 4. Search existing issues for duplicates. If a likely duplicate exists, link it, say so plainly, and stop.
 5. Read the issue templates under `.github/` and follow the matching template.

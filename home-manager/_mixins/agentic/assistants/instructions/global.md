@@ -16,6 +16,12 @@ Your report lands in the orchestrator's window, which is permanent and finite. P
 
 For full routing, delegation packet, and relay rules, use `delegate-task`.
 
+## Skill availability
+
+Apply required skills throughout the task. Before dependent work, ensure that their complete, current instructions and required references are in this agent's context. Read missing or incomplete content, including after compaction. Read again after known source changes or an explicit refresh request. Full native expansion or embedded canonical instructions count as available. A name, metadata, summary, or past-use marker does not.
+
+Do not repeat a read solely because another step names the skill. Each worker checks its own context. "Load a skill" means establish this availability, not reread on every mention. Preserve native invocations needed for tool permissions.
+
 ## Tools
 
 Use the built-in read, edit, and write tools for files, not shell cat or sed. Preserve unrelated changes.
@@ -39,7 +45,7 @@ Use LSP diagnostics and navigation when available, including grammar and formatt
 
 ## Communication Rules
 
-Load and follow the `communication-rules` skill before producing or writing prose. The Communication Rules hooks enforce file writes, edits, patches, posts, and runtime replies.
+Follow the Communication Rules supplied in this context for all prose. If the complete rules are absent, read `communication-rules` before writing. Apply the skill availability rule for incomplete or changed instructions. The Communication Rules hooks enforce file writes, edits, patches, posts, and runtime replies.
 
 ### Enforcement
 

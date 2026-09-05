@@ -10,7 +10,7 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 
 ### Process
 
-1. Load and follow the `communication-rules` skill before writing anything.
+1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before writing anything.
 2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area, writes its findings to the file its packet names, and returns them. Name each file `<run-dir>/findings-<area>.md`, so no two collide.
 
    The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.

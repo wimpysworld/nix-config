@@ -59,7 +59,7 @@ Must support Go 1.21+ (CI matrix).
 
 ### Constraints
 
-- Load the `contribution-voice` skill and follow it. The report table fixes the sections; the skill governs the prose inside them. Run its cut pass before reporting.
+- Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. The report table fixes the sections; the skill governs the prose inside them. Run its cut pass before reporting.
 - AGENTS.md takes precedence over all other files
 - Read config files over source code
 - Note gaps and ask rather than over-researching
