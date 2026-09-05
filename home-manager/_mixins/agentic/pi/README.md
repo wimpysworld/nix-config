@@ -83,9 +83,9 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "npm:pi-mcp-adapter@2.28.0",
-    "npm:pi-subagents@0.57.0",
-    "npm:pi-lens@4.1.2",
+    "npm:pi-mcp-adapter@2.32.1",
+    "npm:pi-subagents@0.65.1",
+    "npm:pi-lens@4.1.3",
     {
       "source": "npm:typescript@7.0.2",
       "extensions": [],
@@ -96,11 +96,11 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
-    "npm:@heyhuynhgiabuu/pi-pretty@0.6.24",
+    "npm:@heyhuynhgiabuu/pi-pretty@0.6.26",
     "npm:pi-service-tier@0.3.0",
     "npm:@juicesharp/rpiv-ask-user-question@2.9.0",
-    "npm:@juicesharp/rpiv-btw@2.7.1",
-    "npm:@juicesharp/rpiv-todo@2.7.1"
+    "npm:@juicesharp/rpiv-btw@2.9.0",
+    "npm:@juicesharp/rpiv-todo@2.9.0"
   ]
 }
 ```

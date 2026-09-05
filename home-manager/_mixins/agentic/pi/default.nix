@@ -27,9 +27,9 @@ let
     else
       import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  # pi-mcp-adapter 2.28.0 requires pi-ai ^0.84.1, which the pinned Pi 0.84.3
+  # pi-mcp-adapter 2.32.1 requires pi-ai ^0.84.1, which the pinned Pi 0.85.0
   # runtime satisfies.
-  piMcpAdapterVersion = "2.28.0";
+  piMcpAdapterVersion = "2.32.1";
   # When bumping pi-subagents, verify the tool still uses the `subagent` name;
   # workflow execution still uses `workflowScript`, `runs.run`, and `runs.all`;
   # child parameters still include `agent`, `task`, and `model`; model thinking
@@ -37,9 +37,9 @@ let
   # `"fresh"` and `"fork"` with `"fresh"` as the safer non-forking default. If
   # any of these change, update `extensions/provider-router/index.ts` and the
   # agent-launch prelude in `assistants/default.nix` before merging.
-  piSubagentsVersion = "0.57.0";
-  piLensVersion = "4.1.2";
-  # pi-lens imports the compiler API at runtime, but 4.1.2 lists TypeScript as
+  piSubagentsVersion = "0.65.1";
+  piLensVersion = "4.1.3";
+  # pi-lens imports the compiler API at runtime, but 4.1.3 lists TypeScript as
   # a development dependency. Keep it as a direct Pi npm dependency until the
   # upstream package restores TypeScript to dependencies.
   piLensTypescriptVersion = "7.0.2";
@@ -53,15 +53,15 @@ let
   # pi-pretty re-renders built-in tool output (read, bash, ls, find, grep) and
   # replaces find/grep with its bundled FFF frecency search. Do not install
   # pi-fff alongside it: both would claim the same built-in tool names.
-  piPrettyVersion = "0.6.24";
+  piPrettyVersion = "0.6.26";
   # pi-service-tier adds /fast and /service-tier for provider service tiers.
   # It persists to its own ~/.pi/agent/service-tier.json and never touches
   # settings.json. The local service-tier-status extension bridges its
   # pi-fancy-footer widget events into the footer's fast-mode segment.
   piServiceTierVersion = "0.3.0";
   rpivAskUserQuestionVersion = "2.9.0";
-  rpivBtwVersion = "2.7.1";
-  rpivTodoVersion = "2.7.1";
+  rpivBtwVersion = "2.9.0";
+  rpivTodoVersion = "2.9.0";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:pi-subagents@${piSubagentsVersion}";
   piLensSource = "npm:pi-lens@${piLensVersion}";
