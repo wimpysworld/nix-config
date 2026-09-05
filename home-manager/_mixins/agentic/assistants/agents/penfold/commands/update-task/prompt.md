@@ -2,17 +2,17 @@
 
 Fold the decisions from this session into an existing task, so the task stays the single source of truth. This is a merge into what is already there, not a rewrite.
 
-Input: $ARGUMENTS is a Linear issue key or URL, or a path to a local task file. If $ARGUMENTS is blank, stop and ask for the target before doing anything else.
+Input: $ARGUMENTS is a Linear issue key or URL, a GitHub issue URL or `owner/repo#N`, or a path to a local task file. If $ARGUMENTS is blank, stop and ask for the target before doing anything else.
 
 ### Process
 
 **1. Read the target first**
 
-Resolve $ARGUMENTS and read the whole task before judging anything. Never write blind. If the key, URL, or path does not resolve, say so and stop.
+Load the `task-tracker` skill, resolve the tracker from $ARGUMENTS, and read the whole task as its reference describes before judging anything. Never write blind. If the key, URL, or path does not resolve, say so and stop.
 
 **2. Check the task is active**
 
-Gate on the workflow status type, never the status name. Type `completed` (Done) or `cancelled` (Cancelled, Duplicate) means the task is not active: report the status and stop, changing nothing at all - no body, no labels, no comment. This refusal is the one stop permitted after the target resolves. Type `triage` (Triage) is active: promote it to the team's `backlog`-type status as part of this update. A local task file has no status, so neither rule applies to one.
+Gate on the tracker role, never on a status name. The `inactive` role means the task is not active: report the status and stop, changing nothing at all - no body, no labels, no comment. This refusal is the one stop permitted after the target resolves. The `new` role is active: promote it to the `ready` role as part of this update. A local task file has no status, so neither rule applies to one.
 
 **3. Collect what the session changed**
 
@@ -39,7 +39,7 @@ Answer each question where it appears, replace the open marker with the decided 
 
 **5. Re-check the classification**
 
-Query the live taxonomy for labels, statuses, and the estimate scale. Load the `sizing` skill and check the estimate against it. Never invent a label. Change labels, priority, or estimate only when the session changed what the work involves, and state what changed and why. For a local task file the same four values live in the frontmatter: `title`, `labels`, `priority`, `estimate`.
+Query the live taxonomy for types, labels, statuses, and the estimate scale, as the tracker reference describes. Load the `sizing` skill and check the estimate against it. Never invent a type, a label, or an option. Change type, labels, priority, or estimate only when the session changed what the work involves, and state what changed and why. For a local task file the same values live in the frontmatter: `title`, `labels`, `priority`, `estimate`.
 
 **6. Merge**
 
@@ -51,7 +51,7 @@ For a task in a cohort, update the parent's `Child issues` list when dependency 
 
 **7. Write**
 
-Show the change summary, then write. Do not ask for approval. Report after, naming the Linear issue key or the file path written.
+Show the change summary, then write. Do not ask for approval. Report after, naming the issue key, the issue reference, or the file path written.
 
 ### Output Format
 
@@ -81,8 +81,9 @@ Show the change summary, then write. Do not ask for approval. Report after, nami
 - Never put tool, agent, or workflow instructions into a task body.
 - Every decision carries a reason and its evidence.
 - Research only as far as the decision needs. Stop once the answer is clear.
-- Draw labels, priority, and estimate from the live taxonomy. The `sizing` skill holds the rubric the estimate must match.
-- Write to Linear or to a local file only. Never write to GitHub.
-- Never touch a task whose status type is `completed` or `cancelled`. Report why and stop.
+- Draw type, labels, priority, and estimate from the live taxonomy. The `sizing` skill holds the rubric the estimate must match.
+- Write to the task's own tracker or to a local file only. Never write to Slack, and never write to GitHub for a Linear task.
+- Never touch a task in the `inactive` role. Report why and stop.
+- Tracker mechanics live in `task-tracker`. Never name a status, type, or field here.
 - British spelling. No hedging language.
 - Ask nothing after the target resolves. Update the task, unless step 2 refuses it.

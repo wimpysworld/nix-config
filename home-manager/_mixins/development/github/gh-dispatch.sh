@@ -148,8 +148,11 @@ pr)
 	esac
 	;;
 project)
+	# Reads, plus the two item writes the task commands need: adding an
+	# issue to a project and setting one field on an item. Project, field,
+	# and view mutations stay denied.
 	case "${subcommand}" in
-	field-list | item-list | list | view) ;;
+	field-list | item-add | item-edit | item-list | list | view) ;;
 	*) die 'gh project' ;;
 	esac
 	;;

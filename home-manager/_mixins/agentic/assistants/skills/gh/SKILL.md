@@ -10,7 +10,8 @@ user-invocable: true
 
 Coding agents run fenced. Fence permits the everyday mutations:
 `git push`, `gh pr comment`, `gh-review-reply`, `gh issue create`,
-`gh issue edit`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`,
+`gh issue edit`, `gh issue comment`, `gh issue develop`, `gh project item-add`,
+`gh project item-edit`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`,
 and `gh pr review --approve`. Invoking a command that names a mutation
 is the consent for that mutation, so run it rather than asking again.
 

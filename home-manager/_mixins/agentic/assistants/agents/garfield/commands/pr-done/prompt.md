@@ -1,14 +1,14 @@
 ## PR Done
 
-Complete one merged pull request, update every associated Linear issue, and remove only its verified branch refs.
+Complete one merged pull request, update every associated tracked issue in Linear or a GitHub Project, and remove only its verified branch refs.
 
 On slash-command clients, use `$ARGUMENTS` as the optional head branch. On Codex, use the branch argument from the user's `$pr-done` invocation. When blank, use `git branch --show-current`. Require one valid branch name, not a full ref, and reject a detached HEAD or the base repository's current default branch. Record the original branch before clean-up.
 
 ### Authority and invariants
 
-Invocation authorises one marked Linear comment per associated issue, forward-only moves to Done, exact-ref fetches, current-worktree switch or detach, a default-branch fast-forward, and verified local and remote head-branch deletion.
+Invocation authorises one marked tracker comment per associated issue, forward-only moves to the `done` role, exact-ref fetches, current-worktree switch or detach, a default-branch fast-forward, and verified local and remote head-branch deletion.
 
-Do not merge or edit the PR, change other Linear fields, add or rewrite remotes, prune broadly, reset, clean, force the default branch, remove a worktree, or delete any unverified ref. Use bounded calls without retry loops. Keep Linear issues and Git phases independent.
+Do not merge or edit the PR, change other tracker fields, add or rewrite remotes, prune broadly, reset, clean, force the default branch, remove a worktree, or delete any unverified ref. Use bounded calls without retry loops. Keep tracker issues and Git phases independent.
 
 ### Resolve and prove
 
@@ -17,20 +17,20 @@ Do not merge or edit the PR, change other Linear fields, add or rewrite remotes,
 3. Record the PR number for reads and the full head SHA for every later check. Resolve the base repository's current default branch with `gh repo view`.
 4. Inspect all fetch and push URLs for every local remote. Canonicalise only SSH or HTTPS syntax and terminal `.git`, then require one unambiguous fetch remote for the exact base repository.
 5. Resolve `sshUrl` with `gh repo view <head-owner/repository> --json sshUrl`. Use that authenticated URL for all head-ref checks and deletion, including private forks. Do not require a matching local remote.
-6. Fetch only the exact base default branch into its remote-tracking ref and record its commit. A missing or ambiguous base remote blocks dependent local work. A missing verified head SSH URL blocks remote deletion, but neither condition blocks Linear work.
+6. Fetch only the exact base default branch into its remote-tracking ref and record its commit. A missing or ambiguous base remote blocks dependent local work. A missing verified head SSH URL blocks remote deletion, but neither condition blocks tracker work.
 7. Read `refs/heads/<branch>` with `git ls-remote --heads <head-ssh-url>`. Absence means automatic remote deletion succeeded. One result must equal the PR head SHA. Multiple results, a different SHA, or uncertainty blocks destructive clean-up.
 
-### Update Linear
+### Update the tracker
 
-1. Collect keys only from complete issue-key tokens in the head branch, at non-alphanumeric boundaries, and exact `Refs:` trailers parsed from the resolved PR commits. Deduplicate case-insensitively. Do not scan other prose or metadata for keys.
-2. Resolve every key to the same canonical Linear identifier. Treat matching issue branch or PR metadata as stronger evidence, but do not require that metadata or derive new keys from it.
-3. Classify `git config user.email`: `chainguard.dev` is work; all else is personal. The Linear workspace is work when `FUL` is visible and personal when `WW`, Wimpy's World, is visible. Skip all Linear writes on a mismatch or uncertainty.
+1. Load the `task-tracker` skill. Collect issue references only from exact `Refs:` trailers parsed from the resolved PR commits, from issue-key tokens in the head branch, and from the PR's `closingIssuesReferences`, applying the shape rules in the skill and the `branch link` section of each tracker's reference. Deduplicate case-insensitively. Do not scan other prose or metadata for references.
+2. Read the reference for each tracker found. Resolve every reference to the same canonical identifier. Treat matching issue branch or PR metadata as stronger evidence, but do not require that metadata or derive new references from it.
+3. For a Linear issue, apply the workspace guard in the Linear reference's `Identity and lookup` section. Skip all Linear writes on a mismatch or uncertainty.
 4. Read the PR commits, reviews, comments, checks, and timeline. Include only server-timestamped events after `createdAt` and no later than `mergedAt` that changed delivery or acceptance. A follow-up commit needs `pushedDate` or an equivalent server timestamp, never its author or committer date.
 5. Exclude initial code and description, routine bots, labels, assignments, review requests, non-material approvals and check churn, merge mechanics, and clean-up. Do not infer missing events.
 6. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. Draft one to three visible sentences that summarise material follow-up and the final result. When none occurred, say that the change merged without a material follow-up. Show no PR URL or number. Append `<!-- pr-done-workflow:<full-head-sha> -->` to the source body.
-7. For each issue, read its comments, current status type, and team statuses. If the exact marker is absent, post the comment with `save_comment`, including for terminal issues. If posting fails, skip that issue's status write and continue.
-8. If the status type is `completed`, `canceled`, or `duplicate`, preserve it. Otherwise select only the `completed`-type status named Done and use `save_issue` with only `id` and `state`. Never create a status.
-9. Record `Comment: posted`, `already present`, or `skipped: <reason>` separately from `Status: moved to Done` or `skipped: <reason>`. Linear failures do not block safe Git work.
+7. For each issue, read its comments and its current role. If the exact marker is absent, post the comment as the reference's `durable record` section describes, including for terminal issues. If posting fails, skip that issue's status write and continue.
+8. If the issue is already in the `done` or `inactive` role, preserve it. Otherwise move it to the `done` role as the reference describes. Never create a status.
+9. Record `Comment: posted`, `already present`, or `skipped: <reason>` separately from `Status: moved to Done` or `skipped: <reason>`. Tracker failures do not block safe Git work.
 
 ### Clean local Git state
 
@@ -60,8 +60,8 @@ Missing local or remote branches are successful prior clean-up. A current worktr
 PR: <base repository and number, or unresolved reason>
 Original branch: <branch>
 Current worktree: <state>
-Linear:
-- <issue key>
+Tracker:
+- <issue key or reference>
   Comment: <outcome>
   Status: <outcome>
 Local branch: <outcome, including another owner path>
@@ -69,4 +69,4 @@ Remote branch: <outcome>
 Retry: <exact command or none>
 ```
 
-Use `Linear: none` when no issue exists. Name every skipped action and exact failed check. Claim only tool-confirmed actions.
+Use `Tracker: none` when no issue exists. Name every skipped action and exact failed check. Claim only tool-confirmed actions.

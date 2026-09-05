@@ -2,7 +2,7 @@
 
 Work Linear issues in bulk: the whole Triage queue by default, or the issues named in the input. This command orchestrates; it never researches an issue and never writes to Linear itself. One fresh sub-agent per issue does both.
 
-Input: `$ARGUMENTS` is one or more Linear issue keys to triage, separated by spaces or commas. Blank means all: triage the whole queue. This is a fan-out of fan-outs: each issue spawns `research-task`, which itself fans out across Linear, GitHub, Slack, and the web, so twenty issues is easily hundreds of sub-agents. Run at most five issue sub-agents at once. The cap is the point. Never exceed it.
+Input: `$ARGUMENTS` is one or more Linear issue keys to triage, separated by spaces or commas. Blank means all: triage the whole queue. This command is Linear-only, because GitHub Projects has no Triage queue. Reject a GitHub issue reference and say so. This is a fan-out of fan-outs: each issue spawns `research-task`, which itself fans out across Linear, GitHub, Slack, and the web, so twenty issues is easily hundreds of sub-agents. Run at most five issue sub-agents at once. The cap is the point. Never exceed it.
 
 Command invocation: use the current provider's command prefix. Codex uses `$command`; slash-command runtimes use `/command`. The steps below name commands without a prefix.
 

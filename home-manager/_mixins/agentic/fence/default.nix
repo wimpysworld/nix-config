@@ -324,13 +324,17 @@ let
         "gh release list"
         "gh release view"
         "gh release download"
-        # gh project reads. These pair with the family-wide `gh project`
-        # deny below so the agent can inspect project boards without
-        # being able to mutate items, fields, or project state.
+        # gh project reads, plus the two item writes the task commands use.
+        # These pair with the family-wide `gh project` deny below so the
+        # agent can inspect project boards, add an issue to a project, and
+        # set one field on an item, without being able to create, edit,
+        # delete, or archive projects, fields, views, or items.
         "gh project view"
         "gh project list"
         "gh project field-list"
         "gh project item-list"
+        "gh project item-add"
+        "gh project item-edit"
         # Discovery reads under otherwise family-wide-denied gh
         # namespaces. The principle is: list-like subcommands stay
         # available so the agent can inspect state, while any mutation

@@ -4,7 +4,7 @@ Draft the pull request title and body with the inline contract below. Then creat
 
 Run the pull request creation flow in the current context. Do not launch a sub-agent or a Task for any step. The current context holds the change intent, validation results, and non-goals that the pull request message needs. The watch handover after successful creation is separate and may invoke `pr-watch` when the user selects it.
 
-Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed, running `gh pr create`, and repairing missing review metadata with `gh pr edit`, and it moves any linked Linear issue to In Review. Treat explicit human invocation of this command as consent for those actions.
+Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed, running `gh pr create`, and repairing missing review metadata with `gh pr edit`, and it moves any linked tracked issue, Linear or GitHub Project, to its in-review status. Treat explicit human invocation of this command as consent for those actions.
 
 ### Pull request draft
 
@@ -27,7 +27,7 @@ Write the title as `<type>(<scope>): <imperative description>`, or `<type>: <imp
 
 Write a focused pull request body as prose, with one paragraph for what changes and why, followed by one validation sentence when validation was run. State only checks that this session verified. Omit validation when none ran. Use headings only when several independent concerns or a long commit series need navigation. Do not restate a single commit title, use bullet scaffolding, or hard-wrap body paragraphs.
 
-Put each supported issue reference or `Refs: <ISSUE-KEY>` footer on its own line at the end. Include a breaking-change footer when the branch contains a breaking change. Do not invent or infer a reference that the branch does not support.
+Put each supported issue reference or `Refs:` footer on its own line at the end, in the form the **Tracker transition** section below resolves. For a GitHub Project task, the last body lines are one `Closes #<n>` line per linked issue, so the merge closes it. Include a breaking-change footer when the branch contains a breaking change. Do not invent or infer a reference that the branch does not support.
 
 Produce the title, a blank line, the body, and any footers inside one fenced Markdown code block. The fenced block is the draft artefact. Preserve its content verbatim for the creation steps below, with no preamble or trailing commentary.
 
@@ -46,7 +46,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 1. Inspect branch state with `git status --short --branch`, `git rev-parse --abbrev-ref HEAD`, `git log main..HEAD --oneline`, `git log main..HEAD --format=full`, `git log -20 main --oneline`, and `git diff main..HEAD --stat`.
 2. Stop if the current branch is `main`, or if there are no commits in `main..HEAD`.
 3. If staged files or unstaged files exist, leave them unchanged. Note that they are excluded because only committed branch changes are used.
-4. Classify the repository once, following **Work repository classification** below. Reuse that one result for the reviewer orientation, the review metadata, and the Linear workspace guard.
+4. Classify the repository once, following **Work repository classification** below. Reuse that one result for the reviewer orientation, the review metadata, and the Linear workspace guard. Then resolve the linked issues and their tracker, following **Tracker transition** below, so the draft can carry the right footers.
 5. Apply **Pull request draft** above. Preserve its fenced pull request message verbatim as the pull request source.
 6. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
 7. Insert the bold why line at the top of that temporary file and append the reviewer orientation block to its end, following **Reviewer orientation** below. Both are part of the pull request from the moment it exists, so never add either later by editing the pull request.
@@ -56,8 +56,8 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 11. On a work repository, resolve the owner with `gh repo view --json owner` and build the team handle, following **Work review metadata** below. Do this before the pull request is created or existing work metadata is repaired.
 12. If no pull request exists, create one with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`.
 13. Verify the pull request URL and title on every repository. On a work repository, also verify and repair the review metadata, following **Work review metadata** below. Never report success from `gh pr create` alone.
-14. Move each linked Linear issue to In Review, following **Linear transition** below. A Linear failure never stops this command.
-15. Report the verified pull request URL, title, whether the why line and the orientation block were included, the review metadata outcome on a work repository, each Linear outcome, and any uncommitted files left out.
+14. Move each linked issue to the `in review` role, following **Tracker transition** below. A tracker failure never stops this command.
+15. Report the verified pull request URL, title, whether the why line and the orientation block were included, the review metadata outcome on a work repository, each tracker outcome, and any uncommitted files left out.
 
 ### Work repository classification
 
@@ -150,18 +150,18 @@ Named failures, and what each one means:
 - Creation succeeds but the metadata fails. Report the pull request as created, name the field that failed, and finish. The command still succeeded.
 - `gh pr view` returns a different representation for the team. Where `reviewRequests` carries neither a matching `slug` nor a recognisable `Team` entry, report the field as unverified rather than failed, and print what came back.
 
-### Linear transition
+### Tracker transition
 
-Two things link an issue, and nothing else does: the branch name, when it contains the issue key (a branch named `ful-123` links FUL-123), and a `Refs: <ISSUE-KEY>` trailer on any commit in `main..HEAD`. Never take a key from the pull request body or a commit subject. A key mentioned in prose is not a link.
+Load the `task-tracker` skill. Two things link an issue, and nothing else does: an issue-key token in the branch name, and a `Refs:` trailer on any commit in `main..HEAD`. Resolve each hit's tracker by the shape rules in the skill, then read that tracker's reference. Its `branch link` section says which tokens count and what the trailer and the pull request body must carry. Never take a key from the pull request body or a commit subject. A key mentioned in prose is not a link.
 
-Workspace guard: take the repository classification from **Work repository classification** above. The connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL` is visible. If the classification and the visible instance disagree, skip the transition and report one line saying the profile does not match the repository. Never touch a work issue from the personal workspace or the reverse.
+Workspace guard, Linear only: take the repository classification from **Work repository classification** above and apply the guard in the Linear reference's `Identity and lookup` section. If the classification and the visible instance disagree, skip the transition and report one line saying the profile does not match the repository.
 
-Handle each linked issue on its own, and report each one. A branch may carry more than one `Refs:` trailer.
+Handle each linked issue on its own, and report each one. A branch may carry more than one `Refs:` trailer, and a cohort may span more than one tracker.
 
-- Match the status by name. List the team's workflow statuses and take the `started`-type status named In Review. Linear's types are `triage`, `backlog`, `unstarted`, `started`, `completed`, and `cancelled`, and both In Progress and In Review are `started`, so the type alone cannot tell them apart. If the team has no `started`-type status named In Review, skip the issue and say so. Never invent a status and never create one.
-- Move forward only. Leave the issue where it is when it is already In Review, when its type is `completed` or `cancelled`, or when its `started`-type status sits after In Review in the team's own order. Write only from `triage`, `backlog`, `unstarted`, or an earlier `started` status.
+- Move the issue to the `in review` role as the reference describes. Never invent a status and never create one.
+- Move forward only. The reference says which states are already at or past `in review`. Leave the issue where it is in those states.
 
-Never fatal. The pull request is the deliverable. If Linear is unreachable, a key does not resolve, the team has no In Review status, or the write fails, report it in one line and finish successfully. Never block, never retry in a loop, and never undo or amend anything because of a Linear failure.
+Never fatal. The pull request is the deliverable. If the tracker is unreachable, a key does not resolve, the role has no status, or the write fails, report it in one line and finish successfully. Never block, never retry in a loop, and never undo or amend anything because of a tracker failure.
 
 ### Output
 
@@ -173,8 +173,8 @@ Title: <title>
 Reviewer orientation: <why line and block included, or what was skipped and the reason>
 Review requested: fulfillment-automation-team-write, applied or failed with reason
 Label: ai-review, applied or failed with reason
-Linear:
-- <issue key and its new status, the reason it was skipped, or none>
+Tracker:
+- <issue key or reference and its new status, the reason it was skipped, or none>
 Excluded:
 - <uncommitted file left out, or none>
 ````

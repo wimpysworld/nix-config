@@ -1,18 +1,22 @@
 ## Create Task
 
-File the outcome of this session as a durable task: one Linear issue, several issues wrapped in a parent tracking issue, or a local markdown file. Capture all information and research from the session in the task body, so the implementer needs nothing else. This is the write counterpart to `research-task`, which reads.
+File the outcome of this session as a durable task: one tracked issue, several issues wrapped in a parent tracking issue, or a local markdown file. The tracker is Linear or a GitHub Project. Capture all information and research from the session in the task body, so the implementer needs nothing else. This is the write counterpart to `research-task`, which reads.
 
-Input: $ARGUMENTS is a Linear project name, or a filesystem path for a local task file, optionally followed by a status. If $ARGUMENTS is blank, stop and ask for the target before doing anything else.
+Input: $ARGUMENTS is a Linear project name, a GitHub project URL, or a filesystem path for a local task file, optionally followed by a status. If $ARGUMENTS is blank, infer the project from this session: the repository, the task's subject, and any project named in the conversation.
 
 ### Process
 
 **1. Resolve the target**
 
-If $ARGUMENTS is a filesystem path, the target is local. Otherwise list Linear projects and fuzzy match $ARGUMENTS. Show the matched project and ask the user to confirm before writing anything. If several projects match plausibly, list them and ask which one. If the resolved workspace has no Linear project, fall back to a local file and ask for the target directory.
+Load the `task-tracker` skill, resolve the tracker from $ARGUMENTS, and read that tracker's reference. Its `Identity and lookup` section says how to resolve the project and, for GitHub, the repository the issue is created in.
+
+When $ARGUMENTS names a project and exactly one project matches it, use that project without asking. State the match in one line and carry on. Ask only when the name matches several projects plausibly, or none: list the candidates and ask which one.
+
+When $ARGUMENTS is blank, find the best match from the session and ask the user to confirm it before writing anything. Offer the runner-up where one is close. If no project fits, fall back to a local file and ask for the target directory.
 
 For a local target, show the resolved directory and ask the user to confirm it before writing.
 
-This confirmation is the only approval gate. Once the target is confirmed, create immediately. There is no draft-and-approve step.
+That question, where one is asked, is the only approval gate. Once the target is resolved, create immediately. There is no draft-and-approve step.
 
 **2. Choose the structure**
 
@@ -25,31 +29,31 @@ State the decision and the reason in one line before creating anything.
 
 **3. Query the taxonomy**
 
-Never assume label, status, or estimate names. Each project has its own taxonomy. For the resolved project's team, query at run time:
+Never assume type, label, status, or estimate names. Each project has its own taxonomy. Query it at run time as the tracker reference describes:
 
-- Which labels exist.
-- Which workflow statuses exist.
+- Which types and labels exist.
+- Which statuses exist.
 - Whether estimates are enabled, and on what scale.
 
-Pick from what exists. Never invent or create a label. For a local target, query the workspace's team taxonomy when one exists; otherwise reuse the vocabulary already present in sibling task files.
+Pick from what exists. Never invent or create a type, a label, or an option. For a local target, query the workspace's taxonomy when one exists; otherwise reuse the vocabulary already present in sibling task files.
 
 **4. Classify**
 
 Status:
 
-- Default to the team's `triage`-type status when the caller names none. Gate on the status type, never the status name.
-- A caller may name a different status. Resolve it against the team's workflow statuses from step 3. This is how a caller with an already-researched task files straight to Backlog.
-- If the team has no `triage`-type status, or no status by the name the caller gave, use the team's default entry status and say so in the report. Linear's Triage is a per-team feature that can be switched off, and an unattended caller cannot answer a question.
+- Default to the tracker's `new` role when the caller names none. The reference says how the role is recognised, and it gates on the role, never on a status name.
+- A caller may name a different status. Resolve it against the tracker's statuses from step 3. This is how a caller with an already-researched task files straight to the `ready` role.
+- If the tracker has no status for the role, or none by the name the caller gave, use the reference's fallback and say so in the report. An unattended caller cannot answer a question.
 - Local task files carry no status.
 
-Labels:
+Type and area:
 
-- If the taxonomy has type-like labels, apply exactly one: bug when shipped behaviour is wrong, feature when a user-visible capability is new, otherwise the improvement equivalent.
+- Apply exactly one type: bug when shipped behaviour is wrong, feature when a user-visible capability is new, otherwise the improvement equivalent. The reference says whether type is a label or a tracker field.
 - Apply every area or component label the work touches. Multiple is normal.
-- If no area label fits, the type label alone is enough.
-- If the taxonomy has no type-like labels, apply the best-fitting labels available.
+- If no area label fits, the type alone is enough.
+- If the taxonomy has no type, apply the best-fitting labels available.
 
-Priority:
+Priority, mapped onto the tracker's scale by the reference:
 
 - 1 Urgent - shipped behaviour blocks work already in flight, or the cohort cannot proceed.
 - 2 High - a correctness bug, or the critical path of an active cohort.
@@ -67,7 +71,7 @@ Leave parent tracking tasks unestimated; the children carry the size. A single t
 - Express the order in the parent's `Child issues` numbered list, with `Depends on <n>` on each entry.
 - Restate each edge in the child's `Dependencies` section: what it depends on, what it blocks, and one sentence on why.
 - Say which steps ship inert and which flip behaviour on.
-- Do not create Linear blocking relations. This workspace does not use them.
+- Do not create tracker blocking or dependency relations. The parent body is the single source of order.
 
 **6. Ground the body**
 
@@ -84,9 +88,9 @@ Before writing any body:
 
 **7. Create**
 
-Where the research exceeds roughly 6,000 characters, or will outlive the work, create a Linear document holding the durable record, link it from the parent, and say so in one line in the parent body. For a local target, write the durable record as a sibling file and link it by relative path.
+Where the research exceeds roughly 6,000 characters, or will outlive the work, store it where the reference's `long research` section says, link it from the parent, and say so in one line in the parent body. For a local target, write the durable record as a sibling file and link it by relative path.
 
-To Linear: create children as sub-issues of the parent, in dependency order, so identifiers ascend with the sequence. Assign every issue, parent and children, to the user creating them. Resolve that user at run time from the authenticated Linear identity; never hard-code an identifier.
+To a tracker: create children as sub-issues of the parent, in dependency order, so identifiers ascend with the sequence. Assign every issue, parent and children, to the user creating them. Resolve that user at run time from the authenticated identity; never hard-code an identifier.
 
 To a local file: write one file per task in the confirmed directory. For a cohort, write the parent as `00-<slug>.md` and each child as `NN-<slug>.md`, numbered in dependency order, so the filenames carry the sequence. Start every local task file with the frontmatter block below, then the matching body template unchanged:
 
@@ -209,7 +213,7 @@ Implement in this order:
 
 ## Evidence
 
-* <Link to the Linear document holding the full research record, if one was created.>
+* <Link to the durable record holding the full research, if one was created.>
 * <Permalinks and file paths shared by the cohort.>
 ```
 
@@ -222,8 +226,9 @@ Implement in this order:
 - Never put tool, agent, or workflow instructions into an issue body.
 - Keep `Why` to one short paragraph. `Problem` and `Context` can use one or two short paragraphs; use bullets elsewhere.
 - The parent holds cohort scope, shared decisions, dependency order, and cohort success. Children hold delivery scope, success criteria, priority, estimate, and labels.
-- Every issue gets labels, priority, and an estimate, drawn from the live taxonomy. Local files carry the same four values in frontmatter.
-- Every Linear issue is assigned to the user creating it. Local task files carry no assignee.
-- The body templates are identical for Linear and for local files. Only the frontmatter differs.
+- Every issue gets a type, labels, priority, and an estimate, drawn from the live taxonomy. Local files carry the same values in frontmatter.
+- Every tracked issue is assigned to the user creating it. Local task files carry no assignee.
+- The body templates are identical for every tracker and for local files. Only the frontmatter differs.
+- Tracker mechanics live in `task-tracker`. Never name a status, type, or field here.
 - British spelling. No hedging language.
-- Ask nothing after the target is confirmed. Create the task.
+- Ask nothing after the target is resolved. Create the task.

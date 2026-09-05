@@ -2,11 +2,11 @@
 
 Judge whether a task is ready to implement, and say what must change first.
 
-Input: $ARGUMENTS is a Linear issue key or URL, or a path to a local markdown task file. If $ARGUMENTS is blank, stop and ask which task to review before doing anything else.
+Input: $ARGUMENTS is a Linear issue key or URL, a GitHub issue URL or `owner/repo#N`, or a path to a local markdown task file. If $ARGUMENTS is blank, stop and ask which task to review before doing anything else.
 
 ### Process
 
-1. Read the whole task before judging. Read Linear issues with the Linear MCP; read local files from disk.
+1. Read the whole task before judging. Load the `task-tracker` skill, resolve the tracker from $ARGUMENTS, and read the task as its reference describes. Read local files from disk.
 2. For a parent tracking issue, also read every child named in `Child issues`.
 3. Check material claims against the codebase, the sources under `Evidence`, and current docs where needed.
 4. Judge each area below.
@@ -27,7 +27,7 @@ A standalone or child task body uses these headings, in order: `Outcome`, `Why`,
 | Dependencies | For a cohort member, are the stated edges consistent with the parent's order? |
 | Evidence | Can an implementer start from it without doing fresh research? |
 | Child issues | For a parent, is the dependency order complete and acyclic, and does every child exist? |
-| Metadata | Are labels, priority, and estimate consistent with the work described? Load the `sizing` skill and judge the estimate against it. |
+| Metadata | Are type, labels, priority, and estimate consistent with the work described, and drawn from the tracker's live taxonomy as the reference maps them? Load the `sizing` skill and judge the estimate against it. |
 | Gaps | What is missing that would block or misdirect an implementer? |
 
 ### Output Format

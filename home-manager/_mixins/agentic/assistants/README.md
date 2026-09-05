@@ -141,7 +141,7 @@ The root `make-pr` command keeps the current context and inherits the root sessi
 
 Four commands and one skill share one noun. The vocabulary is strict:
 
-- **Task** - a durable, tracked work item: a Linear issue, or a local markdown file.
+- **Task** - a durable, tracked work item: a Linear issue, a GitHub issue on a GitHub Project, or a local markdown file. The `task-tracker` skill resolves which one from the input and maps the shared status, type, priority, estimate, parent, and branch-link roles onto that tracker, so every command below speaks in roles and never names a tracker mechanic.
 - **Plan** - ephemeral, and outside any project tree.
 - **Phase** - a unit of work inside a plan.
 
@@ -159,13 +159,13 @@ The `create-project` command and `draft-project-description` skill write the pro
 
 ### Orchestration
 
-`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. By default it finds every Linear issue waiting in Triage; given one or more issue keys, it takes those as the queue instead. It reports the batch, then spawns one fresh sub-agent per issue that applies the `research-task` skill and then runs `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
+`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. It is Linear-only, as are the `work-order-*` and `weekly-update` commands, because GitHub Projects has no Triage queue, cycles, documents, or status updates. By default it finds every Linear issue waiting in Triage; given one or more issue keys, it takes those as the queue instead. It reports the batch, then spawns one fresh sub-agent per issue that applies the `research-task` skill and then runs `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
 
 `implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. The user-invoked command is the sole dispatcher: it launches one fresh planning worker per task, then one fresh implementation worker per phase in dependency order. Every worker returns directly to the command and never launches another agent.
 
 Validation is inline. Each task's changed files are checked against the task's `Acceptance criteria` before that task is committed.
 
-`implement-task` reuses the checked-out branch, or opens one named with the bare lowercased issue key, such as `ful-123`. It commits once per task with a `Refs: <ISSUE-KEY>` footer, and stops. It never opens or drafts a pull request; run `make-pr` yourself. Linear auto-closes the issue when a merged pull request's branch name contains its key.
+`implement-task` reuses the checked-out branch, or opens one linked to the task as the `task-tracker` skill describes: a bare lowercased issue key such as `ful-123` for Linear, or `gh issue develop` for a GitHub Project. It commits once per task with a `Refs:` footer, and stops. It never opens or drafts a pull request; run `make-pr` yourself. Linear auto-closes the issue when a merged pull request's branch name contains its key. GitHub closes the issue through the `Closes #<n>` line that `make-pr` writes.
 
 ---
 
@@ -489,6 +489,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `write-command`      | Rosey or user             | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model                 |
 | `review-report-path` | Review and audit commands | Durable `${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/<target>/<run-id>/` paths, exclusive runs, and no deletion or overwrite |
 | `sizing`             | Task and review commands  | T-shirt sizing scale, spikes, parent tracking issues, and splitting oversized work                                |
+| `task-tracker`       | Task, PR, and review commands | Resolves Linear, GitHub Projects, or a local file from the input, and maps status, type, priority, estimate, parent, and branch-link roles onto each tracker |
 | `nix`                | Donatello                 | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                                       |
 | `love`               | Donatello                 | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                                    |
 | `audio-metrics`      | Penfold or user           | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |

@@ -151,6 +151,9 @@ assert_backend 'workflow cache list' 1 gh-backend cache list
 assert_backend 'pull request update' 1 gh-backend pr update-branch 42
 assert_backend 'pull request approval' 1 gh-backend pr review 42 --approve
 assert_backend 'release read' 1 gh-backend release view v1.0.0
+assert_backend 'project item list' 1 gh-backend project item-list 2 --owner example
+assert_backend 'project item add' 1 gh-backend project item-add 2 --owner example --url https://github.com/example/project/issues/1
+assert_backend 'project item edit' 1 gh-backend project item-edit --id ITEM --project-id PROJECT --field-id FIELD --single-select-option-id OPTION
 assert_backend 'deploy key list' 1 gh-backend repo deploy-key list
 assert_backend 'alias list' 1 gh-backend alias list
 assert_backend 'agent task list' 1 gh-backend agent-task list
@@ -168,6 +171,9 @@ assert_backend 'gh-notify extension' 1 gh-backend notify --help
 assert_blocked 'pull request merge' pr merge 42
 assert_blocked 'workflow dispatch' workflow run build.yml
 assert_blocked 'release creation' release create v1.0.0
+assert_blocked 'project creation' project create --owner example --title Board
+assert_blocked 'project field creation' project field-create 2 --owner example --name Size --data-type TEXT
+assert_blocked 'project item deletion' project item-delete 2 --owner example --id ITEM
 assert_blocked 'repository edit' repo edit --description changed
 assert_blocked 'configuration read' config get oauth_token
 assert_blocked 'secret read' secret get TOKEN

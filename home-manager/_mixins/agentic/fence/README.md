@@ -321,7 +321,9 @@ plus longer-prefix allow pattern: list-like discovery reads under
 `gh extension`, `gh release`, `gh project`, `gh codespace`, `gh label`,
 `gh secret`, `gh variable`, `gh gpg-key`, `gh ssh-key`, and
 `gh repo deploy-key` are carved out above their respective family-wide
-denies. `gh config` is the sole exception and is denied wholesale
+denies. `gh project` also carves out `item-add` and `item-edit`, the two
+item writes the task commands use to place an issue on a project and set
+one field on it. `gh config` is the sole exception and is denied wholesale
 because `gh config get oauth_token --host github.com` can disclose the
 OAuth token stored in `~/.config/gh/hosts.yml`. The Fence source of truth is
 [`default.nix`](./default.nix). The dispatcher mirrors its GitHub rules in
