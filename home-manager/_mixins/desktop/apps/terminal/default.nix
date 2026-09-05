@@ -45,10 +45,12 @@ in
 {
   imports = [
     ./alacritty.nix
+    ./blackbox.nix
     ./contour.nix
     ./foot.nix
     ./ghostty.nix
     ./kitty.nix
+    ./konsole.nix
     ./mlterm.nix
     ./rio.nix
     ./tmux.nix
