@@ -354,16 +354,13 @@ Things I currently need to do manually after installation.
   - `atuin login`
   - `atuin sync`
 - [ ] Brave - enroll sync
-- [ ] Chatterino - authenticate
+- [ ] Google Chrome - authenticate
 - [ ] Discord - authenticate
 - [ ] Harper - review browser extension settings
 - [ ] Maestral - `maestral_qt`
 - [ ] Matrix - authenticate
 - [ ] Slack - authenticate
 - [ ] Telegram - authenticate
-- [ ] Google Chrome
-  - Sign in.
-  - Confirm that the managed extensions appear at `chrome://extensions`: 1Password, LastPass, Harper, Disable Ctrl + Scroll Zoom, GoLinks, Okta, Glean, Ramp, and Meet Linky.
 
 ### System
 
