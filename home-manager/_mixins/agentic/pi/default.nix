@@ -328,18 +328,6 @@ let
     '';
   };
 
-  piModels.providers = {
-    anthropic.modelOverrides = {
-      "claude-fable-5".contextWindow = 400000;
-      "claude-opus-5".contextWindow = 400000;
-      "claude-sonnet-5".contextWindow = 400000;
-    };
-    "openai-codex".modelOverrides = {
-      "gpt-5.6-sol".contextWindow = 400000;
-      "gpt-5.6-terra".contextWindow = 400000;
-    };
-  };
-
   piSettings = {
     defaultProvider = "openai-codex";
     defaultModel = "gpt-5.6-sol";
@@ -382,7 +370,7 @@ let
 
     compaction = {
       enabled = true;
-      reserveTokens = 50000;
+      reserveTokens = 16384;
       keepRecentTokens = 20000;
     };
     retry = {
@@ -778,7 +766,6 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     ]
     ++ lib.optional fencedEnabled piFencedPackage;
     file = {
-      ".pi/agent/models.json".text = builtins.toJSON piModels;
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;
       ".pi/agent/extensions/pi-footer.json".text = builtins.toJSON piFooterConfig;

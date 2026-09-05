@@ -269,31 +269,6 @@ in
           # forwards `reasoning.effort` on the Responses API call.
           model = "openai/gpt-5.5";
           provider = {
-            anthropic = {
-              models = {
-                "claude-fable-5" = {
-                  limit = {
-                    context = 400000;
-                    input = 400000;
-                    output = 128000;
-                  };
-                };
-                "claude-opus-5" = {
-                  limit = {
-                    context = 400000;
-                    input = 400000;
-                    output = 128000;
-                  };
-                };
-                "claude-sonnet-5" = {
-                  limit = {
-                    context = 400000;
-                    input = 400000;
-                    output = 128000;
-                  };
-                };
-              };
-            };
             openai = {
               models = {
                 "gpt-5.5" = {
@@ -301,30 +276,16 @@ in
                     reasoningEffort = "high";
                   };
                 };
-                "gpt-5.6-sol" = {
-                  limit = {
-                    context = 528000;
-                    input = 400000;
-                    output = 128000;
-                  };
-                };
-                "gpt-5.6-terra" = {
-                  limit = {
-                    context = 528000;
-                    input = 400000;
-                    output = 128000;
-                  };
-                };
               };
             };
           };
 
-          # Reserve 50,000 tokens for compaction. With the configured model
-          # limits, automatic compaction starts at 350,000 input tokens.
+          # Context compaction - manual control
+          # Use /compact slash command when context gets full
+          # OpenCode displays token usage in the interface to help monitor
           compaction = {
-            auto = true;
-            prune = true;
-            reserved = 50000;
+            auto = false; # Disable automatic compaction
+            prune = true; # Keep pruning old tool outputs to save tokens
           };
 
           # Override built-in /init with custom create-agents-md command

@@ -11,11 +11,6 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   isDeveloper = noughtyLib.userHasTag "developer";
   fencedEnabled = !host.is.server;
-  codexContextWindowTokens = 400000;
-  codexEffectiveContextWindowPercent = 95;
-  codexConfiguredContextWindowTokens = builtins.div (
-    codexContextWindowTokens * 100 + codexEffectiveContextWindowPercent - 1
-  ) codexEffectiveContextWindowPercent;
 
   # Codex re-execs std::env::current_exe() when launching the Linux sandbox.
   # Nix store paths can disappear after a Home Manager generation switch, and
@@ -449,11 +444,6 @@ let
     web_search = "disabled";
 
     model = "gpt-5.6-sol";
-    # Codex reports its effective input window after reserving 5% for system
-    # prompts, tool overhead, and model output. Compensate for that reserve so
-    # the intended 400K budget becomes the native status-line value.
-    model_context_window = codexConfiguredContextWindowTokens;
-    model_auto_compact_token_limit = 350000;
     model_reasoning_effort = "high";
 
     # Bound Codex subagent fan-out.
