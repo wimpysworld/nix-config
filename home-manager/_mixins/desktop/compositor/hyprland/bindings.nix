@@ -55,7 +55,7 @@ in
         "ALT, Print, exec, fuzzel-capture window"
         "SHIFT, Print, exec, fuzzel-capture region"
         "CTRL ALT, Print, exec, fuzzel-capture output ${display.primaryOutput}"
-        "$mod, T, exec, ${lib.getExe config.programs.kitty.package}"
+        "$mod, T, exec, ${lib.getExe pkgs.xdg-terminal-exec}"
       ];
     };
   };

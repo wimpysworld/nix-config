@@ -24,8 +24,7 @@ lib.mkIf host.is.workstation {
     enableFishIntegration = false;
     enableZshIntegration = false;
 
-    # nixpkgs only packages Ghostty for Linux. On Darwin, manage the app
-    # outside Nix while Home Manager still writes its shared configuration.
+    # Darwin installs Ghostty through Homebrew and shares this configuration.
     package = if host.is.linux then pkgs.ghostty else null;
 
     settings = {
@@ -38,7 +37,11 @@ lib.mkIf host.is.workstation {
       font-size = 16;
       mouse-hide-while-typing = true;
       shell-integration-features = "no-cursor";
+      split-inherit-working-directory = true;
+      tab-inherit-working-directory = true;
       window-decoration = if hideWindowDecorations then "none" else "auto";
+      window-inherit-working-directory = false;
+      working-directory = "home";
     };
   };
 }

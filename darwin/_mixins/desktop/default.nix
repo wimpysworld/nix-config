@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   noughtyLib,
   pkgs,
@@ -25,6 +26,7 @@
       "maestral" # GUI
       "zed"
     ]
+    ++ lib.optionals config.noughty.host.is.workstation [ "ghostty" ]
     ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       "beyond-compare"
       "docker-desktop"

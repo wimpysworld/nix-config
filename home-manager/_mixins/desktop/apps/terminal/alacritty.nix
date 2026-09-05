@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -13,35 +14,43 @@ let
       null;
   hideWindowDecorations = compositor != null && !compositor.capabilities.clientSideDecorations;
 in
-lib.mkIf host.is.workstation {
-  catppuccin.alacritty.enable = config.programs.alacritty.enable;
+lib.mkIf
+  (
+    host.is.workstation
+    && noughtyLib.isHost [
+      "skrye"
+      "zannah"
+    ]
+  )
+  {
+    catppuccin.alacritty.enable = config.programs.alacritty.enable;
 
-  programs.alacritty = {
-    enable = true;
-    package = pkgs.alacritty-graphics;
-    settings = {
-      cursor = {
-        blink_interval = 750;
-        blink_timeout = 0;
-        style = {
-          blinking = "Always";
-          shape = "Block";
+    programs.alacritty = {
+      enable = true;
+      package = pkgs.alacritty-graphics;
+      settings = {
+        cursor = {
+          blink_interval = 750;
+          blink_timeout = 0;
+          style = {
+            blinking = "Always";
+            shape = "Block";
+          };
+          unfocused_hollow = true;
         };
-        unfocused_hollow = true;
-      };
-      font = {
-        normal.family = "FiraCode Nerd Font Mono";
-        size = 16;
-      };
-      scrolling.history = 65536;
-      selection.save_to_clipboard = true;
-      window = {
-        decorations = if hideWindowDecorations then "None" else "Full";
-        padding = {
-          x = 2;
-          y = 2;
+        font = {
+          normal.family = "FiraCode Nerd Font Mono";
+          size = 16;
+        };
+        scrolling.history = 65536;
+        selection.save_to_clipboard = true;
+        window = {
+          decorations = if hideWindowDecorations then "None" else "Full";
+          padding = {
+            x = 2;
+            y = 2;
+          };
         };
       };
     };
-  };
-}
+  }

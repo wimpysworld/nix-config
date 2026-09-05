@@ -38,7 +38,7 @@ let
       desktopFileId = "org.wezfurlong.wezterm.desktop";
     };
   };
-  defaultTerminal = terminalEmulators.kitty;
+  defaultTerminal = terminalEmulators.ghostty;
   # Get a colour as a hexadecimal string.
   getColor = colorName: catppuccinPalette.getColor colorName;
 in

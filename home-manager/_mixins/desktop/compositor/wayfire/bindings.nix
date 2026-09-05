@@ -73,7 +73,7 @@ in
         command_lock_alternate = "${veilaBin} lock";
 
         binding_terminal = "<super> KEY_T";
-        command_terminal = lib.getExe config.programs.kitty.package;
+        command_terminal = lib.getExe pkgs.xdg-terminal-exec;
       }
       // lib.optionalAttrs config.services.handy.enable {
         binding_handy = "<super> KEY_V";
