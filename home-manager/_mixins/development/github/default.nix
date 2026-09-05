@@ -104,24 +104,181 @@ let
     + builtins.readFile ./gh-review-resolve.sh;
   };
 
-  ghUnsetFish = ''
-    set -e GH_TOKEN; set -e GITHUB_TOKEN; set -e GHORG_GITHUB_TOKEN; set -e HOMEBREW_GITHUB_API_TOKEN
+  ghTokenVariables = [
+    "GH_TOKEN"
+    "GITHUB_TOKEN"
+    "GHORG_GITHUB_TOKEN"
+    "HOMEBREW_GITHUB_API_TOKEN"
+  ];
+  # `set -e` erases one variable per call. The fish body is a function, not an
+  # alias: a fish alias appends `$argv` to its body, and a multi-line body
+  # leaves `$argv` alone on a line, which fish rejects as an empty command.
+  ghUnsetFish = lib.concatMapStringsSep "\n" (name: "set -e ${name}") ghTokenVariables;
+  ghUnsetBash = "unset ${lib.concatStringsSep " " ghTokenVariables}";
+
+  # The OAuth token `gh` stores never expires and has no refresh token, so
+  # nothing refreshes it. The scopes `gh` asked for at login are the one thing
+  # that goes stale, and only a browser device flow can add one. Every scope a
+  # command in this configuration needs is listed here. `gh-credential-sync`
+  # compares the list with the live token and leaves a marker that the shell
+  # prompt reports, so a missing scope surfaces without a network call at shell
+  # start.
+  ghRequiredScopes = [
+    "gist"
+    "project"
+    "read:org"
+    "repo"
+    "workflow"
+  ];
+  ghStateDir = "${config.xdg.stateHome}/gh";
+  ghMissingScopesFile = "${ghStateDir}/missing-scopes";
+  # Nix reads GitHub tokens from `access-tokens`, never from `GH_TOKEN`, so
+  # the sync also writes the token into a file that the user `nix.conf`
+  # includes. `!include` ignores a missing file, so a host that has never run
+  # the sync loses nothing.
+  nixAccessTokensFile = "${config.xdg.configHome}/nix/access-tokens.conf";
+
+  ghCredentialSync = pkgs.writeShellApplication {
+    name = "gh-credential-sync";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gh
+      pkgs.jq
+    ];
+    text = ''
+      required=(${lib.escapeShellArgs ghRequiredScopes})
+      state_dir=${lib.escapeShellArg ghStateDir}
+      missing_file=${lib.escapeShellArg ghMissingScopesFile}
+      tokens_file=${lib.escapeShellArg nixAccessTokensFile}
+
+      # Read the stored credential, never an inherited environment copy.
+      unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN
+      mkdir -p "$state_dir" "$(dirname "$tokens_file")"
+
+      if ! status_json="$(gh auth status --hostname github.com --active --json hosts 2>/dev/null)"; then
+        echo "gh-credential-sync: not logged in to github.com" >&2
+        printf 'not logged in\n' > "$missing_file"
+        exit 0
+      fi
+
+      scopes="$(jq -r '.hosts["github.com"][] | select(.active) | .scopes // ""' <<< "$status_json")"
+      missing=()
+      for scope in "''${required[@]}"; do
+        if ! grep -q -w -- "$scope" <<< "$scopes"; then
+          missing+=("$scope")
+        fi
+      done
+
+      if (( ''${#missing[@]} > 0 )); then
+        printf '%s\n' "''${missing[@]}" > "$missing_file"
+        echo "gh-credential-sync: token lacks scopes: ''${missing[*]}" >&2
+      else
+        rm -f "$missing_file"
+      fi
+
+      token="$(gh auth token --hostname github.com)"
+      tmp="$(mktemp "$tokens_file.XXXXXX")"
+      printf 'access-tokens = github.com=%s\n' "$token" > "$tmp"
+      chmod 600 "$tmp"
+      mv "$tmp" "$tokens_file"
+    '';
+  };
+
+  # Print the pending scope warning, if any, without touching the network.
+  ghScopeWarningBash = ''
+    if [[ -s ${lib.escapeShellArg ghMissingScopesFile} ]]; then
+      echo " GitHub token lacks: $(tr '\n' ' ' < ${lib.escapeShellArg ghMissingScopesFile})run 'gh auth refresh -s ${lib.concatStringsSep "," ghRequiredScopes}'"
+    fi
   '';
-  ghUnsetBash = ''
-    unset GH_TOKEN GITHUB_TOKEN GHORG_GITHUB_TOKEN HOMEBREW_GITHUB_API_TOKEN
+  ghScopeWarningFish = ''
+    if test -s ${lib.escapeShellArg ghMissingScopesFile}
+      echo " GitHub token lacks: "(string join ' ' (cat ${lib.escapeShellArg ghMissingScopesFile}))" run 'gh auth refresh -s ${lib.concatStringsSep "," ghRequiredScopes}'"
+    end
   '';
-  ghorgTokenBash = lib.optionalString host.is.workstation ''
-    export GHORG_GITHUB_TOKEN=$(${pkgs.gh}/bin/gh auth token)
+
+  # Opt-in export of the token into the current shell, for a tool that reads
+  # only the environment and has no wrapper below. Nothing runs this at shell
+  # start: an exported `GH_TOKEN` outranks the stored credential, so a shell
+  # that inherited one never saw a later `gh auth refresh`.
+  ghTokenBash = ''
+    gh-token() {
+      local auth_status
+      auth_status=$(${pkgs.gh}/bin/gh auth status 2>&1)
+      local status_code=$?
+
+      if [ $status_code -eq 0 ]; then
+        local token
+        token=$(${pkgs.gh}/bin/gh auth token)
+        ${lib.concatMapStringsSep "\n    " (name: "export ${name}=\"$token\"") ghTokenVariables}
+      elif [[ "$auth_status" == *"SAML"* ]]; then
+        echo " GitHub SAML session expired. Run 'gh auth refresh'"
+        return 1
+      else
+        echo " GitHub not authenticated. Run 'gh auth login'"
+        return 1
+      fi
+    }
   '';
-  ghorgTokenFish = lib.optionalString host.is.workstation ''
-    set -gx GHORG_GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
+  ghTokenFish = ''
+    set -l auth_status (${pkgs.gh}/bin/gh auth status 2>&1)
+    set -l status_code $status
+
+    if test $status_code -eq 0
+      set -l token (${pkgs.gh}/bin/gh auth token)
+      ${lib.concatMapStringsSep "\n  " (name: "set -gx ${name} $token") ghTokenVariables}
+    else if string match -q "*SAML*" $auth_status
+      echo " GitHub SAML session expired. Run 'gh auth refresh'"
+      return 1
+    else
+      echo " GitHub not authenticated. Run 'gh auth login'"
+      return 1
+    end
   '';
+
+  # Tools that read a token only from the environment get it for one
+  # invocation, read from the stored credential at that moment. Exposure stops
+  # at the tool, and a refreshed token is used on the next call.
+  toolWrappersBash =
+    lib.optionalString host.is.workstation ''
+      ghorg() {
+        GHORG_GITHUB_TOKEN="$(${pkgs.gh}/bin/gh auth token)" command ghorg "$@"
+      }
+      act() {
+        command act -s GITHUB_TOKEN="$(${pkgs.gh}/bin/gh auth token)" "$@"
+      }
+    ''
+    + lib.optionalString host.is.darwin ''
+      brew() {
+        HOMEBREW_GITHUB_API_TOKEN="$(${pkgs.gh}/bin/gh auth token)" command brew "$@"
+      }
+    '';
+  toolWrappersFish =
+    lib.optionalAttrs host.is.workstation {
+      ghorg = {
+        wraps = "ghorg";
+        body = "GHORG_GITHUB_TOKEN=(${pkgs.gh}/bin/gh auth token) command ghorg $argv";
+      };
+      act = {
+        wraps = "act";
+        body = "command act -s GITHUB_TOKEN=(${pkgs.gh}/bin/gh auth token) $argv";
+      };
+    }
+    // lib.optionalAttrs host.is.darwin {
+      brew = {
+        wraps = "brew";
+        body = "HOMEBREW_GITHUB_API_TOKEN=(${pkgs.gh}/bin/gh auth token) command brew $argv";
+      };
+    };
+
   shellAliases = {
-    gh-login = "${pkgs.gh}/bin/gh auth login -p https";
-    gh-refresh = "${pkgs.gh}/bin/gh auth refresh";
+    gh-login = "${pkgs.gh}/bin/gh auth login -p https -s ${lib.concatStringsSep "," ghRequiredScopes}";
+    gh-refresh = "${pkgs.gh}/bin/gh auth refresh -s ${lib.concatStringsSep "," ghRequiredScopes}";
     gh-status = "${pkgs.gh}/bin/gh auth status";
+    gh-sync = lib.getExe ghCredentialSync;
     gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
-    gh-unset = if config.programs.fish.enable then ghUnsetFish else ghUnsetBash;
+  };
+  bashShellAliases = shellAliases // {
+    gh-unset = ghUnsetBash;
   };
 in
 lib.mkMerge [
@@ -131,65 +288,71 @@ lib.mkMerge [
         gh-api-safe
         gh-review-reply
         gh-review-resolve
+        ghCredentialSync
       ];
+    };
+
+    # The user `nix.conf` only includes the token file the sync writes. Nix
+    # reads this file for every fetch, so a refreshed token reaches flake
+    # fetching without any environment variable.
+    xdg.configFile."nix/nix.conf".text = ''
+      !include ${nixAccessTokensFile}
+    '';
+
+    systemd.user = lib.mkIf host.is.linux {
+      services.gh-credential-sync = {
+        Unit.Description = "Check gh token scopes and write the Nix access token file";
+        Service = {
+          Type = "oneshot";
+          ExecStart = lib.getExe ghCredentialSync;
+        };
+      };
+      timers.gh-credential-sync = {
+        Unit.Description = "Check gh token scopes on a schedule";
+        Timer = {
+          OnBootSec = "2m";
+          OnUnitActiveSec = "6h";
+          RandomizedDelaySec = "5m";
+          Unit = "gh-credential-sync.service";
+        };
+        Install.WantedBy = [ "timers.target" ];
+      };
+    };
+
+    launchd.agents.gh-credential-sync = lib.mkIf host.is.darwin {
+      enable = true;
+      config = {
+        ProgramArguments = [ (lib.getExe ghCredentialSync) ];
+        RunAtLoad = true;
+        StartInterval = 6 * 60 * 60;
+      };
     };
 
     programs = {
       bash = {
-        inherit shellAliases;
+        shellAliases = bashShellAliases;
         initExtra = ''
-                    gh-token() {
-                      # Capture status output and exit code
-                      local auth_status
-                      auth_status=$(${pkgs.gh}/bin/gh auth status 2>&1)
-                      local status_code=$?
-
-                      if [ $status_code -eq 0 ]; then
-                        export GH_TOKEN=$(${pkgs.gh}/bin/gh auth token)
-                        export GITHUB_TOKEN=$(${pkgs.gh}/bin/gh auth token)
-          ${ghorgTokenBash}
-                        export HOMEBREW_GITHUB_API_TOKEN=$(${pkgs.gh}/bin/gh auth token)
-                      elif [[ "$auth_status" == *"SAML"* ]]; then
-                        echo " GitHub SAML session expired. Run 'gh auth refresh'"
-                        return 1
-                      else
-                        echo " GitHub not authenticated. Run 'gh auth login'"
-                        return 1
-                      fi
-                    }
-
-                    # Run gh-token automatically in interactive shells
-                    if [[ $- == *i* ]]; then
-                      gh-token
-                    fi
+          ${ghTokenBash}
+          ${toolWrappersBash}
+          if [[ $- == *i* ]]; then
+            ${ghScopeWarningBash}
+          fi
         '';
       };
       fish = {
         inherit shellAliases;
-        shellInitLast = ''
-                    function gh-token
-                      # Capture status output
-                      set -l auth_status (${pkgs.gh}/bin/gh auth status 2>&1)
-                      set -l status_code $status
-
-                      if test $status_code -eq 0
-                        set -gx GH_TOKEN (${pkgs.gh}/bin/gh auth token)
-                        set -gx GITHUB_TOKEN (${pkgs.gh}/bin/gh auth token)
-          ${ghorgTokenFish}
-                        set -gx HOMEBREW_GITHUB_API_TOKEN (${pkgs.gh}/bin/gh auth token)
-                      else if string match -q "*SAML*" $auth_status
-                        echo " GitHub SAML session expired. Run 'gh auth refresh'"
-                        return 1
-                      else
-                        echo " GitHub not authenticated. Run 'gh auth login'"
-                        return 1
-                      end
-                    end
-
-                    if status is-interactive
-                      gh-token
-                    end
-        '';
+        functions = {
+          gh-unset = {
+            description = "Erase the GitHub token variables that gh-token exported";
+            body = ghUnsetFish;
+          };
+          gh-token = {
+            description = "Export the stored gh token into this shell";
+            body = ghTokenFish;
+          };
+        }
+        // toolWrappersFish;
+        interactiveShellInit = ghScopeWarningFish;
       };
       gh = {
         enable = true;
@@ -209,44 +372,18 @@ lib.mkMerge [
         };
       };
       zsh = {
-        inherit shellAliases;
-        initContent =
-          let
-            # Early initialization for function definition
-            zshConfigEarly = lib.mkOrder 500 ''
-                            gh-token() {
-                              # Capture status output and exit code
-                              local auth_status
-                              auth_status=$(${pkgs.gh}/bin/gh auth status 2>&1)
-                              local status_code=$?
-
-                              if [ $status_code -eq 0 ]; then
-                                export GH_TOKEN=$(${pkgs.gh}/bin/gh auth token)
-                                export GITHUB_TOKEN=$(${pkgs.gh}/bin/gh auth token)
-              ${ghorgTokenBash}
-                                export HOMEBREW_GITHUB_API_TOKEN=$(${pkgs.gh}/bin/gh auth token)
-                              elif [[ "$auth_status" == *"SAML"* ]]; then
-                                echo " GitHub SAML session expired. Run 'gh auth refresh'"
-                                return 1
-                              else
-                                echo " GitHub not authenticated. Run 'gh auth login'"
-                                return 1
-                              fi
-                            }
-            '';
-
-            # General configuration for auto-execution
-            zshConfig = lib.mkOrder 1000 ''
-              # Run gh-token automatically in interactive shells
-              if [[ -o interactive ]]; then
-                gh-token
-              fi
-            '';
-          in
-          lib.mkMerge [
-            zshConfigEarly
-            zshConfig
-          ];
+        shellAliases = bashShellAliases;
+        initContent = lib.mkMerge [
+          (lib.mkOrder 500 ''
+            ${ghTokenBash}
+            ${toolWrappersBash}
+          '')
+          (lib.mkOrder 1000 ''
+            if [[ -o interactive ]]; then
+              ${ghScopeWarningBash}
+            fi
+          '')
+        ];
       };
     };
   }
