@@ -1,4 +1,4 @@
-# Refitted by tailor on 2026-09-02
+# Refitted by tailor on 2026-09-05
 license: BlueOak-1.0.0
 
 repository:
@@ -23,6 +23,9 @@ repository:
   automated_security_fixes_enabled: true
   default_workflow_permissions: write
   can_approve_pull_request_reviews: true
+  secret_scanning: enabled
+  secret_scanning_push_protection: enabled
+  secret_scanning_non_provider_patterns: enabled
   topics:
     - ci-cd
     - determinate
@@ -65,6 +68,81 @@ actions:
     - "softprops/action-gh-release@*"
     - "srz-zumix/post-run-action@*"
     - "wimpysworld/nothing-but-nix@*"
+
+code_scanning:
+  state: configured
+  query_suite: default
+  threat_model: remote
+  # An empty list means GitHub detects the languages. Valid values:
+  # actions, c-cpp, csharp, go, java-kotlin, javascript-typescript, python, ruby, swift
+  languages: []
+
+code_quality:
+  state: not-configured
+  # An empty list means GitHub detects the languages. Valid values:
+  # csharp, go, java-kotlin, javascript-typescript, python, ruby
+  languages: []
+
+ruleset:
+  # Tailor manages one ruleset named "Tailor" and owns it entirely.
+  # active enforces the rules. disabled keeps the ruleset on GitHub but
+  # GitHub ignores it, so a hand-made ruleset can govern instead.
+  enforcement: active
+  bypass_actors:
+    # actor_type: RepositoryRole, Team, User, Integration, DeployKey
+    # RepositoryRole actor_id: 2 maintain, 4 write, 5 admin
+    # bypass_mode: always, pull_request, exempt
+    - actor_id: 5
+      actor_type: RepositoryRole
+      bypass_mode: always
+  conditions:
+    ref_name:
+      # Branch names or fnmatch patterns in refs/heads/<name> form.
+      # include also accepts ~DEFAULT_BRANCH and ~ALL.
+      include:
+        - ~DEFAULT_BRANCH
+      exclude: []
+  rules:
+    creation: false
+    update: false
+    deletion: true
+    required_linear_history: false
+    required_signatures: false
+    non_fast_forward: true
+    pull_request:
+      enabled: true
+      parameters:
+        required_approving_review_count: 1
+        dismiss_stale_reviews_on_push: true
+        require_code_owner_review: false
+        require_last_push_approval: false
+        required_review_thread_resolution: true
+        require_extra_approval_for_unattributed_changes: true
+        # Any combination of merge, squash, rebase. At least one.
+        allowed_merge_methods:
+          - squash
+          - rebase
+    required_status_checks:
+      enabled: false
+      parameters:
+        # Require branches to be up to date before merging.
+        strict_required_status_checks_policy: false
+        # Do not require status checks on creation.
+        do_not_enforce_on_create: false
+        # context is the check name as shown on a pull request. For a GitHub
+        # Actions job that is the job's name. integration_id is optional and
+        # restricts the check to one app; 15368 is GitHub Actions.
+        required_status_checks: []
+    code_scanning:
+      enabled: false
+      parameters:
+        # tool is the tool name as GitHub shows it, for example CodeQL.
+        # alerts_threshold: none, errors, errors_and_warnings, all
+        # security_alerts_threshold: none, critical, high_or_higher, medium_or_higher, all
+        code_scanning_tools:
+          - tool: CodeQL
+            alerts_threshold: errors
+            security_alerts_threshold: high_or_higher
 
 labels:
   - name: bug
