@@ -12,7 +12,7 @@ Authority: invocation by a human, or by another command, is consent to create th
 
 Call `list_projects` with `query` set to the name and read the results. Match on the exact name. If an open project with that exact name exists, report it and stop; the work is already done.
 
-A closed project is not a match. `list_projects` returns `status` with a `type` field: type `completed` or `cancelled` means closed. Gate on the status type, never the status name. When every same-named project is closed, create a new one. A caller rolls a perpetual project over by closing it and expects the next run to create the replacement, so without this rule `pr-watch` would file this quarter's flakes into last quarter's closed project.
+A closed project is not a match. `list_projects` returns `status` with a `type` field: type `completed` or `cancelled` means closed. Gate on the status type, never the status name. When every same-named project is closed, create a new one. A caller rolls a perpetual project over by closing it and expects the next run to create the replacement, so without this rule `babysit-pr` would file this quarter's flakes into last quarter's closed project.
 
 Never fuzzy match, and never create a project whose name only resembles the request. A near miss creates a second project the caller cannot find on its next run.
 

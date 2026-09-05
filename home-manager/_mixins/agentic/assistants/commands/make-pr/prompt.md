@@ -2,7 +2,7 @@
 
 Draft the pull request title and body with the inline contract below. Then create a pull request for the current branch. On a work repository, open the body with a bold why line and append a reviewer orientation block, both before creation. A work pull request also carries a review request for the work review team and the `ai-review` label.
 
-Run the pull request creation flow in the current context. Do not launch a sub-agent or a Task for any step. The current context holds the change intent, validation results, and non-goals that the pull request message needs. The watch handover after successful creation is separate and may invoke `pr-watch` when the user selects it.
+Run the pull request creation flow in the current context. Do not launch a sub-agent or a Task for any step. The current context holds the change intent, validation results, and non-goals that the pull request message needs. The watch handover after successful creation is separate and may invoke `babysit-pr` when the user selects it.
 
 Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed, running `gh pr create`, and repairing missing review metadata with `gh pr edit`, and it moves any linked tracked issue, Linear or GitHub Project, to its in-review status. Treat explicit human invocation of this command as consent for those actions.
 
@@ -185,19 +185,19 @@ The `Review requested` and `Label` lines belong to a work pull request. Omit bot
 
 If the report does not contain a verified pull request URL, finish after the report. Do not ask a question or offer a next action.
 
-If the report contains a verified pull request URL, define `<watch-command>` with that URL. Codex uses `$pr-watch <url>`. Slash-command runtimes use `/pr-watch <url>`. Replace `<url>` and show only the matching form.
+If the report contains a verified pull request URL, define `<watch-command>` with that URL. Codex uses `$babysit-pr <url>`. Slash-command runtimes use `/babysit-pr <url>`. Replace `<url>` and show only the matching form.
 
 In an interactive session, use the available structured user-question tool to ask one single-select question after the report:
 
-- Header: `Watch PR`
-- Question: `Watch this pull request?`
-- `Watch (Recommended)` - Run `<watch-command>` to monitor checks and reviews.
+- Header: `Babysit PR`
+- Question: `Babysit this pull request?`
+- `Babysit (Recommended)` - Run `<watch-command>` to fix checks, answer reviews, and wait for approvals.
 - `Stop here` - Finish after the report.
 
 Use the verified URL from the report. Do not add an `Other` choice. The client can add its own free-text choice.
 
-If the user selects `Watch (Recommended)`, invoke the provider-specific command and wait for it to finish. If the user selects `Stop here`, finish without another summary. Treat cancellation, silence, and any other answer as `Stop here`.
+If the user selects `Babysit (Recommended)`, invoke the provider-specific command and wait for it to finish. If the user selects `Stop here`, finish without another summary. Treat cancellation, silence, and any other answer as `Stop here`.
 
 If no structured user-question tool is available in an interactive session, print the same question and choices with the provider-specific command, then wait.
 
-In a non-interactive session, print `Next action: $pr-watch <url>` on Codex or `Next action: /pr-watch <url>` on a slash-command runtime, with the verified URL substituted. Then finish.
+In a non-interactive session, print `Next action: $babysit-pr <url>` on Codex or `Next action: /babysit-pr <url>` on a slash-command runtime, with the verified URL substituted. Then finish.

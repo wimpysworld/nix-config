@@ -122,7 +122,7 @@ The house style owns response discipline, every platform carries it in the syste
 | `grill-me`              | Interview the user until every branch of a design is resolved            |
 | `implement-task`        | Take a tracked task through to implemented, validated, committed work    |
 | `make-commit`           | Draft the message, then create one commit from the durable work          |
-| `make-pr`               | Draft and open a PR, update linked Linear issues, and offer `pr-watch`    |
+| `make-pr`               | Draft and open a PR, update linked tracker issues, and offer `babysit-pr` |
 | `oi`                    | Re-issue the Communication Rules bluntly, after `ahem` failed            |
 | `orientate`             | Inspect the repository and report orientation notes                      |
 | `ready`                 | Prime the session for a broad activity                                   |
@@ -133,7 +133,7 @@ The house style owns response discipline, every platform carries it in the syste
 | `review-code-mine`      | Adversarially review my own changes before filing a PR                   |
 | `wtb`                   | Run the Want to Buy workflow for a pull request and Slack channel        |
 
-The root `make-pr` command keeps the current context and inherits the root session model for message drafting, PR creation, and the `pr-watch` choice. It does not launch Garfield.
+The root `make-pr` command keeps the current context and inherits the root session model for message drafting, PR creation, and the `babysit-pr` choice. It does not launch Garfield.
 
 ---
 
@@ -272,7 +272,7 @@ Precise implementation engineer executing code changes from specifications. Read
 | `draft-code-review`       | Draft the house-style review comment from a completed review       |
 | `post-code-review`        | Post your text or a drafted review, as comment or approval         |
 | `address-code-review`     | Work review findings one at a time, committing each fix            |
-| `pr-watch`                | Watch a PR: fix CI failures, triage flakes, answer reviews         |
+| `babysit-pr`              | Take a PR to green checks, answered reviews, and approvals         |
 | `project-peer-review`     | Give an ecosystem-specific codebase verdict                        |
 | `project-polish-comments` | Comment-quality pass over a file set; comments only, never logic   |
 | `add-agentic-repo-capability` | Add a repository-local MCP server, skill, or command across clients |
@@ -290,7 +290,7 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `draft-commit-message` | Draft a conventional commit message for the staged or current changes                                                                    |
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body                                                                 |
-| `pr-done`              | Summarise the merged PR in Linear, move linked issues to Done, and safely delete its local and remote branch                             |
+| `finish-pr`            | Summarise the merged PR on its Linear or GitHub issues, move them to done, and safely delete its local and remote branch                 |
 
 ---
 

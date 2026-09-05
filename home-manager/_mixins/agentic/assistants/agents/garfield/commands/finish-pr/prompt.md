@@ -1,12 +1,12 @@
-## PR Done
+## Finish PR
 
 Complete one merged pull request, update every associated tracked issue in Linear or a GitHub Project, and remove only its verified branch refs.
 
-On slash-command clients, use `$ARGUMENTS` as the optional head branch. On Codex, use the branch argument from the user's `$pr-done` invocation. When blank, use `git branch --show-current`. Require one valid branch name, not a full ref, and reject a detached HEAD or the base repository's current default branch. Record the original branch before clean-up.
+On slash-command clients, use `$ARGUMENTS` as the optional head branch. On Codex, use the branch argument from the user's `$finish-pr` invocation. When blank, use `git branch --show-current`. Require one valid branch name, not a full ref, and reject a detached HEAD or the base repository's current default branch. Record the original branch before clean-up.
 
 ### Authority and invariants
 
-Invocation authorises one marked tracker comment per associated issue, forward-only moves to the `done` role, exact-ref fetches, current-worktree switch or detach, a default-branch fast-forward, and verified local and remote head-branch deletion.
+Invocation authorises stopping this session's `babysit-pr` sub-agents for the same PR, one marked tracker comment per associated issue, forward-only moves to the `done` role, exact-ref fetches, current-worktree switch or detach, a default-branch fast-forward, and verified local and remote head-branch deletion.
 
 Do not merge or edit the PR, change other tracker fields, add or rewrite remotes, prune broadly, reset, clean, force the default branch, remove a worktree, or delete any unverified ref. Use bounded calls without retry loops. Keep tracker issues and Git phases independent.
 
@@ -27,10 +27,14 @@ Do not merge or edit the PR, change other tracker fields, add or rewrite remotes
 3. For a Linear issue, apply the workspace guard in the Linear reference's `Identity and lookup` section. Skip all Linear writes on a mismatch or uncertainty.
 4. Read the PR commits, reviews, comments, checks, and timeline. Include only server-timestamped events after `createdAt` and no later than `mergedAt` that changed delivery or acceptance. A follow-up commit needs `pushedDate` or an equivalent server timestamp, never its author or committer date.
 5. Exclude initial code and description, routine bots, labels, assignments, review requests, non-material approvals and check churn, merge mechanics, and clean-up. Do not infer missing events.
-6. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. Draft one to three visible sentences that summarise material follow-up and the final result. When none occurred, say that the change merged without a material follow-up. Show no PR URL or number. Append `<!-- pr-done-workflow:<full-head-sha> -->` to the source body.
+6. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. Draft one to three visible sentences that summarise material follow-up and the final result. When none occurred, say that the change merged without a material follow-up. Show no PR URL or number. Append `<!-- pr-done-workflow:<full-head-sha> -->` to the source body. The marker keeps its original name so comments posted before the command was renamed are still recognised.
 7. For each issue, read its comments and its current role. If the exact marker is absent, post the comment as the reference's `durable record` section describes, including for terminal issues. If posting fails, skip that issue's status write and continue.
 8. If the issue is already in the `done` or `inactive` role, preserve it. Otherwise move it to the `done` role as the reference describes. Never create a status.
 9. Record `Comment: posted`, `already present`, or `skipped: <reason>` separately from `Status: moved to Done` or `skipped: <reason>`. Tracker failures do not block safe Git work.
+
+### Stop the babysitters
+
+`babysit-pr` may still be running in this session with watchers in the background, and it names every sub-agent `babysit-pr-<owner>-<repo>-<number>-<role>`. After the PR is proven merged and before any Git clean-up, list this session's active sub-agents through the platform's own management action, as `delegate-task` describes, and stop every one whose name carries the prefix for this PR. Stop only that prefix, never another PR's babysitters or an unrelated agent. Record each one stopped, or `none running`, in the report. When the platform offers no way to list or stop sub-agents, say so in one line and carry on. The watchers also return on their own once the PR `state` leaves `OPEN`, so a missed stop costs one shift at most.
 
 ### Clean local Git state
 
@@ -54,10 +58,11 @@ Do not use an unleased delete, wildcard, API deletion, named local remote, or ba
 
 ### Retry and output
 
-Missing local or remote branches are successful prior clean-up. A current worktree already on the default branch, or detached at its verified remote commit, needs no repeat change. After partial clean-up, retry as `/pr-done <original-branch>` on slash-command clients or `$pr-done <original-branch>` on Codex; never infer the branch from the new HEAD.
+Missing local or remote branches are successful prior clean-up. A current worktree already on the default branch, or detached at its verified remote commit, needs no repeat change. After partial clean-up, retry as `/finish-pr <original-branch>` on slash-command clients or `$finish-pr <original-branch>` on Codex; never infer the branch from the new HEAD.
 
 ```markdown
 PR: <base repository and number, or unresolved reason>
+Babysitters: <names stopped, none running, or not supported here>
 Original branch: <branch>
 Current worktree: <state>
 Tracker:

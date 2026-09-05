@@ -64,7 +64,7 @@ Assign every issue, parent and children, to the user creating or claiming it. Re
 
 ## durable record
 
-Post the record as a Linear comment on the issue with `save_comment`. Send real newlines in the body, never literal backslash-n. `pr-done` appends `<!-- pr-done-workflow:<full-head-sha> -->` to its comment and skips the post when that exact marker is already present.
+Post the record as a Linear comment on the issue with `save_comment`. Send real newlines in the body, never literal backslash-n. `finish-pr` appends `<!-- pr-done-workflow:<full-head-sha> -->` to its comment and skips the post when that exact marker is already present.
 
 ## long research
 
@@ -76,7 +76,7 @@ Two things link an issue, and nothing else does: the branch name, when it contai
 
 `implement-task` names the branch with the bare lowercased issue key, such as `ful-123`, or the parent's key for a cohort. Linear links and auto-closes the issue when the branch name contains its key, so add nothing to the key. Each commit carries a `Refs: <ISSUE-KEY>` footer.
 
-`make-pr` and `pr-done` collect keys only from complete issue-key tokens in the head branch, at non-alphanumeric boundaries, and exact `Refs:` trailers parsed from the commits in `main..HEAD` or the resolved PR. A branch token counts only when its prefix matches a team key visible in the connected workspace, so a GitHub branch such as `42-fix-the-thing` or `development-42` never becomes a Linear lookup. Deduplicate case-insensitively. Do not scan other prose or metadata for keys.
+`make-pr` and `finish-pr` collect keys only from complete issue-key tokens in the head branch, at non-alphanumeric boundaries, and exact `Refs:` trailers parsed from the commits in `main..HEAD` or the resolved PR. A branch token counts only when its prefix matches a team key visible in the connected workspace, so a GitHub branch such as `42-fix-the-thing` or `development-42` never becomes a Linear lookup. Deduplicate case-insensitively. Do not scan other prose or metadata for keys.
 
 In a pull request body, write `[FUL-1](https://linear.app/<workspace>/issue/FUL-1)`: that URL resolves, while the slugged URL Linear hands you ends in the issue title and publishes it on a repository that may be public. Never paste a slugged Linear URL.
 

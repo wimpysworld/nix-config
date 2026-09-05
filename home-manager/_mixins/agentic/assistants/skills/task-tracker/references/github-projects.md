@@ -125,7 +125,7 @@ Post the record as an issue comment:
 gh issue comment <n> --repo <owner>/<repo> --body-file <file>
 ```
 
-`pr-done` appends `<!-- pr-done-workflow:<full-head-sha> -->` to its comment and skips the post when `gh issue view <n> --json comments --jq '.comments[].body'` already contains that exact marker.
+`finish-pr` appends `<!-- pr-done-workflow:<full-head-sha> -->` to its comment and skips the post when `gh issue view <n> --json comments --jq '.comments[].body'` already contains that exact marker.
 
 ## long research
 
@@ -143,7 +143,7 @@ Keep GitHub's default branch name, `<n>-<slugified-title>`, for example `42-fix-
 
 Each commit carries a `Refs: <owner>/<repo>#<n>` footer. `make-pr` writes `Closes #<n>` for a single task, or one `Closes` line per child for a cohort, as the last lines of the pull request body, so the merge closes the issue and the built-in workflow moves it to `Done`. In prose, write `#123` for an issue in the same repository and `owner/repo#123` elsewhere. GitHub links both, so neither takes a URL.
 
-`pr-done` collects issue numbers from the pull request's `closingIssuesReferences` (`gh pr view <n> --json closingIssuesReferences`) and from exact `Refs:` trailers on the resolved PR commits. Never scan prose for numbers.
+`finish-pr` collects issue numbers from the pull request's `closingIssuesReferences` (`gh pr view <n> --json closingIssuesReferences`) and from exact `Refs:` trailers on the resolved PR commits. Never scan prose for numbers.
 
 ## Limits
 
